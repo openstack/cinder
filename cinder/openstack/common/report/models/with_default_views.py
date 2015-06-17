@@ -14,10 +14,10 @@
 
 import copy
 
-import cinder.openstack.common.report.models.base as base_model
-import cinder.openstack.common.report.views.json.generic as jsonviews
-import cinder.openstack.common.report.views.text.generic as textviews
-import cinder.openstack.common.report.views.xml.generic as xmlviews
+from cinder.openstack.common.report.models import base as base_model
+from cinder.openstack.common.report.views.json import generic as jsonviews
+from cinder.openstack.common.report.views.text import generic as textviews
+from cinder.openstack.common.report.views.xml import generic as xmlviews
 
 
 class ModelWithDefaultViews(base_model.ReportModel):
@@ -28,18 +28,18 @@ class ModelWithDefaultViews(base_model.ReportModel):
     when a submodel should have an attached view, but the view
     differs depending on the serialization format
 
-    Paramaters are as the superclass, with the exception
-    of any parameters ending in '_view': these parameters
+    Parameters are as the superclass, except for any
+    parameters ending in '_view': these parameters
     get stored as default views.
 
     The default 'default views' are
 
     text
-        :class:`openstack.common.views.text.generic.KeyValueView`
+        :class:`openstack.common.report.views.text.generic.KeyValueView`
     xml
-        :class:`openstack.common.views.xml.generic.KeyValueView`
+        :class:`openstack.common.report.views.xml.generic.KeyValueView`
     json
-        :class:`openstack.common.views.json.generic.KeyValueView`
+        :class:`openstack.common.report.views.json.generic.KeyValueView`
 
     .. function:: to_type()
 
@@ -64,19 +64,18 @@ class ModelWithDefaultViews(base_model.ReportModel):
                 del newargs[k]
         super(ModelWithDefaultViews, self).__init__(*args, **newargs)
 
-    def set_current_view_type(self, tp):
+    def set_current_view_type(self, tp, visited=None):
         self.attached_view = self.views[tp]
-        super(ModelWithDefaultViews, self).set_current_view_type(tp)
+        super(ModelWithDefaultViews, self).set_current_view_type(tp, visited)
 
     def __getattr__(self, attrname):
         if attrname[:3] == 'to_':
             if self.views[attrname[3:]] is not None:
                 return lambda: self.views[attrname[3:]](self)
             else:
-                raise NotImplementedError(_(
-                    "Model %(module)s.%(name)s does not have a default view "
-                    "for %(tp)s"), {'module': type(self).__module__,
-                                    'name': type(self).__name__,
-                                    'tp': attrname[3:]})
+                raise NotImplementedError((
+                    "Model {cn.__module__}.{cn.__name__} does not have" +
+                    " a default view for "
+                    "{tp}").format(cn=type(self), tp=attrname[3:]))
         else:
             return super(ModelWithDefaultViews, self).__getattr__(attrname)

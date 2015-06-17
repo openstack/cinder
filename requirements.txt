@@ -28,6 +28,7 @@ osprofiler>=0.3.0                       # Apache-2.0
 paramiko>=1.13.0
 Paste
 PasteDeploy>=1.5.0
+psutil>=1.1.1,<2.0.0
 pycrypto>=2.6
 pyparsing>=2.0.1
 python-barbicanclient>=3.0.1

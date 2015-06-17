@@ -14,7 +14,8 @@
 
 """Provides Guru Meditation Report
 
-This module defines the actual OpenStack Guru Meditation Report class.
+This module defines the actual OpenStack Guru Meditation
+Report class.
 
 This can be used in the OpenStack command definition files.
 For example, in a nova command module (under nova/cmd):
@@ -50,10 +51,15 @@ where stderr is logged for that given service.
 
 from __future__ import print_function
 
+import inspect
+import os
 import signal
 import sys
 
+from oslo_utils import timeutils
+
 from cinder.openstack.common.report.generators import conf as cgen
+from cinder.openstack.common.report.generators import process as prgen
 from cinder.openstack.common.report.generators import threading as tgen
 from cinder.openstack.common.report.generators import version as pgen
 from cinder.openstack.common.report import report
@@ -73,8 +79,11 @@ class GuruMeditation(object):
     MRO is correct.
     """
 
-    def __init__(self, version_obj, *args, **kwargs):
+    timestamp_fmt = "%Y%m%d%H%M%S"
+
+    def __init__(self, version_obj, sig_handler_tb=None, *args, **kwargs):
         self.version_obj = version_obj
+        self.traceback = sig_handler_tb
 
         super(GuruMeditation, self).__init__(*args, **kwargs)
         self.start_section_index = len(self.sections)
@@ -96,37 +105,69 @@ class GuruMeditation(object):
             cls.persistent_sections = [[section_title, generator]]
 
     @classmethod
-    def setup_autorun(cls, version, signum=signal.SIGUSR1):
+    def setup_autorun(cls, version, service_name=None,
+                      log_dir=None, signum=None):
         """Set Up Auto-Run
 
         This method sets up the Guru Meditation Report to automatically
-        get dumped to stderr when the given signal is received.
+        get dumped to stderr or a file in a given dir when the given signal
+        is received.
 
         :param version: the version object for the current product
+        :param service_name: this program name used to construct logfile name
+        :param logdir: path to a log directory where to create a file
         :param signum: the signal to associate with running the report
         """
 
-        signal.signal(signum, lambda *args: cls.handle_signal(version, *args))
+        if not signum and hasattr(signal, 'SIGUSR1'):
+            # SIGUSR1 is not supported on all platforms
+            signum = signal.SIGUSR1
+
+        if signum:
+            signal.signal(signum,
+                          lambda sn, tb: cls.handle_signal(
+                              version, service_name, log_dir, tb))
 
     @classmethod
-    def handle_signal(cls, version, *args):
+    def handle_signal(cls, version, service_name, log_dir, traceback):
         """The Signal Handler
 
         This method (indirectly) handles receiving a registered signal and
-        dumping the Guru Meditation Report to stderr.  This method is designed
-        to be curried into a proper signal handler by currying out the version
+        dumping the Guru Meditation Report to stderr or a file in a given dir.
+        If service name and log dir are not None, the report will be dumped to
+        a file named $service_name_gurumeditation_$current_time in the log_dir
+        directory.
+        This method is designed to be curried into a proper signal handler by
+        currying out the version
         parameter.
 
         :param version: the version object for the current product
+        :param service_name: this program name used to construct logfile name
+        :param logdir: path to a log directory where to create a file
+        :param traceback: the traceback provided to the signal handler
         """
 
         try:
-            res = cls(version).run()
+            res = cls(version, traceback).run()
         except Exception:
             print("Unable to run Guru Meditation Report!",
                   file=sys.stderr)
         else:
-            print(res, file=sys.stderr)
+            if log_dir:
+                service_name = service_name or os.path.basename(
+                    inspect.stack()[-1][1])
+                filename = "%s_gurumeditation_%s" % (
+                    service_name, timeutils.utcnow().strftime(
+                        cls.timestamp_fmt))
+                filepath = os.path.join(log_dir, filename)
+                try:
+                    with open(filepath, "w") as dumpfile:
+                        dumpfile.write(res)
+                except Exception:
+                    print("Unable to dump Guru Meditation Report to file %s" %
+                          (filepath,), file=sys.stderr)
+            else:
+                print(res, file=sys.stderr)
 
     def _readd_sections(self):
         del self.sections[self.start_section_index:]
@@ -135,10 +176,13 @@ class GuruMeditation(object):
                          pgen.PackageReportGenerator(self.version_obj))
 
         self.add_section('Threads',
-                         tgen.ThreadReportGenerator())
+                         tgen.ThreadReportGenerator(self.traceback))
 
         self.add_section('Green Threads',
                          tgen.GreenThreadReportGenerator())
+
+        self.add_section('Processes',
+                         prgen.ProcessReportGenerator())
 
         self.add_section('Configuration',
                          cgen.ConfigReportGenerator())
@@ -169,11 +213,15 @@ class TextGuruMeditation(GuruMeditation, report.TextReport):
 
     - Green Threads List
 
+    - Process List
+
     - Configuration Options
 
     :param version_obj: the version object for the current product
+    :param traceback: an (optional) frame object providing the actual
+                      traceback for the current thread
     """
 
-    def __init__(self, version_obj):
-        super(TextGuruMeditation, self).__init__(version_obj,
+    def __init__(self, version_obj, traceback=None):
+        super(TextGuruMeditation, self).__init__(version_obj, traceback,
                                                  'Guru Meditation')

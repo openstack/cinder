@@ -19,14 +19,17 @@ generators for generating the models in
 :mod:`openstack.common.report.models.threading`.
 """
 
+from __future__ import absolute_import
+
 import sys
+import threading
 
 import greenlet
 
-import cinder.openstack.common.report.models.threading as tm
+from cinder.openstack.common.report.models import threading as tm
 from cinder.openstack.common.report.models import with_default_views as mwdv
-import cinder.openstack.common.report.utils as rutils
-import cinder.openstack.common.report.views.text.generic as text_views
+from cinder.openstack.common.report import utils as rutils
+from cinder.openstack.common.report.views.text import generic as text_views
 
 
 class ThreadReportGenerator(object):
@@ -35,17 +38,28 @@ class ThreadReportGenerator(object):
     This generator returns a collection of
     :class:`openstack.common.report.models.threading.ThreadModel`
     objects by introspecting the current python state using
-    :func:`sys._current_frames()` .
+    :func:`sys._current_frames()` .  Its constructor may optionally
+    be passed a frame object.  This frame object will be interpreted
+    as the actual stack trace for the current thread, and, come generation
+    time, will be used to replace the stack trace of the thread in which
+    this code is running.
     """
 
-    def __call__(self):
-        threadModels = [
-            tm.ThreadModel(thread_id, stack)
-            for thread_id, stack in sys._current_frames().items()
-        ]
+    def __init__(self, curr_thread_traceback=None):
+        self.traceback = curr_thread_traceback
 
-        thread_pairs = dict(zip(range(len(threadModels)), threadModels))
-        return mwdv.ModelWithDefaultViews(thread_pairs,
+    def __call__(self):
+        threadModels = dict(
+            (thread_id, tm.ThreadModel(thread_id, stack))
+            for thread_id, stack in sys._current_frames().items()
+        )
+
+        if self.traceback is not None:
+            curr_thread_id = threading.current_thread().ident
+            threadModels[curr_thread_id] = tm.ThreadModel(curr_thread_id,
+                                                          self.traceback)
+
+        return mwdv.ModelWithDefaultViews(threadModels,
                                           text_view=text_views.MultiView())
 
 
@@ -68,6 +82,5 @@ class GreenThreadReportGenerator(object):
             for gr in rutils._find_objects(greenlet.greenlet)
         ]
 
-        thread_pairs = dict(zip(range(len(threadModels)), threadModels))
-        return mwdv.ModelWithDefaultViews(thread_pairs,
+        return mwdv.ModelWithDefaultViews(threadModels,
                                           text_view=text_views.MultiView())

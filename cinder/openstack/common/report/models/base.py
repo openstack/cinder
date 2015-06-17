@@ -24,6 +24,8 @@ the report serialization process.
 import collections as col
 import copy
 
+import six
+
 
 class ReportModel(col.MutableMapping):
     """A Report Data Model
@@ -37,13 +39,29 @@ class ReportModel(col.MutableMapping):
     model.  An appropriate object for a view is callable with
     a single parameter: the model to be serialized.
 
-    :param data: a dictionary of data to initially associate with the model
+    If present, the object passed in as data will be transformed
+    into a standard python dict.  For mappings, this is fairly
+    straightforward.  For sequences, the indices become keys
+    and the items become values.
+
+    :param data: a sequence or mapping of data to associate with the model
     :param attached_view: a view object to attach to this model
     """
 
     def __init__(self, data=None, attached_view=None):
         self.attached_view = attached_view
-        self.data = data or {}
+
+        if data is not None:
+            if isinstance(data, col.Mapping):
+                self.data = dict(data)
+            elif isinstance(data, col.Sequence):
+                # convert a list [a, b, c] to a dict {0: a, 1: b, 2: c}
+                self.data = dict(enumerate(data))
+            else:
+                raise TypeError('Data for the model must be a sequence '
+                                'or mapping.')
+        else:
+            self.data = {}
 
     def __str__(self):
         self_cpy = copy.deepcopy(self)
@@ -81,9 +99,16 @@ class ReportModel(col.MutableMapping):
         return self.data.__contains__(key)
 
     def __getattr__(self, attrname):
+        # Needed for deepcopy in Python3. That will avoid an infinite loop
+        # in __getattr__ .
+        if 'data' not in self.__dict__:
+            self.data = {}
+
         try:
             return self.data[attrname]
         except KeyError:
+            # we don't have that key in data, and the
+            # model class doesn't have that attribute
             raise AttributeError(
                 "'{cl}' object has no attribute '{an}'".format(
                     cl=type(self).__name__, an=attrname
@@ -96,19 +121,42 @@ class ReportModel(col.MutableMapping):
     def __iter__(self):
         return self.data.__iter__()
 
-    def set_current_view_type(self, tp):
+    def set_current_view_type(self, tp, visited=None):
         """Set the current view type
 
         This method attempts to set the current view
         type for this model and all submodels by calling
-        itself recursively on all values (and ignoring the
-        ones that are not themselves models)
+        itself recursively on all values, traversing
+        intervening sequences and mappings when possible,
+        and ignoring all other objects.
 
         :param tp: the type of the view ('text', 'json', 'xml', etc)
+        :param visited: a set of object ids for which the corresponding objects
+                        have already had their view type set
         """
 
-        for key in self:
-            try:
-                self[key].set_current_view_type(tp)
-            except AttributeError:
-                pass
+        if visited is None:
+            visited = set()
+
+        def traverse_obj(obj):
+            oid = id(obj)
+
+            # don't die on recursive structures,
+            # and don't treat strings like sequences
+            if oid in visited or isinstance(obj, six.string_types):
+                return
+
+            visited.add(oid)
+
+            if hasattr(obj, 'set_current_view_type'):
+                obj.set_current_view_type(tp, visited=visited)
+
+            if isinstance(obj, col.Sequence):
+                for item in obj:
+                    traverse_obj(item)
+
+            elif isinstance(obj, col.Mapping):
+                for val in six.itervalues(obj):
+                    traverse_obj(val)
+
+        traverse_obj(self)

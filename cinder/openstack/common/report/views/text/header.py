@@ -49,4 +49,3 @@ class TitledView(HeaderView):
 
     def __init__(self, title):
         super(TitledView, self).__init__(self.FORMAT_STR.format(title))
-
