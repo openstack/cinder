@@ -95,6 +95,8 @@ def return_qos_specs_create(context, name, specs):
         raise exception.QoSSpecsExists(specs_id=name)
     elif name == "555":
         raise exception.QoSSpecsCreateFailed(name=id, qos_specs=specs)
+    elif name == "444":
+        raise exception.InvalidQoSSpecs(reason=name)
     pass
 
 
@@ -288,6 +290,19 @@ class QoSSpecManageApiTest(test.TestCase):
 
             self.assertEqual(1, notifier.get_notification_count())
             self.assertEqual('qos_specs_1', res_dict['qos_specs']['name'])
+
+    @mock.patch('cinder.volume.qos_specs.create',
+                side_effect=return_qos_specs_create)
+    def test_create_invalid_input(self, mock_qos_get_specs):
+        body = {"qos_specs": {"name": "444",
+                              "consumer": "invalid_consumer"}}
+        req = fakes.HTTPRequest.blank('/v2/fake/qos-specs')
+
+        notifier = fake_notifier.get_fake_notifier()
+        with mock.patch('cinder.rpc.get_notifier', return_value=notifier):
+            self.assertRaises(webob.exc.HTTPBadRequest,
+                              self.controller.create, req, body)
+            self.assertEqual(1, notifier.get_notification_count())
 
     @mock.patch('cinder.volume.qos_specs.create',
                 side_effect=return_qos_specs_create)
