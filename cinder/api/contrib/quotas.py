@@ -56,26 +56,6 @@ class QuotaSetsController(wsgi.Controller):
 
         return dict(quota_set=quota_set)
 
-    def _validate_quota_limit(self, limit):
-        try:
-            limit = int(limit)
-        except (ValueError, TypeError):
-            msg = _("Quota limit must be specified as an integer value.")
-            raise webob.exc.HTTPBadRequest(explanation=msg)
-
-        # NOTE: -1 is a flag value for unlimited, maximum value is limited
-        # by SQL standard integer type `INT` which is `0x7FFFFFFF`, it's a
-        # general value for SQL, using a hardcoded value here is not a
-        # `nice` way, but it seems like the only way for now:
-        # http://dev.mysql.com/doc/refman/5.0/en/integer-types.html
-        # http://www.postgresql.org/docs/9.1/static/datatype-numeric.html
-        if limit < -1 or limit > db.MAX_INT:
-            msg = _("Quota limit must be in the range of -1 "
-                    "to %s.") % db.MAX_INT
-            raise webob.exc.HTTPBadRequest(explanation=msg)
-
-        return limit
-
     def _get_quotas(self, context, id, usages=False, parent_project_id=None):
         values = QUOTAS.get_project_quotas(context, id, usages=usages,
                                            parent_project_id=parent_project_id)
@@ -107,6 +87,9 @@ class QuotaSetsController(wsgi.Controller):
     def update(self, req, id, body):
         context = req.environ['cinder.context']
         authorize_update(context)
+        self.validate_string_length(id, 'quota_set_name',
+                                    min_length=1, max_length=255)
+
         project_id = id
         self.assert_valid_body(body, 'quota_set')
 
@@ -131,8 +114,9 @@ class QuotaSetsController(wsgi.Controller):
             if key in NON_QUOTA_KEYS:
                 continue
 
-            value = self._validate_quota_limit(body['quota_set'][key])
-            valid_quotas[key] = value
+            valid_quotas[key] = self.validate_integer(
+                body['quota_set'][key], key, min_value=-1,
+                max_value=db.MAX_INT)
 
         # NOTE(ankit): Pass #3 - At this point we know that all the keys and
         # values are valid and we can iterate and update them all in one shot

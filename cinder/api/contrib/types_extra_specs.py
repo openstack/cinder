@@ -74,6 +74,17 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         self._check_type(context, type_id)
         return self._get_extra_specs(context, type_id)
 
+    def _validate_extra_specs(self, specs):
+        """Validating key and value of extra specs."""
+        for key, value in specs.items():
+            if key is not None:
+                self.validate_string_length(key, 'Key "%s"' % key,
+                                            min_length=1, max_length=255)
+
+            if value is not None:
+                self.validate_string_length(value, 'Value for key "%s"' % key,
+                                            min_length=0, max_length=255)
+
     @wsgi.serializers(xml=VolumeTypeExtraSpecsTemplate)
     def create(self, req, type_id, body=None):
         context = req.environ['cinder.context']
@@ -84,6 +95,8 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         self._check_type(context, type_id)
         specs = body['extra_specs']
         self._check_key_names(specs.keys())
+        self._validate_extra_specs(specs)
+
         db.volume_type_extra_specs_update_or_create(context,
                                                     type_id,
                                                     specs)
@@ -107,6 +120,9 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         if len(body) > 1:
             expl = _('Request body contains too many items')
             raise webob.exc.HTTPBadRequest(explanation=expl)
+        self._check_key_names(body.keys())
+        self._validate_extra_specs(body)
+
         db.volume_type_extra_specs_update_or_create(context,
                                                     type_id,
                                                     body)

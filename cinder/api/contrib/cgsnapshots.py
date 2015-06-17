@@ -159,6 +159,7 @@ class CgsnapshotsController(wsgi.Controller):
 
         context = req.environ['cinder.context']
         cgsnapshot = body['cgsnapshot']
+        self.validate_name_and_description(cgsnapshot)
 
         try:
             group_id = cgsnapshot['consistencygroup_id']

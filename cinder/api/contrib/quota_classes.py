@@ -68,24 +68,20 @@ class QuotaClassSetsController(wsgi.Controller):
     def update(self, req, id, body):
         context = req.environ['cinder.context']
         authorize(context)
+        self.validate_string_length(id, 'quota_class_name',
+                                    min_length=1, max_length=255)
+
         quota_class = id
         if not self.is_valid_body(body, 'quota_class_set'):
             msg = (_("Missing required element quota_class_set"
                      " in request body."))
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
-        for key in body['quota_class_set'].keys():
+        for key, value in body['quota_class_set'].items():
             if key in QUOTAS:
                 try:
-                    value = int(body['quota_class_set'][key])
-                except ValueError:
-                    msg = _("Quota class limit must be specified as an"
-                            " integer value.")
-                    raise webob.exc.HTTPBadRequest(explanation=msg)
-                if value < -1:
-                    msg = _("Quota class limit must be -1 or greater.")
-                    raise webob.exc.HTTPBadRequest(explanation=msg)
-                try:
+                    value = self.validate_integer(value, key, min_value=-1,
+                                                  max_value=db.MAX_INT)
                     db.quota_class_update(context, quota_class, key, value)
                 except exception.QuotaClassNotFound:
                     db.quota_class_create(context, quota_class, key, value)

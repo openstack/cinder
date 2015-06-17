@@ -304,7 +304,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         db.consistencygroup_destroy(context.get_admin_context(),
                                     consistencygroup_id1)
 
-    def test_create_consistencygroup_json(self):
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
+    def test_create_consistencygroup_json(self, mock_validate):
         group_id = "1"
 
         # Create volume type
@@ -325,6 +327,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         self.assertEqual(202, res.status_int)
         self.assertIn('id', res_dict['consistencygroup'])
+        self.assertTrue(mock_validate.called)
 
         db.consistencygroup_destroy(context.get_admin_context(), group_id)
 
@@ -497,7 +500,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                  'consistency group %s.') % name)
         self.assertEqual(msg, res_dict['badRequest']['message'])
 
-    def test_update_consistencygroup_success(self):
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
+    def test_update_consistencygroup_success(self, mock_validate):
         volume_type_id = '123456'
         ctxt = context.RequestContext('fake', 'fake')
         consistencygroup_id = self._create_consistencygroup(status='available',
@@ -546,6 +551,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         self.assertEqual('updating',
                          self._get_consistencygroup_attrib(consistencygroup_id,
                                                            'status'))
+        self.assertTrue(mock_validate.called)
 
         db.consistencygroup_destroy(ctxt.elevated(), consistencygroup_id)
 
@@ -616,8 +622,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
-        self.assertEqual('Name, description, add_volumes, and remove_volumes '
-                         'can not be all empty in the request body.',
+        self.assertEqual('Name has a minimum character requirement of 1.',
                          res_dict['badRequest']['message'])
 
         db.consistencygroup_destroy(ctxt.elevated(), consistencygroup_id)
@@ -635,7 +640,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req.method = 'PUT'
         req.headers['Content-Type'] = 'application/json'
         add_volumes = add_volume_id
-        body = {"consistencygroup": {"name": "",
+        body = {"consistencygroup": {"name": "cg1",
                                      "description": "",
                                      "add_volumes": add_volumes,
                                      "remove_volumes": None, }}
@@ -668,7 +673,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req.method = 'PUT'
         req.headers['Content-Type'] = 'application/json'
         add_volumes = add_volume_id
-        body = {"consistencygroup": {"name": "",
+        body = {"consistencygroup": {"name": "cg1",
                                      "description": "",
                                      "add_volumes": add_volumes,
                                      "remove_volumes": None, }}
@@ -713,7 +718,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         db.consistencygroup_destroy(ctxt.elevated(), consistencygroup_id)
 
-    def test_create_consistencygroup_from_src_cgsnapshot(self):
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
+    def test_create_consistencygroup_from_src(self, mock_validate):
         self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
 
         ctxt = context.RequestContext('fake', 'fake', auth_token=True)
@@ -745,6 +752,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         self.assertEqual(202, res.status_int)
         self.assertIn('id', res_dict['consistencygroup'])
         self.assertEqual(test_cg_name, res_dict['consistencygroup']['name'])
+        self.assertTrue(mock_validate.called)
 
         db.consistencygroup_destroy(ctxt.elevated(),
                                     res_dict['consistencygroup']['id'])

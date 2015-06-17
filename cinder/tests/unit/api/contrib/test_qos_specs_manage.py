@@ -290,7 +290,9 @@ class QoSSpecManageApiTest(test.TestCase):
                 side_effect=return_qos_specs_create)
     @mock.patch('cinder.volume.qos_specs.get_qos_specs_by_name',
                 side_effect=return_qos_specs_get_by_name)
-    def test_create(self, mock_qos_get_specs, mock_qos_spec_create):
+    @mock.patch('cinder.api.openstack.wsgi.Controller.validate_string_length')
+    def test_create(self, mock_validate, mock_qos_get_specs,
+                    mock_qos_spec_create):
 
         body = {"qos_specs": {"name": "qos_specs_1",
                               "key1": "value1"}}
@@ -302,6 +304,7 @@ class QoSSpecManageApiTest(test.TestCase):
 
             self.assertEqual(1, notifier.get_notification_count())
             self.assertEqual('qos_specs_1', res_dict['qos_specs']['name'])
+            self.assertTrue(mock_validate.called)
 
     @mock.patch('cinder.volume.qos_specs.create',
                 side_effect=return_qos_specs_create)
