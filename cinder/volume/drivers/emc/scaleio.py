@@ -568,7 +568,7 @@ class ScaleIODriver(driver.VolumeDriver):
         snapname = self.id_to_base64(volume.id)
         LOG.info(_LI(
             "ScaleIO create cloned volume: source volume %(src)s to target "
-            "volume %(tgt)."),
+            "volume %(tgt)s."),
             {'src': volname,
              'tgt': snapname})
         self._snapshot_volume(volname, snapname)
