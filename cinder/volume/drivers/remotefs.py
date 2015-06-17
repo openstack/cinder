@@ -120,7 +120,7 @@ def locked_volume_id_operation(f, external=False):
     return lvo_inner1
 
 
-class RemoteFSDriver(driver.VolumeDriver):
+class RemoteFSDriver(driver.LocalVD, driver.TransferVD, driver.BaseVD):
     """Common base for drivers that work like NFS."""
 
     driver_volume_type = None
@@ -261,9 +261,6 @@ class RemoteFSDriver(driver.VolumeDriver):
         self._mounted_shares = mounted_shares
 
         LOG.debug('Available shares %s', self._mounted_shares)
-
-    def create_cloned_volume(self, volume, src_vref):
-        raise NotImplementedError()
 
     def delete_volume(self, volume):
         """Deletes a logical volume.
@@ -606,7 +603,7 @@ class RemoteFSDriver(driver.VolumeDriver):
         return nas_option
 
 
-class RemoteFSSnapDriver(RemoteFSDriver):
+class RemoteFSSnapDriver(RemoteFSDriver, driver.SnapshotVD):
     """Base class for remotefs drivers implementing qcow2 snapshots.
 
        Driver must implement:

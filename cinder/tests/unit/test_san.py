@@ -40,12 +40,25 @@ class SanDriverTestCase(test.TestCase):
         self.configuration.ssh_max_pool_conn = 5
         self.configuration.ssh_conn_timeout = 30
 
+    class fake_san_driver(san.SanDriver):
+        def initialize_connection():
+            pass
+
+        def create_volume():
+            pass
+
+        def delete_volume():
+            pass
+
+        def terminate_connection():
+            pass
+
     @mock.patch.object(san.processutils, 'ssh_execute')
     @mock.patch.object(san.ssh_utils, 'SSHPool')
     @mock.patch.object(san.utils, 'check_ssh_injection')
     def test_ssh_formatted_command(self, mock_check_ssh_injection,
                                    mock_ssh_pool, mock_ssh_execute):
-        driver = san.SanDriver(configuration=self.configuration)
+        driver = self.fake_san_driver(configuration=self.configuration)
         cmd_list = ['uname', '-s']
         expected_cmd = 'uname -s'
         driver.san_execute(*cmd_list)
