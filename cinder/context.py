@@ -22,6 +22,7 @@ import copy
 from oslo_context import context
 from oslo_log import log as logging
 from oslo_utils import timeutils
+import six
 
 from cinder.i18n import _
 from cinder import policy
@@ -69,7 +70,7 @@ class RequestContext(context.RequestContext):
         self.remote_address = remote_address
         if not timestamp:
             timestamp = timeutils.utcnow()
-        elif isinstance(timestamp, basestring):
+        elif isinstance(timestamp, six.string_types):
             timestamp = timeutils.parse_isotime(timestamp)
         self.timestamp = timestamp
         self.quota_class = quota_class

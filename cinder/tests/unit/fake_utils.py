@@ -19,6 +19,7 @@ import re
 from eventlet import greenthread
 from oslo_concurrency import processutils
 from oslo_log import log as logging
+import six
 
 from cinder import utils
 
@@ -78,7 +79,7 @@ def fake_execute(*cmd_parts, **kwargs):
             LOG.debug('Faked command matched %s' % fake_replier[0])
             break
 
-    if isinstance(reply_handler, basestring):
+    if isinstance(reply_handler, six.string_types):
         # If the reply handler is a string, return it as stdout
         reply = reply_handler, ''
     else:

@@ -208,7 +208,7 @@ class TemplateElement(object):
     def __getitem__(self, idx):
         """Retrieve a child node by index or name."""
 
-        if isinstance(idx, basestring):
+        if isinstance(idx, six.string_types):
             # Allow access by node name
             return self._childmap[idx]
         else:

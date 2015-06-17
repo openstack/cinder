@@ -34,6 +34,7 @@ import time
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import importutils
+import six
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LW, _LI
@@ -375,7 +376,7 @@ class V6000Common(object):
         start = time.time()
         done = False
 
-        if isinstance(success_msgs, basestring):
+        if isinstance(success_msgs, six.string_types):
             success_msgs = [success_msgs]
 
         while not done:
@@ -435,7 +436,7 @@ class V6000Common(object):
         request_needed = True
         verify_needed = True
 
-        if isinstance(request_success_msgs, basestring):
+        if isinstance(request_success_msgs, six.string_types):
             request_success_msgs = [request_success_msgs]
 
         rargs = rargs if rargs else []

@@ -15,6 +15,7 @@
 from oslo_log import log as logging
 import oslo_messaging as messaging
 from oslo_utils import strutils
+import six
 import webob
 from webob import exc
 
@@ -222,7 +223,7 @@ class VolumeAdminController(AdminController):
         except KeyError:
             raise exc.HTTPBadRequest(explanation=_("Must specify 'host'"))
         force_host_copy = params.get('force_host_copy', False)
-        if isinstance(force_host_copy, basestring):
+        if isinstance(force_host_copy, six.string_types):
             try:
                 force_host_copy = strutils.bool_from_string(force_host_copy,
                                                             strict=True)

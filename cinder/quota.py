@@ -23,6 +23,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import importutils
 from oslo_utils import timeutils
+import six
 
 from cinder import context
 from cinder import db
@@ -597,7 +598,7 @@ class QuotaEngine(object):
         if not quota_driver_class:
             quota_driver_class = CONF.quota_driver
 
-        if isinstance(quota_driver_class, basestring):
+        if isinstance(quota_driver_class, six.string_types):
             quota_driver_class = importutils.import_object(quota_driver_class)
 
         self._resources = {}
