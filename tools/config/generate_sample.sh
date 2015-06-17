@@ -137,8 +137,20 @@ for CONCAT_FILE in $CONCAT_FILES; do
     cat $CONCAT_FILE >> $OUTPUTFILE
 done
 
-# Now we need to get externals
+# NOTE(jsbryant): We collect the lib config options separately and
+# append them. The generator requires that the name of the library be used
+# as the entry point so we need to use oslo.*, not oslo_* .
 oslo-config-generator \
---namespace oslo_concurrency --namespace oslo_db \
---namespace oslo_messaging --namespace policy \
---namespace keystonemiddleware.auth_token  >> $OUTPUTFILE
+--namespace oslo.concurrency \
+--namespace oslo.config \
+--namespace oslo.context \
+--namespace oslo.log \
+--namespace oslo.serialization \
+--namespace oslo.utils \
+--namespace oslo.db \
+--namespace oslo.rootwrap \
+--namespace oslo.messaging \
+--namespace oslo.i18n \
+--namespace oslo.middleware \
+--namespace policy \
+--namespace keystonemiddleware.auth_token | grep -v '^\[DEFAULT\]'  >> $OUTPUTFILE
