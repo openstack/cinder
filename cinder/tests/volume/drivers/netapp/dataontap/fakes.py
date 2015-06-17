@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-
 VOLUME = 'f10d1a84-9b7b-427e-8fec-63c48b509a56'
 LUN = 'ee6b4cc7-477b-4016-aa0c-7127b4e3af86'
 SIZE = '1024'
@@ -115,12 +114,16 @@ ISCSI_TARGET_DETAILS_LIST = [
 HOSTNAME = 'fake.host.com'
 IPV4_ADDRESS = '192.168.14.2'
 IPV6_ADDRESS = 'fe80::6e40:8ff:fe8a:130'
+SHARE_IP = '192.168.99.24'
 EXPORT_PATH = '/fake/export/path'
 NFS_SHARE = HOSTNAME + ':' + EXPORT_PATH
 NFS_SHARE_IPV4 = IPV4_ADDRESS + ':' + EXPORT_PATH
 NFS_SHARE_IPV6 = IPV6_ADDRESS + ':' + EXPORT_PATH
+FLEXVOL = 'openstack-flexvol'
 
 RESERVED_PERCENTAGE = 7
 TOTAL_BYTES = 4797892092432
 AVAILABLE_BYTES = 13479932478
 CAPACITY_VALUES = (TOTAL_BYTES, AVAILABLE_BYTES)
+
+FILE_LIST = ['file1', 'file2', 'file3']
