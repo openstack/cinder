@@ -446,9 +446,14 @@ class QuotaError(CinderException):
 
 
 class VolumeSizeExceedsAvailableQuota(QuotaError):
-    message = _("Requested volume or snapshot exceeds allowed gigabytes "
+    message = _("Requested volume or snapshot exceeds allowed %(name)s "
                 "quota. Requested %(requested)sG, quota is %(quota)sG and "
                 "%(consumed)sG has been consumed.")
+
+    def __init__(self, message=None, **kwargs):
+        kwargs.setdefault('name', 'gigabytes')
+        super(VolumeSizeExceedsAvailableQuota, self).__init__(
+            message, **kwargs)
 
 
 class VolumeSizeExceedsLimit(QuotaError):
