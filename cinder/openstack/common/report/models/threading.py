@@ -20,8 +20,8 @@ thread, and stack trace data models
 
 import traceback
 
-import cinder.openstack.common.report.models.with_default_views as mwdv
-import cinder.openstack.common.report.views.text.threading as text_views
+from cinder.openstack.common.report.models import with_default_views as mwdv
+from cinder.openstack.common.report.views.text import threading as text_views
 
 
 class StackTraceModel(mwdv.ModelWithDefaultViews):
@@ -42,12 +42,12 @@ class StackTraceModel(mwdv.ModelWithDefaultViews):
                 {'filename': fn, 'line': ln, 'name': nm, 'code': cd}
                 for fn, ln, nm, cd in traceback.extract_stack(stack_state)
             ]
-
-            if stack_state.f_exc_type is not None:
+            # FIXME(flepied): under Python3 f_exc_type doesn't exist
+            # anymore so we lose information about exceptions
+            if getattr(stack_state, 'f_exc_type', None) is not None:
                 self['root_exception'] = {
                     'type': stack_state.f_exc_type,
-                    'value': stack_state.f_exc_value
-                }
+                    'value': stack_state.f_exc_value}
             else:
                 self['root_exception'] = None
         else:
