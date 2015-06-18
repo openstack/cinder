@@ -224,6 +224,20 @@ class TestCase(testtools.TestCase):
                                  'cinder/tests/unit/policy.json'),
                              group='oslo_policy')
 
+        self._disable_osprofiler()
+
+    def _disable_osprofiler(self):
+        """Disable osprofiler.
+
+        osprofiler should not run for unit tests.
+        """
+
+        side_effect = lambda value: value
+        mock_decorator = mock.MagicMock(side_effect=side_effect)
+        p = mock.patch("osprofiler.profiler.trace_cls",
+                       return_value=mock_decorator)
+        p.start()
+
     def _common_cleanup(self):
         """Runs after each test method to tear down test environment."""
 
