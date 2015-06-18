@@ -502,7 +502,38 @@ class StorageCenterApi(object):
         LOG.warning(_LW('Volume initialization failure. (%s)'),
                     self._get_id(scvolume))
 
-    def create_volume(self, name, size):
+    def _find_storage_profile(self, storage_profile):
+        '''Looks for a Storage Profile on the array.
+
+        Storage Profiles determine tiering settings. If not specified a volume
+        will use the Default storage profile.
+
+        :param storage_profile: The Storage Profile name to find with any
+                                spaces stripped.
+        :returns: The Storage Profile object or None.
+        '''
+        if not storage_profile:
+            return None
+
+        # Since we are stripping out spaces for convenience we are not
+        # able to just filter on name. Need to get all Storage Profiles
+        # and look through for the one we want. Never many profiles, so
+        # this doesn't cause as much overhead as it might seem.
+        storage_profile = storage_profile.replace(' ', '').lower()
+        pf = PayloadFilter()
+        pf.append('scSerialNumber', self.ssn, 'Equals')
+        r = self.client.post(
+            'StorageCenter/ScStorageProfile/GetList', pf.payload)
+        if r.status_code == 200:
+            profiles = self._get_json(r)
+            for profile in profiles:
+                # Look for the stripped, case insensitive match
+                name = profile.get('name', '').replace(' ', '').lower()
+                if name == storage_profile:
+                    return profile
+        return None
+
+    def create_volume(self, name, size, storage_profile=None):
         '''Creates a new volume on the Storage Center.
 
         It will create it in a folder called self.vfname.  If self.vfname
@@ -511,12 +542,16 @@ class StorageCenterApi(object):
 
         :param name: Name of the volume to be created on the Dell SC backend.
                      This is the cinder volume ID.
+        :param size: The size of the volume to be created in GB.
+        :param storage_profile: Optional storage profile to set for the volume.
         :returns: Dell Volume object or None.
         '''
-        LOG.debug('Create Volume %(name)s %(ssn)s %(folder)s',
+        LOG.debug('Create Volume %(name)s %(ssn)s %(folder)s %(profile)s',
                   {'name': name,
                    'ssn': self.ssn,
-                   'folder': self.vfname})
+                   'folder': self.vfname,
+                   'profile': storage_profile,
+                   })
 
         # Find our folder
         folder = self._find_volume_folder(True)
@@ -525,6 +560,13 @@ class StorageCenterApi(object):
         if folder is None:
             LOG.warning(_LW('Unable to create folder %s'),
                         self.vfname)
+
+        # See if we need a storage profile
+        profile = self._find_storage_profile(storage_profile)
+        if storage_profile and profile is None:
+            msg = _('Storage Profile %s not found.') % storage_profile
+            raise exception.VolumeBackendAPIException(
+                data=msg)
 
         # Init our return.
         scvolume = None
@@ -537,6 +579,8 @@ class StorageCenterApi(object):
         payload['StorageCenter'] = self.ssn
         if folder is not None:
             payload['VolumeFolder'] = self._get_id(folder)
+        if profile:
+            payload['StorageProfile'] = self._get_id(profile)
         r = self.client.post('StorageCenter/ScVolume',
                              payload)
         if r.status_code == 201:

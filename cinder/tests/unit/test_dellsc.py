@@ -19,6 +19,7 @@ from cinder import exception
 from cinder import test
 from cinder.volume.drivers.dell import dell_storagecenter_api
 from cinder.volume.drivers.dell import dell_storagecenter_iscsi
+from cinder.volume import volume_types
 
 import mock
 
@@ -273,7 +274,31 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         volume = {'id': self.volume_name, 'size': 1}
         self.driver.create_volume(volume)
         mock_create_volume.assert_called_once_with(self.volume_name,
-                                                   1)
+                                                   1,
+                                                   None)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'create_volume',
+                       return_value=VOLUME)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_sc',
+                       return_value=12345)
+    @mock.patch.object(
+        volume_types,
+        'get_volume_type_extra_specs',
+        return_value={'storagetype:storageprofile': 'HighPriority'})
+    def test_create_volume_storage_profile(self,
+                                           mock_extra,
+                                           mock_find_sc,
+                                           mock_create_volume,
+                                           mock_close_connection,
+                                           mock_open_connection,
+                                           mock_init):
+        volume = {'id': self.volume_name, 'size': 1, 'volume_type_id': 'abc'}
+        self.driver.create_volume(volume)
+        mock_create_volume.assert_called_once_with(self.volume_name,
+                                                   1,
+                                                   "HighPriority")
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'create_volume',
