@@ -21,7 +21,6 @@ from cinder import context
 from cinder import db
 from cinder import test
 from cinder.tests.unit.api import fakes
-from cinder.tests.unit import fake_notifier
 
 
 def return_volume_type_encryption(context, volume_type_id):
@@ -55,8 +54,6 @@ class VolumeTypeEncryptionTest(test.TestCase):
         self.flags(host='fake')
         self.api_path = '/v2/fake/os-volume-types/1/encryption'
         """to reset notifier drivers left over from other api/contrib tests"""
-        fake_notifier.reset()
-        self.addCleanup(fake_notifier.reset)
 
     def _get_response(self, volume_type, admin=True,
                       url='/v2/fake/types/%s/encryption',
@@ -165,7 +162,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
                                'provider': provider,
                                'volume_type_id': volume_type['id']}}
 
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
+        self.assertEqual(len(self.notifier.notifications), 0)
         res = self._get_response(volume_type)
         res_dict = json.loads(res.body)
         self.assertEqual(200, res.status_code)
@@ -180,7 +177,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
                                  req_headers='application/json')
         res_dict = json.loads(res.body)
 
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 1)
+        self.assertEqual(len(self.notifier.notifications), 1)
 
         # check response
         self.assertIn('encryption', res_dict)
@@ -235,7 +232,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
                                  req_headers='application/json')
         res_dict = json.loads(res.body)
 
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
+        self.assertEqual(len(self.notifier.notifications), 0)
         self.assertEqual(404, res.status_code)
 
         expected = {

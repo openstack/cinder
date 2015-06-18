@@ -125,9 +125,25 @@ _patch_mock_to_raise_for_invalid_assert_calls()
 class TestCase(testtools.TestCase):
     """Test case base class for all unit tests."""
 
+    def _get_joined_notifier(self, *args, **kwargs):
+        # We create a new fake notifier but we join the notifications with
+        # the default notifier
+        notifier = fake_notifier.get_fake_notifier(*args, **kwargs)
+        notifier.notifications = self.notifier.notifications
+        return notifier
+
     def setUp(self):
         """Run before each test method to initialize test environment."""
         super(TestCase, self).setUp()
+
+        # Create default notifier
+        self.notifier = fake_notifier.get_fake_notifier()
+
+        # Mock rpc get notifier with fake notifier method that joins all
+        # notifications with the default notifier
+        p = mock.patch('cinder.rpc.get_notifier',
+                       side_effect=self._get_joined_notifier)
+        p.start()
 
         # Import cinder objects for test cases
         objects.register_all()
