@@ -522,7 +522,7 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual(len(backups), 2)
 
     def test_backup_manager_driver_name(self):
-        """"Test mapping between backup services and backup drivers."""
+        """Test mapping between backup services and backup drivers."""
         self.override_config('backup_driver', "cinder.backup.services.swift")
         backup_mgr = \
             importutils.import_object(CONF.backup_manager)

@@ -421,7 +421,7 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
                               'volume "%s".'), volume['name'])
 
     def create_snapshot(self, snapshot):
-        """"Create snapshot of existing volume on appliance."""
+        """Create snapshot of existing volume on appliance."""
         try:
             out = self._eql_execute('volume', 'select',
                                     snapshot['volume_name'],

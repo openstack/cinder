@@ -641,7 +641,7 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
                 return key
 
     def _get_least_used_nsp(self, common, vluns, nspss):
-        """"Return the nsp that has the fewest active vluns."""
+        """Return the nsp that has the fewest active vluns."""
         # return only the nsp (node:server:port)
         # count the number of nsps
         nsp_counts = {}

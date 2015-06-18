@@ -1430,7 +1430,7 @@ def volume_get_all_by_group(context, group_id, filters=None):
 @require_context
 def volume_get_all_by_project(context, project_id, marker, limit,
                               sort_keys=None, sort_dirs=None, filters=None):
-    """"Retrieves all volumes in a project.
+    """Retrieves all volumes in a project.
 
     If no sort parameters are specified then the returned volumes are sorted
     first by the 'created_at' key and then by the 'id' key in descending

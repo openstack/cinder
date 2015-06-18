@@ -743,7 +743,7 @@ class V7000CommonTestCase(test.TestCase):
     def test_get_volume_type_extra_spec(self,
                                         m_get_volume_type,
                                         m_get_admin_context):
-        '''Volume_type extra specs are found successfully.'''
+        """Volume_type extra specs are found successfully."""
         vol = VOLUME.copy()
         vol['volume_type_id'] = 1
         volume_type = {'extra_specs': {'override:test_key': 'test_value'}}
@@ -762,7 +762,7 @@ class V7000CommonTestCase(test.TestCase):
     def test_get_violin_extra_spec(self,
                                    m_get_volume_type,
                                    m_get_admin_context):
-        '''Volume_type extra specs are found successfully.'''
+        """Volume_type extra specs are found successfully."""
         vol = VOLUME.copy()
         vol['volume_type_id'] = 1
         volume_type = {'extra_specs': {'violin:test_key': 'test_value'}}

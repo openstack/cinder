@@ -1261,7 +1261,7 @@ class VolumeApiTest(test.TestCase):
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
 
         def _verify_links(links, url_key):
-            '''Verify next link and url.'''
+            """Verify next link and url."""
             self.assertEqual(links[0]['rel'], 'next')
             href_parts = urllib.parse.urlparse(links[0]['href'])
             self.assertEqual('/v2/fakeproject/%s' % key, href_parts.path)
