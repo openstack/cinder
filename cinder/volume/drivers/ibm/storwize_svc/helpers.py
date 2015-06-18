@@ -676,27 +676,6 @@ class StorwizeHelpers(object):
                 copies['secondary'] = copy
         return copies
 
-    def check_copy_ok(self, vdisk, pool, copy_type):
-        try:
-            copy_id = self.find_vdisk_copy_id(vdisk, pool)
-            attrs = self.get_vdisk_copy_attrs(vdisk, copy_id)
-        except (exception.VolumeBackendAPIException,
-                exception.VolumeDriverException):
-            extended = ('No %(type)s copy in pool %(pool)s' %
-                        {'type': copy_type, 'pool': pool})
-            return ('error', extended)
-        if attrs['status'] != 'online':
-            extended = 'The %s copy is offline' % copy_type
-            return ('error', extended)
-        if copy_type == 'secondary':
-            if attrs['sync'] == 'yes':
-                return ('active', None)
-            else:
-                progress_info = self.ssh.lsvdisksyncprogress(vdisk, copy_id)
-                extended = 'progress: %s%%' % progress_info['progress']
-                return ('copying', extended)
-        return (None, None)
-
     def _prepare_fc_map(self, fc_map_id, timeout):
         self.ssh.prestartfcmap(fc_map_id)
         mapping_ready = False
