@@ -53,13 +53,24 @@ class LioAdm(iscsi.ISCSITarget):
 
     def _verify_rtstool(self):
         try:
+            # This call doesn't need locking
             utils.execute('cinder-rtstool', 'verify')
         except (OSError, putils.ProcessExecutionError):
             LOG.error(_LE('cinder-rtstool is not installed correctly'))
             raise
 
+    @staticmethod
+    @utils.synchronized('lioadm', external=True)
+    def _execute(*args, **kwargs):
+        """Locked execution to prevent racing issues.
+
+        Racing issues are derived from a bug in RTSLib:
+            https://github.com/agrover/rtslib-fb/issues/36
+        """
+        return utils.execute(*args, **kwargs)
+
     def _get_target(self, iqn):
-        (out, err) = utils.execute('cinder-rtstool',
+        (out, err) = self._execute('cinder-rtstool',
                                    'get-targets',
                                    run_as_root=True)
         lines = out.split('\n')
@@ -79,7 +90,7 @@ class LioAdm(iscsi.ISCSITarget):
 
     def _persist_configuration(self, vol_id):
         try:
-            utils.execute('cinder-rtstool', 'save', run_as_root=True)
+            self._execute('cinder-rtstool', 'save', run_as_root=True)
 
         # On persistence failure we don't raise an exception, as target has
         # been successfully created.
@@ -116,12 +127,11 @@ class LioAdm(iscsi.ISCSITarget):
                             chap_auth_userid,
                             chap_auth_password,
                             self.iscsi_protocol == 'iser'] + optional_args
-            utils.execute(*command_args, run_as_root=True)
+            self._execute(*command_args, run_as_root=True)
         except putils.ProcessExecutionError as e:
             LOG.error(_LE("Failed to create iscsi target for volume "
                           "id:%s.") % vol_id)
             LOG.error(_LE("%s") % e)
-
             raise exception.ISCSITargetCreateFailed(volume_id=vol_id)
 
         iqn = '%s%s' % (self.iscsi_target_prefix, vol_id)
@@ -142,7 +152,7 @@ class LioAdm(iscsi.ISCSITarget):
         iqn = '%s%s' % (self.iscsi_target_prefix, vol_uuid_name)
 
         try:
-            utils.execute('cinder-rtstool',
+            self._execute('cinder-rtstool',
                           'delete',
                           iqn,
                           run_as_root=True)
@@ -163,7 +173,7 @@ class LioAdm(iscsi.ISCSITarget):
 
         # Add initiator iqns to target ACL
         try:
-            utils.execute('cinder-rtstool', 'add-initiator',
+            self._execute('cinder-rtstool', 'add-initiator',
                           volume_iqn,
                           auth_user,
                           auth_pass,
@@ -192,7 +202,7 @@ class LioAdm(iscsi.ISCSITarget):
 
         # Delete initiator iqns from target ACL
         try:
-            utils.execute('cinder-rtstool', 'delete-initiator',
+            self._execute('cinder-rtstool', 'delete-initiator',
                           volume_iqn,
                           connector['initiator'],
                           run_as_root=True)
