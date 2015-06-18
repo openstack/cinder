@@ -34,7 +34,11 @@ class RtstoolImportError(RtstoolError):
 
 
 def create(backing_device, name, userid, password, iser_enabled,
-           initiator_iqns=None):
+           initiator_iqns=None, portals_ips=None, portals_port=3260):
+    # List of IPS that will not raise an error when they fail binding.
+    # Originally we will fail on all binding errors.
+    ips_allow_fail = ()
+
     try:
         rtsroot = rtslib.root.RTSRoot()
     except rtslib.utils.RTSLibError:
@@ -68,26 +72,33 @@ def create(backing_device, name, userid, password, iser_enabled,
 
     tpg_new.enable = 1
 
-    try:
-        portal = rtslib.NetworkPortal(tpg_new, '0.0.0.0', 3260, mode='any')
-    except rtslib.utils.RTSLibError:
-        print(_('Error creating NetworkPortal: ensure port 3260 '
-                'is not in use by another service.'))
-        raise
-
-    try:
-        if iser_enabled == 'True':
-            portal._set_iser(1)
-    except rtslib.utils.RTSLibError:
-        print(_('Error enabling iSER for NetworkPortal: please ensure that '
-                'RDMA is supported on your iSCSI port.'))
-        raise
-
-    try:
-        rtslib.NetworkPortal(tpg_new, '::0', 3260, mode='any')
-    except rtslib.utils.RTSLibError:
+    # If no ips are given we'll bind to all IPv4 and v6
+    if not portals_ips:
+        portals_ips = ('0.0.0.0', '::0')
         # TODO(emh): Binding to IPv6 fails sometimes -- let pass for now.
-        pass
+        ips_allow_fail = ('::0',)
+
+    for ip in portals_ips:
+        try:
+            portal = rtslib.NetworkPortal(tpg_new, ip, portals_port,
+                                          mode='any')
+        except rtslib.utils.RTSLibError:
+            raise_exc = ip not in ips_allow_fail
+            msg_type = 'Error' if raise_exc else 'Warning'
+            print(_('%(msg_type)s: creating NetworkPortal: ensure port '
+                  '%(port)d on ip %(ip)s is not in use by another service.')
+                  % {'msg_type': msg_type, 'port': portals_port, 'ip': ip})
+            if raise_exc:
+                raise
+        else:
+            try:
+                if iser_enabled == 'True':
+                    portal.iser = True
+            except rtslib.utils.RTSLibError:
+                print(_('Error enabling iSER for NetworkPortal: please ensure '
+                        'that RDMA is supported on your iSCSI port %(port)d '
+                        'on ip %(ip)s.') % {'port': portals_port, 'ip': ip})
+                raise
 
 
 def _lookup_target(target_iqn, initiator_iqn):
@@ -164,7 +175,7 @@ def usage():
     print("Usage:")
     print(sys.argv[0] +
           " create [device] [name] [userid] [password] [iser_enabled]" +
-          " <initiator_iqn,iqn2,iqn3,...>")
+          " <initiator_iqn,iqn2,iqn3,...> [-a<IP1,IP2,...>] [-pPORT]")
     print(sys.argv[0] +
           " add-initiator [target_iqn] [userid] [password] [initiator_iqn]")
     print(sys.argv[0] +
@@ -187,6 +198,25 @@ def save_to_file(destination_file):
                            {'file_path': destination_file})
 
 
+def parse_optional_create(argv):
+    optional_args = {}
+
+    for arg in argv:
+        if arg.startswith('-a'):
+            ips = filter(None, arg[2:].split(','))
+            if not ips:
+                usage()
+            optional_args['portals_ips'] = ips
+        elif arg.startswith('-p'):
+            try:
+                optional_args['portals_port'] = int(arg[2:])
+            except ValueError:
+                usage()
+        else:
+            optional_args['initiator_iqns'] = arg
+    return optional_args
+
+
 def main(argv=None):
     if argv is None:
         argv = sys.argv
@@ -198,7 +228,7 @@ def main(argv=None):
         if len(argv) < 7:
             usage()
 
-        if len(argv) > 8:
+        if len(argv) > 10:
             usage()
 
         backing_device = argv[2]
@@ -206,13 +236,14 @@ def main(argv=None):
         userid = argv[4]
         password = argv[5]
         iser_enabled = argv[6]
-        initiator_iqns = None
 
         if len(argv) > 7:
-            initiator_iqns = argv[7]
+            optional_args = parse_optional_create(argv[7:])
+        else:
+            optional_args = {}
 
         create(backing_device, name, userid, password, iser_enabled,
-               initiator_iqns)
+               **optional_args)
 
     elif argv[1] == 'add-initiator':
         if len(argv) < 6:

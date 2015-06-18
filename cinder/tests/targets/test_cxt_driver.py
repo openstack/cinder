@@ -160,14 +160,60 @@ class TestCxtAdmDriver(test.TestCase):
                     test_vol,
                     1,
                     0,
-                    self.fake_volumes_dir))
+                    self.fake_volumes_dir,
+                    portals_ips=[self.configuration.iscsi_ip_address]))
             self.assertTrue(mock_get.called)
             self.assertTrue(mock_execute.called)
             self.assertTrue(mock_get_targ.called)
 
     @mock.patch('cinder.volume.targets.cxt.CxtAdm._get_target',
                 return_value=1)
-    @mock.patch('cinder.utils.execute')
+    @mock.patch('cinder.utils.execute', return_value=('fake out', 'fake err'))
+    def test_create_iscsi_target_port_ips(self, mock_execute, mock_get_targ):
+        ips = ['10.0.0.15', '127.0.0.1']
+        port = 3261
+        mock_execute.return_value = ('', '')
+        with mock.patch.object(self.target, '_get_volumes_dir') as mock_get:
+            mock_get.return_value = self.fake_volumes_dir
+            test_vol = 'iqn.2010-10.org.openstack:'\
+                       'volume-83c2e877-feed-46be-8435-77884fe55b45'
+            self.assertEqual(
+                1,
+                self.target.create_iscsi_target(
+                    test_vol,
+                    1,
+                    0,
+                    self.fake_volumes_dir,
+                    portals_port=port,
+                    portals_ips=ips))
+
+            self.assertTrue(mock_get.called)
+            self.assertTrue(mock_execute.called)
+            self.assertTrue(mock_get_targ.called)
+
+            file_path = os.path.join(self.fake_volumes_dir,
+                                     test_vol.split(':')[1])
+
+            expected_cfg = {
+                'name': test_vol,
+                'device': self.fake_volumes_dir,
+                'ips': ','.join(map(lambda ip: '%s:%s' % (ip, port), ips)),
+                'spaces': ' ' * 14,
+                'spaces2': ' ' * 23}
+
+            expected_file = ('\n%(spaces)starget:'
+                             '\n%(spaces2)sTargetName=%(name)s'
+                             '\n%(spaces2)sTargetDevice=%(device)s'
+                             '\n%(spaces2)sPortalGroup=1@%(ips)s'
+                             '\n%(spaces)s   ') % expected_cfg
+
+            with open(file_path, 'r') as cfg_file:
+                result = cfg_file.read()
+                self.assertEqual(expected_file, result)
+
+    @mock.patch('cinder.volume.targets.cxt.CxtAdm._get_target',
+                return_value=1)
+    @mock.patch('cinder.utils.execute', return_value=('fake out', 'fake err'))
     def test_create_iscsi_target_already_exists(self, mock_execute,
                                                 mock_get_targ):
         mock_execute.return_value = ('fake out', 'fake err')
@@ -181,7 +227,8 @@ class TestCxtAdmDriver(test.TestCase):
                     test_vol,
                     1,
                     0,
-                    self.fake_volumes_dir))
+                    self.fake_volumes_dir,
+                    portals_ips=[self.configuration.iscsi_ip_address]))
             self.assertTrue(mock_get.called)
             self.assertTrue(mock_get_targ.called)
             self.assertTrue(mock_execute.called)
@@ -224,4 +271,6 @@ class TestCxtAdmDriver(test.TestCase):
                 'iqn.2010-10.org.openstack:testvol',
                 1, 0, self.fake_volumes_dir, fake_creds,
                 check_exit_code=False,
-                old_name=None)
+                old_name=None,
+                portals_ips=[self.configuration.iscsi_ip_address],
+                portals_port=self.configuration.iscsi_port)
