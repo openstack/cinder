@@ -770,6 +770,20 @@ class GlusterfsNoSuitableShareFound(RemoteFSNoSuitableShareFound):
     message = _("There is no share which can host %(volume_size)sG")
 
 
+# Virtuozzo Storage Driver
+
+class VzStorageException(RemoteFSException):
+    message = _("Unknown Virtuozzo Storage exception")
+
+
+class VzStorageNoSharesMounted(RemoteFSNoSharesMounted):
+    message = _("No mounted Virtuozzo Storage shares found")
+
+
+class VzStorageNoSuitableShareFound(RemoteFSNoSuitableShareFound):
+    message = _("There is no share which can host %(volume_size)sG")
+
+
 # Fibre Channel Zone Manager
 class ZoneManagerException(CinderException):
     message = _("Fibre Channel connection control failure: %(reason)s")

@@ -191,3 +191,7 @@ mv: CommandFilter, mv, root
 
 # cinder/volume/drivers/hgst.py
 vgc-cluster: CommandFilter, vgc-cluster, root
+
+# cinder/volume/drivers/vzstorage.py
+pstorage-mount: CommandFilter, pstorage-mount, root
+pstorage: CommandFilter, pstorage, root
