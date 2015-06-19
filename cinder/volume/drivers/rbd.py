@@ -32,6 +32,7 @@ from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
 from cinder.openstack.common import fileutils
+from cinder import utils
 from cinder.volume import driver
 
 try:
@@ -83,7 +84,13 @@ rbd_opts = [
     cfg.IntOpt('rados_connect_timeout', default=-1,
                help=_('Timeout value (in seconds) used when connecting to '
                       'ceph cluster. If value < 0, no timeout is set and '
-                      'default librados value is used.'))
+                      'default librados value is used.')),
+    cfg.IntOpt('rados_connection_retries', default=3,
+               help=_('Number of retries if connection to ceph cluster '
+                      'failed.')),
+    cfg.IntOpt('rados_connection_interval', default=5,
+               help=_('Interval value (in seconds) between connection '
+                      'retries to ceph cluster.'))
 ]
 
 CONF = cfg.CONF
@@ -307,6 +314,9 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
             args.extend(['--cluster', self.configuration.rbd_cluster_name])
         return args
 
+    @utils.retry(exception.VolumeBackendAPIException,
+                 CONF.rados_connection_interval,
+                 CONF.rados_connection_retries)
     def _connect_to_rados(self, pool=None):
         LOG.debug("opening connection to ceph cluster (timeout=%s).",
                   self.configuration.rados_connect_timeout)
@@ -335,7 +345,6 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
         except self.rados.Error:
             msg = _("Error connecting to ceph cluster.")
             LOG.exception(msg)
-            # shutdown cannot raise an exception
             client.shutdown()
             raise exception.VolumeBackendAPIException(data=msg)
 

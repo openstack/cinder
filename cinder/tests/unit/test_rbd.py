@@ -840,7 +840,8 @@ class RBDTestCase(test.TestCase):
         self.assertEqual(1, mock_driver._disconnect_from_rados.call_count)
 
     @common_mocks
-    def test_connect_to_rados(self):
+    @mock.patch('time.sleep')
+    def test_connect_to_rados(self, sleep_mock):
         # Default
         self.cfg.rados_connect_timeout = -1
 
@@ -880,7 +881,8 @@ class RBDTestCase(test.TestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver._connect_to_rados)
         self.assertTrue(self.mock_rados.Rados.return_value.open_ioctx.called)
-        self.mock_rados.Rados.return_value.shutdown.assert_called_once_with()
+        self.assertEqual(
+            3, self.mock_rados.Rados.return_value.shutdown.call_count)
 
 
 class RBDImageIOWrapperTestCase(test.TestCase):
