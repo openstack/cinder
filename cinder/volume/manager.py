@@ -1144,6 +1144,11 @@ class VolumeManager(manager.SchedulerDependentManager):
                                else 'rw')
             conn_info['data']['access_mode'] = access_mode
 
+        # Add encrypted flag to connection_info if not set in the driver.
+        if conn_info['data'].get('encrypted') is None:
+            encrypted = bool(volume.get('encryption_key_id'))
+            conn_info['data']['encrypted'] = encrypted
+
         LOG.info(_LI("Initialize volume connection completed successfully."),
                  resource=volume)
         return conn_info

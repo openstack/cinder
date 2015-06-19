@@ -1955,17 +1955,25 @@ class VolumeTestCase(BaseVolumeTestCase):
                        'name': 'fake_name',
                        'host': 'fake_host',
                        'id': 'fake_volume_id',
-                       'volume_admin_metadata': fake_admin_meta}
+                       'volume_admin_metadata': fake_admin_meta,
+                       'encryption_key_id': ('d371e7bb-7392-4c27-'
+                                             'ac0b-ebd9f5d16078')}
 
         mock_volume_get.return_value = fake_volume
         mock_volume_update.return_value = fake_volume
         connector = {'ip': 'IP', 'initiator': 'INITIATOR'}
         mock_driver_init.return_value = {
             'driver_volume_type': 'iscsi',
-            'data': {'access_mode': 'rw'}
+            'data': {'access_mode': 'rw',
+                     'encrypted': False}
         }
         mock_data_get.return_value = []
-        self.volume.initialize_connection(self.context, 'id', connector)
+        conn_info = self.volume.initialize_connection(self.context, 'id',
+                                                      connector)
+        # Asserts that if the driver sets the encrypted flag then the
+        # VolumeManager doesn't overwrite it regardless of what's in the
+        # volume for the encryption_key_id field.
+        self.assertFalse(conn_info['data']['encrypted'])
         mock_driver_init.assert_called_with(fake_volume, connector)
 
         data = [{'key': 'key1', 'value': 'value1'}]
@@ -1991,7 +1999,12 @@ class VolumeTestCase(BaseVolumeTestCase):
         connector['initiator'] = None
         mock_data_update.reset_mock()
         mock_data_get.reset_mock()
-        self.volume.initialize_connection(self.context, 'id', connector)
+        mock_driver_init.return_value['data'].pop('encrypted')
+        conn_info = self.volume.initialize_connection(self.context, 'id',
+                                                      connector)
+        # Asserts that VolumeManager sets the encrypted flag if the driver
+        # doesn't set it.
+        self.assertTrue(conn_info['data']['encrypted'])
         mock_driver_init.assert_called_with(fake_volume, connector)
         self.assertFalse(mock_data_get.called)
         self.assertFalse(mock_data_update.called)
