@@ -22,6 +22,7 @@ import re
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_config import types
 from oslo_log import log as logging
 from oslo_utils import units
 
@@ -34,9 +35,20 @@ from cinder.volume import driver
 
 LOG = logging.getLogger(__name__)
 
+sheepdog_opts = [
+    cfg.Opt('sheepdog_store_address',
+            type=types.IPAddress(),
+            default='127.0.0.1',
+            help=_('IP address of sheep daemon.')),
+    cfg.Opt('sheepdog_store_port',
+            type=types.Integer(1, 65535),
+            default=7000,
+            help=_('Port of sheep daemon.'))
+]
+
 CONF = cfg.CONF
 CONF.import_opt("image_conversion_dir", "cinder.image.image_utils")
-
+CONF.register_opts(sheepdog_opts)
 
 class SheepdogDriver(driver.VolumeDriver):
     """Executes commands relating to Sheepdog Volumes."""
@@ -45,8 +57,16 @@ class SheepdogDriver(driver.VolumeDriver):
 
     def __init__(self, *args, **kwargs):
         super(SheepdogDriver, self).__init__(*args, **kwargs)
+        self.sheep_addr = CONF.sheepdog_store_address
+        self.sheep_port = CONF.sheepdog_store_port
         self.stats_pattern = re.compile(r'[\w\s%]*Total\s(\d+)\s(\d+)*')
         self._stats = {}
+
+    def _sheep_args(self):
+        """Return options of address and port for connect to sheepdog."""
+        return ('--address', self.sheep_addr,
+                '--port', str(self.sheep_port))
+
 
     def check_for_setup_error(self):
         """Return error if prerequisites aren't met."""
