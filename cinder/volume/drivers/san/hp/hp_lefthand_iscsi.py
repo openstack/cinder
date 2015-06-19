@@ -45,7 +45,14 @@ LOG = logging.getLogger(__name__)
 MIN_CLIENT_VERSION = '1.0.4'
 
 
-class HPLeftHandISCSIDriver(driver.VolumeDriver):
+class HPLeftHandISCSIDriver(driver.TransferVD,
+                            driver.ManageableVD,
+                            driver.ExtendVD,
+                            driver.CloneableVD,
+                            driver.SnapshotVD,
+                            driver.RetypeVD,
+                            driver.MigrateVD,
+                            driver.BaseVD):
     """Executes commands relating to HP/LeftHand SAN ISCSI volumes.
 
     Version history:
@@ -55,10 +62,11 @@ class HPLeftHandISCSIDriver(driver.VolumeDriver):
         1.0.3 - Fix for no handler for logger during tests
         1.0.4 - Removing locks bug #1395953
         1.0.5 - Adding support for manage/unmanage.
-        1.0.6 - Fixed #1432757 Updated minimum client version.
+        1.0.6 - Updated minimum client version. bug #1432757
+        1.0.7 - Update driver to use ABC metaclasses
     """
 
-    VERSION = "1.0.6"
+    VERSION = "1.0.7"
 
     def __init__(self, *args, **kwargs):
         super(HPLeftHandISCSIDriver, self).__init__(*args, **kwargs)
