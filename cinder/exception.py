@@ -962,3 +962,7 @@ class DotHillRequestError(CinderException):
 
 class DotHillNotTargetPortal(CinderException):
     message = _("No active iSCSI portals with supplied iSCSI IPs")
+
+
+class MetadataAbsent(CinderException):
+    message = _("There is no metadata in DB object.")

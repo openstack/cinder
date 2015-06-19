@@ -116,9 +116,11 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
             volume._from_db_object(context, volume, db_snapshot['volume'])
             snapshot.volume = volume
         if 'metadata' in expected_attrs:
-            snapshot.metadata = db.snapshot_metadata_get(context,
-                                                         db_snapshot['id'])
-
+            metadata = db_snapshot.get('snapshot_metadata')
+            if metadata is None:
+                raise exception.MetadataAbsent()
+            snapshot.metadata = {item['key']: item['value']
+                                 for item in metadata}
         snapshot._context = context
         snapshot.obj_reset_changes()
         return snapshot
