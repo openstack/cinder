@@ -817,6 +817,15 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         services = db_utils.get_table(engine, 'services')
         self.assertNotIn('modified_at', services.c)
 
+    def _check_048(self, engine, data):
+        quotas = db_utils.get_table(engine, 'quotas')
+        self.assertIsInstance(quotas.c.allocated.type,
+                              sqlalchemy.types.INTEGER)
+
+    def _post_downgrade_048(self, engine):
+        quotas = db_utils.get_table(engine, 'quotas')
+        self.assertNotIn('allocated', quotas.c)
+
     def test_walk_versions(self):
         self.walk_versions(True, False)
 
