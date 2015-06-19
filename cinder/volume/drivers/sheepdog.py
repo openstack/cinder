@@ -24,9 +24,11 @@ from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_config import types
 from oslo_log import log as logging
+from oslo_utils import excutils
 from oslo_utils import units
 
 from cinder import exception
+from cinder import utils
 from cinder.i18n import _, _LE
 from cinder.image import image_utils
 from cinder.openstack.common import fileutils
@@ -50,6 +52,65 @@ CONF = cfg.CONF
 CONF.import_opt("image_conversion_dir", "cinder.image.image_utils")
 CONF.register_opts(sheepdog_opts)
 
+
+class SheepdogClient(object):
+    """Sheepdog command executor."""
+    DOG_RESP_CONNECTION_ERROR = 'failed to connect to'
+    DOG_RESP_CLUSTER_RUNNING = 'Cluster status: running'
+    DOG_RESP_CLUSTER_NOT_FORMATTED = ('Cluster status: '
+                                      'Waiting for cluster to be formatted')
+    DOG_RESP_CLUSTER_WAITING = ('Cluster status: '
+                                'Waiting for other nodes to join cluster')
+
+    def __init__(self, addr, port):
+        self.addr = addr
+        self.port = port
+        self._execute = utils.execute
+
+    def _run_dog(self, command, subcommand, *params):
+        cmd = ('dog', command, subcommand,
+               '-a', self.addr, '-p', self.port) + params
+
+        try:
+            return self._execute(*cmd)
+        except processutils.ProcessExecutionError as e:
+            raise exception.SheepdogCmdError(
+                cmd=e.cmd,
+                exit_code=e.exit_code,
+                stdout=e.stdout,
+                stderr=e.stderr)
+
+    def check_cluster_status(self):
+        try:
+            (stdout, stderr) = self._run_dog('cluster', 'info')
+        except exception.SheepdogCmdError as e:
+            exit_code = e.kwargs['exit_code']
+            stderr = e.kwargs['stderr']
+            with excutils.save_and_reraise_exception():
+                if exit_code == 127:
+                    LOG.error(_LE('Sheepdog is not installed.'))
+                elif stderr.startswith(self.DOG_RESP_CONNECTION_ERROR):
+                    msg = _LE('Failed to connect sheep daemon.'
+                              'addr: %(addr)s, port: %(port)s')
+                    msg = msg % {'addr': self.addr, 'port': self.port}
+                    LOG.error(msg)
+                else:
+                    LOG.error(_LE('Failed to get sheepdog cluster status.'))
+
+        if stdout.startswith(self.DOG_RESP_CLUSTER_RUNNING):
+            LOG.debug('Sheepdog cluster is running.')
+            return
+
+        reason = _('Invalid sheepdog cluster status.')
+        if stdout.startswith(self.DOG_RESP_CLUSTER_NOT_FORMATTED):
+            reason = _('Cluster is not formatted.'
+                       'You should probably perform "dog cluster format".')
+        elif stdout.startswith(self.DOG_RESP_CLUSTER_WAITING):
+            reason = _('Waiting for all nodes to join cluster. '
+                       'Ensure all sheep daemons are running.')
+        raise exception.SheepdogError(reason=reason)
+
+
 class SheepdogDriver(driver.VolumeDriver):
     """Executes commands relating to Sheepdog Volumes."""
 
@@ -57,8 +118,8 @@ class SheepdogDriver(driver.VolumeDriver):
 
     def __init__(self, *args, **kwargs):
         super(SheepdogDriver, self).__init__(*args, **kwargs)
-        self.sheep_addr = CONF.sheepdog_store_address
-        self.sheep_port = CONF.sheepdog_store_port
+        self.client = SheepdogClient(CONF.sheepdog_store_address,
+                                     CONF.sheepdog_store_port)
         self.stats_pattern = re.compile(r'[\w\s%]*Total\s(\d+)\s(\d+)*')
         self._stats = {}
 
@@ -69,17 +130,7 @@ class SheepdogDriver(driver.VolumeDriver):
 
 
     def check_for_setup_error(self):
-        """Return error if prerequisites aren't met."""
-        try:
-            (out, _err) = self._execute('dog', 'cluster', 'info')
-            if 'status: running' not in out:
-                exception_message = (_("Sheepdog is not working: %s") % out)
-                raise exception.VolumeBackendAPIException(
-                    data=exception_message)
-
-        except processutils.ProcessExecutionError:
-            exception_message = _("Sheepdog is not working")
-            raise exception.VolumeBackendAPIException(data=exception_message)
+        self.client.check_cluster_status()
 
     def _is_cloneable(self, image_location, image_meta):
         """Check the image can be clone or not."""

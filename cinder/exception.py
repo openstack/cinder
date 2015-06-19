@@ -948,3 +948,15 @@ class DotHillRequestError(CinderException):
 
 class DotHillNotTargetPortal(CinderException):
     message = _("No active iSCSI portals with supplied iSCSI IPs")
+
+
+# Sheepdog
+class SheepdogError(VolumeBackendAPIException):
+    message = _("Sheepdog error: %(reason)s")
+
+
+class SheepdogCmdError(SheepdogError):
+    message = _("Sheepdog command error: %(cmd)s "
+                "(Return Code: %(exit_code)s) "
+                "(Stdout: %(stdout)s) "
+                "(Stderr: %(stderr)s)")
