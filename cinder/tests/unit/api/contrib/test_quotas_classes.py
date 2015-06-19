@@ -33,13 +33,14 @@ QUOTAS = quota.QUOTAS
 
 def make_body(root=True, gigabytes=1000, snapshots=10,
               volumes=10, backups=10,
-              backup_gigabytes=1000,
+              backup_gigabytes=1000, per_volume_gigabytes=-1,
               volume_types_faked=None,
               tenant_id='foo'):
     resources = {'gigabytes': gigabytes,
                  'snapshots': snapshots,
                  'volumes': volumes,
                  'backups': backups,
+                 'per_volume_gigabytes': per_volume_gigabytes,
                  'backup_gigabytes': backup_gigabytes}
     if not volume_types_faked:
         volume_types_faked = {'fake_type': None}

@@ -1579,7 +1579,7 @@ class GlusterFsDriverTestCase(test.TestCase):
                 mock_get_active_image_from_info,\
                 mock.patch.object(drv, '_qemu_img_info') as \
                 mock_qemu_img_info,\
-                mock.patch.object(base_driver.VolumeDriver, 'backup_volume') as \
+                mock.patch.object(base_driver.BaseVD, 'backup_volume') as \
                 mock_backup_volume:
             ctxt = context.RequestContext('fake_user', 'fake_project')
             volume = self._simple_volume()
@@ -1606,7 +1606,7 @@ class GlusterFsDriverTestCase(test.TestCase):
                 mock_get_active_image_from_info,\
                 mock.patch.object(drv, '_qemu_img_info') as \
                 mock_qemu_img_info,\
-                mock.patch.object(base_driver.VolumeDriver, 'backup_volume') as \
+                mock.patch.object(base_driver.BaseVD, 'backup_volume') as \
                 mock_backup_volume:
             ctxt = context.RequestContext('fake_user', 'fake_project')
             volume = self._simple_volume()

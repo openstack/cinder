@@ -33,6 +33,7 @@ i18n.enable_lazy()
 
 # Need to register global_opts
 from cinder.common import config  # noqa
+from cinder.openstack.common.report import guru_meditation_report as gmr
 from cinder import service
 from cinder import utils
 from cinder import version
@@ -46,6 +47,7 @@ def main():
          version=version.version_string())
     logging.setup(CONF, "cinder")
     utils.monkey_patch()
+    gmr.TextGuruMeditation.setup_autorun(version)
     server = service.Service.create(binary='cinder-scheduler')
     service.serve(server)
     service.wait()

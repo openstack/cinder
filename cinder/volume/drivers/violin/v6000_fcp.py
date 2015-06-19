@@ -37,6 +37,7 @@ driver documentation for more information.
 
 from oslo_log import log as logging
 from oslo_utils import units
+from six.moves import range
 
 from cinder import context
 from cinder.db.sqlalchemy import models
@@ -505,7 +506,7 @@ class V6000FCDriver(driver.FibreChannelDriver):
         output = []
         for w in wwns:
             output.append('wwn.{0}'.format(
-                ':'.join(w[x:x + 2] for x in xrange(0, len(w), 2))))
+                ':'.join(w[x:x + 2] for x in range(0, len(w), 2))))
         return output
 
     def _convert_wwns_vmem_to_openstack(self, wwns):

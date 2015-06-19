@@ -22,6 +22,7 @@ import copy
 from oslo_context import context
 from oslo_log import log as logging
 from oslo_utils import timeutils
+import six
 
 from cinder.i18n import _
 from cinder import policy
@@ -69,7 +70,7 @@ class RequestContext(context.RequestContext):
         self.remote_address = remote_address
         if not timestamp:
             timestamp = timeutils.utcnow()
-        elif isinstance(timestamp, basestring):
+        elif isinstance(timestamp, six.string_types):
             timestamp = timeutils.parse_isotime(timestamp)
         self.timestamp = timestamp
         self.quota_class = quota_class
@@ -107,19 +108,19 @@ class RequestContext(context.RequestContext):
                             _del_read_deleted)
 
     def to_dict(self):
-        default = super(RequestContext, self).to_dict()
-        extra = {'user_id': self.user_id,
-                 'project_id': self.project_id,
-                 'project_name': self.project_name,
-                 'domain': self.domain,
-                 'read_deleted': self.read_deleted,
-                 'roles': self.roles,
-                 'remote_address': self.remote_address,
-                 'timestamp': self.timestamp.isoformat(),
-                 'quota_class': self.quota_class,
-                 'service_catalog': self.service_catalog,
-                 'request_id': self.request_id}
-        return dict(default.items() + extra.items())
+        result = super(RequestContext, self).to_dict()
+        result['user_id'] = self.user_id
+        result['project_id'] = self.project_id
+        result['project_name'] = self.project_name
+        result['domain'] = self.domain
+        result['read_deleted'] = self.read_deleted
+        result['roles'] = self.roles
+        result['remote_address'] = self.remote_address
+        result['timestamp'] = self.timestamp.isoformat()
+        result['quota_class'] = self.quota_class
+        result['service_catalog'] = self.service_catalog
+        result['request_id'] = self.request_id
+        return result
 
     @classmethod
     def from_dict(cls, values):

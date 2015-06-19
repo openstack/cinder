@@ -1638,20 +1638,19 @@ class RestCommon(object):
         localtime = time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
         # Package QoS name.
         qos_name = QOS_NAME_PREFIX + lun_id + '_' + localtime
-        baseData = {"TYPE": "230",
-                    "NAME": qos_name,
-                    "LUNLIST": ["%s" % lun_id],
-                    "CLASSTYPE": "1",
-                    "SCHEDULEPOLICY": "2",
-                    "SCHEDULESTARTTIME": "1410969600",
-                    "STARTTIME": "08:00",
-                    "DURATION": "86400",
-                    "CYCLESET": "[1,2,3,4,5,6,0]"
-                    }
 
-        mergedata = dict(baseData.items() + qos.items())
-        url = self.url + "/ioclass/"
+        mergedata = {"TYPE": "230",
+                     "NAME": qos_name,
+                     "LUNLIST": ["%s" % lun_id],
+                     "CLASSTYPE": "1",
+                     "SCHEDULEPOLICY": "2",
+                     "SCHEDULESTARTTIME": "1410969600",
+                     "STARTTIME": "08:00",
+                     "DURATION": "86400",
+                     "CYCLESET": "[1,2,3,4,5,6,0]"}
+        mergedata.update(qos)
         data = json.dumps(mergedata)
+        url = self.url + "/ioclass/"
 
         result = self.call(url, data)
         self._assert_rest_result(result, 'Create QoS policy error.')

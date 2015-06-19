@@ -66,10 +66,10 @@ class EMCVMAXProvisionV3(object):
             'ReturnElementsToStoragePool', storageConfigservice,
             TheElements=theElements)
 
-        if rc != 0L:
+        if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(conn, job,
                                                              extraSpecs)
-            if rc != 0L:
+            if rc != 0:
                 exceptionMessage = (_(
                     "Error Delete Volume: %(volumeName)s. "
                     "Return code: %(rc)lu.  Error: %(error)s.")
@@ -119,10 +119,10 @@ class EMCVMAXProvisionV3(object):
                   {'volumename': volumeName,
                    'rc': rc})
 
-        if rc != 0L:
+        if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(conn, job,
                                                              extraSpecs)
-            if rc != 0L:
+            if rc != 0:
                 exceptionMessage = (_(
                     "Error Create Volume: %(volumeName)s. "
                     "Return code: %(rc)lu.  Error: %(error)s.")
@@ -222,10 +222,10 @@ class EMCVMAXProvisionV3(object):
                 SourceElement=sourceInstance.path,
                 TargetElement=targetInstance.path)
 
-        if rc != 0L:
+        if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(conn, job,
                                                              extraSpecs)
-            if rc != 0L:
+            if rc != 0:
                 exceptionMessage = (_(
                     "Error Create Cloned Volume: %(cloneName)s "
                     "Return code: %(rc)lu. Error: %(error)s.")
@@ -292,10 +292,10 @@ class EMCVMAXProvisionV3(object):
             EMCSLO=slo,
             EMCWorkload=workload)
 
-        if rc != 0L:
+        if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(conn, job,
                                                              extraSpecs)
-            if rc != 0L:
+            if rc != 0:
                 LOG.error(_LE(
                     "Error Create Group: %(groupName)s. "
                     "Return code: %(rc)lu.  Error: %(error)s."),
@@ -379,10 +379,10 @@ class EMCVMAXProvisionV3(object):
             ElementType=self.utils.get_num(3, '16'),
             Goal=storagePoolSettingInstanceName)
 
-        if rc != 0L:
+        if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(
                 conn, supportedSizeDict, extraSpecs)
-            if rc != 0L:
+            if rc != 0:
                 exceptionMessage = (_(
                     "Cannot get supported size range for %(sps)s "
                     "Return code: %(rc)lu. Error: %(error)s.")
@@ -507,10 +507,10 @@ class EMCVMAXProvisionV3(object):
                   "operation: %(operation)s  Return code: %(rc)lu.",
                   {'sv': syncInstanceName, 'operation': operation, 'rc': rc})
 
-        if rc != 0L:
+        if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(conn, job,
                                                              extraSpecs)
-            if rc != 0L:
+            if rc != 0:
                 exceptionMessage = (_(
                     "Error modify replica synchronization: %(sv)s "
                     "operation: %(operation)s. "
@@ -564,10 +564,10 @@ class EMCVMAXProvisionV3(object):
             TargetGroup=tgtGroupInstanceName,
             SyncType=self.utils.get_num(syncType, '16'))
 
-        if rc != 0L:
+        if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(conn, job,
                                                              extraSpecs)
-            if rc != 0L:
+            if rc != 0:
                 exceptionMsg = (_("Error CreateGroupReplica: "
                                   "source: %(source)s target: %(target)s. "
                                   "Return code: %(rc)lu. Error: %(error)s.")

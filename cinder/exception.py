@@ -451,6 +451,11 @@ class VolumeSizeExceedsAvailableQuota(QuotaError):
                 "%(consumed)sG has been consumed.")
 
 
+class VolumeSizeExceedsLimit(QuotaError):
+    message = _("Requested volume size %(size)d is larger than "
+                "maximum allowed limit %(limit)d.")
+
+
 class VolumeBackupSizeExceedsAvailableQuota(QuotaError):
     message = _("Requested backup exceeds allowed Backup gigabytes "
                 "quota. Requested %(requested)sG, quota is %(quota)sG and "
@@ -912,3 +917,34 @@ class StorPoolConfigurationMissing(CinderException):
 class StorPoolConfigurationInvalid(CinderException):
     message = _("Invalid parameter %(param)s in the %(section)s section "
                 "of the /etc/storpool.conf file: %(error)s")
+
+
+# Infortrend EonStor DS Driver
+class InfortrendCliException(CinderException):
+    message = _("Infortrend CLI exception: %(err)s Param: %(param)s "
+                "(Return Code: %(rc)s) (Output: %(out)s)")
+
+
+# DOTHILL drivers
+class DotHillInvalidBackend(CinderException):
+    message = _("Backend doesn't exist (%(backend)s)")
+
+
+class DotHillConnectionError(CinderException):
+    message = _("%(message)s")
+
+
+class DotHillAuthenticationError(CinderException):
+    message = _("%(message)s")
+
+
+class DotHillNotEnoughSpace(CinderException):
+    message = _("Not enough space on backend (%(backend)s)")
+
+
+class DotHillRequestError(CinderException):
+    message = _("%(message)s")
+
+
+class DotHillNotTargetPortal(CinderException):
+    message = _("No active iSCSI portals with supplied iSCSI IPs")

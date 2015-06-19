@@ -214,9 +214,14 @@ class PureDriverTestCase(test.TestCase):
 
 class PureBaseVolumeDriverTestCase(PureDriverTestCase):
 
+    class fake_pure_base_volume_driver(pure.PureBaseVolumeDriver):
+        def initialize_connection():
+            pass
+
     def setUp(self):
         super(PureBaseVolumeDriverTestCase, self).setUp()
-        self.driver = pure.PureBaseVolumeDriver(configuration=self.mock_config)
+        self.driver = self.fake_pure_base_volume_driver(
+            configuration=self.mock_config)
         self.driver._array = self.array
 
     def test_generate_purity_host_name(self):

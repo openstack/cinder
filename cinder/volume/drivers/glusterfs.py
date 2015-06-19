@@ -28,6 +28,7 @@ from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
 from cinder.openstack.common import fileutils
 from cinder import utils
+from cinder.volume import driver
 from cinder.volume.drivers import remotefs as remotefs_drv
 
 LOG = logging.getLogger(__name__)
@@ -53,7 +54,8 @@ CONF = cfg.CONF
 CONF.register_opts(volume_opts)
 
 
-class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
+class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver, driver.CloneableVD,
+                      driver.ExtendVD):
     """Gluster based cinder driver. Creates file on Gluster share for using it
     as block device on hypervisor.
 
@@ -65,7 +67,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
     driver_volume_type = 'glusterfs'
     driver_prefix = 'glusterfs'
     volume_backend_name = 'GlusterFS'
-    VERSION = '1.2.0'
+    VERSION = '1.3.0'
 
     def __init__(self, execute=processutils.execute, *args, **kwargs):
         self._remotefsclient = None

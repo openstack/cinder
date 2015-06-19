@@ -568,7 +568,7 @@ class ScaleIODriver(driver.VolumeDriver):
         snapname = self.id_to_base64(volume.id)
         LOG.info(_LI(
             "ScaleIO create cloned volume: source volume %(src)s to target "
-            "volume %(tgt)."),
+            "volume %(tgt)s."),
             {'src': volname,
              'tgt': snapname})
         self._snapshot_volume(volname, snapname)
@@ -835,7 +835,7 @@ class ScaleIODriver(driver.VolumeDriver):
                 verify=verify_cert)
             response = r.json()
             LOG.info(_LI("Query capacity stats response: %s."), response)
-            for res in response.itervalues():
+            for res in response.values():
                 capacityInUse = res['capacityInUseInKb']
                 capacityLimit = res['capacityLimitInKb']
                 total_capacity_gb = capacityLimit / units.Mi

@@ -212,7 +212,7 @@ def fake_stat_image(path):
     # Simulate stat to return the mode of a block device
     # make sure that st_mode (the first in the sequence(
     # matches the mode of a block device
-    return posix.stat_result((25008, 5753, 5L, 1, 0, 6, 0,
+    return posix.stat_result((25008, 5753, 5, 1, 0, 6, 0,
                               1375881199, 1375881197, 1375881197))
 
 
@@ -220,7 +220,7 @@ def fake_stat_file(path):
     # Simulate stat to return the mode of a block device
     # make sure that st_mode (the first in the sequence(
     # matches the mode of a block device
-    return posix.stat_result((33188, 5753, 5L, 1, 0, 6, 0,
+    return posix.stat_result((33188, 5753, 5, 1, 0, 6, 0,
                               1375881199, 1375881197, 1375881197))
 
 
@@ -228,7 +228,7 @@ def fake_stat_illegal(path):
     # Simulate stat to return the mode of a block device
     # make sure that st_mode (the first in the sequence(
     # matches the mode of a block device
-    return posix.stat_result((17407, 5753, 5L, 1, 0, 6, 0,
+    return posix.stat_result((17407, 5753, 5, 1, 0, 6, 0,
                               1375881199, 1375881197, 1375881197))
 
 

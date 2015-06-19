@@ -23,6 +23,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import importutils
 from oslo_utils import timeutils
+import six
 
 from cinder import context
 from cinder import db
@@ -69,7 +70,10 @@ quota_opts = [
     cfg.BoolOpt('use_default_quota_class',
                 default=True,
                 help='Enables or disables use of default quota class '
-                     'with default quota.'), ]
+                     'with default quota.'),
+    cfg.IntOpt('per_volume_size_limit',
+               default=-1,
+               help='Max size allowed per volume, in gigabytes'), ]
 
 CONF = cfg.CONF
 CONF.register_opts(quota_opts)
@@ -523,7 +527,8 @@ class ReservableResource(BaseResource):
         """
 
         super(ReservableResource, self).__init__(name, flag=flag)
-        self.sync = sync
+        if sync:
+            self.sync = sync
 
 
 class AbsoluteResource(BaseResource):
@@ -593,7 +598,7 @@ class QuotaEngine(object):
         if not quota_driver_class:
             quota_driver_class = CONF.quota_driver
 
-        if isinstance(quota_driver_class, basestring):
+        if isinstance(quota_driver_class, six.string_types):
             quota_driver_class = importutils.import_object(quota_driver_class)
 
         self._resources = {}
@@ -869,6 +874,7 @@ class VolumeTypeQuotaEngine(QuotaEngine):
         result = {}
         # Global quotas.
         argses = [('volumes', '_sync_volumes', 'quota_volumes'),
+                  ('per_volume_gigabytes', None, 'per_volume_size_limit'),
                   ('snapshots', '_sync_snapshots', 'quota_snapshots'),
                   ('gigabytes', '_sync_gigabytes', 'quota_gigabytes'),
                   ('backups', '_sync_backups', 'quota_backups'),

@@ -182,7 +182,7 @@ class DateraDriver(san.SanISCSIDriver):
             # NOTE(thingee): Refer to the Datera test for a stub of what this
             # looks like. We're just going to pull the first IP that the Datera
             # cluster makes available for the portal.
-            iqn = next(export['targetIds'].itervalues())['ids'][0]['id']
+            iqn = next(export['targetIds'].values())['ids'][0]['id']
         else:
             export = self._issue_api_request(
                 'export_configs',

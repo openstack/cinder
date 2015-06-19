@@ -17,7 +17,13 @@
 
 import sys
 
-import rtslib
+# We always use rtslib-fb, but until version 2.1.52 it didn't have its own
+# namespace, so we must be backwards compatible.
+try:
+    import rtslib_fb
+except ImportError:
+    import rtslib as rtslib_fb
+
 
 from cinder import i18n
 from cinder.i18n import _
@@ -40,8 +46,8 @@ def create(backing_device, name, userid, password, iser_enabled,
     ips_allow_fail = ()
 
     try:
-        rtsroot = rtslib.root.RTSRoot()
-    except rtslib.utils.RTSLibError:
+        rtsroot = rtslib_fb.root.RTSRoot()
+    except rtslib_fb.utils.RTSLibError:
         print(_('Ensure that configfs is mounted at /sys/kernel/config.'))
         raise
 
@@ -51,24 +57,25 @@ def create(backing_device, name, userid, password, iser_enabled,
             # Already exists, use this one
             return
 
-    so_new = rtslib.BlockStorageObject(name=name,
-                                       dev=backing_device)
+    so_new = rtslib_fb.BlockStorageObject(name=name,
+                                          dev=backing_device)
 
-    target_new = rtslib.Target(rtslib.FabricModule('iscsi'), name, 'create')
+    target_new = rtslib_fb.Target(rtslib_fb.FabricModule('iscsi'), name,
+                                  'create')
 
-    tpg_new = rtslib.TPG(target_new, mode='create')
+    tpg_new = rtslib_fb.TPG(target_new, mode='create')
     tpg_new.set_attribute('authentication', '1')
 
-    lun_new = rtslib.LUN(tpg_new, storage_object=so_new)
+    lun_new = rtslib_fb.LUN(tpg_new, storage_object=so_new)
 
     if initiator_iqns:
         initiator_iqns = initiator_iqns.strip(' ')
         for i in initiator_iqns.split(','):
-            acl_new = rtslib.NodeACL(tpg_new, i, mode='create')
+            acl_new = rtslib_fb.NodeACL(tpg_new, i, mode='create')
             acl_new.chap_userid = userid
             acl_new.chap_password = password
 
-            rtslib.MappedLUN(acl_new, lun_new.lun, lun_new.lun)
+            rtslib_fb.MappedLUN(acl_new, lun_new.lun, lun_new.lun)
 
     tpg_new.enable = 1
 
@@ -80,9 +87,9 @@ def create(backing_device, name, userid, password, iser_enabled,
 
     for ip in portals_ips:
         try:
-            portal = rtslib.NetworkPortal(tpg_new, ip, portals_port,
-                                          mode='any')
-        except rtslib.utils.RTSLibError:
+            portal = rtslib_fb.NetworkPortal(tpg_new, ip, portals_port,
+                                             mode='any')
+        except rtslib_fb.utils.RTSLibError:
             raise_exc = ip not in ips_allow_fail
             msg_type = 'Error' if raise_exc else 'Warning'
             print(_('%(msg_type)s: creating NetworkPortal: ensure port '
@@ -94,7 +101,7 @@ def create(backing_device, name, userid, password, iser_enabled,
             try:
                 if iser_enabled == 'True':
                     portal.iser = True
-            except rtslib.utils.RTSLibError:
+            except rtslib_fb.utils.RTSLibError:
                 print(_('Error enabling iSER for NetworkPortal: please ensure '
                         'that RDMA is supported on your iSCSI port %(port)d '
                         'on ip %(ip)s.') % {'port': portals_port, 'ip': ip})
@@ -103,8 +110,8 @@ def create(backing_device, name, userid, password, iser_enabled,
 
 def _lookup_target(target_iqn, initiator_iqn):
     try:
-        rtsroot = rtslib.root.RTSRoot()
-    except rtslib.utils.RTSLibError:
+        rtsroot = rtslib_fb.root.RTSRoot()
+    except rtslib_fb.utils.RTSLibError:
         print(_('Ensure that configfs is mounted at /sys/kernel/config.'))
         raise
 
@@ -124,11 +131,11 @@ def add_initiator(target_iqn, initiator_iqn, userid, password):
             # No further action required
             return
 
-    acl_new = rtslib.NodeACL(tpg, initiator_iqn, mode='create')
+    acl_new = rtslib_fb.NodeACL(tpg, initiator_iqn, mode='create')
     acl_new.chap_userid = userid
     acl_new.chap_password = password
 
-    rtslib.MappedLUN(acl_new, 0, tpg_lun=0)
+    rtslib_fb.MappedLUN(acl_new, 0, tpg_lun=0)
 
 
 def delete_initiator(target_iqn, initiator_iqn):
@@ -143,13 +150,13 @@ def delete_initiator(target_iqn, initiator_iqn):
 
 
 def get_targets():
-    rtsroot = rtslib.root.RTSRoot()
+    rtsroot = rtslib_fb.root.RTSRoot()
     for x in rtsroot.targets:
         print(x.wwn)
 
 
 def delete(iqn):
-    rtsroot = rtslib.root.RTSRoot()
+    rtsroot = rtslib_fb.root.RTSRoot()
     for x in rtsroot.targets:
         if x.wwn == iqn:
             x.delete()
@@ -165,9 +172,9 @@ def verify_rtslib():
     for member in ['BlockStorageObject', 'FabricModule', 'LUN',
                    'MappedLUN', 'NetworkPortal', 'NodeACL', 'root',
                    'Target', 'TPG']:
-        if not hasattr(rtslib, member):
-            raise RtstoolImportError(_("rtslib is missing member %s: "
-                                       "You may need a newer python-rtslib.") %
+        if not hasattr(rtslib_fb, member):
+            raise RtstoolImportError(_("rtslib_fb is missing member %s: You "
+                                       "may need a newer python-rtslib-fb.") %
                                      member)
 
 
@@ -188,7 +195,7 @@ def usage():
 
 
 def save_to_file(destination_file):
-    rtsroot = rtslib.root.RTSRoot()
+    rtsroot = rtslib_fb.root.RTSRoot()
     try:
         rtsroot.save_to_file(destination_file)
     except OSError:
@@ -277,7 +284,7 @@ def main(argv=None):
 
     elif argv[1] == 'verify':
         # This is used to verify that this script can be called by cinder,
-        # and that rtslib is new enough to work.
+        # and that rtslib_fb is new enough to work.
         verify_rtslib()
         return 0
 

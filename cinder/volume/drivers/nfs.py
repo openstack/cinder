@@ -28,9 +28,10 @@ from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
 from cinder import utils
+from cinder.volume import driver
 from cinder.volume.drivers import remotefs
 
-VERSION = '1.2.0'
+VERSION = '1.3.0'
 
 LOG = logging.getLogger(__name__)
 
@@ -72,7 +73,7 @@ CONF = cfg.CONF
 CONF.register_opts(nfs_opts)
 
 
-class NfsDriver(remotefs.RemoteFSDriver):
+class NfsDriver(driver.ExtendVD, remotefs.RemoteFSDriver):
     """NFS based cinder driver. Creates file on NFS share for using it
     as block device on hypervisor.
     """

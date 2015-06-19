@@ -116,7 +116,11 @@ class BaseVolumeTestCase(test.TestCase):
         self.configuration = mock.Mock(conf.Configuration)
         self.context = context.get_admin_context()
         self.context.user_id = 'fake'
-        self.context.project_id = 'fake'
+        # NOTE(mriedem): The id is hard-coded here for tracking race fail
+        # assertions with the notification code, it's part of an
+        # elastic-recheck query so don't remove it or change it.
+        self.project_id = '7f265bd4-3a85-465e-a899-5dc4854a86d3'
+        self.context.project_id = self.project_id
         self.volume_params = {
             'status': 'creating',
             'host': CONF.host,
@@ -546,7 +550,7 @@ class VolumeTestCase(BaseVolumeTestCase):
             'host': socket.gethostname(),
             'display_name': 'test_volume',
             'availability_zone': 'nova',
-            'tenant_id': 'fake',
+            'tenant_id': self.context.project_id,
             'created_at': 'DONTCARE',
             'volume_id': volume_id,
             'volume_type': None,
@@ -2790,7 +2794,7 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         # FIXME(jdg): What is this actually testing?
         # We never call the internal _check method?
-        for _index in xrange(100):
+        for _index in range(100):
             tests_utils.create_volume(self.context, **self.volume_params)
         for volume_id in volume_ids:
             self.volume.delete_volume(self.context, volume_id)
@@ -4547,7 +4551,7 @@ class VolumeTestCase(BaseVolumeTestCase):
             'status': 'available',
             'name': 'test_cg',
             'availability_zone': 'nova',
-            'tenant_id': 'fake',
+            'tenant_id': self.context.project_id,
             'created_at': 'DONTCARE',
             'user_id': 'fake',
             'consistencygroup_id': group_id
@@ -4629,7 +4633,7 @@ class VolumeTestCase(BaseVolumeTestCase):
             'status': 'available',
             'name': 'test_cg',
             'availability_zone': 'nova',
-            'tenant_id': 'fake',
+            'tenant_id': self.context.project_id,
             'created_at': 'DONTCARE',
             'user_id': 'fake',
             'consistencygroup_id': group_id
@@ -4728,7 +4732,7 @@ class VolumeTestCase(BaseVolumeTestCase):
             'status': 'available',
             'name': 'test_cg',
             'availability_zone': 'nova',
-            'tenant_id': 'fake',
+            'tenant_id': self.context.project_id,
             'created_at': 'DONTCARE',
             'user_id': 'fake',
             'consistencygroup_id': group2_id
@@ -5832,7 +5836,7 @@ class ISCSITestCase(DriverTestCase):
     def _attach_volume(self):
         """Attach volumes to an instance."""
         volume_id_list = []
-        for index in xrange(3):
+        for index in range(3):
             vol = {}
             vol['size'] = 0
             vol_ref = db.volume_create(self.context, vol)

@@ -32,6 +32,7 @@ from oslo_log import log as logging
 from oslo_serialization import jsonutils
 from oslo_utils import timeutils
 import six
+from six.moves import range
 from six.moves import urllib
 
 from cinder import exception
@@ -169,7 +170,7 @@ class GlanceClientWrapper(object):
                       glanceclient.exc.CommunicationError)
         num_attempts = 1 + CONF.glance_num_retries
 
-        for attempt in xrange(1, num_attempts + 1):
+        for attempt in range(1, num_attempts + 1):
             client = self.client or self._create_onetime_client(context,
                                                                 version)
             try:
@@ -399,13 +400,13 @@ def _convert_timestamps_to_datetimes(image_meta):
 # NOTE(bcwaldon): used to store non-string data in glance metadata
 def _json_loads(properties, attr):
     prop = properties[attr]
-    if isinstance(prop, basestring):
+    if isinstance(prop, six.string_types):
         properties[attr] = jsonutils.loads(prop)
 
 
 def _json_dumps(properties, attr):
     prop = properties[attr]
-    if not isinstance(prop, basestring):
+    if not isinstance(prop, six.string_types):
         properties[attr] = jsonutils.dumps(prop)
 
 

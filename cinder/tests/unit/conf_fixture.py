@@ -21,7 +21,11 @@ from oslo_config import cfg
 
 CONF = cfg.CONF
 
-CONF.import_opt('policy_file', 'cinder.policy')
+CONF.import_opt('backup_enable_progress_timer',
+                'cinder.backup.drivers.nfs')
+CONF.import_opt('backup_swift_enable_progress_timer',
+                'cinder.backup.drivers.swift')
+CONF.import_opt('policy_file', 'cinder.policy', group='oslo_policy')
 CONF.import_opt('volume_driver', 'cinder.volume.manager')
 CONF.import_opt('xiv_ds8k_proxy',
                 'cinder.volume.drivers.ibm.xiv_ds8k')
@@ -40,7 +44,8 @@ def set_defaults(conf):
     conf.set_default('rpc_backend', 'cinder.openstack.common.rpc.impl_fake')
     conf.set_default('connection', 'sqlite://', group='database')
     conf.set_default('sqlite_synchronous', False, group='database')
-    conf.set_default('policy_file', 'cinder.tests.unit/policy.json')
+    conf.set_default('policy_file', 'cinder.tests.unit/policy.json',
+                     group='oslo_policy')
     conf.set_default(
         'xiv_ds8k_proxy',
         'cinder.tests.unit.test_ibm_xiv_ds8k.XIVDS8KFakeProxyDriver')
@@ -50,7 +55,7 @@ def set_defaults(conf):
                      'cinder.scheduler.filter_scheduler.FilterScheduler')
     conf.set_default('state_path', os.path.abspath(
         os.path.join(os.path.dirname(__file__), '..', '..', '..')))
-    conf.set_default('policy_dirs', [])
+    conf.set_default('policy_dirs', [], group='oslo_policy')
     conf.set_default('auth_strategy', 'noauth')
     conf.set_default('backup_enable_progress_timer', False)
     conf.set_default('backup_swift_enable_progress_timer', False)

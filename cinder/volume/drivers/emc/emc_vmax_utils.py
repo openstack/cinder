@@ -376,13 +376,13 @@ class EMCVMAXUtils(object):
                                        LocalOnly=False)
         jobstate = jobinstance['JobState']
         # From ValueMap of JobState in CIM_ConcreteJob
-        # 2L=New, 3L=Starting, 4L=Running, 32767L=Queue Pending
+        # 2=New, 3=Starting, 4=Running, 32767=Queue Pending
         # ValueMap("2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13..32767,
         # 32768..65535"),
         # Values("New, Starting, Running, Suspended, Shutting Down,
         # Completed, Terminated, Killed, Exception, Service,
         # Query Pending, DMTF Reserved, Vendor Reserved")]
-        if jobstate in [2L, 3L, 4L, 32767L]:
+        if jobstate in [2, 3, 4, 32767]:
             return False
         else:
             return True

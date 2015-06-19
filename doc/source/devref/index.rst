@@ -30,6 +30,7 @@ Programming HowTos and Tutorials
     unit_tests
     addmethod.openstackapi
     drivers
+    gmr
 
 
 Background Concepts for Cinder

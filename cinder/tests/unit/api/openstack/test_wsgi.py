@@ -114,7 +114,7 @@ class RequestTest(test.TestCase):
         self.assertIsNone(request.cached_resource_by_id('r-0'))
 
         resources = []
-        for x in xrange(3):
+        for x in range(3):
             resources.append({'id': 'r-%s' % x})
 
         # Cache an empty list of resources using the default name
@@ -161,7 +161,7 @@ class RequestTest(test.TestCase):
 
         r = wsgi.Request.blank('/foo')
         resources = []
-        for x in xrange(3):
+        for x in range(3):
             resources.append({'id': 'id%s' % x})
 
         # Store 2

@@ -268,34 +268,34 @@ class DBAPIVolumeTestCase(BaseTest):
         self.assertEqual(attachment['attached_host'], host_name)
 
     def test_volume_data_get_for_host(self):
-        for i in xrange(THREE):
-            for j in xrange(THREE):
+        for i in range(THREE):
+            for j in range(THREE):
                 db.volume_create(self.ctxt, {'host': 'h%d' % i,
                                              'size': ONE_HUNDREDS})
-        for i in xrange(THREE):
+        for i in range(THREE):
             self.assertEqual((THREE, THREE_HUNDREDS),
                              db.volume_data_get_for_host(
                                  self.ctxt, 'h%d' % i))
 
     def test_volume_data_get_for_host_for_multi_backend(self):
-        for i in xrange(THREE):
-            for j in xrange(THREE):
+        for i in range(THREE):
+            for j in range(THREE):
                 db.volume_create(self.ctxt, {'host':
                                              'h%d@lvmdriver-1#lvmdriver-1' % i,
                                              'size': ONE_HUNDREDS})
-        for i in xrange(THREE):
+        for i in range(THREE):
             self.assertEqual((THREE, THREE_HUNDREDS),
                              db.volume_data_get_for_host(
                                  self.ctxt, 'h%d@lvmdriver-1' % i))
 
     def test_volume_data_get_for_project(self):
-        for i in xrange(THREE):
-            for j in xrange(THREE):
+        for i in range(THREE):
+            for j in range(THREE):
                 db.volume_create(self.ctxt, {'project_id': 'p%d' % i,
                                              'size': ONE_HUNDREDS,
                                              'host': 'h-%d-%d' % (i, j),
                                              })
-        for i in xrange(THREE):
+        for i in range(THREE):
             self.assertEqual((THREE, THREE_HUNDREDS),
                              db.volume_data_get_for_project(
                                  self.ctxt, 'p%d' % i))
@@ -349,7 +349,7 @@ class DBAPIVolumeTestCase(BaseTest):
     def test_volume_get_all(self):
         volumes = [db.volume_create(self.ctxt,
                    {'host': 'h%d' % i, 'size': i})
-                   for i in xrange(3)]
+                   for i in range(3)]
         self._assertEqualListsOfObjects(volumes, db.volume_get_all(
                                         self.ctxt, None, None, ['host'], None))
 
@@ -366,10 +366,10 @@ class DBAPIVolumeTestCase(BaseTest):
 
     def test_volume_get_all_by_host(self):
         volumes = []
-        for i in xrange(3):
+        for i in range(3):
             volumes.append([db.volume_create(self.ctxt, {'host': 'h%d' % i})
-                            for j in xrange(3)])
-        for i in xrange(3):
+                            for j in range(3)])
+        for i in range(3):
             self._assertEqualListsOfObjects(volumes[i],
                                             db.volume_get_all_by_host(
                                             self.ctxt, 'h%d' % i))
@@ -377,7 +377,7 @@ class DBAPIVolumeTestCase(BaseTest):
     def test_volume_get_all_by_host_with_pools(self):
         volumes = []
         vol_on_host_wo_pool = [db.volume_create(self.ctxt, {'host': 'foo'})
-                               for j in xrange(3)]
+                               for j in range(3)]
         vol_on_host_w_pool = [db.volume_create(
             self.ctxt, {'host': 'foo#pool0'})]
         volumes.append((vol_on_host_wo_pool +
@@ -424,10 +424,10 @@ class DBAPIVolumeTestCase(BaseTest):
 
     def test_volume_get_all_by_group(self):
         volumes = []
-        for i in xrange(3):
+        for i in range(3):
             volumes.append([db.volume_create(self.ctxt, {
-                'consistencygroup_id': 'g%d' % i}) for j in xrange(3)])
-        for i in xrange(3):
+                'consistencygroup_id': 'g%d' % i}) for j in range(3)])
+        for i in range(3):
             self._assertEqualListsOfObjects(volumes[i],
                                             db.volume_get_all_by_group(
                                             self.ctxt, 'g%d' % i))
@@ -462,10 +462,10 @@ class DBAPIVolumeTestCase(BaseTest):
 
     def test_volume_get_all_by_project(self):
         volumes = []
-        for i in xrange(3):
+        for i in range(3):
             volumes.append([db.volume_create(self.ctxt, {
-                'project_id': 'p%d' % i}) for j in xrange(3)])
-        for i in xrange(3):
+                'project_id': 'p%d' % i}) for j in range(3)])
+        for i in range(3):
             self._assertEqualListsOfObjects(volumes[i],
                                             db.volume_get_all_by_project(
                                             self.ctxt, 'p%d' % i, None,
@@ -567,21 +567,21 @@ class DBAPIVolumeTestCase(BaseTest):
                                       {'project_id': 'g1',
                                        'display_name': 'name_%d' % i,
                                        'size': 1})
-                     for i in xrange(2)])
+                     for i in range(2)])
         vols.extend([db.volume_create(self.ctxt,
                                       {'project_id': 'g1',
                                        'display_name': 'name_%d' % i,
                                        'size': 2})
-                     for i in xrange(2)])
+                     for i in range(2)])
         vols.extend([db.volume_create(self.ctxt,
                                       {'project_id': 'g1',
                                        'display_name': 'name_%d' % i})
-                     for i in xrange(2)])
+                     for i in range(2)])
         vols.extend([db.volume_create(self.ctxt,
                                       {'project_id': 'g2',
                                        'display_name': 'name_%d' % i,
                                        'size': 1})
-                     for i in xrange(2)])
+                     for i in range(2)])
 
         # By project, filter on size and name
         filters = {'size': '1'}

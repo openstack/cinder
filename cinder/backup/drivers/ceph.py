@@ -54,6 +54,7 @@ from oslo_log import log as logging
 from oslo_utils import encodeutils
 from oslo_utils import excutils
 from oslo_utils import units
+from six.moves import range
 
 from cinder.backup import driver
 from cinder import exception
@@ -284,7 +285,7 @@ class CephBackupDriver(driver.BackupDriver):
             else:
                 zeroes = '\0' * length
                 chunks = int(length / self.chunk_size)
-                for chunk in xrange(0, chunks):
+                for chunk in range(0, chunks):
                     LOG.debug("Writing zeroes chunk %d", chunk)
                     volume.write(zeroes)
                     volume.flush()
@@ -306,7 +307,7 @@ class CephBackupDriver(driver.BackupDriver):
         LOG.debug("%(chunks)s chunks of %(bytes)s bytes to be transferred",
                   {'chunks': chunks, 'bytes': self.chunk_size})
 
-        for chunk in xrange(0, chunks):
+        for chunk in range(0, chunks):
             before = time.time()
             data = src.read(self.chunk_size)
             # If we have reach end of source, discard any extraneous bytes from

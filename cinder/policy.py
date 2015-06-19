@@ -17,11 +17,13 @@
 
 
 from oslo_config import cfg
+from oslo_policy import opts as policy_opts
+from oslo_policy import policy
 
 from cinder import exception
-from cinder.openstack.common import policy
 
 CONF = cfg.CONF
+policy_opts.set_defaults(cfg.CONF, 'policy.json')
 
 _ENFORCER = None
 
@@ -29,7 +31,7 @@ _ENFORCER = None
 def init():
     global _ENFORCER
     if not _ENFORCER:
-        _ENFORCER = policy.Enforcer()
+        _ENFORCER = policy.Enforcer(CONF)
 
 
 def enforce_action(context, action):

@@ -25,6 +25,7 @@ from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
+from six.moves import range
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LW, _LI
@@ -344,7 +345,7 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
         """
         lines = [line for line in out if line != '']
         # Every record has 2 lines
-        for i in xrange(0, len(lines), 2):
+        for i in range(0, len(lines), 2):
             try:
                 int(lines[i][0])
                 # sanity check

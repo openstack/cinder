@@ -19,7 +19,6 @@
 """Utilities related to SSH connection management."""
 
 import os
-import string
 
 from eventlet import pools
 from oslo_config import cfg
@@ -103,7 +102,7 @@ class SSHPool(pools.Pool):
         try:
             ssh = paramiko.SSHClient()
             if ',' in self.hosts_key_file:
-                files = string.split(self.hosts_key_file, ',')
+                files = self.hosts_key_file.split(',')
                 for f in files:
                     ssh.load_host_keys(f)
             else:

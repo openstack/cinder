@@ -191,8 +191,7 @@ class BlockDeviceDriver(driver.BaseVD, driver.LocalVD, driver.CloneableVD,
     # #######  Interface methods for DataPath (Target Driver) ########
 
     def ensure_export(self, context, volume):
-        volume_path = "/dev/%s/%s" % (self.configuration.volume_group,
-                                      volume['name'])
+        volume_path = self.local_path(volume)
         model_update = \
             self.target_driver.ensure_export(
                 context,
@@ -201,8 +200,7 @@ class BlockDeviceDriver(driver.BaseVD, driver.LocalVD, driver.CloneableVD,
         return model_update
 
     def create_export(self, context, volume):
-        volume_path = "/dev/%s/%s" % (self.configuration.volume_group,
-                                      volume['name'])
+        volume_path = self.local_path(volume)
         export_info = self.target_driver.create_export(context,
                                                        volume,
                                                        volume_path)

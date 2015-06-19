@@ -354,3 +354,56 @@ class ISCSITarget(driver.Target):
     @abc.abstractmethod
     def _get_target(self, iqn):
         pass
+
+
+class SanISCSITarget(ISCSITarget):
+    """iSCSI target for san devices.
+
+    San devices are slightly different, they don't need to implement
+    all of the same things that we need to implement locally fro LVM
+    and local block devices when we create and manage our own targets.
+
+    """
+    def __init__(self, *args, **kwargs):
+        super(SanISCSITarget, self).__init__(*args, **kwargs)
+
+    @abc.abstractmethod
+    def create_export(self, context, volume, volume_path):
+        pass
+
+    @abc.abstractmethod
+    def remove_export(self, context, volume):
+        pass
+
+    @abc.abstractmethod
+    def ensure_export(self, context, volume, volume_path):
+        pass
+
+    @abc.abstractmethod
+    def terminate_connection(self, volume, connector, **kwargs):
+        pass
+
+    # NOTE(jdg): Items needed for local iSCSI target drivers,
+    # but NOT sans Stub them out here to make abc happy
+
+    # Use care when looking at these to make sure something
+    # that's inheritted isn't dependent on one of
+    # these.
+    def _get_target_and_lun(self, context, volume):
+        pass
+
+    def _get_target_chap_auth(self, context, iscsi_name):
+        pass
+
+    def create_iscsi_target(self, name, tid, lun, path,
+                            chap_auth, **kwargs):
+        pass
+
+    def remove_iscsi_target(self, tid, lun, vol_id, vol_name, **kwargs):
+        pass
+
+    def _get_iscsi_target(self, context, vol_id):
+        pass
+
+    def _get_target(self, iqn):
+        pass

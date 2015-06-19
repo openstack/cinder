@@ -1387,7 +1387,7 @@ def volume_get_all_by_host(context, host, filters=None):
     # now be either form below:
     #     Host
     #     Host#Pool
-    if host and isinstance(host, basestring):
+    if host and isinstance(host, six.string_types):
         session = get_session()
         with session.begin():
             host_attr = getattr(models.Volume, 'host')
@@ -3623,7 +3623,7 @@ def purge_deleted_rows(context, age_in_days):
     metadata.bind = engine
     tables = []
 
-    for model_class in models.__dict__.itervalues():
+    for model_class in models.__dict__.values():
         if hasattr(model_class, "__tablename__") \
                 and hasattr(model_class, "deleted"):
             tables.append(model_class.__tablename__)
