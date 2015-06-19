@@ -1224,13 +1224,14 @@ class EMCVMAXUtils(object):
         LOG.debug(
             "storagePoolName: %(poolName)s, storageSystemName: %(array)s.",
             {'poolName': storagePoolName, 'array': storageSystemName})
-        poolInstanceNames = conn.EnumerateInstanceNames(
-            'EMC_VirtualProvisioningPool')
+        storageSystemInstanceName = self.find_storageSystem(conn,
+                                                            storageSystemName)
+        poolInstanceNames = conn.AssociatorNames(
+            storageSystemInstanceName,
+            ResultClass='EMC_VirtualProvisioningPool')
         for poolInstanceName in poolInstanceNames:
-            poolName, systemName = (
-                self.parse_pool_instance_id(poolInstanceName['InstanceID']))
-            if (poolName == storagePoolName and
-                    storageSystemName in systemName):
+            poolName = self._get_pool_name(conn, poolInstanceName)
+            if (poolName == storagePoolName):
                 # Check that the pool hasn't been recently deleted.
                 instance = self.get_existing_instance(conn, poolInstanceName)
                 if instance is None:
@@ -1622,27 +1623,13 @@ class EMCVMAXUtils(object):
         :returns: foundPoolInstanceName
         :returns: string -- systemNameStr
         """
-        foundPoolInstanceName = None
         vpoolInstanceNames = conn.AssociatorNames(
             storageSystemInstanceName,
             ResultClass='EMC_VirtualProvisioningPool')
 
-        for vpoolInstanceName in vpoolInstanceNames:
-            poolInstanceId = vpoolInstanceName['InstanceID']
-            # Example: SYMMETRIX+000195900551+TP+Sol_Innov
-            poolnameStr, systemNameStr = self.parse_pool_instance_id(
-                poolInstanceId)
-            if poolnameStr is not None and systemNameStr is not None:
-                if six.text_type(poolNameInStr) == six.text_type(poolnameStr):
-                    # check that the pool hasn't recently been deleted.
-                    try:
-                        conn.GetInstance(vpoolInstanceName)
-                        foundPoolInstanceName = vpoolInstanceName
-                    except Exception:
-                        foundPoolInstanceName = None
-                    break
-
-        return foundPoolInstanceName, systemNameStr
+        return self._get_pool_instance_and_system_name(
+            conn, vpoolInstanceNames, storageSystemInstanceName,
+            poolNameInStr)
 
     def get_pool_and_system_name_v3(
             self, conn, storageSystemInstanceName, poolNameInStr):
@@ -1654,26 +1641,53 @@ class EMCVMAXUtils(object):
         :returns: foundPoolInstanceName
         :returns: string -- systemNameStr
         """
-        foundPoolInstanceName = None
         srpPoolInstanceNames = conn.AssociatorNames(
             storageSystemInstanceName,
             ResultClass='Symm_SRPStoragePool')
 
-        for srpPoolInstanceName in srpPoolInstanceNames:
-            poolInstanceID = srpPoolInstanceName['InstanceID']
+        return self._get_pool_instance_and_system_name(
+            conn, srpPoolInstanceNames, storageSystemInstanceName,
+            poolNameInStr)
+
+    def _get_pool_instance_and_system_name(
+            self, conn, poolInstanceNames, storageSystemInstanceName,
+            poolname):
+        """Get the pool instance and the system name
+
+        :param conn: the ecom connection
+        :param poolInstanceNames: list of pool instances
+        :param storageSystemInstanceName: storage system instance name
+        :param poolname: pool name (string)
+        :returns: foundPoolInstanceName, systemNameStr
+        """
+        foundPoolInstanceName = None
+        poolnameStr = None
+        systemNameStr = storageSystemInstanceName['Name']
+        for poolInstanceName in poolInstanceNames:
             # Example: SYMMETRIX-+-000196700535-+-SR-+-SRP_1
-            poolnameStr, systemNameStr = self.parse_pool_instance_id_v3(
-                poolInstanceID)
-            if poolnameStr is not None and systemNameStr is not None:
-                if six.text_type(poolNameInStr) == six.text_type(poolnameStr):
-                    try:
-                        conn.GetInstance(srpPoolInstanceName)
-                        foundPoolInstanceName = srpPoolInstanceName
-                    except Exception:
-                        foundPoolInstanceName = None
+            # Example: SYMMETRIX+000195900551+TP+Sol_Innov
+            poolnameStr = self._get_pool_name(conn, poolInstanceName)
+            if poolnameStr is not None:
+                if six.text_type(poolname) == six.text_type(poolnameStr):
+                    foundPoolInstanceName = poolInstanceName
                     break
 
         return foundPoolInstanceName, systemNameStr
+
+    def _get_pool_name(self, conn, poolInstanceName):
+        """The pool name from the instance
+
+        :param conn: the ecom connection
+        :param poolInstanceName: the pool instance
+        :returns: poolnameStr
+        """
+        poolnameStr = None
+        try:
+            poolInstance = conn.GetInstance(poolInstanceName)
+            poolnameStr = poolInstance['ElementName']
+        except Exception:
+            pass
+        return poolnameStr
 
     def find_storageSystem(self, conn, arrayStr):
         """Find an array instance name given the array name.
@@ -1831,21 +1845,28 @@ class EMCVMAXUtils(object):
         LOG.debug("metaMembers: %(members)s.", {'members': metaMembers})
         return metaMembers
 
-    def get_meta_members_capacity_in_bit(self, conn, volumeInstanceNames):
-        """Get the capacity in bits of all meta device member volumes.
+    def get_meta_members_capacity_in_byte(self, conn, volumeInstanceNames):
+        """Get the capacity in byte of all meta device member volumes.
 
         :param conn: the ecom connection
         :param volumeInstanceNames: array contains meta device member volumes
         :returns: array contains capacities of each member device in bits
         """
-        capacitiesInBit = []
+        capacitiesInByte = []
+        headVolume = conn.GetInstance(volumeInstanceNames[0])
+        totalSizeInByte = (
+            headVolume['ConsumableBlocks'] * headVolume['BlockSize'])
+        volumeInstanceNames.pop(0)
         for volumeInstanceName in volumeInstanceNames:
             volumeInstance = conn.GetInstance(volumeInstanceName)
             numOfBlocks = volumeInstance['ConsumableBlocks']
             blockSize = volumeInstance['BlockSize']
-            volumeSizeInbits = numOfBlocks * blockSize
-            capacitiesInBit.append(volumeSizeInbits)
-        return capacitiesInBit
+            volumeSizeInByte = numOfBlocks * blockSize
+            capacitiesInByte.append(volumeSizeInByte)
+            totalSizeInByte = totalSizeInByte - volumeSizeInByte
+
+        capacitiesInByte.insert(0, totalSizeInByte)
+        return capacitiesInByte
 
     def get_existing_instance(self, conn, instanceName):
         """Check that the instance name still exists and return the instance.
@@ -2112,3 +2133,48 @@ class EMCVMAXUtils(object):
                 {'source': sourceDeviceId, 'storageSystem': storageSystem})
 
         return foundSyncInstanceName
+
+    def get_smi_version(self, conn):
+        intVersion = 0
+        swIndentityInstances = conn.EnumerateInstances(
+            'SE_ManagementServerSoftwareIdentity')
+        if swIndentityInstances:
+            swIndentityInstance = swIndentityInstances[0]
+            majorVersion = swIndentityInstance['MajorVersion']
+            minorVersion = swIndentityInstance['MinorVersion']
+            revisionNumber = swIndentityInstance['RevisionNumber']
+
+            intVersion = int(str(majorVersion) + str(minorVersion)
+                             + str(revisionNumber))
+
+            LOG.debug("Major version: %(majV)lu, Minor version: %(minV)lu, "
+                      "Revision number: %(revNum)lu, Version: %(intV)lu.",
+                      {'majV': majorVersion,
+                       'minV': minorVersion,
+                       'revNum': revisionNumber,
+                       'intV': intVersion})
+        return intVersion
+
+    def get_composite_elements(
+            self, conn, volumeInstance):
+        """Get the meta members of a composite volume.
+
+        :param conn: ECOM connection
+        :param volumeInstance: the volume instance
+        :returns memberVolumes: a list of meta members
+        """
+        memberVolumes = None
+        storageSystemName = volumeInstance['SystemName']
+        elementCompositionService = self.find_element_composition_service(
+            conn, storageSystemName)
+        rc, ret = conn.InvokeMethod(
+            'GetCompositeElements',
+            elementCompositionService,
+            TheElement=volumeInstance.path)
+
+        if 'OutElements' in ret:
+            LOG.debug("Get composite elements of volume "
+                      "%(volume)s rc=%(rc)d, ret=%(ret)s",
+                      {'volume': volumeInstance.path, 'rc': rc, 'ret': ret})
+            memberVolumes = ret['OutElements']
+        return memberVolumes

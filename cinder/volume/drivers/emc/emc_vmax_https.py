@@ -14,18 +14,18 @@
 #    under the License.
 
 import base64
+import httplib
 import os
 import socket
 import ssl
 import string
 import struct
+import urllib
 
 from eventlet import patcher
 import OpenSSL
 from oslo_log import log as logging
 import six
-from six.moves import http_client
-from six.moves import urllib
 
 from cinder.i18n import _, _LI
 
@@ -74,7 +74,7 @@ def get_default_ca_certs():
 class OpenSSLConnectionDelegator(object):
     """An OpenSSL.SSL.Connection delegator.
 
-    Supplies an additional 'makefile' method which http_client requires
+    Supplies an additional 'makefile' method which httplib requires
     and is not present in OpenSSL.SSL.Connection.
     Note: Since it is not possible to inherit from OpenSSL.SSL.Connection
     a delegator must be used.
@@ -89,7 +89,7 @@ class OpenSSLConnectionDelegator(object):
         return socket._fileobject(self.connection, *args, **kwargs)
 
 
-class HTTPSConnection(http_client.HTTPSConnection):
+class HTTPSConnection(httplib.HTTPSConnection):
     def __init__(self, host, port=None, key_file=None, cert_file=None,
                  strict=None, ca_certs=None, no_verification=False):
         if not pywbemAvailable:
@@ -101,9 +101,9 @@ class HTTPSConnection(http_client.HTTPSConnection):
         else:
             excp_lst = ()
         try:
-            http_client.HTTPSConnection.__init__(self, host, port,
-                                                 key_file=key_file,
-                                                 cert_file=cert_file)
+            httplib.HTTPSConnection.__init__(self, host, port,
+                                             key_file=key_file,
+                                             cert_file=cert_file)
 
             self.key_file = None if key_file is None else key_file
             self.cert_file = None if cert_file is None else cert_file
@@ -255,7 +255,7 @@ def wbem_request(url, data, creds, headers=None, debug=0, x509=None,
     """Send request over HTTP.
 
     Send XML data over HTTP to the specified url. Return the
-    response in XML.  Uses Python's build-in http_client.  x509 may be a
+    response in XML.  Uses Python's build-in httplib.  x509 may be a
     dictionary containing the location of the SSL certificate and key
     files.
     """
@@ -274,7 +274,7 @@ def wbem_request(url, data, creds, headers=None, debug=0, x509=None,
     localAuthHeader = None
     tryLimit = 5
 
-    if isinstance(data, six.text_type):
+    if isinstance(data, unicode):
         data = data.encode('utf-8')
     data = '<?xml version="1.0" encoding="utf-8" ?>\n' + data
 
@@ -309,10 +309,10 @@ def wbem_request(url, data, creds, headers=None, debug=0, x509=None,
             h.putheader('PegasusAuthorization', 'Local "%s"' % locallogin)
 
         for hdr in headers:
-            if isinstance(hdr, six.text_type):
+            if isinstance(hdr, unicode):
                 hdr = hdr.encode('utf-8')
             s = map(lambda x: string.strip(x), string.split(hdr, ":", 1))
-            h.putheader(urllib.parse.quote(s[0]), urllib.parse.quote(s[1]))
+            h.putheader(urllib.quote(s[0]), urllib.quote(s[1]))
 
         try:
             h.endheaders()
@@ -328,7 +328,7 @@ def wbem_request(url, data, creds, headers=None, debug=0, x509=None,
             if response.status != 200:
                 raise pywbem.cim_http.Error('HTTP error')
 
-        except http_client.BadStatusLine as arg:
+        except httplib.BadStatusLine as arg:
             msg = (_("Bad Status line returned: %(arg)s.")
                    % {'arg': arg})
             raise pywbem.cim_http.Error(msg)
