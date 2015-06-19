@@ -62,8 +62,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         super(NexentaISCSIDriver, self).__init__(*args, **kwargs)
         self.nms = None
         self.tg_dict = {}
-        self.current_tg = ''
-        self.current_target = ''
+        self.zvol_dict = {}
+        self.current_tg = None
         if self.configuration:
             self.configuration.append_config_values(
                 options.NEXENTA_CONNECTION_OPTIONS)
@@ -97,55 +97,6 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             backend_name = self.__class__.__name__
         return backend_name
 
-    # def get_valid_target(self):
-    #     targets = self.nms.stmf.list_targets()
-    #     if not targets:
-    #         return False
-    #     target_num = '1'
-    #     for target in targets:
-    #         if target.split('-')[-1] > target_num:
-    #             target_num = target.split('-')[-1]
-    #         if target.startswith(self._get_target_name()):
-    #             LOG.warning(self.nms.iscsi.get_all_luns())
-    #             if self.nms.iscsi.get_luns(target) < 2:
-    #                 return target
-        # target_name = '%(base)s-%(num)s' % {
-        #     'base': self._get_target_group_name(),
-        #     'num': target_num
-        # }
-    #     self.nms.iscsitarget.create_target({
-    #         'target_name': target_name})
-    #     return target_name
-
-    def get_valid_target_group(self):
-        zvol_list = self.nms.zvol.get_names(
-            '%s/volume-' % self.volume)
-        for zvol in zvol_list:
-            try:
-                mapping = self.nms.scsidisk.list_lun_mapping_entries(zvol)[0]
-            except nexenta.NexentaException as exc:
-                if 'Unable to locate the specified zvol' in exc.args[0]:
-                    LOG.warning(_LW('No LUN found for zvol %s') % zvol)
-            LOG.warning(mapping)
-            if mapping['target_group'] in self.tg_dict:
-                self.tg_dict[mapping['target_group']] += 1
-            else:
-                self.tg_dict[mapping['target_group']] = 1
-        tg_num = '0'
-        for tg in self.tg_dict:
-            if tg.split('-')[-1] > tg_num:
-                tg_num = tg.split('-')[-1]
-            if self.tg_dict[tg] < 3:
-                return tg
-        tg_name = '%(base)s-%(num)s' % {
-            'base': self._get_target_group_name(),
-            'num': int(tg_num) + 1
-        }
-        self.nms.stmf.create_targetgroup(tg_name)
-        self.current_tg = tg_name
-        self.tg_dict[tg_name] = 0
-        return tg_name
-
     def do_setup(self, context):
         if self.nms_protocol == 'auto':
             protocol, auto = 'http', True
@@ -156,25 +107,15 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             self.nms_password, auto=auto)
 
         target_group_name = self.get_valid_target_group()
-        # if not self._target_group_exists(target_group_name):
-        #     try:
-        #         self.nms.stmf.create_targetgroup(target_group_name)
-        #     except nexenta.NexentaException as exc:
-        #         if ('already exists' in exc.args[0] or
-        #                 'target must be offline' in exc.args[0]):
-        #             LOG.info('Ignored target group creation error "%s" '
-        #                      'while ensuring export.', exc)
-        #         else:
-        #             raise
         target_name = '%(base)s-%(num)s' % {
             'base': self._get_target_name(),
             'num': target_group_name.split('-')[-1]
         }
+
         if not self._target_exists(target_name):
             try:
                 self.nms.iscsitarget.create_target({
                     'target_name': target_name})
-                self.current_target = target_name
             except nexenta.NexentaException as exc:
                 if 'already contains' in exc.args[0]:
                     LOG.info('Ignored target creation error "%s" while '
@@ -202,6 +143,74 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         if not self.nms.volume.object_exists(self.volume):
             raise LookupError(_("Volume %s does not exist in Nexenta SA"),
                               self.volume)
+
+    def get_valid_target_group(self):
+        """Check NexentaStor appliance for all existing LU mappings.
+        Fill in zvol_dict with info for existing zvols
+        If there is a target with less than 255 mappings,
+        Return targetgroup containing this target, else create new targetgroup
+        """
+        tg_list = self.nms.stmf.list_targetgroups()
+        for tg in tg_list:
+            if tg.startswith(self._get_target_group_name()):
+                self.tg_dict[tg] = 0
+        zvol_list = self.nms.zvol.get_names(
+            '%s/volume-' % self.volume)
+        for zvol in zvol_list:
+            try:
+                mapping = self.nms.scsidisk.list_lun_mapping_entries(zvol)[0]
+                # tg_dict collects amount of mappings in each targetgroup
+                self.tg_dict[mapping['target_group']] += 1
+                self.zvol_dict[zvol] = {
+                    'target': '%(base)s-%(num)s' % {
+                        'base': self._get_target_name(),
+                        'num': mapping['target_group'].split('-')[-1]
+                    },
+                    'lun': mapping['lun'],
+                    'target_group': mapping['target_group']
+                }
+            except nexenta.NexentaException as exc:
+                if 'Unable to locate the specified zvol' in exc.args[0]:
+                    LOG.warning(_LW('No LUN found for zvol %s') % zvol)
+        # if tgs exist on appliance, find not full and return
+        for tg in self.tg_dict:
+            if self.tg_dict[tg] < 255:
+                self.current_tg = tg
+                return tg
+        # either no tg found or all full
+        if tg_list:
+            tg_num = int(sorted(tg_list[-1].split('-')[-1])) + 1
+        else:
+            tg_num = 1
+        tg_name = '%(base)s-%(num)s' % {
+            'base': self._get_target_group_name(),
+            'num': tg_num
+        }
+        self.nms.stmf.create_targetgroup(tg_name)
+        self.current_tg = tg_name
+        self.tg_dict[tg_name] = 0
+        return tg_name
+
+    def get_next_target_group(self):
+        """Create new target_group and collect it in current_tg"""
+        tg_num = int(sorted(self.tg_dict.keys())[-1].split('-')[-1]) + 1
+        tg_name = '%(base)s-%(num)s' % {
+            'base': self._get_target_group_name(),
+            'num': tg_num
+        }
+        self.nms.stmf.create_targetgroup(tg_name)
+        self.current_tg = tg_name
+        self.tg_dict[tg_name] = 0
+
+        target_name = '%(base)s-%(num)s' % {
+            'base': self._get_target_name(),
+            'num': tg_num
+        }
+        self.nms.iscsitarget.create_target({
+            'target_name': target_name})
+
+        self.nms.stmf.add_targetgroup_member(
+            self.current_tg, target_name)
 
     def _get_zvol_name(self, volume_name):
         """Return zvol name that corresponds given volume name."""
@@ -601,7 +610,6 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :return: LUN
         """
         zvol_name = self._get_zvol_name(volume_name)
-        target_group_name = self.current_tg
         if not(self._is_lu_shared(zvol_name)):
             raise LookupError(_("LU does not exist for ZVol: %s"), zvol_name)
         mappings = self.nms.scsidisk.list_lun_mapping_entries(zvol_name)
@@ -625,22 +633,25 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :return: True if volume exported, else False
         """
         zvol_name = self._get_zvol_name(volume['name'])
-        target_name = self.current_target
-        target_group_name = self.current_tg
+        target_name = '%(base)s-%(num)s' % {
+            'base': self._get_target_name(),
+            'num': self.current_tg.split('-')[-1]
+        }
         return (self._target_exists(target_name) and
-                self._target_group_exists(target_group_name) and
-                self._target_member_in_target_group(target_group_name,
+                self._target_group_exists(self.current_tg) and
+                self._target_member_in_target_group(self.current_tg,
                                                     target_name) and
                 self._lu_exists(zvol_name) and
                 self._is_lu_shared(zvol_name))
 
     def _get_provider_location(self, volume):
         """Returns volume iscsiadm-formatted provider location string."""
-        return '%(host)s:%(port)s,1 %(name)s %(lun)s' % {
+        zvol_name = self._get_zvol_name(volume['name'])
+        return '%(host)s:%(port)s,1 %(target)s %(lun)s' % {
             'host': self.nms_host,
             'port': self.configuration.nexenta_iscsi_target_portal_port,
-            'name': self.current_target,
-            'lun': self._get_lun(volume['name'])
+            'target': self.zvol_dict[zvol_name]['target'],
+            'lun': self.zvol_dict[zvol_name]['lun']
         }
 
     def _do_export(self, _ctx, volume, ensure=False):
@@ -651,25 +662,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             resources
         """
         zvol_name = self._get_zvol_name(volume['name'])
-        if not self.tg_dict[self.current_tg] < 2:
-            tg_name = '%(base)s-%(num)s' % {
-                'base': self._get_target_group_name(),
-                'num': int(self.current_tg.strip('-')[-1]) + 1
-            }
-            self.nms.stmf.create_targetgroup(tg_name)
-            self.current_tg = tg_name
-            self.tg_dict[tg_name] = 0
-
-            target_name = '%(base)s-%(num)s' % {
-                'base': self._get_target_name(),
-                'num': int(self.current_target.strip('-')[-1]) + 1
-            }
-            self.nms.iscsitarget.create_target({
-                'target_name': target_name})
-            self.current_target = target_name
-
-            self.nms.stmf.add_targetgroup_member(
-                self.current_tg, self.current_target)
+        if not self.tg_dict[self.current_tg] < 255:
+            self.get_next_target_group()
 
         if not self._lu_exists(zvol_name):
             try:
@@ -689,6 +683,16 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                     raise
                 LOG.info(_LI('Ignored LUN mapping entry addition error "%s" '
                              'while ensuring export.'), exc)
+
+        zvol_name = self._get_zvol_name(volume['name'])
+        if zvol_name not in self.zvol_dict:
+            self.zvol_dict[zvol_name] = {
+                'target': '%(base)s-%(num)s' % {
+                    'base': self._get_target_name(),
+                    'num': self.current_tg.split('-')[-1]
+                },
+                'lun': self._get_lun(volume['name'])
+            }
 
     def create_export(self, _ctx, volume):
         """Create new export for zvol.
