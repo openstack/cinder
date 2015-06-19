@@ -30,6 +30,7 @@ from cinder import context
 from cinder.db import base
 from cinder import exception
 from cinder.i18n import _, _LI, _LW
+from cinder import objects
 import cinder.policy
 from cinder import quota
 from cinder import utils
@@ -60,8 +61,7 @@ class API(base.Base):
 
     def get(self, context, backup_id):
         check_policy(context, 'get')
-        rv = self.db.backup_get(context, backup_id)
-        return dict(rv)
+        return objects.Backup.get_by_id(context, backup_id)
 
     def delete(self, context, backup_id):
         """Make the RPC call to delete a volume backup."""
@@ -78,21 +78,23 @@ class API(base.Base):
             msg = _('Incremental backups exist for this backup.')
             raise exception.InvalidBackup(reason=msg)
 
-        self.db.backup_update(context, backup_id, {'status': 'deleting'})
-        self.backup_rpcapi.delete_backup(context,
-                                         backup['host'],
-                                         backup['id'])
+        backup.status = 'deleting'
+        backup.save()
+        self.backup_rpcapi.delete_backup(context, backup)
 
     def get_all(self, context, search_opts=None):
         if search_opts is None:
             search_opts = {}
         check_policy(context, 'get_all')
+
         if context.is_admin:
-            backups = self.db.backup_get_all(context, filters=search_opts)
+            backups = objects.BackupList.get_all(context, filters=search_opts)
         else:
-            backups = self.db.backup_get_all_by_project(context,
-                                                        context.project_id,
-                                                        filters=search_opts)
+            backups = objects.BackupList.get_all_by_project(
+                context,
+                context.project_id,
+                filters=search_opts
+            )
 
         return backups
 
@@ -177,50 +179,51 @@ class API(base.Base):
         # backup to do an incremental backup.
         latest_backup = None
         if incremental:
-            backups = self.db.backup_get_all_by_volume(context.elevated(),
-                                                       volume_id)
-            if backups:
-                latest_backup = max(backups, key=lambda x: x['created_at'])
+            backups = objects.BackupList.get_all_by_volume(context.elevated(),
+                                                           volume_id)
+            if backups.objects:
+                latest_backup = max(backups.objects,
+                                    key=lambda x: x['created_at'])
             else:
                 msg = _('No backups available to do an incremental backup.')
                 raise exception.InvalidBackup(reason=msg)
 
         parent_id = None
         if latest_backup:
-            parent_id = latest_backup['id']
+            parent_id = latest_backup.id
             if latest_backup['status'] != "available":
                 msg = _('The parent backup must be available for '
                         'incremental backup.')
                 raise exception.InvalidBackup(reason=msg)
 
         self.db.volume_update(context, volume_id, {'status': 'backing-up'})
-        options = {'user_id': context.user_id,
-                   'project_id': context.project_id,
-                   'display_name': name,
-                   'display_description': description,
-                   'volume_id': volume_id,
-                   'status': 'creating',
-                   'container': container,
-                   'parent_id': parent_id,
-                   'size': volume['size'],
-                   'host': volume_host, }
         try:
-            backup = self.db.backup_create(context, options)
+            kwargs = {
+                'user_id': context.user_id,
+                'project_id': context.project_id,
+                'display_name': name,
+                'display_description': description,
+                'volume_id': volume_id,
+                'status': 'creating',
+                'container': container,
+                'parent_id': parent_id,
+                'size': volume['size'],
+                'host': volume_host,
+            }
+            backup = objects.Backup(context=context, **kwargs)
+            backup.create()
             QUOTAS.commit(context, reservations)
         except Exception:
             with excutils.save_and_reraise_exception():
                 try:
-                    self.db.backup_destroy(context, backup['id'])
+                    backup.destroy()
                 finally:
                     QUOTAS.rollback(context, reservations)
 
         # TODO(DuncanT): In future, when we have a generic local attach,
         #                this can go via the scheduler, which enables
         #                better load balancing and isolation of services
-        self.backup_rpcapi.create_backup(context,
-                                         backup['host'],
-                                         backup['id'],
-                                         volume_id)
+        self.backup_rpcapi.create_backup(context, backup)
 
         return backup
 
@@ -277,14 +280,13 @@ class API(base.Base):
 
         # Setting the status here rather than setting at start and unrolling
         # for each error condition, it should be a very small window
-        self.db.backup_update(context, backup_id, {'status': 'restoring'})
+        backup.status = 'restoring'
+        backup.save()
+        volume_host = volume_utils.extract_host(volume['host'], 'host')
         self.db.volume_update(context, volume_id, {'status':
                                                    'restoring-backup'})
 
-        volume_host = volume_utils.extract_host(volume['host'], 'host')
-        self.backup_rpcapi.restore_backup(context,
-                                          volume_host,
-                                          backup['id'],
+        self.backup_rpcapi.restore_backup(context, volume_host, backup,
                                           volume_id)
 
         d = {'backup_id': backup_id,
@@ -304,8 +306,8 @@ class API(base.Base):
         # get backup info
         backup = self.get(context, backup_id)
         # send to manager to do reset operation
-        self.backup_rpcapi.reset_status(ctxt=context, host=backup['host'],
-                                        backup_id=backup_id, status=status)
+        self.backup_rpcapi.reset_status(ctxt=context, backup=backup,
+                                        status=status)
 
     def export_record(self, context, backup_id):
         """Make the RPC call to export a volume backup.
@@ -330,9 +332,7 @@ class API(base.Base):
                   {'ctx': context,
                    'host': backup['host'],
                    'id': backup['id']})
-        export_data = self.backup_rpcapi.export_record(context,
-                                                       backup['host'],
-                                                       backup['id'])
+        export_data = self.backup_rpcapi.export_record(context, backup)
 
         return export_data
 
@@ -357,15 +357,18 @@ class API(base.Base):
         if len(hosts) == 0:
             raise exception.ServiceNotFound(service_id=backup_service)
 
-        options = {'user_id': context.user_id,
-                   'project_id': context.project_id,
-                   'volume_id': '0000-0000-0000-0000',
-                   'status': 'creating', }
-        backup = self.db.backup_create(context, options)
+        kwargs = {
+            'user_id': context.user_id,
+            'project_id': context.project_id,
+            'volume_id': '0000-0000-0000-0000',
+            'status': 'creating',
+        }
+        backup = objects.Backup(context=context, **kwargs)
+        backup.create()
         first_host = hosts.pop()
         self.backup_rpcapi.import_record(context,
                                          first_host,
-                                         backup['id'],
+                                         backup,
                                          backup_service,
                                          backup_url,
                                          hosts)

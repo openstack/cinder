@@ -61,9 +61,8 @@ VALID_BACKUP_MODES = ['image', 'file']
 
 def _get_backup_metadata(backup, operation):
     """Return metadata persisted with backup object."""
-    svc_metadata = backup['service_metadata']
     try:
-        svc_dict = json.loads(svc_metadata)
+        svc_dict = json.loads(backup.service_metadata)
         backup_path = svc_dict.get('backup_path')
         backup_mode = svc_dict.get('backup_mode')
     except TypeError:
@@ -364,35 +363,31 @@ class TSMBackupDriver(driver.BackupDriver):
                     "not yet support this feature.")
             raise exception.InvalidBackup(reason=msg)
 
-        backup_id = backup['id']
-        volume_id = backup['volume_id']
         volume_path, backup_mode = _get_volume_realpath(volume_file,
-                                                        volume_id)
+                                                        backup.volume_id)
         LOG.debug('Starting backup of volume: %(volume_id)s to TSM,'
                   ' volume path: %(volume_path)s, mode: %(mode)s.',
-                  {'volume_id': volume_id,
+                  {'volume_id': backup.volume_id,
                    'volume_path': volume_path,
                    'mode': backup_mode})
 
-        backup_path = _create_unique_device_link(backup_id,
+        backup_path = _create_unique_device_link(backup.id,
                                                  volume_path,
-                                                 volume_id,
+                                                 backup.volume_id,
                                                  backup_mode)
 
         service_metadata = {'backup_mode': backup_mode,
                             'backup_path': backup_path}
-        self.db.backup_update(self.context,
-                              backup_id,
-                              {'service_metadata':
-                               json.dumps(service_metadata)})
+        backup.service_metadata = json.dumps(service_metadata)
+        backup.save()
 
         try:
-            self._do_backup(backup_path, volume_id, backup_mode)
+            self._do_backup(backup_path, backup.volume_id, backup_mode)
         except processutils.ProcessExecutionError as exc:
             err = (_('backup: %(vol_id)s failed to run dsmc '
                      'on %(bpath)s.\n'
                      'stdout: %(out)s\n stderr: %(err)s')
-                   % {'vol_id': volume_id,
+                   % {'vol_id': backup.volume_id,
                       'bpath': backup_path,
                       'out': exc.stdout,
                       'err': exc.stderr})
@@ -403,7 +398,7 @@ class TSMBackupDriver(driver.BackupDriver):
                      'due to invalid arguments '
                      'on %(bpath)s.\n'
                      'stdout: %(out)s\n stderr: %(err)s')
-                   % {'vol_id': volume_id,
+                   % {'vol_id': backup.volume_id,
                       'bpath': backup_path,
                       'out': exc.stdout,
                       'err': exc.stderr})
@@ -411,9 +406,10 @@ class TSMBackupDriver(driver.BackupDriver):
             raise exception.InvalidBackup(reason=err)
 
         finally:
-            _cleanup_device_hardlink(backup_path, volume_path, volume_id)
+            _cleanup_device_hardlink(backup_path, volume_path,
+                                     backup.volume_id)
 
-        LOG.debug('Backup %s finished.', backup_id)
+        LOG.debug('Backup %s finished.', backup.id)
 
     def restore(self, backup, volume_id, volume_file):
         """Restore the given volume backup from TSM server.
@@ -424,8 +420,6 @@ class TSMBackupDriver(driver.BackupDriver):
         :raises InvalidBackup
         """
 
-        backup_id = backup['id']
-
         # backup_path is the path that was originally backed up.
         backup_path, backup_mode = _get_backup_metadata(backup, 'restore')
 
@@ -434,7 +428,7 @@ class TSMBackupDriver(driver.BackupDriver):
                   'backup: %(backup_id)s, '
                   'mode: %(mode)s.',
                   {'volume_id': volume_id,
-                   'backup_id': backup_id,
+                   'backup_id': backup.id,
                    'mode': backup_mode})
 
         # volume_path is the path to restore into.  This may
@@ -442,7 +436,7 @@ class TSMBackupDriver(driver.BackupDriver):
         volume_path, unused = _get_volume_realpath(volume_file,
                                                    volume_id)
 
-        restore_path = _create_unique_device_link(backup_id,
+        restore_path = _create_unique_device_link(backup.id,
                                                   volume_path,
                                                   volume_id,
                                                   backup_mode)
@@ -475,7 +469,7 @@ class TSMBackupDriver(driver.BackupDriver):
             _cleanup_device_hardlink(restore_path, volume_path, volume_id)
 
         LOG.debug('Restore %(backup_id)s to %(volume_id)s finished.',
-                  {'backup_id': backup_id,
+                  {'backup_id': backup.id,
                    'volume_id': volume_id})
 
     def delete(self, backup):
@@ -487,10 +481,9 @@ class TSMBackupDriver(driver.BackupDriver):
 
         delete_attrs = {'Total number of objects deleted': '1'}
         delete_path, backup_mode = _get_backup_metadata(backup, 'restore')
-        volume_id = backup['volume_id']
 
         LOG.debug('Delete started for backup: %(backup)s, mode: %(mode)s.',
-                  {'backup': backup['id'],
+                  {'backup': backup.id,
                    'mode': backup_mode})
 
         try:
@@ -508,7 +501,7 @@ class TSMBackupDriver(driver.BackupDriver):
         except processutils.ProcessExecutionError as exc:
             err = (_('delete: %(vol_id)s failed to run dsmc with '
                      'stdout: %(out)s\n stderr: %(err)s')
-                   % {'vol_id': volume_id,
+                   % {'vol_id': backup.volume_id,
                       'out': exc.stdout,
                       'err': exc.stderr})
             LOG.error(err)
@@ -517,7 +510,7 @@ class TSMBackupDriver(driver.BackupDriver):
             err = (_('delete: %(vol_id)s failed to run dsmc '
                      'due to invalid arguments with '
                      'stdout: %(out)s\n stderr: %(err)s')
-                   % {'vol_id': volume_id,
+                   % {'vol_id': backup.volume_id,
                       'out': exc.stdout,
                       'err': exc.stderr})
             LOG.error(err)
@@ -530,7 +523,7 @@ class TSMBackupDriver(driver.BackupDriver):
             # object can be removed.
             LOG.error(_LE('delete: %(vol_id)s failed with '
                           'stdout: %(out)s\n stderr: %(err)s'),
-                      {'vol_id': volume_id,
+                      {'vol_id': backup.volume_id,
                        'out': out,
                        'err': err})
 

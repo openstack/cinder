@@ -26,3 +26,4 @@ def register_all():
     # need to receive it via RPC.
     __import__('cinder.objects.volume')
     __import__('cinder.objects.snapshot')
+    __import__('cinder.objects.backup')

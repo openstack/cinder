@@ -219,7 +219,7 @@ class BackupsController(wsgi.Controller):
 
         backups = self.backup_api.get_all(context, search_opts=filters)
         backup_count = len(backups)
-        limited_list = common.limited(backups, req)
+        limited_list = common.limited(backups.objects, req)
         req.cache_db_backups(limited_list)
 
         if is_detail:
