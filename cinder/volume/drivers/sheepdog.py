@@ -51,7 +51,6 @@ sheepdog_opts = [
 CONF = cfg.CONF
 CONF.import_opt("image_conversion_dir", "cinder.image.image_utils")
 CONF.register_opts(sheepdog_opts)
-<<<<<<< HEAD
 
 
 class SheepdogClient(object):
@@ -84,7 +83,7 @@ class SheepdogClient(object):
     def check_cluster_status(self):
         try:
             (stdout, stderr) = self._run_dog('cluster', 'info')
-        except exception.SheepdogCmdException as e:
+        except exception.SheepdogCmdError as e:
             exit_code = e.kwargs['exit_code']
             stderr = e.kwargs['stderr']
             with excutils.save_and_reraise_exception():
