@@ -51,6 +51,7 @@ sheepdog_opts = [
 CONF = cfg.CONF
 CONF.import_opt("image_conversion_dir", "cinder.image.image_utils")
 CONF.register_opts(sheepdog_opts)
+<<<<<<< HEAD
 
 
 class SheepdogClient(object):
@@ -123,6 +124,12 @@ class SheepdogDriver(driver.VolumeDriver):
         self.stats_pattern = re.compile(r'[\w\s%]*Total\s(\d+)\s(\d+)*')
         self._stats = {}
 
+    def _sheep_args(self):
+        """Return options of address and port for connect to sheepdog."""
+        return ('--address', self.sheep_addr,
+                '--port', str(self.sheep_port))
+
+
     def check_for_setup_error(self):
         self.client.check_cluster_status()
 
@@ -151,7 +158,7 @@ class SheepdogDriver(driver.VolumeDriver):
             # "sheepdog:192.168.10.2:7000:Alice"
             (label, ip, port, name) = image_location.split(":", 3)
 
-            self._try_execute('collie', 'vdi', 'list', '--address', ip,
+            self._try_execute('dog', 'vdi', 'list', '--address', ip,
                               '--port', port, name)
             cloneable = True
         except processutils.ProcessExecutionError as e:
@@ -223,11 +230,11 @@ class SheepdogDriver(driver.VolumeDriver):
         if not size:
             size = int(volume['size']) * units.Gi
 
-        self._try_execute('collie', 'vdi', 'resize',
+        self._try_execute('dog', 'vdi', 'resize',
                           volume['name'], size)
 
     def _delete(self, volume):
-        self._try_execute('collie', 'vdi', 'delete',
+        self._try_execute('dog', 'vdi', 'delete',
                           volume['name'])
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
@@ -270,7 +277,7 @@ class SheepdogDriver(driver.VolumeDriver):
 
     def delete_snapshot(self, snapshot):
         """Delete a sheepdog snapshot."""
-        self._try_execute('collie', 'vdi', 'delete', snapshot['volume_name'],
+        self._try_execute('dog', 'vdi', 'delete', snapshot['volume_name'],
                           '-s', snapshot['name'])
 
     def local_path(self, volume):
@@ -315,7 +322,7 @@ class SheepdogDriver(driver.VolumeDriver):
         stats['QoS_support'] = False
 
         try:
-            stdout, _err = self._execute('collie', 'node', 'info', '-r')
+            stdout, _err = self._execute('dog', 'node', 'info', '-r')
             m = self.stats_pattern.match(stdout)
             total = float(m.group(1))
             used = float(m.group(2))

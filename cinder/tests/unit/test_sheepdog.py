@@ -29,6 +29,8 @@ from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import sheepdog
 
+SHEEP_ADDR = '127.0.0.1'
+SHEEP_PORT = 7000
 
 COLLIE_NODE_INFO = """
 0 107287605248 3623897354 3%
@@ -62,13 +64,21 @@ class FakeImageService(object):
 class SheepdogTestCase(test.TestCase):
     def setUp(self):
         super(SheepdogTestCase, self).setUp()
-        self.driver = sheepdog.SheepdogDriver(
-            configuration=conf.Configuration(None))
+	# set IP and PORT of sheep process
+        self._cfg = conf.Configuration(None)
+        self._cfg.sheepdog_store_address = SHEEP_ADDR
+        self._cfg.sheepdog_store_port = SHEEP_PORT
+	# Initialize Sheepdog Driver
+        self.driver = sheepdog.SheepdogDriver(configuration=self._cfg)
 
         db_driver = self.driver.configuration.db_driver
         self.db = importutils.import_module(db_driver)
         self.driver.db = self.db
         self.driver.do_setup(None)
+
+    def test_sheep_args(self):
+        args = ('--address', SHEEP_ADDR, '--port', str(SHEEP_PORT))
+        self.assertEqual(args, self.driver._sheep_args())
 
     def test_update_volume_stats(self):
         def fake_stats(*args):
@@ -278,7 +288,7 @@ class SheepdogTestCase(test.TestCase):
         with mock.patch.object(self.driver, '_try_execute') as try_execute:
             self.assertTrue(
                 self.driver._is_cloneable(location, image_meta))
-            expected_cmd = ('collie', 'vdi', 'list',
+            expected_cmd = ('dog', 'vdi', 'list',
                             '--address', 'ip',
                             '--port', 'port',
                             uuid)
