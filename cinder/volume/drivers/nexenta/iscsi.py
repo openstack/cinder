@@ -174,7 +174,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                              'seems it was already deleted.'), volume_name)
                 return
             if 'zvol has children' in exc.args[0]:
-                raise exception.VolumeIsBusy(volume_name=volume_name)
+                LOG.info(_LI('Volume %s will be deleted later.'), volume_name)
+                return
             raise
         origin = props.get('origin')
         if origin and self._is_clone_snapshot_name(origin):
@@ -212,6 +213,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 LOG.warning(_LW('Failed to delete zfs snapshot '
                                 '%(volume_name)s@%(name)s'), snapshot)
             raise
+	self.create_export(None, volume)
 
     def _get_zfs_send_recv_cmd(self, src, dst):
         """Returns rrmgr command for source and destination."""
