@@ -211,6 +211,10 @@ volume_opts = [
                     'used to determine the goodness of a host. Only used '
                     'when using the goodness weigher is set to be used by '
                     'the Cinder scheduler.'),
+    cfg.BoolOpt('driver_ssl_cert_verify',
+                default=False,
+                help='If set to True the http client will validate the SSL '
+                     'certificate of the backend endpoint.'),
 ]
 
 # for backward compatibility
