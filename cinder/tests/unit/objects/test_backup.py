@@ -14,6 +14,7 @@
 
 import mock
 
+from cinder import context
 from cinder import objects
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import objects as test_objects
@@ -32,6 +33,14 @@ fake_backup = {
 
 
 class TestBackup(test_objects.BaseObjectsTestCase):
+    def setUp(self):
+        super(TestBackup, self).setUp()
+        # NOTE (e0ne): base tests contains original RequestContext from
+        # oslo_context. We change it to our RequestContext implementation
+        # to have 'elevated' method
+        self.context = context.RequestContext(self.user_id, self.project_id,
+                                              is_admin=False)
+
     @staticmethod
     def _compare(test, db, obj):
         for field, value in db.items():
@@ -62,7 +71,9 @@ class TestBackup(test_objects.BaseObjectsTestCase):
     def test_destroy(self, backup_destroy):
         backup = objects.Backup(context=self.context, id=1)
         backup.destroy()
-        backup_destroy.assert_called_once_with(self.context, '1')
+        self.assertTrue(backup_destroy.called)
+        admin_context = backup_destroy.call_args[0][0]
+        self.assertTrue(admin_context.is_admin)
 
 
 class TestBackupList(test_objects.BaseObjectsTestCase):

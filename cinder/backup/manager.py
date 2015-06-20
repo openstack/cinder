@@ -456,7 +456,6 @@ class BackupManager(manager.SchedulerDependentManager):
             reservations = None
             LOG.exception(_LE("Failed to update usages deleting backup"))
 
-        context = context.elevated()
         backup.destroy()
 
         # Commit the reservations
