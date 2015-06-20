@@ -730,6 +730,7 @@ class RBDTestCase(test.TestCase):
                 mock_get_mon_addrs:
             mock_get_mon_addrs.return_value = (hosts, ports)
 
+            volume_id = '0a83f0a3-ef6e-47b6-a8aa-20436bc9ed01'
             expected = {
                 'driver_volume_type': 'rbd',
                 'data': {
@@ -740,9 +741,11 @@ class RBDTestCase(test.TestCase):
                     'auth_enabled': False,
                     'auth_username': None,
                     'secret_type': 'ceph',
-                    'secret_uuid': None, }
+                    'secret_uuid': None,
+                    'volume_id': volume_id
+                }
             }
-            volume = dict(name=self.volume_name)
+            volume = dict(name=self.volume_name, id=volume_id)
             actual = self.driver.initialize_connection(volume, None)
             self.assertDictMatch(expected, actual)
             self.assertTrue(mock_get_mon_addrs.called)
