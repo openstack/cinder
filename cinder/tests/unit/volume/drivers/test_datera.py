@@ -328,35 +328,18 @@ class DateraVolumeTestCase(test.TestCase):
 
 stub_create_export = {
     u'_ipColl': [u'172.28.121.10', u'172.28.120.10'],
-    u'acls': {},
-    u'activeServers': {u'4594953e-f97f-e111-ad85-001e6738c0f0': u'1'},
-    u'ctype': u'TC_BLOCK_ISCSI',
-    u'endpointsExt1': {
-        u'4594953e-f97f-e111-ad85-001e6738c0f0': {
-            u'ipHigh': 0,
-            u'ipLow': u'192421036',
-            u'ipStr': u'172.28.120.11',
-            u'ipV': 4,
-            u'name': u'',
-            u'network': 24
-        }
-    },
-    u'endpointsExt2': {
-        u'4594953e-f97f-e111-ad85-001e6738c0f0': {
-            u'ipHigh': 0,
-            u'ipLow': u'192486572',
-            u'ipStr': u'172.28.121.11',
-            u'ipV': 4,
-            u'name': u'',
-            u'network': 24
-        }
-    },
-    u'inodes': {u'c20aba21-6ef6-446b-b374-45733b4883ba': u'1'},
-    u'name': u'',
-    u'networkPort': 0,
-    u'serverAllocation': u'TS_ALLOC_COMPLETED',
-    u'servers': {u'4594953e-f97f-e111-ad85-001e6738c0f0': u'1'},
-    u'targetAllocation': u'TS_ALLOC_COMPLETED',
+    u'active_initiators': [],
+    u'activeServers': [u'4594953e-f97f-e111-ad85-001e6738c0f0'],
+    u'admin_state': u'online',
+    u'atype': u'none',
+    u'creation_type': u'system_explicit',
+    u'endpoint_addrs': [u'172.30.128.2'],
+    u'endpoint_idents': [u'iqn.2013-05.com.daterainc::01:sn:fc372bc0490b2dbe'],
+    u'initiators': [],
+    u'name': u'OS-a8b4d666',
+    u'server_allocation': u'TS_ALLOC_COMPLETED',
+
+    u'servers': [u'4594953e-f97f-e111-ad85-001e6738c0f0'],
     u'targetIds': {
         u'4594953e-f97f-e111-ad85-001e6738c0f0': {
             u'ids': [{
@@ -365,8 +348,11 @@ stub_create_export = {
             }]
         }
     },
-    u'typeName': u'TargetIscsiConfig',
-    u'uuid': u'7071efd7-9f22-4996-8f68-47e9ab19d0fd'
+
+    u'target_allocation': u'TS_ALLOC_COMPLETED',
+    u'type': u'iscsi',
+    u'uuid': u'7071efd7-9f22-4996-8f68-47e9ab19d0fd',
+    u'volumes': []
 }
 
 stub_get_export = {
