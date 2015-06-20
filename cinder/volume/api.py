@@ -563,6 +563,10 @@ class API(base.Base):
 
     @wrap_check_policy
     def begin_detaching(self, context, volume):
+        # NOTE(vbala): The volume status might be 'detaching' already due to
+        # a previous begin_detaching call. Get updated volume status so that
+        # we fail such cases.
+        volume = self.db.volume_get(context, volume['id'])
         # If we are in the middle of a volume migration, we don't want the user
         # to see that the volume is 'detaching'. Having 'migration_status' set
         # will have the same effect internally.
