@@ -165,10 +165,12 @@ class SolidFireDriver(san.SanISCSIDriver):
                 configuration=self.configuration))
 
     def _create_template_account(self, account_name):
-        id = self._issue_api_request(
-            'GetAccountByName',
-            {'username': account_name})['result']['account']['accountID']
-        if not id:
+        # We raise an API exception if the account doesn't exist
+        try:
+            id = self._issue_api_request(
+                'GetAccountByName',
+                {'username': account_name})['result']['account']['accountID']
+        except exception.SolidFireAPIException:
             chap_secret = self._generate_random_string(12)
             params = {'username': account_name,
                       'initiatorSecret': chap_secret,
