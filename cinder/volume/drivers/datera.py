@@ -177,12 +177,9 @@ class DateraDriver(san.SanISCSIDriver):
                 'volumes', action='export', method='post',
                 body={'ctype': 'TC_BLOCK_ISCSI'}, resource=volume['id'])
 
-            portal = "%s:3260" % export['_ipColl'][0]
+            portal = "%s:3260" % export['endpoint_addrs'][0]
 
-            # NOTE(thingee): Refer to the Datera test for a stub of what this
-            # looks like. We're just going to pull the first IP that the Datera
-            # cluster makes available for the portal.
-            iqn = next(export['targetIds'].values())['ids'][0]['id']
+            iqn = export['endpoint_idents'][0]
         else:
             export = self._issue_api_request(
                 'export_configs',
