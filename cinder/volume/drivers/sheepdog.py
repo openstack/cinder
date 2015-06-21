@@ -69,8 +69,7 @@ class SheepdogClient(object):
 
     def _run_dog(self, command, subcommand, *params):
         cmd = ('dog', command, subcommand,
-               '-a', self.addr, '-p', self.port) + params
-
+               '-a', self.addr, '-p', str(self.port)) + params
         try:
             return self._execute(*cmd)
         except processutils.ProcessExecutionError as e:
@@ -122,12 +121,6 @@ class SheepdogDriver(driver.VolumeDriver):
                                      CONF.sheepdog_store_port)
         self.stats_pattern = re.compile(r'[\w\s%]*Total\s(\d+)\s(\d+)*')
         self._stats = {}
-
-    def _sheep_args(self):
-        """Return options of address and port for connect to sheepdog."""
-        return ('--address', self.sheep_addr,
-                '--port', str(self.sheep_port))
-
 
     def check_for_setup_error(self):
         self.client.check_cluster_status()
