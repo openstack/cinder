@@ -703,6 +703,28 @@ class TestCinderManageCmd(test.TestCase):
             sys.argv[1:], project='cinder', version=version.version_string())
         self.assertTrue(action_fn.called)
 
+    @mock.patch('oslo_config.cfg.ConfigOpts.__call__')
+    @mock.patch('oslo_log.log.setup')
+    @mock.patch('oslo_config.cfg.ConfigOpts.register_cli_opt')
+    def test_main_invalid_dir(self, register_cli_opt, log_setup,
+                              config_opts_call):
+        script_name = 'cinder-manage'
+        fake_dir = 'fake-dir'
+        invalid_dir = 'Invalid directory:'
+        sys.argv = [script_name, '--config-dir', fake_dir]
+        config_opts_call.side_effect = cfg.ConfigDirNotFoundError(fake_dir)
+
+        with mock.patch('sys.stdout', new=six.StringIO()) as fake_out:
+            exit = self.assertRaises(SystemExit, cinder_manage.main)
+            self.assertTrue(register_cli_opt.called)
+            config_opts_call.assert_called_once_with(
+                sys.argv[1:], project='cinder',
+                version=version.version_string())
+            self.assertIn(invalid_dir, fake_out.getvalue())
+            self.assertIn(fake_dir, fake_out.getvalue())
+            self.assertFalse(log_setup.called)
+            self.assertEqual(2, exit.code)
+
 
 class TestCinderRtstoolCmd(test.TestCase):
 
