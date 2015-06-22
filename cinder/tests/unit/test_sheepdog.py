@@ -315,6 +315,11 @@ class SheepdogDriverTestCase(test.TestCase):
         self.stubs.Set(self.driver, '_execute', fake_stats)
         self.driver.check_for_setup_error()
 
+    def test_create_volume(self):
+        with mock.patch.object(self.client, 'create') as fake_execute:
+            self.driver.create_volume(self.test_data.TEST_VOLUME)
+        fake_execute.assert_called_once_with(self.test_data.TEST_VOLUME)
+
     def test_copy_image_to_volume(self):
         @contextlib.contextmanager
         def fake_temp_file():
