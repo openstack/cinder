@@ -102,7 +102,7 @@ class SheepdogClient(object):
 
         reason = _('Invalid sheepdog cluster status.')
         if stdout.startswith(self.DOG_RESP_CLUSTER_NOT_FORMATTED):
-            reason = _('Cluster is not formatted.'
+            reason = _('Cluster is not formatted. '
                        'You should probably perform "dog cluster format".')
         elif stdout.startswith(self.DOG_RESP_CLUSTER_WAITING):
             reason = _('Waiting for all nodes to join cluster. '
