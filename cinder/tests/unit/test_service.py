@@ -150,6 +150,29 @@ class ServiceTestCase(test.TestCase):
             self.assertTrue(serv.model_disconnected)
             self.assertFalse(mock_db.service_update.called)
 
+    def test_report_state_disconnected_DBError(self):
+        service_ref = {'host': self.host,
+                       'binary': self.binary,
+                       'topic': self.topic,
+                       'report_count': 0,
+                       'availability_zone': 'nova',
+                       'id': 1}
+        with mock.patch.object(service, 'db') as mock_db:
+            mock_db.service_get_by_args.side_effect = exception.NotFound()
+            mock_db.service_create.return_value = service_ref
+            mock_db.service_get.side_effect = db_exc.DBError()
+
+            serv = service.Service(
+                self.host,
+                self.binary,
+                self.topic,
+                'cinder.tests.unit.test_service.FakeManager'
+            )
+            serv.start()
+            serv.report_state()
+            self.assertTrue(serv.model_disconnected)
+            self.assertFalse(mock_db.service_update.called)
+
     def test_report_state_newly_connected(self):
         service_ref = {'host': self.host,
                        'binary': self.binary,
