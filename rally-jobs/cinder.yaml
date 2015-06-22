@@ -1,12 +1,93 @@
+{% set image_name = "^cirros.*uec$" %}
 ---
+  Authenticate.validate_cinder:
+    -
+      args:
+        repetitions: 2
+      runner:
+        type: "constant"
+        times: 10
+        concurrency: 5
+      context:
+        users:
+          tenants: 3
+          users_per_tenant: 5
+      sla:
+        failure_rate:
+          max: 0
+
+  Quotas.cinder_update_and_delete:
+    -
+      args:
+        max_quota: 1024
+      runner:
+        type: "constant"
+        times: 4
+        concurrency: 1
+      context:
+        users:
+          tenants: 3
+          users_per_tenant: 2
+      sla:
+        failure_rate:
+          max: 0
+
+  Quotas.cinder_update:
+    -
+      args:
+        max_quota: 1024
+      runner:
+        type: "constant"
+        times: 10
+        concurrency: 2
+      context:
+        users:
+          tenants: 3
+          users_per_tenant: 2
+      sla:
+        failure_rate:
+          max: 0
+
   CinderVolumes.create_and_delete_volume:
     -
       args:
         size: 1
       runner:
         type: "constant"
-        times: 12
-        concurrency: 4
+        times: 2
+        concurrency: 2
+      context:
+        users:
+          tenants: 2
+          users_per_tenant: 2
+      sla:
+        failure_rate:
+          max: 0
+    -
+      args:
+        size: 1
+        image:
+          name: {{image_name}}
+      runner:
+        type: "constant"
+        times: 2
+        concurrency: 2
+      context:
+        users:
+          tenants: 2
+          users_per_tenant: 2
+      sla:
+        failure_rate:
+          max: 0
+    -
+      args:
+        size:
+          min: 1
+          max: 3
+      runner:
+        type: "constant"
+        times: 2
+        concurrency: 2
       context:
         users:
           tenants: 2
@@ -22,12 +103,65 @@
         detailed: True
       runner:
         type: "constant"
-        times: 10
-        concurrency: 5
+        times: 2
+        concurrency: 2
       context:
         users:
           tenants: 1
           users_per_tenant: 1
+      sla:
+        failure_rate:
+          max: 0
+    -
+      args:
+        size:
+          min: 1
+          max: 3
+        detailed: True
+      runner:
+        type: "constant"
+        times: 2
+        concurrency: 2
+      context:
+        users:
+          tenants: 1
+          users_per_tenant: 1
+      sla:
+        failure_rate:
+          max: 0
+    -
+      args:
+        size: 1
+        detailed: True
+        image:
+          name: {{image_name}}
+      runner:
+        type: "constant"
+        times: 2
+        concurrency: 2
+      context:
+        users:
+          tenants: 1
+          users_per_tenant: 1
+      sla:
+        failure_rate:
+          max: 0
+
+  CinderVolumes.list_volumes:
+    -
+      args:
+        detailed: True
+      runner:
+        type: "constant"
+        times: 2
+        concurrency: 2
+      context:
+        users:
+          tenants: 2
+          users_per_tenant: 1
+        volumes:
+          size: 1
+          volumes_per_tenant: 2
       sla:
         failure_rate:
           max: 0
@@ -38,8 +172,40 @@
         size: 1
       runner:
         type: "constant"
-        times: 8
-        concurrency: 4
+        times: 2
+        concurrency: 2
+      context:
+        users:
+          tenants: 2
+          users_per_tenant: 2
+      sla:
+        failure_rate:
+          max: 0
+    -
+      args:
+        size:
+          min: 1
+          max: 3
+      runner:
+        type: "constant"
+        times: 2
+        concurrency: 2
+      context:
+        users:
+          tenants: 2
+          users_per_tenant: 2
+      sla:
+        failure_rate:
+          max: 0
+    -
+      args:
+        size: 1
+        image:
+          name: {{image_name}}
+      runner:
+        type: "constant"
+        times: 2
+        concurrency: 2
       context:
         users:
           tenants: 2
@@ -48,20 +214,38 @@
         failure_rate:
           max: 0
 
-  CinderVolumes.create_and_delete_snapshot:
+  CinderVolumes.create_and_extend_volume:
     -
       args:
-        force: false
+        size: 1
+        new_size: 2
       runner:
         type: "constant"
-        times: 12
-        concurrency: 4
+        times: 2
+        concurrency: 2
       context:
         users:
-          tenants: 2
-          users_per_tenant: 2
-        volumes:
-          size: 1
+          tenants: 1
+          users_per_tenant: 1
+      sla:
+        failure_rate:
+          max: 0
+    -
+      args:
+        size:
+          min: 1
+          max: 2
+        new_size:
+          min: 3
+          max: 4
+      runner:
+        type: "constant"
+        times: 2
+        concurrency: 2
+      context:
+        users:
+          tenants: 1
+          users_per_tenant: 1
       sla:
         failure_rate:
           max: 0
@@ -71,13 +255,13 @@
       args:
         size: 1
         image:
-          name: "^cirros.*uec$"
+          name: {{image_name}}
         flavor:
           name: "m1.tiny"
       runner:
         type: "constant"
-        times: 12
-        concurrency: 4
+        times: 2
+        concurrency: 2
       context:
         users:
           tenants: 2
@@ -89,48 +273,217 @@
   CinderVolumes.create_snapshot_and_attach_volume:
     -
       args:
-          volume_type: false
-          size:
-              min: 1
-              max: 1
+        volume_type: false
+        size:
+          min: 1
+          max: 1
       runner:
         type: "constant"
-        times: 6
+        times: 2
         concurrency: 2
       context:
         users:
-          tenants: 1
-          users_per_tenant: 1
+          tenants: 2
+          users_per_tenant: 2
         servers:
           image:
-            name: "^cirros.*uec$"
+            name: {{image_name}}
           flavor:
             name: "m1.tiny"
           servers_per_tenant: 1
       sla:
-          failure_rate:
-            max: 0
+        failure_rate:
+          max: 0
+
     -
       args:
-          volume_type: true
-          size:
-              min: 1
-              max: 1
+        volume_type: true
+        size:
+          min: 1
+          max: 1
       runner:
         type: "constant"
-        times: 6
+        times: 2
+        concurrency: 2
+      context:
+        users:
+          tenants: 2
+          users_per_tenant: 2
+        servers:
+          image:
+            name: {{image_name}}
+          flavor:
+            name: "m1.tiny"
+          servers_per_tenant: 1
+      sla:
+        failure_rate:
+          max: 0
+
+  CinderVolumes.create_from_volume_and_delete_volume:
+    -
+      args:
+        size: 1
+      runner:
+        type: "constant"
+        times: 2
         concurrency: 2
       context:
         users:
           tenants: 1
           users_per_tenant: 1
-        servers:
-          image:
-            name: "^cirros.*uec$"
-          flavor:
-            name: "m1.tiny"
-          servers_per_tenant: 1
+        volumes:
+          size: 1
       sla:
-          failure_rate:
-            max: 0
+        failure_rate:
+          max: 0
+    -
+      args:
+        size:
+          min: 1
+          max: 2
+      runner:
+        type: "constant"
+        times: 2
+        concurrency: 2
+      context:
+        users:
+          tenants: 1
+          users_per_tenant: 1
+        volumes:
+          size: 1
+      sla:
+        failure_rate:
+          max: 0
 
+  CinderVolumes.create_and_delete_snapshot:
+    -
+      args:
+        force: false
+      runner:
+        type: "constant"
+        times: 2
+        concurrency: 2
+      context:
+        users:
+          tenants: 2
+          users_per_tenant: 2
+        volumes:
+          size: 1
+      sla:
+        failure_rate:
+          max: 0
+
+  CinderVolumes.create_and_list_snapshots:
+    -
+      args:
+        force: False
+        detailed: True
+      runner:
+        type: "constant"
+        times: 2
+        concurrency: 2
+      context:
+        users:
+          tenants: 1
+          users_per_tenant: 1
+        volumes:
+          size: 1
+      sla:
+        failure_rate:
+          max: 0
+
+  CinderVolumes.create_and_upload_volume_to_image:
+    -
+      args:
+        size: 1
+      runner:
+        type: "constant"
+        times: 1
+        concurrency: 1
+      context:
+        users:
+          tenants: 1
+          users_per_tenant: 1
+      sla:
+        failure_rate:
+          max: 0
+
+  CinderVolumes.create_volume_backup:
+    -
+      args:
+        size: 1
+        do_delete: True
+        create_volume_kwargs: {}
+        create_backup_kwargs: {}
+      runner:
+        type: "constant"
+        times: 2
+        concurrency: 2
+      context:
+        users:
+          tenants: 1
+          users_per_tenant: 1
+        roles:
+          - "Member"
+      sla:
+        failure_rate:
+          max: 0
+    -
+      args:
+        size: 1
+        do_delete: False
+        create_volume_kwargs: {}
+        create_backup_kwargs: {}
+      runner:
+        type: "constant"
+        times: 2
+        concurrency: 2
+      context:
+        users:
+          tenants: 1
+          users_per_tenant: 1
+        roles:
+          - "Member"
+      sla:
+        failure_rate:
+          max: 0
+
+  CinderVolumes.create_and_restore_volume_backup:
+    -
+      args:
+        size: 1
+        do_delete: True
+        create_volume_kwargs: {}
+        create_backup_kwargs: {}
+      runner:
+        type: "constant"
+        times: 2
+        concurrency: 2
+      context:
+        users:
+          tenants: 1
+          users_per_tenant: 1
+        roles:
+          - "Member"
+      sla:
+        failure_rate:
+          max: 0
+    -
+      args:
+        size: 1
+        do_delete: False
+        create_volume_kwargs: {}
+        create_backup_kwargs: {}
+      runner:
+        type: "constant"
+        times: 2
+        concurrency: 2
+      context:
+        users:
+          tenants: 1
+          users_per_tenant: 1
+        roles:
+          - "Member"
+      sla:
+        failure_rate:
+          max: 0
