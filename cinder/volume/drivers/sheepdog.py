@@ -76,8 +76,8 @@ class SheepdogClient(object):
             raise exception.SheepdogCmdError(
                 cmd=e.cmd,
                 exit_code=e.exit_code,
-                stdout=e.stdout,
-                stderr=e.stderr)
+                stdout=e.stdout.replace('\n', '\\n'),
+                stderr=e.stderr.replace('\n', '\\n'))
 
     def check_cluster_status(self):
         try:
@@ -89,7 +89,7 @@ class SheepdogClient(object):
                 if exit_code == 127:
                     LOG.error(_LE('Sheepdog is not installed.'))
                 elif stderr.startswith(self.DOG_RESP_CONNECTION_ERROR):
-                    msg = _LE('Failed to connect sheep daemon.'
+                    msg = _LE('Failed to connect sheep daemon. '
                               'addr: %(addr)s, port: %(port)s')
                     msg = msg % {'addr': self.addr, 'port': self.port}
                     LOG.error(msg)
