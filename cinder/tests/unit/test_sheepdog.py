@@ -109,6 +109,11 @@ Cluster created at Thu Jun 18 17:24:56 2015
 Epoch Time           Version [Host:Port:V-Nodes,,,]
 2015-06-18 17:24:56      1 [127.0.0.1:7000:128, 127.0.0.1:7001:128]
 """
+    DOG_COMMAND_ERROR_FAIL_TO_CONNECT = """\
+failed to connect to 127.0.0.1:7000: Connection refused
+failed to connect to 127.0.0.1:7000: Connection refused
+Failed to get node list
+"""
 
 
 class FakeImageService(object):
@@ -184,11 +189,52 @@ class SheepdogTestCase(test.TestCase):
         exit_code = 127
         stdout = 'stdout_dummy'
         stderr = 'stdout_dummy'
-        expected_log = 'Sheepdog is not installed.'
         expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
+        expected_log = 'Sheepdog is not installed.'
+        with mock.patch.object(self.driver.client, '_run_dog') as fake_execute:
+            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
+                fake_execute.side_effect = exception.SheepdogCmdError(
+                    cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
+                ex = self.assertRaises(exception.SheepdogCmdError,
+                                       self.driver.check_for_setup_error)
+                fake_logger.error.assert_called_with(expected_log)
+                self.assertEqual(expected_msg, ex.msg)
+
+    def test_check_cluster_status_error_fail_to_coonect(self):
+        cmd = self.test_data.cmd_dog_cluster_info()
+        exit_code = 2
+        stdout = 'stdout_dummy'
+        stderr = self.test_data.DOG_COMMAND_ERROR_FAIL_TO_CONNECT
+        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
+                                                         exit_code=exit_code,
+                                                         stdout=stdout,
+                                                         stderr=stderr)
+        expected_log = _("Failed to connect sheep daemon. "
+                         "addr: %(addr)s, port: %(port)s") % \
+            {'addr': SHEEP_ADDR, 'port': SHEEP_PORT}
+        with mock.patch.object(self.driver.client, '_run_dog') as fake_execute:
+            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
+                fake_execute.side_effect = exception.SheepdogCmdError(
+                    cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
+                ex = self.assertRaises(exception.SheepdogCmdError,
+                                       self.driver.check_for_setup_error)
+                fake_logger.error.assert_called_with(expected_log)
+                self.assertEqual(expected_msg, ex.msg)
+###
+
+    def test_check_cluster_status_error_unknown(self):
+        cmd = self.test_data.cmd_dog_cluster_info()
+        exit_code = 2
+        stdout = 'stdout_dummy'
+        stderr = 'stdout_dummy'
+        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
+                                                         exit_code=exit_code,
+                                                         stdout=stdout,
+                                                         stderr=stderr)
+        expected_log = _('Failed to get sheepdog cluster status.')
         with mock.patch.object(self.driver.client, '_run_dog') as fake_execute:
             with mock.patch.object(sheepdog, 'LOG') as fake_logger:
                 fake_execute.side_effect = exception.SheepdogCmdError(
