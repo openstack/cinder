@@ -1,4 +1,3 @@
-
 # Copyright (c) 2013 Zelin.io
 # All Rights Reserved.
 #
@@ -32,12 +31,49 @@ from cinder.volume.drivers import sheepdog
 SHEEP_ADDR = '127.0.0.1'
 SHEEP_PORT = 7000
 
-COLLIE_NODE_INFO = """
+class SheepdogDriverTestDataGenerator(object):
+    def CMD_DOG_CLUSTER_INFO(self):
+        return ('dog', 'cluster', 'info', '-a', SHEEP_ADDR, '-p',
+                str(SHEEP_PORT))
+
+    def MSG_SHEEPDOG_ERROR(self, reason):
+        return _("Sheepdog error: %(reason)s")
+
+
+    def MSG_SHEEPDOG_CMD_ERROR(self, cmd, exit_code, stdout, stderr):
+        return _("Sheepdog command error: %(cmd)s "
+                 "(Return Code: %(exit_code)s) "
+                 "(Stdout: %(stdout)s) "
+                 "(Stderr: %(stderr)s)") % \
+            {'cmd': cmd, 'exit_code': exit_code, 'stdout': stdout, 'stderr': stderr}
+
+    def MSG_SHEEPDOGCMDEXCEPTION(self, cmd, rc, out, err):
+        return _('Sheepdog driver command exception: %(cmd)s '
+                 '(Return Code: %(rc)s) (Stdout: %(out)s) '
+                 '(Stderr: %(err)s)') % \
+            {'cmd': cmd, 'rc': rc, 'out': out, 'err': err}
+
+    TEST_VOLUME = {
+        'name': 'volume-00000001',
+        'size': 1,
+        'volume_name': '1',
+        'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+        'provider_auth': None,
+        'host': 'host@backendsec#unit_test_pool',
+        'project_id': 'project',
+        'provider_location': 'location',
+        'display_name': 'vol1',
+        'display_description': 'unit test volume',
+        'volume_type_id': None,
+        'consistencygroup_id': None
+    }
+
+    COLLIE_NODE_INFO = """
 0 107287605248 3623897354 3%
 Total 107287605248 3623897354 3% 54760833024
 """
 
-COLLIE_CLUSTER_INFO_0_5 = """
+    COLLIE_CLUSTER_INFO_0_5 = """
 Cluster status: running
 
 Cluster created at Tue Jun 25 19:51:41 2013
@@ -46,7 +82,7 @@ Epoch Time           Version
 2013-06-25 19:51:41      1 [127.0.0.1:7000, 127.0.0.1:7001, 127.0.0.1:7002]
 """
 
-COLLIE_CLUSTER_INFO_0_6 = """
+    COLLIE_CLUSTER_INFO_0_6 = """
 Cluster status: running, auto-recovery enabled
 
 Cluster created at Tue Jun 25 19:51:41 2013
@@ -55,6 +91,27 @@ Epoch Time           Version
 2013-06-25 19:51:41      1 [127.0.0.1:7000, 127.0.0.1:7001, 127.0.0.1:7002]
 """
 
+    DOG_CLUSTER_RUNNING = """\
+Cluster status: running, auto-recovery enabled
+
+Cluster created at Thu Jun 18 17:24:56 2015
+
+Epoch Time           Version [Host:Port:V-Nodes,,,]
+2015-06-18 17:24:56      1 [127.0.0.1:7000:128, 127.0.0.1:7001:128, 127.0.0.1:7002:128]
+"""
+
+    DOG_CLUSTER_TO_BE_FORMATTED = """\
+Cluster status: Waiting for cluster to be formatted
+"""
+
+    DOG_CLUSTER_WAITING_FORMAT = """\
+Cluster status: Waiting for other nodes to join cluster
+
+Cluster created at Thu Jun 18 17:24:56 2015
+
+Epoch Time           Version [Host:Port:V-Nodes,,,]
+2015-06-18 17:24:56      1 [127.0.0.1:7000:128, 127.0.0.1:7001:128]
+"""
 
 class FakeImageService(object):
     def download(self, context, image_id, path):
@@ -75,10 +132,70 @@ class SheepdogTestCase(test.TestCase):
         self.db = importutils.import_module(db_driver)
         self.driver.db = self.db
         self.driver.do_setup(None)
+        self.test_data = SheepdogDriverTestDataGenerator()
 
-    def test_sheep_args(self):
-        args = ('--address', SHEEP_ADDR, '--port', str(SHEEP_PORT))
-        self.assertEqual(args, self.driver._sheep_args())
+    def test_run_dog(self):
+        expected_cmd = self.test_data.CMD_DOG_CLUSTER_INFO()
+        with mock.patch.object(self.driver.client, '_execute') as fake_execute:
+                fake_execute.return_value = ('', '')
+                self.driver.client._run_dog('cluster', 'info')
+        fake_execute.assert_called_once_with(*expected_cmd)
+
+    def test_check_cluster_status(self):
+        stdout = self.test_data.DOG_CLUSTER_RUNNING
+        stderr = ''
+        expected_cmd = ('cluster', 'info')
+        expected_log = 'Sheepdog cluster is running.'
+
+        with mock.patch.object(self.driver.client, '_run_dog') as fake_command_execute:
+            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
+                fake_command_execute.return_value = (stdout, stderr)
+                self.driver.check_for_setup_error()
+            fake_command_execute.assert_called_once_with(*expected_cmd)
+            fake_logger.debug.assert_called_with(expected_log)
+#            fake_logger.debug.assert_called_with('Sheepdog cluster is running.')
+
+    def test_check_cluster_status_error_waiting_format(self):
+        stdout = self.test_data.DOG_CLUSTER_TO_BE_FORMATTED
+        stderr = ''
+        expected_reason = _('Cluster is not formatted.'
+                            'You should probably perform "dog cluster format".')
+        expected_msg = self.test_data.MSG_SHEEPDOG_ERROR(expected_reason)
+
+        with mock.patch.object(self.driver.client, '_run_dog') as fake_command_execute:
+            fake_command_execute.return_value = (stdout, stderr)
+            ex = self.assertRaises(exception.SheepdogError, self.driver.check_for_setup_error)
+            self.assertEqual(expected_msg, ex.msg)
+
+
+#            ex = self.assertRaises(exception.SheepdogCmdError, self.driver.client._run_dog, *args)
+#            ex = self.driver.client._run_dog('cluster', 'info')
+#            print ex.cmd
+#            print expected_cmd
+#            print ex.msg
+#            print expected_msg
+#            self.assertEqual(ex.msg, expected_msg)
+
+
+#        exit_code = 2
+#        args = ('cluster', 'info')
+#        stdout = 'dummy_stdout'
+#        stderr = 'dummy_stderr'
+#        expected_cmd = self.test_data.CMD_DOG_CLUSTER_INFO()
+#        expected_msg = self.test_data.MSG_SHEEPDOG_CMD_ERROR(
+#                       cmd=expected_cmd, exit_code=2, stdout=stdout, stderr=stderr)
+#
+#        with mock.patch.object(self.driver.client, '_execute') as fake_command_execute:
+#            fake_command_execute.side_effect = processutils.ProcessExecutionError()
+#            ex = self.assertRaises(exception.SheepdogCmdError, self.driver.client._run_dog, *args)
+#            ex = self.driver.client._run_dog('cluster', 'info')
+#            print ex.cmd
+#            print expected_cmd
+#            print ex.msg
+#            print expected_msg
+#            self.assertEqual(ex.msg, expected_msg)
+#            self.assertEqual(expected_cmd, ex.cmd)
+
 
     def test_update_volume_stats(self):
         def fake_stats(*args):
