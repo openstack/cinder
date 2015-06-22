@@ -136,12 +136,14 @@ class SheepdogTestCase(test.TestCase):
         self.driver.db = self.db
         self.driver.do_setup(None)
         self.test_data = SheepdogDriverTestDataGenerator()
+        self.client = self.driver.client
 
+    # test for SheeepdogClient Class
     def test_run_dog(self):
         expected_cmd = self.test_data.cmd_dog_cluster_info()
-        with mock.patch.object(self.driver.client, '_execute') as fake_execute:
+        with mock.patch.object(self.client, '_execute') as fake_execute:
                 fake_execute.return_value = ('', '')
-                self.driver.client._run_dog('cluster', 'info')
+                self.client._run_dog('cluster', 'info')
         fake_execute.assert_called_once_with(*expected_cmd)
 
     def test_check_cluster_status(self):
@@ -150,10 +152,10 @@ class SheepdogTestCase(test.TestCase):
         expected_cmd = ('cluster', 'info')
         expected_log = 'Sheepdog cluster is running.'
 
-        with mock.patch.object(self.driver.client, '_run_dog') as fake_execute:
+        with mock.patch.object(self.client, '_run_dog') as fake_execute:
             with mock.patch.object(sheepdog, 'LOG') as fake_logger:
                 fake_execute.return_value = (stdout, stderr)
-                self.driver.check_for_setup_error()
+                self.client.check_cluster_status()
             fake_execute.assert_called_once_with(*expected_cmd)
             fake_logger.debug.assert_called_with(expected_log)
 
@@ -165,10 +167,10 @@ class SheepdogTestCase(test.TestCase):
                             '"dog cluster format".')
         expected_msg = self.test_data.sheepdog_error(expected_reason)
 
-        with mock.patch.object(self.driver.client, '_run_dog') as fake_execute:
+        with mock.patch.object(self.client, '_run_dog') as fake_execute:
             fake_execute.return_value = (stdout, stderr)
             ex = self.assertRaises(exception.SheepdogError,
-                                   self.driver.check_for_setup_error)
+                                   self.client.check_cluster_status)
             self.assertEqual(expected_msg, ex.msg)
 
     def test_check_cluster_status_error_waiting_other_nodes(self):
@@ -178,10 +180,10 @@ class SheepdogTestCase(test.TestCase):
                             'Ensure all sheep daemons are running.')
         expected_msg = self.test_data.sheepdog_error(expected_reason)
 
-        with mock.patch.object(self.driver.client, '_run_dog') as fake_execute:
+        with mock.patch.object(self.client, '_run_dog') as fake_execute:
             fake_execute.return_value = (stdout, stderr)
             ex = self.assertRaises(exception.SheepdogError,
-                                   self.driver.check_for_setup_error)
+                                   self.client.check_cluster_status)
             self.assertEqual(expected_msg, ex.msg)
 
     def test_check_cluster_status_error_command_not_found(self):
@@ -194,12 +196,12 @@ class SheepdogTestCase(test.TestCase):
                                                          stdout=stdout,
                                                          stderr=stderr)
         expected_log = 'Sheepdog is not installed.'
-        with mock.patch.object(self.driver.client, '_run_dog') as fake_execute:
+        with mock.patch.object(self.client, '_run_dog') as fake_execute:
             with mock.patch.object(sheepdog, 'LOG') as fake_logger:
                 fake_execute.side_effect = exception.SheepdogCmdError(
                     cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
                 ex = self.assertRaises(exception.SheepdogCmdError,
-                                       self.driver.check_for_setup_error)
+                                       self.client.check_cluster_status)
                 fake_logger.error.assert_called_with(expected_log)
                 self.assertEqual(expected_msg, ex.msg)
 
@@ -215,15 +217,14 @@ class SheepdogTestCase(test.TestCase):
         expected_log = _("Failed to connect sheep daemon. "
                          "addr: %(addr)s, port: %(port)s") % \
             {'addr': SHEEP_ADDR, 'port': SHEEP_PORT}
-        with mock.patch.object(self.driver.client, '_run_dog') as fake_execute:
+        with mock.patch.object(self.client, '_run_dog') as fake_execute:
             with mock.patch.object(sheepdog, 'LOG') as fake_logger:
                 fake_execute.side_effect = exception.SheepdogCmdError(
                     cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
                 ex = self.assertRaises(exception.SheepdogCmdError,
-                                       self.driver.check_for_setup_error)
+                                       self.client.check_cluster_status)
                 fake_logger.error.assert_called_with(expected_log)
                 self.assertEqual(expected_msg, ex.msg)
-###
 
     def test_check_cluster_status_error_unknown(self):
         cmd = self.test_data.cmd_dog_cluster_info()
@@ -235,14 +236,21 @@ class SheepdogTestCase(test.TestCase):
                                                          stdout=stdout,
                                                          stderr=stderr)
         expected_log = _('Failed to get sheepdog cluster status.')
-        with mock.patch.object(self.driver.client, '_run_dog') as fake_execute:
+        with mock.patch.object(self.client, '_run_dog') as fake_execute:
             with mock.patch.object(sheepdog, 'LOG') as fake_logger:
                 fake_execute.side_effect = exception.SheepdogCmdError(
                     cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
                 ex = self.assertRaises(exception.SheepdogCmdError,
-                                       self.driver.check_for_setup_error)
+                                       self.client.check_cluster_status)
                 fake_logger.error.assert_called_with(expected_log)
                 self.assertEqual(expected_msg, ex.msg)
+
+    # test for SheeepdogDriver Class
+    def test_check_for_setup_error(self):
+        with mock.patch.object(self.client, 'check_cluster_status') \
+                as fake_execute:
+            self.driver.check_for_setup_error()
+        fake_execute.assert_called_once_with()
 
     def test_update_volume_stats(self):
         def fake_stats(*args):
