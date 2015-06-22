@@ -63,6 +63,8 @@ class SheepdogClient(object):
                                       'Waiting for cluster to be formatted')
     DOG_RESP_CLUSTER_WAITING = ('Cluster status: '
                                 'Waiting for other nodes to join cluster')
+    DOG_RESP_VDI_EXISTS_ALREADY = ': VDI exists already\\n'
+    DOG_RESP_NO_SPACE_FOR_NEW_OBJ = 'Server has no space for new objects\\n'
 
     def __init__(self, addr, port):
         self.addr = addr
@@ -114,6 +116,27 @@ class SheepdogClient(object):
             reason = _('Waiting for all nodes to join cluster. '
                        'Ensure all sheep daemons are running.')
         raise exception.SheepdogError(reason=reason)
+
+    def create(self, volume):
+        try:
+            self._run_dog('vdi', 'create', volume['name'],
+                          '%sG' % volume['size'])
+        except exception.SheepdogCmdError as e:
+            stderr = e.kwargs['stderr']
+            with excutils.save_and_reraise_exception():
+                if stderr.startswith(self.DOG_RESP_CONNECTION_ERROR):
+                    LOG.error(_LE('Failed to connect sheep daemon. '
+                              'addr: %(addr)s, port: %(port)s') %
+                              {'addr': self.addr, 'port': self.port})
+                elif stderr.endswith(self.DOG_RESP_VDI_EXISTS_ALREADY):
+                    LOG.error(_LE('Volume already exists. %(volname)s') %
+                              {'volname': volume['name']})
+                elif stderr.endswith(self.DOG_RESP_NO_SPACE_FOR_NEW_OBJ):
+                    LOG.error(_LE('Failed to create volume for diskfull occurs'
+                              ' in datastore.'))
+                else:
+                    LOG.error(_LE('Failed to create volume. %s') %
+                              volume['name'])
 
 
 class SheepdogDriver(driver.VolumeDriver):
