@@ -15,6 +15,7 @@
 """Unit tests for the NetApp-specific ssc module."""
 
 import copy
+import ddt
 from lxml import etree
 import mock
 from mox3 import mox
@@ -314,6 +315,7 @@ def createNetAppVolume(**kwargs):
     return vol
 
 
+@ddt.ddt
 class SscUtilsTestCase(test.TestCase):
     """Test ssc utis."""
     vol1 = createNetAppVolume(name='vola', vs='openstack',
@@ -376,6 +378,26 @@ class SscUtilsTestCase(test.TestCase):
         netapp_api.mock_netapp_lib([ssc_cmode])
         self.stubs.Set(http_client, 'HTTPConnection',
                        FakeDirectCmodeHTTPConnection)
+
+    @ddt.data({'na_server_exists': False, 'volume': None},
+              {'na_server_exists': True, 'volume': 'vol'},
+              {'na_server_exists': True, 'volume': None})
+    @ddt.unpack
+    def test_query_cluster_vols_for_ssc(self, na_server_exists, volume):
+        if na_server_exists:
+            na_server = netapp_api.NaServer('127.0.0.1')
+            fake_api_return = mock.Mock(return_value=[])
+            self.mock_object(ssc_cmode.netapp_api, 'invoke_api',
+                             new_attr=fake_api_return)
+            ssc_cmode.query_cluster_vols_for_ssc(na_server, 'vserver',
+                                                 volume)
+        else:
+            na_server = None
+            fake_api_error = mock.Mock(side_effect=exception.InvalidInput)
+            self.mock_object(ssc_cmode.netapp_api, 'invoke_api',
+                             new_attr=fake_api_error)
+            self.assertRaises(KeyError, ssc_cmode.query_cluster_vols_for_ssc,
+                              na_server, 'vserver', volume)
 
     def test_cl_vols_ssc_all(self):
         """Test cluster ssc for all vols."""
