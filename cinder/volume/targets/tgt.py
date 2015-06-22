@@ -12,6 +12,7 @@
 
 import os
 import re
+import textwrap
 import time
 
 from oslo_concurrency import processutils as putils
@@ -35,21 +36,15 @@ class TgtAdm(iscsi.ISCSITarget):
     etc.
     """
 
-    VOLUME_CONF = """
-                <target %s>
-                    backing-store %s
-                    driver %s
-                    write-cache %s
+    VOLUME_CONF = textwrap.dedent("""
+                <target %(name)s>
+                    backing-store %(path)s
+                    driver %(driver)s
+                    %(chap_auth)s
+                    %(target_flags)s
+                    write-cache %(write_cache)s
                 </target>
-                  """
-    VOLUME_CONF_WITH_CHAP_AUTH = """
-                                <target %s>
-                                    backing-store %s
-                                    driver %s
-                                    %s
-                                    write-cache %s
-                                </target>
-                                 """
+                  """)
 
     def __init__(self, *args, **kwargs):
         super(TgtAdm, self).__init__(*args, **kwargs)
@@ -178,14 +173,20 @@ class TgtAdm(iscsi.ISCSITarget):
         vol_id = name.split(':')[1]
         write_cache = self.configuration.get('iscsi_write_cache', 'on')
         driver = self.iscsi_protocol
+        chap_str = ''
 
-        if chap_auth is None:
-            volume_conf = self.VOLUME_CONF % (name, path, driver, write_cache)
-        else:
+        if chap_auth is not None:
             chap_str = 'incominguser %s %s' % chap_auth
-            volume_conf = self.VOLUME_CONF_WITH_CHAP_AUTH % (name, path,
-                                                             driver, chap_str,
-                                                             write_cache)
+
+        target_flags = self.configuration.get('iscsi_target_flags', '')
+        if target_flags:
+            target_flags = 'bsoflags ' + target_flags
+
+        volume_conf = self.VOLUME_CONF % {
+            'name': name, 'path': path, 'driver': driver,
+            'chap_auth': chap_str, 'target_flags': target_flags,
+            'write_cache': write_cache}
+
         LOG.debug('Creating iscsi_target for Volume ID: %s', vol_id)
         volumes_dir = self.volumes_dir
         volume_path = os.path.join(volumes_dir, vol_id)
