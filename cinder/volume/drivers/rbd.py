@@ -791,7 +791,9 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
                 'auth_enabled': (self.configuration.rbd_user is not None),
                 'auth_username': self.configuration.rbd_user,
                 'secret_type': 'ceph',
-                'secret_uuid': self.configuration.rbd_secret_uuid, }
+                'secret_uuid': self.configuration.rbd_secret_uuid,
+                'volume_id': volume['id'],
+            }
         }
         LOG.debug('connection data: %s', data)
         return data
