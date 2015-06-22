@@ -13,13 +13,13 @@
 #    under the License.
 
 import mock
-from oslo_versionedobjects.tests import test_objects
 
 from cinder import objects
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit import objects as test_objects
 
 
-class TestVolume(test_objects._LocalTest):
+class TestVolume(test_objects.BaseObjectsTestCase):
     @staticmethod
     def _compare(test, db, obj):
         for field, value in db.items():
@@ -65,7 +65,7 @@ class TestVolume(test_objects._LocalTest):
         self.assertEqual('2', volume.name_id)
 
 
-class TestVolumeList(test_objects._LocalTest):
+class TestVolumeList(test_objects.BaseObjectsTestCase):
     @mock.patch('cinder.db.volume_get_all')
     def test_get_all(self, volume_get_all):
         db_volume = fake_volume.fake_db_volume()

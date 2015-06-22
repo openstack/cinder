@@ -13,10 +13,10 @@
 #    under the License.
 
 import mock
-from oslo_versionedobjects.tests import test_objects
 
 from cinder import objects
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit import objects as test_objects
 
 
 fake_backup = {
@@ -31,7 +31,7 @@ fake_backup = {
 }
 
 
-class TestBackup(test_objects._LocalTest):
+class TestBackup(test_objects.BaseObjectsTestCase):
     @staticmethod
     def _compare(test, db, obj):
         for field, value in db.items():
@@ -65,7 +65,7 @@ class TestBackup(test_objects._LocalTest):
         backup_destroy.assert_called_once_with(self.context, '1')
 
 
-class TestBackupList(test_objects._LocalTest):
+class TestBackupList(test_objects.BaseObjectsTestCase):
     @mock.patch('cinder.db.backup_get_all', return_value=[fake_backup])
     def test_get_all(self, backup_get_all):
         backups = objects.BackupList.get_all(self.context)
