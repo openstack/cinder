@@ -231,9 +231,7 @@ class SheepdogDriver(driver.VolumeDriver):
 
     def create_volume(self, volume):
         """Create a sheepdog volume."""
-        self._try_execute('qemu-img', 'create',
-                          "sheepdog:%s" % volume['name'],
-                          '%sG' % volume['size'])
+        self.client.create(volume)
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create a sheepdog volume from a snapshot."""
