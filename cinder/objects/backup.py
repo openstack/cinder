@@ -105,7 +105,8 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
 
     @base.remotable
     def destroy(self):
-        db.backup_destroy(self._context, self.id)
+        with self.obj_as_admin():
+            db.backup_destroy(self._context, self.id)
 
 
 @base.CinderObjectRegistry.register
