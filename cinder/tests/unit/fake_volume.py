@@ -25,6 +25,7 @@ def fake_db_volume(**updates):
         'availability_zone': 'fake_availability_zone',
         'status': 'available',
         'attach_status': 'detached',
+        'previous_status': None
     }
 
     for name, field in objects.Volume.fields.items():

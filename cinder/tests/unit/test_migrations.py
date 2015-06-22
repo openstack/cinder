@@ -826,6 +826,27 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         quotas = db_utils.get_table(engine, 'quotas')
         self.assertNotIn('allocated', quotas.c)
 
+    def _check_049(self, engine, data):
+        backups = db_utils.get_table(engine, 'backups')
+        self.assertIsInstance(backups.c.temp_volume_id.type,
+                              sqlalchemy.types.VARCHAR)
+        self.assertIsInstance(backups.c.temp_snapshot_id.type,
+                              sqlalchemy.types.VARCHAR)
+
+    def _post_downgrade_049(self, engine):
+        backups = db_utils.get_table(engine, 'backups')
+        self.assertNotIn('temp_volume_id', backups.c)
+        self.assertNotIn('temp_snapshot_id', backups.c)
+
+    def _check_050(self, engine, data):
+        volumes = db_utils.get_table(engine, 'volumes')
+        self.assertIsInstance(volumes.c.previous_status.type,
+                              sqlalchemy.types.VARCHAR)
+
+    def _post_downgrade_050(self, engine):
+        volumes = db_utils.get_table(engine, 'volumes')
+        self.assertNotIn('previous_status', volumes.c)
+
     def test_walk_versions(self):
         self.walk_versions(True, False)
 

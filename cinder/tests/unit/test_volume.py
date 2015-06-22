@@ -5591,7 +5591,11 @@ class GenericVolumeDriverTestCase(DriverTestCase):
 
     def test_backup_volume(self):
         vol = tests_utils.create_volume(self.context)
-        backup = {'volume_id': vol['id']}
+        self.context.user_id = 'fake'
+        self.context.project_id = 'fake'
+        backup = tests_utils.create_backup(self.context,
+                                           vol['id'])
+        backup_obj = objects.Backup.get_by_id(self.context, backup.id)
         properties = {}
         attach_info = {'device': {'path': '/dev/null'}}
         backup_service = self.mox.CreateMock(backup_driver.BackupDriver)
@@ -5616,13 +5620,53 @@ class GenericVolumeDriverTestCase(DriverTestCase):
         os.getuid()
         utils.execute('chown', None, '/dev/null', run_as_root=True)
         f = fileutils.file_open('/dev/null').AndReturn(file('/dev/null'))
-        backup_service.backup(backup, f)
+        backup_service.backup(backup_obj, f)
         utils.execute('chown', 0, '/dev/null', run_as_root=True)
         self.volume.driver._detach_volume(self.context, attach_info, vol,
                                           properties)
         self.mox.ReplayAll()
-        self.volume.driver.backup_volume(self.context, backup, backup_service)
+        self.volume.driver.backup_volume(self.context, backup_obj,
+                                         backup_service)
         self.mox.UnsetStubs()
+
+    @mock.patch.object(utils, 'temporary_chown')
+    @mock.patch.object(fileutils, 'file_open')
+    @mock.patch.object(os_brick.initiator.connector,
+                       'get_connector_properties')
+    @mock.patch.object(db, 'volume_get')
+    def test_backup_volume_inuse(self, mock_volume_get,
+                                 mock_get_connector_properties,
+                                 mock_file_open,
+                                 mock_temporary_chown):
+        vol = tests_utils.create_volume(self.context)
+        vol['status'] = 'in-use'
+        self.context.user_id = 'fake'
+        self.context.project_id = 'fake'
+        backup = tests_utils.create_backup(self.context,
+                                           vol['id'])
+        backup_obj = objects.Backup.get_by_id(self.context, backup.id)
+        properties = {}
+        attach_info = {'device': {'path': '/dev/null'}}
+        backup_service = mock.Mock()
+
+        self.volume.driver._attach_volume = mock.MagicMock()
+        self.volume.driver._detach_volume = mock.MagicMock()
+        self.volume.driver.terminate_connection = mock.MagicMock()
+        self.volume.driver.create_snapshot = mock.MagicMock()
+        self.volume.driver.delete_snapshot = mock.MagicMock()
+        self.volume.driver.create_volume_from_snapshot = mock.MagicMock()
+
+        mock_volume_get.return_value = vol
+        mock_get_connector_properties.return_value = properties
+        f = mock_file_open.return_value = file('/dev/null')
+
+        backup_service.backup(backup_obj, f, None)
+        self.volume.driver._attach_volume.return_value = attach_info, vol
+
+        self.volume.driver.backup_volume(self.context, backup_obj,
+                                         backup_service)
+
+        mock_volume_get.assert_called_with(self.context, vol['id'])
 
     def test_restore_backup(self):
         vol = tests_utils.create_volume(self.context)
@@ -6008,7 +6052,12 @@ class LVMVolumeDriverTestCase(DriverTestCase):
                            mock_file_open,
                            mock_temporary_chown):
         vol = tests_utils.create_volume(self.context)
-        backup = {'volume_id': vol['id']}
+        self.context.user_id = 'fake'
+        self.context.project_id = 'fake'
+        backup = tests_utils.create_backup(self.context,
+                                           vol['id'])
+        backup_obj = objects.Backup.get_by_id(self.context, backup.id)
+
         properties = {}
         attach_info = {'device': {'path': '/dev/null'}}
         backup_service = mock.Mock()
@@ -6021,10 +6070,10 @@ class LVMVolumeDriverTestCase(DriverTestCase):
         mock_get_connector_properties.return_value = properties
         f = mock_file_open.return_value = file('/dev/null')
 
-        backup_service.backup(backup, f, None)
+        backup_service.backup(backup_obj, f, None)
         self.volume.driver._attach_volume.return_value = attach_info
 
-        self.volume.driver.backup_volume(self.context, backup,
+        self.volume.driver.backup_volume(self.context, backup_obj,
                                          backup_service)
 
         mock_volume_get.assert_called_with(self.context, vol['id'])
@@ -6065,6 +6114,44 @@ class LVMVolumeDriverTestCase(DriverTestCase):
             self.assertEqual({'_name_id': fake_new_volume_id,
                               'provider_location': fake_provider},
                              update)
+
+    @mock.patch.object(utils, 'temporary_chown')
+    @mock.patch.object(fileutils, 'file_open')
+    @mock.patch.object(os_brick.initiator.connector,
+                       'get_connector_properties')
+    @mock.patch.object(db, 'volume_get')
+    def test_backup_volume_inuse(self, mock_volume_get,
+                                 mock_get_connector_properties,
+                                 mock_file_open,
+                                 mock_temporary_chown):
+        vol = tests_utils.create_volume(self.context)
+        vol['status'] = 'in-use'
+        self.context.user_id = 'fake'
+        self.context.project_id = 'fake'
+        backup = tests_utils.create_backup(self.context,
+                                           vol['id'])
+        backup_obj = objects.Backup.get_by_id(self.context, backup.id)
+        properties = {}
+        attach_info = {'device': {'path': '/dev/null'}}
+        backup_service = mock.Mock()
+
+        self.volume.driver._detach_volume = mock.MagicMock()
+        self.volume.driver._attach_volume = mock.MagicMock()
+        self.volume.driver.terminate_connection = mock.MagicMock()
+        self.volume.driver.create_snapshot = mock.MagicMock()
+        self.volume.driver.delete_snapshot = mock.MagicMock()
+
+        mock_volume_get.return_value = vol
+        mock_get_connector_properties.return_value = properties
+        f = mock_file_open.return_value = file('/dev/null')
+
+        backup_service.backup(backup_obj, f, None)
+        self.volume.driver._attach_volume.return_value = attach_info
+
+        self.volume.driver.backup_volume(self.context, backup_obj,
+                                         backup_service)
+
+        mock_volume_get.assert_called_with(self.context, vol['id'])
 
 
 class ISCSITestCase(DriverTestCase):

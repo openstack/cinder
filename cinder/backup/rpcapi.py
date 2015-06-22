@@ -37,7 +37,7 @@ class BackupAPI(object):
     API version history:
 
         1.0 - Initial version.
-        1.1 - Changed methods to accept backup objects instaed of IDs.
+        1.1 - Changed methods to accept backup objects instead of IDs.
     """
 
     BASE_RPC_API_VERSION = '1.0'

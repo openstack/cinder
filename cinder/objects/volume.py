@@ -74,6 +74,8 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
         'replication_status': fields.StringField(nullable=True),
         'replication_extended_status': fields.StringField(nullable=True),
         'replication_driver_data': fields.StringField(nullable=True),
+
+        'previous_status': fields.StringField(nullable=True),
     }
 
     # NOTE(thangp): obj_extra_fields is used to hold properties that are not
