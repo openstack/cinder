@@ -316,6 +316,13 @@ class Service(service.Service):
                 self.model_disconnected = True
                 LOG.exception(_LE('model server went away'))
 
+        # NOTE(jsbryant) Other DB errors can happen in HA configurations.
+        # such errors shouldn't kill this thread, so we handle them here.
+        except db_exc.DBError:
+            if not getattr(self, 'model_disconnected', False):
+                self.model_disconnected = True
+                LOG.exception(_LE('DBError encountered: '))
+
 
 class WSGIService(object):
     """Provides ability to launch API from a 'paste' configuration."""
