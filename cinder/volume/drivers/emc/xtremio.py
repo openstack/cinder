@@ -152,6 +152,17 @@ class XtremIOClient(object):
     def get_cluster(self):
         return self.req('clusters', idx=1)['content']
 
+    def create_snapshot(self, src, dest, ro=False):
+        """Create a snapshot of a volume on the array.
+
+        XtreamIO array snapshots are also volumes.
+
+        :src: name of the source volume to be cloned
+        :dest: name for the new snapshot
+        :ro: new snapshot type ro/regular. only applicable to Client4
+        """
+        raise NotImplementedError()
+
 
 class XtremIOClient3(XtremIOClient):
     def __init__(self, configuration, cluster_id):
@@ -195,6 +206,11 @@ class XtremIOClient3(XtremIOClient):
 
         return self._portals
 
+    def create_snapshot(self, src, dest, ro=False):
+        data = {'snap-vol-name': dest, 'ancestor-vol-id': src}
+
+        self.req('snapshots', 'POST', data)
+
 
 class XtremIOClient4(XtremIOClient):
     def __init__(self, configuration, cluster_id):
@@ -233,6 +249,25 @@ class XtremIOClient4(XtremIOClient):
             self.cluster_id = self.req('clusters')['clusters'][0]['name']
 
         return self.req('clusters', name=self.cluster_id)['content']
+
+    def create_snapshot(self, src, dest, ro=False):
+        data = {'snapshot-set-name': dest, 'snap-suffix': dest,
+                'volume-list': [src],
+                'snapshot-type': 'readonly' if ro else 'regular'}
+
+        res = self.req('snapshots', 'POST', data, ver='v2')
+        typ, idx = res['links'][0]['href'].split('/')[-2:]
+
+        # rename the snapshot
+        data = {'name': dest}
+        try:
+            self.req(typ, 'PUT', data, idx=int(idx))
+        except exception.VolumeBackendAPIException:
+            # reverting
+            msg = _LE('Failed to rename the created snapshot, reverting.')
+            LOG.error(msg)
+            self.req(typ, 'DELETE', idx=int(idx))
+            raise
 
 
 class XtremIOVolumeDriver(san.SanDriver):
@@ -292,17 +327,11 @@ class XtremIOVolumeDriver(san.SanDriver):
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
-        data = {'snap-vol-name': volume['id'],
-                'ancestor-vol-id': snapshot.id}
-
-        self.client.req('snapshots', 'POST', data)
+        self.client.create_snapshot(snapshot.id, volume['id'])
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
-        data = {'snap-vol-name': volume['id'],
-                'ancestor-vol-id': src_vref['id']}
-
-        self.client.req('snapshots', 'POST', data)
+        self.client.create_snapshot(src_vref['id'], volume['id'])
 
     def delete_volume(self, volume):
         """Deletes a volume."""
@@ -313,10 +342,7 @@ class XtremIOVolumeDriver(san.SanDriver):
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
-        data = {'snap-vol-name': snapshot.id,
-                'ancestor-vol-id': snapshot.volume_id}
-
-        self.client.req('snapshots', 'POST', data)
+        self.client.create_snapshot(snapshot.volume_id, snapshot.id, True)
 
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot."""
