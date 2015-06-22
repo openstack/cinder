@@ -366,6 +366,7 @@ class Quota(BASE, CinderBase):
 
     resource = Column(String(255))
     hard_limit = Column(Integer, nullable=True)
+    allocated = Column(Integer, default=0)
 
 
 class QuotaClass(BASE, CinderBase):
