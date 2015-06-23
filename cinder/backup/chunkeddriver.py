@@ -198,6 +198,8 @@ class ChunkedBackupDriver(driver.BackupDriver):
         if extra_metadata:
             metadata['extra_metadata'] = extra_metadata
         metadata_json = json.dumps(metadata, sort_keys=True, indent=2)
+        if six.PY3:
+            metadata_json = metadata_json.encode('utf-8')
         with self.get_object_writer(container, filename) as writer:
             writer.write(metadata_json)
         LOG.debug('_write_metadata finished. Metadata: %s.', metadata_json)
@@ -217,6 +219,8 @@ class ChunkedBackupDriver(driver.BackupDriver):
         sha256file['chunk_size'] = self.sha_block_size_bytes
         sha256file['sha256s'] = sha256_list
         sha256file_json = json.dumps(sha256file, sort_keys=True, indent=2)
+        if six.PY3:
+            sha256file_json = sha256file_json.encode('utf-8')
         with self.get_object_writer(container, filename) as writer:
             writer.write(sha256file_json)
         LOG.debug('_write_sha256file finished.')
@@ -229,6 +233,8 @@ class ChunkedBackupDriver(driver.BackupDriver):
                   {'container': container, 'filename': filename})
         with self.get_object_reader(container, filename) as reader:
             metadata_json = reader.read()
+        if six.PY3:
+            metadata_json = metadata_json.decode('utf-8')
         metadata = json.loads(metadata_json)
         LOG.debug('_read_metadata finished. Metadata: %s.', metadata_json)
         return metadata
@@ -241,6 +247,8 @@ class ChunkedBackupDriver(driver.BackupDriver):
                   {'container': container, 'filename': filename})
         with self.get_object_reader(container, filename) as reader:
             sha256file_json = reader.read()
+        if six.PY3:
+            sha256file_json = sha256file_json.decode('utf-8')
         sha256file = json.loads(sha256file_json)
         LOG.debug('_read_sha256file finished (%s).', sha256file)
         return sha256file
@@ -452,7 +460,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
         while True:
             data_offset = volume_file.tell()
             data = volume_file.read(self.chunk_size_bytes)
-            if data == '':
+            if data == b'':
                 break
 
             # Calculate new shas with the datablock.
@@ -543,8 +551,9 @@ class ChunkedBackupDriver(driver.BackupDriver):
         extra_metadata = metadata.get('extra_metadata')
         container = backup['container']
         metadata_objects = metadata['objects']
-        metadata_object_names = sum((obj.keys() for obj in metadata_objects),
-                                    [])
+        metadata_object_names = []
+        for obj in metadata_objects:
+            metadata_object_names.extend(obj.keys())
         LOG.debug('metadata_object_names = %s.', metadata_object_names)
         prune_list = [self._metadata_filename(backup),
                       self._sha256_filename(backup)]
@@ -557,7 +566,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
             raise exception.InvalidBackup(reason=err)
 
         for metadata_object in metadata_objects:
-            object_name = metadata_object.keys()[0]
+            object_name, obj = list(metadata_object.items())[0]
             LOG.debug('restoring object. backup: %(backup_id)s, '
                       'container: %(container)s, object name: '
                       '%(object_name)s, volume: %(volume_id)s.',
@@ -574,7 +583,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
                 body = reader.read()
             compression_algorithm = metadata_object[object_name]['compression']
             decompressor = self._get_compressor(compression_algorithm)
-            volume_file.seek(metadata_object.values()[0]['offset'])
+            volume_file.seek(obj['offset'])
             if decompressor is not None:
                 LOG.debug('decompressing data using %s algorithm',
                           compression_algorithm)

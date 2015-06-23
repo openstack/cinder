@@ -569,7 +569,7 @@ class BackupSwiftTestCase(test.TestCase):
     def test_prepare_output_data_effective_compression(self):
         service = swift_dr.SwiftBackupDriver(self.ctxt)
         # Set up buffer of 128 zeroed bytes
-        fake_data = buffer(bytearray(128))
+        fake_data = b'\0' * 128
 
         result = service._prepare_output_data(fake_data)
 
@@ -580,7 +580,7 @@ class BackupSwiftTestCase(test.TestCase):
         self.flags(backup_compression_algorithm='none')
         service = swift_dr.SwiftBackupDriver(self.ctxt)
         # Set up buffer of 128 zeroed bytes
-        fake_data = buffer(bytearray(128))
+        fake_data = b'\0' * 128
 
         result = service._prepare_output_data(fake_data)
 
@@ -590,7 +590,7 @@ class BackupSwiftTestCase(test.TestCase):
     def test_prepare_output_data_ineffective_compression(self):
         service = swift_dr.SwiftBackupDriver(self.ctxt)
         # Set up buffer of 128 zeroed bytes
-        fake_data = buffer(bytearray(128))
+        fake_data = b'\0' * 128
         # Pre-compress so that compression in the driver will be ineffective.
         already_compressed_data = service.compressor.compress(fake_data)
 

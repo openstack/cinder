@@ -279,7 +279,7 @@ class BackupTSMTestCase(test.TestCase):
         self._create_backup_db_entry(backup_id2, mode)
         self._create_backup_db_entry(backup_id3, mode)
 
-        with open(VOLUME_PATH, 'rw') as volume_file:
+        with open(VOLUME_PATH, 'w+') as volume_file:
             # Create two backups of the volume
             backup1 = objects.Backup.get_by_id(self.ctxt, backup_id1)
             self.driver.backup(backup1, volume_file)
@@ -311,7 +311,7 @@ class BackupTSMTestCase(test.TestCase):
         self._create_backup_db_entry(backup_id1, mode)
         self._create_backup_db_entry(backup_id2, mode)
 
-        with open(VOLUME_PATH, 'rw') as volume_file:
+        with open(VOLUME_PATH, 'w+') as volume_file:
             # Create two backups of the volume
             backup1 = objects.Backup.get_by_id(self.ctxt, 123)
             self.driver.backup(backup1, volume_file)
@@ -342,7 +342,7 @@ class BackupTSMTestCase(test.TestCase):
         backup_id1 = 123
         self._create_backup_db_entry(backup_id1, mode)
 
-        with open(VOLUME_PATH, 'rw') as volume_file:
+        with open(VOLUME_PATH, 'w+') as volume_file:
             # Create two backups of the volume
             backup1 = objects.Backup.get_by_id(self.ctxt, 123)
             self.assertRaises(exception.InvalidBackup,
