@@ -14,6 +14,7 @@
 #    under the License.
 """ Tests for the backup service base driver. """
 
+import base64
 import uuid
 
 import mock
@@ -74,7 +75,7 @@ class BackupBaseDriverTestCase(test.TestCase):
 
     def test_export_record(self):
         export_string = self.driver.export_record(self.backup)
-        export_dict = jsonutils.loads(export_string.decode("base64"))
+        export_dict = jsonutils.loads(base64.decodestring(export_string))
         # Make sure we don't lose data when converting to string
         for key in _backup_db_fields:
             self.assertTrue(key in export_dict)
