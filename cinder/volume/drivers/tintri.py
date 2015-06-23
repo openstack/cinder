@@ -21,7 +21,6 @@ import math
 import os
 import re
 import socket
-import time
 
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -65,7 +64,7 @@ class TintriDriver(nfs.NfsDriver):
     """Base class for Tintri driver."""
 
     VENDOR = 'Tintri'
-    VERSION = '1.0.0'
+    VERSION = '2.1.0.1'
     REQUIRED_OPTIONS = ['tintri_server_hostname', 'tintri_server_username',
                         'tintri_server_password']
 
@@ -102,17 +101,33 @@ class TintriDriver(nfs.NfsDriver):
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
-        self._create_volume_snapshot(snapshot.volume_name,
-                                     snapshot.name,
-                                     snapshot.volume_id,
-                                     vm_name=snapshot.display_name)
+        (__, path) = self._get_export_ip_path(snapshot.volume_id)
+        volume_path = '%s/%s' % (path, snapshot.volume_name)
+        volume_path = '%(path)s/%(volume_name)s' % {
+            'path': path,
+            'volume_name': snapshot.volume_name,
+        }
+        model_update = {}
+        with self._get_client() as c:
+            provider_id = c.create_snapshot(volume_path,
+                                            snapshot.volume.display_name or
+                                            snapshot.volume_name,
+                                            snapshot.volume_id,
+                                            snapshot.display_name or
+                                            snapshot.name)
+            snapshot.provider_id = provider_id
+            # Store Tintri snapshot ID as snapshot provider_id
+            model_update['provider_id'] = provider_id
+
+        return model_update
 
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot."""
-        with self._get_client() as c:
-            snapshot_id = c.get_snapshot(snapshot.name)
-            if snapshot_id:
-                c.delete_snapshot(snapshot_id)
+        if snapshot.provider_id:
+            with self._get_client() as c:
+                c.delete_snapshot(snapshot.provider_id)
+        else:
+            LOG.info(_LI('Snapshot %s not found'), snapshot.name)
 
     def _check_ops(self, required_ops, configuration):
         """Ensures that the options we care about are set."""
@@ -122,20 +137,13 @@ class TintriDriver(nfs.NfsDriver):
                 raise exception.InvalidConfigurationValue(option=op,
                                                           value=None)
 
-    def _create_volume_snapshot(self, volume_name, snapshot_name, volume_id,
-                                share=None, vm_name=None):
-        """Creates a volume snapshot."""
-        (__, path) = self._get_export_ip_path(volume_id, share)
-        volume_path = '%s/%s' % (path, volume_name)
-        with self._get_client() as c:
-            return c.create_snapshot(volume_path, snapshot_name, vm_name)
-
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from snapshot."""
         vol_size = volume.size
         snap_size = snapshot.volume_size
 
-        self._clone_volume(snapshot.name, volume.name, snapshot.volume_id)
+        self._clone_snapshot(snapshot.provider_id, volume.name,
+                             snapshot.volume_id)
         share = self._get_provider_location(snapshot.volume_id)
         volume['provider_location'] = share
         path = self.local_path(volume)
@@ -151,25 +159,6 @@ class TintriDriver(nfs.NfsDriver):
                 raise
 
         return {'provider_location': volume['provider_location']}
-
-    def _clone_volume(self, volume_name, clone_name, volume_id, share=None):
-        """Clones volume from snapshot."""
-        (host, path) = self._get_export_ip_path(volume_id, share)
-        clone_path = '%s/%s-d' % (path, clone_name)
-        with self._get_client() as c:
-            snapshot_id = c.get_snapshot(volume_name)
-            retry = 0
-            while not snapshot_id:
-                retry += 1
-                if retry > 5:
-                    msg = _('Failed to get snapshot for '
-                            'volume %s.') % volume_name
-                    raise exception.VolumeDriverException(msg)
-                time.sleep(1)
-                snapshot_id = c.get_snapshot(volume_name)
-            c.clone_volume(snapshot_id, clone_path)
-
-        self._move_cloned_volume(clone_name, volume_id, share)
 
     def _clone_snapshot(self, snapshot_id, clone_name, volume_id, share=None):
         """Clones volume from snapshot."""
@@ -197,8 +186,9 @@ class TintriDriver(nfs.NfsDriver):
             raise exception.VolumeDriverException(
                 _('Volume %s not found.') % source_path)
 
-    def _clone_volume_to_volume(self, volume_name, clone_name, volume_id,
-                                share=None, image_id=None, vm_name=None):
+    def _clone_volume_to_volume(self, volume_name, clone_name,
+                                volume_display_name, volume_id,
+                                share=None, image_id=None):
         """Creates volume snapshot then clones volume."""
         (host, path) = self._get_export_ip_path(volume_id, share)
         volume_path = '%s/%s' % (path, volume_name)
@@ -206,10 +196,11 @@ class TintriDriver(nfs.NfsDriver):
         with self._get_client() as c:
             if share and image_id:
                 snapshot_id = self._create_image_snapshot(volume_name, share,
-                                                          image_id, vm_name)
+                                                          image_id,
+                                                          volume_display_name)
             else:
                 snapshot_id = c.create_snapshot(
-                    volume_path, volume_name, vm_name,
+                    volume_path, volume_display_name, volume_id, volume_name,
                     deletion_policy='DELETE_ON_ZERO_CLONE_REFERENCES')
             c.clone_volume(snapshot_id, clone_path)
 
@@ -278,8 +269,9 @@ class TintriDriver(nfs.NfsDriver):
         """Creates a clone of the specified volume."""
         vol_size = volume.size
         src_vol_size = src_vref.size
-        self._clone_volume_to_volume(src_vref.name, volume.name, src_vref.id,
-                                     vm_name=src_vref.display_name)
+        self._clone_volume_to_volume(src_vref.name, volume.name,
+                                     src_vref.display_name,
+                                     src_vref.id)
 
         share = self._get_provider_location(src_vref.id)
         volume['provider_location'] = share
@@ -317,10 +309,10 @@ class TintriDriver(nfs.NfsDriver):
         @utils.synchronized(snapshot_name, external=True)
         def _do_snapshot():
             with self._get_client() as c:
-                snapshot_id = c.get_snapshot(snapshot_name)
+                snapshot_id = c.get_snapshot(image_id)
                 if not snapshot_id:
-                    snapshot_id = c.create_snapshot(volume_path, snapshot_name,
-                                                    image_name)
+                    snapshot_id = c.create_snapshot(volume_path, image_name,
+                                                    image_id, snapshot_name)
                 return snapshot_id
 
         try:
@@ -332,9 +324,8 @@ class TintriDriver(nfs.NfsDriver):
 
     def _find_image_snapshot(self, image_id):
         """Finds image snapshot."""
-        snapshot_name = img_prefix + image_id
         with self._get_client() as c:
-            return c.get_snapshot(snapshot_name)
+            return c.get_snapshot(image_id)
 
     def _clone_image_snapshot(self, snapshot_id, dst, share):
         """Clones volume from image snapshot."""
@@ -452,9 +443,8 @@ class TintriDriver(nfs.NfsDriver):
             if img_info.file_format == 'raw':
                 LOG.debug('Image is raw %s', image_id)
                 self._clone_volume_to_volume(
-                    img_file, volume['name'],
-                    volume_id=None, share=share,
-                    image_id=image_id, vm_name=image_name)
+                    img_file, volume['name'], image_name,
+                    volume_id=None, share=share, image_id=image_id)
                 cloned = True
             else:
                 LOG.info(_LI('Image will locally be converted to raw %s'),
@@ -760,7 +750,9 @@ class TClient(object):
 
     def login(self, username, password):
         # Payload, header and URL for login
-        headers = {'content-type': 'application/json'}
+        headers = {'content-type': 'application/json',
+                   'Tintri-Api-Client':
+                   'Tintri-Cinder-Driver-%s' % TintriDriver.VERSION}
         payload = {'username': username,
                    'password': password,
                    'typeId': 'com.tintri.api.rest.vcommon.dto.rbac.'
@@ -788,16 +780,16 @@ class TClient(object):
         else:
             return volume_path
 
-    def create_snapshot(self, volume_path, volume_name, vm_name,
-                        deletion_policy=None):
+    def create_snapshot(self, volume_path, volume_name, volume_id,
+                        snapshot_name, deletion_policy=None):
         """Creates a volume snapshot."""
         request = {'typeId': 'com.tintri.api.rest.' + self.api_version +
                              '.dto.domain.beans.cinder.CinderSnapshotSpec',
                    'file': TClient._remove_prefix(volume_path, tintri_path),
-                   'vmName': vm_name or volume_name,
-                   'description': 'Cinder ' + volume_name,
-                   'vmTintriUuid': volume_name,
-                   'instanceId': volume_name,
+                   'vmName': volume_name or snapshot_name,
+                   'description': snapshot_name + ' (' + volume_id + ')',
+                   'vmTintriUuid': volume_id,
+                   'instanceId': volume_id,
                    'snapshotCreator': 'Cinder',
                    'deletionPolicy': deletion_policy,
                    }
@@ -810,14 +802,14 @@ class TClient(object):
 
         return r.json()[0]
 
-    def get_snapshot(self, volume_name):
+    def get_snapshot(self, volume_id):
         """Gets a volume snapshot."""
-        filter = {'vmUuid': volume_name}
+        filter = {'vmUuid': volume_id}
 
         payload = '/' + self.api_version + '/snapshot'
         r = self.get_query(payload, filter)
         if r.status_code != 200:
-            msg = _('Failed to get snapshot for volume %s.') % volume_name
+            msg = _('Failed to get snapshot for volume %s.') % volume_id
             raise exception.VolumeDriverException(msg)
 
         if int(r.json()['filteredTotal']) > 0:
