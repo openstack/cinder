@@ -37,7 +37,6 @@ SHEEP_PORT = 7000
 
 
 class SheepdogDriverTestDataGenerator(object):
-
     def sheepdog_cmd_error(self, cmd, exit_code, stdout, stderr):
         return _('(Command: %(cmd)s) '
                  '(Return Code: %(exit_code)s) '
