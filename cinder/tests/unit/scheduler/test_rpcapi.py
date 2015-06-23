@@ -56,7 +56,7 @@ class SchedulerRpcAPITestCase(test.TestCase):
 
         def _fake_prepare_method(*args, **kwds):
             for kwd in kwds:
-                self.assertEqual(kwds[kwd], target[kwd])
+                self.assertEqual(target[kwd], kwds[kwd])
             return rpcapi.client
 
         def _fake_rpc_method(*args, **kwargs):
@@ -71,10 +71,13 @@ class SchedulerRpcAPITestCase(test.TestCase):
             with mock.patch.object(rpcapi.client, rpc_method) as mock_method:
                 mock_method.side_effect = _fake_rpc_method
                 retval = getattr(rpcapi, method)(ctxt, **kwargs)
-                self.assertEqual(retval, expected_retval)
+                self.assertEqual(expected_retval, retval)
                 expected_args = [ctxt, method, expected_msg]
                 for arg, expected_arg in zip(self.fake_args, expected_args):
-                    self.assertEqual(arg, expected_arg)
+                    self.assertEqual(expected_arg, arg)
+
+                for kwarg, value in self.fake_kwargs.items():
+                    self.assertEqual(expected_msg[kwarg], value)
 
     def test_update_service_capabilities(self):
         self._test_scheduler_api('update_service_capabilities',
