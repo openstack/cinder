@@ -121,16 +121,14 @@ class FakeImageService(object):
         pass
 
 
-class SheepdogTestCase(test.TestCase):
+# test for SheeepdogClient Class
+class SheepdogClientTestCase(test.TestCase):
     def setUp(self):
-        super(SheepdogTestCase, self).setUp()
-        # set IP and PORT of sheep process
+        super(SheepdogClientTestCase, self).setUp()
         self._cfg = conf.Configuration(None)
         self._cfg.sheepdog_store_address = SHEEP_ADDR
         self._cfg.sheepdog_store_port = SHEEP_PORT
-        # Initialize Sheepdog Driver
         self.driver = sheepdog.SheepdogDriver(configuration=self._cfg)
-
         db_driver = self.driver.configuration.db_driver
         self.db = importutils.import_module(db_driver)
         self.driver.db = self.db
@@ -138,7 +136,7 @@ class SheepdogTestCase(test.TestCase):
         self.test_data = SheepdogDriverTestDataGenerator()
         self.client = self.driver.client
 
-    # test for SheeepdogClient Class
+    # test for _run_dog method
     def test_run_dog(self):
         expected_cmd = self.test_data.CMD_DOG_CLUSTER_INFO
         with mock.patch.object(self.client, '_execute') as fake_execute:
@@ -173,6 +171,7 @@ class SheepdogTestCase(test.TestCase):
                 self.assertRaises(OSError, self.client._run_dog, *args)
                 fake_logger.error.assert_called_with(expected_log)
 
+    # test for check_cluster_status method
     def test_check_cluster_status(self):
         stdout = self.test_data.DOG_CLUSTER_RUNNING
         stderr = ''
@@ -250,7 +249,22 @@ class SheepdogTestCase(test.TestCase):
                                    self.client.check_cluster_status)
             self.assertEqual(expected_msg, ex.msg)
 
-    # test for SheeepdogDriver Class
+
+# test for SheeepdogDriver Class
+class SheepdogDriverTestCase(test.TestCase):
+    def setUp(self):
+        super(SheepdogDriverTestCase, self).setUp()
+        self._cfg = conf.Configuration(None)
+        self._cfg.sheepdog_store_address = SHEEP_ADDR
+        self._cfg.sheepdog_store_port = SHEEP_PORT
+        self.driver = sheepdog.SheepdogDriver(configuration=self._cfg)
+        db_driver = self.driver.configuration.db_driver
+        self.db = importutils.import_module(db_driver)
+        self.driver.db = self.db
+        self.driver.do_setup(None)
+        self.test_data = SheepdogDriverTestDataGenerator()
+        self.client = self.driver.client
+
     def test_check_for_setup_error(self):
         with mock.patch.object(self.client, 'check_cluster_status') \
                 as fake_execute:
