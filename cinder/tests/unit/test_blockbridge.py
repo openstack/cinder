@@ -259,10 +259,10 @@ class BlockbridgeISCSIDriverTestCase(test.TestCase):
         self.mock_response.read.return_value = mock_body
         self.mock_response.status = 413
 
-        self.assertRaisesRegexp(exception.VolumeBackendAPIException,
-                                "no results matching query",
-                                self.driver.create_volume,
-                                self.volume)
+        self.assertRaisesRegex(exception.VolumeBackendAPIException,
+                               "no results matching query",
+                               self.driver.create_volume,
+                               self.volume)
 
         create_params = dict(
             name=self.volume_name,
@@ -304,11 +304,11 @@ class BlockbridgeISCSIDriverTestCase(test.TestCase):
         self.mock_response.read.return_value = mock_body
         self.mock_response.status = 413
 
-        self.assertRaisesRegexp(exception.VolumeBackendAPIException,
-                                "over quota",
-                                self.driver.create_volume_from_snapshot,
-                                self.volume,
-                                self.snapshot)
+        self.assertRaisesRegex(exception.VolumeBackendAPIException,
+                               "over quota",
+                               self.driver.create_volume_from_snapshot,
+                               self.volume,
+                               self.snapshot)
 
         vol_src = dict(
             snapshot_id=self.snapshot_id,
@@ -362,11 +362,11 @@ class BlockbridgeISCSIDriverTestCase(test.TestCase):
             user_id=self.user_id,
             project_id=self.project_id)
 
-        self.assertRaisesRegexp(exception.VolumeBackendAPIException,
-                                "over quota",
-                                self.driver.create_cloned_volume,
-                                self.volume,
-                                src_vref)
+        self.assertRaisesRegex(exception.VolumeBackendAPIException,
+                               "over quota",
+                               self.driver.create_cloned_volume,
+                               self.volume,
+                               src_vref)
 
         create_params = dict(
             name=self.volume_name,
@@ -400,11 +400,11 @@ class BlockbridgeISCSIDriverTestCase(test.TestCase):
         self.mock_response.read.return_value = mock_body
         self.mock_response.status = 413
 
-        self.assertRaisesRegexp(exception.VolumeBackendAPIException,
-                                "over quota",
-                                self.driver.extend_volume,
-                                self.volume,
-                                2)
+        self.assertRaisesRegex(exception.VolumeBackendAPIException,
+                               "over quota",
+                               self.driver.extend_volume,
+                               self.volume,
+                               2)
 
         url = "/volumes/%s" % self.volume_id
         kwargs = dict(
@@ -450,10 +450,10 @@ class BlockbridgeISCSIDriverTestCase(test.TestCase):
         self.mock_response.read.return_value = mock_body
         self.mock_response.status = 413
 
-        self.assertRaisesRegexp(exception.VolumeBackendAPIException,
-                                "over quota",
-                                self.driver.create_snapshot,
-                                self.snapshot)
+        self.assertRaisesRegex(exception.VolumeBackendAPIException,
+                               "over quota",
+                               self.driver.create_snapshot,
+                               self.snapshot)
 
         url = "/volumes/%s/snapshots/%s" % (self.snapshot['volume_id'],
                                             self.snapshot['id'])
@@ -553,15 +553,15 @@ class BlockbridgeISCSIDriverTestCase(test.TestCase):
     @common_mocks
     def test_get_volume_stats_forbidden(self):
         self.mock_response.status = 403
-        self.assertRaisesRegexp(exception.NotAuthorized,
-                                "Insufficient privileges",
-                                self.driver.get_volume_stats,
-                                True)
+        self.assertRaisesRegex(exception.NotAuthorized,
+                               "Insufficient privileges",
+                               self.driver.get_volume_stats,
+                               True)
 
     @common_mocks
     def test_get_volume_stats_unauthorized(self):
         self.mock_response.status = 401
-        self.assertRaisesRegexp(exception.NotAuthorized,
-                                "Invalid credentials",
-                                self.driver.get_volume_stats,
-                                True)
+        self.assertRaisesRegex(exception.NotAuthorized,
+                               "Invalid credentials",
+                               self.driver.get_volume_stats,
+                               True)
