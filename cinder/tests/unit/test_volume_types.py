@@ -247,7 +247,7 @@ class VolumeTypeTestCase(test.TestCase):
 
     def test_add_access(self):
         project_id = '456'
-        vtype = volume_types.create(self.ctxt, 'type1')
+        vtype = volume_types.create(self.ctxt, 'type1', is_public=False)
         vtype_id = vtype.get('id')
 
         volume_types.add_volume_type_access(self.ctxt, vtype_id, project_id)
@@ -256,7 +256,8 @@ class VolumeTypeTestCase(test.TestCase):
 
     def test_remove_access(self):
         project_id = '456'
-        vtype = volume_types.create(self.ctxt, 'type1', projects=['456'])
+        vtype = volume_types.create(self.ctxt, 'type1', projects=['456'],
+                                    is_public=False)
         vtype_id = vtype.get('id')
 
         volume_types.remove_volume_type_access(self.ctxt, vtype_id, project_id)
@@ -399,3 +400,20 @@ class VolumeTypeTestCase(test.TestCase):
     def test_get_volume_type_encryption_without_volume_type_id(self):
         ret = volume_types.get_volume_type_encryption(self.ctxt, None)
         self.assertIsNone(ret)
+
+    def test_check_public_volume_type_failed(self):
+        project_id = '456'
+        volume_type = volume_types.create(self.ctxt, "type1")
+        volume_type_id = volume_type.get('id')
+        self.assertRaises(exception.InvalidVolumeType,
+                          volume_types.add_volume_type_access,
+                          self.ctxt, volume_type_id, project_id)
+        self.assertRaises(exception.InvalidVolumeType,
+                          volume_types.remove_volume_type_access,
+                          self.ctxt, volume_type_id, project_id)
+
+    def test_check_private_volume_type(self):
+        volume_type = volume_types.create(self.ctxt, "type1", is_public=False)
+        volume_type_id = volume_type.get('id')
+        self.assertFalse(volume_types.is_public_volume_type(self.ctxt,
+                                                            volume_type_id))
