@@ -1026,7 +1026,6 @@ class DriverTestCaseBase(test.TestCase):
 
         self.stubs.Set(emc_vnx_cli, 'INTERVAL_5_SEC', 0.01)
         self.stubs.Set(emc_vnx_cli, 'INTERVAL_30_SEC', 0.01)
-        self.stubs.Set(emc_vnx_cli, 'INTERVAL_60_SEC', 0.01)
 
         self.configuration = conf.Configuration(None)
         self.configuration.append_config_values = mock.Mock(return_value=0)
@@ -1035,7 +1034,6 @@ class DriverTestCaseBase(test.TestCase):
         self.configuration.storage_vnx_pool_name = 'unit_test_pool'
         self.configuration.san_login = 'sysadmin'
         self.configuration.san_password = 'sysadmin'
-        self.configuration.default_timeout = 1
         self.configuration.initiator_auto_registration = True
         self.configuration.check_max_pool_luns_threshold = False
         self.stubs.Set(self.configuration, 'safe_get',
@@ -2407,6 +2405,7 @@ Time Remaining:  0 second(s)
         commands = [self.testData.LUN_PROPERTY_ALL_CMD('failed_vol1')]
         results = [self.testData.LUN_PROPERTY('failed_vol1', size=2)]
         fake_cli = self.driverSetup(commands, results)
+        self.driver.cli._client.timeout = 0
 
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.extend_volume,
