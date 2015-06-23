@@ -263,6 +263,109 @@ class SheepdogClientTestCase(test.TestCase):
                                    self.client.check_cluster_status)
             self.assertEqual(expected_msg, ex.msg)
 
+    # test for create method
+    def test_create_success(self):
+        expected_cmd = ('vdi', 'create', self.test_data.TEST_VOLUME['name'],
+                        '%sG' % self.test_data.TEST_VOLUME['size'])
+        with mock.patch.object(self.client, '_run_dog') as fake_execute:
+            fake_execute.return_value = ('', '')
+            self.client.create(self.test_data.TEST_VOLUME)
+            fake_execute.assert_called_once_with(*expected_cmd)
+
+    def test_create_failed_connected(self):
+        cmd = self.test_data.cmd_dog_vdi_create(
+            self.test_data.TEST_VOLUME['name'],
+            self.test_data.TEST_VOLUME['size'])
+        exit_code = 2
+        stdout = ''
+        stderr = self.test_data.DOG_COMMAND_ERROR_FAIL_TO_CONNECT
+        expected_msg = self.test_data.sheepdog_cmd_error(
+            cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
+        expected_err = _LE('Failed to connect sheep daemon. '
+                           'addr: %(addr)s, port: %(port)s') % \
+            {'addr': SHEEP_ADDR, 'port': SHEEP_PORT}
+        with mock.patch.object(self.client, '_run_dog') as fake_execute:
+            fake_execute.side_effect = exception.SheepdogCmdError(
+                cmd=cmd, exit_code=exit_code,
+                stdout=stdout.replace('\n', '\\n'),
+                stderr=stderr.replace('\n', '\\n'))
+            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
+                ex = self.assertRaises(exception.SheepdogCmdError,
+                                       self.client.create,
+                                       self.test_data.TEST_VOLUME)
+                fake_logger.error.assert_called_with(expected_err)
+                self.assertEqual(expected_msg, ex.msg)
+
+    def test_create_failed_vdi_already_exist(self):
+        cmd = self.test_data.cmd_dog_vdi_create(
+            self.test_data.TEST_VOLUME['name'],
+            self.test_data.TEST_VOLUME['size'])
+        exit_code = 1
+        stdout = ''
+        stderr = self.test_data.DOG_VDI_CREATE_VDI_EXISTS_ALREADY % \
+            {'volname': self.test_data.TEST_VOLUME['name']}
+        expected_msg = self.test_data.sheepdog_cmd_error(
+            cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
+        expected_err = _LE('Volume already exists. %s') % \
+            self.test_data.TEST_VOLUME['name']
+        with mock.patch.object(self.client, '_run_dog') as fake_execute:
+            fake_execute.side_effect = exception.SheepdogCmdError(
+                cmd=cmd, exit_code=exit_code,
+                stdout=stdout.replace('\n', '\\n'),
+                stderr=stderr.replace('\n', '\\n'))
+            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
+                ex = self.assertRaises(exception.SheepdogCmdError,
+                                       self.client.create,
+                                       self.test_data.TEST_VOLUME)
+                fake_logger.error.assert_called_with(expected_err)
+                self.assertEqual(expected_msg, ex.msg)
+
+    def test_create_failed_diskfull(self):
+        cmd = self.test_data.cmd_dog_vdi_create(
+            self.test_data.TEST_VOLUME['name'],
+            self.test_data.TEST_VOLUME['size'])
+        exit_code = 1
+        stdout = ''
+        stderr = self.test_data.DOG_VDI_CREATE_NO_SPACE_FOR_NEW_OBJ
+        expected_msg = self.test_data.sheepdog_cmd_error(
+            cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
+        expected_err = _LE('Failed to create volume for diskfull occurs '
+                           'in datastore.')
+        with mock.patch.object(self.client, '_run_dog') as fake_execute:
+            fake_execute.side_effect = exception.SheepdogCmdError(
+                cmd=cmd, exit_code=exit_code,
+                stdout=stdout.replace('\n', '\\n'),
+                stderr=stderr.replace('\n', '\\n'))
+            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
+                ex = self.assertRaises(exception.SheepdogCmdError,
+                                       self.client.create,
+                                       self.test_data.TEST_VOLUME)
+                fake_logger.error.assert_called_with(expected_err)
+                self.assertEqual(expected_msg, ex.msg)
+
+    def test_create_failed_unknown(self):
+        cmd = self.test_data.cmd_dog_vdi_create(
+            self.test_data.TEST_VOLUME['name'],
+            self.test_data.TEST_VOLUME['size'])
+        exit_code = 1
+        stdout = 'stdout_dummy'
+        stderr = 'stderr_dummy'
+        expected_msg = self.test_data.sheepdog_cmd_error(
+            cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
+        expected_err = _LE('Failed to create volume. %s') % \
+            self.test_data.TEST_VOLUME['name']
+        with mock.patch.object(self.client, '_run_dog') as fake_execute:
+            fake_execute.side_effect = exception.SheepdogCmdError(
+                cmd=cmd, exit_code=exit_code,
+                stdout=stdout.replace('\n', '\\n'),
+                stderr=stderr.replace('\n', '\\n'))
+            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
+                ex = self.assertRaises(exception.SheepdogCmdError,
+                                       self.client.create,
+                                       self.test_data.TEST_VOLUME)
+                fake_logger.error.assert_called_with(expected_err)
+                self.assertEqual(expected_msg, ex.msg)
+
 
 # test for SheeepdogDriver Class
 class SheepdogDriverTestCase(test.TestCase):
@@ -284,6 +387,11 @@ class SheepdogDriverTestCase(test.TestCase):
                 as fake_execute:
             self.driver.check_for_setup_error()
         fake_execute.assert_called_once_with()
+
+    def test_create_volume(self):
+        with mock.patch.object(self.client, 'create') as fake_execute:
+            self.driver.create_volume(self.test_data.TEST_VOLUME)
+            fake_execute.assert_called_once_with(self.test_data.TEST_VOLUME)
 
     def test_update_volume_stats(self):
         def fake_stats(*args):
@@ -328,11 +436,6 @@ class SheepdogDriverTestCase(test.TestCase):
             return self.test_data.COLLIE_CLUSTER_INFO_0_6, ''
         self.stubs.Set(self.driver, '_execute', fake_stats)
         self.driver.check_for_setup_error()
-
-    def test_create_volume(self):
-        with mock.patch.object(self.client, 'create') as fake_execute:
-            self.driver.create_volume(self.test_data.TEST_VOLUME)
-            fake_execute.assert_called_once_with(self.test_data.TEST_VOLUME)
 
     def test_copy_image_to_volume(self):
         @contextlib.contextmanager
