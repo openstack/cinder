@@ -32,6 +32,7 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
 
     Version history:
         1.0.0 - Initial driver
+        1.0.1 - Support DS4000
     """
 
     def __init__(self, *args, **kwargs):

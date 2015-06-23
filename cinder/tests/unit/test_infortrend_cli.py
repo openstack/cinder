@@ -1538,6 +1538,69 @@ Return: 0x0000
 """
         return msg
 
+    def get_test_show_channel_r_model_diff_target_id(self):
+        return (0, [{
+            'Mode': 'Host',
+            'AID': '32',
+            'defClock': 'Auto',
+            'MCS': 'N/A',
+            'Ch': '0',
+            'BID': '33',
+            'curClock': '---',
+            'Width': '---',
+            'Type': 'FIBRE',
+        }, {
+            'Mode': 'Host',
+            'AID': '0',
+            'defClock': 'Auto',
+            'MCS': '0',
+            'Ch': '1',
+            'BID': '1',
+            'curClock': '---',
+            'Width': 'iSCSI',
+            'Type': 'NETWORK',
+        }, {
+            'Mode': 'Host',
+            'AID': '0',
+            'defClock': 'Auto',
+            'MCS': '1',
+            'Ch': '2',
+            'BID': '1',
+            'curClock': '---',
+            'Width': 'iSCSI',
+            'Type': 'NETWORK',
+        }, {
+            'Mode': 'Drive',
+            'AID': '---',
+            'defClock': '6.0 Gbps',
+            'MCS': 'N/A',
+            'Ch': '3',
+            'BID': '---',
+            'curClock': '6.0 Gbps',
+            'Width': 'SAS',
+            'Type': 'SAS',
+        }, {
+            'Mode': 'Host',
+            'AID': '0',
+            'defClock': 'Auto',
+            'MCS': '2',
+            'Ch': '4',
+            'BID': '1',
+            'curClock': '---',
+            'Width': 'iSCSI',
+            'Type': 'NETWORK',
+        }, {
+            'Mode': 'Host',
+            'AID': '48',
+            'defClock': 'Auto',
+            'MCS': 'N/A',
+            'Ch': '5',
+            'BID': '49',
+            'curClock': '---',
+            'Width': '---',
+            'Type': 'FIBRE',
+        }])
+
     def get_test_show_channel_r_model(self):
         return (0, [{
             'Mode': 'Host',
@@ -1818,6 +1881,29 @@ Return: 0x0000
             'WWPN': self.fake_target_wwpns[1],
             'CH': '5',
             'WWNN': self.fake_target_wwnns[0],
+        }])
+
+    def get_test_show_wwn_with_diff_target_id(self):
+        return (0, [{
+            'ID': 'AID:32',
+            'WWPN': self.fake_target_wwpns[0],
+            'CH': '0',
+            'WWNN': self.fake_target_wwnns[0],
+        }, {
+            'ID': 'BID:33',
+            'WWPN': self.fake_target_wwpns[2],
+            'CH': '0',
+            'WWNN': self.fake_target_wwnns[1],
+        }, {
+            'ID': 'AID:48',
+            'WWPN': self.fake_target_wwpns[1],
+            'CH': '5',
+            'WWNN': self.fake_target_wwnns[0],
+        }, {
+            'ID': 'BID:49',
+            'WWPN': self.fake_target_wwpns[3],
+            'CH': '5',
+            'WWNN': self.fake_target_wwnns[1],
         }])
 
     def get_test_show_wwn(self):
