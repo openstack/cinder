@@ -1731,6 +1731,12 @@ class InfortrendCommon(object):
         volume_name = self._get_existing_volume_ref_name(ref)
         part_entry = self._get_latter_volume_dict(volume_name)
 
+        if part_entry is None:
+            msg = _('Specified logical volume does not exist.')
+            LOG.error(msg)
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=ref, reason=msg)
+
         rc, map_info = self._execute('ShowMap', 'part=%s' % part_entry['ID'])
 
         if len(map_info) != 0:
@@ -1746,10 +1752,26 @@ class InfortrendCommon(object):
 
         part_entry = self._get_latter_volume_dict(volume_name)
 
+        if part_entry is None:
+            msg = _('Specified logical volume does not exist.')
+            LOG.error(msg)
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=ref, reason=msg)
+
         self._execute('SetPartition', part_entry['ID'], 'name=%s' % volume_id)
+
+        model_dict = {
+            'system_id': self._get_system_id(self.ip),
+            'partition_id': part_entry['ID'],
+        }
+        model_update = {
+            "provider_location": self._concat_provider_location(model_dict),
+        }
 
         LOG.info(_LI('Rename Volume %(volume_id)s completed.'), {
             'volume_id': volume['id']})
+
+        return model_update
 
     def _get_existing_volume_ref_name(self, ref):
         volume_name = None
@@ -1798,7 +1820,7 @@ class InfortrendCommon(object):
         rc, part_list = self._execute('ShowPartition', '-l')
 
         latest_timestamps = 0
-        ref_dict = {}
+        ref_dict = None
 
         for entry in part_list:
             if entry['Name'] == volume_name:

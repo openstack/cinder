@@ -1760,15 +1760,22 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         test_pool = self.cli_data.fake_lv_id[0]
         test_partition_id = self.cli_data.fake_partition_id[2]
         test_ref_volume_id = test_ref_volume['source-id'].replace('-', '')
+        test_model_update = {
+            'provider_location': 'system_id^%s@partition_id^%s' % (
+                int(self.cli_data.fake_system_id[0], 16),
+                test_partition_id),
+        }
 
         mock_commands = {
             'ShowPartition': self.cli_data.get_test_show_partition_detail(
                 'cinder-unmanaged-%s' % test_ref_volume_id[:-17], test_pool),
             'SetPartition': SUCCEED,
+            'ShowDevice': self.cli_data.get_test_show_device(),
         }
         self._driver_setup(mock_commands)
 
-        self.driver.manage_existing(test_volume, test_ref_volume)
+        model_update = self.driver.manage_existing(
+            test_volume, test_ref_volume)
 
         expect_cli_cmd = [
             mock.call('SetPartition', test_partition_id,
@@ -1776,6 +1783,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
         self.assertEqual(1, log_info.call_count)
+        self.assertDictMatch(model_update, test_model_update)
 
     def test_manage_existing_rename_fail(self):
 
@@ -1797,6 +1805,24 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             test_volume,
             test_ref_volume)
 
+    def test_manage_existing_with_part_not_found(self):
+
+        test_volume = self.cli_data.test_volume
+        test_ref_volume = self.cli_data.test_ref_volume
+
+        mock_commands = {
+            'ShowPartition':
+                self.cli_data.get_test_show_partition_detail(),
+            'SetPartition': SUCCEED,
+        }
+        self._driver_setup(mock_commands)
+
+        self.assertRaises(
+            exception.ManageExistingInvalidReference,
+            self.driver.manage_existing,
+            test_volume,
+            test_ref_volume)
+
     @mock.patch.object(common_cli.LOG, 'info')
     def test_manage_existing_with_import(self, log_info):
 
@@ -1804,15 +1830,22 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         test_ref_volume = self.cli_data.test_ref_volume_with_import
         test_pool = self.cli_data.fake_lv_id[0]
         test_partition_id = self.cli_data.fake_partition_id[2]
+        test_model_update = {
+            'provider_location': 'system_id^%s@partition_id^%s' % (
+                int(self.cli_data.fake_system_id[0], 16),
+                test_partition_id),
+        }
 
         mock_commands = {
             'ShowPartition': self.cli_data.get_test_show_partition_detail(
                 test_ref_volume['source-name'], test_pool),
             'SetPartition': SUCCEED,
+            'ShowDevice': self.cli_data.get_test_show_device(),
         }
         self._driver_setup(mock_commands)
 
-        self.driver.manage_existing(test_volume, test_ref_volume)
+        model_update = self.driver.manage_existing(
+            test_volume, test_ref_volume)
 
         expect_cli_cmd = [
             mock.call('SetPartition', test_partition_id,
@@ -1820,6 +1853,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
         self.assertEqual(1, log_info.call_count)
+        self.assertDictMatch(model_update, test_model_update)
 
     @mock.patch.object(common_cli.LOG, 'info')
     def test_unmanage(self, log_info):
