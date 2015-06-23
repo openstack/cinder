@@ -956,7 +956,7 @@ class SheepdogError(VolumeBackendAPIException):
 
 
 class SheepdogCmdError(SheepdogError):
-    message = _("Sheepdog command error: %(cmd)s "
+    message = _("(Command: %(cmd)s) "
                 "(Return Code: %(exit_code)s) "
                 "(Stdout: %(stdout)s) "
                 "(Stderr: %(stderr)s)")
