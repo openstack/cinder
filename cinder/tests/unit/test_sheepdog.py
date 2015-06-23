@@ -26,6 +26,7 @@ import six
 
 from cinder import exception
 from cinder.i18n import _
+from cinder.i18n import _LE
 from cinder.image import image_utils
 from cinder import test
 from cinder.volume import configuration as conf
@@ -37,10 +38,10 @@ SHEEP_PORT = 7000
 
 class SheepdogDriverTestDataGenerator(object):
     def sheepdog_cmd_error(self, cmd, exit_code, stdout, stderr):
-        return _("(Command: %(cmd)s) "
-                 "(Return Code: %(exit_code)s) "
-                 "(Stdout: %(stdout)s) "
-                 "(Stderr: %(stderr)s)") % \
+        return _('(Command: %(cmd)s) '
+                 '(Return Code: %(exit_code)s) '
+                 '(Stdout: %(stdout)s) '
+                 '(Stderr: %(stderr)s)') % \
             {'cmd': cmd, 'exit_code': exit_code,
              'stdout': stdout.replace('\n', '\\n'),
              'stderr': stderr.replace('\n', '\\n')}
@@ -145,12 +146,12 @@ class SheepdogTestCase(test.TestCase):
                 self.client._run_dog('cluster', 'info')
         fake_execute.assert_called_once_with(*expected_cmd)
 
-    def test_run_dog_oserror_command_not_found(self):
+    def test_run_dog_os_error_command_not_found(self):
         args = ('cluster', 'info')
         expected_msg = 'No such file or directory'
         expected_errno = errno.ENOENT
-        expected_log = _('Sheepdog is not installed. '
-                         "OSError: command is %(cmd)s.") % \
+        expected_log = _LE('Sheepdog is not installed. '
+                           'OSError: command is %(cmd)s.') % \
             {'cmd': self.test_data.CMD_DOG_CLUSTER_INFO}
         with mock.patch.object(self.client, '_execute') as fake_execute:
             with mock.patch.object(sheepdog, 'LOG') as fake_logger:
@@ -159,11 +160,11 @@ class SheepdogTestCase(test.TestCase):
                 self.assertRaises(OSError, self.client._run_dog, *args)
                 fake_logger.error.assert_called_with(expected_log)
 
-    def test_run_dog_oserror_unknown(self):
+    def test_run_dog_os_error_unknown(self):
         args = ('cluster', 'info')
         expected_msg = 'unknown'
         expected_errno = errno.EPERM
-        expected_log = "OSError: command is %(cmd)s." % \
+        expected_log = _LE('OSError: command is %(cmd)s.') % \
             {'cmd': self.test_data.CMD_DOG_CLUSTER_INFO}
         with mock.patch.object(self.client, '_execute') as fake_execute:
             with mock.patch.object(sheepdog, 'LOG') as fake_logger:
@@ -176,7 +177,7 @@ class SheepdogTestCase(test.TestCase):
         stdout = self.test_data.DOG_CLUSTER_RUNNING
         stderr = ''
         expected_cmd = ('cluster', 'info')
-        expected_log = 'Sheepdog cluster is running.'
+        expected_log = _('Sheepdog cluster is running.')
 
         with mock.patch.object(self.client, '_run_dog') as fake_execute:
             with mock.patch.object(sheepdog, 'LOG') as fake_logger:
@@ -188,9 +189,9 @@ class SheepdogTestCase(test.TestCase):
     def test_check_cluster_status_error_waiting_formatted(self):
         stdout = self.test_data.DOG_CLUSTER_INFO_TO_BE_FORMATTED
         stderr = ''
-        expected_reason = _('Cluster is not formatted. '
-                            'You should probably perform '
-                            '"dog cluster format".')
+        expected_reason = _LE('Cluster is not formatted. '
+                              'You should probably perform '
+                              '"dog cluster format".')
 
         with mock.patch.object(self.client, '_run_dog') as fake_execute:
             fake_execute.return_value = (stdout, stderr)
@@ -201,8 +202,8 @@ class SheepdogTestCase(test.TestCase):
     def test_check_cluster_status_error_waiting_other_nodes(self):
         stdout = self.test_data.DOG_CLUSTER_INFO_WAITING_OTHER_NODES
         stderr = ''
-        expected_reason = _('Waiting for all nodes to join cluster. '
-                            'Ensure all sheep daemons are running.')
+        expected_reason = _LE('Waiting for all nodes to join cluster. '
+                              'Ensure all sheep daemons are running.')
 
         with mock.patch.object(self.client, '_run_dog') as fake_execute:
             fake_execute.return_value = (stdout, stderr)
@@ -219,8 +220,8 @@ class SheepdogTestCase(test.TestCase):
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        expected_log = _("Failed to connect sheep daemon. "
-                         "addr: %(addr)s, port: %(port)s") % \
+        expected_log = _LE('Failed to connect sheep daemon. '
+                           'addr: %(addr)s, port: %(port)s') % \
             {'addr': SHEEP_ADDR, 'port': SHEEP_PORT}
         with mock.patch.object(self.client, '_run_dog') as fake_execute:
             with mock.patch.object(sheepdog, 'LOG') as fake_logger:
