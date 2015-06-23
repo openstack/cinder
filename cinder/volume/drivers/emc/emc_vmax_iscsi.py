@@ -47,16 +47,17 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
         2.1.3 - Fixed a problem with FAST support (bug #1435069)
         2.2.0 - Add manage/unmanage
         2.2.1 - Support for SE 8.0.3
+        2.2.2 - Update Consistency Group
     """
 
-    VERSION = "2.2.1"
+    VERSION = "2.2.2"
 
     def __init__(self, *args, **kwargs):
 
         super(EMCVMAXISCSIDriver, self).__init__(*args, **kwargs)
-        self.common =\
+        self.common = (
             emc_vmax_common.EMCVMAXCommon('iSCSI',
-                                          configuration=self.configuration)
+                                          configuration=self.configuration))
 
     def check_for_setup_error(self):
         pass
@@ -352,3 +353,9 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
         backend array.
         """
         return self.common.unmanage(volume)
+
+    def update_consistencygroup(self, context, group,
+                                add_volumes, remove_volumes):
+        """Updates LUNs in consistency group."""
+        return self.common.update_consistencygroup(group, add_volumes,
+                                                   remove_volumes)

@@ -1134,6 +1134,11 @@ class FakeEcomConnection(object):
         replic_service['CreationClassName'] = \
             self.data.replication_service_creationclass
         replic_services.append(replic_service)
+        replic_service2 = {}
+        replic_service2['SystemName'] = self.data.storage_system_v3
+        replic_service2['CreationClassName'] = (
+            self.data.replication_service_creationclass)
+        replic_services.append(replic_service2)
         return replic_services
 
     def _enum_pools(self):
@@ -2979,6 +2984,57 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         self.driver.delete_cgsnapshot(
             self.data.test_ctxt, self.data.test_CG_snapshot)
 
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_get_pool_and_storage_system',
+        return_value=(None, EMCVMAXCommonData.storage_system))
+    @mock.patch.object(
+        volume_types,
+        'get_volume_type_extra_specs',
+        return_value={'volume_backend_name': 'ISCSINoFAST'})
+    def test_update_CG_add_volume_no_fast_success(
+            self, _mock_volume_type, _mock_storage_system):
+        add_volumes = []
+        add_volumes.append(self.data.test_source_volume)
+        remove_volumes = None
+        self.driver.update_consistencygroup(
+            self.data.test_ctxt, self.data.test_CG,
+            add_volumes, remove_volumes)
+        # Multiple volumes
+        add_volumes.append(self.data.test_source_volume)
+        self.driver.update_consistencygroup(
+            self.data.test_ctxt, self.data.test_CG,
+            add_volumes, remove_volumes)
+        # Can't find CG
+        self.driver.common._find_consistency_group = mock.Mock(
+            return_value=None)
+        self.assertRaises(exception.ConsistencyGroupNotFound,
+                          self.driver.update_consistencygroup,
+                          self.data.test_ctxt, self.data.test_CG,
+                          add_volumes, remove_volumes)
+
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_get_pool_and_storage_system',
+        return_value=(None, EMCVMAXCommonData.storage_system))
+    @mock.patch.object(
+        volume_types,
+        'get_volume_type_extra_specs',
+        return_value={'volume_backend_name': 'ISCSINoFAST'})
+    def test_update_CG_remove_volume_no_fast_success(
+            self, _mock_volume_type, _mock_storage_system):
+        remove_volumes = []
+        remove_volumes.append(self.data.test_source_volume)
+        add_volumes = None
+        self.driver.update_consistencygroup(
+            self.data.test_ctxt, self.data.test_CG,
+            add_volumes, remove_volumes)
+        # Multiple volumes
+        remove_volumes.append(self.data.test_source_volume)
+        self.driver.update_consistencygroup(
+            self.data.test_ctxt, self.data.test_CG,
+            add_volumes, remove_volumes)
+
     # Bug https://bugs.launchpad.net/cinder/+bug/1442376
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
@@ -3768,6 +3824,50 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
             self, _mock_volume_type, _mock_storage):
         self.driver.delete_cgsnapshot(
             self.data.test_ctxt, self.data.test_CG_snapshot)
+
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_get_pool_and_storage_system',
+        return_value=(None, EMCVMAXCommonData.storage_system))
+    @mock.patch.object(
+        volume_types,
+        'get_volume_type_extra_specs',
+        return_value={'volume_backend_name': 'ISCSIFAST'})
+    def test_update_CG_add_volume_fast_success(
+            self, _mock_volume_type, _mock_storage_system):
+        add_volumes = []
+        add_volumes.append(self.data.test_source_volume)
+        remove_volumes = None
+        self.driver.update_consistencygroup(
+            self.data.test_ctxt, self.data.test_CG,
+            add_volumes, remove_volumes)
+        # Multiple volumes
+        add_volumes.append(self.data.test_source_volume)
+        self.driver.update_consistencygroup(
+            self.data.test_ctxt, self.data.test_CG,
+            add_volumes, remove_volumes)
+
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_get_pool_and_storage_system',
+        return_value=(None, EMCVMAXCommonData.storage_system))
+    @mock.patch.object(
+        volume_types,
+        'get_volume_type_extra_specs',
+        return_value={'volume_backend_name': 'ISCSIFAST'})
+    def test_update_CG_remove_volume_fast_success(
+            self, _mock_volume_type, _mock_storage_system):
+        remove_volumes = []
+        remove_volumes.append(self.data.test_source_volume)
+        add_volumes = None
+        self.driver.update_consistencygroup(
+            self.data.test_ctxt, self.data.test_CG,
+            add_volumes, remove_volumes)
+        # Multiple volumes
+        remove_volumes.append(self.data.test_source_volume)
+        self.driver.update_consistencygroup(
+            self.data.test_ctxt, self.data.test_CG,
+            add_volumes, remove_volumes)
 
     def _cleanup(self):
         bExists = os.path.exists(self.config_file_path)
@@ -5455,6 +5555,57 @@ class EMCV3DriverTestCase(test.TestCase):
             self, _mock_volume_type, _mock_storage):
         self.driver.delete_cgsnapshot(
             self.data.test_ctxt, self.data.test_CG_snapshot)
+
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_get_pool_and_storage_system',
+        return_value=(None, EMCVMAXCommonData.storage_system_v3))
+    @mock.patch.object(
+        volume_types,
+        'get_volume_type_extra_specs',
+        return_value={'volume_backend_name': 'V3_BE'})
+    def test_update_CG_add_volume_v3_success(
+            self, _mock_volume_type, _mock_storage_system):
+        add_volumes = []
+        add_volumes.append(self.data.test_source_volume)
+        remove_volumes = None
+        self.driver.update_consistencygroup(
+            self.data.test_ctxt, self.data.test_CG,
+            add_volumes, remove_volumes)
+        # Multiple volumes
+        add_volumes.append(self.data.test_source_volume)
+        self.driver.update_consistencygroup(
+            self.data.test_ctxt, self.data.test_CG,
+            add_volumes, remove_volumes)
+        # Can't find CG
+        self.driver.common._find_consistency_group = mock.Mock(
+            return_value=None)
+        self.assertRaises(exception.ConsistencyGroupNotFound,
+                          self.driver.update_consistencygroup,
+                          self.data.test_ctxt, self.data.test_CG,
+                          add_volumes, remove_volumes)
+
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_get_pool_and_storage_system',
+        return_value=(None, EMCVMAXCommonData.storage_system_v3))
+    @mock.patch.object(
+        volume_types,
+        'get_volume_type_extra_specs',
+        return_value={'volume_backend_name': 'V3_BE'})
+    def test_update_CG_remove_volume_v3_success(
+            self, _mock_volume_type, _mock_storage_system):
+        remove_volumes = []
+        remove_volumes.append(self.data.test_source_volume)
+        add_volumes = None
+        self.driver.update_consistencygroup(
+            self.data.test_ctxt, self.data.test_CG,
+            add_volumes, remove_volumes)
+        # Multiple volumes
+        remove_volumes.append(self.data.test_source_volume)
+        self.driver.update_consistencygroup(
+            self.data.test_ctxt, self.data.test_CG,
+            add_volumes, remove_volumes)
 
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,

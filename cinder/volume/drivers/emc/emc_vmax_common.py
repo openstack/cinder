@@ -19,7 +19,6 @@ import os.path
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
-
 import six
 
 from cinder import exception
@@ -4068,3 +4067,79 @@ class EMCVMAXCommon(object):
         volumeInstance = self.utils.rename_volume(self.conn,
                                                   volumeInstance,
                                                   volumeId)
+
+    def update_consistencygroup(self, group, add_volumes,
+                                remove_volumes):
+        """Updates LUNs in consistency group.
+
+        :param group: storage configuration service instance
+        :param add_volumes: the volumes uuids you want to add to the CG
+        :param remove_volumes: the volumes uuids you want to remove from
+                               the CG
+        """
+        LOG.info(_LI("Update Consistency Group: %(group)s. "
+                     "This adds and/or removes volumes from a CG."),
+                 {'group': group['id']})
+
+        modelUpdate = {'status': 'available'}
+        volumeTypeId = group['volume_type_id'].replace(",", "")
+
+        cg_name = self.utils.truncate_string(group['id'], 8)
+
+        extraSpecs = self._initial_setup(None, volumeTypeId)
+
+        _poolInstanceName, storageSystem = (
+            self._get_pool_and_storage_system(extraSpecs))
+        add_vols = [vol for vol in add_volumes] if add_volumes else []
+        add_instance_names = self._get_volume_instance_names(add_vols)
+        remove_vols = [vol for vol in remove_volumes] if remove_volumes else []
+        remove_instance_names = self._get_volume_instance_names(remove_vols)
+        self.conn = self._get_ecom_connection()
+
+        try:
+            replicationService = self.utils.find_replication_service(
+                self.conn, storageSystem)
+            cgInstanceName = (
+                self._find_consistency_group(replicationService, cg_name))
+            if cgInstanceName is None:
+                raise exception.ConsistencyGroupNotFound(
+                    consistencygroup_id=cg_name)
+            # Add volume(s) to a consistency group
+            if add_instance_names:
+                self.provision.add_volume_to_cg(
+                    self.conn, replicationService, cgInstanceName,
+                    add_instance_names, cg_name, None,
+                    extraSpecs)
+            # Remove volume(s) from a consistency group
+            if remove_instance_names:
+                self.provision.remove_volume_from_cg(
+                    self.conn, replicationService, cgInstanceName,
+                    remove_instance_names, cg_name, None,
+                    extraSpecs)
+        except exception.ConsistencyGroupNotFound:
+            raise
+        except Exception as ex:
+            LOG.error(_LE("Exception: %(ex)s"), {'ex': ex})
+            exceptionMessage = (_("Failed to update consistency group:"
+                                  " %(cgName)s.")
+                                % {'cgName': cg_name})
+            LOG.error(exceptionMessage)
+            raise exception.VolumeBackendAPIException(data=exceptionMessage)
+
+        return modelUpdate, None, None
+
+    def _get_volume_instance_names(self, volumes):
+        """Get volume instance names from volume.
+
+        :param volumes: volume objects
+        :returns: volume instance names
+        """
+        volumeInstanceNames = []
+        for volume in volumes:
+            volumeInstance = self._find_lun(volume)
+            if volumeInstance is None:
+                LOG.error(_LE("Volume %(name)s not found on the array."),
+                          {'name': volume['name']})
+            else:
+                volumeInstanceNames.append(volumeInstance.path)
+        return volumeInstanceNames
