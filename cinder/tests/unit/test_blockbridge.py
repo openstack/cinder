@@ -16,13 +16,17 @@ Blockbridge EPS iSCSI Volume Driver Tests
 """
 
 import base64
-import httplib
-import urllib
 
-import mock
+try:
+    from unittest import mock
+except ImportError:
+    import mock
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
 from oslo_utils import units
+import six
+from six.moves import http_client
+from six.moves import urllib
 
 from cinder import context
 from cinder import exception
@@ -71,7 +75,7 @@ def common_mocks(f):
     mocks that can't/don't get unset.
     """
     def _common_inner_inner1(inst, *args, **kwargs):
-        @mock.patch("httplib.HTTPSConnection", autospec=True)
+        @mock.patch("six.moves.http_client.HTTPSConnection", autospec=True)
         def _common_inner_inner2(mock_conn):
             inst.mock_httplib = mock_conn
             inst.mock_conn = mock_conn.return_value
@@ -154,7 +158,7 @@ class BlockbridgeISCSIDriverTestCase(test.TestCase):
         self.mock_response.read.return_value = '{}'
         self.mock_response.status = 200
 
-        conn = httplib.HTTPSConnection('whatever', None)
+        conn = http_client.HTTPSConnection('whatever', None)
         conn.request('GET', '/blah', '{}', {})
         rsp = conn.getresponse()
 
@@ -168,7 +172,7 @@ class BlockbridgeISCSIDriverTestCase(test.TestCase):
         self.mock_response.read.return_value = mock_body
         self.mock_response.status = 413
 
-        conn = httplib.HTTPSConnection('whatever', None)
+        conn = http_client.HTTPSConnection('whatever', None)
         conn.request('GET', '/blah', '{}', {})
         rsp = conn.getresponse()
 
@@ -196,28 +200,37 @@ class BlockbridgeISCSIDriverTestCase(test.TestCase):
         with mock.patch.object(self.driver, 'hostname', 'mock-hostname'):
             self.driver.get_volume_stats(True)
 
-        b64_creds = base64.encodestring("%s:%s" % (
-            self.cfg.blockbridge_auth_user,
-            self.cfg.blockbridge_auth_password)).replace("\n", "")
+        creds = "%s:%s" % (self.cfg.blockbridge_auth_user,
+                           self.cfg.blockbridge_auth_password)
+        if six.PY3:
+            creds = creds.encode('utf-8')
+            b64_creds = base64.encodestring(creds).decode('ascii')
+        else:
+            b64_creds = base64.encodestring(creds)
 
         params = dict(
             hostname='mock-hostname',
             version=self.driver.VERSION,
             backend_name='BlockbridgeISCSIDriver',
             pool='OpenStack',
-            query='%2Bopenstack')
+            query='+openstack')
 
-        full_url = ("/api/cinder/status?query=%(query)s&"
-                    "hostname=%(hostname)s&backend_name=%(backend_name)s&"
-                    "version=%(version)s&pool=%(pool)s" % params)
         headers = {
             'Accept': 'application/vnd.blockbridge-3+json',
-            'Authorization': "Basic %s" % b64_creds,
+            'Authorization': "Basic %s" % b64_creds.replace("\n", ""),
             'User-Agent': "cinder-volume/%s" % self.driver.VERSION,
         }
 
         self.mock_conn.request.assert_called_once_with(
-            'GET', full_url, None, headers)
+            'GET', mock.ANY, None, headers)
+        # Parse the URL instead of comparing directly both URLs.
+        # On Python 3, parameters are formatted in a random order because
+        # of the hash randomization.
+        conn_url = self.mock_conn.request.call_args[0][1]
+        conn_params = dict(urllib.parse.parse_qsl(conn_url.split("?", 1)[1]))
+        self.assertTrue(conn_url.startswith("/api/cinder/status?"),
+                        repr(conn_url))
+        self.assertEqual(params, conn_params)
 
     @common_mocks
     def test_create_volume(self):
@@ -508,7 +521,7 @@ class BlockbridgeISCSIDriverTestCase(test.TestCase):
 
         self.assertEqual(expected_props, props)
 
-        ini_name = urllib.quote(self.connector["initiator"], "")
+        ini_name = urllib.parse.quote(self.connector["initiator"], "")
         url = "/volumes/%s/exports/%s" % (self.volume_id, ini_name)
         params = dict(
             chap_user="mock-user-abcdef123456",
@@ -525,7 +538,7 @@ class BlockbridgeISCSIDriverTestCase(test.TestCase):
     def test_terminate_connection(self):
         self.driver.terminate_connection(self.volume, self.connector)
 
-        ini_name = urllib.quote(self.connector["initiator"], "")
+        ini_name = urllib.parse.quote(self.connector["initiator"], "")
         url = "/volumes/%s/exports/%s" % (self.volume_id, ini_name)
         kwargs = dict(
             method='DELETE',
