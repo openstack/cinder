@@ -1,5 +1,6 @@
 #    Copyright 2012 OpenStack Foundation
 #    Copyright (c) 2013 Zelin.io
+#    Copyright (C) 2015 Nippon Telegraph and Telephone Corporation.
 #    All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -18,6 +19,7 @@
 SheepDog Volume Driver.
 
 """
+import errno
 import re
 
 from oslo_concurrency import processutils
@@ -72,6 +74,15 @@ class SheepdogClient(object):
                '-a', self.addr, '-p', str(self.port)) + params
         try:
             return self._execute(*cmd)
+        except OSError as e:
+            with excutils.save_and_reraise_exception():
+                if e.errno == errno.ENOENT:
+                    msg = _LE('Sheepdog is not installed. '
+                              'OSError: command is %(cmd)s.')
+                else:
+                    msg = _LE('OSError: command is %(cmd)s.')
+                msg = msg % {'cmd': cmd}
+                LOG.error(msg)
         except processutils.ProcessExecutionError as e:
             raise exception.SheepdogCmdError(
                 cmd=e.cmd,
@@ -83,18 +94,13 @@ class SheepdogClient(object):
         try:
             (stdout, stderr) = self._run_dog('cluster', 'info')
         except exception.SheepdogCmdError as e:
-            exit_code = e.kwargs['exit_code']
             stderr = e.kwargs['stderr']
             with excutils.save_and_reraise_exception():
-                if exit_code == 127:
-                    LOG.error(_LE('Sheepdog is not installed.'))
-                elif stderr.startswith(self.DOG_RESP_CONNECTION_ERROR):
+                if stderr.startswith(self.DOG_RESP_CONNECTION_ERROR):
                     msg = _LE('Failed to connect sheep daemon. '
                               'addr: %(addr)s, port: %(port)s')
                     msg = msg % {'addr': self.addr, 'port': self.port}
                     LOG.error(msg)
-                else:
-                    LOG.error(_LE('Failed to get sheepdog cluster status.'))
 
         if stdout.startswith(self.DOG_RESP_CLUSTER_RUNNING):
             LOG.debug('Sheepdog cluster is running.')

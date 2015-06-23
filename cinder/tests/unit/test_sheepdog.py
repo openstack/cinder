@@ -1,4 +1,6 @@
+
 # Copyright (c) 2013 Zelin.io
+# Copyright (C) 2015 Nippon Telegraph and Telephone Corporation.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -13,8 +15,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-
 import contextlib
+import errno
 
 import mock
 from oslo_concurrency import processutils
@@ -34,20 +36,17 @@ SHEEP_PORT = 7000
 
 
 class SheepdogDriverTestDataGenerator(object):
-    def cmd_dog_cluster_info(self):
-        return ('dog', 'cluster', 'info', '-a', SHEEP_ADDR, '-p',
-                str(SHEEP_PORT))
-
-    def sheepdog_error(self, reason):
-        return _("Sheepdog error: %(reason)s") % {'reason': reason}
-
     def sheepdog_cmd_error(self, cmd, exit_code, stdout, stderr):
-        return _("Sheepdog command error: %(cmd)s "
+        return _("(Command: %(cmd)s) "
                  "(Return Code: %(exit_code)s) "
                  "(Stdout: %(stdout)s) "
                  "(Stderr: %(stderr)s)") % \
             {'cmd': cmd, 'exit_code': exit_code,
-             'stdout': stdout, 'stderr': stderr}
+             'stdout': stdout.replace('\n', '\\n'),
+             'stderr': stderr.replace('\n', '\\n')}
+
+    CMD_DOG_CLUSTER_INFO = ('dog', 'cluster', 'info',
+                            '-a', SHEEP_ADDR, '-p', str(SHEEP_PORT))
 
     TEST_VOLUME = {
         'name': 'volume-00000001',
@@ -140,11 +139,38 @@ class SheepdogTestCase(test.TestCase):
 
     # test for SheeepdogClient Class
     def test_run_dog(self):
-        expected_cmd = self.test_data.cmd_dog_cluster_info()
+        expected_cmd = self.test_data.CMD_DOG_CLUSTER_INFO
         with mock.patch.object(self.client, '_execute') as fake_execute:
                 fake_execute.return_value = ('', '')
                 self.client._run_dog('cluster', 'info')
         fake_execute.assert_called_once_with(*expected_cmd)
+
+    def test_run_dog_oserror_command_not_found(self):
+        args = ('cluster', 'info')
+        expected_msg = 'No such file or directory'
+        expected_errno = errno.ENOENT
+        expected_log = _('Sheepdog is not installed. '
+                         "OSError: command is %(cmd)s.") % \
+            {'cmd': self.test_data.CMD_DOG_CLUSTER_INFO}
+        with mock.patch.object(self.client, '_execute') as fake_execute:
+            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
+                fake_execute.side_effect = OSError(expected_errno,
+                                                   expected_msg)
+                self.assertRaises(OSError, self.client._run_dog, *args)
+                fake_logger.error.assert_called_with(expected_log)
+
+    def test_run_dog_oserror_unknown(self):
+        args = ('cluster', 'info')
+        expected_msg = 'unknown'
+        expected_errno = errno.EPERM
+        expected_log = "OSError: command is %(cmd)s." % \
+            {'cmd': self.test_data.CMD_DOG_CLUSTER_INFO}
+        with mock.patch.object(self.client, '_execute') as fake_execute:
+            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
+                fake_execute.side_effect = OSError(expected_errno,
+                                                   expected_msg)
+                self.assertRaises(OSError, self.client._run_dog, *args)
+                fake_logger.error.assert_called_with(expected_log)
 
     def test_check_cluster_status(self):
         stdout = self.test_data.DOG_CLUSTER_RUNNING
@@ -165,48 +191,27 @@ class SheepdogTestCase(test.TestCase):
         expected_reason = _('Cluster is not formatted. '
                             'You should probably perform '
                             '"dog cluster format".')
-        expected_msg = self.test_data.sheepdog_error(expected_reason)
 
         with mock.patch.object(self.client, '_run_dog') as fake_execute:
             fake_execute.return_value = (stdout, stderr)
             ex = self.assertRaises(exception.SheepdogError,
                                    self.client.check_cluster_status)
-            self.assertEqual(expected_msg, ex.msg)
+            self.assertEqual(expected_reason, ex.kwargs['reason'])
 
     def test_check_cluster_status_error_waiting_other_nodes(self):
         stdout = self.test_data.DOG_CLUSTER_INFO_WAITING_OTHER_NODES
         stderr = ''
         expected_reason = _('Waiting for all nodes to join cluster. '
                             'Ensure all sheep daemons are running.')
-        expected_msg = self.test_data.sheepdog_error(expected_reason)
 
         with mock.patch.object(self.client, '_run_dog') as fake_execute:
             fake_execute.return_value = (stdout, stderr)
             ex = self.assertRaises(exception.SheepdogError,
                                    self.client.check_cluster_status)
-            self.assertEqual(expected_msg, ex.msg)
-
-    def test_check_cluster_status_error_command_not_found(self):
-        cmd = self.test_data.cmd_dog_cluster_info()
-        exit_code = 127
-        stdout = 'stdout_dummy'
-        stderr = 'stdout_dummy'
-        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
-                                                         exit_code=exit_code,
-                                                         stdout=stdout,
-                                                         stderr=stderr)
-        expected_log = 'Sheepdog is not installed.'
-        with mock.patch.object(self.client, '_run_dog') as fake_execute:
-            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
-                fake_execute.side_effect = exception.SheepdogCmdError(
-                    cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
-                ex = self.assertRaises(exception.SheepdogCmdError,
-                                       self.client.check_cluster_status)
-                fake_logger.error.assert_called_with(expected_log)
-                self.assertEqual(expected_msg, ex.msg)
+            self.assertEqual(expected_reason, ex.kwargs['reason'])
 
     def test_check_cluster_status_error_fail_to_coonect(self):
-        cmd = self.test_data.cmd_dog_cluster_info()
+        cmd = self.test_data.CMD_DOG_CLUSTER_INFO
         exit_code = 2
         stdout = 'stdout_dummy'
         stderr = self.test_data.DOG_COMMAND_ERROR_FAIL_TO_CONNECT
@@ -220,14 +225,16 @@ class SheepdogTestCase(test.TestCase):
         with mock.patch.object(self.client, '_run_dog') as fake_execute:
             with mock.patch.object(sheepdog, 'LOG') as fake_logger:
                 fake_execute.side_effect = exception.SheepdogCmdError(
-                    cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
+                    cmd=cmd, exit_code=exit_code,
+                    stdout=stdout.replace('\n', '\\n'),
+                    stderr=stderr.replace('\n', '\\n'))
                 ex = self.assertRaises(exception.SheepdogCmdError,
                                        self.client.check_cluster_status)
                 fake_logger.error.assert_called_with(expected_log)
                 self.assertEqual(expected_msg, ex.msg)
 
     def test_check_cluster_status_error_unknown(self):
-        cmd = self.test_data.cmd_dog_cluster_info()
+        cmd = self.test_data.CMD_DOG_CLUSTER_INFO
         exit_code = 2
         stdout = 'stdout_dummy'
         stderr = 'stdout_dummy'
@@ -235,15 +242,12 @@ class SheepdogTestCase(test.TestCase):
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        expected_log = _('Failed to get sheepdog cluster status.')
         with mock.patch.object(self.client, '_run_dog') as fake_execute:
-            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
-                fake_execute.side_effect = exception.SheepdogCmdError(
-                    cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
-                ex = self.assertRaises(exception.SheepdogCmdError,
-                                       self.client.check_cluster_status)
-                fake_logger.error.assert_called_with(expected_log)
-                self.assertEqual(expected_msg, ex.msg)
+            fake_execute.side_effect = exception.SheepdogCmdError(
+                cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
+            ex = self.assertRaises(exception.SheepdogCmdError,
+                                   self.client.check_cluster_status)
+            self.assertEqual(expected_msg, ex.msg)
 
     # test for SheeepdogDriver Class
     def test_check_for_setup_error(self):
