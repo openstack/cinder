@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import mock
+
 from cinder import context
 from cinder import test
 
@@ -95,3 +97,40 @@ class ContextTestCase(test.TestCase):
                                      project_domain="project-domain")
         self.assertEqual('user tenant domain user-domain project-domain',
                          ctx.to_dict()["user_identity"])
+
+    @mock.patch('cinder.context.CONF')
+    def test_cinder_internal_context(self, mock_conf):
+        project_id = 'ec729e9946bc43c39ece6dfa7de70eea'
+        user_id = 'c466a48309794261b64a4f02cfcc3d64'
+        mock_conf.cinder_internal_tenant_project_id = project_id
+        mock_conf.cinder_internal_tenant_user_id = user_id
+        ctx = context.get_internal_tenant_context()
+        self.assertEqual(user_id, ctx.user_id)
+        self.assertEqual(project_id, ctx.project_id)
+
+    @mock.patch('cinder.context.CONF')
+    def test_cinder_internal_context_missing_user(self, mock_conf):
+        project_id = 'ec729e9946bc43c39ece6dfa7de70eea'
+        user_id = None
+        mock_conf.cinder_internal_tenant_project_id = project_id
+        mock_conf.cinder_internal_tenant_user_id = user_id
+        ctx = context.get_internal_tenant_context()
+        self.assertIsNone(ctx)
+
+    @mock.patch('cinder.context.CONF')
+    def test_cinder_internal_context_missing_project(self, mock_conf):
+        project_id = None
+        user_id = 'c466a48309794261b64a4f02cfcc3d64'
+        mock_conf.cinder_internal_tenant_project_id = project_id
+        mock_conf.cinder_internal_tenant_user_id = user_id
+        ctx = context.get_internal_tenant_context()
+        self.assertIsNone(ctx)
+
+    @mock.patch('cinder.context.CONF')
+    def test_cinder_internal_context_missing_all(self, mock_conf):
+        project_id = None
+        user_id = None
+        mock_conf.cinder_internal_tenant_project_id = project_id
+        mock_conf.cinder_internal_tenant_user_id = user_id
+        ctx = context.get_internal_tenant_context()
+        self.assertIsNone(ctx)

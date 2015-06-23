@@ -19,14 +19,28 @@
 
 import copy
 
+from oslo_config import cfg
 from oslo_context import context
 from oslo_log import log as logging
 from oslo_utils import timeutils
 import six
 
-from cinder.i18n import _
+from cinder.i18n import _, _LW
 from cinder import policy
 
+context_opts = [
+    cfg.StrOpt('cinder_internal_tenant_project_id',
+               default=None,
+               help='ID of the project which will be used as the Cinder '
+                    'internal tenant.'),
+    cfg.StrOpt('cinder_internal_tenant_user_id',
+               default=None,
+               help='ID of the user to be used in volume operations as the '
+                    'Cinder internal tenant.'),
+]
+
+CONF = cfg.CONF
+CONF.register_opts(context_opts)
 
 LOG = logging.getLogger(__name__)
 
@@ -171,3 +185,23 @@ def get_admin_context(read_deleted="no"):
                           is_admin=True,
                           read_deleted=read_deleted,
                           overwrite=False)
+
+
+def get_internal_tenant_context():
+    """Build and return the Cinder internal tenant context object
+
+    This request context will only work for internal Cinder operations. It will
+    not be able to make requests to remote services. To do so it will need to
+    use the keystone client to get an auth_token.
+    """
+    project_id = CONF.cinder_internal_tenant_project_id
+    user_id = CONF.cinder_internal_tenant_user_id
+
+    if project_id and user_id:
+        return RequestContext(user_id=user_id,
+                              project_id=project_id,
+                              is_admin=True)
+    else:
+        LOG.warning(_LW('Unable to get internal tenant context: Missing '
+                        'required config parameters.'))
+        return None
