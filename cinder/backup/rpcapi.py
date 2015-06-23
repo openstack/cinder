@@ -71,7 +71,7 @@ class BackupAPI(object):
                   {'id': backup.id,
                    'host': backup.host})
         cctxt = self.client.prepare(server=backup.host)
-        return cctxt.call(ctxt, 'export_record', backup_id=backup.id)
+        return cctxt.call(ctxt, 'export_record', backup=backup)
 
     def import_record(self,
                       ctxt,
@@ -87,7 +87,7 @@ class BackupAPI(object):
                    'url': backup_url})
         cctxt = self.client.prepare(server=host)
         cctxt.cast(ctxt, 'import_record',
-                   backup_id=backup.id,
+                   backup=backup,
                    backup_service=backup_service,
                    backup_url=backup_url,
                    backup_hosts=backup_hosts)
@@ -98,5 +98,4 @@ class BackupAPI(object):
                   {'id': backup.id,
                    'host': backup.host})
         cctxt = self.client.prepare(server=backup.host)
-        return cctxt.cast(ctxt, 'reset_status', backup_id=backup.id,
-                          status=status)
+        return cctxt.cast(ctxt, 'reset_status', backup=backup, status=status)
