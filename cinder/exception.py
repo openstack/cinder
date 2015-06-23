@@ -952,7 +952,7 @@ class DotHillNotTargetPortal(CinderException):
 
 # Sheepdog
 class SheepdogError(VolumeBackendAPIException):
-    message = _("Sheepdog error: %(reason)s")
+    message = _("%(reason)s")
 
 
 class SheepdogCmdError(SheepdogError):
