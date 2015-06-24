@@ -324,12 +324,6 @@ class GenericUtilsTestCase(test.TestCase):
         self.assertTrue(utils.is_valid_boolstr(0))
         self.assertTrue(utils.is_valid_boolstr('0'))
 
-    def test_generate_glance_url(self):
-        generated_url = utils.generate_glance_url()
-        actual_url = "http://%s:%d" % (CONF.glance_host,
-                                       CONF.glance_port)
-        self.assertEqual(generated_url, actual_url)
-
     @mock.patch('os.path.join', side_effect=lambda x, y: '/'.join((x, y)))
     def test_make_dev_path(self, mock_join):
         self.assertEqual('/dev/xvda', utils.make_dev_path('xvda'))
