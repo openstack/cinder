@@ -888,7 +888,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         self.assertEqual(1, log_info.call_count)
 
-    @mock.patch('cinder.openstack.common.loopingcall.FixedIntervalLoopingCall',
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=utils.ZeroIntervalLoopingCall)
     @mock.patch.object(common_cli.LOG, 'info')
     def test_create_cloned_volume(self, log_info):
@@ -1121,7 +1121,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             self.driver.delete_snapshot,
             test_snapshot)
 
-    @mock.patch('cinder.openstack.common.loopingcall.FixedIntervalLoopingCall',
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=utils.ZeroIntervalLoopingCall)
     @mock.patch.object(common_cli.LOG, 'info')
     def test_create_volume_from_snapshot(self, log_info):
@@ -1157,7 +1157,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self.assertDictMatch(model_update, test_model_update)
         self.assertEqual(1, log_info.call_count)
 
-    @mock.patch('cinder.openstack.common.loopingcall.FixedIntervalLoopingCall',
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=utils.ZeroIntervalLoopingCall)
     @mock.patch.object(common_cli.LOG, 'info')
     def test_create_volume_from_snapshot_without_filled_block(self, log_info):
@@ -1485,7 +1485,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             test_volume,
             test_connector)
 
-    @mock.patch('cinder.openstack.common.loopingcall.FixedIntervalLoopingCall',
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=utils.ZeroIntervalLoopingCall)
     def test_migrate_volume(self):
 
@@ -1601,7 +1601,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             test_volume,
             test_host)
 
-    @mock.patch('cinder.openstack.common.loopingcall.FixedIntervalLoopingCall',
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=utils.ZeroIntervalLoopingCall)
     def test_migrate_volume_timeout(self):
 

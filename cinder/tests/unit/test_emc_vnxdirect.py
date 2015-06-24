@@ -1161,7 +1161,7 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
         fake_cli.assert_has_calls(expect_cmd)
 
     @mock.patch(
-        'cinder.openstack.common.loopingcall.FixedIntervalLoopingCall',
+        'oslo_service.loopingcall.FixedIntervalLoopingCall',
         new=utils.ZeroIntervalLoopingCall)
     @mock.patch(
         "cinder.volume.volume_types."
@@ -1191,7 +1191,7 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
         fake_cli.assert_has_calls(expect_cmd)
 
     @mock.patch(
-        'cinder.openstack.common.loopingcall.FixedIntervalLoopingCall',
+        'oslo_service.loopingcall.FixedIntervalLoopingCall',
         new=utils.ZeroIntervalLoopingCall)
     @mock.patch(
         "cinder.volume.volume_types."
@@ -1639,7 +1639,7 @@ Time Remaining:  0 second(s)
 
         fake_cli.assert_has_calls(expect_cmd)
 
-    @mock.patch('cinder.openstack.common.loopingcall.FixedIntervalLoopingCall',
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=utils.ZeroIntervalLoopingCall)
     def test_snapshot_preparing_volume(self):
         commands = [self.testData.SNAP_CREATE_CMD('snapshot1'),
@@ -1993,7 +1993,7 @@ Time Remaining:  0 second(s)
             'failed_vol1', 1, 'unit_test_pool', None, None, False))]
         fake_cli.assert_has_calls(expect_cmd)
 
-    @mock.patch('cinder.openstack.common.loopingcall.FixedIntervalLoopingCall',
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=utils.ZeroIntervalLoopingCall)
     def test_create_faulted_volume(self):
         volume_name = 'faulted_volume'
@@ -2023,7 +2023,7 @@ Time Remaining:  0 second(s)
                       poll=False)]
         fake_cli.assert_has_calls(expect_cmd)
 
-    @mock.patch('cinder.openstack.common.loopingcall.FixedIntervalLoopingCall',
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=utils.ZeroIntervalLoopingCall)
     def test_create_offline_volume(self):
         volume_name = 'offline_volume'
@@ -2102,7 +2102,7 @@ Time Remaining:  0 second(s)
                       poll=True)]
         fake_cli.assert_has_calls(expect_cmd)
 
-    @mock.patch('cinder.openstack.common.loopingcall.FixedIntervalLoopingCall',
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=utils.ZeroIntervalLoopingCall)
     def test_create_volume_from_snapshot_sync_failed(self):
 
@@ -2334,7 +2334,7 @@ Time Remaining:  0 second(s)
                               poll=False)]
         fake_cli.assert_has_calls(expected)
 
-    @mock.patch('cinder.openstack.common.loopingcall.FixedIntervalLoopingCall',
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=utils.ZeroIntervalLoopingCall)
     def test_extend_volume_failed(self):
         commands = [self.testData.LUN_PROPERTY_ALL_CMD('failed_vol1')]
@@ -2354,7 +2354,7 @@ Time Remaining:  0 second(s)
                 poll=False)]
         fake_cli.assert_has_calls(expected)
 
-    @mock.patch('cinder.openstack.common.loopingcall.FixedIntervalLoopingCall',
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=utils.ZeroIntervalLoopingCall)
     def test_extend_preparing_volume(self):
         commands = [self.testData.LUN_EXTEND_CMD('vol1', 2),

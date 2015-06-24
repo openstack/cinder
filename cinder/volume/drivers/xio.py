@@ -19,12 +19,12 @@ import string
 from lxml import etree
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_service import loopingcall
 from six.moves import urllib
 
 from cinder import context
 from cinder import exception
 from cinder.i18n import _LE, _LI, _LW
-from cinder.openstack.common import loopingcall
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
 from cinder.volume import qos_specs

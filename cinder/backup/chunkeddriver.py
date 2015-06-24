@@ -29,6 +29,7 @@ import os
 import eventlet
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_service import loopingcall
 from oslo_utils import excutils
 from oslo_utils import units
 import six
@@ -37,7 +38,6 @@ from cinder.backup import driver
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder import objects
-from cinder.openstack.common import loopingcall
 from cinder.volume import utils as volume_utils
 
 LOG = logging.getLogger(__name__)

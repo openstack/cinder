@@ -18,9 +18,9 @@ Mock unit tests for the NetApp block storage C-mode library
 """
 
 import mock
+from oslo_service import loopingcall
 
 from cinder import exception
-from cinder.openstack.common import loopingcall
 from cinder import test
 import cinder.tests.unit.volume.drivers.netapp.dataontap.fakes as fake
 import cinder.tests.unit.volume.drivers.netapp.fakes as na_fakes

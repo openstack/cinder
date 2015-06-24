@@ -21,12 +21,12 @@ from xml.dom import minidom
 
 import mock
 from oslo_log import log as logging
+from oslo_service import loopingcall
 from oslo_utils import units
 import six
 
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import loopingcall
 from cinder import test
 from cinder.volume.drivers.emc import emc_vmax_common
 from cinder.volume.drivers.emc import emc_vmax_fast

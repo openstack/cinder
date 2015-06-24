@@ -21,12 +21,12 @@ import time
 from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_service import loopingcall
 from oslo_utils import timeutils
 from oslo_utils import units
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder.openstack.common import loopingcall
 from cinder.volume.drivers.infortrend.eonstor_ds_cli import cli_factory as cli
 from cinder.volume.drivers.san import san
 from cinder.volume import volume_types

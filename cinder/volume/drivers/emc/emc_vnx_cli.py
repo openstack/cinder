@@ -28,6 +28,7 @@ from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_serialization import jsonutils as json
+from oslo_service import loopingcall
 from oslo_utils import excutils
 from oslo_utils import timeutils
 import six
@@ -39,7 +40,6 @@ from taskflow.types import failure
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder.openstack.common import loopingcall
 from cinder import utils
 from cinder.volume import configuration as config
 from cinder.volume.drivers.san import san

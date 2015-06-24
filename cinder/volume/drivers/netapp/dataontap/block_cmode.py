@@ -25,12 +25,12 @@ Volume driver library for NetApp C-mode block storage systems.
 import copy
 
 from oslo_log import log as logging
+from oslo_service import loopingcall
 from oslo_utils import units
 import six
 
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import loopingcall
 from cinder import utils
 from cinder.volume.drivers.netapp.dataontap import block_base
 from cinder.volume.drivers.netapp.dataontap.client import client_cmode

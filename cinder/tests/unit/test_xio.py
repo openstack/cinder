@@ -1195,7 +1195,7 @@ class XIOISEDriverTestCase(object):
         self.setup_driver()
         self.driver.create_snapshot(SNAPSHOT1)
 
-    @mock.patch('cinder.openstack.common.loopingcall.FixedIntervalLoopingCall',
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=utils.ZeroIntervalLoopingCall)
     def test_negative_create_snapshot_invalid_state_recover(self, mock_req):
         ctxt = context.get_admin_context()
@@ -1221,7 +1221,7 @@ class XIOISEDriverTestCase(object):
         self.setup_driver()
         self.driver.create_snapshot(SNAPSHOT1)
 
-    @mock.patch('cinder.openstack.common.loopingcall.FixedIntervalLoopingCall',
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=utils.ZeroIntervalLoopingCall)
     def test_negative_create_snapshot_invalid_state_norecover(self, mock_req):
         ctxt = context.get_admin_context()

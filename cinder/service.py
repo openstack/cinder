@@ -27,6 +27,8 @@ from oslo_config import cfg
 from oslo_db import exception as db_exc
 from oslo_log import log as logging
 import oslo_messaging as messaging
+from oslo_service import loopingcall
+from oslo_service import service
 from oslo_utils import importutils
 import osprofiler.notifier
 from osprofiler import profiler
@@ -37,8 +39,6 @@ from cinder import db
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.objects import base as objects_base
-from cinder.openstack.common import loopingcall
-from cinder.openstack.common import service
 from cinder import rpc
 from cinder import version
 from cinder import wsgi
@@ -427,7 +427,7 @@ class WSGIService(object):
 
 
 def process_launcher():
-    return service.ProcessLauncher()
+    return service.ProcessLauncher(CONF)
 
 
 # NOTE(vish): the global launcher is to maintain the existing
@@ -441,7 +441,7 @@ def serve(server, workers=None):
     if _launcher:
         raise RuntimeError(_('serve() can only be called once'))
 
-    _launcher = service.launch(server, workers=workers)
+    _launcher = service.launch(CONF, server, workers=workers)
 
 
 def wait():

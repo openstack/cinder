@@ -13,11 +13,11 @@
 #    under the License.
 #
 
+from oslo_service import loopingcall
+from oslo_utils import timeutils
+
 from cinder import context
 from cinder import db
-from cinder.openstack.common import loopingcall
-
-from oslo_utils import timeutils
 
 
 def get_test_admin_context():
