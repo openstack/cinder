@@ -81,6 +81,7 @@ from cinder import objects
 from cinder import rpc
 from cinder import utils
 from cinder import version
+from cinder.volume import utils as vutils
 
 
 CONF = cfg.CONF
@@ -285,7 +286,7 @@ class VolumeCommands(object):
         """
         ctxt = context.get_admin_context()
         volume = db.volume_get(ctxt, param2id(volume_id))
-        host = volume['host']
+        host = vutils.extract_host(volume['host']) if volume['host'] else None
 
         if not host:
             print(_("Volume not yet assigned to host."))
