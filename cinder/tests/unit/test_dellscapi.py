@@ -4011,6 +4011,113 @@ class DellSCSanAPITestCase(test.TestCase):
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_get_json',
+                       return_value={'test': 'test'})
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'get',
+                       return_value=RESPONSE_200)
+    def test_get_user_preferences(self,
+                                  mock_get,
+                                  mock_get_json,
+                                  mock_close_connection,
+                                  mock_open_connection,
+                                  mock_init):
+        # Not really testing anything other than the ability to mock, but
+        # including for completeness.
+        res = self.scapi._get_user_preferences()
+        self.assertEqual({'test': 'test'}, res)
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'get',
+                       return_value=RESPONSE_400)
+    def test_get_user_preferences_failure(self,
+                                          mock_get,
+                                          mock_close_connection,
+                                          mock_open_connection,
+                                          mock_init):
+        LOG = self.mock_object(dell_storagecenter_api, "LOG")
+        res = self.scapi._get_user_preferences()
+        self.assertEqual({}, res)
+        self.assertTrue(LOG.error.call_count > 0)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_user_preferences',
+                       return_value=None)
+    def test_update_storage_profile_noprefs(self,
+                                            mock_prefs,
+                                            mock_close_connection,
+                                            mock_open_connection,
+                                            mock_init):
+        res = self.scapi.update_storage_profile(None, None)
+        self.assertFalse(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_user_preferences',
+                       return_value={'allowStorageProfileSelection': False})
+    def test_update_storage_profile_not_allowed(self,
+                                                mock_prefs,
+                                                mock_close_connection,
+                                                mock_open_connection,
+                                                mock_init):
+        LOG = self.mock_object(dell_storagecenter_api, "LOG")
+        res = self.scapi.update_storage_profile(None, None)
+        self.assertFalse(res)
+        self.assertEqual(1, LOG.error.call_count)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_storage_profile',
+                       return_value=None)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_user_preferences',
+                       return_value={'allowStorageProfileSelection': True})
+    def test_update_storage_profile_prefs_not_found(self,
+                                                    mock_profile,
+                                                    mock_prefs,
+                                                    mock_close_connection,
+                                                    mock_open_connection,
+                                                    mock_init):
+        LOG = self.mock_object(dell_storagecenter_api, "LOG")
+        res = self.scapi.update_storage_profile(None, 'Fake')
+        self.assertFalse(res)
+        self.assertEqual(1, LOG.error.call_count)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_user_preferences',
+                       return_value={'allowStorageProfileSelection': True,
+                                     'storageProfile': None})
+    def test_update_storage_profile_default_not_found(self,
+                                                      mock_prefs,
+                                                      mock_close_connection,
+                                                      mock_open_connection,
+                                                      mock_init):
+        LOG = self.mock_object(dell_storagecenter_api, "LOG")
+        res = self.scapi.update_storage_profile(None, None)
+        self.assertFalse(res)
+        self.assertEqual(1, LOG.error.call_count)
+
+    @mock.patch.object(
+        dell_storagecenter_api.StorageCenterApi,
+        '_get_user_preferences',
+        return_value={'allowStorageProfileSelection': True,
+                      'storageProfile': {'name': 'Fake',
+                                         'instanceId': 'fakeId'}})
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post',
+                       return_value=RESPONSE_200)
+    def test_update_storage_profile(self,
+                                    mock_post,
+                                    mock_prefs,
+                                    mock_close_connection,
+                                    mock_open_connection,
+                                    mock_init):
+        LOG = self.mock_object(dell_storagecenter_api, "LOG")
+        fake_scvolume = {'name': 'name', 'instanceId': 'id'}
+        res = self.scapi.update_storage_profile(fake_scvolume, None)
+        self.assertTrue(res)
+        self.assertTrue('fakeId' in repr(mock_post.call_args_list[0]))
+        self.assertEqual(1, LOG.info.call_count)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_json',
                        return_value=[RPLAY_PROFILE])
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'post',

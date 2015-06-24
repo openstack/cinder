@@ -1538,6 +1538,78 @@ class StorageCenterApi(object):
             return False
         return True
 
+    def update_storage_profile(self, scvolume, storage_profile):
+        """Update a volume's Storage Profile.
+
+        Changes the volume setting to use a different Storage Profile. If
+        storage_profile is None, will reset to the default profile for the
+        cinder user account.
+
+        :param scvolume: The Storage Center volume to be updated.
+        :param storage_profile: The requested Storage Profile name.
+        :returns: True if successful, False otherwise.
+        """
+        prefs = self._get_user_preferences()
+        if not prefs:
+            return False
+
+        if not prefs.get('allowStorageProfileSelection'):
+            LOG.error(_LE('User does not have permission to change '
+                          'Storage Profile selection.'))
+            return False
+
+        profile = self._find_storage_profile(storage_profile)
+        if storage_profile:
+            if not profile:
+                LOG.error(_LE('Storage Profile %s was not found.'),
+                          storage_profile)
+                return False
+        else:
+            # Going from specific profile to the user default
+            profile = prefs.get('storageProfile')
+            if not profile:
+                LOG.error(_LE('Default Storage Profile was not found.'))
+                return False
+
+        LOG.info(_LI('Switching volume %(vol)s to profile %(prof)s.'),
+                 {'vol': scvolume['name'],
+                  'prof': profile.get('name')})
+        payload = {}
+        payload['StorageProfile'] = self._get_id(profile)
+        r = self.client.post('StorageCenter/ScVolumeConfiguration'
+                             '/%s/Modify'
+                             % self._get_id(scvolume),
+                             payload)
+        if r.status_code != 200:
+            LOG.error(_LE('Error changing Storage Profile for volume '
+                          '%(original)s to %(name)s: %(code)d %(reason)s '
+                          '%(text)s'),
+                      {'original': scvolume['name'],
+                       'name': storage_profile,
+                       'code': r.status_code,
+                       'reason': r.reason,
+                       'text': r.text})
+            return False
+        return True
+
+    def _get_user_preferences(self):
+        """Gets the preferences and defaults for this user.
+
+        There are a set of preferences and defaults for each user on the
+        Storage Center. This retrieves all settings for the current account
+        used by Cinder.
+        """
+        r = self.client.get('StorageCenter/StorageCenter/%s/UserPreferences' %
+                            self.ssn)
+        if r.status_code != 200:
+            LOG.error(_LE('Error getting user preferences: '
+                          '%(code)d %(reason)s %(text)s'),
+                      {'code': r.status_code,
+                       'reason': r.reason,
+                       'text': r.text})
+            return {}
+        return self._get_json(r)
+
     def _delete_server(self, scserver):
         '''Deletes scserver from the backend.
 
