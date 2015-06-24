@@ -93,6 +93,18 @@ class CapacityFilterTestCase(HostFiltersTestCase):
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
 
     @mock.patch('cinder.utils.service_is_up')
+    def test_filter_fails_free_capacity_None(self, _mock_serv_is_up):
+        _mock_serv_is_up.return_value = True
+        filt_cls = self.class_map['CapacityFilter']()
+        filter_properties = {'size': 100}
+        service = {'disabled': False}
+        host = fakes.FakeHostState('host1',
+                                   {'free_capacity_gb': None,
+                                    'updated_at': None,
+                                    'service': service})
+        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+
+    @mock.patch('cinder.utils.service_is_up')
     def test_filter_passes_infinite(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
@@ -115,6 +127,73 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                     'updated_at': None,
                                     'service': service})
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
+
+    @mock.patch('cinder.utils.service_is_up')
+    def test_filter_passes_total_infinite(self, _mock_serv_is_up):
+        _mock_serv_is_up.return_value = True
+        filt_cls = self.class_map['CapacityFilter']()
+        filter_properties = {'size': 100}
+        service = {'disabled': False}
+        host = fakes.FakeHostState('host1',
+                                   {'free_capacity_gb': 'infinite',
+                                    'total_capacity_gb': 'infinite',
+                                    'reserved_percentage': 0,
+                                    'updated_at': None,
+                                    'service': service})
+        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+
+    @mock.patch('cinder.utils.service_is_up')
+    def test_filter_passes_total_unknown(self, _mock_serv_is_up):
+        _mock_serv_is_up.return_value = True
+        filt_cls = self.class_map['CapacityFilter']()
+        filter_properties = {'size': 100}
+        service = {'disabled': False}
+        host = fakes.FakeHostState('host1',
+                                   {'free_capacity_gb': 'unknown',
+                                    'total_capacity_gb': 'unknown',
+                                    'reserved_percentage': 0,
+                                    'updated_at': None,
+                                    'service': service})
+        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+
+    @mock.patch('cinder.utils.service_is_up')
+    def test_filter_fails_total_infinite(self, _mock_serv_is_up):
+        _mock_serv_is_up.return_value = True
+        filt_cls = self.class_map['CapacityFilter']()
+        filter_properties = {'size': 100}
+        service = {'disabled': False}
+        host = fakes.FakeHostState('host1',
+                                   {'total_capacity_gb': 'infinite',
+                                    'reserved_percentage': 5,
+                                    'updated_at': None,
+                                    'service': service})
+        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+
+    @mock.patch('cinder.utils.service_is_up')
+    def test_filter_fails_total_unknown(self, _mock_serv_is_up):
+        _mock_serv_is_up.return_value = True
+        filt_cls = self.class_map['CapacityFilter']()
+        filter_properties = {'size': 100}
+        service = {'disabled': False}
+        host = fakes.FakeHostState('host1',
+                                   {'total_capacity_gb': 'unknown',
+                                    'reserved_percentage': 5,
+                                    'updated_at': None,
+                                    'service': service})
+        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+
+    @mock.patch('cinder.utils.service_is_up')
+    def test_filter_fails_total_zero(self, _mock_serv_is_up):
+        _mock_serv_is_up.return_value = True
+        filt_cls = self.class_map['CapacityFilter']()
+        filter_properties = {'size': 100}
+        service = {'disabled': False}
+        host = fakes.FakeHostState('host1',
+                                   {'total_capacity_gb': 0,
+                                    'reserved_percentage': 5,
+                                    'updated_at': None,
+                                    'service': service})
+        self.assertFalse(filt_cls.host_passes(host, filter_properties))
 
     @mock.patch('cinder.utils.service_is_up')
     def test_filter_thin_true_passes(self, _mock_serv_is_up):
