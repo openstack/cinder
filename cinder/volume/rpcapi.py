@@ -76,6 +76,9 @@ class VolumeAPI(object):
         1.28 - Adds manage_existing_snapshot
         1.29 - Adds get_capabilities.
         1.30 - Adds remove_export
+        1.31 - Updated: create_consistencygroup_from_src(), create_cgsnapshot()
+               and delete_cgsnapshot() to cast method only with necessary
+               args. Forwarding CGSnapshot object instead of CGSnapshot_id.
     """
 
     BASE_RPC_API_VERSION = '1.0'
@@ -85,7 +88,7 @@ class VolumeAPI(object):
         target = messaging.Target(topic=CONF.volume_topic,
                                   version=self.BASE_RPC_API_VERSION)
         serializer = objects_base.CinderObjectSerializer()
-        self.client = rpc.get_client(target, '1.30', serializer=serializer)
+        self.client = rpc.get_client(target, '1.31', serializer=serializer)
 
     def create_consistencygroup(self, ctxt, group, host):
         new_host = utils.extract_host(host)
@@ -111,25 +114,21 @@ class VolumeAPI(object):
     def create_consistencygroup_from_src(self, ctxt, group, cgsnapshot=None,
                                          source_cg=None):
         new_host = utils.extract_host(group.host)
-        cctxt = self.client.prepare(server=new_host, version='1.26')
+        cctxt = self.client.prepare(server=new_host, version='1.31')
         cctxt.cast(ctxt, 'create_consistencygroup_from_src',
                    group=group,
-                   cgsnapshot_id=cgsnapshot['id'] if cgsnapshot else None,
+                   cgsnapshot=cgsnapshot,
                    source_cg=source_cg)
 
-    def create_cgsnapshot(self, ctxt, group, cgsnapshot):
+    def create_cgsnapshot(self, ctxt, cgsnapshot):
+        host = utils.extract_host(cgsnapshot.consistencygroup.host)
+        cctxt = self.client.prepare(server=host, version='1.31')
+        cctxt.cast(ctxt, 'create_cgsnapshot', cgsnapshot=cgsnapshot)
 
-        host = utils.extract_host(group['host'])
-        cctxt = self.client.prepare(server=host, version='1.26')
-        cctxt.cast(ctxt, 'create_cgsnapshot',
-                   group=group,
-                   cgsnapshot_id=cgsnapshot['id'])
-
-    def delete_cgsnapshot(self, ctxt, cgsnapshot, host):
-        new_host = utils.extract_host(host)
-        cctxt = self.client.prepare(server=new_host, version='1.18')
-        cctxt.cast(ctxt, 'delete_cgsnapshot',
-                   cgsnapshot_id=cgsnapshot['id'])
+    def delete_cgsnapshot(self, ctxt, cgsnapshot):
+        new_host = utils.extract_host(cgsnapshot.consistencygroup.host)
+        cctxt = self.client.prepare(server=new_host, version='1.31')
+        cctxt.cast(ctxt, 'delete_cgsnapshot', cgsnapshot=cgsnapshot)
 
     def create_volume(self, ctxt, volume, host, request_spec,
                       filter_properties, allow_reschedule=True):

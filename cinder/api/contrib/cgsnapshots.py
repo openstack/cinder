@@ -187,9 +187,7 @@ class CgsnapshotsController(wsgi.Controller):
         except exception.CgSnapshotNotFound as error:
             raise exc.HTTPNotFound(explanation=error.msg)
 
-        retval = self._view_builder.summary(
-            req,
-            dict(new_cgsnapshot))
+        retval = self._view_builder.summary(req, new_cgsnapshot)
 
         return retval
 

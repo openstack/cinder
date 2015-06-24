@@ -168,15 +168,16 @@ class API(base.Base):
         orig_cg = None
         if cgsnapshot_id:
             try:
-                cgsnapshot = self.db.cgsnapshot_get(context, cgsnapshot_id)
+                cgsnapshot = objects.CGSnapshot.get_by_id(context,
+                                                          cgsnapshot_id)
             except exception.CgSnapshotNotFound:
                 with excutils.save_and_reraise_exception():
                     LOG.error(_LE("CG snapshot %(cgsnap)s not found when "
                                   "creating consistency group %(cg)s from "
                                   "source."),
                               {'cg': name, 'cgsnap': cgsnapshot_id})
-            orig_cg = objects.ConsistencyGroup.get_by_id(
-                context, cgsnapshot['consistencygroup_id'])
+            else:
+                orig_cg = cgsnapshot.consistencygroup
 
         source_cg = None
         if source_cgid:
@@ -238,7 +239,7 @@ class API(base.Base):
     def _create_cg_from_cgsnapshot(self, context, group, cgsnapshot):
         try:
             snapshots = objects.SnapshotList.get_all_for_cgsnapshot(
-                context, cgsnapshot['id'])
+                context, cgsnapshot.id)
 
             if not snapshots:
                 msg = _("Cgsnahost is empty. No consistency group "
@@ -274,7 +275,7 @@ class API(base.Base):
                                       "creating consistency group %(group)s "
                                       "from cgsnapshot %(cgsnap)s."),
                                   {'group': group.id,
-                                   'cgsnap': cgsnapshot['id']})
+                                   'cgsnap': cgsnapshot.id})
         except Exception:
             with excutils.save_and_reraise_exception():
                 try:
@@ -284,7 +285,7 @@ class API(base.Base):
                                   "group %(group)s from cgsnapshot "
                                   "%(cgsnap)s."),
                               {'group': group.id,
-                               'cgsnap': cgsnapshot['id']})
+                               'cgsnap': cgsnapshot.id})
 
         volumes = self.db.volume_get_all_by_group(context,
                                                   group.id)
@@ -444,10 +445,9 @@ class API(base.Base):
                     "but current status is: %s") % group.status
             raise exception.InvalidConsistencyGroup(reason=msg)
 
-        cgsnaps = self.db.cgsnapshot_get_all_by_group(
-            context.elevated(),
-            group.id)
-        if cgsnaps:
+        cgsnapshots = objects.CGSnapshotList.get_all_by_group(
+            context.elevated(), group.id)
+        if cgsnapshots:
             msg = _("Consistency group %s still has dependent "
                     "cgsnapshots.") % group.id
             LOG.error(msg)
@@ -709,14 +709,12 @@ class API(base.Base):
                 context, context.project_id)
         return groups
 
-    def create_cgsnapshot(self, context,
-                          group, name,
-                          description):
+    def create_cgsnapshot(self, context, group, name, description):
         return self._create_cgsnapshot(context, group, name, description)
 
     def _create_cgsnapshot(self, context,
                            group, name, description):
-        options = {'consistencygroup_id': group['id'],
+        options = {'consistencygroup_id': group.id,
                    'user_id': context.user_id,
                    'project_id': context.project_id,
                    'status': "creating",
@@ -724,65 +722,63 @@ class API(base.Base):
                    'description': description}
 
         try:
-            cgsnapshot = self.db.cgsnapshot_create(context, options)
-            cgsnapshot_id = cgsnapshot['id']
+            cgsnapshot = objects.CGSnapshot(context, **options)
+            cgsnapshot.create()
+            cgsnapshot_id = cgsnapshot.id
 
             volumes = self.db.volume_get_all_by_group(
                 context.elevated(),
-                cgsnapshot['consistencygroup_id'])
+                cgsnapshot.consistencygroup_id)
 
             if not volumes:
                 msg = _("Consistency group is empty. No cgsnapshot "
                         "will be created.")
                 raise exception.InvalidConsistencyGroup(reason=msg)
 
-            snap_name = cgsnapshot['name']
-            snap_desc = cgsnapshot['description']
+            snap_name = cgsnapshot.name
+            snap_desc = cgsnapshot.description
             self.volume_api.create_snapshots_in_db(
                 context, volumes, snap_name, snap_desc, True, cgsnapshot_id)
 
         except Exception:
             with excutils.save_and_reraise_exception():
                 try:
-                    self.db.cgsnapshot_destroy(context, cgsnapshot_id)
+                    cgsnapshot.destroy()
                 finally:
                     LOG.error(_LE("Error occurred when creating cgsnapshot"
                                   " %s."), cgsnapshot_id)
 
-        self.volume_rpcapi.create_cgsnapshot(context, group, cgsnapshot)
+        self.volume_rpcapi.create_cgsnapshot(context, cgsnapshot)
 
         return cgsnapshot
 
     def delete_cgsnapshot(self, context, cgsnapshot, force=False):
-        if cgsnapshot['status'] not in ["available", "error"]:
+        if cgsnapshot.status not in ["available", "error"]:
             msg = _("Cgsnapshot status must be available or error")
             raise exception.InvalidCgSnapshot(reason=msg)
-        self.db.cgsnapshot_update(context, cgsnapshot['id'],
-                                  {'status': 'deleting'})
-        group = objects.ConsistencyGroup.get_by_id(context, cgsnapshot[
-            'consistencygroup_id'])
-        self.volume_rpcapi.delete_cgsnapshot(context.elevated(), cgsnapshot,
-                                             group.host)
+        cgsnapshot.update({'status': 'deleting'})
+        cgsnapshot.save()
+        self.volume_rpcapi.delete_cgsnapshot(context.elevated(), cgsnapshot)
 
     def update_cgsnapshot(self, context, cgsnapshot, fields):
-        self.db.cgsnapshot_update(context, cgsnapshot['id'], fields)
+        cgsnapshot.update(fields)
+        cgsnapshot.save()
 
     def get_cgsnapshot(self, context, cgsnapshot_id):
         check_policy(context, 'get_cgsnapshot')
-        rv = self.db.cgsnapshot_get(context, cgsnapshot_id)
-        return dict(rv)
+        cgsnapshots = objects.CGSnapshot.get_by_id(context, cgsnapshot_id)
+        return cgsnapshots
 
     def get_all_cgsnapshots(self, context, search_opts=None):
         check_policy(context, 'get_all_cgsnapshots')
 
         search_opts = search_opts or {}
 
-        if (context.is_admin and 'all_tenants' in search_opts):
+        if context.is_admin and 'all_tenants' in search_opts:
             # Need to remove all_tenants to pass the filtering below.
             del search_opts['all_tenants']
-            cgsnapshots = self.db.cgsnapshot_get_all(context, search_opts)
+            cgsnapshots = objects.CGSnapshotList.get_all(context, search_opts)
         else:
-            cgsnapshots = self.db.cgsnapshot_get_all_by_project(
+            cgsnapshots = objects.CGSnapshotList.get_all_by_project(
                 context.elevated(), context.project_id, search_opts)
-
         return cgsnapshots
