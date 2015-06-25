@@ -1088,6 +1088,8 @@ class StorwizeSVCDriver(san.SanDriver):
         data['total_capacity_gb'] = 0  # To be overwritten
         data['free_capacity_gb'] = 0   # To be overwritten
         data['reserved_percentage'] = self.configuration.reserved_percentage
+        data['multiattach'] = (self.configuration.
+                               storwize_svc_multihostmap_enabled)
         data['QoS_support'] = True
         data['consistencygroup_support'] = True
 
