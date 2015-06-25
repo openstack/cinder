@@ -55,6 +55,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         1.3.0 - Added retype method.
         1.3.0.1 - Backport imports (logging, translations) for Juno.
         1.3.0.2 - Added a temporary fix for target creation.
+        1.3.0.3 - Compatability for volumes created before 1.3.0.2
     """
 
     VERSION = VERSION
@@ -622,9 +623,49 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :param ensure: if True, ignore errors caused by already existing
             resources
         """
-        LOG.warning(volume['provider_location'])
+
         zvol_name = self._get_zvol_name(volume['name'])
-        target_group_name = self._get_target_group_name()
+
+        # Check if volume was created with driver ver < 1.3.0.3
+        if volume['name'] in self._get_provider_location(volume):
+            target_group_name = self._get_target_group_name_old(volume['name'])
+            target_name = self._get_target_name_old(volume['name'])
+            if not self._target_exists(target_name):
+                try:
+                    self.nms.iscsitarget.create_target({
+                        'target_name': target_name})
+                except nexenta.NexentaException as exc:
+                    if ensure and 'already configured' in exc.args[0]:
+                        LOG.info('Ignored target creation error "%s" while '
+                                 'ensuring export', exc)
+                    else:
+                        raise
+            if not self._target_group_exists(target_group_name):
+                try:
+                    self.nms.stmf.create_targetgroup(target_group_name)
+                except nexenta.NexentaException as exc:
+                    if ((ensure and 'already exists' in exc.args[0]) or
+                            'target must be offline' in exc.args[0]):
+                        LOG.info('Ignored target group creation error "%s" '
+                                 'while ensuring export', exc)
+                    else:
+                        raise
+            if not self._target_member_in_target_group(target_group_name,
+                                                       target_name):
+                try:
+                    self.nms.stmf.add_targetgroup_member(target_group_name,
+                                                         target_name)
+                except nexenta.NexentaException as exc:
+                    if ((ensure and 'already exists' in exc.args[0]) or
+                            'target must be offline' in exc.args[0]):
+                        LOG.info('Ignored target group member addition error '
+                                 '"%s" while ensuring export', exc)
+                    else:
+                        raise
+
+        # This part for volumes created starting with ver 1.3.0.3
+        else:
+            target_group_name = self._get_target_group_name()
 
         if not self._lu_exists(zvol_name):
             try:
