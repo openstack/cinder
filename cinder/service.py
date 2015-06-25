@@ -333,7 +333,7 @@ class Service(service.Service):
                 LOG.exception(_LE('DBError encountered: '))
 
 
-class WSGIService(object):
+class WSGIService(service.ServiceBase):
     """Provides ability to launch API from a 'paste' configuration."""
 
     def __init__(self, name, loader=None):
