@@ -31,7 +31,7 @@ from oslo_utils import units
 
 from cinder import exception
 from cinder import utils
-from cinder.i18n import _, _LE
+from cinder.i18n import _, _LW, _LE
 from cinder.image import image_utils
 from cinder.openstack.common import fileutils
 from cinder.volume import driver
@@ -65,6 +65,7 @@ class SheepdogClient(object):
                                 'Waiting for other nodes to join cluster')
     DOG_RESP_VDI_EXISTS_ALREADY = ': VDI exists already\\n'
     DOG_RESP_NO_SPACE_FOR_NEW_OBJ = 'Server has no space for new objects\\n'
+    DOG_RESP_VDI_NOT_FOUND = ': No VDI found\n'
 
     def __init__(self, addr, port):
         self.addr = addr
@@ -136,6 +137,23 @@ class SheepdogClient(object):
                               ' in datastore.'))
                 else:
                     LOG.error(_LE('Failed to create volume. %s') %
+                              volume['name'])
+
+    def delete(self, volume):
+        try:
+            (stdout, stderr) = self._run_dog('vdi', 'delete', volume['name'])
+            if stderr.endswith(self.DOG_RESP_VDI_NOT_FOUND):
+                LOG.warning(_LW('Volume not found. %(volname)s') %
+                            {'volname': volume['name']})
+        except exception.SheepdogCmdError as e:
+            stderr = e.kwargs['stderr']
+            with excutils.save_and_reraise_exception():
+                if stderr.startswith(self.DOG_RESP_CONNECTION_ERROR):
+                    LOG.error(_LE('Failed to connect sheep daemon. '
+                              'addr: %(addr)s, port: %(port)s') %
+                              {'addr': self.addr, 'port': self.port})
+                else:
+                    LOG.error(_LE('Failed to delete volume. %s') %
                               volume['name'])
 
 
@@ -243,7 +261,7 @@ class SheepdogDriver(driver.VolumeDriver):
 
     def delete_volume(self, volume):
         """Delete a logical volume."""
-        self._delete(volume)
+        self.client.delete(volume)
 
     def _resize(self, volume, size=None):
         if not size:
@@ -251,10 +269,6 @@ class SheepdogDriver(driver.VolumeDriver):
 
         self._try_execute('dog', 'vdi', 'resize',
                           volume['name'], size)
-
-    def _delete(self, volume):
-        self._try_execute('dog', 'vdi', 'delete',
-                          volume['name'])
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         with image_utils.temporary_file() as tmp:
@@ -264,7 +278,7 @@ class SheepdogDriver(driver.VolumeDriver):
 
             # remove the image created by import before this function.
             # see volume/drivers/manager.py:_create_volume
-            self._delete(volume)
+            self.client.delete(volume)
             # convert and store into sheepdog
             image_utils.convert_image(tmp, 'sheepdog:%s' % volume['name'],
                                       'raw')
