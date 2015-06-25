@@ -16,7 +16,6 @@ Fibre channel Cinder volume driver for Hewlett-Packard storage.
 
 """
 
-from oslo_config import cfg
 from oslo_utils import importutils
 
 from cinder.volume import driver
@@ -25,9 +24,6 @@ from cinder.zonemanager import utils as fczm_utils
 
 _DRIVER_DIR = 'cinder.volume.drivers.san.hp'
 _DRIVER_CLASS = 'hp_xp_horcm_fc.HPXPHORCMFC'
-
-CONF = cfg.CONF
-CONF.register_opts(opts.FC_VOLUME_OPTS)
 
 
 class HPXPFCDriver(driver.FibreChannelDriver):
