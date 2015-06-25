@@ -591,17 +591,19 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def _get_provider_location(self, volume):
         """Returns volume iscsiadm-formatted provider location string."""
-        # backport for volumes created with single lun per target
-        if self._target_exists(self._get_target_name_old(volume['name'])):
-            provider_location = '%(host)s:%(port)s,1 %(name)s %(lun)s' % {
-                'host': self.nms_host,
-                'port': self.configuration.nexenta_iscsi_target_portal_port,
-                'name': self._get_target_name_old(volume['name']),
-                'lun': self._get_lun(volume['name'], True)
-            }
-            volume['provider_location'] = provider_location
-            return provider_location
         if not volume['provider_location']:
+            # backport for volumes created with single lun per target
+            if self._target_exists(self._get_target_name_old(volume['name'])):
+                provider_location = '%(host)s:%(port)s,1 %(name)s %(lun)s' % {
+                    'host': self.nms_host,
+                    'port': (
+                        self.configuration.nexenta_iscsi_target_portal_port),
+                    'name': self._get_target_name_old(volume['name']),
+                    'lun': self._get_lun(volume['name'], True)
+                }
+                volume['provider_location'] = provider_location
+                return provider_location
+
             provider_location = '%(host)s:%(port)s,1 %(name)s %(lun)s' % {
                 'host': self.nms_host,
                 'port': self.configuration.nexenta_iscsi_target_portal_port,
@@ -620,6 +622,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :param ensure: if True, ignore errors caused by already existing
             resources
         """
+        LOG.warning(volume['provider_location'])
         zvol_name = self._get_zvol_name(volume['name'])
         target_group_name = self._get_target_group_name()
 
@@ -662,7 +665,6 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
         :param volume: reference of volume to be unexported
         """
-        LOG.warning(volume['provider_location'])
         zvol_name = self._get_zvol_name(volume['name'])
         self.nms.scsidisk.delete_lu(zvol_name)
 
