@@ -163,6 +163,15 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             self.configuration.nexenta_target_group_prefix,
             self.nms_host)
 
+    def _get_target_name_old(self, volume_name):
+        """Return iSCSI target name to access volume."""
+        return '%s%s' % (self.configuration.nexenta_target_prefix, volume_name)
+
+    def _get_target_group_name_old(self, volume_name):
+        """Return Nexenta iSCSI target group name for volume."""
+        return '%s%s' % (self.configuration.nexenta_target_group_prefix,
+                         volume_name)
+
     @staticmethod
     def _get_clone_snapshot_name(volume):
         """Return name for snapshot that will be used to clone the volume."""
@@ -536,7 +545,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             shared = False  # LU does not exist
         return shared
 
-    def _get_lun(self, volume_name, host=None):
+    def _get_lun(self, volume_name, host=None, old=False):
         """Get lu mapping number for Zvol.
 
         :param zvol_name: Zvol name
@@ -544,7 +553,10 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :return: LUN
         """
         zvol_name = self._get_zvol_name(volume_name)
-        target_group_name = self._get_target_group_name()
+        if old:
+            target_group_name = self._get_target_group_name_old(volume_name)
+        else:
+            target_group_name = self._get_target_group_name()
         if not(self._is_lu_shared(zvol_name)):
             raise LookupError("LU does not exist for ZVol: %s", zvol_name)
         mappings = self.nms.scsidisk.list_lun_mapping_entries(zvol_name)
@@ -579,12 +591,27 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def _get_provider_location(self, volume):
         """Returns volume iscsiadm-formatted provider location string."""
-        return '%(host)s:%(port)s,1 %(name)s %(lun)s' % {
-            'host': self.nms_host,
-            'port': self.configuration.nexenta_iscsi_target_portal_port,
-            'name': self._get_target_name(),
-            'lun': self._get_lun(volume['name'])
-        }
+        # backport for volumes created with single lun per target
+        if self._target_exists(self._get_target_name_old(volume['name'])):
+            provider_location = '%(host)s:%(port)s,1 %(name)s %(lun)s' % {
+                'host': self.nms_host,
+                'port': self.configuration.nexenta_iscsi_target_portal_port,
+                'name': self._get_target_name_old(volume['name']),
+                'lun': self._get_lun(volume['name'], True)
+            }
+            volume['provider_location'] = provider_location
+            return provider_location
+        if not volume['provider_location']:
+            provider_location = '%(host)s:%(port)s,1 %(name)s %(lun)s' % {
+                'host': self.nms_host,
+                'port': self.configuration.nexenta_iscsi_target_portal_port,
+                'name': self._get_target_name(),
+                'lun': self._get_lun(volume['name'])
+            }
+            volume['provider_location'] = provider_location
+            return provider_location
+        else:
+            return volume['provider_location']
 
     def _do_export(self, _ctx, volume, ensure=False):
         """Do all steps to get zvol exported as LUN 0 at separate target.
@@ -635,6 +662,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
         :param volume: reference of volume to be unexported
         """
+        LOG.warning(volume['provider_location'])
         zvol_name = self._get_zvol_name(volume['name'])
         self.nms.scsidisk.delete_lu(zvol_name)
 
