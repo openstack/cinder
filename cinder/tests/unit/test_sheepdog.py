@@ -529,6 +529,9 @@ class SheepdogDriverTestCase(test.TestCase):
         def fake_try_execute(obj, *command, **kwargs):
             return True
 
+        def fake_run_dog(obj, command, subcommand, *params):
+            return ('fake_stdout', 'fake_stderr')
+
         self.stubs.Set(image_utils, 'temporary_file', fake_temp_file)
         self.stubs.Set(image_utils, 'fetch_verify_image',
                        lambda w, x, y, z: None)
@@ -537,6 +540,9 @@ class SheepdogDriverTestCase(test.TestCase):
         self.stubs.Set(sheepdog.SheepdogDriver,
                        '_try_execute',
                        fake_try_execute)
+        self.stubs.Set(sheepdog.SheepdogClient,
+                       '_run_dog',
+                       fake_run_dog)
         self.driver.copy_image_to_volume(None, {'name': 'test',
                                                 'size': 1},
                                          FakeImageService(), None)
