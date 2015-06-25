@@ -39,6 +39,7 @@ from cinder.volume.drivers import remotefs
 from cinder.volume.drivers.san import san
 
 GPFS_CLONE_MIN_RELEASE = 1200
+GPFS_ENC_MIN_RELEASE = 1404
 MIGRATION_ALLOWED_DEST_TYPE = ['GPFSDriver', 'GPFSNFSDriver']
 
 LOG = logging.getLogger(__name__)
@@ -119,9 +120,10 @@ class GPFSDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
     1.1.0 - Add volume retype, refactor volume migration
     1.2.0 - Add consistency group support
     1.3.0 - Add NFS based GPFS storage backend support
+    1.3.1 - Add GPFS native encryption (encryption of data at rest) support
     """
 
-    VERSION = "1.3.0"
+    VERSION = "1.3.1"
 
     def __init__(self, *args, **kwargs):
         super(GPFSDriver, self).__init__(*args, **kwargs)
@@ -354,6 +356,17 @@ class GPFSDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
                    self._storage_pool)
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
+
+        _gpfs_cluster_release_level = self._get_gpfs_cluster_release_level()
+        if _gpfs_cluster_release_level >= GPFS_ENC_MIN_RELEASE:
+            self._encryption_state = self._get_gpfs_encryption_status()
+        else:
+            LOG.info(_LI('Downlevel GPFS Cluster Detected. GPFS '
+                         'encryption-at-rest feature not enabled in cluster '
+                         'daemon level %(cur)s - must be at least at '
+                         'level %(min)s.'),
+                     {'cur': _gpfs_cluster_release_level,
+                      'min': GPFS_ENC_MIN_RELEASE})
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
@@ -738,6 +751,20 @@ class GPFSDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
             )
         return volume_path
 
+    def _get_gpfs_encryption_status(self):
+        """Determine if the backend is configured with key manager."""
+        try:
+            (out, err) = self.gpfs_execute('mmlsfs', self._gpfs_device,
+                                           '--encryption', '-Y')
+            lines = out.splitlines()
+            value_token = lines[0].split(':').index('data')
+            encryption_status = lines[1].split(':')[value_token]
+            return encryption_status
+        except processutils.ProcessExecutionError as exc:
+            LOG.error(_LE('Failed to issue mmlsfs command, error: %s.'),
+                      exc.stderr)
+            raise exception.VolumeBackendAPIException(data=exc.stderr)
+
     def ensure_export(self, context, volume):
         """Synchronously recreates an export for a logical volume."""
         pass
@@ -796,6 +823,10 @@ class GPFSDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
                                   'root_path': gpfs_base})
 
         data['consistencygroup_support'] = 'True'
+
+        if self._encryption_state.lower() == 'yes':
+            data['gpfs_encryption_rest'] = 'True'
+
         self._stats = data
 
     def clone_image(self, context, volume,
