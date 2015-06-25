@@ -58,6 +58,7 @@ CONF.register_opts(sheepdog_opts)
 
 class SheepdogClient(object):
     """Sheepdog command executor."""
+    QEMU_SHEEPDOG_PREFIX = 'sheepdog:'
     DOG_RESP_CONNECTION_ERROR = 'failed to connect to'
     DOG_RESP_CLUSTER_RUNNING = 'Cluster status: running'
     DOG_RESP_CLUSTER_NOT_FORMATTED = ('Cluster status: '
@@ -84,6 +85,38 @@ class SheepdogClient(object):
                 else:
                     msg = _LE('OSError: command is %s.')
                 LOG.error(msg, cmd)
+        except processutils.ProcessExecutionError as e:
+            raise exception.SheepdogCmdError(
+                cmd=e.cmd,
+                exit_code=e.exit_code,
+                stdout=e.stdout.replace('\n', '\\n'),
+                stderr=e.stderr.replace('\n', '\\n'))
+
+    def _run_qemu_img(self, command, *params):
+        """Executes qemu-img command wrapper"""
+        cmd = ['env', 'LC_ALL=C', 'LANG=C', 'qemu-img', command]
+        for param in params:
+            if param.startswith(self.QEMU_SHEEPDOG_PREFIX):
+                # replace 'sheepdog:vdiname[:snapid]' to
+                #         'sheepdog:addr:port:vdiname[:snapid]'
+                param = param.replace(self.QEMU_SHEEPDOG_PREFIX,
+                                      '%(prefix)s%(addr)s:%(port)s:' %
+                                      {'prefix': self.QEMU_SHEEPDOG_PREFIX,
+                                       'addr': self.addr,
+                                       'port': self.port},
+                                      1)
+            cmd.append(param)
+        try:
+            return utils.execute(*cmd)
+        except OSError as e:
+            with excutils.save_and_reraise_exception():
+                if e.errno == errno.ENOENT:
+                    msg = _LE('Qemu-img is not installed. '
+                              'OSError: command is %(cmd)s.')
+                else:
+                    msg = _LE('OSError: command is %(cmd)s.')
+                msg = msg % {'cmd': tuple(cmd)}
+                LOG.error(msg)
         except processutils.ProcessExecutionError as e:
             raise exception.SheepdogCmdError(
                 cmd=e.cmd,
