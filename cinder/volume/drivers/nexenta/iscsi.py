@@ -31,7 +31,7 @@ from cinder.volume.drivers.nexenta import jsonrpc
 from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 
-VERSION = '1.3.0.2'
+VERSION = '1.3.0.3'
 LOG = logging.getLogger(__name__)
 
 
