@@ -17,16 +17,13 @@
 =========================================================
 
 .. automodule:: nexenta.utils
-.. moduleauthor:: Victor Rodionov <victor.rodionov@nexenta.com>
-.. moduleauthor:: Mikhail Khodos <mikhail.khodos@nexenta.com>
+.. moduleauthor:: Nexenta OpenStack Developers <openstack.team@nexenta.com>
 """
 
 import re
 
-import six.moves.urllib.parse as urlparse
-
-from cinder.i18n import _
 from cinder.openstack.common import units
+import six.moves.urllib.parse as urlparse
 
 
 def str2size(s, scale=1024):
@@ -45,7 +42,7 @@ def str2size(s, scale=1024):
 
     match = re.match(r'^([\.\d]+)\s*([BbKkMmGgTtPpEeZzYy]?)', s)
     if match is None:
-        raise ValueError(_('Invalid value: "%s"') % s)
+        raise ValueError('Invalid value: "%s"' % s)
 
     groups = match.groups()
     value = float(groups[0])

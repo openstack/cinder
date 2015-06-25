@@ -1,4 +1,4 @@
-# Copyright 2011 Nexenta Systems, Inc.
+# Copyright 2011-2015 Nexenta Systems, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -17,14 +17,13 @@
 =====================================================================
 
 .. automodule:: nexenta.jsonrpc
-.. moduleauthor:: Yuriy Taraday <yorik.sar@gmail.com>
-.. moduleauthor:: Victor Rodionov <victor.rodionov@nexenta.com>
+.. moduleauthor:: Nexenta OpenStack Developers <openstack.team@nexenta.com>
 """
 
 import urllib2
 
-from cinder.i18n import _
 from cinder.openstack.common import jsonutils
+
 from cinder.openstack.common import log as logging
 from cinder.volume.drivers import nexenta
 
@@ -86,9 +85,9 @@ class NexentaJSONProxy(object):
         response_obj = urllib2.urlopen(request)
         if response_obj.info().status == 'EOF in headers':
             if not self.auto or self.scheme != 'http':
-                LOG.error(_('No headers in server response'))
-                raise NexentaJSONException(_('Bad response from server'))
-            LOG.info(_('Auto switching to HTTPS connection to %s'), self.url)
+                LOG.error('No headers in server response')
+                raise NexentaJSONException('Bad response from server')
+            LOG.info('Auto switching to HTTPS connection to %s', self.url)
             self.scheme = 'https'
             request = urllib2.Request(self.url, data, headers)
             response_obj = urllib2.urlopen(request)

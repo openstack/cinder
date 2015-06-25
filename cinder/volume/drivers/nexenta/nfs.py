@@ -25,19 +25,21 @@ import hashlib
 import os
 import re
 
+from cinder.openstack.common import units
+
+from eventlet import greenthread
 from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder.openstack.common import log as logging
-from cinder.openstack.common import units
 from cinder.volume.drivers import nexenta
 from cinder.volume.drivers.nexenta import jsonrpc
 from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 from cinder.volume.drivers import nfs
 
-VERSION = '1.1.3'
+VERSION = '1.2.0'
 LOG = logging.getLogger(__name__)
 
 
@@ -52,27 +54,57 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                 delete_snapshot method.
         1.1.3 - Redefined volume_backend_name attribute inherited from
                 RemoteFsDriver.
+        1.2.0 - Added migrate and retype methods.
+        1.2.0.1 - Backport imports (logging, units, translations) for Juno.
+        1.3.0 - Extend volume method.
     """
 
     driver_prefix = 'nexenta'
     volume_backend_name = 'NexentaNfsDriver'
     VERSION = VERSION
+    VOLUME_FILE_NAME = 'volume'
 
     def __init__(self, *args, **kwargs):
         super(NexentaNfsDriver, self).__init__(*args, **kwargs)
         if self.configuration:
             self.configuration.append_config_values(
+                options.NEXENTA_CONNECTION_OPTIONS)
+            self.configuration.append_config_values(
                 options.NEXENTA_NFS_OPTIONS)
-        conf = self.configuration
-        self.nms_cache_volroot = conf.nexenta_nms_cache_volroot
+            self.configuration.append_config_values(
+                options.NEXENTA_VOLUME_OPTIONS)
+            self.configuration.append_config_values(
+                options.NEXENTA_RRMGR_OPTIONS)
+
+        self.nms_cache_volroot = self.configuration.nexenta_nms_cache_volroot
+        self.rrmgr_compression = self.configuration.nexenta_rrmgr_compression
+        self.rrmgr_tcp_buf_size = self.configuration.nexenta_rrmgr_tcp_buf_size
+        self.rrmgr_connections = self.configuration.nexenta_rrmgr_connections
+        self.nfs_mount_point_base = self.configuration.nexenta_mount_point_base
+        self.volume_compression = self.configuration.nexenta_volume_compression
+        self.volume_deduplication = self.configuration.nexenta_volume_dedup
+        self.volume_description = self.configuration.nexenta_volume_description
+        self.sparsed_volumes = self.configuration.nexenta_sparsed_volumes
         self._nms2volroot = {}
         self.share2nms = {}
 
+    @property
+    def backend_name(self):
+        backend_name = None
+        if self.configuration:
+            backend_name = self.configuration.safe_get('volume_backend_name')
+        if not backend_name:
+            backend_name = self.__class__.__name__
+        return backend_name
+
     def do_setup(self, context):
+        shares_config = getattr(self.configuration, self.driver_prefix +
+                                '_shares_config')
+        if shares_config:
+            self.configuration.nfs_shares_config = shares_config
         super(NexentaNfsDriver, self).do_setup(context)
-        self._load_shares_config(getattr(self.configuration,
-                                         self.driver_prefix +
-                                         '_shares_config'))
+        self._load_shares_config(shares_config)
+        self._mount_subfolders()
 
     def check_for_setup_error(self):
         """Verify that the volume for our folder exists.
@@ -92,6 +124,102 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                                         "Store appliance"), folder)
                 self._share_folder(nms, volume_name, dataset)
 
+    def migrate_volume(self, ctxt, volume, host):
+        """Migrate if volume and host are managed by Nexenta appliance.
+
+        :param ctxt: context
+        :param volume: a dictionary describing the volume to migrate
+        :param host: a dictionary describing the host to migrate to
+        """
+        LOG.debug('Enter: migrate_volume: id=%(id)s, host=%(host)s' %
+                  {'id': volume['id'], 'host': host})
+
+        false_ret = (False, None)
+
+        if volume['status'] not in ('available', 'retyping'):
+            LOG.warning(_("Volume status must be 'available' or 'retyping'."
+                          "Current volume status: %s"), volume['status'])
+            return false_ret
+
+        if 'capabilities' not in host:
+            LOG.warning(_("Unsupported host. No capabilities found"))
+            return false_ret
+
+        capabilities = host['capabilities']
+        ns_shares = capabilities['ns_shares']
+        dst_parts = capabilities['location_info'].split(':')
+        dst_host, dst_volume = dst_parts[1:]
+
+        if (capabilities.get('vendor_name') != 'Nexenta' or
+                dst_parts[0] != self.__class__.__name__ or
+                capabilities['free_capacity_gb'] < volume['size']):
+            return false_ret
+
+        nms = self.share2nms[volume['provider_location']]
+        ssh_bindings = nms.appliance.ssh_list_bindings()
+        shares = []
+        for bind in ssh_bindings:
+            for share in ns_shares:
+                if (share.startswith(ssh_bindings[bind][3]) and
+                        ns_shares[share] >= volume['size']):
+                    shares.append(share)
+        if len(shares) == 0:
+            LOG.warning(_("Remote NexentaStor appliance at %s should be "
+                          "SSH-bound."), share)
+            return false_ret
+        share = sorted(shares, key=ns_shares.get, reverse=True)[0]
+        snapshot = {
+            'volume_name': volume['name'],
+            'volume_id': volume['id'],
+            'name': utils.get_migrate_snapshot_name(volume)
+        }
+        self.create_snapshot(snapshot)
+        src = '%(share)s/%(volume)s@%(snapshot)s' % {
+            'share': (
+               volume['provider_location'].split(':')[1].split('volumes/')[1]),
+            'volume': volume['name'],
+            'snapshot': snapshot['name']
+        }
+        dst = ':'.join([dst_host, dst_volume.split('/volumes/')[1]])
+        try:
+            nms.appliance.execute(self._get_zfs_send_recv_cmd(src, dst))
+        except nexenta.NexentaException as exc:
+            LOG.warning(_("Cannot send source snapshot %(src)s to "
+                          "destination %(dst)s. Reason: %(exc)s"),
+                        {'src': src, 'dst': dst, 'exc': exc})
+            return false_ret
+        finally:
+            try:
+                self.delete_snapshot(snapshot)
+            except nexenta.NexentaException as exc:
+                LOG.warning(_("Cannot delete temporary source snapshot "
+                              "%(src)s on NexentaStor Appliance: %(exc)s"),
+                            {'src': src, 'exc': exc})
+        try:
+            self.delete_volume(volume)
+        except nexenta.NexentaException as exc:
+            LOG.warning(_("Cannot delete source volume %(volume)s on "
+                          "NexentaStor Appliance: %(exc)s"),
+                        {'volume': volume['name'], 'exc': exc})
+
+        dst_nms = self._get_nms_for_url(capabilities['nms_url'])
+        dst_snapshot = '%s/%s@%s' % (dst_volume.split('volumes/')[1],
+                                     volume['name'], snapshot['name'])
+        try:
+            dst_nms.snapshot.destroy(dst_snapshot, '')
+        except nexenta.NexentaException as exc:
+            LOG.warning(_("Cannot delete temporary destination snapshot "
+                          "%(dst)s on NexentaStor Appliance: %(exc)s"),
+                        {'dst': dst_snapshot, 'exc': exc})
+        return True, {'provider_location': share}
+
+    def _get_zfs_send_recv_cmd(self, src, dst):
+        """Returns rrmgr command for source and destination."""
+        return utils.get_rrmgr_cmd(src, dst,
+                                   compression=self.rrmgr_compression,
+                                   tcp_buf_size=self.rrmgr_tcp_buf_size,
+                                   connections=self.rrmgr_connections)
+
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info.
 
@@ -106,6 +234,80 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             'driver_volume_type': self.driver_volume_type,
             'data': data
         }
+
+    def retype(self, context, volume, new_type, diff, host):
+        """Convert the volume to be of the new type.
+        :param ctxt: Context
+        :param volume: A dictionary describing the volume to migrate
+        :param new_type: A dictionary describing the volume type to convert to
+        :param diff: A dictionary with the difference between the two types
+        :param host: A dictionary describing the host to migrate to, where
+                     host['host'] is its name, and host['capabilities'] is a
+                     dictionary of its reported capabilities.
+        """
+        LOG.debug('Retype volume request %(vol)s to be %(type)s '
+                  '(host: %(host)s), diff %(diff)s.',
+                  {'vol': volume['name'],
+                   'type': new_type,
+                   'host': host,
+                   'diff': diff})
+
+        options = dict(
+            compression='compression',
+            dedup='dedup',
+            description='nms:description'
+            )
+
+        retyped = False
+        migrated = False
+        model_update = None
+
+        src_backend = self.__class__.__name__
+        dst_backend = host['capabilities']['location_info'].split(':')[0]
+        if src_backend != dst_backend:
+            LOG.warning('Cannot retype from %(src_backend)s to '
+                        '%(dst_backend)s.', {
+                            'src_backend': src_backend,
+                            'dst_backend': dst_backend
+                        })
+            return False
+
+        hosts = (volume['host'], host['host'])
+        old, new = hosts
+        if old != new:
+            migrated, provider_location = self.migrate_volume(
+                context, volume, host)
+
+        if not migrated:
+            provider_location = volume['provider_location']
+            nms = self.share2nms[provider_location]
+        else:
+            nms_url = host['capabilities']['nms_url']
+            nms = self._get_nms_for_url(nms_url)
+            model_update = provider_location
+            provider_location = provider_location['provider_location']
+
+        share = provider_location.split(':')[1].split('volumes/')[1]
+        folder = '%(share)s/%(volume)s' % {
+            'share': share,
+            'volume': volume['name']
+        }
+
+        for opt in options:
+            old, new = diff.get('extra_specs').get(opt, (False, False))
+            if old != new:
+                LOG.debug('Changing %(opt)s from %(old)s to %(new)s.',
+                          {'opt': opt, 'old': old, 'new': new})
+                try:
+                    nms.folder.set_child_prop(
+                        folder, options[opt], new)
+                    retyped = True
+                except nexenta.NexentaException:
+                    LOG.error(_('Error trying to change %(opt)s'
+                                ' from %(old)s to %(new)s'),
+                              {'opt': opt, 'old': old, 'new': new})
+                    return False, None
+        return retyped or migrated, model_update
 
     def _do_create_volume(self, volume):
         nfs_share = volume['provider_location']
@@ -128,19 +330,28 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                        self.driver_prefix + '_sparsed_volumes'):
                 self._create_sparsed_file(nms, volume_path, volume_size)
             else:
-                compression = nms.folder.get('compression')
+                folder_path = '%s/%s' % (vol, folder)
+                compression = nms.folder.get_child_prop(
+                    folder_path, 'compression')
                 if compression != 'off':
                     # Disable compression, because otherwise will not use space
                     # on disk.
-                    nms.folder.set('compression', 'off')
+                    nms.folder.set_child_prop(
+                        folder_path, 'compression', 'off')
                 try:
                     self._create_regular_file(nms, volume_path, volume_size)
                 finally:
                     if compression != 'off':
                         # Backup default compression value if it was changed.
-                        nms.folder.set('compression', compression)
+                        nms.folder.set_child_prop(
+                            folder_path, 'compression', compression)
 
             self._set_rw_permissions_for_all(nms, volume_path)
+
+            if self._get_nfs_server_version(nfs_share) < 4:
+                sub_share, mnt_path = self._get_subshare_mount_point(nfs_share,
+                                                                     volume)
+                self._ensure_share_mounted(sub_share, mnt_path)
         except nexenta.NexentaException as exc:
             try:
                 nms.folder.destroy('%s/%s' % (vol, folder))
@@ -180,6 +391,11 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                             {'vol': vol, 'folder': folder})
             raise
 
+        if self._get_nfs_server_version(nfs_share) < 4:
+            sub_share, mnt_path = self._get_subshare_mount_point(nfs_share,
+                                                                 volume)
+            self._ensure_share_mounted(sub_share, mnt_path)
+
         return {'provider_location': volume['provider_location']}
 
     def create_cloned_volume(self, volume, src_vref):
@@ -213,16 +429,17 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
 
         :param volume: volume reference
         """
-        super(NexentaNfsDriver, self).delete_volume(volume)
-
         nfs_share = volume.get('provider_location')
-
         if nfs_share:
             nms = self.share2nms[nfs_share]
             vol, parent_folder = self._get_share_datasets(nfs_share)
             folder = '%s/%s/%s' % (vol, parent_folder, volume['name'])
-            props = nms.folder.get_child_props(folder, 'origin') or {}
+            mount_path = self.remote_path(volume).strip(
+                '/%s' % self.VOLUME_FILE_NAME)
+            if mount_path in self._remotefsclient._read_mounts():
+                self._execute('umount', mount_path, run_as_root=True)
             try:
+                props = nms.folder.get_child_props(folder, 'origin') or {}
                 nms.folder.destroy(folder, '-r')
             except nexenta.NexentaException as exc:
                 if 'does not exist' in exc.args[0]:
@@ -240,6 +457,35 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                                    'already deleted.'), origin)
                         return
                     raise
+
+    def extend_volume(self, volume, new_size):
+        """Extend an existing volume.
+
+        :param volume: volume reference
+        :param new_size: volume new size in GB
+        """
+        LOG.info(_('Extending volume: %(id)s New size: %(size)s GB'),
+                 {'id': volume['id'], 'size': new_size})
+        nfs_share = volume['provider_location']
+        nms = self.share2nms[nfs_share]
+        volume_path = self.remote_path(volume)
+        if getattr(self.configuration,
+                   self.driver_prefix + '_sparsed_volumes'):
+            self._create_sparsed_file(nms, volume_path, new_size)
+        else:
+            block_size_mb = 1
+            block_count = ((new_size - volume['size']) * units.Gi
+                           / (block_size_mb * units.Mi))
+
+            nms.appliance.execute(
+                'dd if=/dev/zero seek=%(seek)d of=%(path)s'
+                ' bs=%(bs)dM count=%(count)d' % {
+                    'seek': volume['size'] * units.Gi / block_size_mb,
+                    'path': volume_path,
+                    'bs': block_size_mb,
+                    'count': block_count
+                }
+            )
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot.
@@ -395,6 +641,71 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
 
         LOG.debug('Shares loaded: %s' % self.shares)
 
+    def _get_subshare_mount_point(self, nfs_share, volume):
+        mnt_path = '%s/%s' % (
+            self._get_mount_point_for_share(nfs_share), volume['name'])
+        sub_share = '%s/%s' % (nfs_share, volume['name'])
+        return sub_share, mnt_path
+
+    def _ensure_share_mounted(self, nfs_share, mount_path=None):
+        """Ensure that NFS share is mounted on the host.
+
+        Unlike the parent method this one accepts mount_path as an optional
+        parameter and uses it as a mount point if provided.
+
+        :param nfs_share: NFS share name
+        :param mount_path: mount path on the host
+        """
+        mnt_flags = []
+        if self.shares.get(nfs_share) is not None:
+            mnt_flags = self.shares[nfs_share].split()
+        num_attempts = max(1, self.configuration.nfs_mount_attempts)
+        for attempt in range(num_attempts):
+            try:
+                if mount_path is None:
+                    self._remotefsclient.mount(nfs_share, mnt_flags)
+                else:
+                    if mount_path in self._remotefsclient._read_mounts():
+                        LOG.info(_('Already mounted: %s'), mount_path)
+                        return
+
+                    self._execute('mkdir', '-p', mount_path,
+                                  check_exit_code=False)
+                    self._remotefsclient._mount_nfs(nfs_share, mount_path,
+                                                    mnt_flags)
+                return
+            except Exception as e:
+                if attempt == (num_attempts - 1):
+                    LOG.error(_('Mount failure for %(share)s after '
+                                '%(count)d attempts.'), {
+                              'share': nfs_share,
+                              'count': num_attempts})
+                    raise exception.NfsException(e)
+                LOG.warning(
+                    _('Mount attempt %(attempt)d failed: %(error)s.'
+                        'Retrying mount ...'), {
+                        'attempt': attempt,
+                        'error': e})
+                greenthread.sleep(1)
+
+    def _mount_subfolders(self):
+        ctxt = context.get_admin_context()
+        vol_entries = self.db.volume_get_all_by_host(ctxt, self.host)
+        for vol in vol_entries:
+            nfs_share = vol['provider_location']
+            if (nfs_share in self.shares) and \
+               (self._get_nfs_server_version(nfs_share) < 4):
+                    sub_share, mnt_path = self._get_subshare_mount_point(
+                        nfs_share, vol)
+                    self._ensure_share_mounted(sub_share, mnt_path)
+
+    def _get_nfs_server_version(self, share):
+        nms = self.share2nms[share]
+        nfs_opts = nms.netsvc.get_confopts(
+            'svc:/network/nfs/server:default', 'configure')
+        version = nfs_opts['nfs_server_versmax']['current']
+        return int(version)
+
     def _get_capacity_info(self, nfs_share):
         """Calculate available space on the NFS share.
 
@@ -443,3 +754,45 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         """Check if snapshot is created for cloning."""
         name = snapshot.split('@')[-1]
         return name.startswith('cinder-clone-snapshot-')
+
+    def _update_volume_stats(self):
+        """Retrieve stats info for NexentaStor appliance."""
+        LOG.debug('Updating volume stats')
+        self._ensure_shares_mounted()
+        if not self._mounted_shares:
+            return
+        total_space = 0
+        free_space = 0
+        shares_with_capacities = {}
+        for mounted_share in self._mounted_shares:
+            total, free, allocated = self._get_capacity_info(mounted_share)
+            shares_with_capacities[mounted_share] = utils.str2gib_size(total)
+            if total_space < utils.str2gib_size(total):
+                total_space = utils.str2gib_size(total)
+            if free_space < utils.str2gib_size(free):
+                free_space = utils.str2gib_size(free)
+                share = mounted_share
+
+        location_info = '%(driver)s:%(share)s' % {
+            'driver': self.__class__.__name__,
+            'share': share
+        }
+        nms_url = self.share2nms[share].url
+        reserve = 100 - self.configuration.nexenta_capacitycheck
+        self._stats = {
+            'vendor_name': 'Nexenta',
+            'dedup': self.volume_deduplication,
+            'compression': self.volume_compression,
+            'description': self.volume_description,
+            'nms_url': nms_url,
+            'ns_shares': shares_with_capacities,
+            'driver_version': self.VERSION,
+            'storage_protocol': 'NFS',
+            'total_capacity_gb': total_space,
+            'free_capacity_gb': free_space,
+            'reserved_percentage': reserve,
+            'QoS_support': False,
+            'location_info': location_info,
+            'volume_backend_name': self.backend_name,
+            'nfs_mount_point_base': self.nfs_mount_point_base
+        }
