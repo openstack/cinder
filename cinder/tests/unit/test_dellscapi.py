@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 from oslo_log import log as logging
 
 from cinder import context
@@ -30,6 +31,7 @@ LOG = logging.getLogger(__name__)
 # from trying to contact a Dell Storage Center.
 
 
+@ddt.ddt
 @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                    '__init__',
                    return_value=None)
@@ -1389,6 +1391,80 @@ class DellSCSanAPITestCase(test.TestCase):
                   u'storageAlertThreshold': 10,
                   u'objectType': u'StorageCenterStorageUsage'}
 
+    STORAGE_PROFILE_LIST = [
+        {u'allowedForFlashOptimized': False,
+         u'allowedForNonFlashOptimized': True,
+         u'index': 1,
+         u'instanceId': u'64158.1',
+         u'instanceName': u'Recommended',
+         u'name': u'Recommended',
+         u'notes': u'',
+         u'objectType': u'ScStorageProfile',
+         u'raidTypeDescription': u'RAID 10 Active, RAID 5 or RAID 6 Replay',
+         u'raidTypeUsed': u'Mixed',
+         u'scName': u'Storage Center 64158',
+         u'scSerialNumber': 64158,
+         u'tiersUsedDescription': u'Tier 1, Tier 2, Tier 3',
+         u'useTier1Storage': True,
+         u'useTier2Storage': True,
+         u'useTier3Storage': True,
+         u'userCreated': False,
+         u'volumeCount': 125},
+        {u'allowedForFlashOptimized': False,
+         u'allowedForNonFlashOptimized': True,
+         u'index': 2,
+         u'instanceId': u'64158.2',
+         u'instanceName': u'High Priority',
+         u'name': u'High Priority',
+         u'notes': u'',
+         u'objectType': u'ScStorageProfile',
+         u'raidTypeDescription': u'RAID 10 Active, RAID 5 or RAID 6 Replay',
+         u'raidTypeUsed': u'Mixed',
+         u'scName': u'Storage Center 64158',
+         u'scSerialNumber': 64158,
+         u'tiersUsedDescription': u'Tier 1',
+         u'useTier1Storage': True,
+         u'useTier2Storage': False,
+         u'useTier3Storage': False,
+         u'userCreated': False,
+         u'volumeCount': 0},
+        {u'allowedForFlashOptimized': False,
+         u'allowedForNonFlashOptimized': True,
+         u'index': 3,
+         u'instanceId': u'64158.3',
+         u'instanceName': u'Medium Priority',
+         u'name': u'Medium Priority',
+         u'notes': u'',
+         u'objectType': u'ScStorageProfile',
+         u'raidTypeDescription': u'RAID 10 Active, RAID 5 or RAID 6 Replay',
+         u'raidTypeUsed': u'Mixed',
+         u'scName': u'Storage Center 64158',
+         u'scSerialNumber': 64158,
+         u'tiersUsedDescription': u'Tier 2',
+         u'useTier1Storage': False,
+         u'useTier2Storage': True,
+         u'useTier3Storage': False,
+         u'userCreated': False,
+         u'volumeCount': 0},
+        {u'allowedForFlashOptimized': True,
+         u'allowedForNonFlashOptimized': True,
+         u'index': 4,
+         u'instanceId': u'64158.4',
+         u'instanceName': u'Low Priority',
+         u'name': u'Low Priority',
+         u'notes': u'',
+         u'objectType': u'ScStorageProfile',
+         u'raidTypeDescription': u'RAID 10 Active, RAID 5 or RAID 6 Replay',
+         u'raidTypeUsed': u'Mixed',
+         u'scName': u'Storage Center 64158',
+         u'scSerialNumber': 64158,
+         u'tiersUsedDescription': u'Tier 3',
+         u'useTier1Storage': False,
+         u'useTier2Storage': False,
+         u'useTier3Storage': True,
+         u'userCreated': False,
+         u'volumeCount': 0}]
+
     IQN = 'iqn.2002-03.com.compellent:5000D31000000001'
     WWN = u'21000024FF30441C'
 
@@ -1713,6 +1789,57 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertEqual(self.FLDR, res, 'Unexpected Folder')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_json',
+                       return_value=STORAGE_PROFILE_LIST)
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post',
+                       return_value=RESPONSE_200)
+    def test_find_storage_profile_fail(self,
+                                       mock_json,
+                                       mock_find_folder,
+                                       mock_close_connection,
+                                       mock_open_connection,
+                                       mock_init):
+        # Test case where _find_volume_folder returns none
+        res = self.scapi._find_storage_profile("Blah")
+        self.assertIsNone(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_json',
+                       return_value=STORAGE_PROFILE_LIST)
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post',
+                       return_value=RESPONSE_200)
+    def test_find_storage_profile_none(self,
+                                       mock_json,
+                                       mock_find_folder,
+                                       mock_close_connection,
+                                       mock_open_connection,
+                                       mock_init):
+        # Test case where _find_storage_profile returns none
+        res = self.scapi._find_storage_profile(None)
+        self.assertIsNone(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_json',
+                       return_value=STORAGE_PROFILE_LIST)
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post',
+                       return_value=RESPONSE_200)
+    @ddt.data('HighPriority', 'highpriority', 'High Priority')
+    def test_find_storage_profile(self,
+                                  value,
+                                  mock_json,
+                                  mock_find_folder,
+                                  mock_close_connection,
+                                  mock_open_connection,
+                                  mock_init):
+        res = self.scapi._find_storage_profile(value)
+        self.assertIsNotNone(res, 'Expected matching storage profile!')
+        self.assertEqual(self.STORAGE_PROFILE_LIST[1]['instanceId'],
+                         res.get('instanceId'))
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_create_folder_path',
                        return_value=FLDR)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -1818,6 +1945,52 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertTrue(mock_get_json.called)
         mock_find_volume_folder.assert_called_once_with(True)
         self.assertEqual(self.VOLUME, res, 'Unexpected ScVolume')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_storage_profile',
+                       return_value=None)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_volume_folder',
+                       return_value=FLDR)
+    def test_create_volume_storage_profile_missing(self,
+                                                   mock_find_volume_folder,
+                                                   mock_find_storage_profile,
+                                                   mock_close_connection,
+                                                   mock_open_connection,
+                                                   mock_init):
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.scapi.create_volume,
+                          self.volume_name,
+                          1,
+                          'Blah')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_json',
+                       return_value=VOLUME)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_storage_profile',
+                       return_value=STORAGE_PROFILE_LIST[0])
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_volume_folder',
+                       return_value=FLDR)
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post',
+                       return_value=RESPONSE_201)
+    def test_create_volume_storage_profile(self,
+                                           mock_post,
+                                           mock_find_volume_folder,
+                                           mock_find_storage_profile,
+                                           mock_get_json,
+                                           mock_close_connection,
+                                           mock_open_connection,
+                                           mock_init):
+        self.scapi.create_volume(
+            self.volume_name,
+            1,
+            'Recommended')
+        actual = mock_post.call_args[0][1]['StorageProfile']
+        expected = self.STORAGE_PROFILE_LIST[0]['instanceId']
+        self.assertEqual(expected, actual)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_volume',

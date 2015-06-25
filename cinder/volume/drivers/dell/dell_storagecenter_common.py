@@ -20,6 +20,7 @@ from cinder import exception
 from cinder.i18n import _, _LE, _LW
 from cinder.volume.drivers.dell import dell_storagecenter_api
 from cinder.volume.drivers.san import san
+from cinder.volume import volume_types
 
 
 common_opts = [
@@ -86,12 +87,25 @@ class DellCommonDriver(san.SanDriver):
         with self._client.open_connection() as api:
             api.find_sc()
 
+    def _get_volume_extra_specs(self, volume):
+        '''Gets extra specs for the given volume.'''
+        type_id = volume.get('volume_type_id')
+        if type_id:
+            return volume_types.get_volume_type_extra_specs(type_id)
+
+        return {}
+
     def create_volume(self, volume):
         '''Create a volume.'''
 
         # We use id as our name as it is unique.
         volume_name = volume.get('id')
         volume_size = volume.get('size')
+
+        # See if we have any extra specs.
+        specs = self._get_volume_extra_specs(volume)
+        storage_profile = specs.get('storagetype:storageprofile')
+
         LOG.debug('Creating volume %(name)s of size %(size)s',
                   {'name': volume_name,
                    'size': volume_size})
@@ -100,7 +114,8 @@ class DellCommonDriver(san.SanDriver):
             try:
                 if api.find_sc():
                     scvolume = api.create_volume(volume_name,
-                                                 volume_size)
+                                                 volume_size,
+                                                 storage_profile)
             except Exception:
                 with excutils.save_and_reraise_exception():
                     LOG.error(_LE('Failed to create volume %s'),
