@@ -372,9 +372,48 @@ class RBDTestCase(test.TestCase):
 
         self.driver.delete_snapshot(self.snapshot)
 
-        args = [str(self.snapshot_name)]
-        proxy.remove_snap.assert_called_with(*args)
-        proxy.unprotect_snap.assert_called_with(*args)
+        proxy.remove_snap.assert_called_with(self.snapshot_name)
+        proxy.unprotect_snap.assert_called_with(self.snapshot_name)
+
+    @common_mocks
+    def test_delete_busy_snapshot(self):
+        proxy = self.mock_proxy.return_value
+        proxy.__enter__.return_value = proxy
+
+        proxy.unprotect_snap.side_effect = (
+            self.mock_rbd.ImageBusy)
+
+        with mock.patch.object(self.driver, '_get_children_info') as \
+                mock_get_children_info:
+            mock_get_children_info.return_value = [('pool', 'volume2')]
+
+            with mock.patch.object(driver, 'LOG') as \
+                    mock_log:
+
+                self.assertRaises(exception.SnapshotIsBusy,
+                                  self.driver.delete_snapshot,
+                                  self.snapshot)
+
+                mock_get_children_info.assert_called_once_with(
+                    proxy,
+                    self.snapshot_name)
+
+                self.assertTrue(mock_log.info.called)
+                self.assertTrue(proxy.unprotect_snap.called)
+                self.assertFalse(proxy.remove_snap.called)
+
+    @common_mocks
+    def test_get_children_info(self):
+        volume = self.mock_proxy
+        volume.set_snap = mock.Mock()
+        volume.list_children = mock.Mock()
+        list_children = [('pool', 'volume2')]
+        volume.list_children.return_value = list_children
+
+        info = self.driver._get_children_info(volume,
+                                              self.snapshot_name)
+
+        self.assertEqual(list_children, info)
 
     @common_mocks
     def test_get_clone_info(self):
