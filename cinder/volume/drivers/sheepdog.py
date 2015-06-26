@@ -124,17 +124,16 @@ class SheepdogClient(object):
             stderr = e.kwargs['stderr']
             with excutils.save_and_reraise_exception():
                 if stderr.startswith(self.DOG_RESP_CONNECTION_ERROR):
-                    LOG.error(_LE('Failed to connect sheep daemon. '
-                              'addr: %(addr)s, port: %(port)s') %
+                    LOG.error(_LE("Failed to connect sheep daemon. "
+                              "addr: %(addr)s, port: %(port)s"),
                               {'addr': self.addr, 'port': self.port})
                 elif stderr.endswith(self.DOG_RESP_VDI_EXISTS_ALREADY):
-                    LOG.error(_LE('Volume already exists. %(volname)s') %
-                              {'volname': volume['name']})
+                    LOG.error(_LE('Volume already exists. %s'), volume['name'])
                 elif stderr.endswith(self.DOG_RESP_FAILD_TO_WRITE_OBJECT):
                     LOG.error(_LE('Failed to write object to any sheep node. '
-                              '%s') % volume['name'])
+                              '%s'), volume['name'])
                 else:
-                    LOG.error(_LE('Failed to create volume. %s') %
+                    LOG.error(_LE('Failed to create volume. %s'),
                               volume['name'])
 
     def delete(self, volume):
