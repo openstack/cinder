@@ -81,11 +81,10 @@ class SheepdogClient(object):
             with excutils.save_and_reraise_exception():
                 if e.errno == errno.ENOENT:
                     msg = _LE('Sheepdog is not installed. '
-                              'OSError: command is %(cmd)s.')
+                              'OSError: command is %s.')
                 else:
-                    msg = _LE('OSError: command is %(cmd)s.')
-                msg = msg % {'cmd': cmd}
-                LOG.error(msg)
+                    msg = _LE('OSError: command is %s.')
+                LOG.error(msg, cmd)
         except processutils.ProcessExecutionError as e:
             raise exception.SheepdogCmdError(
                 cmd=e.cmd,
@@ -102,8 +101,7 @@ class SheepdogClient(object):
                 if stderr.startswith(self.DOG_RESP_CONNECTION_ERROR):
                     msg = _LE('Failed to connect sheep daemon. '
                               'addr: %(addr)s, port: %(port)s')
-                    msg = msg % {'addr': self.addr, 'port': self.port}
-                    LOG.error(msg)
+                    LOG.error(msg, {'addr': self.addr, 'port': self.port})
 
         if stdout.startswith(self.DOG_RESP_CLUSTER_RUNNING):
             LOG.debug('Sheepdog cluster is running.')
