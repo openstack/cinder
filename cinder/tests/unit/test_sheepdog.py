@@ -121,10 +121,6 @@ Epoch Time           Version [Host:Port:V-Nodes,,,]
 Failed to create VDI %(volname)s: VDI exists already
 """
 
-    DOG_VDI_CREATE_FAILD_TO_WRITE_OBJECT = """\
-Failed to create VDI %(volname)s: Failed to write to requested VDI
-"""""
-
     DOG_VDI_DELETE_VDI_NOT_EXISTS = """\
 Failed to open VDI vdiname (snapshot id: 0 snapshot tag: ): No VDI found
 """
@@ -311,31 +307,6 @@ class SheepdogClientTestCase(test.TestCase):
         expected_msg = self.test_data.sheepdog_cmd_error(
             cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
         expected_err = _LE('Volume already exists. %s')
-        with mock.patch.object(self.client, '_run_dog') as fake_execute:
-            fake_execute.side_effect = exception.SheepdogCmdError(
-                cmd=cmd, exit_code=exit_code,
-                stdout=stdout.replace('\n', '\\n'),
-                stderr=stderr.replace('\n', '\\n'))
-            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
-                ex = self.assertRaises(exception.SheepdogCmdError,
-                                       self.client.create,
-                                       self.test_data.TEST_VOLUME)
-                fake_logger.error.assert_called_with(expected_err,
-                                                     self.test_data.
-                                                     TEST_VOLUME['name'])
-                self.assertEqual(expected_msg, ex.msg)
-
-    def test_create_failed_to_write_object(self):
-        cmd = self.test_data.cmd_dog_vdi_create(
-            self.test_data.TEST_VOLUME['name'],
-            self.test_data.TEST_VOLUME['size'])
-        exit_code = 1
-        stdout = ''
-        stderr = self.test_data.DOG_VDI_CREATE_FAILD_TO_WRITE_OBJECT % \
-            {'volname': self.test_data.TEST_VOLUME['name']}
-        expected_msg = self.test_data.sheepdog_cmd_error(
-            cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
-        expected_err = _LE('Failed to write object to any sheep node. %s')
         with mock.patch.object(self.client, '_run_dog') as fake_execute:
             fake_execute.side_effect = exception.SheepdogCmdError(
                 cmd=cmd, exit_code=exit_code,
