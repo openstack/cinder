@@ -46,6 +46,28 @@ class CinderObject(base.VersionedObject):
     # from one another.
     OBJ_PROJECT_NAMESPACE = 'cinder'
 
+    def cinder_obj_get_changes(self):
+        """Returns a dict of changed fields with tz unaware datetimes.
+
+        Any timezone aware datetime field will be converted to UTC timezone
+        and returned as timezone unaware datetime.
+
+        This will allow us to pass these fields directly to a db update
+        method as they can't have timezone information.
+        """
+        # Get dirtied/changed fields
+        changes = self.obj_get_changes()
+
+        # Look for datetime objects that contain timezone information
+        for k, v in changes.items():
+            if isinstance(v, datetime.datetime) and v.tzinfo:
+                # Remove timezone information and adjust the time according to
+                # the timezone information's offset.
+                changes[k] = v.replace(tzinfo=None) - v.utcoffset()
+
+        # Return modified dict
+        return changes
+
 
 class CinderObjectDictCompat(base.VersionedObjectDictCompat):
     """Mix-in to provide dictionary key access compat.
