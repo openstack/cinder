@@ -24,6 +24,7 @@ NetApp drivers to achieve the desired functionality.
 
 import decimal
 import platform
+import re
 import socket
 
 from oslo_concurrency import processutils as putils
@@ -245,6 +246,31 @@ def get_qos_policy_group_name_from_info(qos_policy_group_info):
     if spec is not None:
         return spec['policy_name']
     return None
+
+
+def get_pool_name_filter_regex(configuration):
+    """Build the regex for filtering pools by name
+
+    :param configuration: The volume driver configuration
+    :raise InvalidConfigurationValue: if configured regex pattern is invalid
+    :return: A compiled regex for filtering pool names
+    """
+
+    # If the configuration parameter is specified as an empty string
+    # (interpreted as matching all pools), we replace it here with
+    # (.+) to be explicit with CSV compatibility support implemented below.
+    pool_patterns = configuration.netapp_pool_name_search_pattern or '(.+)'
+
+    # Strip whitespace from start/end and then 'or' all regex patterns
+    pool_patterns = '|'.join(['^' + pool_pattern.strip('^$ \t') + '$' for
+                              pool_pattern in pool_patterns.split(',')])
+
+    try:
+        return re.compile(pool_patterns)
+    except re.error:
+        raise exception.InvalidConfigurationValue(
+            option='netapp_pool_name_search_pattern',
+            value=configuration.netapp_pool_name_search_pattern)
 
 
 def get_valid_qos_policy_group_info(volume, extra_specs=None):

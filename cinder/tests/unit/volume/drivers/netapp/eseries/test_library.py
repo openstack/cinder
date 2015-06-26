@@ -60,6 +60,8 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
                   eseries_fake.create_configuration_eseries()}
 
         self.library = library.NetAppESeriesLibrary('FAKE', **kwargs)
+        # Deprecated Option
+        self.library.configuration.netapp_storage_pools = None
         self.library._client = eseries_fake.FakeEseriesClient()
         self.library.check_for_setup_error()
 
@@ -73,19 +75,54 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
 
         self.assertTrue(mock_check_flags.called)
 
-    def test_get_storage_pools(self):
-        pool_labels = list()
-        # Retrieve the first pool's label
-        for pool in eseries_fake.STORAGE_POOLS:
-            pool_labels.append(pool['label'])
-            break
-        self.library.configuration.netapp_storage_pools = (
-            ",".join(pool_labels))
+    def test_get_storage_pools_empty_result(self):
+        """Verify an exception is raised if no pools are returned."""
+        self.library.configuration.netapp_pool_name_search_pattern = '$'
+
+        self.assertRaises(exception.NetAppDriverException,
+                          self.library.check_for_setup_error)
+
+    def test_get_storage_pools_invalid_conf(self):
+        """Verify an exception is raised if the regex pattern is invalid."""
+        self.library.configuration.netapp_pool_name_search_pattern = '(.*'
+
+        self.assertRaises(exception.InvalidConfigurationValue,
+                          self.library._get_storage_pools)
+
+    def test_get_storage_pools_default(self):
+        """Verify that all pools are returned if the search option is empty."""
+        filtered_pools = self.library._get_storage_pools()
+
+        self.assertEqual(eseries_fake.STORAGE_POOLS, filtered_pools)
+
+    @ddt.data(('[\d]+,a', ['1', '2', 'a', 'b'], ['1', '2', 'a']),
+              ('1   ,    3', ['1', '2', '3'], ['1', '3']),
+              ('$,3', ['1', '2', '3'], ['3']),
+              ('[a-zA-Z]+', ['1', 'a', 'B'], ['a', 'B']),
+              ('', ['1', '2'], ['1', '2'])
+              )
+    @ddt.unpack
+    def test_get_storage_pools(self, pool_filter, pool_labels,
+                               expected_pool_labels):
+        """Verify that pool filtering via the search_pattern works correctly
+
+        :param pool_filter: A regular expression to be used for filtering via
+         pool labels
+        :param pool_labels: A list of pool labels
+        :param expected_pool_labels: The labels from 'pool_labels' that
+         should be matched by 'pool_filter'
+        """
+        self.library.configuration.netapp_pool_name_search_pattern = (
+            pool_filter)
+        pools = [{'label': label} for label in pool_labels]
+
+        self.library._client.list_storage_pools = mock.Mock(
+            return_value=pools)
 
         filtered_pools = self.library._get_storage_pools()
 
         filtered_pool_labels = [pool['label'] for pool in filtered_pools]
-        self.assertListEqual(pool_labels, filtered_pool_labels)
+        self.assertEqual(expected_pool_labels, filtered_pool_labels)
 
     def test_get_volume(self):
         fake_volume = copy.deepcopy(get_fake_volume())
@@ -120,7 +157,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
             False, minimum_version="1.53.9000.1")
         self.library._client.SSC_VALID_VERSIONS = [(1, 53, 9000, 1),
                                                    (1, 53, 9010, 15)]
-        self.library.configuration.netapp_storage_pools = "test_vg1"
+        self.library.configuration.netapp_pool_name_search_pattern = "test_vg1"
         self.library._client.list_storage_pools = mock.Mock(return_value=pools)
         self.library._client.list_drives = mock.Mock(return_value=drives)
 

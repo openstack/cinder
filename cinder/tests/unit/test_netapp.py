@@ -1,4 +1,5 @@
 # Copyright (c) 2012 NetApp, Inc.
+# Copyright (c) 2015 Goutham Pacha Ravi.  All rights reserved.
 # All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -24,8 +25,11 @@ from cinder import exception
 from cinder import test
 from cinder.tests.unit.volume.drivers.netapp.dataontap.client import (
     fake_api as netapp_api)
+from cinder.tests.unit.volume.drivers.netapp.dataontap import fakes
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.netapp import common
+from cinder.volume.drivers.netapp.dataontap import block_7mode
+from cinder.volume.drivers.netapp.dataontap import block_cmode
 from cinder.volume.drivers.netapp.dataontap.client import client_7mode
 from cinder.volume.drivers.netapp.dataontap.client import client_base
 from cinder.volume.drivers.netapp.dataontap.client import client_cmode
@@ -583,6 +587,9 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
         self.driver.library.zapi_client = mock.MagicMock()
         self.driver.library.zapi_client.get_ontapi_version.return_value = \
             (1, 20)
+        self.mock_object(block_cmode.NetAppBlockStorageCmodeLibrary,
+                         '_get_filtered_pools',
+                         mock.Mock(return_value=fakes.FAKE_CMODE_POOLS))
         self.driver.check_for_setup_error()
 
     def test_do_setup_all_default(self):
@@ -1279,6 +1286,9 @@ class NetAppDirect7modeISCSIDriverTestCase_NV(test.TestCase):
         self.driver.library.zapi_client = mock.MagicMock()
         self.driver.library.zapi_client.get_ontapi_version.\
             return_value = (1, 20)
+        self.mock_object(block_7mode.NetAppBlockStorage7modeLibrary,
+                         '_get_filtered_pools',
+                         mock.Mock(return_value=fakes.FAKE_7MODE_POOLS))
         self.driver.check_for_setup_error()
 
     def test_check_for_setup_error_version(self):

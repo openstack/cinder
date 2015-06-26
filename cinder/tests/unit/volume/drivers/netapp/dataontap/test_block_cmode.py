@@ -91,6 +91,9 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             ssc_cmode, 'check_ssc_api_permissions')
         mock_start_periodic_tasks = self.mock_object(
             self.library, '_start_periodic_tasks')
+        self.mock_object(ssc_cmode, 'refresh_cluster_ssc')
+        self.mock_object(self.library, '_get_filtered_pools',
+                         mock.Mock(return_value=fake.FAKE_CMODE_POOLS))
 
         self.library.check_for_setup_error()
 
@@ -98,6 +101,18 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         mock_check_ssc_api_permissions.assert_called_once_with(
             self.library.zapi_client)
         self.assertEqual(1, mock_start_periodic_tasks.call_count)
+
+    def test_check_for_setup_error_no_filtered_pools(self):
+        self.mock_object(block_base.NetAppBlockStorageLibrary,
+                         'check_for_setup_error')
+        self.mock_object(ssc_cmode, 'check_ssc_api_permissions')
+        self.mock_object(self.library, '_start_periodic_tasks')
+        self.mock_object(ssc_cmode, 'refresh_cluster_ssc')
+        self.mock_object(self.library, '_get_filtered_pools',
+                         mock.Mock(return_value=[]))
+
+        self.assertRaises(exception.NetAppDriverException,
+                          self.library.check_for_setup_error)
 
     def test_find_mapped_lun_igroup(self):
         igroups = [fake.IGROUP1]
@@ -472,7 +487,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
 
     def test_manage_existing_lun_same_name(self):
         mock_lun = block_base.NetAppLun('handle', 'name', '1',
-                                        {'Path': '/vol/vol1/name'})
+                                        {'Path': '/vol/FAKE_CMODE_VOL1/name'})
         self.library._get_existing_vol_with_manage_ref = mock.Mock(
             return_value=mock_lun)
         self.mock_object(na_utils, 'get_volume_extra_specs')
@@ -497,7 +512,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
 
     def test_manage_existing_lun_new_path(self):
         mock_lun = block_base.NetAppLun(
-            'handle', 'name', '1', {'Path': '/vol/vol1/name'})
+            'handle', 'name', '1', {'Path': '/vol/FAKE_CMODE_VOL1/name'})
         self.library._get_existing_vol_with_manage_ref = mock.Mock(
             return_value=mock_lun)
         self.mock_object(na_utils, 'get_volume_extra_specs')
@@ -513,7 +528,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.assertEqual(1, self.library._check_volume_type_for_lun.call_count)
         self.assertEqual(1, self.library._add_lun_to_table.call_count)
         self.zapi_client.move_lun.assert_called_once_with(
-            '/vol/vol1/name', '/vol/vol1/volume')
+            '/vol/FAKE_CMODE_VOL1/name', '/vol/FAKE_CMODE_VOL1/volume')
 
     def test_start_periodic_tasks(self):
 
@@ -532,3 +547,80 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         mock_loopingcall.assert_has_calls([
             mock.call(mock_remove_unused_qos_policy_groups)])
         self.assertTrue(harvest_qos_periodic_task.start.called)
+
+    @ddt.data('open+|demix+', 'open.+', '.+\d', '^((?!mix+).)*$',
+              'open123, open321')
+    def test_get_filtered_pools_match_selected_pools(self, patterns):
+
+        self.library.ssc_vols = fake.FAKE_CMODE_VOLUME
+        self.library.configuration.netapp_pool_name_search_pattern = patterns
+
+        filtered_pools = self.library._get_filtered_pools()
+
+        self.assertEqual(fake.FAKE_CMODE_VOLUME['all'][0].id['name'],
+                         filtered_pools[0].id['name'])
+        self.assertEqual(fake.FAKE_CMODE_VOLUME['all'][2].id['name'],
+                         filtered_pools[1].id['name'])
+
+    @ddt.data('', 'mix.+|open.+', '.+', 'open123, mixed, open321',
+              '.*?')
+    def test_get_filtered_pools_match_all_pools(self, patterns):
+
+        self.library.ssc_vols = fake.FAKE_CMODE_VOLUME
+        self.library.configuration.netapp_pool_name_search_pattern = patterns
+
+        filtered_pools = self.library._get_filtered_pools()
+
+        self.assertEqual(fake.FAKE_CMODE_VOLUME['all'][0].id['name'],
+                         filtered_pools[0].id['name'])
+        self.assertEqual(fake.FAKE_CMODE_VOLUME['all'][1].id['name'],
+                         filtered_pools[1].id['name'])
+        self.assertEqual(fake.FAKE_CMODE_VOLUME['all'][2].id['name'],
+                         filtered_pools[2].id['name'])
+
+    def test_get_filtered_pools_invalid_conf(self):
+        """Verify an exception is raised if the regex pattern is invalid"""
+        self.library.configuration.netapp_pool_name_search_pattern = '(.+'
+
+        self.assertRaises(exception.InvalidConfigurationValue,
+                          self.library._get_filtered_pools)
+
+    @ddt.data('abc|stackopen|openstack|abc*', 'abc', 'stackopen', 'openstack',
+              'abc*', '^$')
+    def test_get_filtered_pools_non_matching_patterns(self, patterns):
+
+        self.library.ssc_vols = fake.FAKE_CMODE_VOLUME
+        self.library.configuration.netapp_pool_name_search_pattern = patterns
+
+        filtered_pools = self.library._get_filtered_pools()
+
+        self.assertListEqual([], filtered_pools)
+
+    @ddt.data({}, None)
+    def test_get_pool_stats_no_ssc_vols(self, vols):
+
+        self.library.ssc_vols = vols
+
+        pools = self.library._get_pool_stats()
+
+        self.assertListEqual([], pools)
+
+    def test_get_pool_stats_with_filtered_pools(self):
+
+        self.library.ssc_vols = fake.ssc_map
+        self.mock_object(self.library, '_get_filtered_pools',
+                         mock.Mock(return_value=[fake.FAKE_CMODE_VOL1]))
+
+        pools = self.library._get_pool_stats()
+
+        self.assertListEqual(fake.FAKE_CMODE_POOLS, pools)
+
+    def test_get_pool_stats_no_filtered_pools(self):
+
+        self.library.ssc_vols = fake.ssc_map
+        self.mock_object(self.library, '_get_filtered_pools',
+                         mock.Mock(return_value=[]))
+
+        pools = self.library._get_pool_stats()
+
+        self.assertListEqual([], pools)

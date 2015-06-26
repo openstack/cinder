@@ -26,6 +26,7 @@ import uuid
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_log import versionutils
 from oslo_service import loopingcall
 from oslo_utils import excutils
 from oslo_utils import units
@@ -62,8 +63,7 @@ class NetAppESeriesLibrary(object):
     AUTOSUPPORT_INTERVAL_SECONDS = 3600  # hourly
     VERSION = "1.0.0"
     REQUIRED_FLAGS = ['netapp_server_hostname', 'netapp_controller_ips',
-                      'netapp_login', 'netapp_password',
-                      'netapp_storage_pools']
+                      'netapp_login', 'netapp_password']
     SLEEP_SECS = 5
     HOST_TYPES = {'aix': 'AIX MPIO',
                   'avt': 'AVT_4M',
@@ -177,6 +177,7 @@ class NetAppESeriesLibrary(object):
     def check_for_setup_error(self):
         self._check_host_type()
         self._check_multipath()
+        self._check_pools()
         self._check_storage_system()
         self._start_periodic_tasks()
 
@@ -196,6 +197,14 @@ class NetAppESeriesLibrary(object):
                             '"%(mpflag)s" to be set to "True".'),
                         {'backend': self._backend_name,
                          'mpflag': 'use_multipath_for_image_xfer'})
+
+    def _check_pools(self):
+        """Ensure that the pool listing contains at least one pool"""
+        if not self._get_storage_pools():
+            msg = _('No pools are available for provisioning volumes. '
+                    'Ensure that the configuration option '
+                    'netapp_pool_name_search_pattern is set correctly.')
+            raise exception.NetAppDriverException(msg)
 
     def _ensure_multi_attach_host_group_exists(self):
         try:
@@ -1115,17 +1124,34 @@ class NetAppESeriesLibrary(object):
         return ssc_stats
 
     def _get_storage_pools(self):
-        conf_enabled_pools = []
-        for value in self.configuration.netapp_storage_pools.split(','):
-            if value:
-                conf_enabled_pools.append(value.strip().lower())
+        """Retrieve storage pools that match user-configured search pattern."""
+
+        # Inform deprecation of legacy option.
+        if self.configuration.safe_get('netapp_storage_pools'):
+            msg = _LW("The option 'netapp_storage_pools' is deprecated and "
+                      "will be removed in the future releases. Please use "
+                      "the option 'netapp_pool_name_search_pattern' instead.")
+            versionutils.report_deprecated_feature(LOG, msg)
+
+        pool_regex = na_utils.get_pool_name_filter_regex(self.configuration)
+
+        storage_pools = self._client.list_storage_pools()
 
         filtered_pools = []
-        storage_pools = self._client.list_storage_pools()
-        for storage_pool in storage_pools:
-            # Check if pool can be used
-            if (storage_pool['label'].lower() in conf_enabled_pools):
-                filtered_pools.append(storage_pool)
+        for pool in storage_pools:
+            pool_name = pool['label']
+
+            if pool_regex.match(pool_name):
+                msg = ("Pool '%(pool_name)s' matches against regular "
+                       "expression: %(pool_pattern)s")
+                LOG.debug(msg, {'pool_name': pool_name,
+                                'pool_pattern': pool_regex.pattern})
+                filtered_pools.append(pool)
+            else:
+                msg = ("Pool '%(pool_name)s' does not match against regular "
+                       "expression: %(pool_pattern)s")
+                LOG.debug(msg, {'pool_name': pool_name,
+                                'pool_pattern': pool_regex.pattern})
 
         return filtered_pools
 
