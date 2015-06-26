@@ -136,17 +136,16 @@ class SheepdogClient(object):
         try:
             (stdout, stderr) = self._run_dog('vdi', 'delete', volume['name'])
             if stderr.endswith(self.DOG_RESP_VDI_NOT_FOUND):
-                LOG.warning(_LW('Volume not found. %(volname)s') %
-                            {'volname': volume['name']})
+                LOG.warning(_LW('Volume not found. %s'), volume['name'])
         except exception.SheepdogCmdError as e:
             stderr = e.kwargs['stderr']
             with excutils.save_and_reraise_exception():
                 if stderr.startswith(self.DOG_RESP_CONNECTION_ERROR):
                     LOG.error(_LE('Failed to connect sheep daemon. '
-                              'addr: %(addr)s, port: %(port)s') %
+                              'addr: %(addr)s, port: %(port)s'),
                               {'addr': self.addr, 'port': self.port})
                 else:
-                    LOG.error(_LE('Failed to delete volume. %s') %
+                    LOG.error(_LE('Failed to delete volume. %s'),
                               volume['name'])
 
 

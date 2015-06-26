@@ -352,17 +352,17 @@ class SheepdogClientTestCase(test.TestCase):
             fake_execute.assert_called_once_with(*expected_cmd)
 
     def test_delete_not_found(self):
-        expected_cmd = ('vdi', 'delete', self.test_data.TEST_VOLUME['name'])
+        volname = self.test_data.TEST_VOLUME['name']
+        expected_cmd = ('vdi', 'delete', volname)
         stdout = ''
         stderr = self.test_data.DOG_VDI_DELETE_VDI_NOT_EXISTS
-        expected_log = _LW('Volume not found. %(volname)s') % \
-            {'volname': self.test_data.TEST_VOLUME['name']}
+        expected_log = _LW('Volume not found. %s')
         with mock.patch.object(self.client, '_run_dog') as fake_execute:
             with mock.patch.object(sheepdog, 'LOG') as fake_logger:
                 fake_execute.return_value = (stdout, stderr)
                 self.client.delete(self.test_data.TEST_VOLUME)
                 fake_execute.assert_called_once_with(*expected_cmd)
-                fake_logger.warning.assert_called_with(expected_log)
+                fake_logger.warning.assert_called_with(expected_log, volname)
 
     def test_delete_failed_to_connect(self):
         cmd = self.test_data.cmd_dog_vdi_delete(
@@ -375,8 +375,7 @@ class SheepdogClientTestCase(test.TestCase):
                                                          stdout=stdout,
                                                          stderr=stderr)
         expected_log = _LE('Failed to connect sheep daemon. '
-                           'addr: %(addr)s, port: %(port)s') % \
-            {'addr': SHEEP_ADDR, 'port': SHEEP_PORT}
+                           'addr: %(addr)s, port: %(port)s')
         with mock.patch.object(self.client, '_run_dog') as fake_execute:
             with mock.patch.object(sheepdog, 'LOG') as fake_logger:
                 fake_execute.side_effect = exception.SheepdogCmdError(
@@ -386,12 +385,14 @@ class SheepdogClientTestCase(test.TestCase):
                 ex = self.assertRaises(exception.SheepdogCmdError,
                                        self.client.delete,
                                        self.test_data.TEST_VOLUME)
-                fake_logger.error.assert_called_with(expected_log)
+                fake_logger.error.assert_called_with(expected_log,
+                                                     {'addr': SHEEP_ADDR,
+                                                      'port': SHEEP_PORT})
                 self.assertEqual(expected_msg, ex.msg)
 
     def test_delete_failed_unknown(self):
-        cmd = self.test_data.cmd_dog_vdi_delete(
-            self.test_data.TEST_VOLUME['name'])
+        volname = self.test_data.TEST_VOLUME['name']
+        cmd = self.test_data.cmd_dog_vdi_delete(volname)
         exit_code = 2
         stdout = 'stdout_dummy'
         stderr = 'stderr_dummy'
@@ -399,8 +400,7 @@ class SheepdogClientTestCase(test.TestCase):
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        expected_log = _LE('Failed to delete volume. %(volume)s') % \
-            {'volume': self.test_data.TEST_VOLUME['name']}
+        expected_log = _LE('Failed to delete volume. %s')
         with mock.patch.object(self.client, '_run_dog') as fake_execute:
             with mock.patch.object(sheepdog, 'LOG') as fake_logger:
                 fake_execute.side_effect = exception.SheepdogCmdError(
@@ -410,7 +410,7 @@ class SheepdogClientTestCase(test.TestCase):
                 ex = self.assertRaises(exception.SheepdogCmdError,
                                        self.client.delete,
                                        self.test_data.TEST_VOLUME)
-                fake_logger.error.assert_called_with(expected_log)
+                fake_logger.error.assert_called_with(expected_log, volname)
                 self.assertEqual(expected_msg, ex.msg)
 
 
