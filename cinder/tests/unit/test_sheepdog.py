@@ -121,8 +121,8 @@ Epoch Time           Version [Host:Port:V-Nodes,,,]
 Failed to create VDI %(volname)s: VDI exists already
 """
 
-    DOG_VDI_CREATE_NO_SPACE_FOR_NEW_OBJ = """\
-fail 8011111100000000, Server has no space for new objects
+    DOG_VDI_CREATE_FAILD_TO_WRITE_OBJECT = """\
+Failed to create VDI %(volname)s: Failed to write to requested VDI
 """
 
     DOG_VDI_DELETE_VDI_NOT_EXISTS = """\
@@ -323,17 +323,18 @@ class SheepdogClientTestCase(test.TestCase):
                 fake_logger.error.assert_called_with(expected_err)
                 self.assertEqual(expected_msg, ex.msg)
 
-    def test_create_failed_diskfull(self):
+    def test_create_failed_to_write_object(self):
         cmd = self.test_data.cmd_dog_vdi_create(
             self.test_data.TEST_VOLUME['name'],
             self.test_data.TEST_VOLUME['size'])
         exit_code = 1
         stdout = ''
-        stderr = self.test_data.DOG_VDI_CREATE_NO_SPACE_FOR_NEW_OBJ
+        stderr = self.test_data.DOG_VDI_CREATE_FAILD_TO_WRITE_OBJECT % \
+            {'volname': self.test_data.TEST_VOLUME['name']}
         expected_msg = self.test_data.sheepdog_cmd_error(
             cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
-        expected_err = _LE('Failed to create volume for diskfull occurs '
-                           'in datastore.')
+        expected_err = _LE('Failed to write object to any sheep node. %s') % \
+            self.test_data.TEST_VOLUME['name']
         with mock.patch.object(self.client, '_run_dog') as fake_execute:
             fake_execute.side_effect = exception.SheepdogCmdError(
                 cmd=cmd, exit_code=exit_code,
