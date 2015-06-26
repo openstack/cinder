@@ -297,13 +297,14 @@ class SheepdogClientTestCase(test.TestCase):
                 self.assertEqual(expected_msg, ex.msg)
 
     def test_create_failed_vdi_already_exist(self):
+        volname = self.test_data.TEST_VOLUME['name']
         cmd = self.test_data.cmd_dog_vdi_create(
-            self.test_data.TEST_VOLUME['name'],
+            volname,
             self.test_data.TEST_VOLUME['size'])
         exit_code = 1
         stdout = ''
         stderr = self.test_data.DOG_VDI_CREATE_VDI_EXISTS_ALREADY % \
-            {'volname': self.test_data.TEST_VOLUME['name']}
+            {'volname': volname}
         expected_msg = self.test_data.sheepdog_cmd_error(
             cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
         expected_err = _LE('Volume already exists. %s')
@@ -316,14 +317,13 @@ class SheepdogClientTestCase(test.TestCase):
                 ex = self.assertRaises(exception.SheepdogCmdError,
                                        self.client.create,
                                        self.test_data.TEST_VOLUME)
-                fake_logger.error.assert_called_with(expected_err,
-                                                     self.test_data.
-                                                     TEST_VOLUME['name'])
+                fake_logger.error.assert_called_with(expected_err, volname)
                 self.assertEqual(expected_msg, ex.msg)
 
     def test_create_failed_unknown(self):
+        volname = self.test_data.TEST_VOLUME['name']
         cmd = self.test_data.cmd_dog_vdi_create(
-            self.test_data.TEST_VOLUME['name'],
+            volname,
             self.test_data.TEST_VOLUME['size'])
         exit_code = 1
         stdout = 'stdout_dummy'
@@ -340,9 +340,7 @@ class SheepdogClientTestCase(test.TestCase):
                 ex = self.assertRaises(exception.SheepdogCmdError,
                                        self.client.create,
                                        self.test_data.TEST_VOLUME)
-                fake_logger.error.assert_called_with(expected_err,
-                                                     self.test_data.
-                                                     TEST_VOLUME['name'])
+                fake_logger.error.assert_called_with(expected_err, volname)
                 self.assertEqual(expected_msg, ex.msg)
 
     # test for delete method
