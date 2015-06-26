@@ -164,32 +164,16 @@ class SheepdogClientTestCase(test.TestCase):
                 self.client._run_dog('cluster', 'info')
         fake_execute.assert_called_once_with(*expected_cmd)
 
-    def test_run_dog_os_error_command_not_found(self):
+    def test_run_dog_os_error(self):
         args = ('cluster', 'info')
         expected_msg = 'No such file or directory'
         expected_errno = errno.ENOENT
-        expected_log = _LE('Sheepdog is not installed. '
-                           'OSError: command is %(cmd)s.') % \
-            {'cmd': self.test_data.CMD_DOG_CLUSTER_INFO}
         with mock.patch.object(self.client, '_execute') as fake_execute:
             with mock.patch.object(sheepdog, 'LOG') as fake_logger:
                 fake_execute.side_effect = OSError(expected_errno,
                                                    expected_msg)
                 self.assertRaises(OSError, self.client._run_dog, *args)
-                fake_logger.error.assert_called_with(expected_log)
-
-    def test_run_dog_os_error_unknown(self):
-        args = ('cluster', 'info')
-        expected_msg = 'unknown'
-        expected_errno = errno.EPERM
-        expected_log = _LE('OSError: command is %(cmd)s.') % \
-            {'cmd': self.test_data.CMD_DOG_CLUSTER_INFO}
-        with mock.patch.object(self.client, '_execute') as fake_execute:
-            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
-                fake_execute.side_effect = OSError(expected_errno,
-                                                   expected_msg)
-                self.assertRaises(OSError, self.client._run_dog, *args)
-                fake_logger.error.assert_called_with(expected_log)
+                self.assertTrue(fake_logger.error.called)
 
     # test for check_cluster_status method
     def test_check_cluster_status(self):
@@ -252,8 +236,7 @@ class SheepdogClientTestCase(test.TestCase):
                                                          stdout=stdout,
                                                          stderr=stderr)
         expected_log = _LE('Failed to connect sheep daemon. '
-                           'addr: %(addr)s, port: %(port)s') % \
-            {'addr': SHEEP_ADDR, 'port': SHEEP_PORT}
+                           'addr: %(addr)s, port: %(port)s')
         with mock.patch.object(self.client, '_run_dog') as fake_execute:
             with mock.patch.object(sheepdog, 'LOG') as fake_logger:
                 fake_execute.side_effect = exception.SheepdogCmdError(
@@ -262,7 +245,9 @@ class SheepdogClientTestCase(test.TestCase):
                     stderr=stderr.replace('\n', '\\n'))
                 ex = self.assertRaises(exception.SheepdogCmdError,
                                        self.client.check_cluster_status)
-                fake_logger.error.assert_called_with(expected_log)
+                fake_logger.error.assert_called_with(expected_log,
+                                                     {'addr': SHEEP_ADDR,
+                                                      'port': SHEEP_PORT})
                 self.assertEqual(expected_msg, ex.msg)
 
     def test_check_cluster_status_error_unknown(self):
