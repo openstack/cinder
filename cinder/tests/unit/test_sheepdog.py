@@ -45,9 +45,6 @@ class SheepdogDriverTestDataGenerator(object):
              'stdout': stdout.replace('\n', '\\n'),
              'stderr': stderr.replace('\n', '\\n')}
 
-    CMD_DOG_CLUSTER_INFO = ('dog', 'cluster', 'info',
-                            '-a', SHEEP_ADDR, '-p', str(SHEEP_PORT))
-
     def cmd_dog_vdi_create(self, name, size):
         return ('dog', 'vdi', 'create', name, '%sG' % size, '-a', SHEEP_ADDR,
                 '-p', str(SHEEP_PORT))
@@ -55,6 +52,9 @@ class SheepdogDriverTestDataGenerator(object):
     def cmd_dog_vdi_delete(self, name):
         return ('dog', 'vdi', 'delete', name,
                 '-a', SHEEP_ADDR, '-p', str(SHEEP_PORT))
+
+    CMD_DOG_CLUSTER_INFO = ('dog', 'cluster', 'info',
+                            '-a', SHEEP_ADDR, '-p', str(SHEEP_PORT))
 
     TEST_VOLUME = {
         'name': 'volume-00000001',
@@ -68,7 +68,7 @@ class SheepdogDriverTestDataGenerator(object):
         'display_name': 'vol1',
         'display_description': 'unit test volume',
         'volume_type_id': None,
-        'consistencygroup_id': None
+        'consistencygroup_id': None,
     }
 
     COLLIE_NODE_INFO = """
@@ -177,7 +177,6 @@ class SheepdogClientTestCase(test.TestCase):
         stderr = ''
         expected_cmd = ('cluster', 'info')
         expected_log = _('Sheepdog cluster is running.')
-
         with mock.patch.object(self.client, '_run_dog') as fake_execute:
             with mock.patch.object(sheepdog, 'LOG') as fake_logger:
                 fake_execute.return_value = (stdout, stderr)
@@ -433,7 +432,7 @@ class SheepdogDriverTestCase(test.TestCase):
         with mock.patch.object(self.client, 'check_cluster_status') \
                 as fake_execute:
             self.driver.check_for_setup_error()
-        fake_execute.assert_called_once_with()
+            fake_execute.assert_called_once_with()
 
     def test_create_volume(self):
         with mock.patch.object(self.client, 'create') as fake_execute:
