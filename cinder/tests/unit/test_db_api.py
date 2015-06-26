@@ -954,11 +954,72 @@ class DBAPISnapshotTestCase(BaseTest):
         actual = db.snapshot_data_get_for_project(self.ctxt, 'project1')
         self.assertEqual(actual, (1, 42))
 
-    def test_snapshot_get_all(self):
+    def test_snapshot_get_all_by_filter(self):
         db.volume_create(self.ctxt, {'id': 1})
-        snapshot = db.snapshot_create(self.ctxt, {'id': 1, 'volume_id': 1})
-        self._assertEqualListsOfObjects([snapshot],
-                                        db.snapshot_get_all(self.ctxt),
+        db.volume_create(self.ctxt, {'id': 2})
+        snapshot1 = db.snapshot_create(self.ctxt, {'id': 1, 'volume_id': 1,
+                                                   'display_name': 'one',
+                                                   'status': 'available'})
+        snapshot2 = db.snapshot_create(self.ctxt, {'id': 2, 'volume_id': 1,
+                                                   'display_name': 'two',
+                                                   'status': 'creating'})
+        snapshot3 = db.snapshot_create(self.ctxt, {'id': 3, 'volume_id': 2,
+                                                   'display_name': 'three',
+                                                   'status': 'available'})
+        # no filter
+        filters = {}
+        snapshots = db.snapshot_get_all(self.ctxt, filters=filters)
+        self.assertEqual(3, len(snapshots))
+        # single match
+        filters = {'display_name': 'two'}
+        self._assertEqualListsOfObjects([snapshot2],
+                                        db.snapshot_get_all(
+                                            self.ctxt,
+                                            filters),
+                                        ignored_keys=['metadata', 'volume'])
+        filters = {'volume_id': 2}
+        self._assertEqualListsOfObjects([snapshot3],
+                                        db.snapshot_get_all(
+                                            self.ctxt,
+                                            filters),
+                                        ignored_keys=['metadata', 'volume'])
+        # filter no match
+        filters = {'volume_id': 5}
+        self._assertEqualListsOfObjects([],
+                                        db.snapshot_get_all(
+                                            self.ctxt,
+                                            filters),
+                                        ignored_keys=['metadata', 'volume'])
+        filters = {'status': 'error'}
+        self._assertEqualListsOfObjects([],
+                                        db.snapshot_get_all(
+                                            self.ctxt,
+                                            filters),
+                                        ignored_keys=['metadata', 'volume'])
+        # multiple match
+        filters = {'volume_id': 1}
+        self._assertEqualListsOfObjects([snapshot1, snapshot2],
+                                        db.snapshot_get_all(
+                                            self.ctxt,
+                                            filters),
+                                        ignored_keys=['metadata', 'volume'])
+        filters = {'status': 'available'}
+        self._assertEqualListsOfObjects([snapshot1, snapshot3],
+                                        db.snapshot_get_all(
+                                            self.ctxt,
+                                            filters),
+                                        ignored_keys=['metadata', 'volume'])
+        filters = {'volume_id': 1, 'status': 'available'}
+        self._assertEqualListsOfObjects([snapshot1],
+                                        db.snapshot_get_all(
+                                            self.ctxt,
+                                            filters),
+                                        ignored_keys=['metadata', 'volume'])
+        filters = {'fake_key': 'fake'}
+        self._assertEqualListsOfObjects([],
+                                        db.snapshot_get_all(
+                                            self.ctxt,
+                                            filters),
                                         ignored_keys=['metadata', 'volume'])
 
     def test_snapshot_get_by_host(self):
