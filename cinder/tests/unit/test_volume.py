@@ -5040,6 +5040,45 @@ class VolumeTestCase(BaseVolumeTestCase):
         ret_flag = self.volume.driver.secure_file_operations_enabled()
         self.assertFalse(ret_flag)
 
+    @mock.patch('cinder.volume.flows.common.make_pretty_name')
+    @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.create_volume')
+    @mock.patch('cinder.volume.flows.manager.create_volume.'
+                'CreateVolumeFromSpecTask.execute')
+    def test_create_volume_raise_rescheduled_exception(self, mock_execute,
+                                                       mock_reschedule,
+                                                       mock_make_name):
+        # Create source volume
+        mock_execute.side_effect = exception.DriverNotInitialized()
+        mock_reschedule.return_value = None
+        test_vol = tests_utils.create_volume(self.context,
+                                             **self.volume_params)
+        test_vol_id = test_vol['id']
+        self.assertRaises(exception.DriverNotInitialized,
+                          self.volume.create_volume,
+                          self.context, test_vol_id,
+                          {'volume_properties': self.volume_params},
+                          {'retry': {'num_attempts': 1, 'host': []}})
+        self.assertTrue(mock_reschedule.called)
+        volume = db.volume_get(context.get_admin_context(), test_vol_id)
+        self.assertEqual('creating', volume['status'])
+
+    @mock.patch('cinder.volume.flows.manager.create_volume.'
+                'CreateVolumeFromSpecTask.execute')
+    def test_create_volume_raise_unrescheduled_exception(self, mock_execute):
+        # create source volume
+        test_vol = tests_utils.create_volume(self.context,
+                                             **self.volume_params)
+        test_vol_id = test_vol['id']
+        mock_execute.side_effect = exception.VolumeNotFound(
+            volume_id=test_vol_id)
+        self.assertRaises(exception.VolumeNotFound,
+                          self.volume.create_volume,
+                          self.context, test_vol_id,
+                          {'volume_properties': self.volume_params},
+                          {'retry': {'num_attempts': 1, 'host': []}})
+        volume = db.volume_get(context.get_admin_context(), test_vol_id)
+        self.assertEqual('error', volume['status'])
+
 
 class CopyVolumeToImageTestCase(BaseVolumeTestCase):
     def fake_local_path(self, volume):

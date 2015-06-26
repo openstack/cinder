@@ -54,11 +54,13 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
     this volume elsewhere.
     """
 
-    def __init__(self, reschedule_context, db, scheduler_rpcapi):
+    def __init__(self, reschedule_context, db, scheduler_rpcapi,
+                 do_reschedule):
         requires = ['filter_properties', 'image_id', 'request_spec',
                     'snapshot_id', 'volume_id', 'context']
         super(OnFailureRescheduleTask, self).__init__(addons=[ACTION],
                                                       requires=requires)
+        self.do_reschedule = do_reschedule
         self.scheduler_rpcapi = scheduler_rpcapi
         self.db = db
         self.reschedule_context = reschedule_context
@@ -125,15 +127,16 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
         """Actions that happen before the rescheduling attempt occur here."""
 
         try:
-            # Reset the volume state.
+            # Update volume's timestamp and host.
             #
             # NOTE(harlowja): this is awkward to be done here, shouldn't
             # this happen at the scheduler itself and not before it gets
             # sent to the scheduler? (since what happens if it never gets
             # there??). It's almost like we need a status of 'on-the-way-to
             # scheduler' in the future.
+            # We don't need to update the volume's status to creating, since
+            # we haven't changed it to error.
             update = {
-                'status': 'creating',
                 'scheduled_at': timeutils.utcnow(),
                 'host': None
             }
@@ -141,12 +144,20 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
                       {'update': update, 'volume_id': volume_id})
             self.db.volume_update(context, volume_id, update)
         except exception.CinderException:
-            # Don't let resetting the status cause the rescheduling to fail.
-            LOG.exception(_LE("Volume %s: resetting 'creating' "
-                              "status failed."),
+            # Don't let updating the state cause the rescheduling to fail.
+            LOG.exception(_LE("Volume %s: update volume state failed."),
                           volume_id)
 
     def revert(self, context, result, flow_failures, **kwargs):
+        volume_id = kwargs['volume_id']
+
+        # If do not want to be rescheduled, just set the volume's status to
+        # error and return.
+        if not self.do_reschedule:
+            common.error_out_volume(context, self.db, volume_id)
+            LOG.error(_LE("Volume %s: create failed"), volume_id)
+            return
+
         # NOTE(dulek): Revert is occurring and manager need to know if
         # rescheduling happened. We're injecting this information into
         # exception that will be caught there. This is ugly and we need
@@ -154,12 +165,14 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
         cause = list(flow_failures.values())[0]
         cause.exception.rescheduled = False
 
-        # Check if we have a cause which can tell us not to reschedule.
+        # Check if we have a cause which can tell us not to reschedule and
+        # set the volume's status to error.
         for failure in flow_failures.values():
             if failure.check(*self.no_reschedule_types):
+                common.error_out_volume(context, self.db, volume_id)
+                LOG.error(_LE("Volume %s: create failed"), volume_id)
                 return
 
-        volume_id = kwargs['volume_id']
         # Use a different context when rescheduling.
         if self.reschedule_context:
             context = self.reschedule_context
@@ -178,10 +191,11 @@ class ExtractVolumeRefTask(flow_utils.CinderTask):
 
     default_provides = 'volume_ref'
 
-    def __init__(self, db, host):
+    def __init__(self, db, host, set_error=True):
         super(ExtractVolumeRefTask, self).__init__(addons=[ACTION])
         self.db = db
         self.host = host
+        self.set_error = set_error
 
     def execute(self, context, volume_id):
         # NOTE(harlowja): this will fetch the volume from the database, if
@@ -195,9 +209,9 @@ class ExtractVolumeRefTask(flow_utils.CinderTask):
     def revert(self, context, volume_id, result, **kwargs):
         if isinstance(result, ft.Failure):
             return
-
-        common.error_out_volume(context, self.db, volume_id)
-        LOG.error(_LE("Volume %s: create failed"), volume_id)
+        if self.set_error:
+            common.error_out_volume(context, self.db, volume_id)
+            LOG.error(_LE("Volume %s: create failed"), volume_id)
 
 
 class ExtractVolumeSpecTask(flow_utils.CinderTask):
@@ -623,9 +637,6 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
             driver_name = self.driver.__class__.__name__
             LOG.exception(_LE("Unable to create volume. "
                               "Volume driver %s not initialized"), driver_name)
-            # NOTE(flaper87): Set the error status before
-            # raising any exception.
-            self.db.volume_update(context, volume_id, dict(status='error'))
             raise exception.DriverNotInitialized()
 
         create_type = volume_spec.pop('type', None)
@@ -755,12 +766,17 @@ def get_flow(context, db, driver, scheduler_rpcapi, host, volume_id,
         'cgsnapshot_id': cgsnapshot_id,
     }
 
-    volume_flow.add(ExtractVolumeRefTask(db, host))
+    volume_flow.add(ExtractVolumeRefTask(db, host, set_error=False))
 
     retry = filter_properties.get('retry', None)
-    if allow_reschedule and request_spec and retry:
-        volume_flow.add(OnFailureRescheduleTask(reschedule_context,
-                                                db, scheduler_rpcapi))
+
+    # Always add OnFailureRescheduleTask and we handle the change of volume's
+    # status when revert task flow. Meanwhile, no need to revert process of
+    # ExtractVolumeRefTask.
+    do_reschedule = allow_reschedule and request_spec and retry
+    volume_flow.add(OnFailureRescheduleTask(reschedule_context, db,
+                                            scheduler_rpcapi,
+                                            do_reschedule))
 
     LOG.debug("Volume reschedule parameters: %(allow)s "
               "retry: %(retry)s", {'allow': allow_reschedule, 'retry': retry})
