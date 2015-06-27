@@ -45,8 +45,12 @@ def _get_default_snapshot_param():
         'status': 'available',
         'volume_size': 100,
         'created_at': None,
+        'user_id': 'bcb7746c7a41472d88a1ffac89ba6a9b',
+        'project_id': '7ffe17a15c724e2aa79fc839540aec15',
         'display_name': 'Default name',
         'display_description': 'Default description',
+        'deleted': None,
+        'volume': {'availability_zone': 'test_zone'}
     }
 
 
@@ -201,6 +205,7 @@ class SnapshotApiTest(test.TestCase):
             }
         }
         self.assertEqual(expected, res_dict)
+        self.assertEqual(2, len(self.notifier.notifications))
 
     def test_snapshot_update_missing_body(self):
         body = {}
@@ -277,7 +282,6 @@ class SnapshotApiTest(test.TestCase):
         fake_volume_obj = fake_volume.fake_volume_obj(ctx)
         snapshot_get_by_id.return_value = snapshot_obj
         volume_get_by_id.return_value = fake_volume_obj
-
         req = fakes.HTTPRequest.blank('/v2/snapshots/%s' % UUID)
         resp_dict = self.controller.show(req, UUID)
 
@@ -359,7 +363,7 @@ class SnapshotApiTest(test.TestCase):
 
         # admin case
         list_snapshots_with_limit_and_offset(is_admin=True)
-        # non_admin case
+        # non-admin case
         list_snapshots_with_limit_and_offset(is_admin=False)
 
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())

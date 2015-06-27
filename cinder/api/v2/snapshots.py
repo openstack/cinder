@@ -27,6 +27,7 @@ from cinder import exception
 from cinder.i18n import _, _LI
 from cinder import utils
 from cinder import volume
+from cinder.volume import utils as volume_utils
 
 
 LOG = logging.getLogger(__name__)
@@ -261,6 +262,8 @@ class SnapshotsController(wsgi.Controller):
 
         try:
             snapshot = self.volume_api.get_snapshot(context, id)
+            volume_utils.notify_about_snapshot_usage(context, snapshot,
+                                                     'update.start')
             self.volume_api.update_snapshot(context, snapshot, update_dict)
         except exception.NotFound:
             msg = _("Snapshot could not be found")
@@ -268,6 +271,8 @@ class SnapshotsController(wsgi.Controller):
 
         snapshot.update(update_dict)
         req.cache_db_snapshot(snapshot)
+        volume_utils.notify_about_snapshot_usage(context, snapshot,
+                                                 'update.end')
 
         return {'snapshot': _translate_snapshot_detail_view(context, snapshot)}
 
