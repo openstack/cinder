@@ -180,7 +180,7 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
             self.container = container
             self.object_name = object_name
             self.conn = conn
-            self.data = ''
+            self.data = bytearray()
 
         def __enter__(self):
             return self
@@ -192,11 +192,11 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
             self.data += data
 
         def close(self):
-            reader = six.StringIO(self.data)
+            reader = six.BytesIO(self.data)
             try:
                 etag = self.conn.put_object(self.container, self.object_name,
                                             reader,
-                                            content_length=reader.len)
+                                            content_length=len(self.data))
             except socket.error as err:
                 raise exception.SwiftConnectionFailed(reason=err)
             LOG.debug('swift MD5 for %(object_name)s: %(etag)s',
