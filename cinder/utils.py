@@ -40,6 +40,7 @@ from oslo_concurrency import lockutils
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import encodeutils
 from oslo_utils import importutils
 from oslo_utils import timeutils
 import retrying
@@ -816,3 +817,21 @@ def convert_version_to_str(version_int):
 
 def convert_version_to_tuple(version_str):
     return tuple(int(part) for part in version_str.split('.'))
+
+
+def convert_str(text):
+    """Convert to native string.
+
+    Convert bytes and Unicode strings to native strings:
+
+    * convert to bytes on Python 2:
+      encode Unicode using encodeutils.safe_encode()
+    * convert to Unicode on Python 3: decode bytes from UTF-8
+    """
+    if six.PY2:
+        return encodeutils.safe_encode(text)
+    else:
+        if isinstance(text, bytes):
+            return text.decode('utf-8')
+        else:
+            return text

@@ -307,6 +307,7 @@ class BackupCephTestCase(test.TestCase):
 
         rbd1 = mock.Mock()
         rbd1.read.side_effect = fake_read
+        rbd1.size.return_value = os.fstat(self.volume_file.fileno()).st_size
 
         rbd2 = mock.Mock()
         rbd2.write.side_effect = mock_write_data
