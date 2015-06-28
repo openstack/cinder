@@ -242,11 +242,11 @@ class NetAppNfsDriver(nfs.NfsDriver):
 
     def _get_host_ip(self, volume_id):
         """Returns IP address for the given volume."""
-        return self._get_provider_location(volume_id).split(':')[0]
+        return self._get_provider_location(volume_id).rsplit(':')[0]
 
     def _get_export_path(self, volume_id):
         """Returns NFS export path for the given volume."""
-        return self._get_provider_location(volume_id).split(':')[1]
+        return self._get_provider_location(volume_id).rsplit(':')[1]
 
     def _volume_not_present(self, nfs_mount, volume_name):
         """Check if volume exists."""
