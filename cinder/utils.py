@@ -436,13 +436,6 @@ def monkey_patch():
                         decorator("%s.%s" % (module, key), func))
 
 
-def generate_glance_url():
-    """Generate the URL to glance."""
-    # TODO(jk0): This will eventually need to take SSL into consideration
-    # when supported in glance.
-    return "http://%s:%d" % (CONF.glance_host, CONF.glance_port)
-
-
 def make_dev_path(dev, partition=None, base='/dev'):
     """Return a path to a particular device.
 
