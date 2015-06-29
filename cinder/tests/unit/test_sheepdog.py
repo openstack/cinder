@@ -54,6 +54,10 @@ class SheepdogDriverTestDataGenerator(object):
         return ('env', 'LC_ALL=C', 'LANG=C', 'dog', 'vdi', 'delete', name,
                 '-a', SHEEP_ADDR, '-p', str(SHEEP_PORT))
 
+    def cmd_dog_vdi_resize(self, name, size):
+        return ('dog', 'vdi', 'resize', name, size,
+                '-a', SHEEP_ADDR, '-p', str(SHEEP_PORT))
+
     CMD_DOG_CLUSTER_INFO = ('env', 'LC_ALL=C', 'LANG=C', 'dog', 'cluster',
                             'info', '-a', SHEEP_ADDR, '-p', str(SHEEP_PORT))
 
@@ -122,7 +126,15 @@ Epoch Time           Version [Host:Port:V-Nodes,,,]
 Failed to create VDI %(vdiname)s: VDI exists already
 """
 
-    DOG_VDI_DELETE_VDI_NOT_EXISTS = """\
+    DOG_VDI_RESIZE_SIZE_SHRINK = """\
+Shrinking VDIs is not implemented
+"""
+
+    DOG_VDI_RESIZE_TOO_LARGE = """\
+New VDI size is too large. This volume's max size is 4398046511104
+"""
+
+    DOG_COMMAND_ERROR_VDI_NOT_EXISTS = """\
 Failed to open VDI vdiname (snapshot id: 0 snapshot tag: ): No VDI found
 """
 
@@ -484,7 +496,7 @@ class SheepdogClientTestCase(test.TestCase):
     def test_delete_not_found(self):
         expected_cmd = ('vdi', 'delete', self._vdiname)
         stdout = ''
-        stderr = self.test_data.DOG_VDI_DELETE_VDI_NOT_EXISTS
+        stderr = self.test_data.DOG_COMMAND_ERROR_VDI_NOT_EXISTS
         with mock.patch.object(self.client, '_run_dog') as fake_execute:
             with mock.patch.object(sheepdog, 'LOG') as fake_logger:
                 fake_execute.return_value = (stdout, stderr)
@@ -529,6 +541,115 @@ class SheepdogClientTestCase(test.TestCase):
                     stderr=stderr.replace('\n', '\\n'))
                 ex = self.assertRaises(exception.SheepdogCmdError,
                                        self.client.delete, self._vdiname)
+                self.assertTrue(fake_logger.error.called)
+                self.assertEqual(expected_msg, ex.msg)
+
+    # test for resize method
+    def test_resize_success(self):
+        expected_cmd = ('vdi', 'resize', self._vdiname, 10 * 1024 ** 3)
+        with mock.patch.object(self.client, '_run_dog') as fake_execute:
+            fake_execute.return_value = ('', '')
+            self.client.resize(self._vdiname, 10)
+            fake_execute.assert_called_once_with(*expected_cmd)
+
+    def test_resize_failed_to_connect(self):
+        cmd = self.test_data.cmd_dog_vdi_resize(self._vdiname, 10 * 1024 ** 3)
+        exit_code = 2
+        stdout = 'stdout_dummy'
+        stderr = self.test_data.DOG_COMMAND_ERROR_FAIL_TO_CONNECT
+        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
+                                                         exit_code=exit_code,
+                                                         stdout=stdout,
+                                                         stderr=stderr)
+        with mock.patch.object(self.client, '_run_dog') as fake_execute:
+            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
+                fake_execute.side_effect = exception.SheepdogCmdError(
+                    cmd=cmd, exit_code=exit_code,
+                    stdout=stdout.replace('\n', '\\n'),
+                    stderr=stderr.replace('\n', '\\n'))
+                ex = self.assertRaises(exception.SheepdogCmdError,
+                                       self.client.resize, self._vdiname, 10)
+                self.assertTrue(fake_logger.error.called)
+                self.assertEqual(expected_msg, ex.msg)
+
+    def test_resize_failed_not_found(self):
+        cmd = self.test_data.cmd_dog_vdi_resize(self._vdiname, 10 * 1024 ** 3)
+        exit_code = 1
+        stdout = 'stdout_dummy'
+        stderr = self.test_data.DOG_COMMAND_ERROR_VDI_NOT_EXISTS
+        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
+                                                         exit_code=exit_code,
+                                                         stdout=stdout,
+                                                         stderr=stderr)
+        with mock.patch.object(self.client, '_run_dog') as fake_execute:
+            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
+                fake_execute.side_effect = exception.SheepdogCmdError(
+                    cmd=cmd, exit_code=exit_code,
+                    stdout=stdout.replace('\n', '\\n'),
+                    stderr=stderr.replace('\n', '\\n'))
+                ex = self.assertRaises(exception.SheepdogCmdError,
+                                       self.client.resize, self._vdiname, 1)
+                self.assertTrue(fake_logger.error.called)
+                self.assertEqual(expected_msg, ex.msg)
+
+    def test_resize_failed_size_shrink(self):
+        cmd = self.test_data.cmd_dog_vdi_resize(self._vdiname, 1 * 1024 ** 3)
+        exit_code = 1
+        stdout = 'stdout_dummy'
+        stderr = self.test_data.DOG_VDI_RESIZE_SIZE_SHRINK
+        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
+                                                         exit_code=exit_code,
+                                                         stdout=stdout,
+                                                         stderr=stderr)
+        with mock.patch.object(self.client, '_run_dog') as fake_execute:
+            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
+                fake_execute.side_effect = exception.SheepdogCmdError(
+                    cmd=cmd, exit_code=exit_code,
+                    stdout=stdout.replace('\n', '\\n'),
+                    stderr=stderr.replace('\n', '\\n'))
+                ex = self.assertRaises(exception.SheepdogCmdError,
+                                       self.client.resize, self._vdiname, 1)
+                self.assertTrue(fake_logger.error.called)
+                self.assertEqual(expected_msg, ex.msg)
+
+    def test_resize_failed_size_too_large(self):
+        cmd = self.test_data.cmd_dog_vdi_resize(
+            self._vdiname, 5000 * 1024 ** 3)
+        exit_code = 64
+        stdout = 'stdout_dummy'
+        stderr = self.test_data.DOG_VDI_RESIZE_TOO_LARGE
+        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
+                                                         exit_code=exit_code,
+                                                         stdout=stdout,
+                                                         stderr=stderr)
+        with mock.patch.object(self.client, '_run_dog') as fake_execute:
+            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
+                fake_execute.side_effect = exception.SheepdogCmdError(
+                    cmd=cmd, exit_code=exit_code,
+                    stdout=stdout.replace('\n', '\\n'),
+                    stderr=stderr.replace('\n', '\\n'))
+                ex = self.assertRaises(exception.SheepdogCmdError,
+                                       self.client.resize, self._vdiname, 5000)
+                self.assertTrue(fake_logger.error.called)
+                self.assertEqual(expected_msg, ex.msg)
+
+    def test_resize_failed_known(self):
+        cmd = self.test_data.cmd_dog_vdi_resize(self._vdiname, 10 * 1024 ** 3)
+        exit_code = 2
+        stdout = 'stdout_dummy'
+        stderr = 'stderr_dummy'
+        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
+                                                         exit_code=exit_code,
+                                                         stdout=stdout,
+                                                         stderr=stderr)
+        with mock.patch.object(self.client, '_run_dog') as fake_execute:
+            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
+                fake_execute.side_effect = exception.SheepdogCmdError(
+                    cmd=cmd, exit_code=exit_code,
+                    stdout=stdout.replace('\n', '\\n'),
+                    stderr=stderr.replace('\n', '\\n'))
+                ex = self.assertRaises(exception.SheepdogCmdError,
+                                       self.client.resize, self._vdiname, 10)
                 self.assertTrue(fake_logger.error.called)
                 self.assertEqual(expected_msg, ex.msg)
 
@@ -737,7 +858,7 @@ class SheepdogDriverTestCase(test.TestCase):
         patch = mock.patch.object
         with patch(self.driver, '_try_execute', return_value=True):
             with patch(self.driver, 'create_cloned_volume'):
-                with patch(self.driver, '_resize'):
+                with patch(self.client, 'resize'):
                     model_updated, cloned = self.driver.clone_image(
                         context, fake_vol, image_location,
                         image_meta, image_service)
@@ -788,22 +909,6 @@ class SheepdogDriverTestCase(test.TestCase):
                 self.driver._is_cloneable(location, image_meta))
             fail_try_execute.assert_called_once_with(*expected_cmd)
 
-    def test_extend_volume(self):
-        fake_name = u'volume-00000001'
-        fake_size = '20'
-        fake_vol = {'project_id': 'testprjid', 'name': fake_name,
-                    'size': fake_size,
-                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'}
-
-        self.mox.StubOutWithMock(self.driver, '_resize')
-        size = int(fake_size) * units.Gi
-        self.driver._resize(fake_vol, size=size)
-
-        self.mox.ReplayAll()
-        self.driver.extend_volume(fake_vol, fake_size)
-
-        self.mox.VerifyAll()
-
     def test_create_volume_from_snapshot(self):
         fake_name = u'volume-00000001'
         fake_size = '10'
@@ -826,6 +931,13 @@ class SheepdogDriverTestCase(test.TestCase):
                     "sheepdog:%s" % fake_vol['name'],
                     "%sG" % fake_vol['size']]
             mock_exe.assert_called_once_with(*args)
+
+    def test_extend_volume(self):
+        with mock.patch.object(self.client, 'resize') as fake_execute:
+            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
+                self.driver.extend_volume(self.test_data.TEST_VOLUME, 10)
+                fake_execute.assert_called_once_with(self._vdiname, 10)
+                self.assertTrue(fake_logger.debug.called)
 
     def test_backup_volume(self):
         fake_context = {}
