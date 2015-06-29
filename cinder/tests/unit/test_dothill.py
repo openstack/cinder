@@ -15,10 +15,10 @@
 #
 """Unit tests for OpenStack Cinder DotHill driver."""
 
-import urllib2
 
 from lxml import etree
 import mock
+from six.moves import urllib
 
 from cinder import exception
 from cinder import test
@@ -149,7 +149,7 @@ class TestDotHillClient(test.TestCase):
         self.client = dothill.DotHillClient(self.ip, self.login, self.passwd,
                                             self.protocol)
 
-    @mock.patch('urllib2.urlopen')
+    @mock.patch('six.moves.urllib.request.urlopen')
     def test_login(self, mock_url_open):
         m = mock.Mock()
         m.read.side_effect = [resp_login]
@@ -175,13 +175,13 @@ class TestDotHillClient(test.TestCase):
                                              arg2='val2')
         self.assertEqual('http://10.0.0.1/api/path/arg2/val2/arg1/arg3', url)
 
-    @mock.patch('urllib2.urlopen')
+    @mock.patch('six.moves.urllib.request.urlopen')
     def test_request(self, mock_url_open):
         self.client._session_key = session_key
 
         m = mock.Mock()
         m.read.side_effect = [response_ok, malformed_xml,
-                              urllib2.URLError("error")]
+                              urllib.error.URLError("error")]
         mock_url_open.return_value = m
         ret = self.client._request('/path')
         self.assertTrue(type(ret) == etree._Element)
@@ -706,7 +706,7 @@ class TestDotHillISCSI(TestDotHillFC):
         self.driver.iscsi_ips = ['10.0.0.11']
         self.driver.initialize_iscsi_ports()
         mock_iqns.side_effect = [['id2']]
-        mock_portals.side_effect = {'10.0.0.11': 'Up', '10.0.0.12': 'Up'}
+        mock_portals.return_value = {'10.0.0.11': 'Up', '10.0.0.12': 'Up'}
 
         self.assertRaises(exception.Invalid,
                           self.driver.initialize_connection, test_volume,
