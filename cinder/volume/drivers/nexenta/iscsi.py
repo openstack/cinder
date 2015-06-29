@@ -31,7 +31,7 @@ from cinder.volume.drivers.nexenta import jsonrpc
 from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 
-VERSION = '1.3.0.3'
+VERSION = '1.3.0.2'
 LOG = logging.getLogger(__name__)
 
 
@@ -55,7 +55,6 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         1.3.0 - Added retype method.
         1.3.0.1 - Backport imports (logging, translations) for Juno.
         1.3.0.2 - Added a temporary fix for target creation.
-        1.3.0.3 - Compatability for volumes created before 1.3.0.2
     """
 
     VERSION = VERSION
@@ -163,15 +162,6 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         return '%s%s' % (
             self.configuration.nexenta_target_group_prefix,
             self.nms_host)
-
-    def _get_target_name_old(self, volume_name):
-        """Return iSCSI target name to access volume."""
-        return '%s%s' % (self.configuration.nexenta_target_prefix, volume_name)
-
-    def _get_target_group_name_old(self, volume_name):
-        """Return Nexenta iSCSI target group name for volume."""
-        return '%s%s' % (self.configuration.nexenta_target_group_prefix,
-                         volume_name)
 
     @staticmethod
     def _get_clone_snapshot_name(volume):
@@ -546,7 +536,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             shared = False  # LU does not exist
         return shared
 
-    def _get_lun(self, volume_name, host=None, old=False):
+    def _get_lun(self, volume_name, host=None):
         """Get lu mapping number for Zvol.
 
         :param zvol_name: Zvol name
@@ -554,10 +544,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :return: LUN
         """
         zvol_name = self._get_zvol_name(volume_name)
-        if old:
-            target_group_name = self._get_target_group_name_old(volume_name)
-        else:
-            target_group_name = self._get_target_group_name()
+        target_group_name = self._get_target_group_name()
         if not(self._is_lu_shared(zvol_name)):
             raise LookupError("LU does not exist for ZVol: %s", zvol_name)
         mappings = self.nms.scsidisk.list_lun_mapping_entries(zvol_name)
@@ -592,29 +579,12 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def _get_provider_location(self, volume):
         """Returns volume iscsiadm-formatted provider location string."""
-        if not volume['provider_location']:
-            # backport for volumes created with single lun per target
-            if self._target_exists(self._get_target_name_old(volume['name'])):
-                provider_location = '%(host)s:%(port)s,1 %(name)s %(lun)s' % {
-                    'host': self.nms_host,
-                    'port': (
-                        self.configuration.nexenta_iscsi_target_portal_port),
-                    'name': self._get_target_name_old(volume['name']),
-                    'lun': self._get_lun(volume['name'], True)
-                }
-                volume['provider_location'] = provider_location
-                return provider_location
-
-            provider_location = '%(host)s:%(port)s,1 %(name)s %(lun)s' % {
-                'host': self.nms_host,
-                'port': self.configuration.nexenta_iscsi_target_portal_port,
-                'name': self._get_target_name(),
-                'lun': self._get_lun(volume['name'])
-            }
-            volume['provider_location'] = provider_location
-            return provider_location
-        else:
-            return volume['provider_location']
+        return '%(host)s:%(port)s,1 %(name)s %(lun)s' % {
+            'host': self.nms_host,
+            'port': self.configuration.nexenta_iscsi_target_portal_port,
+            'name': self._get_target_name(),
+            'lun': self._get_lun(volume['name'])
+        }
 
     def _do_export(self, _ctx, volume, ensure=False):
         """Do all steps to get zvol exported as LUN 0 at separate target.
@@ -623,49 +593,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :param ensure: if True, ignore errors caused by already existing
             resources
         """
-
         zvol_name = self._get_zvol_name(volume['name'])
-
-        # Check if volume was created with driver ver < 1.3.0.3
-        if volume['name'] in self._get_provider_location(volume):
-            target_group_name = self._get_target_group_name_old(volume['name'])
-            target_name = self._get_target_name_old(volume['name'])
-            if not self._target_exists(target_name):
-                try:
-                    self.nms.iscsitarget.create_target({
-                        'target_name': target_name})
-                except nexenta.NexentaException as exc:
-                    if ensure and 'already configured' in exc.args[0]:
-                        LOG.info('Ignored target creation error "%s" while '
-                                 'ensuring export', exc)
-                    else:
-                        raise
-            if not self._target_group_exists(target_group_name):
-                try:
-                    self.nms.stmf.create_targetgroup(target_group_name)
-                except nexenta.NexentaException as exc:
-                    if ((ensure and 'already exists' in exc.args[0]) or
-                            'target must be offline' in exc.args[0]):
-                        LOG.info('Ignored target group creation error "%s" '
-                                 'while ensuring export', exc)
-                    else:
-                        raise
-            if not self._target_member_in_target_group(target_group_name,
-                                                       target_name):
-                try:
-                    self.nms.stmf.add_targetgroup_member(target_group_name,
-                                                         target_name)
-                except nexenta.NexentaException as exc:
-                    if ((ensure and 'already exists' in exc.args[0]) or
-                            'target must be offline' in exc.args[0]):
-                        LOG.info('Ignored target group member addition error '
-                                 '"%s" while ensuring export', exc)
-                    else:
-                        raise
-
-        # This part for volumes created starting with ver 1.3.0.3
-        else:
-            target_group_name = self._get_target_group_name()
+        target_group_name = self._get_target_group_name()
 
         if not self._lu_exists(zvol_name):
             try:
