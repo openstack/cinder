@@ -439,7 +439,10 @@ class TestCinderManageCmd(test.TestCase):
         mock_client.prepare.return_value = cctxt
         get_client.return_value = mock_client
         volume_id = '123'
-        volume = {'id': volume_id, 'host': 'fake-host', 'status': 'available'}
+        host = 'fake@host'
+        volume = {'id': volume_id,
+                  'host': host + '#pool1',
+                  'status': 'available'}
         volume_get.return_value = volume
 
         volume_cmds = cinder_manage.VolumeCommands()
@@ -447,7 +450,8 @@ class TestCinderManageCmd(test.TestCase):
         volume_cmds.delete(volume_id)
 
         volume_get.assert_called_once_with(ctxt, 123)
-        mock_client.prepare.assert_called_once_with(server=volume['host'])
+        # NOTE prepare called w/o pool part in host
+        mock_client.prepare.assert_called_once_with(server=host)
         cctxt.cast.assert_called_once_with(ctxt, 'delete_volume',
                                            volume_id=volume['id'])
 
