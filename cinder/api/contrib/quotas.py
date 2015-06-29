@@ -63,9 +63,15 @@ class QuotaSetsController(wsgi.Controller):
             msg = _("Quota limit must be specified as an integer value.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
-        # NOTE: -1 is a flag value for unlimited
-        if limit < -1:
-            msg = _("Quota limit must be -1 or greater.")
+        # NOTE: -1 is a flag value for unlimited, maximum value is limited
+        # by SQL standard integer type `INT` which is `0x7FFFFFFF`, it's a
+        # general value for SQL, using a hardcoded value here is not a
+        # `nice` way, but it seems like the only way for now:
+        # http://dev.mysql.com/doc/refman/5.0/en/integer-types.html
+        # http://www.postgresql.org/docs/9.1/static/datatype-numeric.html
+        if limit < -1 or limit > db.MAX_INT:
+            msg = _("Quota limit must be in the range of -1 "
+                    "to %s.") % db.MAX_INT
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         return limit

@@ -66,6 +66,9 @@ _BACKEND_MAPPING = {'sqlalchemy': 'cinder.db.sqlalchemy.api'}
 
 IMPL = db_concurrency.TpoolDbapiWrapper(CONF, _BACKEND_MAPPING)
 
+# The maximum value a signed INT type may have
+MAX_INT = 0x7FFFFFFF
+
 
 ###################
 
