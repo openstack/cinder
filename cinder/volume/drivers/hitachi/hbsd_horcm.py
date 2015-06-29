@@ -167,7 +167,7 @@ class HBSDHORCM(basic_lib.HBSDBasicLib):
             if not i.isdigit():
                 msg = basic_lib.output_err(601, param='hitachi_horcm_numbers')
                 raise exception.HBSDError(message=msg)
-        self.conf.hitachi_horcm_numbers = map(int, numbers)
+        self.conf.hitachi_horcm_numbers = [int(num) for num in numbers]
         inst = self.conf.hitachi_horcm_numbers[0]
         pair_inst = self.conf.hitachi_horcm_numbers[1]
         if inst == pair_inst:
