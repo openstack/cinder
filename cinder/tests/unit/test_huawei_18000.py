@@ -422,7 +422,7 @@ class Fake18000Common(rest_common.RestCommon):
 
             if url == "lun/count?TYPE=11&ASSOCIATEOBJTYPE=256&"\
                       "ASSOCIATEOBJID=11":
-                data = """{"data":{"COUNT":"7"},
+                data = """{"data":{"COUNT":7},
                            "error":{"code":0,"description":"0"}}"""
 
             if url == "lungroup/associate?TYPE=256&ASSOCIATEOBJTYPE=11&"\
