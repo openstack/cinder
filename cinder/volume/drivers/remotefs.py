@@ -25,6 +25,7 @@ import time
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
+import six
 
 from cinder import compute
 from cinder import db
@@ -452,7 +453,9 @@ class RemoteFSDriver(driver.LocalVD, driver.TransferVD, driver.BaseVD):
                 # results in share_info =
                 #  [ 'address:/vol', '-o options=123,rw --other' ]
 
-                share_address = share_info[0].strip().decode('unicode_escape')
+                share_address = share_info[0].strip()
+                # Replace \040 with a space, to support paths with spaces
+                share_address = share_address.replace("\\040", " ")
                 share_opts = None
                 if len(share_info) > 1:
                     share_opts = share_info[1].strip()
@@ -749,6 +752,8 @@ class RemoteFSSnapDriver(RemoteFSDriver, driver.SnapshotVD):
         """Return a string that represents hash of base_str
         (in a hex format).
         """
+        if isinstance(base_str, six.text_type):
+            base_str = base_str.encode('utf-8')
         return hashlib.md5(base_str).hexdigest()
 
     def _get_mount_point_for_share(self, share):
