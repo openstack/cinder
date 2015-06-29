@@ -51,8 +51,8 @@ def _quota_reserve(context, project_id):
     resources = {}
     deltas = {}
     for i, resource in enumerate(('volumes', 'gigabytes')):
-        quotas[resource] = db.quota_create(context, project_id,
-                                           resource, i + 1)
+        quota_obj = db.quota_create(context, project_id, resource, i + 1)
+        quotas[resource] = quota_obj.hard_limit
         resources[resource] = quota.ReservableResource(resource,
                                                        '_sync_%s' % resource)
         deltas[resource] = i + 1
@@ -67,7 +67,11 @@ class ModelsObjectComparatorMixin(object):
     def _dict_from_object(self, obj, ignored_keys):
         if ignored_keys is None:
             ignored_keys = []
-        return {k: v for k, v in obj.iteritems()
+        if isinstance(obj, dict):
+            items = obj.items()
+        else:
+            items = obj.iteritems()
+        return {k: v for k, v in items
                 if k not in ignored_keys}
 
     def _assertEqualObjects(self, obj1, obj2, ignored_keys=None):
