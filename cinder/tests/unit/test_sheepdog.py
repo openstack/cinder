@@ -25,7 +25,7 @@ from oslo_utils import units
 import six
 
 from cinder import exception
-from cinder.i18n import _, _LW, _LE
+from cinder.i18n import _, _LE
 from cinder.image import image_utils
 from cinder import test
 from cinder.volume import configuration as conf
@@ -156,9 +156,9 @@ class SheepdogClientTestCase(test.TestCase):
     def test_run_dog(self):
         expected_cmd = self.test_data.CMD_DOG_CLUSTER_INFO
         with mock.patch.object(self.client, '_execute') as fake_execute:
-                fake_execute.return_value = ('', '')
-                self.client._run_dog('cluster', 'info')
-        fake_execute.assert_called_once_with(*expected_cmd)
+            fake_execute.return_value = ('', '')
+            self.client._run_dog('cluster', 'info')
+            fake_execute.assert_called_once_with(*expected_cmd)
 
     def test_run_dog_os_error(self):
         args = ('cluster', 'info')
@@ -176,13 +176,12 @@ class SheepdogClientTestCase(test.TestCase):
         stdout = self.test_data.DOG_CLUSTER_RUNNING
         stderr = ''
         expected_cmd = ('cluster', 'info')
-        expected_log = _('Sheepdog cluster is running.')
         with mock.patch.object(self.client, '_run_dog') as fake_execute:
             with mock.patch.object(sheepdog, 'LOG') as fake_logger:
                 fake_execute.return_value = (stdout, stderr)
                 self.client.check_cluster_status()
-            fake_execute.assert_called_once_with(*expected_cmd)
-            fake_logger.debug.assert_called_with(expected_log)
+                fake_execute.assert_called_once_with(*expected_cmd)
+                self.assertTrue(fake_logger.debug.called)
 
     def test_check_cluster_status_0_5(self):
         def fake_stats(*args):
@@ -230,8 +229,6 @@ class SheepdogClientTestCase(test.TestCase):
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        expected_log = _LE('Failed to connect sheep daemon. '
-                           'addr: %(addr)s, port: %(port)s')
         with mock.patch.object(self.client, '_run_dog') as fake_execute:
             with mock.patch.object(sheepdog, 'LOG') as fake_logger:
                 fake_execute.side_effect = exception.SheepdogCmdError(
@@ -240,9 +237,7 @@ class SheepdogClientTestCase(test.TestCase):
                     stderr=stderr.replace('\n', '\\n'))
                 ex = self.assertRaises(exception.SheepdogCmdError,
                                        self.client.check_cluster_status)
-                fake_logger.error.assert_called_with(expected_log,
-                                                     {'addr': SHEEP_ADDR,
-                                                      'port': SHEEP_PORT})
+                self.assertTrue(fake_logger.error.called)
                 self.assertEqual(expected_msg, ex.msg)
 
     def test_check_cluster_status_error_unknown(self):
@@ -279,8 +274,6 @@ class SheepdogClientTestCase(test.TestCase):
         stderr = self.test_data.DOG_COMMAND_ERROR_FAIL_TO_CONNECT
         expected_msg = self.test_data.sheepdog_cmd_error(
             cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
-        expected_err = _LE('Failed to connect sheep daemon. '
-                           'addr: %(addr)s, port: %(port)s')
         with mock.patch.object(self.client, '_run_dog') as fake_execute:
             fake_execute.side_effect = exception.SheepdogCmdError(
                 cmd=cmd, exit_code=exit_code,
@@ -290,9 +283,7 @@ class SheepdogClientTestCase(test.TestCase):
                 ex = self.assertRaises(exception.SheepdogCmdError,
                                        self.client.create,
                                        self.test_data.TEST_VOLUME)
-                fake_logger.error.assert_called_with(expected_err,
-                                                     {'addr': SHEEP_ADDR,
-                                                      'port': SHEEP_PORT})
+                self.assertTrue(fake_logger.error.called)
                 self.assertEqual(expected_msg, ex.msg)
 
     def test_create_failed_vdi_already_exist(self):
@@ -306,7 +297,6 @@ class SheepdogClientTestCase(test.TestCase):
             {'volname': volname}
         expected_msg = self.test_data.sheepdog_cmd_error(
             cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
-        expected_err = _LE('Volume already exists. %s')
         with mock.patch.object(self.client, '_run_dog') as fake_execute:
             fake_execute.side_effect = exception.SheepdogCmdError(
                 cmd=cmd, exit_code=exit_code,
@@ -316,7 +306,7 @@ class SheepdogClientTestCase(test.TestCase):
                 ex = self.assertRaises(exception.SheepdogCmdError,
                                        self.client.create,
                                        self.test_data.TEST_VOLUME)
-                fake_logger.error.assert_called_with(expected_err, volname)
+                self.assertTrue(fake_logger.error.called)
                 self.assertEqual(expected_msg, ex.msg)
 
     def test_create_failed_unknown(self):
@@ -329,7 +319,6 @@ class SheepdogClientTestCase(test.TestCase):
         stderr = 'stderr_dummy'
         expected_msg = self.test_data.sheepdog_cmd_error(
             cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
-        expected_err = _LE('Failed to create volume. %s')
         with mock.patch.object(self.client, '_run_dog') as fake_execute:
             fake_execute.side_effect = exception.SheepdogCmdError(
                 cmd=cmd, exit_code=exit_code,
@@ -339,7 +328,7 @@ class SheepdogClientTestCase(test.TestCase):
                 ex = self.assertRaises(exception.SheepdogCmdError,
                                        self.client.create,
                                        self.test_data.TEST_VOLUME)
-                fake_logger.error.assert_called_with(expected_err, volname)
+                self.assertTrue(fake_logger.error.called)
                 self.assertEqual(expected_msg, ex.msg)
 
     # test for delete method
@@ -355,13 +344,12 @@ class SheepdogClientTestCase(test.TestCase):
         expected_cmd = ('vdi', 'delete', volname)
         stdout = ''
         stderr = self.test_data.DOG_VDI_DELETE_VDI_NOT_EXISTS
-        expected_log = _LW('Volume not found. %s')
         with mock.patch.object(self.client, '_run_dog') as fake_execute:
             with mock.patch.object(sheepdog, 'LOG') as fake_logger:
                 fake_execute.return_value = (stdout, stderr)
                 self.client.delete(self.test_data.TEST_VOLUME)
                 fake_execute.assert_called_once_with(*expected_cmd)
-                fake_logger.warning.assert_called_with(expected_log, volname)
+                self.assertTrue(fake_logger.warning.called)
 
     def test_delete_failed_to_connect(self):
         cmd = self.test_data.cmd_dog_vdi_delete(
@@ -373,8 +361,6 @@ class SheepdogClientTestCase(test.TestCase):
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        expected_log = _LE('Failed to connect sheep daemon. '
-                           'addr: %(addr)s, port: %(port)s')
         with mock.patch.object(self.client, '_run_dog') as fake_execute:
             with mock.patch.object(sheepdog, 'LOG') as fake_logger:
                 fake_execute.side_effect = exception.SheepdogCmdError(
@@ -384,9 +370,7 @@ class SheepdogClientTestCase(test.TestCase):
                 ex = self.assertRaises(exception.SheepdogCmdError,
                                        self.client.delete,
                                        self.test_data.TEST_VOLUME)
-                fake_logger.error.assert_called_with(expected_log,
-                                                     {'addr': SHEEP_ADDR,
-                                                      'port': SHEEP_PORT})
+                self.assertTrue(fake_logger.error.called)
                 self.assertEqual(expected_msg, ex.msg)
 
     def test_delete_failed_unknown(self):
@@ -399,7 +383,6 @@ class SheepdogClientTestCase(test.TestCase):
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        expected_log = _LE('Failed to delete volume. %s')
         with mock.patch.object(self.client, '_run_dog') as fake_execute:
             with mock.patch.object(sheepdog, 'LOG') as fake_logger:
                 fake_execute.side_effect = exception.SheepdogCmdError(
@@ -409,7 +392,7 @@ class SheepdogClientTestCase(test.TestCase):
                 ex = self.assertRaises(exception.SheepdogCmdError,
                                        self.client.delete,
                                        self.test_data.TEST_VOLUME)
-                fake_logger.error.assert_called_with(expected_log, volname)
+                self.assertTrue(fake_logger.error.called)
                 self.assertEqual(expected_msg, ex.msg)
 
 
