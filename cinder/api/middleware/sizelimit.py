@@ -18,9 +18,8 @@ Compatibility shim for Kilo, while operators migrate to oslo.middleware.
 
 
 from oslo_config import cfg
+from oslo_log import versionutils
 from oslo_middleware import sizelimit
-
-from cinder.openstack.common import versionutils
 
 
 # Default request size is 112k

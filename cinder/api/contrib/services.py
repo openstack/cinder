@@ -16,6 +16,7 @@
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_log import versionutils
 from oslo_utils import timeutils
 import webob.exc
 
@@ -25,7 +26,6 @@ from cinder.api import xmlutil
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import versionutils
 from cinder import utils
 
 

@@ -22,6 +22,7 @@ Scheduler Service
 import eventlet
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_log import versionutils
 import oslo_messaging as messaging
 from oslo_utils import excutils
 from oslo_utils import importutils
@@ -33,7 +34,6 @@ from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _, _LE
 from cinder import manager
-from cinder.openstack.common import versionutils
 from cinder import quota
 from cinder import rpc
 from cinder.scheduler.flows import create_volume
