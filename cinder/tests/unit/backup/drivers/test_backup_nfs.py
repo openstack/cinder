@@ -28,7 +28,6 @@ import zlib
 import mock
 from os_brick.remotefs import remotefs as remotefs_brick
 from oslo_config import cfg
-from oslo_log import log as logging
 from six.moves import builtins
 
 from cinder.backup.drivers import nfs
@@ -39,8 +38,6 @@ from cinder.i18n import _
 from cinder import objects
 from cinder import test
 from cinder import utils
-
-LOG = logging.getLogger(__name__)
 
 CONF = cfg.CONF
 
@@ -390,7 +387,6 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
             backup_name = '%s_backup_%s' % (az, backup['id'])
             volume = 'volume_%s' % (backup['volume_id'])
             prefix = volume + '_' + backup_name
-            LOG.debug('_generate_object_name_prefix: %s', prefix)
             return prefix
 
         # Raise a pseudo exception.BackupDriverException.
@@ -420,7 +416,6 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
             backup_name = '%s_backup_%s' % (az, backup['id'])
             volume = 'volume_%s' % (backup['volume_id'])
             prefix = volume + '_' + backup_name
-            LOG.debug('_generate_object_name_prefix: %s', prefix)
             return prefix
 
         # Raise a pseudo exception.BackupDriverException.
@@ -463,7 +458,6 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
             backup_name = '%s_backup_%s' % (az, backup['id'])
             volume = 'volume_%s' % (backup['volume_id'])
             prefix = volume + '_' + backup_name
-            LOG.debug('_generate_object_name_prefix: %s', prefix)
             return prefix
 
         # Raise a pseudo exception.BackupDriverException.
@@ -513,7 +507,6 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
             backup_name = '%s_backup_%s' % (az, backup['id'])
             volume = 'volume_%s' % (backup['volume_id'])
             prefix = volume + '_' + backup_name
-            LOG.debug('_generate_object_name_prefix: %s', prefix)
             return prefix
 
         # Raise a pseudo exception.BackupDriverException.
@@ -666,7 +659,6 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
             backup_name = '%s_backup_%s' % (az, backup['id'])
             volume = 'volume_%s' % (backup['volume_id'])
             prefix = volume + '_' + backup_name
-            LOG.debug('_generate_object_name_prefix: %s', prefix)
             return prefix
 
         # Raise a pseudo exception.BackupDriverException.

@@ -22,7 +22,6 @@ import os
 import posix
 
 from oslo_concurrency import processutils as putils
-from oslo_log import log as logging
 from oslo_utils import timeutils
 
 from cinder.backup.drivers import tsm
@@ -33,7 +32,6 @@ from cinder import objects
 from cinder import test
 from cinder import utils
 
-LOG = logging.getLogger(__name__)
 SIM = None
 VOLUME_PATH = '/dev/null'
 

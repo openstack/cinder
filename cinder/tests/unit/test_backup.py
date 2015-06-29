@@ -21,7 +21,6 @@ import tempfile
 
 import mock
 from oslo_config import cfg
-from oslo_log import log as logging
 from oslo_utils import importutils
 from oslo_utils import timeutils
 
@@ -35,8 +34,6 @@ from cinder.tests.unit.backup import fake_service_with_verify as fake_service
 
 
 CONF = cfg.CONF
-
-LOG = logging.getLogger(__name__)
 
 
 class FakeBackupException(Exception):

@@ -21,7 +21,6 @@ import json
 from xml.dom import minidom
 
 import mock
-from oslo_log import log as logging
 from oslo_utils import timeutils
 import webob
 
@@ -36,9 +35,6 @@ from cinder.tests.unit.api import fakes
 from cinder.tests.unit import utils
 # needed for stubs to work
 import cinder.volume
-
-
-LOG = logging.getLogger(__name__)
 
 
 class BackupsAPITestCase(test.TestCase):
@@ -90,7 +86,6 @@ class BackupsAPITestCase(test.TestCase):
         volume_id = utils.create_volume(self.context, size=5,
                                         status='creating')['id']
         backup_id = self._create_backup(volume_id)
-        LOG.debug('Created backup with id %s' % backup_id)
         req = webob.Request.blank('/v2/fake/backups/%s' %
                                   backup_id)
         req.method = 'GET'
@@ -404,7 +399,6 @@ class BackupsAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app())
 
         res_dict = json.loads(res.body)
-        LOG.info(res_dict)
 
         self.assertEqual(res.status_int, 202)
         self.assertIn('id', res_dict['backup'])
@@ -435,7 +429,6 @@ class BackupsAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app())
 
         res_dict = json.loads(res.body)
-        LOG.info(res_dict)
         self.assertEqual(res.status_int, 202)
         self.assertIn('id', res_dict['backup'])
         self.assertTrue(_mock_service_get_all_by_topic.called)
@@ -490,7 +483,6 @@ class BackupsAPITestCase(test.TestCase):
         req.body = json.dumps(body)
         res = req.get_response(fakes.wsgi_app())
         res_dict = json.loads(res.body)
-        LOG.info(res_dict)
 
         self.assertEqual(202, res.status_int)
         self.assertIn('id', res_dict['backup'])
@@ -523,7 +515,6 @@ class BackupsAPITestCase(test.TestCase):
         req.body = json.dumps(body)
         res = req.get_response(fakes.wsgi_app())
         res_dict = json.loads(res.body)
-        LOG.info(res_dict)
 
         self.assertEqual(400, res_dict['badRequest']['code'])
         self.assertEqual('Invalid backup: The parent backup must be '
@@ -686,7 +677,6 @@ class BackupsAPITestCase(test.TestCase):
         req.body = json.dumps(body)
         res = req.get_response(fakes.wsgi_app())
         res_dict = json.loads(res.body)
-        LOG.info(res_dict)
 
         self.assertEqual(400, res_dict['badRequest']['code'])
         self.assertEqual('Invalid backup: No backups available to do '

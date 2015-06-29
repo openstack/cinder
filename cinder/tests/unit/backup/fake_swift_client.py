@@ -18,12 +18,10 @@ import os
 import socket
 import zlib
 
-from oslo_log import log as logging
 import six
 from six.moves import http_client
-from swiftclient import client as swift
 
-LOG = logging.getLogger(__name__)
+from swiftclient import client as swift
 
 
 class FakeSwiftClient(object):
@@ -33,7 +31,6 @@ class FakeSwiftClient(object):
 
     @classmethod
     def Connection(self, *args, **kargs):
-        LOG.debug("fake FakeSwiftClient Connection")
         return FakeSwiftConnection()
 
 
@@ -43,7 +40,6 @@ class FakeSwiftConnection(object):
         pass
 
     def head_container(self, container):
-        LOG.debug("fake head_container(%s)" % container)
         if container == 'missing_container':
             raise swift.ClientException('fake exception',
                                         http_status=http_client.NOT_FOUND)
@@ -55,11 +51,9 @@ class FakeSwiftConnection(object):
         pass
 
     def put_container(self, container):
-        LOG.debug("fake put_container(%s)" % container)
         pass
 
     def get_container(self, container, **kwargs):
-        LOG.debug("fake get_container(%s)" % container)
         fake_header = None
         fake_body = [{'name': 'backup_001'},
                      {'name': 'backup_002'},
@@ -67,11 +61,9 @@ class FakeSwiftConnection(object):
         return fake_header, fake_body
 
     def head_object(self, container, name):
-        LOG.debug("fake put_container(%s, %s)" % (container, name))
         return {'etag': 'fake-md5-sum'}
 
     def get_object(self, container, name):
-        LOG.debug("fake get_object(%s, %s)" % (container, name))
         if container == 'socket_error_on_get':
             raise socket.error(111, 'ECONNREFUSED')
         if 'metadata' in name:
@@ -107,13 +99,11 @@ class FakeSwiftConnection(object):
     def put_object(self, container, name, reader, content_length=None,
                    etag=None, chunk_size=None, content_type=None,
                    headers=None, query_string=None):
-        LOG.debug("fake put_object(%s, %s)" % (container, name))
         if container == 'socket_error_on_put':
             raise socket.error(111, 'ECONNREFUSED')
         return 'fake-md5-sum'
 
     def delete_object(self, container, name):
-        LOG.debug("fake delete_object(%s, %s)" % (container, name))
         if container == 'socket_error_on_delete':
             raise socket.error(111, 'ECONNREFUSED')
         pass
