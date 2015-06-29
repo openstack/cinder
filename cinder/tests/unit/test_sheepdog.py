@@ -118,7 +118,7 @@ Epoch Time           Version [Host:Port:V-Nodes,,,]
 """
 
     DOG_VDI_CREATE_VDI_EXISTS_ALREADY = """\
-Failed to create VDI %(volname)s: VDI exists already
+Failed to create VDI %(vdiname)s: VDI exists already
 """
 
     DOG_VDI_DELETE_VDI_NOT_EXISTS = """\
@@ -239,6 +239,8 @@ class SheepdogClientTestCase(test.TestCase):
         self.driver.do_setup(None)
         self.test_data = SheepdogDriverTestDataGenerator()
         self.client = self.driver.client
+        self._vdiname = self.test_data.TEST_VOLUME['name']
+        self._vdisize = self.test_data.TEST_VOLUME['size']
 
     # test for _run_dog method
     def test_run_dog(self):
@@ -346,17 +348,14 @@ class SheepdogClientTestCase(test.TestCase):
 
     # test for create method
     def test_create_success(self):
-        expected_cmd = ('vdi', 'create', self.test_data.TEST_VOLUME['name'],
-                        '%sG' % self.test_data.TEST_VOLUME['size'])
+        expected_cmd = ('vdi', 'create', self._vdiname, '%sG' % self._vdisize)
         with mock.patch.object(self.client, '_run_dog') as fake_execute:
             fake_execute.return_value = ('', '')
-            self.client.create(self.test_data.TEST_VOLUME)
+            self.client.create(self._vdiname, self._vdisize)
             fake_execute.assert_called_once_with(*expected_cmd)
 
     def test_create_failed_connected(self):
-        cmd = self.test_data.cmd_dog_vdi_create(
-            self.test_data.TEST_VOLUME['name'],
-            self.test_data.TEST_VOLUME['size'])
+        cmd = self.test_data.cmd_dog_vdi_create(self._vdiname, self._vdisize)
         exit_code = 2
         stdout = ''
         stderr = self.test_data.DOG_COMMAND_ERROR_FAIL_TO_CONNECT
@@ -370,19 +369,16 @@ class SheepdogClientTestCase(test.TestCase):
             with mock.patch.object(sheepdog, 'LOG') as fake_logger:
                 ex = self.assertRaises(exception.SheepdogCmdError,
                                        self.client.create,
-                                       self.test_data.TEST_VOLUME)
+                                       self._vdiname, self._vdisize)
                 self.assertTrue(fake_logger.error.called)
                 self.assertEqual(expected_msg, ex.msg)
 
     def test_create_failed_vdi_already_exist(self):
-        volname = self.test_data.TEST_VOLUME['name']
-        cmd = self.test_data.cmd_dog_vdi_create(
-            volname,
-            self.test_data.TEST_VOLUME['size'])
+        cmd = self.test_data.cmd_dog_vdi_create(self._vdiname, self._vdisize)
         exit_code = 1
         stdout = ''
         stderr = self.test_data.DOG_VDI_CREATE_VDI_EXISTS_ALREADY % \
-            {'volname': volname}
+            {'vdiname': self._vdiname}
         expected_msg = self.test_data.sheepdog_cmd_error(
             cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
         with mock.patch.object(self.client, '_run_dog') as fake_execute:
@@ -393,15 +389,12 @@ class SheepdogClientTestCase(test.TestCase):
             with mock.patch.object(sheepdog, 'LOG') as fake_logger:
                 ex = self.assertRaises(exception.SheepdogCmdError,
                                        self.client.create,
-                                       self.test_data.TEST_VOLUME)
+                                       self._vdiname, self._vdisize)
                 self.assertTrue(fake_logger.error.called)
                 self.assertEqual(expected_msg, ex.msg)
 
     def test_create_failed_unknown(self):
-        volname = self.test_data.TEST_VOLUME['name']
-        cmd = self.test_data.cmd_dog_vdi_create(
-            volname,
-            self.test_data.TEST_VOLUME['size'])
+        cmd = self.test_data.cmd_dog_vdi_create(self._vdiname, self._vdisize)
         exit_code = 1
         stdout = 'stdout_dummy'
         stderr = 'stderr_dummy'
@@ -415,33 +408,31 @@ class SheepdogClientTestCase(test.TestCase):
             with mock.patch.object(sheepdog, 'LOG') as fake_logger:
                 ex = self.assertRaises(exception.SheepdogCmdError,
                                        self.client.create,
-                                       self.test_data.TEST_VOLUME)
+                                       self._vdiname, self._vdisize)
                 self.assertTrue(fake_logger.error.called)
                 self.assertEqual(expected_msg, ex.msg)
 
     # test for delete method
     def test_delete_success(self):
-        expected_cmd = ('vdi', 'delete', self.test_data.TEST_VOLUME['name'])
+        expected_cmd = ('vdi', 'delete', self._vdiname)
         with mock.patch.object(self.client, '_run_dog') as fake_execute:
             fake_execute.return_value = ('', '')
-            self.client.delete(self.test_data.TEST_VOLUME)
+            self.client.delete(self._vdiname)
             fake_execute.assert_called_once_with(*expected_cmd)
 
     def test_delete_not_found(self):
-        volname = self.test_data.TEST_VOLUME['name']
-        expected_cmd = ('vdi', 'delete', volname)
+        expected_cmd = ('vdi', 'delete', self._vdiname)
         stdout = ''
         stderr = self.test_data.DOG_VDI_DELETE_VDI_NOT_EXISTS
         with mock.patch.object(self.client, '_run_dog') as fake_execute:
             with mock.patch.object(sheepdog, 'LOG') as fake_logger:
                 fake_execute.return_value = (stdout, stderr)
-                self.client.delete(self.test_data.TEST_VOLUME)
+                self.client.delete(self._vdiname)
                 fake_execute.assert_called_once_with(*expected_cmd)
                 self.assertTrue(fake_logger.warning.called)
 
     def test_delete_failed_to_connect(self):
-        cmd = self.test_data.cmd_dog_vdi_delete(
-            self.test_data.TEST_VOLUME['name'])
+        cmd = self.test_data.cmd_dog_vdi_delete(self._vdiname)
         exit_code = 2
         stdout = 'stdout_dummy'
         stderr = self.test_data.DOG_COMMAND_ERROR_FAIL_TO_CONNECT
@@ -456,14 +447,12 @@ class SheepdogClientTestCase(test.TestCase):
                     stdout=stdout.replace('\n', '\\n'),
                     stderr=stderr.replace('\n', '\\n'))
                 ex = self.assertRaises(exception.SheepdogCmdError,
-                                       self.client.delete,
-                                       self.test_data.TEST_VOLUME)
+                                       self.client.delete, self._vdiname)
                 self.assertTrue(fake_logger.error.called)
                 self.assertEqual(expected_msg, ex.msg)
 
     def test_delete_failed_unknown(self):
-        volname = self.test_data.TEST_VOLUME['name']
-        cmd = self.test_data.cmd_dog_vdi_delete(volname)
+        cmd = self.test_data.cmd_dog_vdi_delete(self._vdiname)
         exit_code = 2
         stdout = 'stdout_dummy'
         stderr = 'stderr_dummy'
@@ -478,8 +467,7 @@ class SheepdogClientTestCase(test.TestCase):
                     stdout=stdout.replace('\n', '\\n'),
                     stderr=stderr.replace('\n', '\\n'))
                 ex = self.assertRaises(exception.SheepdogCmdError,
-                                       self.client.delete,
-                                       self.test_data.TEST_VOLUME)
+                                       self.client.delete, self._vdiname)
                 self.assertTrue(fake_logger.error.called)
                 self.assertEqual(expected_msg, ex.msg)
 
@@ -498,6 +486,8 @@ class SheepdogDriverTestCase(test.TestCase):
         self.driver.do_setup(None)
         self.test_data = SheepdogDriverTestDataGenerator()
         self.client = self.driver.client
+        self._vdiname = self.test_data.TEST_VOLUME['name']
+        self._vdisize = self.test_data.TEST_VOLUME['size']
 
     def test_check_for_setup_error(self):
         with mock.patch.object(self.client, 'check_cluster_status') \
@@ -508,12 +498,12 @@ class SheepdogDriverTestCase(test.TestCase):
     def test_create_volume(self):
         with mock.patch.object(self.client, 'create') as fake_execute:
             self.driver.create_volume(self.test_data.TEST_VOLUME)
-            fake_execute.assert_called_once_with(self.test_data.TEST_VOLUME)
+            fake_execute.assert_called_once_with(self._vdiname, self._vdisize)
 
     def test_delete_volume(self):
         with mock.patch.object(self.client, 'delete') as fake_execute:
             self.driver.delete_volume(self.test_data.TEST_VOLUME)
-            fake_execute.assert_called_once_with(self.test_data.TEST_VOLUME)
+            fake_execute.assert_called_once_with(self._vdiname)
 
     def test_update_volume_stats(self):
         def fake_stats(*args):
