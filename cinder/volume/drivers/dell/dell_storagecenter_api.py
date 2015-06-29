@@ -169,7 +169,7 @@ class StorageCenterApi(object):
     Handles calls to Dell Enterprise Manager (EM) via the REST API interface.
     '''
 
-    APIVERSION = '1.0.2'
+    APIVERSION = '1.2.0'
 
     def __init__(self, host, port, user, password, verify):
         '''This creates a connection to Dell Enterprise Manager.
@@ -297,6 +297,7 @@ class StorageCenterApi(object):
         payload['ApplicationVersion'] = self.APIVERSION
         r = self.client.post('ApiConnection/Login',
                              payload)
+        # TODO(Swanson): If we get a 400 back we should also print the text.
         if r.status_code != 200:
             LOG.error(_LE('Login error: %(code)d %(reason)s'),
                       {'code': r.status_code,
@@ -1084,6 +1085,7 @@ class StorageCenterApi(object):
         :returns: Active controller ID.
         '''
         actvctrl = None
+        # TODO(Swanson): We have a function that gets this.  Call that.
         r = self.client.get('StorageCenter/ScVolume/%s/VolumeConfiguration'
                             % self._get_id(scvolume))
         if r.status_code == 200:
@@ -1553,3 +1555,273 @@ class StorageCenterApi(object):
                        'reason': r.reason})
         else:
             LOG.debug('_delete_server: deleteAllowed is False.')
+
+    def find_replay_profile(self, name):
+        '''Finds the Dell SC replay profile object name.
+
+        :param name: Name of the replay profile object. This is the
+                     consistency group id.
+        :return: Dell SC replay profile or None.
+        :raises: VolumeBackendAPIException
+        '''
+        pf = PayloadFilter()
+        pf.append('ScSerialNumber', self.ssn)
+        pf.append('Name', name)
+        r = self.client.post('StorageCenter/ScReplayProfile/GetList',
+                             pf.payload)
+        if r.status_code == 200:
+            profilelist = self._get_json(r)
+            if profilelist:
+                if len(profilelist) > 1:
+                    LOG.error(_LE('Multiple replay profiles under name %s'),
+                              name)
+                    raise exception.VolumeBackendAPIException(
+                        _('Multiple profiles found.'))
+                return profilelist[0]
+        else:
+            LOG.error(_LE('find_replay_profile error %s'), r)
+        return None
+
+    def create_replay_profile(self, name):
+        '''Creates a replay profile on the Dell SC.
+
+        :param name: The ID of the consistency group.  This will be matched to
+                     the name on the Dell SC.
+        :return: SC profile or None.
+        '''
+        profile = self.find_replay_profile(name)
+        if not profile:
+            payload = {}
+            payload['StorageCenter'] = self.ssn
+            payload['Name'] = name
+            payload['Type'] = 'Consistent'
+            payload['Notes'] = self.notes
+            r = self.client.post('StorageCenter/ScReplayProfile',
+                                 payload)
+            if r.status_code == 201:
+                profile = self._first_result(r)
+            else:
+                LOG.error(_LE('create_replay_profile failed %s'), r)
+        return profile
+
+    def delete_replay_profile(self, profile):
+        '''Delete the replay profile from the Dell SC.
+
+        :param profile: SC replay profile.
+        :return: Nothing.
+        :raises: VolumeBackendAPIException
+        '''
+        r = self.client.delete('StorageCenter/ScReplayProfile/%s' %
+                               self._get_id(profile))
+        # 200 is a good return.  Log and leave.
+        if r.status_code == 200:
+            LOG.info(_LI('Profile %s has been deleted.'),
+                     profile.get('name'))
+        else:
+            # We failed due to a failure to delete an existing profile.
+            # This is reason to raise an exception.
+            LOG.error(_LE('Unable to delete profile %(cg)s : %(reason)s'),
+                      {'cg': profile.get('name'),
+                       'reason': r})
+            raise exception.VolumeBackendAPIException(
+                _('Error deleting replay profile.'))
+
+    def _get_volume_configuration(self, scvolume):
+        '''Get the ScVolumeConfiguration object.
+
+        :param scvolume: The Dell SC volume object.
+        :return: The SCVolumeConfiguration object or None.
+        '''
+        r = self.client.get('StorageCenter/ScVolume/%s/VolumeConfiguration' %
+                            self._get_id(scvolume))
+        if r.status_code == 200:
+            LOG.debug('get_volume_configuration %s', r)
+            return self._first_result(r)
+        return None
+
+    def _update_volume_profiles(self, scvolume, addid=None, removeid=None):
+        '''Either Adds or removes the listed profile from the SC volume.
+
+        :param scvolume: Dell SC volume object.
+        :param addid: Profile ID to be added to the SC volume configuration.
+        :param removeid: ID to be removed to the SC volume configuration.
+        :return: True/False on success/failure.
+        '''
+        if scvolume:
+            scvolumecfg = self._get_volume_configuration(scvolume)
+            if scvolumecfg:
+                profilelist = scvolumecfg.get('replayProfileList', [])
+                newprofilelist = []
+                # Do we have one to add?  Start the list with it.
+                if addid:
+                    newprofilelist = [addid]
+                # Re-add our existing profiles.
+                for profile in profilelist:
+                    profileid = self._get_id(profile)
+                    # Make sure it isn't one we want removed and that we
+                    # haven't already added it.  (IE it isn't the addid.)
+                    if (profileid != removeid and
+                       newprofilelist.count(profileid) == 0):
+                        newprofilelist.append(profileid)
+                # Update our volume configuration.
+                payload = {}
+                payload['ReplayProfileList'] = newprofilelist
+                r = self.client.put('StorageCenter/ScVolumeConfiguration/%s' %
+                                    self._get_id(scvolumecfg),
+                                    payload)
+                # check result
+                LOG.debug('_update_volume_profiles %s : %s : %s',
+                          self._get_id(scvolume),
+                          profilelist,
+                          r)
+                if r.status_code == 200:
+                    return True
+        return False
+
+    def _add_cg_volumes(self, profileid, add_volumes):
+        '''Trundles through add_volumes and adds the replay profile to them.
+
+        :param profileid: The ID of the replay profile.
+        :param add_volumes: List of Dell SC volume objects that are getting
+                            added to the consistency group.
+        :return: True/False on success/failure.
+        '''
+        for vol in add_volumes:
+            if (self._update_volume_profiles(self.find_volume(vol['id']),
+                                             addid=profileid,
+                                             removeid=None)):
+                LOG.info(_LI('Added %s to cg.'), vol['id'])
+            else:
+                LOG.error(_LE('Failed to add %s to cg.'), vol['id'])
+                return False
+        return True
+
+    def _remove_cg_volumes(self, profileid, remove_volumes):
+        '''Removes the replay profile from the remove_volumes list of vols.
+
+        :param profileid: The ID of the replay profile.
+        :param remove_volumes: List of Dell SC volume objects that are getting
+                               removed from the consistency group.
+        :return: True/False on success/failure.
+        '''
+        for vol in remove_volumes:
+            if (self._update_volume_profiles(self.find_volume(vol['id']),
+                                             addid=None,
+                                             removeid=profileid)):
+                LOG.info(_LI('Removed %s from cg.'), vol['id']),
+            else:
+                LOG.error(_LE('Failed to remove %s from cg.'), vol['id'])
+                return False
+        return True
+
+    def update_cg_volumes(self, profile, add_volumes=None,
+                          remove_volumes=None):
+        '''Adds or removes the profile from the specified volumes
+
+        :param profile: Dell SC replay profile object.
+        :param add_volumes: List of volumes we are adding to the consistency
+                            group. (Which is to say we are adding the profile
+                            to this list of volumes.)
+        :param remove_volumes: List of volumes we are removing from the
+                               consistency group. (Which is to say we are
+                               removing the profile from this list of volumes.)
+        :return: True/False on success/failure.
+        '''
+        ret = True
+        profileid = self._get_id(profile)
+        if add_volumes:
+            LOG.info(_LI('Adding volumes to cg %s.'), profile['name'])
+            ret = self._add_cg_volumes(profileid, add_volumes)
+        if ret and remove_volumes:
+            LOG.info(_LI('Removing volumes from cg %s.'), profile['name'])
+            ret = self._remove_cg_volumes(profileid, remove_volumes)
+        return ret
+
+    def snap_cg_replay(self, profile, replayid, expire):
+        '''Snaps a replay of a consistency group.
+
+        :param profile: The name of the consistency group profile.
+        :param replayid: The name of the replay.
+        :param expire: Time in mintues before a replay expires.  0 means no
+                       expiration.
+        :returns: Dell SC replay object.
+        '''
+        if profile:
+            payload = {}
+            payload['description'] = replayid
+            payload['expireTime'] = expire
+            r = self.client.post('StorageCenter/ScReplayProfile/%s/'
+                                 'CreateReplay'
+                                 % self._get_id(profile),
+                                 payload)
+            # 204 appears to be the correct return.
+            if r.status_code == 204:
+                LOG.debug('CreateReplay result %s', r)
+                return True
+
+            LOG.error(_LE('snap_cg error: %(code)d %(reason)s'),
+                      {'code': r.status_code,
+                       'reason': r.reason})
+        return False
+
+    def find_cg_replay(self, profile, replayid):
+        '''Searches for the replay by replayid.
+
+        replayid is stored in the replay's description attribute.
+
+        :param scvolume: Dell volume object.
+        :param replayid: Name to search for.  This is a portion of the
+                         snapshot ID as we do not have space for the entire
+                         GUID in the replay description.
+        :returns: Dell replay object or None.
+        '''
+        r = self.client.get('StorageCenter/ScReplayProfile/%s/ReplayList'
+                            % self._get_id(profile))
+        replays = self._get_json(r)
+        # This will be a list.  If it isn't bail
+        if isinstance(replays, list):
+            for replay in replays:
+                # The only place to save our information with the public
+                # api is the description field which isn't quite long
+                # enough.  So we check that our description is pretty much
+                # the max length and we compare that to the start of
+                # the snapshot id.
+                description = replay.get('description')
+                if (len(description) >= 30 and
+                        replayid.startswith(description) is True and
+                        replay.get('markedForExpiration') is not True):
+                    # We found our replay so return it.
+                    return replay
+        # If we are here then we didn't find the replay so warn and leave.
+        LOG.warning(_LW('Unable to find snapshot %s'),
+                    replayid)
+
+        return None
+
+    def delete_cg_replay(self, profile, replayid):
+        '''Finds a Dell replay by replayid string and expires it.
+
+        Once marked for expiration we do not return the replay as a snapshot
+        even though it might still exist.  (Backend requirements.)
+
+        :param cg_name: Consistency Group name.  This is the ReplayProfileName.
+        :param replayid: Name to search for.  This is a portion of the snapshot
+                         ID as we do not have space for the entire GUID in the
+                         replay description.
+        :returns: Boolean for success or failure.
+        '''
+
+        LOG.debug('Expiring consistency group replay %s', replayid)
+        replay = self.find_replay(profile,
+                                  replayid)
+        if replay is not None:
+            r = self.client.post('StorageCenter/ScReplay/%s/Expire'
+                                 % self._get_id(replay),
+                                 {})
+            if r.status_code != 204:
+                LOG.error(_LE('ScReplay Expire error: %(code)d %(reason)s'),
+                          {'code': r.status_code,
+                           'reason': r.reason})
+                return False
+        # We either couldn't find it or expired it.
+        return True
