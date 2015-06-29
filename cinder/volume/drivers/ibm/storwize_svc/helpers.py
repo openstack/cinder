@@ -57,7 +57,7 @@ class StorwizeHelpers(object):
 
     @staticmethod
     def handle_keyerror(cmd, out):
-        msg = (_('Could not find key in output of command %(cmd)s: %(out)s')
+        msg = (_('Could not find key in output of command %(cmd)s: %(out)s.')
                % {'out': out, 'cmd': cmd})
         raise exception.VolumeBackendAPIException(data=msg)
 
@@ -100,7 +100,7 @@ class StorwizeHelpers(object):
                 self.handle_keyerror('lsiogrp', iogrp)
             except ValueError:
                 msg = (_('Expected integer for node_count, '
-                         'svcinfo lsiogrp returned: %(node)s') %
+                         'svcinfo lsiogrp returned: %(node)s.') %
                        {'node': iogrp['node_count']})
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
@@ -156,7 +156,7 @@ class StorwizeHelpers(object):
                 if 'active' == s:
                     wwpns.add(i)
             node['WWPN'] = list(wwpns)
-            LOG.info(_LI('WWPN on node %(node)s: %(wwpn)s'),
+            LOG.info(_LI('WWPN on node %(node)s: %(wwpn)s.'),
                      {'node': node['id'], 'wwpn': node['WWPN']})
 
     def add_chap_secret_to_host(self, host_name):
@@ -178,7 +178,7 @@ class StorwizeHelpers(object):
             except KeyError:
                 self.handle_keyerror('lsiscsiauth', host_data)
         if not host_found:
-            msg = _('Failed to find host %s') % host_name
+            msg = _('Failed to find host %s.') % host_name
             raise exception.VolumeBackendAPIException(data=msg)
         return None
 
@@ -192,7 +192,7 @@ class StorwizeHelpers(object):
 
     def get_host_from_connector(self, connector):
         """Return the Storwize host described by the connector."""
-        LOG.debug('enter: get_host_from_connector: %s', connector)
+        LOG.debug('Enter: get_host_from_connector: %s.', connector)
 
         # If we have FC information, we have a faster lookup option
         host_name = None
@@ -210,7 +210,7 @@ class StorwizeHelpers(object):
                         self.handle_keyerror('lsfabric', wwpn_info)
 
         if host_name:
-            LOG.debug('leave: get_host_from_connector: host %s', host_name)
+            LOG.debug('Leave: get_host_from_connector: host %s.', host_name)
             return host_name
 
         # That didn't work, so try exhaustive search
@@ -234,7 +234,7 @@ class StorwizeHelpers(object):
             if found:
                 break
 
-        LOG.debug('leave: get_host_from_connector: host %s', host_name)
+        LOG.debug('Leave: get_host_from_connector: host %s.', host_name)
         return host_name
 
     def create_host(self, connector):
@@ -245,13 +245,13 @@ class StorwizeHelpers(object):
         host name (at most 55 characters), plus a random 8-character suffix to
         avoid collisions. The total length should be at most 63 characters.
         """
-        LOG.debug('enter: create_host: host %s', connector['host'])
+        LOG.debug('Enter: create_host: host %s.', connector['host'])
 
         # Before we start, make sure host name is a string and that we have at
         # least one port.
         host_name = connector['host']
         if not isinstance(host_name, six.string_types):
-            msg = _('create_host: Host name is not unicode or string')
+            msg = _('create_host: Host name is not unicode or string.')
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
@@ -292,7 +292,7 @@ class StorwizeHelpers(object):
         for port in ports:
             self.ssh.addhostport(host_name, port[0], port[1])
 
-        LOG.debug('leave: create_host: host %(host)s - %(host_name)s',
+        LOG.debug('Leave: create_host: host %(host)s - %(host_name)s.',
                   {'host': connector['host'], 'host_name': host_name})
         return host_name
 
@@ -302,8 +302,8 @@ class StorwizeHelpers(object):
     def map_vol_to_host(self, volume_name, host_name, multihostmap):
         """Create a mapping between a volume to a host."""
 
-        LOG.debug('enter: map_vol_to_host: volume %(volume_name)s to '
-                  'host %(host_name)s',
+        LOG.debug('Enter: map_vol_to_host: volume %(volume_name)s to '
+                  'host %(host_name)s.',
                   {'volume_name': volume_name, 'host_name': host_name})
 
         # Check if this volume is already mapped to this host
@@ -328,8 +328,8 @@ class StorwizeHelpers(object):
             self.ssh.mkvdiskhostmap(host_name, volume_name, result_lun,
                                     multihostmap)
 
-        LOG.debug('leave: map_vol_to_host: LUN %(result_lun)s, volume '
-                  '%(volume_name)s, host %(host_name)s',
+        LOG.debug('Leave: map_vol_to_host: LUN %(result_lun)s, volume '
+                  '%(volume_name)s, host %(host_name)s.',
                   {'result_lun': result_lun,
                    'volume_name': volume_name,
                    'host_name': host_name})
@@ -338,8 +338,8 @@ class StorwizeHelpers(object):
     def unmap_vol_from_host(self, volume_name, host_name):
         """Unmap the volume and delete the host if it has no more mappings."""
 
-        LOG.debug('enter: unmap_vol_from_host: volume %(volume_name)s from '
-                  'host %(host_name)s',
+        LOG.debug('Enter: unmap_vol_from_host: volume %(volume_name)s from '
+                  'host %(host_name)s.',
                   {'volume_name': volume_name, 'host_name': host_name})
 
         # Check if the mapping exists
@@ -375,8 +375,8 @@ class StorwizeHelpers(object):
         if not len(resp):
             self.delete_host(host_name)
 
-        LOG.debug('leave: unmap_vol_from_host: volume %(volume_name)s from '
-                  'host %(host_name)s',
+        LOG.debug('Leave: unmap_vol_from_host: volume %(volume_name)s from '
+                  'host %(host_name)s.',
                   {'volume_name': volume_name, 'host_name': host_name})
 
     @staticmethod
@@ -409,39 +409,39 @@ class StorwizeHelpers(object):
         if not (opts['rsize'] >= -1 and opts['rsize'] <= 100):
             raise exception.InvalidInput(
                 reason=_('Illegal value specified for storwize_svc_vol_rsize: '
-                         'set to either a percentage (0-100) or -1'))
+                         'set to either a percentage (0-100) or -1.'))
 
         # Check that warning is either -1 or between 0 and 100
         if not (opts['warning'] >= -1 and opts['warning'] <= 100):
             raise exception.InvalidInput(
                 reason=_('Illegal value specified for '
                          'storwize_svc_vol_warning: '
-                         'set to a percentage (0-100)'))
+                         'set to a percentage (0-100).'))
 
         # Check that grainsize is 32/64/128/256
         if opts['grainsize'] not in [32, 64, 128, 256]:
             raise exception.InvalidInput(
                 reason=_('Illegal value specified for '
                          'storwize_svc_vol_grainsize: set to either '
-                         '32, 64, 128, or 256'))
+                         '32, 64, 128, or 256.'))
 
         # Check that compression is supported
         if opts['compression'] and not state['compression_enabled']:
             raise exception.InvalidInput(
-                reason=_('System does not support compression'))
+                reason=_('System does not support compression.'))
 
         # Check that rsize is set if compression is set
         if opts['compression'] and opts['rsize'] == -1:
             raise exception.InvalidInput(
                 reason=_('If compression is set to True, rsize must '
-                         'also be set (not equal to -1)'))
+                         'also be set (not equal to -1).'))
 
         # Check that the requested protocol is enabled
         if opts['protocol'] not in state['enabled_protocols']:
             raise exception.InvalidInput(
                 reason=_('Illegal value %(prot)s specified for '
                          'storwize_svc_connection_protocol: '
-                         'valid values are %(enabled)s')
+                         'valid values are %(enabled)s.')
                 % {'prot': opts['protocol'],
                    'enabled': ','.join(state['enabled_protocols'])})
 
@@ -449,7 +449,7 @@ class StorwizeHelpers(object):
             avail_grps = ''.join(str(e) for e in state['available_iogrps'])
             raise exception.InvalidInput(
                 reason=_('I/O group %(iogrp)d is not valid; available '
-                         'I/O groups are %(avail)s')
+                         'I/O groups are %(avail)s.')
                 % {'iogrp': opts['iogrp'],
                    'avail': avail_grps})
 
@@ -557,14 +557,14 @@ class StorwizeHelpers(object):
                 testValue = False
                 LOG.debug('Helper.'
                           '_wait_for_condition: %(method_name)s '
-                          'execution failed for %(exception)s',
+                          'execution failed for %(exception)s.',
                           {'method_name': testmethod.__name__,
                            'exception': ex.message})
             if testValue:
                 raise loopingcall.LoopingCallDone()
 
             if int(time.time()) - start_time > timeout:
-                msg = (_('CommandLineHelper._wait_for_condition: %s timeout')
+                msg = (_('CommandLineHelper._wait_for_condition: %s timeout.')
                        % testmethod.__name__)
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
@@ -627,10 +627,10 @@ class StorwizeHelpers(object):
         return params
 
     def create_vdisk(self, name, size, units, pool, opts):
-        LOG.debug('enter: create_vdisk: vdisk %s ', name)
+        LOG.debug('Enter: create_vdisk: vdisk %s.', name)
         params = self._get_vdisk_create_params(opts)
         self.ssh.mkvdisk(name, size, units, pool, opts, params)
-        LOG.debug('leave: _create_vdisk: volume %s ', name)
+        LOG.debug('Leave: _create_vdisk: volume %s.', name)
 
     def get_vdisk_attributes(self, vdisk):
         attrs = self.ssh.lsvdisk(vdisk)
@@ -692,8 +692,8 @@ class StorwizeHelpers(object):
             elif mapping_attrs['status'] == 'stopped':
                 self.ssh.prestartfcmap(fc_map_id)
             elif mapping_attrs['status'] != 'preparing':
-                msg = (_('Unexecpted mapping status %(status)s for mapping'
-                         '%(id)s. Attributes: %(attr)s')
+                msg = (_('Unexecpted mapping status %(status)s for mapping '
+                         '%(id)s. Attributes: %(attr)s.')
                        % {'status': mapping_attrs['status'],
                           'id': fc_map_id,
                           'attr': mapping_attrs})
@@ -747,7 +747,7 @@ class StorwizeHelpers(object):
             # Release cg
             self.delete_fc_consistgrp(fc_consistgrp)
             LOG.error(_LE("Failed to create CGSnapshot. "
-                          "Exception: %s"), err)
+                          "Exception: %s."), err)
 
         return cgsnapshot, snapshots
 
@@ -763,7 +763,7 @@ class StorwizeHelpers(object):
                 snapshot['status'] = 'error_deleting'
             cgsnapshot['status'] = 'error_deleting'
             LOG.error(_LE("Failed to delete the snapshot %(snap)s of "
-                          "CGSnapshot. Exception: %(exception)s"),
+                          "CGSnapshot. Exception: %(exception)s."),
                       {'snap': snapshot['name'], 'exception': err})
         return cgsnapshot, snapshots
 
@@ -783,7 +783,7 @@ class StorwizeHelpers(object):
                 self.ssh.prestartfcconsistgrp(fc_consistgrp)
             elif mapping_attrs['status'] != 'preparing':
                 msg = (_('Unexpected mapping status %(status)s for mapping'
-                         '%(id)s. Attributes: %(attr)s') %
+                         '%(id)s. Attributes: %(attr)s.') %
                        {'status': mapping_attrs['status'],
                         'id': fc_consistgrp,
                         'attr': mapping_attrs})
@@ -794,31 +794,31 @@ class StorwizeHelpers(object):
 
     def run_flashcopy(self, source, target, timeout, full_copy=True):
         """Create a FlashCopy mapping from the source to the target."""
-        LOG.debug('enter: run_flashcopy: execute FlashCopy from source '
-                  '%(source)s to target %(target)s',
+        LOG.debug('Enter: run_flashcopy: execute FlashCopy from source '
+                  '%(source)s to target %(target)s.',
                   {'source': source, 'target': target})
 
         fc_map_id = self.ssh.mkfcmap(source, target, full_copy)
         self._prepare_fc_map(fc_map_id, timeout)
         self.ssh.startfcmap(fc_map_id)
 
-        LOG.debug('leave: run_flashcopy: FlashCopy started from '
-                  '%(source)s to %(target)s',
+        LOG.debug('Leave: run_flashcopy: FlashCopy started from '
+                  '%(source)s to %(target)s.',
                   {'source': source, 'target': target})
 
     def create_flashcopy_to_consistgrp(self, source, target, consistgrp,
                                        config, opts, full_copy=False,
                                        pool=None):
         """Create a FlashCopy mapping and add to consistent group."""
-        LOG.debug('enter: create_flashcopy_to_consistgrp: create FlashCopy'
+        LOG.debug('Enter: create_flashcopy_to_consistgrp: create FlashCopy'
                   ' from source %(source)s to target %(target)s'
-                  'Then add the flashcopy to %(cg)s',
+                  'Then add the flashcopy to %(cg)s.',
                   {'source': source, 'target': target, 'cg': consistgrp})
 
         src_attrs = self.get_vdisk_attributes(source)
         if src_attrs is None:
             msg = (_('create_copy: Source vdisk %(src)s '
-                     'does not exist') % {'src': source})
+                     'does not exist.') % {'src': source})
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
@@ -830,8 +830,8 @@ class StorwizeHelpers(object):
 
         self.ssh.mkfcmap(source, target, full_copy, consistgrp)
 
-        LOG.debug('leave: create_flashcopy_to_consistgrp: '
-                  'FlashCopy started from  %(source)s to %(target)s',
+        LOG.debug('Leave: create_flashcopy_to_consistgrp: '
+                  'FlashCopy started from  %(source)s to %(target)s.',
                   {'source': source, 'target': target})
 
     def _get_vdisk_fc_mappings(self, vdisk):
@@ -856,7 +856,7 @@ class StorwizeHelpers(object):
 
     def _check_vdisk_fc_mappings(self, name, allow_snaps=True):
         """FlashCopy mapping check helper."""
-        LOG.debug('Loopcall: _check_vdisk_fc_mappings(), vdisk %s', name)
+        LOG.debug('Loopcall: _check_vdisk_fc_mappings(), vdisk %s.', name)
         mapping_ids = self._get_vdisk_fc_mappings(name)
         wait_for_copy = False
         for map_id in mapping_ids:
@@ -880,7 +880,7 @@ class StorwizeHelpers(object):
                     # A snapshot
                     if target != name:
                         msg = (_('Vdisk %(name)s not involved in '
-                                 'mapping %(src)s -> %(tgt)s') %
+                                 'mapping %(src)s -> %(tgt)s.') %
                                {'name': name, 'src': source, 'tgt': target})
                         LOG.error(msg)
                         raise exception.VolumeDriverException(message=msg)
@@ -915,7 +915,7 @@ class StorwizeHelpers(object):
         # before it finishes. Don't set the sleep interval shorter
         # than the heartbeat. Otherwise volume service heartbeat
         # will not be serviced.
-        LOG.debug('Calling _ensure_vdisk_no_fc_mappings: vdisk %s',
+        LOG.debug('Calling _ensure_vdisk_no_fc_mappings: vdisk %s.',
                   name)
         ret = timer.start(interval=self.check_fcmapping_interval).wait()
         timer.stop()
@@ -923,24 +923,24 @@ class StorwizeHelpers(object):
 
     def delete_vdisk(self, vdisk, force):
         """Ensures that vdisk is not part of FC mapping and deletes it."""
-        LOG.debug('enter: delete_vdisk: vdisk %s', vdisk)
+        LOG.debug('Enter: delete_vdisk: vdisk %s.', vdisk)
         if not self.is_vdisk_defined(vdisk):
             LOG.info(_LI('Tried to delete non-existent vdisk %s.'), vdisk)
             return
         self.ensure_vdisk_no_fc_mappings(vdisk)
         self.ssh.rmvdisk(vdisk, force=force)
-        LOG.debug('leave: delete_vdisk: vdisk %s', vdisk)
+        LOG.debug('Leave: delete_vdisk: vdisk %s.', vdisk)
 
     def create_copy(self, src, tgt, src_id, config, opts,
                     full_copy, pool=None):
         """Create a new snapshot using FlashCopy."""
-        LOG.debug('enter: create_copy: snapshot %(src)s to %(tgt)s',
+        LOG.debug('Enter: create_copy: snapshot %(src)s to %(tgt)s.',
                   {'tgt': tgt, 'src': src})
 
         src_attrs = self.get_vdisk_attributes(src)
         if src_attrs is None:
             msg = (_('create_copy: Source vdisk %(src)s (%(src_id)s) '
-                     'does not exist') % {'src': src, 'src_id': src_id})
+                     'does not exist.') % {'src': src, 'src_id': src_id})
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
@@ -956,8 +956,8 @@ class StorwizeHelpers(object):
             with excutils.save_and_reraise_exception():
                 self.delete_vdisk(tgt, True)
 
-        LOG.debug('leave: _create_copy: snapshot %(tgt)s from '
-                  'vdisk %(src)s',
+        LOG.debug('Leave: _create_copy: snapshot %(tgt)s from '
+                  'vdisk %(src)s.',
                   {'tgt': tgt, 'src': src})
 
     def extend_vdisk(self, vdisk, amount):
@@ -1059,7 +1059,7 @@ class StorwizeHelpers(object):
     def change_vdisk_iogrp(self, vdisk, state, iogrp):
         if state['code_level'] < (6, 4, 0, 0):
             LOG.debug('Ignore change IO group as storage code level is '
-                      '%(code_level)s, below the required 6.4.0.0',
+                      '%(code_level)s, below the required 6.4.0.0.',
                       {'code_level': state['code_level']})
         else:
             self.ssh.movevdisk(vdisk, str(iogrp[0]))
