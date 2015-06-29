@@ -21,6 +21,7 @@ import datetime
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_log import versionutils
 from oslo_utils import importutils
 from oslo_utils import timeutils
 import six
@@ -29,7 +30,6 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.i18n import _, _LE
-from cinder.openstack.common import versionutils
 
 
 LOG = logging.getLogger(__name__)

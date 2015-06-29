@@ -14,10 +14,10 @@ import abc
 
 from oslo_concurrency import processutils
 from oslo_log import log as logging
+from oslo_log import versionutils
 
 from cinder import exception
 from cinder.i18n import _, _LI, _LW, _LE
-from cinder.openstack.common import versionutils
 from cinder import utils
 from cinder.volume.targets import driver
 from cinder.volume import utils as vutils
