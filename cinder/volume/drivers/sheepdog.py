@@ -116,10 +116,9 @@ class SheepdogClient(object):
                        'Ensure all sheep daemons are running.')
         raise exception.SheepdogError(reason=reason)
 
-    def create(self, volume):
+    def create(self, vdiname, size):
         try:
-            self._run_dog('vdi', 'create', volume['name'],
-                          '%sG' % volume['size'])
+            self._run_dog('vdi', 'create', vdiname, '%sG' % size)
         except exception.SheepdogCmdError as e:
             stderr = e.kwargs['stderr']
             with excutils.save_and_reraise_exception():
@@ -128,16 +127,15 @@ class SheepdogClient(object):
                               "addr: %(addr)s, port: %(port)s"),
                               {'addr': self.addr, 'port': self.port})
                 elif stderr.endswith(self.DOG_RESP_VDI_ALREADY_EXISTS):
-                    LOG.error(_LE('Volume already exists. %s'), volume['name'])
+                    LOG.error(_LE('Volume already exists. %s'), vdiname)
                 else:
-                    LOG.error(_LE('Failed to create volume. %s'),
-                              volume['name'])
+                    LOG.error(_LE('Failed to create volume. %s'), vdiname)
 
-    def delete(self, volume):
+    def delete(self, vdiname):
         try:
-            (stdout, stderr) = self._run_dog('vdi', 'delete', volume['name'])
+            (stdout, stderr) = self._run_dog('vdi', 'delete', vdiname)
             if stderr.endswith(self.DOG_RESP_VDI_NOT_FOUND):
-                LOG.warning(_LW('Volume not found. %s'), volume['name'])
+                LOG.warning(_LW('Volume not found. %s'), vdiname)
         except exception.SheepdogCmdError as e:
             stderr = e.kwargs['stderr']
             with excutils.save_and_reraise_exception():
@@ -146,8 +144,7 @@ class SheepdogClient(object):
                               'addr: %(addr)s, port: %(port)s'),
                               {'addr': self.addr, 'port': self.port})
                 else:
-                    LOG.error(_LE('Failed to delete volume. %s'),
-                              volume['name'])
+                    LOG.error(_LE('Failed to delete volume. %s'), vdiname)
 
 
 class SheepdogIOWrapper(io.RawIOBase):
@@ -323,7 +320,7 @@ class SheepdogDriver(driver.VolumeDriver):
 
     def create_volume(self, volume):
         """Create a sheepdog volume."""
-        self.client.create(volume)
+        self.client.create(volume['name'], volume['size'])
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create a sheepdog volume from a snapshot."""
@@ -335,7 +332,7 @@ class SheepdogDriver(driver.VolumeDriver):
 
     def delete_volume(self, volume):
         """Delete a logical volume."""
-        self.client.delete(volume)
+        self.client.delete(volume['name'])
 
     def _resize(self, volume, size=None):
         if not size:
