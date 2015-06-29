@@ -175,6 +175,65 @@ class PropertyDescriptor(object):
         self.converter = converter
 
 
+class VNXError(object):
+
+    GENERAL_NOT_FOUND = 'cannot find|may not exist|does not exist'
+
+    SG_NAME_IN_USE = 'Storage Group name already in use'
+
+    LUN_ALREADY_EXPANDED = 0x712d8e04
+    LUN_EXISTED = 0x712d8d04
+    LUN_IS_PREPARING = 0x712d8e0e
+    LUN_IN_SG = 'contained in a Storage Group|LUN mapping still exists'
+    LUN_NOT_MIGRATING = ('The specified source LUN is '
+                         'not currently migrating')
+
+    CG_IS_DELETING = 0x712d8801
+    CG_EXISTED = 0x716d8021
+    CG_SNAP_NAME_EXISTED = 0x716d8005
+
+    SNAP_NAME_EXISTED = 0x716d8005
+    SNAP_NAME_IN_USE = 0x716d8003
+    SNAP_ALREADY_MOUNTED = 0x716d8055
+    SNAP_NOT_ATTACHED = ('The specified Snapshot mount point '
+                         'is not currently attached.')
+
+    @classmethod
+    def get_all(cls):
+        return (member for member in dir(cls)
+                if cls._is_enum(member))
+
+    @classmethod
+    def _is_enum(cls, name):
+        return (isinstance(name, str)
+                and hasattr(cls, name)
+                and not callable(name)
+                and name.isupper())
+
+    @staticmethod
+    def _match(output, error_code):
+        is_match = False
+        if VNXError._is_enum(error_code):
+            error_code = getattr(VNXError, error_code)
+
+        if isinstance(error_code, int):
+            error_code = hex(error_code)
+
+        if isinstance(error_code, str):
+            error_code = error_code.strip()
+            found = re.findall(error_code, output,
+                               flags=re.IGNORECASE)
+            is_match = len(found) > 0
+        return is_match
+
+    @classmethod
+    def has_error(cls, output, *error_codes):
+        if error_codes is None or len(error_codes) == 0:
+            error_codes = VNXError.get_all()
+        return any([cls._match(output, error_code)
+                    for error_code in error_codes])
+
+
 @decorate_all_methods(log_enter_exit)
 class CommandLineHelper(object):
 
@@ -274,19 +333,6 @@ class CommandLineHelper(object):
         int)
 
     POOL_FEATURE_DEFAULT = (MAX_POOL_LUNS, TOTAL_POOL_LUNS)
-
-    CLI_RESP_PATTERN_CG_NOT_FOUND = 'Cannot find'
-    CLI_RESP_PATTERN_SNAP_NOT_FOUND = 'The specified snapshot does not exist'
-    CLI_RESP_PATTERN_LUN_NOT_EXIST = 'The (pool lun) may not exist'
-    CLI_RESP_PATTERN_SMP_NOT_ATTACHED = ('The specified Snapshot mount point '
-                                         'is not currently attached.')
-    CLI_RESP_PATTERN_SG_NAME_IN_USE = 'Storage Group name already in use'
-    CLI_RESP_PATTERN_LUN_IN_SG_1 = 'contained in a Storage Group'
-    CLI_RESP_PATTERN_LUN_IN_SG_2 = 'Host LUN/LUN mapping still exists'
-    CLI_RESP_PATTERN_LUN_NOT_MIGRATING = ('The specified source LUN '
-                                          'is not currently migrating')
-    CLI_RESP_PATTERN_LUN_IS_PREPARING = '0x712d8e0e'
-    CLI_RESP_PATTERM_IS_NOT_SMP = 'it is not a snapshot mount point'
 
     def __init__(self, configuration):
         configuration.append_config_values(san.san_opts)
@@ -438,7 +484,7 @@ class CommandLineHelper(object):
         out, rc = self.command_execute(*cmd)
         if rc != 0:
             # Ignore the error that due to retry
-            if rc == 4 and out.find('(0x712d8d04)') >= 0:
+            if VNXError.has_error(out, VNXError.LUN_EXISTED):
                 LOG.warning(_LW('LUN already exists, LUN name %(name)s. '
                                 'Message: %(msg)s'),
                             {'name': name, 'msg': out})
@@ -467,8 +513,7 @@ class CommandLineHelper(object):
                 data = self.get_lun_by_name(name, self.LUN_ALL, False)
             except exception.EMCVnxCLICmdError as ex:
                 orig_out = "\n".join(ex.kwargs["out"])
-                if orig_out.find(
-                        self.CLI_RESP_PATTERN_LUN_NOT_EXIST) >= 0:
+                if VNXError.has_error(orig_out, VNXError.GENERAL_NOT_FOUND):
                     return False
                 else:
                     raise
@@ -492,7 +537,7 @@ class CommandLineHelper(object):
         out, rc = self.command_execute(*command_delete_lun)
         if rc != 0 or out.strip():
             # Ignore the error that due to retry
-            if rc == 9 and self.CLI_RESP_PATTERN_LUN_NOT_EXIST in out:
+            if VNXError.has_error(out, VNXError.GENERAL_NOT_FOUND):
                 LOG.warning(_LW("LUN is already deleted, LUN name %(name)s. "
                                 "Message: %(msg)s"),
                             {'name': name, 'msg': out})
@@ -565,7 +610,7 @@ class CommandLineHelper(object):
                                        poll=poll)
         if rc != 0:
             # Ignore the error that due to retry
-            if rc == 4 and out.find("(0x712d8e04)") >= 0:
+            if VNXError.has_error(out, VNXError.LUN_ALREADY_EXPANDED):
                 LOG.warning(_LW("LUN %(name)s is already expanded. "
                                 "Message: %(msg)s"),
                             {'name': name, 'msg': out})
@@ -616,8 +661,7 @@ class CommandLineHelper(object):
         out, rc = self.command_execute(*command_create_cg)
         if rc != 0:
             # Ignore the error if consistency group already exists
-            if (rc == 33 and
-                    out.find("(0x716d8021)") >= 0):
+            if VNXError.has_error(out, VNXError.CG_EXISTED):
                 LOG.warning(_LW('Consistency group %(name)s already '
                                 'exists. Message: %(msg)s'),
                             {'name': cg_name, 'msg': out})
@@ -709,11 +753,11 @@ class CommandLineHelper(object):
         out, rc = self.command_execute(*delete_cg_cmd)
         if rc != 0:
             # Ignore the error if CG doesn't exist
-            if rc == 13 and out.find(self.CLI_RESP_PATTERN_CG_NOT_FOUND) >= 0:
+            if VNXError.has_error(out, VNXError.GENERAL_NOT_FOUND):
                 LOG.warning(_LW("CG %(cg_name)s does not exist. "
                                 "Message: %(msg)s"),
                             {'cg_name': cg_name, 'msg': out})
-            elif rc == 1 and out.find("0x712d8801") >= 0:
+            elif VNXError.has_error(out, VNXError.CG_IS_DELETING):
                 LOG.warning(_LW("CG %(cg_name)s is deleting. "
                                 "Message: %(msg)s"),
                             {'cg_name': cg_name, 'msg': out})
@@ -737,8 +781,7 @@ class CommandLineHelper(object):
         out, rc = self.command_execute(*create_cg_snap_cmd)
         if rc != 0:
             # Ignore the error if cgsnapshot already exists
-            if (rc == 5 and
-                    out.find("(0x716d8005)") >= 0):
+            if VNXError.has_error(out, VNXError.CG_SNAP_NAME_EXISTED):
                 LOG.warning(_LW('Cgsnapshot name %(name)s already '
                                 'exists. Message: %(msg)s'),
                             {'name': snap_name, 'msg': out})
@@ -753,8 +796,7 @@ class CommandLineHelper(object):
         out, rc = self.command_execute(*delete_cg_snap_cmd)
         if rc != 0:
             # Ignore the error if cgsnapshot does not exist.
-            if (rc == 5 and
-                    out.find(self.CLI_RESP_PATTERN_SNAP_NOT_FOUND) >= 0):
+            if VNXError.has_error(out, VNXError.GENERAL_NOT_FOUND):
                 LOG.warning(_LW('Snapshot %(name)s for consistency group '
                                 'does not exist. Message: %(msg)s'),
                             {'name': snap_name, 'msg': out})
@@ -773,8 +815,7 @@ class CommandLineHelper(object):
                                            poll=False)
             if rc != 0:
                 # Ignore the error that due to retry
-                if (rc == 5 and
-                        out.find("(0x716d8005)") >= 0):
+                if VNXError.has_error(out, VNXError.SNAP_NAME_EXISTED):
                     LOG.warning(_LW('Snapshot %(name)s already exists. '
                                     'Message: %(msg)s'),
                                 {'name': name, 'msg': out})
@@ -801,7 +842,7 @@ class CommandLineHelper(object):
                     return True
                 # The snapshot cannot be destroyed because it is
                 # attached to a snapshot mount point. Wait
-                elif rc == 3 and out.find("(0x716d8003)") >= 0:
+                elif VNXError.has_error(out, VNXError.SNAP_NAME_IN_USE):
                     LOG.warning(_LW("Snapshot %(name)s is in use, retry. "
                                     "Message: %(msg)s"),
                                 {'name': name, 'msg': out})
@@ -828,7 +869,7 @@ class CommandLineHelper(object):
                                        poll=False)
         if rc != 0:
             # Ignore the error that due to retry
-            if rc == 4 and out.find("(0x712d8d04)") >= 0:
+            if VNXError.has_error(out, VNXError.LUN_EXISTED):
                 LOG.warning(_LW("Mount point %(name)s already exists. "
                                 "Message: %(msg)s"),
                             {'name': name, 'msg': out})
@@ -867,7 +908,7 @@ class CommandLineHelper(object):
         out, rc = self.command_execute(*command_attach_mount_point)
         if rc != 0:
             # Ignore the error that due to retry
-            if rc == 85 and out.find('(0x716d8055)') >= 0:
+            if VNXError.has_error(out, VNXError.SNAP_ALREADY_MOUNTED):
                 LOG.warning(_LW("Snapshot %(snapname)s is attached to "
                                 "snapshot mount point %(mpname)s already. "
                                 "Message: %(msg)s"),
@@ -887,8 +928,7 @@ class CommandLineHelper(object):
         out, rc = self.command_execute(*command_detach_mount_point)
         if rc != 0:
             # Ignore the error that due to retry
-            if (rc == 162 and
-                    out.find(self.CLI_RESP_PATTERN_SMP_NOT_ATTACHED) >= 0):
+            if VNXError.has_error(out, VNXError.SNAP_NOT_ATTACHED):
                 LOG.warning(_LW("The specified Snapshot mount point %s is not "
                                 "currently attached."), smp_name)
             else:
@@ -972,7 +1012,7 @@ class CommandLineHelper(object):
                               {"src_id": src_id,
                                "percentage": percentage_complete})
             else:
-                if re.search(self.CLI_RESP_PATTERN_LUN_NOT_MIGRATING, out):
+                if VNXError.has_error(out, VNXError.LUN_NOT_MIGRATING):
                     LOG.debug("Migration of LUN %s is finished.", src_id)
                     mig_ready = True
                 else:
@@ -984,7 +1024,7 @@ class CommandLineHelper(object):
             out, rc = self.command_execute(*cmd_migrate_list,
                                            poll=poll)
             if rc != 0:
-                if re.search(self.CLI_RESP_PATTERN_LUN_NOT_MIGRATING, out):
+                if VNXError.has_error(out, VNXError.LUN_NOT_MIGRATING):
                     LOG.debug("Migration of LUN %s is finished.", src_id)
                     return True
                 else:
@@ -1077,7 +1117,7 @@ class CommandLineHelper(object):
         out, rc = self.command_execute(*command_create_storage_group)
         if rc != 0:
             # Ignore the error that due to retry
-            if rc == 66 and self.CLI_RESP_PATTERN_SG_NAME_IN_USE in out >= 0:
+            if VNXError.has_error(out, VNXError.SG_NAME_IN_USE):
                 LOG.warning(_LW('Storage group %(name)s already exists. '
                                 'Message: %(msg)s'),
                             {'name': name, 'msg': out})
@@ -1933,8 +1973,7 @@ class EMCVnxCliBase(object):
         except exception.EMCVnxCLICmdError as ex:
             orig_out = "\n".join(ex.kwargs["out"])
             if (self.force_delete_lun_in_sg and
-                    (self._client.CLI_RESP_PATTERN_LUN_IN_SG_1 in orig_out or
-                     self._client.CLI_RESP_PATTERN_LUN_IN_SG_2 in orig_out)):
+                    VNXError.has_error(orig_out, VNXError.LUN_IN_SG)):
                 LOG.warning(_LW('LUN corresponding to %s is still '
                                 'in some Storage Groups.'
                                 'Try to bring the LUN out of Storage Groups '
@@ -1957,8 +1996,7 @@ class EMCVnxCliBase(object):
         except exception.EMCVnxCLICmdError as ex:
             with excutils.save_and_reraise_exception(ex) as ctxt:
                 out = "\n".join(ex.kwargs["out"])
-                if (self._client.CLI_RESP_PATTERN_LUN_IS_PREPARING
-                        in out):
+                if VNXError.has_error(out, VNXError.LUN_IS_PREPARING):
                     # The error means the operation cannot be performed
                     # because the LUN is 'Preparing'. Wait for a while
                     # so that the LUN may get out of the transitioning
@@ -2256,8 +2294,7 @@ class EMCVnxCliBase(object):
         except exception.EMCVnxCLICmdError as ex:
             with excutils.save_and_reraise_exception(ex) as ctxt:
                 out = "\n".join(ex.kwargs["out"])
-                if (self._client.CLI_RESP_PATTERN_LUN_IS_PREPARING
-                        in out):
+                if VNXError.has_error(out, VNXError.LUN_IS_PREPARING):
                     # The error means the operation cannot be performed
                     # because the LUN is 'Preparing'. Wait for a while
                     # so that the LUN may get out of the transitioning

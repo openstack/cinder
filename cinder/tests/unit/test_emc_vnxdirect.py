@@ -4416,3 +4416,61 @@ class EMCVNXCLIDMultiPoolsTestCase(DriverTestCaseBase):
         driver = self.generate_driver(self.configuration)
         self.assertEqual(set(),
                          driver.cli.storage_pools)
+
+VNXError = emc_vnx_cli.VNXError
+
+
+class VNXErrorTest(test.TestCase):
+
+    def test_has_error(self):
+        output = "The specified snapshot name is already in use. (0x716d8005)"
+        self.assertTrue(VNXError.has_error(output))
+
+    def test_has_error_with_specific_error(self):
+        output = "The specified snapshot name is already in use. (0x716d8005)"
+        has_error = VNXError.has_error(output, VNXError.SNAP_NAME_EXISTED)
+        self.assertTrue(has_error)
+
+        has_error = VNXError.has_error(output, VNXError.LUN_ALREADY_EXPANDED)
+        self.assertFalse(has_error)
+
+    def test_has_error_not_found(self):
+        output = "Cannot find the consistency group."
+        has_error = VNXError.has_error(output)
+        self.assertTrue(has_error)
+
+        has_error = VNXError.has_error(output, VNXError.GENERAL_NOT_FOUND)
+        self.assertTrue(has_error)
+
+    def test_has_error_not_exist(self):
+        output = "The specified snapshot does not exist"
+        has_error = VNXError.has_error(output, VNXError.GENERAL_NOT_FOUND)
+        self.assertTrue(has_error)
+
+        output = "The (pool lun) may not exist"
+        has_error = VNXError.has_error(output, VNXError.GENERAL_NOT_FOUND)
+        self.assertTrue(has_error)
+
+    def test_has_error_multi_line(self):
+        output = """Could not retrieve the specified (pool lun).
+                    The (pool lun) may not exist"""
+        has_error = VNXError.has_error(output, VNXError.GENERAL_NOT_FOUND)
+        self.assertTrue(has_error)
+
+    def test_has_error_regular_string_false(self):
+        output = "Cannot unbind LUN because it's contained in a Storage Group"
+        has_error = VNXError.has_error(output, VNXError.GENERAL_NOT_FOUND)
+        self.assertFalse(has_error)
+
+    def test_has_error_multi_errors(self):
+        output = "Cannot unbind LUN because it's contained in a Storage Group"
+        has_error = VNXError.has_error(output,
+                                       VNXError.LUN_IN_SG,
+                                       VNXError.GENERAL_NOT_FOUND)
+        self.assertTrue(has_error)
+
+        output = "Cannot unbind LUN because it's contained in a Storage Group"
+        has_error = VNXError.has_error(output,
+                                       VNXError.LUN_ALREADY_EXPANDED,
+                                       VNXError.LUN_NOT_MIGRATING)
+        self.assertFalse(has_error)
