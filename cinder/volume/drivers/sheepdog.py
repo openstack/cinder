@@ -63,7 +63,7 @@ class SheepdogClient(object):
                                       'Waiting for cluster to be formatted')
     DOG_RESP_CLUSTER_WAITING = ('Cluster status: '
                                 'Waiting for other nodes to join cluster')
-    DOG_RESP_VDI_EXISTS_ALREADY = ': VDI exists already\\n'
+    DOG_RESP_VDI_ALREADY_EXISTS = ': VDI exists already\\n'
     DOG_RESP_VDI_NOT_FOUND = ': No VDI found\n'
 
     def __init__(self, addr, port):
@@ -126,7 +126,7 @@ class SheepdogClient(object):
                     LOG.error(_LE("Failed to connect sheep daemon. "
                               "addr: %(addr)s, port: %(port)s"),
                               {'addr': self.addr, 'port': self.port})
-                elif stderr.endswith(self.DOG_RESP_VDI_EXISTS_ALREADY):
+                elif stderr.endswith(self.DOG_RESP_VDI_ALREADY_EXISTS):
                     LOG.error(_LE('Volume already exists. %s'), volume['name'])
                 else:
                     LOG.error(_LE('Failed to create volume. %s'),
