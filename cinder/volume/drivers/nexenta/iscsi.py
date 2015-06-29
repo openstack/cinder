@@ -31,7 +31,7 @@ from cinder.volume.drivers.nexenta import jsonrpc
 from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 
-VERSION = '1.3.0.2'
+VERSION = '1.3.0.3'
 LOG = logging.getLogger(__name__)
 
 
@@ -55,6 +55,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         1.3.0 - Added retype method.
         1.3.0.1 - Backport imports (logging, translations) for Juno.
         1.3.0.2 - Added a temporary fix for target creation.
+        1.3.0.3 - Compatability for volumes created before 1.3.0.2
     """
 
     VERSION = VERSION
@@ -163,6 +164,15 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             self.configuration.nexenta_target_group_prefix,
             self.nms_host)
 
+    def _get_target_name_old(self, volume_name):
+        """Return iSCSI target name to access volume."""
+        return '%s%s' % (self.configuration.nexenta_target_prefix, volume_name)
+
+    def _get_target_group_name_old(self, volume_name):
+        """Return Nexenta iSCSI target group name for volume."""
+        return '%s%s' % (self.configuration.nexenta_target_group_prefix,
+                         volume_name)
+
     @staticmethod
     def _get_clone_snapshot_name(volume):
         """Return name for snapshot that will be used to clone the volume."""
@@ -185,6 +195,13 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             '%sG' % (volume['size'],),
             self.configuration.nexenta_blocksize,
             self.configuration.nexenta_sparse)
+
+        zvol_name = self._get_zvol_name(volume['name'])
+        target_group_name = self._get_target_group_name()
+
+        self.nms.scsidisk.create_lu(zvol_name, {})
+        self.nms.scsidisk.add_lun_mapping_entry(zvol_name, {
+            'target_group': target_group_name})
         return self.create_export(None, volume)
 
     def extend_volume(self, volume, new_size):
@@ -224,6 +241,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             except nexenta.NexentaException as exc:
                 LOG.warning('Cannot delete snapshot %(origin)s: %(exc)s',
                             {'origin': origin, 'exc': exc})
+
+        self.nms.scsidisk.delete_lu(volume_name)
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume.
@@ -536,7 +555,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             shared = False  # LU does not exist
         return shared
 
-    def _get_lun(self, volume_name, host=None):
+    def _get_lun(self, volume_name, host=None, old=False):
         """Get lu mapping number for Zvol.
 
         :param zvol_name: Zvol name
@@ -544,7 +563,10 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :return: LUN
         """
         zvol_name = self._get_zvol_name(volume_name)
-        target_group_name = self._get_target_group_name()
+        if old:
+            target_group_name = self._get_target_group_name_old(volume_name)
+        else:
+            target_group_name = self._get_target_group_name()
         if not(self._is_lu_shared(zvol_name)):
             raise LookupError("LU does not exist for ZVol: %s", zvol_name)
         mappings = self.nms.scsidisk.list_lun_mapping_entries(zvol_name)
@@ -579,12 +601,29 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def _get_provider_location(self, volume):
         """Returns volume iscsiadm-formatted provider location string."""
-        return '%(host)s:%(port)s,1 %(name)s %(lun)s' % {
-            'host': self.nms_host,
-            'port': self.configuration.nexenta_iscsi_target_portal_port,
-            'name': self._get_target_name(),
-            'lun': self._get_lun(volume['name'])
-        }
+        if not volume['provider_location']:
+            # backport for volumes created before 1.3.0.2
+            if self._target_exists(self._get_target_name_old(volume['name'])):
+                provider_location = '%(host)s:%(port)s,1 %(name)s %(lun)s' % {
+                    'host': self.nms_host,
+                    'port': (
+                        self.configuration.nexenta_iscsi_target_portal_port),
+                    'name': self._get_target_name_old(volume['name']),
+                    'lun': self._get_lun(volume['name'], True)
+                }
+                volume['provider_location'] = provider_location
+                return provider_location
+
+            provider_location = '%(host)s:%(port)s,1 %(name)s %(lun)s' % {
+                'host': self.nms_host,
+                'port': self.configuration.nexenta_iscsi_target_portal_port,
+                'name': self._get_target_name(),
+                'lun': self._get_lun(volume['name'])
+            }
+            volume['provider_location'] = provider_location
+            return provider_location
+        else:
+            return volume['provider_location']
 
     def _do_export(self, _ctx, volume, ensure=False):
         """Do all steps to get zvol exported as LUN 0 at separate target.
@@ -593,6 +632,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :param ensure: if True, ignore errors caused by already existing
             resources
         """
+
         zvol_name = self._get_zvol_name(volume['name'])
         target_group_name = self._get_target_group_name()
 
@@ -620,7 +660,6 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :param volume: reference of volume to be exported
         :return: iscsiadm-formatted provider location string
         """
-        self._do_export(_ctx, volume, ensure=False)
         return {'provider_location': self._get_provider_location(volume)}
 
     def ensure_export(self, _ctx, volume):
@@ -630,13 +669,13 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         """
         self._do_export(_ctx, volume, ensure=True)
 
-    def remove_export(self, _ctx, volume):
-        """Destroy all resources created to export zvol.
+    def remove_export(self, context, volume):
+        """Driver entry point to remove an export for a volume.
 
-        :param volume: reference of volume to be unexported
+        Since exporting is idempotent in this driver, we have nothing
+        to do for unexporting.
         """
-        zvol_name = self._get_zvol_name(volume['name'])
-        self.nms.scsidisk.delete_lu(zvol_name)
+        pass
 
     def get_volume_stats(self, refresh=False):
         """Get volume stats.
