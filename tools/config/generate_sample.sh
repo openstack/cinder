@@ -154,4 +154,6 @@ oslo-config-generator \
 --namespace oslo.middleware \
 --namespace oslo.service \
 --namespace policy \
+--namespace oslo.policy \
+--namespace oslo.db.concurrency \
 --namespace keystonemiddleware.auth_token | grep -v '^\[DEFAULT\]'  >> $OUTPUTFILE
