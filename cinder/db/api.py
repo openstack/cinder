@@ -936,9 +936,9 @@ def cgsnapshot_get(context, cgsnapshot_id):
     return IMPL.cgsnapshot_get(context, cgsnapshot_id)
 
 
-def cgsnapshot_get_all(context):
+def cgsnapshot_get_all(context, filters=None):
     """Get all cgsnapshots."""
-    return IMPL.cgsnapshot_get_all(context)
+    return IMPL.cgsnapshot_get_all(context, filters)
 
 
 def cgsnapshot_create(context, values):
@@ -946,14 +946,14 @@ def cgsnapshot_create(context, values):
     return IMPL.cgsnapshot_create(context, values)
 
 
-def cgsnapshot_get_all_by_group(context, group_id):
+def cgsnapshot_get_all_by_group(context, group_id, filters=None):
     """Get all cgsnapshots belonging to a consistency group."""
-    return IMPL.cgsnapshot_get_all_by_group(context, group_id)
+    return IMPL.cgsnapshot_get_all_by_group(context, group_id, filters)
 
 
-def cgsnapshot_get_all_by_project(context, project_id):
+def cgsnapshot_get_all_by_project(context, project_id, filters=None):
     """Get all cgsnapshots belonging to a project."""
-    return IMPL.cgsnapshot_get_all_by_project(context, project_id)
+    return IMPL.cgsnapshot_get_all_by_project(context, project_id, filters)
 
 
 def cgsnapshot_update(context, cgsnapshot_id, values):
