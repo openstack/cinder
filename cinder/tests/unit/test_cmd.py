@@ -14,7 +14,10 @@ import datetime
 import six
 import sys
 
-import mock
+try:
+    from unittest import mock
+except ImportError:
+    import mock
 from oslo_config import cfg
 
 try:
@@ -533,7 +536,7 @@ class TestCinderManageCmd(test.TestCase):
 
             self.assertEqual(expected_out, fake_out.getvalue())
 
-    @mock.patch('__builtin__.open')
+    @mock.patch('six.moves.builtins.open')
     @mock.patch('os.listdir')
     def test_get_log_commands_errors(self, listdir, open):
         CONF.set_override('log_dir', 'fake-dir')
@@ -552,7 +555,7 @@ class TestCinderManageCmd(test.TestCase):
             open.assert_called_once_with('fake-dir/fake-error.log', 'r')
             listdir.assert_called_once_with(CONF.log_dir)
 
-    @mock.patch('__builtin__.open')
+    @mock.patch('six.moves.builtins.open')
     @mock.patch('os.path.exists')
     def test_get_log_commands_syslog_no_log_file(self, path_exists, open):
         path_exists.return_value = False

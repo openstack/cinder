@@ -229,7 +229,7 @@ def parse_optional_create(argv):
 
     for arg in argv:
         if arg.startswith('-a'):
-            ips = filter(None, arg[2:].split(','))
+            ips = [ip for ip in arg[2:].split(',') if ip]
             if not ips:
                 usage()
             optional_args['portals_ips'] = ips
