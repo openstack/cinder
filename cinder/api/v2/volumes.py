@@ -188,9 +188,8 @@ class VolumeController(wsgi.Controller):
         try:
             vol = self.volume_api.get(context, id, viewable_admin_meta=True)
             req.cache_db_volume(vol)
-        except exception.NotFound:
-            msg = _("Volume could not be found")
-            raise exc.HTTPNotFound(explanation=msg)
+        except exception.VolumeNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
 
         utils.add_visible_admin_metadata(vol)
 
@@ -205,9 +204,8 @@ class VolumeController(wsgi.Controller):
         try:
             volume = self.volume_api.get(context, id)
             self.volume_api.delete(context, volume)
-        except exception.NotFound:
-            msg = _("Volume could not be found")
-            raise exc.HTTPNotFound(explanation=msg)
+        except exception.VolumeNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
         except exception.VolumeAttached:
             msg = _("Volume cannot be deleted while in attached state")
             raise exc.HTTPBadRequest(explanation=msg)
@@ -353,9 +351,8 @@ class VolumeController(wsgi.Controller):
                 else:
                     kwargs['volume_type'] = volume_types.get_volume_type(
                         context, req_volume_type)
-            except exception.VolumeTypeNotFound:
-                msg = _("Volume type not found.")
-                raise exc.HTTPNotFound(explanation=msg)
+            except exception.VolumeTypeNotFound as error:
+                raise exc.HTTPNotFound(explanation=error.msg)
 
         kwargs['metadata'] = volume.get('metadata', None)
 
@@ -364,9 +361,8 @@ class VolumeController(wsgi.Controller):
             try:
                 kwargs['snapshot'] = self.volume_api.get_snapshot(context,
                                                                   snapshot_id)
-            except exception.NotFound:
-                explanation = _('snapshot id:%s not found') % snapshot_id
-                raise exc.HTTPNotFound(explanation=explanation)
+            except exception.SnapshotNotFound as error:
+                raise exc.HTTPNotFound(explanation=error.msg)
         else:
             kwargs['snapshot'] = None
 
@@ -376,9 +372,8 @@ class VolumeController(wsgi.Controller):
                 kwargs['source_volume'] = \
                     self.volume_api.get_volume(context,
                                                source_volid)
-            except exception.NotFound:
-                explanation = _('source volume id:%s not found') % source_volid
-                raise exc.HTTPNotFound(explanation=explanation)
+            except exception.VolumeNotFound as error:
+                raise exc.HTTPNotFound(explanation=error.msg)
         else:
             kwargs['source_volume'] = None
 
@@ -392,10 +387,8 @@ class VolumeController(wsgi.Controller):
                                     ' replicated') % source_volid
                     raise exc.HTTPNotFound(explanation=explanation)
                 kwargs['source_replica'] = src_vol
-            except exception.NotFound:
-                explanation = (_('replica source volume id:%s not found') %
-                               source_replica)
-                raise exc.HTTPNotFound(explanation=explanation)
+            except exception.VolumeNotFound as error:
+                raise exc.HTTPNotFound(explanation=error.msg)
         else:
             kwargs['source_replica'] = None
 
@@ -405,10 +398,8 @@ class VolumeController(wsgi.Controller):
                 kwargs['consistencygroup'] = \
                     self.consistencygroup_api.get(context,
                                                   consistencygroup_id)
-            except exception.NotFound:
-                explanation = _('Consistency group id:%s not found') % \
-                    consistencygroup_id
-                raise exc.HTTPNotFound(explanation=explanation)
+            except exception.ConsistencyGroupNotFound as error:
+                raise exc.HTTPNotFound(explanation=error.msg)
         else:
             kwargs['consistencygroup'] = None
 
@@ -494,9 +485,8 @@ class VolumeController(wsgi.Controller):
             volume_utils.notify_about_volume_usage(context, volume,
                                                    'update.start')
             self.volume_api.update(context, volume, update_dict)
-        except exception.NotFound:
-            msg = _("Volume could not be found")
-            raise exc.HTTPNotFound(explanation=msg)
+        except exception.VolumeNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
 
         volume.update(update_dict)
 

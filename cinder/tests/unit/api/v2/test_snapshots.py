@@ -67,12 +67,12 @@ def stub_snapshot_create(self, context,
 
 def stub_snapshot_delete(self, context, snapshot):
     if snapshot['id'] != UUID:
-        raise exception.NotFound
+        raise exception.SnapshotNotFound(snapshot['id'])
 
 
 def stub_snapshot_get(self, context, snapshot_id):
     if snapshot_id != UUID:
-        raise exception.NotFound
+        raise exception.SnapshotNotFound(snapshot_id)
 
     param = _get_default_snapshot_param()
     return param

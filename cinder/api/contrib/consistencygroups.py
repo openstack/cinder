@@ -174,9 +174,8 @@ class ConsistencyGroupsController(wsgi.Controller):
         try:
             group = self.consistencygroup_api.get(context, id)
             self.consistencygroup_api.delete(context, group, force)
-        except exception.ConsistencyGroupNotFound:
-            msg = _("Consistency group %s could not be found.") % id
-            raise exc.HTTPNotFound(explanation=msg)
+        except exception.ConsistencyGroupNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
         except exception.InvalidConsistencyGroup as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
 
@@ -354,9 +353,8 @@ class ConsistencyGroupsController(wsgi.Controller):
             self.consistencygroup_api.update(
                 context, group, name, description,
                 add_volumes, remove_volumes)
-        except exception.ConsistencyGroupNotFound:
-            msg = _("Consistency group %s could not be found.") % id
-            raise exc.HTTPNotFound(explanation=msg)
+        except exception.ConsistencyGroupNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
         except exception.InvalidConsistencyGroup as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
 

@@ -116,7 +116,7 @@ def stub_volume_get(self, context, volume_id, viewable_admin_meta=False):
 
 def stub_volume_get_notfound(self, context,
                              volume_id, viewable_admin_meta=False):
-    raise exc.NotFound
+    raise exc.VolumeNotFound(volume_id)
 
 
 def stub_volume_get_db(context, volume_id):

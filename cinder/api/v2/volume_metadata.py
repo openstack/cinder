@@ -33,9 +33,8 @@ class Controller(wsgi.Controller):
         try:
             volume = self.volume_api.get(context, volume_id)
             meta = self.volume_api.get_volume_metadata(context, volume)
-        except exception.VolumeNotFound:
-            msg = _('volume does not exist')
-            raise webob.exc.HTTPNotFound(explanation=msg)
+        except exception.VolumeNotFound as error:
+            raise webob.exc.HTTPNotFound(explanation=error.msg)
         return meta
 
     @wsgi.serializers(xml=common.MetadataTemplate)
@@ -113,9 +112,8 @@ class Controller(wsgi.Controller):
                                                           volume,
                                                           metadata,
                                                           delete)
-        except exception.VolumeNotFound:
-            msg = _('volume does not exist')
-            raise webob.exc.HTTPNotFound(explanation=msg)
+        except exception.VolumeNotFound as error:
+            raise webob.exc.HTTPNotFound(explanation=error.msg)
 
         except (ValueError, AttributeError):
             msg = _("Malformed request body")
@@ -152,9 +150,8 @@ class Controller(wsgi.Controller):
         try:
             volume = self.volume_api.get(context, volume_id)
             self.volume_api.delete_volume_metadata(context, volume, id)
-        except exception.VolumeNotFound:
-            msg = _('volume does not exist')
-            raise webob.exc.HTTPNotFound(explanation=msg)
+        except exception.VolumeNotFound as error:
+            raise webob.exc.HTTPNotFound(explanation=error.msg)
         return webob.Response(status_int=200)
 
 

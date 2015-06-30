@@ -76,7 +76,7 @@ def api_get(self, context, volume_id):
     vol = vols.get(volume_id, None)
 
     if not vol:
-        raise exception.NotFound
+        raise exception.VolumeNotFound(volume_id)
 
     return vol
 

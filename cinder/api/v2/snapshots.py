@@ -105,9 +105,8 @@ class SnapshotsController(wsgi.Controller):
         try:
             snapshot = self.volume_api.get_snapshot(context, id)
             req.cache_db_snapshot(snapshot)
-        except exception.NotFound:
-            msg = _("Snapshot could not be found")
-            raise exc.HTTPNotFound(explanation=msg)
+        except exception.SnapshotNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
 
         return {'snapshot': _translate_snapshot_detail_view(context, snapshot)}
 
@@ -120,9 +119,8 @@ class SnapshotsController(wsgi.Controller):
         try:
             snapshot = self.volume_api.get_snapshot(context, id)
             self.volume_api.delete_snapshot(context, snapshot)
-        except exception.NotFound:
-            msg = _("Snapshot could not be found")
-            raise exc.HTTPNotFound(explanation=msg)
+        except exception.SnapshotNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
 
         return webob.Response(status_int=202)
 
@@ -185,9 +183,8 @@ class SnapshotsController(wsgi.Controller):
 
         try:
             volume = self.volume_api.get(context, volume_id)
-        except exception.NotFound:
-            msg = _("Volume could not be found")
-            raise exc.HTTPNotFound(explanation=msg)
+        except exception.VolumeNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
         force = snapshot.get('force', False)
         msg = _LI("Create snapshot from volume %s")
         LOG.info(msg, volume_id, context=context)
@@ -265,9 +262,8 @@ class SnapshotsController(wsgi.Controller):
             volume_utils.notify_about_snapshot_usage(context, snapshot,
                                                      'update.start')
             self.volume_api.update_snapshot(context, snapshot, update_dict)
-        except exception.NotFound:
-            msg = _("Snapshot could not be found")
-            raise exc.HTTPNotFound(explanation=msg)
+        except exception.SnapshotNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
 
         snapshot.update(update_dict)
         req.cache_db_snapshot(snapshot)

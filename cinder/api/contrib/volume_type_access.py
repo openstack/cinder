@@ -92,9 +92,8 @@ class VolumeTypeAccessController(object):
         try:
             vol_type = volume_types.get_volume_type(
                 context, type_id, expected_fields=['projects'])
-        except exception.VolumeTypeNotFound:
-            explanation = _("Volume type not found.")
-            raise webob.exc.HTTPNotFound(explanation=explanation)
+        except exception.VolumeTypeNotFound as error:
+            raise webob.exc.HTTPNotFound(explanation=error.msg)
 
         if vol_type['is_public']:
             expl = _("Access list not available for public volume types.")

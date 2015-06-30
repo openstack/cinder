@@ -21,7 +21,7 @@ from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
 from cinder import exception
-from cinder.i18n import _, _LI
+from cinder.i18n import _LI
 from cinder import replication as replicationAPI
 from cinder import volume
 
@@ -73,9 +73,8 @@ class VolumeReplicationController(wsgi.Controller):
                      id,
                      context=context)
             self.replication_api.promote(context, vol)
-        except exception.NotFound:
-            msg = _("Volume could not be found")
-            raise exc.HTTPNotFound(explanation=msg)
+        except exception.VolumeNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
         except exception.ReplicationError as error:
             raise exc.HTTPBadRequest(explanation=six.text_type(error))
         return webob.Response(status_int=202)
@@ -91,9 +90,8 @@ class VolumeReplicationController(wsgi.Controller):
                      id,
                      context=context)
             self.replication_api.reenable(context, vol)
-        except exception.NotFound:
-            msg = _("Volume could not be found")
-            raise exc.HTTPNotFound(explanation=msg)
+        except exception.VolumeNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
         except exception.ReplicationError as error:
             raise exc.HTTPBadRequest(explanation=six.text_type(error))
         return webob.Response(status_int=202)

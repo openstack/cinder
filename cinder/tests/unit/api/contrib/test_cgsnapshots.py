@@ -474,7 +474,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
         self.assertEqual(res.status_int, 404)
         self.assertEqual(res_dict['itemNotFound']['code'], 404)
         self.assertEqual(res_dict['itemNotFound']['message'],
-                         'Cgsnapshot could not be found')
+                         'CgSnapshot 9999 could not be found.')
 
     def test_delete_cgsnapshot_with_Invalidcgsnapshot(self):
         consistencygroup_id = utils.create_consistencygroup(self.context)['id']

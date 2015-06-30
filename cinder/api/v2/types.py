@@ -79,9 +79,8 @@ class VolumeTypesController(wsgi.Controller):
             try:
                 vol_type = volume_types.get_volume_type(context, id)
                 req.cache_resource(vol_type, name='types')
-            except exception.NotFound:
-                msg = _("Volume type not found")
-                raise exc.HTTPNotFound(explanation=msg)
+            except exception.VolumeTypeNotFound as error:
+                raise exc.HTTPNotFound(explanation=error.msg)
 
         return self._view_builder.show(req, vol_type)
 
