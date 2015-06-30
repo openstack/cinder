@@ -28,7 +28,7 @@ import six
 from cinder import exception
 from cinder import test
 from cinder.volume import configuration as conf
-from cinder.volume.drivers.hds import iscsi
+from cinder.volume.drivers.hitachi import hnas_iscsi as iscsi
 from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)

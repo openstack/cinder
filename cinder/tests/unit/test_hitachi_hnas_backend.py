@@ -21,8 +21,8 @@ from oslo_log import log as logging
 
 from cinder import test
 from cinder import utils
-from cinder.volume.drivers.hds import hnas_backend
-from cinder.volume.drivers.hds import nfs
+from cinder.volume.drivers.hitachi import hnas_backend
+from cinder.volume.drivers.hitachi import hnas_nfs as nfs
 
 CONF = cfg.CONF
 
