@@ -524,8 +524,8 @@ class StorwizeSVCDriver(san.SanDriver):
         """
         LOG.debug('enter: terminate_connection: volume %(vol)s with connector'
                   ' %(conn)s', {'vol': volume['id'], 'conn': connector})
-
         vol_name = volume['name']
+        info = {}
         if 'host' in connector:
             # maybe two hosts on the storage, one is for FC and the other for
             # iSCSI, so get host according to protocol
@@ -533,9 +533,13 @@ class StorwizeSVCDriver(san.SanDriver):
             connector = connector.copy()
             if vol_opts['protocol'] == 'FC':
                 connector.pop('initiator', None)
+                info = {'driver_volume_type': 'fibre_channel',
+                        'data': {}}
             elif vol_opts['protocol'] == 'iSCSI':
                 connector.pop('wwnns', None)
                 connector.pop('wwpns', None)
+                info = {'driver_volume_type': 'iscsi',
+                        'data': {}}
 
             host_name = self._helpers.get_host_from_connector(connector)
             if host_name is None:
@@ -547,20 +551,28 @@ class StorwizeSVCDriver(san.SanDriver):
             # See bug #1244257
             host_name = None
 
-        info = {}
-        if 'wwpns' in connector and host_name:
-            target_wwpns = self._helpers.get_conn_fc_wwpns(host_name)
-            init_targ_map = self._make_initiator_target_map(connector['wwpns'],
-                                                            target_wwpns)
-            info = {'driver_volume_type': 'fibre_channel',
-                    'data': {'initiator_target_map': init_targ_map}}
+        # Unmap volumes, if hostname is None, need to get value from vdiskmap
+        host_name = self._helpers.unmap_vol_from_host(vol_name, host_name)
 
-        self._helpers.unmap_vol_from_host(vol_name, host_name)
+        # Host_name could be none
+        if host_name:
+            resp = self._helpers.check_host_mapped_vols(host_name)
+            if not len(resp):
+                LOG.info(_LI("Need to remove FC Zone, building initiator "
+                             "target map."))
+                # Build info data structure for zone removing
+                if 'wwpns' in connector and host_name:
+                    target_wwpns = self._helpers.get_conn_fc_wwpns(host_name)
+                    init_targ_map = (self._make_initiator_target_map
+                                     (connector['wwpns'],
+                                      target_wwpns))
+                    info['data'] = {'initiator_target_map': init_targ_map}
+                # No volume mapped to the host, delete host from array
+                self._helpers.delete_host(host_name)
 
         LOG.debug('leave: terminate_connection: volume %(vol)s with '
                   'connector %(conn)s', {'vol': volume['id'],
                                          'conn': connector})
-
         return info
 
     def create_volume(self, volume):

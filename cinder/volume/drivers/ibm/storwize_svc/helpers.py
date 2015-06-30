@@ -366,18 +366,16 @@ class StorwizeHelpers(object):
                 LOG.warning(_LW('unmap_vol_from_host: No mapping of volume '
                                 '%(vol_name)s to host %(host)s found.'),
                             {'vol_name': volume_name, 'host': host_name})
-
         # We now know that the mapping exists
         self.ssh.rmvdiskhostmap(host_name, volume_name)
-
-        # If this host has no more mappings, delete it
-        resp = self.ssh.lshostvdiskmap(host_name)
-        if not len(resp):
-            self.delete_host(host_name)
 
         LOG.debug('Leave: unmap_vol_from_host: volume %(volume_name)s from '
                   'host %(host_name)s.',
                   {'volume_name': volume_name, 'host_name': host_name})
+        return host_name
+
+    def check_host_mapped_vols(self, host_name):
+        return self.ssh.lshostvdiskmap(host_name)
 
     @staticmethod
     def build_default_opts(config):
