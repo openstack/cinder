@@ -738,7 +738,50 @@ State:  Ready
                  "SP:  A\n" +
                  "Port ID:  5\n" +
                  "Port WWN:  iqn.1992-04.com.emc:cx.fnm00124000215.a5\n" +
-                 "iSCSI Alias:  0215.a5\n", 0)
+                 "iSCSI Alias:  0215.a5\n" +
+                 "SP:  A\n" +
+                 "Port ID:  0\n" +
+                 "Port WWN:  iqn.1992-04.com.emc:cx.fnm00124000215.a0\n" +
+                 "iSCSI Alias:  0215.a0\n\n" +
+                 "Virtual Port ID:  0\n" +
+                 "VLAN ID:  Disabled\n" +
+                 "IP Address:  10.244.214.119\n\n" +
+                 "SP:  B\n" +
+                 "Port ID:  2\n" +
+                 "Port WWN:  iqn.1992-04.com.emc:cx.fnm00124000215.b2\n" +
+                 "iSCSI Alias:  0215.b2\n\n" +
+                 "Virtual Port ID:  0\n" +
+                 "VLAN ID:  Disabled\n" +
+                 "IP Address:  10.244.214.120\n\n", 0)
+
+    WHITE_LIST_PORTS = ("""SP:  A
+Port ID:  0
+Port WWN:  iqn.1992-04.com.emc:cx.fnmxxx.a0
+iSCSI Alias:  0235.a7
+
+Virtual Port ID:  0
+VLAN ID:  Disabled
+IP Address:  192.168.3.52
+
+SP:  A
+Port ID:  9
+Port WWN:  iqn.1992-04.com.emc:cx.fnmxxx.a9
+iSCSI Alias:  0235.a9
+
+SP:  A
+Port ID:  4
+Port WWN:  iqn.1992-04.com.emc:cx.fnmxxx.a4
+iSCSI Alias:  0235.a4
+
+SP:  B
+Port ID:  2
+Port WWN:  iqn.1992-04.com.emc:cx.fnmxxx.b2
+iSCSI Alias:  0235.b6
+
+Virtual Port ID:  0
+VLAN ID:  Disabled
+IP Address:  192.168.4.53
+""", 0)
 
     iscsi_connection_info = \
         {'data': {'target_discovered': True,
@@ -793,7 +836,18 @@ State:  Ready
                 "50:06:01:62:08:60:01:95\n" +
                 "Link Status:         Down\n" +
                 "Port Status:         Online\n" +
-                "Switch Present:      NO\n", 0)
+                "Switch Present:      NO\n" +
+                "\n" +
+                "SP Name:             SP B\n" +
+                "SP Port ID:          2\n" +
+                "SP UID:              50:06:01:60:88:60:08:0F:"
+                "50:06:01:6A:08:60:08:0F\n" +
+                "Link Status:         Up\n" +
+                "Port Status:         Online\n" +
+                "Switch Present:      YES\n" +
+                "Switch UID:          10:00:50:EB:1A:03:3F:59:"
+                "20:11:50:EB:1A:03:3F:59\n" +
+                "SP Source ID:        69888\n", 0)
 
     FAKEHOST_PORTS = (
         "Information about each HBA:\n" +
@@ -822,6 +876,14 @@ State:  Ready
         "    Defined:               YES\n" +
         "    Initiator Type:           3\n" +
         "    StorageGroup Name:     fakehost\n\n" +
+        "    SP Name:               SP B\n" +
+        "    SP Port ID:            2\n" +
+        "    HBA Devicename:\n" +
+        "    Trusted:               NO\n" +
+        "    Logged In:             YES\n" +
+        "    Defined:               YES\n" +
+        "    Initiator Type:           3\n" +
+        "    StorageGroup Name:     fakehost\n\n"
         "Information about each SPPORT:\n" +
         "\n" +
         "SP Name:             SP A\n" +
@@ -849,7 +911,18 @@ State:  Ready
         "50:06:01:62:08:60:01:95\n" +
         "Link Status:         Down\n" +
         "Port Status:         Online\n" +
-        "Switch Present:      NO\n", 0)
+        "Switch Present:      NO\n" +
+        "\n" +
+        "SP Name:             SP B\n" +
+        "SP Port ID:          2\n" +
+        "SP UID:              50:06:01:60:88:60:01:95:" +
+        "50:06:01:6A:08:60:08:0F\n" +
+        "Link Status:         Up\n" +
+        "Port Status:         Online\n" +
+        "Switch Present:      YES\n" +
+        "Switch UID:          10:00:00:05:1E:72:EC:A6:" +
+        "20:46:00:05:1E:72:EC:A6\n" +
+        "SP Source ID:        272896\n", 0)
 
     def LUN_PROPERTY(self, name, is_thin=False, has_snap=False, size=1,
                      state='Ready', faulted='false', operation='None',
@@ -886,6 +959,26 @@ State:  Ready
             'operation': operation,
             'is_thin': 'Yes' if is_thin else 'No'}, 0)
 
+    def STORAGE_GROUP_ISCSI_FC_HBA(self, sgname):
+
+        return ("""\
+        Storage Group Name:    %s
+        Storage Group UID:     54:46:57:0F:15:A2:E3:11:9A:8D:FF:E5:3A:03:FD:6D
+        HBA/SP Pairs:
+
+          HBA UID                                          SP Name     SPPort
+          -------                                          -------     ------
+          iqn.1993-08.org.debian:01:222                     SP A         4
+          22:34:56:78:90:12:34:56:12:34:56:78:90:12:34:56   SP B         2
+          22:34:56:78:90:54:32:16:12:34:56:78:90:54:32:16   SP B         2
+
+        HLU/ALU Pairs:
+
+          HLU Number     ALU Number
+          ----------     ----------
+            1               1
+        Shareable:             YES""" % sgname, 0)
+
     def STORAGE_GROUP_NO_MAP(self, sgname):
         return ("""\
         Storage Group Name:    %s
@@ -902,6 +995,26 @@ State:  Ready
           HBA UID                                          SP Name     SPPort
           -------                                          -------     ------
           iqn.1993-08.org.debian:01:222                     SP A         4
+
+        HLU/ALU Pairs:
+
+          HLU Number     ALU Number
+          ----------     ----------
+            1               1
+        Shareable:             YES""" % sgname, 0)
+
+    def STORAGE_GROUP_HAS_MAP_ISCSI(self, sgname):
+
+        return ("""\
+        Storage Group Name:    %s
+        Storage Group UID:     54:46:57:0F:15:A2:E3:11:9A:8D:FF:E5:3A:03:FD:6D
+        HBA/SP Pairs:
+
+          HBA UID                                          SP Name     SPPort
+          -------                                          -------     ------
+          iqn.1993-08.org.debian:01:222                     SP A         2
+          iqn.1993-08.org.debian:01:222                     SP A         0
+          iqn.1993-08.org.debian:01:222                     SP B         2
 
         HLU/ALU Pairs:
 
@@ -1100,12 +1213,15 @@ class DriverTestCaseBase(test.TestCase):
         return standard_default
 
     def fake_command_execute_for_driver_setup(self, *command, **kwargv):
-        if command == ('connection', '-getport', '-address', '-vlanid'):
+        if (command == ('connection', '-getport', '-address', '-vlanid') or
+                command == ('connection', '-getport', '-vlanid')):
             return self.testData.ALL_PORTS
         elif command == ('storagepool', '-list', '-state'):
             return self.testData.POOL_GET_STATE_RESULT([
                 {'pool_name': self.testData.test_pool_name, 'state': "Ready"},
                 {'pool_name': "unit_test_pool2", 'state': "Ready"}])
+        if command == self.testData.GETFCPORT_CMD():
+            return self.testData.FC_PORTS
         else:
             return SUCCEED
 
@@ -1754,6 +1870,14 @@ Time Remaining:  0 second(s)
                               '-hbauid', 'iqn.1993-08.org.debian:01:222',
                               '-sp', 'A', '-spport', 4, '-spvport', 0,
                               '-ip', '10.0.0.2', '-host', 'fakehost', '-o'),
+                    mock.call('storagegroup', '-gname', 'fakehost', '-setpath',
+                              '-hbauid', 'iqn.1993-08.org.debian:01:222',
+                              '-sp', 'A', '-spport', 0, '-spvport', 0,
+                              '-ip', '10.0.0.2', '-host', 'fakehost', '-o'),
+                    mock.call('storagegroup', '-gname', 'fakehost', '-setpath',
+                              '-hbauid', 'iqn.1993-08.org.debian:01:222',
+                              '-sp', 'B', '-spport', 2, '-spvport', 0,
+                              '-ip', '10.0.0.2', '-host', 'fakehost', '-o'),
                     mock.call('storagegroup', '-list', '-gname', 'fakehost',
                               poll=True),
                     mock.call('storagegroup', '-addhlu', '-hlu', 2, '-alu', 1,
@@ -1920,6 +2044,74 @@ Time Remaining:  0 second(s)
                     mock.call(*self.testData.PINGNODE_CMD('A', 4, 0,
                                                           '10.0.0.2'))]
         fake_cli.assert_has_calls(expected)
+
+    @mock.patch('random.randint',
+                mock.Mock(return_value=0))
+    def test_initialize_connection_iscsi_white_list(self):
+        self.configuration.io_port_list = 'a-0-0,B-2-0'
+        test_volume = self.testData.test_volume.copy()
+        test_volume['provider_location'] = 'system^fakesn|type^lun|id^1'
+        # Test for auto registration
+        self.configuration.initiator_auto_registration = True
+        commands = [('storagegroup', '-list', '-gname', 'fakehost')]
+        results = [[("No group", 83),
+                    self.testData.STORAGE_GROUP_HAS_MAP_ISCSI('fakehost')]]
+        fake_cli = self.driverSetup(commands, results)
+        self.driver.cli.iscsi_targets = {'A': [{'SP': 'A', 'Port ID': 0,
+                                                'Virtual Port ID': 0,
+                                                'Port WWN': 'fake_iqn',
+                                                'IP Address': '192.168.1.1'}],
+                                         'B': [{'SP': 'B', 'Port ID': 2,
+                                                'Virtual Port ID': 0,
+                                                'Port WWN': 'fake_iqn1',
+                                                'IP Address': '192.168.1.2'}]}
+        self.driver.initialize_connection(
+            test_volume,
+            self.testData.connector)
+        expected = [mock.call('storagegroup', '-list', '-gname', 'fakehost',
+                              poll=False),
+                    mock.call('storagegroup', '-create', '-gname', 'fakehost'),
+                    mock.call('storagegroup', '-gname', 'fakehost', '-setpath',
+                              '-hbauid', 'iqn.1993-08.org.debian:01:222',
+                              '-sp', 'A', '-spport', 0, '-spvport', 0,
+                              '-ip', '10.0.0.2', '-host', 'fakehost', '-o'),
+                    mock.call('storagegroup', '-gname', 'fakehost', '-setpath',
+                              '-hbauid', 'iqn.1993-08.org.debian:01:222',
+                              '-sp', 'B', '-spport', 2, '-spvport', 0,
+                              '-ip', '10.0.0.2', '-host', 'fakehost', '-o'),
+                    mock.call('storagegroup', '-list', '-gname', 'fakehost',
+                              poll=True),
+                    mock.call('storagegroup', '-addhlu', '-hlu', 2, '-alu', 1,
+                              '-gname', 'fakehost', '-o',
+                              poll=False),
+                    mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
+                              poll=False)]
+        fake_cli.assert_has_calls(expected)
+
+    @mock.patch('cinder.volume.drivers.emc.emc_vnx_cli.'
+                'EMCVnxCliBase._build_pool_stats',
+                mock.Mock(return_value=None))
+    @mock.patch('cinder.volume.drivers.emc.emc_vnx_cli.'
+                'CommandLineHelper.get_pool',
+                mock.Mock(return_value={'total_capacity_gb': 0.0,
+                                        'free_capacity_gb': 0.0}))
+    def test_update_iscsi_io_ports(self):
+        self.configuration.io_port_list = 'a-0-0,B-2-0'
+        # Test for auto registration
+        self.configuration.initiator_auto_registration = True
+        commands = [self.testData.GETPORT_CMD()]
+        results = [self.testData.WHITE_LIST_PORTS]
+        fake_cli = self.driverSetup(commands, results)
+        self.driver.cli.update_volume_stats()
+        expected = [mock.call(*self.testData.GETPORT_CMD(), poll=False)]
+        fake_cli.assert_has_calls(expected)
+        io_ports = self.driver.cli.iscsi_targets
+        self.assertEqual((0, 'iqn.1992-04.com.emc:cx.fnmxxx.a0'),
+                         (io_ports['A'][0]['Port ID'],
+                          io_ports['A'][0]['Port WWN']))
+        self.assertEqual((2, 'iqn.1992-04.com.emc:cx.fnmxxx.b2'),
+                         (io_ports['B'][0]['Port ID'],
+                          io_ports['B'][0]['Port WWN']))
 
     @mock.patch(
         "oslo_concurrency.processutils.execute",
@@ -3961,9 +4153,21 @@ class EMCVNXCLIDriverFCTestCase(DriverTestCaseBase):
                               '-host', 'fakehost', '-o'),
                     mock.call('storagegroup', '-gname', 'fakehost',
                               '-setpath', '-hbauid',
+                              '22:34:56:78:90:12:34:56:12:34:56:78:'
+                              '90:12:34:56',
+                              '-sp', 'B', '-spport', '2', '-ip', '10.0.0.2',
+                              '-host', 'fakehost', '-o'),
+                    mock.call('storagegroup', '-gname', 'fakehost',
+                              '-setpath', '-hbauid',
                               '22:34:56:78:90:54:32:16:12:34:56:78:'
                               '90:54:32:16',
                               '-sp', 'A', '-spport', '0', '-ip', '10.0.0.2',
+                              '-host', 'fakehost', '-o'),
+                    mock.call('storagegroup', '-gname', 'fakehost',
+                              '-setpath', '-hbauid',
+                              '22:34:56:78:90:54:32:16:12:34:56:78:'
+                              '90:54:32:16',
+                              '-sp', 'B', '-spport', '2', '-ip', '10.0.0.2',
                               '-host', 'fakehost', '-o'),
                     mock.call('storagegroup', '-list', '-gname', 'fakehost',
                               poll=True),
@@ -4048,6 +4252,106 @@ class EMCVNXCLIDriverFCTestCase(DriverTestCaseBase):
                               poll=True),
                     mock.call('port', '-list', '-sp')]
         fake_cli.assert_has_calls(expected)
+
+    @mock.patch('random.randint',
+                mock.Mock(return_value=0))
+    def test_initialize_connection_fc_white_list(self):
+        self.configuration.io_port_list = 'a-0,B-2'
+        test_volume = self.testData.test_volume.copy()
+        test_volume['provider_location'] = 'system^fakesn|type^lun|id^1'
+        self.configuration.initiator_auto_registration = True
+        commands = [('storagegroup', '-list', '-gname', 'fakehost'),
+                    self.testData.GETFCPORT_CMD(),
+                    ('port', '-list', '-gname', 'fakehost')]
+        results = [[("No group", 83),
+                    self.testData.STORAGE_GROUP_HAS_MAP_ISCSI('fakehost')],
+                   self.testData.FC_PORTS,
+                   self.testData.FAKEHOST_PORTS]
+
+        fake_cli = self.driverSetup(commands, results)
+        data = self.driver.initialize_connection(
+            test_volume,
+            self.testData.connector)
+
+        expected = [mock.call('storagegroup', '-list', '-gname', 'fakehost',
+                              poll=False),
+                    mock.call('storagegroup', '-create', '-gname', 'fakehost'),
+                    mock.call('storagegroup', '-gname', 'fakehost',
+                              '-setpath', '-hbauid',
+                              '22:34:56:78:90:12:34:56:'
+                              '12:34:56:78:90:12:34:56',
+                              '-sp', 'A', '-spport', 0, '-ip', '10.0.0.2',
+                              '-host', 'fakehost', '-o'),
+                    mock.call('storagegroup', '-gname', 'fakehost',
+                              '-setpath', '-hbauid',
+                              '22:34:56:78:90:12:34:56:'
+                              '12:34:56:78:90:12:34:56',
+                              '-sp', 'B', '-spport', 2, '-ip', '10.0.0.2',
+                              '-host', 'fakehost', '-o'),
+                    mock.call('storagegroup', '-gname', 'fakehost',
+                              '-setpath', '-hbauid',
+                              '22:34:56:78:90:54:32:16:'
+                              '12:34:56:78:90:54:32:16',
+                              '-sp', 'A', '-spport', 0, '-ip', '10.0.0.2',
+                              '-host', 'fakehost', '-o'),
+                    mock.call('storagegroup', '-gname', 'fakehost',
+                              '-setpath', '-hbauid',
+                              '22:34:56:78:90:54:32:16:'
+                              '12:34:56:78:90:54:32:16',
+                              '-sp', 'B', '-spport', 2, '-ip', '10.0.0.2',
+                              '-host', 'fakehost', '-o'),
+                    mock.call('storagegroup', '-list', '-gname', 'fakehost',
+                              poll=True),
+                    mock.call('storagegroup', '-addhlu', '-hlu', 2, '-alu', 1,
+                              '-gname', 'fakehost', '-o',
+                              poll=False),
+                    mock.call('port', '-list', '-gname', 'fakehost')]
+        fake_cli.assert_has_calls(expected)
+        self.assertEqual(['5006016A0860080F', '5006016008600195'],
+                         data['data']['target_wwn'])
+
+    @mock.patch('random.randint',
+                mock.Mock(return_value=0))
+    def test_initialize_connection_fc_port_registered_wl(self):
+        self.configuration.io_port_list = 'a-0,B-2'
+        test_volume = self.testData.test_volume.copy()
+        test_volume['provider_location'] = 'system^fakesn|type^lun|id^1'
+        self.configuration.initiator_auto_registration = True
+        commands = [('storagegroup', '-list', '-gname', 'fakehost'),
+                    self.testData.GETFCPORT_CMD(),
+                    ('port', '-list', '-gname', 'fakehost')]
+        results = [self.testData.STORAGE_GROUP_ISCSI_FC_HBA('fakehost'),
+                   self.testData.FC_PORTS,
+                   self.testData.FAKEHOST_PORTS]
+
+        fake_cli = self.driverSetup(commands, results)
+        data = self.driver.initialize_connection(
+            test_volume,
+            self.testData.connector)
+
+        expected = [mock.call('storagegroup', '-list', '-gname', 'fakehost',
+                              poll=False),
+                    mock.call('storagegroup', '-gname', 'fakehost',
+                              '-setpath', '-hbauid',
+                              '22:34:56:78:90:12:34:56:'
+                              '12:34:56:78:90:12:34:56',
+                              '-sp', 'A', '-spport', 0, '-ip', '10.0.0.2',
+                              '-host', 'fakehost', '-o'),
+                    mock.call('storagegroup', '-gname', 'fakehost',
+                              '-setpath', '-hbauid',
+                              '22:34:56:78:90:54:32:16:'
+                              '12:34:56:78:90:54:32:16',
+                              '-sp', 'A', '-spport', 0, '-ip', '10.0.0.2',
+                              '-host', 'fakehost', '-o'),
+                    mock.call('storagegroup', '-list', '-gname', 'fakehost',
+                              poll=True),
+                    mock.call('storagegroup', '-addhlu', '-hlu', 2, '-alu', 1,
+                              '-gname', 'fakehost', '-o',
+                              poll=False),
+                    mock.call('port', '-list', '-gname', 'fakehost')]
+        fake_cli.assert_has_calls(expected)
+        self.assertEqual(['5006016A0860080F', '5006016008600195'],
+                         data['data']['target_wwn'])
 
     @mock.patch(
         "cinder.zonemanager.fc_san_lookup_service.FCSanLookupService." +
