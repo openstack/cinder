@@ -104,8 +104,7 @@ class SheepdogClient(object):
                 param = param.replace(self.QEMU_SHEEPDOG_PREFIX,
                                       '%(prefix)s%(addr)s:%(port)s:' %
                                       {'prefix': self.QEMU_SHEEPDOG_PREFIX,
-                                       'addr': self.addr,
-                                       'port': self.port},
+                                       'addr': self.addr, 'port': self.port},
                                       1)
             cmd.append(param)
         try:
