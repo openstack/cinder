@@ -138,7 +138,9 @@ class DrbdManageDriver(driver.VolumeDriver):
         # Some uuid library versions put braces around the result!?
         # We don't want them, just a plain [0-9a-f-]+ string.
         id = str(uuid.uuid4())
-        return id.translate(None, "{}")
+        id = id.replace("{", "")
+        id = id.replace("}", "")
+        return id
 
     def _check_result(self, res, ignore=None, ret=0):
         seen_success = False
@@ -397,8 +399,7 @@ class DrbdManageDriver(driver.VolumeDriver):
         temp_id = self._clean_uuid()
         snapshot = {'id': temp_id}
 
-        self.create_snapshot(dict(snapshot.items() +
-                                  [('volume_id', src_vref['id'])]))
+        self.create_snapshot({'id': temp_id, 'volume_id': src_vref['id']})
 
         self.create_volume_from_snapshot(volume, snapshot)
 
@@ -468,7 +469,7 @@ class DrbdManageDriver(driver.VolumeDriver):
                                            self.empty_dict)
         self._check_result(res)
 
-        nodes = map(lambda d: d[0], data)
+        nodes = [d[0] for d in data]
         if len(nodes) < 1:
             raise exception.VolumeBackendAPIException(
                 _('Snapshot res "%s" that is not deployed anywhere?') %

@@ -200,13 +200,13 @@ class DrbdManageTestCase(test.TestCase):
         return None
 
     def fake_issue_dbus_call(self, fn, *args):
-        return apply(fn, args)
+        return fn(*args)
 
     def fake_issue_dbus_connect(self):
         self.odm = DrbdManageFakeDriver()
 
     def call_or_reconnect(self, method, *params):
-        return apply(method, params)
+        return method(*params)
 
     # Tests per se
 
