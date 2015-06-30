@@ -560,10 +560,6 @@ class LVMISCSIDriver(LVMVolumeDriver, driver.ISCSIDriver):
         return super(LVMISCSIDriver, self).initialize_connection(volume,
                                                                  connector)
 
-    def terminate_connection(self, volume, connector, **kwargs):
-        if self.configuration.iscsi_helper == 'lioadm':
-            self.target_helper.terminate_connection(volume, connector)
-
     def _create_export(self, context, volume, vg=None):
         """Creates an export for a logical volume."""
         if vg is None:
