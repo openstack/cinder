@@ -31,7 +31,7 @@ from cinder.volume.drivers.nexenta import jsonrpc
 from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 
-VERSION = '1.3.0.3'
+VERSION = '1.4.0'
 LOG = logging.getLogger(__name__)
 
 
@@ -55,7 +55,9 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         1.3.0 - Added retype method.
         1.3.0.1 - Backport imports (logging, translations) for Juno.
         1.3.0.2 - Added a temporary fix for target creation.
-        1.3.0.3 - Compatability for volumes created before 1.3.0.2
+        1.3.0.3 - Compatability for volumes created before 1.3.0.2.
+        1.4.0 - Moved create/delete LU and mappings to create/delete methods
+                from do/remove export methods.
     """
 
     VERSION = VERSION
