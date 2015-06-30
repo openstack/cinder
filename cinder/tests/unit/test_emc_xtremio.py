@@ -173,6 +173,22 @@ def xms_bad_request(object_type='volumes', request_typ='GET', data=None,
         raise exception.VolumeBackendAPIException('Failed to create ig')
 
 
+def xms_failed_rename_snapshot_request(object_type='volumes',
+                                       request_typ='GET', data=None,
+                                       name=None, idx=None):
+    if request_typ == 'POST':
+        xms_data['volumes'][27] = {}
+        return {
+            "links": [
+                {
+                    "href": "https://host/api/json/v2/types/snapshots/27",
+                    "rel": "self"}]}
+    elif request_typ == 'PUT':
+        raise exception.VolumeBackendAPIException(msg='Failed to delete')
+    elif request_typ == 'DELETE':
+        del xms_data['volumes'][27]
+
+
 class D(dict):
     def update(self, *args, **kwargs):
         self.__dict__.update(*args, **kwargs)
@@ -267,8 +283,16 @@ class EMCXIODriverISCSITestCase(test.TestCase):
         clean_xms_data()
         self.driver.create_volume(self.data.test_volume)
         self.driver.create_snapshot(self.data.test_snapshot)
+        self.assertEqual(self.data.test_snapshot['id'],
+                         xms_data['volumes'][3]['name'])
         self.driver.delete_snapshot(self.data.test_snapshot)
         self.driver.delete_volume(self.data.test_volume)
+
+    def test_failed_rename_snapshot(self, req):
+        req.side_effect = xms_failed_rename_snapshot_request
+        self.driver.create_snapshot(self.data.test_snapshot)
+        self.assertIn(27, xms_data['volumes'])
+        clean_xms_data()
 
     def test_volume_from_snapshot(self, req):
         req.side_effect = xms_request
