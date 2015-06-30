@@ -393,10 +393,3 @@ class SCSTAdm(iscsi.ISCSITarget):
         if tid is None:
             raise exception.ISCSITargetHelperCommandFailed(
                 error_message="Target not found")
-
-    def initialize_connection(self, volume, connector):
-        iscsi_properties = self._get_iscsi_properties(volume)
-        return {
-            'driver_volume_type': 'iscsi',
-            'data': iscsi_properties
-        }

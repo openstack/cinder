@@ -278,15 +278,6 @@ class TgtAdm(iscsi.ISCSITarget):
 
         return tid
 
-    def initialize_connection(self, volume, connector):
-        iscsi_properties = self._get_iscsi_properties(volume,
-                                                      connector.get(
-                                                          'multipath'))
-        return {
-            'driver_volume_type': self.iscsi_protocol,
-            'data': iscsi_properties
-        }
-
     def remove_iscsi_target(self, tid, lun, vol_id, vol_name, **kwargs):
         LOG.info(_LI('Removing iscsi_target for Volume ID: %s'), vol_id)
         vol_uuid_file = vol_name

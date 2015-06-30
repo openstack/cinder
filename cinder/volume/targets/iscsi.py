@@ -294,7 +294,9 @@ class ISCSITarget(driver.Target):
             }
         """
 
-        iscsi_properties = self._get_iscsi_properties(volume)
+        iscsi_properties = self._get_iscsi_properties(volume,
+                                                      connector.get(
+                                                          'multipath'))
         return {
             'driver_volume_type': self.iscsi_protocol,
             'data': iscsi_properties
