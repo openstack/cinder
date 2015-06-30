@@ -66,8 +66,7 @@ class SheepdogClient(object):
     DOG_RESP_CLUSTER_WAITING = ('Cluster status: '
                                 'Waiting for other nodes to join cluster')
     DOG_RESP_VDI_ALREADY_EXISTS = ': VDI exists already\\n'
-    DOG_RESP_VDI_NOT_FOUND_SUCCESS = ': No VDI found\n'
-    DOG_RESP_VDI_NOT_FOUND_BY_EXCEPTION = ': No VDI found\\n'
+    DOG_RESP_VDI_NOT_FOUND = ': No VDI found'
     DOG_RESP_VDI_SHRINK_NOT_SUPPORT = 'Shrinking VDIs is not implemented'
     DOG_RESP_VDI_SIZE_TOO_LARGE = 'New VDI size is too large'
 
@@ -169,7 +168,7 @@ class SheepdogClient(object):
     def delete(self, vdiname):
         try:
             (stdout, stderr) = self._run_dog('vdi', 'delete', vdiname)
-            if stderr.endswith(self.DOG_RESP_VDI_NOT_FOUND_SUCCESS):
+            if stderr.rstrip().endswith(self.DOG_RESP_VDI_NOT_FOUND):
                 LOG.warning(_LW('Volume not found. %s'), vdiname)
         except exception.SheepdogCmdError as e:
             stderr = e.kwargs['stderr']
@@ -192,7 +191,8 @@ class SheepdogClient(object):
                     LOG.error(_LE('Failed to connect sheep daemon. '
                                   'addr: %(addr)s, port: %(port)s'),
                               {'addr': self.addr, 'port': self.port})
-                elif stderr.endswith(self.DOG_RESP_VDI_NOT_FOUND_BY_EXCEPTION):
+                elif stderr.rstrip('\\n').endswith(
+                        self.DOG_RESP_VDI_NOT_FOUND):
                     LOG.error(_LE('Failed to resize vdi. vdi not found. %s'),
                               vdiname)
                 elif stderr.startswith(self.DOG_RESP_VDI_SHRINK_NOT_SUPPORT):
