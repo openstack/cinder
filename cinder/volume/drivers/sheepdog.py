@@ -70,13 +70,12 @@ class SheepdogClient(object):
     def __init__(self, addr, port):
         self.addr = addr
         self.port = port
-        self._execute = utils.execute
 
     def _run_dog(self, command, subcommand, *params):
-        cmd = ('dog', command, subcommand,
+        cmd = ('env', 'LC_ALL=C', 'LANG=C', 'dog', command, subcommand,
                '-a', self.addr, '-p', str(self.port)) + params
         try:
-            return self._execute(*cmd)
+            return utils.execute(*cmd)
         except OSError as e:
             with excutils.save_and_reraise_exception():
                 if e.errno == errno.ENOENT:
@@ -349,7 +348,7 @@ class SheepdogDriver(driver.VolumeDriver):
 
             # remove the image created by import before this function.
             # see volume/drivers/manager.py:_create_volume
-            self.client.delete(volume)
+            self.client.delete(volume['name'])
             # convert and store into sheepdog
             image_utils.convert_image(tmp, 'sheepdog:%s' % volume['name'],
                                       'raw')

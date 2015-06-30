@@ -25,6 +25,7 @@ from oslo_utils import units
 import six
 
 from cinder import exception
+from cinder import utils
 from cinder.i18n import _, _LE
 from cinder.image import image_utils
 from cinder import test
@@ -46,15 +47,15 @@ class SheepdogDriverTestDataGenerator(object):
              'stderr': stderr.replace('\n', '\\n')}
 
     def cmd_dog_vdi_create(self, name, size):
-        return ('dog', 'vdi', 'create', name, '%sG' % size, '-a', SHEEP_ADDR,
-                '-p', str(SHEEP_PORT))
+        return ('env', 'LC_ALL=C', 'LANG=C', 'dog', 'vdi', 'create', name,
+                '%sG' % size, '-a', SHEEP_ADDR, '-p', str(SHEEP_PORT))
 
     def cmd_dog_vdi_delete(self, name):
-        return ('dog', 'vdi', 'delete', name,
+        return ('env', 'LC_ALL=C', 'LANG=C', 'dog', 'vdi', 'delete', name,
                 '-a', SHEEP_ADDR, '-p', str(SHEEP_PORT))
 
-    CMD_DOG_CLUSTER_INFO = ('dog', 'cluster', 'info',
-                            '-a', SHEEP_ADDR, '-p', str(SHEEP_PORT))
+    CMD_DOG_CLUSTER_INFO = ('env', 'LC_ALL=C', 'LANG=C', 'dog', 'cluster',
+                            'info', '-a', SHEEP_ADDR, '-p', str(SHEEP_PORT))
 
     TEST_VOLUME = {
         'name': 'volume-00000001',
@@ -242,10 +243,9 @@ class SheepdogClientTestCase(test.TestCase):
         self._vdiname = self.test_data.TEST_VOLUME['name']
         self._vdisize = self.test_data.TEST_VOLUME['size']
 
-    # test for _run_dog method
     def test_run_dog(self):
         expected_cmd = self.test_data.CMD_DOG_CLUSTER_INFO
-        with mock.patch.object(self.client, '_execute') as fake_execute:
+        with mock.patch.object(utils, 'execute') as fake_execute:
             fake_execute.return_value = ('', '')
             self.client._run_dog('cluster', 'info')
             fake_execute.assert_called_once_with(*expected_cmd)
@@ -254,14 +254,13 @@ class SheepdogClientTestCase(test.TestCase):
         args = ('cluster', 'info')
         expected_msg = 'No such file or directory'
         expected_errno = errno.ENOENT
-        with mock.patch.object(self.client, '_execute') as fake_execute:
+        with mock.patch.object(utils, 'execute') as fake_execute:
             with mock.patch.object(sheepdog, 'LOG') as fake_logger:
                 fake_execute.side_effect = OSError(expected_errno,
                                                    expected_msg)
                 self.assertRaises(OSError, self.client._run_dog, *args)
                 self.assertTrue(fake_logger.error.called)
 
-    # test for check_cluster_status method
     def test_check_cluster_status(self):
         stdout = self.test_data.DOG_CLUSTER_RUNNING
         stderr = ''
@@ -276,13 +275,13 @@ class SheepdogClientTestCase(test.TestCase):
     def test_check_cluster_status_0_5(self):
         def fake_stats(*args):
             return self.test_data.COLLIE_CLUSTER_INFO_0_5, ''
-        self.stubs.Set(self.client, '_execute', fake_stats)
+        self.stubs.Set(utils, 'execute', fake_stats)
         self.client.check_cluster_status()
 
     def test_check_cluster_status_0_6(self):
         def fake_stats(*args):
             return self.test_data.COLLIE_CLUSTER_INFO_0_6, ''
-        self.stubs.Set(self.client, '_execute', fake_stats)
+        self.stubs.Set(utils, 'execute', fake_stats)
         self.client.check_cluster_status()
 
     def test_check_cluster_status_error_waiting_formatted(self):
@@ -346,7 +345,6 @@ class SheepdogClientTestCase(test.TestCase):
                                    self.client.check_cluster_status)
             self.assertEqual(expected_msg, ex.msg)
 
-    # test for create method
     def test_create_success(self):
         expected_cmd = ('vdi', 'create', self._vdiname, '%sG' % self._vdisize)
         with mock.patch.object(self.client, '_run_dog') as fake_execute:
@@ -412,7 +410,6 @@ class SheepdogClientTestCase(test.TestCase):
                 self.assertTrue(fake_logger.error.called)
                 self.assertEqual(expected_msg, ex.msg)
 
-    # test for delete method
     def test_delete_success(self):
         expected_cmd = ('vdi', 'delete', self._vdiname)
         with mock.patch.object(self.client, '_run_dog') as fake_execute:
