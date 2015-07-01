@@ -99,8 +99,8 @@ class SheepdogClient(object):
         cmd = ['env', 'LC_ALL=C', 'LANG=C', 'qemu-img', command]
         for param in params:
             if param.startswith(self.QEMU_SHEEPDOG_PREFIX):
-                # replace 'sheepdog:vdiname[:snapid]' to
-                #         'sheepdog:addr:port:vdiname[:snapid]'
+                # replace 'sheepdog:vdiname[:snapshotname]' to
+                #         'sheepdog:addr:port:vdiname[:snapshotname]'
                 param = param.replace(self.QEMU_SHEEPDOG_PREFIX,
                                       '%(prefix)s%(addr)s:%(port)s:' %
                                       {'prefix': self.QEMU_SHEEPDOG_PREFIX,
