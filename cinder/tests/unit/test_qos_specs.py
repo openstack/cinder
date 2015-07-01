@@ -20,7 +20,6 @@ Unit Tests for qos specs internal API
 import time
 
 from oslo_db import exception as db_exc
-from oslo_log import log as logging
 
 from cinder import context
 from cinder import db
@@ -28,9 +27,6 @@ from cinder import exception
 from cinder import test
 from cinder.volume import qos_specs
 from cinder.volume import volume_types
-
-
-LOG = logging.getLogger(__name__)
 
 
 def fake_db_qos_specs_create(context, values):

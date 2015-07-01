@@ -13,24 +13,18 @@
 #    under the License.
 
 import ddt
-from oslo_log import log as logging
+import mock
+from requests import models
+import uuid
 
 from cinder import context
 from cinder import exception
 from cinder import test
 from cinder.volume.drivers.dell import dell_storagecenter_api
 
-import mock
-from requests import models
-
-import uuid
-
-LOG = logging.getLogger(__name__)
 
 # We patch these here as they are used by every test to keep
 # from trying to contact a Dell Storage Center.
-
-
 @ddt.ddt
 @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                    '__init__',

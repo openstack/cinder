@@ -20,7 +20,6 @@ import mock
 import ast
 
 from oslo_config import cfg
-from oslo_log import log as logging
 from oslo_utils import units
 
 from cinder import context
@@ -35,8 +34,6 @@ from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
 
 hpexceptions = hp3parclient.hpexceptions
-
-LOG = logging.getLogger(__name__)
 
 CONF = cfg.CONF
 

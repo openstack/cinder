@@ -18,7 +18,6 @@ Unit tests for the Scality Rest Block Volume Driver.
 
 import mock
 from oslo_concurrency import processutils
-from oslo_log import log as logging
 from oslo_utils import units
 
 from cinder import context
@@ -27,8 +26,6 @@ from cinder import test
 from cinder.tests.unit.brick import test_brick_lvm
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import srb
-
-LOG = logging.getLogger(__name__)
 
 
 class SRBLvmTestCase(test_brick_lvm.BrickLvmTestCase):

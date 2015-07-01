@@ -22,7 +22,6 @@ import os
 import tempfile
 
 import mock
-from oslo_log import log as logging
 import six
 
 from cinder import exception
@@ -30,8 +29,6 @@ from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.hitachi import hnas_iscsi as iscsi
 from cinder.volume import volume_types
-
-LOG = logging.getLogger(__name__)
 
 HNASCONF = """<?xml version="1.0" encoding="UTF-8" ?>
 <config>
@@ -104,24 +101,16 @@ class SimulatedHnasBackend(object):
         self.connections = []
 
     def deleteVolume(self, name):
-        LOG.info("delVolume: name %s", name)
-
         volume = self.getVolume(name)
         if volume:
-            LOG.info("deleteVolume: deleted name %s provider %s",
-                     volume['name'], volume['provider_location'])
             self.volumes.remove(volume)
             return True
         else:
             return False
 
     def deleteVolumebyProvider(self, provider):
-        LOG.info("delVolumeP: provider %s", provider)
-
         volume = self.getVolumebyProvider(provider)
         if volume:
-            LOG.info("deleteVolumeP: deleted name %s provider %s",
-                     volume['name'], volume['provider_location'])
             self.volumes.remove(volume)
             return True
         else:
@@ -131,39 +120,20 @@ class SimulatedHnasBackend(object):
         return self.volumes
 
     def getVolume(self, name):
-        LOG.info("getVolume: find by name %s", name)
-
         if self.volumes:
             for volume in self.volumes:
                 if str(volume['name']) == name:
-                    LOG.info("getVolume: found name %s provider %s",
-                             volume['name'], volume['provider_location'])
                     return volume
-        else:
-            LOG.info("getVolume: no volumes")
-
-        LOG.info("getVolume: not found")
         return None
 
     def getVolumebyProvider(self, provider):
-        LOG.info("getVolumeP: find by provider %s", provider)
-
         if self.volumes:
             for volume in self.volumes:
                 if str(volume['provider_location']) == provider:
-                    LOG.info("getVolumeP: found name %s provider %s",
-                             volume['name'], volume['provider_location'])
                     return volume
-        else:
-            LOG.info("getVolumeP: no volumes")
-
-        LOG.info("getVolumeP: not found")
         return None
 
     def createVolume(self, name, provider, sizeMiB, comment):
-        LOG.info("createVolume: name %s provider %s comment %s",
-                 name, provider, comment)
-
         new_vol = {'additionalStates': [],
                    'adminSpace': {'freeMiB': 0,
                                   'rawReservedMiB': 384,
@@ -203,10 +173,8 @@ class SimulatedHnasBackend(object):
     def delete_lu(self, cmd, ip0, user, pw, hdp, lun):
         _out = ""
         id = "myID"
-        LOG.info("Delete_Lu: check lun %s id %s", lun, id)
 
-        if self.deleteVolumebyProvider(id + '.' + str(lun)):
-            LOG.warning("Delete_Lu: failed to delete lun %s id %s", lun, id)
+        self.deleteVolumebyProvider(id + '.' + str(lun))
         return _out
 
     def create_dup(self, cmd, ip0, user, pw, src_lun, hdp, size, name):
@@ -214,7 +182,6 @@ class SimulatedHnasBackend(object):
                 (self.start_lun, size))
 
         id = name
-        LOG.info("HNAS Create_Dup: %d", self.start_lun)
         self.createVolume(name, id + '.' + str(self.start_lun), size,
                           "create-dup")
         self.start_lun += 1
@@ -231,7 +198,6 @@ class SimulatedHnasBackend(object):
         self.init_index += 1
         self.target_index += 1
         self.hlun += 1
-        LOG.debug("Created connection %d", self.init_index)
         self.connections.append(conn)
         return _out
 
@@ -246,11 +212,9 @@ class SimulatedHnasBackend(object):
         _out = ("LUN: %s successfully extended to %s MB" % (lu, size))
         id = name
         self.out = _out
-        LOG.info("extend_vol: lu: %s %d -> %s", lu, int(size), self.out)
         v = self.getVolumebyProvider(id + '.' + str(lu))
         if v:
             v['sizeMiB'] = size
-        LOG.info("extend_vol: out %s %s", self.out, self)
         return _out
 
     def get_luns(self):

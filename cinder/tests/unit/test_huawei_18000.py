@@ -21,7 +21,6 @@ import time
 from xml.dom import minidom
 
 import mock
-from oslo_log import log as logging
 
 from cinder import exception
 from cinder import test
@@ -29,7 +28,6 @@ from cinder.volume import configuration as conf
 from cinder.volume.drivers.huawei import huawei_18000
 from cinder.volume.drivers.huawei import rest_common
 
-LOG = logging.getLogger(__name__)
 
 test_volume = {'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0635',
                'size': 2,

@@ -18,7 +18,6 @@ Unit tests for Oracle's ZFSSA Cinder volume driver
 import json
 
 import mock
-from oslo_log import log as logging
 from oslo_utils import units
 
 from cinder import test
@@ -29,8 +28,6 @@ from cinder.volume.drivers.zfssa import zfssaiscsi as iscsi
 from cinder.volume.drivers.zfssa import zfssanfs
 from cinder.volume.drivers.zfssa import zfssarest as rest
 
-
-LOG = logging.getLogger(__name__)
 
 nfs_logbias = 'latency'
 nfs_compression = 'off'

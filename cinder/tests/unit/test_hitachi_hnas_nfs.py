@@ -18,7 +18,6 @@ import os
 import tempfile
 
 import mock
-from oslo_log import log as logging
 import six
 
 from cinder import exception
@@ -27,7 +26,6 @@ from cinder.volume import configuration as conf
 from cinder.volume.drivers.hitachi import hnas_nfs as nfs
 from cinder.volume import volume_types
 
-LOG = logging.getLogger(__name__)
 
 SHARESCONF = """172.17.39.132:/cinder
 172.17.39.133:/cinder"""
@@ -124,9 +122,7 @@ class SimulatedHnasBackend(object):
 
     def file_clone(self, cmd, ip0, user, pw, fslabel, source_path,
                    target_path):
-        _out = ""
-        LOG.info("Clone: %s -> %s" % (source_path, target_path))
-        return _out
+        return ""
 
     def get_version(self, ver, cmd, ip0, user, pw):
         self.out = "Array_ID: 18-48-A5-A1-80-13 (3080-G2) " \

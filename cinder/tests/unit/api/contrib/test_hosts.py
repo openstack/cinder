@@ -16,7 +16,6 @@
 import datetime
 
 from lxml import etree
-from oslo_log import log as logging
 from oslo_utils import timeutils
 import webob.exc
 
@@ -26,7 +25,6 @@ from cinder import db
 from cinder import test
 
 
-LOG = logging.getLogger(__name__)
 created_time = datetime.datetime(2012, 11, 14, 1, 20, 41, 95099)
 curr_time = datetime.datetime(2013, 7, 3, 0, 0, 1)
 

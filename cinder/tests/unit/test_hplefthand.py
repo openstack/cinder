@@ -16,7 +16,6 @@
 """Unit tests for OpenStack Cinder volume drivers."""
 
 import mock
-from oslo_log import log as logging
 from oslo_utils import units
 import six
 
@@ -29,8 +28,6 @@ from cinder.volume.drivers.san.hp import hp_lefthand_rest_proxy
 from cinder.volume import volume_types
 
 hpexceptions = hplefthandclient.hpexceptions
-
-LOG = logging.getLogger(__name__)
 
 GOODNESS_FUNCTION = \
     "capabilities.capacity_utilization < 0.6? 100 : 25"

@@ -15,7 +15,6 @@
 
 import mock
 from oslo_config import cfg
-from oslo_log import log as logging
 
 from cinder import exception
 from cinder import test
@@ -26,7 +25,6 @@ CONF = cfg.CONF
 NIMBLE_CLIENT = 'cinder.volume.drivers.nimble.client'
 NIMBLE_URLLIB2 = 'six.moves.urllib.request'
 NIMBLE_RANDOM = 'cinder.volume.drivers.nimble.random'
-LOG = logging.getLogger(__name__)
 
 FAKE_ENUM_STRING = """
     <simpleType name="SmErrorType">

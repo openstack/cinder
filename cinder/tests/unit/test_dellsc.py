@@ -12,7 +12,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_log import log as logging
+import uuid
+
+import mock
 
 from cinder import context
 from cinder import exception
@@ -21,17 +23,9 @@ from cinder.volume.drivers.dell import dell_storagecenter_api
 from cinder.volume.drivers.dell import dell_storagecenter_iscsi
 from cinder.volume import volume_types
 
-import mock
-
-import uuid
-
-
-LOG = logging.getLogger(__name__)
 
 # We patch these here as they are used by every test to keep
 # from trying to contact a Dell Storage Center.
-
-
 @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                    '__init__',
                    return_value=None)

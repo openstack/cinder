@@ -18,7 +18,6 @@ import time
 from eventlet import greenthread
 import mock
 from oslo_concurrency import processutils
-from oslo_log import log as logging
 import paramiko
 import six
 
@@ -29,8 +28,6 @@ from cinder import test
 from cinder import utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import eqlx
-
-LOG = logging.getLogger(__name__)
 
 
 class DellEQLSanISCSIDriverTestCase(test.TestCase):

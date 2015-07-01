@@ -14,14 +14,11 @@
 #    under the License.
 from mox3 import mox
 from oslo_concurrency import processutils
-from oslo_log import log as logging
 
 from cinder.brick.local_dev import lvm as brick
 from cinder import exception
 from cinder import test
 from cinder.volume import configuration as conf
-
-LOG = logging.getLogger(__name__)
 
 
 def create_configuration():

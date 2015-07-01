@@ -19,7 +19,6 @@ import tempfile
 import mock
 from oslo_concurrency import processutils
 from oslo_config import cfg
-from oslo_log import log as logging
 from oslo_utils import units
 
 from cinder import context
@@ -30,8 +29,6 @@ from cinder.volume import configuration as conf
 from cinder.volume.drivers.ibm import gpfs
 from cinder.volume import volume_types
 
-
-LOG = logging.getLogger(__name__)
 
 CONF = cfg.CONF
 

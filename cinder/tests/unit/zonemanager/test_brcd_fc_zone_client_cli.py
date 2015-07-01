@@ -21,7 +21,6 @@
 
 import mock
 from oslo_concurrency import processutils
-from oslo_log import log as logging
 
 from cinder import exception
 from cinder import test
@@ -29,7 +28,6 @@ from cinder.zonemanager.drivers.brocade \
     import brcd_fc_zone_client_cli as client_cli
 import cinder.zonemanager.drivers.brocade.fc_zone_constants as ZoneConstant
 
-LOG = logging.getLogger(__name__)
 
 nsshow = '20:1a:00:05:1e:e8:e3:29'
 switch_data = [' N 011a00;2,3;20:1a:00:05:1e:e8:e3:29;\

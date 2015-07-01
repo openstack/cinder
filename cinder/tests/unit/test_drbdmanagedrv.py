@@ -16,7 +16,6 @@
 import collections
 
 import mock
-from oslo_log import log as logging
 from oslo_utils import importutils
 from oslo_utils import timeutils
 
@@ -69,9 +68,6 @@ sys.modules['drbdmanage.exceptions'] = collections.namedtuple(
 
 
 from cinder.volume.drivers import drbdmanagedrv
-
-
-LOG = logging.getLogger(__name__)
 
 
 def create_configuration(object):

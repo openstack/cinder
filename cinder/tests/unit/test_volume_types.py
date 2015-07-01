@@ -20,21 +20,16 @@ import datetime
 import time
 
 from oslo_config import cfg
-from oslo_log import log as logging
 
 from cinder import context
 from cinder import db
 from cinder.db.sqlalchemy import api as db_api
 from cinder.db.sqlalchemy import models
 from cinder import exception
-from cinder.i18n import _
 from cinder import test
 from cinder.tests.unit import conf_fixture
 from cinder.volume import qos_specs
 from cinder.volume import volume_types
-
-
-LOG = logging.getLogger(__name__)
 
 
 class VolumeTypeTestCase(test.TestCase):
@@ -62,9 +57,6 @@ class VolumeTypeTestCase(test.TestCase):
                                        description=self.vol_type1_description)
         new = volume_types.get_volume_type_by_name(self.ctxt,
                                                    self.vol_type1_name)
-
-        LOG.info(_("Given data: %s"), self.vol_type1_specs)
-        LOG.info(_("Result data: %s"), new)
 
         self.assertEqual(self.vol_type1_description, new['description'])
 
@@ -187,7 +179,6 @@ class VolumeTypeTestCase(test.TestCase):
         vol_types = volume_types.get_all_types(
             self.ctxt,
             search_opts={'extra_specs': {"key1": "val1"}})
-        LOG.info("vol_types: %s" % vol_types)
         self.assertEqual(len(vol_types), 1)
         self.assertIn("type1", vol_types.keys())
         self.assertEqual(vol_types['type1']['extra_specs'],
@@ -196,7 +187,6 @@ class VolumeTypeTestCase(test.TestCase):
         vol_types = volume_types.get_all_types(
             self.ctxt,
             search_opts={'extra_specs': {"key2": "val2"}})
-        LOG.info("vol_types: %s" % vol_types)
         self.assertEqual(len(vol_types), 2)
         self.assertIn("type1", vol_types.keys())
         self.assertIn("type2", vol_types.keys())
@@ -204,7 +194,6 @@ class VolumeTypeTestCase(test.TestCase):
         vol_types = volume_types.get_all_types(
             self.ctxt,
             search_opts={'extra_specs': {"key3": "val3"}})
-        LOG.info("vol_types: %s" % vol_types)
         self.assertEqual(len(vol_types), 1)
         self.assertIn("type2", vol_types.keys())
 
@@ -223,7 +212,6 @@ class VolumeTypeTestCase(test.TestCase):
             self.ctxt,
             search_opts={'extra_specs': {"key1": "val1",
                                          "key3": "val3"}})
-        LOG.info("vol_types: %s" % vol_types)
         self.assertEqual(len(vol_types), 2)
         self.assertIn("type1", vol_types.keys())
         self.assertIn("type3", vol_types.keys())

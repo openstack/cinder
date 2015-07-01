@@ -22,11 +22,9 @@ import unittest
 from lxml import etree
 import mock
 from mox3 import mox as mox_lib
-from oslo_log import log as logging
 import six
 
 from cinder import exception
-from cinder.i18n import _LW
 from cinder.image import image_utils
 from cinder import test
 from cinder import utils as cinder_utils
@@ -47,8 +45,6 @@ from cinder.volume.drivers.netapp import utils
 
 from oslo_config import cfg
 CONF = cfg.CONF
-
-LOG = logging.getLogger(__name__)
 
 
 CONNECTION_INFO = {'hostname': 'fake_host',
@@ -375,8 +371,6 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         if (share == 'testshare' and file_name == 'img-cache-id'):
             pass
         else:
-            LOG.warning(_LW("Share %(share)s and file name %(file_name)s")
-                        % {'share': share, 'file_name': file_name})
             self.fail('Return result is unexpected')
 
     def test_find_old_cache_files_notexists(self):

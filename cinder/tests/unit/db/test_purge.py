@@ -18,7 +18,6 @@
 import datetime
 import uuid
 
-from oslo_log import log as logging
 from oslo_utils import timeutils
 
 from cinder import context
@@ -28,9 +27,6 @@ from cinder import exception
 from cinder import test
 
 from oslo_db.sqlalchemy import utils as sqlalchemyutils
-
-
-LOG = logging.getLogger(__name__)
 
 
 class PurgeDeletedTest(test.TestCase):

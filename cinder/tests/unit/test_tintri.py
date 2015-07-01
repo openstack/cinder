@@ -17,7 +17,6 @@ Volume driver test for Tintri storage.
 
 import mock
 
-from oslo_log import log as logging
 from oslo_utils import units
 
 from cinder import context
@@ -27,8 +26,6 @@ from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.volume.drivers.tintri import TClient
 from cinder.volume.drivers.tintri import TintriDriver
-
-LOG = logging.getLogger(__name__)
 
 
 class FakeImage(object):

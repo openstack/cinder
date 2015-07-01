@@ -13,7 +13,6 @@
 #    under the License.
 
 import mock
-from oslo_log import log as logging
 
 from cinder import context
 from cinder import exception
@@ -22,12 +21,8 @@ from cinder.volume.drivers.dell import dell_storagecenter_api
 from cinder.volume.drivers.dell import dell_storagecenter_fc
 
 
-LOG = logging.getLogger(__name__)
-
 # We patch these here as they are used by every test to keep
 # from trying to contact a Dell Storage Center.
-
-
 @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                    '__init__',
                    return_value=None)
