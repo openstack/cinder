@@ -24,7 +24,6 @@ from eventlet import tpool
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
-import six
 from six.moves import urllib
 
 from cinder import exception
@@ -614,10 +613,25 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
             if parent_snap == "%s.clone_snap" % volume_name:
                 return pool, parent, parent_snap
         except self.rbd.ImageNotFound:
-            LOG.debug("volume %s is not a clone", volume_name)
+            LOG.debug("Volume %s is not a clone.", volume_name)
             volume.set_snap(None)
 
         return (None, None, None)
+
+    def _get_children_info(self, volume, snap):
+        """List children for the given snapshot of an volume(image).
+
+        Returns a list of (pool, image).
+        """
+
+        children_list = []
+
+        if snap:
+            volume.set_snap(snap)
+            children_list = volume.list_children()
+            volume.set_snap(None)
+
+        return children_list
 
     def _delete_clone_parent_refs(self, client, parent_name, parent_snap):
         """Walk back up the clone chain and delete references.
@@ -734,10 +748,21 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
         #                utf-8 otherwise librbd will barf.
         volume_name = utils.convert_str(snapshot['volume_name'])
         snap_name = utils.convert_str(snapshot['name'])
+
         with RBDVolumeProxy(self, volume_name) as volume:
             try:
                 volume.unprotect_snap(snap_name)
             except self.rbd.ImageBusy:
+                children_list = self._get_children_info(volume, snap_name)
+
+                if children_list:
+                    for (pool, image) in children_list:
+                        LOG.info(_LI('Image %(pool)s/%(image)s is dependent '
+                                     'on the snapshot %(snap)s.'),
+                                 {'pool': pool,
+                                  'image': image,
+                                  'snap': snap_name})
+
                 raise exception.SnapshotIsBusy(snapshot_name=snap_name)
             volume.remove_snap(snap_name)
 
@@ -753,15 +778,15 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
                   })
 
         if volume['host'] != host['host']:
-            LOG.error(_LE('Retype with host migration not supported'))
+            LOG.error(_LE('Retype with host migration not supported.'))
             return False
 
         if diff['encryption']:
-            LOG.error(_LE('Retype of encryption type not supported'))
+            LOG.error(_LE('Retype of encryption type not supported.'))
             return False
 
         if diff['extra_specs']:
-            LOG.error(_LE('Retype of extra_specs not supported'))
+            LOG.error(_LE('Retype of extra_specs not supported.'))
             return False
 
         return True
@@ -823,17 +848,18 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
         try:
             fsid, pool, image, snapshot = self._parse_location(image_location)
         except exception.ImageUnacceptable as e:
-            LOG.debug('not cloneable: %s', six.text_type(e))
+            LOG.debug('not cloneable: %s.', e)
             return False
 
         if self._get_fsid() != fsid:
-            LOG.debug('%s is in a different ceph cluster', image_location)
+            LOG.debug('%s is in a different ceph cluster.', image_location)
             return False
 
         if image_meta['disk_format'] != 'raw':
-            LOG.debug(("rbd image clone requires image format to be "
-                       "'raw' but image {0} is '{1}'").format(
-                image_location, image_meta['disk_format']))
+            LOG.debug("rbd image clone requires image format to be "
+                      "'raw' but image %(image)s is '%(format)s'",
+                      {"image", image_location,
+                       "format", image_meta['disk_format']})
             return False
 
         # check that we can read the image
@@ -844,7 +870,7 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
                                 read_only=True):
                 return True
         except self.rbd.Error as e:
-            LOG.debug('Unable to open image %(loc)s: %(err)s',
+            LOG.debug('Unable to open image %(loc)s: %(err)s.',
                       dict(loc=image_location, err=e))
             return False
 
@@ -880,7 +906,7 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
 
         if tmpdir == self.configuration.volume_tmp_dir:
             LOG.warning(_LW('volume_tmp_dir is now deprecated, please use '
-                            'image_conversion_dir'))
+                            'image_conversion_dir.'))
 
         # ensure temporary directory exists
         if not os.path.exists(tmpdir):
