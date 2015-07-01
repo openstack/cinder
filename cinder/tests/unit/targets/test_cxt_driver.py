@@ -70,7 +70,7 @@ class TestCxtAdmDriver(tf.TargetDriverFixture):
         tmp_file.seek(0)
 
         expected = ('otzL', '234Z')
-        with mock.patch('__builtin__.open') as mock_open:
+        with mock.patch('six.moves.builtins.open') as mock_open:
             ctx = context.get_admin_context()
             mock_open.return_value = contextlib.closing(tmp_file)
             self.assertEqual(expected,
@@ -79,7 +79,7 @@ class TestCxtAdmDriver(tf.TargetDriverFixture):
             self.assertTrue(mock_open.called)
 
     def test_get_target_chap_auth_negative(self):
-        with mock.patch('__builtin__.open') as mock_open:
+        with mock.patch('six.moves.builtins.open') as mock_open:
             e = IOError()
             e.errno = 123
             mock_open.side_effect = e
@@ -87,8 +87,8 @@ class TestCxtAdmDriver(tf.TargetDriverFixture):
             self.assertRaises(IOError,
                               self.target._get_target_chap_auth,
                               ctxt, self.test_vol)
-            mock_open.side_effect = StandardError()
-            self.assertRaises(StandardError,
+            mock_open.side_effect = ZeroDivisionError()
+            self.assertRaises(ZeroDivisionError,
                               self.target._get_target_chap_auth,
                               ctxt, self.test_vol)
 

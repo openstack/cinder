@@ -153,7 +153,7 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
                            'bspath': self.testvol_path}
         with open(os.path.join(self.fake_volumes_dir,
                                self.test_vol.split(':')[1]),
-                  'wb') as tmp_file:
+                  'w') as tmp_file:
             tmp_file.write(persist_file)
         ctxt = context.get_admin_context()
         expected = ('otzL', '234Z')
@@ -162,7 +162,7 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
                                                            self.test_vol))
 
     def test_get_target_chap_auth_negative(self):
-        with mock.patch('__builtin__.open') as mock_open:
+        with mock.patch('six.moves.builtins.open') as mock_open:
             e = IOError()
             e.errno = 123
             mock_open.side_effect = e
@@ -170,8 +170,8 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
             self.assertRaises(IOError,
                               self.target._get_target_chap_auth,
                               ctxt, self.test_vol)
-            mock_open.side_effect = StandardError()
-            self.assertRaises(StandardError,
+            mock_open.side_effect = ZeroDivisionError()
+            self.assertRaises(ZeroDivisionError,
                               self.target._get_target_chap_auth,
                               ctxt, self.test_vol)
 
