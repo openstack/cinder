@@ -430,7 +430,7 @@ class V7000Common(object):
         start = time.time()
         done = False
 
-        if isinstance(success_msgs, basestring):
+        if isinstance(success_msgs, six.string_types):
             success_msgs = [success_msgs]
 
         while not done:
@@ -486,7 +486,7 @@ class V7000Common(object):
         request_needed = True
         verify_needed = True
 
-        if isinstance(request_success_msgs, basestring):
+        if isinstance(request_success_msgs, six.string_types):
             request_success_msgs = [request_success_msgs]
 
         rargs = rargs if rargs else []
