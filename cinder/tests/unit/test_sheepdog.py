@@ -144,6 +144,31 @@ failed to connect to 127.0.0.1:7000: Connection refused
 Failed to get node list
 """
 
+    QEMU_IMG_ERROR_FAIL_TO_CONNECT_HOST = """\
+qemu-img: Could not open 'sheepdog:192.168.123.243:32109:test': \
+Failed to connect socket: No route to host
+"""
+
+    QEMU_IMG_ERROR_FAIL_TO_CONNECT_PORT = """\
+qemu-img: Could not open 'sheepdog:192.168.123.243:32109:test': \
+Failed to connect socket: Connection refused
+"""
+    QEMU_IMG_ERROR_VDI_NOT_FOUND = """\
+qemu-img: Could not open 'sheepdog:dummy': cannot get vdi info, \
+No vdi found, dummy 0
+"""
+    QEMU_IMG_ERROR_PERMISSION_DENIED = """\
+qemu-img: /tmp/dummy.txt: error while converting raw: \
+Could not create file: Permission denied
+"""
+
+    QEMU_IMG_ERROR_INVALID_FORMAT = """\
+qemu-img: Unknown file format 'dummy'
+"""
+    QEMU_IMG_ERROR = """\
+qemu-img: Unknown error
+"""
+
 
 class FakeImageService(object):
     def download(self, context, image_id, path):
@@ -651,6 +676,153 @@ class SheepdogClientTestCase(test.TestCase):
                     stderr=stderr.replace('\n', '\\n'))
                 ex = self.assertRaises(exception.SheepdogCmdError,
                                        self.client.resize, self._vdiname, 10)
+                self.assertTrue(fake_logger.error.called)
+                self.assertEqual(expected_msg, ex.msg)
+
+    def test_export_success(self):
+        expected_path = 'dummy_path'
+        expected_cmd = ('convert', '-f', 'raw', '-t', 'none', '-O', 'raw',
+                        'sheepdog:%s' % self._vdiname, expected_path)
+        with mock.patch.object(self.client, '_run_qemu_img') as fake_execute:
+            fake_execute.return_value = ('', '')
+            self.client.export(self._vdiname, expected_path)
+            fake_execute.assert_called_once_with(*expected_cmd)
+
+    def test_export_failed_to_connect_to_host(self):
+        expected_path = 'dummy_path'
+        cmd = ('convert', '-f', 'raw', '-t', 'none', '-O', 'raw',
+               'sheepdog:%s' % self._vdiname, expected_path)
+        exit_code = 1
+        stdout = 'stdout_dummy'
+        stderr = self.test_data.QEMU_IMG_ERROR_FAIL_TO_CONNECT_HOST
+        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
+                                                         exit_code=exit_code,
+                                                         stdout=stdout,
+                                                         stderr=stderr)
+        with mock.patch.object(self.client, '_run_qemu_img') as fake_execute:
+            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
+                fake_execute.side_effect = exception.SheepdogCmdError(
+                    cmd=cmd, exit_code=exit_code,
+                    stdout=stdout.replace('\n', '\\n'),
+                    stderr=stderr.replace('\n', '\\n'))
+                ex = self.assertRaises(exception.SheepdogCmdError,
+                                       self.client.export, self._vdiname,
+                                       expected_path)
+                self.assertTrue(fake_logger.error.called)
+                self.assertEqual(expected_msg, ex.msg)
+
+    def test_export_failed_to_connect_to_port(self):
+        expected_path = 'dummy_path'
+        cmd = ('convert', '-f', 'raw', '-t', 'none', '-O', 'raw',
+               'sheepdog:%s' % self._vdiname, expected_path)
+        exit_code = 1
+        stdout = 'stdout_dummy'
+        stderr = self.test_data.QEMU_IMG_ERROR_FAIL_TO_CONNECT_PORT
+        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
+                                                         exit_code=exit_code,
+                                                         stdout=stdout,
+                                                         stderr=stderr)
+        with mock.patch.object(self.client, '_run_qemu_img') as fake_execute:
+            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
+                fake_execute.side_effect = exception.SheepdogCmdError(
+                    cmd=cmd, exit_code=exit_code,
+                    stdout=stdout.replace('\n', '\\n'),
+                    stderr=stderr.replace('\n', '\\n'))
+                ex = self.assertRaises(exception.SheepdogCmdError,
+                                       self.client.export, self._vdiname,
+                                       expected_path)
+                self.assertTrue(fake_logger.error.called)
+                self.assertEqual(expected_msg, ex.msg)
+
+    def test_export_failed_not_found_vdi(self):
+        expected_path = 'dummy_path'
+        cmd = ('convert', '-f', 'raw', '-t', 'none', '-O', 'raw',
+               'sheepdog:%s' % self._vdiname, expected_path)
+        exit_code = 1
+        stdout = 'stdout_dummy'
+        stderr = self.test_data.QEMU_IMG_ERROR_VDI_NOT_FOUND
+        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
+                                                         exit_code=exit_code,
+                                                         stdout=stdout,
+                                                         stderr=stderr)
+        with mock.patch.object(self.client, '_run_qemu_img') as fake_execute:
+            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
+                fake_execute.side_effect = exception.SheepdogCmdError(
+                    cmd=cmd, exit_code=exit_code,
+                    stdout=stdout.replace('\n', '\\n'),
+                    stderr=stderr.replace('\n', '\\n'))
+                ex = self.assertRaises(exception.SheepdogCmdError,
+                                       self.client.export, self._vdiname,
+                                       expected_path)
+                self.assertTrue(fake_logger.error.called)
+                self.assertEqual(expected_msg, ex.msg)
+
+    def test_export_failed_permission_denied(self):
+        expected_path = 'dummy_path'
+        cmd = ('convert', '-f', 'raw', '-t', 'none', '-O', 'raw',
+               'sheepdog:%s' % self._vdiname, expected_path)
+        exit_code = 1
+        stdout = 'stdout_dummy'
+        stderr = self.test_data.QEMU_IMG_ERROR_PERMISSION_DENIED
+        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
+                                                         exit_code=exit_code,
+                                                         stdout=stdout,
+                                                         stderr=stderr)
+        with mock.patch.object(self.client, '_run_qemu_img') as fake_execute:
+            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
+                fake_execute.side_effect = exception.SheepdogCmdError(
+                    cmd=cmd, exit_code=exit_code,
+                    stdout=stdout.replace('\n', '\\n'),
+                    stderr=stderr.replace('\n', '\\n'))
+                ex = self.assertRaises(exception.SheepdogCmdError,
+                                       self.client.export, self._vdiname,
+                                       expected_path)
+                self.assertTrue(fake_logger.error.called)
+                self.assertEqual(expected_msg, ex.msg)
+
+    def test_export_failed_invalid_format(self):
+        expected_path = 'dummy_path'
+        cmd = ('convert', '-f', 'raw', '-t', 'none', '-O', 'dummy',
+               'sheepdog:%s' % self._vdiname, expected_path)
+        exit_code = 1
+        stdout = 'stdout_dummy'
+        stderr = self.test_data.QEMU_IMG_ERROR_INVALID_FORMAT
+        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
+                                                         exit_code=exit_code,
+                                                         stdout=stdout,
+                                                         stderr=stderr)
+        with mock.patch.object(self.client, '_run_qemu_img') as fake_execute:
+            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
+                fake_execute.side_effect = exception.SheepdogCmdError(
+                    cmd=cmd, exit_code=exit_code,
+                    stdout=stdout.replace('\n', '\\n'),
+                    stderr=stderr.replace('\n', '\\n'))
+                ex = self.assertRaises(exception.SheepdogCmdError,
+                                       self.client.export, self._vdiname,
+                                       expected_path)
+                self.assertTrue(fake_logger.error.called)
+                self.assertEqual(expected_msg, ex.msg)
+
+    def test_export_failed_else(self):
+        expected_path = 'dummy_path'
+        cmd = ('convert', '-f', 'raw', '-t', 'none', '-O', 'raw',
+               'sheepdog:%s' % self._vdiname, expected_path)
+        exit_code = 1
+        stdout = 'stdout_dummy'
+        stderr = self.test_data.QEMU_IMG_ERROR
+        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
+                                                         exit_code=exit_code,
+                                                         stdout=stdout,
+                                                         stderr=stderr)
+        with mock.patch.object(self.client, '_run_qemu_img') as fake_execute:
+            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
+                fake_execute.side_effect = exception.SheepdogCmdError(
+                    cmd=cmd, exit_code=exit_code,
+                    stdout=stdout.replace('\n', '\\n'),
+                    stderr=stderr.replace('\n', '\\n'))
+                ex = self.assertRaises(exception.SheepdogCmdError,
+                                       self.client.export, self._vdiname,
+                                       expected_path)
                 self.assertTrue(fake_logger.error.called)
                 self.assertEqual(expected_msg, ex.msg)
 

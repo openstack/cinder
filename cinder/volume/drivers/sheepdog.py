@@ -59,6 +59,16 @@ CONF.register_opts(sheepdog_opts)
 class SheepdogClient(object):
     """Sheepdog command executor."""
     QEMU_SHEEPDOG_PREFIX = 'sheepdog:'
+    QEMU_RESP_CONNECTION_ERROR_1 = \
+        'Failed to connect socket: No route to host\\n'
+    QEMU_RESP_CONNECTION_ERROR_2 = \
+        'Failed to connect socket: Connection refused\\n'
+    QEMU_RESP_SOURCE_VDI_NOT_FOUND = \
+        'No vdi found'
+    QEMU_RESP_TARGET_PERMISSION_DENIED = \
+        'Could not create file: Permission denied\\n'
+    QEMU_RESP_INVALID_FORMAT = \
+        'Unknown file format'
     DOG_RESP_CONNECTION_ERROR = 'failed to connect to'
     DOG_RESP_CLUSTER_RUNNING = 'Cluster status: running'
     DOG_RESP_CLUSTER_NOT_FORMATTED = ('Cluster status: '
@@ -207,6 +217,41 @@ class SheepdogClient(object):
                     LOG.error(_LE('Failed to resize vdi. '
                                   'vdi:%(vdiname)s new size:%(size)s'),
                               {'vdiname': vdiname, 'size': size})
+
+    def export(self, vdiname, dst_path, dst_format='raw'):
+
+        params = ('-f', 'raw', '-t', 'none', '-O', dst_format,
+                  'sheepdog:%s' % vdiname, dst_path)
+        try:
+            (stdout, stderr) = self._run_qemu_img('convert', *params)
+        except exception.SheepdogCmdError as e:
+            stderr = e.kwargs['stderr']
+            with excutils.save_and_reraise_exception():
+                if stderr.endswith(self.QEMU_RESP_CONNECTION_ERROR_1):
+                    LOG.error(_LE('Failed to connect addr. '
+                              'addr: %(addr)s, port: %(port)s'),
+                              {'addr': self.addr, 'port': self.port})
+                elif stderr.endswith(self.QEMU_RESP_CONNECTION_ERROR_2):
+                    LOG.error(_LE('Failed to connect socket. '
+                              'addr: %(addr)s, port: %(port)s'),
+                              {'addr': self.addr, 'port': self.port})
+                elif self.QEMU_RESP_SOURCE_VDI_NOT_FOUND in stderr:
+                    LOG.error(_LE('source vdi:%s not found'), vdiname)
+                elif stderr.endswith(self.QEMU_RESP_TARGET_PERMISSION_DENIED):
+                    LOG.error(_LE('Failed to export %(vdiname) to %(path). '
+                              'permission denied.'),
+                              {'vdiname': vdiname, 'path': dst_path})
+                elif self.QEMU_RESP_INVALID_FORMAT in stderr:
+                    LOG.error(_LE('Failed to export %(vdiname) to %(path). '
+                              '%(format) is not supported.'),
+                              {'vdiname': vdiname, 'path': dst_path,
+                               'format': dst_format})
+                else:
+                    LOG.error(_LE('Failed to export vdi. '
+                                  'vdi:%(vdiname)s target_path:%(path)s '
+                                  'format:%(format)'),
+                              {'vdiname': vdiname, 'path': dst_path,
+                               'format': dst_format})
 
 
 class SheepdogIOWrapper(io.RawIOBase):
