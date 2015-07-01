@@ -20,6 +20,7 @@ from cinder import exception as exc
 
 FAKE_UUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
 FAKE_UUIDS = {}
+TEST_SNAPSHOT_UUID = '00000000-0000-0000-0000-000000000001'
 
 
 def stub_volume(id, **kwargs):
@@ -69,7 +70,8 @@ def stub_volume_create(self, context, size, name, description, snapshot,
     vol['size'] = size
     vol['display_name'] = name
     vol['display_description'] = description
-    vol['source_volid'] = None
+    source_volume = param.get('source_volume') or {}
+    vol['source_volid'] = source_volume.get('id')
     vol['bootable'] = False
     try:
         vol['snapshot_id'] = snapshot['id']
@@ -170,3 +172,14 @@ def stub_snapshot_update(self, context, *args, **param):
 
 def stub_service_get_all_by_topic(context, topic):
     return [{'availability_zone': "zone1:host1", "disabled": 0}]
+
+
+def stub_snapshot_get(self, context, snapshot_id):
+    if snapshot_id != TEST_SNAPSHOT_UUID:
+        raise exc.SnapshotNotFound(snapshot_id=snapshot_id)
+
+    return stub_snapshot(snapshot_id)
+
+
+def stub_consistencygroup_get_notfound(self, context, cg_id):
+    raise exc.ConsistencyGroupNotFound(consistencygroup_id=cg_id)
