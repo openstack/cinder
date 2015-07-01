@@ -52,7 +52,7 @@ sf_opts = [
                default=None,
                help='Create SolidFire accounts with this prefix. Any string '
                     'can be used here, but the string \"hostname\" is special '
-                    'and will create a prefix using the cinder node hostsname '
+                    'and will create a prefix using the cinder node hostname '
                     '(previous default behavior).  The default is NO prefix.'),
 
     cfg.StrOpt('sf_template_account_name',
