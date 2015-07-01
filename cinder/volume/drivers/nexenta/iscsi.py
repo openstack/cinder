@@ -152,7 +152,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         """
         tg_list = self.nms.stmf.list_targetgroups()
         for tg in tg_list:
-            if tg.startswith(self._get_target_group_name()):
+            if tg.startswith('%s-' % self._get_target_group_name()):
                 self.tg_dict[tg] = 0
         zvol_list = self.nms.zvol.get_names(
             '%s/volume-' % self.volume)
@@ -249,6 +249,19 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             '%sG' % (volume['size'],),
             self.configuration.nexenta_blocksize,
             self.configuration.nexenta_sparse)
+        zvol_name = self._get_zvol_name(volume['name'])
+        target_group_name = self.current_tg
+
+        self.nms.scsidisk.create_lu(zvol_name, {})
+        self.nms.scsidisk.add_lun_mapping_entry(zvol_name, {
+            'target_group': target_group_name})
+        self.zvol_dict[zvol_name] = {
+            'target': '%(base)s-%(num)s' % {
+                'base': self._get_target_name(),
+                'num': self.current_tg.split('-')[-1]
+            },
+            'lun': self._get_lun(volume['name'])
+        }
         return self.create_export(None, volume)
 
     def extend_volume(self, volume, new_size):
@@ -288,6 +301,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             except nexenta.NexentaException as exc:
                 LOG.warning(_LW('Cannot delete snapshot %(origin)s: %(exc)s'),
                             {'origin': origin, 'exc': exc})
+        self.nms.scsidisk.delete_lu(volume_name)
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume.
@@ -654,53 +668,12 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             'lun': self.zvol_dict[zvol_name]['lun']
         }
 
-    def _do_export(self, _ctx, volume, ensure=False):
-        """Do all steps to get zvol exported as LUN 0 at separate target.
-
-        :param volume: reference of volume to be exported
-        :param ensure: if True, ignore errors caused by already existing
-            resources
-        """
-        zvol_name = self._get_zvol_name(volume['name'])
-        if not self.tg_dict[self.current_tg] < 255:
-            self.get_next_target_group()
-
-        if not self._lu_exists(zvol_name):
-            try:
-                self.nms.scsidisk.create_lu(zvol_name, {})
-            except nexenta.NexentaException as exc:
-                if not ensure or 'in use' not in exc.args[0]:
-                    raise
-                LOG.info(_LI('Ignored LU creation error "%s" while ensuring '
-                             'export.'), exc)
-        if not self._is_lu_shared(zvol_name):
-            try:
-                self.nms.scsidisk.add_lun_mapping_entry(zvol_name, {
-                    'target_group': self.current_tg})
-                self.tg_dict[self.current_tg] += 1
-            except nexenta.NexentaException as exc:
-                if not ensure or 'view entry exists' not in exc.args[0]:
-                    raise
-                LOG.info(_LI('Ignored LUN mapping entry addition error "%s" '
-                             'while ensuring export.'), exc)
-
-        zvol_name = self._get_zvol_name(volume['name'])
-        if zvol_name not in self.zvol_dict:
-            self.zvol_dict[zvol_name] = {
-                'target': '%(base)s-%(num)s' % {
-                    'base': self._get_target_name(),
-                    'num': self.current_tg.split('-')[-1]
-                },
-                'lun': self._get_lun(volume['name'])
-            }
-
     def create_export(self, _ctx, volume):
         """Create new export for zvol.
 
         :param volume: reference of volume to be exported
         :return: iscsiadm-formatted provider location string
         """
-        self._do_export(_ctx, volume, ensure=False)
         return {'provider_location': self._get_provider_location(volume)}
 
     def ensure_export(self, _ctx, volume):
@@ -711,12 +684,12 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         self._do_export(_ctx, volume, ensure=True)
 
     def remove_export(self, _ctx, volume):
-        """Destroy all resources created to export zvol.
+        """Driver entry point to remove an export for a volume.
 
-        :param volume: reference of volume to be unexported
+        Since exporting is idempotent in this driver, we have nothing
+        to do for unexporting.
         """
-        zvol_name = self._get_zvol_name(volume['name'])
-        self.nms.scsidisk.delete_lu(zvol_name)
+        pass
 
     def get_volume_stats(self, refresh=False):
         """Get volume stats.
