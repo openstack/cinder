@@ -1,4 +1,4 @@
-# Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -16,6 +16,7 @@ ZFS Storage Appliance REST API Client Programmatic Interface
 """
 
 import json
+import ssl
 import time
 
 from oslo_log import log
@@ -269,14 +270,27 @@ class RestClientURL(object):
         retry = 0
         response = None
 
-        LOG.debug('Request: %s %s', (request, zfssaurl))
+        LOG.debug('Request: %(request)s %(url)s',
+                  {'request': request, 'url': zfssaurl})
         LOG.debug('Out headers: %s', out_hdrs)
         if body and body != '':
             LOG.debug('Body: %s', body)
 
+        context = None
+        if hasattr(ssl, '_create_unverified_context'):
+            context = ssl._create_unverified_context()
+        else:
+            context = None
+
         while retry < maxreqretries:
             try:
-                response = urllib.request.urlopen(req, timeout=self.timeout)
+                if context:
+                    response = urllib.request.urlopen(req,
+                                                      timeout=self.timeout,
+                                                      context=context)
+                else:
+                    response = urllib.request.urlopen(req,
+                                                      timeout=self.timeout)
             except urllib.error.HTTPError as err:
                 if err.code == http_client.NOT_FOUND:
                     LOG.debug('REST Not Found: %s', err.code)
@@ -314,8 +328,9 @@ class RestClientURL(object):
 
             break
 
-        if response and response.getcode() == http_client.SERVICE_UNAVAILABLE and \
-           retry >= maxreqretries:
+        if (response and
+            (response.getcode() == http_client.SERVICE_UNAVAILABLE and
+                retry >= maxreqretries)):
             raise RestClientError(response.getcode(), name="ERR_HTTPError",
                                   message="REST Not Available: Disabled")
 
