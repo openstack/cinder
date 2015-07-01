@@ -276,28 +276,28 @@ class SheepdogClientTestCase(test.TestCase):
     def test_run_qemu_img_prefix_matched_multiple(self):
         expected_cmd = ('env', 'LC_ALL=C', 'LANG=C',
                         'qemu-img', 'create', '-b',
-                        'sheepdog:%(addr)s:%(port)s:vdi:1' %
+                        'sheepdog:%(addr)s:%(port)s:vdi:snap' %
                         {'addr': SHEEP_ADDR, 'port': SHEEP_PORT},
                         'sheepdog:%(addr)s:%(port)s:clone' %
                         {'addr': SHEEP_ADDR, 'port': SHEEP_PORT},
                         '10G')
         with mock.patch.object(utils, 'execute') as fake_execute:
                 fake_execute.return_value = ('', '')
-                self.client._run_qemu_img('create', '-b', 'sheepdog:vdi:1',
+                self.client._run_qemu_img('create', '-b', 'sheepdog:vdi:snap',
                                           'sheepdog:clone', '10G')
         fake_execute.assert_called_once_with(*expected_cmd)
 
     def test_run_qemu_img_prefix_matched_middle_in_str(self):
         expected_cmd = ('env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'convert',
                         '-f', 'raw', '-t', 'none', '-O', 'raw',
-                        'sheepdog:%(addr)s:%(port)s:sheepdog:1'
+                        'sheepdog:%(addr)s:%(port)s:sheepdog:snap'
                         % {'addr': SHEEP_ADDR, 'port': SHEEP_PORT},
                         '/tmp/tmp.raw')
         with mock.patch.object(utils, 'execute') as fake_execute:
                 fake_execute.return_value = ('', '')
                 self.client._run_qemu_img(
                     'convert', '-f', 'raw', '-t', 'none', '-O', 'raw',
-                    'sheepdog:sheepdog:1', '/tmp/tmp.raw')
+                    'sheepdog:sheepdog:snap', '/tmp/tmp.raw')
         fake_execute.assert_called_once_with(*expected_cmd)
 
     def test_run_qemu_img_os_error_command_not_found(self):
