@@ -116,7 +116,11 @@ MAPPING = {
     'cinder.volume.drivers.fujitsu_eternus_dx_fc.FJDXFCDriver':
     'cinder.volume.drivers.fujitsu.eternus_dx_fc.FJDXFCDriver',
     'cinder.volume.drivers.fujitsu_eternus_dx_iscsi.FJDXISCSIDriver':
-    'cinder.volume.drivers.fujitsu.eternus_dx_iscsi.FJDXISCSIDriver', }
+    'cinder.volume.drivers.fujitsu.eternus_dx_iscsi.FJDXISCSIDriver',
+    'cinder.volume.drivers.hds.nfs.HDSNFSDriver':
+    'cinder.volume.drivers.hitachi.hnas_nfs.HDSNFSDriver',
+    'cinder.volume.drivers.hds.iscsi.HDSISCSIDriver':
+    'cinder.volume.drivers.hitachi.hnas_iscsi.HDSISCSIDriver'}
 
 
 def locked_volume_operation(f):

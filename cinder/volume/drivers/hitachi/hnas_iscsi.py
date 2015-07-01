@@ -28,12 +28,12 @@ from oslo_utils import units
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.volume import driver
-from cinder.volume.drivers.hds import hnas_backend
+from cinder.volume.drivers.hitachi import hnas_backend
 from cinder.volume import utils
 from cinder.volume import volume_types
 
 
-HDS_HNAS_ISCSI_VERSION = '3.0.0'
+HDS_HNAS_ISCSI_VERSION = '3.0.1'
 
 LOG = logging.getLogger(__name__)
 
