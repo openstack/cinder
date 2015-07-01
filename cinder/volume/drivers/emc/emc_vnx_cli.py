@@ -1219,14 +1219,18 @@ class CommandLineHelper(object):
         return data
 
     def get_lun_current_ops_state(self, name, poll=False):
-        data = self.get_lun_by_name(name, poll=False)
+        data = self.get_lun_by_name(name, poll=poll)
         return data[self.LUN_OPERATION.key]
 
     def wait_until_lun_ready_for_ops(self, name):
         def is_lun_ready_for_ops():
             data = self.get_lun_current_ops_state(name, False)
             return data == 'None'
-        self._wait_for_a_condition(is_lun_ready_for_ops)
+        # Get the volume's latest operation state by polling.
+        # Otherwise, the operation state may be out of date.
+        ops = self.get_lun_current_ops_state(name, True)
+        if ops != 'None':
+            self._wait_for_a_condition(is_lun_ready_for_ops)
 
     def get_pool(self, name, properties=POOL_ALL, poll=True):
         data = self.get_pool_properties(('-name', name),
