@@ -95,7 +95,7 @@ PHY_DEVICES_RESPONSE = {
           'is_foreign': True,
           'name': 'BKSC:OTHDISK-MFCN01.000',
           'object_id': '84b834fb-1f4d-5d3b-b7ae-5796f9868151',
-          'owner': 'google-public-dns-a.google.com',
+          'owner': 'example.com',
           'pool': None,
           'product': 'OTHDISK-MFCN01',
           'scsi_address':
@@ -121,7 +121,7 @@ PHY_DEVICES_RESPONSE = {
           'is_foreign': False,
           'name': 'BKSC:OTHDISK-MFCN08.000',
           'object_id': '8555b888-bf43-5083-a433-f0c7b0282370',
-          'owner': 'google-public-dns-a.google.com',
+          'owner': 'example.com',
           'pool':
           {'name': 'mga-pool',
            'object_id': '0818d3de-4437-535f-9cac-cc100a2c9313'},
@@ -331,10 +331,19 @@ class V7000FCPDriverTestCase(test.TestCase):
         self.driver._update_volume_stats.assert_called_with()
         self.assertEqual(self.driver.stats, result)
 
-    def test_update_volume_stats(self):
+    @mock.patch('socket.gethostbyaddr')
+    def test_update_volume_stats(self, mock_gethost):
         """Makes a mock query to the backend to collect
            stats on all physical devices.
         """
+
+        def gethostbyaddr(addr):
+            if addr == '8.8.8.8' or addr == 'example.com':
+                return ('example.com', [], ['8.8.8.8'])
+            else:
+                return ('a.b.c.d', [], addr)
+        mock_gethost.side_effect = gethostbyaddr
+
         backend_name = self.conf.volume_backend_name
         vendor_name = "Violin Memory, Inc."
         tot_gb = 2046
