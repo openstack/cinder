@@ -349,16 +349,18 @@ class SheepdogClientTestCase(test.TestCase):
                 self.assertTrue(fake_logger.debug.called)
 
     def test_check_cluster_status_0_5(self):
-        def fake_stats(*args):
-            return self.test_data.COLLIE_CLUSTER_INFO_0_5, ''
-        self.stubs.Set(utils, 'execute', fake_stats)
-        self.client.check_cluster_status()
+        stdout = self.test_data.COLLIE_CLUSTER_INFO_0_5
+        stderr = ''
+        with mock.patch.object(self.client, '_run_dog') as fake_execute:
+            fake_execute.return_value = (stdout, stderr)
+            self.client.check_cluster_status()
 
     def test_check_cluster_status_0_6(self):
-        def fake_stats(*args):
-            return self.test_data.COLLIE_CLUSTER_INFO_0_6, ''
-        self.stubs.Set(utils, 'execute', fake_stats)
-        self.client.check_cluster_status()
+        stdout = self.test_data.COLLIE_CLUSTER_INFO_0_6
+        stderr = ''
+        with mock.patch.object(self.client, '_run_dog') as fake_execute:
+            fake_execute.return_value = (stdout, stderr)
+            self.client.check_cluster_status()
 
     def test_check_cluster_status_error_waiting_formatted(self):
         stdout = self.test_data.DOG_CLUSTER_INFO_TO_BE_FORMATTED
