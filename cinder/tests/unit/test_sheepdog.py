@@ -76,6 +76,11 @@ class SheepdogDriverTestDataGenerator(object):
         'consistencygroup_id': None,
     }
 
+    TEST_SNAPSHOT = {
+        'volume_name': 'volume-00000002',
+        'name': 'test_snap',
+    }
+
     COLLIE_NODE_INFO = """
 0 107287605248 3623897354 3%
 Total 107287605248 3623897354 3% 54760833024
@@ -254,6 +259,8 @@ class SheepdogClientTestCase(test.TestCase):
         self.client = self.driver.client
         self._vdiname = self.test_data.TEST_VOLUME['name']
         self._vdisize = self.test_data.TEST_VOLUME['size']
+        self._snapvdiname = self.test_data.TEST_SNAPSHOT['volume_name']
+        self._snapname = self.test_data.TEST_SNAPSHOT['name']
 
     def test_run_dog(self):
         expected_cmd = self.test_data.CMD_DOG_CLUSTER_INFO
@@ -671,6 +678,8 @@ class SheepdogDriverTestCase(test.TestCase):
         self.client = self.driver.client
         self._vdiname = self.test_data.TEST_VOLUME['name']
         self._vdisize = self.test_data.TEST_VOLUME['size']
+        self._snapvdiname = self.test_data.TEST_SNAPSHOT['volume_name']
+        self._snapname = self.test_data.TEST_SNAPSHOT['name']
 
     def test_check_for_setup_error(self):
         with mock.patch.object(self.client, 'check_cluster_status') \
