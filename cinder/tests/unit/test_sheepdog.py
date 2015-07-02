@@ -161,24 +161,27 @@ Failed to get node list
 """
 
     QEMU_VDI_ALREADY_EXISTS = """\
-qemu-img: sheepdog:%(vdiname)s: VDI exists already,
+qemu-img: sheepdog:volume-00000001: VDI exists already,
 """
 
     QEMU_VDI_NOT_FOUND = """\
-qemu-img: sheepdog:%(vdiname)s: cannot get vdi info, No vdi found, \
-%(src_vdiname)s %(snapname)s
+qemu-img: sheepdog:volume-00000001: cannot get vdi info, No vdi found, \
+volume-00000002 test-snap
 """
 
     QEMU_SNAPSHOT_NOT_FOUND = """\
-qemu-img: sheepdog:%(vdiname)s: cannot get vdi info, Failed to find the requested tag, %(src_vdiname)s %(snapname)s
+qemu-img: sheepdog:volume-00000001: cannot get vdi info, Failed to find \
+the requested tag, volume-00000002 snap-name
 """
 
     QEMU_SIZE_TOO_LARGE = """\
-qemu-img: sheepdog:%(vdiname)s: An image is too large. The maximum image size is 4096GB
+qemu-img: sheepdog:volume-00000001: An image is too large. \
+The maximum image size is 4096GB
 """
 
     QEMU_FAILED_TO_CONNECT = """\
-qemu-img: sheepdog:%(vdiname)s: Failed to connect socket: Connection refused
+qemu-img: sheepdog::volume-00000001: \
+Failed to connect socket: Connection refused
 """
 
 
@@ -605,8 +608,7 @@ class SheepdogClientTestCase(test.TestCase):
                                                    self._vdisize)
         exit_code = 2
         stdout = 'stdout_dummy'
-        stderr = self.test_data.QEMU_FAILED_TO_CONNECT % \
-            {'vdiname': self._vdiname}
+        stderr = self.test_data.QEMU_FAILED_TO_CONNECT
         expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
                                                          exit_code=exit_code,
                                                          stdout=stdout,
@@ -631,8 +633,7 @@ class SheepdogClientTestCase(test.TestCase):
                                                    self._vdisize)
         exit_code = 2
         stdout = 'stdout_dummy'
-        stderr = self.test_data.QEMU_VDI_ALREADY_EXISTS % \
-            {'vdiname': self._vdiname}
+        stderr = self.test_data.QEMU_VDI_ALREADY_EXISTS
         expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
                                                          exit_code=exit_code,
                                                          stdout=stdout,
@@ -657,9 +658,7 @@ class SheepdogClientTestCase(test.TestCase):
                                                    self._vdisize)
         exit_code = 2
         stdout = 'stdout_dummy'
-        stderr = self.test_data.QEMU_VDI_NOT_FOUND % \
-            {'vdiname': self._vdiname, 'src_vdiname': self._src_vdiname,
-             'snapname': self._snapname}
+        stderr = self.test_data.QEMU_VDI_NOT_FOUND
         expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
                                                          exit_code=exit_code,
                                                          stdout=stdout,
@@ -684,9 +683,7 @@ class SheepdogClientTestCase(test.TestCase):
                                                    self._vdisize)
         exit_code = 2
         stdout = 'stdout_dummy'
-        stderr = self.test_data.QEMU_SNAPSHOT_NOT_FOUND % \
-            {'vdiname': self._vdiname, 'src_vdiname': self._src_vdiname,
-             'snapname': self._snapname}
+        stderr = self.test_data.QEMU_SNAPSHOT_NOT_FOUND
         expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
                                                          exit_code=exit_code,
                                                          stdout=stdout,
@@ -705,14 +702,13 @@ class SheepdogClientTestCase(test.TestCase):
                 self.assertEqual(expected_msg, ex.msg)
 
     def test_clone_failed_size_too_large(self):
-        cmd = self.test_data.cmd_qemuimg_vdi_clone(self._scr_vdiname,
+        cmd = self.test_data.cmd_qemuimg_vdi_clone(self._src_vdiname,
                                                    self._snapname,
                                                    self._vdiname,
                                                    self._vdisize)
         exit_code = 2
         stdout = 'stdout_dummy'
-        stderr = self.test_data.QEMU_SIZE_TOO_LARGE % \
-            {'vdiname': self._vdiname}
+        stderr = self.test_data.QEMU_SIZE_TOO_LARGE
         expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
                                                          exit_code=exit_code,
                                                          stdout=stdout,
