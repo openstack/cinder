@@ -552,7 +552,7 @@ class BackupManager(manager.SchedulerDependentManager):
                 first_host = backup_hosts.pop()
                 self.backup_rpcapi.import_record(context,
                                                  first_host,
-                                                 backup.id,
+                                                 backup,
                                                  backup_service,
                                                  backup_url,
                                                  backup_hosts)

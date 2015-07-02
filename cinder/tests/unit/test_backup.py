@@ -552,6 +552,7 @@ class BackupTestCase(BaseBackupTest):
         # Test that the import backup keeps calling other hosts to find a
         # suitable host for the backup service
         backup_hosts = ['fake1', 'fake2']
+        backup_hosts_expect = list(backup_hosts)
         BackupAPI_import = 'cinder.backup.rpcapi.BackupAPI.import_record'
         with mock.patch(BackupAPI_import) as _mock_backup_import:
             self.backup_mgr.import_record(self.ctxt,
@@ -559,7 +560,15 @@ class BackupTestCase(BaseBackupTest):
                                           export['backup_service'],
                                           export['backup_url'],
                                           backup_hosts)
-            self.assertTrue(_mock_backup_import.called)
+
+            next_host = backup_hosts_expect.pop()
+            _mock_backup_import.assert_called_once_with(
+                self.ctxt,
+                next_host,
+                imported_record,
+                export['backup_service'],
+                export['backup_url'],
+                backup_hosts_expect)
 
     def test_import_record_with_invalid_backup(self):
         """Test error handling when attempting an import of a backup
