@@ -255,10 +255,12 @@ class VolumeAPI(object):
         cctxt = self.client.prepare(server=new_host, version='1.17')
         cctxt.cast(ctxt, 'reenable_replication', volume_id=volume['id'])
 
-    def update_migrated_volume(self, ctxt, volume, new_volume):
+    def update_migrated_volume(self, ctxt, volume, new_volume,
+                               original_volume_status):
         host = utils.extract_host(new_volume['host'])
         cctxt = self.client.prepare(server=host, version='1.19')
         cctxt.call(ctxt,
                    'update_migrated_volume',
                    volume=volume,
-                   new_volume=new_volume)
+                   new_volume=new_volume,
+                   volume_status=original_volume_status)

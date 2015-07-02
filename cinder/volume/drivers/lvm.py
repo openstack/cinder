@@ -306,6 +306,41 @@ class LVMVolumeDriver(driver.VolumeDriver):
                             self.configuration.lvm_type,
                             mirror_count)
 
+    def update_migrated_volume(self, ctxt, volume, new_volume,
+                               original_volume_status):
+        """Return model update from LVM for migrated volume.
+
+        This method should rename the back-end volume name(id) on the
+        destination host back to its original name(id) on the source host.
+
+        :param ctxt: The context used to run the method update_migrated_volume
+        :param volume: The original volume that was migrated to this backend
+        :param new_volume: The migration volume object that was created on
+                           this backend as part of the migration process
+        :param original_volume_status: The status of the original volume
+        :return model_update to update DB with any needed changes
+        """
+        name_id = None
+        provider_location = None
+        if original_volume_status == 'available':
+            current_name = CONF.volume_name_template % new_volume['id']
+            original_volume_name = CONF.volume_name_template % volume['id']
+            try:
+                self.vg.rename_volume(current_name, original_volume_name)
+            except processutils.ProcessExecutionError:
+                LOG.error(_LE('Unable to rename the logical volume '
+                              'for volume: %s'), volume['name'])
+                # If the rename fails, _name_id should be set to the new
+                # volume id and provider_location should be set to the
+                # one from the new volume as well.
+                name_id = new_volume['_name_id'] or new_volume['id']
+                provider_location = new_volume['provider_location']
+        else:
+            # The back-end will not be renamed.
+            name_id = new_volume['_name_id'] or new_volume['id']
+            provider_location = new_volume['provider_location']
+        return {'_name_id': name_id, 'provider_location': provider_location}
+
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
         self._create_volume(volume['name'],

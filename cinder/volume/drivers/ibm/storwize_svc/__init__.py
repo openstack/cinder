@@ -945,6 +945,37 @@ class StorwizeSVCDriver(san.SanDriver):
                                                    'host': host['host']})
         return True, model_update
 
+    def update_migrated_volume(self, ctxt, volume, new_volume,
+                               original_volume_status):
+        """Return model update from Storwize for migrated volume.
+
+        This method should rename the back-end volume name(id) on the
+        destination host back to its original name(id) on the source host.
+
+        :param ctxt: The context used to run the method update_migrated_volume
+        :param volume: The original volume that was migrated to this backend
+        :param new_volume: The migration volume object that was created on
+                           this backend as part of the migration process
+        :param original_volume_status: The status of the original volume
+        :return model_update to update DB with any needed changes
+        """
+        current_name = CONF.volume_name_template % new_volume['id']
+        original_volume_name = CONF.volume_name_template % volume['id']
+        try:
+            self._helpers.rename_vdisk(current_name, original_volume_name)
+        except exception.VolumeBackendAPIException:
+            LOG.error(_LE('Unable to rename the logical volume '
+                          'for volume: %s'), volume['id'])
+            return {'_name_id': new_volume['_name_id'] or new_volume['id']}
+        # If the back-end name(id) for the volume has been renamed,
+        # it is OK for the volume to keep the original name(id) and there is
+        # no need to use the column "_name_id" to establish the mapping
+        # relationship between the volume id and the back-end volume
+        # name(id).
+        # Set the key "_name_id" to None for a successful rename.
+        model_update = {'_name_id': None}
+        return model_update
+
     def manage_existing(self, volume, ref):
         """Manages an existing vdisk.
 

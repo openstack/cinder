@@ -38,9 +38,6 @@ class FinishVolumeMigrationTestCase(test.TestCase):
                                    dest_volume['id'])
 
         src_volume = db.volume_get(ctxt, src_volume['id'])
-        expected_name = 'volume-%s' % dest_volume['id']
-        self.assertEqual(src_volume['_name_id'], dest_volume['id'])
-        self.assertEqual(src_volume['name'], expected_name)
-        self.assertEqual(src_volume['host'], 'dest')
-        self.assertEqual(src_volume['status'], 'available')
+        self.assertEqual('dest', src_volume['host'])
+        self.assertEqual('available', src_volume['status'])
         self.assertIsNone(src_volume['migration_status'])

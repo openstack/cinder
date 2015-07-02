@@ -1983,6 +1983,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         dst_volume['provider_location'] = 'system_id^%s@partition_id^%s' % (
             int(self.cli_data.fake_system_id[0], 16), test_dst_part_id)
         test_model_update = {
+            '_name_id': None,
             'provider_location': dst_volume['provider_location'],
         }
 
@@ -1992,19 +1993,20 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self._driver_setup(mock_commands)
 
         model_update = self.driver.update_migrated_volume(
-            None, src_volume, dst_volume)
+            None, src_volume, dst_volume, 'available')
 
         expect_cli_cmd = [
             mock.call('SetPartition', test_dst_part_id,
                       'name=%s' % src_volume['id'].replace('-', '')),
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
-        self.assertDictMatch(model_update, test_model_update)
+        self.assertDictMatch(test_model_update, model_update)
 
     @mock.patch.object(common_cli.LOG, 'debug', mock.Mock())
     def test_update_migrated_volume_rename_fail(self):
         src_volume = self.cli_data.test_volume
         dst_volume = self.cli_data.test_dst_volume
+        dst_volume['_name_id'] = 'fake_name_id'
         test_dst_part_id = self.cli_data.fake_partition_id[1]
         dst_volume['provider_location'] = 'system_id^%s@partition_id^%s' % (
             int(self.cli_data.fake_system_id[0], 16), test_dst_part_id)
@@ -2013,10 +2015,6 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'SetPartition': FAKE_ERROR_RETURN
         }
         self._driver_setup(mock_commands)
-
-        self.assertRaises(
-            exception.InfortrendCliException,
-            self.driver.update_migrated_volume,
-            None,
-            src_volume,
-            dst_volume)
+        model_update = self.driver.update_migrated_volume(
+            None, src_volume, dst_volume, 'available')
+        self.assertEqual({'_name_id': 'fake_name_id'}, model_update)
