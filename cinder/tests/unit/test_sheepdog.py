@@ -166,11 +166,11 @@ qemu-img: sheepdog:%(vdiname)s: VDI exists already,
 
     QEMU_VDI_NOT_FOUND = """\
 qemu-img: sheepdog:%(vdiname)s: cannot get vdi info, No vdi found, \
-%(snapvdiname)s %(snapname)s
+%(src_vdiname)s %(snapname)s
 """
 
     QEMU_SNAPSHOT_NOT_FOUND = """\
-qemu-img: sheepdog:%(vdiname)s: cannot get vdi info, Failed to find the requested tag, %(snapvdiname)s %(snapname)s
+qemu-img: sheepdog:%(vdiname)s: cannot get vdi info, Failed to find the requested tag, %(src_vdiname)s %(snapname)s
 """
 
     QEMU_SIZE_TOO_LARGE = """\
@@ -291,7 +291,7 @@ class SheepdogClientTestCase(test.TestCase):
         self.client = self.driver.client
         self._vdiname = self.test_data.TEST_VOLUME['name']
         self._vdisize = self.test_data.TEST_VOLUME['size']
-        self._snapvdiname = self.test_data.TEST_SNAPSHOT['volume_name']
+        self._src_vdiname = self.test_data.TEST_SNAPSHOT['volume_name']
         self._snapname = self.test_data.TEST_SNAPSHOT['name']
 
     def test_run_dog(self):
@@ -587,19 +587,19 @@ class SheepdogClientTestCase(test.TestCase):
 
     def test_clone_success(self):
         expected_cmd = ('create', '-b',
-                        'sheepdog:%(snapvdiname)s:%(snapname)s' %
-                        {'snapvdiname': self._snapvdiname,
+                        'sheepdog:%(src_vdiname)s:%(snapname)s' %
+                        {'src_vdiname': self._src_vdiname,
                          'snapname': self._snapname},
                         'sheepdog:%s' % self._vdiname,
                         '%sG' % self._vdisize)
         with mock.patch.object(self.client, '_run_qemu_img') as fake_execute:
             fake_execute.return_code = ("", "")
-            self.client.clone(self._snapvdiname, self._snapname,
+            self.client.clone(self._src_vdiname, self._snapname,
                               self._vdiname, self._vdisize)
             fake_execute.assert_called_once_with(*expected_cmd)
 
     def test_clone_failed_to_connect(self):
-        cmd = self.test_data.cmd_qemuimg_vdi_clone(self._snapvdiname,
+        cmd = self.test_data.cmd_qemuimg_vdi_clone(self._src_vdiname,
                                                    self._snapname,
                                                    self._vdiname,
                                                    self._vdisize)
@@ -619,13 +619,13 @@ class SheepdogClientTestCase(test.TestCase):
                     stderr=stderr.replace('\n', '\\n'))
                 ex = self.assertRaises(exception.SheepdogCmdError,
                                        self.client.clone,
-                                       self._snapvdiname, self._snapname,
+                                       self._src_vdiname, self._snapname,
                                        self._vdiname, self._vdisize)
                 self.assertTrue(fake_logger.error.called)
                 self.assertEqual(expected_msg, ex.msg)
 
     def test_clone_failed_clone_already_exists(self):
-        cmd = self.test_data.cmd_qemuimg_vdi_clone(self._snapvdiname,
+        cmd = self.test_data.cmd_qemuimg_vdi_clone(self._src_vdiname,
                                                    self._snapname,
                                                    self._vdiname,
                                                    self._vdisize)
@@ -645,20 +645,20 @@ class SheepdogClientTestCase(test.TestCase):
                     stderr=stderr.replace('\n', '\\n'))
                 ex = self.assertRaises(exception.SheepdogCmdError,
                                        self.client.clone,
-                                       self._snapvdiname, self._snapname,
+                                       self._src_vdiname, self._snapname,
                                        self._vdiname, self._vdisize)
                 self.assertTrue(fake_logger.error.called)
                 self.assertEqual(expected_msg, ex.msg)
 
     def test_clone_failed_vdi_not_found(self):
-        cmd = self.test_data.cmd_qemuimg_vdi_clone(self._snapvdiname,
+        cmd = self.test_data.cmd_qemuimg_vdi_clone(self._src_vdiname,
                                                    self._snapname,
                                                    self._vdiname,
                                                    self._vdisize)
         exit_code = 2
         stdout = 'stdout_dummy'
         stderr = self.test_data.QEMU_VDI_NOT_FOUND % \
-            {'vdiname': self._vdiname, 'snapvdiname': self._snapvdiname,
+            {'vdiname': self._vdiname, 'src_vdiname': self._src_vdiname,
              'snapname': self._snapname}
         expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
                                                          exit_code=exit_code,
@@ -672,20 +672,20 @@ class SheepdogClientTestCase(test.TestCase):
                     stderr=stderr.replace('\n', '\\n'))
                 ex = self.assertRaises(exception.SheepdogCmdError,
                                        self.client.clone,
-                                       self._snapvdiname, self._snapname,
+                                       self._src_vdiname, self._snapname,
                                        self._vdiname, self._vdisize)
                 self.assertTrue(fake_logger.error.called)
                 self.assertEqual(expected_msg, ex.msg)
 
     def test_clone_failed_snapshot_not_found(self):
-        cmd = self.test_data.cmd_qemuimg_vdi_clone(self._snapvdiname,
+        cmd = self.test_data.cmd_qemuimg_vdi_clone(self._src_vdiname,
                                                    self._snapname,
                                                    self._vdiname,
                                                    self._vdisize)
         exit_code = 2
         stdout = 'stdout_dummy'
         stderr = self.test_data.QEMU_SNAPSHOT_NOT_FOUND % \
-            {'vdiname': self._vdiname, 'snapvdiname': self._snapvdiname,
+            {'vdiname': self._vdiname, 'src_vdiname': self._src_vdiname,
              'snapname': self._snapname}
         expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
                                                          exit_code=exit_code,
@@ -699,13 +699,13 @@ class SheepdogClientTestCase(test.TestCase):
                     stderr=stderr.replace('\n', '\\n'))
                 ex = self.assertRaises(exception.SheepdogCmdError,
                                        self.client.clone,
-                                       self._snapvdiname, self._snapname,
+                                       self._src_vdiname, self._snapname,
                                        self._vdiname, self._vdisize)
                 self.assertTrue(fake_logger.error.called)
                 self.assertEqual(expected_msg, ex.msg)
 
     def test_clone_failed_size_too_large(self):
-        cmd = self.test_data.cmd_qemuimg_vdi_clone(self._snapvdiname,
+        cmd = self.test_data.cmd_qemuimg_vdi_clone(self._scr_vdiname,
                                                    self._snapname,
                                                    self._vdiname,
                                                    self._vdisize)
@@ -725,13 +725,13 @@ class SheepdogClientTestCase(test.TestCase):
                     stderr=stderr.replace('\n', '\\n'))
                 ex = self.assertRaises(exception.SheepdogCmdError,
                                        self.client.clone,
-                                       self._snapvdiname, self._snapname,
+                                       self._src_vdiname, self._snapname,
                                        self._vdiname, self._vdisize)
                 self.assertTrue(fake_logger.error.called)
                 self.assertEqual(expected_msg, ex.msg)
 
     def test_clone_failed_unknown(self):
-        cmd = self.test_data.cmd_qemuimg_vdi_clone(self._snapvdiname,
+        cmd = self.test_data.cmd_qemuimg_vdi_clone(self._src_vdiname,
                                                    self._snapname,
                                                    self._vdiname,
                                                    self._vdisize)
@@ -750,7 +750,7 @@ class SheepdogClientTestCase(test.TestCase):
                     stderr=stderr.replace('\n', '\\n'))
                 ex = self.assertRaises(exception.SheepdogCmdError,
                                        self.client.clone,
-                                       self._snapvdiname, self._snapname,
+                                       self._src_vdiname, self._snapname,
                                        self._vdiname, self._vdisize)
                 self.assertTrue(fake_logger.error.called)
                 self.assertEqual(expected_msg, ex.msg)
@@ -880,7 +880,7 @@ class SheepdogDriverTestCase(test.TestCase):
         self.client = self.driver.client
         self._vdiname = self.test_data.TEST_VOLUME['name']
         self._vdisize = self.test_data.TEST_VOLUME['size']
-        self._snapvdiname = self.test_data.TEST_SNAPSHOT['volume_name']
+        self._src_vdiname = self.test_data.TEST_SNAPSHOT['volume_name']
         self._snapname = self.test_data.TEST_SNAPSHOT['name']
 
     def test_check_for_setup_error(self):
@@ -1125,7 +1125,7 @@ class SheepdogDriverTestCase(test.TestCase):
         snapshot = self.test_data.TEST_SNAPSHOT
         with mock.patch.object(self.client, 'clone') as fake_execute:
             self.driver.create_volume_from_snapshot(volume, snapshot)
-            fake_execute.assert_called_once_with(self._snapvdiname,
+            fake_execute.assert_called_once_with(self._src_vdiname,
                                                  self._snapname,
                                                  self._vdiname,
                                                  self._vdisize)
