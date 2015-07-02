@@ -29,6 +29,7 @@ from cinder.api.contrib import quotas
 from cinder import context
 from cinder import db
 from cinder import test
+from cinder.tests.unit import test_db_api
 
 
 def make_body(root=True, gigabytes=1000, snapshots=10,
@@ -140,6 +141,8 @@ class QuotaSetsControllerTest(test.TestCase):
 
     def test_update_no_admin(self):
         self.req.environ['cinder.context'].is_admin = False
+        self.req.environ['cinder.context'].project_id = 'foo'
+        self.req.environ['cinder.context'].user_id = 'foo_user'
         self.assertRaises(webob.exc.HTTPForbidden, self.controller.update,
                           self.req, 'foo', make_body(tenant_id=None))
 
@@ -152,6 +155,44 @@ class QuotaSetsControllerTest(test.TestCase):
         body = {}
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
                           self.req, 'foo', body)
+
+    def _commit_quota_reservation(self):
+        # Create simple quota and quota usage.
+        ctxt = context.get_admin_context()
+        res = test_db_api._quota_reserve(ctxt, 'foo')
+        db.reservation_commit(ctxt, res, 'foo')
+        expected = {'project_id': 'foo',
+                    'volumes': {'reserved': 0, 'in_use': 1},
+                    'gigabytes': {'reserved': 0, 'in_use': 2},
+                    }
+        self.assertEqual(expected,
+                         db.quota_usage_get_all_by_project(ctxt, 'foo'))
+
+    def test_update_lower_than_existing_resources_when_skip_false(self):
+        self._commit_quota_reservation()
+        body = {'quota_set': {'volumes': 0},
+                'skip_validation': 'false'}
+        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
+                          self.req, 'foo', body)
+        body = {'quota_set': {'gigabytes': 1},
+                'skip_validation': 'false'}
+        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
+                          self.req, 'foo', body)
+
+    def test_update_lower_than_existing_resources_when_skip_true(self):
+        self._commit_quota_reservation()
+        body = {'quota_set': {'volumes': 0},
+                'skip_validation': 'true'}
+        result = self.controller.update(self.req, 'foo', body)
+        self.assertEqual(body['quota_set']['volumes'],
+                         result['quota_set']['volumes'])
+
+    def test_update_lower_than_existing_resources_without_skip_argument(self):
+        self._commit_quota_reservation()
+        body = {'quota_set': {'volumes': 0}}
+        result = self.controller.update(self.req, 'foo', body)
+        self.assertEqual(body['quota_set']['volumes'],
+                         result['quota_set']['volumes'])
 
     def test_delete(self):
         result_show = self.controller.show(self.req, 'foo')
