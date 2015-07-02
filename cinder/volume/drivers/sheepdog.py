@@ -417,14 +417,13 @@ class SheepdogDriver(driver.VolumeDriver):
         self.create_snapshot(snapshot)
 
         try:
-            # Create volume
-            self.create_volume_from_snapshot(volume, snapshot)
-        except processutils.ProcessExecutionError:
-            msg = _('Failed to create cloned volume %s.') % volume['id']
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(msg)
+            self.client.clone(snapshot['volume_name'], snapshot['name'],
+                              volume['name'], volume['size'])
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE('Failed to create cloned volume %s.'),
+                          volume['name'])
         finally:
-            # Delete temp Snapshot
             self.delete_snapshot(snapshot)
 
     def create_volume(self, volume):
@@ -433,11 +432,8 @@ class SheepdogDriver(driver.VolumeDriver):
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create a sheepdog volume from a snapshot."""
-        self._try_execute('qemu-img', 'create', '-b',
-                          "sheepdog:%s:%s" % (snapshot['volume_name'],
-                                              snapshot['name']),
-                          "sheepdog:%s" % volume['name'],
-                          '%sG' % volume['size'])
+        self.client.clone(snapshot['volume_name'], snapshot['name'],
+                          volume['name'], volume['size'])
 
     def delete_volume(self, volume):
         """Delete a logical volume."""

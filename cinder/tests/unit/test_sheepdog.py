@@ -1019,22 +1019,20 @@ class SheepdogDriverTestCase(test.TestCase):
 
         with mock.patch.object(self.driver,
                                '_try_execute') as mock_exe:
-            self.driver.create_cloned_volume(target_vol, src_vol)
+            with mock.patch.object(self.client, 'clone') as mock_clone:
+                self.driver.create_cloned_volume(target_vol, src_vol)
 
-            snapshot_name = src_vol['name'] + '-temp-snapshot'
-            qemu_src_volume_name = "sheepdog:%s" % src_vol['name']
-            qemu_snapshot_name = '%s:%s' % (qemu_src_volume_name,
-                                            snapshot_name)
-            qemu_target_volume_name = "sheepdog:%s" % target_vol['name']
-            calls = [
-                mock.call('qemu-img', 'snapshot', '-c',
-                          snapshot_name, qemu_src_volume_name),
-                mock.call('qemu-img', 'create', '-b',
-                          qemu_snapshot_name,
-                          qemu_target_volume_name,
-                          '%sG' % target_vol['size']),
-            ]
-            mock_exe.assert_has_calls(calls)
+                snapshot_name = src_vol['name'] + '-temp-snapshot'
+                qemu_src_volume_name = "sheepdog:%s" % src_vol['name']
+                calls = [
+                    mock.call('qemu-img', 'snapshot', '-c',
+                              snapshot_name, qemu_src_volume_name),
+                ]
+                mock_exe.assert_has_calls(calls)
+                mock_clone.assert_called_once_with(src_vol['name'],
+                                                   snapshot_name,
+                                                   target_vol['name'],
+                                                   target_vol['size'])
 
     def test_create_cloned_volume_failure(self):
         fake_name = six.text_type('volume-00000001')
@@ -1045,11 +1043,12 @@ class SheepdogDriverTestCase(test.TestCase):
         src_vol = fake_vol
 
         patch = mock.patch.object
-        with patch(self.driver, '_try_execute',
-                   side_effect=processutils.ProcessExecutionError):
+        with patch(self.client, 'clone') as fake_clone:
+            fake_clone.side_effect = exception.SheepdogCmdError(
+                cmd='dummy', exit_code=1, stdout='dummy', stderr='dummy')
             with patch(self.driver, 'create_snapshot'):
                 with patch(self.driver, 'delete_snapshot'):
-                    self.assertRaises(exception.VolumeBackendAPIException,
+                    self.assertRaises(exception.SheepdogCmdError,
                                       self.driver.create_cloned_volume,
                                       fake_vol,
                                       src_vol)
@@ -1122,27 +1121,14 @@ class SheepdogDriverTestCase(test.TestCase):
             fail_try_execute.assert_called_once_with(*expected_cmd)
 
     def test_create_volume_from_snapshot(self):
-        fake_name = u'volume-00000001'
-        fake_size = '10'
-        fake_vol = {'project_id': 'testprjid', 'name': fake_name,
-                    'size': fake_size,
-                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'}
-
-        ss_uuid = '00000000-0000-0000-0000-c3aa7ee01536'
-        fake_snapshot = {'volume_name': fake_name,
-                         'name': 'volume-%s' % ss_uuid,
-                         'id': ss_uuid,
-                         'size': fake_size}
-
-        with mock.patch.object(sheepdog.SheepdogDriver,
-                               '_try_execute') as mock_exe:
-            self.driver.create_volume_from_snapshot(fake_vol, fake_snapshot)
-            args = ['qemu-img', 'create', '-b',
-                    "sheepdog:%s:%s" % (fake_snapshot['volume_name'],
-                                        fake_snapshot['name']),
-                    "sheepdog:%s" % fake_vol['name'],
-                    "%sG" % fake_vol['size']]
-            mock_exe.assert_called_once_with(*args)
+        volume = self.test_data.TEST_VOLUME
+        snapshot = self.test_data.TEST_SNAPSHOT
+        with mock.patch.object(self.client, 'clone') as fake_execute:
+            self.driver.create_volume_from_snapshot(volume, snapshot)
+            fake_execute.assert_called_once_with(self._snapvdiname,
+                                                 self._snapname,
+                                                 self._vdiname,
+                                                 self._vdisize)
 
     def test_extend_volume(self):
         with mock.patch.object(self.client, 'resize') as fake_execute:
