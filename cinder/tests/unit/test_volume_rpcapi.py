@@ -45,17 +45,16 @@ class VolumeRpcAPITestCase(test.TestCase):
         vol['status'] = "available"
         vol['attach_status'] = "detached"
         vol['metadata'] = {"test_key": "test_val"}
+        vol['size'] = 1
         volume = db.volume_create(self.context, vol)
 
-        snpshot = {
-            'id': 1,
-            'volume_id': 'fake_id',
+        kwargs = {
             'status': "creating",
             'progress': '0%',
-            'volume_size': 0,
             'display_name': 'fake_name',
             'display_description': 'fake_description'}
-        snapshot = db.snapshot_create(self.context, snpshot)
+        snapshot = tests_utils.create_snapshot(self.context, vol['id'],
+                                               **kwargs)
 
         source_group = tests_utils.create_consistencygroup(
             self.context,
@@ -85,9 +84,7 @@ class VolumeRpcAPITestCase(test.TestCase):
         group2 = objects.ConsistencyGroup.get_by_id(self.context, group2.id)
         self.fake_volume = jsonutils.to_primitive(volume)
         self.fake_volume_metadata = volume["volume_metadata"]
-        self.fake_snapshot = jsonutils.to_primitive(snapshot)
-        self.fake_snapshot_obj = fake_snapshot.fake_snapshot_obj(self.context,
-                                                                 **snpshot)
+        self.fake_snapshot = snapshot
         self.fake_reservations = ["RESERVATION"]
         self.fake_cg = group
         self.fake_cg2 = group2
@@ -124,7 +121,7 @@ class VolumeRpcAPITestCase(test.TestCase):
         if 'snapshot' in expected_msg:
             snapshot = expected_msg['snapshot']
             del expected_msg['snapshot']
-            expected_msg['snapshot_id'] = snapshot['id']
+            expected_msg['snapshot_id'] = snapshot.id
             expected_msg['snapshot'] = snapshot
         if 'host' in expected_msg:
             del expected_msg['host']
@@ -228,19 +225,19 @@ class VolumeRpcAPITestCase(test.TestCase):
         self._test_volume_api('create_snapshot',
                               rpc_method='cast',
                               volume=self.fake_volume,
-                              snapshot=self.fake_snapshot_obj)
+                              snapshot=self.fake_snapshot)
 
     def test_delete_snapshot(self):
         self._test_volume_api('delete_snapshot',
                               rpc_method='cast',
-                              snapshot=self.fake_snapshot_obj,
+                              snapshot=self.fake_snapshot,
                               host='fake_host',
                               unmanage_only=False)
 
     def test_delete_snapshot_with_unmanage_only(self):
         self._test_volume_api('delete_snapshot',
                               rpc_method='cast',
-                              snapshot=self.fake_snapshot_obj,
+                              snapshot=self.fake_snapshot,
                               host='fake_host',
                               unmanage_only=True)
 

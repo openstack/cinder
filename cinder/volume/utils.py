@@ -139,19 +139,19 @@ def notify_about_backup_usage(context, backup, event_suffix,
                                           usage_info)
 
 
-def _usage_from_snapshot(snapshot_ref, **extra_usage_info):
+def _usage_from_snapshot(snapshot, **extra_usage_info):
     usage_info = {
-        'tenant_id': snapshot_ref['project_id'],
-        'user_id': snapshot_ref['user_id'],
-        'availability_zone': snapshot_ref['volume']['availability_zone'],
-        'volume_id': snapshot_ref['volume_id'],
-        'volume_size': snapshot_ref['volume_size'],
-        'snapshot_id': snapshot_ref['id'],
-        'display_name': snapshot_ref['display_name'],
-        'created_at': str(snapshot_ref['created_at']),
-        'status': snapshot_ref['status'],
-        'deleted': null_safe_str(snapshot_ref['deleted']),
-        'metadata': null_safe_str(snapshot_ref.get('metadata')),
+        'tenant_id': snapshot.project_id,
+        'user_id': snapshot.user_id,
+        'availability_zone': snapshot.volume['availability_zone'],
+        'volume_id': snapshot.volume_id,
+        'volume_size': snapshot.volume_size,
+        'snapshot_id': snapshot.id,
+        'display_name': snapshot.display_name,
+        'created_at': str(snapshot.created_at),
+        'status': snapshot.status,
+        'deleted': null_safe_str(snapshot.deleted),
+        'metadata': null_safe_str(snapshot.metadata),
     }
 
     usage_info.update(extra_usage_info)

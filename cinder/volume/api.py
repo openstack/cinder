@@ -250,10 +250,10 @@ class API(base.Base):
             raise exception.InvalidInput(reason=msg)
 
         if snapshot and volume_type:
-            if volume_type['id'] != snapshot['volume_type_id']:
+            if volume_type['id'] != snapshot.volume_type_id:
                 if not self._retype_is_possible(context,
                                                 volume_type['id'],
-                                                snapshot['volume_type_id'],
+                                                snapshot.volume_type_id,
                                                 volume_type):
                     msg = _("Invalid volume_type provided: %s (requested "
                             "type is not compatible; recommend omitting "
@@ -516,7 +516,7 @@ class API(base.Base):
         # so build the resource tag manually for now.
         LOG.info(_LI("Snapshot retrieved successfully."),
                  resource={'type': 'snapshot',
-                           'id': snapshot['id']})
+                           'id': snapshot.id})
         return snapshot
 
     def get_volume(self, context, volume_id):
@@ -933,23 +933,23 @@ class API(base.Base):
     @wrap_check_policy
     def delete_snapshot(self, context, snapshot, force=False,
                         unmanage_only=False):
-        if not force and snapshot['status'] not in ["available", "error"]:
+        if not force and snapshot.status not in ["available", "error"]:
             LOG.error(_LE('Unable to delete snapshot: %(snap_id)s, '
                           'due to invalid status. '
                           'Status must be available or '
                           'error, not %(snap_status)s.'),
-                      {'snap_id': snapshot['id'],
-                       'snap_status': snapshot['status']})
+                      {'snap_id': snapshot.id,
+                       'snap_status': snapshot.status})
             msg = _("Volume Snapshot status must be available or error.")
             raise exception.InvalidSnapshot(reason=msg)
-        cgsnapshot_id = snapshot.get('cgsnapshot_id', None)
+        cgsnapshot_id = snapshot.cgsnapshot_id
         if cgsnapshot_id:
             msg = _('Unable to delete snapshot %s because it is part of a '
-                    'consistency group.') % snapshot['id']
+                    'consistency group.') % snapshot.id
             LOG.error(msg)
             raise exception.InvalidSnapshot(reason=msg)
 
-        snapshot_obj = self.get_snapshot(context, snapshot['id'])
+        snapshot_obj = self.get_snapshot(context, snapshot.id)
         snapshot_obj.status = 'deleting'
         snapshot_obj.save()
 
@@ -1105,14 +1105,14 @@ class API(base.Base):
 
     def get_snapshot_metadata(self, context, snapshot):
         """Get all metadata associated with a snapshot."""
-        snapshot_obj = self.get_snapshot(context, snapshot['id'])
+        snapshot_obj = self.get_snapshot(context, snapshot.id)
         LOG.info(_LI("Get snapshot metadata completed successfully."),
                  resource=snapshot)
         return snapshot_obj.metadata
 
     def delete_snapshot_metadata(self, context, snapshot, key):
         """Delete the given metadata item from a snapshot."""
-        snapshot_obj = self.get_snapshot(context, snapshot['id'])
+        snapshot_obj = self.get_snapshot(context, snapshot.id)
         snapshot_obj.delete_metadata_key(context, key)
         LOG.info(_LI("Delete snapshot metadata completed successfully."),
                  resource=snapshot)

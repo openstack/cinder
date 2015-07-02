@@ -85,7 +85,7 @@ class AdminActionsTest(test.TestCase):
 
     def _issue_snapshot_reset(self, ctx, snapshot, updated_status):
         req = webob.Request.blank('/v2/fake/snapshots/%s/action' %
-                                  snapshot['id'])
+                                  snapshot.id)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.body = \
@@ -353,10 +353,9 @@ class AdminActionsTest(test.TestCase):
         }
         snapshot = objects.Snapshot(context=ctx, **kwargs)
         snapshot.create()
+        self.addCleanup(snapshot.destroy)
 
-        resp = self._issue_snapshot_reset(ctx,
-                                          snapshot,
-                                          {'status': 'error'})
+        resp = self._issue_snapshot_reset(ctx, snapshot, {'status': 'error'})
 
         self.assertEqual(202, resp.status_int)
         snapshot = objects.Snapshot.get_by_id(ctx, snapshot['id'])
@@ -366,16 +365,16 @@ class AdminActionsTest(test.TestCase):
         ctx = context.RequestContext('admin', 'fake', True)
         volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
                                         'provider_location': '', 'size': 1})
-        snapshot = db.snapshot_create(ctx, {'status': 'available',
-                                            'volume_id': volume['id']})
+        snapshot = objects.Snapshot(ctx, status='available',
+                                    volume_id=volume['id'])
+        snapshot.create()
+        self.addCleanup(snapshot.destroy)
 
-        resp = self._issue_snapshot_reset(ctx,
-                                          snapshot,
+        resp = self._issue_snapshot_reset(ctx, snapshot,
                                           {'status': 'attaching'})
 
         self.assertEqual(400, resp.status_int)
-        snapshot = db.snapshot_get(ctx, snapshot['id'])
-        self.assertEqual('available', snapshot['status'])
+        self.assertEqual('available', snapshot.status)
 
     def test_force_delete(self):
         # admin context
@@ -862,7 +861,9 @@ class AdminActionsTest(test.TestCase):
         host = 'test2'
         ctx = context.RequestContext('admin', 'fake', True)
         volume = self._migrate_volume_prep()
-        db.snapshot_create(ctx, {'volume_id': volume['id']})
+        snap = objects.Snapshot(ctx, volume_id=volume['id'])
+        snap.create()
+        self.addCleanup(snap.destroy)
         self._migrate_volume_exec(ctx, volume, host, expected_status)
 
     def test_migrate_volume_bad_force_host_copy(self):
@@ -900,8 +901,8 @@ class AdminActionsTest(test.TestCase):
         expected_status = 403
         expected_id = None
         ctx = context.RequestContext('fake', 'fake')
-        volume = self._migrate_volume_comp_exec(ctx, volume, new_volume, False,
-                                                expected_status, expected_id)
+        self._migrate_volume_comp_exec(ctx, volume, new_volume, False,
+                                       expected_status, expected_id)
 
     def test_migrate_volume_comp_no_mig_status(self):
         admin_ctx = context.get_admin_context()
@@ -958,8 +959,8 @@ class AdminActionsTest(test.TestCase):
         expected_status = 200
         expected_id = 'fake2'
         ctx = context.RequestContext('admin', 'fake', True)
-        volume = self._migrate_volume_comp_exec(ctx, volume, new_volume, False,
-                                                expected_status, expected_id)
+        self._migrate_volume_comp_exec(ctx, volume, new_volume, False,
+                                       expected_status, expected_id)
 
     def test_backup_reset_valid_updates(self):
         vac = admin_actions.BackupAdminController()

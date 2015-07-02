@@ -88,18 +88,20 @@ def create_snapshot(ctxt,
                     display_name='test_snapshot',
                     display_description='this is a test snapshot',
                     cgsnapshot_id = None,
-                    status='creating'):
+                    status='creating',
+                    **kwargs):
     vol = db.volume_get(ctxt, volume_id)
-    snap = {}
-    snap['volume_id'] = volume_id
-    snap['user_id'] = ctxt.user_id
-    snap['project_id'] = ctxt.project_id
-    snap['status'] = status
-    snap['volume_size'] = vol['size']
-    snap['display_name'] = display_name
-    snap['display_description'] = display_description
-    snap['cgsnapshot_id'] = cgsnapshot_id
-    return db.snapshot_create(ctxt, snap)
+    snap = objects.Snapshot(ctxt)
+    snap.volume_id = volume_id
+    snap.user_id = ctxt.user_id or 'fake_user_id'
+    snap.project_id = ctxt.project_id or 'fake_project_id'
+    snap.status = status
+    snap.volume_size = vol['size']
+    snap.display_name = display_name
+    snap.display_description = display_description
+    snap.cgsnapshot_id = cgsnapshot_id
+    snap.create()
+    return snap
 
 
 def create_consistencygroup(ctxt,

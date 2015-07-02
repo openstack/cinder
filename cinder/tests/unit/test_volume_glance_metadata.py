@@ -19,6 +19,7 @@ Unit Tests for volume types extra specs code
 from cinder import context
 from cinder import db
 from cinder import exception
+from cinder import objects
 from cinder import test
 
 
@@ -27,6 +28,7 @@ class VolumeGlanceMetadataTestCase(test.TestCase):
     def setUp(self):
         super(VolumeGlanceMetadataTestCase, self).setUp()
         self.ctxt = context.get_admin_context()
+        objects.register_all()
 
     def test_vol_glance_metadata_bad_vol_id(self):
         ctxt = context.get_admin_context()
@@ -112,17 +114,19 @@ class VolumeGlanceMetadataTestCase(test.TestCase):
     def test_vol_glance_metadata_copy_to_snapshot(self):
         ctxt = context.get_admin_context()
         db.volume_create(ctxt, {'id': 1})
-        db.snapshot_create(ctxt, {'id': 100, 'volume_id': 1})
+        snap = objects.Snapshot(ctxt, volume_id=1)
+        snap.create()
         db.volume_glance_metadata_create(ctxt, 1, 'key1', 'value1')
-        db.volume_glance_metadata_copy_to_snapshot(ctxt, 100, 1)
+        db.volume_glance_metadata_copy_to_snapshot(ctxt, snap.id, 1)
 
-        expected_meta = {'snapshot_id': '100',
+        expected_meta = {'snapshot_id': snap.id,
                          'key': 'key1',
                          'value': 'value1'}
 
-        for meta in db.volume_snapshot_glance_metadata_get(ctxt, 100):
+        for meta in db.volume_snapshot_glance_metadata_get(ctxt, snap.id):
             for (key, value) in expected_meta.items():
                 self.assertEqual(value, meta[key])
+        snap.destroy()
 
     def test_vol_glance_metadata_copy_from_volume_to_volume(self):
         ctxt = context.get_admin_context()
@@ -142,18 +146,21 @@ class VolumeGlanceMetadataTestCase(test.TestCase):
         vol1 = db.volume_create(self.ctxt, {})
         vol2 = db.volume_create(self.ctxt, {})
         db.volume_glance_metadata_create(self.ctxt, vol1['id'], 'm1', 'v1')
-        snapshot = db.snapshot_create(self.ctxt, {'volume_id': vol1['id']})
-        db.volume_glance_metadata_copy_to_snapshot(self.ctxt, snapshot['id'],
+        snapshot = objects.Snapshot(self.ctxt, volume_id=vol1['id'])
+        snapshot.create()
+        db.volume_glance_metadata_copy_to_snapshot(self.ctxt, snapshot.id,
                                                    vol1['id'])
         db.volume_glance_metadata_copy_to_volume(self.ctxt, vol2['id'],
-                                                 snapshot['id'])
+                                                 snapshot.id)
         metadata = db.volume_glance_metadata_get(self.ctxt, vol2['id'])
         metadata = {m['key']: m['value'] for m in metadata}
         self.assertEqual({'m1': 'v1'}, metadata)
 
     def test_volume_snapshot_glance_metadata_get_nonexistent(self):
         vol = db.volume_create(self.ctxt, {})
-        snapshot = db.snapshot_create(self.ctxt, {'volume_id': vol['id']})
+        snapshot = objects.Snapshot(self.ctxt, volume_id=vol['id'])
+        snapshot.create()
         self.assertRaises(exception.GlanceMetadataNotFound,
                           db.volume_snapshot_glance_metadata_get,
-                          self.ctxt, snapshot['id'])
+                          self.ctxt, snapshot.id)
+        snapshot.destroy()
