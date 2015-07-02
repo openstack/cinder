@@ -69,14 +69,11 @@ class SheepdogClient(object):
     DOG_RESP_VDI_NOT_FOUND = ': No VDI found'
     DOG_RESP_VDI_SHRINK_NOT_SUPPORT = 'Shrinking VDIs is not implemented'
     DOG_RESP_VDI_SIZE_TOO_LARGE = 'New VDI size is too large'
-    QEMU_RESP_CONNECTION_ERROR = \
-        'Failed to connect socket: Connection refused\\n'
-    QEMU_RESP_ALREADY_EXISTS = ': VDI exists already,\\n'
-    QEMU_RESP_SNAPSHOT_NOT_FOUND = \
-        'Failed to find the requested tag, %(src_vdiname)s %(src_snapname)s\\n'
-    QEMU_RESP_VDI_NOT_FOUND = 'No vdi found, %(src_vdiname)s %(src_snapname)s\\n'
-    QEMU_RESP_SIZE_TOO_LARGE = \
-        'qemu-img: sheepdog:%(dst_vdiname)s: An image is too large.'
+    QEMU_RESP_CONNECTION_ERROR = 'Failed to connect socket: Connection refused'
+    QEMU_RESP_ALREADY_EXISTS = ': VDI exists already'
+    QEMU_RESP_SNAPSHOT_NOT_FOUND = 'Failed to find the requested tag'
+    QEMU_RESP_VDI_NOT_FOUND = 'No vdi found'
+    QEMU_RESP_SIZE_TOO_LARGE = 'An image is too large.'
 
     def __init__(self, addr, port):
         self.addr = addr
@@ -193,38 +190,31 @@ class SheepdogClient(object):
                                'sheepdog:%(src_vdiname)s:%(src_snapname)s' %
                                {'src_vdiname': src_vdiname,
                                 'src_snapname': src_snapname},
-                               'sheepdog:%s' % dst_vdiname,
-                               '%sG' % str(size))
+                               'sheepdog:%s' % dst_vdiname, '%sG' % str(size))
         except exception.SheepdogCmdError as e:
+            cmd = e.kwargs['cmd']
             stderr = e.kwargs['stderr']
             with excutils.save_and_reraise_exception():
-                detail = 'volume: %(src_vdiname)s, ' \
-                         'snapshot: %(src_snapname)s, ' \
-                         'clone_volume: %(dst_vdiname)s, ' \
-                         'clone_size: %(size)sG' % \
-                    {'src_vdiname': src_vdiname,
-                     'src_snapname': src_snapname,
-                     'dst_vdiname': dst_vdiname,
-                     'size': str(size)}
-                if stderr.endswith(self.QEMU_RESP_CONNECTION_ERROR):
-                    LOG.error(_LE('Failed to connect sheep daemon. '
+                if self.QEMU_RESP_CONNECTION_ERROR in stderr:
+                    LOG.error(_LE('Failed to connect from qemu-img to sheep daemon. '
                                   'addr: %(addr)s, port: %(port)s'),
                               {'addr': self.addr, 'port': self.port})
-                elif stderr.endswith(self.QEMU_RESP_ALREADY_EXISTS):
-                    LOG.error(_LE('Clone volume already exists. ' + detail))
-                elif stderr.endswith(self.QEMU_RESP_VDI_NOT_FOUND %
-                                     {'src_vdiname': src_vdiname,
-                                      'src_snapname': src_snapname}):
-                    LOG.error(_LE('Volume not found. ' + detail))
-                elif stderr.endswith(self.QEMU_RESP_SNAPSHOT_NOT_FOUND %
-                                     {'src_vdiname': src_vdiname,
-                                      'src_snapname': src_snapname}):
-                    LOG.error(_LE('Snapshot not found. ' + detail))
-                elif stderr.startswith(self.QEMU_RESP_SIZE_TOO_LARGE %
-                                       {'dst_vdiname': dst_vdiname}):
-                    LOG.error(_LE('Volume size limit over. ' + detail))
+                elif self.QEMU_RESP_ALREADY_EXISTS in stderr:
+                    LOG.error(_LE('Clone volume "%s" already exists. '
+                              'Please check the results of "dog vdi list".'),
+                              dst_vdiname)
+                elif self.QEMU_RESP_VDI_NOT_FOUND in stderr:
+                    LOG.error(_LE('Src Volume "%s" not found. '
+                              'Please check the results of "dog vdi list".'),
+                              src_vdiname)
+                elif self.QEMU_RESP_SNAPSHOT_NOT_FOUND in stderr:
+                    LOG.error(_LE('Snapshot "%s" not found. '
+                              'Please check the results of "dog vdi list".'),
+                              src_snapname)
+                elif self.QEMU_RESP_SIZE_TOO_LARGE in stderr:
+                    LOG.error(_LE('Volume size "%s" limit over.'), str(size))
                 else:
-                    LOG.error(_LE('Failed to clone volume. ' + detail))
+                    LOG.error(_LE('Failed to clone volume.(command: %s)'), cmd)
 
     def resize(self, vdiname, size):
         size = int(size) * units.Gi
