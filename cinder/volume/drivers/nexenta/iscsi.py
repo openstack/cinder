@@ -227,6 +227,15 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             self.configuration.nexenta_target_group_prefix,
             self.nms_host)
 
+    def _get_target_name_old(self, volume_name):
+        """Return iSCSI target name to access volume."""
+        return '%s%s' % (self.configuration.nexenta_target_prefix, volume_name)
+
+    def _get_target_group_name_old(self, volume_name):
+        """Return Nexenta iSCSI target group name for volume."""
+        return '%s%s' % (self.configuration.nexenta_target_group_prefix,
+                         volume_name)
+
     @staticmethod
     def _get_clone_snapshot_name(volume):
         """Return name for snapshot that will be used to clone the volume."""
@@ -280,6 +289,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
         :param volume: volume reference
         """
+        LOG.warning(volume['provider_location'])
         volume_name = self._get_zvol_name(volume['name'])
         try:
             props = self.nms.zvol.get_child_props(volume_name, 'origin') or {}
@@ -616,7 +626,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             shared = False  # LU does not exist
         return shared
 
-    def _get_lun(self, volume_name, host=None):
+    def _get_lun(self, volume_name, host=None, old=False):
         """Get lu mapping number for Zvol.
 
         :param zvol_name: Zvol name
@@ -624,6 +634,10 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :return: LUN
         """
         zvol_name = self._get_zvol_name(volume_name)
+        if old:
+            target_group_name = self._get_target_group_name_old(volume_name)
+        else:
+            target_group_name = self.current_tg
         if not(self._is_lu_shared(zvol_name)):
             raise LookupError(_("LU does not exist for ZVol: %s"), zvol_name)
         mappings = self.nms.scsidisk.list_lun_mapping_entries(zvol_name)
@@ -631,7 +645,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         for mapping in mappings:
             if (
                 mapping['zvol'] == zvol_name and
-                mapping['target_group'] == self.current_tg
+                mapping['target_group'] == target_group_name
             ):
                 lun = mapping['lun']
                 break
@@ -660,13 +674,30 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def _get_provider_location(self, volume):
         """Returns volume iscsiadm-formatted provider location string."""
-        zvol_name = self._get_zvol_name(volume['name'])
-        return '%(host)s:%(port)s,1 %(target)s %(lun)s' % {
-            'host': self.nms_host,
-            'port': self.configuration.nexenta_iscsi_target_portal_port,
-            'target': self.zvol_dict[zvol_name]['target'],
-            'lun': self.zvol_dict[zvol_name]['lun']
-        }
+        if not volume['provider_location']:
+            # backport for volumes created before 1.3.0.2
+            if self._target_exists(self._get_target_name_old(volume['name'])):
+                volume['provider_location'] = (
+                    '%(host)s:%(port)s,1 %(name)s %(lun)s') % {
+                    'host': self.nms_host,
+                    'port': (
+                        self.configuration.nexenta_iscsi_target_portal_port),
+                    'name': self._get_target_name_old(volume['name']),
+                    'lun': self._get_lun(volume['name'], True)
+                }
+                return volume['provider_location']
+
+            zvol_name = self._get_zvol_name(volume['name'])
+            volume['provider_location'] = (
+                '%(host)s:%(port)s,1 %(target)s %(lun)s') % {
+                'host': self.nms_host,
+                'port': self.configuration.nexenta_iscsi_target_portal_port,
+                'target': self.zvol_dict[zvol_name]['target'],
+                'lun': self.zvol_dict[zvol_name]['lun']
+            }
+            return volume['provider_location']
+        else:
+            return volume['provider_location']
 
     def create_export(self, _ctx, volume):
         """Create new export for zvol.
