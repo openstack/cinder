@@ -884,11 +884,6 @@ class ISCSITargetHelperCommandFailed(CinderException):
     message = _("%(error_message)s")
 
 
-# X-IO driver exception.
-class XIODriverException(VolumeDriverException):
-    message = _("X-IO Volume Driver exception!")
-
-
 # Violin Memory drivers
 class ViolinInvalidBackendConfig(CinderException):
     message = _("Volume backend config is invalid: %(reason)s")
