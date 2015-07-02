@@ -21,6 +21,7 @@
 """
 
 import socket
+import time
 
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
