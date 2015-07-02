@@ -54,6 +54,17 @@ class SheepdogDriverTestDataGenerator(object):
         return ('env', 'LC_ALL=C', 'LANG=C', 'dog', 'vdi', 'delete', name,
                 '-a', SHEEP_ADDR, '-p', str(SHEEP_PORT))
 
+    def cmd_qemuimg_vdi_clone(self, src_vdiname, src_snapname, dst_vdiname,
+                              size):
+        return ('env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'create', '-b',
+                'sheepdog:%(addr)s:%(port)s:%(src_vdiname)s:%(src_snapname)s' %
+                {'addr': SHEEP_ADDR, 'port': str(SHEEP_PORT),
+                 'src_vdiname': src_vdiname, 'src_snapname': src_snapname},
+                'sheepdog:%(addr)s:%(port)s:%(dst_vdiname)s' %
+                {'addr': SHEEP_ADDR, 'port': str(SHEEP_PORT),
+                 'dst_vdiname': dst_vdiname},
+                '%sG' % str(size))
+
     def cmd_dog_vdi_resize(self, name, size):
         return ('env', 'LC_ALL=C', 'LANG=C', 'dog', 'vdi', 'resize', name,
                 size, '-a', SHEEP_ADDR, '-p', str(SHEEP_PORT))
@@ -147,6 +158,27 @@ Failed to open VDI vdiname (snapshot id: 0 snapshot tag: ): No VDI found
 failed to connect to 127.0.0.1:7000: Connection refused
 failed to connect to 127.0.0.1:7000: Connection refused
 Failed to get node list
+"""
+
+    QEMU_VDI_ALREADY_EXISTS = """\
+qemu-img: sheepdog:%(vdiname)s: VDI exists already,
+"""
+
+    QEMU_VDI_NOT_FOUND = """\
+qemu-img: sheepdog:%(vdiname)s: cannot get vdi info, No vdi found, \
+%(snapvdiname)s %(snapname)s
+"""
+
+    QEMU_SNAPSHOT_NOT_FOUND = """\
+qemu-img: sheepdog:%(vdiname)s: cannot get vdi info, Failed to find the requested tag, %(snapvdiname)s %(snapname)s
+"""
+
+    QEMU_SIZE_TOO_LARGE = """\
+qemu-img: sheepdog:%(vdiname)s: An image is too large. The maximum image size is 4096GB
+"""
+
+    QEMU_FAILED_TO_CONNECT = """\
+qemu-img: sheepdog:%(vdiname)s: Failed to connect socket: Connection refused
 """
 
 
@@ -550,6 +582,176 @@ class SheepdogClientTestCase(test.TestCase):
                     stderr=stderr.replace('\n', '\\n'))
                 ex = self.assertRaises(exception.SheepdogCmdError,
                                        self.client.delete, self._vdiname)
+                self.assertTrue(fake_logger.error.called)
+                self.assertEqual(expected_msg, ex.msg)
+
+    def test_clone_success(self):
+        expected_cmd = ('create', '-b',
+                        'sheepdog:%(snapvdiname)s:%(snapname)s' %
+                        {'snapvdiname': self._snapvdiname,
+                         'snapname': self._snapname},
+                        'sheepdog:%s' % self._vdiname,
+                        '%sG' % self._vdisize)
+        with mock.patch.object(self.client, '_run_qemu_img') as fake_execute:
+            fake_execute.return_code = ("", "")
+            self.client.clone(self._snapvdiname, self._snapname,
+                              self._vdiname, self._vdisize)
+            fake_execute.assert_called_once_with(*expected_cmd)
+
+    def test_clone_failed_to_connect(self):
+        cmd = self.test_data.cmd_qemuimg_vdi_clone(self._snapvdiname,
+                                                   self._snapname,
+                                                   self._vdiname,
+                                                   self._vdisize)
+        exit_code = 2
+        stdout = 'stdout_dummy'
+        stderr = self.test_data.QEMU_FAILED_TO_CONNECT % \
+            {'vdiname': self._vdiname}
+        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
+                                                         exit_code=exit_code,
+                                                         stdout=stdout,
+                                                         stderr=stderr)
+        with mock.patch.object(self.client, '_run_qemu_img') as fake_execute:
+            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
+                fake_execute.side_effect = exception.SheepdogCmdError(
+                    cmd=cmd, exit_code=exit_code,
+                    stdout=stdout.replace('\n', '\\n'),
+                    stderr=stderr.replace('\n', '\\n'))
+                ex = self.assertRaises(exception.SheepdogCmdError,
+                                       self.client.clone,
+                                       self._snapvdiname, self._snapname,
+                                       self._vdiname, self._vdisize)
+                self.assertTrue(fake_logger.error.called)
+                self.assertEqual(expected_msg, ex.msg)
+
+    def test_clone_failed_clone_already_exists(self):
+        cmd = self.test_data.cmd_qemuimg_vdi_clone(self._snapvdiname,
+                                                   self._snapname,
+                                                   self._vdiname,
+                                                   self._vdisize)
+        exit_code = 2
+        stdout = 'stdout_dummy'
+        stderr = self.test_data.QEMU_VDI_ALREADY_EXISTS % \
+            {'vdiname': self._vdiname}
+        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
+                                                         exit_code=exit_code,
+                                                         stdout=stdout,
+                                                         stderr=stderr)
+        with mock.patch.object(self.client, '_run_qemu_img') as fake_execute:
+            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
+                fake_execute.side_effect = exception.SheepdogCmdError(
+                    cmd=cmd, exit_code=exit_code,
+                    stdout=stdout.replace('\n', '\\n'),
+                    stderr=stderr.replace('\n', '\\n'))
+                ex = self.assertRaises(exception.SheepdogCmdError,
+                                       self.client.clone,
+                                       self._snapvdiname, self._snapname,
+                                       self._vdiname, self._vdisize)
+                self.assertTrue(fake_logger.error.called)
+                self.assertEqual(expected_msg, ex.msg)
+
+    def test_clone_failed_vdi_not_found(self):
+        cmd = self.test_data.cmd_qemuimg_vdi_clone(self._snapvdiname,
+                                                   self._snapname,
+                                                   self._vdiname,
+                                                   self._vdisize)
+        exit_code = 2
+        stdout = 'stdout_dummy'
+        stderr = self.test_data.QEMU_VDI_NOT_FOUND % \
+            {'vdiname': self._vdiname, 'snapvdiname': self._snapvdiname,
+             'snapname': self._snapname}
+        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
+                                                         exit_code=exit_code,
+                                                         stdout=stdout,
+                                                         stderr=stderr)
+        with mock.patch.object(self.client, '_run_qemu_img') as fake_execute:
+            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
+                fake_execute.side_effect = exception.SheepdogCmdError(
+                    cmd=cmd, exit_code=exit_code,
+                    stdout=stdout.replace('\n', '\\n'),
+                    stderr=stderr.replace('\n', '\\n'))
+                ex = self.assertRaises(exception.SheepdogCmdError,
+                                       self.client.clone,
+                                       self._snapvdiname, self._snapname,
+                                       self._vdiname, self._vdisize)
+                self.assertTrue(fake_logger.error.called)
+                self.assertEqual(expected_msg, ex.msg)
+
+    def test_clone_failed_snapshot_not_found(self):
+        cmd = self.test_data.cmd_qemuimg_vdi_clone(self._snapvdiname,
+                                                   self._snapname,
+                                                   self._vdiname,
+                                                   self._vdisize)
+        exit_code = 2
+        stdout = 'stdout_dummy'
+        stderr = self.test_data.QEMU_SNAPSHOT_NOT_FOUND % \
+            {'vdiname': self._vdiname, 'snapvdiname': self._snapvdiname,
+             'snapname': self._snapname}
+        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
+                                                         exit_code=exit_code,
+                                                         stdout=stdout,
+                                                         stderr=stderr)
+        with mock.patch.object(self.client, '_run_qemu_img') as fake_execute:
+            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
+                fake_execute.side_effect = exception.SheepdogCmdError(
+                    cmd=cmd, exit_code=exit_code,
+                    stdout=stdout.replace('\n', '\\n'),
+                    stderr=stderr.replace('\n', '\\n'))
+                ex = self.assertRaises(exception.SheepdogCmdError,
+                                       self.client.clone,
+                                       self._snapvdiname, self._snapname,
+                                       self._vdiname, self._vdisize)
+                self.assertTrue(fake_logger.error.called)
+                self.assertEqual(expected_msg, ex.msg)
+
+    def test_clone_failed_size_too_large(self):
+        cmd = self.test_data.cmd_qemuimg_vdi_clone(self._snapvdiname,
+                                                   self._snapname,
+                                                   self._vdiname,
+                                                   self._vdisize)
+        exit_code = 2
+        stdout = 'stdout_dummy'
+        stderr = self.test_data.QEMU_SIZE_TOO_LARGE % \
+            {'vdiname': self._vdiname}
+        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
+                                                         exit_code=exit_code,
+                                                         stdout=stdout,
+                                                         stderr=stderr)
+        with mock.patch.object(self.client, '_run_qemu_img') as fake_execute:
+            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
+                fake_execute.side_effect = exception.SheepdogCmdError(
+                    cmd=cmd, exit_code=exit_code,
+                    stdout=stdout.replace('\n', '\\n'),
+                    stderr=stderr.replace('\n', '\\n'))
+                ex = self.assertRaises(exception.SheepdogCmdError,
+                                       self.client.clone,
+                                       self._snapvdiname, self._snapname,
+                                       self._vdiname, self._vdisize)
+                self.assertTrue(fake_logger.error.called)
+                self.assertEqual(expected_msg, ex.msg)
+
+    def test_clone_failed_unknown(self):
+        cmd = self.test_data.cmd_qemuimg_vdi_clone(self._snapvdiname,
+                                                   self._snapname,
+                                                   self._vdiname,
+                                                   self._vdisize)
+        exit_code = 2
+        stdout = 'stdout_dummy'
+        stderr = 'stderr_dummy'
+        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
+                                                         exit_code=exit_code,
+                                                         stdout=stdout,
+                                                         stderr=stderr)
+        with mock.patch.object(self.client, '_run_qemu_img') as fake_execute:
+            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
+                fake_execute.side_effect = exception.SheepdogCmdError(
+                    cmd=cmd, exit_code=exit_code,
+                    stdout=stdout.replace('\n', '\\n'),
+                    stderr=stderr.replace('\n', '\\n'))
+                ex = self.assertRaises(exception.SheepdogCmdError,
+                                       self.client.clone,
+                                       self._snapvdiname, self._snapname,
+                                       self._vdiname, self._vdisize)
                 self.assertTrue(fake_logger.error.called)
                 self.assertEqual(expected_msg, ex.msg)
 
