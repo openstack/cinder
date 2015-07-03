@@ -319,14 +319,10 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
         LOG.debug("opening connection to ceph cluster (timeout=%s).",
                   self.configuration.rados_connect_timeout)
 
-        # NOTE (e0ne): rados is binding to C lbirary librados.
-        # It blocks eventlet loop so we need to run it in a native
-        # python thread.
-        client = tpool.Proxy(
-            self.rados.Rados(
-                rados_id=self.configuration.rbd_user,
-                clustername=self.configuration.rbd_cluster_name,
-                conffile=self.configuration.rbd_ceph_conf))
+        client = self.rados.Rados(
+            rados_id=self.configuration.rbd_user,
+            clustername=self.configuration.rbd_cluster_name,
+            conffile=self.configuration.rbd_ceph_conf)
         if pool is not None:
             pool = utils.convert_str(pool)
         else:
