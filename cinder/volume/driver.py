@@ -221,6 +221,11 @@ volume_opts = [
                 default=False,
                 help='If set to True the http client will validate the SSL '
                      'certificate of the backend endpoint.'),
+    cfg.ListOpt('trace_flags',
+                default=None,
+                help='List of options that control which trace info '
+                     'is written to the DEBUG log level to assist '
+                     'developers. Valid values are method and api.'),
 ]
 
 # for backward compatibility
@@ -289,6 +294,7 @@ class BaseVD(object):
         if self.configuration:
             self.configuration.append_config_values(volume_opts)
             self.configuration.append_config_values(iser_opts)
+            utils.setup_tracing(self.configuration.safe_get('trace_flags'))
         self.set_execute(execute)
         self._stats = {}
 
