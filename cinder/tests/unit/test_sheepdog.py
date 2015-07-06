@@ -70,8 +70,7 @@ class SheepdogDriverTestDataGenerator(object):
                  'src_vdiname': src_vdiname, 'src_snapname': src_snapname},
                 'sheepdog:%(addr)s:%(port)s:%(dst_vdiname)s' %
                 {'addr': SHEEP_ADDR, 'port': str(SHEEP_PORT),
-                 'dst_vdiname': dst_vdiname},
-                '%sG' % str(size))
+                 'dst_vdiname': dst_vdiname}, '%sG' % str(size))
 
     def cmd_dog_vdi_resize(self, name, size):
         return ('env', 'LC_ALL=C', 'LANG=C', 'dog', 'vdi', 'resize', name,
@@ -370,8 +369,7 @@ class SheepdogClientTestCase(test.TestCase):
                         'sheepdog:%(addr)s:%(port)s:sheepdog:snap' %
                         {'addr': SHEEP_ADDR, 'port': SHEEP_PORT},
                         'sheepdog:%(addr)s:%(port)s:clone' %
-                        {'addr': SHEEP_ADDR, 'port': SHEEP_PORT},
-                        '10G')
+                        {'addr': SHEEP_ADDR, 'port': SHEEP_PORT}, '10G')
         fake_execute.return_value = ('', '')
         self.client._run_qemu_img('create', '-b', 'sheepdog:sheepdog:snap',
                                   'sheepdog:clone', '10G')
@@ -396,7 +394,7 @@ class SheepdogClientTestCase(test.TestCase):
         self.assertRaises(OSError, self.client._run_qemu_img, *args)
         self.assertTrue(fake_logger.error.called)
 
-        # Test3: process execution error
+        # Test4: process execution error
         fake_logger.reset_mock()
         fake_execute.reset_mock()
         cmd = ('qemu-img', 'create', 'dummy')
@@ -967,7 +965,7 @@ class SheepdogClientTestCase(test.TestCase):
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
 
-        # Test3: shrinking vdi is not supported
+        # Test4: shrinking vdi is not supported
         fake_logger.reset_mock()
         fake_execute.reset_mock()
         cmd = self.test_data.cmd_dog_vdi_resize(self._vdiname, 1 * 1024 ** 3)
@@ -984,7 +982,7 @@ class SheepdogClientTestCase(test.TestCase):
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
 
-        # Test4: the size is too large
+        # Test5: the size is too large
         fake_logger.reset_mock()
         fake_execute.reset_mock()
         cmd = self.test_data.cmd_dog_vdi_resize(self._vdiname, 5 * 1024 ** 4)
@@ -1002,7 +1000,7 @@ class SheepdogClientTestCase(test.TestCase):
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
 
-        # Test5: unknown error
+        # Test6: unknown error
         fake_logger.reset_mock()
         fake_execute.reset_mock()
         cmd = self.test_data.cmd_dog_vdi_resize(self._vdiname, 10 * 1024 ** 3)
@@ -1207,6 +1205,7 @@ class SheepdogDriverTestCase(test.TestCase):
         self.driver.delete_snapshot(snapshot)
         fake_delete_snapshot.assert_called_once_with(snapshot['volume_name'],
                                                      snapshot['name'])
+
     def test_clone_image_success(self):
         context = {}
         fake_name = six.text_type('volume-00000001')

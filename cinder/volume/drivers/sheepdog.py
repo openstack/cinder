@@ -227,17 +227,22 @@ class SheepdogClient(object):
         try:
             (stdout, stderr) = self._run_dog('vdi', 'delete', '-s',
                                              snapname, vdiname)
-            # XXX(tishizaki)
-            # Dog command does not return error_code although
-            # dog command cannot connect to sheep process.
-            # That is a Sheepdog's bug.
-            # To avoid a Sheepdog's bug, now we need to check stderr.
-            # If Sheepdog has been fixed, this check logic is needed
-            # by old Sheepdog users.
             if stderr.rstrip().endswith(self.DOG_RESP_SNAPSHOT_NOT_FOUND):
                 LOG.warning(_LW('Snapshot "%s" not found.'), snapname)
             elif stderr.rstrip().endswith(self.DOG_RESP_VDI_NOT_FOUND):
                 LOG.warning(_LW('Volume "%s" not found.'), vdiname)
+            elif stderr.startswith(self.DOG_RESP_CONNECTION_ERROR):
+                # XXX(tishizaki)
+                # Dog command does not return error_code although
+                # dog command cannot connect to sheep process.
+                # That is a Sheepdog's bug.
+                # To avoid a Sheepdog's bug, now we need to check stderr.
+                # If Sheepdog has been fixed, this check logic is needed
+                # by old Sheepdog users.
+                reason = (_('Failed to connect sheep daemon. '
+                          'addr: %(addr)s, port: %(port)s'),
+                          {'addr': self.addr, 'port': self.port})
+                raise exception.SheepdogError(reason=reason)
         except exception.SheepdogCmdError as e:
             cmd = e.kwargs['cmd']
             stderr = e.kwargs['stderr']
