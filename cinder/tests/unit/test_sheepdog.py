@@ -54,6 +54,14 @@ class SheepdogDriverTestDataGenerator(object):
         return ('env', 'LC_ALL=C', 'LANG=C', 'dog', 'vdi', 'delete', name,
                 '-a', SHEEP_ADDR, '-p', str(SHEEP_PORT))
 
+    def cmd_dog_vdi_create_snapshot(self, vdiname, snapname):
+        return ('env', 'LC_ALL=C', 'LANG=C', 'dog', 'vdi', 'snapshot', '-s',
+                snapname, '-a', SHEEP_ADDR, '-p', str(SHEEP_PORT), vdiname)
+
+    def cmd_dog_vdi_delete_snapshot(self, vdiname, snapname):
+        return ('env', 'LC_ALL=C', 'LANG=C', 'dog', 'vdi', 'delete', '-s',
+                snapname, '-a', SHEEP_ADDR, '-p', str(SHEEP_PORT), vdiname)
+
     def cmd_qemuimg_vdi_clone(self, src_vdiname, src_snapname, dst_vdiname,
                               size):
         return ('env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'create', '-b',
@@ -83,6 +91,21 @@ class SheepdogDriverTestDataGenerator(object):
         'provider_location': 'location',
         'display_name': 'vol1',
         'display_description': 'unit test volume',
+        'volume_type_id': None,
+        'consistencygroup_id': None,
+    }
+
+    TEST_CLONED_VOLUME = {
+        'name': 'volume-000000011',
+        'size': 1,
+        'volume_name': '2',
+        'id': 'c13d4599-3433-19ab-23ee-002d3ba50335',
+        'provider_auth': None,
+        'host': 'host@backendsec#unit_test_pool',
+        'project_id': 'project',
+        'provider_location': 'location',
+        'display_name': 'vol2',
+        'display_description': 'unit test cloned volume',
         'volume_type_id': None,
         'consistencygroup_id': None,
     }
@@ -140,6 +163,25 @@ Epoch Time           Version [Host:Port:V-Nodes,,,]
 
     DOG_VDI_CREATE_VDI_EXISTS_ALREADY = """\
 Failed to create VDI %(vdiname)s: VDI exists already
+"""
+
+    DOG_VDI_SNAPSHOT_VDI_NOT_FOUND = """\
+Failed to create snapshot for volume-00000001: No VDI found
+"""
+
+    DOG_VDI_SNAPSHOT_ALREADY_EXISTED = """\
+Failed to create snapshot for volume-00000002, \
+maybe snapshot id (0) or tag (test_snap) is existed
+"""
+
+    DOG_VDI_SNAPSHOT_TAG_NOT_FOUND = """\
+Failed to open VDI volume-00000002 \
+(snapshot id: 0 snapshot tag: test_snap): Failed to find requested tag
+"""
+
+    DOG_VDI_SNAPSHOT_VOLUME_NOT_FOUND = """\
+Failed to open VDI volume-00000002 \
+(snapshot id: 0 snapshot tag: test_snap): No VDI found
 """
 
     DOG_VDI_RESIZE_SIZE_SHRINK = """\
@@ -588,6 +630,175 @@ class SheepdogClientTestCase(test.TestCase):
                 self.assertTrue(fake_logger.error.called)
                 self.assertEqual(expected_msg, ex.msg)
 
+    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
+    def test_create_snapshot_success(self, fake_execute):
+        expected_cmd = ('vdi', 'snapshot', '-s', self._snapname,
+                        self._src_vdiname)
+        fake_execute.return_value = ('', '')
+        self.client.create_snapshot(self._src_vdiname, self._snapname)
+        fake_execute.assert_called_once_with(*expected_cmd)
+
+    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
+    @mock.patch.object(sheepdog, 'LOG')
+    def test_create_snapshot_fail_to_connect_error(self, fake_logger,
+                                                   fake_execute):
+        cmd = self.test_data.cmd_dog_vdi_create_snapshot(
+            self._src_vdiname, self._snapname)
+        exit_code = 2
+        stdout = ''
+        stderr = self.test_data.DOG_COMMAND_ERROR_FAIL_TO_CONNECT
+        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
+                                                         exit_code=exit_code,
+                                                         stdout=stdout,
+                                                         stderr=stderr)
+        fake_execute.side_effect = exception.SheepdogCmdError(
+            cmd=cmd, exit_code=exit_code,
+            stdout=stdout.replace('\n', '\\n'),
+            stderr=stderr.replace('\n', '\\n'))
+        ex = self.assertRaises(exception.SheepdogCmdError,
+                               self.client.create_snapshot,
+                               self._src_vdiname, self._snapname)
+        self.assertTrue(fake_logger.error.called)
+        self.assertEqual(expected_msg, ex.msg)
+
+    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
+    @mock.patch.object(sheepdog, 'LOG')
+    def test_create_snapshot_no_vdi_found(self, fake_logger, fake_execute):
+        cmd = self.test_data.cmd_dog_vdi_create_snapshot(
+            self._src_vdiname, self._snapname)
+        exit_code = 1
+        stdout = ''
+        stderr = self.test_data.DOG_VDI_SNAPSHOT_VDI_NOT_FOUND
+        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
+                                                         exit_code=exit_code,
+                                                         stdout=stdout,
+                                                         stderr=stderr)
+        fake_execute.side_effect = exception.SheepdogCmdError(
+            cmd=cmd, exit_code=exit_code,
+            stdout=stdout.replace('\n', '\\n'),
+            stderr=stderr.replace('\n', '\\n'))
+        ex = self.assertRaises(exception.SheepdogCmdError,
+                               self.client.create_snapshot,
+                               self._src_vdiname, self._snapname)
+        self.assertTrue(fake_logger.error.called)
+        self.assertEqual(expected_msg, ex.msg)
+
+    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
+    @mock.patch.object(sheepdog, 'LOG')
+    def test_create_snapshot_already_used(self, fake_logger, fake_execute):
+        cmd = self.test_data.cmd_dog_vdi_create_snapshot(
+            self._src_vdiname, self._snapname)
+        exit_code = 1
+        stdout = 'stdout_dummy'
+        stderr = self.test_data.DOG_VDI_SNAPSHOT_ALREADY_EXISTED
+        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
+                                                         exit_code=exit_code,
+                                                         stdout=stdout,
+                                                         stderr=stderr)
+        fake_execute.side_effect = exception.SheepdogCmdError(
+            cmd=cmd, exit_code=exit_code,
+            stdout=stdout.replace('\n', '\\n'),
+            stderr=stderr.replace('\n', '\\n'))
+        ex = self.assertRaises(exception.SheepdogCmdError,
+                               self.client.create_snapshot,
+                               self._src_vdiname, self._snapname)
+        self.assertTrue(fake_logger.error.called)
+        self.assertEqual(expected_msg, ex.msg)
+
+    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
+    @mock.patch.object(sheepdog, 'LOG')
+    def test_create_snapshot_failed_unknown(self, fake_logger, fake_execute):
+        cmd = self.test_data.cmd_dog_vdi_create_snapshot(
+            self._src_vdiname, self._snapname)
+        exit_code = 1
+        stdout = 'stdout_dummy'
+        stderr = 'unknown_error'
+        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
+                                                         exit_code=exit_code,
+                                                         stdout=stdout,
+                                                         stderr=stderr)
+        fake_execute.side_effect = exception.SheepdogCmdError(
+            cmd=cmd, exit_code=exit_code,
+            stdout=stdout.replace('\n', '\\n'),
+            stderr=stderr.replace('\n', '\\n'))
+        ex = self.assertRaises(exception.SheepdogCmdError,
+                               self.client.create_snapshot,
+                               self._src_vdiname, self._snapname)
+        self.assertTrue(fake_logger.error.called)
+        self.assertEqual(expected_msg, ex.msg)
+
+    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
+    def test_delete_snapshot_success(self, fake_execute):
+        expected_cmd = ('vdi', 'delete', '-s', self._snapname,
+                        self._src_vdiname)
+        fake_execute.return_value = ('', '')
+        self.client.delete_snapshot(self._src_vdiname, self._snapname)
+        fake_execute.assert_called_once_with(*expected_cmd)
+
+    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
+    @mock.patch.object(sheepdog, 'LOG')
+    def test_delete_snapshot_snapshot_not_found(self, fake_logger,
+                                                fake_execute):
+        stdout = ''
+        stderr = self.test_data.DOG_VDI_SNAPSHOT_TAG_NOT_FOUND
+        fake_execute.return_value = (stdout, stderr)
+        self.client.delete_snapshot(self._src_vdiname, self._snapname)
+        self.assertTrue(fake_logger.warning.called)
+
+    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
+    @mock.patch.object(sheepdog, 'LOG')
+    def test_delete_snapshot_volume_not_found(self, fake_logger, fake_execute):
+        stdout = ''
+        stderr = self.test_data.DOG_VDI_SNAPSHOT_VOLUME_NOT_FOUND
+        fake_execute.return_value = (stdout, stderr)
+        self.client.delete_snapshot(self._src_vdiname, self._snapname)
+        self.assertTrue(fake_logger.warning.called)
+
+    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
+    @mock.patch.object(sheepdog, 'LOG')
+    def test_delete_snapshot_fail_to_connect_error(self, fake_logger,
+                                                   fake_execute):
+        cmd = self.test_data.cmd_dog_vdi_delete_snapshot(
+            self._src_vdiname, self._snapname)
+        exit_code = 2
+        stdout = ''
+        stderr = self.test_data.DOG_COMMAND_ERROR_FAIL_TO_CONNECT
+        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
+                                                         exit_code=exit_code,
+                                                         stdout=stdout,
+                                                         stderr=stderr)
+        fake_execute.side_effect = exception.SheepdogCmdError(
+            cmd=cmd, exit_code=exit_code,
+            stdout=stdout.replace('\n', '\\n'),
+            stderr=stderr.replace('\n', '\\n'))
+        ex = self.assertRaises(exception.SheepdogCmdError,
+                               self.client.delete_snapshot,
+                               self._src_vdiname, self._snapname)
+        self.assertTrue(fake_logger.error.called)
+        self.assertEqual(expected_msg, ex.msg)
+
+    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
+    @mock.patch.object(sheepdog, 'LOG')
+    def test_delete_snapshot_unknown_error(self, fake_logger, fake_execute):
+        cmd = self.test_data.cmd_dog_vdi_delete_snapshot(
+            self._src_vdiname, self._snapname)
+        exit_code = 2
+        stdout = 'stdout_dummy'
+        stderr = 'unknown_error'
+        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
+                                                         exit_code=exit_code,
+                                                         stdout=stdout,
+                                                         stderr=stderr)
+        fake_execute.side_effect = exception.SheepdogCmdError(
+            cmd=cmd, exit_code=exit_code,
+            stdout=stdout.replace('\n', '\\n'),
+            stderr=stderr.replace('\n', '\\n'))
+        ex = self.assertRaises(exception.SheepdogCmdError,
+                               self.client.delete_snapshot,
+                               self._src_vdiname, self._snapname)
+        self.assertTrue(fake_logger.error.called)
+        self.assertEqual(expected_msg, ex.msg)
+
     def test_clone_success(self):
         expected_cmd = ('create', '-b',
                         'sheepdog:%(src_vdiname)s:%(snapname)s' %
@@ -999,55 +1210,58 @@ class SheepdogDriverTestCase(test.TestCase):
                           self.driver.copy_volume_to_image,
                           *args)
 
-    def test_create_cloned_volume(self):
-        src_vol = {
-            'project_id': 'testprjid',
-            'name': six.text_type('volume-00000001'),
-            'size': '20',
-            'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
-        }
-        target_vol = {
-            'project_id': 'testprjid',
-            'name': six.text_type('volume-00000002'),
-            'size': '20',
-            'id': '582a1efa-be6a-11e4-a73b-0aa186c60fe0',
-        }
+    @mock.patch.object(sheepdog.SheepdogClient, 'create_snapshot')
+    @mock.patch.object(sheepdog.SheepdogClient, 'clone')
+    @mock.patch.object(sheepdog.SheepdogClient, 'delete_snapshot')
+    def test_create_cloned_volume(self, fake_delete_snapshot,
+                                  fake_clone, fake_create_snapshot):
+        src_vol = self.test_data.TEST_VOLUME
+        cloned_vol = self.test_data.TEST_CLONED_VOLUME
 
-        with mock.patch.object(self.driver,
-                               '_try_execute') as mock_exe:
-            with mock.patch.object(self.client, 'clone') as mock_clone:
-                self.driver.create_cloned_volume(target_vol, src_vol)
+        self.driver.create_cloned_volume(cloned_vol, src_vol)
+        snapshot_name = src_vol['name'] + '-temp-snapshot'
+        fake_create_snapshot.assert_called_once_with(src_vol['name'],
+                                                     snapshot_name)
+        fake_clone.assert_called_once_with(src_vol['name'],
+                                           snapshot_name,
+                                           cloned_vol['name'],
+                                           cloned_vol['size'])
+        fake_delete_snapshot.assert_called_once_with(src_vol['name'],
+                                                     snapshot_name)
 
-                snapshot_name = src_vol['name'] + '-temp-snapshot'
-                qemu_src_volume_name = "sheepdog:%s" % src_vol['name']
-                calls = [
-                    mock.call('qemu-img', 'snapshot', '-c',
-                              snapshot_name, qemu_src_volume_name),
-                ]
-                mock_exe.assert_has_calls(calls)
-                mock_clone.assert_called_once_with(src_vol['name'],
-                                                   snapshot_name,
-                                                   target_vol['name'],
-                                                   target_vol['size'])
+    @mock.patch.object(sheepdog.SheepdogClient, 'create_snapshot')
+    @mock.patch.object(sheepdog.SheepdogClient, 'clone')
+    @mock.patch.object(sheepdog.SheepdogClient, 'delete_snapshot')
+    @mock.patch.object(sheepdog, 'LOG')
+    def test_create_cloned_volume_failure(self, fake_logger,
+                                          fake_delete_snapshot,
+                                          fake_clone, fake_create_snapshot):
+        src_vol = self.test_data.TEST_VOLUME
+        cloned_vol = self.test_data.TEST_CLONED_VOLUME
+        snapshot_name = src_vol['name'] + '-temp-snapshot'
 
-    def test_create_cloned_volume_failure(self):
-        fake_name = six.text_type('volume-00000001')
-        fake_size = '20'
-        fake_vol = {'project_id': 'testprjid', 'name': fake_name,
-                    'size': fake_size,
-                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'}
-        src_vol = fake_vol
+        fake_clone.side_effect = exception.SheepdogCmdError(
+            cmd='dummy', exit_code=1, stdout='dummy', stderr='dummy')
+        self.assertRaises(exception.SheepdogCmdError,
+                          self.driver.create_cloned_volume,
+                          cloned_vol, src_vol)
+        fake_delete_snapshot.assert_called_once_with(src_vol['name'],
+                                                     snapshot_name)
+        self.assertTrue(fake_logger.error.called)
 
-        patch = mock.patch.object
-        with patch(self.client, 'clone') as fake_clone:
-            fake_clone.side_effect = exception.SheepdogCmdError(
-                cmd='dummy', exit_code=1, stdout='dummy', stderr='dummy')
-            with patch(self.driver, 'create_snapshot'):
-                with patch(self.driver, 'delete_snapshot'):
-                    self.assertRaises(exception.SheepdogCmdError,
-                                      self.driver.create_cloned_volume,
-                                      fake_vol,
-                                      src_vol)
+    @mock.patch.object(sheepdog.SheepdogClient, 'create_snapshot')
+    def test_create_snapshot(self, fake_create_snapshot):
+        snapshot = self.test_data.TEST_SNAPSHOT
+        self.driver.create_snapshot(snapshot)
+        fake_create_snapshot.assert_called_once_with(snapshot['volume_name'],
+                                                     snapshot['name'])
+
+    @mock.patch.object(sheepdog.SheepdogClient, 'delete_snapshot')
+    def test_delete_snapshot(self, fake_delete_snapshot):
+        snapshot = self.test_data.TEST_SNAPSHOT
+        self.driver.delete_snapshot(snapshot)
+        fake_delete_snapshot.assert_called_once_with(snapshot['volume_name'],
+                                                     snapshot['name'])
 
     def test_clone_image_success(self):
         context = {}
