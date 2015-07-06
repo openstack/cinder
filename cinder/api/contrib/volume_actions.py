@@ -265,15 +265,11 @@ class VolumeActionsController(wsgi.Controller):
             msg = _("No image_name was specified in request.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
-        force = params.get('force', False)
-        if isinstance(force, six.string_types):
-            try:
-                force = strutils.bool_from_string(force, strict=False)
-            except ValueError:
-                msg = _("Bad value for 'force' parameter.")
-                raise webob.exc.HTTPBadRequest(explanation=msg)
-        elif not isinstance(force, bool):
-            msg = _("'force' is not string or bool.")
+        force = params.get('force', 'False')
+        try:
+            force = strutils.bool_from_string(force, strict=True)
+        except ValueError as error:
+            msg = _("Invalid value for 'force': '%s'") % error.message
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         try:
@@ -337,16 +333,11 @@ class VolumeActionsController(wsgi.Controller):
             msg = _("Must specify readonly in request.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
-        if isinstance(readonly_flag, six.string_types):
-            try:
-                readonly_flag = strutils.bool_from_string(readonly_flag,
-                                                          strict=True)
-            except ValueError:
-                msg = _("Bad value for 'readonly'")
-                raise webob.exc.HTTPBadRequest(explanation=msg)
-
-        elif not isinstance(readonly_flag, bool):
-            msg = _("'readonly' not string or bool")
+        try:
+            readonly_flag = strutils.bool_from_string(readonly_flag,
+                                                      strict=True)
+        except ValueError as error:
+            msg = _("Invalid value for 'readonly': '%s'") % error.message
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         self.volume_api.update_readonly_flag(context, volume, readonly_flag)
@@ -382,16 +373,11 @@ class VolumeActionsController(wsgi.Controller):
             msg = _("Must specify bootable in request.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
-        if isinstance(bootable, six.string_types):
-            try:
-                bootable = strutils.bool_from_string(bootable,
-                                                     strict=True)
-            except ValueError:
-                msg = _("Bad value for 'bootable'")
-                raise webob.exc.HTTPBadRequest(explanation=msg)
-
-        elif not isinstance(bootable, bool):
-            msg = _("'bootable' not string or bool")
+        try:
+            bootable = strutils.bool_from_string(bootable,
+                                                 strict=True)
+        except ValueError as error:
+            msg = _("Invalid value for 'bootable': '%s'") % error.message
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         update_dict = {'bootable': bootable}

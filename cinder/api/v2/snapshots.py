@@ -194,11 +194,13 @@ class SnapshotsController(wsgi.Controller):
             snapshot['display_name'] = snapshot.get('name')
             del snapshot['name']
 
-        if not utils.is_valid_boolstr(force):
-            msg = _("Invalid value '%s' for force. ") % force
+        try:
+            force = strutils.bool_from_string(force, strict=True)
+        except ValueError as error:
+            msg = _("Invalid value for 'force': '%s'") % error.message
             raise exception.InvalidParameterValue(err=msg)
 
-        if strutils.bool_from_string(force):
+        if force:
             new_snapshot = self.volume_api.create_snapshot_force(
                 context,
                 volume,
