@@ -1619,6 +1619,21 @@ class VolumeApiTest(test.TestCase):
             sort_keys=['created_at'], sort_dirs=['desc'],
             filters={'availability_zone': 'nova'}, viewable_admin_meta=True)
 
+    @mock.patch('cinder.volume.api.API.get_all')
+    def test_get_volumes_sort_by_name(self, get_all):
+        """Name in client means display_name in database."""
+
+        req = mock.MagicMock()
+        ctxt = context.RequestContext('fake', 'fake', auth_token=True)
+        req.environ = {'cinder.context': ctxt}
+        req.params = {'sort': 'name'}
+        self.controller._view_builder.detail_list = mock.Mock()
+        self.controller._get_volumes(req, True)
+        get_all.assert_called_once_with(
+            ctxt, None, None,
+            sort_dirs=['desc'], viewable_admin_meta=True,
+            sort_keys=['display_name'], filters={})
+
     def test_get_volume_filter_options_using_config(self):
         self.override_config('query_volume_filters', ['name', 'status',
                                                       'metadata'])
