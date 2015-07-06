@@ -25,8 +25,22 @@ import json
 from cinder.i18n import _, _LE
 from cinder.volume import driver
 from cinder.volume.drivers.nexenta.nexentaedge import jsonrpc as jsonrpc
-from oslo_config import cfg
-from oslo_log import log as logging
+
+#from oslo_config import cfg
+#from oslo_log import log as logging
+
+try:
+    from oslo_log import log as logging
+except:
+    try:
+        from oslo.log import log as logging
+    except:
+        from cinder.openstack.common import log as logging
+
+try:
+    from oslo_config import cfg
+except:
+    from oslo.config import cfg
 
 
 NEXENTA_EDGE_OPTIONS = [

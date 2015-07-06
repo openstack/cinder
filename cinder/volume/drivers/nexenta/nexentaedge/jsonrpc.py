@@ -24,7 +24,16 @@ import json
 import urllib2
 
 from cinder.i18n import _, _LE, _LI
-from oslo_log import log as logging
+
+#from oslo_log import log as logging
+
+try:
+    from oslo_log import log as logging
+except:
+    try:
+        from oslo.log import log as logging
+    except:
+        from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
 
