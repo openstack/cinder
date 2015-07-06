@@ -69,6 +69,9 @@ class SheepdogClient(object):
     DOG_RESP_VDI_NOT_FOUND = ': No VDI found'
     DOG_RESP_VDI_SHRINK_NOT_SUPPORT = 'Shrinking VDIs is not implemented'
     DOG_RESP_VDI_SIZE_TOO_LARGE = 'New VDI size is too large'
+    DOG_RESP_SNAPSHOT_VDI_NOT_FOUND = ': No VDI found'
+    DOG_RESP_SNAPSHOT_NOT_FOUND = ': Failed to find requested tag'
+    DOG_RESP_SNAPSHOT_EXISTED = 'tag (%(snapname)s) is existed'
     QEMU_RESP_CONNECTION_ERROR = 'Failed to connect socket: Connection refused'
     QEMU_RESP_ALREADY_EXISTS = ': VDI exists already'
     QEMU_RESP_SNAPSHOT_NOT_FOUND = 'Failed to find the requested tag'
@@ -183,6 +186,57 @@ class SheepdogClient(object):
                               {'addr': self.addr, 'port': self.port})
                 else:
                     LOG.error(_LE('Failed to delete volume. %s'), vdiname)
+
+    def create_snapshot(self, vdiname, snapname):
+        try:
+            self._run_dog('vdi', 'snapshot', '-s', snapname, vdiname)
+        except exception.SheepdogCmdError as e:
+            cmd = e.kwargs['cmd']
+            stderr = e.kwargs['stderr']
+            with excutils.save_and_reraise_exception():
+                if stderr.startswith(self.DOG_RESP_CONNECTION_ERROR):
+                    LOG.error(_LE('Failed to connect sheep daemon. '
+                              'addr: %(addr)s, port: %(port)s'),
+                              {'addr': self.addr, 'port': str(self.port)})
+                elif stderr.rstrip('\\n').endswith(
+                        self.DOG_RESP_SNAPSHOT_VDI_NOT_FOUND):
+                    LOG.error(_LE('Volume "%s" not found. Please check the '
+                                  'results of "dog vdi list".'),
+                              vdiname)
+                elif stderr.rstrip('\\n').endswith(
+                        self.DOG_RESP_SNAPSHOT_EXISTED %
+                        {'snapname': snapname}):
+                    LOG.error(_LE('Snapshot "%s" already existed.'), snapname)
+                else:
+                    LOG.error(_LE('Failed to create snapshot. (command: %s)'),
+                              cmd)
+
+    def delete_snapshot(self, vdiname, snapname):
+        try:
+            (stdout, stderr) = self._run_dog('vdi', 'delete', '-s',
+                                             snapname, vdiname)
+            # XXX(tishizaki)
+            # Dog command does not return error_code although
+            # dog command cannot connect to sheep process.
+            # That is a Sheepdog's bug.
+            # To avoid a Sheepdog's bug, now we need to check stderr.
+            # If Sheepdog has been fixed, this check logic is needed
+            # by old Sheepdog users.
+            if stderr.rstrip().endswith(self.DOG_RESP_SNAPSHOT_NOT_FOUND):
+                LOG.warning(_LW('Snapshot "%s" not found.'), snapname)
+            elif stderr.rstrip().endswith(self.DOG_RESP_VDI_NOT_FOUND):
+                LOG.warning(_LW('Volume "%s" not found.'), vdiname)
+        except exception.SheepdogCmdError as e:
+            cmd = e.kwargs['cmd']
+            stderr = e.kwargs['stderr']
+            with excutils.save_and_reraise_exception():
+                if stderr.startswith(self.DOG_RESP_CONNECTION_ERROR):
+                    msg = _LE('Failed to connect sheep daemon. '
+                              'addr: %(addr)s, port: %(port)s')
+                    LOG.error(msg, {'addr': self.addr, 'port': str(self.port)})
+                else:
+                    LOG.error(_LE('Failed to delete snapshot. (command: %s)'),
+                              cmd)
 
     def clone(self, src_vdiname, src_snapname, dst_vdiname, size):
         try:
@@ -404,17 +458,17 @@ class SheepdogDriver(driver.VolumeDriver):
             'volume_size': src_vref['size'],
         }
 
-        self.create_snapshot(snapshot)
+        self.client.create_snapshot(snapshot['volume_name'], snapshot_name)
 
         try:
-            self.client.clone(snapshot['volume_name'], snapshot['name'],
+            self.client.clone(snapshot['volume_name'], snapshot_name,
                               volume['name'], volume['size'])
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE('Failed to create cloned volume %s.'),
                           volume['name'])
         finally:
-            self.delete_snapshot(snapshot)
+            self.client.delete_snapshot(snapshot['volume_name'], snapshot_name)
 
     def create_volume(self, volume):
         """Create a sheepdog volume."""
@@ -464,13 +518,11 @@ class SheepdogDriver(driver.VolumeDriver):
 
     def create_snapshot(self, snapshot):
         """Create a sheepdog snapshot."""
-        self._try_execute('qemu-img', 'snapshot', '-c', snapshot['name'],
-                          "sheepdog:%s" % snapshot['volume_name'])
+        self.client.create_snapshot(snapshot['volume_name'], snapshot['name'])
 
     def delete_snapshot(self, snapshot):
         """Delete a sheepdog snapshot."""
-        self._try_execute('dog', 'vdi', 'delete', snapshot['volume_name'],
-                          '-s', snapshot['name'])
+        self.client.delete_snapshot(snapshot['volume_name'], snapshot['name'])
 
     def local_path(self, volume):
         return "sheepdog:%s" % volume['name']
