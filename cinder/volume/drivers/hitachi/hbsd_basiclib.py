@@ -244,7 +244,7 @@ class HBSDBasicLib(object):
         cmd = [cmd]
 
         if args:
-            if isinstance(args, six.text_type):
+            if six.PY2 and isinstance(args, six.text_type):
                 cmd += shlex.split(args.encode())
             else:
                 cmd += shlex.split(args)
