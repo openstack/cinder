@@ -496,7 +496,7 @@ class SheepdogClientTestCase(test.TestCase):
 
     @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
     @mock.patch.object(sheepdog, 'LOG')
-    def test_create_success(self, fake_logger, fake_execute):
+    def test_create(self, fake_logger, fake_execute):
         cmd = self.test_data.cmd_dog_vdi_create(self._vdiname, self._vdisize)
 
         # Test1: create a Sheepdog VDI successfully
@@ -628,14 +628,14 @@ class SheepdogClientTestCase(test.TestCase):
     @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
     @mock.patch.object(sheepdog, 'LOG')
     def test_create_snapshot(self, fake_logger, fake_execute):
-        cmd = self.test_data.cmd_dog_vdi_create_snapshot(
-            self._src_vdiname, self._snapname)
+        args = (self._src_vdiname, self._snapname)
+        cmd = self.test_data.cmd_dog_vdi_create_snapshot(*args)
 
         # Test1: create a snapshot of a VDI successfully
         expected_cmd = ('vdi', 'snapshot', '-s', self._snapname,
                         self._src_vdiname)
         fake_execute.return_value = ('', '')
-        self.client.create_snapshot(self._src_vdiname, self._snapname)
+        self.client.create_snapshot(*args)
         fake_execute.assert_called_once_with(*expected_cmd)
 
         # Test2: failed to connect sheep process
@@ -652,8 +652,7 @@ class SheepdogClientTestCase(test.TestCase):
             cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
         ex = self.assertRaises(exception.SheepdogCmdError,
-                               self.client.create_snapshot,
-                               self._src_vdiname, self._snapname)
+                               self.client.create_snapshot, *args)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
 
@@ -670,8 +669,7 @@ class SheepdogClientTestCase(test.TestCase):
             cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
         ex = self.assertRaises(exception.SheepdogCmdError,
-                               self.client.create_snapshot,
-                               self._src_vdiname, self._snapname)
+                               self.client.create_snapshot, *args)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
 
@@ -689,8 +687,7 @@ class SheepdogClientTestCase(test.TestCase):
             cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
         ex = self.assertRaises(exception.SheepdogCmdError,
-                               self.client.create_snapshot,
-                               self._src_vdiname, self._snapname)
+                               self.client.create_snapshot, *args)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
 
@@ -708,22 +705,21 @@ class SheepdogClientTestCase(test.TestCase):
             cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
         ex = self.assertRaises(exception.SheepdogCmdError,
-                               self.client.create_snapshot,
-                               self._src_vdiname, self._snapname)
+                               self.client.create_snapshot, *args)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
 
     @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
     @mock.patch.object(sheepdog, 'LOG')
     def test_delete_snapshot(self, fake_logger, fake_execute):
-        cmd = self.test_data.cmd_dog_vdi_delete_snapshot(
-            self._src_vdiname, self._snapname)
+        args = (self._src_vdiname, self._snapname)
+        cmd = self.test_data.cmd_dog_vdi_delete_snapshot(*args)
 
         # Test1: delete a snapshot of a VDI successfully
         expected_cmd = ('vdi', 'delete', '-s', self._snapname,
                         self._src_vdiname)
         fake_execute.return_value = ('', '')
-        self.client.delete_snapshot(self._src_vdiname, self._snapname)
+        self.client.delete_snapshot(*args)
         fake_execute.assert_called_once_with(*expected_cmd)
 
         # Test2: the snapshot name is not found
@@ -732,7 +728,7 @@ class SheepdogClientTestCase(test.TestCase):
         stdout = ''
         stderr = self.test_data.DOG_VDI_SNAPSHOT_TAG_NOT_FOUND
         fake_execute.return_value = (stdout, stderr)
-        self.client.delete_snapshot(self._src_vdiname, self._snapname)
+        self.client.delete_snapshot(*args)
         self.assertTrue(fake_logger.warning.called)
 
         # Test3: the src VDI name of the snapshot is not found
@@ -741,7 +737,7 @@ class SheepdogClientTestCase(test.TestCase):
         stdout = ''
         stderr = self.test_data.DOG_VDI_SNAPSHOT_VOLUME_NOT_FOUND
         fake_execute.return_value = (stdout, stderr)
-        self.client.delete_snapshot(self._src_vdiname, self._snapname)
+        self.client.delete_snapshot(*args)
         self.assertTrue(fake_logger.warning.called)
 
         # Test4: failed to connect sheep process
@@ -757,8 +753,7 @@ class SheepdogClientTestCase(test.TestCase):
             cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
         ex = self.assertRaises(exception.SheepdogCmdError,
-                               self.client.delete_snapshot,
-                               self._src_vdiname, self._snapname)
+                               self.client.delete_snapshot, *args)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
 
@@ -775,18 +770,16 @@ class SheepdogClientTestCase(test.TestCase):
             cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
         ex = self.assertRaises(exception.SheepdogCmdError,
-                               self.client.delete_snapshot,
-                               self._src_vdiname, self._snapname)
+                               self.client.delete_snapshot, *args)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
 
     @mock.patch.object(sheepdog.SheepdogClient, '_run_qemu_img')
     @mock.patch.object(sheepdog, 'LOG')
     def test_clone(self, fake_logger, fake_execute):
-        cmd = self.test_data.cmd_qemuimg_vdi_clone(self._src_vdiname,
-                                                   self._snapname,
-                                                   self._vdiname,
-                                                   self._vdisize)
+        args = (self._src_vdiname, self._snapname,
+                self._vdiname, self._vdisize)
+        cmd = self.test_data.cmd_qemuimg_vdi_clone(*args)
 
         # Test1: clone a Sheepdog VDI from snapshot successfully
         expected_cmd = ('create', '-b',
@@ -796,8 +789,7 @@ class SheepdogClientTestCase(test.TestCase):
                         'sheepdog:%s' % self._vdiname,
                         '%sG' % self._vdisize)
         fake_execute.return_code = ("", "")
-        self.client.clone(self._src_vdiname, self._snapname,
-                          self._vdiname, self._vdisize)
+        self.client.clone(*args)
         fake_execute.assert_called_once_with(*expected_cmd)
 
         # Test2: fail to connect sheep process
@@ -814,8 +806,7 @@ class SheepdogClientTestCase(test.TestCase):
             cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
         ex = self.assertRaises(exception.SheepdogCmdError, self.client.clone,
-                               self._src_vdiname, self._snapname,
-                               self._vdiname, self._vdisize)
+                               *args)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
 
@@ -831,8 +822,7 @@ class SheepdogClientTestCase(test.TestCase):
             cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
         ex = self.assertRaises(exception.SheepdogCmdError, self.client.clone,
-                               self._src_vdiname, self._snapname,
-                               self._vdiname, self._vdisize)
+                               *args)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
 
@@ -848,8 +838,7 @@ class SheepdogClientTestCase(test.TestCase):
             cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
         ex = self.assertRaises(exception.SheepdogCmdError, self.client.clone,
-                               self._src_vdiname, self._snapname,
-                               self._vdiname, self._vdisize)
+                               *args)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
 
@@ -865,8 +854,7 @@ class SheepdogClientTestCase(test.TestCase):
             cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
         ex = self.assertRaises(exception.SheepdogCmdError, self.client.clone,
-                               self._src_vdiname, self._snapname,
-                               self._vdiname, self._vdisize)
+                               *args)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
 
@@ -882,8 +870,7 @@ class SheepdogClientTestCase(test.TestCase):
             cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
         ex = self.assertRaises(exception.SheepdogCmdError, self.client.clone,
-                               self._src_vdiname, self._snapname,
-                               self._vdiname, self._vdisize)
+                               *args)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
 
@@ -899,8 +886,7 @@ class SheepdogClientTestCase(test.TestCase):
             cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
         ex = self.assertRaises(exception.SheepdogCmdError, self.client.clone,
-                               self._src_vdiname, self._snapname,
-                               self._vdiname, self._vdisize)
+                               *args)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
 
