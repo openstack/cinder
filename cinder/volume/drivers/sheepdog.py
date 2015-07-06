@@ -32,7 +32,7 @@ from oslo_utils import units
 
 from cinder import exception
 from cinder import utils
-from cinder.i18n import _, _LE, _LW
+from cinder.i18n import _, _LW, _LE
 from cinder.image import image_utils
 from cinder.openstack.common import fileutils
 from cinder.volume import driver
@@ -177,18 +177,6 @@ class SheepdogClient(object):
             (stdout, stderr) = self._run_dog('vdi', 'delete', vdiname)
             if stderr.rstrip().endswith(self.DOG_RESP_VDI_NOT_FOUND):
                 LOG.warning(_LW('Volume not found. %s'), vdiname)
-            elif stderr.startswith(self.DOG_RESP_CONNECTION_ERROR):
-                # XXX(tishizaki)
-                # Dog command does not return error_code although
-                # dog command cannot connect to sheep process.
-                # That is a Sheepdog's bug.
-                # To avoid a Sheepdog's bug, now we need to check stderr.
-                # If Sheepdog has been fixed, this check logic is needed
-                # by old Sheepdog users.
-                reason = (_('Failed to connect sheep daemon. '
-                          'addr: %(addr)s, port: %(port)s'),
-                          {'addr': self.addr, 'port': self.port})
-                raise exception.SheepdogError(reason=reason)
         except exception.SheepdogCmdError as e:
             stderr = e.kwargs['stderr']
             with excutils.save_and_reraise_exception():
@@ -262,7 +250,7 @@ class SheepdogClient(object):
             stderr = e.kwargs['stderr']
             with excutils.save_and_reraise_exception():
                 if self.QEMU_RESP_CONNECTION_ERROR in stderr:
-                    LOG.error(_LE('Failed to connect to sheep daemon. '
+                    LOG.error(_LE('Failed to connect from qemu-img to sheep daemon. '
                                   'addr: %(addr)s, port: %(port)s'),
                               {'addr': self.addr, 'port': self.port})
                 elif self.QEMU_RESP_ALREADY_EXISTS in stderr:
@@ -278,7 +266,7 @@ class SheepdogClient(object):
                               'Please check the results of "dog vdi list".'),
                               src_snapname)
                 elif self.QEMU_RESP_SIZE_TOO_LARGE in stderr:
-                    LOG.error(_LE('Volume size "%s" is too large.'), str(size))
+                    LOG.error(_LE('Volume size "%s" limit over.'), str(size))
                 else:
                     LOG.error(_LE('Failed to clone volume.(command: %s)'), cmd)
 
@@ -303,8 +291,7 @@ class SheepdogClient(object):
                                   'vdi:%(vdiname)s new size:%(size)s'),
                               {'vdiname': vdiname, 'size': size})
                 elif stderr.startswith(self.DOG_RESP_VDI_SIZE_TOO_LARGE):
-                    LOG.error(_LE('Failed to resize vdi. '
-                                  'Too large volume size. '
+                    LOG.error(_LE('Failed to resize vdi. vdi size limit over. '
                                   'vdi:%(vdiname)s new size:%(size)s'),
                               {'vdiname': vdiname, 'size': size})
                 else:
