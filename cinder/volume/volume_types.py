@@ -182,10 +182,20 @@ def get_volume_type_extra_specs(volume_type_id, key=False):
         return extra_specs
 
 
+def is_public_volume_type(context, volume_type_id):
+    """Return is_public boolean value of volume type"""
+    volume_type = db.volume_type_get(context, volume_type_id)
+    return volume_type['is_public']
+
+
 def add_volume_type_access(context, volume_type_id, project_id):
     """Add access to volume type for project_id."""
     if volume_type_id is None:
         msg = _("volume_type_id cannot be None")
+        raise exception.InvalidVolumeType(reason=msg)
+    if is_public_volume_type(context, volume_type_id):
+        msg = _("Type access modification is not applicable to public volume "
+                "type.")
         raise exception.InvalidVolumeType(reason=msg)
     return db.volume_type_access_add(context, volume_type_id, project_id)
 
@@ -194,6 +204,10 @@ def remove_volume_type_access(context, volume_type_id, project_id):
     """Remove access to volume type for project_id."""
     if volume_type_id is None:
         msg = _("volume_type_id cannot be None")
+        raise exception.InvalidVolumeType(reason=msg)
+    if is_public_volume_type(context, volume_type_id):
+        msg = _("Type access modification is not applicable to public volume "
+                "type.")
         raise exception.InvalidVolumeType(reason=msg)
     return db.volume_type_access_remove(context, volume_type_id, project_id)
 
