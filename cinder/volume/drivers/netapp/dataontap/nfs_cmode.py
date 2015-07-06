@@ -45,6 +45,7 @@ LOG = logging.getLogger(__name__)
 QOS_CLEANUP_INTERVAL_SECONDS = 60
 
 
+@six.add_metaclass(utils.TraceWrapperWithABCMetaclass)
 class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
     """NetApp NFS driver for Data ONTAP (Cluster-mode)."""
 

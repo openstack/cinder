@@ -23,6 +23,7 @@ import six
 
 from cinder import exception
 from cinder.i18n import _, _LW
+from cinder import utils
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_base
 from cinder.volume.drivers.netapp import utils as na_utils
@@ -32,6 +33,7 @@ LOG = logging.getLogger(__name__)
 DELETED_PREFIX = 'deleted_cinder_'
 
 
+@six.add_metaclass(utils.TraceWrapperMetaclass)
 class Client(client_base.Client):
 
     def __init__(self, **kwargs):

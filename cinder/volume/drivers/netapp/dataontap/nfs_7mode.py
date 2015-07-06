@@ -24,9 +24,11 @@ Volume driver for NetApp NFS storage.
 import os
 
 from oslo_log import log as logging
+import six
 
 from cinder import exception
 from cinder.i18n import _
+from cinder import utils
 from cinder.volume.drivers.netapp.dataontap.client import client_7mode
 from cinder.volume.drivers.netapp.dataontap import nfs_base
 from cinder.volume.drivers.netapp import options as na_opts
@@ -36,6 +38,7 @@ from cinder.volume.drivers.netapp import utils as na_utils
 LOG = logging.getLogger(__name__)
 
 
+@six.add_metaclass(utils.TraceWrapperWithABCMetaclass)
 class NetApp7modeNfsDriver(nfs_base.NetAppNfsDriver):
     """NetApp NFS driver for Data ONTAP (7-mode)."""
 

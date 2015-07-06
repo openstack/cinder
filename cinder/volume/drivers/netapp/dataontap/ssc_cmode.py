@@ -3,6 +3,7 @@
 # Copyright (c) 2014 Navneet Singh.  All rights reserved.
 # Copyright (c) 2014 Clinton Knight.  All rights reserved.
 # Copyright (c) 2015 Tom Barron.  All rights reserved.
+# Copyright (c) 2015 Alex Meade.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -98,6 +99,7 @@ class NetAppVolume(object):
         return vol_str
 
 
+@utils.trace_method
 def get_cluster_vols_with_ssc(na_server, vserver, volume=None):
     """Gets ssc vols for cluster vserver."""
     volumes = query_cluster_vols_for_ssc(na_server, vserver, volume)
@@ -144,6 +146,7 @@ def get_cluster_vols_with_ssc(na_server, vserver, volume=None):
     return volumes
 
 
+@utils.trace_method
 def query_cluster_vols_for_ssc(na_server, vserver, volume=None):
     """Queries cluster volumes for ssc."""
     query = {'volume-attributes': None}
@@ -173,6 +176,7 @@ def query_cluster_vols_for_ssc(na_server, vserver, volume=None):
     return vols
 
 
+@utils.trace_method
 def create_vol_list(vol_attrs):
     """Creates vol list with features from attr list."""
     vols = set()
@@ -248,6 +252,7 @@ def create_vol_list(vol_attrs):
     return vols
 
 
+@utils.trace_method
 def query_aggr_options(na_server, aggr_name):
     """Queries cluster aggr for attributes.
 
@@ -277,6 +282,7 @@ def query_aggr_options(na_server, aggr_name):
     return attrs
 
 
+@utils.trace_method
 def get_sis_vol_dict(na_server, vserver, volume=None):
     """Queries sis for volumes.
 
@@ -318,6 +324,7 @@ def get_sis_vol_dict(na_server, vserver, volume=None):
     return sis_vols
 
 
+@utils.trace_method
 def get_snapmirror_vol_dict(na_server, vserver, volume=None):
     """Queries snapmirror volumes."""
     mirrored_vols = {}
@@ -352,6 +359,7 @@ def get_snapmirror_vol_dict(na_server, vserver, volume=None):
     return mirrored_vols
 
 
+@utils.trace_method
 def query_aggr_storage_disk(na_server, aggr):
     """Queries for storage disks associated to an aggregate."""
     query = {'storage-disk-info': {'disk-raid-info':
@@ -384,6 +392,7 @@ def query_aggr_storage_disk(na_server, aggr):
     return 'unknown'
 
 
+@utils.trace_method
 def get_cluster_ssc(na_server, vserver):
     """Provides cluster volumes with ssc."""
     netapp_volumes = get_cluster_vols_with_ssc(na_server, vserver)
@@ -406,6 +415,7 @@ def get_cluster_ssc(na_server, vserver):
     return ssc_map
 
 
+@utils.trace_method
 def refresh_cluster_stale_ssc(*args, **kwargs):
     """Refreshes stale ssc volumes with latest."""
     backend = args[0]
@@ -465,6 +475,7 @@ def refresh_cluster_stale_ssc(*args, **kwargs):
         na_utils.set_safe_attr(backend, 'refresh_stale_running', False)
 
 
+@utils.trace_method
 def get_cluster_latest_ssc(*args, **kwargs):
     """Updates volumes including ssc."""
     backend = args[0]
@@ -498,6 +509,7 @@ def get_cluster_latest_ssc(*args, **kwargs):
         na_utils.set_safe_attr(backend, 'ssc_job_running', False)
 
 
+@utils.trace_method
 def refresh_cluster_ssc(backend, na_server, vserver, synchronous=False):
     """Refresh cluster ssc for backend."""
     if not isinstance(na_server, netapp_api.NaServer):
@@ -528,6 +540,7 @@ def refresh_cluster_ssc(backend, na_server, vserver, synchronous=False):
                 t.start()
 
 
+@utils.trace_method
 def get_volumes_for_specs(ssc_vols, specs):
     """Shortlists volumes for extra specs provided."""
     if specs is None or specs == {} or not isinstance(specs, dict):
@@ -599,6 +612,7 @@ def get_volumes_for_specs(ssc_vols, specs):
     return result
 
 
+@utils.trace_method
 def check_ssc_api_permissions(client_cmode):
     """Checks backend SSC API permissions for the user."""
     api_map = {'storage-disk-get-iter': ['netapp:disk_type'],

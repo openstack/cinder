@@ -49,6 +49,7 @@ LOG = logging.getLogger(__name__)
 CONF = cfg.CONF
 
 
+@six.add_metaclass(utils.TraceWrapperWithABCMetaclass)
 class NetAppNfsDriver(nfs.NfsDriver):
     """Base class for NetApp NFS driver for Data ONTAP."""
 

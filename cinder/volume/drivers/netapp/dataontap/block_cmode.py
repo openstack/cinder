@@ -43,8 +43,8 @@ LOG = logging.getLogger(__name__)
 QOS_CLEANUP_INTERVAL_SECONDS = 60
 
 
-class NetAppBlockStorageCmodeLibrary(block_base.
-                                     NetAppBlockStorageLibrary):
+@six.add_metaclass(utils.TraceWrapperMetaclass)
+class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary):
     """NetApp block storage library for Data ONTAP (Cluster-mode)."""
 
     REQUIRED_CMODE_FLAGS = ['netapp_vserver']

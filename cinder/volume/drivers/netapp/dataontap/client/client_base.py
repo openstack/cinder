@@ -24,12 +24,14 @@ from oslo_utils import timeutils
 import six
 
 from cinder.i18n import _LE, _LW, _LI
+from cinder import utils
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 
 
 LOG = logging.getLogger(__name__)
 
 
+@six.add_metaclass(utils.TraceWrapperMetaclass)
 class Client(object):
 
     def __init__(self, **kwargs):
