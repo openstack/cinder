@@ -34,7 +34,7 @@ from cinder import exception
 from cinder import test
 from cinder import utils
 from cinder.volume import configuration as conf
-from cinder.volume.drivers.ibm import flashsystem
+from cinder.volume.drivers.ibm import flashsystem_fc
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
 
@@ -656,7 +656,7 @@ class FlashSystemManagementSimulator(object):
         self._next_cmd_error[cmd] = error
 
 
-class FlashSystemFakeDriver(flashsystem.FlashSystemDriver):
+class FlashSystemFakeDriver(flashsystem_fc.FlashSystemFCDriver):
     def __init__(self, *args, **kwargs):
         super(FlashSystemFakeDriver, self).__init__(*args, **kwargs)
 
@@ -893,7 +893,7 @@ class FlashSystemDriverTestCase(test.TestCase):
                           vol2, self.connector)
 
         # case 3: _get_vdisk_map_properties raises exception
-        with mock.patch.object(flashsystem.FlashSystemDriver,
+        with mock.patch.object(flashsystem_fc.FlashSystemFCDriver,
                                '_get_vdisk_map_properties') as get_properties:
             get_properties.side_effect = exception.VolumeBackendAPIException
             self.assertRaises(exception.VolumeBackendAPIException,
@@ -903,7 +903,7 @@ class FlashSystemDriverTestCase(test.TestCase):
         # clear environment
         self.driver.delete_volume(vol1)
 
-    @mock.patch.object(flashsystem.FlashSystemDriver,
+    @mock.patch.object(flashsystem_fc.FlashSystemFCDriver,
                        '_create_and_copy_vdisk_data')
     def test_flashsystem_create_snapshot(self, _create_and_copy_vdisk_data):
         # case 1: good path
@@ -923,7 +923,7 @@ class FlashSystemDriverTestCase(test.TestCase):
         self.assertRaises(exception.InvalidVolume,
                           self.driver.create_snapshot, snap2)
 
-    @mock.patch.object(flashsystem.FlashSystemDriver,
+    @mock.patch.object(flashsystem_fc.FlashSystemFCDriver,
                        '_delete_vdisk')
     def test_flashsystem_delete_snapshot(self, _delete_vdisk):
         vol1 = self._generate_vol_info(None)
@@ -933,7 +933,7 @@ class FlashSystemDriverTestCase(test.TestCase):
                                          vol1['status'])
         self.driver.delete_snapshot(snap1)
 
-    @mock.patch.object(flashsystem.FlashSystemDriver,
+    @mock.patch.object(flashsystem_fc.FlashSystemFCDriver,
                        '_create_and_copy_vdisk_data')
     def test_flashsystem_create_volume_from_snapshot(
             self, _create_and_copy_vdisk_data):
@@ -966,7 +966,7 @@ class FlashSystemDriverTestCase(test.TestCase):
                           self.driver.create_volume_from_snapshot,
                           vol, snap)
 
-    @mock.patch.object(flashsystem.FlashSystemDriver,
+    @mock.patch.object(flashsystem_fc.FlashSystemFCDriver,
                        '_create_and_copy_vdisk_data')
     def test_flashsystem_create_cloned_volume(
             self, _create_and_copy_vdisk_data):
@@ -1002,7 +1002,7 @@ class FlashSystemDriverTestCase(test.TestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.get_volume_stats, refresh=True)
 
-    @mock.patch.object(flashsystem.FlashSystemDriver,
+    @mock.patch.object(flashsystem_fc.FlashSystemFCDriver,
                        '_copy_vdisk_data')
     def test_flashsystem_create_and_copy_vdisk_data(self, _copy_vdisk_data):
         # case 1: when volume does not exist
@@ -1033,8 +1033,8 @@ class FlashSystemDriverTestCase(test.TestCase):
         self.driver.delete_volume(vol2)
 
     @mock.patch.object(volume_utils, 'copy_volume')
-    @mock.patch.object(flashsystem.FlashSystemDriver, '_scan_device')
-    @mock.patch.object(flashsystem.FlashSystemDriver, '_remove_device')
+    @mock.patch.object(flashsystem_fc.FlashSystemFCDriver, '_scan_device')
+    @mock.patch.object(flashsystem_fc.FlashSystemFCDriver, '_remove_device')
     @mock.patch.object(utils, 'brick_get_connector_properties')
     def test_flashsystem_copy_vdisk_data(self,
                                          _connector,

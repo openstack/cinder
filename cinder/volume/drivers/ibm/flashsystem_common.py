@@ -1,4 +1,4 @@
-# Copyright 2014 - 2015 IBM Corporation.
+# Copyright 2015 IBM Corporation.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -19,14 +19,11 @@ Volume driver for IBM FlashSystem storage systems.
 
 Limitations:
 1. Cinder driver only works when open_access_enabled=off.
-2. Cinder driver only works when connection protocol is FC.
 
 """
 
-import random
 import re
 import string
-import threading
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
@@ -44,7 +41,6 @@ from cinder import utils
 from cinder.volume.drivers.san import san
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
-from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -54,13 +50,12 @@ FLASHSYSTEM_VOL_IOGRP = 0
 flashsystem_opts = [
     cfg.StrOpt('flashsystem_connection_protocol',
                default='FC',
-               help='Connection protocol should be FC.'),
-    cfg.BoolOpt('flashsystem_multipath_enabled',
-                default=False,
-                help='Connect with multipath (FC only).'),
+               help='Connection protocol should be FC. '
+                    '(Default is FC.)'),
     cfg.BoolOpt('flashsystem_multihostmap_enabled',
                 default=True,
-                help='Allows vdisk to multi host mapping.')
+                help='Allows vdisk to multi host mapping. '
+                     '(Default is True)')
 ]
 
 CONF = cfg.CONF
@@ -68,17 +63,19 @@ CONF.register_opts(flashsystem_opts)
 
 
 class FlashSystemDriver(san.SanDriver):
-    """IBM FlashSystem 840 FC volume driver.
+    """IBM FlashSystem volume driver.
 
     Version history:
     1.0.0 - Initial driver
     1.0.1 - Code clean up
     1.0.2 - Add lock into vdisk map/unmap, connection
             initialize/terminate
+    1.0.3 - Initial driver for iSCSI
+    1.0.4 - Split Flashsystem driver into common and FC
 
     """
 
-    VERSION = "1.0.1"
+    VERSION = "1.0.4"
 
     def __init__(self, *args, **kwargs):
         super(FlashSystemDriver, self).__init__(*args, **kwargs)
@@ -134,16 +131,6 @@ class FlashSystemDriver(san.SanDriver):
                 map[idx].append(t_wwpn)
         return map
 
-    def _check_vdisk_params(self, params):
-        # Check that the requested protocol is enabled
-        if params['protocol'] != self._protocol:
-            msg = (_("Illegal value '%(prot)s' specified for "
-                     "flashsystem_connection_protocol: "
-                     "valid value(s) are %(enabled)s.")
-                   % {'prot': params['protocol'],
-                      'enabled': self._protocol})
-            raise exception.InvalidInput(reason=msg)
-
     def _connector_to_hostname_prefix(self, connector):
         """Translate connector info to storage system host name.
 
@@ -172,8 +159,8 @@ class FlashSystemDriver(san.SanDriver):
                 invalid_ch_in_host, '-' * len(invalid_ch_in_host))
             host_name = host_name.translate(string_host_name_filter)
         else:
-            msg = (_('_create_host: Can not clean host name. Host name '
-                     'is not unicode or string.'))
+            msg = _('_create_host: Can not translate host name. Host name '
+                    'is not unicode or string.')
             LOG.error(msg)
             raise exception.NoValidHost(reason=msg)
 
@@ -237,8 +224,7 @@ class FlashSystemDriver(san.SanDriver):
                 self.configuration.volume_dd_blocksize)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE('_copy_vdisk_data: Failed to '
-                              'copy %(src)s to %(dest)s.'),
+                LOG.error(_LE('Failed to copy %(src)s to %(dest)s.'),
                           {'src': src_vdisk_name, 'dest': dest_vdisk_name})
         finally:
             if not dest_map:
@@ -274,50 +260,6 @@ class FlashSystemDriver(san.SanDriver):
         finally:
             self._unset_vdisk_copy_in_progress(
                 [src_vdisk_name, dest_vdisk_name])
-
-    def _create_host(self, connector):
-        """Create a new host on the storage system.
-
-        We create a host and associate it with the given connection
-        information.
-
-        """
-
-        LOG.debug('enter: _create_host: host %s.', connector['host'])
-
-        rand_id = six.text_type(random.randint(0, 99999999)).zfill(8)
-        host_name = '%s-%s' % (self._connector_to_hostname_prefix(connector),
-                               rand_id)
-
-        ports = []
-        if 'FC' == self._protocol and 'wwpns' in connector:
-            for wwpn in connector['wwpns']:
-                ports.append('-hbawwpn %s' % wwpn)
-
-        self._driver_assert(ports,
-                            (_('_create_host: No connector ports.')))
-        port1 = ports.pop(0)
-        arg_name, arg_val = port1.split()
-        ssh_cmd = ['svctask', 'mkhost', '-force', arg_name, arg_val, '-name',
-                   '"%s"' % host_name]
-        out, err = self._ssh(ssh_cmd)
-        self._assert_ssh_return('successfully created' in out,
-                                '_create_host', ssh_cmd, out, err)
-
-        for port in ports:
-            arg_name, arg_val = port.split()
-            ssh_cmd = ['svctask', 'addhostport', '-force',
-                       arg_name, arg_val, host_name]
-            out, err = self._ssh(ssh_cmd)
-            self._assert_ssh_return(
-                (not out.strip()),
-                '_create_host', ssh_cmd, out, err)
-
-        LOG.debug(
-            'leave: _create_host: host %(host)s - %(host_name)s.',
-            {'host': connector['host'], 'host_name': host_name})
-
-        return host_name
 
     def _create_vdisk(self, name, size, unit, opts):
         """Create a new vdisk."""
@@ -405,8 +347,8 @@ class FlashSystemDriver(san.SanDriver):
         try:
             out, err = self._ssh(ssh_cmd)
         except processutils.ProcessExecutionError:
-            LOG.warning(_LW('_execute_command_and_parse_attributes: Failed to '
-                            'run command: %s.'), ssh_cmd)
+            LOG.warning(_LW('Failed to run command: '
+                            '%s.'), ssh_cmd)
             # Does not raise exception when command encounters error.
             # Only return and the upper logic decides what to do.
             return None
@@ -430,22 +372,6 @@ class FlashSystemDriver(san.SanDriver):
 
         return attributes
 
-    def _find_host_exhaustive(self, connector, hosts):
-        for host in hosts:
-            ssh_cmd = ['svcinfo', 'lshost', '-delim', '!', host]
-            out, err = self._ssh(ssh_cmd)
-            self._assert_ssh_return(
-                out.strip(),
-                '_find_host_exhaustive', ssh_cmd, out, err)
-            for attr_line in out.split('\n'):
-                # If '!' not found, return the string and two empty strings
-                attr_name, foo, attr_val = attr_line.partition('!')
-                if (attr_name == 'WWPN' and
-                        'wwpns' in connector and attr_val.lower() in
-                        map(str.lower, map(str, connector['wwpns']))):
-                    return host
-        return None
-
     def _get_hdr_dic(self, header, row, delim):
         """Return CLI row data as a dictionary indexed by names from header.
         string. The strings are converted to columns using the delimiter in
@@ -461,38 +387,6 @@ class FlashSystemDriver(san.SanDriver):
              % {'header': six.text_type(header), 'row': six.text_type(row)}))
         dic = {a: v for a, v in map(None, attributes, values)}
         return dic
-
-    def _get_conn_fc_wwpns(self):
-        wwpns = []
-
-        cmd = ['svcinfo', 'lsportfc']
-
-        generator = self._port_conf_generator(cmd)
-        header = next(generator, None)
-        if not header:
-            return wwpns
-
-        for port_data in generator:
-            try:
-                if port_data['status'] == 'active':
-                    wwpns.append(port_data['WWPN'])
-            except KeyError:
-                self._handle_keyerror('lsportfc', header)
-
-        return wwpns
-
-    def _get_fc_wwpns(self):
-        for key in self._storage_nodes:
-            node = self._storage_nodes[key]
-            ssh_cmd = ['svcinfo', 'lsnode', '-delim', '!', node['id']]
-            attributes = self._execute_command_and_parse_attributes(ssh_cmd)
-            wwpns = set(node['WWPN'])
-            for i, s in zip(attributes['port_id'], attributes['port_status']):
-                if 'unconfigured' != s:
-                    wwpns.add(i)
-            node['WWPN'] = list(wwpns)
-            LOG.info(_LI('WWPN on node %(node)s: %(wwpn)s.'),
-                     {'node': node['id'], 'wwpn': node['WWPN']})
 
     def _get_host_from_connector(self, connector):
         """List the hosts defined in the storage.
@@ -546,6 +440,78 @@ class FlashSystemDriver(san.SanDriver):
 
         return return_data
 
+    def _get_node_data(self):
+        """Get and verify node configuration."""
+
+        # Get storage system name and id
+        ssh_cmd = ['svcinfo', 'lssystem', '-delim', '!']
+        attributes = self._execute_command_and_parse_attributes(ssh_cmd)
+        if not attributes or not ('name' in attributes):
+            msg = _('Could not get system name.')
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        self._system_name = attributes['name']
+        self._system_id = attributes['id']
+
+        # Validate value of open_access_enabled flag, for now only
+        # support when open_access_enabled is off
+        if not attributes or not ('open_access_enabled' in attributes) or (
+                attributes['open_access_enabled'] != 'off'):
+            msg = _('open_access_enabled is not off.')
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        # Validate that the array exists
+        pool = FLASHSYSTEM_VOLPOOL_NAME
+        ssh_cmd = ['svcinfo', 'lsmdiskgrp', '-bytes', '-delim', '!', pool]
+        attributes = self._execute_command_and_parse_attributes(ssh_cmd)
+        if not attributes:
+            msg = _('Unable to parse attributes.')
+            LOG.error(msg)
+            raise exception.InvalidInput(reason=msg)
+        if not ('status' in attributes) or (
+                attributes['status'] == 'offline'):
+            msg = (_('Array does not exist or is offline. '
+                     'Current status of array is %s.')
+                   % attributes['status'])
+            LOG.error(msg)
+            raise exception.InvalidInput(reason=msg)
+
+        # Get the iSCSI names of the FlashSystem nodes
+        ssh_cmd = ['svcinfo', 'lsnode', '-delim', '!']
+        out, err = self._ssh(ssh_cmd)
+        self._assert_ssh_return(
+            out.strip(), '_get_config_data', ssh_cmd, out, err)
+
+        nodes = out.strip().splitlines()
+        self._assert_ssh_return(nodes, '_get_node_data', ssh_cmd, out, err)
+        header = nodes.pop(0)
+        for node_line in nodes:
+            try:
+                node_data = self._get_hdr_dic(header, node_line, '!')
+            except exception.VolumeBackendAPIException:
+                with excutils.save_and_reraise_exception():
+                    self._log_cli_output_error('_get_node_data',
+                                               ssh_cmd, out, err)
+            try:
+                node = {
+                    'id': node_data['id'],
+                    'name': node_data['name'],
+                    'IO_group': node_data['IO_group_id'],
+                    'WWNN': node_data['WWNN'],
+                    'status': node_data['status'],
+                    'WWPN': [],
+                    'protocol': None,
+                    'iscsi_name': node_data['iscsi_name'],
+                    'config_node': node_data['config_node'],
+                    'ipv4': [],
+                    'ipv6': [],
+                }
+                if node['status'] == 'online':
+                    self._storage_nodes[node['id']] = node
+            except KeyError:
+                self._handle_keyerror('lsnode', header)
+
     def _get_vdisk_attributes(self, vdisk_name):
         """Return vdisk attributes
 
@@ -573,70 +539,6 @@ class FlashSystemDriver(san.SanDriver):
                 return_data[mapping_data['host_name']] = mapping_data
 
         return return_data
-
-    def _get_vdisk_map_properties(
-            self, connector, lun_id, vdisk_name, vdisk_id, vdisk_params):
-        """Get the map properties of vdisk."""
-
-        LOG.debug(
-            'enter: _get_vdisk_map_properties: vdisk '
-            '%(vdisk_name)s.', {'vdisk_name': vdisk_name})
-
-        preferred_node = '0'
-        IO_group = '0'
-
-        # Get preferred node and other nodes in I/O group
-        preferred_node_entry = None
-        io_group_nodes = []
-        for k, node in self._storage_nodes.items():
-            if vdisk_params['protocol'] != node['protocol']:
-                continue
-            if node['id'] == preferred_node:
-                preferred_node_entry = node
-            if node['IO_group'] == IO_group:
-                io_group_nodes.append(node)
-
-        if not io_group_nodes:
-            msg = (_('_get_vdisk_map_properties: No node found in '
-                     'I/O group %(gid)s for volume %(vol)s.')
-                   % {'gid': IO_group, 'vol': vdisk_name})
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-
-        if not preferred_node_entry and not vdisk_params['multipath']:
-            # Get 1st node in I/O group
-            preferred_node_entry = io_group_nodes[0]
-            LOG.warning(_LW('_get_vdisk_map_properties: Did not find a '
-                            'preferred node for vdisk %s.'), vdisk_name)
-        properties = {}
-        properties['target_discovered'] = False
-        properties['target_lun'] = lun_id
-        properties['volume_id'] = vdisk_id
-
-        type_str = 'fibre_channel'
-        conn_wwpns = self._get_conn_fc_wwpns()
-
-        if not conn_wwpns:
-            msg = (_('_get_vdisk_map_properties: Could not get FC '
-                     'connection information for the host-volume '
-                     'connection. Is the host configured properly '
-                     'for FC connections?'))
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-
-        properties['target_wwn'] = conn_wwpns
-
-        if "zvm_fcp" in connector:
-            properties['zvm_fcp'] = connector['zvm_fcp']
-
-        properties['initiator_target_map'] = self._build_initiator_target_map(
-            connector['wwpns'], conn_wwpns)
-
-        LOG.debug(
-            'leave: _get_vdisk_map_properties: vdisk '
-            '%(vdisk_name)s.', {'vdisk_name': vdisk_name})
-
-        return {'driver_volume_type': type_str, 'data': properties}
 
     def _get_vdisk_params(self, type_id):
         params = self._build_default_params()
@@ -792,11 +694,11 @@ class FlashSystemDriver(san.SanDriver):
             out, err = self._ssh(ssh_cmd, check_exit_code=False)
             if err and err.startswith('CMMVC6071E'):
                 if not self.configuration.flashsystem_multihostmap_enabled:
-                    msg = (_('flashsystem_multihostmap_enabled is set '
-                             'to False, not allow multi host mapping. '
-                             'CMMVC6071E The VDisk-to-host mapping '
-                             'was not created because the VDisk is '
-                             'already mapped to a host.'))
+                    msg = _('flashsystem_multihostmap_enabled is set '
+                            'to False, not allow multi host mapping. '
+                            'CMMVC6071E The VDisk-to-host mapping '
+                            'was not created because the VDisk is '
+                            'already mapped to a host.')
                     LOG.error(msg)
                     raise exception.VolumeBackendAPIException(data=msg)
 
@@ -961,7 +863,7 @@ class FlashSystemDriver(san.SanDriver):
         ssh_cmd = ['svcinfo', 'lsmdiskgrp', '-bytes', '-delim', '!', pool]
         attributes = self._execute_command_and_parse_attributes(ssh_cmd)
         if not attributes:
-            msg = (_('_update_volume_stats: Could not get storage pool data.'))
+            msg = _('_update_volume_stats: Could not get storage pool data.')
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
@@ -1014,97 +916,6 @@ class FlashSystemDriver(san.SanDriver):
             self._is_vdisk_copy_in_progress, vdisk_name)
         timer.start(interval=self._check_lock_interval).wait()
 
-    def do_setup(self, ctxt):
-        """Check that we have all configuration details from the storage."""
-
-        LOG.debug('enter: do_setup')
-
-        self._context = ctxt
-
-        # Get storage system name and id
-        ssh_cmd = ['svcinfo', 'lssystem', '-delim', '!']
-        attributes = self._execute_command_and_parse_attributes(ssh_cmd)
-        if not attributes or not ('name' in attributes):
-            msg = (_('do_setup: Could not get system name.'))
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-        self._system_name = attributes['name']
-        self._system_id = attributes['id']
-
-        # Validate value of open_access_enabled flag, for now only
-        # support when open_access_enabled is off
-        if not attributes or not ('open_access_enabled' in attributes) or (
-                attributes['open_access_enabled'] != 'off'):
-            msg = (_('do_setup: open_access_enabled is not off.'))
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-
-        # Validate that the array exists
-        pool = FLASHSYSTEM_VOLPOOL_NAME
-        ssh_cmd = ['svcinfo', 'lsmdiskgrp', '-bytes', '-delim', '!', pool]
-        attributes = self._execute_command_and_parse_attributes(ssh_cmd)
-        if not attributes or not ('status' in attributes) or (
-                attributes['status'] == 'offline'):
-            msg = (_('do_setup: Array does not exist or is offline.'))
-            LOG.error(msg)
-            raise exception.InvalidInput(reason=msg)
-
-        # Get the FC names of the FlashSystem nodes
-        ssh_cmd = ['svcinfo', 'lsnode', '-delim', '!']
-        out, err = self._ssh(ssh_cmd)
-        self._assert_ssh_return(
-            out.strip(), 'do_setup', ssh_cmd, out, err)
-
-        nodes = out.strip().splitlines()
-        self._assert_ssh_return(nodes, 'do_setup', ssh_cmd, out, err)
-        header = nodes.pop(0)
-        for node_line in nodes:
-            try:
-                node_data = self._get_hdr_dic(header, node_line, '!')
-            except exception.VolumeBackendAPIException:
-                with excutils.save_and_reraise_exception():
-                    self._log_cli_output_error('do_setup', ssh_cmd, out, err)
-            node = {}
-            try:
-                node['id'] = node_data['id']
-                node['name'] = node_data['name']
-                node['IO_group'] = node_data['IO_group_id']
-                node['WWNN'] = node_data['WWNN']
-                node['status'] = node_data['status']
-                node['WWPN'] = []
-                node['protocol'] = None
-                if node['status'] == 'online':
-                    self._storage_nodes[node['id']] = node
-            except KeyError:
-                self._handle_keyerror('lsnode', header)
-
-        # Get the WWPNs of the FlashSystem nodes
-        self._get_fc_wwpns()
-
-        # For each node, check what connection modes it supports.  Delete any
-        # nodes that do not support any types (may be partially configured).
-        to_delete = []
-        for k, node in self._storage_nodes.items():
-            if not node['WWPN']:
-                to_delete.append(k)
-
-        for delkey in to_delete:
-            del self._storage_nodes[delkey]
-
-        # Make sure we have at least one node configured
-        self._driver_assert(
-            self._storage_nodes,
-            'do_setup: No configured nodes.')
-
-        self._protocol = node['protocol'] = 'FC'
-
-        # Set for vdisk synchronization
-        self._vdisk_copy_in_progress = set()
-        self._vdisk_copy_lock = threading.Lock()
-        self._check_lock_interval = 5
-
-        LOG.debug('leave: do_setup')
-
     def check_for_setup_error(self):
         """Ensure that the flags are set properly."""
         LOG.debug('enter: check_for_setup_error')
@@ -1115,7 +926,7 @@ class FlashSystemDriver(san.SanDriver):
                 _('check_for_setup_error: Unable to determine system name.'))
             raise exception.VolumeBackendAPIException(data=msg)
         if self._system_id is None:
-            msg = (_('check_for_setup_error: Unable to determine system id.'))
+            msg = _('check_for_setup_error: Unable to determine system id.')
             raise exception.VolumeBackendAPIException(data=msg)
 
         required_flags = ['san_ip', 'san_ssh_port', 'san_login']
@@ -1127,22 +938,15 @@ class FlashSystemDriver(san.SanDriver):
         # Ensure that either password or keyfile were set
         if not (self.configuration.san_password or
                 self.configuration.san_private_key):
-            msg = (_('check_for_setup_error: Password or SSH private key '
-                     'is required for authentication: set either '
-                     'san_password or san_private_key option.'))
+            msg = _('check_for_setup_error: Password or SSH private key '
+                    'is required for authentication: set either '
+                    'san_password or san_private_key option.')
             raise exception.InvalidInput(reason=msg)
 
         params = self._build_default_params()
         self._check_vdisk_params(params)
 
         LOG.debug('leave: check_for_setup_error')
-
-    def validate_connector(self, connector):
-        """Check connector."""
-        if 'FC' == self._protocol and 'wwpns' not in connector:
-            LOG.error(_LE('The connector does not contain the '
-                          'required information: wwpns is missing'))
-            raise exception.InvalidConnectorException(missing='wwpns')
 
     def create_volume(self, volume):
         """Create volume."""
@@ -1174,96 +978,6 @@ class FlashSystemDriver(san.SanDriver):
             'extend_volume', ssh_cmd, out, err)
 
         LOG.debug('leave: extend_volume: volume %s.', volume['name'])
-
-    @fczm_utils.AddFCZone
-    @utils.synchronized('flashsystem-init-conn', external=True)
-    def initialize_connection(self, volume, connector):
-        """Perform the necessary work so that a FC connection can
-        be made.
-
-        To be able to create a FC connection from a given host to a
-        volume, we must:
-        1. Translate the given WWNN to a host name
-        2. Create new host on the storage system if it does not yet exist
-        3. Map the volume to the host if it is not already done
-        4. Return the connection information for relevant nodes (in the
-           proper I/O group)
-
-        """
-
-        LOG.debug(
-            'enter: initialize_connection: volume %(vol)s with '
-            'connector %(conn)s.', {'vol': volume, 'conn': connector})
-
-        vdisk_name = volume['name']
-        vdisk_id = volume['id']
-        vdisk_params = self._get_vdisk_params(volume['volume_type_id'])
-
-        self._wait_vdisk_copy_completed(vdisk_name)
-
-        self._driver_assert(
-            self._is_vdisk_defined(vdisk_name),
-            (_('initialize_connection: vdisk %s is not defined.')
-             % vdisk_name))
-
-        lun_id = self._map_vdisk_to_host(vdisk_name, connector)
-
-        properties = {}
-        try:
-            properties = self._get_vdisk_map_properties(
-                connector, lun_id, vdisk_name, vdisk_id, vdisk_params)
-        except exception.VolumeBackendAPIException:
-            with excutils.save_and_reraise_exception():
-                self.terminate_connection(volume, connector)
-                LOG.error(_LE('initialize_connection: Failed to collect '
-                              'return properties for volume %(vol)s and '
-                              'connector %(conn)s.'),
-                          {'vol': volume, 'conn': connector})
-
-        LOG.debug(
-            'leave: initialize_connection:\n volume: %(vol)s\n connector '
-            '%(conn)s\n properties: %(prop)s.',
-            {'vol': volume,
-             'conn': connector,
-             'prop': properties})
-
-        return properties
-
-    @fczm_utils.RemoveFCZone
-    @utils.synchronized('flashsystem-term-conn', external=True)
-    def terminate_connection(self, volume, connector, **kwargs):
-        """Cleanup after connection has been terminated.
-
-        When we clean up a terminated connection between a given connector
-        and volume, we:
-        1. Translate the given connector to a host name
-        2. Remove the volume-to-host mapping if it exists
-        3. Delete the host if it has no more mappings (hosts are created
-           automatically by this driver when mappings are created)
-        """
-        LOG.debug(
-            'enter: terminate_connection: volume %(vol)s with '
-            'connector %(conn)s.',
-            {'vol': volume, 'conn': connector})
-
-        vdisk_name = volume['name']
-        self._wait_vdisk_copy_completed(vdisk_name)
-        self._unmap_vdisk_from_host(vdisk_name, connector)
-
-        properties = {}
-        conn_wwpns = self._get_conn_fc_wwpns()
-        properties['target_wwn'] = conn_wwpns
-        properties['initiator_target_map'] = self._build_initiator_target_map(
-            connector['wwpns'], conn_wwpns)
-
-        LOG.debug(
-            'leave: terminate_connection: volume %(vol)s with '
-            'connector %(conn)s.', {'vol': volume, 'conn': connector})
-
-        return {
-            'driver_volume_type': 'fibre_channel',
-            'data': properties
-        }
 
     def create_snapshot(self, snapshot):
         """Create snapshot from volume."""
@@ -1311,8 +1025,8 @@ class FlashSystemDriver(san.SanDriver):
             '%(snap)s.', {'vol': volume['name'], 'snap': snapshot['name']})
 
         if volume['size'] != snapshot['volume_size']:
-            msg = (_('create_volume_from_snapshot: Volume size is different '
-                     'from snapshot based volume.'))
+            msg = _('create_volume_from_snapshot: Volume size is different '
+                    'from snapshot based volume.')
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
@@ -1339,8 +1053,8 @@ class FlashSystemDriver(san.SanDriver):
                   {'src': src_volume['name'], 'vol': volume['name']})
 
         if src_volume['size'] != volume['size']:
-            msg = (_('create_cloned_volume: Source and destination '
-                     'size differ.'))
+            msg = _('create_cloned_volume: Source and destination '
+                    'size differ.')
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
