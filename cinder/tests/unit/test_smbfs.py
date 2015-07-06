@@ -132,6 +132,11 @@ class SmbFsTestCase(test.TestCase):
         fake_config.smbfs_used_ratio = -1
         self._test_setup(config=fake_config)
 
+    def test_setup_invalid_used_ratio2(self):
+        fake_config = copy.copy(self._FAKE_SMBFS_CONFIG)
+        fake_config.smbfs_used_ratio = 1.1
+        self._test_setup(config=fake_config)
+
     def _test_create_volume(self, volume_exists=False, volume_format=None):
         fake_method = mock.MagicMock()
         self._smbfs_driver.configuration = copy.copy(self._FAKE_SMBFS_CONFIG)
