@@ -12,6 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import mock
 from mox3 import mox
 from oslo_concurrency import processutils
 
@@ -140,7 +141,11 @@ class BrickLvmTestCase(test.TestCase):
             pass
         elif 'lvcreate, -T, -V, ' in cmd_string:
             pass
+        elif 'lvcreate, -n, ' in cmd_string:
+            pass
         elif 'lvcreate, --name, ' in cmd_string:
+            pass
+        elif 'lvextend, -L, ' in cmd_string:
             pass
         else:
             raise AssertionError('unexpected command called: %s' % cmd_string)
@@ -351,3 +356,18 @@ class BrickLvmTestCase(test.TestCase):
 
     def test_get_mirrored_available_capacity(self):
         self.assertEqual(self.vg.vg_mirror_free_space(1), 2.0)
+
+    def test_lv_extend(self):
+        self.vg.deactivate_lv = mock.MagicMock()
+
+        # Extend lv with snapshot and make sure deactivate called
+        self.vg.create_volume("test", "1G")
+        self.vg.extend_volume("test", "2G")
+        self.vg.deactivate_lv.assert_called_once_with('test')
+        self.vg.deactivate_lv.reset_mock()
+
+        # Extend lv without snapshot so deactivate should not be called
+        self.vg.create_volume("test", "1G")
+        self.vg.vg_name = "test-volumes"
+        self.vg.extend_volume("test", "2G")
+        self.assertFalse(self.vg.deactivate_lv.called)
