@@ -339,140 +339,132 @@ class SheepdogClientTestCase(test.TestCase):
         self._src_vdiname = self.test_data.TEST_SNAPSHOT['volume_name']
         self._snapname = self.test_data.TEST_SNAPSHOT['name']
 
-    def test_run_dog(self):
-        expected_cmd = self.test_data.CMD_DOG_CLUSTER_INFO
-        with mock.patch.object(utils, 'execute') as fake_execute:
-            fake_execute.return_value = ('', '')
-            self.client._run_dog('cluster', 'info')
-            fake_execute.assert_called_once_with(*expected_cmd)
-
-    def test_run_dog_os_error(self):
+    @mock.patch.object(utils, 'execute')
+    @mock.patch.object(sheepdog, 'LOG')
+    def test_run_dog(self, fake_logger, fake_execute):
         args = ('cluster', 'info')
+
+        # Test1: success
+        expected_cmd = self.test_data.CMD_DOG_CLUSTER_INFO
+        fake_execute.return_value = ('', '')
+        self.client._run_dog(*args)
+        fake_execute.assert_called_once_with(*expected_cmd)
+
+        # Test2: os_error because dog command is not found
+        fake_logger.reset_mock()
+        fake_execute.reset_mock()
         expected_msg = 'No such file or directory'
         expected_errno = errno.ENOENT
-        with mock.patch.object(utils, 'execute') as fake_execute:
-            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
-                fake_execute.side_effect = OSError(expected_errno,
-                                                   expected_msg)
-                self.assertRaises(OSError, self.client._run_dog, *args)
-                self.assertTrue(fake_logger.error.called)
+        fake_execute.side_effect = OSError(expected_errno, expected_msg)
+        self.assertRaises(OSError, self.client._run_dog, *args)
+        self.assertTrue(fake_logger.error.called)
 
-    def test_run_qemu_img_prefix_matched_multiple(self):
+    @mock.patch.object(utils, 'execute')
+    @mock.patch.object(sheepdog, 'LOG')
+    def test_run_qemu_img(self, fake_logger, fake_execute):
+        # Test1: success pattern
+        # multiple part of args mathches the prefix and
+        # volume name is matched the prefix unfortunately
         expected_cmd = ('env', 'LC_ALL=C', 'LANG=C',
                         'qemu-img', 'create', '-b',
-                        'sheepdog:%(addr)s:%(port)s:vdi:snap' %
+                        'sheepdog:%(addr)s:%(port)s:sheepdog:snap' %
                         {'addr': SHEEP_ADDR, 'port': SHEEP_PORT},
                         'sheepdog:%(addr)s:%(port)s:clone' %
                         {'addr': SHEEP_ADDR, 'port': SHEEP_PORT},
                         '10G')
-        with mock.patch.object(utils, 'execute') as fake_execute:
-                fake_execute.return_value = ('', '')
-                self.client._run_qemu_img('create', '-b', 'sheepdog:vdi:snap',
-                                          'sheepdog:clone', '10G')
+        fake_execute.return_value = ('', '')
+        self.client._run_qemu_img('create', '-b', 'sheepdog:sheepdog:snap',
+                                  'sheepdog:clone', '10G')
         fake_execute.assert_called_once_with(*expected_cmd)
 
-    def test_run_qemu_img_prefix_matched_middle_in_str(self):
-        expected_cmd = ('env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'convert',
-                        '-f', 'raw', '-t', 'none', '-O', 'raw',
-                        'sheepdog:%(addr)s:%(port)s:sheepdog:snap'
-                        % {'addr': SHEEP_ADDR, 'port': SHEEP_PORT},
-                        '/tmp/tmp.raw')
-        with mock.patch.object(utils, 'execute') as fake_execute:
-                fake_execute.return_value = ('', '')
-                self.client._run_qemu_img(
-                    'convert', '-f', 'raw', '-t', 'none', '-O', 'raw',
-                    'sheepdog:sheepdog:snap', '/tmp/tmp.raw')
-        fake_execute.assert_called_once_with(*expected_cmd)
-
-    def test_run_qemu_img_os_error_command_not_found(self):
+        # Test2: os_error because qemu-img command is not found
+        fake_logger.reset_mock()
+        fake_execute.reset_mock()
         args = ('create', 'dummy')
         expected_msg = 'No such file or directory'
         expected_errno = errno.ENOENT
-        with mock.patch.object(utils, 'execute') as fake_execute:
-            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
-                fake_execute.side_effect = OSError(expected_errno,
-                                                   expected_msg)
-                self.assertRaises(OSError, self.client._run_qemu_img, *args)
-                self.assertTrue(fake_logger.error.called)
+        fake_execute.side_effect = OSError(expected_errno, expected_msg)
+        self.assertRaises(OSError, self.client._run_qemu_img, *args)
+        self.assertTrue(fake_logger.error.called)
 
-    def test_run_qemu_img_os_error_unknown(self):
-        args = ('create', 'dummy')
+        # Test3: os_error caused by unknown error
+        fake_logger.reset_mock()
+        fake_execute.reset_mock()
         expected_msg = 'unknown'
         expected_errno = errno.EPERM
-        with mock.patch.object(utils, 'execute') as fake_execute:
-            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
-                fake_execute.side_effect = OSError(expected_errno,
-                                                   expected_msg)
-                self.assertRaises(OSError, self.client._run_qemu_img, *args)
-                self.assertTrue(fake_logger.error.called)
+        fake_execute.side_effect = OSError(expected_errno, expected_msg)
+        self.assertRaises(OSError, self.client._run_qemu_img, *args)
+        self.assertTrue(fake_logger.error.called)
 
-    def test_run_qemu_img_proccess_execution_error(self):
-        args = ('create', 'dummy')
+        # Test3: process execution error
+        fake_logger.reset_mock()
+        fake_execute.reset_mock()
         cmd = ('qemu-img', 'create', 'dummy')
         exit_code = 1
-        stdout = 'stdout dummy\ndummy\ndummy\n'
-        stderr = 'stderr dummy\ndummy\ndummy\n'
+        stdout = 'stdout dummy'
+        stderr = 'stderr dummy'
         expected_msg = self.test_data.sheepdog_cmd_error(
             cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
-        with mock.patch.object(utils, 'execute') as fake_execute:
-            fake_execute.side_effect = processutils.ProcessExecutionError(
-                cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
-            ex = self.assertRaises(exception.SheepdogCmdError,
-                                   self.client._run_qemu_img, *args)
-            self.assertEqual(expected_msg, ex.msg)
+        fake_execute.side_effect = processutils.ProcessExecutionError(
+            cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
+        ex = self.assertRaises(exception.SheepdogCmdError,
+                               self.client._run_qemu_img, *args)
+        self.assertEqual(expected_msg, ex.msg)
 
-    def test_check_cluster_status(self):
+    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
+    @mock.patch.object(sheepdog, 'LOG')
+    def test_check_cluster_status(self, fake_logger, fake_execute):
+        cmd = self.test_data.CMD_DOG_CLUSTER_INFO
+
+        # Test1: cluster status is running with latest version
+        expected_cmd = ('cluster', 'info')
         stdout = self.test_data.DOG_CLUSTER_RUNNING
         stderr = ''
-        expected_cmd = ('cluster', 'info')
-        with mock.patch.object(self.client, '_run_dog') as fake_execute:
-            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
-                fake_execute.return_value = (stdout, stderr)
-                self.client.check_cluster_status()
-                fake_execute.assert_called_once_with(*expected_cmd)
-                self.assertTrue(fake_logger.debug.called)
+        fake_execute.return_value = (stdout, stderr)
+        self.client.check_cluster_status()
+        fake_execute.assert_called_once_with(*expected_cmd)
+        self.assertTrue(fake_logger.debug.called)
 
-    def test_check_cluster_status_0_5(self):
+        # Test2: cluster status is runnning with version 0.5
+        fake_logger.reset_mock()
+        fake_execute.reset_mock()
         stdout = self.test_data.COLLIE_CLUSTER_INFO_0_5
-        stderr = ''
-        with mock.patch.object(self.client, '_run_dog') as fake_execute:
-            fake_execute.return_value = (stdout, stderr)
-            self.client.check_cluster_status()
+        fake_execute.return_value = (stdout, stderr)
+        self.client.check_cluster_status()
 
-    def test_check_cluster_status_0_6(self):
+        # Test3: cluster status is runnning with version 0.6
+        fake_logger.reset_mock()
+        fake_execute.reset_mock()
         stdout = self.test_data.COLLIE_CLUSTER_INFO_0_6
-        stderr = ''
-        with mock.patch.object(self.client, '_run_dog') as fake_execute:
-            fake_execute.return_value = (stdout, stderr)
-            self.client.check_cluster_status()
+        fake_execute.return_value = (stdout, stderr)
+        self.client.check_cluster_status()
 
-    def test_check_cluster_status_error_waiting_formatted(self):
+        # Test4: cluster status is waiting to be formatted
+        fake_logger.reset_mock()
+        fake_execute.reset_mock()
         stdout = self.test_data.DOG_CLUSTER_INFO_TO_BE_FORMATTED
-        stderr = ''
         expected_reason = _LE('Cluster is not formatted. '
                               'You should probably perform '
                               '"dog cluster format".')
+        fake_execute.return_value = (stdout, stderr)
+        ex = self.assertRaises(exception.SheepdogError,
+                               self.client.check_cluster_status)
+        self.assertEqual(expected_reason, ex.kwargs['reason'])
 
-        with mock.patch.object(self.client, '_run_dog') as fake_execute:
-            fake_execute.return_value = (stdout, stderr)
-            ex = self.assertRaises(exception.SheepdogError,
-                                   self.client.check_cluster_status)
-            self.assertEqual(expected_reason, ex.kwargs['reason'])
-
-    def test_check_cluster_status_error_waiting_other_nodes(self):
+        # Test5: cluster status is waiting for all node to join cluster
+        fake_logger.reset_mock()
+        fake_execute.reset_mock()
         stdout = self.test_data.DOG_CLUSTER_INFO_WAITING_OTHER_NODES
-        stderr = ''
         expected_reason = _LE('Waiting for all nodes to join cluster. '
                               'Ensure all sheep daemons are running.')
+        fake_execute.return_value = (stdout, stderr)
+        ex = self.assertRaises(exception.SheepdogError,
+                               self.client.check_cluster_status)
+        self.assertEqual(expected_reason, ex.kwargs['reason'])
 
-        with mock.patch.object(self.client, '_run_dog') as fake_execute:
-            fake_execute.return_value = (stdout, stderr)
-            ex = self.assertRaises(exception.SheepdogError,
-                                   self.client.check_cluster_status)
-            self.assertEqual(expected_reason, ex.kwargs['reason'])
-
-    def test_check_cluster_status_error_fail_to_coonect(self):
-        cmd = self.test_data.CMD_DOG_CLUSTER_INFO
+        # Test6: error is caused by failing to connect to sheep process
+        fake_logger.reset_mock()
+        fake_execute.reset_mock()
         exit_code = 2
         stdout = 'stdout_dummy'
         stderr = self.test_data.DOG_COMMAND_ERROR_FAIL_TO_CONNECT
@@ -480,19 +472,17 @@ class SheepdogClientTestCase(test.TestCase):
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        with mock.patch.object(self.client, '_run_dog') as fake_execute:
-            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
-                fake_execute.side_effect = exception.SheepdogCmdError(
-                    cmd=cmd, exit_code=exit_code,
-                    stdout=stdout.replace('\n', '\\n'),
-                    stderr=stderr.replace('\n', '\\n'))
-                ex = self.assertRaises(exception.SheepdogCmdError,
-                                       self.client.check_cluster_status)
-                self.assertTrue(fake_logger.error.called)
-                self.assertEqual(expected_msg, ex.msg)
+        fake_execute.side_effect = exception.SheepdogCmdError(
+            cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
+            stderr=stderr.replace('\n', '\\n'))
+        ex = self.assertRaises(exception.SheepdogCmdError,
+                               self.client.check_cluster_status)
+        self.assertTrue(fake_logger.error.called)
+        self.assertEqual(expected_msg, ex.msg)
 
-    def test_check_cluster_status_error_unknown(self):
-        cmd = self.test_data.CMD_DOG_CLUSTER_INFO
+        # Test7: unknown error
+        fake_logger.reset_mock()
+        fake_execute.reset_mock()
         exit_code = 2
         stdout = 'stdout_dummy'
         stderr = 'stdout_dummy'
@@ -500,98 +490,110 @@ class SheepdogClientTestCase(test.TestCase):
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        with mock.patch.object(self.client, '_run_dog') as fake_execute:
-            fake_execute.side_effect = exception.SheepdogCmdError(
-                cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
-            ex = self.assertRaises(exception.SheepdogCmdError,
-                                   self.client.check_cluster_status)
-            self.assertEqual(expected_msg, ex.msg)
+        fake_execute.side_effect = exception.SheepdogCmdError(
+            cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
+        ex = self.assertRaises(exception.SheepdogCmdError,
+                               self.client.check_cluster_status)
+        self.assertEqual(expected_msg, ex.msg)
 
-    def test_create_success(self):
-        expected_cmd = ('vdi', 'create', self._vdiname, '%sG' % self._vdisize)
-        with mock.patch.object(self.client, '_run_dog') as fake_execute:
-            fake_execute.return_value = ('', '')
-            self.client.create(self._vdiname, self._vdisize)
-            fake_execute.assert_called_once_with(*expected_cmd)
-
-    def test_create_failed_connected(self):
+    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
+    @mock.patch.object(sheepdog, 'LOG')
+    def test_create_success(self, fake_logger, fake_execute):
         cmd = self.test_data.cmd_dog_vdi_create(self._vdiname, self._vdisize)
+
+        # Test1: create a Sheepdog VDI successfully
+        expected_cmd = ('vdi', 'create', self._vdiname, '%sG' % self._vdisize)
+        fake_execute.return_value = ('', '')
+        self.client.create(self._vdiname, self._vdisize)
+        fake_execute.assert_called_once_with(*expected_cmd)
+
+        # Test2: fail to connect to sheep process
+        fake_logger.reset_mock()
+        fake_execute.reset_mock()
         exit_code = 2
         stdout = ''
         stderr = self.test_data.DOG_COMMAND_ERROR_FAIL_TO_CONNECT
         expected_msg = self.test_data.sheepdog_cmd_error(
             cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
-        with mock.patch.object(self.client, '_run_dog') as fake_execute:
-            fake_execute.side_effect = exception.SheepdogCmdError(
-                cmd=cmd, exit_code=exit_code,
-                stdout=stdout.replace('\n', '\\n'),
-                stderr=stderr.replace('\n', '\\n'))
-            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
-                ex = self.assertRaises(exception.SheepdogCmdError,
-                                       self.client.create,
-                                       self._vdiname, self._vdisize)
-                self.assertTrue(fake_logger.error.called)
-                self.assertEqual(expected_msg, ex.msg)
+        fake_execute.side_effect = exception.SheepdogCmdError(
+            cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
+            stderr=stderr.replace('\n', '\\n'))
+        ex = self.assertRaises(exception.SheepdogCmdError, self.client.create,
+                               self._vdiname, self._vdisize)
+        self.assertTrue(fake_logger.error.called)
+        self.assertEqual(expected_msg, ex.msg)
 
-    def test_create_failed_vdi_already_exist(self):
-        cmd = self.test_data.cmd_dog_vdi_create(self._vdiname, self._vdisize)
+        # Test3: the VDI which has the same vdiname is already exists
+        fake_logger.reset_mock()
+        fake_execute.reset_mock()
         exit_code = 1
         stdout = ''
         stderr = self.test_data.DOG_VDI_CREATE_VDI_EXISTS_ALREADY % \
             {'vdiname': self._vdiname}
         expected_msg = self.test_data.sheepdog_cmd_error(
             cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
-        with mock.patch.object(self.client, '_run_dog') as fake_execute:
-            fake_execute.side_effect = exception.SheepdogCmdError(
-                cmd=cmd, exit_code=exit_code,
-                stdout=stdout.replace('\n', '\\n'),
-                stderr=stderr.replace('\n', '\\n'))
-            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
-                ex = self.assertRaises(exception.SheepdogCmdError,
-                                       self.client.create,
-                                       self._vdiname, self._vdisize)
-                self.assertTrue(fake_logger.error.called)
-                self.assertEqual(expected_msg, ex.msg)
+        fake_execute.side_effect = exception.SheepdogCmdError(
+            cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
+            stderr=stderr.replace('\n', '\\n'))
+        ex = self.assertRaises(exception.SheepdogCmdError, self.client.create,
+                               self._vdiname, self._vdisize)
+        self.assertTrue(fake_logger.error.called)
+        self.assertEqual(expected_msg, ex.msg)
 
-    def test_create_failed_unknown(self):
-        cmd = self.test_data.cmd_dog_vdi_create(self._vdiname, self._vdisize)
+        # Test4: unknown error
+        fake_logger.reset_mock()
+        fake_execute.reset_mock()
         exit_code = 1
         stdout = 'stdout_dummy'
         stderr = 'stderr_dummy'
         expected_msg = self.test_data.sheepdog_cmd_error(
             cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
-        with mock.patch.object(self.client, '_run_dog') as fake_execute:
-            fake_execute.side_effect = exception.SheepdogCmdError(
-                cmd=cmd, exit_code=exit_code,
-                stdout=stdout.replace('\n', '\\n'),
-                stderr=stderr.replace('\n', '\\n'))
-            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
-                ex = self.assertRaises(exception.SheepdogCmdError,
-                                       self.client.create,
-                                       self._vdiname, self._vdisize)
-                self.assertTrue(fake_logger.error.called)
-                self.assertEqual(expected_msg, ex.msg)
+        fake_execute.side_effect = exception.SheepdogCmdError(
+            cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
+            stderr=stderr.replace('\n', '\\n'))
+        ex = self.assertRaises(exception.SheepdogCmdError, self.client.create,
+                               self._vdiname, self._vdisize)
+        self.assertTrue(fake_logger.error.called)
+        self.assertEqual(expected_msg, ex.msg)
 
-    def test_delete_success(self):
-        expected_cmd = ('vdi', 'delete', self._vdiname)
-        with mock.patch.object(self.client, '_run_dog') as fake_execute:
-            fake_execute.return_value = ('', '')
-            self.client.delete(self._vdiname)
-            fake_execute.assert_called_once_with(*expected_cmd)
+    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
+    @mock.patch.object(sheepdog, 'LOG')
+    def test_delete(self, fake_logger, fake_execute):
+        cmd = self.test_data.cmd_dog_vdi_delete(self._vdiname)
 
-    def test_delete_not_found(self):
+        # Test1: delete a Sheepdog VDI successfully
         expected_cmd = ('vdi', 'delete', self._vdiname)
+        fake_execute.return_value = ('', '')
+        self.client.delete(self._vdiname)
+        fake_execute.assert_called_once_with(*expected_cmd)
+
+        # Test2: the target VDI does not exist
+        fake_logger.reset_mock()
+        fake_execute.reset_mock()
         stdout = ''
         stderr = self.test_data.DOG_COMMAND_ERROR_VDI_NOT_EXISTS
-        with mock.patch.object(self.client, '_run_dog') as fake_execute:
-            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
-                fake_execute.return_value = (stdout, stderr)
-                self.client.delete(self._vdiname)
-                fake_execute.assert_called_once_with(*expected_cmd)
-                self.assertTrue(fake_logger.warning.called)
+        fake_execute.return_value = (stdout, stderr)
+        self.client.delete(self._vdiname)
+        self.assertTrue(fake_logger.warning.called)
 
-    def test_delete_failed_to_connect(self):
-        cmd = self.test_data.cmd_dog_vdi_delete(self._vdiname)
+        # XXX (tishizaki) Sheepdog's bug case.
+        # details was written to Sheepdog driver code.
+        # Test3: failed to connect sheep process
+        fake_logger.reset_mock()
+        fake_execute.reset_mock()
+        stdout = ''
+        stderr = self.test_data.DOG_COMMAND_ERROR_FAIL_TO_CONNECT
+        expected_reason = (_LE('Failed to connect sheep daemon. '
+                           'addr: %(addr)s, port: %(port)s'),
+                           {'addr': SHEEP_ADDR, 'port': SHEEP_PORT})
+        fake_execute.return_value = (stdout, stderr)
+        ex = self.assertRaises(exception.SheepdogError,
+                               self.client.delete, self._vdiname)
+        self.assertEqual(expected_reason, ex.kwargs['reason'])
+
+        # Test4: failed to connect sheep process
+        fake_logger.reset_mock()
+        fake_execute.reset_mock()
         exit_code = 2
         stdout = 'stdout_dummy'
         stderr = self.test_data.DOG_COMMAND_ERROR_FAIL_TO_CONNECT
@@ -599,19 +601,17 @@ class SheepdogClientTestCase(test.TestCase):
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        with mock.patch.object(self.client, '_run_dog') as fake_execute:
-            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
-                fake_execute.side_effect = exception.SheepdogCmdError(
-                    cmd=cmd, exit_code=exit_code,
-                    stdout=stdout.replace('\n', '\\n'),
-                    stderr=stderr.replace('\n', '\\n'))
-                ex = self.assertRaises(exception.SheepdogCmdError,
-                                       self.client.delete, self._vdiname)
-                self.assertTrue(fake_logger.error.called)
-                self.assertEqual(expected_msg, ex.msg)
+        fake_execute.side_effect = exception.SheepdogCmdError(
+            cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
+            stderr=stderr.replace('\n', '\\n'))
+        ex = self.assertRaises(exception.SheepdogCmdError,
+                               self.client.delete, self._vdiname)
+        self.assertTrue(fake_logger.error.called)
+        self.assertEqual(expected_msg, ex.msg)
 
-    def test_delete_failed_unknown(self):
-        cmd = self.test_data.cmd_dog_vdi_delete(self._vdiname)
+        # Test5: unknown error
+        fake_logger.reset_mock()
+        fake_execute.reset_mock()
         exit_code = 2
         stdout = 'stdout_dummy'
         stderr = 'stderr_dummy'
@@ -619,16 +619,13 @@ class SheepdogClientTestCase(test.TestCase):
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        with mock.patch.object(self.client, '_run_dog') as fake_execute:
-            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
-                fake_execute.side_effect = exception.SheepdogCmdError(
-                    cmd=cmd, exit_code=exit_code,
-                    stdout=stdout.replace('\n', '\\n'),
-                    stderr=stderr.replace('\n', '\\n'))
-                ex = self.assertRaises(exception.SheepdogCmdError,
-                                       self.client.delete, self._vdiname)
-                self.assertTrue(fake_logger.error.called)
-                self.assertEqual(expected_msg, ex.msg)
+        fake_execute.side_effect = exception.SheepdogCmdError(
+            cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
+            stderr=stderr.replace('\n', '\\n'))
+        ex = self.assertRaises(exception.SheepdogCmdError,
+                               self.client.delete, self._vdiname)
+        self.assertTrue(fake_logger.error.called)
+        self.assertEqual(expected_msg, ex.msg)
 
     @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
     def test_create_snapshot_success(self, fake_execute):
@@ -799,24 +796,29 @@ class SheepdogClientTestCase(test.TestCase):
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
 
-    def test_clone_success(self):
+    @mock.patch.object(sheepdog.SheepdogClient, '_run_qemu_img')
+    @mock.patch.object(sheepdog, 'LOG')
+    def test_clone(self, fake_logger, fake_execute):
+        cmd = self.test_data.cmd_qemuimg_vdi_clone(self._src_vdiname,
+                                                   self._snapname,
+                                                   self._vdiname,
+                                                   self._vdisize)
+
+        # Test1: clone a Sheepdog VDI from snapshot successfully
         expected_cmd = ('create', '-b',
                         'sheepdog:%(src_vdiname)s:%(snapname)s' %
                         {'src_vdiname': self._src_vdiname,
                          'snapname': self._snapname},
                         'sheepdog:%s' % self._vdiname,
                         '%sG' % self._vdisize)
-        with mock.patch.object(self.client, '_run_qemu_img') as fake_execute:
-            fake_execute.return_code = ("", "")
-            self.client.clone(self._src_vdiname, self._snapname,
-                              self._vdiname, self._vdisize)
-            fake_execute.assert_called_once_with(*expected_cmd)
+        fake_execute.return_code = ("", "")
+        self.client.clone(self._src_vdiname, self._snapname,
+                          self._vdiname, self._vdisize)
+        fake_execute.assert_called_once_with(*expected_cmd)
 
-    def test_clone_failed_to_connect(self):
-        cmd = self.test_data.cmd_qemuimg_vdi_clone(self._src_vdiname,
-                                                   self._snapname,
-                                                   self._vdiname,
-                                                   self._vdisize)
+        # Test2: fail to connect sheep process
+        fake_logger.reset_mock()
+        fake_execute.reset_mock()
         exit_code = 2
         stdout = 'stdout_dummy'
         stderr = self.test_data.QEMU_FAILED_TO_CONNECT
@@ -824,152 +826,113 @@ class SheepdogClientTestCase(test.TestCase):
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        with mock.patch.object(self.client, '_run_qemu_img') as fake_execute:
-            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
-                fake_execute.side_effect = exception.SheepdogCmdError(
-                    cmd=cmd, exit_code=exit_code,
-                    stdout=stdout.replace('\n', '\\n'),
-                    stderr=stderr.replace('\n', '\\n'))
-                ex = self.assertRaises(exception.SheepdogCmdError,
-                                       self.client.clone,
-                                       self._src_vdiname, self._snapname,
-                                       self._vdiname, self._vdisize)
-                self.assertTrue(fake_logger.error.called)
-                self.assertEqual(expected_msg, ex.msg)
+        fake_execute.side_effect = exception.SheepdogCmdError(
+            cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
+            stderr=stderr.replace('\n', '\\n'))
+        ex = self.assertRaises(exception.SheepdogCmdError, self.client.clone,
+                               self._src_vdiname, self._snapname,
+                               self._vdiname, self._vdisize)
+        self.assertTrue(fake_logger.error.called)
+        self.assertEqual(expected_msg, ex.msg)
 
-    def test_clone_failed_clone_already_exists(self):
-        cmd = self.test_data.cmd_qemuimg_vdi_clone(self._src_vdiname,
-                                                   self._snapname,
-                                                   self._vdiname,
-                                                   self._vdisize)
-        exit_code = 2
-        stdout = 'stdout_dummy'
+        # Test3: dst vdiname already exists
+        fake_logger.reset_mock()
+        fake_execute.reset_mock()
         stderr = self.test_data.QEMU_VDI_ALREADY_EXISTS
         expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        with mock.patch.object(self.client, '_run_qemu_img') as fake_execute:
-            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
-                fake_execute.side_effect = exception.SheepdogCmdError(
-                    cmd=cmd, exit_code=exit_code,
-                    stdout=stdout.replace('\n', '\\n'),
-                    stderr=stderr.replace('\n', '\\n'))
-                ex = self.assertRaises(exception.SheepdogCmdError,
-                                       self.client.clone,
-                                       self._src_vdiname, self._snapname,
-                                       self._vdiname, self._vdisize)
-                self.assertTrue(fake_logger.error.called)
-                self.assertEqual(expected_msg, ex.msg)
+        fake_execute.side_effect = exception.SheepdogCmdError(
+            cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
+            stderr=stderr.replace('\n', '\\n'))
+        ex = self.assertRaises(exception.SheepdogCmdError, self.client.clone,
+                               self._src_vdiname, self._snapname,
+                               self._vdiname, self._vdisize)
+        self.assertTrue(fake_logger.error.called)
+        self.assertEqual(expected_msg, ex.msg)
 
-    def test_clone_failed_vdi_not_found(self):
-        cmd = self.test_data.cmd_qemuimg_vdi_clone(self._src_vdiname,
-                                                   self._snapname,
-                                                   self._vdiname,
-                                                   self._vdisize)
-        exit_code = 2
-        stdout = 'stdout_dummy'
+        # Test4: src vdi is not found
+        fake_logger.reset_mock()
+        fake_execute.reset_mock()
         stderr = self.test_data.QEMU_VDI_NOT_FOUND
         expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        with mock.patch.object(self.client, '_run_qemu_img') as fake_execute:
-            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
-                fake_execute.side_effect = exception.SheepdogCmdError(
-                    cmd=cmd, exit_code=exit_code,
-                    stdout=stdout.replace('\n', '\\n'),
-                    stderr=stderr.replace('\n', '\\n'))
-                ex = self.assertRaises(exception.SheepdogCmdError,
-                                       self.client.clone,
-                                       self._src_vdiname, self._snapname,
-                                       self._vdiname, self._vdisize)
-                self.assertTrue(fake_logger.error.called)
-                self.assertEqual(expected_msg, ex.msg)
+        fake_execute.side_effect = exception.SheepdogCmdError(
+            cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
+            stderr=stderr.replace('\n', '\\n'))
+        ex = self.assertRaises(exception.SheepdogCmdError, self.client.clone,
+                               self._src_vdiname, self._snapname,
+                               self._vdiname, self._vdisize)
+        self.assertTrue(fake_logger.error.called)
+        self.assertEqual(expected_msg, ex.msg)
 
-    def test_clone_failed_snapshot_not_found(self):
-        cmd = self.test_data.cmd_qemuimg_vdi_clone(self._src_vdiname,
-                                                   self._snapname,
-                                                   self._vdiname,
-                                                   self._vdisize)
-        exit_code = 2
-        stdout = 'stdout_dummy'
+        # Test5: src snapshot is not found
+        fake_logger.reset_mock()
+        fake_execute.reset_mock()
         stderr = self.test_data.QEMU_SNAPSHOT_NOT_FOUND
         expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        with mock.patch.object(self.client, '_run_qemu_img') as fake_execute:
-            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
-                fake_execute.side_effect = exception.SheepdogCmdError(
-                    cmd=cmd, exit_code=exit_code,
-                    stdout=stdout.replace('\n', '\\n'),
-                    stderr=stderr.replace('\n', '\\n'))
-                ex = self.assertRaises(exception.SheepdogCmdError,
-                                       self.client.clone,
-                                       self._src_vdiname, self._snapname,
-                                       self._vdiname, self._vdisize)
-                self.assertTrue(fake_logger.error.called)
-                self.assertEqual(expected_msg, ex.msg)
+        fake_execute.side_effect = exception.SheepdogCmdError(
+            cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
+            stderr=stderr.replace('\n', '\\n'))
+        ex = self.assertRaises(exception.SheepdogCmdError, self.client.clone,
+                               self._src_vdiname, self._snapname,
+                               self._vdiname, self._vdisize)
+        self.assertTrue(fake_logger.error.called)
+        self.assertEqual(expected_msg, ex.msg)
 
-    def test_clone_failed_size_too_large(self):
-        cmd = self.test_data.cmd_qemuimg_vdi_clone(self._src_vdiname,
-                                                   self._snapname,
-                                                   self._vdiname,
-                                                   self._vdisize)
-        exit_code = 2
-        stdout = 'stdout_dummy'
+        # Test6: the size of the cloned volume is too large
+        fake_logger.reset_mock()
+        fake_execute.reset_mock()
         stderr = self.test_data.QEMU_SIZE_TOO_LARGE
         expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        with mock.patch.object(self.client, '_run_qemu_img') as fake_execute:
-            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
-                fake_execute.side_effect = exception.SheepdogCmdError(
-                    cmd=cmd, exit_code=exit_code,
-                    stdout=stdout.replace('\n', '\\n'),
-                    stderr=stderr.replace('\n', '\\n'))
-                ex = self.assertRaises(exception.SheepdogCmdError,
-                                       self.client.clone,
-                                       self._src_vdiname, self._snapname,
-                                       self._vdiname, self._vdisize)
-                self.assertTrue(fake_logger.error.called)
-                self.assertEqual(expected_msg, ex.msg)
+        fake_execute.side_effect = exception.SheepdogCmdError(
+            cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
+            stderr=stderr.replace('\n', '\\n'))
+        ex = self.assertRaises(exception.SheepdogCmdError, self.client.clone,
+                               self._src_vdiname, self._snapname,
+                               self._vdiname, self._vdisize)
+        self.assertTrue(fake_logger.error.called)
+        self.assertEqual(expected_msg, ex.msg)
 
-    def test_clone_failed_unknown(self):
-        cmd = self.test_data.cmd_qemuimg_vdi_clone(self._src_vdiname,
-                                                   self._snapname,
-                                                   self._vdiname,
-                                                   self._vdisize)
-        exit_code = 2
-        stdout = 'stdout_dummy'
+        # Test7: unknown error
+        fake_logger.reset_mock()
+        fake_execute.reset_mock()
         stderr = 'stderr_dummy'
         expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        with mock.patch.object(self.client, '_run_qemu_img') as fake_execute:
-            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
-                fake_execute.side_effect = exception.SheepdogCmdError(
-                    cmd=cmd, exit_code=exit_code,
-                    stdout=stdout.replace('\n', '\\n'),
-                    stderr=stderr.replace('\n', '\\n'))
-                ex = self.assertRaises(exception.SheepdogCmdError,
-                                       self.client.clone,
-                                       self._src_vdiname, self._snapname,
-                                       self._vdiname, self._vdisize)
-                self.assertTrue(fake_logger.error.called)
-                self.assertEqual(expected_msg, ex.msg)
+        fake_execute.side_effect = exception.SheepdogCmdError(
+            cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
+            stderr=stderr.replace('\n', '\\n'))
+        ex = self.assertRaises(exception.SheepdogCmdError, self.client.clone,
+                               self._src_vdiname, self._snapname,
+                               self._vdiname, self._vdisize)
+        self.assertTrue(fake_logger.error.called)
+        self.assertEqual(expected_msg, ex.msg)
 
-    def test_resize_success(self):
+    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
+    @mock.patch.object(sheepdog, 'LOG')
+    def test_resize(self, fake_logger, fake_execute):
+
+        # Test1: resize a Sheepdog VDI successfully
         expected_cmd = ('vdi', 'resize', self._vdiname, 10 * 1024 ** 3)
-        with mock.patch.object(self.client, '_run_dog') as fake_execute:
-            fake_execute.return_value = ('', '')
-            self.client.resize(self._vdiname, 10)
-            fake_execute.assert_called_once_with(*expected_cmd)
+        fake_execute.return_value = ('', '')
+        self.client.resize(self._vdiname, 10)
+        fake_execute.assert_called_once_with(*expected_cmd)
 
-    def test_resize_failed_to_connect(self):
+        # Test2: failed to connect sheep process
+        fake_logger.reset_mock()
+        fake_execute.reset_mock()
         cmd = self.test_data.cmd_dog_vdi_resize(self._vdiname, 10 * 1024 ** 3)
         exit_code = 2
         stdout = 'stdout_dummy'
@@ -978,97 +941,84 @@ class SheepdogClientTestCase(test.TestCase):
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        with mock.patch.object(self.client, '_run_dog') as fake_execute:
-            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
-                fake_execute.side_effect = exception.SheepdogCmdError(
-                    cmd=cmd, exit_code=exit_code,
-                    stdout=stdout.replace('\n', '\\n'),
-                    stderr=stderr.replace('\n', '\\n'))
-                ex = self.assertRaises(exception.SheepdogCmdError,
-                                       self.client.resize, self._vdiname, 10)
-                self.assertTrue(fake_logger.error.called)
-                self.assertEqual(expected_msg, ex.msg)
+        fake_execute.side_effect = exception.SheepdogCmdError(
+            cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
+            stderr=stderr.replace('\n', '\\n'))
+        ex = self.assertRaises(exception.SheepdogCmdError,
+                               self.client.resize, self._vdiname, 10)
+        self.assertTrue(fake_logger.error.called)
+        self.assertEqual(expected_msg, ex.msg)
 
-    def test_resize_failed_not_found(self):
+        # Test3: os_error because dog command is not found
+        fake_logger.reset_mock()
+        fake_execute.reset_mock()
         cmd = self.test_data.cmd_dog_vdi_resize(self._vdiname, 10 * 1024 ** 3)
         exit_code = 1
-        stdout = 'stdout_dummy'
         stderr = self.test_data.DOG_COMMAND_ERROR_VDI_NOT_EXISTS
         expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        with mock.patch.object(self.client, '_run_dog') as fake_execute:
-            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
-                fake_execute.side_effect = exception.SheepdogCmdError(
-                    cmd=cmd, exit_code=exit_code,
-                    stdout=stdout.replace('\n', '\\n'),
-                    stderr=stderr.replace('\n', '\\n'))
-                ex = self.assertRaises(exception.SheepdogCmdError,
-                                       self.client.resize, self._vdiname, 1)
-                self.assertTrue(fake_logger.error.called)
-                self.assertEqual(expected_msg, ex.msg)
+        fake_execute.side_effect = exception.SheepdogCmdError(
+            cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
+            stderr=stderr.replace('\n', '\\n'))
+        ex = self.assertRaises(exception.SheepdogCmdError,
+                               self.client.resize, self._vdiname, 1)
+        self.assertTrue(fake_logger.error.called)
+        self.assertEqual(expected_msg, ex.msg)
 
-    def test_resize_failed_size_shrink(self):
+        # Test3: shrinking vdi is not supported
+        fake_logger.reset_mock()
+        fake_execute.reset_mock()
         cmd = self.test_data.cmd_dog_vdi_resize(self._vdiname, 1 * 1024 ** 3)
-        exit_code = 1
-        stdout = 'stdout_dummy'
         stderr = self.test_data.DOG_VDI_RESIZE_SIZE_SHRINK
         expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        with mock.patch.object(self.client, '_run_dog') as fake_execute:
-            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
-                fake_execute.side_effect = exception.SheepdogCmdError(
-                    cmd=cmd, exit_code=exit_code,
-                    stdout=stdout.replace('\n', '\\n'),
-                    stderr=stderr.replace('\n', '\\n'))
-                ex = self.assertRaises(exception.SheepdogCmdError,
-                                       self.client.resize, self._vdiname, 1)
-                self.assertTrue(fake_logger.error.called)
-                self.assertEqual(expected_msg, ex.msg)
+        fake_execute.side_effect = exception.SheepdogCmdError(
+            cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
+            stderr=stderr.replace('\n', '\\n'))
+        ex = self.assertRaises(exception.SheepdogCmdError,
+                               self.client.resize, self._vdiname, 1)
+        self.assertTrue(fake_logger.error.called)
+        self.assertEqual(expected_msg, ex.msg)
 
-    def test_resize_failed_size_too_large(self):
-        cmd = self.test_data.cmd_dog_vdi_resize(
-            self._vdiname, 5000 * 1024 ** 3)
+        # Test4: the size is too large
+        fake_logger.reset_mock()
+        fake_execute.reset_mock()
+        cmd = self.test_data.cmd_dog_vdi_resize(self._vdiname, 5 * 1024 ** 4)
         exit_code = 64
-        stdout = 'stdout_dummy'
         stderr = self.test_data.DOG_VDI_RESIZE_TOO_LARGE
         expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        with mock.patch.object(self.client, '_run_dog') as fake_execute:
-            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
-                fake_execute.side_effect = exception.SheepdogCmdError(
-                    cmd=cmd, exit_code=exit_code,
-                    stdout=stdout.replace('\n', '\\n'),
-                    stderr=stderr.replace('\n', '\\n'))
-                ex = self.assertRaises(exception.SheepdogCmdError,
-                                       self.client.resize, self._vdiname, 5000)
-                self.assertTrue(fake_logger.error.called)
-                self.assertEqual(expected_msg, ex.msg)
+        fake_execute.side_effect = exception.SheepdogCmdError(
+            cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
+            stderr=stderr.replace('\n', '\\n'))
+        ex = self.assertRaises(exception.SheepdogCmdError,
+                               self.client.resize, self._vdiname, 5120)
+        self.assertTrue(fake_logger.error.called)
+        self.assertEqual(expected_msg, ex.msg)
 
-    def test_resize_failed_known(self):
+        # Test5: unknown error
+        fake_logger.reset_mock()
+        fake_execute.reset_mock()
         cmd = self.test_data.cmd_dog_vdi_resize(self._vdiname, 10 * 1024 ** 3)
         exit_code = 2
-        stdout = 'stdout_dummy'
         stderr = 'stderr_dummy'
         expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
                                                          exit_code=exit_code,
                                                          stdout=stdout,
                                                          stderr=stderr)
-        with mock.patch.object(self.client, '_run_dog') as fake_execute:
-            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
-                fake_execute.side_effect = exception.SheepdogCmdError(
-                    cmd=cmd, exit_code=exit_code,
-                    stdout=stdout.replace('\n', '\\n'),
-                    stderr=stderr.replace('\n', '\\n'))
-                ex = self.assertRaises(exception.SheepdogCmdError,
-                                       self.client.resize, self._vdiname, 10)
-                self.assertTrue(fake_logger.error.called)
-                self.assertEqual(expected_msg, ex.msg)
+        fake_execute.side_effect = exception.SheepdogCmdError(
+            cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
+            stderr=stderr.replace('\n', '\\n'))
+        ex = self.assertRaises(exception.SheepdogCmdError,
+                               self.client.resize, self._vdiname, 10)
+        self.assertTrue(fake_logger.error.called)
+        self.assertEqual(expected_msg, ex.msg)
 
 
 # test for SheeepdogDriver Class
@@ -1090,21 +1040,20 @@ class SheepdogDriverTestCase(test.TestCase):
         self._src_vdiname = self.test_data.TEST_SNAPSHOT['volume_name']
         self._snapname = self.test_data.TEST_SNAPSHOT['name']
 
-    def test_check_for_setup_error(self):
-        with mock.patch.object(self.client, 'check_cluster_status') \
-                as fake_execute:
-            self.driver.check_for_setup_error()
-            fake_execute.assert_called_once_with()
+    @mock.patch.object(sheepdog.SheepdogClient, 'check_cluster_status')
+    def test_check_for_setup_error(self, fake_execute):
+        self.driver.check_for_setup_error()
+        fake_execute.assert_called_once_with()
 
-    def test_create_volume(self):
-        with mock.patch.object(self.client, 'create') as fake_execute:
-            self.driver.create_volume(self.test_data.TEST_VOLUME)
-            fake_execute.assert_called_once_with(self._vdiname, self._vdisize)
+    @mock.patch.object(sheepdog.SheepdogClient, 'create')
+    def test_create_volume(self, fake_execute):
+        self.driver.create_volume(self.test_data.TEST_VOLUME)
+        fake_execute.assert_called_once_with(self._vdiname, self._vdisize)
 
-    def test_delete_volume(self):
-        with mock.patch.object(self.client, 'delete') as fake_execute:
-            self.driver.delete_volume(self.test_data.TEST_VOLUME)
-            fake_execute.assert_called_once_with(self._vdiname)
+    @mock.patch.object(sheepdog.SheepdogClient, 'delete')
+    def test_delete_volume(self, fake_execute):
+        self.driver.delete_volume(self.test_data.TEST_VOLUME)
+        fake_execute.assert_called_once_with(self._vdiname)
 
     def test_update_volume_stats(self):
         def fake_stats(*args):
@@ -1138,7 +1087,8 @@ class SheepdogDriverTestCase(test.TestCase):
         actual = self.driver.get_volume_stats(True)
         self.assertDictMatch(expected, actual)
 
-    def test_copy_image_to_volume(self):
+    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
+    def test_copy_image_to_volume(self, fake_run_dog):
         @contextlib.contextmanager
         def fake_temp_file():
             class FakeTmp(object):
@@ -1149,9 +1099,6 @@ class SheepdogDriverTestCase(test.TestCase):
         def fake_try_execute(obj, *command, **kwargs):
             return True
 
-        def fake_run_dog(obj, command, subcommand, *params):
-            return ('fake_stdout', 'fake_stderr')
-
         self.stubs.Set(image_utils, 'temporary_file', fake_temp_file)
         self.stubs.Set(image_utils, 'fetch_verify_image',
                        lambda w, x, y, z: None)
@@ -1160,9 +1107,7 @@ class SheepdogDriverTestCase(test.TestCase):
         self.stubs.Set(sheepdog.SheepdogDriver,
                        '_try_execute',
                        fake_try_execute)
-        self.stubs.Set(sheepdog.SheepdogClient,
-                       '_run_dog',
-                       fake_run_dog)
+        fake_run_dog.return_value = ('fake_stdout', 'fake_stderr')
         self.driver.copy_image_to_volume(None, {'name': 'test',
                                                 'size': 1},
                                          FakeImageService(), None)
@@ -1262,7 +1207,6 @@ class SheepdogDriverTestCase(test.TestCase):
         self.driver.delete_snapshot(snapshot)
         fake_delete_snapshot.assert_called_once_with(snapshot['volume_name'],
                                                      snapshot['name'])
-
     def test_clone_image_success(self):
         context = {}
         fake_name = six.text_type('volume-00000001')
@@ -1340,12 +1284,12 @@ class SheepdogDriverTestCase(test.TestCase):
                                                  self._vdiname,
                                                  self._vdisize)
 
-    def test_extend_volume(self):
-        with mock.patch.object(self.client, 'resize') as fake_execute:
-            with mock.patch.object(sheepdog, 'LOG') as fake_logger:
-                self.driver.extend_volume(self.test_data.TEST_VOLUME, 10)
-                fake_execute.assert_called_once_with(self._vdiname, 10)
-                self.assertTrue(fake_logger.debug.called)
+    @mock.patch.object(sheepdog.SheepdogClient, 'resize')
+    @mock.patch.object(sheepdog, 'LOG')
+    def test_extend_volume(self, fake_logger, fake_execute):
+        self.driver.extend_volume(self.test_data.TEST_VOLUME, 10)
+        fake_execute.assert_called_once_with(self._vdiname, 10)
+        self.assertTrue(fake_logger.debug.called)
 
     def test_backup_volume(self):
         fake_context = {}
