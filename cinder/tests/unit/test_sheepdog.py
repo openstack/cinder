@@ -25,10 +25,10 @@ from oslo_utils import units
 import six
 
 from cinder import exception
-from cinder import utils
 from cinder.i18n import _, _LE
 from cinder.image import image_utils
 from cinder import test
+from cinder import utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import sheepdog
 
@@ -160,7 +160,7 @@ Epoch Time           Version [Host:Port:V-Nodes,,,]
 2015-06-18 17:24:56      1 [127.0.0.1:7000:128, 127.0.0.1:7001:128]
 """
 
-    DOG_VDI_CREATE_VDI_EXISTS_ALREADY = """\
+    DOG_VDI_CREATE_VDI_ALREADY_EXISTS = """\
 Failed to create VDI %(vdiname)s: VDI exists already
 """
 
@@ -526,7 +526,7 @@ class SheepdogClientTestCase(test.TestCase):
         fake_execute.reset_mock()
         exit_code = 1
         stdout = ''
-        stderr = self.test_data.DOG_VDI_CREATE_VDI_EXISTS_ALREADY % \
+        stderr = self.test_data.DOG_VDI_CREATE_VDI_ALREADY_EXISTS % \
             {'vdiname': self._vdiname}
         expected_msg = self.test_data.sheepdog_cmd_error(
             cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
