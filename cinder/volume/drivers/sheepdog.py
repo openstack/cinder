@@ -371,7 +371,6 @@ class SheepdogClient(object):
         return pieces[0]
 
 
-
 class SheepdogIOWrapper(io.RawIOBase):
     """File-like object with Sheepdog backend."""
 
