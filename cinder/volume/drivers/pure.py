@@ -481,10 +481,10 @@ class PureBaseVolumeDriver(san.SanDriver):
         if len(connected_hosts) > 0:
             raise exception.ManageExistingInvalidReference(
                 existing_ref=existing_ref,
-                reason=_("PureISCSIDriver manage_existing cannot manage a "
-                         "volume connected to hosts. Please disconnect the "
-                         "volume from existing hosts before importing."))
-
+                reason=_("%(driver)s manage_existing cannot manage a volume "
+                         "connected to hosts. Please disconnect this volume "
+                         "from existing hosts before importing"
+                         ) % {'driver': self.__class__.__name__})
         new_vol_name = self._get_vol_name(volume)
         LOG.info(_LI("Renaming existing volume %(ref_name)s to %(new_name)s"),
                  {"ref_name": ref_vol_name, "new_name": new_vol_name})
