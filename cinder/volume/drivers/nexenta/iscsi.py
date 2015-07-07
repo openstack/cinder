@@ -532,6 +532,19 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             '%s@%s' % (self._get_zvol_name(snapshot['volume_name']),
                        snapshot['name']),
             self._get_zvol_name(volume['name']))
+        zvol_name = self._get_zvol_name(volume['name'])
+        target_group_name = self.current_tg
+
+        self.nms.scsidisk.create_lu(zvol_name, {})
+        self.nms.scsidisk.add_lun_mapping_entry(zvol_name, {
+            'target_group': target_group_name})
+        self.zvol_dict[zvol_name] = {
+            'target': '%(base)s-%(num)s' % {
+                'base': self._get_target_name(),
+                'num': self.current_tg.split('-')[-1]
+            },
+            'lun': self._get_lun(volume['name'])
+        }
 
     def delete_snapshot(self, snapshot):
         """Delete volume's snapshot on appliance.
