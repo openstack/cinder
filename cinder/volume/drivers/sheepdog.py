@@ -335,22 +335,14 @@ class SheepdogClient(object):
                                   'vdi:%(vdiname)s new size:%(size)s'),
                               {'vdiname': vdiname, 'size': size})
 
-<<<<<<< HEAD
     def export(self, vdiname, dst_path, dst_format='raw'):
-
         params = ('-f', 'raw', '-t', 'none', '-O', dst_format,
                   'sheepdog:%s' % vdiname, dst_path)
-=======
-    def import_image(self, vdiname, src_path, src_format='raw'):
-        params = ('-f', src_format, '-t', 'none', '-O', 'raw',
-                  src_path, 'sheepdog:%s' % vdiname)
->>>>>>> 0df6cdeff6345ca0c57e1ec40210decd09a5ed20
         try:
             (stdout, stderr) = self._run_qemu_img('convert', *params)
         except exception.SheepdogCmdError as e:
             stderr = e.kwargs['stderr']
             with excutils.save_and_reraise_exception():
-<<<<<<< HEAD
                 if stderr.endswith(self.QEMU_RESP_CONNECTION_ERROR_1):
                     LOG.error(_LE('Failed to connect addr. '
                               'addr: %(addr)s, port: %(port)s'),
@@ -426,7 +418,15 @@ class SheepdogClient(object):
             raise exception.ImageUnacceptable(image_id=location, reason=reason)
 
         return pieces[0]
-=======
+
+    def import_image(self, vdiname, src_path, src_format='raw'):
+        params = ('-f', src_format, '-t', 'none', '-O', 'raw',
+                  src_path, 'sheepdog:%s' % vdiname)
+        try:
+            (stdout, stderr) = self._run_qemu_img('convert', *params)
+        except exception.SheepdogCmdError as e:
+            stderr = e.kwargs['stderr']
+            with excutils.save_and_reraise_exception():
                 if self.QEMU_IMG_RESP_CONNECTION_ERROR in stderr:
                     LOG.error(_LE('Failed to connect to sheep daemon. '
                                   'addr: %(addr)s, port: %(port)s'),
@@ -453,7 +453,6 @@ class SheepdogClient(object):
                                   'format:%(format)'),
                               {'vdiname': vdiname, 'path': src_path,
                                'format': src_format})
->>>>>>> 0df6cdeff6345ca0c57e1ec40210decd09a5ed20
 
 
 class SheepdogIOWrapper(io.RawIOBase):
