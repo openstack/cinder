@@ -504,6 +504,8 @@ class SheepdogDriver(driver.VolumeDriver):
         self.client.delete(volume['name'])
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
+        # this method called by flows/manager.py 
+        # when source image can't clone directly.
         with image_utils.temporary_file() as tmp:
             # (wenhao): we don't need to convert to raw for sheepdog.
             image_utils.fetch_verify_image(context, image_service,
