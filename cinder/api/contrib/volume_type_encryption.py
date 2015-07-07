@@ -188,7 +188,10 @@ class VolumeTypeEncryptionController(wsgi.Controller):
             expl = _('Cannot delete encryption specs. Volume type in use.')
             raise webob.exc.HTTPBadRequest(explanation=expl)
         else:
-            db.volume_type_encryption_delete(context, type_id)
+            try:
+                db.volume_type_encryption_delete(context, type_id)
+            except exception.VolumeTypeEncryptionNotFound as ex:
+                raise webob.exc.HTTPNotFound(explanation=ex.msg)
 
         return webob.Response(status_int=202)
 

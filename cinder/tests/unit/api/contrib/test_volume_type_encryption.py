@@ -475,6 +475,27 @@ class VolumeTypeEncryptionTest(test.TestCase):
 
         db.volume_type_destroy(context.get_admin_context(), volume_type['id'])
 
+    def test_delete_with_no_encryption(self):
+        volume_type = self._default_volume_type
+        # create an volume type
+        db.volume_type_create(context.get_admin_context(), volume_type)
+
+        # without creating encryption type, try to delete
+        # and check if 404 is raised.
+        res = self._get_response(volume_type, req_method='DELETE',
+                                 req_headers='application/json',
+                                 url='/v2/fake/types/%s/encryption/provider')
+        self.assertEqual(404, res.status_code)
+        expected = {
+            "itemNotFound": {
+                "message": "Volume type encryption for type "
+                           "fake_type_id does not exist.",
+                "code": 404
+            }
+        }
+        self.assertEqual(expected, json.loads(res.body))
+        db.volume_type_destroy(context.get_admin_context(), volume_type['id'])
+
     def test_update_item(self):
         volume_type = self._default_volume_type
 

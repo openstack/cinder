@@ -1211,7 +1211,7 @@ class DBAPIEncryptionTestCase(BaseTest):
             self._assertEqualObjects(encryption, encryption_get,
                                      self._ignored_keys)
 
-    def test_volume_type_update_with_no_create(self):
+    def test_volume_type_encryption_update_with_no_create(self):
         self.assertRaises(exception.VolumeTypeEncryptionNotFound,
                           db.volume_type_encryption_update,
                           self.ctxt,
@@ -1237,6 +1237,12 @@ class DBAPIEncryptionTestCase(BaseTest):
             db.volume_type_encryption_get(self.ctxt,
                                           encryption['volume_type_id'])
         self.assertIsNone(encryption_get)
+
+    def test_volume_type_encryption_delete_no_create(self):
+        self.assertRaises(exception.VolumeTypeEncryptionNotFound,
+                          db.volume_type_encryption_delete,
+                          self.ctxt,
+                          'fake_no_create_type')
 
     def test_volume_encryption_get(self):
         # normal volume -- metadata should be None

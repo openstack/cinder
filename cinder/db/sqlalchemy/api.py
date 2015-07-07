@@ -2946,6 +2946,9 @@ def volume_type_encryption_delete(context, volume_type_id):
     with session.begin():
         encryption = volume_type_encryption_get(context, volume_type_id,
                                                 session)
+        if not encryption:
+            raise exception.VolumeTypeEncryptionNotFound(
+                type_id=volume_type_id)
         encryption.update({'deleted': True,
                            'deleted_at': timeutils.utcnow(),
                            'updated_at': literal_column('updated_at')})
