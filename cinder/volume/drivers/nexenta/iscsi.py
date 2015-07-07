@@ -545,6 +545,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             },
             'lun': self._get_lun(volume['name'])
         }
+        return self.create_export(None, volume)
 
     def delete_snapshot(self, snapshot):
         """Delete volume's snapshot on appliance.
