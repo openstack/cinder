@@ -98,7 +98,7 @@ def create_snapshot(ctxt,
 
 
 def create_consistencygroup(ctxt,
-                            host='test_host',
+                            host='test_host@fakedrv#fakepool',
                             name='test_cg',
                             description='this is a test cg',
                             status='available',

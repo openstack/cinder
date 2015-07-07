@@ -4574,19 +4574,29 @@ class VolumeTestCase(BaseVolumeTestCase):
     @mock.patch.object(CGQUOTAS, "commit")
     @mock.patch.object(CGQUOTAS, "rollback")
     @mock.patch.object(driver.VolumeDriver,
-                       "create_consistencygroup",
-                       return_value={'status': 'available'})
-    @mock.patch.object(driver.VolumeDriver,
                        "delete_consistencygroup",
                        return_value=({'status': 'deleted'}, []))
     def test_create_delete_consistencygroup(self, fake_delete_cg,
-                                            fake_create_cg, fake_rollback,
+                                            fake_rollback,
                                             fake_commit, fake_reserve):
         """Test consistencygroup can be created and deleted."""
+
+        def fake_driver_create_cg(context, group):
+            """Make sure that the pool is part of the host."""
+            self.assertIn('host', group)
+            host = group['host']
+            pool = volutils.extract_host(host, level='pool')
+            self.assertEqual(pool, 'fakepool')
+            return {'status': 'available'}
+
+        self.stubs.Set(self.volume.driver, 'create_consistencygroup',
+                       fake_driver_create_cg)
+
         group = tests_utils.create_consistencygroup(
             self.context,
             availability_zone=CONF.storage_availability_zone,
-            volume_type='type1,type2')
+            volume_type='type1,type2',
+            host='fakehost@fakedrv#fakepool')
         group_id = group['id']
         self.assertEqual(0, len(self.notifier.notifications),
                          self.notifier.notifications)
