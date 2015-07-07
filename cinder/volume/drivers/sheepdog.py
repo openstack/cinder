@@ -91,6 +91,9 @@ class SheepdogClient(object):
     QEMU_IMG_RESP_SNAPSHOT_NOT_FOUND = 'Failed to find the requested tag'
     QEMU_IMG_RESP_VDI_NOT_FOUND = 'No vdi found'
     QEMU_IMG_RESP_SIZE_TOO_LARGE = 'An image is too large.'
+    QEMU_IMG_RESP_FILE_NOT_FOUND = 'No such file or directory'
+    QEMU_IMG_RESP_PERMISSION_DENIED = 'Permission denied'
+    QEMU_IMG_RESP_INVALID_DRIVER = 'Unknown driver'
 
     def __init__(self, addr, port):
         self.addr = addr
@@ -332,15 +335,22 @@ class SheepdogClient(object):
                                   'vdi:%(vdiname)s new size:%(size)s'),
                               {'vdiname': vdiname, 'size': size})
 
+<<<<<<< HEAD
     def export(self, vdiname, dst_path, dst_format='raw'):
 
         params = ('-f', 'raw', '-t', 'none', '-O', dst_format,
                   'sheepdog:%s' % vdiname, dst_path)
+=======
+    def import_image(self, vdiname, src_path, src_format='raw'):
+        params = ('-f', src_format, '-t', 'none', '-O', 'raw',
+                  src_path, 'sheepdog:%s' % vdiname)
+>>>>>>> 0df6cdeff6345ca0c57e1ec40210decd09a5ed20
         try:
             (stdout, stderr) = self._run_qemu_img('convert', *params)
         except exception.SheepdogCmdError as e:
             stderr = e.kwargs['stderr']
             with excutils.save_and_reraise_exception():
+<<<<<<< HEAD
                 if stderr.endswith(self.QEMU_RESP_CONNECTION_ERROR_1):
                     LOG.error(_LE('Failed to connect addr. '
                               'addr: %(addr)s, port: %(port)s'),
@@ -416,6 +426,34 @@ class SheepdogClient(object):
             raise exception.ImageUnacceptable(image_id=location, reason=reason)
 
         return pieces[0]
+=======
+                if self.QEMU_IMG_RESP_CONNECTION_ERROR in stderr:
+                    LOG.error(_LE('Failed to connect to sheep daemon. '
+                                  'addr: %(addr)s, port: %(port)s'),
+                              {'addr': self.addr, 'port': self.port})
+                elif self.QEMU_IMG_RESP_FILE_NOT_FOUND in stderr:
+                    LOG.error(_LE('Image file :%s not found'),
+                              src_path)
+                elif self.QEMU_IMG_RESP_PERMISSION_DENIED in stderr:
+                    LOG.error(_LE('Failed to import %(vdiname)s from '
+                              '%(path)s. permission denied.'),
+                              {'vdiname': vdiname, 'path': src_path})
+                elif self.QEMU_IMG_RESP_INVALID_DRIVER in stderr:
+                    LOG.error(_LE('Failed to import %(vdiname)s from '
+                              '%(path)s. driver %(format)s is not supported.'),
+                              {'vdiname': vdiname, 'path': src_path,
+                               'format': src_format})
+                elif self.QEMU_IMG_RESP_ALREADY_EXISTS in stderr:
+                    LOG.error(_LE('import volume "%s" already exists. '
+                              'Please check the results of "dog vdi list".'),
+                              vdiname)
+                else:
+                    LOG.error(_LE('Failed to import. '
+                                  'vdi:%(vdiname)s source_path:%(path)s '
+                                  'format:%(format)'),
+                              {'vdiname': vdiname, 'path': src_path,
+                               'format': src_format})
+>>>>>>> 0df6cdeff6345ca0c57e1ec40210decd09a5ed20
 
 
 class SheepdogIOWrapper(io.RawIOBase):
@@ -582,6 +620,8 @@ class SheepdogDriver(driver.VolumeDriver):
         self.client.delete(volume['name'])
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
+        # this function called by only flows/manager.py
+        # when mage source can't clone directly.
         with image_utils.temporary_file() as tmp:
             # (wenhao): we don't need to convert to raw for sheepdog.
             image_utils.fetch_verify_image(context, image_service,
@@ -591,9 +631,12 @@ class SheepdogDriver(driver.VolumeDriver):
             # see volume/drivers/manager.py:_create_volume
             self.client.delete(volume['name'])
             # convert and store into sheepdog
-            image_utils.convert_image(tmp, 'sheepdog:%s' % volume['name'],
-                                      'raw')
-            self.client.resize(volume['name'], volume['size'])
+            self.client.import_image(volume['name'], tmp)
+            try:
+                self.client.resize(volume['name'], volume['size'])
+            except Exception:
+                with excutils.save_and_reraise_exception():
+                    self.client.delete(volume['name'])
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
