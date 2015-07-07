@@ -14,33 +14,7 @@
 
 from oslo_versionedobjects import fields
 
-from cinder import objects
-
-
-def fake_db_volume(**updates):
-    db_volume = {
-        'id': 1,
-        'size': 1,
-        'name': 'fake',
-        'availability_zone': 'fake_availability_zone',
-        'status': 'available',
-        'attach_status': 'detached',
-    }
-
-    for name, field in objects.Volume.fields.items():
-        if name in db_volume:
-            continue
-        if field.nullable:
-            db_volume[name] = None
-        elif field.default != fields.UnspecifiedDefault:
-            db_volume[name] = field.default
-        else:
-            raise Exception('fake_db_volume needs help with %s' % name)
-
-    if updates:
-        db_volume.update(updates)
-
-    return db_volume
+from cinder.objects import snapshot
 
 
 def fake_db_snapshot(**updates):
@@ -53,10 +27,10 @@ def fake_db_snapshot(**updates):
         'display_name': 'fake_name',
         'display_description': 'fake_description',
         'metadata': {},
-        'snapshot_metadata': {},
+        'snapshot_metadata': [],
     }
 
-    for name, field in objects.Snapshot.fields.items():
+    for name, field in snapshot.Snapshot.fields.items():
         if name in db_snapshot:
             continue
         if field.nullable:
@@ -74,13 +48,6 @@ def fake_db_snapshot(**updates):
 
 def fake_snapshot_obj(context, **updates):
     expected_attrs = updates.pop('expected_attrs', None)
-    return objects.Snapshot._from_db_object(context, objects.Snapshot(),
-                                            fake_db_snapshot(**updates),
-                                            expected_attrs=expected_attrs)
-
-
-def fake_volume_obj(context, **updates):
-    expected_attrs = updates.pop('expected_attrs', None)
-    return objects.Volume._from_db_object(context, objects.Volume(),
-                                          fake_db_volume(**updates),
-                                          expected_attrs=expected_attrs)
+    return snapshot.Snapshot._from_db_object(context, snapshot.Snapshot(),
+                                             fake_db_snapshot(**updates),
+                                             expected_attrs=expected_attrs)

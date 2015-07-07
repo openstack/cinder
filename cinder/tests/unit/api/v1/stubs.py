@@ -112,7 +112,8 @@ def stub_snapshot(id, **kwargs):
                 'created_at': None,
                 'display_name': 'Default name',
                 'display_description': 'Default description',
-                'project_id': 'fake'}
+                'project_id': 'fake',
+                'snapshot_metadata': []}
 
     snapshot.update(kwargs)
     return snapshot

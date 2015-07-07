@@ -2095,7 +2095,6 @@ def _snapshot_metadata_get_query(context, snapshot_id, session=None):
 
 
 @require_context
-@require_snapshot_exists
 def _snapshot_metadata_get(context, snapshot_id, session=None):
     rows = _snapshot_metadata_get_query(context, snapshot_id, session).all()
     result = {}
