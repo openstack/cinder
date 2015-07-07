@@ -31,6 +31,7 @@ from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder import quota
 from cinder.volume import api as volume_api
+from cinder.volume import utils as volume_utils
 
 
 volume_transfer_opts = [
@@ -64,9 +65,13 @@ class API(base.Base):
         transfer = self.db.transfer_get(context, transfer_id)
 
         volume_ref = self.db.volume_get(context, transfer.volume_id)
+        volume_utils.notify_about_volume_usage(context, volume_ref,
+                                               "transfer.delete.start")
         if volume_ref['status'] != 'awaiting-transfer':
             LOG.error(_LE("Volume in unexpected state"))
         self.db.transfer_destroy(context, transfer_id)
+        volume_utils.notify_about_volume_usage(context, volume_ref,
+                                               "transfer.delete.end")
 
     def get_all(self, context, filters=None):
         filters = filters or {}
@@ -105,6 +110,8 @@ class API(base.Base):
         if volume_ref['status'] != "available":
             raise exception.InvalidVolume(reason=_("status must be available"))
 
+        volume_utils.notify_about_volume_usage(context, volume_ref,
+                                               "transfer.create.start")
         # The salt is just a short random string.
         salt = self._get_random_string(CONF.volume_transfer_salt_length)
         auth_key = self._get_random_string(CONF.volume_transfer_key_length)
@@ -123,6 +130,8 @@ class API(base.Base):
             LOG.error(_LE("Failed to create transfer record "
                           "for %s"), volume_id)
             raise
+        volume_utils.notify_about_volume_usage(context, volume_ref,
+                                               "transfer.create.end")
         return {'id': transfer['id'],
                 'volume_id': transfer['volume_id'],
                 'display_name': transfer['display_name'],
@@ -145,6 +154,8 @@ class API(base.Base):
 
         volume_id = transfer['volume_id']
         vol_ref = self.db.volume_get(context.elevated(), volume_id)
+        volume_utils.notify_about_volume_usage(context, vol_ref,
+                                               "transfer.accept.start")
 
         try:
             reservations = QUOTAS.reserve(context, volumes=1,
@@ -210,6 +221,8 @@ class API(base.Base):
                                     project_id=donor_id)
 
         vol_ref = self.db.volume_get(context, volume_id)
+        volume_utils.notify_about_volume_usage(context, vol_ref,
+                                               "transfer.accept.end")
         return {'id': transfer_id,
                 'display_name': transfer['display_name'],
                 'volume_id': vol_ref['id']}
