@@ -22,6 +22,7 @@ SheepDog Volume Driver.
 import errno
 import io
 import re
+import urllib
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
@@ -37,6 +38,8 @@ from cinder.openstack.common import fileutils
 from cinder import utils
 from cinder.volume import driver
 
+# set default snapshot name
+DEFAULT_SNAPNAME = 'glance-image'
 
 LOG = logging.getLogger(__name__)
 
@@ -364,6 +367,56 @@ class SheepdogClient(object):
                               {'vdiname': vdiname, 'path': dst_path,
                                'format': dst_format})
 
+    def _is_cloneable(self, image_location, image_meta):
+        """Check the image can be clone or not."""
+        if image_meta['disk_format'] != 'raw':
+            LOG.debug('Image clone requires image format to be '
+                      '"raw" but image %(image_location)s is %(image_meta)s.',
+                      {'image_location': image_location,
+                       'image_meta': image_meta['disk_format']})
+            return False
+
+        # The image location would be like
+        # "sheepdog://Alice"
+        try:
+            volume_name = self._parse_location(image_location)
+        except exception.ImageUnacceptable as e:
+            LOG.debug('%(image_location)s is not sheepdog VDI '
+                      'image: %(err)s',
+                      {'image_location': image_location, 'err': e})
+            return False
+
+        # check whether volume is stored in sheepdog
+        (stdout, stderr) = self._run_dog('vdi', 'list', '-r', volume_name)
+        if stdout == '':
+            LOG.debug('Image %s is not stored in sheepdog', volume_name)
+            return False
+        if DEFAULT_SNAPNAME not in stdout:
+            LOG.debug('Image %s is not a snapshot volume', volume_name)
+            return False
+
+        return True
+
+    def _parse_location(self, location):
+        """Check Glance and Cinder use the same sheepdog pool or not."""
+        if location is None:
+            reason = _('image_location is NULL')
+            raise exception.ImageUnacceptable(image_id=location, reason=reason)
+
+        prefix = 'sheepdog://'
+        if not location.startswith(prefix):
+            reason = _('Not stored in sheepdog')
+            raise exception.ImageUnacceptable(image_id=location, reason=reason)
+        pieces = map(urllib.unquote, location[len(prefix):].split('/'))
+        if len(pieces) != 1:
+            reason = _('Not a sheepdog image')
+            raise exception.ImageUnacceptable(image_id=location, reason=reason)
+        if len(pieces[0]) == 0:
+            reason = _('Blank components')
+            raise exception.ImageUnacceptable(image_id=location, reason=reason)
+
+        return pieces[0]
+
 
 class SheepdogIOWrapper(io.RawIOBase):
     """File-like object with Sheepdog backend."""
@@ -461,54 +514,34 @@ class SheepdogDriver(driver.VolumeDriver):
     def check_for_setup_error(self):
         self.client.check_cluster_status()
 
-    def _is_cloneable(self, image_location, image_meta):
-        """Check the image can be clone or not."""
-
-        if image_location is None:
-            return False
-
-        if not image_location.startswith("sheepdog:"):
-            LOG.debug("Image is not stored in sheepdog.")
-            return False
-
-        if image_meta['disk_format'] != 'raw':
-            LOG.debug("Image clone requires image format to be "
-                      "'raw' but image %s(%s) is '%s'.",
-                      image_location,
-                      image_meta['id'],
-                      image_meta['disk_format'])
-            return False
-
-        cloneable = False
-        # check whether volume is stored in sheepdog
-        try:
-            # The image location would be like
-            # "sheepdog:192.168.10.2:7000:Alice"
-            (label, ip, port, name) = image_location.split(":", 3)
-
-            self._try_execute('dog', 'vdi', 'list', '--address', ip,
-                              '--port', port, name)
-            cloneable = True
-        except processutils.ProcessExecutionError as e:
-            LOG.debug("Can not find vdi %(image)s: %(err)s",
-                      {'image': name, 'err': e})
-
-        return cloneable
-
     def clone_image(self, context, volume,
                     image_location, image_meta,
                     image_service):
         """Create a volume efficiently from an existing image."""
         image_location = image_location[0] if image_location else None
-        if not self._is_cloneable(image_location, image_meta):
+        if not self.client._is_cloneable(image_location, image_meta):
             return {}, False
 
         # The image location would be like
-        # "sheepdog:192.168.10.2:7000:Alice"
-        (label, ip, port, name) = image_location.split(":", 3)
-        volume_ref = {'name': name, 'size': image_meta['size']}
-        self.create_cloned_volume(volume, volume_ref)
-        self.client.resize(volume['name'], volume['size'])
+        # "sheepdog://Alice"
+        volume_name = self.client._parse_location(image_location)
+        volume_ref = {'name': volume_name, 'size': image_meta['size']}
+
+        try:
+            self.create_cloned_volume(volume, volume_ref)
+        # TODO(saeki-masaki) change exception class
+        except exception.VolumeBackendAPIException:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE('Failed to create clone image : %s'),
+                          volume['name'])
+
+        try:
+            self.client.resize(volume, volume['size'])
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE('Failed to resize cloned volume : %s'),
+                          volume['name'])
+                self.client.delete(volume)
 
         vol_path = self.local_path(volume)
         return {'provider_location': vol_path}, True
@@ -585,7 +618,12 @@ class SheepdogDriver(driver.VolumeDriver):
         self.client.delete_snapshot(snapshot['volume_name'], snapshot['name'])
 
     def local_path(self, volume):
-        return "sheepdog:%s" % volume['name']
+        if volume['name'] == '':
+            reason = _('blank volume is not allowed')
+            LOG.error(reason)
+            raise exception.SheepdogError(reason=reason)
+
+        return "sheepdog://%s" % volume['name']
 
     def ensure_export(self, context, volume):
         """Safely and synchronously recreate an export for a logical volume."""
