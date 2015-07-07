@@ -636,14 +636,13 @@ class API(base.Base):
 
     @wrap_check_policy
     def terminate_connection(self, context, volume, connector, force=False):
-        self.unreserve_volume(context, volume)
-        results = self.volume_rpcapi.terminate_connection(context,
-                                                          volume,
-                                                          connector,
-                                                          force)
+        self.volume_rpcapi.terminate_connection(context,
+                                                volume,
+                                                connector,
+                                                force)
         LOG.info(_LI("Terminate volume connection completed successfully."),
                  resource=volume)
-        return results
+        self.unreserve_volume(context, volume)
 
     @wrap_check_policy
     def accept_transfer(self, context, volume, new_user, new_project):
