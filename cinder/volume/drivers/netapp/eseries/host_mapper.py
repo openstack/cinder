@@ -33,6 +33,7 @@ from cinder.volume.drivers.netapp.eseries import utils
 LOG = logging.getLogger(__name__)
 
 
+@cinder_utils.trace_method
 @cinder_utils.synchronized('map_es_volume')
 def map_volume_to_single_host(client, volume, eseries_vol, host,
                               vol_map, multiattach_enabled):
@@ -83,6 +84,7 @@ def map_volume_to_single_host(client, volume, eseries_vol, host,
     raise exception.NetAppDriverException(msg % volume['id'])
 
 
+@cinder_utils.trace_method
 @cinder_utils.synchronized('map_es_volume')
 def map_volume_to_multiple_hosts(client, volume, eseries_vol, target_host,
                                  mapping):

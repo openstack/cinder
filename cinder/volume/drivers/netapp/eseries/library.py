@@ -52,6 +52,7 @@ CONF.register_opts(na_opts.netapp_transport_opts)
 CONF.register_opts(na_opts.netapp_san_opts)
 
 
+@six.add_metaclass(cinder_utils.TraceWrapperMetaclass)
 class NetAppESeriesLibrary(object):
     """Executes commands relating to Volumes."""
 
