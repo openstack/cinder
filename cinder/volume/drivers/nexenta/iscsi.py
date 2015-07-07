@@ -687,13 +687,15 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 }
                 return volume['provider_location']
 
-            zvol_name = self._get_zvol_name(volume['name'])
             volume['provider_location'] = (
                 '%(host)s:%(port)s,1 %(target)s %(lun)s') % {
                 'host': self.nms_host,
                 'port': self.configuration.nexenta_iscsi_target_portal_port,
-                'target': self.zvol_dict[zvol_name]['target'],
-                'lun': self.zvol_dict[zvol_name]['lun']
+                'target': '%(base)s-%(num)s' % {
+                    'base': self._get_target_name(),
+                    'num': self.current_tg.split('-')[-1]
+                },
+                'lun': self._get_lun(volume['name'])
             }
             return volume['provider_location']
         else:
