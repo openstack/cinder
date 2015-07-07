@@ -32,6 +32,7 @@ from cinder.volume.drivers import remotefs
 
 
 class DumbVolume(object):
+    # TODO(eharney): replace this with an autospecced mock class
     fields = {}
 
     def __setitem__(self, key, value):
@@ -1292,3 +1293,18 @@ class NfsDriverDoSetupTestCase(test.TestCase):
             [mock.call('mount.nfs',
                        check_exit_code=False,
                        run_as_root=False)])
+
+    def test_update_migrated_volume_is_there(self):
+        """Ensure that driver.update_migrated_volume() is there."""
+
+        drv = nfs.NfsDriver(configuration=self.configuration)
+
+        v1 = DumbVolume()
+        v2 = DumbVolume()
+
+        self.assertRaises(NotImplementedError,
+                          drv.update_migrated_volume,
+                          self.context,
+                          v1,
+                          v2,
+                          mock.sentinel)
