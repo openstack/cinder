@@ -86,7 +86,6 @@ class ScalityDriverTestCase(test.TestCase):
         open(self.TEST_CONFIG, "w+").close()
 
     def _create_fake_mount(self):
-        self._makedirs(os.path.join(self.TEST_MOUNT, 'sys'))
         self._makedirs(os.path.join(self.TEST_MOUNT, self.TEST_VOLDIR))
 
     def _remove_fake_config(self):
@@ -101,13 +100,6 @@ class ScalityDriverTestCase(test.TestCase):
         self.configuration.scality_sofs_mount_point = self.TEST_MOUNT
         self.configuration.scality_sofs_volume_dir = self.TEST_VOLDIR
         self.configuration.volume_dd_blocksize = '1M'
-
-    def _execute_wrapper(self, cmd, *args, **kwargs):
-        try:
-            kwargs.pop('run_as_root')
-        except KeyError:
-            pass
-        utils.execute(cmd, *args, **kwargs)
 
     def _set_access_wrapper(self, is_visible):
 
@@ -139,7 +131,7 @@ class ScalityDriverTestCase(test.TestCase):
         super(ScalityDriverTestCase, self).setUp()
 
         self._driver = scality.ScalityDriver(configuration=self.configuration)
-        self._driver.set_execute(self._execute_wrapper)
+        self._driver.set_execute(lambda *args, **kwargs: None)
         self._create_fake_mount()
         self._create_fake_config()
         self.addCleanup(self._remove_fake_config)
@@ -167,7 +159,12 @@ class ScalityDriverTestCase(test.TestCase):
         self._set_access_wrapper(True)
         voldir_path = os.path.join(self.TEST_MOUNT, self.TEST_VOLDIR)
         os.rmdir(voldir_path)
-        self._driver.do_setup(None)
+        fake_mounts = [['tmpfs /dev/shm\n'],
+                       ['fuse ' + self.TEST_MOUNT + '\n']]
+        with mock.patch.object(scality.volume_utils, 'read_proc_mounts',
+                               side_effect=fake_mounts) as mock_get_mounts:
+            self._driver.do_setup(None)
+        self.assertEqual(2, mock_get_mounts.call_count)
         self.assertTrue(os.path.isdir(voldir_path))
 
     def test_local_path(self):
