@@ -15,7 +15,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """
-iSCSI driver for NetApp E-series storage systems.
+Volume driver for NetApp E-Series iSCSI storage systems.
 """
 
 from oslo_log import log as logging
@@ -28,7 +28,13 @@ from cinder.volume.drivers.netapp import utils as na_utils
 LOG = logging.getLogger(__name__)
 
 
-class NetAppEseriesISCSIDriver(driver.ISCSIDriver):
+class NetAppEseriesISCSIDriver(driver.BaseVD,
+                               driver.ManageableVD,
+                               driver.ExtendVD,
+                               driver.CloneableVD,
+                               driver.TransferVD,
+                               driver.SnapshotVD):
+    """NetApp E-Series iSCSI volume driver."""
 
     DRIVER_NAME = 'NetApp_iSCSI_ESeries'
 
