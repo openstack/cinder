@@ -314,16 +314,16 @@ class SheepdogClient(object):
                 elif stderr.startswith(self.DOG_RESP_VDI_SHRINK_NOT_SUPPORT):
                     LOG.error(_LE('Failed to resize vdi. '
                                   'shrinking vdi not supported. '
-                                  'vdi:%(vdiname)s new size:%(size)s'),
+                                  'vdi: %(vdiname)s new size: %(size)s'),
                               {'vdiname': vdiname, 'size': size})
                 elif stderr.startswith(self.DOG_RESP_VDI_SIZE_TOO_LARGE):
                     LOG.error(_LE('Failed to resize vdi. '
                                   'Too large volume size. '
-                                  'vdi:%(vdiname)s new size:%(size)s'),
+                                  'vdi: %(vdiname)s new size: %(size)s'),
                               {'vdiname': vdiname, 'size': size})
                 else:
                     LOG.error(_LE('Failed to resize vdi. '
-                                  'vdi:%(vdiname)s new size:%(size)s'),
+                                  'vdi: %(vdiname)s new size: %(size)s'),
                               {'vdiname': vdiname, 'size': size})
 
     def export_image(self, vdiname, dst_path, dst_format='raw'):
@@ -339,20 +339,20 @@ class SheepdogClient(object):
                                   'addr: %(addr)s, port: %(port)s'),
                               {'addr': self.addr, 'port': self.port})
                 elif self.QEMU_IMG_RESP_VDI_NOT_FOUND in stderr:
-                    LOG.error(_LE('source vdi:%s not found'), vdiname)
+                    LOG.error(_LE('source vdi: %s not found'), vdiname)
                 elif self.QEMU_IMG_RESP_PERMISSION_DENIED in stderr:
-                    LOG.error(_LE('Failed to export %(vdiname) to %(path). '
+                    LOG.error(_LE('Failed to export %(vdiname)s to %(path)s. '
                               'permission denied.'),
                               {'vdiname': vdiname, 'path': dst_path})
                 elif self.QEMU_IMG_RESP_INVALID_FORMAT in stderr:
-                    LOG.error(_LE('Failed to export %(vdiname) to %(path). '
-                              '%(format) is not supported.'),
+                    LOG.error(_LE('Failed to export %(vdiname)s to %(path)s. '
+                              '%(format)s is not supported.'),
                               {'vdiname': vdiname, 'path': dst_path,
                                'format': dst_format})
                 else:
                     LOG.error(_LE('Failed to export vdi. '
-                                  'vdi:%(vdiname)s target_path:%(path)s '
-                                  'format:%(format)'),
+                                  'vdi: %(vdiname)s target_path: %(path)s '
+                                  'format: %(format)s'),
                               {'vdiname': vdiname, 'path': dst_path,
                                'format': dst_format})
 
@@ -369,7 +369,7 @@ class SheepdogClient(object):
                                   'addr: %(addr)s, port: %(port)s'),
                               {'addr': self.addr, 'port': self.port})
                 elif self.QEMU_IMG_RESP_FILE_NOT_FOUND in stderr:
-                    LOG.error(_LE('Image file :%s not found'),
+                    LOG.error(_LE('Image file : %s not found'),
                               src_path)
                 elif self.QEMU_IMG_RESP_PERMISSION_DENIED in stderr:
                     LOG.error(_LE('Failed to import %(vdiname)s from '
@@ -386,8 +386,8 @@ class SheepdogClient(object):
                               vdiname)
                 else:
                     LOG.error(_LE('Failed to import. '
-                                  'vdi:%(vdiname)s source_path:%(path)s '
-                                  'format:%(format)'),
+                                  'vdi: %(vdiname)s source_path: %(path)s '
+                                  'format:%(format)s'),
                               {'vdiname': vdiname, 'path': src_path,
                                'format': src_format})
 
@@ -630,12 +630,12 @@ class SheepdogDriver(driver.VolumeDriver):
         try:
             with image_utils.temporary_file() as tmp:
                 self.client.export_image(volume['name'], tmp)
-            with fileutils.file_open(tmp, 'rb') as image_file:
-                image_service.update(context, image_id, {}, image_file)
+                with fileutils.file_open(tmp, 'rb') as image_file:
+                    image_service.update(context, image_id, {}, image_file)
         except Exception:
             with excutils.save_and_reraise_exception():
                 msg = _LE('Failed to copy volume: %(vdiname)s to '
-                          'image : %(path)s.')
+                          'image: %(path)s.')
                 LOG.error(msg, {'vdiname': volume['name'], 'path': tmp})
 
     def create_snapshot(self, snapshot):

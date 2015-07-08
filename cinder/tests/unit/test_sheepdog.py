@@ -1520,16 +1520,14 @@ class SheepdogDriverTestCase(test.TestCase):
         image_service = mock.Mock()
         fake_image_meta = {'id': '10958016-e196-42e3-9e7f-5d8927ae3099'}
 
-        with mock.patch.object(image_service, 'update') as fake_update:
-            fake_update.side_effect = exception.SheepdogCmdError(
-                cmd=mock.ANY, exit_code=1,
-                stdout='dummy', stderr='dummy')
+        image_service.update.side_effect = exception.SheepdogCmdError(
+            cmd=mock.ANY, exit_code=1, stdout='dummy', stderr='dummy')
 
-            self.assertRaises(exception.SheepdogCmdError,
-                              self.driver.copy_volume_to_image,
-                              fake_context, fake_volume,
-                              image_service, fake_image_meta)
-            self.assertTrue(fake_logger.error.called)
+        self.assertRaises(exception.SheepdogCmdError,
+                          self.driver.copy_volume_to_image,
+                          fake_context, fake_volume,
+                          image_service, fake_image_meta)
+        self.assertTrue(fake_logger.error.called)
 
     @mock.patch.object(sheepdog.SheepdogClient, 'create_snapshot')
     @mock.patch.object(sheepdog.SheepdogClient, 'clone')
