@@ -1391,6 +1391,20 @@ class DellSCSanAPITestCase(test.TestCase):
                   u'storageAlertThreshold': 10,
                   u'objectType': u'StorageCenterStorageUsage'}
 
+    RPLAY_PROFILE = {u'name': u'fc8f2fec-fab2-4e34-9148-c094c913b9a3',
+                     u'type': u'Consistent',
+                     u'notes': u'Created by Dell Cinder Driver',
+                     u'volumeCount': 0,
+                     u'expireIncompleteReplaySets': True,
+                     u'replayCreationTimeout': 20,
+                     u'enforceReplayCreationTimeout': False,
+                     u'ruleCount': 0,
+                     u'userCreated': True,
+                     u'scSerialNumber': 64702,
+                     u'scName': u'Storage Center 64702',
+                     u'objectType': u'ScReplayProfile',
+                     u'instanceId': u'64702.11',
+                     u'instanceName': u'fc8f2fec-fab2-4e34-9148-c094c913b9a3'}
     STORAGE_PROFILE_LIST = [
         {u'allowedForFlashOptimized': False,
          u'allowedForNonFlashOptimized': True,
@@ -1489,11 +1503,18 @@ class DellSCSanAPITestCase(test.TestCase):
     response_created.reason = u'created'
     RESPONSE_201 = response_created
 
-    # Create a Response object that indicates a failure (no content)
+    # Create a Response object that can indicate a failure. Although
+    # 204 can be a success with no return.  (Know your calls!)
     response_nc = models.Response()
     response_nc.status_code = 204
     response_nc.reason = u'duplicate'
     RESPONSE_204 = response_nc
+
+    # Create a Response object is a pure error.
+    response_bad = models.Response()
+    response_bad.status_code = 400
+    response_bad.reason = u'bad request'
+    RESPONSE_400 = response_bad
 
     def setUp(self):
         super(DellSCSanAPITestCase, self).setUp()
@@ -3993,6 +4014,680 @@ class DellSCSanAPITestCase(test.TestCase):
         res = self.scapi._delete_server(self.SCSERVER_NO_DEL)
         self.assertFalse(mock_delete.called)
         self.assertIsNone(res, 'Expected None')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_json',
+                       return_value=[RPLAY_PROFILE])
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post',
+                       return_value=RESPONSE_200)
+    def test_find_replay_profile(self,
+                                 mock_post,
+                                 mock_get_json,
+                                 mock_close_connection,
+                                 mock_open_connection,
+                                 mock_init):
+        res = self.scapi.find_replay_profile('guid')
+        self.assertTrue(mock_post.called)
+        self.assertTrue(mock_get_json.called)
+        self.assertEqual(self.RPLAY_PROFILE, res, 'Unexpected Profile')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_json',
+                       return_value=[RPLAY_PROFILE, RPLAY_PROFILE])
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post',
+                       return_value=RESPONSE_200)
+    def test_find_replay_profile_more_than_one(self,
+                                               mock_post,
+                                               mock_get_json,
+                                               mock_close_connection,
+                                               mock_open_connection,
+                                               mock_init):
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.scapi.find_replay_profile,
+                          'guid')
+        self.assertTrue(mock_post.called)
+        self.assertTrue(mock_get_json.called)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_json',
+                       return_value=[])
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post',
+                       return_value=RESPONSE_200)
+    def test_find_replay_profile_empty_list(self,
+                                            mock_post,
+                                            mock_get_json,
+                                            mock_close_connection,
+                                            mock_open_connection,
+                                            mock_init):
+        res = self.scapi.find_replay_profile('guid')
+        self.assertTrue(mock_post.called)
+        self.assertTrue(mock_get_json.called)
+        self.assertEqual(None, res, 'Unexpected return')
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post',
+                       return_value=RESPONSE_400)
+    def test_find_replay_profile_error(self,
+                                       mock_post,
+                                       mock_close_connection,
+                                       mock_open_connection,
+                                       mock_init):
+        res = self.scapi.find_replay_profile('guid')
+        self.assertTrue(mock_post.called)
+        self.assertEqual(None, res, 'Unexpected return')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_replay_profile',
+                       return_value=None)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_first_result',
+                       return_value=RPLAY_PROFILE)
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post',
+                       return_value=RESPONSE_201)
+    def test_create_replay_profile(self,
+                                   mock_post,
+                                   mock_first_result,
+                                   mock_find_replay_profile,
+                                   mock_close_connection,
+                                   mock_open_connection,
+                                   mock_init):
+        res = self.scapi.create_replay_profile('guid')
+        self.assertTrue(mock_find_replay_profile.called)
+        self.assertTrue(mock_post.called)
+        self.assertTrue(mock_first_result.called)
+        self.assertEqual(self.RPLAY_PROFILE, res, 'Unexpected Profile')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_replay_profile',
+                       return_value=RPLAY_PROFILE)
+    def test_create_replay_profile_exists(self,
+                                          mock_find_replay_profile,
+                                          mock_close_connection,
+                                          mock_open_connection,
+                                          mock_init):
+        res = self.scapi.create_replay_profile('guid')
+        self.assertTrue(mock_find_replay_profile.called)
+        self.assertEqual(self.RPLAY_PROFILE, res, 'Unexpected Profile')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_replay_profile',
+                       return_value=None)
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post',
+                       return_value=RESPONSE_400)
+    def test_create_replay_profile_fail(self,
+                                        mock_post,
+                                        mock_find_replay_profile,
+                                        mock_close_connection,
+                                        mock_open_connection,
+                                        mock_init):
+        res = self.scapi.create_replay_profile('guid')
+        self.assertTrue(mock_find_replay_profile.called)
+        self.assertTrue(mock_post.called)
+        self.assertEqual(None, res, 'Unexpected return')
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'delete',
+                       return_value=RESPONSE_200)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_id')
+    def test_delete_replay_profile(self,
+                                   mock_get_id,
+                                   mock_delete,
+                                   mock_close_connection,
+                                   mock_open_connection,
+                                   mock_init):
+        profile = {'name': 'guid'}
+        self.scapi.delete_replay_profile(profile)
+        self.assertTrue(mock_get_id.called)
+        self.assertTrue(mock_delete.called)
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'delete',
+                       return_value=RESPONSE_400)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_id')
+    def test_delete_replay_profile_fail(self,
+                                        mock_get_id,
+                                        mock_delete,
+                                        mock_close_connection,
+                                        mock_open_connection,
+                                        mock_init):
+        profile = {'name': 'guid'}
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.scapi.delete_replay_profile,
+                          profile)
+        self.assertTrue(mock_get_id.called)
+        self.assertTrue(mock_delete.called)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_first_result',
+                       return_value=VOLUME_CONFIG)
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'get',
+                       return_value=RESPONSE_200)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_id')
+    def test_get_volume_configuration(self,
+                                      mock_get_id,
+                                      mock_get,
+                                      mock_first_result,
+                                      mock_close_connection,
+                                      mock_open_connection,
+                                      mock_init):
+        res = self.scapi._get_volume_configuration({})
+        self.assertTrue(mock_get_id.called)
+        self.assertTrue(mock_get.called)
+        self.assertEqual(self.VOLUME_CONFIG, res, 'Unexpected config')
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'get',
+                       return_value=RESPONSE_400)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_id')
+    def test_get_volume_configuration_bad_response(self,
+                                                   mock_get_id,
+                                                   mock_get,
+                                                   mock_close_connection,
+                                                   mock_open_connection,
+                                                   mock_init):
+        res = self.scapi._get_volume_configuration({})
+        self.assertTrue(mock_get_id.called)
+        self.assertTrue(mock_get.called)
+        self.assertEqual(None, res, 'Unexpected result')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_volume_configuration',
+                       return_value=VOLUME_CONFIG)
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'put',
+                       return_value=RESPONSE_200)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_id')
+    def test_update_volume_profiles(self,
+                                    mock_get_id,
+                                    mock_put,
+                                    mock_get_volume_configuration,
+                                    mock_close_connection,
+                                    mock_open_connection,
+                                    mock_init):
+        scvolume = {'instanceId': '1'}
+        existingid = self.VOLUME_CONFIG[u'replayProfileList'][0][u'instanceId']
+        vcid = self.VOLUME_CONFIG[u'instanceId']
+        # First get_id is for our existing replay profile id and the second
+        # is for the volume config and the last is for the volume id.  And
+        # then we do this again for the second call below.
+        mock_get_id.side_effect = [existingid,
+                                   vcid,
+                                   scvolume['instanceId'],
+                                   existingid,
+                                   vcid,
+                                   scvolume['instanceId']]
+        newid = '64702.1'
+        expected_payload = {'ReplayProfileList': [newid, existingid]}
+        expected_url = 'StorageCenter/ScVolumeConfiguration/' + vcid
+        res = self.scapi._update_volume_profiles(scvolume, newid, None)
+        self.assertTrue(mock_get_id.called)
+        self.assertTrue(mock_get_volume_configuration.called)
+        mock_put.assert_called_once_with(expected_url,
+                                         expected_payload)
+        self.assertTrue(res)
+
+        # Now do a remove.  (Restarting with the original config so this will
+        # end up as an empty list.)
+        expected_payload['ReplayProfileList'] = []
+        res = self.scapi._update_volume_profiles(scvolume, None, existingid)
+        self.assertTrue(mock_get_id.called)
+        self.assertTrue(mock_get_volume_configuration.called)
+        mock_put.assert_called_with(expected_url,
+                                    expected_payload)
+        self.assertTrue(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_volume_configuration',
+                       return_value=VOLUME_CONFIG)
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'put',
+                       return_value=RESPONSE_400)
+    # We set this to 1 so we can check our payload
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_id')
+    def test_update_volume_profiles_bad_response(self,
+                                                 mock_get_id,
+                                                 mock_put,
+                                                 mock_get_volume_configuration,
+                                                 mock_close_connection,
+                                                 mock_open_connection,
+                                                 mock_init):
+        scvolume = {'instanceId': '1'}
+        existingid = self.VOLUME_CONFIG[u'replayProfileList'][0][u'instanceId']
+        vcid = self.VOLUME_CONFIG[u'instanceId']
+        # First get_id is for our existing replay profile id and the second
+        # is for the volume config and the last is for the volume id.  And
+        # then we do this again for the second call below.
+        mock_get_id.side_effect = [existingid,
+                                   vcid,
+                                   scvolume['instanceId'],
+                                   existingid,
+                                   vcid,
+                                   scvolume['instanceId']]
+        newid = '64702.1'
+        expected_payload = {'ReplayProfileList': [newid, existingid]}
+        expected_url = 'StorageCenter/ScVolumeConfiguration/' + vcid
+        res = self.scapi._update_volume_profiles(scvolume, newid, None)
+        self.assertTrue(mock_get_id.called)
+        self.assertTrue(mock_get_volume_configuration.called)
+        mock_put.assert_called_once_with(expected_url,
+                                         expected_payload)
+        self.assertFalse(res)
+
+        # Now do a remove.  (Restarting with the original config so this will
+        # end up as an empty list.)
+        expected_payload['ReplayProfileList'] = []
+        res = self.scapi._update_volume_profiles(scvolume, None, existingid)
+        self.assertTrue(mock_get_id.called)
+        self.assertTrue(mock_get_volume_configuration.called)
+        mock_put.assert_called_with(expected_url,
+                                    expected_payload)
+        self.assertFalse(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_volume_configuration',
+                       return_value=None)
+    def test_update_volume_profiles_no_config(self,
+                                              mock_get_volume_configuration,
+                                              mock_close_connection,
+                                              mock_open_connection,
+                                              mock_init):
+        scvolume = {'instanceId': '1'}
+        res = self.scapi._update_volume_profiles(scvolume, '64702.2', None)
+        self.assertTrue(mock_get_volume_configuration.called)
+        self.assertFalse(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_volume',
+                       return_value=999)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_update_volume_profiles',
+                       return_value=True)
+    def test_add_cg_volumes(self,
+                            mock_update_volume_profiles,
+                            mock_find_volume,
+                            mock_close_connection,
+                            mock_open_connection,
+                            mock_init):
+        profileid = '100'
+        add_volumes = [{'id': '1'}]
+        res = self.scapi._add_cg_volumes(profileid, add_volumes)
+        self.assertTrue(mock_find_volume.called)
+        mock_update_volume_profiles.assert_called_once_with(999,
+                                                            addid=profileid,
+                                                            removeid=None)
+        self.assertTrue(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_volume',
+                       return_value=999)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_update_volume_profiles',
+                       return_value=False)
+    def test_add_cg_volumes_fail(self,
+                                 mock_update_volume_profiles,
+                                 mock_find_volume,
+                                 mock_close_connection,
+                                 mock_open_connection,
+                                 mock_init):
+        profileid = '100'
+        add_volumes = [{'id': '1'}]
+        res = self.scapi._add_cg_volumes(profileid, add_volumes)
+        self.assertTrue(mock_find_volume.called)
+        mock_update_volume_profiles.assert_called_once_with(999,
+                                                            addid=profileid,
+                                                            removeid=None)
+        self.assertFalse(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_volume',
+                       return_value=999)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_update_volume_profiles',
+                       return_value=True)
+    def test_remove_cg_volumes(self,
+                               mock_update_volume_profiles,
+                               mock_find_volume,
+                               mock_close_connection,
+                               mock_open_connection,
+                               mock_init):
+        profileid = '100'
+        remove_volumes = [{'id': '1'}]
+        res = self.scapi._remove_cg_volumes(profileid, remove_volumes)
+        self.assertTrue(mock_find_volume.called)
+        mock_update_volume_profiles.assert_called_once_with(999,
+                                                            addid=None,
+                                                            removeid=profileid)
+        self.assertTrue(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_volume',
+                       return_value=999)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_update_volume_profiles',
+                       return_value=False)
+    def test_remove_cg_volumes_false(self,
+                                     mock_update_volume_profiles,
+                                     mock_find_volume,
+                                     mock_close_connection,
+                                     mock_open_connection,
+                                     mock_init):
+        profileid = '100'
+        remove_volumes = [{'id': '1'}]
+        res = self.scapi._remove_cg_volumes(profileid, remove_volumes)
+        self.assertTrue(mock_find_volume.called)
+        mock_update_volume_profiles.assert_called_once_with(999,
+                                                            addid=None,
+                                                            removeid=profileid)
+        self.assertFalse(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_remove_cg_volumes',
+                       return_value=True)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_add_cg_volumes',
+                       return_value=True)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_id',
+                       return_value='100')
+    def test_update_cg_volumes(self,
+                               mock_get_id,
+                               mock_add_cg_volumes,
+                               mock_remove_cg_volumes,
+                               mock_close_connection,
+                               mock_open_connection,
+                               mock_init):
+        profile = {'name': 'guid'}
+        add_volumes = [{'id': '1'}]
+        remove_volumes = [{'id': '2'}]
+        res = self.scapi.update_cg_volumes(profile,
+                                           add_volumes,
+                                           remove_volumes)
+        self.assertTrue(mock_get_id.called)
+        mock_add_cg_volumes.assert_called_once_with('100', add_volumes)
+        mock_remove_cg_volumes.assert_called_once_with('100',
+                                                       remove_volumes)
+        self.assertTrue(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_remove_cg_volumes',
+                       return_value=True)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_add_cg_volumes',
+                       return_value=True)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_id',
+                       return_value='100')
+    def test_update_cg_volumes_no_remove(self,
+                                         mock_get_id,
+                                         mock_add_cg_volumes,
+                                         mock_remove_cg_volumes,
+                                         mock_close_connection,
+                                         mock_open_connection,
+                                         mock_init):
+        profile = {'name': 'guid'}
+        add_volumes = [{'id': '1'}]
+        remove_volumes = []
+        res = self.scapi.update_cg_volumes(profile,
+                                           add_volumes,
+                                           remove_volumes)
+        self.assertTrue(mock_get_id.called)
+        mock_add_cg_volumes.assert_called_once_with('100', add_volumes)
+        self.assertFalse(mock_remove_cg_volumes.called)
+        self.assertTrue(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_remove_cg_volumes',
+                       return_value=True)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_add_cg_volumes',
+                       return_value=True)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_id',
+                       return_value='100')
+    def test_update_cg_volumes_no_add(self,
+                                      mock_get_id,
+                                      mock_add_cg_volumes,
+                                      mock_remove_cg_volumes,
+                                      mock_close_connection,
+                                      mock_open_connection,
+                                      mock_init):
+        profile = {'name': 'guid'}
+        add_volumes = []
+        remove_volumes = [{'id': '1'}]
+        res = self.scapi.update_cg_volumes(profile,
+                                           add_volumes,
+                                           remove_volumes)
+        self.assertTrue(mock_get_id.called)
+        mock_remove_cg_volumes.assert_called_once_with('100', remove_volumes)
+        self.assertFalse(mock_add_cg_volumes.called)
+        self.assertTrue(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_remove_cg_volumes')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_add_cg_volumes',
+                       return_value=False)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_id',
+                       return_value='100')
+    def test_update_cg_volumes_add_fail(self,
+                                        mock_get_id,
+                                        mock_add_cg_volumes,
+                                        mock_remove_cg_volumes,
+                                        mock_close_connection,
+                                        mock_open_connection,
+                                        mock_init):
+        profile = {'name': 'guid'}
+        add_volumes = [{'id': '1'}]
+        remove_volumes = [{'id': '2'}]
+        res = self.scapi.update_cg_volumes(profile,
+                                           add_volumes,
+                                           remove_volumes)
+        self.assertTrue(mock_get_id.called)
+        mock_add_cg_volumes.assert_called_once_with('100', add_volumes)
+        self.assertTrue(not mock_remove_cg_volumes.called)
+        self.assertFalse(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_remove_cg_volumes',
+                       return_value=False)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_add_cg_volumes',
+                       return_value=True)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_id',
+                       return_value='100')
+    def test_update_cg_volumes_remove_fail(self,
+                                           mock_get_id,
+                                           mock_add_cg_volumes,
+                                           mock_remove_cg_volumes,
+                                           mock_close_connection,
+                                           mock_open_connection,
+                                           mock_init):
+        profile = {'name': 'guid'}
+        add_volumes = [{'id': '1'}]
+        remove_volumes = [{'id': '2'}]
+        res = self.scapi.update_cg_volumes(profile,
+                                           add_volumes,
+                                           remove_volumes)
+        self.assertTrue(mock_get_id.called)
+        mock_add_cg_volumes.assert_called_once_with('100', add_volumes)
+        mock_remove_cg_volumes.assert_called_once_with('100',
+                                                       remove_volumes)
+        self.assertFalse(res)
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post',
+                       return_value=RESPONSE_204)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_id',
+                       return_value='100')
+    def test_snap_cg_replay(self,
+                            mock_get_id,
+                            mock_post,
+                            mock_close_connection,
+                            mock_open_connection,
+                            mock_init):
+        replayid = 'guid'
+        expire = 0
+        profile = {'instanceId': '100'}
+        # See the 100 from get_id above?
+        expected_url = 'StorageCenter/ScReplayProfile/100/CreateReplay'
+        expected_payload = {'description': replayid, 'expireTime': expire}
+        res = self.scapi.snap_cg_replay(profile, replayid, expire)
+        mock_post.assert_called_once_with(expected_url, expected_payload)
+        self.assertTrue(mock_get_id.called)
+        self.assertTrue(res)
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post',
+                       return_value=RESPONSE_400)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_id',
+                       return_value='100')
+    def test_snap_cg_replay_bad_return(self,
+                                       mock_get_id,
+                                       mock_post,
+                                       mock_close_connection,
+                                       mock_open_connection,
+                                       mock_init):
+        replayid = 'guid'
+        expire = 0
+        profile = {'instanceId': '100'}
+        # See the 100 from get_id above?
+        expected_url = 'StorageCenter/ScReplayProfile/100/CreateReplay'
+        expected_payload = {'description': replayid, 'expireTime': expire}
+        res = self.scapi.snap_cg_replay(profile, replayid, expire)
+        mock_post.assert_called_once_with(expected_url, expected_payload)
+        self.assertTrue(mock_get_id.called)
+        self.assertFalse(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_json',
+                       return_value=RPLAYS)
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'get')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_id',
+                       return_value='100')
+    def test_find_cg_replay(self,
+                            mock_get_id,
+                            mock_get,
+                            mock_get_json,
+                            mock_close_connection,
+                            mock_open_connection,
+                            mock_init):
+        profile = {'instanceId': '100'}
+        replayid = 'Cinder Test Replay012345678910'
+        res = self.scapi.find_cg_replay(profile, replayid)
+        expected_url = 'StorageCenter/ScReplayProfile/100/ReplayList'
+        mock_get.assert_called_once_with(expected_url)
+        self.assertTrue(mock_get_id.called)
+        self.assertTrue(mock_get_json.called)
+        # We should fine RPLAYS[1]
+        self.assertEqual(self.RPLAYS[1], res, 'Wrong replay returned')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_json',
+                       return_value=None)
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'get')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_id',
+                       return_value='100')
+    def test_find_cg_replay_bad_json(self,
+                                     mock_get_id,
+                                     mock_get,
+                                     mock_get_json,
+                                     mock_close_connection,
+                                     mock_open_connection,
+                                     mock_init):
+        profile = {'instanceId': '100'}
+        replayid = 'Cinder Test Replay012345678910'
+        res = self.scapi.find_cg_replay(profile, replayid)
+        expected_url = 'StorageCenter/ScReplayProfile/100/ReplayList'
+        mock_get.assert_called_once_with(expected_url)
+        self.assertTrue(mock_get_id.called)
+        self.assertTrue(mock_get_json.called)
+        self.assertIsNone(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_replay',
+                       return_value=RPLAY)
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post',
+                       return_value=RESPONSE_204)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_id',
+                       return_value='100')
+    def test_delete_cg_replay(self,
+                              mock_get_id,
+                              mock_post,
+                              mock_find_replay,
+                              mock_close_connection,
+                              mock_open_connection,
+                              mock_init):
+        profile = {'instanceId': '100'}
+        replayid = 'guid'
+        expected_url = 'StorageCenter/ScReplay/100/Expire'
+        expected_payload = {}
+        res = self.scapi.delete_cg_replay(profile, replayid)
+        mock_post.assert_called_once_with(expected_url, expected_payload)
+        self.assertTrue(mock_find_replay.called)
+        self.assertTrue(mock_get_id.called)
+        self.assertTrue(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_replay',
+                       return_value=RPLAY)
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post',
+                       return_value=RESPONSE_400)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_id',
+                       return_value='100')
+    def test_delete_cg_replay_error(self,
+                                    mock_get_id,
+                                    mock_post,
+                                    mock_find_replay,
+                                    mock_close_connection,
+                                    mock_open_connection,
+                                    mock_init):
+        profile = {'instanceId': '100'}
+        replayid = 'guid'
+        expected_url = 'StorageCenter/ScReplay/100/Expire'
+        expected_payload = {}
+        res = self.scapi.delete_cg_replay(profile, replayid)
+        mock_post.assert_called_once_with(expected_url, expected_payload)
+        self.assertTrue(mock_get_id.called)
+        self.assertTrue(mock_find_replay.called)
+        self.assertFalse(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_replay',
+                       return_value=None)
+    def test_delete_cg_replay_cant_find(self,
+                                        mock_find_replay,
+                                        mock_close_connection,
+                                        mock_open_connection,
+                                        mock_init):
+        profile = {'instanceId': '100'}
+        replayid = 'guid'
+        res = self.scapi.delete_cg_replay(profile, replayid)
+        self.assertTrue(mock_find_replay.called)
+        self.assertTrue(res)
 
 
 class DellSCSanAPIConnectionTestCase(test.TestCase):

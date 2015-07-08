@@ -17,9 +17,10 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LW
+from cinder.i18n import _, _LE, _LI, _LW
+from cinder.volume import driver
 from cinder.volume.drivers.dell import dell_storagecenter_api
-from cinder.volume.drivers.san import san
+from cinder.volume.drivers.san.san import san_opts
 from cinder.volume import volume_types
 
 
@@ -47,11 +48,12 @@ CONF = cfg.CONF
 CONF.register_opts(common_opts)
 
 
-class DellCommonDriver(san.SanDriver):
+class DellCommonDriver(driver.VolumeDriver):
 
     def __init__(self, *args, **kwargs):
         super(DellCommonDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(common_opts)
+        self.configuration.append_config_values(san_opts)
         self.backend_name =\
             self.configuration.safe_get('volume_backend_name') or 'Dell'
 
@@ -328,6 +330,7 @@ class DellCommonDriver(san.SanDriver):
             data['reserved_percentage'] = 0
             data['free_capacity_gb'] = 'unavailable'
             data['total_capacity_gb'] = 'unavailable'
+            data['consistencygroup_support'] = True
             # In theory if storageusage is None then we should have
             # blown up getting it.  If not just report unavailable.
             if storageusage is not None:
@@ -372,3 +375,158 @@ class DellCommonDriver(san.SanDriver):
         LOG.error(_LE('Unable to rename the logical volume for volume: %s'),
                   original_volume_name)
         return {'_name_id': new_volume['_name_id'] or new_volume['id']}
+
+    def create_consistencygroup(self, context, group):
+        '''This creates a replay profile on the storage backend.
+
+        :param context: the context of the caller.
+        :param group: the dictionary of the consistency group to be created.
+        :return: Nothing on success.
+        :raises: VolumeBackendAPIException
+        '''
+        gid = group['id']
+        with self._client.open_connection() as api:
+            cgroup = api.create_replay_profile(gid)
+            if cgroup:
+                LOG.info(_LI('Created Consistency Group %s'), gid)
+                return
+        raise exception.VolumeBackendAPIException(
+            _('Unable to create consistency group %s') % gid)
+
+    def delete_consistencygroup(self, context, group):
+        '''Delete the Dell SC profile associated with this consistency group.
+
+        :param context: the context of the caller.
+        :param group: the dictionary of the consistency group to be created.
+        :return: Updated model_update, volumes.
+        '''
+        gid = group['id']
+        with self._client.open_connection() as api:
+            profile = api.find_replay_profile(gid)
+            if profile:
+                api.delete_replay_profile(profile)
+        # If we are here because we found no profile that should be fine
+        # as we are trying to delete it anyway.
+
+        # Now whack the volumes.  So get our list.
+        volumes = self.db.volume_get_all_by_group(context, gid)
+        # Trundle through the list deleting the volumes.
+        for volume in volumes:
+            self.delete_volume(volume)
+            volume['status'] = 'deleted'
+
+        model_update = {'status': group['status']}
+
+        return model_update, volumes
+
+    def update_consistencygroup(self, context, group,
+                                add_volumes=None, remove_volumes=None):
+        '''Updates a consistency group.
+
+        :param context: the context of the caller.
+        :param group: the dictionary of the consistency group to be updated.
+        :param add_volumes: a list of volume dictionaries to be added.
+        :param remove_volumes: a list of volume dictionaries to be removed.
+        :return model_update, add_volumes_update, remove_volumes_update
+
+        model_update is a dictionary that the driver wants the manager
+        to update upon a successful return. If None is returned, the manager
+        will set the status to 'available'.
+
+        add_volumes_update and remove_volumes_update are lists of dictionaries
+        that the driver wants the manager to update upon a successful return.
+        Note that each entry requires a {'id': xxx} so that the correct
+        volume entry can be updated. If None is returned, the volume will
+        remain its original status. Also note that you cannot directly
+        assign add_volumes to add_volumes_update as add_volumes is a list of
+        cinder.db.sqlalchemy.models.Volume objects and cannot be used for
+        db update directly. Same with remove_volumes.
+
+        If the driver throws an exception, the status of the group as well as
+        those of the volumes to be added/removed will be set to 'error'.
+        '''
+        gid = group['id']
+        with self._client.open_connection() as api:
+            profile = api.find_replay_profile(gid)
+            if not profile:
+                LOG.error(_LE('Cannot find Consistency Group %s'), gid)
+            elif api.update_cg_volumes(profile,
+                                       add_volumes,
+                                       remove_volumes):
+                LOG.info(_LI('Updated Consistency Group %s'), gid)
+                # we need nothing updated above us so just return None.
+                return None, None, None
+        # Things did not go well so throw.
+        raise exception.VolumeBackendAPIException(
+            _('Unable to update consistency group %s') % gid)
+
+    def create_cgsnapshot(self, context, cgsnapshot):
+        '''Takes a snapshot of the consistency group.
+
+        :param context: the context of the caller.
+        :param cgsnapshot: Information about the snapshot to take.
+        :return: Updated model_update, snapshots.
+        :raises: VolumeBackendAPIException.
+        '''
+        cgid = cgsnapshot['consistencygroup_id']
+        snapshotid = cgsnapshot['id']
+
+        with self._client.open_connection() as api:
+            profile = api.find_replay_profile(cgid)
+            if profile:
+                LOG.debug('profile %s replayid %s', profile, snapshotid)
+                if api.snap_cg_replay(profile, snapshotid, 0):
+                    snapshots = self.db.snapshot_get_all_for_cgsnapshot(
+                        context,
+                        snapshotid)
+                    LOG.debug(snapshots)
+                    for snapshot in snapshots:
+                        LOG.debug(snapshot)
+                        snapshot['status'] = 'available'
+
+                    model_update = {'status': 'available'}
+
+                    return model_update, snapshots
+
+                # That didn't go well.  Tell them why.  Then bomb out.
+                LOG.error(_LE('Failed to snap Consistency Group %s'), cgid)
+            else:
+                LOG.error(_LE('Cannot find Consistency Group %s'), cgid)
+
+        raise exception.VolumeBackendAPIException(
+            _('Unable to snap Consistency Group %s') % cgid)
+
+    def delete_cgsnapshot(self, context, cgsnapshot):
+        '''Deletes a cgsnapshot.
+
+        If profile isn't found return success.  If failed to delete the
+        replay (the snapshot) then raise an exception.
+
+        :param context: the context of the caller.
+        :param cgsnapshot: Information about the snapshot to delete.
+        :return: Updated model_update, snapshots.
+        :raises: VolumeBackendAPIException.
+        '''
+        cgid = cgsnapshot['consistencygroup_id']
+        snapshotid = cgsnapshot['id']
+
+        with self._client.open_connection() as api:
+            profile = api.find_replay_profile(cgid)
+            if profile:
+                LOG.info(_LI('Deleting snapshot %(ss)s from %(pro)s'),
+                         {'ss': snapshotid,
+                          'pro': profile})
+                if not api.delete_cg_replay(profile, snapshotid):
+                    raise exception.VolumeBackendAPIException(
+                        _('Unable to delete Consistency Group snapshot %s') %
+                        snapshotid)
+
+            snapshots = self.db.snapshot_get_all_for_cgsnapshot(context,
+                                                                snapshotid)
+
+            for snapshot in snapshots:
+                snapshot['status'] = 'deleted'
+
+            model_update = {'status': 'deleted'}
+
+            return model_update, snapshots
