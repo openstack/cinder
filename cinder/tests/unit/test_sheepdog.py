@@ -21,7 +21,6 @@ import mock
 from oslo_concurrency import processutils
 from oslo_utils import importutils
 from oslo_utils import units
-import six
 
 from cinder import exception
 from cinder.i18n import _, _LE
@@ -225,32 +224,25 @@ qemu-img: sheepdog::volume-00000001: \
 Failed to connect socket: Connection refused
 """
 
-    QEMU_IMG_ERROR_FAIL_TO_CONNECT_HOST = """\
-qemu-img: Could not open 'sheepdog:192.168.123.243:32109:test': \
-Failed to connect socket: No route to host
+    QEMU_IMG_FILE_NOT_FOUND = """\
+qemu-img: Could not open '/tmp/volume-00000001': \
+Could not open '/tmp/volume-00000001': \
+No such file or directory
 """
 
-    QEMU_IMG_ERROR_FAIL_TO_CONNECT_PORT = """\
-qemu-img: Could not open 'sheepdog:192.168.123.243:32109:test': \
-Failed to connect socket: Connection refused
-"""
-
-    QEMU_IMG_ERROR_VDI_NOT_FOUND = """\
-qemu-img: Could not open 'sheepdog:dummy': cannot get vdi info, \
-No vdi found, dummy 0
-"""
-
-    QEMU_IMG_ERROR_PERMISSION_DENIED = """\
-qemu-img: /tmp/dummy.txt: error while converting raw: \
-Could not create file: Permission denied
+    QEMU_IMG_PERMISSION_DENIED = """\
+qemu-img: Could not open '/tmp/volume-00000001': \
+Could not open '/tmp/volume-00000001': \
+Permission denied
 """
 
     QEMU_IMG_ERROR_INVALID_FORMAT = """\
 qemu-img: Unknown file format 'dummy'
 """
 
-    QEMU_IMG_ERROR = """\
-qemu-img: Unknown error
+    QEMU_IMG_INVALID_DRIVER = """\
+qemu-img: Could not open '/tmp/volume-00000001': \
+Unknown driver 'dummy'
 """
 
     IS_CLONEABLE_TRUE = """\
@@ -259,24 +251,6 @@ s a720b3c0-d1f0-11e1-9b23-0800200c9a66 1 1 1 1 1 1 1 glance-image 22
 
     IS_CLONEABLE_FALSE = """\
   a720b3c0-d1f0-11e1-9b23-0800200c9a66 1 1 1 1 1 1 1 dummy-image 22
-"""
-
-    QEMU_IMG_FILE_NOT_FOUND = """\
-qemu-img: Could not open '/tmp/dummy.txt': Could not open '/tmp/dummy.txt': \
-No such file or directory
-"""
-
-    QEMU_IMG_PERMISSION_DENIED = """\
-qemu-img: Could not open '/tmp/dummy.txt': Could not open '/tmp/dummy.txt': \
-Permission denied
-"""
-
-    QEMU_IMG_INVALID_DRIVER = """\
-qemu-img: Could not open '/tmp/dummy.txt': Unknown driver 'dummy'
-"""
-
-    QEMU_IMG_UNKNOWN_ERROR = """\
-qemu-img: unknown error
 """
 
 
@@ -1046,167 +1020,22 @@ class SheepdogClientTestCase(test.TestCase):
         self.assertEqual(expected_msg, ex.msg)
 
     @mock.patch.object(sheepdog.SheepdogClient, '_run_qemu_img')
-    def test_export_success(self, fake_execute):
-        expected_path = 'dummy_path'
+    def test_convert(self, fake_execute):
+        src_path = 'src_path'
+        dst_path = 'dst_path'
         expected_cmd = ('convert', '-f', 'raw', '-t', 'none', '-O', 'raw',
-                        'sheepdog:%s' % self._vdiname, expected_path)
+                        src_path, dst_path)
         fake_execute.return_value = ('', '')
-        self.client.export(self._vdiname, expected_path)
+        self.client.convert(src_path, dst_path)
         fake_execute.assert_called_once_with(*expected_cmd)
 
     @mock.patch.object(sheepdog.SheepdogClient, '_run_qemu_img')
     @mock.patch.object(sheepdog, 'LOG')
-    def test_export_failed_to_connect_to_host(self, fake_logger, fake_execute):
-        expected_path = 'dummy_path'
+    def test_convert_failed_to_connect(self, fake_logger, fake_execute):
+        src_path = 'src_path'
+        dst_path = 'dst_path'
         cmd = ('convert', '-f', 'raw', '-t', 'none', '-O', 'raw',
-               'sheepdog:%s' % self._vdiname, expected_path)
-        exit_code = 1
-        stdout = 'stdout_dummy'
-        stderr = self.test_data.QEMU_IMG_ERROR_FAIL_TO_CONNECT_HOST
-        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
-                                                         exit_code=exit_code,
-                                                         stdout=stdout,
-                                                         stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
-            cmd=cmd, exit_code=exit_code,
-            stdout=stdout.replace('\n', '\\n'),
-            stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError,
-                               self.client.export, self._vdiname,
-                               expected_path)
-        self.assertTrue(fake_logger.error.called)
-        self.assertEqual(expected_msg, ex.msg)
-
-    @mock.patch.object(sheepdog.SheepdogClient, '_run_qemu_img')
-    @mock.patch.object(sheepdog, 'LOG')
-    def test_export_failed_to_connect_to_port(self, fake_logger, fake_execute):
-        expected_path = 'dummy_path'
-        cmd = ('convert', '-f', 'raw', '-t', 'none', '-O', 'raw',
-               'sheepdog:%s' % self._vdiname, expected_path)
-        exit_code = 1
-        stdout = 'stdout_dummy'
-        stderr = self.test_data.QEMU_IMG_ERROR_FAIL_TO_CONNECT_PORT
-        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
-                                                         exit_code=exit_code,
-                                                         stdout=stdout,
-                                                         stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
-            cmd=cmd, exit_code=exit_code,
-            stdout=stdout.replace('\n', '\\n'),
-            stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError,
-                               self.client.export, self._vdiname,
-                               expected_path)
-        self.assertTrue(fake_logger.error.called)
-        self.assertEqual(expected_msg, ex.msg)
-
-    @mock.patch.object(sheepdog.SheepdogClient, '_run_qemu_img')
-    @mock.patch.object(sheepdog, 'LOG')
-    def test_export_failed_not_found_vdi(self, fake_logger, fake_execute):
-        expected_path = 'dummy_path'
-        cmd = ('convert', '-f', 'raw', '-t', 'none', '-O', 'raw',
-               'sheepdog:%s' % self._vdiname, expected_path)
-        exit_code = 1
-        stdout = 'stdout_dummy'
-        stderr = self.test_data.QEMU_IMG_ERROR_VDI_NOT_FOUND
-        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
-                                                         exit_code=exit_code,
-                                                         stdout=stdout,
-                                                         stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
-            cmd=cmd, exit_code=exit_code,
-            stdout=stdout.replace('\n', '\\n'),
-            stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError,
-                               self.client.export, self._vdiname,
-                               expected_path)
-        self.assertTrue(fake_logger.error.called)
-        self.assertEqual(expected_msg, ex.msg)
-
-    @mock.patch.object(sheepdog.SheepdogClient, '_run_qemu_img')
-    @mock.patch.object(sheepdog, 'LOG')
-    def test_export_failed_permission_denied(self, fake_logger, fake_execute):
-        expected_path = 'dummy_path'
-        cmd = ('convert', '-f', 'raw', '-t', 'none', '-O', 'raw',
-               'sheepdog:%s' % self._vdiname, expected_path)
-        exit_code = 1
-        stdout = 'stdout_dummy'
-        stderr = self.test_data.QEMU_IMG_ERROR_PERMISSION_DENIED
-        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
-                                                         exit_code=exit_code,
-                                                         stdout=stdout,
-                                                         stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
-            cmd=cmd, exit_code=exit_code,
-            stdout=stdout.replace('\n', '\\n'),
-            stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError,
-                               self.client.export, self._vdiname,
-                               expected_path)
-        self.assertTrue(fake_logger.error.called)
-        self.assertEqual(expected_msg, ex.msg)
-
-    @mock.patch.object(sheepdog.SheepdogClient, '_run_qemu_img')
-    @mock.patch.object(sheepdog, 'LOG')
-    def test_export_failed_invalid_format(self, fake_logger, fake_execute):
-        expected_path = 'dummy_path'
-        cmd = ('convert', '-f', 'raw', '-t', 'none', '-O', 'dummy',
-               'sheepdog:%s' % self._vdiname, expected_path)
-        exit_code = 1
-        stdout = 'stdout_dummy'
-        stderr = self.test_data.QEMU_IMG_ERROR_INVALID_FORMAT
-        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
-                                                         exit_code=exit_code,
-                                                         stdout=stdout,
-                                                         stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
-            cmd=cmd, exit_code=exit_code,
-            stdout=stdout.replace('\n', '\\n'),
-            stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError,
-                               self.client.export, self._vdiname,
-                               expected_path)
-        self.assertTrue(fake_logger.error.called)
-        self.assertEqual(expected_msg, ex.msg)
-
-    @mock.patch.object(sheepdog.SheepdogClient, '_run_qemu_img')
-    @mock.patch.object(sheepdog, 'LOG')
-    def test_export_failed_else(self, fake_logger, fake_execute):
-        expected_path = 'dummy_path'
-        cmd = ('convert', '-f', 'raw', '-t', 'none', '-O', 'raw',
-               'sheepdog:%s' % self._vdiname, expected_path)
-        exit_code = 1
-        stdout = 'stdout_dummy'
-        stderr = self.test_data.QEMU_IMG_ERROR
-        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
-                                                         exit_code=exit_code,
-                                                         stdout=stdout,
-                                                         stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
-            cmd=cmd, exit_code=exit_code,
-            stdout=stdout.replace('\n', '\\n'),
-            stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError,
-                               self.client.export, self._vdiname,
-                               expected_path)
-        self.assertTrue(fake_logger.error.called)
-        self.assertEqual(expected_msg, ex.msg)
-
-    @mock.patch.object(sheepdog.SheepdogClient, '_run_qemu_img')
-    def test_import_image_success(self, fake_execute):
-        expected_path = 'dummy_path'
-        expected_cmd = ('convert', '-f', 'raw', '-t', 'none', '-O', 'raw',
-                        expected_path, 'sheepdog:%s' % self._vdiname)
-        fake_execute.return_value = ('', '')
-        self.client.import_image(self._vdiname, expected_path)
-        fake_execute.assert_called_once_with(*expected_cmd)
-
-    @mock.patch.object(sheepdog.SheepdogClient, '_run_qemu_img')
-    @mock.patch.object(sheepdog, 'LOG')
-    def test_import_image_failed_to_connect(self, fake_logger, fake_execute):
-        expected_path = 'dummy_path'
-        cmd = ('convert', '-f', 'raw', '-t', 'none', '-O', 'raw',
-               expected_path, 'sheepdog:%s' % self._vdiname)
+               src_path, dst_path)
         exit_code = 1
         stdout = 'stdout_dummy'
         stderr = self.test_data.QEMU_IMG_FAILED_TO_CONNECT
@@ -1219,17 +1048,40 @@ class SheepdogClientTestCase(test.TestCase):
             stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
         ex = self.assertRaises(exception.SheepdogCmdError,
-                               self.client.import_image, self._vdiname,
-                               expected_path)
+                               self.client.convert, src_path, dst_path)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
 
     @mock.patch.object(sheepdog.SheepdogClient, '_run_qemu_img')
     @mock.patch.object(sheepdog, 'LOG')
-    def test_import_image_file_not_found(self, fake_logger, fake_execute):
-        expected_path = 'dummy_path'
+    def test_convert_vdi_not_found(self, fake_logger, fake_execute):
+        src_path = 'src_path'
+        dst_path = 'dst_path'
         cmd = ('convert', '-f', 'raw', '-t', 'none', '-O', 'raw',
-               expected_path, 'sheepdog:%s' % self._vdiname)
+               src_path, dst_path)
+        exit_code = 1
+        stdout = 'stdout_dummy'
+        stderr = self.test_data.QEMU_IMG_VDI_NOT_FOUND
+        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
+                                                         exit_code=exit_code,
+                                                         stdout=stdout,
+                                                         stderr=stderr)
+        fake_execute.side_effect = exception.SheepdogCmdError(
+            cmd=cmd, exit_code=exit_code,
+            stdout=stdout.replace('\n', '\\n'),
+            stderr=stderr.replace('\n', '\\n'))
+        ex = self.assertRaises(exception.SheepdogCmdError,
+                               self.client.convert, src_path, dst_path)
+        self.assertTrue(fake_logger.error.called)
+        self.assertEqual(expected_msg, ex.msg)
+
+    @mock.patch.object(sheepdog.SheepdogClient, '_run_qemu_img')
+    @mock.patch.object(sheepdog, 'LOG')
+    def test_convert_file_not_found(self, fake_logger, fake_execute):
+        src_path = 'src_path'
+        dst_path = 'dst_path'
+        cmd = ('convert', '-f', 'raw', '-t', 'none', '-O', 'raw',
+               src_path, dst_path)
         exit_code = 1
         stdout = 'stdout_dummy'
         stderr = self.test_data.QEMU_IMG_FILE_NOT_FOUND
@@ -1242,63 +1094,17 @@ class SheepdogClientTestCase(test.TestCase):
             stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
         ex = self.assertRaises(exception.SheepdogCmdError,
-                               self.client.import_image, self._vdiname,
-                               expected_path)
+                               self.client.convert, src_path, dst_path)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
 
     @mock.patch.object(sheepdog.SheepdogClient, '_run_qemu_img')
     @mock.patch.object(sheepdog, 'LOG')
-    def test_import_image_permission_denied(self, fake_logger, fake_execute):
-        expected_path = 'dummy_path'
+    def test_convert_vdi_already_exist(self, fake_logger, fake_execute):
+        src_path = 'src_path'
+        dst_path = 'dst_path'
         cmd = ('convert', '-f', 'raw', '-t', 'none', '-O', 'raw',
-               expected_path, 'sheepdog:%s' % self._vdiname)
-        exit_code = 1
-        stdout = 'stdout_dummy'
-        stderr = self.test_data.QEMU_IMG_PERMISSION_DENIED
-        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
-                                                         exit_code=exit_code,
-                                                         stdout=stdout,
-                                                         stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
-            cmd=cmd, exit_code=exit_code,
-            stdout=stdout.replace('\n', '\\n'),
-            stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError,
-                               self.client.import_image, self._vdiname,
-                               expected_path)
-        self.assertTrue(fake_logger.error.called)
-        self.assertEqual(expected_msg, ex.msg)
-
-    @mock.patch.object(sheepdog.SheepdogClient, '_run_qemu_img')
-    @mock.patch.object(sheepdog, 'LOG')
-    def test_import_image_invalid_format(self, fake_logger, fake_execute):
-        expected_path = 'dummy_path'
-        cmd = ('convert', '-f', 'dummy', '-t', 'none', '-O', 'raw',
-               expected_path, 'sheepdog:%s' % self._vdiname)
-        exit_code = 1
-        stdout = 'stdout_dummy'
-        stderr = self.test_data.QEMU_IMG_INVALID_DRIVER
-        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
-                                                         exit_code=exit_code,
-                                                         stdout=stdout,
-                                                         stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
-            cmd=cmd, exit_code=exit_code,
-            stdout=stdout.replace('\n', '\\n'),
-            stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError,
-                               self.client.import_image, self._vdiname,
-                               expected_path)
-        self.assertTrue(fake_logger.error.called)
-        self.assertEqual(expected_msg, ex.msg)
-
-    @mock.patch.object(sheepdog.SheepdogClient, '_run_qemu_img')
-    @mock.patch.object(sheepdog, 'LOG')
-    def test_import_image_already_exist(self, fake_logger, fake_execute):
-        expected_path = 'dummy_path'
-        cmd = ('convert', '-f', 'dummy', '-t', 'none', '-O', 'raw',
-               expected_path, 'sheepdog:%s' % self._vdiname)
+               src_path, dst_path)
         exit_code = 1
         stdout = 'stdout_dummy'
         stderr = self.test_data.QEMU_IMG_VDI_ALREADY_EXISTS
@@ -1311,19 +1117,20 @@ class SheepdogClientTestCase(test.TestCase):
             stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
         ex = self.assertRaises(exception.SheepdogCmdError,
-                               self.client.import_image, self._vdiname,
-                               expected_path)
+                               self.client.convert, src_path, dst_path)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
 
     @mock.patch.object(sheepdog.SheepdogClient, '_run_qemu_img')
     @mock.patch.object(sheepdog, 'LOG')
-    def test_import_image_failed_else(self, fake_logger, fake_execute):
-        cmd = ('convert', '-f', 'dummy', '-t', 'none', '-O', 'raw',
-               expected_path, 'sheepdog:%s' % self._vdiname)
+    def test_convert_permission_denied(self, fake_logger, fake_execute):
+        src_path = 'src_path'
+        dst_path = 'dst_path'
+        cmd = ('convert', '-f', 'raw', '-t', 'none', '-O', 'raw',
+               src_path, dst_path)
         exit_code = 1
         stdout = 'stdout_dummy'
-        stderr = self.test_data.QEMU_IMG_UNKNOWN_ERROR
+        stderr = self.test_data.QEMU_IMG_PERMISSION_DENIED
         expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
                                                          exit_code=exit_code,
                                                          stdout=stdout,
@@ -1333,9 +1140,76 @@ class SheepdogClientTestCase(test.TestCase):
             stdout=stdout.replace('\n', '\\n'),
             stderr=stderr.replace('\n', '\\n'))
         ex = self.assertRaises(exception.SheepdogCmdError,
-                               self.client.export, self._vdiname,
-                               self.client.import_image, self._vdiname,
-                               expected_path)
+                               self.client.convert, src_path, dst_path)
+        self.assertTrue(fake_logger.error.called)
+        self.assertEqual(expected_msg, ex.msg)
+
+    @mock.patch.object(sheepdog.SheepdogClient, '_run_qemu_img')
+    @mock.patch.object(sheepdog, 'LOG')
+    def test_convert_invalid_format(self, fake_logger, fake_execute):
+        src_path = 'src_path'
+        dst_path = 'dst_path'
+        cmd = ('convert', '-f', 'raw', '-t', 'none', '-O', 'raw',
+               src_path, dst_path)
+        exit_code = 1
+        stdout = 'stdout_dummy'
+        stderr = self.test_data.QEMU_IMG_ERROR_INVALID_FORMAT
+        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
+                                                         exit_code=exit_code,
+                                                         stdout=stdout,
+                                                         stderr=stderr)
+        fake_execute.side_effect = exception.SheepdogCmdError(
+            cmd=cmd, exit_code=exit_code,
+            stdout=stdout.replace('\n', '\\n'),
+            stderr=stderr.replace('\n', '\\n'))
+        ex = self.assertRaises(exception.SheepdogCmdError,
+                               self.client.convert, src_path, dst_path)
+        self.assertTrue(fake_logger.error.called)
+        self.assertEqual(expected_msg, ex.msg)
+
+    @mock.patch.object(sheepdog.SheepdogClient, '_run_qemu_img')
+    @mock.patch.object(sheepdog, 'LOG')
+    def test_convert_invalid_driver(self, fake_logger, fake_execute):
+        src_path = 'src_path'
+        dst_path = 'dst_path'
+        cmd = ('convert', '-f', 'raw', '-t', 'none', '-O', 'raw',
+               src_path, dst_path)
+        exit_code = 1
+        stdout = 'stdout_dummy'
+        stderr = self.test_data.QEMU_IMG_INVALID_DRIVER
+        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
+                                                         exit_code=exit_code,
+                                                         stdout=stdout,
+                                                         stderr=stderr)
+        fake_execute.side_effect = exception.SheepdogCmdError(
+            cmd=cmd, exit_code=exit_code,
+            stdout=stdout.replace('\n', '\\n'),
+            stderr=stderr.replace('\n', '\\n'))
+        ex = self.assertRaises(exception.SheepdogCmdError,
+                               self.client.convert, src_path, dst_path)
+        self.assertTrue(fake_logger.error.called)
+        self.assertEqual(expected_msg, ex.msg)
+
+    @mock.patch.object(sheepdog.SheepdogClient, '_run_qemu_img')
+    @mock.patch.object(sheepdog, 'LOG')
+    def test_convert_failed(self, fake_logger, fake_execute):
+        src_path = 'src_path'
+        dst_path = 'dst_path'
+        cmd = ('convert', '-f', 'raw', '-t', 'none', '-O', 'raw',
+               src_path, dst_path)
+        exit_code = 1
+        stdout = 'stdout_dummy'
+        stderr = 'stderr_dummy'
+        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
+                                                         exit_code=exit_code,
+                                                         stdout=stdout,
+                                                         stderr=stderr)
+        fake_execute.side_effect = exception.SheepdogCmdError(
+            cmd=cmd, exit_code=exit_code,
+            stdout=stdout.replace('\n', '\\n'),
+            stderr=stderr.replace('\n', '\\n'))
+        ex = self.assertRaises(exception.SheepdogCmdError,
+                               self.client.convert, src_path, dst_path)
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
 
@@ -1348,8 +1222,6 @@ class SheepdogClientTestCase(test.TestCase):
         image_meta = {'id': uuid, 'size': 1, 'disk_format': 'raw'}
         invalid_image_meta = {'id': uuid, 'size': 1, 'disk_format': 'iso'}
         stdout = self.test_data.IS_CLONEABLE_TRUE
-        fake_stdout_1 = ''
-        fake_stdout_2 = self.test_data.IS_CLONEABLE_FALSE
         stderr = ''
         expected_cmd = ('vdi', 'list', '-r', uuid)
 
@@ -1372,14 +1244,38 @@ class SheepdogClientTestCase(test.TestCase):
             self.client._is_cloneable(location, image_meta))
         self.assertTrue(fake_logger.debug.called)
 
-        fake_execute.return_value = (fake_stdout_1, stderr)
+    @mock.patch.object(sheepdog.SheepdogClient, '_parse_location')
+    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
+    @mock.patch.object(sheepdog, 'LOG')
+    def test_is_cloneable_volume_not_found(self, fake_logger,
+                                           fake_execute, fake_parse_loc):
+        uuid = 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'
+        location = 'sheepdog://%s' % uuid
+        image_meta = {'id': uuid, 'size': 1, 'disk_format': 'raw'}
+        stdout = ''
+        stderr = ''
+        expected_cmd = ('vdi', 'list', '-r', uuid)
+
+        fake_execute.return_value = (stdout, stderr)
         fake_parse_loc.return_value = uuid
         self.assertFalse(
             self.client._is_cloneable(location, image_meta))
         fake_execute.assert_called_once_with(*expected_cmd)
         self.assertTrue(fake_logger.debug.called)
 
-        fake_execute.return_value = (fake_stdout_2, stderr)
+    @mock.patch.object(sheepdog.SheepdogClient, '_parse_location')
+    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
+    @mock.patch.object(sheepdog, 'LOG')
+    def test_is_cloneable_volume_is_not_valid(self, fake_logger,
+                                              fake_execute, fake_parse_loc):
+        uuid = 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'
+        location = 'sheepdog://%s' % uuid
+        image_meta = {'id': uuid, 'size': 1, 'disk_format': 'raw'}
+        stdout = self.test_data.IS_CLONEABLE_FALSE
+        stderr = ''
+        expected_cmd = ('vdi', 'list', '-r', uuid)
+
+        fake_execute.return_value = (stdout, stderr)
         fake_parse_loc.return_value = uuid
         self.assertFalse(
             self.client._is_cloneable(location, image_meta))
@@ -1488,8 +1384,8 @@ class SheepdogDriverTestCase(test.TestCase):
     @mock.patch.object(image_utils, 'fetch_verify_image')
     @mock.patch.object(sheepdog.SheepdogClient, 'delete')
     @mock.patch.object(sheepdog.SheepdogClient, 'resize')
-    @mock.patch.object(sheepdog.SheepdogClient, 'import_image')
-    def test_copy_image_to_volume(self, fake_import_image, fake_resize,
+    @mock.patch.object(sheepdog.SheepdogClient, 'convert')
+    def test_copy_image_to_volume(self, fake_convert, fake_resize,
                                   fake_delete, fake_fetch_verify_image,
                                   fake_temp_file):
         fake_context = {}
@@ -1502,15 +1398,15 @@ class SheepdogDriverTestCase(test.TestCase):
                                          fake_image_service,
                                          fake_image_meta['id'])
         fake_delete.assert_called_once_with(fake_volume['name'])
-        fake_import_image.assert_called_once_with(fake_volume['name'],
-                                                  mock.ANY)
+        fake_convert.assert_called_once_with(
+            mock.ANY, 'sheepdog:%s' % fake_volume['name'])
         fake_resize.assert_called_once_with(fake_volume['name'],
                                             fake_volume['size'])
 
         # check resize failed.
         fake_delete.reset_mock()
         fake_resize.reset_mock()
-        fake_import_image.reset_mock()
+        fake_convert.reset_mock()
 
         fake_resize.side_effect = exception.SheepdogCmdError(
             cmd='dummy', exit_code=1, stdout='dummy', stderr='dummy')
@@ -1523,7 +1419,7 @@ class SheepdogDriverTestCase(test.TestCase):
 
     @mock.patch.object(fileutils, 'file_open')
     @mock.patch.object(image_utils, 'temporary_file')
-    @mock.patch.object(sheepdog.SheepdogClient, 'export')
+    @mock.patch.object(sheepdog.SheepdogClient, 'convert')
     def test_copy_volume_to_image(self, fake_execute,
                                   fake_temporary_file, fake_file_open):
         fake_context = {}
@@ -1536,10 +1432,10 @@ class SheepdogDriverTestCase(test.TestCase):
                                          image_service,
                                          fake_image_meta)
 
-        expected_cmd = (fake_volume['name'], mock.ANY)
+        expected_cmd = ('sheepdog:%s' % fake_volume['name'], mock.ANY)
         fake_execute.assert_called_once_with(*expected_cmd)
 
-    @mock.patch.object(sheepdog.SheepdogClient, 'export')
+    @mock.patch.object(sheepdog.SheepdogClient, 'convert')
     @mock.patch.object(sheepdog, 'LOG')
     def test_copy_volume_to_image_nonexistent_volume(self, fake_logger,
                                                      fake_execute):
@@ -1548,7 +1444,7 @@ class SheepdogDriverTestCase(test.TestCase):
             'name': 'nonexistent-volume-82c4539e-c2a5-11e4-a293-0aa186c60fe0'}
         fake_image_service = mock.Mock()
         fake_image_meta = {'id': '10958016-e196-42e3-9e7f-5d8927ae3099'}
-        cmd = (fake_volume['name'], mock.ANY)
+        cmd = ('sheepdog:%s' % fake_volume['name'], mock.ANY)
 
         fake_execute.side_effect = exception.SheepdogCmdError(
             cmd=cmd, exit_code=1, stdout='dummy', stderr='dummy')
@@ -1560,7 +1456,7 @@ class SheepdogDriverTestCase(test.TestCase):
         self.assertTrue(fake_logger.error.called)
 
     @mock.patch.object(fileutils, 'file_open')
-    @mock.patch.object(sheepdog.SheepdogClient, 'export')
+    @mock.patch.object(sheepdog.SheepdogClient, 'convert')
     @mock.patch.object(sheepdog, 'LOG')
     def test_copy_volume_to_image_update_failed(self, fake_logger,
                                                 fake_execute, fake_file_open):
@@ -1569,16 +1465,14 @@ class SheepdogDriverTestCase(test.TestCase):
         image_service = mock.Mock()
         fake_image_meta = {'id': '10958016-e196-42e3-9e7f-5d8927ae3099'}
 
-        with mock.patch.object(image_service, 'update') as fake_update:
-            fake_update.side_effect = exception.SheepdogCmdError(
-                cmd=mock.ANY, exit_code=1,
-                stdout='dummy', stderr='dummy')
+        image_service.update.side_effect = exception.SheepdogCmdError(
+            cmd=mock.ANY, exit_code=1, stdout='dummy', stderr='dummy')
 
-            self.assertRaises(exception.SheepdogCmdError,
-                              self.driver.copy_volume_to_image,
-                              fake_context, fake_volume,
-                              image_service, fake_image_meta)
-            self.assertTrue(fake_logger.error.called)
+        self.assertRaises(exception.SheepdogCmdError,
+                          self.driver.copy_volume_to_image,
+                          fake_context, fake_volume,
+                          image_service, fake_image_meta)
+        self.assertTrue(fake_logger.error.called)
 
     @mock.patch.object(sheepdog.SheepdogClient, 'create_snapshot')
     @mock.patch.object(sheepdog.SheepdogClient, 'clone')
@@ -1781,6 +1675,27 @@ class SheepdogDriverTestCase(test.TestCase):
                                                  self._snapname,
                                                  self._vdiname,
                                                  self._vdisize)
+
+    def test_local_path(self):
+        fake_vol = {'project_id': self.test_data.TEST_VOLUME['project_id'],
+                    'name': self.test_data.TEST_VOLUME['name'],
+                    'size': self.test_data.TEST_VOLUME['size'],
+                    'id': self.test_data.TEST_VOLUME['id']}
+        expected_path = 'sheepdog://%s' % fake_vol['name']
+
+        ret = self.driver.local_path(fake_vol)
+        self.assertEqual(ret, expected_path)
+
+    @mock.patch.object(sheepdog, 'LOG')
+    def test_local_path_failed(self, fake_logger):
+        fake_vol = {'project_id': self.test_data.TEST_VOLUME['project_id'],
+                    'name': '',
+                    'size': self.test_data.TEST_VOLUME['size'],
+                    'id': self.test_data.TEST_VOLUME['id']}
+
+        self.assertRaises(exception.SheepdogError,
+                          self.driver.local_path, fake_vol)
+        self.assertTrue(fake_logger.error.called)
 
     @mock.patch.object(sheepdog.SheepdogClient, 'resize')
     @mock.patch.object(sheepdog, 'LOG')

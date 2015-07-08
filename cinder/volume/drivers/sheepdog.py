@@ -61,17 +61,6 @@ CONF.register_opts(sheepdog_opts)
 
 class SheepdogClient(object):
     """Sheepdog command executor."""
-    QEMU_SHEEPDOG_PREFIX = 'sheepdog:'
-    QEMU_RESP_CONNECTION_ERROR_1 = \
-        'Failed to connect socket: No route to host\\n'
-    QEMU_RESP_CONNECTION_ERROR_2 = \
-        'Failed to connect socket: Connection refused\\n'
-    QEMU_RESP_SOURCE_VDI_NOT_FOUND = \
-        'No vdi found'
-    QEMU_RESP_TARGET_PERMISSION_DENIED = \
-        'Could not create file: Permission denied\\n'
-    QEMU_RESP_INVALID_FORMAT = \
-        'Unknown file format'
     DOG_RESP_CONNECTION_ERROR = 'failed to connect to'
     DOG_RESP_CLUSTER_RUNNING = 'Cluster status: running'
     DOG_RESP_CLUSTER_NOT_FORMATTED = ('Cluster status: '
@@ -85,6 +74,7 @@ class SheepdogClient(object):
     DOG_RESP_SNAPSHOT_VDI_NOT_FOUND = ': No VDI found'
     DOG_RESP_SNAPSHOT_NOT_FOUND = ': Failed to find requested tag'
     DOG_RESP_SNAPSHOT_EXISTED = 'tag (%(snapname)s) is existed'
+    QEMU_SHEEPDOG_PREFIX = 'sheepdog:'
     QEMU_IMG_RESP_CONNECTION_ERROR = ('Failed to connect socket: '
                                       'Connection refused')
     QEMU_IMG_RESP_ALREADY_EXISTS = ': VDI exists already'
@@ -94,6 +84,7 @@ class SheepdogClient(object):
     QEMU_IMG_RESP_FILE_NOT_FOUND = 'No such file or directory'
     QEMU_IMG_RESP_PERMISSION_DENIED = 'Permission denied'
     QEMU_IMG_RESP_INVALID_DRIVER = 'Unknown driver'
+    QEMU_IMG_RESP_INVALID_FORMAT = 'Unknown file format'
 
     def __init__(self, addr, port):
         self.addr = addr
@@ -323,51 +314,68 @@ class SheepdogClient(object):
                 elif stderr.startswith(self.DOG_RESP_VDI_SHRINK_NOT_SUPPORT):
                     LOG.error(_LE('Failed to resize vdi. '
                                   'shrinking vdi not supported. '
-                                  'vdi:%(vdiname)s new size:%(size)s'),
+                                  'vdi: %(vdiname)s new size: %(size)s'),
                               {'vdiname': vdiname, 'size': size})
                 elif stderr.startswith(self.DOG_RESP_VDI_SIZE_TOO_LARGE):
                     LOG.error(_LE('Failed to resize vdi. '
                                   'Too large volume size. '
-                                  'vdi:%(vdiname)s new size:%(size)s'),
+                                  'vdi: %(vdiname)s new size: %(size)s'),
                               {'vdiname': vdiname, 'size': size})
                 else:
                     LOG.error(_LE('Failed to resize vdi. '
-                                  'vdi:%(vdiname)s new size:%(size)s'),
+                                  'vdi: %(vdiname)s new size: %(size)s'),
                               {'vdiname': vdiname, 'size': size})
 
-    def export(self, vdiname, dst_path, dst_format='raw'):
-        params = ('-f', 'raw', '-t', 'none', '-O', dst_format,
-                  'sheepdog:%s' % vdiname, dst_path)
+    def convert(self, src_path, dst_path, src_fmt='raw', dst_fmt='raw'):
+        params = ('-f', src_fmt, '-t', 'none', '-O', dst_fmt,
+                  src_path, dst_path)
         try:
             (stdout, stderr) = self._run_qemu_img('convert', *params)
         except exception.SheepdogCmdError as e:
             stderr = e.kwargs['stderr']
             with excutils.save_and_reraise_exception():
-                if stderr.endswith(self.QEMU_RESP_CONNECTION_ERROR_1):
-                    LOG.error(_LE('Failed to connect addr. '
-                              'addr: %(addr)s, port: %(port)s'),
+                if self.QEMU_IMG_RESP_CONNECTION_ERROR in stderr:
+                    LOG.error(_LE('Failed to connect to sheep daemon.'
+                                  ' addr: %(addr)s, port: %(port)s'),
                               {'addr': self.addr, 'port': self.port})
-                elif stderr.endswith(self.QEMU_RESP_CONNECTION_ERROR_2):
-                    LOG.error(_LE('Failed to connect socket. '
-                              'addr: %(addr)s, port: %(port)s'),
-                              {'addr': self.addr, 'port': self.port})
-                elif self.QEMU_RESP_SOURCE_VDI_NOT_FOUND in stderr:
-                    LOG.error(_LE('source vdi:%s not found'), vdiname)
-                elif stderr.endswith(self.QEMU_RESP_TARGET_PERMISSION_DENIED):
-                    LOG.error(_LE('Failed to export %(vdiname) to %(path). '
-                              'permission denied.'),
-                              {'vdiname': vdiname, 'path': dst_path})
-                elif self.QEMU_RESP_INVALID_FORMAT in stderr:
-                    LOG.error(_LE('Failed to export %(vdiname) to %(path). '
-                              '%(format) is not supported.'),
-                              {'vdiname': vdiname, 'path': dst_path,
-                               'format': dst_format})
+                elif self.QEMU_IMG_RESP_VDI_NOT_FOUND in stderr:
+                    LOG.error(_LE('Convert failed. VDI not found'
+                                  ' source path: %(src_path)s '
+                                  ' destination path: %(dst_path)s'),
+                              {'src_path': src_path, 'dst_path': dst_path})
+                elif self.QEMU_IMG_RESP_ALREADY_EXISTS in stderr:
+                    LOG.error(_LE('VDI already exists.'
+                                  ' source path: %(src_path)s '
+                                  ' destination path: %(dst_path)s'),
+                              {'src_path': src_path, 'dst_path': dst_path})
+                elif self.QEMU_IMG_RESP_FILE_NOT_FOUND in stderr:
+                    LOG.error(_LE('Convert failed. File not found'
+                                  ' source path: %(src_path)s '
+                                  ' destination path: %(dst_path)s'),
+                              {'src_path': src_path, 'dst_path': dst_path})
+                elif self.QEMU_IMG_RESP_PERMISSION_DENIED in stderr:
+                    LOG.error(_LE('Convert failed. Permission denied.'
+                                  ' source path: %(src_path)s '
+                                  ' destination path: %(dst_path)s'),
+                              {'src_path': src_path, 'dst_path': dst_path})
+                elif self.QEMU_IMG_RESP_INVALID_FORMAT in stderr:
+                    LOG.error(_LE('Convert failed. Not supported format.'
+                                  ' source format %(src_format)s'
+                                  ' destination format %(dst_format)s'),
+                              {'src_format': src_fmt, 'dst_format': dst_fmt})
+                elif self.QEMU_IMG_RESP_INVALID_DRIVER in stderr:
+                    LOG.error(_LE('Convert failed. Not supported driver used.'
+                                  ' source format %(src_format)s'
+                                  ' destination format %(dst_format)s'),
+                              {'src_format': src_fmt, 'dst_format': dst_fmt})
                 else:
-                    LOG.error(_LE('Failed to export vdi. '
-                                  'vdi:%(vdiname)s target_path:%(path)s '
-                                  'format:%(format)'),
-                              {'vdiname': vdiname, 'path': dst_path,
-                               'format': dst_format})
+                    LOG.error(_LE('Convert failed. '
+                                  ' source path: %(src_path)s '
+                                  ' destination path: %(dst_path)s'
+                                  ' source format %(src_format)s'
+                                  ' destination format %(dst_format)s'),
+                              {'src_path': src_path, 'dst_path': dst_path,
+                               'src_fmt': src_fmt, 'sdt_fmt': dst_fmt})
 
     def _is_cloneable(self, image_location, image_meta):
         """Check the image can be clone or not."""
@@ -418,41 +426,6 @@ class SheepdogClient(object):
             raise exception.ImageUnacceptable(image_id=location, reason=reason)
 
         return pieces[0]
-
-    def import_image(self, vdiname, src_path, src_format='raw'):
-        params = ('-f', src_format, '-t', 'none', '-O', 'raw',
-                  src_path, 'sheepdog:%s' % vdiname)
-        try:
-            (stdout, stderr) = self._run_qemu_img('convert', *params)
-        except exception.SheepdogCmdError as e:
-            stderr = e.kwargs['stderr']
-            with excutils.save_and_reraise_exception():
-                if self.QEMU_IMG_RESP_CONNECTION_ERROR in stderr:
-                    LOG.error(_LE('Failed to connect to sheep daemon. '
-                                  'addr: %(addr)s, port: %(port)s'),
-                              {'addr': self.addr, 'port': self.port})
-                elif self.QEMU_IMG_RESP_FILE_NOT_FOUND in stderr:
-                    LOG.error(_LE('Image file :%s not found'),
-                              src_path)
-                elif self.QEMU_IMG_RESP_PERMISSION_DENIED in stderr:
-                    LOG.error(_LE('Failed to import %(vdiname)s from '
-                              '%(path)s. permission denied.'),
-                              {'vdiname': vdiname, 'path': src_path})
-                elif self.QEMU_IMG_RESP_INVALID_DRIVER in stderr:
-                    LOG.error(_LE('Failed to import %(vdiname)s from '
-                              '%(path)s. driver %(format)s is not supported.'),
-                              {'vdiname': vdiname, 'path': src_path,
-                               'format': src_format})
-                elif self.QEMU_IMG_RESP_ALREADY_EXISTS in stderr:
-                    LOG.error(_LE('import volume "%s" already exists. '
-                              'Please check the results of "dog vdi list".'),
-                              vdiname)
-                else:
-                    LOG.error(_LE('Failed to import. '
-                                  'vdi:%(vdiname)s source_path:%(path)s '
-                                  'format:%(format)'),
-                              {'vdiname': vdiname, 'path': src_path,
-                               'format': src_format})
 
 
 class SheepdogIOWrapper(io.RawIOBase):
@@ -619,6 +592,7 @@ class SheepdogDriver(driver.VolumeDriver):
         self.client.delete(volume['name'])
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
+        """Copy specified image to the volume."""
         # this function called by only flows/manager.py
         # when mage source can't clone directly.
         with image_utils.temporary_file() as tmp:
@@ -630,7 +604,7 @@ class SheepdogDriver(driver.VolumeDriver):
             # see volume/drivers/manager.py:_create_volume
             self.client.delete(volume['name'])
             # convert and store into sheepdog
-            self.client.import_image(volume['name'], tmp)
+            self.client.convert(tmp, 'sheepdog:%s' % volume['name'])
             try:
                 self.client.resize(volume['name'], volume['size'])
             except Exception:
@@ -638,17 +612,17 @@ class SheepdogDriver(driver.VolumeDriver):
                     self.client.delete(volume['name'])
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
-        """Copy the volume to the specified image."""
+        """Copy the volume to specified image."""
         image_id = image_meta['id']
         try:
             with image_utils.temporary_file() as tmp:
-                self.client.export(volume['name'], tmp)
-            with fileutils.file_open(tmp, 'rb') as image_file:
-                image_service.update(context, image_id, {}, image_file)
+                self.client.convert('sheepdog:%s' % volume['name'], tmp)
+                with fileutils.file_open(tmp, 'rb') as image_file:
+                    image_service.update(context, image_id, {}, image_file)
         except Exception:
             with excutils.save_and_reraise_exception():
                 msg = _LE('Failed to copy volume: %(vdiname)s to '
-                          'image : %(path)s.')
+                          'image: %(path)s.')
                 LOG.error(msg, {'vdiname': volume['name'], 'path': tmp})
 
     def create_snapshot(self, snapshot):
@@ -660,6 +634,7 @@ class SheepdogDriver(driver.VolumeDriver):
         self.client.delete_snapshot(snapshot['volume_name'], snapshot['name'])
 
     def local_path(self, volume):
+        """Get volume path."""
         if volume['name'] == '':
             reason = _('blank volume is not allowed')
             LOG.error(reason)
