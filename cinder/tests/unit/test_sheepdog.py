@@ -1299,8 +1299,6 @@ class SheepdogClientTestCase(test.TestCase):
         image_meta = {'id': uuid, 'size': 1, 'disk_format': 'raw'}
         invalid_image_meta = {'id': uuid, 'size': 1, 'disk_format': 'iso'}
         stdout = self.test_data.IS_CLONEABLE_TRUE
-        fake_stdout_1 = ''
-        fake_stdout_2 = self.test_data.IS_CLONEABLE_FALSE
         stderr = ''
         expected_cmd = ('vdi', 'list', '-r', uuid)
 
@@ -1323,14 +1321,40 @@ class SheepdogClientTestCase(test.TestCase):
             self.client._is_cloneable(location, image_meta))
         self.assertTrue(fake_logger.debug.called)
 
-        fake_execute.return_value = (fake_stdout_1, stderr)
+    @mock.patch.object(sheepdog.SheepdogClient, '_parse_location')
+    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
+    @mock.patch.object(sheepdog, 'LOG')
+    def test_is_cloneable_volume_not_found(self, fake_logger,
+                                           fake_execute, fake_parse_loc):
+        uuid = 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'
+        location = 'sheepdog://%s' % uuid
+        image_meta = {'id': uuid, 'size': 1, 'disk_format': 'raw'}
+        invalid_image_meta = {'id': uuid, 'size': 1, 'disk_format': 'iso'}
+        stdout = ''
+        stderr = ''
+        expected_cmd = ('vdi', 'list', '-r', uuid)
+
+        fake_execute.return_value = (stdout, stderr)
         fake_parse_loc.return_value = uuid
         self.assertFalse(
             self.client._is_cloneable(location, image_meta))
         fake_execute.assert_called_once_with(*expected_cmd)
         self.assertTrue(fake_logger.debug.called)
 
-        fake_execute.return_value = (fake_stdout_2, stderr)
+    @mock.patch.object(sheepdog.SheepdogClient, '_parse_location')
+    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
+    @mock.patch.object(sheepdog, 'LOG')
+    def test_is_cloneable_volume_is_not_valid(self, fake_logger,
+                                              fake_execute, fake_parse_loc):
+        uuid = 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'
+        location = 'sheepdog://%s' % uuid
+        image_meta = {'id': uuid, 'size': 1, 'disk_format': 'raw'}
+        invalid_image_meta = {'id': uuid, 'size': 1, 'disk_format': 'iso'}
+        stdout = self.test_data.IS_CLONEABLE_FALSE
+        stderr = ''
+        expected_cmd = ('vdi', 'list', '-r', uuid)
+
+        fake_execute.return_value = (stdout, stderr)
         fake_parse_loc.return_value = uuid
         self.assertFalse(
             self.client._is_cloneable(location, image_meta))
