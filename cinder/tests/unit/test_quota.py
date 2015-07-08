@@ -181,10 +181,12 @@ class QuotaIntegrationTestCase(test.TestCase):
         volume_ids = []
         vol_ref = self._create_volume(size=20)
         volume_ids.append(vol_ref['id'])
-        self.assertRaises(exception.VolumeSizeExceedsAvailableQuota,
-                          volume.API().create,
-                          self.context, 1, '', '',
-                          volume_type=self.volume_type)
+        raised_exc = self.assertRaises(
+            exception.VolumeSizeExceedsAvailableQuota, volume.API().create,
+            self.context, 1, '', '', volume_type=self.volume_type)
+        expected = exception.VolumeSizeExceedsAvailableQuota(
+            requested=1, quota=20, consumed=20)
+        self.assertEqual(str(expected), str(raised_exc))
         for volume_id in volume_ids:
             db.volume_destroy(self.context, volume_id)
 
@@ -280,10 +282,12 @@ class QuotaIntegrationTestCase(test.TestCase):
         }
         self.flags(**flag_args)
         vol_ref = self._create_volume(size=10)
-        self.assertRaises(exception.VolumeSizeExceedsAvailableQuota,
-                          volume.API().create,
-                          self.context, 1, '', '',
-                          volume_type=self.volume_type)
+        raised_exc = self.assertRaises(
+            exception.VolumeSizeExceedsAvailableQuota, volume.API().create,
+            self.context, 1, '', '', volume_type=self.volume_type)
+        expected = exception.VolumeSizeExceedsAvailableQuota(
+            requested=1, quota=10, consumed=10, name=resource)
+        self.assertEqual(str(expected), str(raised_exc))
         db.volume_destroy(self.context, vol_ref['id'])
 
 

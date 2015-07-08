@@ -540,25 +540,27 @@ class QuotaReserveTask(flow_utils.CinderTask):
             def _consumed(name):
                 return usages[name]['reserved'] + usages[name]['in_use']
 
-            def _is_over(name):
+            def _get_over(name):
                 for over in overs:
                     if name in over:
-                        return True
-                return False
+                        return over
+                return None
 
-            if _is_over('gigabytes'):
+            over_name = _get_over('gigabytes')
+            if over_name:
                 msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
                           "%(s_size)sG volume (%(d_consumed)dG "
                           "of %(d_quota)dG already consumed)")
                 LOG.warning(msg, {'s_pid': context.project_id,
                                   's_size': size,
-                                  'd_consumed': _consumed('gigabytes'),
-                                  'd_quota': quotas['gigabytes']})
+                                  'd_consumed': _consumed(over_name),
+                                  'd_quota': quotas[over_name]})
                 raise exception.VolumeSizeExceedsAvailableQuota(
+                    name=over_name,
                     requested=size,
-                    consumed=_consumed('gigabytes'),
-                    quota=quotas['gigabytes'])
-            elif _is_over('volumes'):
+                    consumed=_consumed(over_name),
+                    quota=quotas[over_name])
+            elif _get_over('volumes'):
                 msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
                           "volume (%(d_consumed)d volumes "
                           "already consumed)")
