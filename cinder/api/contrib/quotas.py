@@ -76,8 +76,9 @@ class QuotaSetsController(wsgi.Controller):
 
         return limit
 
-    def _get_quotas(self, context, id, usages=False):
-        values = QUOTAS.get_project_quotas(context, id, usages=usages)
+    def _get_quotas(self, context, id, usages=False, parent_project_id=None):
+        values = QUOTAS.get_project_quotas(context, id, usages=usages,
+                                           parent_project_id=parent_project_id)
 
         if usages:
             return values
@@ -150,7 +151,10 @@ class QuotaSetsController(wsgi.Controller):
     def defaults(self, req, id):
         context = req.environ['cinder.context']
         authorize_show(context)
-        return self._format_quota_set(id, QUOTAS.get_defaults(context))
+        return self._format_quota_set(id,
+                                      QUOTAS.get_defaults(context,
+                                                          parent_project_id=
+                                                          None))
 
     @wsgi.serializers(xml=QuotaTemplate)
     def delete(self, req, id):
