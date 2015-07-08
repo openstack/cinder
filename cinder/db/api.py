@@ -1032,3 +1032,39 @@ def driver_initiator_data_update(context, initiator, namespace, updates):
 def driver_initiator_data_get(context, initiator, namespace):
     """Query for an DriverPrivateData that has the specified key"""
     return IMPL.driver_initiator_data_get(context, initiator, namespace)
+
+
+###################
+
+
+def image_volume_cache_create(context, host, image_id, image_updated_at,
+                              volume_id, size):
+    """Create a new image volume cache entry."""
+    return IMPL.image_volume_cache_create(context,
+                                          host,
+                                          image_id,
+                                          image_updated_at,
+                                          volume_id,
+                                          size)
+
+
+def image_volume_cache_delete(context, volume_id):
+    """Delete an image volume cache entry specified by volume id."""
+    return IMPL.image_volume_cache_delete(context, volume_id)
+
+
+def image_volume_cache_get_and_update_last_used(context, image_id, host):
+    """Query for an image volume cache entry."""
+    return IMPL.image_volume_cache_get_and_update_last_used(context,
+                                                            image_id,
+                                                            host)
+
+
+def image_volume_cache_get_by_volume_id(context, volume_id):
+    """Query to see if a volume id is an image-volume contained in the cache"""
+    return IMPL.image_volume_cache_get_by_volume_id(context, volume_id)
+
+
+def image_volume_cache_get_all_for_host(context, host):
+    """Query for all image volume cache entry for a host."""
+    return IMPL.image_volume_cache_get_all_for_host(context, host)

@@ -31,6 +31,7 @@ from cinder.image import image_utils
 from cinder import test
 from cinder.tests.unit.image import fake as fake_image
 from cinder.tests.unit import test_volume
+from cinder.tests.unit import utils
 from cinder.volume import configuration as conf
 import cinder.volume.drivers.rbd as driver
 from cinder.volume.flows.manager import create_volume
@@ -1145,13 +1146,15 @@ class ManagedRBDTestCase(test_volume.DriverTestCase):
                 self.assertTrue(mock_clone_image.called)
                 self.assertFalse(mock_create.called)
 
-    def test_create_vol_from_non_raw_image_status_available(self):
+    @mock.patch('cinder.image.image_utils.TemporaryImages.fetch')
+    def test_create_vol_from_non_raw_image_status_available(self, mock_fetch):
         """Clone non-raw image then verify volume is in available state."""
 
         def _mock_clone_image(context, volume, image_location,
                               image_meta, image_service):
             return {'provider_location': None}, False
 
+        mock_fetch.return_value = mock.MagicMock(spec=utils.get_file_spec())
         with mock.patch.object(self.volume.driver, 'clone_image') as \
                 mock_clone_image:
             mock_clone_image.side_effect = _mock_clone_image

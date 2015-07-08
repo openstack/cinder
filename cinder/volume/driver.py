@@ -249,6 +249,17 @@ volume_opts = [
                      'upload-to-image will be placed in the internal tenant. '
                      'Otherwise, the image volume is created in the current '
                      'context\'s tenant.'),
+    cfg.BoolOpt('image_volume_cache_enabled',
+                default=False,
+                help='Enable the image volume cache for this backend.'),
+    cfg.IntOpt('image_volume_cache_max_size_gb',
+               default=0,
+               help='Max size of the image volume cache for this backend in '
+                    'GB. 0 => unlimited.'),
+    cfg.IntOpt('image_volume_cache_max_count',
+               default=0,
+               help='Max number of entries allowed in the image volume cache. '
+                    '0 => unlimited.'),
 ]
 
 # for backward compatibility

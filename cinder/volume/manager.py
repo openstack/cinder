@@ -58,11 +58,13 @@ from cinder import context
 from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _, _LE, _LI, _LW
+from cinder.image import cache as image_cache
 from cinder.image import glance
 from cinder import manager
 from cinder import objects
 from cinder import quota
 from cinder import utils
+from cinder import volume as cinder_volume
 from cinder.volume import configuration as config
 from cinder.volume.flows.manager import create_volume
 from cinder.volume.flows.manager import manage_existing
@@ -233,6 +235,30 @@ class VolumeManager(manager.SchedulerDependentManager):
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE("Invalid JSON: %s"),
                           self.driver.configuration.extra_capabilities)
+
+        if self.driver.configuration.safe_get(
+                'image_volume_cache_enabled'):
+
+            max_cache_size = self.driver.configuration.safe_get(
+                'image_volume_cache_max_size_gb')
+            max_cache_entries = self.driver.configuration.safe_get(
+                'image_volume_cache_max_count')
+
+            self.image_volume_cache = image_cache.ImageVolumeCache(
+                self.db,
+                cinder_volume.API(),
+                max_cache_size,
+                max_cache_entries
+            )
+            LOG.info(_LI('Image-volume cache enabled for host %(host)s'),
+                     {'host': self.host})
+        else:
+            LOG.info(_LI('Image-volume cache disabled for host %(host)s'),
+                     {'host': self.host})
+            self.image_volume_cache = None
+
+    def _add_to_threadpool(self, func, *args, **kwargs):
+        self._tp.spawn_n(func, *args, **kwargs)
 
     def _count_allocated_capacity(self, ctxt, volume):
         pool = vol_utils.extract_host(volume['host'], 'pool')
@@ -446,6 +472,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             # verified by the task itself.
             flow_engine = create_volume.get_flow(
                 context_elevated,
+                self,
                 self.db,
                 self.driver,
                 self.scheduler_rpcapi,
@@ -454,7 +481,9 @@ class VolumeManager(manager.SchedulerDependentManager):
                 allow_reschedule,
                 context,
                 request_spec,
-                filter_properties)
+                filter_properties,
+                image_volume_cache=self.image_volume_cache,
+            )
         except Exception:
             msg = _("Create manager volume flow failed.")
             LOG.exception(msg, resource={'type': 'volume', 'id': volume_id})
@@ -974,6 +1003,46 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         self._notify_about_volume_usage(context, volume, "detach.end")
         LOG.info(_LI("Detach volume completed successfully."), resource=volume)
+
+    def _create_image_cache_volume_entry(self, ctx, volume_ref,
+                                         image_id, image_meta):
+        """Create a new image-volume and cache entry for it.
+
+        This assumes that the image has already been downloaded and stored
+        in the volume described by the volume_ref.
+        """
+        image_volume = None
+        try:
+            if not self.image_volume_cache.ensure_space(
+                    ctx,
+                    volume_ref['size'],
+                    volume_ref['host']):
+                LOG.warning(_LW('Unable to ensure space for image-volume in'
+                                ' cache. Will skip creating entry for image'
+                                ' %(image)s on host %(host)s.'),
+                            {'image': image_id, 'host': volume_ref['host']})
+                return
+
+            image_volume = self._clone_image_volume(ctx,
+                                                    volume_ref,
+                                                    image_meta)
+            if not image_volume:
+                LOG.warning(_LW('Unable to clone image_volume for image '
+                                '%(image_id) will not create cache entry.'),
+                            {'image_id': image_id})
+                return
+
+            self.image_volume_cache.create_cache_entry(
+                ctx,
+                image_volume,
+                image_id,
+                image_meta
+            )
+        except exception.CinderException as e:
+            LOG.warning(_LW('Failed to create new image-volume cache entry'
+                            ' Error: %(exception)s'), {'exception': e})
+            if image_volume:
+                self.delete_volume(ctx, image_volume.id)
 
     def _clone_image_volume(self, ctx, volume, image_meta):
         volume_type_id = volume.get('volume_type_id')

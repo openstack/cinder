@@ -3505,9 +3505,11 @@ class VolumeTestCase(BaseVolumeTestCase):
                           self.context,
                           volume_id)
 
+    @mock.patch('cinder.image.image_utils.TemporaryImages.fetch')
     @mock.patch('cinder.volume.flows.manager.create_volume.'
                 'CreateVolumeFromSpecTask._clone_image_volume')
     def _create_volume_from_image(self, mock_clone_image_volume,
+                                  mock_fetch_img,
                                   fakeout_copy_image_to_volume=False,
                                   fakeout_clone_image=False,
                                   clone_image_volume=False):
@@ -3543,6 +3545,8 @@ class VolumeTestCase(BaseVolumeTestCase):
             self.stubs.Set(self.volume, '_copy_image_to_volume',
                            fake_copy_image_to_volume)
         mock_clone_image_volume.return_value = ({}, clone_image_volume)
+        mock_fetch_img.return_value = mock.MagicMock(
+            spec=tests_utils.get_file_spec())
 
         image_id = 'c905cedb-7281-47e4-8a62-f26bc5fc4c77'
         volume_id = tests_utils.create_volume(self.context,
@@ -7356,3 +7360,61 @@ class VolumePolicyTestCase(test.TestCase):
         cinder.policy.enforce(self.context, 'volume:attach', target)
         self.mox.ReplayAll()
         cinder.volume.api.check_policy(self.context, 'attach', {'id': 2})
+
+
+class ImageVolumeCacheTestCase(BaseVolumeTestCase):
+
+    def setUp(self):
+        super(ImageVolumeCacheTestCase, self).setUp()
+        self.volume.driver.set_initialized()
+
+    @mock.patch('oslo_utils.importutils.import_object')
+    def test_cache_configs(self, mock_import_object):
+        opts = {
+            'image_volume_cache_enabled': True,
+            'image_volume_cache_max_size_gb': 100,
+            'image_volume_cache_max_count': 20
+        }
+
+        def conf_get(option):
+            if option in opts:
+                return opts[option]
+            else:
+                return None
+
+        mock_driver = mock.Mock()
+        mock_driver.configuration.safe_get.side_effect = conf_get
+        mock_driver.configuration.extra_capabilities = 'null'
+
+        def import_obj(*args, **kwargs):
+            return mock_driver
+
+        mock_import_object.side_effect = import_obj
+
+        manager = vol_manager.VolumeManager(volume_driver=mock_driver)
+        self.assertIsNotNone(manager)
+        self.assertIsNotNone(manager.image_volume_cache)
+        self.assertEqual(100, manager.image_volume_cache.max_cache_size_gb)
+        self.assertEqual(20, manager.image_volume_cache.max_cache_size_count)
+
+    def test_delete_image_volume(self):
+        volume_params = {
+            'status': 'creating',
+            'host': 'some_host',
+            'size': 1
+        }
+        volume_api = cinder.volume.api.API()
+        volume = tests_utils.create_volume(self.context, **volume_params)
+        volume = db.volume_update(self.context, volume['id'],
+                                  {'status': 'available'})
+        image_id = '70a599e0-31e7-49b7-b260-868f441e862b'
+        db.image_volume_cache_create(self.context,
+                                     volume['host'],
+                                     image_id,
+                                     datetime.datetime.utcnow(),
+                                     volume['id'],
+                                     volume['size'])
+        volume_api.delete(self.context, volume)
+        entry = db.image_volume_cache_get_by_volume_id(self.context,
+                                                       volume['id'])
+        self.assertIsNone(entry)

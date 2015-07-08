@@ -2067,3 +2067,140 @@ class DBAPIDriverInitiatorDataTestCase(BaseTest):
         update = {'remove_values': ['key_that_doesnt_exist']}
         db.driver_initiator_data_update(self.ctxt, self.initiator,
                                         self.namespace, update)
+
+
+class DBAPIImageVolumeCacheEntryTestCase(BaseTest):
+
+    def _validate_entry(self, entry, host, image_id, image_updated_at,
+                        volume_id, size):
+        self.assertIsNotNone(entry)
+        self.assertIsNotNone(entry['id'])
+        self.assertEqual(host, entry['host'])
+        self.assertEqual(image_id, entry['image_id'])
+        self.assertEqual(image_updated_at, entry['image_updated_at'])
+        self.assertEqual(volume_id, entry['volume_id'])
+        self.assertEqual(size, entry['size'])
+        self.assertIsNotNone(entry['last_used'])
+
+    def test_create_delete_query_cache_entry(self):
+        host = 'abc@123#poolz'
+        image_id = 'c06764d7-54b0-4471-acce-62e79452a38b'
+        image_updated_at = datetime.datetime.utcnow()
+        volume_id = 'e0e4f819-24bb-49e6-af1e-67fb77fc07d1'
+        size = 6
+
+        entry = db.image_volume_cache_create(self.ctxt, host, image_id,
+                                             image_updated_at, volume_id, size)
+        self._validate_entry(entry, host, image_id, image_updated_at,
+                             volume_id, size)
+
+        entry = db.image_volume_cache_get_and_update_last_used(self.ctxt,
+                                                               image_id,
+                                                               host)
+        self._validate_entry(entry, host, image_id, image_updated_at,
+                             volume_id, size)
+
+        entry = db.image_volume_cache_get_by_volume_id(self.ctxt, volume_id)
+        self._validate_entry(entry, host, image_id, image_updated_at,
+                             volume_id, size)
+
+        db.image_volume_cache_delete(self.ctxt, entry['volume_id'])
+
+        entry = db.image_volume_cache_get_and_update_last_used(self.ctxt,
+                                                               image_id,
+                                                               host)
+        self.assertIsNone(entry)
+
+    def test_cache_entry_get_multiple(self):
+        host = 'abc@123#poolz'
+        image_id = 'c06764d7-54b0-4471-acce-62e79452a38b'
+        image_updated_at = datetime.datetime.utcnow()
+        volume_id = 'e0e4f819-24bb-49e6-af1e-67fb77fc07d1'
+        size = 6
+
+        entries = []
+        for i in range(0, 3):
+            entries.append(db.image_volume_cache_create(self.ctxt,
+                                                        host,
+                                                        image_id,
+                                                        image_updated_at,
+                                                        volume_id,
+                                                        size))
+        # It is considered OK for the cache to have multiple of the same
+        # entries. Expect only a single one from the query.
+        entry = db.image_volume_cache_get_and_update_last_used(self.ctxt,
+                                                               image_id,
+                                                               host)
+        self._validate_entry(entry, host, image_id, image_updated_at,
+                             volume_id, size)
+
+        # We expect to get the same one on subsequent queries due to the
+        # last_used field being updated each time and ordering by it.
+        entry_id = entry['id']
+        entry = db.image_volume_cache_get_and_update_last_used(self.ctxt,
+                                                               image_id,
+                                                               host)
+        self._validate_entry(entry, host, image_id, image_updated_at,
+                             volume_id, size)
+        self.assertEqual(entry_id, entry['id'])
+
+        # Cleanup
+        for entry in entries:
+            db.image_volume_cache_delete(self.ctxt, entry['volume_id'])
+
+    def test_cache_entry_get_none(self):
+        host = 'abc@123#poolz'
+        image_id = 'c06764d7-54b0-4471-acce-62e79452a38b'
+        entry = db.image_volume_cache_get_and_update_last_used(self.ctxt,
+                                                               image_id,
+                                                               host)
+        self.assertIsNone(entry)
+
+    def test_cache_entry_get_by_volume_id_none(self):
+        volume_id = 'e0e4f819-24bb-49e6-af1e-67fb77fc07d1'
+        entry = db.image_volume_cache_get_by_volume_id(self.ctxt, volume_id)
+        self.assertIsNone(entry)
+
+    def test_cache_entry_get_all_for_host(self):
+        host = 'abc@123#poolz'
+        image_updated_at = datetime.datetime.utcnow()
+        size = 6
+
+        entries = []
+        for i in range(0, 3):
+            entries.append(db.image_volume_cache_create(self.ctxt,
+                                                        host,
+                                                        'image-' + str(i),
+                                                        image_updated_at,
+                                                        'vol-' + str(i),
+                                                        size))
+
+        other_entry = db.image_volume_cache_create(self.ctxt,
+                                                   'someOtherHost',
+                                                   'image-12345',
+                                                   image_updated_at,
+                                                   'vol-1234',
+                                                   size)
+
+        found_entries = db.image_volume_cache_get_all_for_host(self.ctxt, host)
+        self.assertIsNotNone(found_entries)
+        self.assertEqual(len(entries), len(found_entries))
+        for found_entry in found_entries:
+            for entry in entries:
+                if found_entry['id'] == entry['id']:
+                    self._validate_entry(found_entry,
+                                         entry['host'],
+                                         entry['image_id'],
+                                         entry['image_updated_at'],
+                                         entry['volume_id'],
+                                         entry['size'])
+
+        # Cleanup
+        db.image_volume_cache_delete(self.ctxt, other_entry['volume_id'])
+        for entry in entries:
+            db.image_volume_cache_delete(self.ctxt, entry['volume_id'])
+
+    def test_cache_entry_get_all_for_host_none(self):
+        host = 'abc@123#poolz'
+        entries = db.image_volume_cache_get_all_for_host(self.ctxt, host)
+        self.assertEqual([], entries)

@@ -18,12 +18,14 @@ import mock
 
 from cinder import context
 from cinder import exception
+from cinder.openstack.common import imageutils
 from cinder import test
 from cinder.tests.unit import fake_consistencygroup
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit.image import fake as fake_image
 from cinder.tests.unit.keymgr import mock_key_mgr
+from cinder.tests.unit import utils
 from cinder.tests.unit.volume.flows import fake_volume_api
 from cinder.volume.flows.api import create_volume
 from cinder.volume.flows.manager import create_volume as create_volume_manager
@@ -190,8 +192,9 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
     def test_create_from_snapshot(self, snapshot_get_by_id, handle_bootable):
         fake_db = mock.MagicMock()
         fake_driver = mock.MagicMock()
+        fake_volume_manager = mock.MagicMock()
         fake_manager = create_volume_manager.CreateVolumeFromSpecTask(
-            fake_db, fake_driver)
+            fake_volume_manager, fake_db, fake_driver)
         volume = fake_volume.fake_db_volume()
         orig_volume_db = mock.MagicMock(id=10, bootable=True)
         snapshot_obj = fake_snapshot.fake_snapshot_obj(self.ctxt)
@@ -211,8 +214,9 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
     def test_create_from_snapshot_update_failure(self, snapshot_get_by_id):
         fake_db = mock.MagicMock()
         fake_driver = mock.MagicMock()
+        fake_volume_manager = mock.MagicMock()
         fake_manager = create_volume_manager.CreateVolumeFromSpecTask(
-            fake_db, fake_driver)
+            fake_volume_manager, fake_db, fake_driver)
         volume = fake_volume.fake_db_volume()
         snapshot_obj = fake_snapshot.fake_snapshot_obj(self.ctxt)
         snapshot_get_by_id.return_value = snapshot_obj
@@ -231,16 +235,20 @@ class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
         super(CreateVolumeFlowManagerGlanceCinderBackendCase, self).setUp()
         self.ctxt = context.get_admin_context()
 
+    @mock.patch('cinder.image.image_utils.TemporaryImages.fetch')
     @mock.patch('cinder.volume.flows.manager.create_volume.'
                 'CreateVolumeFromSpecTask.'
                 '_handle_bootable_volume_glance_meta')
-    def test_create_from_image_volume(self, handle_bootable, format='raw',
-                                      owner=None, location=True):
+    def test_create_from_image_volume(self, handle_bootable, mock_fetch_img,
+                                      format='raw', owner=None,
+                                      location=True):
         self.flags(allowed_direct_url_schemes=['cinder'])
+        mock_fetch_img.return_value = mock.MagicMock(
+            spec=utils.get_file_spec())
         fake_db = mock.MagicMock()
         fake_driver = mock.MagicMock()
         fake_manager = create_volume_manager.CreateVolumeFromSpecTask(
-            fake_db, fake_driver)
+            mock.MagicMock(), fake_db, fake_driver)
         fake_image_service = mock.MagicMock()
         volume = fake_volume.fake_volume_obj(self.ctxt)
         image_volume = fake_volume.fake_volume_obj(self.ctxt,
@@ -280,3 +288,429 @@ class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
 
     def test_create_from_image_volume_without_location(self):
         self.test_create_from_image_volume(location=False)
+
+
+@mock.patch('cinder.image.image_utils.TemporaryImages.fetch')
+@mock.patch('cinder.volume.flows.manager.create_volume.'
+            'CreateVolumeFromSpecTask.'
+            '_handle_bootable_volume_glance_meta')
+@mock.patch('cinder.volume.flows.manager.create_volume.'
+            'CreateVolumeFromSpecTask.'
+            '_create_from_source_volume')
+@mock.patch('cinder.volume.flows.manager.create_volume.'
+            'CreateVolumeFromSpecTask.'
+            '_create_from_image_download')
+@mock.patch('cinder.context.get_internal_tenant_context')
+class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
+
+    def setUp(self):
+        super(CreateVolumeFlowManagerImageCacheTestCase, self).setUp()
+        self.ctxt = context.get_admin_context()
+        self.mock_db = mock.MagicMock()
+        self.mock_driver = mock.MagicMock()
+        self.mock_cache = mock.MagicMock()
+        self.mock_image_service = mock.MagicMock()
+        self.mock_volume_manager = mock.MagicMock()
+
+        self.internal_context = self.ctxt
+        self.internal_context.user_id = 'abc123'
+        self.internal_context.project_id = 'def456'
+
+    def test_create_from_image_clone_image_and_skip_cache(
+            self, mock_get_internal_context, mock_create_from_img_dl,
+            mock_create_from_src, mock_handle_bootable, mock_fetch_img):
+        self.mock_driver.clone_image.return_value = (None, True)
+        volume = fake_volume.fake_volume_obj(self.ctxt)
+
+        image_location = 'someImageLocationStr'
+        image_id = 'c7a8b8d4-e519-46c7-a0df-ddf1b9b9fff2'
+        image_meta = mock.Mock()
+
+        manager = create_volume_manager.CreateVolumeFromSpecTask(
+            self.mock_volume_manager,
+            self.mock_db,
+            self.mock_driver,
+            image_volume_cache=self.mock_cache
+        )
+
+        manager._create_from_image(self.ctxt,
+                                   volume,
+                                   image_location,
+                                   image_id,
+                                   image_meta,
+                                   self.mock_image_service)
+
+        # Make sure clone_image is always called even if the cache is enabled
+        self.assertTrue(self.mock_driver.clone_image.called)
+
+        # Create from source shouldn't happen if clone_image succeeds
+        self.assertFalse(mock_create_from_src.called)
+
+        # The image download should not happen if clone_image succeeds
+        self.assertFalse(mock_create_from_img_dl.called)
+
+        mock_handle_bootable.assert_called_once_with(
+            self.ctxt,
+            volume['id'],
+            image_id=image_id,
+            image_meta=image_meta
+        )
+
+    def test_create_from_image_cannot_use_cache(
+            self, mock_get_internal_context, mock_create_from_img_dl,
+            mock_create_from_src, mock_handle_bootable, mock_fetch_img):
+        mock_get_internal_context.return_value = None
+        self.mock_driver.clone_image.return_value = (None, False)
+        volume = fake_volume.fake_volume_obj(self.ctxt)
+
+        image_location = 'someImageLocationStr'
+        image_id = 'c7a8b8d4-e519-46c7-a0df-ddf1b9b9fff2'
+        image_meta = {
+            'properties': {
+                'virtual_size': '2147483648'
+            }
+        }
+
+        manager = create_volume_manager.CreateVolumeFromSpecTask(
+            self.mock_volume_manager,
+            self.mock_db,
+            self.mock_driver,
+            image_volume_cache=self.mock_cache
+        )
+
+        manager._create_from_image(self.ctxt,
+                                   volume,
+                                   image_location,
+                                   image_id,
+                                   image_meta,
+                                   self.mock_image_service)
+
+        # Make sure clone_image is always called
+        self.assertTrue(self.mock_driver.clone_image.called)
+
+        # Create from source shouldn't happen if cache cannot be used.
+        self.assertFalse(mock_create_from_src.called)
+
+        # The image download should happen if clone fails and we can't use the
+        # image-volume cache.
+        mock_create_from_img_dl.assert_called_once_with(
+            self.ctxt,
+            volume,
+            image_location,
+            image_id,
+            self.mock_image_service
+        )
+
+        # This should not attempt to use a minimal size volume
+        self.assertFalse(self.mock_db.volume_update.called)
+
+        # Make sure we didn't try and create a cache entry
+        self.assertFalse(self.mock_cache.ensure_space.called)
+        self.assertFalse(self.mock_cache.create_cache_entry.called)
+
+        mock_handle_bootable.assert_called_once_with(
+            self.ctxt,
+            volume['id'],
+            image_id=image_id,
+            image_meta=image_meta
+        )
+
+    def test_create_from_image_cache_hit(
+            self, mock_get_internal_context, mock_create_from_img_dl,
+            mock_create_from_src, mock_handle_bootable, mock_fetch_img):
+        self.mock_driver.clone_image.return_value = (None, False)
+        image_volume_id = '70a599e0-31e7-49b7-b260-868f441e862b'
+        self.mock_cache.get_entry.return_value = {
+            'volume_id': image_volume_id
+        }
+
+        volume = fake_volume.fake_volume_obj(self.ctxt)
+
+        image_location = 'someImageLocationStr'
+        image_id = 'c7a8b8d4-e519-46c7-a0df-ddf1b9b9fff2'
+        image_meta = mock.Mock()
+
+        manager = create_volume_manager.CreateVolumeFromSpecTask(
+            self.mock_volume_manager,
+            self.mock_db,
+            self.mock_driver,
+            image_volume_cache=self.mock_cache
+        )
+
+        manager._create_from_image(self.ctxt,
+                                   volume,
+                                   image_location,
+                                   image_id,
+                                   image_meta,
+                                   self.mock_image_service)
+
+        # Make sure clone_image is always called even if the cache is enabled
+        self.assertTrue(self.mock_driver.clone_image.called)
+
+        # For a cache hit it should only clone from the image-volume
+        mock_create_from_src.assert_called_once_with(self.ctxt,
+                                                     volume,
+                                                     image_volume_id)
+
+        # The image download should not happen when we get a cache hit
+        self.assertFalse(mock_create_from_img_dl.called)
+
+        mock_handle_bootable.assert_called_once_with(
+            self.ctxt,
+            volume['id'],
+            image_id=image_id,
+            image_meta=image_meta
+        )
+
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    def test_create_from_image_cache_miss(
+            self, mock_qemu_info, mock_get_internal_context,
+            mock_create_from_img_dl, mock_create_from_src,
+            mock_handle_bootable, mock_fetch_img):
+        mock_get_internal_context.return_value = self.ctxt
+        mock_fetch_img.return_value = mock.MagicMock(
+            spec=utils.get_file_spec())
+        image_info = imageutils.QemuImgInfo()
+        image_info.virtual_size = '2147483648'
+        mock_qemu_info.return_value = image_info
+        self.mock_driver.clone_image.return_value = (None, False)
+        self.mock_cache.get_entry.return_value = None
+
+        volume = fake_volume.fake_volume_obj(self.ctxt, size=10,
+                                             host='foo@bar#pool')
+        image_volume = fake_volume.fake_db_volume(size=2)
+        self.mock_db.volume_create.return_value = image_volume
+
+        def update_volume(ctxt, id, updates):
+            volume.update(updates)
+            return volume
+        self.mock_db.volume_update.side_effect = update_volume
+
+        image_location = 'someImageLocationStr'
+        image_id = 'c7a8b8d4-e519-46c7-a0df-ddf1b9b9fff2'
+        image_meta = mock.MagicMock()
+
+        manager = create_volume_manager.CreateVolumeFromSpecTask(
+            self.mock_volume_manager,
+            self.mock_db,
+            self.mock_driver,
+            image_volume_cache=self.mock_cache
+        )
+
+        manager._create_from_image(self.ctxt,
+                                   volume,
+                                   image_location,
+                                   image_id,
+                                   image_meta,
+                                   self.mock_image_service)
+
+        # Make sure clone_image is always called
+        self.assertTrue(self.mock_driver.clone_image.called)
+
+        # The image download should happen if clone fails and
+        # we get a cache miss
+        mock_create_from_img_dl.assert_called_once_with(
+            self.ctxt,
+            mock.ANY,
+            image_location,
+            image_id,
+            self.mock_image_service
+        )
+
+        # The volume size should be reduced to virtual_size and then put back
+        self.mock_db.volume_update.assert_any_call(self.ctxt,
+                                                   volume['id'],
+                                                   {'size': 2})
+        self.mock_db.volume_update.assert_any_call(self.ctxt,
+                                                   volume['id'],
+                                                   {'size': 10})
+
+        # Make sure created a new cache entry
+        (self.mock_volume_manager.
+            _create_image_cache_volume_entry.assert_called_once_with(
+                self.ctxt, volume, image_id, image_meta))
+
+        mock_handle_bootable.assert_called_once_with(
+            self.ctxt,
+            volume['id'],
+            image_id=image_id,
+            image_meta=image_meta
+        )
+
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    def test_create_from_image_cache_miss_error_downloading(
+            self, mock_qemu_info, mock_get_internal_context,
+            mock_create_from_img_dl, mock_create_from_src,
+            mock_handle_bootable, mock_fetch_img):
+        mock_fetch_img.return_value = mock.MagicMock()
+        image_info = imageutils.QemuImgInfo()
+        image_info.virtual_size = '2147483648'
+        mock_qemu_info.return_value = image_info
+        self.mock_driver.clone_image.return_value = (None, False)
+        self.mock_cache.get_entry.return_value = None
+
+        volume = fake_volume.fake_volume_obj(self.ctxt, size=10,
+                                             host='foo@bar#pool')
+        image_volume = fake_volume.fake_db_volume(size=2)
+        self.mock_db.volume_create.return_value = image_volume
+
+        mock_create_from_img_dl.side_effect = exception.CinderException()
+
+        def update_volume(ctxt, id, updates):
+            volume.update(updates)
+            return volume
+        self.mock_db.volume_update.side_effect = update_volume
+
+        image_location = 'someImageLocationStr'
+        image_id = 'c7a8b8d4-e519-46c7-a0df-ddf1b9b9fff2'
+        image_meta = mock.MagicMock()
+
+        manager = create_volume_manager.CreateVolumeFromSpecTask(
+            self.mock_volume_manager,
+            self.mock_db,
+            self.mock_driver,
+            image_volume_cache=self.mock_cache
+        )
+
+        self.assertRaises(
+            exception.CinderException,
+            manager._create_from_image,
+            self.ctxt,
+            volume,
+            image_location,
+            image_id,
+            image_meta,
+            self.mock_image_service
+        )
+
+        # Make sure clone_image is always called
+        self.assertTrue(self.mock_driver.clone_image.called)
+
+        # The image download should happen if clone fails and
+        # we get a cache miss
+        mock_create_from_img_dl.assert_called_once_with(
+            self.ctxt,
+            mock.ANY,
+            image_location,
+            image_id,
+            self.mock_image_service
+        )
+
+        # The volume size should be reduced to virtual_size and then put back,
+        # especially if there is an exception while creating the volume.
+        self.assertEqual(2, self.mock_db.volume_update.call_count)
+        self.mock_db.volume_update.assert_any_call(self.ctxt,
+                                                   volume['id'],
+                                                   {'size': 2})
+        self.mock_db.volume_update.assert_any_call(self.ctxt,
+                                                   volume['id'],
+                                                   {'size': 10})
+
+        # Make sure we didn't try and create a cache entry
+        self.assertFalse(self.mock_cache.ensure_space.called)
+        self.assertFalse(self.mock_cache.create_cache_entry.called)
+
+    def test_create_from_image_no_internal_context(
+            self, mock_get_internal_context, mock_create_from_img_dl,
+            mock_create_from_src, mock_handle_bootable, mock_fetch_img):
+        self.mock_driver.clone_image.return_value = (None, False)
+        mock_get_internal_context.return_value = None
+        volume = fake_volume.fake_db_volume()
+
+        image_location = 'someImageLocationStr'
+        image_id = 'c7a8b8d4-e519-46c7-a0df-ddf1b9b9fff2'
+        image_meta = {
+            'properties': {
+                'virtual_size': '2147483648'
+            }
+        }
+
+        manager = create_volume_manager.CreateVolumeFromSpecTask(
+            self.mock_volume_manager,
+            self.mock_db,
+            self.mock_driver,
+            image_volume_cache=self.mock_cache
+        )
+
+        manager._create_from_image(self.ctxt,
+                                   volume,
+                                   image_location,
+                                   image_id,
+                                   image_meta,
+                                   self.mock_image_service)
+
+        # Make sure clone_image is always called
+        self.assertTrue(self.mock_driver.clone_image.called)
+
+        # Create from source shouldn't happen if cache cannot be used.
+        self.assertFalse(mock_create_from_src.called)
+
+        # The image download should happen if clone fails and we can't use the
+        # image-volume cache due to not having an internal context available.
+        mock_create_from_img_dl.assert_called_once_with(
+            self.ctxt,
+            volume,
+            image_location,
+            image_id,
+            self.mock_image_service
+        )
+
+        # This should not attempt to use a minimal size volume
+        self.assertFalse(self.mock_db.volume_update.called)
+
+        # Make sure we didn't try and create a cache entry
+        self.assertFalse(self.mock_cache.ensure_space.called)
+        self.assertFalse(self.mock_cache.create_cache_entry.called)
+
+        mock_handle_bootable.assert_called_once_with(
+            self.ctxt,
+            volume['id'],
+            image_id=image_id,
+            image_meta=image_meta
+        )
+
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    def test_create_from_image_cache_miss_error_size_invalid(
+            self, mock_qemu_info, mock_get_internal_context,
+            mock_create_from_img_dl, mock_create_from_src,
+            mock_handle_bootable, mock_fetch_img):
+        mock_fetch_img.return_value = mock.MagicMock()
+        image_info = imageutils.QemuImgInfo()
+        image_info.virtual_size = '2147483648'
+        mock_qemu_info.return_value = image_info
+        self.mock_driver.clone_image.return_value = (None, False)
+        self.mock_cache.get_entry.return_value = None
+
+        volume = fake_volume.fake_volume_obj(self.ctxt, size=1,
+                                             host='foo@bar#pool')
+        image_volume = fake_volume.fake_db_volume(size=2)
+        self.mock_db.volume_create.return_value = image_volume
+
+        image_location = 'someImageLocationStr'
+        image_id = 'c7a8b8d4-e519-46c7-a0df-ddf1b9b9fff2'
+        image_meta = mock.MagicMock()
+
+        manager = create_volume_manager.CreateVolumeFromSpecTask(
+            self.mock_volume_manager,
+            self.mock_db,
+            self.mock_driver,
+            image_volume_cache=self.mock_cache
+        )
+
+        self.assertRaises(
+            exception.ImageUnacceptable,
+            manager._create_from_image,
+            self.ctxt,
+            volume,
+            image_location,
+            image_id,
+            image_meta,
+            self.mock_image_service
+        )
+
+        # The volume size should NOT be changed when in this case
+        self.assertFalse(self.mock_db.volume_update.called)
+
+        # Make sure we didn't try and create a cache entry
+        self.assertFalse(self.mock_cache.ensure_space.called)
+        self.assertFalse(self.mock_cache.create_cache_entry.called)

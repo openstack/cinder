@@ -42,6 +42,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import joinedload, joinedload_all
 from sqlalchemy.orm import RelationshipProperty
 from sqlalchemy.schema import Table
+from sqlalchemy.sql.expression import desc
 from sqlalchemy.sql.expression import literal_column
 from sqlalchemy.sql.expression import true
 from sqlalchemy.sql import func
@@ -3998,3 +3999,65 @@ PAGINATION_HELPERS = {
     models.Snapshot: (_snaps_get_query, _process_snaps_filters, _snapshot_get),
     models.Backup: (_backups_get_query, _process_backups_filters, _backup_get)
 }
+
+
+###############################
+
+
+@require_context
+def image_volume_cache_create(context, host, image_id, image_updated_at,
+                              volume_id, size):
+    session = get_session()
+    with session.begin():
+        cache_entry = models.ImageVolumeCacheEntry()
+        cache_entry.host = host
+        cache_entry.image_id = image_id
+        cache_entry.image_updated_at = image_updated_at
+        cache_entry.volume_id = volume_id
+        cache_entry.size = size
+        session.add(cache_entry)
+        return cache_entry
+
+
+@require_context
+def image_volume_cache_delete(context, volume_id):
+    session = get_session()
+    with session.begin():
+        session.query(models.ImageVolumeCacheEntry).\
+            filter_by(volume_id=volume_id).\
+            delete()
+
+
+@require_context
+def image_volume_cache_get_and_update_last_used(context, image_id, host):
+    session = get_session()
+    with session.begin():
+        entry = session.query(models.ImageVolumeCacheEntry).\
+            filter_by(image_id=image_id).\
+            filter_by(host=host).\
+            order_by(desc(models.ImageVolumeCacheEntry.last_used)).\
+            first()
+
+        if entry:
+            entry.last_used = timeutils.utcnow()
+            entry.save(session=session)
+        return entry
+
+
+@require_context
+def image_volume_cache_get_by_volume_id(context, volume_id):
+    session = get_session()
+    with session.begin():
+        return session.query(models.ImageVolumeCacheEntry).\
+            filter_by(volume_id=volume_id).\
+            first()
+
+
+@require_context
+def image_volume_cache_get_all_for_host(context, host):
+    session = get_session()
+    with session.begin():
+        return session.query(models.ImageVolumeCacheEntry).\
+            filter_by(host=host).\
+            order_by(desc(models.ImageVolumeCacheEntry.last_used)).\
+            all()
