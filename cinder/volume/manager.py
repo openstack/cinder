@@ -1902,7 +1902,6 @@ class VolumeManager(manager.SchedulerDependentManager):
         """Creates the consistency group."""
         context = context.elevated()
         group_ref = self.db.consistencygroup_get(context, group_id)
-        group_ref['host'] = self.host
 
         status = 'available'
         model_update = False
