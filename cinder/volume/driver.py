@@ -28,7 +28,6 @@ from cinder import exception
 from cinder.i18n import _, _LE, _LW
 from cinder.image import image_utils
 from cinder import objects
-from cinder.openstack.common import fileutils
 from cinder import utils
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import throttling
@@ -942,11 +941,11 @@ class BaseVD(object):
 
             # Secure network file systems will not chown files.
             if self.secure_file_operations_enabled():
-                with fileutils.file_open(device_path) as device_file:
+                with open(device_path) as device_file:
                     backup_service.backup(backup, device_file)
             else:
                 with utils.temporary_chown(device_path):
-                    with fileutils.file_open(device_path) as device_file:
+                    with open(device_path) as device_file:
                         backup_service.backup(backup, device_file)
 
         finally:
@@ -973,11 +972,11 @@ class BaseVD(object):
 
             # Secure network file systems will not chown files.
             if self.secure_file_operations_enabled():
-                with fileutils.file_open(volume_path, 'wb') as volume_file:
+                with open(volume_path, 'wb') as volume_file:
                     backup_service.restore(backup, volume['id'], volume_file)
             else:
                 with utils.temporary_chown(volume_path):
-                    with fileutils.file_open(volume_path, 'wb') as volume_file:
+                    with open(volume_path, 'wb') as volume_file:
                         backup_service.restore(backup, volume['id'],
                                                volume_file)
 

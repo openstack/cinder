@@ -30,6 +30,7 @@ import tempfile
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
+from oslo_utils import fileutils
 from oslo_utils import units
 from oslo_utils import uuidutils
 from oslo_vmware import api
@@ -41,7 +42,6 @@ import six
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder.openstack.common import fileutils
 from cinder.volume import driver
 from cinder.volume.drivers.vmware import datastore as hub
 from cinder.volume.drivers.vmware import exceptions as vmdk_exceptions
@@ -1583,7 +1583,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         host_ip = self.configuration.vmware_host_ip
         vmdk_ds_file_path = self.volumeops.get_vmdk_path(backing)
 
-        with fileutils.file_open(tmp_file_path, "wb") as tmp_file:
+        with open(tmp_file_path, "wb") as tmp_file:
             image_transfer.copy_stream_optimized_disk(
                 context,
                 timeout,
@@ -1617,7 +1617,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                       {'tmp_path': tmp_file_path,
                        'backup_id': backup['id']})
             self._download_vmdk(context, volume, backing, tmp_file_path)
-            with fileutils.file_open(tmp_file_path, "rb") as tmp_file:
+            with open(tmp_file_path, "rb") as tmp_file:
                     LOG.debug("Calling backup service to backup file: %s.",
                               tmp_file_path)
                     backup_service.backup(backup, tmp_file)
@@ -1656,7 +1656,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         timeout = self.configuration.vmware_image_transfer_timeout_secs
         host_ip = self.configuration.vmware_host_ip
         try:
-            with fileutils.file_open(tmp_file_path, "rb") as tmp_file:
+            with open(tmp_file_path, "rb") as tmp_file:
                 vm_ref = image_transfer.download_stream_optimized_data(
                     context,
                     timeout,
@@ -1775,7 +1775,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                           "backup: %(backup_id)s.",
                           {'tmp_path': tmp_file_path,
                            'backup_id': backup['id']})
-                with fileutils.file_open(tmp_file_path, "wb") as tmp_file:
+                with open(tmp_file_path, "wb") as tmp_file:
                     LOG.debug("Calling backup service to restore backup: "
                               "%(backup_id)s to file: %(tmp_path)s.",
                               {'backup_id': backup['id'],

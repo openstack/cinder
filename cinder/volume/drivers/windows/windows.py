@@ -23,9 +23,9 @@ import os
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import fileutils
 
 from cinder.image import image_utils
-from cinder.openstack.common import fileutils
 from cinder.volume import driver
 from cinder.volume.drivers.windows import constants
 from cinder.volume.drivers.windows import vhdutils

@@ -24,9 +24,9 @@ import tempfile
 
 from mox3 import mox
 from oslo_config import cfg
+from oslo_utils import fileutils
 
 from cinder.image import image_utils
-from cinder.openstack.common import fileutils
 from cinder import test
 from cinder.tests.unit.windows import db_fakes
 from cinder.volume import configuration as conf

@@ -17,9 +17,9 @@ import time
 
 from oslo_concurrency import processutils as putils
 from oslo_log import log as logging
+from oslo_utils import fileutils
 
 from cinder import exception
-from cinder.openstack.common import fileutils
 from cinder.i18n import _LI, _LW, _LE
 from cinder import utils
 from cinder.volume.targets import iscsi

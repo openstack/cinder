@@ -23,8 +23,6 @@ from six.moves import http_client
 
 from swiftclient import client as swift
 
-from cinder.openstack.common import fileutils
-
 
 class FakeSwiftClient2(object):
     def __init__(self, *args, **kwargs):
@@ -72,14 +70,14 @@ class FakeSwiftConnection2(object):
         if container == 'socket_error_on_get':
             raise socket.error(111, 'ECONNREFUSED')
         object_path = tempfile.gettempdir() + '/' + container + '/' + name
-        with fileutils.file_open(object_path, 'rb') as object_file:
+        with open(object_path, 'rb') as object_file:
             return (None, object_file.read())
 
     def put_object(self, container, name, reader, content_length=None,
                    etag=None, chunk_size=None, content_type=None,
                    headers=None, query_string=None):
         object_path = tempfile.gettempdir() + '/' + container + '/' + name
-        with fileutils.file_open(object_path, 'wb') as object_file:
+        with open(object_path, 'wb') as object_file:
             object_file.write(reader.read())
         return hashlib.md5(reader.read()).hexdigest()
 

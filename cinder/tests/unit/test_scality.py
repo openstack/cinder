@@ -28,10 +28,7 @@ from oslo_utils import units
 from cinder import context
 from cinder import exception
 from cinder.image import image_utils
-from cinder.openstack.common import fileutils
-from cinder.openstack.common import imageutils
 from cinder import test
-from cinder import utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import scality
 
@@ -281,51 +278,50 @@ class ScalityDriverTestCase(test.TestCase):
 
         self._driver.extend_volume(self.TEST_VOLUME, self.TEST_NEWSIZE)
 
-    def test_backup_volume(self):
-        self.mox = mox_lib.Mox()
-        self._driver.db = self.mox.CreateMockAnything()
-        self.mox.StubOutWithMock(self._driver.db, 'volume_get')
-
+    @mock.patch('six.moves.builtins.open')
+    @mock.patch('cinder.utils.temporary_chown')
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    def test_backup_volume(self, qemu_img_info, temporary_chown, mock_open):
         volume = {'id': '2', 'name': self.TEST_VOLNAME}
-        self._driver.db.volume_get(context, volume['id']).AndReturn(volume)
-
-        info = imageutils.QemuImgInfo()
-        info.file_format = 'raw'
-        self.mox.StubOutWithMock(image_utils, 'qemu_img_info')
-        image_utils.qemu_img_info(self.TEST_VOLPATH).AndReturn(info)
-
-        self.mox.StubOutWithMock(utils, 'temporary_chown')
-        mock_tempchown = mock.MagicMock()
-        utils.temporary_chown(self.TEST_VOLPATH).AndReturn(mock_tempchown)
-
-        self.mox.StubOutWithMock(fileutils, 'file_open')
-        mock_fileopen = mock.MagicMock()
-        fileutils.file_open(self.TEST_VOLPATH).AndReturn(mock_fileopen)
-
         backup = {'volume_id': volume['id']}
-        mock_servicebackup = self.mox.CreateMockAnything()
-        mock_servicebackup.backup(backup, mox_lib.IgnoreArg())
+        info = mock.Mock()
+        info.file_format = 'raw'
+        info.backing_file = None
+        qemu_img_info.return_value = info
+        backup_service = mock.Mock()
 
-        self.mox.ReplayAll()
+        with mock.patch.object(self._driver, 'db') as db:
+            db.volume_get.return_value = volume
 
-        self._driver.backup_volume(context, backup, mock_servicebackup)
+            self._driver.backup_volume(context, backup, backup_service)
 
-    def test_restore_backup(self):
+            db.volume_get.assert_called_once_with(context, volume['id'])
+            qemu_img_info.assert_called_once_with(self.TEST_VOLPATH)
+            temporary_chown.asser_called_once_with(self.TEST_VOLPATH)
+            mock_open.assert_called_once_with(self.TEST_VOLPATH)
+            backup_service.backup.asser_called_once_with(backup, mock.ANY)
+
+            info.backing_file = 'not None'
+            self.assertRaises(exception.InvalidVolume,
+                              self._driver.backup_volume,
+                              context, backup, backup_service)
+
+            info.file_format = 'not raw'
+            self.assertRaises(exception.InvalidVolume,
+                              self._driver.backup_volume,
+                              context, backup, backup_service)
+
+    @mock.patch('six.moves.builtins.open')
+    @mock.patch('cinder.utils.temporary_chown')
+    def test_restore_backup(self, temporary_chown, mock_open):
         volume = {'id': '2', 'name': self.TEST_VOLNAME}
-
-        self.mox.StubOutWithMock(utils, 'temporary_chown')
-        mock_tempchown = mock.MagicMock()
-        utils.temporary_chown(self.TEST_VOLPATH).AndReturn(mock_tempchown)
-
-        self.mox.StubOutWithMock(fileutils, 'file_open')
-        mock_fileopen = mock.MagicMock()
-        fileutils.file_open(self.TEST_VOLPATH, 'wb').AndReturn(mock_fileopen)
-
         backup = {'id': 123, 'volume_id': volume['id']}
-        mock_servicebackup = self.mox.CreateMockAnything()
-        mock_servicebackup.restore(backup, volume['id'], mox_lib.IgnoreArg())
-
-        self.mox.ReplayAll()
+        backup_service = mock.Mock()
 
         self._driver.restore_backup(context, backup, volume,
-                                    mock_servicebackup)
+                                    backup_service)
+
+        temporary_chown.asser_called_once_with(self.TEST_VOLPATH)
+        mock_open.assert_called_once_with(self.TEST_VOLPATH, 'wb')
+        backup_service.restore.asser_called_once_with(backup, volume['id'],
+                                                      mock.ANY)

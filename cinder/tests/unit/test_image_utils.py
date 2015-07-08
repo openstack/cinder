@@ -366,7 +366,7 @@ class TestTemporaryDir(test.TestCase):
 
 class TestUploadVolume(test.TestCase):
     @mock.patch('cinder.image.image_utils.CONF')
-    @mock.patch('cinder.image.image_utils.fileutils.file_open')
+    @mock.patch('six.moves.builtins.open')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.image.image_utils.convert_image')
     @mock.patch('cinder.image.image_utils.temporary_file')
@@ -401,7 +401,7 @@ class TestUploadVolume(test.TestCase):
 
     @mock.patch('cinder.image.image_utils.utils.temporary_chown')
     @mock.patch('cinder.image.image_utils.CONF')
-    @mock.patch('cinder.image.image_utils.fileutils.file_open')
+    @mock.patch('six.moves.builtins.open')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.image.image_utils.convert_image')
     @mock.patch('cinder.image.image_utils.temporary_file')
@@ -430,7 +430,7 @@ class TestUploadVolume(test.TestCase):
 
     @mock.patch('cinder.image.image_utils.utils.temporary_chown')
     @mock.patch('cinder.image.image_utils.CONF')
-    @mock.patch('cinder.image.image_utils.fileutils.file_open')
+    @mock.patch('six.moves.builtins.open')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.image.image_utils.convert_image')
     @mock.patch('cinder.image.image_utils.temporary_file')
@@ -457,7 +457,7 @@ class TestUploadVolume(test.TestCase):
             mock_open.return_value.__enter__.return_value)
 
     @mock.patch('cinder.image.image_utils.CONF')
-    @mock.patch('cinder.image.image_utils.fileutils.file_open')
+    @mock.patch('six.moves.builtins.open')
     @mock.patch('cinder.image.image_utils.qemu_img_info')
     @mock.patch('cinder.image.image_utils.convert_image')
     @mock.patch('cinder.image.image_utils.temporary_file')

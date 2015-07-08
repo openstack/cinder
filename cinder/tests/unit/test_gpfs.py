@@ -1407,7 +1407,7 @@ class GPFSDriverTestCase(test.TestCase):
         self.driver.copy_volume_to_image('', volume, '', '')
 
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._delete_gpfs_file')
-    @mock.patch('cinder.openstack.common.fileutils.file_open')
+    @mock.patch('six.moves.builtins.open')
     @mock.patch('cinder.utils.temporary_chown')
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._gpfs_redirect')
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.'
@@ -1431,7 +1431,7 @@ class GPFSDriverTestCase(test.TestCase):
         mock_local_path.return_value = self.volumes_path
         self.driver.backup_volume('', backup, backup_service)
 
-    @mock.patch('cinder.openstack.common.fileutils.file_open')
+    @mock.patch('six.moves.builtins.open')
     @mock.patch('cinder.utils.temporary_chown')
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.local_path')
     def test_restore_backup(self,

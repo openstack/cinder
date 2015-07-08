@@ -30,7 +30,6 @@ from cinder.brick.local_dev import lvm as lvm
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
-from cinder.openstack.common import fileutils
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume import utils as volutils
@@ -504,7 +503,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
         try:
             with utils.temporary_chown(volume_path):
-                with fileutils.file_open(volume_path) as volume_file:
+                with open(volume_path) as volume_file:
                     backup_service.backup(backup, volume_file)
         finally:
             if temp_snapshot:
@@ -516,7 +515,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
         """Restore an existing backup to a new or existing volume."""
         volume_path = self.local_path(volume)
         with utils.temporary_chown(volume_path):
-            with fileutils.file_open(volume_path, 'wb') as volume_file:
+            with open(volume_path, 'wb') as volume_file:
                 backup_service.restore(backup, volume['id'], volume_file)
 
     def get_volume_stats(self, refresh=False):
