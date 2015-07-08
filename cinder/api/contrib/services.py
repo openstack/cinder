@@ -23,9 +23,9 @@ import webob.exc
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
-from cinder import db
 from cinder import exception
 from cinder.i18n import _
+from cinder import objects
 from cinder import utils
 
 
@@ -81,8 +81,8 @@ class ServiceController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context, action='index')
         detailed = self.ext_mgr.is_loaded('os-extended-services')
-        now = timeutils.utcnow()
-        services = db.service_get_all(context)
+        now = timeutils.utcnow(with_timezone=True)
+        services = objects.ServiceList.get_all(context)
 
         host = ''
         if 'host' in req.GET:
@@ -98,32 +98,32 @@ class ServiceController(wsgi.Controller):
             binary = req.GET['binary']
 
         if host:
-            services = [s for s in services if s['host'] == host]
+            services = [s for s in services if s.host == host]
         # NOTE(uni): deprecating service request key, binary takes precedence
         binary_key = binary or service
         if binary_key:
-            services = [s for s in services if s['binary'] == binary_key]
+            services = [s for s in services if s.binary == binary_key]
 
         svcs = []
         for svc in services:
-            updated_at = svc['updated_at']
-            delta = now - (svc['updated_at'] or svc['created_at'])
+            updated_at = svc.updated_at
+            delta = now - (svc.updated_at or svc.created_at)
             delta_sec = delta.total_seconds()
-            if svc['modified_at']:
-                delta_mod = now - svc['modified_at']
+            if svc.modified_at:
+                delta_mod = now - svc.modified_at
                 if abs(delta_sec) >= abs(delta_mod.total_seconds()):
-                    updated_at = svc['modified_at']
+                    updated_at = svc.modified_at
             alive = abs(delta_sec) <= CONF.service_down_time
             art = (alive and "up") or "down"
             active = 'enabled'
-            if svc['disabled']:
+            if svc.disabled:
                 active = 'disabled'
-            ret_fields = {'binary': svc['binary'], 'host': svc['host'],
-                          'zone': svc['availability_zone'],
+            ret_fields = {'binary': svc.binary, 'host': svc.host,
+                          'zone': svc.availability_zone,
                           'status': active, 'state': art,
-                          'updated_at': updated_at}
+                          'updated_at': timeutils.normalize_time(updated_at)}
             if detailed:
-                ret_fields['disabled_reason'] = svc['disabled_reason']
+                ret_fields['disabled_reason'] = svc.disabled_reason
             svcs.append(ret_fields)
         return {'services': svcs}
 
@@ -182,11 +182,14 @@ class ServiceController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest()
 
         try:
-            svc = db.service_get_by_args(context, host, binary_key)
+            svc = objects.Service.get_by_args(context, host, binary_key)
             if not svc:
                 raise webob.exc.HTTPNotFound(explanation=_('Unknown service'))
 
-            db.service_update(context, svc['id'], ret_val)
+            svc.disabled = ret_val['disabled']
+            if 'disabled_reason' in ret_val:
+                svc.disabled_reason = ret_val['disabled_reason']
+            svc.save()
         except exception.ServiceNotFound:
             raise webob.exc.HTTPNotFound(explanation=_("service not found"))
 

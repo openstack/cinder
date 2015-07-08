@@ -194,7 +194,7 @@ def stub_snapshot_update(self, context, *args, **param):
     pass
 
 
-def stub_service_get_all_by_topic(context, topic):
+def stub_service_get_all_by_topic(context, topic, disabled=None):
     return [{'availability_zone': "zone1:host1", "disabled": 0}]
 
 

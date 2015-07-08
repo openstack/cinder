@@ -16,14 +16,18 @@
 Tests For HostManager
 """
 
+from datetime import datetime
+
 import mock
 from oslo_config import cfg
 from oslo_utils import timeutils
 
 from cinder import exception
+from cinder import objects
 from cinder.openstack.common.scheduler import filters
 from cinder.scheduler import host_manager
 from cinder import test
+from cinder.tests.unit.objects import test_service
 
 
 CONF = cfg.CONF
@@ -162,7 +166,9 @@ class HostManagerTestCase(test.TestCase):
         current date/time.
         """
         context = 'fake_context'
-        _mock_utcnow.side_effect = [400, 401, 402]
+        dates = [datetime.fromtimestamp(400), datetime.fromtimestamp(401),
+                 datetime.fromtimestamp(402)]
+        _mock_utcnow.side_effect = dates
 
         services = [
             # This is the first call to utcnow()
@@ -191,14 +197,14 @@ class HostManagerTestCase(test.TestCase):
                                                           host_volume_capabs)
             res = self.host_manager.get_pools(context)
             self.assertEqual(1, len(res))
-            self.assertEqual(401, res[0]['capabilities']['timestamp'])
+            self.assertEqual(dates[1], res[0]['capabilities']['timestamp'])
 
             self.host_manager.update_service_capabilities(service_name,
                                                           'host1',
                                                           host_volume_capabs)
             res = self.host_manager.get_pools(context)
             self.assertEqual(1, len(res))
-            self.assertEqual(402, res[0]['capabilities']['timestamp'])
+            self.assertEqual(dates[2], res[0]['capabilities']['timestamp'])
 
     @mock.patch('cinder.db.service_get_all_by_topic')
     @mock.patch('cinder.utils.service_is_up')
@@ -209,14 +215,29 @@ class HostManagerTestCase(test.TestCase):
 
         services = [
             dict(id=1, host='host1', topic='volume', disabled=False,
-                 availability_zone='zone1', updated_at=timeutils.utcnow()),
+                 availability_zone='zone1', updated_at=timeutils.utcnow(),
+                 binary=None, deleted=False, created_at=None, modified_at=None,
+                 report_count=0, deleted_at=None, disabled_reason=None),
             dict(id=2, host='host2', topic='volume', disabled=False,
-                 availability_zone='zone1', updated_at=timeutils.utcnow()),
+                 availability_zone='zone1', updated_at=timeutils.utcnow(),
+                 binary=None, deleted=False, created_at=None, modified_at=None,
+                 report_count=0, deleted_at=None, disabled_reason=None),
             dict(id=3, host='host3', topic='volume', disabled=False,
-                 availability_zone='zone2', updated_at=timeutils.utcnow()),
+                 availability_zone='zone2', updated_at=timeutils.utcnow(),
+                 binary=None, deleted=False, created_at=None, modified_at=None,
+                 report_count=0, deleted_at=None, disabled_reason=None),
             dict(id=4, host='host4', topic='volume', disabled=False,
-                 availability_zone='zone3', updated_at=timeutils.utcnow()),
+                 availability_zone='zone3', updated_at=timeutils.utcnow(),
+                 binary=None, deleted=False, created_at=None, modified_at=None,
+                 report_count=0, deleted_at=None, disabled_reason=None),
         ]
+
+        service_objs = []
+        for db_service in services:
+            service_obj = objects.Service()
+            service_objs.append(objects.Service._from_db_object(context,
+                                                                service_obj,
+                                                                db_service))
 
         service_states = {
             'host1': dict(volume_backend_name='AAA',
@@ -247,17 +268,18 @@ class HostManagerTestCase(test.TestCase):
                                                           topic,
                                                           disabled=False)
         expected = []
-        for service in services:
+        for service in service_objs:
             expected.append(mock.call(service))
         self.assertEqual(expected, _mock_service_is_up.call_args_list)
 
-        # Get host_state_map and make sure we have the first 4 hosts
+        # Get host_state_map and make sure we have the first 3 hosts
         host_state_map = self.host_manager.host_state_map
         self.assertEqual(3, len(host_state_map))
         for i in range(3):
             volume_node = services[i]
             host = volume_node['host']
-            self.assertEqual(volume_node, host_state_map[host].service)
+            test_service.TestService._compare(self, volume_node,
+                                              host_state_map[host].service)
 
         # Second test: Now service_is_up returns False for host3
         _mock_service_is_up.reset_mock()
@@ -270,9 +292,7 @@ class HostManagerTestCase(test.TestCase):
         _mock_service_get_all_by_topic.assert_called_with(context,
                                                           topic,
                                                           disabled=False)
-        expected = []
-        for service in services:
-            expected.append(mock.call(service))
+
         self.assertEqual(expected, _mock_service_is_up.call_args_list)
         self.assertTrue(_mock_warning.call_count > 0)
 
@@ -283,8 +303,8 @@ class HostManagerTestCase(test.TestCase):
         for i in range(2):
             volume_node = services[i]
             host = volume_node['host']
-            self.assertEqual(volume_node,
-                             host_state_map[host].service)
+            test_service.TestService._compare(self, volume_node,
+                                              host_state_map[host].service)
 
     @mock.patch('cinder.db.service_get_all_by_topic')
     @mock.patch('cinder.utils.service_is_up')

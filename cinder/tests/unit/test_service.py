@@ -28,6 +28,7 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder import manager
+from cinder import objects
 from cinder import rpc
 from cinder import service
 from cinder import test
@@ -134,7 +135,7 @@ class ServiceTestCase(test.TestCase):
                        'report_count': 0,
                        'availability_zone': 'nova',
                        'id': 1}
-        with mock.patch.object(service, 'db') as mock_db:
+        with mock.patch.object(objects.service, 'db') as mock_db:
             mock_db.service_get_by_args.side_effect = exception.NotFound()
             mock_db.service_create.return_value = service_ref
             mock_db.service_get.side_effect = db_exc.DBConnectionError()
@@ -157,7 +158,7 @@ class ServiceTestCase(test.TestCase):
                        'report_count': 0,
                        'availability_zone': 'nova',
                        'id': 1}
-        with mock.patch.object(service, 'db') as mock_db:
+        with mock.patch.object(objects.service, 'db') as mock_db:
             mock_db.service_get_by_args.side_effect = exception.NotFound()
             mock_db.service_create.return_value = service_ref
             mock_db.service_get.side_effect = db_exc.DBError()
@@ -180,7 +181,7 @@ class ServiceTestCase(test.TestCase):
                        'report_count': 0,
                        'availability_zone': 'nova',
                        'id': 1}
-        with mock.patch.object(service, 'db') as mock_db:
+        with mock.patch.object(objects.service, 'db') as mock_db:
             mock_db.service_get_by_args.side_effect = exception.NotFound()
             mock_db.service_create.return_value = service_ref
             mock_db.service_get.return_value = service_ref
@@ -205,7 +206,7 @@ class ServiceTestCase(test.TestCase):
                        'report_count': 0,
                        'availability_zone': 'nova',
                        'id': 1}
-        with mock.patch.object(service, 'db') as mock_db:
+        with mock.patch('cinder.db') as mock_db:
             mock_db.service_get.return_value = service_ref
 
             serv = service.Service(
@@ -230,7 +231,7 @@ class ServiceTestCase(test.TestCase):
         self.assertEqual(25, CONF.service_down_time)
 
     @mock.patch.object(rpc, 'get_server')
-    @mock.patch.object(service, 'db')
+    @mock.patch('cinder.db')
     def test_service_stop_waits_for_rpcserver(self, mock_db, mock_rpc):
         serv = service.Service(
             self.host,

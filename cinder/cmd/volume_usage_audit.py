@@ -73,6 +73,7 @@ CONF.register_cli_opts(script_opts)
 
 
 def main():
+    objects.register_all()
     admin_context = context.get_admin_context()
     CONF(sys.argv[1:], project='cinder',
          version=version.version_string())

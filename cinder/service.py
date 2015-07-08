@@ -35,9 +35,9 @@ from osprofiler import profiler
 import osprofiler.web
 
 from cinder import context
-from cinder import db
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
+from cinder import objects
 from cinder.objects import base as objects_base
 from cinder import rpc
 from cinder import version
@@ -146,10 +146,9 @@ class Service(service.Service):
         self.manager.init_host()
         ctxt = context.get_admin_context()
         try:
-            service_ref = db.service_get_by_args(ctxt,
-                                                 self.host,
-                                                 self.binary)
-            self.service_id = service_ref['id']
+            service_ref = objects.Service.get_by_args(
+                ctxt, self.host, self.binary)
+            self.service_id = service_ref.id
         except exception.NotFound:
             self._create_service_ref(ctxt)
 
@@ -202,13 +201,14 @@ class Service(service.Service):
 
     def _create_service_ref(self, context):
         zone = CONF.storage_availability_zone
-        service_ref = db.service_create(context,
-                                        {'host': self.host,
-                                         'binary': self.binary,
-                                         'topic': self.topic,
-                                         'report_count': 0,
-                                         'availability_zone': zone})
-        self.service_id = service_ref['id']
+        kwargs = {'host': self.host,
+                  'binary': self.binary,
+                  'topic': self.topic,
+                  'report_count': 0,
+                  'availability_zone': zone}
+        service_ref = objects.Service(context=context, **kwargs)
+        service_ref.create()
+        self.service_id = service_ref.id
 
     def __getattr__(self, key):
         manager = self.__dict__.get('manager', None)
@@ -256,7 +256,9 @@ class Service(service.Service):
         """Destroy the service object in the datastore."""
         self.stop()
         try:
-            db.service_destroy(context.get_admin_context(), self.service_id)
+            service_ref = objects.Service.get_by_id(
+                context.get_admin_context(), self.service_id)
+            service_ref.destroy()
         except exception.NotFound:
             LOG.warning(_LW('Service killed that has no database entry'))
 
@@ -303,22 +305,20 @@ class Service(service.Service):
 
         ctxt = context.get_admin_context()
         zone = CONF.storage_availability_zone
-        state_catalog = {}
         try:
             try:
-                service_ref = db.service_get(ctxt, self.service_id)
+                service_ref = objects.Service.get_by_id(ctxt, self.service_id)
             except exception.NotFound:
                 LOG.debug('The service database object disappeared, '
                           'recreating it.')
                 self._create_service_ref(ctxt)
-                service_ref = db.service_get(ctxt, self.service_id)
+                service_ref = objects.Service.get_by_id(ctxt, self.service_id)
 
-            state_catalog['report_count'] = service_ref['report_count'] + 1
-            if zone != service_ref['availability_zone']:
-                state_catalog['availability_zone'] = zone
+            service_ref.report_count += 1
+            if zone != service_ref.availability_zone:
+                service_ref.availability_zone = zone
 
-            db.service_update(ctxt,
-                              self.service_id, state_catalog)
+            service_ref.save()
 
             # TODO(termie): make this pattern be more elegant.
             if getattr(self, 'model_disconnected', False):

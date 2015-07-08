@@ -97,9 +97,9 @@ class HostDeserializer(wsgi.XMLDeserializer):
 
 def _list_hosts(req, service=None):
     """Returns a summary list of hosts."""
-    curr_time = timeutils.utcnow()
+    curr_time = timeutils.utcnow(with_timezone=True)
     context = req.environ['cinder.context']
-    services = db.service_get_all(context, False)
+    services = objects.ServiceList.get_all(context, False)
     zone = ''
     if 'zone' in req.GET:
         zone = req.GET['zone']
@@ -107,23 +107,24 @@ def _list_hosts(req, service=None):
         services = [s for s in services if s['availability_zone'] == zone]
     hosts = []
     for host in services:
-        delta = curr_time - (host['updated_at'] or host['created_at'])
+        delta = curr_time - (host.updated_at or host.created_at)
         alive = abs(delta.total_seconds()) <= CONF.service_down_time
         status = (alive and "available") or "unavailable"
         active = 'enabled'
-        if host['disabled']:
+        if host.disabled:
             active = 'disabled'
         LOG.debug('status, active and update: %s, %s, %s',
-                  status, active, host['updated_at'])
-        hosts.append({'host_name': host['host'],
-                      'service': host['topic'],
-                      'zone': host['availability_zone'],
+                  status, active, host.updated_at)
+        hosts.append({'host_name': host.host,
+                      'service': host.topic,
+                      'zone': host.availability_zone,
                       'service-status': status,
                       'service-state': active,
-                      'last-update': host['updated_at']})
+                      'last-update': timeutils.normalize_time(host.updated_at),
+                      })
     if service:
         hosts = [host for host in hosts
-                 if host["service"] == service]
+                 if host['service'] == service]
     return hosts
 
 
@@ -209,17 +210,16 @@ class HostController(wsgi.Controller):
             raise webob.exc.HTTPForbidden(explanation=msg)
 
         try:
-            host_ref = db.service_get_by_host_and_topic(context,
-                                                        host,
-                                                        CONF.volume_topic)
+            host_ref = objects.Service.get_by_host_and_topic(
+                context, host, CONF.volume_topic)
         except exception.ServiceNotFound:
             raise webob.exc.HTTPNotFound(explanation=_("Host not found"))
 
         # Getting total available/used resource
         # TODO(jdg): Add summary info for Snapshots
-        volume_refs = db.volume_get_all_by_host(context, host_ref['host'])
+        volume_refs = db.volume_get_all_by_host(context, host_ref.host)
         (count, sum) = db.volume_data_get_for_host(context,
-                                                   host_ref['host'])
+                                                   host_ref.host)
 
         snap_count_total = 0
         snap_sum_total = 0

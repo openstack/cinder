@@ -16,6 +16,7 @@
 
 import datetime
 
+from iso8601 import iso8601
 from oslo_utils import timeutils
 import webob.exc
 
@@ -121,7 +122,7 @@ class FakeRequestWithHostBinary(object):
     GET = {"host": "host1", "binary": "cinder-volume"}
 
 
-def fake_service_get_all(context):
+def fake_service_get_all(context, filters=None):
     return fake_services_list
 
 
@@ -152,8 +153,9 @@ def fake_policy_enforce(context, action, target):
     pass
 
 
-def fake_utcnow():
-    return datetime.datetime(2012, 10, 29, 13, 42, 11)
+def fake_utcnow(with_timezone=False):
+    tzinfo = iso8601.Utc() if with_timezone else None
+    return datetime.datetime(2012, 10, 29, 13, 42, 11, tzinfo=tzinfo)
 
 
 class ServicesTest(test.TestCase):

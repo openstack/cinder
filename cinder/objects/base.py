@@ -141,6 +141,10 @@ class CinderPersistentObject(object):
             self._context = original_context
 
 
+class CinderComparableObject(base.ComparableVersionedObject):
+    pass
+
+
 class ObjectListBase(base.ObjectListBase):
     pass
 

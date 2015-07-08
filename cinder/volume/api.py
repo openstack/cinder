@@ -144,8 +144,8 @@ class API(base.Base):
         if refresh_cache or not enable_cache:
             topic = CONF.volume_topic
             ctxt = context.get_admin_context()
-            services = self.db.service_get_all_by_topic(ctxt, topic)
-            az_data = [(s['availability_zone'], s['disabled'])
+            services = objects.ServiceList.get_all_by_topic(ctxt, topic)
+            az_data = [(s.availability_zone, s.disabled)
                        for s in services]
             disabled_map = {}
             for (az_name, disabled) in az_data:
@@ -169,9 +169,10 @@ class API(base.Base):
                             first_type_id, second_type_id,
                             first_type=None, second_type=None):
         safe = False
-        if len(self.db.service_get_all_by_topic(context,
-                                                'cinder-volume',
-                                                disabled=True)) == 1:
+        services = objects.ServiceList.get_all_by_topic(context,
+                                                        'cinder-volume',
+                                                        disabled=True)
+        if len(services.objects) == 1:
             safe = True
         else:
             type_a = first_type or volume_types.get_volume_type(
@@ -1314,13 +1315,12 @@ class API(base.Base):
         # Make sure the host is in the list of available hosts
         elevated = context.elevated()
         topic = CONF.volume_topic
-        services = self.db.service_get_all_by_topic(elevated,
-                                                    topic,
-                                                    disabled=False)
+        services = objects.ServiceList.get_all_by_topic(
+            elevated, topic, disabled=False)
         found = False
         for service in services:
             svc_host = volume_utils.extract_host(host, 'backend')
-            if utils.service_is_up(service) and service['host'] == svc_host:
+            if utils.service_is_up(service) and service.host == svc_host:
                 found = True
         if not found:
             msg = _('No available service named %s') % host
@@ -1515,7 +1515,7 @@ class API(base.Base):
             elevated = context.elevated()
             try:
                 svc_host = volume_utils.extract_host(host, 'backend')
-                service = self.db.service_get_by_host_and_topic(
+                service = objects.Service.get_by_host_and_topic(
                     elevated, svc_host, CONF.volume_topic)
             except exception.ServiceNotFound:
                 with excutils.save_and_reraise_exception():
