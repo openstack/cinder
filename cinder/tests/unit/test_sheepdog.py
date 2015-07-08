@@ -1329,7 +1329,6 @@ class SheepdogClientTestCase(test.TestCase):
         uuid = 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'
         location = 'sheepdog://%s' % uuid
         image_meta = {'id': uuid, 'size': 1, 'disk_format': 'raw'}
-        invalid_image_meta = {'id': uuid, 'size': 1, 'disk_format': 'iso'}
         stdout = ''
         stderr = ''
         expected_cmd = ('vdi', 'list', '-r', uuid)
@@ -1349,7 +1348,6 @@ class SheepdogClientTestCase(test.TestCase):
         uuid = 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'
         location = 'sheepdog://%s' % uuid
         image_meta = {'id': uuid, 'size': 1, 'disk_format': 'raw'}
-        invalid_image_meta = {'id': uuid, 'size': 1, 'disk_format': 'iso'}
         stdout = self.test_data.IS_CLONEABLE_FALSE
         stderr = ''
         expected_cmd = ('vdi', 'list', '-r', uuid)
