@@ -18,10 +18,13 @@
 """Utilities and helper functions."""
 
 
+import abc
 import contextlib
 import datetime
+import functools
 import hashlib
 import inspect
+import logging as py_logging
 import os
 import pyclbr
 import re
@@ -29,6 +32,8 @@ import shutil
 import stat
 import sys
 import tempfile
+import time
+import types
 from xml.dom import minidom
 from xml.parsers import expat
 from xml import sax
@@ -47,13 +52,16 @@ import retrying
 import six
 
 from cinder import exception
-from cinder.i18n import _, _LE
+from cinder.i18n import _, _LE, _LW
 
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 ISO_TIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
 PERFECT_TIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
+VALID_TRACE_FLAGS = {'method', 'api'}
+TRACE_METHOD = False
+TRACE_API = False
 
 synchronized = lockutils.synchronized_with_prefix('cinder-')
 
@@ -828,3 +836,126 @@ def convert_str(text):
             return text.decode('utf-8')
         else:
             return text
+
+
+def trace_method(f):
+    """Decorates a function if TRACE_METHOD is true."""
+    @functools.wraps(f)
+    def trace_method_logging_wrapper(*args, **kwargs):
+        if TRACE_METHOD:
+            return trace(f)(*args, **kwargs)
+        return f(*args, **kwargs)
+    return trace_method_logging_wrapper
+
+
+def trace_api(f):
+    """Decorates a function if TRACE_API is true."""
+    @functools.wraps(f)
+    def trace_api_logging_wrapper(*args, **kwargs):
+        if TRACE_API:
+            return trace(f)(*args, **kwargs)
+        return f(*args, **kwargs)
+    return trace_api_logging_wrapper
+
+
+def trace(f):
+    """Trace calls to the decorated function.
+
+    This decorator should always be defined as the outermost decorator so it
+    is defined last. This is important so it does not interfere
+    with other decorators.
+
+    Using this decorator on a function will cause its execution to be logged at
+    `DEBUG` level with arguments, return values, and exceptions.
+
+    :returns a function decorator
+    """
+
+    func_name = f.__name__
+
+    @functools.wraps(f)
+    def trace_logging_wrapper(*args, **kwargs):
+        if len(args) > 0:
+            maybe_self = args[0]
+        else:
+            maybe_self = kwargs.get('self', None)
+
+        if maybe_self and hasattr(maybe_self, '__module__'):
+            logger = logging.getLogger(maybe_self.__module__)
+        else:
+            logger = LOG
+
+        # NOTE(ameade): Don't bother going any further if DEBUG log level
+        # is not enabled for the logger.
+        if not logger.isEnabledFor(py_logging.DEBUG):
+            return f(*args, **kwargs)
+
+        all_args = inspect.getcallargs(f, *args, **kwargs)
+        logger.debug('==> %(func)s: call %(all_args)r',
+                     {'func': func_name, 'all_args': all_args})
+
+        start_time = time.time() * 1000
+        try:
+            result = f(*args, **kwargs)
+        except Exception as exc:
+            total_time = int(round(time.time() * 1000)) - start_time
+            logger.debug('<== %(func)s: exception (%(time)dms) %(exc)r',
+                         {'func': func_name,
+                          'time': total_time,
+                          'exc': exc})
+            raise
+        total_time = int(round(time.time() * 1000)) - start_time
+
+        logger.debug('<== %(func)s: return (%(time)dms) %(result)r',
+                     {'func': func_name,
+                      'time': total_time,
+                      'result': result})
+        return result
+    return trace_logging_wrapper
+
+
+class TraceWrapperMetaclass(type):
+    """Metaclass that wraps all methods of a class with trace_method.
+
+    This metaclass will cause every function inside of the class to be
+    decorated with the trace_method decorator.
+
+    To use the metaclass you define a class like so:
+    @six.add_metaclass(utils.TraceWrapperMetaclass)
+    class MyClass(object):
+    """
+    def __new__(meta, classname, bases, classDict):
+        newClassDict = {}
+        for attributeName, attribute in classDict.items():
+            if isinstance(attribute, types.FunctionType):
+                # replace it with a wrapped version
+                attribute = functools.update_wrapper(trace_method(attribute),
+                                                     attribute)
+            newClassDict[attributeName] = attribute
+
+        return type.__new__(meta, classname, bases, newClassDict)
+
+
+class TraceWrapperWithABCMetaclass(abc.ABCMeta, TraceWrapperMetaclass):
+    """Metaclass that wraps all methods of a class with trace."""
+    pass
+
+
+def setup_tracing(trace_flags):
+    """Set global variables for each trace flag.
+
+    Sets variables TRACE_METHOD and TRACE_API, which represent
+    whether to log method and api traces.
+
+    :param trace_flags: a list of strings
+    """
+    global TRACE_METHOD
+    global TRACE_API
+    try:
+        trace_flags = [flag.strip() for flag in trace_flags]
+    except TypeError:  # Handle when trace_flags is None or a test mock
+        trace_flags = []
+    for invalid_flag in (set(trace_flags) - VALID_TRACE_FLAGS):
+        LOG.warning(_LW('Invalid trace flag: %s'), invalid_flag)
+    TRACE_METHOD = 'method' in trace_flags
+    TRACE_API = 'api' in trace_flags
