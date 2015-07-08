@@ -54,8 +54,7 @@ class VolumeTypesManageController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context)
 
-        if not self.is_valid_body(body, 'volume_type'):
-            raise webob.exc.HTTPBadRequest()
+        self.assert_valid_body(body, 'volume_type')
 
         vol_type = body['volume_type']
         name = vol_type.get('name', None)
@@ -103,8 +102,7 @@ class VolumeTypesManageController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context)
 
-        if not self.is_valid_body(body, 'volume_type'):
-            raise webob.exc.HTTPBadRequest()
+        self.assert_valid_body(body, 'volume_type')
 
         vol_type = body['volume_type']
         description = vol_type.get('description')

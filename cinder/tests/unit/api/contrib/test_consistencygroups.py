@@ -340,8 +340,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
-        self.assertEqual('The server could not comply with the request since'
-                         ' it is either malformed or otherwise incorrect.',
+        self.assertEqual("Missing required element 'consistencygroup' in "
+                         "request body.",
                          res_dict['badRequest']['message'])
 
     def test_delete_consistencygroup_available(self):
@@ -767,8 +767,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
-        msg = (_('The server could not comply with the request since '
-                 'it is either malformed or otherwise incorrect.'))
+        msg = _("Missing required element 'consistencygroup-from-src' in "
+                "request body.")
         self.assertEqual(msg, res_dict['badRequest']['message'])
 
     def test_create_consistencygroup_from_src_no_cgsnapshot_id(self):

@@ -107,9 +107,7 @@ class QuotaSetsController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize_update(context)
         project_id = id
-        if not self.is_valid_body(body, 'quota_set'):
-            msg = (_("Missing required element quota_set in request body."))
-            raise webob.exc.HTTPBadRequest(explanation=msg)
+        self.assert_valid_body(body, 'quota_set')
 
         bad_keys = []
 

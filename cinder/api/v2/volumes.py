@@ -316,9 +316,7 @@ class VolumeController(wsgi.Controller):
     @wsgi.deserializers(xml=CreateDeserializer)
     def create(self, req, body):
         """Creates a new volume."""
-        if not self.is_valid_body(body, 'volume'):
-            msg = _("Missing required element '%s' in request body") % 'volume'
-            raise exc.HTTPBadRequest(explanation=msg)
+        self.assert_valid_body(body, 'volume')
 
         LOG.debug('Create volume request body: %s', body)
         context = req.environ['cinder.context']

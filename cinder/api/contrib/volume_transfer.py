@@ -149,13 +149,12 @@ class VolumeTransferController(wsgi.Controller):
     def create(self, req, body):
         """Create a new volume transfer."""
         LOG.debug('Creating new volume transfer %s', body)
-        if not self.is_valid_body(body, 'transfer'):
-            raise exc.HTTPBadRequest()
+        self.assert_valid_body(body, 'transfer')
 
         context = req.environ['cinder.context']
+        transfer = body['transfer']
 
         try:
-            transfer = body['transfer']
             volume_id = transfer['volume_id']
         except KeyError:
             msg = _("Incorrect request body format")
@@ -185,13 +184,12 @@ class VolumeTransferController(wsgi.Controller):
         """Accept a new volume transfer."""
         transfer_id = id
         LOG.debug('Accepting volume transfer %s', transfer_id)
-        if not self.is_valid_body(body, 'accept'):
-            raise exc.HTTPBadRequest()
+        self.assert_valid_body(body, 'accept')
 
         context = req.environ['cinder.context']
+        accept = body['accept']
 
         try:
-            accept = body['accept']
             auth_key = accept['auth_key']
         except KeyError:
             msg = _("Incorrect request body format")

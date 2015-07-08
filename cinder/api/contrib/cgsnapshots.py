@@ -155,16 +155,10 @@ class CgsnapshotsController(wsgi.Controller):
     def create(self, req, body):
         """Create a new cgsnapshot."""
         LOG.debug('Creating new cgsnapshot %s', body)
-        if not self.is_valid_body(body, 'cgsnapshot'):
-            raise exc.HTTPBadRequest()
+        self.assert_valid_body(body, 'cgsnapshot')
 
         context = req.environ['cinder.context']
-
-        try:
-            cgsnapshot = body['cgsnapshot']
-        except KeyError:
-            msg = _("Incorrect request body format")
-            raise exc.HTTPBadRequest(explanation=msg)
+        cgsnapshot = body['cgsnapshot']
 
         try:
             group_id = cgsnapshot['consistencygroup_id']

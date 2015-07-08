@@ -167,10 +167,7 @@ class SnapshotsController(wsgi.Controller):
         kwargs = {}
         context = req.environ['cinder.context']
 
-        if not self.is_valid_body(body, 'snapshot'):
-            msg = (_("Missing required element '%s' in request body") %
-                   'snapshot')
-            raise exc.HTTPBadRequest(explanation=msg)
+        self.assert_valid_body(body, 'snapshot')
 
         snapshot = body['snapshot']
         kwargs['metadata'] = snapshot.get('metadata', None)

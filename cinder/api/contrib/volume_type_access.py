@@ -106,8 +106,7 @@ class VolumeTypeActionController(wsgi.Controller):
     """The volume type access API controller for the OpenStack API."""
 
     def _check_body(self, body, action_name):
-        if not self.is_valid_body(body, action_name):
-            raise webob.exc.HTTPBadRequest()
+        self.assert_valid_body(body, action_name)
         access = body[action_name]
         project = access.get('project')
         if not uuidutils.is_uuid_like(project):

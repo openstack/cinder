@@ -79,8 +79,7 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context)
 
-        if not self.is_valid_body(body, 'extra_specs'):
-            raise webob.exc.HTTPBadRequest()
+        self.assert_valid_body(body, 'extra_specs')
 
         self._check_type(context, type_id)
         specs = body['extra_specs']

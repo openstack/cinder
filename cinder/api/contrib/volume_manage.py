@@ -96,9 +96,7 @@ class VolumeManageController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context)
 
-        if not self.is_valid_body(body, 'volume'):
-            msg = _("Missing required element '%s' in request body") % 'volume'
-            raise exc.HTTPBadRequest(explanation=msg)
+        self.assert_valid_body(body, 'volume')
 
         volume = body['volume']
 
