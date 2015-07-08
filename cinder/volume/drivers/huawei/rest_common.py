@@ -285,6 +285,8 @@ class RestCommon(object):
         uuid_str = name.replace("-", "")
         vol_uuid = uuid.UUID('urn:uuid:%s' % uuid_str)
         vol_encoded = base64.urlsafe_b64encode(vol_uuid.bytes)
+        if six.PY3:
+            vol_encoded = vol_encoded.decode('ascii')
         newuuid = vol_encoded.replace("=", "")
         return newuuid
 
@@ -1474,7 +1476,13 @@ class RestCommon(object):
                 logininfo[key] = base64.b64decode(node_text[4:])
             else:
                 logininfo[key] = node_text
-                node.text = '!$$$' + base64.b64encode(node_text)
+                if six.PY3:
+                    node_b64 = node_text.encode('utf-8')
+                    node_b64 = base64.b64encode(node_b64)
+                    node_b64 = node_b64.decode('ascii')
+                    node.text = '!$$$' + node_b64
+                else:
+                    node.text = '!$$$' + base64.b64encode(node_text)
                 need_encode = True
         if need_encode:
             self._change_file_mode(filename)
