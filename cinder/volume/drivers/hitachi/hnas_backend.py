@@ -824,3 +824,45 @@ class HnasBackend(object):
 
         LOG.debug("LUN %(lun)s not attached.", {'lun': volume_name})
         return False, 0, None
+
+    def get_existing_lu_info(self, cmd, ip0, user, pw, fslabel, lun):
+        """Returns the information for the specified Logical Unit.
+
+        Returns the information of an existing Logical Unit on HNAS, according
+        to the name provided.
+
+        :param cmd:     the command that will be run on SMU
+        :param ip0:     string IP address of controller
+        :param user:    string user authentication for array
+        :param pw:      string password authentication for array
+        :param fslabel: label of the file system
+        :param lun:     label of the logical unit
+        """
+
+        evs = self.get_evs(cmd, ip0, user, pw, fslabel)
+        out, err = self.run_cmd(cmd, ip0, user, pw, "console-context", "--evs",
+                                evs, 'iscsi-lu', 'list', lun)
+
+        return out
+
+    def rename_existing_lu(self, cmd, ip0, user, pw, fslabel,
+                           new_name, vol_name):
+        """Renames the specified Logical Unit.
+
+         Renames an existing Logical Unit on HNAS according to the new name
+         provided.
+
+        :param cmd:      command that will be run on SMU
+        :param ip0:      string IP address of controller
+        :param user:     string user authentication for array
+        :param pw:       string password authentication for array
+        :param fslabel:  label of the file system
+        :param new_name: new name to the existing volume
+        :param vol_name: current name of the existing volume
+        """
+        evs = self.get_evs(cmd, ip0, user, pw, fslabel)
+        out, err = self.run_cmd(cmd, ip0, user, pw, "console-context", "--evs",
+                                evs, "iscsi-lu", "mod", "-n", new_name,
+                                vol_name)
+
+        return out

@@ -22,10 +22,12 @@ import six
 
 from cinder import exception
 from cinder import test
+from cinder import utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.hitachi import hnas_nfs as nfs
+from cinder.volume.drivers import nfs as drivernfs
+from cinder.volume.drivers import remotefs
 from cinder.volume import volume_types
-
 
 SHARESCONF = """172.17.39.132:/cinder
 172.17.39.133:/cinder"""
@@ -99,6 +101,17 @@ _SNAPVOLUME = {'name': 'snapshot-51dd4-8d8a-4aa9-9176-086c9d89e7fc',
                'volume_name': 'volume-bcc48c61-9691-4e5f-897c-793686093190',
                'volume_id': 'bcc48c61-9691-4e5f-897c-793686093191',
                'host': 'host1@hnas-iscsi-backend#silver'}
+
+_VOLUME_NFS = {'name': 'volume-61da3-8d23-4bb9-3136-ca819d89e7fc',
+               'id': '61da3-8d23-4bb9-3136-ca819d89e7fc',
+               'size': 4,
+               'metadata': [{'key': 'type',
+                             'service_label': 'silver'}],
+               'volume_type': 'silver',
+               'volume_type_id': 'silver',
+               'provider_location': '172.24.44.34:/silver/',
+               'volume_size': 128,
+               'host': 'host1@hnas-nfs#silver'}
 
 GET_ID_VOL = {
     ("bcc48c61-9691-4e5f-897c-793686093190"): [_VOLUME],
@@ -297,3 +310,144 @@ class HDSNFSDriverTest(test.TestCase):
         vol = _VOLUME.copy()
 
         self.assertEqual('silver', self.driver.get_pool(vol))
+
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(os.path, 'isfile', return_value=True)
+    @mock.patch.object(drivernfs.NfsDriver, '_get_mount_point_for_share',
+                       return_value='/mnt/gold')
+    @mock.patch.object(utils, 'resolve_hostname', return_value='172.24.44.34')
+    @mock.patch.object(remotefs.RemoteFSDriver, '_ensure_shares_mounted')
+    def test_manage_existing(self, m_ensure_shares, m_resolve, m_mount_point,
+                             m_isfile, m_get_extra_specs):
+        vol = _VOLUME_NFS.copy()
+
+        m_get_extra_specs.return_value = {'key': 'type',
+                                          'service_label': 'silver'}
+        self.driver._mounted_shares = ['172.17.39.133:/cinder']
+        existing_vol_ref = {'source-name': '172.17.39.133:/cinder/volume-test'}
+
+        with mock.patch.object(self.driver, '_execute'):
+            out = self.driver.manage_existing(vol, existing_vol_ref)
+
+            loc = {'provider_location': '172.17.39.133:/cinder'}
+            self.assertEqual(loc, out)
+
+        m_get_extra_specs.assert_called_once_with('silver')
+        m_isfile.assert_called_once_with('/mnt/gold/volume-test')
+        m_mount_point.assert_called_once_with('172.17.39.133:/cinder')
+        m_resolve.assert_called_with('172.17.39.133')
+        m_ensure_shares.assert_called_once_with()
+
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(os.path, 'isfile', return_value=True)
+    @mock.patch.object(drivernfs.NfsDriver, '_get_mount_point_for_share',
+                       return_value='/mnt/gold')
+    @mock.patch.object(utils, 'resolve_hostname', return_value='172.17.39.133')
+    @mock.patch.object(remotefs.RemoteFSDriver, '_ensure_shares_mounted')
+    def test_manage_existing_move_fails(self, m_ensure_shares, m_resolve,
+                                        m_mount_point, m_isfile,
+                                        m_get_extra_specs):
+        vol = _VOLUME_NFS.copy()
+
+        m_get_extra_specs.return_value = {'key': 'type',
+                                          'service_label': 'silver'}
+        self.driver._mounted_shares = ['172.17.39.133:/cinder']
+        existing_vol_ref = {'source-name': '172.17.39.133:/cinder/volume-test'}
+        self.driver._execute = mock.Mock(side_effect=OSError)
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.manage_existing, vol, existing_vol_ref)
+        m_get_extra_specs.assert_called_once_with('silver')
+        m_isfile.assert_called_once_with('/mnt/gold/volume-test')
+        m_mount_point.assert_called_once_with('172.17.39.133:/cinder')
+        m_resolve.assert_called_with('172.17.39.133')
+        m_ensure_shares.assert_called_once_with()
+
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    @mock.patch.object(os.path, 'isfile', return_value=True)
+    @mock.patch.object(drivernfs.NfsDriver, '_get_mount_point_for_share',
+                       return_value='/mnt/gold')
+    @mock.patch.object(utils, 'resolve_hostname', return_value='172.17.39.133')
+    @mock.patch.object(remotefs.RemoteFSDriver, '_ensure_shares_mounted')
+    def test_manage_existing_invalid_pool(self, m_ensure_shares, m_resolve,
+                                          m_mount_point, m_isfile,
+                                          m_get_extra_specs):
+        vol = _VOLUME_NFS.copy()
+        m_get_extra_specs.return_value = {'key': 'type',
+                                          'service_label': 'gold'}
+        self.driver._mounted_shares = ['172.17.39.133:/cinder']
+        existing_vol_ref = {'source-name': '172.17.39.133:/cinder/volume-test'}
+        self.driver._execute = mock.Mock(side_effect=OSError)
+
+        self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
+                          self.driver.manage_existing, vol, existing_vol_ref)
+        m_get_extra_specs.assert_called_once_with('silver')
+        m_isfile.assert_called_once_with('/mnt/gold/volume-test')
+        m_mount_point.assert_called_once_with('172.17.39.133:/cinder')
+        m_resolve.assert_called_with('172.17.39.133')
+        m_ensure_shares.assert_called_once_with()
+
+    @mock.patch.object(utils, 'get_file_size', return_value=4000000000)
+    @mock.patch.object(os.path, 'isfile', return_value=True)
+    @mock.patch.object(drivernfs.NfsDriver, '_get_mount_point_for_share',
+                       return_value='/mnt/gold')
+    @mock.patch.object(utils, 'resolve_hostname', return_value='172.17.39.133')
+    @mock.patch.object(remotefs.RemoteFSDriver, '_ensure_shares_mounted')
+    def test_manage_existing_get_size(self, m_ensure_shares, m_resolve,
+                                      m_mount_point,
+                                      m_isfile, m_file_size):
+
+        vol = _VOLUME_NFS.copy()
+
+        self.driver._mounted_shares = ['172.17.39.133:/cinder']
+        existing_vol_ref = {'source-name': '172.17.39.133:/cinder/volume-test'}
+
+        out = self.driver.manage_existing_get_size(vol, existing_vol_ref)
+
+        self.assertEqual(vol['size'], out)
+        m_file_size.assert_called_once_with('/mnt/gold/volume-test')
+        m_isfile.assert_called_once_with('/mnt/gold/volume-test')
+        m_mount_point.assert_called_once_with('172.17.39.133:/cinder')
+        m_resolve.assert_called_with('172.17.39.133')
+        m_ensure_shares.assert_called_once_with()
+
+    @mock.patch.object(utils, 'get_file_size', return_value='badfloat')
+    @mock.patch.object(os.path, 'isfile', return_value=True)
+    @mock.patch.object(drivernfs.NfsDriver, '_get_mount_point_for_share',
+                       return_value='/mnt/gold')
+    @mock.patch.object(utils, 'resolve_hostname', return_value='172.17.39.133')
+    @mock.patch.object(remotefs.RemoteFSDriver, '_ensure_shares_mounted')
+    def test_manage_existing_get_size_error(self, m_ensure_shares, m_resolve,
+                                            m_mount_point,
+                                            m_isfile, m_file_size):
+        vol = _VOLUME_NFS.copy()
+
+        self.driver._mounted_shares = ['172.17.39.133:/cinder']
+        existing_vol_ref = {'source-name': '172.17.39.133:/cinder/volume-test'}
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.manage_existing_get_size, vol,
+                          existing_vol_ref)
+        m_file_size.assert_called_once_with('/mnt/gold/volume-test')
+        m_isfile.assert_called_once_with('/mnt/gold/volume-test')
+        m_mount_point.assert_called_once_with('172.17.39.133:/cinder')
+        m_resolve.assert_called_with('172.17.39.133')
+        m_ensure_shares.assert_called_once_with()
+
+    def test_manage_existing_get_size_without_source_name(self):
+        vol = _VOLUME.copy()
+        existing_vol_ref = {
+            'source-id': 'bcc48c61-9691-4e5f-897c-793686093190'}
+
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size, vol,
+                          existing_vol_ref)
+
+    @mock.patch.object(drivernfs.NfsDriver, '_get_mount_point_for_share',
+                       return_value='/mnt/gold')
+    def test_unmanage(self, m_mount_point):
+        with mock.patch.object(self.driver, '_execute'):
+            vol = _VOLUME_NFS.copy()
+            self.driver.unmanage(vol)
+
+        m_mount_point.assert_called_once_with('172.24.44.34:/silver/')

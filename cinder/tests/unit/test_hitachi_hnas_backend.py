@@ -228,6 +228,18 @@ Logical units       : Logical units       :\n\
 \n\
 Access configuration :\n\
 "
+HNAS_RESULT24 = "Logical unit modified successfully."
+
+HNAS_RESULT25 = "Current selected file system: HNAS-iSCSI-TEST, number(32)."
+
+HNAS_RESULT26 = "Name   : volume-test \n\
+Comment:                              \n\
+Path   : /.cinder/volume-test.iscsi   \n\
+Size   : 2 GB                         \n\
+File System : fs1                     \n\
+File System Mounted : YES             \n\
+Logical Unit Mounted: No"
+
 
 HNAS_CMDS = {
     ('ssh', '0.0.0.0', 'supervisor', 'supervisor', 'evsfs', 'list'):
@@ -296,7 +308,16 @@ HNAS_CMDS = {
     ('ssh', '0.0.0.0', 'supervisor', 'supervisor', 'console-context', '--evs',
      '1', 'iscsi-target', 'addlu', 'cinder-default',
      'volume-8ddd1a54-0000-0000-0000', '2'):
-        ["%s" % HNAS_RESULT13, ""]
+        ["%s" % HNAS_RESULT13, ""],
+    ('ssh', '0.0.0.0', 'supervisor', 'supervisor', 'console-context', '--evs',
+     '1', 'selectfs', 'fs01-husvm'):
+        ["%s" % HNAS_RESULT25, ""],
+    ('ssh', '0.0.0.0', 'supervisor', 'supervisor', 'console-context', '--evs',
+     '1', 'iscsi-lu', 'list', 'test_lun'):
+        ["%s" % HNAS_RESULT26, ""],
+    ('ssh', '0.0.0.0', 'supervisor', 'supervisor', 'console-context', '--evs',
+     '1', 'iscsi-lu', 'mod', '-n', 'vol_test', 'new_vol_test'):
+        ["%s" % HNAS_RESULT24, ""]
 }
 
 DRV_CONF = {'ssh_enabled': 'True',
@@ -590,3 +611,42 @@ class HDSHNASBendTest(test.TestCase):
                                       "test_hdp")
         result, lunid, tgt = ret
         self.assertFalse(result)
+
+    @mock.patch.object(hnas_backend.HnasBackend, 'get_evs', return_value=1)
+    @mock.patch.object(hnas_backend.HnasBackend, 'run_cmd',
+                       return_value = (HNAS_RESULT26, ""))
+    def test_get_existing_lu_info(self, m_run_cmd, m_get_evs):
+
+        out = self.hnas_bend.get_existing_lu_info("ssh", "0.0.0.0",
+                                                  "supervisor",
+                                                  "supervisor", "fs01-husvm",
+                                                  "test_lun")
+
+        m_get_evs.assert_called_once_with('ssh', '0.0.0.0', 'supervisor',
+                                          'supervisor', 'fs01-husvm')
+        m_run_cmd.assert_called_once_with('ssh', '0.0.0.0', 'supervisor',
+                                          'supervisor', 'console-context',
+                                          '--evs', 1, 'iscsi-lu', 'list',
+                                          'test_lun')
+
+        self.assertEqual(HNAS_RESULT26, out)
+
+    @mock.patch.object(hnas_backend.HnasBackend, 'get_evs', return_value=1)
+    @mock.patch.object(hnas_backend.HnasBackend, 'run_cmd',
+                       return_value=(HNAS_RESULT24, ""))
+    def test_rename_existing_lu(self, m_run_cmd, m_get_evs):
+
+        out = self.hnas_bend.rename_existing_lu("ssh", "0.0.0.0",
+                                                "supervisor",
+                                                "supervisor", "fs01-husvm",
+                                                "vol_test",
+                                                "new_vol_test")
+
+        m_get_evs.assert_called_once_with('ssh', '0.0.0.0', 'supervisor',
+                                          'supervisor', 'fs01-husvm')
+        m_run_cmd.assert_called_once_with('ssh', '0.0.0.0', 'supervisor',
+                                          'supervisor', 'console-context',
+                                          '--evs', 1, 'iscsi-lu', 'mod',
+                                          '-n', 'vol_test', 'new_vol_test')
+
+        self.assertEqual(HNAS_RESULT24, out)

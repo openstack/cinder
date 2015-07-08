@@ -29,6 +29,7 @@ import os
 import pyclbr
 import re
 import shutil
+import socket
 import stat
 import sys
 import tempfile
@@ -969,3 +970,20 @@ def setup_tracing(trace_flags):
         LOG.warning(_LW('Invalid trace flag: %s'), invalid_flag)
     TRACE_METHOD = 'method' in trace_flags
     TRACE_API = 'api' in trace_flags
+
+
+def resolve_hostname(hostname):
+    """Resolves host name to IP address.
+
+    Resolves a host name (my.data.point.com) to an IP address (10.12.143.11).
+    This routine also works if the data passed in hostname is already an IP.
+    In this case, the same IP address will be returned.
+
+    :param hostname:  Host name to resolve.
+    :return:          IP Address for Host name.
+    """
+    result = socket.getaddrinfo(hostname, None)[0]
+    (family, socktype, proto, canonname, sockaddr) = result
+    LOG.debug('Asked to resolve hostname %(host)s and got IP %(ip)s.',
+              {'host': hostname, 'ip': sockaddr[0]})
+    return sockaddr[0]
