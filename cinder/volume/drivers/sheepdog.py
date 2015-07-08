@@ -606,6 +606,7 @@ class SheepdogDriver(driver.VolumeDriver):
         self.client.delete(volume['name'])
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
+        """Copy specified image to the volume."""
         # this function called by only flows/manager.py
         # when mage source can't clone directly.
         with image_utils.temporary_file() as tmp:
@@ -625,7 +626,7 @@ class SheepdogDriver(driver.VolumeDriver):
                     self.client.delete(volume['name'])
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
-        """Copy the volume to the specified image."""
+        """Copy the volume to specified image."""
         image_id = image_meta['id']
         try:
             with image_utils.temporary_file() as tmp:
@@ -647,6 +648,7 @@ class SheepdogDriver(driver.VolumeDriver):
         self.client.delete_snapshot(snapshot['volume_name'], snapshot['name'])
 
     def local_path(self, volume):
+        """Get volume path."""
         if volume['name'] == '':
             reason = _('blank volume is not allowed')
             LOG.error(reason)

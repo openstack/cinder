@@ -1731,6 +1731,27 @@ class SheepdogDriverTestCase(test.TestCase):
                                                  self._vdiname,
                                                  self._vdisize)
 
+    def test_local_path(self):
+        fake_vol = {'project_id': self.test_data.TEST_VOLUME['project_id'],
+                    'name': self.test_data.TEST_VOLUME['name'],
+                    'size': self.test_data.TEST_VOLUME['size'],
+                    'id': self.test_data.TEST_VOLUME['id']}
+        expected_path = 'sheepdog://%s' % fake_vol['name']
+
+        ret = self.driver.local_path(fake_vol)
+        self.assertEqual(ret, expected_path)
+
+    @mock.patch.object(sheepdog, 'LOG')
+    def test_local_path_failed(self, fake_logger):
+        fake_vol = {'project_id': self.test_data.TEST_VOLUME['project_id'],
+                    'name': '',
+                    'size': self.test_data.TEST_VOLUME['size'],
+                    'id': self.test_data.TEST_VOLUME['id']}
+
+        self.assertRaises(exception.SheepdogError,
+                          self.driver.local_path, fake_vol)
+        self.assertTrue(fake_logger.error.called)
+
     @mock.patch.object(sheepdog.SheepdogClient, 'resize')
     @mock.patch.object(sheepdog, 'LOG')
     def test_extend_volume(self, fake_logger, fake_execute):
