@@ -371,6 +371,7 @@ class NfsDriverTestCase(test.TestCase):
         self.configuration.nas_ip = None
         self.configuration.nas_share_path = None
         self.configuration.nas_mount_options = None
+        self.configuration.reserved_percentage = 0
         self.configuration.volume_dd_blocksize = '1M'
         self._driver = nfs.NfsDriver(configuration=self.configuration)
         self._driver.shares = {}
@@ -848,7 +849,37 @@ class NfsDriverTestCase(test.TestCase):
         drv.get_volume_stats()
         self.assertEqual(30.0, drv._stats['total_capacity_gb'])
         self.assertEqual(5.0, drv._stats['free_capacity_gb'])
+        self.assertEqual(0, drv._stats['reserved_percentage'])
 
+        mox.VerifyAll()
+
+    def test_get_volume_stats_with_non_zero_reserved_percentage(self):
+        """get_volume_stats must fill the correct values."""
+        mox = self.mox
+        drv = self._driver
+        self.configuration.reserved_percentage = 10.0
+
+        drv._mounted_shares = [self.TEST_NFS_EXPORT1, self.TEST_NFS_EXPORT2]
+
+        mox.StubOutWithMock(drv, '_ensure_shares_mounted')
+        mox.StubOutWithMock(drv, '_get_capacity_info')
+
+        drv._ensure_shares_mounted()
+
+        drv._get_capacity_info(self.TEST_NFS_EXPORT1).\
+            AndReturn((10 * units.Gi, 2 * units.Gi,
+                       2 * units.Gi))
+        drv._get_capacity_info(self.TEST_NFS_EXPORT2).\
+            AndReturn((20 * units.Gi, 3 * units.Gi,
+                       3 * units.Gi))
+
+        mox.ReplayAll()
+
+        drv.get_volume_stats()
+
+        self.assertEqual(30.0, drv._stats['total_capacity_gb'])
+        self.assertEqual(5.0, drv._stats['free_capacity_gb'])
+        self.assertEqual(10.0, drv._stats['reserved_percentage'])
         mox.VerifyAll()
 
     def _check_is_share_eligible(self, total_size, total_available,
