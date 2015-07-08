@@ -186,7 +186,7 @@ class SheepdogClient(object):
             if stderr.rstrip().endswith(self.DOG_RESP_VDI_NOT_FOUND):
                 LOG.warning(_LW('Volume not found. %s'), vdiname)
             elif stderr.startswith(self.DOG_RESP_CONNECTION_ERROR):
-                # XXX(tishizaki)
+                # NOTE(tishizaki)
                 # Dog command does not return error_code although
                 # dog command cannot connect to sheep process.
                 # That is a Sheepdog's bug.
@@ -240,7 +240,7 @@ class SheepdogClient(object):
             elif stderr.rstrip().endswith(self.DOG_RESP_VDI_NOT_FOUND):
                 LOG.warning(_LW('Volume "%s" not found.'), vdiname)
             elif stderr.startswith(self.DOG_RESP_CONNECTION_ERROR):
-                # XXX(tishizaki)
+                # NOTE(tishizaki)
                 # Dog command does not return error_code although
                 # dog command cannot connect to sheep process.
                 # That is a Sheepdog's bug.
@@ -570,26 +570,27 @@ class SheepdogDriver(driver.VolumeDriver):
 
         try:
             self.client.clone(snapshot['volume_name'], snapshot_name,
-                              volume['name'], volume['size'])
+                              volume.name, volume.size)
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE('Failed to create cloned volume %s.'),
-                          volume['name'])
+                          volume.name)
         finally:
+            # Delete temp Snapshot
             self.client.delete_snapshot(snapshot['volume_name'], snapshot_name)
 
     def create_volume(self, volume):
         """Create a sheepdog volume."""
-        self.client.create(volume['name'], volume['size'])
+        self.client.create(volume.name, volume.size)
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create a sheepdog volume from a snapshot."""
-        self.client.clone(snapshot['volume_name'], snapshot['name'],
-                          volume['name'], volume['size'])
+        self.client.clone(snapshot.volume_name, snapshot.name,
+                          volume.name, volume.size)
 
     def delete_volume(self, volume):
         """Delete a logical volume."""
-        self.client.delete(volume['name'])
+        self.client.delete(volume.name)
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Copy specified image to the volume."""
@@ -602,14 +603,14 @@ class SheepdogDriver(driver.VolumeDriver):
 
             # remove the image created by import before this function.
             # see volume/drivers/manager.py:_create_volume
-            self.client.delete(volume['name'])
+            self.client.delete(volume.name)
             # convert and store into sheepdog
             self.client.convert(tmp, 'sheepdog:%s' % volume['name'])
             try:
-                self.client.resize(volume['name'], volume['size'])
+                self.client.resize(volume.name, volume.size)
             except Exception:
                 with excutils.save_and_reraise_exception():
-                    self.client.delete(volume['name'])
+                    self.client.delete(volume.name)
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to specified image."""
@@ -627,11 +628,11 @@ class SheepdogDriver(driver.VolumeDriver):
 
     def create_snapshot(self, snapshot):
         """Create a sheepdog snapshot."""
-        self.client.create_snapshot(snapshot['volume_name'], snapshot['name'])
+        self.client.create_snapshot(snapshot.volume_name, snapshot.name)
 
     def delete_snapshot(self, snapshot):
         """Delete a sheepdog snapshot."""
-        self.client.delete_snapshot(snapshot['volume_name'], snapshot['name'])
+        self.client.delete_snapshot(snapshot.volume_name, snapshot.name)
 
     def local_path(self, volume):
         """Get volume path."""
@@ -699,9 +700,9 @@ class SheepdogDriver(driver.VolumeDriver):
 
     def extend_volume(self, volume, new_size):
         """Extend an Existing Volume."""
-        self.client.resize(volume['name'], new_size)
+        self.client.resize(volume.name, new_size)
         LOG.debug('Extend volume from %(old_size)s GB to %(new_size)s GB.',
-                  {'old_size': volume['size'], 'new_size': new_size})
+                  {'old_size': volume.size, 'new_size': new_size})
 
     def backup_volume(self, context, backup, backup_service):
         """Create a new backup from an existing volume."""
