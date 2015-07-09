@@ -33,6 +33,7 @@ from cinder import exception
 from cinder import utils
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
+from cinder.volume import driver
 from cinder.volume.drivers import nfs
 
 LOG = logging.getLogger(__name__)
@@ -61,7 +62,11 @@ CONF = cfg.CONF
 CONF.register_opts(tintri_options)
 
 
-class TintriDriver(nfs.NfsDriver):
+class TintriDriver(driver.ManageableVD,
+                   driver.CloneableVD,
+                   driver.CloneableImageVD,
+                   driver.SnapshotVD,
+                   nfs.NfsDriver):
     """Base class for Tintri driver."""
 
     VENDOR = 'Tintri'
