@@ -66,6 +66,17 @@ class NovaClientTestCase(test.TestCase):
             timeout=None, extensions=nova.nova_extensions)
 
     @mock.patch('novaclient.v1_1.client.Client')
+    def test_nova_client_privileged_user_custom_auth_url(self, p_client):
+        self.override_config('os_privileged_user_auth_url',
+                             'http://privatekeystonehost:5000/v2.0')
+        nova.novaclient(self.ctx, privileged_user=True)
+        p_client.assert_called_once_with(
+            'adminuser', 'strongpassword', None, region_name=None,
+            auth_url='http://privatekeystonehost:5000/v2.0',
+            insecure=False, endpoint_type='publicURL', cacert=None,
+            timeout=None, extensions=nova.nova_extensions)
+
+    @mock.patch('novaclient.v1_1.client.Client')
     def test_nova_client_custom_region(self, p_client):
         self.override_config('os_region_name', 'farfaraway')
         nova.novaclient(self.ctx)
