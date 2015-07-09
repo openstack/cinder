@@ -52,6 +52,7 @@ def make_backup(elem):
 def make_backup_restore(elem):
     elem.set('backup_id')
     elem.set('volume_id')
+    elem.set('volume_name')
 
 
 def make_backup_export_import_record(elem):

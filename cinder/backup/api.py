@@ -316,7 +316,8 @@ class API(base.Base):
                                           volume_id)
 
         d = {'backup_id': backup_id,
-             'volume_id': volume_id, }
+             'volume_id': volume_id,
+             'volume_name': volume['display_name'], }
 
         return d
 
