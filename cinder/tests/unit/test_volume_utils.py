@@ -794,3 +794,11 @@ class VolumeUtilsTestCase(test.TestCase):
             mock_db, 'volume-d8cd1fe')
 
         self.assertFalse(result)
+
+    def test_convert_config_string_to_dict(self):
+        test_string = "{'key-1'='val-1' 'key-2'='val-2' 'key-3'='val-3'}"
+        expected_dict = {'key-1': 'val-1', 'key-2': 'val-2', 'key-3': 'val-3'}
+
+        self.assertEqual(
+            expected_dict,
+            volume_utils.convert_config_string_to_dict(test_string))

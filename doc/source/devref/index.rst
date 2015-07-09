@@ -31,6 +31,7 @@ Programming HowTos and Tutorials
     addmethod.openstackapi
     drivers
     gmr
+    replication
 
 
 Background Concepts for Cinder

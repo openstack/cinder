@@ -5849,6 +5849,61 @@ class GenericVolumeDriverTestCase(DriverTestCase):
                                                       volume_file)
             self.assertEqual(i, backup_service.restore.call_count)
 
+    def test_enable_replication_invalid_state(self):
+        volume_api = cinder.volume.api.API()
+        ctxt = context.get_admin_context()
+        volume = tests_utils.create_volume(ctxt,
+                                           size=1,
+                                           host=CONF.host,
+                                           replication_status='enabled')
+
+        self.assertRaises(exception.InvalidVolume,
+                          volume_api.enable_replication,
+                          ctxt, volume)
+
+    def test_enable_replication(self):
+        volume_api = cinder.volume.api.API()
+        ctxt = context.get_admin_context()
+
+        volume = tests_utils.create_volume(self.context,
+                                           size=1,
+                                           host=CONF.host,
+                                           replication_status='disabled')
+        with mock.patch.object(volume_rpcapi.VolumeAPI,
+                               'enable_replication') as mock_enable_rep:
+            volume_api.enable_replication(ctxt, volume)
+            self.assertTrue(mock_enable_rep.called)
+
+    def test_disable_replication_invalid_state(self):
+        volume_api = cinder.volume.api.API()
+        ctxt = context.get_admin_context()
+        volume = tests_utils.create_volume(ctxt,
+                                           size=1,
+                                           host=CONF.host,
+                                           replication_status='invalid-state')
+
+        self.assertRaises(exception.InvalidVolume,
+                          volume_api.disable_replication,
+                          ctxt, volume)
+
+    def test_disable_replication(self):
+        volume_api = cinder.volume.api.API()
+        ctxt = context.get_admin_context()
+
+        volume = tests_utils.create_volume(self.context,
+                                           size=1,
+                                           host=CONF.host,
+                                           replication_status='disabled')
+
+        with mock.patch.object(volume_rpcapi.VolumeAPI,
+                               'disable_replication') as mock_disable_rep:
+            volume_api.disable_replication(ctxt, volume)
+            self.assertTrue(mock_disable_rep.called)
+
+            volume['replication_status'] = 'enabled'
+            volume_api.disable_replication(ctxt, volume)
+            self.assertTrue(mock_disable_rep.called)
+
 
 class LVMISCSIVolumeDriverTestCase(DriverTestCase):
     """Test case for VolumeDriver"""

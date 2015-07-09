@@ -1505,6 +1505,121 @@ class API(base.Base):
                      resource=vol_ref)
             return vol_ref
 
+    #  Replication V2 methods ##
+
+    # NOTE(jdg): It might be kinda silly to propogate the named
+    # args with defaults all the way down through rpc into manager
+    # but for now the consistency is useful, and there may be
+    # some usefulness in the future (direct calls in manager?)
+
+    # NOTE(jdg): Relying solely on the volume-type quota mechanism
+    # need to consider looking at how we handle configured backends
+    # WRT quotas, do they count against normal quotas or not?  For
+    # now they're a special resource, so no.
+
+    @wrap_check_policy
+    def enable_replication(self, ctxt, volume):
+
+        # NOTE(jdg): details like sync vs async
+        # and replica count are to be set via the
+        # volume-type and config files.
+
+        # Get a fresh ref from db and check status
+        volume = self.db.volume_get(ctxt, volume['id'])
+
+        # NOTE(jdg): Set a valid status as a var to minimize errors via typos
+        # also, use a list, we may want to add to it some day
+
+        # TODO(jdg): Move these up to a global list for each call and ban the
+        # free form typing of states and state checks going forward
+
+        # NOTE(jdg): There may be a need for some backends to allow this
+        # call to driver regardless of replication_status, most likely
+        # this indicates an issue with the driver, but might be useful
+        # cases to  consider modifying this for in the future.
+        valid_rep_status = ['disabled']
+        rep_status = volume.get('replication_status', valid_rep_status[0])
+
+        if rep_status not in valid_rep_status:
+            msg = (_("Invalid status to enable replication. "
+                     "valid states are: %(valid_states)s, "
+                     "current replication-state is: %(curr_state)s."),
+                   {'valid_states': valid_rep_status,
+                    'curr_state': rep_status})
+
+            raise exception.InvalidVolume(reason=msg)
+
+        vref = self.db.volume_update(ctxt,
+                                     volume['id'],
+                                     {'replication_status': 'enabling'})
+        self.volume_rpcapi.enable_replication(ctxt, vref)
+
+    @wrap_check_policy
+    def disable_replication(self, ctxt, volume):
+
+        valid_disable_status = ['disabled', 'enabled']
+
+        # NOTE(jdg): Just use disabled here (item 1 in the list) this
+        # way if someone says disable_rep on a volume that's not being
+        # replicated we just say "ok, done"
+        rep_status = volume.get('replication_status', valid_disable_status[0])
+
+        if rep_status not in valid_disable_status:
+            msg = (_("Invalid status to disable replication. "
+                     "valid states are: %(valid_states)s, "
+                     "current replication-state is: %(curr_state)s."),
+                   {'valid_states': valid_disable_status,
+                    'curr_state': rep_status})
+
+            raise exception.InvalidVolume(reason=msg)
+
+        vref = self.db.volume_update(ctxt,
+                                     volume['id'],
+                                     {'replication_status': 'disabling'})
+
+        self.volume_rpcapi.disable_replication(ctxt, vref)
+
+    @wrap_check_policy
+    def failover_replication(self,
+                             ctxt,
+                             volume,
+                             secondary=None):
+
+        # FIXME(jdg):  What is the secondary argument?
+        # for managed secondaries that's easy; it's a host
+        # for others, it's tricky; will propose a format for
+        # secondaries that includes an ID/Name that can be
+        # used as a handle
+        valid_failover_status = ['enabled']
+        rep_status = volume.get('replication_status', 'na')
+
+        if rep_status not in valid_failover_status:
+            msg = (_("Invalid status to failover replication. "
+                     "valid states are: %(valid_states)s, "
+                     "current replication-state is: %(curr_state)s."),
+                   {'valid_states': valid_failover_status,
+                    'curr_state': rep_status})
+
+            raise exception.InvalidVolume(reason=msg)
+
+        vref = self.db.volume_update(
+            ctxt,
+            volume['id'],
+            {'replication_status': 'enabling_secondary'})
+
+        self.volume_rpcapi.failover_replication(ctxt,
+                                                vref,
+                                                secondary)
+
+    @wrap_check_policy
+    def list_replication_targets(self, ctxt, volume):
+
+        # NOTE(jdg): This collects info for the specified volume
+        # it is NOT an error if the volume is not being replicated
+        # also, would be worth having something at a backend/host
+        # level to show an admin how a backend is configured.
+        return self.volume_rpcapi.list_replication_targets(ctxt, volume)
+
 
 class HostAPI(base.Base):
     def __init__(self):

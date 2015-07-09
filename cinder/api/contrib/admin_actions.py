@@ -255,6 +255,85 @@ class VolumeAdminController(AdminController):
                                                         new_volume, error)
         return {'save_volume_id': ret}
 
+    @wsgi.action('os-enable_replication')
+    def _enable_replication(self, req, id, body):
+        """Enable/Re-enable replication on replciation capable volume.
+
+        Admin only method, used primarily for cases like disable/re-enable
+        replication proces on a replicated volume for maintenance or testing
+        """
+
+        context = req.environ['cinder.context']
+        self.authorize(context, 'enable_replication')
+        try:
+            volume = self._get(context, id)
+        except exception.VolumeNotFound as e:
+            raise exc.HTTPNotFound(explanation=e.msg)
+        self.volume_api.enable_replication(context, volume)
+        return webob.Response(status_int=202)
+
+    @wsgi.action('os-disable_replication')
+    def _disable_replication(self, req, id, body):
+        """Disable replication on replciation capable volume.
+
+        Admin only method, used to instruct a backend to
+        disable replication process to a replicated volume.
+        """
+
+        context = req.environ['cinder.context']
+        self.authorize(context, 'disable_replication')
+        try:
+            volume = self._get(context, id)
+        except exception.VolumeNotFound as e:
+            raise exc.HTTPNotFound(explanation=e.msg)
+        self.volume_api.disable_replication(context, volume)
+        return webob.Response(status_int=202)
+
+    @wsgi.action('os-failover_replication')
+    def _failover_replication(self, req, id, body):
+        """Failover a replicating volume to it's secondary
+
+        Admin only method, used to force a fail-over to
+        a replication target. Optional secondary param to
+        indicate what device to promote in case of multiple
+        replication targets.
+        """
+
+        context = req.environ['cinder.context']
+        self.authorize(context, 'failover_replication')
+        try:
+            volume = self._get(context, id)
+        except exception.VolumeNotFound as e:
+            raise exc.HTTPNotFound(explanation=e.msg)
+        secondary = body['os-failover_replication'].get('secondary', None)
+        self.volume_api.failover_replication(context, volume, secondary)
+        return webob.Response(status_int=202)
+
+    @wsgi.action('os-list_replication_targets')
+    def _list_replication_targets(self, req, id, body):
+        """Show replication targets for the specified host.
+
+        Admin only method, used to display configured
+        replication target devices for the specified volume.
+
+        """
+
+        # TODO(jdg): We'll want an equivalent type of command
+        # to querie a backend host (show configuration for a
+        # specified backend), but priority here is for
+        # a volume as it's likely to be more useful.
+        context = req.environ['cinder.context']
+        self.authorize(context, 'list_replication_targets')
+        try:
+            volume = self._get(context, id)
+        except exception.VolumeNotFound as e:
+            raise exc.HTTPNotFound(explanation=e.msg)
+
+        # Expected response is a dict is a dict with unkonwn
+        # keys.  Should be of the form:
+        #    {'volume_id': xx, 'replication_targets':[{k: v, k1: v1...}]}
+        return self.volume_api.list_replication_targets(context, volume)
+
 
 class SnapshotAdminController(AdminController):
     """AdminController for Snapshots."""
