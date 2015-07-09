@@ -28,6 +28,7 @@ from cinder.i18n import _
 from cinder.image import image_utils
 from cinder.openstack.common import fileutils
 from cinder import test
+from cinder.tests.unit import fake_backup
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder import utils
@@ -45,6 +46,8 @@ class SheepdogDriverTestDataGenerator(object):
             self.TEST_CLONED_VOL_DATA)
         self.TEST_SNAPSHOT = self._make_fake_snapshot(
             self.TEST_SNAPSHOT_DATA, self.TEST_VOLUME)
+        self.TEST_BACKUP_VOLUME = self._make_fake_backup_volume(
+            self.TEST_BACKUP_VOL_DATA)
 
     def sheepdog_cmd_error(self, cmd, exit_code, stdout, stderr):
         return _('(Command: %(cmd)s) '
@@ -64,6 +67,10 @@ class SheepdogDriverTestDataGenerator(object):
             context.get_admin_context(), **snapshot_data)
         snapshot_obj.volume = src_volume
         return snapshot_obj
+
+    def _make_fake_backup_volume(self, backup_data):
+        return fake_backup.fake_backup_obj(context.get_admin_context(),
+                                           **backup_data)
 
     def cmd_dog_vdi_create(self, name, size):
         return ('env', 'LC_ALL=C', 'LANG=C', 'dog', 'vdi', 'create', name,
@@ -126,6 +133,16 @@ class SheepdogDriverTestDataGenerator(object):
 
     TEST_SNAPSHOT_DATA = {
         'id': '00000000-0000-0000-0000-000000000002',
+    }
+
+    TEST_BACKUP_VOL_DATA = {
+        'volume_id': '00000000-0000-0000-0000-000000000004',
+    }
+
+    TEST_IMAGE_META = {
+        'id': '00000000-0000-0000-0000-000000000005',
+        'size': 2,
+        'disk_format': 'raw',
     }
 
     COLLIE_NODE_INFO = """
@@ -210,7 +227,7 @@ New VDI size is too large. This volume's max size is 4398046511104
 """
 
     DOG_COMMAND_ERROR_VDI_NOT_EXISTS = """\
-Failed to open VDI vdiname (snapshot id: 0 snapshot tag: ): No VDI found
+Failed to open VDI %(vdiname)s (snapshot id: 0 snapshot tag: ): No VDI found
 """
 
     DOG_COMMAND_ERROR_FAIL_TO_CONNECT = """\
@@ -623,7 +640,8 @@ class SheepdogClientTestCase(test.TestCase):
         fake_logger.reset_mock()
         fake_execute.reset_mock()
         stdout = ''
-        stderr = self.test_data.DOG_COMMAND_ERROR_VDI_NOT_EXISTS
+        stderr = self.test_data.DOG_COMMAND_ERROR_VDI_NOT_EXISTS % \
+            {'vdiname': self._vdiname}
         fake_execute.return_value = (stdout, stderr)
         self.client.delete(self._vdiname)
         self.assertTrue(fake_logger.warning.called)
@@ -977,7 +995,8 @@ class SheepdogClientTestCase(test.TestCase):
         fake_execute.reset_mock()
         cmd = self.test_data.cmd_dog_vdi_resize(self._vdiname, 10 * 1024 ** 3)
         exit_code = 1
-        stderr = self.test_data.DOG_COMMAND_ERROR_VDI_NOT_EXISTS
+        stderr = self.test_data.DOG_COMMAND_ERROR_VDI_NOT_EXISTS % \
+            {'vdiname': self._vdiname}
         expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
                                                          exit_code=exit_code,
                                                          stdout=stdout,
@@ -1241,101 +1260,105 @@ class SheepdogClientTestCase(test.TestCase):
     @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
     @mock.patch.object(sheepdog, 'LOG')
     def test_is_cloneable(self, fake_logger, fake_execute, fake_parse_loc):
-        uuid = 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'
-        location = 'sheepdog://%s' % uuid
-        image_meta = {'id': uuid, 'size': 1, 'disk_format': 'raw'}
-        invalid_image_meta = {'id': uuid, 'size': 1, 'disk_format': 'iso'}
+        image_meta = self.test_data.TEST_IMAGE_META
+        expected_cmd = ('vdi', 'list', '-r', image_meta['id'])
+        image_location = 'sheepdog://%s' % image_meta['id']
+
+        # Test1: the image_location is cloneable
         stdout = self.test_data.IS_CLONEABLE_TRUE
         stderr = ''
-        expected_cmd = ('vdi', 'list', '-r', uuid)
-
         fake_execute.return_value = (stdout, stderr)
-        fake_parse_loc.return_value = uuid
+        fake_parse_loc.return_value = image_meta['id']
         self.assertTrue(
-            self.client._is_cloneable(location, image_meta))
+            self.client._is_cloneable(image_location, image_meta))
         fake_execute.assert_called_once_with(*expected_cmd)
-
-        self.assertFalse(
-            self.client._is_cloneable(location, invalid_image_meta))
         self.assertEqual(1, fake_execute.call_count)
-        self.assertTrue(fake_logger.debug.called)
 
-        error = exception.ImageUnacceptable(image_id = 'invalid_image',
-                                            reason = _('invalid'))
-        fake_parse_loc.side_effect = error
-        # check returning False without executing a command
+        # Test2: the image_format is invalid
+        fake_logger.reset_mock()
+        fake_execute.reset_mock()
+        fake_parse_loc.reset_mock()
+        invalid_image_meta = {'id': image_meta['id'],
+                              'size': image_meta['size'], 'disk_format': 'iso'}
         self.assertFalse(
-            self.client._is_cloneable(location, image_meta))
+            self.client._is_cloneable(image_location, invalid_image_meta))
+        self.assertEqual(0, fake_execute.call_count)
         self.assertTrue(fake_logger.debug.called)
 
-    @mock.patch.object(sheepdog.SheepdogClient, '_parse_location')
-    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
-    @mock.patch.object(sheepdog, 'LOG')
-    def test_is_cloneable_volume_not_found(self, fake_logger,
-                                           fake_execute, fake_parse_loc):
-        uuid = 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'
-        location = 'sheepdog://%s' % uuid
-        image_meta = {'id': uuid, 'size': 1, 'disk_format': 'raw'}
+        # Test3: image location format is invalid and _parse_location failed
+        fake_logger.reset_mock()
+        fake_execute.reset_mock()
+        fake_parse_loc.reset_mock()
+        error = exception.ImageUnacceptable(image_id='invalid_image',
+                                            reason=_('invalid'))
+        fake_parse_loc.side_effect = error
+        self.assertFalse(
+            self.client._is_cloneable(image_location, image_meta))
+        self.assertEqual(0, fake_execute.call_count)
+        self.assertTrue(fake_logger.debug.called)
+
+        # Test4: search Sheepdog Cluster with image_id but not found
+        fake_logger.reset_mock()
+        fake_execute.reset_mock()
+        fake_parse_loc.reset_mock()
+        fake_parse_loc.side_effect = None
         stdout = ''
         stderr = ''
-        expected_cmd = ('vdi', 'list', '-r', uuid)
-
+        fake_parse_loc.return_value = image_meta['id']
         fake_execute.return_value = (stdout, stderr)
-        fake_parse_loc.return_value = uuid
         self.assertFalse(
-            self.client._is_cloneable(location, image_meta))
+            self.client._is_cloneable(image_location, image_meta))
+        self.assertEqual(1, fake_execute.call_count)
         fake_execute.assert_called_once_with(*expected_cmd)
         self.assertTrue(fake_logger.debug.called)
 
-    @mock.patch.object(sheepdog.SheepdogClient, '_parse_location')
-    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
-    @mock.patch.object(sheepdog, 'LOG')
-    def test_is_cloneable_volume_is_not_valid(self, fake_logger,
-                                              fake_execute, fake_parse_loc):
-        uuid = 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'
-        location = 'sheepdog://%s' % uuid
-        image_meta = {'id': uuid, 'size': 1, 'disk_format': 'raw'}
+        # Test5: image_id is found in Sheepdog cluster but isn't a glance-image
+        fake_logger.reset_mock()
+        fake_execute.reset_mock()
+        fake_parse_loc.reset_mock()
         stdout = self.test_data.IS_CLONEABLE_FALSE
         stderr = ''
-        expected_cmd = ('vdi', 'list', '-r', uuid)
-
         fake_execute.return_value = (stdout, stderr)
-        fake_parse_loc.return_value = uuid
+        fake_parse_loc.return_value = image_meta['id']
         self.assertFalse(
-            self.client._is_cloneable(location, image_meta))
+            self.client._is_cloneable(image_location, image_meta))
         fake_execute.assert_called_once_with(*expected_cmd)
         self.assertTrue(fake_logger.debug.called)
 
     def test_parse_location(self):
-        uuid = '87f1b01c-f46c-4537-bd5d-23962f5f4316'
-        location = 'sheepdog://%s' % uuid
-        loc_none = None
-        loc_not_found = 'fail'
-        loc_format_err = 'sheepdog://'
-        loc_format_err2 = 'sheepdog://f/f'
+        # Test1: Image location is valid
+        image_meta = self.test_data.TEST_IMAGE_META
+        loc_success = 'sheepdog://%s' % image_meta['id']
+        name = self.client._parse_location(loc_success)
+        self.assertEqual(image_meta['id'], name)
 
+        # Test2: Image location is none
+        loc_none = None
         exc = self.assertRaises(exception.ImageUnacceptable,
                                 self.client._parse_location, loc_none)
         self.assertEqual('Image None is unacceptable: image_location is NULL',
                          exc.msg)
 
+        # Test3: Image location doesn't include sheepdog prefix
+        loc_not_found = 'fail'
         exc = self.assertRaises(exception.ImageUnacceptable,
                                 self.client._parse_location, loc_not_found)
         self.assertEqual('Image fail is unacceptable: Not stored in sheepdog',
                          exc.msg)
 
+        # Test4: Image location doesn't include image_id
+        loc_format_err = 'sheepdog://'
         exc = self.assertRaises(exception.ImageUnacceptable,
                                 self.client._parse_location, loc_format_err)
         self.assertEqual('Image sheepdog:// is unacceptable: Blank components',
                          exc.msg)
 
+        # Test5: Image location has multiple fields
+        loc_format_err2 = 'sheepdog://f/f'
         exc = self.assertRaises(exception.ImageUnacceptable,
                                 self.client._parse_location, loc_format_err2)
         self.assertEqual('Image sheepdog://f/f is unacceptable:'
                          ' Not a sheepdog image', exc.msg)
-
-        name = self.client._parse_location(location)
-        self.assertEqual(uuid, name)
 
 
 # test for SheeepdogDriver Class
@@ -1444,60 +1467,33 @@ class SheepdogDriverTestCase(test.TestCase):
         self.assertEqual(2, fake_delete.call_count)
 
     @mock.patch.object(fileutils, 'file_open')
-    @mock.patch.object(image_utils, 'temporary_file')
+    @mock.patch.object(sheepdog, 'LOG')
     @mock.patch.object(sheepdog.SheepdogClient, 'convert')
-    def test_copy_volume_to_image(self, fake_execute,
-                                  fake_temporary_file, fake_file_open):
-        fake_context = {}
-        fake_volume = {'name': 'volume-00000001'}
-        image_service = mock.Mock()
-        fake_image_meta = {'id': '10958016-e196-42e3-9e7f-5d8927ae3099'}
+    def test_copy_volume_to_image(self, fake_execute, fake_logger,
+                                  fake_file_open):
+        context = {}
+        src_volume = self.test_data.TEST_VOLUME
+        image_meta = self.test_data.TEST_IMAGE_META
+        fake_image_service = mock.Mock()
 
-        self.driver.copy_volume_to_image(fake_context,
-                                         fake_volume,
-                                         image_service,
-                                         fake_image_meta)
-
-        expected_cmd = ('sheepdog:%s' % fake_volume['name'], mock.ANY)
+        # Test1: copy volume to image successfully
+        expected_cmd = ('sheepdog:%s' % src_volume.name, mock.ANY)
+        self.driver.copy_volume_to_image(context, src_volume,
+                                         fake_image_service, image_meta)
         fake_execute.assert_called_once_with(*expected_cmd)
 
-    @mock.patch.object(sheepdog.SheepdogClient, 'convert')
-    @mock.patch.object(sheepdog, 'LOG')
-    def test_copy_volume_to_image_nonexistent_volume(self, fake_logger,
-                                                     fake_execute):
-        fake_context = {}
-        fake_volume = {
-            'name': 'nonexistent-volume-82c4539e-c2a5-11e4-a293-0aa186c60fe0'}
-        fake_image_service = mock.Mock()
-        fake_image_meta = {'id': '10958016-e196-42e3-9e7f-5d8927ae3099'}
-        cmd = ('sheepdog:%s' % fake_volume['name'], mock.ANY)
+        # Test2: failed to update
+        fake_execute.reset_mock()
+        fake_logger.reset_mock()
+        fake_file_open.reset_mock()
+        fake_image_service.reset_mock()
 
-        fake_execute.side_effect = exception.SheepdogCmdError(
-            cmd=cmd, exit_code=1, stdout='dummy', stderr='dummy')
-
+        fake_image_service.update.side_effect = exception.SheepdogCmdError(
+            cmd='dummy', exit_code=1, stdout='dummy', stderr='dummy')
         self.assertRaises(exception.SheepdogCmdError,
                           self.driver.copy_volume_to_image,
-                          fake_context, fake_volume,
-                          fake_image_service, fake_image_meta)
-        self.assertTrue(fake_logger.error.called)
-
-    @mock.patch.object(fileutils, 'file_open')
-    @mock.patch.object(sheepdog.SheepdogClient, 'convert')
-    @mock.patch.object(sheepdog, 'LOG')
-    def test_copy_volume_to_image_update_failed(self, fake_logger,
-                                                fake_execute, fake_file_open):
-        fake_context = {}
-        fake_volume = {'name': 'volume-00000001'}
-        image_service = mock.Mock()
-        fake_image_meta = {'id': '10958016-e196-42e3-9e7f-5d8927ae3099'}
-
-        image_service.update.side_effect = exception.SheepdogCmdError(
-            cmd=mock.ANY, exit_code=1, stdout='dummy', stderr='dummy')
-
-        self.assertRaises(exception.SheepdogCmdError,
-                          self.driver.copy_volume_to_image,
-                          fake_context, fake_volume,
-                          image_service, fake_image_meta)
+                          context, src_volume,
+                          fake_image_service, image_meta)
         self.assertTrue(fake_logger.error.called)
 
     @mock.patch.object(sheepdog.SheepdogClient, 'create_snapshot')
@@ -1557,11 +1553,8 @@ class SheepdogDriverTestCase(test.TestCase):
     def test_clone_image_success(self, fake_create_cloned_volume, fake_resize,
                                  fake_execute):
         context = {}
+        fake_vol = self.test_data.TEST_VOLUME
         fake_name = self.test_data.TEST_VOLUME['name']
-        fake_vol = {'project_id': self.test_data.TEST_VOLUME['project_id'],
-                    'name': self.test_data.TEST_VOLUME['name'],
-                    'size': self.test_data.TEST_VOLUME['size'],
-                    'id': self.test_data.TEST_VOLUME['id']}
         stdout = self.test_data.IS_CLONEABLE_TRUE
         stderr = ''
 
@@ -1599,14 +1592,11 @@ class SheepdogDriverTestCase(test.TestCase):
     def test_clone_image_create_volume_fail(self, fake_logger,
                                             fake_create_volume, fake_execute):
         context = {}
-        fake_vol = {'project_id': self.test_data.TEST_VOLUME['project_id'],
-                    'name': self.test_data.TEST_VOLUME['name'],
-                    'size': self.test_data.TEST_VOLUME['size'],
-                    'id': self.test_data.TEST_VOLUME['id']}
-        fake_location = 'sheepdog://%s' % self.test_data.TEST_VOLUME['id']
+        fake_vol = self.test_data.TEST_VOLUME
+        fake_location = 'sheepdog://%s' % self.test_data.TEST_VOLUME.id
         image_location = (fake_location, None)
-        image_meta = {'id': self.test_data.TEST_VOLUME['id'],
-                      'size': self.test_data.TEST_VOLUME['size'],
+        image_meta = {'id': self.test_data.TEST_VOLUME.id,
+                      'size': self.test_data.TEST_VOLUME.size,
                       'disk_format': 'raw'}
         image_service = ''
         stdout = self.test_data.IS_CLONEABLE_TRUE
@@ -1630,14 +1620,11 @@ class SheepdogDriverTestCase(test.TestCase):
                                      fake_create_cloned_volume, fake_resize,
                                      fake_execute):
         context = {}
-        fake_vol = {'project_id': self.test_data.TEST_VOLUME['project_id'],
-                    'name': self.test_data.TEST_VOLUME['name'],
-                    'size': self.test_data.TEST_VOLUME['size'],
-                    'id': self.test_data.TEST_VOLUME['id']}
-        fake_location = 'sheepdog://%s' % self.test_data.TEST_VOLUME['id']
+        fake_vol = self.test_data.TEST_VOLUME
+        fake_location = 'sheepdog://%s' % self.test_data.TEST_VOLUME.id
         image_location = (fake_location, None)
-        image_meta = {'id': self.test_data.TEST_VOLUME['id'],
-                      'size': self.test_data.TEST_VOLUME['size'],
+        image_meta = {'id': self.test_data.TEST_VOLUME.id,
+                      'size': self.test_data.TEST_VOLUME.size,
                       'disk_format': 'raw'}
         image_service = ''
         stdout = self.test_data.IS_CLONEABLE_TRUE
@@ -1663,19 +1650,16 @@ class SheepdogDriverTestCase(test.TestCase):
                                      fake_delete, fake_resize,
                                      fake_execute):
         context = {}
-        fake_vol = {'project_id': self.test_data.TEST_VOLUME['project_id'],
-                    'name': self.test_data.TEST_VOLUME['name'],
-                    'size': self.test_data.TEST_VOLUME['size'],
-                    'id': self.test_data.TEST_VOLUME['id']}
-        fake_location = 'sheepdog://%s' % self.test_data.TEST_VOLUME['id']
+        fake_vol = self.test_data.TEST_VOLUME
+        fake_location = 'sheepdog://%s' % self.test_data.TEST_VOLUME.id
         image_location = (fake_location, None)
-        image_meta = {'id': self.test_data.TEST_VOLUME['id'],
-                      'size': self.test_data.TEST_VOLUME['size'],
+        image_meta = {'id': self.test_data.TEST_VOLUME.id,
+                      'size': self.test_data.TEST_VOLUME.size,
                       'disk_format': 'raw'}
         image_service = ''
         stdout_d = self.test_data.IS_CLONEABLE_TRUE
         stderr_d = 'dummy'
-        cmd = self.test_data.cmd_dog_vdi_delete(fake_vol['name'])
+        cmd = self.test_data.cmd_dog_vdi_delete(fake_vol.name)
         exit_code = 2
 
         error1 = exception.VolumeBackendAPIException(data='error')
@@ -1701,25 +1685,11 @@ class SheepdogDriverTestCase(test.TestCase):
                                                  self._dst_vdisize)
 
     def test_local_path(self):
-        fake_vol = {'project_id': self.test_data.TEST_VOLUME['project_id'],
-                    'name': self.test_data.TEST_VOLUME['name'],
-                    'size': self.test_data.TEST_VOLUME['size'],
-                    'id': self.test_data.TEST_VOLUME['id']}
-        expected_path = 'sheepdog://%s' % fake_vol['name']
+        fake_vol = self.test_data.TEST_VOLUME
+        expected_path = 'sheepdog://%s' % fake_vol.name
 
         ret = self.driver.local_path(fake_vol)
         self.assertEqual(ret, expected_path)
-
-    @mock.patch.object(sheepdog, 'LOG')
-    def test_local_path_failed(self, fake_logger):
-        fake_vol = {'project_id': self.test_data.TEST_VOLUME['project_id'],
-                    'name': '',
-                    'size': self.test_data.TEST_VOLUME['size'],
-                    'id': self.test_data.TEST_VOLUME['id']}
-
-        self.assertRaises(exception.SheepdogError,
-                          self.driver.local_path, fake_vol)
-        self.assertTrue(fake_logger.error.called)
 
     @mock.patch.object(sheepdog.SheepdogClient, 'resize')
     @mock.patch.object(sheepdog, 'LOG')
@@ -1728,19 +1698,17 @@ class SheepdogDriverTestCase(test.TestCase):
         fake_execute.assert_called_once_with(self._vdiname, 10)
         self.assertTrue(fake_logger.debug.called)
 
-    def test_backup_volume(self):
+    @mock.patch.object(sheepdog.SheepdogClient, 'delete_snapshot')
+    @mock.patch.object(sheepdog.SheepdogClient, 'create_snapshot')
+    @mock.patch.object(sheepdog.SheepdogDriver, '_try_execute')
+    def test_backup_volume(self, fake_try_execute, fake_create_snapshot,
+                           fake_delete_snapshot):
         fake_context = {}
-        fake_backup = {'volume_id': '2926efe0-24ab-45b7-95e1-ff66e0646a33'}
+        fake_backup = self.test_data.TEST_BACKUP_VOLUME
         fake_backup_service = mock.Mock()
 
         fake_db = mock.MagicMock()
-        fake_try_execute = mock.Mock()
-        fake_create_snapshot = mock.Mock()
-        fake_delete_snapshot = mock.Mock()
         self.stubs.Set(self.driver, 'db', fake_db)
-        self.stubs.Set(self.driver, '_try_execute', fake_try_execute)
-        self.stubs.Set(self.driver, 'create_snapshot', fake_create_snapshot)
-        self.stubs.Set(self.driver, 'delete_snapshot', fake_delete_snapshot)
 
         self.driver.backup_volume(fake_context,
                                   fake_backup,
@@ -1758,19 +1726,17 @@ class SheepdogDriverTestCase(test.TestCase):
         self.assertEqual(fake_backup, call_backup)
         self.assertIsInstance(call_sheepdog_fd, sheepdog.SheepdogIOWrapper)
 
-    def test_backup_volume_failure(self):
+    @mock.patch.object(sheepdog.SheepdogClient, 'delete_snapshot')
+    @mock.patch.object(sheepdog.SheepdogClient, 'create_snapshot')
+    @mock.patch.object(sheepdog.SheepdogDriver, '_try_execute')
+    def test_backup_volume_failure(self, fake_try_execute,
+                                   fake_create_snapshot, fake_delete_snapshot):
         fake_context = {}
-        fake_backup = {'volume_id': '2926efe0-24ab-45b7-95e1-ff66e0646a33'}
+        fake_backup = self.test_data.TEST_BACKUP_VOLUME
         fake_backup_service = mock.Mock()
 
         fake_db = mock.MagicMock()
-        fake_try_execute = mock.Mock()
-        fake_create_snapshot = mock.Mock()
-        fake_delete_snapshot = mock.Mock()
         self.stubs.Set(self.driver, 'db', fake_db)
-        self.stubs.Set(self.driver, '_try_execute', fake_try_execute)
-        self.stubs.Set(self.driver, 'create_snapshot', fake_create_snapshot)
-        self.stubs.Set(self.driver, 'delete_snapshot', fake_delete_snapshot)
 
         # check that the snapshot gets deleted in case of a backup error.
         class BackupError(Exception):
