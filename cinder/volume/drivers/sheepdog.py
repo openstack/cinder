@@ -339,37 +339,36 @@ class SheepdogClient(object):
                                   ' addr: %(addr)s, port: %(port)s'),
                               {'addr': self.addr, 'port': self.port})
                 elif self.QEMU_IMG_RESP_VDI_NOT_FOUND in stderr:
-                    LOG.error(_LE('Convert failed. VDI not found'
-                                  ' source path: %(src_path)s '
-                                  ' destination path: %(dst_path)s'),
-                              {'src_path': src_path, 'dst_path': dst_path})
+                    LOG.error(_LE('Convert failed. VDI not found.'
+                                  ' Please check %(src_path)s exist.'),
+                              {'src_path': src_path})
                 elif self.QEMU_IMG_RESP_ALREADY_EXISTS in stderr:
                     LOG.error(_LE('VDI already exists.'
-                                  ' source path: %(src_path)s '
-                                  ' destination path: %(dst_path)s'),
-                              {'src_path': src_path, 'dst_path': dst_path})
+                                  ' Please check %(dst_path)s '
+                                  'is not duplicated.'),
+                              {'dst_path': dst_path})
                 elif self.QEMU_IMG_RESP_FILE_NOT_FOUND in stderr:
-                    LOG.error(_LE('Convert failed. File not found'
-                                  ' source path: %(src_path)s '
-                                  ' destination path: %(dst_path)s'),
-                              {'src_path': src_path, 'dst_path': dst_path})
+                    LOG.error(_LE('Convert failed. File not found.'
+                                  ' Please check %(src_path)s exist. '),
+                              {'src_path': src_path})
                 elif self.QEMU_IMG_RESP_PERMISSION_DENIED in stderr:
                     LOG.error(_LE('Convert failed. Permission denied.'
-                                  ' source path: %(src_path)s '
+                                  ' Please check permission of'
+                                  ' source path: %(src_path)s and'
                                   ' destination path: %(dst_path)s'),
                               {'src_path': src_path, 'dst_path': dst_path})
                 elif self.QEMU_IMG_RESP_INVALID_FORMAT in stderr:
                     LOG.error(_LE('Convert failed. Not supported format.'
-                                  ' source format %(src_format)s'
-                                  ' destination format %(dst_format)s'),
-                              {'src_format': src_fmt, 'dst_format': dst_fmt})
+                                  ' Please check format %(dst_format)s'
+                                  ' is valid'),
+                              {'dst_format': dst_fmt})
                 elif self.QEMU_IMG_RESP_INVALID_DRIVER in stderr:
                     LOG.error(_LE('Convert failed. Not supported driver used.'
-                                  ' source format %(src_format)s'
-                                  ' destination format %(dst_format)s'),
-                              {'src_format': src_fmt, 'dst_format': dst_fmt})
+                                  ' Please check driver name %(src_format)s'
+                                  ' is valid'),
+                              {'src_format': src_fmt})
                 else:
-                    LOG.error(_LE('Convert failed. '
+                    LOG.error(_LE('Convert failed.'
                                   ' source path: %(src_path)s '
                                   ' destination path: %(dst_path)s'
                                   ' source format %(src_format)s'
