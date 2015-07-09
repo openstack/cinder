@@ -204,14 +204,22 @@ class BlockDeviceDriver(driver.BaseVD, driver.LocalVD, driver.CloneableVD,
         export_info = self.target_driver.create_export(context,
                                                        volume,
                                                        volume_path)
-        return {'provider_location': export_info['location'],
-                'provider_auth': export_info['auth'], }
+        return {
+            'provider_location': export_info['location'] + ' ' + volume_path,
+            'provider_auth': export_info['auth'],
+        }
 
     def remove_export(self, context, volume):
         self.target_driver.remove_export(context, volume)
 
     def initialize_connection(self, volume, connector):
-        return self.target_driver.initialize_connection(volume, connector)
+        if connector['host'] != volutils.extract_host(volume['host'], 'host'):
+            return self.target_driver.initialize_connection(volume, connector)
+        else:
+            return {
+                'driver_volume_type': 'local',
+                'data': {'device_path': self.local_path(volume)},
+            }
 
     def validate_connector(self, connector):
         return self.target_driver.validate_connector(connector)
