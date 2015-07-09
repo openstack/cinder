@@ -389,8 +389,8 @@ class SheepdogClient(object):
         try:
             volume_name = self._parse_location(image_location)
         except exception.ImageUnacceptable as e:
-            LOG.debug('%(image_location)s is not sheepdog VDI '
-                      'image: %(err)s',
+            LOG.debug('%(image_location)s does not match the sheepdog format '
+                      'reason: %(err)s',
                       {'image_location': image_location, 'err': e})
             return False
 
