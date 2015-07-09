@@ -30,7 +30,6 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder import manager
-from cinder import rpc
 from cinder import service
 from cinder import test
 from cinder import wsgi
@@ -117,36 +116,37 @@ class ServiceTestCase(test.TestCase):
     def setUp(self):
         super(ServiceTestCase, self).setUp()
         self.mox.StubOutWithMock(service, 'db')
-        self.host = 'foo'
-        self.binary = 'cinder-fake'
-        self.topic = 'fake'
 
     def test_create(self):
+        host = 'foo'
+        binary = 'cinder-fake'
+        topic = 'fake'
+
         # NOTE(vish): Create was moved out of mox replay to make sure that
         #             the looping calls are created in StartService.
-        app = service.Service.create(host=self.host,
-                                     binary=self.binary,
-                                     topic=self.topic)
+        app = service.Service.create(host=host, binary=binary, topic=topic)
 
         self.assertTrue(app)
 
     def test_report_state_newly_disconnected(self):
-        service_create = {'host': self.host,
-                          'binary': self.binary,
-                          'topic': self.topic,
+        host = 'foo'
+        binary = 'bar'
+        topic = 'test'
+        service_create = {'host': host,
+                          'binary': binary,
+                          'topic': topic,
                           'report_count': 0,
                           'availability_zone': 'nova'}
-        service_ref = {'host': self.host,
-                       'binary': self.binary,
-                       'topic': self.topic,
+        service_ref = {'host': host,
+                       'binary': binary,
+                       'topic': topic,
                        'report_count': 0,
                        'availability_zone': 'nova',
                        'id': 1}
 
         service.db.service_get_by_args(mox.IgnoreArg(),
-                                       self.host,
-                                       self.binary).AndRaise(
-                                           exception.NotFound())
+                                       host,
+                                       binary).AndRaise(exception.NotFound())
         service.db.service_create(mox.IgnoreArg(),
                                   service_create).AndReturn(service_ref)
         service.db.service_get(
@@ -154,9 +154,9 @@ class ServiceTestCase(test.TestCase):
             mox.IgnoreArg()).AndRaise(db_exc.DBConnectionError())
 
         self.mox.ReplayAll()
-        serv = service.Service(self.host,
-                               self.binary,
-                               self.topic,
+        serv = service.Service(host,
+                               binary,
+                               topic,
                                'cinder.tests.test_service.FakeManager')
         serv.start()
         serv.report_state()
@@ -187,22 +187,24 @@ class ServiceTestCase(test.TestCase):
             self.assertFalse(mock_db.service_update.called)
 
     def test_report_state_newly_connected(self):
-        service_create = {'host': self.host,
-                          'binary': self.binary,
-                          'topic': self.topic,
+        host = 'foo'
+        binary = 'bar'
+        topic = 'test'
+        service_create = {'host': host,
+                          'binary': binary,
+                          'topic': topic,
                           'report_count': 0,
                           'availability_zone': 'nova'}
-        service_ref = {'host': self.host,
-                       'binary': self.binary,
-                       'topic': self.topic,
+        service_ref = {'host': host,
+                       'binary': binary,
+                       'topic': topic,
                        'report_count': 0,
                        'availability_zone': 'nova',
                        'id': 1}
 
         service.db.service_get_by_args(mox.IgnoreArg(),
-                                       self.host,
-                                       self.binary).AndRaise(
-                                           exception.NotFound())
+                                       host,
+                                       binary).AndRaise(exception.NotFound())
         service.db.service_create(mox.IgnoreArg(),
                                   service_create).AndReturn(service_ref)
         service.db.service_get(mox.IgnoreArg(),
@@ -211,9 +213,9 @@ class ServiceTestCase(test.TestCase):
                                   mox.ContainsKeyValue('report_count', 1))
 
         self.mox.ReplayAll()
-        serv = service.Service(self.host,
-                               self.binary,
-                               self.topic,
+        serv = service.Service(host,
+                               binary,
+                               topic,
                                'cinder.tests.test_service.FakeManager')
         serv.start()
         serv.model_disconnected = True
@@ -227,22 +229,6 @@ class ServiceTestCase(test.TestCase):
         service.Service.create(binary="test_service",
                                manager="cinder.tests.test_service.FakeManager")
         self.assertEqual(25, CONF.service_down_time)
-
-    @mock.patch.object(rpc, 'get_server')
-    @mock.patch.object(service, 'db')
-    def test_service_stop_waits_for_rpcserver(self, mock_db, mock_rpc):
-        serv = service.Service(
-            self.host,
-            self.binary,
-            self.topic,
-            'cinder.tests.test_service.FakeManager'
-        )
-        serv.start()
-        serv.stop()
-        serv.wait()
-        serv.rpcserver.start.assert_called_once_with()
-        serv.rpcserver.stop.assert_called_once_with()
-        serv.rpcserver.wait.assert_called_once_with()
 
 
 class TestWSGIService(test.TestCase):
