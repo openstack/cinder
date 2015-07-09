@@ -262,8 +262,8 @@ class QoSSpecsController(wsgi.Controller):
         try:
             qos_specs.delete_keys(context, id, keys)
             notifier_info = dict(id=id)
-            rpc.get_notifier().info(context, 'qos_specs.delete_keys',
-                                    notifier_info)
+            rpc.get_notifier('QoSSpecs').info(context, 'qos_specs.delete_keys',
+                                              notifier_info)
         except exception.QoSSpecsNotFound as err:
             notifier_err = dict(id=id, error_message=err)
             self._notify_qos_specs_error(context,

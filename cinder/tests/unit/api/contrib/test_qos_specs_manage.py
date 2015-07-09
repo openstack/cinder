@@ -274,6 +274,18 @@ class QoSSpecManageApiTest(test.TestCase):
                               req, '666', body)
             self.assertEqual(1, notifier.get_notification_count())
 
+    @mock.patch('cinder.volume.qos_specs.delete_keys',
+                side_effect=return_qos_specs_delete_keys)
+    def test_qos_specs_delete_keys_get_notifier(self, mock_qos_delete_keys):
+        body = {"keys": ['bar', 'zoo']}
+        req = fakes.HTTPRequest.blank('/v2/fake/qos-specs/666/delete_keys')
+
+        notifier = fake_notifier.get_fake_notifier()
+        with mock.patch('cinder.rpc.get_notifier', return_value=notifier,
+                        autospec=True) as mock_get_notifier:
+            self.controller.delete_keys(req, '666', body)
+            mock_get_notifier.assert_called_once_with('QoSSpecs')
+
     @mock.patch('cinder.volume.qos_specs.create',
                 side_effect=return_qos_specs_create)
     @mock.patch('cinder.volume.qos_specs.get_qos_specs_by_name',
