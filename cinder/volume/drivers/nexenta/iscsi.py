@@ -32,7 +32,7 @@ from cinder.volume.drivers.nexenta import jsonrpc
 from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 
-VERSION = '1.3.0'
+VERSION = '1.4.0'
 LOG = logging.getLogger(__name__)
 
 
@@ -54,6 +54,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 destroy snapshot on migration destination.
         1.3.0 - Added retype method.
         1.3.0.1 - Target creation on setup.
+        1.4 -   Use multiple targets/tg with 255 LU each. Create/delete LU in
+                create/delete volume methods insted of export.
     """
 
     VERSION = VERSION
@@ -194,13 +196,12 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
     def get_next_target_group(self):
         """Create new target_group and collect it in current_tg"""
         tg_num = int(sorted(self.tg_dict.keys())[-1].split('-')[-1]) + 1
-        tg_name = '%(base)s-%(num)s' % {
+        self.current_tg = '%(base)s-%(num)s' % {
             'base': self._get_target_group_name(),
             'num': tg_num
         }
-        self.nms.stmf.create_targetgroup(tg_name)
-        self.current_tg = tg_name
-        self.tg_dict[tg_name] = 0
+        self.nms.stmf.create_targetgroup(self.current_tg)
+        self.tg_dict[self.current_tg] = 0
 
         target_name = '%(base)s-%(num)s' % {
             'base': self._get_target_name(),
@@ -289,7 +290,6 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
         :param volume: volume reference
         """
-        LOG.warning(volume['provider_location'])
         volume_name = self._get_zvol_name(volume['name'])
         try:
             props = self.nms.zvol.get_child_props(volume_name, 'origin') or {}
