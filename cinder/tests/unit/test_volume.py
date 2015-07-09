@@ -1028,7 +1028,9 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertTrue(self.volume.delete_volume(self.context, volume_id))
         self.assertTrue(mock_get_volume.called)
 
-    def test_create_volume_from_snapshot(self):
+    @mock.patch('cinder.volume.drivers.lvm.LVMVolumeDriver.'
+                'create_volume_from_snapshot')
+    def test_create_volume_from_snapshot(self, mock_create_from_snap):
         """Test volume can be created from a snapshot."""
         volume_src = tests_utils.create_volume(self.context,
                                                **self.volume_params)
@@ -1041,7 +1043,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         volume_dst = tests_utils.create_volume(self.context,
                                                snapshot_id=snapshot_id,
                                                **self.volume_params)
-        self.volume.create_volume(self.context, volume_dst['id'], snapshot_id)
+        self.volume.create_volume(self.context, volume_dst['id'])
         self.assertEqual(volume_dst['id'],
                          db.volume_get(
                              context.get_admin_context(),
@@ -1355,7 +1357,7 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         # locked
         self.volume.create_volume(self.context, volume_id=dst_vol_id,
-                                  snapshot_id=snap_id)
+                                  request_spec={'snapshot_id': snap_id})
         self.assertEqual(2, len(self.called))
         self.assertEqual(dst_vol_id, db.volume_get(admin_ctxt, dst_vol_id).id)
         self.assertEqual(snap_id,
@@ -1417,7 +1419,7 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         # locked
         self.volume.create_volume(self.context, volume_id=dst_vol_id,
-                                  source_volid=src_vol_id)
+                                  request_spec={'source_volid': src_vol_id})
         self.assertEqual(2, len(self.called))
         self.assertEqual(dst_vol_id, db.volume_get(admin_ctxt, dst_vol_id).id)
         self.assertEqual(src_vol_id,
@@ -1463,7 +1465,8 @@ class VolumeTestCase(BaseVolumeTestCase):
             # we expect this to block and then fail
             t = eventlet.spawn(self.volume.create_volume,
                                self.context,
-                               volume_id=dst_vol_id, source_volid=src_vol_id)
+                               volume_id=dst_vol_id,
+                               request_spec={'source_volid': src_vol_id})
             gthreads.append(t)
 
             return orig_elevated(*args, **kwargs)
@@ -1515,10 +1518,10 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         # create volume from source volume
         dst_vol = tests_utils.create_volume(self.context,
+                                            source_volid=src_vol_id,
                                             **self.volume_params)
         self.volume.create_volume(self.context,
-                                  dst_vol['id'],
-                                  source_volid=src_vol_id)
+                                  dst_vol['id'])
 
         self.assertRaises(exception.GlanceMetadataNotFound,
                           db.volume_glance_metadata_copy_from_volume_to_volume,
@@ -1550,8 +1553,7 @@ class VolumeTestCase(BaseVolumeTestCase):
                                             **self.volume_params)
         self._raise_metadata_copy_failure(
             'volume_glance_metadata_copy_from_volume_to_volume',
-            dst_vol['id'],
-            source_volid=src_vol_id)
+            dst_vol['id'])
 
         # cleanup resource
         db.volume_destroy(self.context, src_vol_id)
@@ -1578,11 +1580,11 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertEqual('available', snapshot_ref)
 
         dst_vol = tests_utils.create_volume(self.context,
+                                            snapshot_id=snapshot_id,
                                             **self.volume_params)
         self._raise_metadata_copy_failure(
             'volume_glance_metadata_copy_to_volume',
-            dst_vol['id'],
-            snapshot_id=snapshot_id)
+            dst_vol['id'])
 
         # cleanup resource
         db.snapshot_destroy(self.context, snapshot_id)
@@ -1609,8 +1611,7 @@ class VolumeTestCase(BaseVolumeTestCase):
                                             **self.volume_params)
         self._raise_metadata_copy_failure(
             'volume_glance_metadata_copy_from_volume_to_volume',
-            dst_vol['id'],
-            source_volid=src_vol_id)
+            dst_vol['id'])
 
         # cleanup resource
         db.volume_destroy(self.context, src_vol_id)
@@ -1640,10 +1641,10 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         # create volume from snapshot
         dst_vol = tests_utils.create_volume(self.context,
+                                            snapshot_id=snapshot_id,
                                             **self.volume_params)
         self.volume.create_volume(self.context,
-                                  dst_vol['id'],
-                                  snapshot_id=snapshot_id)
+                                  dst_vol['id'])
 
         self.assertRaises(exception.GlanceMetadataNotFound,
                           db.volume_glance_metadata_copy_to_volume,
@@ -1673,10 +1674,9 @@ class VolumeTestCase(BaseVolumeTestCase):
         volume = db.volume_get(self.context, volume_src['id'])
         volume_dst = tests_utils.create_volume(
             self.context,
-            source_replicaid=volume['id'],
             **self.volume_params)
         self.volume.create_volume(self.context, volume_dst['id'],
-                                  source_replicaid=volume['id'])
+                                  {'source_replicaid': volume['id']})
 
         self.assertRaises(exception.GlanceMetadataNotFound,
                           db.volume_glance_metadata_copy_from_volume_to_volume,
@@ -1708,6 +1708,7 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         # create vol from snapshot...
         dst_vol = tests_utils.create_volume(self.context,
+                                            snapshot_id=snap_id,
                                             source_volid=src_vol_id,
                                             **self.volume_params)
         dst_vol_id = dst_vol['id']
@@ -1722,7 +1723,8 @@ class VolumeTestCase(BaseVolumeTestCase):
 
             # We expect this to block and then fail
             t = eventlet.spawn(self.volume.create_volume, self.context,
-                               volume_id=dst_vol_id, snapshot_id=snap_id)
+                               volume_id=dst_vol_id,
+                               request_spec={'snapshot_id': snap_id})
             gthreads.append(t)
 
             return orig_elevated(*args, **kwargs)
@@ -3020,7 +3022,8 @@ class VolumeTestCase(BaseVolumeTestCase):
         test_volume = tests_utils.create_volume(
             self.context,
             **self.volume_params)
-        self.volume.create_volume(self.context, test_volume['id'])
+        self.volume.create_volume(self.context, test_volume['id'],
+                                  request_spec={})
         test_volume['status'] = 'available'
         volume_api = cinder.volume.api.API()
         self.assertRaises(exception.QuotaError,
@@ -3414,11 +3417,13 @@ class VolumeTestCase(BaseVolumeTestCase):
                                               **self.volume_params)['id']
         # creating volume testdata
         try:
-            request_spec = {'volume_properties': self.volume_params}
+            request_spec = {
+                'volume_properties': self.volume_params,
+                'image_id': image_id,
+            }
             self.volume.create_volume(self.context,
                                       volume_id,
-                                      request_spec,
-                                      image_id=image_id)
+                                      request_spec)
         finally:
             # cleanup
             os.unlink(dst_path)
@@ -3470,9 +3475,8 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertRaises(exception.ImageNotFound,
                           self.volume.create_volume,
                           self.context,
-                          volume_id, None, None, None,
-                          None,
-                          self.FAKE_UUID)
+                          volume_id,
+                          {'image_id': self.FAKE_UUID})
         volume = db.volume_get(self.context, volume_id)
         self.assertEqual("error", volume['status'])
         self.assertFalse(volume['bootable'])
@@ -3851,10 +3855,9 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.volume.create_volume(self.context, volume_src['id'])
         volume_dst = tests_utils.create_volume(
             self.context,
-            source_replicaid=volume_src['id'],
             **self.volume_params)
         self.volume.create_volume(self.context, volume_dst['id'],
-                                  source_replicaid=volume_src['id'])
+                                  {'source_replicaid': volume_src['id']})
         self.assertEqual('available',
                          db.volume_get(context.get_admin_context(),
                                        volume_dst['id']).status)
@@ -3875,8 +3878,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         volume_dst = tests_utils.create_volume(self.context,
                                                source_volid=volume_src['id'],
                                                **self.volume_params)
-        self.volume.create_volume(self.context, volume_dst['id'],
-                                  source_volid=volume_src['id'])
+        self.volume.create_volume(self.context, volume_dst['id'])
         self.assertEqual('available',
                          db.volume_get(context.get_admin_context(),
                                        volume_dst['id']).status)
@@ -3925,8 +3927,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         volume_dst = tests_utils.create_volume(self.context,
                                                source_volid=volume_src['id'],
                                                **self.volume_params)
-        self.volume.create_volume(self.context, volume_dst['id'],
-                                  source_volid=volume_src['id'])
+        self.volume.create_volume(self.context, volume_dst['id'])
         self.assertEqual('available',
                          db.volume_get(context.get_admin_context(),
                                        volume_dst['id']).status)
@@ -3958,8 +3959,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertRaises(exception.CinderException,
                           self.volume.create_volume,
                           self.context,
-                          volume_dst['id'], None, None, None, None, None,
-                          volume_src['id'])
+                          volume_dst['id'])
         self.assertEqual('creating', volume_src['status'])
         self.volume.delete_volume(self.context, volume_dst['id'])
         self.volume.delete_volume(self.context, volume_src['id'])
@@ -4794,10 +4794,13 @@ class VolumeTestCase(BaseVolumeTestCase):
     @mock.patch.object(driver.VolumeDriver,
                        "create_consistencygroup_from_src",
                        return_value=(None, None))
+    @mock.patch('cinder.volume.drivers.lvm.LVMVolumeDriver.'
+                'create_volume_from_snapshot')
     def test_create_consistencygroup_from_src(self, mock_create_from_src,
                                               mock_delete_cgsnap,
                                               mock_create_cgsnap,
-                                              mock_delete_cg, mock_create_cg):
+                                              mock_delete_cg, mock_create_cg,
+                                              mock_create_volume):
         """Test consistencygroup can be created and deleted."""
         group = tests_utils.create_consistencygroup(
             self.context,

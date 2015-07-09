@@ -188,7 +188,7 @@ def locked_snapshot_operation(f):
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '1.23'
+    RPC_API_VERSION = '1.24'
 
     target = messaging.Target(version=RPC_API_VERSION)
 
@@ -406,15 +406,15 @@ class VolumeManager(manager.SchedulerDependentManager):
         return self.driver.initialized
 
     def create_volume(self, context, volume_id, request_spec=None,
-                      filter_properties=None, allow_reschedule=True,
-                      snapshot_id=None, image_id=None, source_volid=None,
-                      source_replicaid=None, consistencygroup_id=None,
-                      cgsnapshot_id=None):
+                      filter_properties=None, allow_reschedule=True):
 
         """Creates the volume."""
         context_elevated = context.elevated()
         if filter_properties is None:
             filter_properties = {}
+
+        if request_spec is None:
+            request_spec = {}
 
         try:
             # NOTE(flaper87): Driver initialization is
@@ -429,17 +429,15 @@ class VolumeManager(manager.SchedulerDependentManager):
                 allow_reschedule,
                 context,
                 request_spec,
-                filter_properties,
-                snapshot_id=snapshot_id,
-                image_id=image_id,
-                source_volid=source_volid,
-                source_replicaid=source_replicaid,
-                consistencygroup_id=consistencygroup_id,
-                cgsnapshot_id=cgsnapshot_id)
+                filter_properties)
         except Exception:
             msg = _("Create manager volume flow failed.")
             LOG.exception(msg, resource={'type': 'volume', 'id': volume_id})
             raise exception.CinderException(msg)
+
+        snapshot_id = request_spec.get('snapshot_id')
+        source_volid = request_spec.get('source_volid')
+        source_replicaid = request_spec.get('source_replicaid')
 
         if snapshot_id is not None:
             # Make sure the snapshot is not deleted until we are done with it.

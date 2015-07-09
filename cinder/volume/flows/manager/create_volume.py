@@ -56,8 +56,8 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
 
     def __init__(self, reschedule_context, db, scheduler_rpcapi,
                  do_reschedule):
-        requires = ['filter_properties', 'image_id', 'request_spec',
-                    'snapshot_id', 'volume_id', 'context']
+        requires = ['filter_properties', 'request_spec', 'volume_id',
+                    'context']
         super(OnFailureRescheduleTask, self).__init__(addons=[ACTION],
                                                       requires=requires)
         self.do_reschedule = do_reschedule
@@ -89,7 +89,7 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
         pass
 
     def _reschedule(self, context, cause, request_spec, filter_properties,
-                    snapshot_id, image_id, volume_id, **kwargs):
+                    volume_id):
         """Actions that happen during the rescheduling attempt occur here."""
 
         create_volume = self.scheduler_rpcapi.create_volume
@@ -114,7 +114,6 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
             retry_info['exc'] = traceback.format_exception(*cause.exc_info)
 
         return create_volume(context, CONF.volume_topic, volume_id,
-                             snapshot_id=snapshot_id, image_id=image_id,
                              request_spec=request_spec,
                              filter_properties=filter_properties)
 
@@ -228,13 +227,12 @@ class ExtractVolumeSpecTask(flow_utils.CinderTask):
     default_provides = 'volume_spec'
 
     def __init__(self, db):
-        requires = ['image_id', 'snapshot_id', 'source_volid',
-                    'source_replicaid']
+        requires = ['volume_ref', 'request_spec']
         super(ExtractVolumeSpecTask, self).__init__(addons=[ACTION],
                                                     requires=requires)
         self.db = db
 
-    def execute(self, context, volume_ref, **kwargs):
+    def execute(self, context, volume_ref, request_spec):
         get_remote_image_service = glance.get_remote_image_service
 
         volume_name = volume_ref['name']
@@ -254,18 +252,18 @@ class ExtractVolumeSpecTask(flow_utils.CinderTask):
             'volume_size': volume_size,
         }
 
-        if kwargs.get('snapshot_id'):
+        if volume_ref.get('snapshot_id'):
             # We are making a snapshot based volume instead of a raw volume.
             specs.update({
                 'type': 'snap',
-                'snapshot_id': kwargs['snapshot_id'],
+                'snapshot_id': volume_ref['snapshot_id'],
             })
-        elif kwargs.get('source_volid'):
+        elif volume_ref.get('source_volid'):
             # We are making a source based volume instead of a raw volume.
             #
             # NOTE(harlowja): This will likely fail if the source volume
             # disappeared by the time this call occurred.
-            source_volid = kwargs['source_volid']
+            source_volid = volume_ref.get('source_volid')
             source_volume_ref = self.db.volume_get(context, source_volid)
             specs.update({
                 'source_volid': source_volid,
@@ -275,21 +273,21 @@ class ExtractVolumeSpecTask(flow_utils.CinderTask):
                 'source_volstatus': source_volume_ref['status'],
                 'type': 'source_vol',
             })
-        elif kwargs.get('source_replicaid'):
+        elif request_spec.get('source_replicaid'):
             # We are making a clone based on the replica.
             #
             # NOTE(harlowja): This will likely fail if the replica
             # disappeared by the time this call occurred.
-            source_volid = kwargs['source_replicaid']
+            source_volid = request_spec['source_replicaid']
             source_volume_ref = self.db.volume_get(context, source_volid)
             specs.update({
                 'source_replicaid': source_volid,
                 'source_replicastatus': source_volume_ref['status'],
                 'type': 'source_replica',
             })
-        elif kwargs.get('image_id'):
+        elif request_spec.get('image_id'):
             # We are making an image based volume instead of a raw volume.
-            image_href = kwargs['image_id']
+            image_href = request_spec['image_id']
             image_service, image_id = get_remote_image_service(context,
                                                                image_href)
             specs.update({
@@ -729,9 +727,7 @@ class CreateVolumeOnFinishTask(NotifyVolumeActionTask):
 
 def get_flow(context, db, driver, scheduler_rpcapi, host, volume_id,
              allow_reschedule, reschedule_context, request_spec,
-             filter_properties, snapshot_id=None, image_id=None,
-             source_volid=None, source_replicaid=None,
-             consistencygroup_id=None, cgsnapshot_id=None):
+             filter_properties):
     """Constructs and returns the manager entrypoint flow.
 
     This flow will do the following:
@@ -756,14 +752,8 @@ def get_flow(context, db, driver, scheduler_rpcapi, host, volume_id,
     create_what = {
         'context': context,
         'filter_properties': filter_properties,
-        'image_id': image_id,
         'request_spec': request_spec,
-        'snapshot_id': snapshot_id,
-        'source_volid': source_volid,
         'volume_id': volume_id,
-        'source_replicaid': source_replicaid,
-        'consistencygroup_id': consistencygroup_id,
-        'cgsnapshot_id': cgsnapshot_id,
     }
 
     volume_flow.add(ExtractVolumeRefTask(db, host, set_error=False))

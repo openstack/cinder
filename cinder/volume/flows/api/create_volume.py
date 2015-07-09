@@ -715,12 +715,7 @@ class VolumeCastTask(flow_utils.CinderTask):
                     volume_ref['host'],
                     request_spec,
                     filter_properties,
-                    allow_reschedule=False,
-                    snapshot_id=snapshot_id,
-                    image_id=image_id,
-                    source_volid=source_volid,
-                    source_replicaid=source_replicaid,
-                    consistencygroup_id=cgroup_id)
+                    allow_reschedule=False)
 
     def execute(self, context, **kwargs):
         scheduler_hints = kwargs.pop('scheduler_hints', None)
