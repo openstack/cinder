@@ -67,7 +67,7 @@ class SheepdogClient(object):
                                       'Waiting for cluster to be formatted')
     DOG_RESP_CLUSTER_WAITING = ('Cluster status: '
                                 'Waiting for other nodes to join cluster')
-    DOG_RESP_VDI_ALREADY_EXISTS = ': VDI exists already\\n'
+    DOG_RESP_VDI_ALREADY_EXISTS = ': VDI exists already'
     DOG_RESP_VDI_NOT_FOUND = ': No VDI found'
     DOG_RESP_VDI_SHRINK_NOT_SUPPORT = 'Shrinking VDIs is not implemented'
     DOG_RESP_VDI_SIZE_TOO_LARGE = 'New VDI size is too large'
@@ -132,8 +132,7 @@ class SheepdogClient(object):
                               'OSError: command is %(cmd)s.')
                 else:
                     msg = _LE('OSError: command is %(cmd)s.')
-                msg = msg % {'cmd': tuple(cmd)}
-                LOG.error(msg)
+                LOG.error(msg, {'cmd': tuple(cmd)})
         except processutils.ProcessExecutionError as e:
             raise exception.SheepdogCmdError(
                 cmd=e.cmd,
@@ -175,7 +174,8 @@ class SheepdogClient(object):
                     LOG.error(_LE("Failed to connect sheep daemon. "
                               "addr: %(addr)s, port: %(port)s"),
                               {'addr': self.addr, 'port': self.port})
-                elif stderr.endswith(self.DOG_RESP_VDI_ALREADY_EXISTS):
+                elif stderr.rstrip().endswith(
+                        self.DOG_RESP_VDI_ALREADY_EXISTS):
                     LOG.error(_LE('Volume already exists. %s'), vdiname)
                 else:
                     LOG.error(_LE('Failed to create volume. %s'), vdiname)
@@ -221,8 +221,7 @@ class SheepdogClient(object):
                 elif stderr.rstrip('\\n').endswith(
                         self.DOG_RESP_SNAPSHOT_VDI_NOT_FOUND):
                     LOG.error(_LE('Volume "%s" not found. Please check the '
-                                  'results of "dog vdi list".'),
-                              vdiname)
+                                  'results of "dog vdi list".'), vdiname)
                 elif stderr.rstrip('\\n').endswith(
                         self.DOG_RESP_SNAPSHOT_EXISTED %
                         {'snapname': snapname}):
@@ -543,14 +542,14 @@ class SheepdogDriver(driver.VolumeDriver):
         except exception.VolumeBackendAPIException:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE('Failed to create clone image : %s'),
-                          volume['name'])
+                          volume.name)
 
         try:
-            self.client.resize(volume, volume['size'])
+            self.client.resize(volume, volume.size)
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE('Failed to resize cloned volume : %s'),
-                          volume['name'])
+                          volume.name)
                 self.client.delete(volume)
 
         vol_path = self.local_path(volume)
@@ -605,7 +604,7 @@ class SheepdogDriver(driver.VolumeDriver):
             # see volume/drivers/manager.py:_create_volume
             self.client.delete(volume.name)
             # convert and store into sheepdog
-            self.client.convert(tmp, 'sheepdog:%s' % volume['name'])
+            self.client.convert(tmp, 'sheepdog:%s' % volume.name)
             try:
                 self.client.resize(volume.name, volume.size)
             except Exception:
@@ -617,14 +616,14 @@ class SheepdogDriver(driver.VolumeDriver):
         image_id = image_meta['id']
         try:
             with image_utils.temporary_file() as tmp:
-                self.client.convert('sheepdog:%s' % volume['name'], tmp)
+                self.client.convert('sheepdog:%s' % volume.name, tmp)
                 with fileutils.file_open(tmp, 'rb') as image_file:
                     image_service.update(context, image_id, {}, image_file)
         except Exception:
             with excutils.save_and_reraise_exception():
                 msg = _LE('Failed to copy volume: %(vdiname)s to '
                           'image: %(path)s.')
-                LOG.error(msg, {'vdiname': volume['name'], 'path': tmp})
+                LOG.error(msg, {'vdiname': volume.name, 'path': tmp})
 
     def create_snapshot(self, snapshot):
         """Create a sheepdog snapshot."""
@@ -636,11 +635,6 @@ class SheepdogDriver(driver.VolumeDriver):
 
     def local_path(self, volume):
         """Get volume path."""
-        if volume['name'] == '':
-            reason = _('blank volume is not allowed')
-            LOG.error(reason)
-            raise exception.SheepdogError(reason=reason)
-
         return "sheepdog://%s" % volume['name']
 
     def ensure_export(self, context, volume):
@@ -706,24 +700,23 @@ class SheepdogDriver(driver.VolumeDriver):
 
     def backup_volume(self, context, backup, backup_service):
         """Create a new backup from an existing volume."""
-        volume = self.db.volume_get(context, backup['volume_id'])
-        temp_snapshot = {'volume_name': volume['name'],
-                         'name': 'tmp-snap-%s' % volume['name']}
+        src_volume = self.db.volume_get(context, backup.volume_id)
+        temp_snapshot_name = 'tmp-snap-%s' % src_volume.name
 
         try:
-            self.create_snapshot(temp_snapshot)
+            self.client.create_snapshot(src_volume.name, temp_snapshot_name)
         except (processutils.ProcessExecutionError, OSError) as exc:
             msg = (_('Failed to create a temporary snapshot for '
                      'volume %(volume_id)s, error message was: %(err_msg)s')
-                   % {'volume_id': volume['id'], 'err_msg': exc.message})
+                   % {'volume_id': src_volume.id, 'err_msg': exc.message})
             LOG.exception(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
         try:
-            sheepdog_fd = SheepdogIOWrapper(volume, temp_snapshot['name'])
+            sheepdog_fd = SheepdogIOWrapper(src_volume, temp_snapshot_name)
             backup_service.backup(backup, sheepdog_fd)
         finally:
-            self.delete_snapshot(temp_snapshot)
+            self.client.delete_snapshot(src_volume.name, temp_snapshot_name)
 
     def restore_backup(self, context, backup, volume, backup_service):
         """Restore an existing backup to a new or existing volume."""
