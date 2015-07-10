@@ -221,16 +221,6 @@ class HackingTestCase(test.TestCase):
         self.assertEqual(1, len(list(checks.no_mutable_default_args(
             "def foo (bar={}):"))))
 
-    def test_check_assert_called_once(self):
-        self.assertEqual(0, len(list(checks.check_assert_called_once(
-            ".assert_called_with(", "cinder/tests/unit/test1.py"))))
-        self.assertEqual(0, len(list(checks.check_assert_called_once(
-            ".assert_called_with(", "cinder/blah.py"))))
-        self.assertEqual(1, len(list(checks.check_assert_called_once(
-            ".assert_called_once(", "cinder/tests/unit/test1.py"))))
-        self.assertEqual(0, len(list(checks.check_assert_called_once(
-            ".assertEqual(", "cinder/tests/unit/test1.py"))))
-
     def test_oslo_namespace_imports_check(self):
         self.assertEqual(1, len(list(checks.check_oslo_namespace_imports(
             "from oslo.concurrency import foo"))))

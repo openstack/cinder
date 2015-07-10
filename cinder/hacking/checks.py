@@ -200,17 +200,6 @@ class CheckForStrUnicodeExc(BaseASTChecker):
         super(CheckForStrUnicodeExc, self).generic_visit(node)
 
 
-def check_assert_called_once(logical_line, filename):
-    msg = ("N327: assert_called_once is a no-op. please use assert_called_"
-           "once_with to test with explicit parameters or an assertEqual with"
-           " call_count.")
-
-    if 'cinder/tests/functional' or 'cinder/tests/unit' in filename:
-        pos = logical_line.find('.assert_called_once(')
-        if pos != -1:
-            yield (pos, msg)
-
-
 def validate_log_translations(logical_line, filename):
     # Translations are not required in the test directory.
     # This will not catch all instances of violations, just direct
@@ -324,7 +313,6 @@ def factory(register):
     register(no_mutable_default_args)
     register(check_explicit_underscore_import)
     register(CheckForStrUnicodeExc)
-    register(check_assert_called_once)
     register(check_oslo_namespace_imports)
     register(check_datetime_now)
     register(check_timeutils_strtime)
