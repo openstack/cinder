@@ -30,7 +30,7 @@ import webob.exc
 from cinder.api.openstack import wsgi
 from cinder import context
 from cinder.i18n import _
-from cinder import wsgi as base_wsgi
+from cinder.wsgi import common as base_wsgi
 
 
 use_forwarded_for_opt = cfg.BoolOpt(

@@ -23,7 +23,7 @@ import routes
 
 from cinder.api.openstack import wsgi
 from cinder.i18n import _, _LW
-from cinder import wsgi as base_wsgi
+from cinder.wsgi import common as base_wsgi
 
 
 LOG = logging.getLogger(__name__)
