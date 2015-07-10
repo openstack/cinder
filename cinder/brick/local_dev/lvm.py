@@ -277,11 +277,11 @@ class LVM(executor.Executor):
                                          run_as_root=True)
         except putils.ProcessExecutionError as err:
             with excutils.save_and_reraise_exception(reraise=True) as ctx:
-                if "not found" in err.stderr:
+                if "not found" in err.stderr or "Failed to find" in err.stderr:
                     ctx.reraise = False
-                    msg = _LI("'Not found' when querying LVM info. "
-                              "(vg_name=%(vg)s, lv_name=%(lv)s")
-                    LOG.info(msg, {'vg': vg_name, 'lv': lv_name})
+                    LOG.info(_LI("Logical Volume not found when querying "
+                                 "LVM info. (vg_name=%(vg)s, lv_name=%(lv)s"),
+                             {'vg': vg_name, 'lv': lv_name})
                     out = None
 
         lv_list = []
