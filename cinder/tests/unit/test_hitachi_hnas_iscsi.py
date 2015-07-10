@@ -20,8 +20,10 @@ Self test for Hitachi Unified Storage (HUS-HNAS) platform.
 
 import os
 import tempfile
+import time
 
 import mock
+from oslo_concurrency import processutils as putils
 import six
 
 from cinder import exception
@@ -382,14 +384,21 @@ class HNASiSCSIDriverTest(test.TestCase):
         self.backend.deleteVolumebyProvider(svol['provider_location'])
         self.backend.deleteVolumebyProvider(vol['provider_location'])
 
+    @mock.patch.object(time, 'sleep')
     @mock.patch.object(iscsi.HDSISCSIDriver, '_update_vol_location')
-    def test_initialize_connection(self, m_update_vol_location):
+    def test_initialize_connection(self, m_update_vol_location, m_sleep):
         connector = {}
         connector['initiator'] = 'iqn.1993-08.org.debian:01:11f90746eb2'
         connector['host'] = 'dut_1.lab.hds.com'
         vol = self._create_volume()
         conn = self.driver.initialize_connection(vol, connector)
         self.assertTrue('3260' in conn['data']['target_portal'])
+
+        self.backend.add_iscsi_conn = mock.MagicMock()
+        self.backend.add_iscsi_conn.side_effect = putils.ProcessExecutionError
+        self.assertRaises(exception.ISCSITargetAttachFailed,
+                          self.driver.initialize_connection, vol, connector)
+
         # cleanup
         self.backend.deleteVolumebyProvider(vol['provider_location'])
 

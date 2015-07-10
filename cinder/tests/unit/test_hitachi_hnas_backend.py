@@ -13,11 +13,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 #
+import time
 
 import mock
-from oslo_concurrency import processutils
+from oslo_concurrency import processutils as putils
 from oslo_config import cfg
 
+from cinder import exception
 from cinder import test
 from cinder import utils
 from cinder.volume.drivers.hitachi import hnas_backend
@@ -193,6 +195,8 @@ HNAS_RESULT20 = "Target does not exist."
 
 HNAS_RESULT21 = "Target created successfully."
 
+HNAS_RESULT22 = "Failed to establish SSC connection"
+
 HNAS_CMDS = {
     ('ssh', '0.0.0.0', 'supervisor', 'supervisor', 'evsfs', 'list'):
         ["%s" % HNAS_RESULT1, ""],
@@ -285,19 +289,41 @@ class HDSHNASBendTest(test.TestCase):
     @mock.patch('os.path.isfile', return_value=True)
     @mock.patch('paramiko.RSAKey.from_private_key_file')
     @mock.patch('paramiko.SSHClient')
-    @mock.patch.object(processutils, 'ssh_execute',
+    @mock.patch.object(putils, 'ssh_execute',
                        return_value=(HNAS_RESULT5, ''))
-    def test_run_cmd(self, m_ssh_exec, m_ssh_cli, m_pvt_key, m_file, m_open):
+    @mock.patch.object(utils, 'execute')
+    @mock.patch.object(time, 'sleep')
+    def test_run_cmd(self, m_sleep, m_utl, m_ssh, m_ssh_cli,
+                     m_pvt_key, m_file, m_open):
         save_hkey_file = CONF.ssh_hosts_key_file
         save_spath = CONF.state_path
         CONF.ssh_hosts_key_file = '/var/lib/cinder/ssh_known_hosts'
         CONF.state_path = '/var/lib/cinder'
 
+        # Test main flow
         out, err = self.hnas_bend.run_cmd('ssh', '0.0.0.0',
                                           'supervisor', 'supervisor',
                                           'df', '-a')
         self.assertIn('fs01-husvm', out)
         self.assertIn('WFS-2,128 DSBs', out)
+
+        # Test exception throwing when not using SSH
+        m_utl.side_effect = putils.ProcessExecutionError(stdout='',
+                                                         stderr=HNAS_RESULT22,
+                                                         exit_code=255)
+        self.hnas_bend.drv_configs['ssh_enabled'] = 'False'
+        self.assertRaises(exception.HNASConnError, self.hnas_bend.run_cmd,
+                          'ssh', '0.0.0.0', 'supervisor', 'supervisor',
+                          'df', '-a')
+
+        # Test exception throwing when using SSH
+        m_ssh.side_effect = putils.ProcessExecutionError(stdout='',
+                                                         stderr=HNAS_RESULT22,
+                                                         exit_code=255)
+        self.hnas_bend.drv_configs['ssh_enabled'] = 'True'
+        self.assertRaises(exception.HNASConnError, self.hnas_bend.run_cmd,
+                          'ssh', '0.0.0.0', 'supervisor', 'supervisor',
+                          'df', '-a')
 
         CONF.state_path = save_spath
         CONF.ssh_hosts_key_file = save_hkey_file
