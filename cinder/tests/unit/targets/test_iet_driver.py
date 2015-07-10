@@ -157,11 +157,11 @@ class TestIetAdmDriver(tf.TargetDriverFixture):
                                         0,
                                         self.testvol['id'],
                                         self.testvol['name'])
-        mock_execute.assert_any_calls('ietadm',
-                                      '--op',
-                                      'delete',
-                                      '--tid=1',
-                                      run_as_root=True)
+        mock_execute.assert_any_call('ietadm',
+                                     '--op',
+                                     'delete',
+                                     '--tid=1',
+                                     run_as_root=True)
 
         # Test the failure case: putils.ProcessExecutionError
         mock_execute.side_effect = putils.ProcessExecutionError

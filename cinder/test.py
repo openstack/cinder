@@ -106,7 +106,7 @@ def _patch_mock_to_raise_for_invalid_assert_calls():
                 'assert_called_with',
                 'assert_called_once_with',
                 'assert_has_calls',
-                'assert_any_calls']
+                'assert_any_call']
 
             if name.startswith('assert') and name not in valid_asserts:
                 raise AttributeError('%s is not a valid mock assert method'

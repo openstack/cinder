@@ -55,12 +55,12 @@ class MockAssertTestCase(test.TestCase):
         mock_call(2)
         mock_call.assert_has_calls([mock.call(1), mock.call(2)])
 
-    def test_assert_any_calls(self):
+    def test_assert_any_call(self):
         mock_call = mock.MagicMock(return_value=None)
         mock_call(1)
         mock_call(2)
         mock_call(3)
-        mock_call.assert_any_calls([mock.call(1)])
+        mock_call.assert_any_call(1)
 
     def test_assert_called_with(self):
         mock_call = mock.MagicMock(return_value=None)

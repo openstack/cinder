@@ -205,8 +205,8 @@ class PureDriverTestCase(test.TestCase):
         """
         func(*args, **kwargs)
         for mock_func in mocks:
-            mock_func.side_effect = exception.PureDriverException(
-                reason="reason")
+            mock_func.side_effect = [exception.PureDriverException(
+                reason='reason')]
             self.assertRaises(exception.PureDriverException,
                               func, *args, **kwargs)
             mock_func.side_effect = None
