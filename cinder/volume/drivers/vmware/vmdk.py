@@ -362,66 +362,6 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         """
         return self.volumeops.get_vmfolder(datacenter)
 
-    def _compute_space_utilization(self, datastore_summary):
-        """Compute the space utilization of the given datastore.
-
-        :param datastore_summary: Summary of the datastore for which
-                                  space utilization is to be computed
-        :return: space utilization in the range [0..1]
-        """
-        return (
-            1.0 -
-            datastore_summary.freeSpace / float(datastore_summary.capacity)
-        )
-
-    def _select_datastore_summary(self, size_bytes, datastores):
-        """Get the best datastore summary from the given datastore list.
-
-        The implementation selects a datastore which is connected to maximum
-        number of hosts, provided there is enough space to accommodate the
-        volume. Ties are broken based on space utilization; datastore with
-        low space utilization is preferred.
-
-        :param size_bytes: Size in bytes of the volume
-        :param datastores: Datastores from which a choice is to be made
-                           for the volume
-        :return: Summary of the best datastore selected for volume
-        """
-        best_summary = None
-        max_host_count = 0
-        best_space_utilization = 1.0
-
-        for datastore in datastores:
-            summary = self.volumeops.get_summary(datastore)
-            if summary.freeSpace > size_bytes:
-                host_count = len(self.volumeops.get_connected_hosts(datastore))
-                if host_count > max_host_count:
-                    max_host_count = host_count
-                    best_space_utilization = self._compute_space_utilization(
-                        summary
-                    )
-                    best_summary = summary
-                elif host_count == max_host_count:
-                    # break the tie based on space utilization
-                    space_utilization = self._compute_space_utilization(
-                        summary
-                    )
-                    if space_utilization < best_space_utilization:
-                        best_space_utilization = space_utilization
-                        best_summary = summary
-
-        if not best_summary:
-            msg = _("Unable to pick datastore to accommodate %(size)s bytes "
-                    "from the datastores: %(dss)s.") % {'size': size_bytes,
-                                                        'dss': datastores}
-            LOG.error(msg)
-            raise exceptions.VimException(msg)
-
-        LOG.debug("Selected datastore: %(datastore)s with %(host_count)d "
-                  "connected host(s) for the volume.",
-                  {'datastore': best_summary, 'host_count': max_host_count})
-        return best_summary
-
     def _get_extra_spec_storage_profile(self, type_id):
         """Get storage profile name in the given volume type's extra spec.
 
@@ -437,61 +377,6 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                  and contains storage_profile extra_spec option; None otherwise
         """
         return self._get_extra_spec_storage_profile(volume['volume_type_id'])
-
-    def _filter_ds_by_profile(self, datastores, storage_profile):
-        """Filter out datastores that do not match given storage profile.
-
-        :param datastores: list of candidate datastores
-        :param storage_profile: storage profile name required to be satisfied
-        :return: subset of datastores that match storage_profile, or empty list
-                 if none of the datastores match
-        """
-        LOG.debug("Filter datastores matching storage profile %(profile)s: "
-                  "%(dss)s.",
-                  {'profile': storage_profile, 'dss': datastores})
-        profileId = pbm.get_profile_id_by_name(self.session, storage_profile)
-        if not profileId:
-            msg = _("No such storage profile '%s; is defined in vCenter.")
-            LOG.error(msg, storage_profile)
-            raise exceptions.VimException(msg % storage_profile)
-        pbm_cf = self.session.pbm.client.factory
-        hubs = pbm.convert_datastores_to_hubs(pbm_cf, datastores)
-        filtered_hubs = pbm.filter_hubs_by_profile(self.session, hubs,
-                                                   profileId)
-        return pbm.filter_datastores_by_hubs(filtered_hubs, datastores)
-
-    def _get_folder_ds_summary(self, volume, resource_pool, datastores):
-        """Get folder and best datastore summary where volume can be placed.
-
-        :param volume: volume to place into one of the datastores
-        :param resource_pool: Resource pool reference
-        :param datastores: Datastores from which a choice is to be made
-                           for the volume
-        :return: Folder and best datastore summary where volume can be
-                 placed on.
-        """
-        datacenter = self.volumeops.get_dc(resource_pool)
-        folder = self._get_volume_group_folder(datacenter)
-        storage_profile = self._get_storage_profile(volume)
-        if self._storage_policy_enabled and storage_profile:
-            LOG.debug("Storage profile required for this volume: %s.",
-                      storage_profile)
-            datastores = self._filter_ds_by_profile(datastores,
-                                                    storage_profile)
-            if not datastores:
-                msg = _("Aborting since none of the datastores match the "
-                        "given storage profile %s.")
-                LOG.error(msg, storage_profile)
-                raise exceptions.VimException(msg % storage_profile)
-        elif storage_profile:
-            LOG.warning(_LW("Ignoring storage profile %s requirement for this "
-                            "volume since policy based placement is "
-                            "disabled."), storage_profile)
-
-        size_bytes = volume['size'] * units.Gi
-        datastore_summary = self._select_datastore_summary(size_bytes,
-                                                           datastores)
-        return (folder, datastore_summary)
 
     @staticmethod
     def _get_extra_spec_disk_type(type_id):

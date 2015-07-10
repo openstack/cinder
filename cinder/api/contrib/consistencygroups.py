@@ -174,9 +174,8 @@ class ConsistencyGroupsController(wsgi.Controller):
         try:
             group = self.consistencygroup_api.get(context, id)
             self.consistencygroup_api.delete(context, group, force)
-        except exception.ConsistencyGroupNotFound:
-            msg = _("Consistency group %s could not be found.") % id
-            raise exc.HTTPNotFound(explanation=msg)
+        except exception.ConsistencyGroupNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
         except exception.InvalidConsistencyGroup as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
 
@@ -212,16 +211,10 @@ class ConsistencyGroupsController(wsgi.Controller):
     def create(self, req, body):
         """Create a new consistency group."""
         LOG.debug('Creating new consistency group %s', body)
-        if not self.is_valid_body(body, 'consistencygroup'):
-            raise exc.HTTPBadRequest()
+        self.assert_valid_body(body, 'consistencygroup')
 
         context = req.environ['cinder.context']
-
-        try:
-            consistencygroup = body['consistencygroup']
-        except KeyError:
-            msg = _("Incorrect request body format")
-            raise exc.HTTPBadRequest(explanation=msg)
+        consistencygroup = body['consistencygroup']
         name = consistencygroup.get('name', None)
         description = consistencygroup.get('description', None)
         volume_types = consistencygroup.get('volume_types', None)
@@ -263,16 +256,10 @@ class ConsistencyGroupsController(wsgi.Controller):
         API above.
         """
         LOG.debug('Creating new consistency group %s.', body)
-        if not self.is_valid_body(body, 'consistencygroup-from-src'):
-            raise exc.HTTPBadRequest()
+        self.assert_valid_body(body, 'consistencygroup-from-src')
 
         context = req.environ['cinder.context']
-
-        try:
-            consistencygroup = body['consistencygroup-from-src']
-        except KeyError:
-            msg = _("Incorrect request body format.")
-            raise exc.HTTPBadRequest(explanation=msg)
+        consistencygroup = body['consistencygroup-from-src']
         name = consistencygroup.get('name', None)
         description = consistencygroup.get('description', None)
         cgsnapshot_id = consistencygroup.get('cgsnapshot_id', None)
@@ -323,9 +310,8 @@ class ConsistencyGroupsController(wsgi.Controller):
         if not body:
             msg = _("Missing request body.")
             raise exc.HTTPBadRequest(explanation=msg)
-        if not self.is_valid_body(body, 'consistencygroup'):
-            msg = _("Incorrect request body format.")
-            raise exc.HTTPBadRequest(explanation=msg)
+
+        self.assert_valid_body(body, 'consistencygroup')
         context = req.environ['cinder.context']
 
         consistencygroup = body.get('consistencygroup', None)
@@ -354,9 +340,8 @@ class ConsistencyGroupsController(wsgi.Controller):
             self.consistencygroup_api.update(
                 context, group, name, description,
                 add_volumes, remove_volumes)
-        except exception.ConsistencyGroupNotFound:
-            msg = _("Consistency group %s could not be found.") % id
-            raise exc.HTTPNotFound(explanation=msg)
+        except exception.ConsistencyGroupNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
         except exception.InvalidConsistencyGroup as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
 

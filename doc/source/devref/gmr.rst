@@ -64,7 +64,7 @@ Cinder version module:
 
 .. code-block:: python
 
-      from cinder.openstack.common.report import guru_meditation_report as gmr
+      from oslo_reports import guru_meditation_report as gmr
       from cinder import version
 
 Then, register any additional sections (optional):
@@ -87,4 +87,5 @@ Extending the GMR
 
 As mentioned above, additional sections can be added to the GMR for a
 particular executable.  For more information, see the inline documentation
-under :mod:`cinder.openstack.common.report`
+about oslo.reports:
+`oslo.reports <http://docs.openstack.org/developer/oslo.reports/>`_

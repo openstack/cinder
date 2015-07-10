@@ -90,6 +90,7 @@ class InfortrendCLITestData(object):
         'provider_auth': None,
         'project_id': 'project',
         'display_name': None,
+        '_name_id': '6bb119a8-d25b-45a7-8d1b-88e127885666',
         'display_description': 'Part-1-Copy',
         'volume_type_id': None,
         'provider_location': '',

@@ -143,6 +143,12 @@ volume_opts = [
                     'perform write-back(on) or write-through(off). '
                     'This parameter is valid if iscsi_helper is set '
                     'to tgtadm or iseradm.'),
+    cfg.StrOpt('iscsi_target_flags',
+               default='',
+               help='Sets the target-specific flags for the iSCSI target. '
+                    'Only used for tgtadm to specify backing device flags '
+                    'using bsoflags option. The specified string is passed '
+                    'as is to the underlying tool.'),
     cfg.StrOpt('iscsi_protocol',
                default='iscsi',
                choices=['iscsi', 'iser'],
@@ -211,6 +217,15 @@ volume_opts = [
                     'used to determine the goodness of a host. Only used '
                     'when using the goodness weigher is set to be used by '
                     'the Cinder scheduler.'),
+    cfg.BoolOpt('driver_ssl_cert_verify',
+                default=False,
+                help='If set to True the http client will validate the SSL '
+                     'certificate of the backend endpoint.'),
+    cfg.ListOpt('trace_flags',
+                default=None,
+                help='List of options that control which trace info '
+                     'is written to the DEBUG log level to assist '
+                     'developers. Valid values are method and api.'),
 ]
 
 # for backward compatibility
@@ -279,6 +294,7 @@ class BaseVD(object):
         if self.configuration:
             self.configuration.append_config_values(volume_opts)
             self.configuration.append_config_values(iser_opts)
+            utils.setup_tracing(self.configuration.safe_get('trace_flags'))
         self.set_execute(execute)
         self._stats = {}
 
@@ -1348,15 +1364,24 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
         """
         return None
 
-    def update_migrated_volume(self, ctxt, volume, new_volume):
+    def update_migrated_volume(self, ctxt, volume, new_volume,
+                               original_volume_status):
         """Return model update for migrated volume.
+
+        Each driver implementing this method needs to be responsible for the
+        values of _name_id and provider_location. If None is returned or either
+        key is not set, it means the volume table does not need to change the
+        value(s) for the key(s).
+        The return format is {"_name_id": value, "provider_location": value}.
 
         :param volume: The original volume that was migrated to this backend
         :param new_volume: The migration volume object that was created on
                            this backend as part of the migration process
+        :param original_volume_status: The status of the original volume
         :return model_update to update DB with any needed changes
         """
-        return None
+        msg = _("The method update_migrated_volume not implemented.")
+        raise NotImplementedError(msg)
 
     def migrate_volume(self, context, volume, host):
         return (False, None)

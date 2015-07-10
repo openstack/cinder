@@ -21,7 +21,6 @@ from cinder.api.contrib import types_manage
 from cinder import exception
 from cinder import test
 from cinder.tests.unit.api import fakes
-from cinder.tests.unit import fake_notifier
 from cinder.volume import volume_types
 
 
@@ -143,8 +142,6 @@ class VolumeTypesManageApiTest(test.TestCase):
         self.flags(host='fake')
         self.controller = types_manage.VolumeTypesManageController()
         """to reset notifier drivers left over from other api/contrib tests"""
-        fake_notifier.reset()
-        self.addCleanup(fake_notifier.reset)
 
     def tearDown(self):
         super(VolumeTypesManageApiTest, self).tearDown()
@@ -156,9 +153,9 @@ class VolumeTypesManageApiTest(test.TestCase):
                        return_volume_types_destroy)
 
         req = fakes.HTTPRequest.blank('/v2/fake/types/1')
-        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
+        self.assertEqual(0, len(self.notifier.notifications))
         self.controller._delete(req, 1)
-        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
+        self.assertEqual(1, len(self.notifier.notifications))
 
     def test_volume_types_delete_not_found(self):
         self.stubs.Set(volume_types, 'get_volume_type',
@@ -166,11 +163,11 @@ class VolumeTypesManageApiTest(test.TestCase):
         self.stubs.Set(volume_types, 'destroy',
                        return_volume_types_destroy)
 
-        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
+        self.assertEqual(0, len(self.notifier.notifications))
         req = fakes.HTTPRequest.blank('/v2/fake/types/777')
         self.assertRaises(webob.exc.HTTPNotFound, self.controller._delete,
                           req, '777')
-        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
+        self.assertEqual(1, len(self.notifier.notifications))
 
     def test_volume_types_with_volumes_destroy(self):
         self.stubs.Set(volume_types, 'get_volume_type',
@@ -178,9 +175,9 @@ class VolumeTypesManageApiTest(test.TestCase):
         self.stubs.Set(volume_types, 'destroy',
                        return_volume_types_with_volumes_destroy)
         req = fakes.HTTPRequest.blank('/v2/fake/types/1')
-        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
+        self.assertEqual(0, len(self.notifier.notifications))
         self.controller._delete(req, 1)
-        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
+        self.assertEqual(1, len(self.notifier.notifications))
 
     def test_create(self):
         self.stubs.Set(volume_types, 'create',
@@ -192,10 +189,10 @@ class VolumeTypesManageApiTest(test.TestCase):
                                 "extra_specs": {"key1": "value1"}}}
         req = fakes.HTTPRequest.blank('/v2/fake/types')
 
-        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
+        self.assertEqual(0, len(self.notifier.notifications))
         res_dict = self.controller._create(req, body)
 
-        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
+        self.assertEqual(1, len(self.notifier.notifications))
         self._check_test_results(res_dict, {
             'expected_name': 'vol_type_1', 'expected_desc': 'vol_type_desc_1'})
 
@@ -277,9 +274,9 @@ class VolumeTypesManageApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/fake/types/1')
         req.method = 'PUT'
 
-        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
+        self.assertEqual(0, len(self.notifier.notifications))
         res_dict = self.controller._update(req, '1', body)
-        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
+        self.assertEqual(1, len(self.notifier.notifications))
         self._check_test_results(res_dict,
                                  {'expected_desc': 'vol_type_desc_1_1',
                                   'expected_name': 'vol_type_1_1'})
@@ -329,10 +326,10 @@ class VolumeTypesManageApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/fake/types/777')
         req.method = 'PUT'
 
-        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
+        self.assertEqual(0, len(self.notifier.notifications))
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller._update, req, '777', body)
-        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
+        self.assertEqual(1, len(self.notifier.notifications))
 
     def test_update_db_fail(self):
         self.stubs.Set(volume_types, 'update',
@@ -345,10 +342,10 @@ class VolumeTypesManageApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/fake/types/1')
         req.method = 'PUT'
 
-        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
+        self.assertEqual(0, len(self.notifier.notifications))
         self.assertRaises(webob.exc.HTTPInternalServerError,
                           self.controller._update, req, '1', body)
-        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
+        self.assertEqual(1, len(self.notifier.notifications))
 
     def test_update_no_name_no_description(self):
         body = {"volume_type": {}}
@@ -377,9 +374,9 @@ class VolumeTypesManageApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/fake/types/999')
         req.method = 'PUT'
 
-        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
+        self.assertEqual(0, len(self.notifier.notifications))
         res_dict = self.controller._update(req, '999', body)
-        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
+        self.assertEqual(1, len(self.notifier.notifications))
         self._check_test_results(res_dict,
                                  {'expected_name': 'vol_type_999_999',
                                   'expected_desc': 'vol_type_desc_999'})
@@ -394,9 +391,9 @@ class VolumeTypesManageApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/fake/types/888')
         req.method = 'PUT'
 
-        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
+        self.assertEqual(0, len(self.notifier.notifications))
         res_dict = self.controller._update(req, '888', body)
-        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
+        self.assertEqual(1, len(self.notifier.notifications))
         self._check_test_results(res_dict,
                                  {'expected_name': 'vol_type_888',
                                   'expected_desc': 'vol_type_desc_888_888'})
@@ -411,20 +408,20 @@ class VolumeTypesManageApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/fake/types/666')
         req.method = 'PUT'
 
-        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
+        self.assertEqual(0, len(self.notifier.notifications))
         self.assertRaises(webob.exc.HTTPConflict,
                           self.controller._update, req, '666', body)
-        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
+        self.assertEqual(1, len(self.notifier.notifications))
 
         # delete
-        fake_notifier.reset()
+        self.notifier.reset()
         self.stubs.Set(volume_types, 'destroy',
                        return_volume_types_destroy)
 
         req = fakes.HTTPRequest.blank('/v2/fake/types/1')
-        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
+        self.assertEqual(0, len(self.notifier.notifications))
         self.controller._delete(req, '1')
-        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
+        self.assertEqual(1, len(self.notifier.notifications))
 
         # update again
         self.stubs.Set(volume_types, 'update',
@@ -435,13 +432,13 @@ class VolumeTypesManageApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/fake/types/666')
         req.method = 'PUT'
 
-        fake_notifier.reset()
-        self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
+        self.notifier.reset()
+        self.assertEqual(0, len(self.notifier.notifications))
         res_dict = self.controller._update(req, '666', body)
         self._check_test_results(res_dict,
                                  {'expected_name': 'vol_type_666',
                                   'expected_desc': 'vol_type_desc_666'})
-        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
+        self.assertEqual(1, len(self.notifier.notifications))
 
     def _check_test_results(self, results, expected_results):
         self.assertEqual(1, len(results))

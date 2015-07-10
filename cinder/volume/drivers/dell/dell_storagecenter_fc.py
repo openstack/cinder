@@ -33,9 +33,14 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
 
     To enable the driver add the following line to the cinder configuration:
         volume_driver=cinder.volume.drivers.dell.DellStorageCenterFCDriver
+
+    Version history:
+        1.0.0 - Initial driver
+        1.1.0 - Added extra spec support for Storage Profile selection
+        1.2.0 - Added consistency group support.
     '''
 
-    VERSION = '1.0.2'
+    VERSION = '1.2.0'
 
     def __init__(self, *args, **kwargs):
         super(DellStorageCenterFCDriver, self).__init__(*args, **kwargs)

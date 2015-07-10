@@ -19,12 +19,12 @@ import re
 from xml.dom import minidom
 
 from oslo_log import log as logging
+from oslo_service import loopingcall
 import six
 
 from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder.openstack.common import loopingcall
 from cinder.volume import volume_types
 
 

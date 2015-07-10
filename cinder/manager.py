@@ -55,9 +55,9 @@ This module provides Manager, a base class for managers.
 from oslo_config import cfg
 from oslo_log import log as logging
 import oslo_messaging as messaging
+from oslo_service import periodic_task
 
 from cinder.db import base
-from cinder.openstack.common import periodic_task
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import version
 
@@ -66,7 +66,12 @@ CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 
-class Manager(base.Base, periodic_task.PeriodicTasks):
+class PeriodicTasks(periodic_task.PeriodicTasks):
+    def __init__(self):
+        super(PeriodicTasks, self).__init__(CONF)
+
+
+class Manager(base.Base, PeriodicTasks):
     # Set RPC API version to 1.0 by default.
     RPC_API_VERSION = '1.0'
 

@@ -1204,6 +1204,19 @@ class Controller(object):
 
         return True
 
+    @staticmethod
+    def assert_valid_body(body, entity_name):
+        # NOTE: After v1 api is deprecated need to merge 'is_valid_body' and
+        #       'assert_valid_body' in to one method. Right now it is not
+        #       possible to modify 'is_valid_body' to raise exception because
+        #       in case of V1 api when 'is_valid_body' return False,
+        #       'HTTPUnprocessableEntity' exception is getting raised and in
+        #       V2 api 'HTTPBadRequest' exception is getting raised.
+        if not Controller.is_valid_body(body, entity_name):
+            raise webob.exc.HTTPBadRequest(
+                explanation=_("Missing required element '%s' in "
+                              "request body.") % entity_name)
+
 
 class Fault(webob.exc.HTTPException):
     """Wrap webob.exc.HTTPException to provide API friendly response."""

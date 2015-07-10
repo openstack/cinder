@@ -20,12 +20,6 @@ import oslo_messaging as messaging
 
 from cinder import rpc
 
-NOTIFICATIONS = []
-
-
-def reset():
-    del NOTIFICATIONS[:]
-
 
 FakeMessage = collections.namedtuple('Message',
                                      ['publisher_id', 'priority',
@@ -64,8 +58,10 @@ class FakeNotifier(object):
                    priority=priority,
                    event_type=event_type,
                    payload=payload)
-        NOTIFICATIONS.append(msg)
         self.notifications.append(msg)
+
+    def reset(self):
+        del self.notifications[:]
 
 
 def stub_notifier(stubs):

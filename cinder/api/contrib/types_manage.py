@@ -54,8 +54,7 @@ class VolumeTypesManageController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context)
 
-        if not self.is_valid_body(body, 'volume_type'):
-            raise webob.exc.HTTPBadRequest()
+        self.assert_valid_body(body, 'volume_type')
 
         vol_type = body['volume_type']
         name = vol_type.get('name', None)
@@ -89,10 +88,10 @@ class VolumeTypesManageController(wsgi.Controller):
             self._notify_volume_type_error(
                 context, 'volume_type.create', err, volume_type=vol_type)
             raise webob.exc.HTTPConflict(explanation=six.text_type(err))
-        except exception.NotFound as err:
+        except exception.VolumeTypeNotFoundByName as err:
             self._notify_volume_type_error(
                 context, 'volume_type.create', err, name=name)
-            raise webob.exc.HTTPNotFound()
+            raise webob.exc.HTTPNotFound(explanation=err.msg)
 
         return self._view_builder.show(req, vol_type)
 
@@ -103,8 +102,7 @@ class VolumeTypesManageController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context)
 
-        if not self.is_valid_body(body, 'volume_type'):
-            raise webob.exc.HTTPBadRequest()
+        self.assert_valid_body(body, 'volume_type')
 
         vol_type = body['volume_type']
         description = vol_type.get('description')
@@ -168,10 +166,10 @@ class VolumeTypesManageController(wsgi.Controller):
                 context, 'volume_type.delete', err, volume_type=vol_type)
             msg = _('Target volume type is still in use.')
             raise webob.exc.HTTPBadRequest(explanation=msg)
-        except exception.NotFound as err:
+        except exception.VolumeTypeNotFound as err:
             self._notify_volume_type_error(
                 context, 'volume_type.delete', err, id=id)
-            raise webob.exc.HTTPNotFound()
+            raise webob.exc.HTTPNotFound(explanation=err.msg)
 
         return webob.Response(status_int=202)
 

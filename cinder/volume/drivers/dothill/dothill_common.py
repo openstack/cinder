@@ -137,6 +137,8 @@ class DotHillCommon(object):
         uuid_str = name.replace("-", "")
         vol_uuid = uuid.UUID('urn:uuid:%s' % uuid_str)
         vol_encoded = base64.b64encode(vol_uuid.bytes)
+        if six.PY3:
+            vol_encoded = vol_encoded.decode('ascii')
         vol_encoded = vol_encoded.replace('=', '')
 
         # + is not a valid character for DotHill
@@ -272,7 +274,7 @@ class DotHillCommon(object):
             self.client.delete_volume(volume_name)
         except exception.DotHillRequestError as ex:
             # if the volume wasn't found, ignore the error
-            if 'The volume was not found on this system.' in ex:
+            if 'The volume was not found on this system.' in ex.args:
                 return
             LOG.exception(_LE("Deletion of volume %s failed."), volume['id'])
             raise exception.Invalid(ex)
@@ -411,7 +413,7 @@ class DotHillCommon(object):
             self.client.delete_snapshot(snap_name)
         except exception.DotHillRequestError as ex:
             # if the volume wasn't found, ignore the error
-            if 'The volume was not found on this system.' in ex:
+            if 'The volume was not found on this system.' in ex.args:
                 return
             LOG.exception(_LE("Deleting snapshot %s failed"), snapshot['id'])
             raise exception.Invalid(ex)

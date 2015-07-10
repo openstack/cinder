@@ -27,6 +27,8 @@ from oslo_config import cfg
 from oslo_db import exception as db_exc
 from oslo_log import log as logging
 import oslo_messaging as messaging
+from oslo_service import loopingcall
+from oslo_service import service
 from oslo_utils import importutils
 import osprofiler.notifier
 from osprofiler import profiler
@@ -37,8 +39,6 @@ from cinder import db
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.objects import base as objects_base
-from cinder.openstack.common import loopingcall
-from cinder.openstack.common import service
 from cinder import rpc
 from cinder import version
 from cinder import wsgi
@@ -325,8 +325,15 @@ class Service(service.Service):
                 self.model_disconnected = True
                 LOG.exception(_LE('model server went away'))
 
+        # NOTE(jsbryant) Other DB errors can happen in HA configurations.
+        # such errors shouldn't kill this thread, so we handle them here.
+        except db_exc.DBError:
+            if not getattr(self, 'model_disconnected', False):
+                self.model_disconnected = True
+                LOG.exception(_LE('DBError encountered: '))
 
-class WSGIService(object):
+
+class WSGIService(service.ServiceBase):
     """Provides ability to launch API from a 'paste' configuration."""
 
     def __init__(self, name, loader=None):
@@ -420,7 +427,7 @@ class WSGIService(object):
 
 
 def process_launcher():
-    return service.ProcessLauncher()
+    return service.ProcessLauncher(CONF)
 
 
 # NOTE(vish): the global launcher is to maintain the existing
@@ -434,7 +441,7 @@ def serve(server, workers=None):
     if _launcher:
         raise RuntimeError(_('serve() can only be called once'))
 
-    _launcher = service.launch(server, workers=workers)
+    _launcher = service.launch(CONF, server, workers=workers)
 
 
 def wait():

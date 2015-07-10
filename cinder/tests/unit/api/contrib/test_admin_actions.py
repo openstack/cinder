@@ -198,10 +198,14 @@ class AdminActionsTest(test.TestCase):
 
     def test_backup_reset_status_as_admin(self):
         ctx = context.RequestContext('admin', 'fake', True)
-        volume = db.volume_create(ctx, {'status': 'available'})
+        volume = db.volume_create(ctx, {'status': 'available',
+                                        'user_id': 'user',
+                                        'project_id': 'project'})
         backup = db.backup_create(ctx, {'status': 'available',
                                         'size': 1,
-                                        'volume_id': volume['id']})
+                                        'volume_id': volume['id'],
+                                        'user_id': 'user',
+                                        'project_id': 'project'})
 
         resp = self._issue_backup_reset(ctx,
                                         backup,
@@ -225,7 +229,9 @@ class AdminActionsTest(test.TestCase):
         volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
                                         'provider_location': '', 'size': 1})
         backup = db.backup_create(ctx, {'status': 'available',
-                                        'volume_id': volume['id']})
+                                        'volume_id': volume['id'],
+                                        'user_id': 'user',
+                                        'project_id': 'project'})
 
         resp = self._issue_backup_reset(ctx,
                                         backup,
@@ -841,21 +847,13 @@ class AdminActionsTest(test.TestCase):
         db.snapshot_create(ctx, {'volume_id': volume['id']})
         self._migrate_volume_exec(ctx, volume, host, expected_status)
 
-    def test_migrate_volume_bad_force_host_copy1(self):
+    def test_migrate_volume_bad_force_host_copy(self):
         expected_status = 400
         host = 'test2'
         ctx = context.RequestContext('admin', 'fake', True)
         volume = self._migrate_volume_prep()
         self._migrate_volume_exec(ctx, volume, host, expected_status,
                                   force_host_copy='foo')
-
-    def test_migrate_volume_bad_force_host_copy2(self):
-        expected_status = 400
-        host = 'test2'
-        ctx = context.RequestContext('admin', 'fake', True)
-        volume = self._migrate_volume_prep()
-        self._migrate_volume_exec(ctx, volume, host, expected_status,
-                                  force_host_copy=1)
 
     def _migrate_volume_comp_exec(self, ctx, volume, new_volume, error,
                                   expected_status, expected_id, no_body=False):

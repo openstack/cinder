@@ -16,14 +16,15 @@ Blockbridge EPS iSCSI Volume Driver
 """
 
 import base64
-import httplib
 import socket
-import urllib
 
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
 from oslo_utils import units
+import six
+from six.moves import http_client
+from six.moves import urllib
 
 from cinder import context
 from cinder import exception
@@ -84,7 +85,12 @@ class BlockbridgeAPIClient(object):
         if self.configuration.blockbridge_auth_scheme == 'password':
             user = self.configuration.safe_get('blockbridge_auth_user')
             pw = self.configuration.safe_get('blockbridge_auth_password')
-            b64_creds = base64.encodestring("%s:%s" % (user, pw))
+            creds = "%s:%s" % (user, pw)
+            if six.PY3:
+                creds = creds.encode('utf-8')
+                b64_creds = base64.encodestring(creds).decode('ascii')
+            else:
+                b64_creds = base64.encodestring(creds)
             authz = "Basic %s" % b64_creds.replace("\n", "")
         elif self.configuration.blockbridge_auth_scheme == 'token':
             token = self.configuration.blockbridge_auth_token or ''
@@ -137,7 +143,7 @@ class BlockbridgeAPIClient(object):
         if method in ['GET', 'DELETE']:
             # For GET method add parameters to the URL
             if params:
-                url += '?' + urllib.urlencode(params)
+                url += '?' + urllib.parse.urlencode(params)
         elif method in ['POST', 'PUT', 'PATCH']:
             body = jsonutils.dumps(params)
             headers['Content-Type'] = 'application/json'
@@ -145,7 +151,7 @@ class BlockbridgeAPIClient(object):
             raise exception.UnknownCmd(cmd=method)
 
         # connect and execute the request
-        connection = httplib.HTTPSConnection(cfg['host'], cfg['port'])
+        connection = http_client.HTTPSConnection(cfg['host'], cfg['port'])
         connection.request(method, url, body, headers)
         response = connection.getresponse()
 
@@ -231,7 +237,7 @@ class BlockbridgeISCSIDriver(driver.ISCSIDriver):
                 reason=_("Blockbridge default pool does not exist"))
 
     def _vol_api_submit(self, vol_id, **kwargs):
-        vol_id = urllib.quote(vol_id, '')
+        vol_id = urllib.parse.quote(vol_id, '')
         rel_url = "/volumes/%s" % vol_id
 
         return self.client.submit(rel_url, **kwargs)
@@ -256,8 +262,8 @@ class BlockbridgeISCSIDriver(driver.ISCSIDriver):
                              params=params, **kwargs)
 
     def _snap_api_submit(self, vol_id, snap_id, **kwargs):
-        vol_id = urllib.quote(vol_id, '')
-        snap_id = urllib.quote(snap_id, '')
+        vol_id = urllib.parse.quote(vol_id, '')
+        snap_id = urllib.parse.quote(snap_id, '')
         rel_url = "/volumes/%s/snapshots/%s" % (vol_id, snap_id)
 
         return self.client.submit(rel_url, **kwargs)
@@ -275,8 +281,8 @@ class BlockbridgeISCSIDriver(driver.ISCSIDriver):
                                      **kwargs)
 
     def _export_api_submit(self, vol_id, ini_name, **kwargs):
-        vol_id = urllib.quote(vol_id, '')
-        ini_name = urllib.quote(ini_name, '')
+        vol_id = urllib.parse.quote(vol_id, '')
+        ini_name = urllib.parse.quote(ini_name, '')
         rel_url = "/volumes/%s/exports/%s" % (vol_id, ini_name)
 
         return self.client.submit(rel_url, **kwargs)
@@ -321,7 +327,7 @@ class BlockbridgeISCSIDriver(driver.ISCSIDriver):
         else:
             # no pool specified or defaulted -- just pick whatever comes out of
             # the dictionary first.
-            return pools.values()[0]
+            return list(pools.values())[0]
 
     def create_volume(self, volume):
         """Create a volume on a Blockbridge EPS backend.

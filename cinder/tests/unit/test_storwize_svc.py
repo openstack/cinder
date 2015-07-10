@@ -533,18 +533,13 @@ port_speed!N/A
         host_name = kwargs['host'].strip('\'\"') if 'host' in kwargs else None
         target_wwpn = kwargs['wwpn'] if 'wwpn' in kwargs else None
         host_infos = []
-
         for hv in self._hosts_list.values():
             if (not host_name) or (hv['host_name'] == host_name):
-                for mv in self._mappings_list.values():
-                    if mv['host'] == hv['host_name']:
-                        if not target_wwpn or target_wwpn in hv['wwpns']:
-                            host_infos.append(hv)
-                            break
-
+                if not target_wwpn or target_wwpn in hv['wwpns']:
+                    host_infos.append(hv)
+                    break
         if not len(host_infos):
             return ('', '')
-
         rows = []
         rows.append(['remote_wwpn', 'remote_nportid', 'id', 'node_name',
                      'local_wwpn', 'local_port', 'local_nportid', 'state',
@@ -554,7 +549,6 @@ port_speed!N/A
                 rows.append([wwpn, '123456', host_info['id'], 'nodeN',
                              'AABBCCDDEEFF0011', '1', '0123ABC', 'active',
                              host_info['host_name'], '', 'host'])
-
         if self._next_cmd_error['lsfabric'] == 'header_mismatch':
             rows[0].pop(0)
             self._next_cmd_error['lsfabric'] = ''
@@ -2387,11 +2381,20 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                     self._set_flag('storwize_svc_npiv_compatibility_mode',
                                    False)
 
-            self.driver.terminate_connection(volume1, self._connector)
-            # for npiv compatibility test case, we need to terminate connection
+            ret = self.driver.terminate_connection(volume1, self._connector)
+            # For npiv compatibility test case, we need to terminate connection
             # to the 2nd volume
+            # Return the fc info only when last volume detached
             if protocol == 'FC' and self.USESIM:
-                self.driver.terminate_connection(volume2, self._connector)
+                # For the first volume detach, ret['data'] should be empty
+                # only ret['driver_volume_type'] returned
+                self.assertEqual({}, ret['data'])
+                self.assertEqual('fibre_channel', ret['driver_volume_type'])
+                ret = self.driver.terminate_connection(volume2,
+                                                       self._connector)
+                self.assertEqual('fibre_channel', ret['driver_volume_type'])
+                # wwpn is radom created
+                self.assertNotEqual({}, ret['data'])
             if self.USESIM:
                 ret = self.driver._helpers.get_host_from_connector(
                     self._connector)
@@ -2997,6 +3000,35 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         if self.USESIM:
             self.assertEqual((7, 2, 0, 0), res['code_level'],
                              'Get code level error')
+
+    @mock.patch.object(helpers.StorwizeHelpers, 'rename_vdisk')
+    def test_storwize_update_migrated_volume(self, rename_vdisk):
+        ctxt = testutils.get_test_admin_context()
+        current_volume_id = 'fake_volume_id'
+        original_volume_id = 'fake_original_volume_id'
+        current_name = 'volume-' + current_volume_id
+        original_name = 'volume-' + original_volume_id
+        backend_volume = self._create_volume(id=current_volume_id)
+        volume = self._create_volume(id=original_volume_id)
+        model_update = self.driver.update_migrated_volume(ctxt, volume,
+                                                          backend_volume,
+                                                          'available')
+        rename_vdisk.assert_called_once_with(current_name, original_name)
+        self.assertEqual({'_name_id': None}, model_update)
+
+        rename_vdisk.reset_mock()
+        rename_vdisk.side_effect = exception.VolumeBackendAPIException
+        model_update = self.driver.update_migrated_volume(ctxt, volume,
+                                                          backend_volume,
+                                                          'available')
+        self.assertEqual({'_name_id': current_volume_id}, model_update)
+
+        rename_vdisk.reset_mock()
+        rename_vdisk.side_effect = exception.VolumeBackendAPIException
+        model_update = self.driver.update_migrated_volume(ctxt, volume,
+                                                          backend_volume,
+                                                          'attached')
+        self.assertEqual({'_name_id': current_volume_id}, model_update)
 
     def test_storwize_vdisk_copy_ops(self):
         ctxt = testutils.get_test_admin_context()

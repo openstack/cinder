@@ -446,9 +446,14 @@ class QuotaError(CinderException):
 
 
 class VolumeSizeExceedsAvailableQuota(QuotaError):
-    message = _("Requested volume or snapshot exceeds allowed gigabytes "
+    message = _("Requested volume or snapshot exceeds allowed %(name)s "
                 "quota. Requested %(requested)sG, quota is %(quota)sG and "
                 "%(consumed)sG has been consumed.")
+
+    def __init__(self, message=None, **kwargs):
+        kwargs.setdefault('name', 'gigabytes')
+        super(VolumeSizeExceedsAvailableQuota, self).__init__(
+            message, **kwargs)
 
 
 class VolumeSizeExceedsLimit(QuotaError):
@@ -770,6 +775,20 @@ class GlusterfsNoSuitableShareFound(RemoteFSNoSuitableShareFound):
     message = _("There is no share which can host %(volume_size)sG")
 
 
+# Virtuozzo Storage Driver
+
+class VzStorageException(RemoteFSException):
+    message = _("Unknown Virtuozzo Storage exception")
+
+
+class VzStorageNoSharesMounted(RemoteFSNoSharesMounted):
+    message = _("No mounted Virtuozzo Storage shares found")
+
+
+class VzStorageNoSuitableShareFound(RemoteFSNoSuitableShareFound):
+    message = _("There is no share which can host %(volume_size)sG")
+
+
 # Fibre Channel Zone Manager
 class ZoneManagerException(CinderException):
     message = _("Fibre Channel connection control failure: %(reason)s")
@@ -870,11 +889,6 @@ class ISCSITargetHelperCommandFailed(CinderException):
     message = _("%(error_message)s")
 
 
-# X-IO driver exception.
-class XIODriverException(VolumeDriverException):
-    message = _("X-IO Volume Driver exception!")
-
-
 # Violin Memory drivers
 class ViolinInvalidBackendConfig(CinderException):
     message = _("Volume backend config is invalid: %(reason)s")
@@ -948,6 +962,10 @@ class DotHillRequestError(CinderException):
 
 class DotHillNotTargetPortal(CinderException):
     message = _("No active iSCSI portals with supplied iSCSI IPs")
+
+
+class MetadataAbsent(CinderException):
+    message = _("There is no metadata in DB object.")
 
 
 # Sheepdog

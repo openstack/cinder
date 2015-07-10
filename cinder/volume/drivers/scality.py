@@ -31,6 +31,7 @@ from cinder.image import image_utils
 from cinder.openstack.common import fileutils
 from cinder import utils
 from cinder.volume import driver
+from cinder.volume import utils as volume_utils
 
 
 LOG = logging.getLogger(__name__)
@@ -95,16 +96,24 @@ class ScalityDriver(driver.VolumeDriver):
     def _mount_sofs(self):
         config = self.configuration.scality_sofs_config
         mount_path = self.configuration.scality_sofs_mount_point
-        sysdir = os.path.join(mount_path, 'sys')
 
         fileutils.ensure_tree(mount_path)
-        if not os.path.isdir(sysdir):
+        if not self._sofs_is_mounted():
             self._execute('mount', '-t', 'sofs', config, mount_path,
                           run_as_root=True)
-        if not os.path.isdir(sysdir):
+        if not self._sofs_is_mounted():
             msg = _("Cannot mount Scality SOFS, check syslog for errors")
             LOG.warning(msg)
             raise exception.VolumeBackendAPIException(data=msg)
+
+    def _sofs_is_mounted(self):
+        mount_path = self.configuration.scality_sofs_mount_point.rstrip('/')
+        for mount in volume_utils.read_proc_mounts():
+            parts = mount.split()
+            if (parts[0].endswith('fuse') and
+                    parts[1].rstrip('/') == mount_path):
+                        return True
+        return False
 
     def _size_bytes(self, size_in_g):
         return int(size_in_g) * units.Gi

@@ -21,8 +21,22 @@ import sys
 
 import mock
 
+
+# The following gymnastics to fake an exception class globally is done because
+# we want to globally model and make available certain exceptions.  If we do
+# not do this, then the real-driver's import will not see our fakes.
+class NoMatchingObjectIdError(Exception):
+    pass
+
+error = mock.Mock()
+error.NoMatchingObjectIdError = NoMatchingObjectIdError
+
+core = mock.Mock()
+core.attach_mock(error, 'error')
+
 vmemclient = mock.Mock()
 vmemclient.__version__ = "unknown"
+vmemclient.attach_mock(core, 'core')
 
 sys.modules['vmemclient'] = vmemclient
 
@@ -42,4 +56,10 @@ mock_client_conf = [
     'iscsi.create_iscsi_target',
     'iscsi.delete_iscsi_target',
     'igroup',
+    'client',
+    'client.get_client_info',
+    'client.create_client',
+    'client.delete_client',
+    'adapter',
+    'adapter.get_fc_info'
 ]

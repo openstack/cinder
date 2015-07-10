@@ -29,6 +29,7 @@ import os
 import eventlet
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_service import loopingcall
 from oslo_utils import excutils
 from oslo_utils import units
 import six
@@ -36,7 +37,7 @@ import six
 from cinder.backup import driver
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder.openstack.common import loopingcall
+from cinder import objects
 from cinder.volume import utils as volume_utils
 
 LOG = logging.getLogger(__name__)
@@ -152,18 +153,15 @@ class ChunkedBackupDriver(driver.BackupDriver):
         return
 
     def _create_container(self, context, backup):
-        backup_id = backup['id']
-        backup['container'] = self.update_container_name(backup,
-                                                         backup['container'])
-        container = backup['container']
+        backup.container = self.update_container_name(backup, backup.container)
         LOG.debug('_create_container started, container: %(container)s,'
                   'backup: %(backup_id)s.',
-                  {'container': container, 'backup_id': backup_id})
-        if container is None:
-            container = self.backup_default_container
-        self.db.backup_update(context, backup_id, {'container': container})
-        self.put_container(container)
-        return container
+                  {'container': backup.container, 'backup_id': backup.id})
+        if backup.container is None:
+            backup.container = self.backup_default_container
+        backup.save()
+        self.put_container(backup.container)
+        return backup.container
 
     def _generate_object_names(self, backup):
         prefix = backup['service_metadata']
@@ -200,6 +198,8 @@ class ChunkedBackupDriver(driver.BackupDriver):
         if extra_metadata:
             metadata['extra_metadata'] = extra_metadata
         metadata_json = json.dumps(metadata, sort_keys=True, indent=2)
+        if six.PY3:
+            metadata_json = metadata_json.encode('utf-8')
         with self.get_object_writer(container, filename) as writer:
             writer.write(metadata_json)
         LOG.debug('_write_metadata finished. Metadata: %s.', metadata_json)
@@ -219,6 +219,8 @@ class ChunkedBackupDriver(driver.BackupDriver):
         sha256file['chunk_size'] = self.sha_block_size_bytes
         sha256file['sha256s'] = sha256_list
         sha256file_json = json.dumps(sha256file, sort_keys=True, indent=2)
+        if six.PY3:
+            sha256file_json = sha256file_json.encode('utf-8')
         with self.get_object_writer(container, filename) as writer:
             writer.write(sha256file_json)
         LOG.debug('_write_sha256file finished.')
@@ -231,6 +233,8 @@ class ChunkedBackupDriver(driver.BackupDriver):
                   {'container': container, 'filename': filename})
         with self.get_object_reader(container, filename) as reader:
             metadata_json = reader.read()
+        if six.PY3:
+            metadata_json = metadata_json.decode('utf-8')
         metadata = json.loads(metadata_json)
         LOG.debug('_read_metadata finished. Metadata: %s.', metadata_json)
         return metadata
@@ -243,15 +247,15 @@ class ChunkedBackupDriver(driver.BackupDriver):
                   {'container': container, 'filename': filename})
         with self.get_object_reader(container, filename) as reader:
             sha256file_json = reader.read()
+        if six.PY3:
+            sha256file_json = sha256file_json.decode('utf-8')
         sha256file = json.loads(sha256file_json)
         LOG.debug('_read_sha256file finished (%s).', sha256file)
         return sha256file
 
     def _prepare_backup(self, backup):
         """Prepare the backup process and return the backup metadata."""
-        backup_id = backup['id']
-        volume_id = backup['volume_id']
-        volume = self.db.volume_get(self.context, volume_id)
+        volume = self.db.volume_get(self.context, backup.volume_id)
 
         if volume['size'] <= 0:
             err = _('volume size %d is invalid.') % volume['size']
@@ -260,9 +264,9 @@ class ChunkedBackupDriver(driver.BackupDriver):
         container = self._create_container(self.context, backup)
 
         object_prefix = self._generate_object_name_prefix(backup)
-        backup['service_metadata'] = object_prefix
-        self.db.backup_update(self.context, backup_id, {'service_metadata':
-                                                        object_prefix})
+        backup.service_metadata = object_prefix
+        backup.save()
+
         volume_size_bytes = volume['size'] * units.Gi
         availability_zone = self.az
         LOG.debug('starting backup of volume: %(volume_id)s,'
@@ -270,7 +274,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
                   ' prefix %(object_prefix)s, availability zone:'
                   ' %(availability_zone)s',
                   {
-                      'volume_id': volume_id,
+                      'volume_id': backup.volume_id,
                       'volume_size_bytes': volume_size_bytes,
                       'object_prefix': object_prefix,
                       'availability_zone': availability_zone,
@@ -349,17 +353,17 @@ class ChunkedBackupDriver(driver.BackupDriver):
         sha256_list = object_sha256['sha256s']
         extra_metadata = object_meta.get('extra_metadata')
         self._write_sha256file(backup,
-                               backup['volume_id'],
+                               backup.volume_id,
                                container,
                                sha256_list)
         self._write_metadata(backup,
-                             backup['volume_id'],
+                             backup.volume_id,
                              container,
                              object_list,
                              volume_meta,
                              extra_metadata)
-        self.db.backup_update(self.context, backup['id'],
-                              {'object_count': object_id})
+        backup.object_count = object_id
+        backup.save()
         LOG.debug('backup %s finished.', backup['id'])
 
     def _backup_metadata(self, backup, object_meta):
@@ -410,9 +414,9 @@ class ChunkedBackupDriver(driver.BackupDriver):
         # is given.
         parent_backup_shafile = None
         parent_backup = None
-        if backup['parent_id']:
-            parent_backup = self.db.backup_get(self.context,
-                                               backup['parent_id'])
+        if backup.parent_id:
+            parent_backup = objects.Backup.get_by_id(self.context,
+                                                     backup.parent_id)
             parent_backup_shafile = self._read_sha256file(parent_backup)
             parent_backup_shalist = parent_backup_shafile['sha256s']
             if (parent_backup_shafile['chunk_size'] !=
@@ -425,7 +429,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
                 raise exception.InvalidBackup(reason=err)
             # If the volume size increased since the last backup, fail
             # the incremental backup and ask user to do a full backup.
-            if backup['size'] > parent_backup['size']:
+            if backup.size > parent_backup.size:
                 err = _('Volume size increased since the last '
                         'backup. Do a full backup.')
                 raise exception.InvalidBackup(reason=err)
@@ -456,7 +460,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
         while True:
             data_offset = volume_file.tell()
             data = volume_file.read(self.chunk_size_bytes)
-            if data == '':
+            if data == b'':
                 break
 
             # Calculate new shas with the datablock.
@@ -547,8 +551,9 @@ class ChunkedBackupDriver(driver.BackupDriver):
         extra_metadata = metadata.get('extra_metadata')
         container = backup['container']
         metadata_objects = metadata['objects']
-        metadata_object_names = sum((obj.keys() for obj in metadata_objects),
-                                    [])
+        metadata_object_names = []
+        for obj in metadata_objects:
+            metadata_object_names.extend(obj.keys())
         LOG.debug('metadata_object_names = %s.', metadata_object_names)
         prune_list = [self._metadata_filename(backup),
                       self._sha256_filename(backup)]
@@ -561,7 +566,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
             raise exception.InvalidBackup(reason=err)
 
         for metadata_object in metadata_objects:
-            object_name = metadata_object.keys()[0]
+            object_name, obj = list(metadata_object.items())[0]
             LOG.debug('restoring object. backup: %(backup_id)s, '
                       'container: %(container)s, object name: '
                       '%(object_name)s, volume: %(volume_id)s.',
@@ -578,7 +583,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
                 body = reader.read()
             compression_algorithm = metadata_object[object_name]['compression']
             decompressor = self._get_compressor(compression_algorithm)
-            volume_file.seek(metadata_object.values()[0]['offset'])
+            volume_file.seek(obj['offset'])
             if decompressor is not None:
                 LOG.debug('decompressing data using %s algorithm',
                           compression_algorithm)
@@ -637,9 +642,9 @@ class ChunkedBackupDriver(driver.BackupDriver):
         backup_list = []
         backup_list.append(backup)
         current_backup = backup
-        while current_backup['parent_id']:
-            prev_backup = (self.db.backup_get(
-                self.context, current_backup['parent_id']))
+        while current_backup.parent_id:
+            prev_backup = objects.Backup.get_by_id(self.context,
+                                                   current_backup.parent_id)
             backup_list.append(prev_backup)
             current_backup = prev_backup
 

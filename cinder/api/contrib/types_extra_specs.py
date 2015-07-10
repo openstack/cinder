@@ -63,7 +63,7 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
     def _check_type(self, context, type_id):
         try:
             volume_types.get_volume_type(context, type_id)
-        except exception.NotFound as ex:
+        except exception.VolumeTypeNotFound as ex:
             raise webob.exc.HTTPNotFound(explanation=ex.msg)
 
     @wsgi.serializers(xml=VolumeTypeExtraSpecsTemplate)
@@ -79,8 +79,7 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context)
 
-        if not self.is_valid_body(body, 'extra_specs'):
-            raise webob.exc.HTTPBadRequest()
+        self.assert_valid_body(body, 'extra_specs')
 
         self._check_type(context, type_id)
         specs = body['extra_specs']
@@ -128,7 +127,9 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         if id in specs['extra_specs']:
             return {id: specs['extra_specs'][id]}
         else:
-            raise webob.exc.HTTPNotFound()
+            msg = _("Volume Type %(type_id)s has no extra spec with key "
+                    "%(id)s.") % ({'type_id': type_id, 'id': id})
+            raise webob.exc.HTTPNotFound(explanation=msg)
 
     def delete(self, req, type_id, id):
         """Deletes an existing extra spec."""

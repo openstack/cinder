@@ -53,7 +53,7 @@ class VolumeTypeEncryptionController(wsgi.Controller):
     def _check_type(self, context, type_id):
         try:
             volume_types.get_volume_type(context, type_id)
-        except exception.NotFound as ex:
+        except exception.VolumeTypeNotFound as ex:
             raise webob.exc.HTTPNotFound(explanation=ex.msg)
 
     def _check_encryption_input(self, encryption, create=True):
@@ -112,9 +112,7 @@ class VolumeTypeEncryptionController(wsgi.Controller):
             expl = _('Cannot create encryption specs. Volume type in use.')
             raise webob.exc.HTTPBadRequest(explanation=expl)
 
-        if not self.is_valid_body(body, 'encryption'):
-            expl = _('Create body is not valid.')
-            raise webob.exc.HTTPBadRequest(explanation=expl)
+        self.assert_valid_body(body, 'encryption')
 
         self._check_type(context, type_id)
 
@@ -138,12 +136,8 @@ class VolumeTypeEncryptionController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context)
 
-        if not body:
-            expl = _('Request body empty.')
-            raise webob.exc.HTTPBadRequest(explanation=expl)
-        if not self.is_valid_body(body, 'encryption'):
-            expl = _('Update body is not valid. It must contain "encryption."')
-            raise webob.exc.HTTPBadRequest(explanation=expl)
+        self.assert_valid_body(body, 'encryption')
+
         if len(body) > 1:
             expl = _('Request body contains too many items.')
             raise webob.exc.HTTPBadRequest(explanation=expl)
@@ -188,7 +182,10 @@ class VolumeTypeEncryptionController(wsgi.Controller):
             expl = _('Cannot delete encryption specs. Volume type in use.')
             raise webob.exc.HTTPBadRequest(explanation=expl)
         else:
-            db.volume_type_encryption_delete(context, type_id)
+            try:
+                db.volume_type_encryption_delete(context, type_id)
+            except exception.VolumeTypeEncryptionNotFound as ex:
+                raise webob.exc.HTTPNotFound(explanation=ex.msg)
 
         return webob.Response(status_int=202)
 

@@ -107,7 +107,7 @@ class StorwizeSVCReplicationStretchedCluster(StorwizeSVCReplication):
                                              True,
                                              pool=dest_pool)
         else:
-            msg = (_('Unable to create replica clone for volume %s'), vdisk)
+            msg = (_('Unable to create replica clone for volume %s.'), vdisk)
             raise exception.VolumeDriverException(message=msg)
 
     def promote_replica(self, volume):
@@ -146,7 +146,7 @@ class StorwizeSVCReplicationStretchedCluster(StorwizeSVCReplication):
                 status = 'active'
 
         extended1 = (_('Primary copy status: %(status)s'
-                       ' and synchronized: %(sync)s') %
+                       ' and synchronized: %(sync)s.') %
                      {'status': primary['status'],
                       'sync': primary['sync']})
 
@@ -176,7 +176,7 @@ class StorwizeSVCReplicationStretchedCluster(StorwizeSVCReplication):
 
         extended2 = (_('Secondary copy status: %(status)s'
                        ' and synchronized: %(sync)s,'
-                       ' sync progress is: %(progress)s%%') %
+                       ' sync progress is: %(progress)s%%.') %
                      {'status': secondary['status'],
                       'sync': secondary['sync'],
                       'progress': secondary['sync_progress']})

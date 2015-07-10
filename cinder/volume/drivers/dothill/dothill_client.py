@@ -17,10 +17,11 @@
 from hashlib import md5
 import math
 import time
-import urllib2
 
 from lxml import etree
 from oslo_log import log as logging
+import six
+from six.moves import urllib
 
 from cinder import exception
 from cinder.i18n import _LE
@@ -44,13 +45,16 @@ class DotHillClient(object):
 
     def login(self):
         """Authenticates the service on the device."""
-        hash_ = md5("%s_%s" % (self._login, self._password))
+        hash_ = "%s_%s" % (self._login, self._password)
+        if six.PY3:
+            hash_ = hash_.encode('utf-8')
+        hash_ = md5(hash_)
         digest = hash_.hexdigest()
 
         url = self._base_url + "/login/" + digest
         try:
-            xml = urllib2.urlopen(url).read()
-        except urllib2.URLError:
+            xml = urllib.request.urlopen(url).read()
+        except urllib.error.URLError:
             raise exception.DotHillConnectionError
 
         self._get_auth_token(xml)
@@ -91,9 +95,9 @@ class DotHillClient(object):
 
         url = self._build_request_url(path, *args, **kargs)
         headers = {'dataType': 'api', 'sessionKey': self._session_key}
-        req = urllib2.Request(url, headers=headers)
+        req = urllib.request.Request(url, headers=headers)
         try:
-            xml = urllib2.urlopen(req).read()
+            xml = urllib.request.urlopen(req).read()
             tree = etree.XML(xml)
         except Exception:
             raise exception.DotHillConnectionError
@@ -106,7 +110,7 @@ class DotHillClient(object):
     def logout(self):
         url = self._base_url + '/exit'
         try:
-            urllib2.urlopen(url)
+            urllib.request.urlopen(url)
             return True
         except Exception:
             return False

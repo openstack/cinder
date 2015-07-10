@@ -32,7 +32,17 @@ typ2id = {'volumes': 'vol-id',
           'lun-maps': 'mapping-id'}
 
 xms_data = {'xms': {1: {'version': '4.0.0'}},
-            'clusters': {1: {'sys-sw-version': "3.0.0-devel_ba23ee5381eeab73",
+            'clusters': {'cluster1':
+                         {'name': 'cluster1',
+                          'sys-sw-version': "3.0.0-devel_ba23ee5381eeab73",
+                          'ud-ssd-space': '8146708710',
+                          'ud-ssd-space-in-use': '708710',
+                          'vol-size': '29884416',
+                          'chap-authentication-mode': 'disabled',
+                          'chap-discovery-mode': 'disabled',
+                          "index": 1},
+                         1: {'name': 'cluster1',
+                             'sys-sw-version': "3.0.0-devel_ba23ee5381eeab73",
                              'ud-ssd-space': '8146708710',
                              'ud-ssd-space-in-use': '708710',
                              'vol-size': '29884416',
@@ -109,10 +119,13 @@ def xms_request(object_type='volumes', request_typ='GET', data=None,
                 raise exception.NotFound()
             return {"content": res[obj_key]}
         else:
-            return {object_type: [{"href": "/%s/%d" % (object_type,
-                                                       obj['index']),
-                                   "name": obj.get('name')}
-                                  for obj in res.values()]}
+            if data and data.get('full') == 1:
+                return {object_type: res.values()}
+            else:
+                return {object_type: [{"href": "/%s/%d" % (object_type,
+                                                           obj['index']),
+                                       "name": obj.get('name')}
+                                      for obj in res.values()]}
     elif request_typ == 'POST':
         data = fix_data(data, object_type)
         data['index'] = len(xms_data[object_type]) + 1
@@ -158,6 +171,22 @@ def xms_bad_request(object_type='volumes', request_typ='GET', data=None,
         raise exception.NotFound()
     elif request_typ == 'POST':
         raise exception.VolumeBackendAPIException('Failed to create ig')
+
+
+def xms_failed_rename_snapshot_request(object_type='volumes',
+                                       request_typ='GET', data=None,
+                                       name=None, idx=None):
+    if request_typ == 'POST':
+        xms_data['volumes'][27] = {}
+        return {
+            "links": [
+                {
+                    "href": "https://host/api/json/v2/types/snapshots/27",
+                    "rel": "self"}]}
+    elif request_typ == 'PUT':
+        raise exception.VolumeBackendAPIException(msg='Failed to delete')
+    elif request_typ == 'DELETE':
+        del xms_data['volumes'][27]
 
 
 class D(dict):
@@ -235,10 +264,11 @@ class EMCXIODriverISCSITestCase(test.TestCase):
 
     def test_check_for_setup_error(self, req):
         req.side_effect = xms_request
-        xms = xms_data['xms']
-        del xms_data['xms']
-        self.driver.check_for_setup_error()
-        xms_data['xms'] = xms
+        clusters = xms_data['clusters']
+        del xms_data['clusters']
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.check_for_setup_error)
+        xms_data['clusters'] = clusters
         self.driver.check_for_setup_error()
 
     def test_create_extend_delete_volume(self, req):
@@ -253,8 +283,16 @@ class EMCXIODriverISCSITestCase(test.TestCase):
         clean_xms_data()
         self.driver.create_volume(self.data.test_volume)
         self.driver.create_snapshot(self.data.test_snapshot)
+        self.assertEqual(self.data.test_snapshot['id'],
+                         xms_data['volumes'][3]['name'])
         self.driver.delete_snapshot(self.data.test_snapshot)
         self.driver.delete_volume(self.data.test_volume)
+
+    def test_failed_rename_snapshot(self, req):
+        req.side_effect = xms_failed_rename_snapshot_request
+        self.driver.create_snapshot(self.data.test_snapshot)
+        self.assertIn(27, xms_data['volumes'])
+        clean_xms_data()
 
     def test_volume_from_snapshot(self, req):
         req.side_effect = xms_request
@@ -284,6 +322,16 @@ class EMCXIODriverISCSITestCase(test.TestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_volume, self.data.test_volume)
         self.driver.delete_volume(self.data.test_volume)
+
+    def test_no_portals_configured(self, req):
+        req.side_effect = xms_request
+        clean_xms_data()
+        portals = xms_data['iscsi-portals'].copy()
+        xms_data['iscsi-portals'].clear()
+        lunmap = {'lun': 4}
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver._get_iscsi_properties, lunmap)
+        xms_data['iscsi-portals'] = portals
 
     def test_initialize_terminate_connection(self, req):
         req.side_effect = xms_request

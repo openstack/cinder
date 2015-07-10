@@ -22,17 +22,16 @@ import os
 import posix
 
 from oslo_concurrency import processutils as putils
-from oslo_log import log as logging
 from oslo_utils import timeutils
 
 from cinder.backup.drivers import tsm
 from cinder import context
 from cinder import db
 from cinder import exception
+from cinder import objects
 from cinder import test
 from cinder import utils
 
-LOG = logging.getLogger(__name__)
 SIM = None
 VOLUME_PATH = '/dev/null'
 
@@ -260,7 +259,10 @@ class BackupTSMTestCase(test.TestCase):
                   'size': 1,
                   'container': 'test-container',
                   'volume_id': '1234-5678-1234-8888',
-                  'service_metadata': service_metadata}
+                  'service_metadata': service_metadata,
+                  'user_id': 'user-id',
+                  'project_id': 'project-id',
+                  }
         return db.backup_create(self.ctxt, backup)['id']
 
     def test_backup_image(self):
@@ -275,15 +277,15 @@ class BackupTSMTestCase(test.TestCase):
         self._create_backup_db_entry(backup_id2, mode)
         self._create_backup_db_entry(backup_id3, mode)
 
-        with open(VOLUME_PATH, 'rw') as volume_file:
+        with open(VOLUME_PATH, 'w+') as volume_file:
             # Create two backups of the volume
-            backup1 = db.backup_get(self.ctxt, backup_id1)
+            backup1 = objects.Backup.get_by_id(self.ctxt, backup_id1)
             self.driver.backup(backup1, volume_file)
-            backup2 = db.backup_get(self.ctxt, backup_id2)
+            backup2 = objects.Backup.get_by_id(self.ctxt, backup_id2)
             self.driver.backup(backup2, volume_file)
 
             # Create a backup that fails
-            fail_back = db.backup_get(self.ctxt, backup_id3)
+            fail_back = objects.Backup.get_by_id(self.ctxt, backup_id3)
             self.sim.error_injection('backup', 'fail')
             self.assertRaises(exception.InvalidBackup,
                               self.driver.backup, fail_back, volume_file)
@@ -307,16 +309,16 @@ class BackupTSMTestCase(test.TestCase):
         self._create_backup_db_entry(backup_id1, mode)
         self._create_backup_db_entry(backup_id2, mode)
 
-        with open(VOLUME_PATH, 'rw') as volume_file:
+        with open(VOLUME_PATH, 'w+') as volume_file:
             # Create two backups of the volume
-            backup1 = db.backup_get(self.ctxt, 123)
+            backup1 = objects.Backup.get_by_id(self.ctxt, 123)
             self.driver.backup(backup1, volume_file)
-            backup2 = db.backup_get(self.ctxt, 456)
+            backup2 = objects.Backup.get_by_id(self.ctxt, 456)
             self.driver.backup(backup2, volume_file)
 
             # Create a backup that fails
             self._create_backup_db_entry(666, mode)
-            fail_back = db.backup_get(self.ctxt, 666)
+            fail_back = objects.Backup.get_by_id(self.ctxt, 666)
             self.sim.error_injection('backup', 'fail')
             self.assertRaises(exception.InvalidBackup,
                               self.driver.backup, fail_back, volume_file)
@@ -338,9 +340,9 @@ class BackupTSMTestCase(test.TestCase):
         backup_id1 = 123
         self._create_backup_db_entry(backup_id1, mode)
 
-        with open(VOLUME_PATH, 'rw') as volume_file:
+        with open(VOLUME_PATH, 'w+') as volume_file:
             # Create two backups of the volume
-            backup1 = db.backup_get(self.ctxt, 123)
+            backup1 = objects.Backup.get_by_id(self.ctxt, 123)
             self.assertRaises(exception.InvalidBackup,
                               self.driver.backup, backup1, volume_file)
 

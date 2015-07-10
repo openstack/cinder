@@ -17,6 +17,7 @@ import json
 import uuid
 
 from oslo_log import log as logging
+from oslo_service import loopingcall
 from oslo_utils import units
 import six
 from six.moves import http_client
@@ -24,7 +25,6 @@ from six.moves import urllib
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI
-from cinder.openstack.common import loopingcall
 from cinder.volume.drivers.cloudbyte import options
 from cinder.volume.drivers.san import san
 

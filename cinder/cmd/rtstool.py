@@ -15,6 +15,7 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
+import os
 import sys
 
 # We always use rtslib-fb, but until version 2.1.52 it didn't have its own
@@ -197,12 +198,30 @@ def usage():
 def save_to_file(destination_file):
     rtsroot = rtslib_fb.root.RTSRoot()
     try:
-        rtsroot.save_to_file(destination_file)
-    except OSError:
+        # If default destination use rtslib default save file
         if not destination_file:
-            destination_file = 'default location'
-        raise RtstoolError(_('Could not save configuration to %(file_path)s'),
-                           {'file_path': destination_file})
+            destination_file = rtslib_fb.root.default_save_file
+            path_to_file = os.path.dirname(destination_file)
+
+            # NOTE(geguileo): With default file we ensure path exists and
+            # create it if doesn't.
+            # Cinder's LIO target helper runs this as root, so it will have no
+            # problem creating directory /etc/target.
+            # If run manually from the command line without being root you will
+            # get an error, same as when creating and removing targets.
+            if not os.path.exists(path_to_file):
+                os.makedirs(path_to_file, 0o755)
+
+    except OSError as exc:
+        raise RtstoolError(_('targetcli not installed and could not create '
+                             'default directory (%(default_path)s): %(exc)s'),
+                           {'default_path': path_to_file, 'exc': exc})
+    try:
+        rtsroot.save_to_file(destination_file)
+    except (OSError, IOError) as exc:
+        raise RtstoolError(_('Could not save configuration to %(file_path)s: '
+                             '%(exc)s'),
+                           {'file_path': destination_file, 'exc': exc})
 
 
 def parse_optional_create(argv):
@@ -210,7 +229,7 @@ def parse_optional_create(argv):
 
     for arg in argv:
         if arg.startswith('-a'):
-            ips = filter(None, arg[2:].split(','))
+            ips = [ip for ip in arg[2:].split(',') if ip]
             if not ips:
                 usage()
             optional_args['portals_ips'] = ips

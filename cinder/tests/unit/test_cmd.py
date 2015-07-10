@@ -14,7 +14,10 @@ import datetime
 import six
 import sys
 
-import mock
+try:
+    from unittest import mock
+except ImportError:
+    import mock
 from oslo_config import cfg
 
 try:
@@ -439,7 +442,10 @@ class TestCinderManageCmd(test.TestCase):
         mock_client.prepare.return_value = cctxt
         get_client.return_value = mock_client
         volume_id = '123'
-        volume = {'id': volume_id, 'host': 'fake-host', 'status': 'available'}
+        host = 'fake@host'
+        volume = {'id': volume_id,
+                  'host': host + '#pool1',
+                  'status': 'available'}
         volume_get.return_value = volume
 
         volume_cmds = cinder_manage.VolumeCommands()
@@ -447,7 +453,8 @@ class TestCinderManageCmd(test.TestCase):
         volume_cmds.delete(volume_id)
 
         volume_get.assert_called_once_with(ctxt, 123)
-        mock_client.prepare.assert_called_once_with(server=volume['host'])
+        # NOTE prepare called w/o pool part in host
+        mock_client.prepare.assert_called_once_with(server=host)
         cctxt.cast.assert_called_once_with(ctxt, 'delete_volume',
                                            volume_id=volume['id'])
 
@@ -529,7 +536,7 @@ class TestCinderManageCmd(test.TestCase):
 
             self.assertEqual(expected_out, fake_out.getvalue())
 
-    @mock.patch('__builtin__.open')
+    @mock.patch('six.moves.builtins.open')
     @mock.patch('os.listdir')
     def test_get_log_commands_errors(self, listdir, open):
         CONF.set_override('log_dir', 'fake-dir')
@@ -548,7 +555,7 @@ class TestCinderManageCmd(test.TestCase):
             open.assert_called_once_with('fake-dir/fake-error.log', 'r')
             listdir.assert_called_once_with(CONF.log_dir)
 
-    @mock.patch('__builtin__.open')
+    @mock.patch('six.moves.builtins.open')
     @mock.patch('os.path.exists')
     def test_get_log_commands_syslog_no_log_file(self, path_exists, open):
         path_exists.return_value = False
@@ -574,7 +581,9 @@ class TestCinderManageCmd(test.TestCase):
                   'container': 'fake-container',
                   'status': 'fake-status',
                   'size': 123,
-                  'object_count': 1}
+                  'object_count': 1,
+                  'volume_id': 'fake-volume-id',
+                  }
         backup_get_all.return_value = [backup]
         with mock.patch('sys.stdout', new=six.StringIO()) as fake_out:
             hdr = ('%-32s\t%-32s\t%-32s\t%-24s\t%-24s\t%-12s\t%-12s\t%-12s'
@@ -605,7 +614,7 @@ class TestCinderManageCmd(test.TestCase):
             backup_cmds.list()
 
             get_admin_context.assert_called_once_with()
-            backup_get_all.assert_called_once_with(ctxt)
+            backup_get_all.assert_called_once_with(ctxt, None)
             self.assertEqual(expected_out, fake_out.getvalue())
 
     @mock.patch('cinder.utils.service_is_up')
@@ -700,6 +709,28 @@ class TestCinderManageCmd(test.TestCase):
         config_opts_call.assert_called_once_with(
             sys.argv[1:], project='cinder', version=version.version_string())
         self.assertTrue(action_fn.called)
+
+    @mock.patch('oslo_config.cfg.ConfigOpts.__call__')
+    @mock.patch('oslo_log.log.setup')
+    @mock.patch('oslo_config.cfg.ConfigOpts.register_cli_opt')
+    def test_main_invalid_dir(self, register_cli_opt, log_setup,
+                              config_opts_call):
+        script_name = 'cinder-manage'
+        fake_dir = 'fake-dir'
+        invalid_dir = 'Invalid directory:'
+        sys.argv = [script_name, '--config-dir', fake_dir]
+        config_opts_call.side_effect = cfg.ConfigDirNotFoundError(fake_dir)
+
+        with mock.patch('sys.stdout', new=six.StringIO()) as fake_out:
+            exit = self.assertRaises(SystemExit, cinder_manage.main)
+            self.assertTrue(register_cli_opt.called)
+            config_opts_call.assert_called_once_with(
+                sys.argv[1:], project='cinder',
+                version=version.version_string())
+            self.assertIn(invalid_dir, fake_out.getvalue())
+            self.assertIn(fake_dir, fake_out.getvalue())
+            self.assertFalse(log_setup.called)
+            self.assertEqual(2, exit.code)
 
 
 class TestCinderRtstoolCmd(test.TestCase):
@@ -964,13 +995,49 @@ class TestCinderRtstoolCmd(test.TestCase):
         target.delete.assert_called_once_with()
         storage_object.delete.assert_called_once_with()
 
+    @mock.patch.object(cinder_rtstool, 'os', autospec=True)
     @mock.patch.object(cinder_rtstool, 'rtslib_fb', autospec=True)
-    def test_save(self, mock_rtslib):
+    def test_save_with_filename(self, mock_rtslib, mock_os):
         filename = mock.sentinel.filename
         cinder_rtstool.save_to_file(filename)
         rtsroot = mock_rtslib.root.RTSRoot
         rtsroot.assert_called_once_with()
+        self.assertEqual(0, mock_os.path.dirname.call_count)
+        self.assertEqual(0, mock_os.path.exists.call_count)
+        self.assertEqual(0, mock_os.makedirs.call_count)
         rtsroot.return_value.save_to_file.assert_called_once_with(filename)
+
+    @mock.patch.object(cinder_rtstool, 'os',
+                       **{'path.exists.return_value': True,
+                          'path.dirname.return_value': mock.sentinel.dirname})
+    @mock.patch.object(cinder_rtstool, 'rtslib_fb',
+                       **{'root.default_save_file': mock.sentinel.filename})
+    def test_save(self, mock_rtslib, mock_os):
+        """Test that we check path exists with default file."""
+        cinder_rtstool.save_to_file(None)
+        rtsroot = mock_rtslib.root.RTSRoot
+        rtsroot.assert_called_once_with()
+        rtsroot.return_value.save_to_file.assert_called_once_with(
+            mock.sentinel.filename)
+        mock_os.path.dirname.assert_called_once_with(mock.sentinel.filename)
+        mock_os.path.exists.assert_called_once_with(mock.sentinel.dirname)
+        self.assertEqual(0, mock_os.makedirs.call_count)
+
+    @mock.patch.object(cinder_rtstool, 'os',
+                       **{'path.exists.return_value': False,
+                          'path.dirname.return_value': mock.sentinel.dirname})
+    @mock.patch.object(cinder_rtstool, 'rtslib_fb',
+                       **{'root.default_save_file': mock.sentinel.filename})
+    def test_save_no_targetcli(self, mock_rtslib, mock_os):
+        """Test that we create path if it doesn't exist with default file."""
+        cinder_rtstool.save_to_file(None)
+        rtsroot = mock_rtslib.root.RTSRoot
+        rtsroot.assert_called_once_with()
+        rtsroot.return_value.save_to_file.assert_called_once_with(
+            mock.sentinel.filename)
+        mock_os.path.dirname.assert_called_once_with(mock.sentinel.filename)
+        mock_os.path.exists.assert_called_once_with(mock.sentinel.dirname)
+        mock_os.makedirs.assert_called_once_with(mock.sentinel.dirname, 0o755)
 
     def test_usage(self):
         with mock.patch('sys.stdout', new=six.StringIO()):

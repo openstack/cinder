@@ -45,15 +45,11 @@ class TestGlanceSerializer(test.TestCase):
                     'properties': {
                         'prop1': 'propvalue1',
                         'mappings': [
-                            {'virtual': 'aaa',
-                             'device': 'bbb'},
-                            {'virtual': 'xxx',
-                             'device': 'yyy'}],
+                            {'device': 'bbb'},
+                            {'device': 'yyy'}],
                         'block_device_mapping': [
-                            {'virtual_device': 'fake',
-                             'device_name': '/dev/fake'},
-                            {'virtual_device': 'ephemeral0',
-                             'device_name': '/dev/fake0'}]}}
+                            {'device_name': '/dev/fake'},
+                            {'device_name': '/dev/fake0'}]}}
 
         converted_expected = {
             'name': 'image1',
@@ -62,12 +58,11 @@ class TestGlanceSerializer(test.TestCase):
             'properties': {
                 'prop1': 'propvalue1',
                 'mappings':
-                '[{"device": "bbb", "virtual": "aaa"}, '
-                '{"device": "yyy", "virtual": "xxx"}]',
+                '[{"device": "bbb"}, '
+                '{"device": "yyy"}]',
                 'block_device_mapping':
-                '[{"virtual_device": "fake", "device_name": "/dev/fake"}, '
-                '{"virtual_device": "ephemeral0", '
-                '"device_name": "/dev/fake0"}]'}}
+                '[{"device_name": "/dev/fake"}, '
+                '{"device_name": "/dev/fake0"}]'}}
         converted = glance._convert_to_string(metadata)
         self.assertEqual(converted, converted_expected)
         self.assertEqual(glance._convert_from_string(converted), metadata)
@@ -518,7 +513,7 @@ class TestGlanceImageService(test.TestCase):
         self.assertRaises(exception.ImageNotFound, service.download,
                           self.context, image_id, writer)
 
-    @mock.patch('__builtin__.open')
+    @mock.patch('six.moves.builtins.open')
     @mock.patch('shutil.copyfileobj')
     def test_download_from_direct_file(self, mock_copyfileobj, mock_open):
         fixture = self._make_fixture(name='test image',
@@ -530,7 +525,7 @@ class TestGlanceImageService(test.TestCase):
         self.service.download(self.context, image_id, writer)
         mock_copyfileobj.assert_called_once_with(mock.ANY, writer)
 
-    @mock.patch('__builtin__.open')
+    @mock.patch('six.moves.builtins.open')
     @mock.patch('shutil.copyfileobj')
     def test_download_from_direct_file_non_file(self,
                                                 mock_copyfileobj, mock_open):
@@ -613,6 +608,7 @@ class TestGlanceImageService(test.TestCase):
     def test_extracting_v2_boot_properties(self, config):
 
         config.glance_api_version = 2
+        config.glance_num_retries = 0
 
         attributes = ['size', 'disk_format', 'owner', 'container_format',
                       'checksum', 'id', 'name', 'created_at', 'updated_at',

@@ -22,13 +22,13 @@ import time
 from oslo_concurrency import processutils as putils
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_service import loopingcall
 from oslo_utils import excutils
 from oslo_utils import units
 import six
 
 from cinder import exception
 from cinder.i18n import _LE, _LI, _LW
-from cinder.openstack.common import loopingcall
 from cinder import utils
 from cinder.volume.drivers.hitachi import hbsd_basiclib as basic_lib
 
@@ -167,7 +167,7 @@ class HBSDHORCM(basic_lib.HBSDBasicLib):
             if not i.isdigit():
                 msg = basic_lib.output_err(601, param='hitachi_horcm_numbers')
                 raise exception.HBSDError(message=msg)
-        self.conf.hitachi_horcm_numbers = map(int, numbers)
+        self.conf.hitachi_horcm_numbers = [int(num) for num in numbers]
         inst = self.conf.hitachi_horcm_numbers[0]
         pair_inst = self.conf.hitachi_horcm_numbers[1]
         if inst == pair_inst:

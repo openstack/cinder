@@ -77,6 +77,11 @@ class MockDisk(object):
         self.agAllocated = 1
 
 
+class MockVolume(object):
+    def __init__(self, v):
+        self.name = v['name']
+
+
 class MockTemplate(object):
     def __init__(self, name):
         self.name = name
@@ -114,14 +119,22 @@ class MockAPI(object):
     def volumeDelete(self, name):
         del volumes[name]
 
+    def volumesList(self):
+        return [MockVolume(v[1]) for v in volumes.items()]
+
     def volumeTemplatesList(self):
         return self._templates
 
     def volumesReassign(self, json):
         pass
 
-    def volumeUpdate(self, name, size):
-        volumes[name]['size'] = size['size']
+    def volumeUpdate(self, name, data):
+        if 'size' in data:
+            volumes[name]['size'] = data['size']
+
+        if 'rename' in data and data['rename'] != name:
+            volumes[data['rename']] = volumes[name]
+            del volumes[name]
 
 
 class MockAttachDB(object):
@@ -298,6 +311,48 @@ class StorPoolTestCase(test.TestCase):
         self.assertEqual(3, v['replication'])
 
         for vid in ('1', '2', '3', '4'):
+            self.driver.delete_volume({'id': vid})
+        self.assertVolumeNames([])
+        self.assertDictEqual({}, volumes)
+        self.assertDictEqual({}, snapshots)
+
+    @mock_volume_types
+    def test_update_migrated_volume(self):
+        self.assertVolumeNames([])
+        self.assertDictEqual({}, volumes)
+        self.assertDictEqual({}, snapshots)
+
+        # Create two volumes
+        self.driver.create_volume({'id': '1', 'name': 'v1', 'size': 1,
+                                   'volume_type': None})
+        self.driver.create_volume({'id': '2', 'name': 'v2', 'size': 1,
+                                   'volume_type': None})
+        self.assertListEqual([volumeName('1'), volumeName('2')],
+                             volumes.keys())
+        self.assertVolumeNames(('1', '2',))
+
+        # Failure: the "migrated" volume does not even exist
+        res = self.driver.update_migrated_volume(None, {'id': '1'},
+                                                 {'id': '3', '_name_id': '1'},
+                                                 'available')
+        self.assertDictEqual({'_name_id': '1'}, res)
+
+        # Failure: a volume with the original volume's name already exists
+        res = self.driver.update_migrated_volume(None, {'id': '1'},
+                                                 {'id': '2', '_name_id': '1'},
+                                                 'available')
+        self.assertDictEqual({'_name_id': '1'}, res)
+
+        # Success: rename the migrated volume to match the original
+        res = self.driver.update_migrated_volume(None, {'id': '3'},
+                                                 {'id': '2', '_name_id': '3'},
+                                                 'available')
+        self.assertDictEqual({'_name_id': None}, res)
+        self.assertListEqual([volumeName('1'), volumeName('3')],
+                             volumes.keys())
+        self.assertVolumeNames(('1', '3',))
+
+        for vid in ('1', '3'):
             self.driver.delete_volume({'id': vid})
         self.assertVolumeNames([])
         self.assertDictEqual({}, volumes)

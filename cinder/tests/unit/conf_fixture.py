@@ -21,10 +21,6 @@ from oslo_config import cfg
 
 CONF = cfg.CONF
 
-CONF.import_opt('backup_enable_progress_timer',
-                'cinder.backup.drivers.nfs')
-CONF.import_opt('backup_swift_enable_progress_timer',
-                'cinder.backup.drivers.swift')
 CONF.import_opt('policy_file', 'cinder.policy', group='oslo_policy')
 CONF.import_opt('volume_driver', 'cinder.volume.manager')
 CONF.import_opt('xiv_ds8k_proxy',
@@ -57,5 +53,3 @@ def set_defaults(conf):
         os.path.join(os.path.dirname(__file__), '..', '..', '..')))
     conf.set_default('policy_dirs', [], group='oslo_policy')
     conf.set_default('auth_strategy', 'noauth')
-    conf.set_default('backup_enable_progress_timer', False)
-    conf.set_default('backup_swift_enable_progress_timer', False)

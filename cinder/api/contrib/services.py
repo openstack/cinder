@@ -16,6 +16,7 @@
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_log import versionutils
 from oslo_utils import timeutils
 import webob.exc
 
@@ -25,7 +26,6 @@ from cinder.api import xmlutil
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import versionutils
 from cinder import utils
 
 
@@ -161,7 +161,8 @@ class ServiceController(wsgi.Controller):
         try:
             host = body['host']
         except (TypeError, KeyError):
-            raise webob.exc.HTTPBadRequest()
+            msg = _("Missing required element 'host' in request body.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
 
         ret_val['disabled'] = disabled
         if id == "disable-log-reason" and ext_loaded:

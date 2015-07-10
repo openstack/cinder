@@ -28,6 +28,8 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
 
     def setUp(self):
         super(TestTgtAdmDriver, self).setUp()
+        self.configuration.get = mock.Mock(side_effect=self.fake_get)
+
         self.target = tgt.TgtAdm(root_helper=utils.get_root_helper(),
                                  configuration=self.configuration)
         self.testvol_path = \
@@ -73,6 +75,10 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
              '    ACL information:\n'
              '        ALL"\n' % {'test_vol': self.test_vol,
                                  'bspath': self.testvol_path})
+
+    def fake_get(self, value, default):
+        if value in ('iscsi_target_flags', 'iscsi_write_cache'):
+            return getattr(self, value, default)
 
     def test_iscsi_protocol(self):
         self.assertEqual(self.target.iscsi_protocol, 'iscsi')
@@ -147,7 +153,7 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
                            'bspath': self.testvol_path}
         with open(os.path.join(self.fake_volumes_dir,
                                self.test_vol.split(':')[1]),
-                  'wb') as tmp_file:
+                  'w') as tmp_file:
             tmp_file.write(persist_file)
         ctxt = context.get_admin_context()
         expected = ('otzL', '234Z')
@@ -156,7 +162,7 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
                                                            self.test_vol))
 
     def test_get_target_chap_auth_negative(self):
-        with mock.patch('__builtin__.open') as mock_open:
+        with mock.patch('six.moves.builtins.open') as mock_open:
             e = IOError()
             e.errno = 123
             mock_open.side_effect = e
@@ -164,8 +170,8 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
             self.assertRaises(IOError,
                               self.target._get_target_chap_auth,
                               ctxt, self.test_vol)
-            mock_open.side_effect = StandardError()
-            self.assertRaises(StandardError,
+            mock_open.side_effect = ZeroDivisionError()
+            self.assertRaises(ZeroDivisionError,
                               self.target._get_target_chap_auth,
                               ctxt, self.test_vol)
 
@@ -182,6 +188,42 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
                     1,
                     0,
                     self.fake_volumes_dir))
+
+    def test_create_iscsi_target_content(self):
+
+        self.iscsi_target_flags = 'foo'
+        self.iscsi_write_cache = 'bar'
+
+        mock_open = mock.mock_open()
+        with mock.patch('cinder.utils.execute', return_value=('', '')),\
+                mock.patch.object(self.target, '_get_target',
+                                  side_effect=lambda x: 1),\
+                mock.patch.object(self.target, '_verify_backing_lun',
+                                  side_effect=lambda x, y: True),\
+                mock.patch('cinder.volume.targets.tgt.open',
+                           mock_open, create=True):
+            self.assertEqual(
+                1,
+                self.target.create_iscsi_target(
+                    self.test_vol,
+                    1,
+                    0,
+                    self.testvol_path,
+                    chap_auth=('chap_foo', 'chap_bar')))
+
+        mock_open.assert_called_once_with(
+            os.path.join(self.fake_volumes_dir, self.test_vol.split(':')[1]),
+            'w+')
+        expected = ('\n<target iqn.2010-10.org.openstack:volume-%(id)s>\n'
+                    '    backing-store %(bspath)s\n'
+                    '    driver iscsi\n'
+                    '    incominguser chap_foo chap_bar\n'
+                    '    bsoflags foo\n'
+                    '    write-cache bar\n'
+                    '</target>\n' % {'id': self.VOLUME_ID,
+                                     'bspath': self.testvol_path})
+        self.assertEqual(expected,
+                         mock_open.return_value.write.call_args[0][0])
 
     def test_create_iscsi_target_already_exists(self):
         def _fake_execute(*args, **kwargs):

@@ -187,14 +187,7 @@ class LioAdm(iscsi.ISCSITarget):
         # We make changes persistent
         self._persist_configuration(volume['id'])
 
-        iscsi_properties = self._get_iscsi_properties(volume,
-                                                      connector.get(
-                                                          'multipath'))
-
-        return {
-            'driver_volume_type': self.iscsi_protocol,
-            'data': iscsi_properties
-        }
+        return super(LioAdm, self).initialize_connection(volume, connector)
 
     def terminate_connection(self, volume, connector, **kwargs):
         volume_iqn = volume['provider_location'].split(' ')[1]

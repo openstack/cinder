@@ -13,11 +13,11 @@
 #    under the License.
 #
 
+from oslo_service import loopingcall
+from oslo_utils import timeutils
+
 from cinder import context
 from cinder import db
-from cinder.openstack.common import loopingcall
-
-from oslo_utils import timeutils
 
 
 def get_test_admin_context():
@@ -98,7 +98,7 @@ def create_snapshot(ctxt,
 
 
 def create_consistencygroup(ctxt,
-                            host='test_host',
+                            host='test_host@fakedrv#fakepool',
                             name='test_cg',
                             description='this is a test cg',
                             status='available',

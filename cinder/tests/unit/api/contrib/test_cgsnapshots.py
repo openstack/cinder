@@ -383,9 +383,9 @@ class CgsnapshotsAPITestCase(test.TestCase):
 
         self.assertEqual(res.status_int, 400)
         self.assertEqual(res_dict['badRequest']['code'], 400)
-        self.assertEqual(res_dict['badRequest']['message'],
-                         'The server could not comply with the request since'
-                         ' it is either malformed or otherwise incorrect.')
+        self.assertEqual("Missing required element 'cgsnapshot' in "
+                         "request body.",
+                         res_dict['badRequest']['message'])
 
     @mock.patch.object(consistencygroupAPI.API, 'create_cgsnapshot',
                        side_effect=exception.InvalidCgSnapshot(
@@ -474,7 +474,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
         self.assertEqual(res.status_int, 404)
         self.assertEqual(res_dict['itemNotFound']['code'], 404)
         self.assertEqual(res_dict['itemNotFound']['message'],
-                         'Cgsnapshot could not be found')
+                         'CgSnapshot 9999 could not be found.')
 
     def test_delete_cgsnapshot_with_Invalidcgsnapshot(self):
         consistencygroup_id = utils.create_consistencygroup(self.context)['id']

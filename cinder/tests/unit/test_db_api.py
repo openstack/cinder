@@ -51,8 +51,8 @@ def _quota_reserve(context, project_id):
     resources = {}
     deltas = {}
     for i, resource in enumerate(('volumes', 'gigabytes')):
-        quotas[resource] = db.quota_create(context, project_id,
-                                           resource, i + 1)
+        quota_obj = db.quota_create(context, project_id, resource, i + 1)
+        quotas[resource] = quota_obj.hard_limit
         resources[resource] = quota.ReservableResource(resource,
                                                        '_sync_%s' % resource)
         deltas[resource] = i + 1
@@ -67,7 +67,11 @@ class ModelsObjectComparatorMixin(object):
     def _dict_from_object(self, obj, ignored_keys):
         if ignored_keys is None:
             ignored_keys = []
-        return {k: v for k, v in obj.iteritems()
+        if isinstance(obj, dict):
+            items = obj.items()
+        else:
+            items = obj.iteritems()
+        return {k: v for k, v in items
                 if k not in ignored_keys}
 
     def _assertEqualObjects(self, obj1, obj2, ignored_keys=None):
@@ -954,11 +958,72 @@ class DBAPISnapshotTestCase(BaseTest):
         actual = db.snapshot_data_get_for_project(self.ctxt, 'project1')
         self.assertEqual(actual, (1, 42))
 
-    def test_snapshot_get_all(self):
+    def test_snapshot_get_all_by_filter(self):
         db.volume_create(self.ctxt, {'id': 1})
-        snapshot = db.snapshot_create(self.ctxt, {'id': 1, 'volume_id': 1})
-        self._assertEqualListsOfObjects([snapshot],
-                                        db.snapshot_get_all(self.ctxt),
+        db.volume_create(self.ctxt, {'id': 2})
+        snapshot1 = db.snapshot_create(self.ctxt, {'id': 1, 'volume_id': 1,
+                                                   'display_name': 'one',
+                                                   'status': 'available'})
+        snapshot2 = db.snapshot_create(self.ctxt, {'id': 2, 'volume_id': 1,
+                                                   'display_name': 'two',
+                                                   'status': 'creating'})
+        snapshot3 = db.snapshot_create(self.ctxt, {'id': 3, 'volume_id': 2,
+                                                   'display_name': 'three',
+                                                   'status': 'available'})
+        # no filter
+        filters = {}
+        snapshots = db.snapshot_get_all(self.ctxt, filters=filters)
+        self.assertEqual(3, len(snapshots))
+        # single match
+        filters = {'display_name': 'two'}
+        self._assertEqualListsOfObjects([snapshot2],
+                                        db.snapshot_get_all(
+                                            self.ctxt,
+                                            filters),
+                                        ignored_keys=['metadata', 'volume'])
+        filters = {'volume_id': 2}
+        self._assertEqualListsOfObjects([snapshot3],
+                                        db.snapshot_get_all(
+                                            self.ctxt,
+                                            filters),
+                                        ignored_keys=['metadata', 'volume'])
+        # filter no match
+        filters = {'volume_id': 5}
+        self._assertEqualListsOfObjects([],
+                                        db.snapshot_get_all(
+                                            self.ctxt,
+                                            filters),
+                                        ignored_keys=['metadata', 'volume'])
+        filters = {'status': 'error'}
+        self._assertEqualListsOfObjects([],
+                                        db.snapshot_get_all(
+                                            self.ctxt,
+                                            filters),
+                                        ignored_keys=['metadata', 'volume'])
+        # multiple match
+        filters = {'volume_id': 1}
+        self._assertEqualListsOfObjects([snapshot1, snapshot2],
+                                        db.snapshot_get_all(
+                                            self.ctxt,
+                                            filters),
+                                        ignored_keys=['metadata', 'volume'])
+        filters = {'status': 'available'}
+        self._assertEqualListsOfObjects([snapshot1, snapshot3],
+                                        db.snapshot_get_all(
+                                            self.ctxt,
+                                            filters),
+                                        ignored_keys=['metadata', 'volume'])
+        filters = {'volume_id': 1, 'status': 'available'}
+        self._assertEqualListsOfObjects([snapshot1],
+                                        db.snapshot_get_all(
+                                            self.ctxt,
+                                            filters),
+                                        ignored_keys=['metadata', 'volume'])
+        filters = {'fake_key': 'fake'}
+        self._assertEqualListsOfObjects([],
+                                        db.snapshot_get_all(
+                                            self.ctxt,
+                                            filters),
                                         ignored_keys=['metadata', 'volume'])
 
     def test_snapshot_get_by_host(self):
@@ -1146,7 +1211,7 @@ class DBAPIEncryptionTestCase(BaseTest):
             self._assertEqualObjects(encryption, encryption_get,
                                      self._ignored_keys)
 
-    def test_volume_type_update_with_no_create(self):
+    def test_volume_type_encryption_update_with_no_create(self):
         self.assertRaises(exception.VolumeTypeEncryptionNotFound,
                           db.volume_type_encryption_update,
                           self.ctxt,
@@ -1172,6 +1237,12 @@ class DBAPIEncryptionTestCase(BaseTest):
             db.volume_type_encryption_get(self.ctxt,
                                           encryption['volume_type_id'])
         self.assertIsNone(encryption_get)
+
+    def test_volume_type_encryption_delete_no_create(self):
+        self.assertRaises(exception.VolumeTypeEncryptionNotFound,
+                          db.volume_type_encryption_delete,
+                          self.ctxt,
+                          'fake_no_create_type')
 
     def test_volume_encryption_get(self):
         # normal volume -- metadata should be None

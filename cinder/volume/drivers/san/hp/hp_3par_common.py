@@ -52,6 +52,8 @@ if hp3parclient:
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_log import versionutils
+from oslo_service import loopingcall
 from oslo_utils import excutils
 from oslo_utils import units
 
@@ -59,8 +61,6 @@ from cinder import context
 from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder.openstack.common import loopingcall
-from cinder.openstack.common import versionutils
 from cinder.volume import qos_specs
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types

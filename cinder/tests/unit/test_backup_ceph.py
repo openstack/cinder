@@ -21,7 +21,6 @@ import uuid
 
 import mock
 from oslo_concurrency import processutils
-from oslo_log import log as logging
 from oslo_serialization import jsonutils
 import six
 from six.moves import range
@@ -32,10 +31,9 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
+from cinder import objects
 from cinder import test
 from cinder.volume.drivers import rbd as rbddriver
-
-LOG = logging.getLogger(__name__)
 
 # This is used to collect raised exceptions so that tests may check what was
 # raised.
@@ -105,8 +103,10 @@ class BackupCephTestCase(test.TestCase):
         vol = {'id': id, 'size': size, 'status': 'available'}
         return db.volume_create(self.ctxt, vol)['id']
 
-    def _create_backup_db_entry(self, backupid, volid, size):
-        backup = {'id': backupid, 'size': size, 'volume_id': volid}
+    def _create_backup_db_entry(self, backupid, volid, size,
+                                userid='user-id', projectid='project-id'):
+        backup = {'id': backupid, 'size': size, 'volume_id': volid,
+                  'user_id': userid, 'project_id': projectid}
         return db.backup_create(self.ctxt, backup)['id']
 
     def time_inc(self):
@@ -157,7 +157,7 @@ class BackupCephTestCase(test.TestCase):
         self.backup_id = str(uuid.uuid4())
         self._create_backup_db_entry(self.backup_id, self.volume_id,
                                      self.volume_size)
-        self.backup = db.backup_get(self.ctxt, self.backup_id)
+        self.backup = objects.Backup.get_by_id(self.ctxt, self.backup_id)
 
         # Create alternate volume.
         self.alt_volume_id = str(uuid.uuid4())
@@ -304,6 +304,7 @@ class BackupCephTestCase(test.TestCase):
 
         rbd1 = mock.Mock()
         rbd1.read.side_effect = fake_read
+        rbd1.size.return_value = os.fstat(self.volume_file.fileno()).st_size
 
         rbd2 = mock.Mock()
         rbd2.write.side_effect = mock_write_data
@@ -596,7 +597,7 @@ class BackupCephTestCase(test.TestCase):
 
         backup_id = str(uuid.uuid4())
         self._create_backup_db_entry(backup_id, volume_id, 1)
-        backup = db.backup_get(self.ctxt, backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, backup_id)
 
         self.assertRaises(exception.InvalidParameterValue, self.service.backup,
                           backup, self.volume_file)

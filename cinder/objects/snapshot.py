@@ -116,9 +116,11 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
             volume._from_db_object(context, volume, db_snapshot['volume'])
             snapshot.volume = volume
         if 'metadata' in expected_attrs:
-            snapshot.metadata = db.snapshot_metadata_get(context,
-                                                         db_snapshot['id'])
-
+            metadata = db_snapshot.get('snapshot_metadata')
+            if metadata is None:
+                raise exception.MetadataAbsent()
+            snapshot.metadata = {item['key']: item['value']
+                                 for item in metadata}
         snapshot._context = context
         snapshot.obj_reset_changes()
         return snapshot
@@ -211,8 +213,8 @@ class SnapshotList(base.ObjectListBase, base.CinderObject):
     }
 
     @base.remotable_classmethod
-    def get_all(cls, context):
-        snapshots = db.snapshot_get_all(context)
+    def get_all(cls, context, search_opts):
+        snapshots = db.snapshot_get_all(context, search_opts)
         return base.obj_make_list(context, cls(), objects.Snapshot,
                                   snapshots,
                                   expected_attrs=['metadata'])
@@ -224,8 +226,9 @@ class SnapshotList(base.ObjectListBase, base.CinderObject):
                                   snapshots, expected_attrs=['metadata'])
 
     @base.remotable_classmethod
-    def get_all_by_project(cls, context, project_id):
-        snapshots = db.snapshot_get_all_by_project(context, project_id)
+    def get_all_by_project(cls, context, project_id, search_opts):
+        snapshots = db.snapshot_get_all_by_project(context, project_id,
+                                                   search_opts)
         return base.obj_make_list(context, cls(context), objects.Snapshot,
                                   snapshots, expected_attrs=['metadata'])
 

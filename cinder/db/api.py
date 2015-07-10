@@ -66,6 +66,9 @@ _BACKEND_MAPPING = {'sqlalchemy': 'cinder.db.sqlalchemy.api'}
 
 IMPL = db_concurrency.TpoolDbapiWrapper(CONF, _BACKEND_MAPPING)
 
+# The maximum value a signed INT type may have
+MAX_INT = 0x7FFFFFFF
+
 
 ###################
 
@@ -285,14 +288,14 @@ def snapshot_get(context, snapshot_id):
     return IMPL.snapshot_get(context, snapshot_id)
 
 
-def snapshot_get_all(context):
+def snapshot_get_all(context, filters=None):
     """Get all snapshots."""
-    return IMPL.snapshot_get_all(context)
+    return IMPL.snapshot_get_all(context, filters)
 
 
-def snapshot_get_all_by_project(context, project_id):
+def snapshot_get_all_by_project(context, project_id, filters=None):
     """Get all snapshots belonging to a project."""
-    return IMPL.snapshot_get_all_by_project(context, project_id)
+    return IMPL.snapshot_get_all_by_project(context, project_id, filters)
 
 
 def snapshot_get_by_host(context, host, filters=None):

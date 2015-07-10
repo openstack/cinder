@@ -48,13 +48,9 @@ class Controller(wsgi.Controller):
     @wsgi.serializers(xml=common.MetadataTemplate)
     @wsgi.deserializers(xml=common.MetadataDeserializer)
     def create(self, req, snapshot_id, body):
-        try:
-            metadata = body['metadata']
-        except (KeyError, TypeError):
-            msg = _("Malformed request body")
-            raise exc.HTTPBadRequest(explanation=msg)
-
+        self.assert_valid_body(body, 'metadata')
         context = req.environ['cinder.context']
+        metadata = body['metadata']
 
         new_metadata = self._update_snapshot_metadata(context,
                                                       snapshot_id,
@@ -66,11 +62,8 @@ class Controller(wsgi.Controller):
     @wsgi.serializers(xml=common.MetaItemTemplate)
     @wsgi.deserializers(xml=common.MetaItemDeserializer)
     def update(self, req, snapshot_id, id, body):
-        try:
-            meta_item = body['meta']
-        except (TypeError, KeyError):
-            expl = _('Malformed request body')
-            raise exc.HTTPBadRequest(explanation=expl)
+        self.assert_valid_body(body, 'meta')
+        meta_item = body['meta']
 
         if id not in meta_item:
             expl = _('Request body and URI mismatch')
@@ -91,13 +84,10 @@ class Controller(wsgi.Controller):
     @wsgi.serializers(xml=common.MetadataTemplate)
     @wsgi.deserializers(xml=common.MetadataDeserializer)
     def update_all(self, req, snapshot_id, body):
-        try:
-            metadata = body['metadata']
-        except (TypeError, KeyError):
-            expl = _('Malformed request body')
-            raise exc.HTTPBadRequest(explanation=expl)
-
+        self.assert_valid_body(body, 'metadata')
         context = req.environ['cinder.context']
+        metadata = body['metadata']
+
         new_metadata = self._update_snapshot_metadata(context,
                                                       snapshot_id,
                                                       metadata,

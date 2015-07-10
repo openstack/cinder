@@ -95,7 +95,7 @@ class AssociationsTemplate(xmlutil.TemplateBuilder):
 def _check_specs(context, specs_id):
     try:
         qos_specs.get_qos_specs(context, specs_id)
-    except exception.NotFound as ex:
+    except exception.QoSSpecsNotFound as ex:
         raise webob.exc.HTTPNotFound(explanation=six.text_type(ex))
 
 
@@ -123,8 +123,7 @@ class QoSSpecsController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context)
 
-        if not self.is_valid_body(body, 'qos_specs'):
-            raise webob.exc.HTTPBadRequest()
+        self.assert_valid_body(body, 'qos_specs')
 
         specs = body['qos_specs']
         name = specs.get('name', None)
@@ -139,7 +138,7 @@ class QoSSpecsController(wsgi.Controller):
             rpc.get_notifier('QoSSpecs').info(context,
                                               'qos_specs.create',
                                               notifier_info)
-        except exception.InvalidInput as err:
+        except exception.InvalidQoSSpecs as err:
             notifier_err = dict(name=name, error_message=err)
             self._notify_qos_specs_error(context,
                                          'qos_specs.create',
@@ -166,8 +165,7 @@ class QoSSpecsController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context)
 
-        if not self.is_valid_body(body, 'qos_specs'):
-            raise webob.exc.HTTPBadRequest()
+        self.assert_valid_body(body, 'qos_specs')
         specs = body['qos_specs']
         try:
             qos_specs.update(context, id, specs)
@@ -264,8 +262,8 @@ class QoSSpecsController(wsgi.Controller):
         try:
             qos_specs.delete_keys(context, id, keys)
             notifier_info = dict(id=id)
-            rpc.get_notifier().info(context, 'qos_specs.delete_keys',
-                                    notifier_info)
+            rpc.get_notifier('QoSSpecs').info(context, 'qos_specs.delete_keys',
+                                              notifier_info)
         except exception.QoSSpecsNotFound as err:
             notifier_err = dict(id=id, error_message=err)
             self._notify_qos_specs_error(context,

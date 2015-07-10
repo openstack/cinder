@@ -96,9 +96,7 @@ class VolumeManageController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context)
 
-        if not self.is_valid_body(body, 'volume'):
-            msg = _("Missing required element '%s' in request body") % 'volume'
-            raise exc.HTTPBadRequest(explanation=msg)
+        self.assert_valid_body(body, 'volume')
 
         volume = body['volume']
 
@@ -125,9 +123,8 @@ class VolumeManageController(wsgi.Controller):
                 else:
                     kwargs['volume_type'] = volume_types.get_volume_type(
                         context, req_volume_type)
-            except exception.VolumeTypeNotFound:
-                msg = _("Volume type not found.")
-                raise exc.HTTPNotFound(explanation=msg)
+            except exception.VolumeTypeNotFound as error:
+                raise exc.HTTPNotFound(explanation=error.msg)
         else:
             kwargs['volume_type'] = {}
 

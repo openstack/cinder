@@ -77,10 +77,11 @@ from cinder import db
 from cinder.db import migration as db_migration
 from cinder.db.sqlalchemy import api as db_api
 from cinder.i18n import _
-from cinder.objects import base as objects_base
+from cinder import objects
 from cinder import rpc
 from cinder import utils
 from cinder import version
+from cinder.volume import utils as vutils
 
 
 CONF = cfg.CONF
@@ -272,7 +273,7 @@ class VolumeCommands(object):
             if not rpc.initialized():
                 rpc.init(CONF)
                 target = messaging.Target(topic=CONF.volume_topic)
-                serializer = objects_base.CinderObjectSerializer()
+                serializer = objects.base.CinderObjectSerializer()
                 self._client = rpc.get_client(target, serializer=serializer)
 
         return self._client
@@ -285,7 +286,7 @@ class VolumeCommands(object):
         """
         ctxt = context.get_admin_context()
         volume = db.volume_get(ctxt, param2id(volume_id))
-        host = volume['host']
+        host = vutils.extract_host(volume['host']) if volume['host'] else None
 
         if not host:
             print(_("Volume not yet assigned to host."))
@@ -402,7 +403,7 @@ class BackupCommands(object):
         on which the backup operation is running.
         """
         ctxt = context.get_admin_context()
-        backups = db.backup_get_all(ctxt)
+        backups = objects.BackupList.get_all(ctxt)
 
         hdr = "%-32s\t%-32s\t%-32s\t%-24s\t%-24s\t%-12s\t%-12s\t%-12s\t%-12s"
         print(hdr % (_('ID'),
@@ -531,6 +532,7 @@ def fetch_func_args(func):
 
 
 def main():
+    objects.register_all()
     """Parse options and call the appropriate class/method."""
     CONF.register_cli_opt(category_opt)
     script_name = sys.argv[0]
@@ -547,6 +549,9 @@ def main():
         CONF(sys.argv[1:], project='cinder',
              version=version.version_string())
         logging.setup(CONF, "cinder")
+    except cfg.ConfigDirNotFoundError as details:
+        print(_("Invalid directory: %s") % details)
+        sys.exit(2)
     except cfg.ConfigFilesNotFoundError:
         cfgfile = CONF.config_file[-1] if CONF.config_file else None
         if cfgfile and not os.access(cfgfile, os.R_OK):

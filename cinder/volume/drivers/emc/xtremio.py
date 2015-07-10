@@ -22,19 +22,19 @@ supported XtremIO version 2.4 and up
 1.0.3 - update logging level, add translation
 1.0.4 - support for FC zones
 1.0.5 - add support for XtremIO 4.0
+1.0.6 - add support for iSCSI and CA validation
 """
 
-import base64
 import json
 import math
 import random
+import requests
 import string
 
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
 import six
-from six.moves import urllib
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
@@ -65,71 +65,18 @@ class XtremIOClient(object):
     def __init__(self, configuration, cluster_id):
         self.configuration = configuration
         self.cluster_id = cluster_id
-        self.base64_auth = (base64
-                            .encodestring('%s:%s' %
-                                          (self.configuration.san_login,
-                                           self.configuration.san_password))
-                            .replace('\n', ''))
-        self.base_url = ('https://%s/api/json/types' %
-                         self.configuration.san_ip)
+        self.verify = (self.configuration.
+                       safe_get('driver_ssl_cert_verify')
+                       or False)
 
-    def _create_request(self, request_typ, data, url, url_data):
-        if request_typ in ('GET', 'DELETE'):
-            data.update(url_data)
-            self.update_url(data, self.cluster_id)
-            query = urllib.parse.urlencode(data, doseq=True)
-            url = '%(url)s?%(query)s' % {'query': query, 'url': url}
-            request = urllib.request.Request(url)
-        else:
-            if url_data:
-                url = ('%(url)s?%(query)s' %
-                       {'query': urllib.parse.urlencode(url_data, doseq=True),
-                        'url': url})
-
-            self.update_data(data, self.cluster_id)
-            LOG.debug('data: %s', data)
-            request = urllib.request.Request(url, json.dumps(data))
-            LOG.debug('%(type)s %(url)s', {'type': request_typ, 'url': url})
-
-        def get_request_type():
-            return request_typ
-        request.get_method = get_request_type
-        request.add_header("Authorization", "Basic %s" % (self.base64_auth, ))
-        return request
-
-    def _send_request(self, object_type, key, request):
-        try:
-            response = urllib.request.urlopen(request)
-        except (urllib.error.HTTPError, ) as exc:
-            if exc.code == 400 and hasattr(exc, 'read'):
-                error = json.load(exc)
-                err_msg = error['message']
-                if err_msg.endswith(OBJ_NOT_FOUND_ERR):
-                    LOG.warning(_LW("object %(key)s of "
-                                    "type %(typ)s not found"),
-                                {'key': key, 'typ': object_type})
-                    raise exception.NotFound()
-                elif err_msg == VOL_NOT_UNIQUE_ERR:
-                    LOG.error(_LE("can't create 2 volumes with the same name"))
-                    msg = (_('Volume by this name already exists'))
-                    raise exception.VolumeBackendAPIException(data=msg)
-                elif err_msg == VOL_OBJ_NOT_FOUND_ERR:
-                    LOG.error(_LE("Can't find volume to map %s"), key)
-                    raise exception.VolumeNotFound(volume_id=key)
-                elif ALREADY_MAPPED_ERR in err_msg:
-                    raise exception.XtremIOAlreadyMappedError()
-            LOG.error(_LE('Bad response from XMS, %s'), exc.read())
-            msg = (_('Exception: %s') % six.text_type(exc))
-            raise exception.VolumeDriverException(message=msg)
-        if response.code >= 300:
-            LOG.error(_LE('bad API response, %s'), response.msg)
-            msg = (_('bad response from XMS got http code %(code)d, %(msg)s') %
-                   {'code': response.code, 'msg': response.msg})
-            raise exception.VolumeBackendAPIException(data=msg)
-        return response
+    def get_base_url(self, ver):
+        if ver == 'v1':
+            return 'https://%s/api/json/types' % self.configuration.san_ip
+        elif ver == 'v2':
+            return 'https://%s/api/json/v2/types' % self.configuration.san_ip
 
     def req(self, object_type='volumes', request_typ='GET', data=None,
-            name=None, idx=None):
+            name=None, idx=None, ver='v1'):
         if not data:
             data = {}
         if name and idx:
@@ -137,27 +84,64 @@ class XtremIOClient(object):
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
-        url = '%s/%s' % (self.base_url, object_type)
-        url_data = {}
+        url = '%s/%s' % (self.get_base_url(ver), object_type)
+        params = {}
         key = None
         if name:
-            url_data['name'] = name
+            params['name'] = name
             key = name
         elif idx:
             url = '%s/%d' % (url, idx)
             key = str(idx)
-        request = self._create_request(request_typ, data, url, url_data)
-        response = self._send_request(object_type, key, request)
-        str_result = response.read()
-        if str_result:
-            try:
-                return json.loads(str_result)
-            except Exception:
-                LOG.exception(_LE('querying %(typ)s, %(req)s failed to '
-                                  'parse result, return value = %(res)s'),
-                              {'typ': object_type,
-                               'req': request_typ,
-                               'res': str_result})
+        if request_typ in ('GET', 'DELETE'):
+            params.update(data)
+            self.update_url(params, self.cluster_id)
+        if request_typ != 'GET':
+            self.update_data(data, self.cluster_id)
+            LOG.debug('data: %s', data)
+        LOG.debug('%(type)s %(url)s', {'type': request_typ, 'url': url})
+        try:
+            response = requests.request(request_typ, url, params=params,
+                                        data=json.dumps(data),
+                                        verify=self.verify,
+                                        auth=(self.configuration.san_login,
+                                              self.configuration.san_password))
+        except requests.exceptions.RequestException as exc:
+            msg = (_('Exception: %s') % six.text_type(exc))
+            raise exception.VolumeDriverException(message=msg)
+
+        if 200 <= response.status_code < 300:
+            if request_typ in ('GET', 'POST'):
+                return response.json()
+            else:
+                return ''
+
+        self.handle_errors(response, key, object_type)
+
+    def handle_errors(self, response, key, object_type):
+        if response.status_code == 400:
+            error = response.json()
+            err_msg = error.get('message')
+            if err_msg.endswith(OBJ_NOT_FOUND_ERR):
+                LOG.warning(_LW("object %(key)s of "
+                                "type %(typ)s not found, %(err_msg)s"),
+                            {'key': key, 'typ': object_type,
+                             'err_msg': err_msg, })
+                raise exception.NotFound()
+            elif err_msg == VOL_NOT_UNIQUE_ERR:
+                LOG.error(_LE("can't create 2 volumes with the same name, %s"),
+                          err_msg)
+                msg = (_('Volume by this name already exists'))
+                raise exception.VolumeBackendAPIException(data=msg)
+            elif err_msg == VOL_OBJ_NOT_FOUND_ERR:
+                LOG.error(_LE("Can't find volume to map %(key)s, %(msg)s"),
+                          {'key': key, 'msg': err_msg, })
+                raise exception.VolumeNotFound(volume_id=key)
+            elif ALREADY_MAPPED_ERR in err_msg:
+                raise exception.XtremIOAlreadyMappedError()
+        msg = _('Bad response from XMS, %s') % response.text
+        LOG.error(msg)
+        raise exception.VolumeBackendAPIException(message=msg)
 
     def update_url(self, data, cluster_id):
         return
@@ -168,8 +152,23 @@ class XtremIOClient(object):
     def get_cluster(self):
         return self.req('clusters', idx=1)['content']
 
+    def create_snapshot(self, src, dest, ro=False):
+        """Create a snapshot of a volume on the array.
+
+        XtreamIO array snapshots are also volumes.
+
+        :src: name of the source volume to be cloned
+        :dest: name for the new snapshot
+        :ro: new snapshot type ro/regular. only applicable to Client4
+        """
+        raise NotImplementedError()
+
 
 class XtremIOClient3(XtremIOClient):
+    def __init__(self, configuration, cluster_id):
+        super(XtremIOClient3, self).__init__(configuration, cluster_id)
+        self._portals = []
+
     def find_lunmap(self, ig_name, vol_name):
         try:
             for lm_link in self.req('lun-maps')['lun-maps']:
@@ -191,22 +190,33 @@ class XtremIOClient3(XtremIOClient):
                 cnt += 1
         return cnt
 
-    def get_iscsi_portal(self):
+    def get_iscsi_portals(self):
+        if self._portals:
+            return self._portals
+
         iscsi_portals = [t['name'] for t in self.req('iscsi-portals')
                          ['iscsi-portals']]
-        # Get a random portal
-        portal_name = RANDOM.choice(iscsi_portals)
-        try:
-            portal = self.req('iscsi-portals',
-                              name=portal_name)['content']
-        except exception.NotFound:
-            raise (exception.VolumeBackendAPIException
-                   (data=_("iscsi portal, %s, not found") % portal_name))
+        for portal_name in iscsi_portals:
+            try:
+                self._portals.append(self.req('iscsi-portals',
+                                              name=portal_name)['content'])
+            except exception.NotFound:
+                raise (exception.VolumeBackendAPIException
+                       (data=_("iscsi portal, %s, not found") % portal_name))
 
-        return portal
+        return self._portals
+
+    def create_snapshot(self, src, dest, ro=False):
+        data = {'snap-vol-name': dest, 'ancestor-vol-id': src}
+
+        self.req('snapshots', 'POST', data)
 
 
 class XtremIOClient4(XtremIOClient):
+    def __init__(self, configuration, cluster_id):
+        super(XtremIOClient4, self).__init__(configuration, cluster_id)
+        self._cluster_name = None
+
     def find_lunmap(self, ig_name, vol_name):
         try:
             return (self.req('lun-maps',
@@ -230,23 +240,40 @@ class XtremIOClient4(XtremIOClient):
         if cluster_id:
             data['cluster-id'] = cluster_id
 
-    def get_iscsi_portal(self):
-        iscsi_portals = self.req('iscsi-portals',
-                                 data={'full': 1})['iscsi-portals']
-        return RANDOM.choice(iscsi_portals)
+    def get_iscsi_portals(self):
+        return self.req('iscsi-portals',
+                        data={'full': 1})['iscsi-portals']
 
     def get_cluster(self):
-        if self.cluster_id:
-            return self.req('clusters', name=self.cluster_id)['content']
-        else:
-            name = self.req('clusters')['clusters'][0]['name']
-            return self.req('clusters', name=name)['content']
+        if not self.cluster_id:
+            self.cluster_id = self.req('clusters')['clusters'][0]['name']
+
+        return self.req('clusters', name=self.cluster_id)['content']
+
+    def create_snapshot(self, src, dest, ro=False):
+        data = {'snapshot-set-name': dest, 'snap-suffix': dest,
+                'volume-list': [src],
+                'snapshot-type': 'readonly' if ro else 'regular'}
+
+        res = self.req('snapshots', 'POST', data, ver='v2')
+        typ, idx = res['links'][0]['href'].split('/')[-2:]
+
+        # rename the snapshot
+        data = {'name': dest}
+        try:
+            self.req(typ, 'PUT', data, idx=int(idx))
+        except exception.VolumeBackendAPIException:
+            # reverting
+            msg = _LE('Failed to rename the created snapshot, reverting.')
+            LOG.error(msg)
+            self.req(typ, 'DELETE', idx=int(idx))
+            raise
 
 
 class XtremIOVolumeDriver(san.SanDriver):
     """Executes commands relating to Volumes."""
 
-    VERSION = '1.0.5'
+    VERSION = '1.0.6'
     driver_name = 'XtremIO'
     MIN_XMS_VERSION = [3, 0, 0]
 
@@ -270,12 +297,9 @@ class XtremIOVolumeDriver(san.SanDriver):
 
     def check_for_setup_error(self):
         try:
-            try:
-                xms = self.client.req('xms', idx=1)['content']
-                version_text = xms['version']
-            except exception.VolumeDriverException:
-                cluster = self.client.req('clusters', idx=1)['content']
-                version_text = cluster['sys-sw-version']
+            name = self.client.req('clusters')['clusters'][0]['name']
+            cluster = self.client.req('clusters', name=name)['content']
+            version_text = cluster['sys-sw-version']
         except exception.NotFound:
             msg = _("XtremIO not initialized correctly, no clusters found")
             raise (exception.VolumeBackendAPIException
@@ -303,17 +327,11 @@ class XtremIOVolumeDriver(san.SanDriver):
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
-        data = {'snap-vol-name': volume['id'],
-                'ancestor-vol-id': snapshot.id}
-
-        self.client.req('snapshots', 'POST', data)
+        self.client.create_snapshot(snapshot.id, volume['id'])
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
-        data = {'snap-vol-name': volume['id'],
-                'ancestor-vol-id': src_vref['id']}
-
-        self.client.req('snapshots', 'POST', data)
+        self.client.create_snapshot(src_vref['id'], volume['id'])
 
     def delete_volume(self, volume):
         """Deletes a volume."""
@@ -324,10 +342,7 @@ class XtremIOVolumeDriver(san.SanDriver):
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
-        data = {'snap-vol-name': snapshot.id,
-                'ancestor-vol-id': snapshot.volume_id}
-
-        self.client.req('snapshots', 'POST', data)
+        self.client.create_snapshot(snapshot.volume_id, snapshot.id, True)
 
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot."""
@@ -435,8 +450,7 @@ class XtremIOVolumeDriver(san.SanDriver):
             vol = self.client.req('volumes', name=volume['id'])['content']
 
             lm_name = '%s_%s_%s' % (six.text_type(vol['index']),
-                                    six.text_type(ig['index'])
-                                    if ig else 'any',
+                                    six.text_type(ig['index']),
                                     six.text_type(tg['index']))
             LOG.debug('removing lun map %s', lm_name)
             self.client.req('lun-maps', 'DELETE', name=lm_name)
@@ -503,7 +517,7 @@ class XtremIOISCSIDriver(XtremIOVolumeDriver, driver.ISCSIDriver):
             ig = self.client.req('initiator-groups', 'GET',
                                  name=self._get_ig(connector))['content']
         except exception.NotFound:
-            # create an initiator group to hold the the initiator
+            # create an initiator group to hold the initiator
             data = {'ig-name': self._get_ig(connector)}
             self.client.req('initiator-groups', 'POST', data)
             try:
@@ -569,14 +583,32 @@ class XtremIOISCSIDriver(XtremIOVolumeDriver, driver.ISCSIDriver):
             meaning use CHAP with the specified credentials.
         :access_mode:    the volume access mode allow client used
                          ('rw' or 'ro' currently supported)
+        multiple connection return
+        :target_iqns, :target_portals, :target_luns, which contain lists of
+        multiple values. The main portal information is also returned in
+        :target_iqn, :target_portal, :target_lun for backward compatibility.
         """
-        portal = self.client.get_iscsi_portal()
-        ip = portal['ip-addr'].split('/')[0]
+        portals = self.client.get_iscsi_portals()
+        if not portals:
+            msg = _("XtremIO not configured correctly, no iscsi portals found")
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
+        portal = RANDOM.choice(portals)
+        portal_addr = ('%(ip)s:%(port)d' %
+                       {'ip': portal['ip-addr'].split('/')[0],
+                        'port': portal['ip-port']})
+
+        tg_portals = ['%(ip)s:%(port)d' % {'ip': p['ip-addr'].split('/')[0],
+                                           'port': p['ip-port']}
+                      for p in portals]
         properties = {'target_discovered': False,
                       'target_iqn': portal['port-address'],
                       'target_lun': lunmap['lun'],
-                      'target_portal': '%s:%d' % (ip, portal['ip-port']),
-                      'access_mode': 'rw'}
+                      'target_portal': portal_addr,
+                      'access_mode': 'rw',
+                      'target_iqns': [p['port-address'] for p in portals],
+                      'target_portals': tg_portals,
+                      'target_luns': [lunmap['lun']] * len(portals)}
         return properties
 
     def _get_initiator(self, connector):

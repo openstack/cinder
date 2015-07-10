@@ -57,7 +57,6 @@ def stub_snapshot_get(self, context, snapshot_id):
 class VolumeApiTest(test.TestCase):
     def setUp(self):
         super(VolumeApiTest, self).setUp()
-        self.addCleanup(fake_notifier.reset)
         self.ext_mgr = extensions.ExtensionManager()
         self.ext_mgr.extensions = {}
         fake_image.stub_out_image_service(self.stubs)
@@ -245,7 +244,7 @@ class VolumeApiTest(test.TestCase):
         }
         body = {"volume": updates}
         req = fakes.HTTPRequest.blank('/v1/volumes/1')
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
+        self.assertEqual(len(self.notifier.notifications), 0)
         res_dict = self.controller.update(req, '1', body)
         expected = {'volume': {
             'status': 'fakestatus',
@@ -265,7 +264,7 @@ class VolumeApiTest(test.TestCase):
             'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
             'size': 1}}
         self.assertEqual(res_dict, expected)
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 2)
+        self.assertEqual(len(self.notifier.notifications), 2)
 
     def test_volume_update_metadata(self):
         self.stubs.Set(db, 'volume_get', stubs.stub_volume_get_db)
@@ -276,7 +275,7 @@ class VolumeApiTest(test.TestCase):
         }
         body = {"volume": updates}
         req = fakes.HTTPRequest.blank('/v1/volumes/1')
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
+        self.assertEqual(len(self.notifier.notifications), 0)
         res_dict = self.controller.update(req, '1', body)
         expected = {'volume': {
             'status': 'fakestatus',
@@ -298,7 +297,7 @@ class VolumeApiTest(test.TestCase):
             'size': 1
         }}
         self.assertEqual(res_dict, expected)
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 2)
+        self.assertEqual(len(self.notifier.notifications), 2)
 
     def test_volume_update_with_admin_metadata(self):
         self.stubs.Set(volume_api.API, "update", stubs.stub_volume_update)
@@ -323,7 +322,7 @@ class VolumeApiTest(test.TestCase):
         }
         body = {"volume": updates}
         req = fakes.HTTPRequest.blank('/v1/volumes/1')
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 0)
+        self.assertEqual(len(self.notifier.notifications), 0)
         admin_ctx = context.RequestContext('admin', 'fakeproject', True)
         req.environ['cinder.context'] = admin_ctx
         res_dict = self.controller.update(req, '1', body)
@@ -352,7 +351,7 @@ class VolumeApiTest(test.TestCase):
             'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
             'size': 1}}
         self.assertEqual(res_dict, expected)
-        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 2)
+        self.assertEqual(len(self.notifier.notifications), 2)
 
     def test_update_empty_body(self):
         body = {}

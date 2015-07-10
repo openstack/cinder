@@ -63,15 +63,22 @@ class QuotaSetsController(wsgi.Controller):
             msg = _("Quota limit must be specified as an integer value.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
-        # NOTE: -1 is a flag value for unlimited
-        if limit < -1:
-            msg = _("Quota limit must be -1 or greater.")
+        # NOTE: -1 is a flag value for unlimited, maximum value is limited
+        # by SQL standard integer type `INT` which is `0x7FFFFFFF`, it's a
+        # general value for SQL, using a hardcoded value here is not a
+        # `nice` way, but it seems like the only way for now:
+        # http://dev.mysql.com/doc/refman/5.0/en/integer-types.html
+        # http://www.postgresql.org/docs/9.1/static/datatype-numeric.html
+        if limit < -1 or limit > db.MAX_INT:
+            msg = _("Quota limit must be in the range of -1 "
+                    "to %s.") % db.MAX_INT
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         return limit
 
-    def _get_quotas(self, context, id, usages=False):
-        values = QUOTAS.get_project_quotas(context, id, usages=usages)
+    def _get_quotas(self, context, id, usages=False, parent_project_id=None):
+        values = QUOTAS.get_project_quotas(context, id, usages=usages,
+                                           parent_project_id=parent_project_id)
 
         if usages:
             return values
@@ -101,9 +108,7 @@ class QuotaSetsController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize_update(context)
         project_id = id
-        if not self.is_valid_body(body, 'quota_set'):
-            msg = (_("Missing required element quota_set in request body."))
-            raise webob.exc.HTTPBadRequest(explanation=msg)
+        self.assert_valid_body(body, 'quota_set')
 
         bad_keys = []
 
@@ -146,7 +151,10 @@ class QuotaSetsController(wsgi.Controller):
     def defaults(self, req, id):
         context = req.environ['cinder.context']
         authorize_show(context)
-        return self._format_quota_set(id, QUOTAS.get_defaults(context))
+        return self._format_quota_set(id,
+                                      QUOTAS.get_defaults(context,
+                                                          parent_project_id=
+                                                          None))
 
     @wsgi.serializers(xml=QuotaTemplate)
     def delete(self, req, id):

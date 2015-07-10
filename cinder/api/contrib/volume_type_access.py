@@ -92,9 +92,8 @@ class VolumeTypeAccessController(object):
         try:
             vol_type = volume_types.get_volume_type(
                 context, type_id, expected_fields=['projects'])
-        except exception.VolumeTypeNotFound:
-            explanation = _("Volume type not found.")
-            raise webob.exc.HTTPNotFound(explanation=explanation)
+        except exception.VolumeTypeNotFound as error:
+            raise webob.exc.HTTPNotFound(explanation=error.msg)
 
         if vol_type['is_public']:
             expl = _("Access list not available for public volume types.")
@@ -107,8 +106,7 @@ class VolumeTypeActionController(wsgi.Controller):
     """The volume type access API controller for the OpenStack API."""
 
     def _check_body(self, body, action_name):
-        if not self.is_valid_body(body, action_name):
-            raise webob.exc.HTTPBadRequest()
+        self.assert_valid_body(body, action_name)
         access = body[action_name]
         project = access.get('project')
         if not uuidutils.is_uuid_like(project):

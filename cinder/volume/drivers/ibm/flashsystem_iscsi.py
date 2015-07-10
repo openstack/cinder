@@ -33,8 +33,9 @@ import six
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LW
+from cinder import utils
 import cinder.volume.driver
-from cinder.volume.drivers.ibm import flashsystem as fscommon
+from cinder.volume.drivers.ibm import flashsystem_common as fscommon
 from cinder.volume.drivers.san import san
 
 LOG = logging.getLogger(__name__)
@@ -52,14 +53,19 @@ CONF.register_opts(flashsystem_iscsi_opts)
 
 class FlashSystemISCSIDriver(fscommon.FlashSystemDriver,
                              cinder.volume.driver.ISCSIDriver):
-    """IBM FlashSystem iSCSI volume driver
+    """IBM FlashSystem iSCSI volume driver.
 
     Version history:
-    1.0.2 - Initial driver for iSCSI
+    1.0.0 - Initial driver
+    1.0.1 - Code clean up
+    1.0.2 - Add lock into vdisk map/unmap, connection
+            initialize/terminate
+    1.0.3 - Initial driver for iSCSI
+    1.0.4 - Split Flashsystem driver into common and FC
 
     """
 
-    VERSION = "1.0.2"
+    VERSION = "1.0.4"
 
     def __init__(self, *args, **kwargs):
         super(FlashSystemISCSIDriver, self).__init__(*args, **kwargs)
@@ -171,11 +177,11 @@ class FlashSystemISCSIDriver(fscommon.FlashSystemDriver,
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-        if not preferred_node_entry and not vdisk_params['multipath']:
+        if not preferred_node_entry:
             # Get 1st node in I/O group
             preferred_node_entry = io_group_nodes[0]
             LOG.warning(_LW('_get_vdisk_map_properties: Did not find a '
-                            'preferred node for vdisk %s.'), vdisk_name)
+                        'preferred node for vdisk %s.'), vdisk_name)
         properties = {
             'target_discovered': False,
             'target_lun': lun_id,
@@ -197,6 +203,7 @@ class FlashSystemISCSIDriver(fscommon.FlashSystemDriver,
 
         return {'driver_volume_type': type_str, 'data': properties}
 
+    @utils.synchronized('flashsystem-init-conn', external=True)
     def initialize_connection(self, volume, connector):
         """Perform work so that an iSCSI connection can be made.
 
@@ -222,7 +229,7 @@ class FlashSystemISCSIDriver(fscommon.FlashSystemDriver,
 
         self._driver_assert(
             self._is_vdisk_defined(vdisk_name),
-            (_('initialize_connection: vdisk %s is not defined.')
+            (_('vdisk %s is not defined.')
              % vdisk_name))
 
         lun_id = self._map_vdisk_to_host(vdisk_name, connector)
@@ -247,6 +254,7 @@ class FlashSystemISCSIDriver(fscommon.FlashSystemDriver,
 
         return properties
 
+    @utils.synchronized('flashsystem-term-conn', external=True)
     def terminate_connection(self, volume, connector, **kwargs):
         """Cleanup after connection has been terminated.
 
@@ -350,92 +358,16 @@ class FlashSystemISCSIDriver(fscommon.FlashSystemDriver,
 
         LOG.debug('leave: do_setup')
 
-    def _get_node_data(self):
-        """Get and verify node configuration."""
-
-        LOG.debug('enter: _get_node_data')
-
-        # Get storage system name and id
-        ssh_cmd = ['svcinfo', 'lssystem', '-delim', '!']
-        attributes = self._execute_command_and_parse_attributes(ssh_cmd)
-        if not attributes or not ('name' in attributes):
-            msg = _('Could not get system name.')
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-        self._system_name = attributes['name']
-        self._system_id = attributes['id']
-
-        # Validate value of open_access_enabled flag, for now only
-        # support when open_access_enabled is off
-        if not attributes or not ('open_access_enabled' in attributes) or (
-                attributes['open_access_enabled'] != 'off'):
-            msg = _('open_access_enabled is not off.')
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-
-        # Validate that the array exists
-        pool = fscommon.FLASHSYSTEM_VOLPOOL_NAME
-        ssh_cmd = ['svcinfo', 'lsmdiskgrp', '-bytes', '-delim', '!', pool]
-        attributes = self._execute_command_and_parse_attributes(ssh_cmd)
-        if not attributes:
-            LOG.debug('_get_node_data: lssystem attributes:', attributes)
-            msg = _('Unable to parse attributes')
-            LOG.error(msg)
-            raise exception.InvalidInput(reason=msg)
-        if not ('status' in attributes) or (
-                attributes['status'] == 'offline'):
-            msg = (_('Array does not exist or is offline. '
-                     'Current status of array is %ds.')
-                   % attributes['status'])
-            LOG.error(msg)
-            raise exception.InvalidInput(reason=msg)
-
-        # Get the iSCSI names of the FlashSystem nodes
-        ssh_cmd = ['svcinfo', 'lsnode', '-delim', '!']
-        out, err = self._ssh(ssh_cmd)
-        self._assert_ssh_return(
-            out.strip(), '_get_config_data', ssh_cmd, out, err)
-
-        nodes = out.strip().splitlines()
-        self._assert_ssh_return(nodes, '_get_node_data', ssh_cmd, out, err)
-        header = nodes.pop(0)
-        for node_line in nodes:
-            try:
-                node_data = self._get_hdr_dic(header, node_line, '!')
-            except exception.VolumeBackendAPIException:
-                with excutils.save_and_reraise_exception():
-                    self._log_cli_output_error('_get_node_data',
-                                               ssh_cmd, out, err)
-            try:
-                node = {
-                    'id': node_data['id'],
-                    'name': node_data['name'],
-                    'IO_group': node_data['IO_group_id'],
-                    'WWNN': node_data['WWNN'],
-                    'status': node_data['status'],
-                    'WWPN': [],
-                    'protocol': None,
-                    'iscsi_name': node_data['iscsi_name'],
-                    'config_node': node_data['config_node'],
-                    'ipv4': [],
-                    'ipv6': [],
-                }
-                if node['status'] == 'online':
-                    self._storage_nodes[node['id']] = node
-            except KeyError:
-                self._handle_keyerror('lsnode', header)
-
-        LOG.debug('leave: _get_iscsi_ip_addrs')
-
     def _build_default_params(self):
         protocol = self.configuration.flashsystem_connection_protocol
         if protocol.lower() == 'iscsi':
             protocol = 'iSCSI'
-        return {'protocol': protocol,
-                'multipath': self.configuration.flashsystem_multipath_enabled,
-                'iscsi_ip': self.configuration.iscsi_ip_address,
-                'iscsi_port': self.configuration.iscsi_port,
-                'iscsi_ported': self.configuration.flashsystem_iscsi_portid}
+        return {
+            'protocol': protocol,
+            'iscsi_ip': self.configuration.iscsi_ip_address,
+            'iscsi_port': self.configuration.iscsi_port,
+            'iscsi_ported': self.configuration.flashsystem_iscsi_portid,
+        }
 
     def validate_connector(self, connector):
         """Check connector for enabled protocol."""

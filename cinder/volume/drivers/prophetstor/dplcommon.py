@@ -27,6 +27,7 @@ import random
 import time
 
 from oslo_log import log as logging
+from oslo_service import loopingcall
 from oslo_utils import units
 import six
 from six.moves import http_client
@@ -34,7 +35,6 @@ from six.moves import http_client
 from cinder import exception
 from cinder.i18n import _, _LI, _LW, _LE
 from cinder import objects
-from cinder.openstack.common import loopingcall
 from cinder.volume import driver
 from cinder.volume.drivers.prophetstor import options
 from cinder.volume.drivers.san import san

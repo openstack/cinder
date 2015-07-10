@@ -372,9 +372,48 @@ class RBDTestCase(test.TestCase):
 
         self.driver.delete_snapshot(self.snapshot)
 
-        args = [str(self.snapshot_name)]
-        proxy.remove_snap.assert_called_with(*args)
-        proxy.unprotect_snap.assert_called_with(*args)
+        proxy.remove_snap.assert_called_with(self.snapshot_name)
+        proxy.unprotect_snap.assert_called_with(self.snapshot_name)
+
+    @common_mocks
+    def test_delete_busy_snapshot(self):
+        proxy = self.mock_proxy.return_value
+        proxy.__enter__.return_value = proxy
+
+        proxy.unprotect_snap.side_effect = (
+            self.mock_rbd.ImageBusy)
+
+        with mock.patch.object(self.driver, '_get_children_info') as \
+                mock_get_children_info:
+            mock_get_children_info.return_value = [('pool', 'volume2')]
+
+            with mock.patch.object(driver, 'LOG') as \
+                    mock_log:
+
+                self.assertRaises(exception.SnapshotIsBusy,
+                                  self.driver.delete_snapshot,
+                                  self.snapshot)
+
+                mock_get_children_info.assert_called_once_with(
+                    proxy,
+                    self.snapshot_name)
+
+                self.assertTrue(mock_log.info.called)
+                self.assertTrue(proxy.unprotect_snap.called)
+                self.assertFalse(proxy.remove_snap.called)
+
+    @common_mocks
+    def test_get_children_info(self):
+        volume = self.mock_proxy
+        volume.set_snap = mock.Mock()
+        volume.list_children = mock.Mock()
+        list_children = [('pool', 'volume2')]
+        volume.list_children.return_value = list_children
+
+        info = self.driver._get_children_info(volume,
+                                              self.snapshot_name)
+
+        self.assertEqual(list_children, info)
 
     @common_mocks
     def test_get_clone_info(self):
@@ -730,6 +769,7 @@ class RBDTestCase(test.TestCase):
                 mock_get_mon_addrs:
             mock_get_mon_addrs.return_value = (hosts, ports)
 
+            volume_id = '0a83f0a3-ef6e-47b6-a8aa-20436bc9ed01'
             expected = {
                 'driver_volume_type': 'rbd',
                 'data': {
@@ -740,9 +780,11 @@ class RBDTestCase(test.TestCase):
                     'auth_enabled': False,
                     'auth_username': None,
                     'secret_type': 'ceph',
-                    'secret_uuid': None, }
+                    'secret_uuid': None,
+                    'volume_id': volume_id
+                }
             }
-            volume = dict(name=self.volume_name)
+            volume = dict(name=self.volume_name, id=volume_id)
             actual = self.driver.initialize_connection(volume, None)
             self.assertDictMatch(expected, actual)
             self.assertTrue(mock_get_mon_addrs.called)
@@ -840,7 +882,8 @@ class RBDTestCase(test.TestCase):
         self.assertEqual(1, mock_driver._disconnect_from_rados.call_count)
 
     @common_mocks
-    def test_connect_to_rados(self):
+    @mock.patch('time.sleep')
+    def test_connect_to_rados(self, sleep_mock):
         # Default
         self.cfg.rados_connect_timeout = -1
 
@@ -880,7 +923,8 @@ class RBDTestCase(test.TestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver._connect_to_rados)
         self.assertTrue(self.mock_rados.Rados.return_value.open_ioctx.called)
-        self.mock_rados.Rados.return_value.shutdown.assert_called_once_with()
+        self.assertEqual(
+            3, self.mock_rados.Rados.return_value.shutdown.call_count)
 
 
 class RBDImageIOWrapperTestCase(test.TestCase):
@@ -1116,7 +1160,7 @@ class ManagedRBDTestCase(test_volume.DriverTestCase):
         driver = self.volume.driver
 
         with mock.patch.object(driver, '_is_cloneable', lambda *args: False):
-            image_loc = (mock.Mock(), mock.Mock())
+            image_loc = (mock.Mock(), None)
             actual = driver.clone_image(mock.Mock(),
                                         mock.Mock(),
                                         image_loc,
@@ -1152,3 +1196,68 @@ class ManagedRBDTestCase(test_volume.DriverTestCase):
                     mock_clone.assert_called_once_with(volume,
                                                        'fi', 'fo', 'fum')
                     mock_resize.assert_called_once_with(volume)
+
+    def test_clone_multilocation_success(self):
+        expected = ({'provider_location': None}, True)
+        driver = self.volume.driver
+
+        def cloneable_side_effect(url_location, image_meta):
+            return url_location == 'rbd://fee/fi/fo/fum'
+
+        with mock.patch.object(self.volume.driver, '_is_cloneable') \
+            as mock_is_cloneable, \
+            mock.patch.object(self.volume.driver, '_clone') as mock_clone, \
+            mock.patch.object(self.volume.driver, '_resize') \
+                as mock_resize:
+                mock_is_cloneable.side_effect = cloneable_side_effect
+                image_loc = ('rbd://bee/bi/bo/bum',
+                             [{'url': 'rbd://bee/bi/bo/bum'},
+                              {'url': 'rbd://fee/fi/fo/fum'}])
+                volume = {'name': 'vol1'}
+                image_meta = mock.sentinel.image_meta
+                image_service = mock.sentinel.image_service
+
+                actual = driver.clone_image(self.context,
+                                            volume,
+                                            image_loc,
+                                            image_meta,
+                                            image_service)
+
+                self.assertEqual(expected, actual)
+                self.assertEqual(2, mock_is_cloneable.call_count)
+                mock_clone.assert_called_once_with(volume,
+                                                   'fi', 'fo', 'fum')
+                mock_is_cloneable.assert_called_with('rbd://fee/fi/fo/fum',
+                                                     image_meta)
+                mock_resize.assert_called_once_with(volume)
+
+    def test_clone_multilocation_failure(self):
+        expected = ({}, False)
+        driver = self.volume.driver
+
+        with mock.patch.object(driver, '_is_cloneable', return_value=False) \
+            as mock_is_cloneable, \
+            mock.patch.object(self.volume.driver, '_clone') as mock_clone, \
+            mock.patch.object(self.volume.driver, '_resize') \
+                as mock_resize:
+                image_loc = ('rbd://bee/bi/bo/bum',
+                             [{'url': 'rbd://bee/bi/bo/bum'},
+                              {'url': 'rbd://fee/fi/fo/fum'}])
+
+                volume = {'name': 'vol1'}
+                image_meta = mock.sentinel.image_meta
+                image_service = mock.sentinel.image_service
+                actual = driver.clone_image(self.context,
+                                            volume,
+                                            image_loc,
+                                            image_meta,
+                                            image_service)
+
+                self.assertEqual(expected, actual)
+                self.assertEqual(2, mock_is_cloneable.call_count)
+                mock_is_cloneable.assert_any_call('rbd://bee/bi/bo/bum',
+                                                  image_meta)
+                mock_is_cloneable.assert_any_call('rbd://fee/fi/fo/fum',
+                                                  image_meta)
+                self.assertFalse(mock_clone.called)
+                self.assertFalse(mock_resize.called)

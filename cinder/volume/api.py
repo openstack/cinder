@@ -507,23 +507,12 @@ class API(base.Base):
         if (context.is_admin and 'all_tenants' in search_opts):
             # Need to remove all_tenants to pass the filtering below.
             del search_opts['all_tenants']
-            snapshots = objects.SnapshotList.get_all(context)
+            snapshots = objects.SnapshotList.get_all(context,
+                                                     search_opts)
         else:
             snapshots = objects.SnapshotList.get_all_by_project(
-                context, context.project_id)
+                context, context.project_id, search_opts)
 
-        if search_opts:
-            LOG.debug("Searching by: %s", search_opts)
-
-            results = []
-            not_found = object()
-            for snapshot in snapshots:
-                for opt, value in search_opts.items():
-                    if snapshot.get(opt, not_found) != value:
-                        break
-                else:
-                    results.append(snapshot)
-            snapshots.objects = results
         LOG.info(_LI("Get all snaphsots completed successfully."))
         return snapshots
 
@@ -563,6 +552,10 @@ class API(base.Base):
 
     @wrap_check_policy
     def begin_detaching(self, context, volume):
+        # NOTE(vbala): The volume status might be 'detaching' already due to
+        # a previous begin_detaching call. Get updated volume status so that
+        # we fail such cases.
+        volume = self.db.volume_get(context, volume['id'])
         # If we are in the middle of a volume migration, we don't want the user
         # to see that the volume is 'detaching'. Having 'migration_status' set
         # will have the same effect internally.

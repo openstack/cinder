@@ -1151,12 +1151,13 @@ def finish_volume_migration(context, src_vol_id, dest_vol_id):
             return attr in inst.__class__.__table__.columns
 
         for key, value in dest_volume_ref.iteritems():
-            if key == 'id' or not is_column(dest_volume_ref, key):
+            # The implementation of update_migrated_volume will decide the
+            # values for _name_id and provider_location.
+            if (key in ('id', '_name_id', 'provider_location')
+                    or not is_column(dest_volume_ref, key)):
                 continue
             elif key == 'migration_status':
                 value = None
-            elif key == '_name_id':
-                value = dest_volume_ref['_name_id'] or dest_volume_ref['id']
 
             setattr(src_volume_ref, key, value)
 
@@ -1974,10 +1975,22 @@ def snapshot_get(context, snapshot_id):
 
 
 @require_admin_context
-def snapshot_get_all(context):
-    return model_query(context, models.Snapshot).\
-        options(joinedload('snapshot_metadata')).\
-        all()
+def snapshot_get_all(context, filters=None):
+    # Ensure that the filter value exists on the model
+    if filters:
+        for key in filters.keys():
+            try:
+                getattr(models.Snapshot, key)
+            except AttributeError:
+                LOG.debug("'%s' filter key is not valid.", key)
+                return []
+
+    query = model_query(context, models.Snapshot)
+
+    if filters:
+        query = query.filter_by(**filters)
+
+    return query.options(joinedload('snapshot_metadata')).all()
 
 
 @require_context
@@ -2012,12 +2025,15 @@ def snapshot_get_all_for_cgsnapshot(context, cgsnapshot_id):
 
 
 @require_context
-def snapshot_get_all_by_project(context, project_id):
+def snapshot_get_all_by_project(context, project_id, filters=None):
     authorize_project_context(context, project_id)
-    return model_query(context, models.Snapshot).\
-        filter_by(project_id=project_id).\
-        options(joinedload('snapshot_metadata')).\
-        all()
+    query = model_query(context, models.Snapshot)
+
+    if filters:
+        query = query.filter_by(**filters)
+
+    return query.filter_by(project_id=project_id).\
+        options(joinedload('snapshot_metadata')).all()
 
 
 @require_context
@@ -2079,7 +2095,6 @@ def _snapshot_metadata_get_query(context, snapshot_id, session=None):
 
 
 @require_context
-@require_snapshot_exists
 def _snapshot_metadata_get(context, snapshot_id, session=None):
     rows = _snapshot_metadata_get_query(context, snapshot_id, session).all()
     result = {}
@@ -2931,6 +2946,9 @@ def volume_type_encryption_delete(context, volume_type_id):
     with session.begin():
         encryption = volume_type_encryption_get(context, volume_type_id,
                                                 session)
+        if not encryption:
+            raise exception.VolumeTypeEncryptionNotFound(
+                type_id=volume_type_id)
         encryption.update({'deleted': True,
                            'deleted_at': timeutils.utcnow(),
                            'updated_at': literal_column('updated_at')})

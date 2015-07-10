@@ -505,7 +505,7 @@ class RemoteFSDriver(driver.LocalVD, driver.TransferVD, driver.BaseVD):
 
         data['total_capacity_gb'] = global_capacity / float(units.Gi)
         data['free_capacity_gb'] = global_free / float(units.Gi)
-        data['reserved_percentage'] = 0
+        data['reserved_percentage'] = self.configuration.reserved_percentage
         data['QoS_support'] = False
         self._stats = data
 

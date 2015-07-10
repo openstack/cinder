@@ -321,14 +321,6 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver, driver.CloneableVD,
     @remotefs_drv.locked_volume_id_operation
     def extend_volume(self, volume, size_gb):
         volume_path = self.local_path(volume)
-        volume_filename = os.path.basename(volume_path)
-
-        # Ensure no snapshots exist for the volume
-        active_image = self.get_active_image_from_info(volume)
-        if volume_filename != active_image:
-            msg = _('Extend volume is only supported for this'
-                    ' driver when no snapshots exist.')
-            raise exception.InvalidVolume(msg)
 
         info = self._qemu_img_info(volume_path, volume['name'])
         backing_fmt = info.file_format

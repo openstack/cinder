@@ -43,6 +43,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 import oslo_messaging as messaging
 from oslo_serialization import jsonutils
+from oslo_service import periodic_task
 from oslo_utils import excutils
 from oslo_utils import importutils
 from oslo_utils import timeutils
@@ -59,7 +60,6 @@ from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import glance
 from cinder import manager
 from cinder import objects
-from cinder.openstack.common import periodic_task
 from cinder import quota
 from cinder import utils
 from cinder.volume import configuration as config
@@ -116,7 +116,11 @@ MAPPING = {
     'cinder.volume.drivers.fujitsu_eternus_dx_fc.FJDXFCDriver':
     'cinder.volume.drivers.fujitsu.eternus_dx_fc.FJDXFCDriver',
     'cinder.volume.drivers.fujitsu_eternus_dx_iscsi.FJDXISCSIDriver':
-    'cinder.volume.drivers.fujitsu.eternus_dx_iscsi.FJDXISCSIDriver', }
+    'cinder.volume.drivers.fujitsu.eternus_dx_iscsi.FJDXISCSIDriver',
+    'cinder.volume.drivers.hds.nfs.HDSNFSDriver':
+    'cinder.volume.drivers.hitachi.hnas_nfs.HDSNFSDriver',
+    'cinder.volume.drivers.hds.iscsi.HDSISCSIDriver':
+    'cinder.volume.drivers.hitachi.hnas_iscsi.HDSISCSIDriver'}
 
 
 def locked_volume_operation(f):
@@ -1140,6 +1144,11 @@ class VolumeManager(manager.SchedulerDependentManager):
                                else 'rw')
             conn_info['data']['access_mode'] = access_mode
 
+        # Add encrypted flag to connection_info if not set in the driver.
+        if conn_info['data'].get('encrypted') is None:
+            encrypted = bool(volume.get('encryption_key_id'))
+            conn_info['data']['encrypted'] = encrypted
+
         LOG.info(_LI("Initialize volume connection completed successfully."),
                  resource=volume)
         return conn_info
@@ -1370,11 +1379,11 @@ class VolumeManager(manager.SchedulerDependentManager):
                       {'err': ex}, resource=volume)
 
         # Give driver (new_volume) a chance to update things as needed
+        # after a successful migration.
         # Note this needs to go through rpc to the host of the new volume
-        # the current host and driver object is for the "existing" volume
-        rpcapi.update_migrated_volume(ctxt,
-                                      volume,
-                                      new_volume)
+        # the current host and driver object is for the "existing" volume.
+        rpcapi.update_migrated_volume(ctxt, volume, new_volume,
+                                      orig_volume_status)
         self.db.finish_volume_migration(ctxt, volume_id, new_volume_id)
         self.db.volume_destroy(ctxt, new_volume_id)
         if orig_volume_status == 'in-use':
@@ -1898,7 +1907,6 @@ class VolumeManager(manager.SchedulerDependentManager):
         """Creates the consistency group."""
         context = context.elevated()
         group_ref = self.db.consistencygroup_get(context, group_id)
-        group_ref['host'] = self.host
 
         status = 'available'
         model_update = False
@@ -2576,14 +2584,23 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         return True
 
-    def update_migrated_volume(self, ctxt, volume, new_volume):
+    def update_migrated_volume(self, ctxt, volume, new_volume,
+                               volume_status):
         """Finalize migration process on backend device."""
-
         model_update = None
-        model_update = self.driver.update_migrated_volume(ctxt,
-                                                          volume,
-                                                          new_volume)
+        try:
+            model_update = self.driver.update_migrated_volume(ctxt,
+                                                              volume,
+                                                              new_volume,
+                                                              volume_status)
+        except NotImplementedError:
+            # If update_migrated_volume is not implemented for the driver,
+            # _name_id and provider_location will be set with the values
+            # from new_volume.
+            model_update = {'_name_id': new_volume['_name_id'] or
+                            new_volume['id'],
+                            'provider_location':
+                            new_volume['provider_location']}
         if model_update:
-            self.db.volume_update(ctxt.elevated(),
-                                  volume['id'],
+            self.db.volume_update(ctxt.elevated(), volume['id'],
                                   model_update)

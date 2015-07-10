@@ -27,6 +27,7 @@ from cinder import exception
 from cinder.i18n import _, _LI
 from cinder import utils
 from cinder import volume
+from cinder.volume import utils as volume_utils
 
 
 LOG = logging.getLogger(__name__)
@@ -104,9 +105,8 @@ class SnapshotsController(wsgi.Controller):
         try:
             snapshot = self.volume_api.get_snapshot(context, id)
             req.cache_db_snapshot(snapshot)
-        except exception.NotFound:
-            msg = _("Snapshot could not be found")
-            raise exc.HTTPNotFound(explanation=msg)
+        except exception.SnapshotNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
 
         return {'snapshot': _translate_snapshot_detail_view(context, snapshot)}
 
@@ -119,9 +119,8 @@ class SnapshotsController(wsgi.Controller):
         try:
             snapshot = self.volume_api.get_snapshot(context, id)
             self.volume_api.delete_snapshot(context, snapshot)
-        except exception.NotFound:
-            msg = _("Snapshot could not be found")
-            raise exc.HTTPNotFound(explanation=msg)
+        except exception.SnapshotNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
 
         return webob.Response(status_int=202)
 
@@ -168,10 +167,7 @@ class SnapshotsController(wsgi.Controller):
         kwargs = {}
         context = req.environ['cinder.context']
 
-        if not self.is_valid_body(body, 'snapshot'):
-            msg = (_("Missing required element '%s' in request body") %
-                   'snapshot')
-            raise exc.HTTPBadRequest(explanation=msg)
+        self.assert_valid_body(body, 'snapshot')
 
         snapshot = body['snapshot']
         kwargs['metadata'] = snapshot.get('metadata', None)
@@ -184,9 +180,8 @@ class SnapshotsController(wsgi.Controller):
 
         try:
             volume = self.volume_api.get(context, volume_id)
-        except exception.NotFound:
-            msg = _("Volume could not be found")
-            raise exc.HTTPNotFound(explanation=msg)
+        except exception.VolumeNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
         force = snapshot.get('force', False)
         msg = _LI("Create snapshot from volume %s")
         LOG.info(msg, volume_id, context=context)
@@ -196,11 +191,13 @@ class SnapshotsController(wsgi.Controller):
             snapshot['display_name'] = snapshot.get('name')
             del snapshot['name']
 
-        if not utils.is_valid_boolstr(force):
-            msg = _("Invalid value '%s' for force. ") % force
+        try:
+            force = strutils.bool_from_string(force, strict=True)
+        except ValueError as error:
+            msg = _("Invalid value for 'force': '%s'") % error.message
             raise exception.InvalidParameterValue(err=msg)
 
-        if strutils.bool_from_string(force):
+        if force:
             new_snapshot = self.volume_api.create_snapshot_force(
                 context,
                 volume,
@@ -261,13 +258,16 @@ class SnapshotsController(wsgi.Controller):
 
         try:
             snapshot = self.volume_api.get_snapshot(context, id)
+            volume_utils.notify_about_snapshot_usage(context, snapshot,
+                                                     'update.start')
             self.volume_api.update_snapshot(context, snapshot, update_dict)
-        except exception.NotFound:
-            msg = _("Snapshot could not be found")
-            raise exc.HTTPNotFound(explanation=msg)
+        except exception.SnapshotNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
 
         snapshot.update(update_dict)
         req.cache_db_snapshot(snapshot)
+        volume_utils.notify_about_snapshot_usage(context, snapshot,
+                                                 'update.end')
 
         return {'snapshot': _translate_snapshot_detail_view(context, snapshot)}
 

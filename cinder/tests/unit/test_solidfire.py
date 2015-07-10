@@ -970,3 +970,17 @@ class SolidFireVolumeTestCase(test.TestCase):
                                          'fake',
                                          _fake_image_meta,
                                          'fake'))
+
+    def test_create_template_no_account(self):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+
+        def _fake_issue_api_req(method, params, version=0):
+            if 'GetAccountByName' in method:
+                raise exception.SolidFireAPIException
+            return {'result': {'accountID': 1}}
+
+        with mock.patch.object(sfv,
+                               '_issue_api_request',
+                               side_effect=_fake_issue_api_req):
+            self.assertEqual(1,
+                             sfv._create_template_account('foo'))

@@ -36,7 +36,7 @@ class StorwizeSSH(object):
             return self._ssh(ssh_cmd)
         except processutils.ProcessExecutionError as e:
             msg = (_('CLI Exception output:\n command: %(cmd)s\n '
-                     'stdout: %(out)s\n stderr: %(err)s') %
+                     'stdout: %(out)s\n stderr: %(err)s.') %
                    {'cmd': ssh_cmd,
                     'out': e.stdout,
                     'err': e.stderr})
@@ -54,7 +54,7 @@ class StorwizeSSH(object):
         out, err = self._run_ssh(ssh_cmd)
         if len(out.strip()) != 0:
             msg = (_('Expected no output from CLI command %(cmd)s, '
-                     'got %(out)s') % {'cmd': ' '.join(ssh_cmd), 'out': out})
+                     'got %(out)s.') % {'cmd': ' '.join(ssh_cmd), 'out': out})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
@@ -66,7 +66,7 @@ class StorwizeSSH(object):
             return match_obj.group(1)
         except (AttributeError, IndexError):
             msg = (_('Failed to parse CLI output:\n command: %(cmd)s\n '
-                     'stdout: %(out)s\n stderr: %(err)s') %
+                     'stdout: %(out)s\n stderr: %(err)s.') %
                    {'cmd': ssh_cmd,
                     'out': out,
                     'err': err})
@@ -162,7 +162,7 @@ class StorwizeSSH(object):
             return
         if not err:
             msg = (_('Did not find success message nor error for %(fun)s: '
-                     '%(out)s') % {'out': out, 'fun': ssh_cmd})
+                     '%(out)s.') % {'out': out, 'fun': ssh_cmd})
             raise exception.VolumeBackendAPIException(data=msg)
         if err.startswith('CMMVC6071E'):
             if not multihostmap:
@@ -215,7 +215,7 @@ class StorwizeSSH(object):
         if err.startswith('CMMVC5754E'):
             return None
         msg = (_('CLI Exception output:\n command: %(cmd)s\n '
-                 'stdout: %(out)s\n stderr: %(err)s') %
+                 'stdout: %(out)s\n stderr: %(err)s.') %
                {'cmd': ssh_cmd,
                 'out': out,
                 'err': err})
@@ -254,7 +254,7 @@ class StorwizeSSH(object):
         out, err = self._ssh(ssh_cmd, check_exit_code=False)
         if 'successfully created' not in out:
             msg = (_('CLI Exception output:\n command: %(cmd)s\n '
-                     'stdout: %(out)s\n stderr: %(err)s') %
+                     'stdout: %(out)s\n stderr: %(err)s.') %
                    {'cmd': ssh_cmd,
                     'out': out,
                     'err': err})
@@ -266,7 +266,7 @@ class StorwizeSSH(object):
             fc_map_id = match_obj.group(1)
         except (AttributeError, IndexError):
             msg = (_('Failed to parse CLI output:\n command: %(cmd)s\n '
-                     'stdout: %(out)s\n stderr: %(err)s') %
+                     'stdout: %(out)s\n stderr: %(err)s.') %
                    {'cmd': ssh_cmd,
                     'out': out,
                     'err': err})
@@ -395,8 +395,9 @@ class CLIResponse(object):
         try:
             return self.result[key]
         except KeyError:
-            msg = (_('Did not find expected key %(key)s in %(fun)s: %(raw)s') %
-                   {'key': key, 'fun': self.ssh_cmd, 'raw': self.raw})
+            msg = (_('Did not find the expected key %(key)s in %(fun)s: '
+                     '%(raw)s.') % {'key': key, 'fun': self.ssh_cmd,
+                                    'raw': self.raw})
             raise exception.VolumeBackendAPIException(data=msg)
 
     def __iter__(self):
@@ -431,7 +432,7 @@ class CLIResponse(object):
                 cur = dict()
                 if len(hds) != len(row):
                     msg = (_('Unexpected CLI response: header/row mismatch. '
-                             'header: %(header)s, row: %(row)s')
+                             'header: %(header)s, row: %(row)s.')
                            % {'header': hds,
                               'row': row})
                     raise exception.VolumeBackendAPIException(data=msg)
