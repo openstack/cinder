@@ -399,9 +399,12 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
                         volume['id']))
                     dst_path = os.path.join(
                         self._get_export_path(volume['id']), volume['name'])
+                    # Always run copy offload as regular user, it's sufficient
+                    # and rootwrap doesn't allow copy offload to run as root
+                    # anyways.
                     self._execute(col_path, src_ip, dst_ip,
                                   src_path, dst_path,
-                                  run_as_root=self._execute_as_root,
+                                  run_as_root=False,
                                   check_exit_code=0)
                     self._register_image_in_cache(volume, image_id)
                     LOG.debug("Copied image from cache to volume %s using"
@@ -431,13 +434,22 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
         """Copies from the image service using copy offload."""
         LOG.debug("Trying copy from image service using copy offload.")
         image_loc = image_service.get_location(context, image_id)
-        image_loc = self._construct_image_nfs_url(image_loc)
-        conn, dr = self._check_get_nfs_path_segs(image_loc)
-        if conn:
-            src_ip = self._get_ip_verify_on_cluster(conn.split(':')[0])
-        else:
+        locations = self._construct_image_nfs_url(image_loc)
+        src_ip = None
+        selected_loc = None
+        # this will match the first location that has a valid IP on cluster
+        for location in locations:
+            conn, dr = self._check_get_nfs_path_segs(location)
+            if conn:
+                try:
+                    src_ip = self._get_ip_verify_on_cluster(conn.split(':')[0])
+                    selected_loc = location
+                    break
+                except Exception.NotFound:
+                    pass
+        if src_ip is None:
             raise exception.NotFound(_("Source host details not found."))
-        (__, ___, img_file) = image_loc.rpartition('/')
+        (__, ___, img_file) = selected_loc.rpartition('/')
         src_path = os.path.join(dr, img_file)
         dst_ip = self._get_ip_verify_on_cluster(self._get_host_ip(
             volume['id']))
@@ -457,8 +469,11 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
                     ('%s:%s' % (dst_ip, self._get_export_path(volume['id'])))):
                 dst_img_serv_path = os.path.join(
                     self._get_export_path(volume['id']), tmp_img_file)
+                # Always run copy offload as regular user, it's sufficient
+                # and rootwrap doesn't allow copy offload to run as root
+                # anyways.
                 self._execute(col_path, src_ip, dst_ip, src_path,
-                              dst_img_serv_path, run_as_root=run_as_root,
+                              dst_img_serv_path, run_as_root=False,
                               check_exit_code=0)
             else:
                 self._clone_file_dst_exists(dst_share, img_file, tmp_img_file)
