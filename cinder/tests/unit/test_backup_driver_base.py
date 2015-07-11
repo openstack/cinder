@@ -14,7 +14,6 @@
 #    under the License.
 """ Tests for the backup service base driver. """
 
-import base64
 import uuid
 
 import mock
@@ -74,20 +73,13 @@ class BackupBaseDriverTestCase(test.TestCase):
         self.driver.put_metadata(self.volume_id, json_metadata)
 
     def test_export_record(self):
-        export_string = self.driver.export_record(self.backup)
-        export_dict = jsonutils.loads(base64.decodestring(export_string))
-        # Make sure we don't lose data when converting to string
-        for key in _backup_db_fields:
-            self.assertTrue(key in export_dict)
-            self.assertEqual(export_dict[key], self.backup[key])
+        export_record = self.driver.export_record(self.backup)
+        self.assertDictEqual({}, export_record)
 
     def test_import_record(self):
-        export_string = self.driver.export_record(self.backup)
-        imported_backup = self.driver.import_record(export_string)
-        # Make sure we don't lose data when converting from string
-        for key in _backup_db_fields:
-            self.assertTrue(key in imported_backup)
-            self.assertEqual(self.backup[key], imported_backup[key])
+        export_record = {'key1': 'value1'}
+        self.assertIsNone(self.driver.import_record(self.backup,
+                                                    export_record))
 
 
 class BackupMetadataAPITestCase(test.TestCase):
