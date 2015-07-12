@@ -19,7 +19,6 @@
 Handles all requests relating to the volume backups service.
 """
 
-
 from eventlet import greenthread
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -370,6 +369,68 @@ class API(base.Base):
 
         return export_data
 
+    def _get_import_backup(self, context, backup_url):
+        """Prepare database backup record for import.
+
+        This method decodes provided backup_url and expects to find the id of
+        the backup in there.
+
+        Then checks the DB for the presence of this backup record and if it
+        finds it and is not deleted it will raise an exception because the
+        record cannot be created or used.
+
+        If the record is in deleted status then we must be trying to recover
+        this record, so we'll reuse it.
+
+        If the record doesn't already exist we create it with provided id.
+
+        :param context: running context
+        :param backup_url: backup description to be used by the backup driver
+        :return: BackupImport object
+        :raises: InvalidBackup
+        :raises: InvalidInput
+        """
+        # Deserialize string backup record into a dictionary
+        backup_record = objects.Backup.decode_record(backup_url)
+
+        # ID is a required field since it's what links incremental backups
+        if 'id' not in backup_record:
+            msg = _('Provided backup record is missing an id')
+            raise exception.InvalidInput(reason=msg)
+
+        kwargs = {
+            'user_id': context.user_id,
+            'project_id': context.project_id,
+            'volume_id': '0000-0000-0000-0000',
+            'status': 'creating',
+        }
+
+        try:
+            # Try to get the backup with that ID in all projects even among
+            # deleted entries.
+            backup = objects.BackupImport.get_by_id(context,
+                                                    backup_record['id'],
+                                                    read_deleted='yes',
+                                                    project_only=False)
+
+            # If record exists and it's not deleted we cannot proceed with the
+            # import
+            if backup.status != 'deleted':
+                msg = _('Backup already exists in database.')
+                raise exception.InvalidBackup(reason=msg)
+
+            # Otherwise we'll "revive" delete backup record
+            backup.update(kwargs)
+            backup.save()
+
+        except exception.BackupNotFound:
+            # If record doesn't exist create it with the specific ID
+            backup = objects.BackupImport(context=context,
+                                          id=backup_record['id'], **kwargs)
+            backup.create()
+
+        return backup
+
     def import_record(self, context, backup_service, backup_url):
         """Make the RPC call to import a volume backup.
 
@@ -378,6 +439,7 @@ class API(base.Base):
         :param backup_url: backup description to be used by the backup driver
         :raises: InvalidBackup
         :raises: ServiceNotFound
+        :raises: InvalidInput
         """
         check_policy(context, 'backup-import')
 
@@ -391,14 +453,9 @@ class API(base.Base):
         if len(hosts) == 0:
             raise exception.ServiceNotFound(service_id=backup_service)
 
-        kwargs = {
-            'user_id': context.user_id,
-            'project_id': context.project_id,
-            'volume_id': '0000-0000-0000-0000',
-            'status': 'creating',
-        }
-        backup = objects.Backup(context=context, **kwargs)
-        backup.create()
+        # Get Backup object that will be used to import this backup record
+        backup = self._get_import_backup(context, backup_url)
+
         first_host = hosts.pop()
         self.backup_rpcapi.import_record(context,
                                          first_host,

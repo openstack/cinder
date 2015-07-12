@@ -16,6 +16,7 @@
 
 import ddt
 import tempfile
+import uuid
 
 import mock
 from oslo_config import cfg
@@ -141,12 +142,15 @@ class BaseBackupTest(test.TestCase):
         db.volume_attached(self.ctxt, attachment['id'], None, 'testhost',
                            '/dev/vd0')
 
-    def _create_exported_record_entry(self, vol_size=1):
+    def _create_exported_record_entry(self, vol_size=1, exported_id=None):
         """Create backup metadata export entry."""
         vol_id = self._create_volume_db_entry(status='available',
                                               size=vol_size)
         backup = self._create_backup_db_entry(status='available',
                                               volume_id=vol_id)
+
+        if exported_id is not None:
+            backup.id = exported_id
 
         export = self.backup_mgr.export_record(self.ctxt, backup)
         return export
@@ -154,7 +158,8 @@ class BaseBackupTest(test.TestCase):
     def _create_export_record_db_entry(self,
                                        volume_id='0000',
                                        status='creating',
-                                       project_id='fake'):
+                                       project_id='fake',
+                                       backup_id=None):
         """Create a backup entry in the DB.
 
         Return the entry ID
@@ -164,7 +169,9 @@ class BaseBackupTest(test.TestCase):
         kwargs['user_id'] = 'fake'
         kwargs['project_id'] = project_id
         kwargs['status'] = status
-        backup = objects.Backup(context=self.ctxt, **kwargs)
+        if backup_id:
+            kwargs['id'] = backup_id
+        backup = objects.BackupImport(context=self.ctxt, **kwargs)
         backup.create()
         return backup
 
@@ -682,8 +689,11 @@ class BackupTestCase(BaseBackupTest):
         driver does not support verify.
         """
         vol_size = 1
-        export = self._create_exported_record_entry(vol_size=vol_size)
-        imported_record = self._create_export_record_db_entry()
+        backup_id = uuid.uuid4()
+        export = self._create_exported_record_entry(vol_size=vol_size,
+                                                    exported_id=backup_id)
+        imported_record = self._create_export_record_db_entry(
+            backup_id=backup_id)
         backup_hosts = []
         self.backup_mgr.import_record(self.ctxt,
                                       imported_record,
@@ -693,6 +703,24 @@ class BackupTestCase(BaseBackupTest):
         backup = db.backup_get(self.ctxt, imported_record.id)
         self.assertEqual('available', backup['status'])
         self.assertEqual(vol_size, backup['size'])
+
+    def test_import_record_with_wrong_id(self):
+        """Test normal backup record import.
+
+        Test the case when import succeeds for the case that the
+        driver does not support verify.
+        """
+        vol_size = 1
+        export = self._create_exported_record_entry(vol_size=vol_size)
+        imported_record = self._create_export_record_db_entry()
+        backup_hosts = []
+        self.assertRaises(exception.InvalidBackup,
+                          self.backup_mgr.import_record,
+                          self.ctxt,
+                          imported_record,
+                          export['backup_service'],
+                          export['backup_url'],
+                          backup_hosts)
 
     def test_import_record_with_bad_service(self):
         """Test error handling.
@@ -808,8 +836,11 @@ class BackupTestCaseWithVerify(BaseBackupTest):
         driver implements verify.
         """
         vol_size = 1
-        export = self._create_exported_record_entry(vol_size=vol_size)
-        imported_record = self._create_export_record_db_entry()
+        backup_id = uuid.uuid4()
+        export = self._create_exported_record_entry(
+            vol_size=vol_size, exported_id=backup_id)
+        imported_record = self._create_export_record_db_entry(
+            backup_id=backup_id)
         backup_hosts = []
         backup_driver = self.backup_mgr.service.get_backup_driver(self.ctxt)
         _mock_backup_verify_class = ('%s.%s.%s' %
@@ -833,8 +864,11 @@ class BackupTestCaseWithVerify(BaseBackupTest):
         record where the backup driver returns an exception.
         """
         vol_size = 1
-        export = self._create_exported_record_entry(vol_size=vol_size)
-        imported_record = self._create_export_record_db_entry()
+        backup_id = uuid.uuid4()
+        export = self._create_exported_record_entry(
+            vol_size=vol_size, exported_id=backup_id)
+        imported_record = self._create_export_record_db_entry(
+            backup_id=backup_id)
         backup_hosts = []
         backup_driver = self.backup_mgr.service.get_backup_driver(self.ctxt)
         _mock_backup_verify_class = ('%s.%s.%s' %

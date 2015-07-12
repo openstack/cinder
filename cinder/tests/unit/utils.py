@@ -14,9 +14,11 @@
 #
 
 import socket
+import uuid
 
 from oslo_service import loopingcall
 from oslo_utils import timeutils
+import oslo_versionedobjects
 
 from cinder import context
 from cinder import db
@@ -184,3 +186,24 @@ class ZeroIntervalLoopingCall(loopingcall.FixedIntervalLoopingCall):
     def start(self, interval, **kwargs):
         kwargs['initial_delay'] = 0
         return super(ZeroIntervalLoopingCall, self).start(0, **kwargs)
+
+
+def replace_obj_loader(testcase, obj):
+    def fake_obj_load_attr(self, name):
+        # This will raise KeyError for non existing fields as expected
+        field = self.fields[name]
+
+        if field.default != oslo_versionedobjects.fields.UnspecifiedDefault:
+            value = field.default
+        elif field.nullable:
+            value = None
+        elif isinstance(field, oslo_versionedobjects.fields.StringField):
+            value = ''
+        elif isinstance(field, oslo_versionedobjects.fields.IntegerField):
+            value = 1
+        elif isinstance(field, oslo_versionedobjects.fields.UUIDField):
+            value = uuid.uuid4()
+        setattr(self, name, value)
+
+    testcase.addCleanup(setattr, obj, 'obj_load_attr', obj.obj_load_attr)
+    obj.obj_load_attr = fake_obj_load_attr
