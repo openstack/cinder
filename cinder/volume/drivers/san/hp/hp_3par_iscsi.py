@@ -87,10 +87,11 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         2.0.15 - Added support for updated detach_volume attachment.
         2.0.16 - Added encrypted property to initialize_connection #1439917
         2.0.17 - Python 3 fixes
+        2.0.18 - Improved VLUN creation and deletion logic. #1469816
 
     """
 
-    VERSION = "2.0.17"
+    VERSION = "2.0.18"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -290,6 +291,7 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
                 connector)
 
             least_used_nsp = None
+            existing_vlun = None
             try:
                 vol_name = common._get_3par_vol_name(volume['id'])
                 existing_vlun = common.client.getVLUN(vol_name)
@@ -309,8 +311,12 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
                     common,
                     host['name'])
 
-            # now that we have a host, create the VLUN
-            vlun = common.create_vlun(volume, host, least_used_nsp)
+            vlun = None
+            if not existing_vlun or host['name'] != existing_vlun['hostname']:
+                # now that we have a host, create the VLUN
+                vlun = common.create_vlun(volume, host, least_used_nsp)
+            else:
+                vlun = existing_vlun
 
             if least_used_nsp is None:
                 LOG.warning(_LW("Least busy iSCSI port not found, "

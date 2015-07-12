@@ -78,10 +78,11 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         2.0.14 - Removed usage of host name cache #1398914
         2.0.15 - Added support for updated detach_volume attachment.
         2.0.16 - Added encrypted property to initialize_connection #1439917
+        2.0.17 - Improved VLUN creation and deletion logic. #1469816
 
     """
 
-    VERSION = "2.0.16"
+    VERSION = "2.0.17"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARFCDriver, self).__init__(*args, **kwargs)
@@ -228,17 +229,30 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
             target_wwns, init_targ_map, numPaths = \
                 self._build_initiator_target_map(common, connector)
 
-            # now that we have a host, create the VLUN
-            if self.lookup_service is not None and numPaths == 1:
-                nsp = None
-                active_fc_port_list = common.get_active_fc_target_ports()
-                for port in active_fc_port_list:
-                    if port['portWWN'].lower() == target_wwns[0].lower():
-                        nsp = port['nsp']
-                        break
-                vlun = common.create_vlun(volume, host, nsp)
+            # check if a VLUN already exists for this host
+            existing_vlun = None
+            try:
+                vol_name = common._get_3par_vol_name(volume['id'])
+                existing_vlun = common.client.getVLUN(vol_name)
+            except hpexceptions.HTTPNotFound:
+                # ignore, vlun will be created later
+                pass
+
+            vlun = None
+            if not existing_vlun or host['name'] != existing_vlun['hostname']:
+                # now that we have a host, create the VLUN
+                if self.lookup_service is not None and numPaths == 1:
+                    nsp = None
+                    active_fc_port_list = common.get_active_fc_target_ports()
+                    for port in active_fc_port_list:
+                        if port['portWWN'].lower() == target_wwns[0].lower():
+                            nsp = port['nsp']
+                            break
+                    vlun = common.create_vlun(volume, host, nsp)
+                else:
+                    vlun = common.create_vlun(volume, host)
             else:
-                vlun = common.create_vlun(volume, host)
+                vlun = existing_vlun
 
             info = {'driver_volume_type': 'fibre_channel',
                     'data': {'target_lun': vlun['lun'],
