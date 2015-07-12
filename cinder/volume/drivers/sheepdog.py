@@ -245,7 +245,7 @@ class SheepdogDriver(driver.VolumeDriver):
             backend_name = self.configuration.safe_get('volume_backend_name')
         stats["volume_backend_name"] = backend_name or 'sheepdog'
         stats['vendor_name'] = 'Open Source'
-        stats['dirver_version'] = self.VERSION
+        stats['driver_version'] = self.VERSION
         stats['storage_protocol'] = 'sheepdog'
         stats['total_capacity_gb'] = 'unknown'
         stats['free_capacity_gb'] = 'unknown'
