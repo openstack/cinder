@@ -39,6 +39,7 @@ import time
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_log import versionutils
 from oslo_service import loopingcall
 from oslo_utils import excutils
 from oslo_utils import units
@@ -102,12 +103,15 @@ storwize_svc_opts = [
     cfg.BoolOpt('storwize_svc_multihostmap_enabled',
                 default=True,
                 help='Allows vdisk to multi host mapping'),
+    # TODO(xqli): storwize_svc_npiv_compatibility_mode should always be set
+    # to True. It will be deprecated and removed in M release.
     cfg.BoolOpt('storwize_svc_npiv_compatibility_mode',
-                default=False,
+                default=True,
                 help='Indicate whether svc driver is compatible for NPIV '
                      'setup. If it is compatible, it will allow no wwpns '
                      'being returned on get_conn_fc_wwpns during '
-                     'initialize_connection'),
+                     'initialize_connection. It should always be set to '
+                     'True. It will be deprecated and removed in M release.'),
     cfg.BoolOpt('storwize_svc_allow_tenant_qos',
                 default=False,
                 help='Allow tenants to specify QOS on create'),
@@ -167,6 +171,15 @@ class StorwizeSVCDriver(san.SanDriver):
     def do_setup(self, ctxt):
         """Check that we have all configuration details from the storage."""
         LOG.debug('enter: do_setup')
+
+        # storwize_svc_npiv_compatibility_mode should always be set to True.
+        # It will be deprecated and removed in M release. If the options is
+        # set to False, we'll warn the operator.
+        msg = _LW("The option storwize_svc_npiv_compatibility_mode will be "
+                  "deprecated and not used. It will be removed in the "
+                  "M release.")
+        if not self.configuration.storwize_svc_npiv_compatibility_mode:
+            versionutils.report_deprecated_feature(LOG, msg)
 
         # Get storage system name, id, and code level
         self._state.update(self._helpers.get_system_info())
@@ -445,6 +458,8 @@ class StorwizeSVCDriver(san.SanDriver):
                 # ports, depending on the value of the
                 # storwize_svc_npiv_compatibity_mode flag.
                 if len(conn_wwpns) == 0:
+                    # TODO(xqli): Remove storwize_svc_npiv_compatibility_mode
+                    # in M release.
                     npiv_compat = self.configuration.\
                         storwize_svc_npiv_compatibility_mode
                     if not npiv_compat:
