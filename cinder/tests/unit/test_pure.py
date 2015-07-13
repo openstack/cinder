@@ -1314,7 +1314,7 @@ class PureFCDriverTestCase(PureDriverTestCase):
         # Branch where host already exists
         mock_host.return_value = PURE_HOST
         self.array.connect_host.return_value = {"vol": vol_name, "lun": 1}
-        real_result = self.driver._connect(VOLUME, FC_CONNECTOR, None)
+        real_result = self.driver._connect(VOLUME, FC_CONNECTOR)
         self.assertEqual(result, real_result)
         mock_host.assert_called_with(self.driver, FC_CONNECTOR)
         self.assertFalse(mock_generate.called)
@@ -1324,7 +1324,7 @@ class PureFCDriverTestCase(PureDriverTestCase):
         # Branch where new host is created
         mock_host.return_value = None
         mock_generate.return_value = PURE_HOST_NAME
-        real_result = self.driver._connect(VOLUME, FC_CONNECTOR, None)
+        real_result = self.driver._connect(VOLUME, FC_CONNECTOR)
         mock_host.assert_called_with(self.driver, FC_CONNECTOR)
         mock_generate.assert_called_with(HOSTNAME)
         self.array.create_host.assert_called_with(PURE_HOST_NAME,
@@ -1336,7 +1336,7 @@ class PureFCDriverTestCase(PureDriverTestCase):
         self.assert_error_propagates(
             [mock_host, mock_generate, self.array.connect_host,
              self.array.create_host],
-            self.driver._connect, VOLUME, FC_CONNECTOR, None)
+            self.driver._connect, VOLUME, FC_CONNECTOR)
 
     @mock.patch(FC_DRIVER_OBJ + "._get_host", autospec=True)
     def test_connect_already_connected(self, mock_host):
@@ -1349,7 +1349,7 @@ class PureFCDriverTestCase(PureDriverTestCase):
                 code=400,
                 text="Connection already exists"
             )
-        actual = self.driver._connect(VOLUME, FC_CONNECTOR, None)
+        actual = self.driver._connect(VOLUME, FC_CONNECTOR)
         self.assertEqual(expected, actual)
         self.assertTrue(self.array.connect_host.called)
         self.assertTrue(self.array.list_volume_private_connections)
@@ -1364,7 +1364,7 @@ class PureFCDriverTestCase(PureDriverTestCase):
                 text="Connection already exists"
             )
         self.assertRaises(exception.PureDriverException, self.driver._connect,
-                          VOLUME, FC_CONNECTOR, None)
+                          VOLUME, FC_CONNECTOR)
         self.assertTrue(self.array.connect_host.called)
         self.assertTrue(self.array.list_volume_private_connections)
 
@@ -1379,6 +1379,6 @@ class PureFCDriverTestCase(PureDriverTestCase):
                 text="Connection already exists"
             )
         self.assertRaises(self.purestorage_module.PureHTTPError,
-                          self.driver._connect, VOLUME, FC_CONNECTOR, None)
+                          self.driver._connect, VOLUME, FC_CONNECTOR)
         self.assertTrue(self.array.connect_host.called)
         self.assertTrue(self.array.list_volume_private_connections)
