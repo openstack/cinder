@@ -5311,6 +5311,163 @@ class VolumeTestCase(BaseVolumeTestCase):
                           volume_type=fake_type,
                           consistencygroup=cg)
 
+    @mock.patch.object(fake_driver.FakeISCSIDriver, 'get_volume_stats')
+    @mock.patch.object(driver.BaseVD, '_init_vendor_properties')
+    def test_get_capabilities(self, mock_init_vendor, mock_get_volume_stats):
+        stats = {
+            'volume_backend_name': 'lvm',
+            'vendor_name': 'Open Source',
+            'storage_protocol': 'iSCSI',
+            'vendor_prefix': 'abcd'
+        }
+        expected = stats.copy()
+        expected['properties'] = {
+            'compression': {
+                'title': 'Compression',
+                'description': 'Enables compression.',
+                'type': 'boolean'},
+            'qos': {
+                'title': 'QoS',
+                'description': 'Enables QoS.',
+                'type': 'boolean'},
+            'replication': {
+                'title': 'Replication',
+                'description': 'Enables replication.',
+                'type': 'boolean'},
+            'thin_provisioning': {
+                'title': 'Thin Provisioning',
+                'description': 'Sets thin provisioning.',
+                'type': 'boolean'},
+        }
+
+        # Test to get updated capabilities
+        discover = True
+        mock_get_volume_stats.return_value = stats
+        mock_init_vendor.return_value = ({}, None)
+        capabilities = self.volume.get_capabilities(self.context,
+                                                    discover)
+        self.assertEqual(expected, capabilities)
+        mock_get_volume_stats.assert_called_once_with(True)
+
+        # Test to get existing original capabilities
+        mock_get_volume_stats.reset_mock()
+        discover = False
+        capabilities = self.volume.get_capabilities(self.context,
+                                                    discover)
+        self.assertEqual(expected, capabilities)
+        self.assertFalse(mock_get_volume_stats.called)
+
+        # Normal test case to get vendor unique capabilities
+        def init_vendor_properties(self):
+            properties = {}
+            self._set_property(
+                properties,
+                "abcd:minIOPS",
+                "Minimum IOPS QoS",
+                "Sets minimum IOPS if QoS is enabled.",
+                "integer",
+                minimum=10,
+                default=100)
+            return properties, 'abcd'
+
+        expected['properties'].update(
+            {'abcd:minIOPS': {
+                'title': 'Minimum IOPS QoS',
+                'description': 'Sets minimum IOPS if QoS is enabled.',
+                'type': 'integer',
+                'minimum': 10,
+                'default': 100}})
+
+        mock_get_volume_stats.reset_mock()
+        mock_init_vendor.reset_mock()
+        discover = True
+        mock_init_vendor.return_value = (
+            init_vendor_properties(self.volume.driver))
+        capabilities = self.volume.get_capabilities(self.context,
+                                                    discover)
+        self.assertEqual(expected, capabilities)
+        self.assertTrue(mock_get_volume_stats.called)
+
+    @mock.patch.object(fake_driver.FakeISCSIDriver, 'get_volume_stats')
+    @mock.patch.object(driver.BaseVD, '_init_vendor_properties')
+    @mock.patch.object(driver.BaseVD, '_init_standard_capabilities')
+    def test_get_capabilities_prefix_error(self, mock_init_standard,
+                                           mock_init_vendor,
+                                           mock_get_volume_stats):
+
+        # Error test case: propety does not match vendor prefix
+        def init_vendor_properties(self):
+            properties = {}
+            self._set_property(
+                properties,
+                "aaa:minIOPS",
+                "Minimum IOPS QoS",
+                "Sets minimum IOPS if QoS is enabled.",
+                "integer")
+            self._set_property(
+                properties,
+                "abcd:compression_type",
+                "Compression type",
+                "Specifies compression type.",
+                "string")
+
+            return properties, 'abcd'
+
+        expected = {
+            'abcd:compression_type': {
+                'title': 'Compression type',
+                'description': 'Specifies compression type.',
+                'type': 'string'}}
+
+        discover = True
+        mock_get_volume_stats.return_value = {}
+        mock_init_standard.return_value = {}
+        mock_init_vendor.return_value = (
+            init_vendor_properties(self.volume.driver))
+        capabilities = self.volume.get_capabilities(self.context,
+                                                    discover)
+        self.assertEqual(expected, capabilities['properties'])
+
+    @mock.patch.object(fake_driver.FakeISCSIDriver, 'get_volume_stats')
+    @mock.patch.object(driver.BaseVD, '_init_vendor_properties')
+    @mock.patch.object(driver.BaseVD, '_init_standard_capabilities')
+    def test_get_capabilities_fail_override(self, mock_init_standard,
+                                            mock_init_vendor,
+                                            mock_get_volume_stats):
+
+        # Error test case: propety cannot override any standard capabilities
+        def init_vendor_properties(self):
+            properties = {}
+            self._set_property(
+                properties,
+                "qos",
+                "Minimum IOPS QoS",
+                "Sets minimum IOPS if QoS is enabled.",
+                "integer")
+            self._set_property(
+                properties,
+                "ab::cd:compression_type",
+                "Compression type",
+                "Specifies compression type.",
+                "string")
+
+            return properties, 'ab::cd'
+
+        expected = {
+            'ab__cd:compression_type': {
+                'title': 'Compression type',
+                'description': 'Specifies compression type.',
+                'type': 'string'}}
+
+        discover = True
+        mock_get_volume_stats.return_value = {}
+        mock_init_standard.return_value = {}
+        mock_init_vendor.return_value = (
+            init_vendor_properties(self.volume.driver))
+        capabilities = self.volume.get_capabilities(self.context,
+                                                    discover)
+        self.assertEqual(expected, capabilities['properties'])
+
 
 class CopyVolumeToImageTestCase(BaseVolumeTestCase):
     def fake_local_path(self, volume):
