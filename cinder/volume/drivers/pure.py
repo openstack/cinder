@@ -793,7 +793,7 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
     def initialize_connection(self, volume, connector, initiator_data=None):
         """Allow connection to connector and return connection info."""
 
-        connection = self._connect(volume, connector, initiator_data)
+        connection = self._connect(volume, connector)
         target_wwns = self._get_array_wwns()
         init_targ_map = self._build_initiator_target_map(target_wwns,
                                                          connector)
@@ -811,7 +811,7 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
         return properties
 
     @utils.synchronized('PureFCDriver._connect', external=True)
-    def _connect(self, volume, connector, initiator_data):
+    def _connect(self, volume, connector):
         """Connect the host and volume; return dict describing connection."""
         wwns = connector["wwpns"]
 
