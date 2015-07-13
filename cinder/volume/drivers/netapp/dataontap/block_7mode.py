@@ -25,9 +25,11 @@ Volume driver library for NetApp 7-mode block storage systems.
 from oslo_log import log as logging
 from oslo_utils import timeutils
 from oslo_utils import units
+import six
 
 from cinder import exception
 from cinder.i18n import _, _LW
+from cinder import utils
 from cinder.volume import configuration
 from cinder.volume.drivers.netapp.dataontap import block_base
 from cinder.volume.drivers.netapp.dataontap.client import client_7mode
@@ -38,8 +40,8 @@ from cinder.volume.drivers.netapp import utils as na_utils
 LOG = logging.getLogger(__name__)
 
 
-class NetAppBlockStorage7modeLibrary(block_base.
-                                     NetAppBlockStorageLibrary):
+@six.add_metaclass(utils.TraceWrapperMetaclass)
+class NetAppBlockStorage7modeLibrary(block_base.NetAppBlockStorageLibrary):
     """NetApp block storage library for Data ONTAP (7-mode)."""
 
     def __init__(self, driver_name, driver_protocol, **kwargs):

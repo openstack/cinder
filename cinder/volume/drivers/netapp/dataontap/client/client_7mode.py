@@ -23,6 +23,7 @@ import six
 
 from cinder import exception
 from cinder.i18n import _, _LW
+from cinder import utils
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_base
 
@@ -30,6 +31,7 @@ from cinder.volume.drivers.netapp.dataontap.client import client_base
 LOG = logging.getLogger(__name__)
 
 
+@six.add_metaclass(utils.TraceWrapperMetaclass)
 class Client(client_base.Client):
 
     def __init__(self, volume_list=None, **kwargs):

@@ -2,6 +2,7 @@
 # Copyright (c) 2014 Navneet Singh.  All rights reserved.
 # Copyright (c) 2014 Glenn Gobeli.  All rights reserved.
 # Copyright (c) 2014 Clinton Knight.  All rights reserved.
+# Copyright (c) 2015 Alex Meade.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -29,6 +30,7 @@ from six.moves import urllib
 
 from cinder import exception
 from cinder.i18n import _
+from cinder import utils
 
 LOG = logging.getLogger(__name__)
 
@@ -195,9 +197,17 @@ class NaServer(object):
 
     def invoke_elem(self, na_element, enable_tunneling=False):
         """Invoke the API on the server."""
+        return self.send_http_request(na_element, enable_tunneling)
+
+    @utils.trace_api
+    def send_http_request(self, na_element, enable_tunneling=False):
+        """Invoke the API on the server."""
         if na_element and not isinstance(na_element, NaElement):
             ValueError('NaElement must be supplied to invoke API')
-        request = self._create_request(na_element, enable_tunneling)
+
+        request, request_element = self._create_request(na_element,
+                                                        enable_tunneling)
+
         if not hasattr(self, '_opener') or not self._opener \
                 or self._refresh_conn:
             self._build_opener()
@@ -210,8 +220,11 @@ class NaServer(object):
             raise NaApiError(e.code, e.msg)
         except Exception as e:
             raise NaApiError('Unexpected error', e)
-        xml = response.read()
-        return self._get_result(xml)
+
+        response_xml = response.read()
+        response_element = self._get_result(response_xml)
+
+        return response_element
 
     def invoke_successfully(self, na_element, enable_tunneling=False):
         """Invokes API and checks execution status as success.
@@ -248,7 +261,7 @@ class NaServer(object):
         request = urllib.request.Request(
             self._get_url(), data=request_d,
             headers={'Content-Type': 'text/xml', 'charset': 'utf-8'})
-        return request
+        return request, netapp_elem
 
     def _enable_tunnel_request(self, netapp_elem):
         """Enables vserver or vfiler tunneling."""
@@ -415,6 +428,12 @@ class NaElement(object):
         """Prints the element to string."""
         return etree.tostring(self._element, method=method, encoding=encoding,
                               pretty_print=pretty)
+
+    def __str__(self):
+        return self.to_string(pretty=True)
+
+    def __repr__(self):
+        return str(self)
 
     def __getitem__(self, key):
         """Dict getter method for NaElement.
