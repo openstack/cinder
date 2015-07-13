@@ -58,6 +58,8 @@ CHAP_SECRET_KEY = "PURE_TARGET_CHAP_SECRET"
 ERR_MSG_NOT_EXIST = "does not exist"
 ERR_MSG_PENDING_ERADICATION = "has been destroyed"
 
+CONNECT_LOCK_NAME = 'PureVolumeDriver_connect'
+
 
 def _get_vol_name(volume):
     """Return the name of the volume Purity will use."""
@@ -329,7 +331,7 @@ class PureISCSIDriver(san.SanISCSIDriver):
             }
         return username, password, initiator_updates
 
-    @utils.synchronized('PureISCSIDriver._connect', external=True)
+    @utils.synchronized(CONNECT_LOCK_NAME, external=True)
     def _connect(self, volume, connector, initiator_data):
         """Connect the host and volume; return dict describing connection."""
         connection = None
@@ -414,6 +416,7 @@ class PureISCSIDriver(san.SanISCSIDriver):
                 return host
         return None
 
+    @utils.synchronized(CONNECT_LOCK_NAME, external=True)
     def terminate_connection(self, volume, connector, **kwargs):
         """Terminate connection."""
         LOG.debug("Enter PureISCSIDriver.terminate_connection.")
@@ -438,12 +441,21 @@ class PureISCSIDriver(san.SanISCSIDriver):
                     ctxt.reraise = False
                     LOG.error(_LE("Disconnection failed with message: "
                                   "%(msg)s."), {"msg": err.text})
-        if (GENERATED_NAME.match(host_name) and
-            not self._array.list_host_connections(host_name,
-                                                  private=True)):
-            LOG.info(_LI("Deleting unneeded host %(host_name)r."),
-                     {"host_name": host_name})
-            self._array.delete_host(host_name)
+        try:
+            if (GENERATED_NAME.match(host_name) and
+                not self._array.list_host_connections(host_name,
+                                                      private=True)):
+                LOG.info(_LI("Deleting unneeded host %(host_name)r."),
+                         {"host_name": host_name})
+                self._array.delete_host(host_name)
+        except purestorage.PureHTTPError as err:
+            with excutils.save_and_reraise_exception() as ctxt:
+                if err.code == 400 and ERR_MSG_NOT_EXIST in err.text:
+                    # Happens if the host is already deleted.
+                    # This is fine though, just treat it as a warning.
+                    ctxt.reraise = False
+                    LOG.warning(_LW("Purity host deletion failed: "
+                                    "%(msg)s."), {"msg": err.text})
         LOG.debug("Leave PureISCSIDriver._disconnect_host.")
 
     def get_volume_stats(self, refresh=False):
