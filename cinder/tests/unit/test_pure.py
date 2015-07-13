@@ -205,11 +205,12 @@ class PureDriverTestCase(test.TestCase):
         """
         func(*args, **kwargs)
         for mock_func in mocks:
+            original_side_effect = mock_func.side_effect
             mock_func.side_effect = [exception.PureDriverException(
                 reason='reason')]
             self.assertRaises(exception.PureDriverException,
                               func, *args, **kwargs)
-            mock_func.side_effect = None
+            mock_func.side_effect = original_side_effect
 
 
 class PureBaseVolumeDriverTestCase(PureDriverTestCase):
