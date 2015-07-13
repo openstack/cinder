@@ -1380,7 +1380,7 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
         :param original_volume_status: The status of the original volume
         :return model_update to update DB with any needed changes
         """
-        msg = _("The method update_migrated_volume not implemented.")
+        msg = _("The method update_migrated_volume is not implemented.")
         raise NotImplementedError(msg)
 
     def migrate_volume(self, context, volume, host):
