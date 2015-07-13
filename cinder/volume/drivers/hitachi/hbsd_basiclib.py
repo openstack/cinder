@@ -198,10 +198,6 @@ class FileLock(lockutils.InterProcessLock):
         super(FileLock, self).__init__(name)
 
     def __enter__(self):
-        if not os.access(self.fname, os.W_OK):
-            msg = output_err(633, file=self.fname)
-            raise exception.HBSDError(message=msg)
-
         self.lock_object.acquire()
 
         try:
