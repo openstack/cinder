@@ -37,16 +37,19 @@ def return_create_volume_metadata_max(context, volume_id, metadata, delete):
     return stub_max_volume_metadata()
 
 
-def return_create_volume_metadata(context, volume_id, metadata, delete):
+def return_create_volume_metadata(context, volume_id, metadata,
+                                  delete, meta_type):
     return stub_volume_metadata()
 
 
-def return_new_volume_metadata(context, volume_id, metadata, delete):
+def return_new_volume_metadata(context, volume_id, metadata,
+                               delete, meta_type):
     return stub_new_volume_metadata()
 
 
 def return_create_volume_metadata_insensitive(context, snapshot_id,
-                                              metadata, delete):
+                                              metadata, delete,
+                                              meta_type):
     return stub_volume_metadata_insensitive()
 
 
@@ -61,11 +64,12 @@ def return_empty_volume_metadata(context, volume_id):
     return {}
 
 
-def return_empty_container_metadata(context, volume_id, metadata, delete):
+def return_empty_container_metadata(context, volume_id, metadata,
+                                    delete, meta_type):
     return {}
 
 
-def delete_volume_metadata(context, volume_id, key):
+def delete_volume_metadata(context, volume_id, key, meta_type):
     pass
 
 

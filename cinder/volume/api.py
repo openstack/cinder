@@ -30,6 +30,7 @@ from oslo_utils import timeutils
 from oslo_utils import uuidutils
 import six
 
+from cinder.api import common
 from cinder import context
 from cinder.db import base
 from cinder import exception
@@ -933,9 +934,10 @@ class API(base.Base):
         return dict(rv)
 
     @wrap_check_policy
-    def delete_volume_metadata(self, context, volume, key):
+    def delete_volume_metadata(self, context, volume,
+                               key, meta_type=common.METADATA_TYPES.user):
         """Delete the given metadata item from a volume."""
-        self.db.volume_metadata_delete(context, volume['id'], key)
+        self.db.volume_metadata_delete(context, volume['id'], key, meta_type)
         LOG.info(_LI("Delete volume metadata completed successfully."),
                  resource=volume)
 
@@ -958,7 +960,9 @@ class API(base.Base):
                 raise exception.InvalidVolumeMetadataSize(reason=msg)
 
     @wrap_check_policy
-    def update_volume_metadata(self, context, volume, metadata, delete=False):
+    def update_volume_metadata(self, context, volume,
+                               metadata, delete=False,
+                               meta_type=common.METADATA_TYPES.user):
         """Updates or creates volume metadata.
 
         If delete is True, metadata items that are not specified in the
@@ -968,14 +972,25 @@ class API(base.Base):
         if delete:
             _metadata = metadata
         else:
-            orig_meta = self.get_volume_metadata(context, volume)
+            if meta_type == common.METADATA_TYPES.user:
+                orig_meta = self.get_volume_metadata(context, volume)
+            elif meta_type == common.METADATA_TYPES.image:
+                try:
+                    orig_meta = self.get_volume_image_metadata(context,
+                                                               volume)
+                except exception.GlanceMetadataNotFound:
+                    orig_meta = {}
+            else:
+                raise exception.InvalidMetadataType(metadata_type=meta_type,
+                                                    id=volume['id'])
             _metadata = orig_meta.copy()
             _metadata.update(metadata)
 
         self._check_metadata_properties(_metadata)
-
         db_meta = self.db.volume_metadata_update(context, volume['id'],
-                                                 _metadata, delete)
+                                                 _metadata,
+                                                 delete,
+                                                 meta_type)
 
         # TODO(jdg): Implement an RPC call for drivers that may use this info
 

@@ -17,6 +17,7 @@
 import os
 import re
 
+import enum
 from oslo_config import cfg
 from oslo_log import log as logging
 from six.moves import urllib
@@ -48,6 +49,8 @@ LOG = logging.getLogger(__name__)
 
 XML_NS_V1 = 'http://docs.openstack.org/api/openstack-block-storage/1.0/content'
 XML_NS_V2 = 'http://docs.openstack.org/api/openstack-block-storage/2.0/content'
+
+METADATA_TYPES = enum.Enum('METADATA_TYPES', 'user image')
 
 
 # Regex that matches alphanumeric characters, periods, hyphens,
