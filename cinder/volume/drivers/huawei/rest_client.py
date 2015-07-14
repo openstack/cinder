@@ -74,7 +74,7 @@ class RestClient(object):
             LOG.error(_LE('Bad response from server: %(url)s.'
                           ' Error: %(err)s'), {'url': url, 'err': err})
             json_msg = ('{"error":{"code": %s,"description": "Connect to '
-                        'server error."}}'), constants.ERROR_CONNECT_TO_SERVER
+                        'server error."}}') % constants.ERROR_CONNECT_TO_SERVER
             res_json = json.loads(json_msg)
             return res_json
 
@@ -107,6 +107,7 @@ class RestClient(object):
                 raise exception.VolumeBackendAPIException(data=msg)
 
             device_id = result['data']['deviceid']
+            self.device_id = device_id
             self.url = item_url + device_id
             self.headers['iBaseToken'] = result['data']['iBaseToken']
             return device_id
@@ -240,7 +241,7 @@ class RestClient(object):
         return result['data']
 
     def check_snapshot_exist(self, snapshot_id):
-        url = self.url + "/snapshot/" + snapshot_id
+        url = self.url + "/snapshot/%s" % snapshot_id
         data = json.dumps({"TYPE": "27",
                            "ID": snapshot_id})
         result = self.call(url, data, "GET")
@@ -448,8 +449,8 @@ class RestClient(object):
             if hostgroup_id is None:
                 err_msg = (_(
                     'Failed to create hostgroup: %(name)s. '
-                    'Check if it exists on the array.'),
-                    {'name': hostgroup_name})
+                    'Check if it exists on the array.')
+                    % {'name': hostgroup_name})
                 LOG.error(err_msg)
                 raise exception.VolumeBackendAPIException(data=err_msg)
 
@@ -591,8 +592,6 @@ class RestClient(object):
 
         if 'data' in result:
             return result['data']['ID']
-        else:
-            return
 
     def _is_host_associate_to_hostgroup(self, hostgroup_id, host_id):
         """Check whether the host is associated to the hostgroup."""
@@ -895,8 +894,13 @@ class RestClient(object):
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Find lun group from mapping view '
                                  'error.'))
+        lungroup_id = None
+        if 'data' in result:
+            # One map can have only one lungroup.
+            for item in result['data']:
+                lungroup_id = item['ID']
 
-        return self._get_id_from_result(result, view_id, 'ID')
+        return lungroup_id
 
     def start_luncopy(self, luncopy_id):
         """Start a LUNcopy."""
@@ -1019,8 +1023,6 @@ class RestClient(object):
             iqn = iqn_prefix + ':' + iqn_suffix + ':' + iscsi_ip
             LOG.info(_LI('_get_tgt_iqn: iSCSI target iqn is: %s.'), iqn)
             return iqn
-        else:
-            return
 
     def get_fc_target_wwpns(self, wwn):
         url = (self.url +
@@ -1056,6 +1058,7 @@ class RestClient(object):
             capacity = self._get_capacity(pool_name, result)
             pool = {}
             pool.update(dict(
+                location_info=self.device_id,
                 pool_name=pool_name,
                 total_capacity_gb=capacity['total_capacity'],
                 free_capacity_gb=capacity['free_capacity'],
@@ -1160,6 +1163,7 @@ class RestClient(object):
             target_iqn = self._get_tgt_iqn_from_rest(ip)
             if not target_iqn:
                 target_iqn = self._get_tgt_iqn(ip)
+            if target_iqn:
                 target_iqns.append(target_iqn)
 
         return (target_iqns, target_ips, portgroup_id)
@@ -1173,7 +1177,10 @@ class RestClient(object):
             LOG.warning(_LW("Can't find target iqn from rest."))
             return target_iqn
 
-        target_iqn = self._get_id_from_result(result, target_ip, 'ID')
+        if 'data' in result:
+            for item in result['data']:
+                if target_ip in item['ID']:
+                    target_iqn = item['ID']
 
         if not target_iqn:
             LOG.warning(_LW("Can't find target iqn from rest."))
@@ -1299,7 +1306,13 @@ class RestClient(object):
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Get lungroup id by lun id error.'))
 
-        return self._get_id_from_result(result, lun_id, 'ID')
+        lun_group_id = None
+        # Lun only in one lungroup.
+        if 'data' in result:
+            for item in result['data']:
+                lun_group_id = item['ID']
+
+        return lun_group_id
 
     def get_lun_info(self, lun_id):
         url = self.url + "/lun/" + lun_id
@@ -1325,6 +1338,32 @@ class RestClient(object):
 
         return result['data']
 
+    def create_lun_migration(self, src_id, dst_id, speed=2):
+        url = self.url + "/LUN_MIGRATION"
+        data = json.dumps({"TYPE": '253',
+                           "PARENTID": src_id,
+                           "TARGETLUNID": dst_id,
+                           "SPEED": speed,
+                           "WORKMODE": 0})
+
+        result = self.call(url, data, "POST")
+        msg = _('Create lun migration error.')
+        self._assert_rest_result(result, msg)
+        self._assert_data_in_result(result, msg)
+
+    def get_lun_migration_task(self):
+        url = self.url + '/LUN_MIGRATION?range=[0-100]'
+        result = self.call(url, None, "GET")
+        self._assert_rest_result(result, _('Get lun migration task error.'))
+        return result
+
+    def delete_lun_migration(self, src_id, dst_id):
+        url = self.url + '/LUN_MIGRATION/' + src_id
+        result = self.call(url, None, "DELETE")
+        msg = _('Delete lun migration error.')
+        self._assert_rest_result(result, msg)
+        self._assert_data_in_result(result, msg)
+
     def get_partition_id_by_name(self, name):
         url = self.url + "/cachepartition"
         result = self.call(url, None, "GET")
@@ -1336,8 +1375,6 @@ class RestClient(object):
                           {'item': item})
                 if name == item['NAME']:
                     return item['ID']
-
-        return
 
     def get_partition_info_by_id(self, partition_id):
 
@@ -1368,7 +1405,6 @@ class RestClient(object):
             for item in result['data']:
                 if name == item['NAME']:
                     return item['ID']
-        return
 
     def find_available_qos(self, qos):
         """"Find available QoS on the array."""
@@ -1450,3 +1486,11 @@ class RestClient(object):
                            "ID": initiator})
         result = self.call(url, data, "PUT")
         self._assert_rest_result(result, _('Remove iscsi from host error.'))
+
+    def rename_lun(self, lun_id, new_name):
+        url = self.url + "/lun/" + lun_id
+        data = json.dumps({"NAME": new_name})
+        result = self.call(url, data, "PUT")
+        msg = _('Rename lun on array error.')
+        self._assert_rest_result(result, msg)
+        self._assert_data_in_result(result, msg)

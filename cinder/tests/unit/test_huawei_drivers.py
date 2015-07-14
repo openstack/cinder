@@ -75,6 +75,28 @@ test_snap = {'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0635',
              'provider_location': '11',
              }
 
+test_host = {'host': 'ubuntu001@backend001#OpenStack_Pool',
+             'capabilities': {'smartcache': True,
+                              'location_info': '210235G7J20000000000',
+                              'QoS_support': True,
+                              'pool_name': 'OpenStack_Pool',
+                              'timestamp': '2015-07-13T11:41:00.513549',
+                              'smartpartition': True,
+                              'allocated_capacity_gb': 0,
+                              'volume_backend_name': 'Huawei18000FCDriver',
+                              'free_capacity_gb': 20.0,
+                              'driver_version': '1.1.0',
+                              'total_capacity_gb': 20.0,
+                              'smarttier': True,
+                              'hypermetro': True,
+                              'reserved_percentage': 0,
+                              'vendor_name': None,
+                              'thick_provisioning': True,
+                              'thin_provisioning': True,
+                              'storage_protocol': 'FC',
+                              }
+             }
+
 FakeConnector = {'initiator': 'iqn.1993-08.debian:01:ec2bff7ac3a3',
                  'wwpns': ['10000090fa0d6754'],
                  'wwnns': ['10000090fa0d6755'],
@@ -162,12 +184,23 @@ FAKE_LUN_DELETE_SUCCESS_RESPONSE = """
     },
     "data": {
         "ID": "11",
-        "IOCLASSID": "11",
+        "IOCLASSID": "",
         "NAME": "5mFHcBv4RkCcD+JyrWc0SA",
         "RUNNINGSTATUS": "2",
         "HEALTHSTATUS": "1",
         "RUNNINGSTATUS": "27",
-        "LUNLIST": ""
+        "ALLOCTYPE": "0",
+        "CAPACITY": "2097152",
+        "WRITEPOLICY": "1",
+        "MIRRORPOLICY": "0",
+        "PREFETCHPOLICY": "1",
+        "PREFETCHVALUE": "20",
+        "DATATRANSFERPOLICY": "1",
+        "READCACHEPOLICY": "2",
+        "WRITECACHEPOLICY": "5",
+        "OWNINGCONTROLLER": "0B",
+        "SMARTCACHEPARTITIONID": "",
+        "CACHEPARTITIONID": ""
     }
 }
 """
@@ -663,45 +696,6 @@ FAKE_PORT_GROUP_RESPONSE = """
 }
 """
 
-FAKE_ISCSI_INITIATOR_RESPONSE = """
-{
-    "error":{
-        "code": 0
-    },
-    "data":[{
-        "CHAPNAME": "mm-user",
-        "HEALTHSTATUS": "1",
-        "ID": "iqn.1993-08.org.debian:01:9073aba6c6f",
-        "ISFREE": "true",
-        "MULTIPATHTYPE": "1",
-        "NAME": "",
-        "OPERATIONSYSTEM": "255",
-        "RUNNINGSTATUS": "28",
-        "TYPE": 222,
-        "USECHAP": "true"
-    }]
-}
-"""
-
-FAKE_ISCSI_INITIATOR_RESPONSE = """
-{
-    "error":{
-        "code":0
-    },
-    "data":[{
-        "CHAPNAME":"mm-user",
-        "HEALTHSTATUS":"1",
-        "ID":"iqn.1993-08.org.debian:01:9073aba6c6f",
-        "ISFREE":"true",
-        "MULTIPATHTYPE":"1",
-        "NAME":"",
-        "OPERATIONSYSTEM":"255",
-        "RUNNINGSTATUS":"28",
-        "TYPE":222,
-        "USECHAP":"true"
-    }]
-}
-"""
 
 FAKE_ERROR_INFO_RESPONSE = """
 {
@@ -735,6 +729,26 @@ FAKE_SYSTEM_VERSION_RESPONSE = """
 }
 """
 
+FAKE_GET_LUN_MIGRATION_RESPONSE = """
+{
+    "data":[{"ENDTIME":"1436816174",
+             "ID":"9",
+             "PARENTID":"11",
+             "PARENTNAME":"xmRBHMlVRruql5vwthpPXQ",
+             "PROCESS":"-1",
+             "RUNNINGSTATUS":"76",
+             "SPEED":"2",
+             "STARTTIME":"1436816111",
+             "TARGETLUNID":"1",
+             "TARGETLUNNAME":"4924891454902893639",
+             "TYPE":253,
+             "WORKMODE":"0"
+             }],
+    "error":{"code":0,
+             "description":"0"}
+}
+"""
+
 FAKE_QOS_INFO_RESPONSE = """
 {
     "error":{
@@ -752,6 +766,15 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/xx/sessions'] = (
     FAKE_GET_LOGIN_STORAGE_RESPONSE)
 MAP_COMMAND_TO_FAKE_RESPONSE['sessions'] = (
     FAKE_LOGIN_OUT_STORAGE_RESPONSE)
+
+MAP_COMMAND_TO_FAKE_RESPONSE['LUN_MIGRATION/POST'] = (
+    FAKE_COMMON_SUCCESS_RESPONSE)
+
+MAP_COMMAND_TO_FAKE_RESPONSE['LUN_MIGRATION?range=[0-100]/GET'] = (
+    FAKE_GET_LUN_MIGRATION_RESPONSE)
+
+MAP_COMMAND_TO_FAKE_RESPONSE['LUN_MIGRATION/11/DELETE'] = (
+    FAKE_COMMON_SUCCESS_RESPONSE)
 
 # mock storage info map
 MAP_COMMAND_TO_FAKE_RESPONSE['storagepool'] = (
@@ -811,7 +834,7 @@ MAP_COMMAND_TO_FAKE_RESPONSE['lungroup/associate?TYPE=256&ASSOCIATEOBJTYPE=11'
 
 MAP_COMMAND_TO_FAKE_RESPONSE['lungroup/associate?TYPE=256&ASSOCIATEOBJTYPE=11'
                              '&ASSOCIATEOBJID=1/GET'] = (
-    FAKE_LUN_ASSOCIATE_RESPONSE)
+    FAKE_COMMON_SUCCESS_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['lungroup/associate?ID=11&ASSOCIATEOBJTYPE=11'
                              '&ASSOCIATEOBJID=11/DELETE'] = (
@@ -878,7 +901,7 @@ MAP_COMMAND_TO_FAKE_RESPONSE['iscsi_initiator?range=[0-256]/GET'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['iscsi_initiator/'] = (
-    FAKE_COMMON_SUCCESS_RESPONSE)
+    FAKE_ISCSI_INITIATOR_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['iscsi_initiator/POST'] = (
     FAKE_ISCSI_INITIATOR_RESPONSE)
@@ -1099,7 +1122,7 @@ class Huawei18000ISCSIDriverTestCase(test.TestCase):
         self.driver.restclient.login()
         lun_info = self.driver.create_volume_from_snapshot(test_volume,
                                                            test_volume)
-        self.assertEqual('1', lun_info['provider_location'])
+        self.assertEqual('1', lun_info['ID'])
 
     def test_initialize_connection_success(self):
         self.driver.restclient.login()
@@ -1447,7 +1470,7 @@ class Huawei18000FCDriverTestCase(test.TestCase):
         self.driver.restclient.login()
         lun_info = self.driver.create_volume_from_snapshot(test_volume,
                                                            test_volume)
-        self.assertEqual('1', lun_info['provider_location'])
+        self.assertEqual('1', lun_info['ID'])
 
     def test_initialize_connection_success(self):
         self.driver.restclient.login()
@@ -1556,6 +1579,146 @@ class Huawei18000FCDriverTestCase(test.TestCase):
                                                      self.configuration)
         self.assertEqual('0', host_os)
 
+    def test_migrate_volume_success(self):
+        self.driver.restclient.login()
+
+        # Migrate volume without new type.
+        model_update = None
+        moved = False
+        empty_dict = {}
+        # Migrate volume without new type.
+        moved, model_update = self.driver.migrate_volume(None,
+                                                         test_volume,
+                                                         test_host,
+                                                         None)
+        self.assertTrue(moved)
+        self.assertEqual(empty_dict, model_update)
+
+        # Migrate volume with new type.
+        moved = False
+        empty_dict = {}
+        new_type = {'extra_specs':
+                    {'smarttier': '<is> true',
+                     'smartcache': '<is> true',
+                     'smartpartition': '<is> true',
+                     'thin_provisioning': '<is> true',
+                     'thick_provisioning': '<is> False',
+                     'policy': '2',
+                     'smartcache:cachename': 'cache-test',
+                     'smartpartition:partitionname': 'partition-test'}}
+        moved, model_update = self.driver.migrate_volume(None,
+                                                         test_volume,
+                                                         test_host,
+                                                         new_type)
+        self.assertTrue(moved)
+        self.assertEqual(empty_dict, model_update)
+
+    def test_migrate_volume_fail(self):
+        self.driver.restclient.login()
+        self.driver.restclient.test_fail = True
+
+        # Migrate volume without new type.
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.migrate_volume, None,
+                          test_volume, test_host, None)
+
+        # Migrate volume with new type.
+        new_type = {'extra_specs':
+                    {'smarttier': '<is> true',
+                     'smartcache': '<is> true',
+                     'thin_provisioning': '<is> true',
+                     'thick_provisioning': '<is> False',
+                     'policy': '2',
+                     'smartcache:cachename': 'cache-test',
+                     'partitionname': 'partition-test'}}
+        self.driver.restclient.test_fail = True
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.migrate_volume, None,
+                          test_volume, test_host, new_type)
+
+    def test_check_migration_valid(self):
+        self.driver.restclient.login()
+        is_valid = self.driver._check_migration_valid(test_host,
+                                                      test_volume)
+        self.assertTrue(is_valid)
+        # No pool_name in capabilities.
+        invalid_host1 = {'host': 'ubuntu001@backend002#OpenStack_Pool',
+                         'capabilities':
+                             {'location_info': '210235G7J20000000000',
+                              'allocated_capacity_gb': 0,
+                              'volume_backend_name': 'Huawei18000FCDriver',
+                              'storage_protocol': 'FC'}}
+        is_valid = self.driver._check_migration_valid(invalid_host1,
+                                                      test_volume)
+        self.assertFalse(is_valid)
+        # location_info in capabilities is not matched.
+        invalid_host2 = {'host': 'ubuntu001@backend002#OpenStack_Pool',
+                         'capabilities':
+                             {'location_info': '210235G7J20000000001',
+                              'allocated_capacity_gb': 0,
+                              'pool_name': 'OpenStack_Pool',
+                              'volume_backend_name': 'Huawei18000FCDriver',
+                              'storage_protocol': 'FC'}}
+        is_valid = self.driver._check_migration_valid(invalid_host2,
+                                                      test_volume)
+        self.assertFalse(is_valid)
+        # storage_protocol is not match current protocol and volume status is
+        # 'in-use'.
+        volume_in_use = {'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0635',
+                         'size': 2,
+                         'volume_name': 'vol1',
+                         'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
+                         'volume_id': '21ec7341-9256-497b-97d9-ef48edcf0635',
+                         'volume_attachment': 'in-use',
+                         'provider_location': '11'}
+        invalid_host2 = {'host': 'ubuntu001@backend002#OpenStack_Pool',
+                         'capabilities':
+                             {'location_info': '210235G7J20000000001',
+                              'allocated_capacity_gb': 0,
+                              'pool_name': 'OpenStack_Pool',
+                              'volume_backend_name': 'Huawei18000FCDriver',
+                              'storage_protocol': 'iSCSI'}}
+        is_valid = self.driver._check_migration_valid(invalid_host2,
+                                                      volume_in_use)
+        self.assertFalse(is_valid)
+        # pool_name is empty.
+        invalid_host3 = {'host': 'ubuntu001@backend002#OpenStack_Pool',
+                         'capabilities':
+                             {'location_info': '210235G7J20000000001',
+                              'allocated_capacity_gb': 0,
+                              'pool_name': '',
+                              'volume_backend_name': 'Huawei18000FCDriver',
+                              'storage_protocol': 'iSCSI'}}
+        is_valid = self.driver._check_migration_valid(invalid_host3,
+                                                      test_volume)
+        self.assertFalse(is_valid)
+
+    @mock.patch.object(rest_client.RestClient, 'rename_lun')
+    def test_update_migrated_volume_success(self, mock_rename_lun):
+        self.driver.restclient.login()
+        original_volume = {'id': '21ec7341-9256-497b-97d9-ef48edcf0635'}
+        current_volume = {'id': '21ec7341-9256-497b-97d9-ef48edcf0636'}
+        model_update = self.driver.update_migrated_volume(None,
+                                                          original_volume,
+                                                          current_volume,
+                                                          'available')
+        self.assertEqual({'_name_id': None}, model_update)
+
+    @mock.patch.object(rest_client.RestClient, 'rename_lun')
+    def test_update_migrated_volume_fail(self, mock_rename_lun):
+        self.driver.restclient.login()
+        mock_rename_lun.side_effect = exception.VolumeBackendAPIException(
+            data='Error occurred.')
+        original_volume = {'id': '21ec7341-9256-497b-97d9-ef48edcf0635'}
+        current_volume = {'id': '21ec7341-9256-497b-97d9-ef48edcf0636',
+                          '_name_id': '21ec7341-9256-497b-97d9-ef48edcf0637'}
+        model_update = self.driver.update_migrated_volume(None,
+                                                          original_volume,
+                                                          current_volume,
+                                                          'available')
+        self.assertEqual({'_name_id': '21ec7341-9256-497b-97d9-ef48edcf0637'},
+                         model_update)
+
     def create_fake_conf_file(self):
         """Create a fake Config file
 
@@ -1587,6 +1750,12 @@ class Huawei18000FCDriverTestCase(test.TestCase):
         userpassword_text = doc.createTextNode('Admin@storage')
         userpassword.appendChild(userpassword_text)
         storage.appendChild(userpassword)
+
+        protocol = doc.createElement('Protocol')
+        protocol_text = doc.createTextNode('FC')
+        protocol.appendChild(protocol_text)
+        storage.appendChild(protocol)
+
         url = doc.createElement('RestURL')
         url_text = doc.createTextNode('http://100.115.10.69:8082/'
                                       'deviceManager/rest/')
@@ -1604,6 +1773,11 @@ class Huawei18000FCDriverTestCase(test.TestCase):
         pool_text = doc.createTextNode('OpenStack_Pool')
         storagepool.appendChild(pool_text)
         lun.appendChild(storagepool)
+
+        lun_type = doc.createElement('LUNType')
+        lun_type_text = doc.createTextNode('Thick')
+        lun_type.appendChild(lun_type_text)
+        lun.appendChild(lun_type)
 
         timeout = doc.createElement('Timeout')
         timeout_text = doc.createTextNode('43200')
