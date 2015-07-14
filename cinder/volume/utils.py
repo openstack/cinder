@@ -68,6 +68,10 @@ def _usage_from_volume(context, volume_ref, **kw):
 
     usage_info.update(kw)
     try:
+        attachments = db.volume_attachment_get_used_by_volume_id(
+            context, volume_ref['id'])
+        usage_info['volume_attachment'] = attachments
+
         glance_meta = db.volume_glance_metadata_get(context, volume_ref['id'])
         if glance_meta:
             usage_info['glance_metadata'] = glance_meta
@@ -75,6 +79,7 @@ def _usage_from_volume(context, volume_ref, **kw):
         pass
     except exception.VolumeNotFound:
         LOG.debug("Can not find volume %s at notify usage", volume_ref['id'])
+
     return usage_info
 
 
