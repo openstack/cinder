@@ -27,6 +27,8 @@ LUNGROUP_PREFIX = 'OpenStack_LunGroup_'
 MAPPING_VIEW_PREFIX = 'OpenStack_Mapping_View_'
 QOS_NAME_PREFIX = 'OpenStack_'
 ARRAY_VERSION = 'V300R003C00'
+FC_PORT_CONNECTED = '10'
+FC_INIT_ONLINE = '27'
 CAPACITY_UNIT = 1024.0 / 1024.0 / 2
 DEFAULT_WAIT_TIMEOUT = 3600 * 24 * 30
 DEFAULT_WAIT_INTERVAL = 5
@@ -52,6 +54,7 @@ OS_TYPE = {'Linux': '0',
            'Mac OS X': '6',
            'VMware ESX': '7'}
 
+CONTROLLER_LIST = ['A', 'B', 'C', 'D']
 HUAWEI_VALID_KEYS = ['maxIOPS', 'minIOPS', 'minBandWidth',
                      'maxBandWidth', 'latency', 'IOType']
 QOS_KEYS = ['MAXIOPS', 'MINIOPS', 'MINBANDWidth',
