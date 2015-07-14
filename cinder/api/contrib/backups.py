@@ -175,13 +175,14 @@ class BackupsController(wsgi.Controller):
 
     def delete(self, req, id):
         """Delete a backup."""
-        LOG.debug('delete called for member %s', id)
+        LOG.debug('Delete called for member %s.', id)
         context = req.environ['cinder.context']
 
         LOG.info(_LI('Delete backup with id: %s'), id, context=context)
 
         try:
-            self.backup_api.delete(context, id)
+            backup = self.backup_api.get(context, id)
+            self.backup_api.delete(context, backup)
         except exception.BackupNotFound as error:
             raise exc.HTTPNotFound(explanation=error.msg)
         except exception.InvalidBackup as error:

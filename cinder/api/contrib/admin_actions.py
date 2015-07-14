@@ -285,6 +285,12 @@ class BackupAdminController(AdminController):
                         'error'
                         ])
 
+    def _get(self, *args, **kwargs):
+        return self.backup_api.get(*args, **kwargs)
+
+    def _delete(self, *args, **kwargs):
+        return self.backup_api.delete(*args, **kwargs)
+
     @wsgi.action('os-reset_status')
     def _reset_status(self, req, id, body):
         """Reset status on the resource."""

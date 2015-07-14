@@ -30,6 +30,7 @@ from cinder import db
 from cinder import exception
 from cinder import objects
 from cinder import test
+from cinder.tests.unit.api.contrib import test_backups
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v2 import stubs
 from cinder.tests.unit import cast_as_call
@@ -953,3 +954,56 @@ class AdminActionsTest(test.TestCase):
         self.assertRaises(exc.HTTPBadRequest,
                           vac.validate_update,
                           {'status': 'creating'})
+
+    @mock.patch('cinder.backup.api.API._check_support_to_force_delete')
+    def _force_delete_backup_util(self, test_status, mock_check_support):
+        # admin context
+        ctx = context.RequestContext('admin', 'fake', True)
+        mock_check_support.return_value = True
+        # current status is dependent on argument: test_status.
+        id = test_backups.BackupsAPITestCase._create_backup(status=test_status)
+        req = webob.Request.blank('/v2/fake/backups/%s/action' % id)
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = jsonutils.dumps({'os-force_delete': {}})
+        req.environ['cinder.context'] = ctx
+        res = req.get_response(app())
+
+        self.assertEqual(202, res.status_int)
+        self.assertEqual('deleting',
+                         test_backups.BackupsAPITestCase.
+                         _get_backup_attrib(id, 'status'))
+        db.backup_destroy(context.get_admin_context(), id)
+
+    def test_delete_backup_force_when_creating(self):
+        self._force_delete_backup_util('creating')
+
+    def test_delete_backup_force_when_deleting(self):
+        self._force_delete_backup_util('deleting')
+
+    def test_delete_backup_force_when_restoring(self):
+        self._force_delete_backup_util('restoring')
+
+    def test_delete_backup_force_when_available(self):
+        self._force_delete_backup_util('available')
+
+    def test_delete_backup_force_when_error(self):
+        self._force_delete_backup_util('error')
+
+    def test_delete_backup_force_when_error_deleting(self):
+        self._force_delete_backup_util('error_deleting')
+
+    @mock.patch('cinder.backup.rpcapi.BackupAPI.check_support_to_force_delete',
+                return_value=False)
+    def test_delete_backup_force_when_not_supported(self, mock_check_support):
+        # admin context
+        ctx = context.RequestContext('admin', 'fake', True)
+        self.override_config('backup_driver', 'cinder.backup.drivers.ceph')
+        id = test_backups.BackupsAPITestCase._create_backup()
+        req = webob.Request.blank('/v2/fake/backups/%s/action' % id)
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = jsonutils.dumps({'os-force_delete': {}})
+        req.environ['cinder.context'] = ctx
+        res = req.get_response(app())
+        self.assertEqual(405, res.status_int)

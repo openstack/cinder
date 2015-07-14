@@ -971,3 +971,8 @@ class DotHillNotTargetPortal(CinderException):
 
 class MetadataAbsent(CinderException):
     message = _("There is no metadata in DB object.")
+
+
+class NotSupportedOperation(Invalid):
+    message = _("Operation not supported: %(operation)s.")
+    code = 405

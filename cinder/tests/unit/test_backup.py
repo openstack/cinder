@@ -595,6 +595,25 @@ class BackupTestCase(BaseBackupTest):
         backup = db.backup_get(self.ctxt, imported_record.id)
         self.assertEqual(backup['status'], 'error')
 
+    def test_not_supported_driver_to_force_delete(self):
+        """Test force delete check method for not supported drivers."""
+        self.override_config('backup_driver', 'cinder.backup.drivers.ceph')
+        self.backup_mgr = importutils.import_object(CONF.backup_manager)
+        result = self.backup_mgr.check_support_to_force_delete(self.ctxt)
+        self.assertFalse(result)
+
+    @mock.patch('cinder.backup.drivers.nfs.NFSBackupDriver.'
+                '_init_backup_repo_path', return_value=None)
+    @mock.patch('cinder.backup.drivers.nfs.NFSBackupDriver.'
+                '_check_configuration', return_value=None)
+    def test_check_support_to_force_delete(self, mock_check_configuration,
+                                           mock_init_backup_repo_path):
+        """Test force delete check method for supported drivers."""
+        self.override_config('backup_driver', 'cinder.backup.drivers.nfs')
+        self.backup_mgr = importutils.import_object(CONF.backup_manager)
+        result = self.backup_mgr.check_support_to_force_delete(self.ctxt)
+        self.assertTrue(result)
+
 
 class BackupTestCaseWithVerify(BaseBackupTest):
     """Test Case for backups."""

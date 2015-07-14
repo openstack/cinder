@@ -63,17 +63,33 @@ class API(base.Base):
         check_policy(context, 'get')
         return objects.Backup.get_by_id(context, backup_id)
 
-    def delete(self, context, backup_id):
-        """Make the RPC call to delete a volume backup."""
+    def _check_support_to_force_delete(self, context, backup_host):
+        result = self.backup_rpcapi.check_support_to_force_delete(context,
+                                                                  backup_host)
+        return result
+
+    def delete(self, context, backup, force=False):
+        """Make the RPC call to delete a volume backup.
+
+        Call backup manager to execute backup delete or force delete operation.
+        :param context: running context
+        :param backup: the dict of backup that is got from DB.
+        :param force: indicate force delete or not
+        :raises: InvalidBackup
+        :raises: BackupDriverException
+        """
         check_policy(context, 'delete')
-        backup = self.get(context, backup_id)
-        if backup['status'] not in ['available', 'error']:
+        if not force and backup.status not in ['available', 'error']:
             msg = _('Backup status must be available or error')
             raise exception.InvalidBackup(reason=msg)
+        if force and not self._check_support_to_force_delete(context,
+                                                             backup.host):
+            msg = _('force delete')
+            raise exception.NotSupportedOperation(operation=msg)
 
         # Don't allow backup to be deleted if there are incremental
         # backups dependent on it.
-        deltas = self.get_all(context, {'parent_id': backup['id']})
+        deltas = self.get_all(context, {'parent_id': backup.id})
         if deltas and len(deltas):
             msg = _('Incremental backups exist for this backup.')
             raise exception.InvalidBackup(reason=msg)

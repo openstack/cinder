@@ -99,3 +99,9 @@ class BackupAPI(object):
                    'host': backup.host})
         cctxt = self.client.prepare(server=backup.host)
         return cctxt.cast(ctxt, 'reset_status', backup=backup, status=status)
+
+    def check_support_to_force_delete(self, ctxt, host):
+        LOG.debug("Check if backup driver supports force delete "
+                  "on host %(host)s.", {'host': host})
+        cctxt = self.client.prepare(server=host)
+        return cctxt.call(ctxt, 'check_support_to_force_delete')

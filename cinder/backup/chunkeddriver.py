@@ -98,6 +98,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
         self.backup_compression_algorithm = CONF.backup_compression_algorithm
         self.compressor = \
             self._get_compressor(CONF.backup_compression_algorithm)
+        self.support_force_delete = True
 
     # To create your own "chunked" backup driver, implement the following
     # abstract methods.
@@ -457,7 +458,19 @@ class ChunkedBackupDriver(driver.BackupDriver):
 
         sha256_list = object_sha256['sha256s']
         shaindex = 0
+        is_backup_canceled = False
         while True:
+            # First of all, we check the status of this backup. If it
+            # has been changed to delete or has been deleted, we cancel the
+            # backup process to do forcing delete.
+            backup = objects.Backup.get_by_id(self.context, backup.id)
+            if 'deleting' == backup.status or 'deleted' == backup.status:
+                is_backup_canceled = True
+                # To avoid the chunk left when deletion complete, need to
+                # clean up the object of chunk again.
+                self.delete(backup)
+                LOG.debug('Cancel the backup process of %s.', backup.id)
+                break
             data_offset = volume_file.tell()
             data = volume_file.read(self.chunk_size_bytes)
             if data == b'':
@@ -528,6 +541,10 @@ class ChunkedBackupDriver(driver.BackupDriver):
 
         # Stop the timer.
         timer.stop()
+        # If backup has been cancelled we have nothing more to do
+        # but timer.stop().
+        if is_backup_canceled:
+            return
         # All the data have been sent, the backup_percent reaches 100.
         self._send_progress_end(self.context, backup, object_meta)
 
