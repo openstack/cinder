@@ -39,6 +39,8 @@ ERROR_CONNECT_TO_SERVER = -403
 ERROR_UNAUTHORIZED_TO_SERVER = -401
 SOCKET_TIME_OUT = 720
 
+THICK_LUNTYPE = 0
+THIN_LUNTYPE = 1
 MAX_HOSTNAME_LENGTH = 31
 
 OS_TYPE = {'Linux': '0',
@@ -52,3 +54,5 @@ OS_TYPE = {'Linux': '0',
 
 HUAWEI_VALID_KEYS = ['maxIOPS', 'minIOPS', 'minBandWidth',
                      'maxBandWidth', 'latency', 'IOType']
+QOS_KEYS = ['MAXIOPS', 'MINIOPS', 'MINBANDWidth',
+            'MAXBANDWidth', 'LATENCY', 'IOTYPE']

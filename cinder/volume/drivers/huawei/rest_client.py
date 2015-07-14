@@ -1287,6 +1287,17 @@ class RestClient(object):
         result = self.call(url, data, "PUT")
         self._assert_rest_result(result, _('Change lun priority error.'))
 
+    def change_lun_smarttier(self, lunid, smarttier_policy):
+        """Change lun smarttier policy."""
+        url = self.url + "/lun/" + lunid
+        data = json.dumps({"TYPE": "11",
+                           "ID": lunid,
+                           "DATATRANSFERPOLICY": smarttier_policy})
+
+        result = self.call(url, data, "PUT")
+        self._assert_rest_result(
+            result, _('Change lun smarttier policy error.'))
+
     def get_qosid_by_lunid(self, lun_id):
         """Get QoS id by lun id."""
         url = self.url + "/lun/" + lun_id
@@ -1396,6 +1407,13 @@ class RestClient(object):
         result = self.call(url, data, "POST")
         self._assert_rest_result(result, _('Add lun to partition error.'))
 
+    def remove_lun_from_partition(self, lun_id, partition_id):
+        url = (self.url + '/lun/associate/cachepartition?ID=' + partition_id
+               + '&ASSOCIATEOBJTYPE=11&ASSOCIATEOBJID=' + lun_id)
+
+        result = self.call(url, None, "DELETE")
+        self._assert_rest_result(result, _('Remove lun from partition error.'))
+
     def get_cache_id_by_name(self, name):
         url = self.url + "/SMARTCACHEPARTITION"
         result = self.call(url, None, "GET")
@@ -1405,6 +1423,27 @@ class RestClient(object):
             for item in result['data']:
                 if name == item['NAME']:
                     return item['ID']
+
+    def get_cache_info_by_id(self, cacheid):
+        url = self.url + "/SMARTCACHEPARTITION/" + cacheid
+        data = json.dumps({"TYPE": "273",
+                           "ID": cacheid})
+
+        result = self.call(url, data, "GET")
+        self._assert_rest_result(
+            result, _('Get smartcache by cache id error.'))
+
+        return result['data']
+
+    def remove_lun_from_cache(self, lun_id, cache_id):
+        url = self.url + "/SMARTCACHEPARTITION/REMOVE_ASSOCIATE"
+        data = json.dumps({"ID": cache_id,
+                           "ASSOCIATEOBJTYPE": 11,
+                           "ASSOCIATEOBJID": lun_id,
+                           "TYPE": 273})
+
+        result = self.call(url, data, "PUT")
+        self._assert_rest_result(result, _('Remove lun from cache error.'))
 
     def find_available_qos(self, qos):
         """"Find available QoS on the array."""
@@ -1431,6 +1470,7 @@ class RestClient(object):
         return (qos_id, lun_list)
 
     def add_lun_to_qos(self, qos_id, lun_id, lun_list):
+        """Add lun to QoS."""
         url = self.url + "/ioclass/" + qos_id
         lun_list = []
         lun_string = lun_list[1:-1]

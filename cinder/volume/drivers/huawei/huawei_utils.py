@@ -113,12 +113,13 @@ def _get_opts_from_specs(opts_capability, opts_value, specs):
             words = value.split()
 
             if not (words and len(words) == 2 and words[0] == '<is>'):
-                LOG.error(_LE("Capabilities value must be specified as "
-                              "'<is> True' or '<is> true'."))
+                LOG.error(_LE("Extra specs must be specified as "
+                              "capabilities:%s='<is> True' or "
+                              "'<is> true'."), key)
             else:
-                del words[0]
-                value = words[0]
-                opts[key] = value.lower()
+                # Get the second value(true/True) of the Extra specs
+                # value(<is> true/<is> True)
+                opts[key] = words[1].lower()
 
         if (scope in opts_capability) and (key in opts_value):
             if (scope in opts_associate) and (opts_associate[scope] == key):
@@ -329,9 +330,9 @@ def find_luntype_in_xml(xml_file_path):
     if luntype:
         if luntype.strip() in ['Thick', 'Thin']:
             if luntype.strip() == 'Thick':
-                luntype = 0
+                luntype = constants.THICK_LUNTYPE
             elif luntype.strip() == 'Thin':
-                luntype = 1
+                luntype = constants.THIN_LUNTYPE
         else:
             err_msg = (_(
                 "LUNType config is wrong. LUNType must be 'Thin'"
@@ -340,7 +341,7 @@ def find_luntype_in_xml(xml_file_path):
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
     else:
-        luntype = 0
+        luntype = constants.THICK_LUNTYPE
     return luntype
 
 

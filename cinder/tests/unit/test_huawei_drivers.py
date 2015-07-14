@@ -97,6 +97,28 @@ test_host = {'host': 'ubuntu001@backend001#OpenStack_Pool',
                               }
              }
 
+test_new_type = {
+    'name': u'new_type',
+    'qos_specs_id': None,
+    'deleted': False,
+    'created_at': None,
+    'updated_at': None,
+    'extra_specs': {
+        'smarttier': '<is> true',
+        'smartcache': '<is> true',
+        'smartpartition': '<is> true',
+        'thin_provisioning': '<is> true',
+        'thick_provisioning': '<is> False',
+        'policy': '2',
+        'smartcache:cachename': 'cache-test',
+        'smartpartition:partitionname': 'partition-test',
+    },
+    'is_public': True,
+    'deleted_at': None,
+    'id': u'530a56e1-a1a4-49f3-ab6c-779a6e5d999f',
+    'description': None,
+}
+
 FakeConnector = {'initiator': 'iqn.1993-08.debian:01:ec2bff7ac3a3',
                  'wwpns': ['10000090fa0d6754'],
                  'wwnns': ['10000090fa0d6755'],
@@ -696,6 +718,45 @@ FAKE_PORT_GROUP_RESPONSE = """
 }
 """
 
+FAKE_ISCSI_INITIATOR_RESPONSE = """
+{
+    "error":{
+        "code": 0
+    },
+    "data":[{
+        "CHAPNAME": "mm-user",
+        "HEALTHSTATUS": "1",
+        "ID": "iqn.1993-08.org.debian:01:9073aba6c6f",
+        "ISFREE": "true",
+        "MULTIPATHTYPE": "1",
+        "NAME": "",
+        "OPERATIONSYSTEM": "255",
+        "RUNNINGSTATUS": "28",
+        "TYPE": 222,
+        "USECHAP": "true"
+    }]
+}
+"""
+
+FAKE_ISCSI_INITIATOR_RESPONSE = """
+{
+    "error":{
+        "code":0
+    },
+    "data":[{
+        "CHAPNAME":"mm-user",
+        "HEALTHSTATUS":"1",
+        "ID":"iqn.1993-08.org.debian:01:9073aba6c6f",
+        "ISFREE":"true",
+        "MULTIPATHTYPE":"1",
+        "NAME":"",
+        "OPERATIONSYSTEM":"255",
+        "RUNNINGSTATUS":"28",
+        "TYPE":222,
+        "USECHAP":"true"
+    }]
+}
+"""
 
 FAKE_ERROR_INFO_RESPONSE = """
 {
@@ -969,6 +1030,9 @@ MAP_COMMAND_TO_FAKE_RESPONSE['portgroup?range=[0-8191]&TYPE=257/GET'] = (
 MAP_COMMAND_TO_FAKE_RESPONSE['system/'] = (
     FAKE_SYSTEM_VERSION_RESPONSE)
 
+MAP_COMMAND_TO_FAKE_RESPONSE['lun/associate/cachepartition/POST'] = (
+    FAKE_SYSTEM_VERSION_RESPONSE)
+
 
 def Fake_sleep(time):
     pass
@@ -984,6 +1048,8 @@ class Fake18000Client(rest_client.RestClient):
         self.test_fail = False
         self.checkFlag = False
         self.remove_chap_flag = False
+        self.cache_not_exist = False
+        self.partition_not_exist = False
 
     def _change_file_mode(self, filepath):
         pass
@@ -1015,12 +1081,13 @@ class Fake18000Client(rest_client.RestClient):
         return True
 
     def get_partition_id_by_name(self, name):
+        if self.partition_not_exist:
+            return None
         return "11"
 
-    def add_lun_to_partition(self, lunid, partition_id):
-        pass
-
     def get_cache_id_by_name(self, name):
+        if self.cache_not_exist:
+            return None
         return "11"
 
     def add_lun_to_cache(self, lunid, cache_id):
@@ -1718,6 +1785,35 @@ class Huawei18000FCDriverTestCase(test.TestCase):
                                                           'available')
         self.assertEqual({'_name_id': '21ec7341-9256-497b-97d9-ef48edcf0637'},
                          model_update)
+
+    def test_retype_volume_success(self):
+        self.driver.restclient.login()
+        retype = self.driver.retype(None, test_volume,
+                                    test_new_type, None, test_host)
+        self.assertTrue(retype)
+
+    def test_retype_volume_cache_fail(self):
+        self.driver.restclient.cache_not_exist = True
+        self.driver.restclient.login()
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.retype, None,
+                          test_volume, test_new_type, None, test_host)
+
+    def test_retype_volume_partition_fail(self):
+        self.driver.restclient.partition_not_exist = True
+        self.driver.restclient.login()
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.retype, None,
+                          test_volume, test_new_type, None, test_host)
+
+    @mock.patch.object(rest_client.RestClient, 'add_lun_to_partition')
+    def test_retype_volume_fail(self, mock_add_lun_to_partition):
+        self.driver.restclient.login()
+        mock_add_lun_to_partition.side_effect = (
+            exception.VolumeBackendAPIException(data='Error occurred.'))
+        retype = self.driver.retype(None, test_volume,
+                                    test_new_type, None, test_host)
+        self.assertFalse(retype)
 
     def create_fake_conf_file(self):
         """Create a fake Config file
