@@ -113,11 +113,16 @@ def novaclient(context, admin_endpoint=False, privileged_user=False,
 
         # When privileged_user is used, it needs to authenticate to Keystone
         # before querying Nova, so we set auth_url to the identity service
-        # endpoint. We then pass region_name, endpoint_type, etc. to the
-        # Client() constructor so that the final endpoint is chosen correctly.
-        url = sc.url_for(service_type='identity',
-                         endpoint_type=endpoint_type,
-                         **region_filter)
+        # endpoint.
+        if CONF.os_privileged_user_auth_url:
+            url = CONF.os_privileged_user_auth_url
+        else:
+            # We then pass region_name, endpoint_type, etc. to the
+            # Client() constructor so that the final endpoint is
+            # chosen correctly.
+            url = sc.url_for(service_type='identity',
+                             endpoint_type=endpoint_type,
+                             **region_filter)
 
         LOG.debug('Creating a Nova client using "%s" user',
                   CONF.os_privileged_user_name)

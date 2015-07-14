@@ -202,6 +202,10 @@ global_opts = [
                default=None,
                help='Tenant name associated with the OpenStack privileged '
                     'account.'),
+    cfg.StrOpt('os_privileged_user_auth_url',
+               default=None,
+               help='Auth URL associated with the OpenStack privileged '
+                    'account.'),
 ]
 
 CONF.register_opts(global_opts)
