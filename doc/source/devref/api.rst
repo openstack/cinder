@@ -19,8 +19,7 @@ API Endpoint
 ============
 
 Cinder has a system for managing multiple APIs on different subdomains.
-Currently there is support for the OpenStack API, as well as the Amazon EC2
-API.
+Currently there is support for the OpenStack API.
 
 Common Components
 -----------------
@@ -34,15 +33,6 @@ The :mod:`cinder.api` Module
     :undoc-members:
     :show-inheritance:
 
-The :mod:`cinder.api.cloud` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: cinder.api.cloud
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 OpenStack API
 -------------
 
@@ -50,45 +40,6 @@ The :mod:`openstack` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: cinder.api.openstack
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-The :mod:`auth` Module
-~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: cinder.api.openstack.auth
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-EC2 API
--------
-
-The :mod:`cinder.api.ec2` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: cinder.api.ec2
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-The :mod:`cloud` Module
-~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: cinder.api.ec2.cloud
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-The :mod:`metadatarequesthandler` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: cinder.api.ec2.metadatarequesthandler
     :noindex:
     :members:
     :undoc-members:
