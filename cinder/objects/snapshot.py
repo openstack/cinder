@@ -136,7 +136,7 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
         if self.obj_attr_is_set('id'):
             raise exception.ObjectActionError(action='create',
                                               reason=_('already created'))
-        updates = self.obj_get_changes()
+        updates = self.cinder_obj_get_changes()
 
         if 'volume' in updates:
             raise exception.ObjectActionError(action='create',
@@ -147,7 +147,7 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
 
     @base.remotable
     def save(self):
-        updates = self.obj_get_changes()
+        updates = self.cinder_obj_get_changes()
         if updates:
             if 'volume' in updates:
                 raise exception.ObjectActionError(action='save',
