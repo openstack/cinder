@@ -144,9 +144,6 @@ class BaseVolumeTestCase(test.TestCase):
         except OSError:
             pass
 
-    def fake_get_target(obj, iqn):
-        return 1
-
     def fake_get_all_volume_groups(obj, vg_name=None, no_suffix=True):
         return [{'name': 'cinder-volumes',
                  'size': '5.00',
@@ -5576,9 +5573,6 @@ class DriverTestCase(test.TestCase):
             shutil.rmtree(CONF.volumes_dir)
         except OSError:
             pass
-
-    def fake_get_target(obj, iqn):
-        return 1
 
     def _attach_volume(self):
         """Attach volumes to an instance."""
