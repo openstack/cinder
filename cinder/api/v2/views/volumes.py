@@ -61,6 +61,7 @@ class ViewBuilder(common.ViewBuilder):
                 'size': volume.get('size'),
                 'availability_zone': volume.get('availability_zone'),
                 'created_at': volume.get('created_at'),
+                'updated_at': volume.get('updated_at'),
                 'attachments': self._get_attachments(volume),
                 'name': volume.get('display_name'),
                 'description': volume.get('display_description'),
@@ -100,6 +101,7 @@ class ViewBuilder(common.ViewBuilder):
                          'server_id': attachment.get('instance_uuid'),
                          'host_name': attachment.get('attached_host'),
                          'device': attachment.get('mountpoint'),
+                         'attached_at': attachment.get('attach_time'),
                          }
                     attachments.append(a)
 

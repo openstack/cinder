@@ -109,6 +109,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(volume_id, res_dict['backup']['volume_id'])
         self.assertFalse(res_dict['backup']['is_incremental'])
         self.assertFalse(res_dict['backup']['has_dependent_backups'])
+        self.assertIn('updated_at', res_dict['backup'])
 
         db.backup_destroy(context.get_admin_context(), backup_id)
         db.volume_destroy(context.get_admin_context(), volume_id)
@@ -282,7 +283,7 @@ class BackupsAPITestCase(test.TestCase):
         res_dict = json.loads(res.body)
 
         self.assertEqual(200, res.status_int)
-        self.assertEqual(14, len(res_dict['backups'][0]))
+        self.assertEqual(15, len(res_dict['backups'][0]))
         self.assertEqual('az1', res_dict['backups'][0]['availability_zone'])
         self.assertEqual('volumebackups',
                          res_dict['backups'][0]['container'])
@@ -295,8 +296,9 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(0, res_dict['backups'][0]['size'])
         self.assertEqual('creating', res_dict['backups'][0]['status'])
         self.assertEqual('1', res_dict['backups'][0]['volume_id'])
+        self.assertIn('updated_at', res_dict['backups'][0])
 
-        self.assertEqual(14, len(res_dict['backups'][1]))
+        self.assertEqual(15, len(res_dict['backups'][1]))
         self.assertEqual('az1', res_dict['backups'][1]['availability_zone'])
         self.assertEqual('volumebackups',
                          res_dict['backups'][1]['container'])
@@ -309,8 +311,9 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(0, res_dict['backups'][1]['size'])
         self.assertEqual('creating', res_dict['backups'][1]['status'])
         self.assertEqual('1', res_dict['backups'][1]['volume_id'])
+        self.assertIn('updated_at', res_dict['backups'][1])
 
-        self.assertEqual(14, len(res_dict['backups'][2]))
+        self.assertEqual(15, len(res_dict['backups'][2]))
         self.assertEqual('az1', res_dict['backups'][2]['availability_zone'])
         self.assertEqual('volumebackups', res_dict['backups'][2]['container'])
         self.assertEqual('this is a test backup',
@@ -322,6 +325,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(0, res_dict['backups'][2]['size'])
         self.assertEqual('creating', res_dict['backups'][2]['status'])
         self.assertEqual('1', res_dict['backups'][2]['volume_id'])
+        self.assertIn('updated_at', res_dict['backups'][2])
 
         db.backup_destroy(context.get_admin_context(), backup_id3)
         db.backup_destroy(context.get_admin_context(), backup_id2)
@@ -465,9 +469,9 @@ class BackupsAPITestCase(test.TestCase):
 
         self.assertEqual(200, res.status_int)
         self.assertEqual(2, len(res_dict['backups']))
-        self.assertEqual(14, len(res_dict['backups'][0]))
+        self.assertEqual(15, len(res_dict['backups'][0]))
         self.assertEqual(backup_id3, res_dict['backups'][0]['id'])
-        self.assertEqual(14, len(res_dict['backups'][1]))
+        self.assertEqual(15, len(res_dict['backups'][1]))
         self.assertEqual(backup_id2, res_dict['backups'][1]['id'])
 
         db.backup_destroy(context.get_admin_context(), backup_id3)
@@ -488,9 +492,9 @@ class BackupsAPITestCase(test.TestCase):
 
         self.assertEqual(200, res.status_int)
         self.assertEqual(2, len(res_dict['backups']))
-        self.assertEqual(14, len(res_dict['backups'][0]))
+        self.assertEqual(15, len(res_dict['backups'][0]))
         self.assertEqual(backup_id2, res_dict['backups'][0]['id'])
-        self.assertEqual(14, len(res_dict['backups'][1]))
+        self.assertEqual(15, len(res_dict['backups'][1]))
         self.assertEqual(backup_id1, res_dict['backups'][1]['id'])
 
         db.backup_destroy(context.get_admin_context(), backup_id3)
@@ -511,7 +515,7 @@ class BackupsAPITestCase(test.TestCase):
 
         self.assertEqual(200, res.status_int)
         self.assertEqual(1, len(res_dict['backups']))
-        self.assertEqual(14, len(res_dict['backups'][0]))
+        self.assertEqual(15, len(res_dict['backups'][0]))
         self.assertEqual(backup_id2, res_dict['backups'][0]['id'])
 
         db.backup_destroy(context.get_admin_context(), backup_id3)

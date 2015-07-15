@@ -48,6 +48,7 @@ def _get_default_snapshot_param():
         'status': 'available',
         'volume_size': 100,
         'created_at': None,
+        'updated_at': None,
         'user_id': 'bcb7746c7a41472d88a1ffac89ba6a9b',
         'project_id': '7ffe17a15c724e2aa79fc839540aec15',
         'display_name': 'Default name',
@@ -109,6 +110,7 @@ class SnapshotApiTest(test.TestCase):
         self.assertEqual(snapshot_description,
                          resp_dict['snapshot']['description'])
         self.assertTrue(mock_validate.called)
+        self.assertIn('updated_at', resp_dict['snapshot'])
         db.volume_destroy(self.ctx, volume.id)
 
     def test_snapshot_create_force(self):
@@ -130,6 +132,7 @@ class SnapshotApiTest(test.TestCase):
                          resp_dict['snapshot']['name'])
         self.assertEqual(snapshot_description,
                          resp_dict['snapshot']['description'])
+        self.assertIn('updated_at', resp_dict['snapshot'])
 
         snapshot = {
             "volume_id": volume.id,
@@ -198,6 +201,7 @@ class SnapshotApiTest(test.TestCase):
                 'status': u'available',
                 'size': 100,
                 'created_at': None,
+                'updated_at': None,
                 'name': u'Updated Test Name',
                 'description': u'Default description',
                 'metadata': {},
@@ -287,6 +291,7 @@ class SnapshotApiTest(test.TestCase):
 
         self.assertIn('snapshot', resp_dict)
         self.assertEqual(UUID, resp_dict['snapshot']['id'])
+        self.assertIn('updated_at', resp_dict['snapshot'])
 
     def test_snapshot_show_invalid_id(self):
         snapshot_id = INVALID_UUID
@@ -323,6 +328,7 @@ class SnapshotApiTest(test.TestCase):
         self.assertIn('snapshots', resp_dict)
         resp_snapshots = resp_dict['snapshots']
         self.assertEqual(1, len(resp_snapshots))
+        self.assertIn('updated_at', resp_snapshots[0])
 
         resp_snapshot = resp_snapshots.pop()
         self.assertEqual(UUID, resp_snapshot['id'])
@@ -349,6 +355,7 @@ class SnapshotApiTest(test.TestCase):
             self.assertIn('snapshots', res)
             self.assertEqual(1, len(res['snapshots']))
             self.assertEqual(snaps[1].id, res['snapshots'][0]['id'])
+            self.assertIn('updated_at', res['snapshots'][0])
 
             # Test that we get an empty list with an offset greater than the
             # number of items
