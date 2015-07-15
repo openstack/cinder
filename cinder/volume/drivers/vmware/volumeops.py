@@ -21,6 +21,7 @@ Implements operations on volumes residing on VMware datastores.
 from oslo_log import log as logging
 from oslo_utils import units
 from oslo_vmware import exceptions
+from oslo_vmware import pbm
 from oslo_vmware import vim_util
 from six.moves import urllib
 
@@ -1396,23 +1397,9 @@ class VMwareVolumeOps(object):
         :param backing: backing reference
         :return: profile name
         """
-        pbm = self._session.pbm
-        profile_manager = pbm.service_content.profileManager
-
-        object_ref = pbm.client.factory.create('ns0:PbmServerObjectRef')
-        object_ref.key = backing.value
-        object_ref.objectType = 'virtualMachine'
-
-        profile_ids = self._session.invoke_api(pbm,
-                                               'PbmQueryAssociatedProfile',
-                                               profile_manager,
-                                               entity=object_ref)
+        profile_ids = pbm.get_profiles(self._session, backing)
         if profile_ids:
-            profiles = self._session.invoke_api(pbm,
-                                                'PbmRetrieveContent',
-                                                profile_manager,
-                                                profileIds=profile_ids)
-            return profiles[0].name
+            return pbm.get_profiles_by_ids(self._session, profile_ids)[0].name
 
     def _get_all_clusters(self):
         clusters = {}
