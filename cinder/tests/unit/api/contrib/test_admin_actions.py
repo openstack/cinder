@@ -251,6 +251,23 @@ class AdminActionsTest(test.TestCase):
                                         {'status': 'restoring'})
         self.assertEqual(resp.status_int, 400)
 
+    def test_backup_reset_status_with_invalid_backup(self):
+        ctx = context.RequestContext('admin', 'fake', True)
+        volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
+                                        'provider_location': '', 'size': 1})
+        backup = db.backup_create(ctx, {'status': 'available',
+                                        'volume_id': volume['id'],
+                                        'user_id': 'user',
+                                        'project_id': 'project'})
+
+        backup['id'] = 'fake_id'
+        resp = self._issue_backup_reset(ctx,
+                                        backup,
+                                        {'status': 'error'})
+
+        # Should raise 404 if backup doesn't exist.
+        self.assertEqual(404, resp.status_int)
+
     def test_malformed_reset_status_body(self):
         ctx = context.RequestContext('admin', 'fake', True)
         volume = db.volume_create(ctx, {'status': 'available', 'size': 1})
