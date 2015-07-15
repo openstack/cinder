@@ -240,9 +240,10 @@ class V6000ISCSIDriverTestCase(test.TestCase):
     def test_initialize_connection(self):
         lun_id = 1
         igroup = None
+        target_name = self.driver.TARGET_GROUP_NAME
         tgt = self.driver.array_info[0]
         iqn = "%s%s:%s" % (self.conf.iscsi_target_prefix,
-                           tgt['node'], VOLUME['id'])
+                           tgt['node'], target_name)
         volume = mock.MagicMock(spec=models.Volume)
 
         def getitem(name):
@@ -251,15 +252,14 @@ class V6000ISCSIDriverTestCase(test.TestCase):
         volume.__getitem__.side_effect = getitem
 
         self.driver.common.vip = self.setup_mock_vshare()
-        self.driver._get_short_name = mock.Mock(return_value=VOLUME['id'])
-        self.driver._create_iscsi_target = mock.Mock(return_value=tgt)
+        self.driver._get_iscsi_target = mock.Mock(return_value=tgt)
         self.driver._export_lun = mock.Mock(return_value=lun_id)
 
         props = self.driver.initialize_connection(volume, CONNECTOR)
 
-        self.driver._get_short_name.assert_called_with(volume['id'])
-        self.driver._create_iscsi_target.assert_called_with(volume)
-        self.driver._export_lun.assert_called_with(volume, CONNECTOR, igroup)
+        self.driver._get_iscsi_target.assert_called_once_with()
+        self.driver._export_lun.assert_called_once_with(
+            volume, CONNECTOR, igroup)
         self.driver.common.vip.basic.save_config.assert_called_with()
         self.assertEqual("1.2.3.4:3260", props['data']['target_portal'])
         self.assertEqual(iqn, props['data']['target_iqn'])
@@ -269,9 +269,10 @@ class V6000ISCSIDriverTestCase(test.TestCase):
     def test_initialize_connection_with_snapshot_object(self):
         lun_id = 1
         igroup = None
+        target_name = self.driver.TARGET_GROUP_NAME
         tgt = self.driver.array_info[0]
         iqn = "%s%s:%s" % (self.conf.iscsi_target_prefix,
-                           tgt['node'], SNAPSHOT['id'])
+                           tgt['node'], target_name)
         snapshot = mock.MagicMock(spec=models.Snapshot)
 
         def getitem(name):
@@ -280,16 +281,14 @@ class V6000ISCSIDriverTestCase(test.TestCase):
         snapshot.__getitem__.side_effect = getitem
 
         self.driver.common.vip = self.setup_mock_vshare()
-        self.driver._get_short_name = mock.Mock(return_value=SNAPSHOT['id'])
-        self.driver._create_iscsi_target = mock.Mock(return_value=tgt)
+        self.driver._get_iscsi_target = mock.Mock(return_value=tgt)
         self.driver._export_snapshot = mock.Mock(return_value=lun_id)
 
         props = self.driver.initialize_connection(snapshot, CONNECTOR)
 
-        self.driver._get_short_name.assert_called_with(SNAPSHOT['id'])
-        self.driver._create_iscsi_target.assert_called_with(snapshot)
-        self.driver._export_snapshot.assert_called_with(snapshot, CONNECTOR,
-                                                        igroup)
+        self.driver._get_iscsi_target.assert_called_once_with()
+        self.driver._export_snapshot.assert_called_once_with(
+            snapshot, CONNECTOR, igroup)
         self.driver.common.vip.basic.save_config.assert_called_with()
         self.assertEqual("1.2.3.4:3260", props['data']['target_portal'])
         self.assertEqual(iqn, props['data']['target_iqn'])
@@ -300,9 +299,10 @@ class V6000ISCSIDriverTestCase(test.TestCase):
         self.conf.use_igroups = True
         lun_id = 1
         igroup = 'test-igroup-1'
+        target_name = self.driver.TARGET_GROUP_NAME
         tgt = self.driver.array_info[0]
         iqn = "%s%s:%s" % (self.conf.iscsi_target_prefix,
-                           tgt['node'], VOLUME['id'])
+                           tgt['node'], target_name)
         volume = mock.MagicMock(spec=models.Volume)
 
         def getitem(name):
@@ -313,18 +313,19 @@ class V6000ISCSIDriverTestCase(test.TestCase):
         self.driver.common.vip = self.setup_mock_vshare()
         self.driver.common._get_igroup = mock.Mock(return_value=igroup)
         self.driver._add_igroup_member = mock.Mock()
-        self.driver._get_short_name = mock.Mock(return_value=VOLUME['id'])
-        self.driver._create_iscsi_target = mock.Mock(return_value=tgt)
+        self.driver._get_iscsi_target = mock.Mock(return_value=tgt)
         self.driver._export_lun = mock.Mock(return_value=lun_id)
 
         props = self.driver.initialize_connection(volume, CONNECTOR)
 
-        self.driver.common._get_igroup.assert_called_with(volume, CONNECTOR)
-        self.driver._add_igroup_member.assert_called_with(CONNECTOR, igroup)
-        self.driver._get_short_name.assert_called_with(volume['id'])
-        self.driver._create_iscsi_target.assert_called_with(volume)
-        self.driver._export_lun.assert_called_with(volume, CONNECTOR, igroup)
-        self.driver.common.vip.basic.save_config.assert_called_with()
+        self.driver.common._get_igroup.assert_called_once_with(
+            volume, CONNECTOR)
+        self.driver._add_igroup_member.assert_called_once_with(
+            CONNECTOR, igroup)
+        self.driver._get_iscsi_target.assert_called_once_with()
+        self.driver._export_lun.assert_called_once_with(
+            volume, CONNECTOR, igroup)
+        self.driver.common.vip.basic.save_config.assert_called_once_with()
         self.assertEqual("1.2.3.4:3260", props['data']['target_portal'])
         self.assertEqual(iqn, props['data']['target_iqn'])
         self.assertEqual(lun_id, props['data']['target_lun'])
@@ -335,12 +336,10 @@ class V6000ISCSIDriverTestCase(test.TestCase):
 
         self.driver.common.vip = self.setup_mock_vshare()
         self.driver._unexport_lun = mock.Mock()
-        self.driver._delete_iscsi_target = mock.Mock()
 
         result = self.driver.terminate_connection(volume, CONNECTOR)
 
-        self.driver._unexport_lun.assert_called_with(volume)
-        self.driver._delete_iscsi_target.assert_called_with(volume)
+        self.driver._unexport_lun.assert_called_once_with(volume)
         self.driver.common.vip.basic.save_config.assert_called_with()
         self.assertTrue(result is None)
 
@@ -349,12 +348,10 @@ class V6000ISCSIDriverTestCase(test.TestCase):
 
         self.driver.common.vip = self.setup_mock_vshare()
         self.driver._unexport_snapshot = mock.Mock()
-        self.driver._delete_iscsi_target = mock.Mock()
 
         result = self.driver.terminate_connection(snapshot, CONNECTOR)
 
-        self.driver._unexport_snapshot.assert_called_with(snapshot)
-        self.driver._delete_iscsi_target.assert_called_with(snapshot)
+        self.driver._unexport_snapshot.assert_called_once_with(snapshot)
         self.driver.common.vip.basic.save_config.assert_called_with()
         self.assertTrue(result is None)
 
@@ -367,82 +364,59 @@ class V6000ISCSIDriverTestCase(test.TestCase):
         self.driver._update_stats.assert_called_with()
         self.assertEqual(self.driver.stats, result)
 
-    def test_create_iscsi_target(self):
-        target_name = VOLUME['id']
-        response = {'code': 0, 'message': 'success'}
+    def test_create_iscsi_target_group(self):
+        target_name = self.driver.TARGET_GROUP_NAME
+        bn = "/vshare/config/iscsi/target/%s" % target_name
+        response1 = {}
+        response2 = {'code': 0, 'message': 'success'}
 
-        m_vshare = self.setup_mock_vshare()
+        conf = {
+            'basic.get_node_values.return_value': response1,
+        }
+        m_vshare = self.setup_mock_vshare(conf)
 
         self.driver.common.vip = m_vshare
         self.driver.common.mga = m_vshare
         self.driver.common.mgb = m_vshare
-        self.driver._get_short_name = mock.Mock(return_value=VOLUME['id'])
         self.driver.common._send_cmd_and_verify = mock.Mock(
-            return_value=response)
-        self.driver.common._send_cmd = mock.Mock(return_value=response)
+            return_value=response2)
+        self.driver.common._send_cmd = mock.Mock(return_value=response2)
 
         calls = [mock.call(self.driver.common.mga.iscsi.bind_ip_to_target, '',
-                           VOLUME['id'],
+                           target_name,
                            self.driver.gateway_iscsi_ip_addresses_mga),
                  mock.call(self.driver.common.mgb.iscsi.bind_ip_to_target, '',
-                           VOLUME['id'],
+                           target_name,
                            self.driver.gateway_iscsi_ip_addresses_mgb)]
 
-        result = self.driver._create_iscsi_target(VOLUME)
+        result = self.driver._create_iscsi_target_group()
 
-        self.driver._get_short_name.assert_called_with(VOLUME['id'])
+        self.driver.common.vip.basic.get_node_values.assert_called_with(bn)
         self.driver.common._send_cmd_and_verify.assert_called_with(
             self.driver.common.vip.iscsi.create_iscsi_target,
-            self.driver._wait_for_targetstate, '',
+            self.driver._wait_for_target_state, '',
             [target_name], [target_name])
         self.driver.common._send_cmd.assert_has_calls(calls)
-        self.assertTrue(result in self.driver.array_info)
-
-    def test_delete_iscsi_target(self):
-        response = {'code': 0, 'message': 'success'}
-
-        self.driver.common.vip = self.setup_mock_vshare()
-        self.driver._get_short_name = mock.Mock(return_value=VOLUME['id'])
-        self.driver.common._send_cmd = mock.Mock(return_value=response)
-
-        result = self.driver._delete_iscsi_target(VOLUME)
-
-        self.driver._get_short_name.assert_called_with(VOLUME['id'])
-        self.driver.common._send_cmd(
-            self.driver.common.vip.iscsi.delete_iscsi_target,
-            '', VOLUME['id'])
         self.assertTrue(result is None)
 
-    def test_delete_iscsi_target_fails_with_exception(self):
-        response = {'code': 14000, 'message': 'Generic error'}
-        failure = exception.ViolinBackendErr
-
-        self.driver.common.vip = self.setup_mock_vshare()
-        self.driver._get_short_name = mock.Mock(return_value=VOLUME['id'])
-        self.driver.common._send_cmd = mock.Mock(
-            side_effect=failure(response['message']))
-
-        self.assertRaises(failure, self.driver._delete_iscsi_target, VOLUME)
-
     def test_export_lun(self):
+        target_name = self.driver.TARGET_GROUP_NAME
         igroup = 'test-igroup-1'
         lun_id = '1'
         response = {'code': 0, 'message': ''}
 
         self.driver.common.vip = self.setup_mock_vshare()
-        self.driver._get_short_name = mock.Mock(return_value=VOLUME['id'])
         self.driver.common._send_cmd_and_verify = mock.Mock(
             return_value=response)
         self.driver.common._get_lun_id = mock.Mock(return_value=lun_id)
 
         result = self.driver._export_lun(VOLUME, CONNECTOR, igroup)
 
-        self.driver._get_short_name.assert_called_with(VOLUME['id'])
         self.driver.common._send_cmd_and_verify.assert_called_with(
             self.driver.common.vip.lun.export_lun,
-            self.driver.common._wait_for_export_config, '',
-            [self.driver.common.container, VOLUME['id'], VOLUME['id'],
-             igroup, 'auto'], [VOLUME['id'], 'state=True'])
+            self.driver.common._wait_for_export_state, '',
+            [self.driver.common.container, VOLUME['id'], target_name,
+             igroup, 'auto'], [VOLUME['id'], None, True])
         self.driver.common._get_lun_id.assert_called_with(VOLUME['id'])
         self.assertEqual(lun_id, result)
 
@@ -453,7 +427,6 @@ class V6000ISCSIDriverTestCase(test.TestCase):
         failure = exception.ViolinBackendErr
 
         self.driver.common.vip = self.setup_mock_vshare()
-        self.driver._get_short_name = mock.Mock(return_value=VOLUME['id'])
         self.driver.common._send_cmd_and_verify = mock.Mock(
             side_effect=failure(response['message']))
         self.driver._get_lun_id = mock.Mock(return_value=lun_id)
@@ -472,9 +445,9 @@ class V6000ISCSIDriverTestCase(test.TestCase):
 
         self.driver.common._send_cmd_and_verify.assert_called_with(
             self.driver.common.vip.lun.unexport_lun,
-            self.driver.common._wait_for_export_config, '',
+            self.driver.common._wait_for_export_state, '',
             [self.driver.common.container, VOLUME['id'], 'all', 'all', 'auto'],
-            [VOLUME['id'], 'state=False'])
+            [VOLUME['id'], None, False])
         self.assertTrue(result is None)
 
     def test_unexport_lun_fails_with_exception(self):
@@ -489,23 +462,22 @@ class V6000ISCSIDriverTestCase(test.TestCase):
 
     def test_export_snapshot(self):
         lun_id = '1'
+        target_name = self.driver.TARGET_GROUP_NAME
         igroup = 'test-igroup-1'
         response = {'code': 0, 'message': ''}
 
         self.driver.common.vip = self.setup_mock_vshare()
-        self.driver._get_short_name = mock.Mock(return_value=SNAPSHOT['id'])
         self.driver.common._send_cmd = mock.Mock(return_value=response)
-        self.driver.common._wait_for_export_config = mock.Mock()
+        self.driver.common._wait_for_export_state = mock.Mock()
         self.driver.common._get_snapshot_id = mock.Mock(return_value=lun_id)
 
         result = self.driver._export_snapshot(SNAPSHOT, CONNECTOR, igroup)
 
-        self.driver._get_short_name.assert_called_with(SNAPSHOT['id'])
         self.driver.common._send_cmd.assert_called_with(
             self.driver.common.vip.snapshot.export_lun_snapshot, '',
             self.driver.common.container, SNAPSHOT['volume_id'],
-            SNAPSHOT['id'], igroup, SNAPSHOT['id'], 'auto')
-        self.driver.common._wait_for_export_config.assert_called_with(
+            SNAPSHOT['id'], igroup, target_name, 'auto')
+        self.driver.common._wait_for_export_state.assert_called_with(
             SNAPSHOT['volume_id'], SNAPSHOT['id'], state=True)
         self.driver.common._get_snapshot_id.assert_called_once_with(
             SNAPSHOT['volume_id'], SNAPSHOT['id'])
@@ -517,7 +489,7 @@ class V6000ISCSIDriverTestCase(test.TestCase):
 
         self.driver.common.vip = self.setup_mock_vshare()
         self.driver.common._send_cmd = mock.Mock(return_value=response)
-        self.driver.common._wait_for_export_config = mock.Mock()
+        self.driver.common._wait_for_export_state = mock.Mock()
 
         result = self.driver._unexport_snapshot(SNAPSHOT)
 
@@ -525,7 +497,7 @@ class V6000ISCSIDriverTestCase(test.TestCase):
             self.driver.common.vip.snapshot.unexport_lun_snapshot, '',
             self.driver.common.container, SNAPSHOT['volume_id'],
             SNAPSHOT['id'], 'all', 'all', 'auto', False)
-        self.driver.common._wait_for_export_config.assert_called_with(
+        self.driver.common._wait_for_export_state.assert_called_with(
             SNAPSHOT['volume_id'], SNAPSHOT['id'], state=False)
         self.assertTrue(result is None)
 
@@ -723,9 +695,9 @@ class V6000ISCSIDriverTestCase(test.TestCase):
 
         self.assertEqual(self.conf.san_ip, self.driver._get_hostname())
 
-    def test_wait_for_targetstate(self):
+    def test_wait_for_target_state(self):
         target = 'mytarget'
-        bn = "/vshare/config/iscsi/target/%s" % target
+        bn = "/vshare/state/local/target/iscsi/%s" % target
         response = {bn: target}
 
         conf = {
@@ -734,7 +706,7 @@ class V6000ISCSIDriverTestCase(test.TestCase):
         self.driver.common.mga = self.setup_mock_vshare(m_conf=conf)
         self.driver.common.mgb = self.setup_mock_vshare(m_conf=conf)
 
-        result = self.driver._wait_for_targetstate(target)
+        result = self.driver._wait_for_target_state(target)
 
         self.driver.common.mga.basic.get_node_values.assert_called_with(bn)
         self.driver.common.mgb.basic.get_node_values.assert_called_with(bn)

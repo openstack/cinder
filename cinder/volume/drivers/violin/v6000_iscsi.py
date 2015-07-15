@@ -57,9 +57,11 @@ class V6000ISCSIDriver(driver.ISCSIDriver):
 
     Version history:
         1.0 - Initial driver
+        1.0.1 - Fixes polling for export completion
     """
 
-    VERSION = '1.0'
+    VERSION = '1.0.1'
+    TARGET_GROUP_NAME = 'openstack'
 
     def __init__(self, *args, **kwargs):
         super(V6000ISCSIDriver, self).__init__(*args, **kwargs)
@@ -91,6 +93,9 @@ class V6000ISCSIDriver(driver.ISCSIDriver):
             self.array_info.append({"node": self._get_hostname('mgb'),
                                     "addr": ip,
                                     "conn": self.common.mgb})
+
+        # setup global target group for exports to use
+        self._create_iscsi_target_group()
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
@@ -175,15 +180,16 @@ class V6000ISCSIDriver(driver.ISCSIDriver):
             igroup = self.common._get_igroup(volume, connector)
             self._add_igroup_member(connector, igroup)
 
-        vol = self._get_short_name(volume['id'])
-        tgt = self._create_iscsi_target(volume)
+        tgt = self._get_iscsi_target()
+        target_name = self.TARGET_GROUP_NAME
+
         if isinstance(volume, models.Volume):
             lun = self._export_lun(volume, connector, igroup)
         else:
             lun = self._export_snapshot(volume, connector, igroup)
 
         iqn = "%s%s:%s" % (self.configuration.iscsi_target_prefix,
-                           tgt['node'], vol)
+                           tgt['node'], target_name)
         self.common.vip.basic.save_config()
 
         properties = {}
@@ -205,7 +211,6 @@ class V6000ISCSIDriver(driver.ISCSIDriver):
             self._unexport_lun(volume)
         else:
             self._unexport_snapshot(volume)
-        self._delete_iscsi_target(volume)
         self.common.vip.basic.save_config()
 
     def get_volume_stats(self, refresh=False):
@@ -214,32 +219,31 @@ class V6000ISCSIDriver(driver.ISCSIDriver):
             self._update_stats()
         return self.stats
 
-    @utils.synchronized('vmem-export')
-    def _create_iscsi_target(self, volume):
+    def _create_iscsi_target_group(self):
         """Creates a new target for use in exporting a lun.
 
-        Openstack does not yet support multipathing. We still create
-        HA targets but we pick a single random target for the
-        Openstack infrastructure to use.  This at least allows us to
-        evenly distribute LUN connections across the storage cluster.
+        Create an HA target on the backend that will be used for all
+        lun exports made via this driver.
+
         The equivalent CLI commands are "iscsi target create
         <target_name>" and "iscsi target bind <target_name> to
         <ip_of_mg_eth_intf>".
-
-        Arguments:
-            volume -- volume object provided by the Manager
-
-        Returns:
-            reference to randomly selected target object
         """
         v = self.common.vip
-        target_name = self._get_short_name(volume['id'])
+        target_name = self.TARGET_GROUP_NAME
+
+        bn = "/vshare/config/iscsi/target/%s" % target_name
+        resp = self.common.vip.basic.get_node_values(bn)
+
+        if resp:
+            LOG.debug("iscsi target group %s already exists.", target_name)
+            return
 
         LOG.debug("Creating iscsi target %s.", target_name)
 
         try:
             self.common._send_cmd_and_verify(v.iscsi.create_iscsi_target,
-                                             self._wait_for_targetstate,
+                                             self._wait_for_target_state,
                                              '', [target_name], [target_name])
 
         except Exception:
@@ -253,33 +257,20 @@ class V6000ISCSIDriver(driver.ISCSIDriver):
             self.common._send_cmd(self.common.mgb.iscsi.bind_ip_to_target,
                                   '', target_name,
                                   self.gateway_iscsi_ip_addresses_mgb)
+
         except Exception:
             LOG.exception(_LE("Failed to bind iSCSI targets!"))
             raise
 
-        return self.array_info[random.randint(0, len(self.array_info) - 1)]
+    def _get_iscsi_target(self):
+        """Get a random target IP for OpenStack to connect to.
 
-    @utils.synchronized('vmem-export')
-    def _delete_iscsi_target(self, volume):
-        """Deletes the iscsi target for a lun.
-
-        The CLI equivalent is "no iscsi target create <target_name>".
-
-        Arguments:
-            volume -- volume object provided by the Manager
+        For the non-multipath case we pick a single random target for
+        the Openstack infrastructure to use.  This at least allows us
+        to evenly distribute LUN connections across the storage
+        cluster.
         """
-        v = self.common.vip
-        success_msgs = ['', 'Invalid target']
-        target_name = self._get_short_name(volume['id'])
-
-        LOG.debug("Deleting iscsi target for %s.", target_name)
-
-        try:
-            self.common._send_cmd(v.iscsi.delete_iscsi_target,
-                                  success_msgs, target_name)
-        except Exception:
-            LOG.exception(_LE("Failed to delete iSCSI target!"))
-            raise
+        return self.array_info[random.randint(0, len(self.array_info) - 1)]
 
     @utils.synchronized('vmem-export')
     def _export_lun(self, volume, connector=None, igroup=None):
@@ -307,15 +298,15 @@ class V6000ISCSIDriver(driver.ISCSIDriver):
         else:
             raise exception.Error(_("No initiators found, cannot proceed"))
 
-        target_name = self._get_short_name(volume['id'])
+        target_name = self.TARGET_GROUP_NAME
 
         LOG.debug("Exporting lun %s.", volume['id'])
 
         try:
             self.common._send_cmd_and_verify(
-                v.lun.export_lun, self.common._wait_for_export_config, '',
+                v.lun.export_lun, self.common._wait_for_export_state, '',
                 [self.common.container, volume['id'], target_name,
-                 export_to, 'auto'], [volume['id'], 'state=True'])
+                 export_to, 'auto'], [volume['id'], None, True])
 
         except Exception:
             LOG.exception(_LE("LUN export for %s failed!"), volume['id'])
@@ -341,9 +332,9 @@ class V6000ISCSIDriver(driver.ISCSIDriver):
 
         try:
             self.common._send_cmd_and_verify(
-                v.lun.unexport_lun, self.common._wait_for_export_config, '',
+                v.lun.unexport_lun, self.common._wait_for_export_state, '',
                 [self.common.container, volume['id'], 'all', 'all', 'auto'],
-                [volume['id'], 'state=False'])
+                [volume['id'], None, False])
 
         except exception.ViolinBackendErrNotFound:
             LOG.debug("Lun %s already unexported, continuing.", volume['id'])
@@ -371,7 +362,7 @@ class V6000ISCSIDriver(driver.ISCSIDriver):
         export_to = ''
         v = self.common.vip
 
-        target_name = self._get_short_name(snapshot['id'])
+        target_name = self.TARGET_GROUP_NAME
 
         LOG.debug("Exporting snapshot %s.", snapshot['id'])
 
@@ -394,8 +385,8 @@ class V6000ISCSIDriver(driver.ISCSIDriver):
             raise
 
         else:
-            self.common._wait_for_export_config(snapshot['volume_id'],
-                                                snapshot['id'], state=True)
+            self.common._wait_for_export_state(snapshot['volume_id'],
+                                               snapshot['id'], state=True)
             lun_id = self.common._get_snapshot_id(snapshot['volume_id'],
                                                   snapshot['id'])
 
@@ -426,8 +417,8 @@ class V6000ISCSIDriver(driver.ISCSIDriver):
             raise
 
         else:
-            self.common._wait_for_export_config(snapshot['volume_id'],
-                                                snapshot['id'], state=False)
+            self.common._wait_for_export_state(snapshot['volume_id'],
+                                               snapshot['id'], state=False)
 
     def _add_igroup_member(self, connector, igroup):
         """Add an initiator to an igroup so it can see exports.
@@ -567,7 +558,7 @@ class V6000ISCSIDriver(driver.ISCSIDriver):
 
         return hostname
 
-    def _wait_for_targetstate(self, target_name):
+    def _wait_for_target_state(self, target_name):
         """Polls backend to verify an iscsi target configuration.
 
         This function will try to verify the creation of an iscsi
@@ -577,15 +568,15 @@ class V6000ISCSIDriver(driver.ISCSIDriver):
             target_name -- name of iscsi target to be polled
 
         Returns:
-            True if the export state was correctly added
+            True if the target state was correctly added
         """
-        bn = "/vshare/config/iscsi/target/%s" % (target_name)
+        bn = "/vshare/state/local/target/iscsi/%s" % (target_name)
 
         def _loop_func():
             status = [False, False]
             mg_conns = [self.common.mga, self.common.mgb]
 
-            LOG.debug("Entering _wait_for_targetstate loop: target=%s.",
+            LOG.debug("Entering _wait_for_target_state loop: target=%s.",
                       target_name)
 
             for node_id in range(2):

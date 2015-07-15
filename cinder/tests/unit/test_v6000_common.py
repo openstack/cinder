@@ -497,12 +497,11 @@ class V6000CommonTestCase(test.TestCase):
         self.assertEqual(CONNECTOR['host'],
                          self.driver._get_igroup(VOLUME, CONNECTOR))
 
-    def test_wait_for_export_config(self):
-        """Queries to cluster nodes verify export config."""
-        bn = "/vshare/config/export/container/myContainer/lun/%s" \
+    def test_wait_for_export_state(self):
+        """Queries to cluster nodes verify export state."""
+        bn = "/vshare/state/local/container/myContainer/lun/%s/usn_id" \
             % VOLUME['id']
-        response = {'/vshare/config/export/container/myContainer/lun/vol-01':
-                    VOLUME['id']}
+        response = {bn: '012345'}
 
         conf = {
             'basic.get_node_values.return_value': response,
@@ -510,15 +509,17 @@ class V6000CommonTestCase(test.TestCase):
         self.driver.mga = self.setup_mock_vshare(m_conf=conf)
         self.driver.mgb = self.setup_mock_vshare(m_conf=conf)
 
-        result = self.driver._wait_for_export_config(VOLUME['id'], state=True)
+        result = self.driver._wait_for_export_state(VOLUME['id'], state=True)
 
         self.driver.mga.basic.get_node_values.assert_called_with(bn)
         self.driver.mgb.basic.get_node_values.assert_called_with(bn)
         self.assertTrue(result)
 
-    def test_wait_for_export_config_with_no_config(self):
-        """Queries to cluster nodes verify *no* export config."""
-        response = {}
+    def test_wait_for_export_state_with_no_state(self):
+        """Queries to cluster nodes verify *no* export state."""
+        bn = "/vshare/state/local/container/myContainer/lun/%s/usn_id" \
+            % VOLUME['id']
+        response = {bn: '(not exported)'}
 
         conf = {
             'basic.get_node_values.return_value': response,
@@ -526,7 +527,7 @@ class V6000CommonTestCase(test.TestCase):
         self.driver.mga = self.setup_mock_vshare(m_conf=conf)
         self.driver.mgb = self.setup_mock_vshare(m_conf=conf)
 
-        self.assertTrue(self.driver._wait_for_export_config(
+        self.assertTrue(self.driver._wait_for_export_state(
             VOLUME['id'], state=False))
 
     def test_is_supported_vmos_version(self):

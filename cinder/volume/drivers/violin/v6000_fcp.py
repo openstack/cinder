@@ -58,9 +58,10 @@ class V6000FCDriver(driver.FibreChannelDriver):
 
     Version history:
         1.0 - Initial driver
+        1.0.1 - Fixes polling for export completion
     """
 
-    VERSION = '1.0'
+    VERSION = '1.0.1'
 
     def __init__(self, *args, **kwargs):
         super(V6000FCDriver, self).__init__(*args, **kwargs)
@@ -236,9 +237,9 @@ class V6000FCDriver(driver.FibreChannelDriver):
 
         try:
             self.common._send_cmd_and_verify(
-                v.lun.export_lun, self.common._wait_for_export_config, '',
+                v.lun.export_lun, self.common._wait_for_export_state, '',
                 [self.common.container, volume['id'], 'all', export_to,
-                 'auto'], [volume['id'], 'state=True'])
+                 'auto'], [volume['id'], None, True])
 
         except Exception:
             LOG.exception(_LE("LUN export for %s failed!"), volume['id'])
@@ -264,9 +265,9 @@ class V6000FCDriver(driver.FibreChannelDriver):
 
         try:
             self.common._send_cmd_and_verify(
-                v.lun.unexport_lun, self.common._wait_for_export_config, '',
+                v.lun.unexport_lun, self.common._wait_for_export_state, '',
                 [self.common.container, volume['id'], 'all', 'all', 'auto'],
-                [volume['id'], 'state=False'])
+                [volume['id'], None, False])
 
         except exception.ViolinBackendErrNotFound:
             LOG.debug("Lun %s already unexported, continuing.", volume['id'])
@@ -315,8 +316,8 @@ class V6000FCDriver(driver.FibreChannelDriver):
             raise
 
         else:
-            self.common._wait_for_export_config(snapshot['volume_id'],
-                                                snapshot['id'], state=True)
+            self.common._wait_for_export_state(snapshot['volume_id'],
+                                               snapshot['id'], state=True)
             lun_id = self.common._get_snapshot_id(snapshot['volume_id'],
                                                   snapshot['id'])
 
@@ -347,8 +348,8 @@ class V6000FCDriver(driver.FibreChannelDriver):
             raise
 
         else:
-            self.common._wait_for_export_config(snapshot['volume_id'],
-                                                snapshot['id'], state=False)
+            self.common._wait_for_export_state(snapshot['volume_id'],
+                                               snapshot['id'], state=False)
 
     def _add_igroup_member(self, connector, igroup):
         """Add an initiator to the openstack igroup so it can see exports.
