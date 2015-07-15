@@ -30,10 +30,23 @@ from cinder.volume.drivers.huawei import constants
 from cinder.volume.drivers.huawei import fc_zone_helper
 from cinder.volume.drivers.huawei import huawei_driver
 from cinder.volume.drivers.huawei import huawei_utils
+from cinder.volume.drivers.huawei import hypermetro
 from cinder.volume.drivers.huawei import rest_client
 from cinder.volume.drivers.huawei import smartx
 
 LOG = logging.getLogger(__name__)
+
+hypermetro_devices = """{
+    "remote_device": {
+        "RestURL": "http://100.115.10.69:8082/deviceManager/rest",
+        "UserName": "admin",
+        "UserPassword": "Admin@storage1",
+        "StoragePool": "StoragePool001",
+        "domain_name": "hypermetro-domain",
+        "remote_target_ip": "111.111.101.241"
+    }
+}
+"""
 
 test_volume = {'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0635',
                'size': 2,
@@ -58,6 +71,32 @@ fake_smartx_value = {'smarttier': 'true',
                      'cachename': 'cache-test',
                      'partitionname': 'partition-test',
                      }
+
+fake_hypermetro_opts = {'hypermetro': 'true',
+                        'smarttier': False,
+                        'smartcache': False,
+                        'smartpartition': False,
+                        'thin_provisioning_support': False,
+                        'thick_provisioning_support': False,
+                        }
+
+hyper_volume = {'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0635',
+                'size': 2,
+                'volume_name': 'vol1',
+                'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
+                'volume_id': '21ec7341-9256-497b-97d9-ef48edcf0635',
+                'provider_auth': None,
+                'project_id': 'project',
+                'display_name': 'vol1',
+                'display_description': 'test volume',
+                'volume_type_id': None,
+                'host': 'ubuntu@huawei#OpenStack_Pool',
+                'provider_location': '11',
+                'volume_metadata': [{'key': 'hypermetro_id',
+                                     'value': '1'},
+                                    {'key': 'remote_lun_id',
+                                     'value': '11'}],
+                }
 
 test_snap = {'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0635',
              'size': 1,
@@ -117,6 +156,24 @@ test_new_type = {
     'id': u'530a56e1-a1a4-49f3-ab6c-779a6e5d999f',
     'description': None,
 }
+
+hypermetro_devices = """
+{
+    "remote_device": {
+        "RestURL": "http://100.115.10.69:8082/deviceManager/rest",
+        "UserName":"admin",
+        "UserPassword":"Admin@storage2",
+        "StoragePool":"StoragePool001",
+        "domain_name":"hypermetro_test"}
+}
+"""
+
+FAKE_FIND_POOL_RESPONSE = {'CAPACITY': '985661440',
+                           'ID': '0',
+                           'TOTALCAPACITY': '985661440'}
+
+FAKE_CREATE_VOLUME_RESPONSE = {"ID": "1",
+                               "NAME": "5mFHcBv4RkCcD+JyrWc0SA"}
 
 FakeConnector = {'initiator': 'iqn.1993-08.debian:01:ec2bff7ac3a3',
                  'wwpns': ['10000090fa0d6754'],
@@ -265,7 +322,7 @@ FAKE_QUERY_ALL_LUN_RESPONSE = """
         "code": 0
     },
     "data": [{
-        "ID": "11",
+        "ID": "1",
         "NAME": "IexzQZJWSXuX2e9I7c8GNQ"
     }]
 }
@@ -920,6 +977,20 @@ FAKE_GET_FC_INI_RESPONSE = """
 }
 """
 
+FAKE_HYPERMETRODOMAIN_RESPONSE = """
+{
+    "error":{
+        "code": 0
+    },
+    "data":{
+        "PRODUCTVERSION": "V100R001C10",
+        "ID": "11",
+        "NAME": "hypermetro_test",
+        "RUNNINGSTATUS": "42"
+    }
+}
+"""
+
 FAKE_QOS_INFO_RESPONSE = """
 {
     "error":{
@@ -944,8 +1015,42 @@ FAKE_GET_FC_PORT_RESPONSE = """
 }
 """
 
+FAKE_SMARTCACHEPARTITION_RESPONSE = """
+{
+    "error":{
+        "code":0
+    },
+    "data":{
+        "ID":"11",
+        "NAME":"cache-name"
+    }
+}
+"""
+
+FAKE_CONNECT_FC_RESPONCE = {
+    "driver_volume_type": 'fibre_channel',
+    "data": {
+        "target_wwn": ["10000090fa0d6754"],
+        "target_lun": "1",
+        "volume_id": "21ec7341-9256-497b-97d9-ef48edcf0635"
+    }
+}
+
+FAKE_METRO_INFO_RESPONCE = {
+    "error": {
+        "code": 0
+    },
+    "data": {
+        "PRODUCTVERSION": "V100R001C10",
+        "ID": "11",
+        "NAME": "hypermetro_test",
+        "RUNNINGSTATUS": "42"
+    }
+}
+
 # mock login info map
 MAP_COMMAND_TO_FAKE_RESPONSE = {}
+
 MAP_COMMAND_TO_FAKE_RESPONSE['/xx/sessions'] = (
     FAKE_GET_LOGIN_STORAGE_RESPONSE)
 
@@ -1243,6 +1348,12 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/fc_port/GET'] = (
 MAP_COMMAND_TO_FAKE_RESPONSE['/fc_initiator/GET'] = (
     FAKE_GET_FC_PORT_RESPONSE)
 
+MAP_COMMAND_TO_FAKE_RESPONSE['fc_initiator?range=[0-100]/GET'] = (
+    FAKE_GET_FC_PORT_RESPONSE)
+
+MAP_COMMAND_TO_FAKE_RESPONSE['/fc_initiator?PARENTTYPE=21&PARENTID=1/GET'] = (
+    FAKE_GET_FC_PORT_RESPONSE)
+
 MAP_COMMAND_TO_FAKE_RESPONSE['/lun/associate/cachepartition/POST'] = (
     FAKE_SYSTEM_VERSION_RESPONSE)
 
@@ -1251,6 +1362,33 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/fc_initiator?range=[0-100]&PARENTID=1/GET'] = (
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/fc_initiator?PARENTTYPE=21&PARENTID=1/GET'] = (
     FAKE_GET_FC_PORT_RESPONSE)
+
+MAP_COMMAND_TO_FAKE_RESPONSE['/system/'] = (
+    FAKE_SYSTEM_VERSION_RESPONSE)
+
+MAP_COMMAND_TO_FAKE_RESPONSE['/SMARTCACHEPARTITION/0/GET'] = (
+    FAKE_SMARTCACHEPARTITION_RESPONSE)
+
+MAP_COMMAND_TO_FAKE_RESPONSE['/SMARTCACHEPARTITION/REMOVE_ASSOCIATE/PUT'] = (
+    FAKE_COMMON_SUCCESS_RESPONSE)
+
+MAP_COMMAND_TO_FAKE_RESPONSE['/cachepartition/0/GET'] = (
+    FAKE_SMARTCACHEPARTITION_RESPONSE)
+
+MAP_COMMAND_TO_FAKE_RESPONSE['/HyperMetroDomain?range=[0-100]/GET'] = (
+    FAKE_HYPERMETRODOMAIN_RESPONSE)
+
+MAP_COMMAND_TO_FAKE_RESPONSE['/HyperMetroPair/POST'] = (
+    FAKE_HYPERMETRODOMAIN_RESPONSE)
+
+MAP_COMMAND_TO_FAKE_RESPONSE['/HyperMetroPair/11/GET'] = (
+    FAKE_HYPERMETRODOMAIN_RESPONSE)
+
+MAP_COMMAND_TO_FAKE_RESPONSE['/HyperMetroPair/disable_hcpair/PUT'] = (
+    FAKE_COMMON_SUCCESS_RESPONSE)
+
+MAP_COMMAND_TO_FAKE_RESPONSE['/HyperMetroPair/11/DELETE'] = (
+    FAKE_COMMON_SUCCESS_RESPONSE)
 
 
 def Fake_sleep(time):
@@ -1373,6 +1511,7 @@ class Huawei18000ISCSIDriverTestCase(test.TestCase):
         self.configuration = mock.Mock(spec=conf.Configuration)
         self.configuration.cinder_huawei_conf_file = self.fake_conf_file
         self.xml_file_path = self.configuration.cinder_huawei_conf_file
+        self.configuration.hypermetro_devices = hypermetro_devices
         self.stubs.Set(time, 'sleep', Fake_sleep)
         driver = Fake18000ISCSIStorage(configuration=self.configuration)
         self.driver = driver
@@ -1722,26 +1861,133 @@ class Huawei18000ISCSIDriverTestCase(test.TestCase):
             (qos_id, lun_list) = self.driver.restclient.find_available_qos(qos)
             self.assertEqual(("11", u'["0", "1", "2"]'), (qos_id, lun_list))
 
-    @mock.patch.object(rest_client.RestClient, 'get_volume_by_name',
+    @mock.patch.object(huawei_utils, 'get_volume_params',
+                       return_value=fake_hypermetro_opts)
+    @mock.patch.object(rest_client.RestClient, 'login_with_ip',
+                       return_value='123456789')
+    @mock.patch.object(rest_client.RestClient, 'find_all_pools',
+                       return_value=FAKE_STORAGE_POOL_RESPONSE)
+    @mock.patch.object(rest_client.RestClient, 'find_pool_info',
+                       return_value=FAKE_FIND_POOL_RESPONSE)
+    @mock.patch.object(rest_client.RestClient, 'create_volume',
+                       return_value=FAKE_CREATE_VOLUME_RESPONSE)
+    @mock.patch.object(rest_client.RestClient, 'get_hyper_domain_id',
                        return_value='11')
-    @mock.patch.object(rest_client.RestClient, 'get_lun_info',
-                       return_value={'ID': '11'})
-    def test_create_volume_exist(self, mock_lun_info, mock_volume_info):
+    @mock.patch.object(hypermetro.HuaweiHyperMetro, '_wait_volume_ready',
+                       return_value=True)
+    @mock.patch.object(hypermetro.HuaweiHyperMetro,
+                       '_create_hypermetro_pair',
+                       return_value={"ID": '11',
+                                     "NAME": 'hypermetro-pair'})
+    @mock.patch.object(rest_client.RestClient, 'logout',
+                       return_value=None)
+    def test_create_hypermetro_success(self, mock_logout,
+                                       mock_hyper_pair_info,
+                                       mock_volume_ready,
+                                       mock_hyper_domain,
+                                       mock_create_volume,
+                                       mock_pool_info,
+                                       mock_all_pool_info,
+                                       mock_login_return,
+                                       mock_hypermetro_opts):
         self.driver.restclient.login()
-        lun_param = {'NAME': 'IexzQZJWSXuX2e9I7c8GNQ'}
+        metadata = {"hypermetro_id": '11',
+                    "remote_lun_id": '1'}
+        lun_info = self.driver.create_volume(hyper_volume)
+        mock_logout.assert_called_with()
+        self.assertEqual(metadata, lun_info['metadata'])
 
-        fack_error_volume_exist = {"error": {"code": 1077948993}}
-        with mock.patch.object(rest_client.RestClient, 'call',
-                               return_value=fack_error_volume_exist):
-            lun_info = self.driver.restclient.create_volume(lun_param)
-            self.assertEqual('11', lun_info['ID'])
+    @mock.patch.object(huawei_utils, 'get_volume_params',
+                       return_value=fake_hypermetro_opts)
+    @mock.patch.object(rest_client.RestClient, 'login_with_ip',
+                       return_value='123456789')
+    @mock.patch.object(rest_client.RestClient, 'find_all_pools',
+                       return_value=FAKE_STORAGE_POOL_RESPONSE)
+    @mock.patch.object(rest_client.RestClient, 'find_pool_info',
+                       return_value=FAKE_FIND_POOL_RESPONSE)
+    @mock.patch.object(rest_client.RestClient, 'create_volume',
+                       return_value=FAKE_CREATE_VOLUME_RESPONSE)
+    @mock.patch.object(rest_client.RestClient, 'get_hyper_domain_id',
+                       return_value='11')
+    @mock.patch.object(hypermetro.HuaweiHyperMetro, '_wait_volume_ready',
+                       return_value=True)
+    @mock.patch.object(hypermetro.HuaweiHyperMetro,
+                       '_create_hypermetro_pair')
+    @mock.patch.object(rest_client.RestClient, 'delete_lun',
+                       return_value=None)
+    @mock.patch.object(rest_client.RestClient, 'logout',
+                       return_value=None)
+    def test_create_hypermetro_fail(self, mock_logout,
+                                    mock_delete_lun,
+                                    mock_hyper_pair_info,
+                                    mock_volume_ready,
+                                    mock_hyper_domain,
+                                    mock_create_volume,
+                                    mock_pool_info,
+                                    mock_all_pool_info,
+                                    mock_login_return,
+                                    mock_hypermetro_opts):
+        self.driver.restclient.login()
+        mock_hyper_pair_info.side_effect = exception.VolumeBackendAPIException(
+            data='Create hypermetro error.')
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_volume, hyper_volume)
+        mock_delete_lun.assert_called_with('1')
+        mock_logout.assert_called_with()
 
-        fack_error_volume_exist = {"error": {"code": 123456789}}
-        with mock.patch.object(rest_client.RestClient, 'call',
-                               return_value=fack_error_volume_exist):
-            self.assertRaises(exception.VolumeBackendAPIException,
-                              self.driver.restclient.create_volume,
-                              lun_param)
+    @mock.patch.object(rest_client.RestClient, 'login_with_ip',
+                       return_value='123456789')
+    @mock.patch.object(rest_client.RestClient, 'check_lun_exist',
+                       return_value=True)
+    @mock.patch.object(rest_client.RestClient, 'check_hypermetro_exist',
+                       return_value=True)
+    @mock.patch.object(rest_client.RestClient, 'get_hypermetro_by_id',
+                       return_value=FAKE_METRO_INFO_RESPONCE)
+    @mock.patch.object(rest_client.RestClient, 'delete_hypermetro',
+                       return_value=FAKE_COMMON_SUCCESS_RESPONSE)
+    @mock.patch.object(rest_client.RestClient, 'delete_lun',
+                       return_value=None)
+    @mock.patch.object(rest_client.RestClient, 'logout',
+                       return_value=None)
+    def test_delete_hypermetro_success(self, mock_logout,
+                                       mock_delete_lun,
+                                       mock_delete_hypermetro,
+                                       mock_metro_info,
+                                       mock_check_hyermetro,
+                                       mock_lun_exit,
+                                       mock_login_info):
+        self.driver.restclient.login()
+        result = self.driver.delete_volume(hyper_volume)
+        mock_logout.assert_called_with()
+        self.assertTrue(result)
+
+    @mock.patch.object(rest_client.RestClient, 'login_with_ip',
+                       return_value='123456789')
+    @mock.patch.object(rest_client.RestClient, 'check_lun_exist',
+                       return_value=True)
+    @mock.patch.object(rest_client.RestClient, 'check_hypermetro_exist',
+                       return_value=True)
+    @mock.patch.object(rest_client.RestClient, 'get_hypermetro_by_id',
+                       return_value=FAKE_METRO_INFO_RESPONCE)
+    @mock.patch.object(rest_client.RestClient, 'delete_hypermetro')
+    @mock.patch.object(rest_client.RestClient, 'delete_lun',
+                       return_value=None)
+    @mock.patch.object(rest_client.RestClient, 'logout',
+                       return_value=None)
+    def test_delete_hypermetro_fail(self, mock_logout,
+                                    mock_delete_lun,
+                                    mock_delete_hypermetro,
+                                    mock_metro_info,
+                                    mock_check_hyermetro,
+                                    mock_lun_exit,
+                                    mock_login_info):
+        self.driver.restclient.login()
+        mock_delete_hypermetro.side_effect = (
+            exception.VolumeBackendAPIException(data='Delete hypermetro '
+                                                'error.'))
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.delete_volume, hyper_volume)
+        mock_delete_lun.assert_called_with('11')
 
     def create_fake_conf_file(self):
         """Create a fake Config file.
@@ -1848,6 +2094,7 @@ class Huawei18000FCDriverTestCase(test.TestCase):
         self.configuration = mock.Mock(spec=conf.Configuration)
         self.configuration.cinder_huawei_conf_file = self.fake_conf_file
         self.xml_file_path = self.configuration.cinder_huawei_conf_file
+        self.configuration.hypermetro_devices = hypermetro_devices
         self.stubs.Set(time, 'sleep', Fake_sleep)
         driver = Fake18000FCStorage(configuration=self.configuration)
         self.driver = driver
@@ -2242,6 +2489,41 @@ class Huawei18000FCDriverTestCase(test.TestCase):
         pool_capacity = self.driver.restclient._get_capacity(None,
                                                              None)
         self.assertEqual(expected_pool_capacity, pool_capacity)
+
+    @mock.patch.object(huawei_utils, 'get_volume_params',
+                       return_value=fake_hypermetro_opts)
+    @mock.patch.object(rest_client.RestClient, 'login_with_ip',
+                       return_value='123456789')
+    @mock.patch.object(rest_client.RestClient, 'find_all_pools',
+                       return_value=FAKE_STORAGE_POOL_RESPONSE)
+    @mock.patch.object(rest_client.RestClient, 'find_pool_info',
+                       return_value=FAKE_FIND_POOL_RESPONSE)
+    @mock.patch.object(rest_client.RestClient, 'create_volume',
+                       return_value=FAKE_CREATE_VOLUME_RESPONSE)
+    @mock.patch.object(rest_client.RestClient, 'get_hyper_domain_id',
+                       return_value='11')
+    @mock.patch.object(hypermetro.HuaweiHyperMetro, '_wait_volume_ready',
+                       return_value=True)
+    @mock.patch.object(hypermetro.HuaweiHyperMetro,
+                       '_create_hypermetro_pair',
+                       return_value={"ID": '11',
+                                     "NAME": 'hypermetro-pair'})
+    @mock.patch.object(rest_client.RestClient, 'logout',
+                       return_value=None)
+    def test_create_hypermetro_success(self, mock_hypermetro_opts,
+                                       mock_login_return,
+                                       mock_all_pool_info,
+                                       mock_pool_info,
+                                       mock_create_volume,
+                                       mock_hyper_domain,
+                                       mock_volume_ready,
+                                       mock_pair_info,
+                                       mock_logout):
+        self.driver.restclient.login()
+        metadata = {"hypermetro_id": '11',
+                    "remote_lun_id": '1'}
+        lun_info = self.driver.create_volume(hyper_volume)
+        self.assertEqual(metadata, lun_info['metadata'])
 
     def create_fake_conf_file(self):
         """Create a fake Config file
