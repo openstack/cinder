@@ -2099,7 +2099,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                                mock_open_connection,
                                                mock_init):
         # Test case to find volume in the configured volume folder
-        res = self.scapi._get_volume_list(self.volume_name, True)
+        res = self.scapi._get_volume_list(self.volume_name, None, True)
         self.assertTrue(mock_post.called)
         self.assertTrue(mock_get_json.called)
         self.assertEqual(self.VOLUME_LIST, res, 'Unexpected volume list')
@@ -2117,17 +2117,17 @@ class DellSCSanAPITestCase(test.TestCase):
                                        mock_open_connection,
                                        mock_init):
         # Test case to find volume anywhere in the configured SC
-        res = self.scapi._get_volume_list(self.volume_name, False)
+        res = self.scapi._get_volume_list(self.volume_name, None, False)
         self.assertTrue(mock_post.called)
         self.assertTrue(mock_get_json.called)
         self.assertEqual(self.VOLUME_LIST, res, 'Unexpected volume list')
 
-    def test__get_volume_list_no_name(self,
-                                      mock_close_connection,
-                                      mock_open_connection,
-                                      mock_init):
-        # Test case specified volume name is None
-        res = self.scapi._get_volume_list(None, True)
+    def test_get_volume_list_no_name_no_id(self,
+                                           mock_close_connection,
+                                           mock_open_connection,
+                                           mock_init):
+        # Test case specified volume name is None and device id is None.
+        res = self.scapi._get_volume_list(None, None, True)
         self.assertIsNone(res, 'None expected')
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
@@ -2139,7 +2139,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                       mock_open_connection,
                                       mock_init):
         # Test case to find volume in the configured volume folder
-        res = self.scapi._get_volume_list(self.volume_name, True)
+        res = self.scapi._get_volume_list(self.volume_name, None, True)
         self.assertTrue(mock_post.called)
         self.assertIsNone(res, 'None expected')
 
@@ -4682,6 +4682,380 @@ class DellSCSanAPITestCase(test.TestCase):
         res = self.scapi.delete_cg_replay(profile, replayid)
         self.assertTrue(mock_find_replay.called)
         self.assertTrue(res)
+
+    def test_size_to_gb(self,
+                        mock_close_connection,
+                        mock_open_connection,
+                        mock_init):
+        gb, rem = self.scapi._size_to_gb('1.073741824E9 Byte')
+        self.assertEqual(1, gb)
+        self.assertEqual(0, rem)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.scapi._size_to_gb,
+                          'banana')
+        gb, rem = self.scapi._size_to_gb('1.073741924E9 Byte')
+        self.assertEqual(1, gb)
+        self.assertEqual(100, rem)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_volume_list',
+                       return_value=[{'configuredSize':
+                                      '1.073741824E9 Bytes'}])
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_size_to_gb',
+                       return_value=(1, 0))
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_mappings',
+                       return_value=[])
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_volume_folder',
+                       return_value={'id': '1'})
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'put',
+                       return_value=RESPONSE_200)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_id')
+    def test_manage_existing(self,
+                             mock_get_id,
+                             mock_put,
+                             mock_find_volume_folder,
+                             mock_find_mappings,
+                             mock_size_to_gb,
+                             mock_get_volume_list,
+                             mock_close_connection,
+                             mock_open_connection,
+                             mock_init):
+        newname = 'guid'
+        existing = {'source-name': 'scvolname'}
+        # First call is foldername, second is vollist. This is reflected
+        # in the payload.
+        mock_get_id.side_effect = ['1', '100']
+        expected_url = 'StorageCenter/ScVolume/100'
+        expected_payload = {'Name': newname,
+                            'VolumeFolder': '1'}
+        self.scapi.manage_existing(newname, existing)
+        mock_get_volume_list.asert_called_once_with(existing, False)
+        self.assertTrue(mock_get_id.called)
+        mock_put.assert_called_once_with(expected_url, expected_payload)
+        self.assertTrue(mock_find_volume_folder.called)
+        self.assertTrue(mock_find_mappings.called)
+        self.assertTrue(mock_size_to_gb.called)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_volume_list',
+                       return_value=[{'configuredSize':
+                                      '1.073741824E9 Bytes'}])
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_size_to_gb',
+                       return_value=(1, 0))
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_mappings',
+                       return_value=[])
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_volume_folder',
+                       return_value=None)
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'put',
+                       return_value=RESPONSE_200)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_id',
+                       return_value='100')
+    def test_manage_existing_folder_not_found(self,
+                                              mock_get_id,
+                                              mock_put,
+                                              mock_find_volume_folder,
+                                              mock_find_mappings,
+                                              mock_size_to_gb,
+                                              mock_get_volume_list,
+                                              mock_close_connection,
+                                              mock_open_connection,
+                                              mock_init):
+        # Same as above only we don't have a volume folder.
+        newname = 'guid'
+        existing = {'source-name': 'scvolname'}
+        expected_url = 'StorageCenter/ScVolume/100'
+        expected_payload = {'Name': newname}
+        self.scapi.manage_existing(newname, existing)
+        mock_get_volume_list.asert_called_once_with(
+            existing.get('source-name'),
+            existing.get('source-id'),
+            False)
+        mock_put.assert_called_once_with(expected_url, expected_payload)
+        self.assertTrue(mock_get_id.called)
+        self.assertTrue(mock_find_volume_folder.called)
+        self.assertTrue(mock_find_mappings.called)
+        self.assertTrue(mock_size_to_gb.called)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_volume_list',
+                       return_value=[])
+    def test_manage_existing_vol_not_found(self,
+                                           mock_get_volume_list,
+                                           mock_close_connection,
+                                           mock_open_connection,
+                                           mock_init):
+
+        # Same as above only we don't have a volume folder.
+        newname = 'guid'
+        existing = {'source-name': 'scvolname'}
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.scapi.manage_existing,
+                          newname,
+                          existing)
+        mock_get_volume_list.asert_called_once_with(
+            existing.get('source-name'),
+            existing.get('source-id'),
+            False)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_volume_list',
+                       return_value=[{}, {}, {}])
+    def test_manage_existing_vol_multiple_found(self,
+                                                mock_get_volume_list,
+                                                mock_close_connection,
+                                                mock_open_connection,
+                                                mock_init):
+
+        # Same as above only we don't have a volume folder.
+        newname = 'guid'
+        existing = {'source-name': 'scvolname'}
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.scapi.manage_existing,
+                          newname,
+                          existing)
+        mock_get_volume_list.asert_called_once_with(
+            existing.get('source-name'),
+            existing.get('source-id'),
+            False)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_volume_list',
+                       return_value=[{'configuredSize':
+                                      '1.073741924E9 Bytes'}])
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_size_to_gb',
+                       return_value=(1, 100))
+    def test_manage_existing_bad_size(self,
+                                      mock_size_to_gb,
+                                      mock_get_volume_list,
+                                      mock_close_connection,
+                                      mock_open_connection,
+                                      mock_init):
+
+        # Same as above only we don't have a volume folder.
+        newname = 'guid'
+        existing = {'source-name': 'scvolname'}
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.scapi.manage_existing,
+                          newname,
+                          existing)
+        mock_get_volume_list.asert_called_once_with(
+            existing.get('source-name'),
+            existing.get('source-id'),
+            False)
+        self.assertTrue(mock_size_to_gb.called)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_volume_list',
+                       return_value=[{'configuredSize':
+                                      '1.073741824E9 Bytes'}])
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_size_to_gb',
+                       return_value=(1, 0))
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_mappings',
+                       return_value=[{}, {}])
+    def test_manage_existing_already_mapped(self,
+                                            mock_find_mappings,
+                                            mock_size_to_gb,
+                                            mock_get_volume_list,
+                                            mock_close_connection,
+                                            mock_open_connection,
+                                            mock_init):
+
+        newname = 'guid'
+        existing = {'source-name': 'scvolname'}
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.scapi.manage_existing,
+                          newname,
+                          existing)
+        mock_get_volume_list.asert_called_once_with(
+            existing.get('source-name'),
+            existing.get('source-id'),
+            False)
+        self.assertTrue(mock_find_mappings.called)
+        self.assertTrue(mock_size_to_gb.called)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_volume_list',
+                       return_value=[{'configuredSize':
+                                      '1.073741824E9 Bytes'}])
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_size_to_gb',
+                       return_value=(1, 0))
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_mappings',
+                       return_value=[])
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_volume_folder',
+                       return_value=None)
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'put',
+                       return_value=RESPONSE_400)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_id',
+                       return_value='100')
+    def test_manage_existing_rename_fail(self,
+                                         mock_get_id,
+                                         mock_put,
+                                         mock_find_volume_folder,
+                                         mock_find_mappings,
+                                         mock_size_to_gb,
+                                         mock_get_volume_list,
+                                         mock_close_connection,
+                                         mock_open_connection,
+                                         mock_init):
+        # We fail on the _find_volume_folder to make this easier.
+        newname = 'guid'
+        existing = {'source-name': 'scvolname'}
+        expected_url = 'StorageCenter/ScVolume/100'
+        expected_payload = {'Name': newname}
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.scapi.manage_existing,
+                          newname,
+                          existing)
+        mock_get_volume_list.asert_called_once_with(
+            existing.get('source-name'),
+            existing.get('source-id'),
+            False)
+        self.assertTrue(mock_get_id.called)
+        mock_put.assert_called_once_with(expected_url, expected_payload)
+        self.assertTrue(mock_find_volume_folder.called)
+        self.assertTrue(mock_find_mappings.called)
+        self.assertTrue(mock_size_to_gb.called)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_volume_list',
+                       return_value=[{'configuredSize':
+                                      '1.073741824E9 Bytes'}])
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_size_to_gb',
+                       return_value=(1, 0))
+    def test_get_unmanaged_volume_size(self,
+                                       mock_size_to_gb,
+                                       mock_get_volume_list,
+                                       mock_close_connection,
+                                       mock_open_connection,
+                                       mock_init):
+        existing = {'source-name': 'scvolname'}
+        res = self.scapi.get_unmanaged_volume_size(existing)
+        mock_get_volume_list.asert_called_once_with(
+            existing.get('source-name'),
+            existing.get('source-id'),
+            False)
+        self.assertTrue(mock_size_to_gb.called)
+        self.assertEqual(1, res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_volume_list',
+                       return_value=[])
+    def test_get_unmanaged_volume_size_not_found(self,
+                                                 mock_get_volume_list,
+                                                 mock_close_connection,
+                                                 mock_open_connection,
+                                                 mock_init):
+        existing = {'source-name': 'scvolname'}
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.scapi.get_unmanaged_volume_size,
+                          existing)
+        mock_get_volume_list.asert_called_once_with(
+            existing.get('source-name'),
+            existing.get('source-id'),
+            False)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_volume_list',
+                       return_value=[{}, {}, {}])
+    def test_get_unmanaged_volume_size_many_found(self,
+                                                  mock_get_volume_list,
+                                                  mock_close_connection,
+                                                  mock_open_connection,
+                                                  mock_init):
+        existing = {'source-name': 'scvolname'}
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.scapi.get_unmanaged_volume_size,
+                          existing)
+        mock_get_volume_list.asert_called_once_with(
+            existing.get('source-name'),
+            existing.get('source-id'),
+            False)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_volume_list',
+                       return_value=[{'configuredSize':
+                                      '1.073741924E9 Bytes'}])
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_size_to_gb',
+                       return_value=(1, 100))
+    def test_get_unmanaged_volume_size_bad_size(self,
+                                                mock_size_to_gb,
+                                                mock_get_volume_list,
+                                                mock_close_connection,
+                                                mock_open_connection,
+                                                mock_init):
+        existing = {'source-name': 'scvolname'}
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.scapi.get_unmanaged_volume_size,
+                          existing)
+        self.assertTrue(mock_size_to_gb.called)
+        mock_get_volume_list.asert_called_once_with(
+            existing.get('source-name'),
+            existing.get('source-id'),
+            False)
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'put',
+                       return_value=RESPONSE_200)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_id',
+                       return_value='100')
+    def test_unmanage(self,
+                      mock_get_id,
+                      mock_put,
+                      mock_close_connection,
+                      mock_open_connection,
+                      mock_init):
+        # Same as above only we don't have a volume folder.
+        scvolume = {'name': 'guid'}
+        expected_url = 'StorageCenter/ScVolume/100'
+        newname = 'Unmanaged_' + scvolume['name']
+        expected_payload = {'Name': newname}
+        self.scapi.unmanage(scvolume)
+        self.assertTrue(mock_get_id.called)
+        mock_put.assert_called_once_with(expected_url, expected_payload)
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'put',
+                       return_value=RESPONSE_400)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_id',
+                       return_value='100')
+    def test_unmanage_fail(self,
+                           mock_get_id,
+                           mock_put,
+                           mock_close_connection,
+                           mock_open_connection,
+                           mock_init):
+        # Same as above only we don't have a volume folder.
+        scvolume = {'name': 'guid'}
+        expected_url = 'StorageCenter/ScVolume/100'
+        newname = 'Unmanaged_' + scvolume['name']
+        expected_payload = {'Name': newname}
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.scapi.unmanage,
+                          scvolume)
+        self.assertTrue(mock_get_id.called)
+        mock_put.assert_called_once_with(expected_url, expected_payload)
 
 
 class DellSCSanAPIConnectionTestCase(test.TestCase):

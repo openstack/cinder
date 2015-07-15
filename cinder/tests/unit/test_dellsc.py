@@ -1445,3 +1445,119 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
             cgsnap['consistencygroup_id'])
         mock_delete_cg_replay.assert_called_once_with(self.SCRPLAYPROFILE,
                                                       cgsnap['id'])
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'manage_existing')
+    def test_manage_existing(self,
+                             mock_manage_existing,
+                             mock_close_connection,
+                             mock_open_connection,
+                             mock_init):
+        # Very little to do in this one.  The call is sent
+        # straight down.
+        volume = {'id': 'guid'}
+        existing_ref = {'source-name': 'imavolumename'}
+        self.driver.manage_existing(volume, existing_ref)
+        mock_manage_existing.assert_called_once_with(volume['id'],
+                                                     existing_ref)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'manage_existing')
+    def test_manage_existing_id(self,
+                                mock_manage_existing,
+                                mock_close_connection,
+                                mock_open_connection,
+                                mock_init):
+        # Very little to do in this one.  The call is sent
+        # straight down.
+        volume = {'id': 'guid'}
+        existing_ref = {'source-id': 'imadeviceid'}
+        self.driver.manage_existing(volume, existing_ref)
+        mock_manage_existing.assert_called_once_with(volume['id'],
+                                                     existing_ref)
+
+    def test_manage_existing_bad_ref(self,
+                                     mock_close_connection,
+                                     mock_open_connection,
+                                     mock_init):
+        volume = {'id': 'guid'}
+        existing_ref = {'banana-name': 'imavolumename'}
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing,
+                          volume,
+                          existing_ref)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'get_unmanaged_volume_size',
+                       return_value=4)
+    def test_manage_existing_get_size(self,
+                                      mock_get_unmanaged_volume_size,
+                                      mock_close_connection,
+                                      mock_open_connection,
+                                      mock_init):
+        # Almost nothing to test here.  Just that we call our function.
+        volume = {'id': 'guid'}
+        existing_ref = {'source-name': 'imavolumename'}
+        res = self.driver.manage_existing_get_size(volume, existing_ref)
+        mock_get_unmanaged_volume_size.assert_called_once_with(existing_ref)
+        # The above is 4GB and change.
+        self.assertEqual(4, res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'get_unmanaged_volume_size',
+                       return_value=4)
+    def test_manage_existing_get_size_id(self,
+                                         mock_get_unmanaged_volume_size,
+                                         mock_close_connection,
+                                         mock_open_connection,
+                                         mock_init):
+        # Almost nothing to test here.  Just that we call our function.
+        volume = {'id': 'guid'}
+        existing_ref = {'source-id': 'imadeviceid'}
+        res = self.driver.manage_existing_get_size(volume, existing_ref)
+        mock_get_unmanaged_volume_size.assert_called_once_with(existing_ref)
+        # The above is 4GB and change.
+        self.assertEqual(4, res)
+
+    def test_manage_existing_get_size_bad_ref(self,
+                                              mock_close_connection,
+                                              mock_open_connection,
+                                              mock_init):
+        volume = {'id': 'guid'}
+        existing_ref = {'banana-name': 'imavolumename'}
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size,
+                          volume,
+                          existing_ref)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_volume',
+                       return_value=VOLUME)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'unmanage')
+    def test_unmanage(self,
+                      mock_unmanage,
+                      mock_find_volume,
+                      mock_close_connection,
+                      mock_open_connection,
+                      mock_init):
+        volume = {'id': 'guid'}
+        self.driver.unmanage(volume)
+        mock_find_volume.assert_called_once_with(volume['id'])
+        mock_unmanage.assert_called_once_with(self.VOLUME)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_volume',
+                       return_value=None)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'unmanage')
+    def test_unmanage_volume_not_found(self,
+                                       mock_unmanage,
+                                       mock_find_volume,
+                                       mock_close_connection,
+                                       mock_open_connection,
+                                       mock_init):
+        volume = {'id': 'guid'}
+        self.driver.unmanage(volume)
+        mock_find_volume.assert_called_once_with(volume['id'])
+        self.assertFalse(mock_unmanage.called)

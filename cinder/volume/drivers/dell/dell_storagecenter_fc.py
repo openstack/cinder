@@ -38,9 +38,12 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
         1.0.0 - Initial driver
         1.1.0 - Added extra spec support for Storage Profile selection
         1.2.0 - Added consistency group support.
+        2.0.0 - Switched to inheriting functional objects rather than volume
+                driver.
+        2.1.0 - Added support for ManageableVD.
     '''
 
-    VERSION = '1.2.0'
+    VERSION = '2.1.0'
 
     def __init__(self, *args, **kwargs):
         super(DellStorageCenterFCDriver, self).__init__(*args, **kwargs)

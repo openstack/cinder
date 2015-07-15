@@ -169,7 +169,7 @@ class StorageCenterApi(object):
     Handles calls to Dell Enterprise Manager (EM) via the REST API interface.
     '''
 
-    APIVERSION = '1.2.0'
+    APIVERSION = '2.0.1'
 
     def __init__(self, host, port, user, password, verify):
         '''This creates a connection to Dell Enterprise Manager.
@@ -605,36 +605,39 @@ class StorageCenterApi(object):
 
         return scvolume
 
-    def _get_volume_list(self, name, filterbyvfname=True):
+    def _get_volume_list(self, name, deviceid, filterbyvfname=True):
         '''Return the specified list of volumes.
 
         :param name: Volume name.
+        :param deviceid: Volume device ID on the SC backend.
         :param filterbyvfname:  If set to true then this filters by the preset
                                 folder name.
-        :return: Returns the scvolume or None.
+        :return: Returns the scvolume list or None.
         '''
         result = None
-        pf = PayloadFilter()
-        pf.append('scSerialNumber', self.ssn)
-        # We need a name to find a volume.
-        if name is not None:
-            pf.append('Name', name)
-        else:
-            return None
-        # set folderPath
-        if filterbyvfname:
-            vfname = (self.vfname if self.vfname.endswith('/')
-                      else self.vfname + '/')
-            pf.append('volumeFolderPath', vfname)
-        r = self.client.post('StorageCenter/ScVolume/GetList',
-                             pf.payload)
-        if r.status_code != 200:
-            LOG.debug('ScVolume GetList error %(name)s: %(code)d %(reason)s',
-                      {'name': name,
-                       'code': r.status_code,
-                       'reason': r.reason})
-        else:
-            result = self._get_json(r)
+        # We need a name or a device ID to find a volume.
+        if name or deviceid:
+            pf = PayloadFilter()
+            pf.append('scSerialNumber', self.ssn)
+            if name is not None:
+                pf.append('Name', name)
+            if deviceid is not None:
+                pf.append('DeviceId', deviceid)
+            # set folderPath
+            if filterbyvfname:
+                vfname = (self.vfname if self.vfname.endswith('/')
+                          else self.vfname + '/')
+                pf.append('volumeFolderPath', vfname)
+            r = self.client.post('StorageCenter/ScVolume/GetList',
+                                 pf.payload)
+            if r.status_code != 200:
+                LOG.debug('ScVolume GetList error '
+                          '%(name)s: %(code)d %(reason)s',
+                          {'name': name,
+                           'code': r.status_code,
+                           'reason': r.reason})
+            else:
+                result = self._get_json(r)
         # We return None if there was an error and a list if the command
         # succeeded. It might be an empty list.
         return result
@@ -661,6 +664,7 @@ class StorageCenterApi(object):
 
         # Look for our volume in our folder.
         vollist = self._get_volume_list(name,
+                                        None,
                                         True)
         # If an empty list was returned they probably moved the volumes or
         # changed the folder name so try again without the folder.
@@ -669,6 +673,7 @@ class StorageCenterApi(object):
                       {'n': name,
                        'v': self.vfname})
             vollist = self._get_volume_list(name,
+                                            None,
                                             False)
 
         # If multiple volumes of the same name are found we need to error.
@@ -1825,3 +1830,140 @@ class StorageCenterApi(object):
                 return False
         # We either couldn't find it or expired it.
         return True
+
+    def _size_to_gb(self, spacestring):
+        '''Splits a SC size string into GB and a remainder.
+
+        Space is returned in a string like ...
+        7.38197504E8 Bytes
+        Need to split that apart and convert to GB.
+
+        :param spacestring: SC size string.
+        :return: Size in GB and remainder in byte.
+        '''
+        try:
+            n = spacestring.split(' ', 1)
+            fgb = int(float(n[0]) // 1073741824)
+            frem = int(float(n[0]) % 1073741824)
+            return fgb, frem
+
+        except Exception:
+            # We received an invalid size string.  Blow up.
+            raise exception.VolumeBackendAPIException(
+                _('Error retrieving volume size'))
+
+    def manage_existing(self, newname, existing):
+        '''Finds the volume named existing and renames it.
+
+         This checks a few things. The volume has to exist.  There can
+         only be one volume by that name.  Since cinder manages volumes
+         by the GB it has to be defined on a GB boundry.
+
+         This renames existing to newname.  newname is the guid from
+         the cinder volume['id'].  The volume is moved to the defined
+         cinder volume folder.
+
+        :param newname: Name to rename the volume to.
+        :param existing: The existing volume dict..
+        :return: Nothing.
+        :raises: VolumeBackendAPIException, ManageExistingInvalidReference
+        '''
+        vollist = self._get_volume_list(existing.get('source-name'),
+                                        existing.get('source-id'),
+                                        False)
+        count = len(vollist)
+        # If we found one volume with that name we can work with it.
+        if count == 1:
+            # First thing to check is if the size is something we can
+            # work with.
+            sz, rem = self._size_to_gb(vollist[0]['configuredSize'])
+            if rem > 0:
+                raise exception.VolumeBackendAPIException(
+                    _('Volume size must multiple of 1 GB.'))
+
+            # We only want to grab detached volumes.
+            mappings = self._find_mappings(vollist[0])
+            if len(mappings) > 0:
+                raise exception.VolumeBackendAPIException(
+                    _('Volume is attached to a server.  (%s)') % existing)
+
+            # Find our folder
+            folder = self._find_volume_folder(True)
+
+            # If we actually have a place to put our volume create it
+            if folder is None:
+                LOG.warning(_LW('Unable to create folder %s'),
+                            self.vfname)
+
+            # Rename and move our volume.
+            payload = {}
+            payload['Name'] = newname
+            if folder:
+                payload['VolumeFolder'] = self._get_id(folder)
+
+            r = self.client.put('StorageCenter/ScVolume/%s' %
+                                self._get_id(vollist[0]),
+                                payload)
+            if r.status_code != 200:
+                LOG.error(_LE('ScVolume error on rename: %(code)d %(reason)s'),
+                          {'code': r.status_code,
+                           'reason': r.reason})
+                raise exception.VolumeBackendAPIException(
+                    _('Unable to manage volume %s') % existing)
+        elif count > 1:
+            raise exception.ManageExistingInvalidReference(
+                _('Volume not unique.  (%s)') % existing)
+        else:
+            raise exception.ManageExistingInvalidReference(
+                _('Volume not found.  (%s)') % existing)
+
+    def get_unmanaged_volume_size(self, existing):
+        '''Looks up the volume named existing and returns its size string.
+
+        :param existing: Existing volume dict.
+        :return: The SC configuredSize string.
+        :raises: ManageExistingInvalidReference
+        '''
+        vollist = self._get_volume_list(existing.get('source-name'),
+                                        existing.get('source-id'),
+                                        False)
+        count = len(vollist)
+        # If we found one volume with that name we can work with it.
+        if count == 1:
+            sz, rem = self._size_to_gb(vollist[0]['configuredSize'])
+            if rem > 0:
+                raise exception.VolumeBackendAPIException(
+                    _('Volume size must multiple of 1 GB.'))
+            return sz
+        elif count > 1:
+            raise exception.ManageExistingInvalidReference(
+                _('Volume not unique.  (%s)') % existing)
+        else:
+            raise exception.ManageExistingInvalidReference(
+                _('Volume not found.  (%s)') % existing)
+
+    def unmanage(self, scvolume):
+        '''Unmanage our volume.
+
+        We simply rename with with a prefix of 'Unmanaged_'.  That's it.
+
+        :param scvolume: The Dell SC volume object.
+        :return: Nothing.
+        :raises: VolumeBackendAPIException
+        '''
+        newname = 'Unmanaged_' + scvolume['name']
+        payload = {}
+        payload['Name'] = newname
+        r = self.client.put('StorageCenter/ScVolume/%s' %
+                            self._get_id(scvolume),
+                            payload)
+        if r.status_code == 200:
+            LOG.info(_LI('Volume %s unmanaged.'), scvolume['name'])
+        else:
+            LOG.error(_LE('ScVolume error on rename: %(code)d %(reason)s'),
+                      {'code': r.status_code,
+                       'reason': r.reason})
+            raise exception.VolumeBackendAPIException(
+                _('Unable to rename volume %(existing)s to %(newname)s') %
+                {'existing': scvolume['name'],
+                 'newname': newname})
