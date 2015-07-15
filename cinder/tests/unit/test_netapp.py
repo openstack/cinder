@@ -19,7 +19,6 @@ Tests for NetApp volume driver
 
 from lxml import etree
 import mock
-from oslo_log import log as logging
 import six
 from six.moves import BaseHTTPServer
 from six.moves import http_client
@@ -33,9 +32,6 @@ from cinder.volume.drivers.netapp.dataontap.client import client_cmode
 from cinder.volume.drivers.netapp.dataontap import ssc_cmode
 from cinder.volume.drivers.netapp import options
 from cinder.volume.drivers.netapp import utils
-
-
-LOG = logging.getLogger("cinder.volume.driver")
 
 
 def create_configuration():

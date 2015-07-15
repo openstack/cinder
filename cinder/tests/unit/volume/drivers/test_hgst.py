@@ -17,7 +17,6 @@
 import mock
 
 from oslo_concurrency import processutils
-from oslo_log import log as logging
 
 from cinder import context
 from cinder import exception
@@ -25,9 +24,6 @@ from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.hgst import HGSTDriver
 from cinder.volume import volume_types
-
-
-LOG = logging.getLogger(__name__)
 
 
 class HGSTTestCase(test.TestCase):

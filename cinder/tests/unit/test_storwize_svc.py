@@ -24,8 +24,6 @@ import time
 
 import mock
 from oslo_concurrency import processutils
-from oslo_log import log as logging
-from oslo_utils import excutils
 from oslo_utils import importutils
 from oslo_utils import units
 
@@ -41,8 +39,6 @@ from cinder.volume.drivers.ibm.storwize_svc import helpers
 from cinder.volume.drivers.ibm.storwize_svc import ssh
 from cinder.volume import qos_specs
 from cinder.volume import volume_types
-
-LOG = logging.getLogger(__name__)
 
 
 class StorwizeSVCManagementSimulator(object):
@@ -1681,19 +1677,8 @@ class StorwizeSVCFakeDriver(storwize_svc.StorwizeSVCDriver):
         self.fake_storage = fake
 
     def _run_ssh(self, cmd, check_exit_code=True, attempts=1):
-        try:
-            LOG.debug('Run CLI command: %s' % cmd)
-            utils.check_ssh_injection(cmd)
-            ret = self.fake_storage.execute_command(cmd, check_exit_code)
-            (stdout, stderr) = ret
-            LOG.debug('CLI output:\n stdout: %(stdout)s\n stderr: '
-                      '%(stderr)s' % {'stdout': stdout, 'stderr': stderr})
-
-        except processutils.ProcessExecutionError as e:
-            with excutils.save_and_reraise_exception():
-                LOG.debug('CLI Exception output:\n stdout: %(out)s\n '
-                          'stderr: %(err)s' % {'out': e.stdout,
-                                               'err': e.stderr})
+        utils.check_ssh_injection(cmd)
+        ret = self.fake_storage.execute_command(cmd, check_exit_code)
 
         return ret
 

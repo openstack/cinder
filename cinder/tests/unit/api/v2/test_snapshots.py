@@ -15,7 +15,6 @@
 
 from lxml import etree
 import mock
-from oslo_log import log as logging
 from oslo_utils import timeutils
 import webob
 
@@ -31,8 +30,6 @@ from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder import volume
 
-
-LOG = logging.getLogger(__name__)
 
 UUID = '00000000-0000-0000-0000-000000000001'
 INVALID_UUID = '00000000-0000-0000-0000-000000000002'

@@ -21,7 +21,6 @@ try:
     from unittest import mock
 except ImportError:
     import mock
-from oslo_log import log as logging
 from oslo_serialization import jsonutils
 from oslo_utils import units
 import six
@@ -33,8 +32,6 @@ from cinder import exception
 from cinder import test
 from cinder.volume import configuration as conf
 import cinder.volume.drivers.blockbridge as bb
-
-LOG = logging.getLogger(__name__)
 
 
 DEFAULT_POOL_NAME = "OpenStack"

@@ -15,15 +15,11 @@
 
 
 import mock
-from oslo_log import log as logging
-import six
 
 from cinder import exception
 from cinder import test
 from cinder.volume.drivers.emc import xtremio
 
-
-LOG = logging.getLogger(__name__)
 
 typ2id = {'volumes': 'vol-id',
           'snapshots': 'vol-id',
@@ -149,8 +145,6 @@ def xms_request(object_type='volumes', request_typ='GET', data=None,
             del xms_data[object_type][data['index']]
             del xms_data[object_type][data[typ2id[object_type]][1]]
         else:
-            LOG.error('Trying to delete a missing object %s',
-                      six.text_type(obj_key))
             raise exception.NotFound()
     elif request_typ == 'PUT':
         if obj_key in xms_data[object_type]:
@@ -160,8 +154,6 @@ def xms_request(object_type='volumes', request_typ='GET', data=None,
             if key:
                 xms_data[object_type][data[key]] = obj
         else:
-            LOG.error('Trying to update a missing object %s',
-                      six.text_type(obj_key))
             raise exception.NotFound()
 
 

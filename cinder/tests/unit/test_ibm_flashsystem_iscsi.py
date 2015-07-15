@@ -19,9 +19,6 @@ Tests for the IBM FlashSystem iSCSI volume driver.
 """
 
 import mock
-from oslo_concurrency import processutils
-from oslo_log import log as logging
-from oslo_utils import excutils
 import six
 
 import random
@@ -34,8 +31,6 @@ from cinder import utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.ibm import flashsystem_iscsi
 from cinder.volume import volume_types
-
-LOG = logging.getLogger(__name__)
 
 
 class FlashSystemManagementSimulator(fscommon.FlashSystemManagementSimulator):
@@ -66,20 +61,8 @@ class FlashSystemFakeISCSIDriver(flashsystem_iscsi.FlashSystemISCSIDriver):
         self.fake_storage = fake
 
     def _ssh(self, cmd, check_exit_code=True):
-        ret = None
-        try:
-            LOG.debug('Run CLI command: %s', cmd)
-            utils.check_ssh_injection(cmd)
-            ret = self.fake_storage.execute_command(cmd, check_exit_code)
-            (stdout, stderr) = ret
-            LOG.debug('CLI output:\n stdout: %(stdout)s\n stderr: '
-                      '%(stderr)s', {'stdout': stdout, 'stderr': stderr})
-
-        except processutils.ProcessExecutionError as e:
-            with excutils.save_and_reraise_exception():
-                LOG.debug('CLI Exception output:\n stdout: %(out)s\n '
-                          'stderr: %(err)s', {'out': e.stdout,
-                                              'err': e.stderr})
+        utils.check_ssh_injection(cmd)
+        ret = self.fake_storage.execute_command(cmd, check_exit_code)
         return ret
 
 

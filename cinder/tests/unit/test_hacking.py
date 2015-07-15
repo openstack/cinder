@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 import textwrap
 
 import mock
@@ -21,6 +22,7 @@ from cinder.hacking import checks
 from cinder import test
 
 
+@ddt.ddt
 class HackingTestCase(test.TestCase):
     """This class tests the hacking checks in cinder.hacking.checks
 
@@ -346,3 +348,18 @@ class HackingTestCase(test.TestCase):
 
         self.assertEqual(0, len(list(checks.dict_constructor_with_list_copy(
             "      self._render_dict(xml, data_el, data.__dict__)"))))
+
+    @ddt.unpack
+    @ddt.data(
+        (1, 'LOG.info', "cinder/tests/unit/fake.py", False),
+        (1, 'LOG.warning', "cinder/tests/fake.py", False),
+        (1, 'LOG.error', "cinder/tests/fake.py", False),
+        (1, 'LOG.exception', "cinder/tests/fake.py", False),
+        (1, 'LOG.debug', "cinder/tests/fake.py", False),
+        (0, 'LOG.info.assert_called_once_with', "cinder/tests/fake.py", False),
+        (0, 'some.LOG.error.call', "cinder/tests/fake.py", False),
+        (0, 'LOG.warning', "cinder/tests/unit/fake.py", True),
+        (0, 'LOG.warning', "cinder/tests/unit/integrated/fake.py", False))
+    def test_no_test_log(self, first, second, third, fourth):
+        self.assertEqual(first, len(list(checks.no_test_log(
+            "%s('arg')" % second, third, fourth))))

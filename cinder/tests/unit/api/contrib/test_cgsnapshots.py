@@ -21,7 +21,6 @@ import json
 from xml.dom import minidom
 
 import mock
-from oslo_log import log as logging
 import webob
 
 from cinder.consistencygroup import api as consistencygroupAPI
@@ -32,9 +31,6 @@ from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import utils
 import cinder.volume
-
-
-LOG = logging.getLogger(__name__)
 
 
 class CgsnapshotsAPITestCase(test.TestCase):
@@ -76,7 +72,6 @@ class CgsnapshotsAPITestCase(test.TestCase):
                                         consistencygroup_id)['id']
         cgsnapshot_id = self._create_cgsnapshot(
             consistencygroup_id=consistencygroup_id)
-        LOG.debug('Created cgsnapshot with id %s' % cgsnapshot_id)
         req = webob.Request.blank('/v2/fake/cgsnapshots/%s' %
                                   cgsnapshot_id)
         req.method = 'GET'
@@ -364,7 +359,6 @@ class CgsnapshotsAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app())
 
         res_dict = json.loads(res.body)
-        LOG.info(res_dict)
 
         self.assertEqual(res.status_int, 202)
         self.assertIn('id', res_dict['cgsnapshot'])

@@ -21,8 +21,6 @@ Tests for the IBM FlashSystem volume driver.
 
 import mock
 from oslo_concurrency import processutils
-from oslo_log import log as logging
-from oslo_utils import excutils
 from oslo_utils import units
 import six
 
@@ -37,8 +35,6 @@ from cinder.volume import configuration as conf
 from cinder.volume.drivers.ibm import flashsystem_fc
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
-
-LOG = logging.getLogger(__name__)
 
 
 class FlashSystemManagementSimulator(object):
@@ -664,19 +660,8 @@ class FlashSystemFakeDriver(flashsystem_fc.FlashSystemFCDriver):
         self.fake_storage = fake
 
     def _ssh(self, cmd, check_exit_code=True):
-        try:
-            LOG.debug('Run CLI command: %s' % cmd)
-            utils.check_ssh_injection(cmd)
-            ret = self.fake_storage.execute_command(cmd, check_exit_code)
-            (stdout, stderr) = ret
-            LOG.debug('CLI output:\n stdout: %(stdout)s\n stderr: '
-                      '%(stderr)s' % {'stdout': stdout, 'stderr': stderr})
-
-        except processutils.ProcessExecutionError as e:
-            with excutils.save_and_reraise_exception():
-                LOG.debug('CLI Exception output:\n stdout: %(out)s\n '
-                          'stderr: %(err)s' % {'out': e.stdout,
-                                               'err': e.stderr})
+        utils.check_ssh_injection(cmd)
+        ret = self.fake_storage.execute_command(cmd, check_exit_code)
         return ret
 
 

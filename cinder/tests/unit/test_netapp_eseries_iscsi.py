@@ -23,7 +23,6 @@ import json
 import re
 
 import mock
-from oslo_log import log as logging
 import requests
 from six.moves import urllib
 
@@ -36,9 +35,6 @@ from cinder.volume.drivers.netapp.eseries import library
 from cinder.volume.drivers.netapp.eseries import utils
 from cinder.volume.drivers.netapp import options
 import cinder.volume.drivers.netapp.utils as na_utils
-
-
-LOG = logging.getLogger(__name__)
 
 
 def create_configuration():

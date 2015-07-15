@@ -20,7 +20,6 @@ import time
 from xml.dom import minidom
 
 import mock
-from oslo_log import log as logging
 from oslo_service import loopingcall
 from oslo_utils import units
 import six
@@ -39,7 +38,6 @@ from cinder.volume.drivers.emc import emc_vmax_utils
 from cinder.volume import volume_types
 
 
-LOG = logging.getLogger(__name__)
 CINDER_EMC_CONFIG_DIR = '/etc/cinder/'
 
 

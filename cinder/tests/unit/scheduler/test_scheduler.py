@@ -1,4 +1,3 @@
-
 # Copyright 2010 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
@@ -20,7 +19,6 @@ Tests For Scheduler
 
 import mock
 from oslo_config import cfg
-from oslo_log import log as logging
 
 from cinder import context
 from cinder import db
@@ -266,9 +264,7 @@ class SchedulerManagerTestCase(test.TestCase):
                                'schedule_create_consistencygroup') as mock_cg:
             original_driver = self.manager.driver
             self.manager.driver = filter_scheduler.FilterScheduler
-            LOG = logging.getLogger('cinder.scheduler.manager')
-            self.stubs.Set(LOG, 'error', mock.Mock())
-            self.stubs.Set(LOG, 'exception', mock.Mock())
+            LOG = self.mock_object(manager, 'LOG')
             self.stubs.Set(db, 'consistencygroup_update', mock.Mock())
 
             ex = exception.CinderException('test')

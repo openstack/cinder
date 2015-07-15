@@ -20,13 +20,8 @@ import copy
 import datetime
 import uuid
 
-from oslo_log import log as logging
-
 from cinder import exception
 import cinder.image.glance
-
-
-LOG = logging.getLogger(__name__)
 
 
 class _FakeImageService(object):
@@ -163,8 +158,6 @@ class _FakeImageService(object):
         image = self.images.get(str(image_id))
         if image:
             return copy.deepcopy(image)
-        LOG.warning('Unable to find image id %s. Have images: %s',
-                    image_id, self.images)
         raise exception.ImageNotFound(image_id=image_id)
 
     def create(self, context, metadata, data=None):

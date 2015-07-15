@@ -19,14 +19,10 @@
 
 """Unit tests for fc san lookup service."""
 
-from oslo_log import log as logging
-
 from cinder import exception
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.zonemanager import fc_san_lookup_service as san_service
-
-LOG = logging.getLogger(__name__)
 
 _target_ns_map = {'100000051e55a100': ['20240002ac000a50']}
 _initiator_ns_map = {'100000051e55a100': ['10008c7cff523b01']}

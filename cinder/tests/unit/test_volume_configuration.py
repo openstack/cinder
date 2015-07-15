@@ -17,13 +17,9 @@
 
 
 from oslo_config import cfg
-from oslo_log import log as logging
 
 from cinder import test
 from cinder.volume import configuration
-
-
-LOG = logging.getLogger(__name__)
 
 
 volume_opts = [

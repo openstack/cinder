@@ -15,16 +15,11 @@
 
 """Tests for transfers table."""
 
-from oslo_log import log as logging
-
 from cinder import context
 from cinder import db
 from cinder import exception
 from cinder import test
 from cinder.tests.unit import utils
-
-
-LOG = logging.getLogger(__name__)
 
 
 class TransfersTableTestCase(test.TestCase):

@@ -21,7 +21,6 @@ import os
 import tempfile
 
 import mock
-from oslo_log import log as logging
 from oslo_utils import timeutils
 from oslo_utils import units
 
@@ -35,9 +34,6 @@ from cinder.tests.unit import test_volume
 from cinder.volume import configuration as conf
 import cinder.volume.drivers.rbd as driver
 from cinder.volume.flows.manager import create_volume
-
-
-LOG = logging.getLogger(__name__)
 
 
 # This is used to collect raised exceptions so that tests may check what was

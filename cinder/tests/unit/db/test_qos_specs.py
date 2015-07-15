@@ -19,16 +19,11 @@
 
 import time
 
-from oslo_log import log as logging
-
 from cinder import context
 from cinder import db
 from cinder import exception
 from cinder import test
 from cinder.volume import volume_types
-
-
-LOG = logging.getLogger(__name__)
 
 
 def fake_qos_specs_get_by_name(context, name, session=None, inactive=False):

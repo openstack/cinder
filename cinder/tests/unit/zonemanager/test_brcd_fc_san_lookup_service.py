@@ -21,7 +21,6 @@
 
 import mock
 from oslo_config import cfg
-from oslo_log import log as logging
 import paramiko
 
 from cinder import exception
@@ -31,7 +30,6 @@ import cinder.zonemanager.drivers.brocade.brcd_fc_san_lookup_service \
     as brcd_lookup
 from cinder.zonemanager.drivers.brocade import fc_zone_constants
 
-LOG = logging.getLogger(__name__)
 
 nsshow = '20:1a:00:05:1e:e8:e3:29'
 switch_data = [' N 011a00;2,3;20:1a:00:05:1e:e8:e3:29;\

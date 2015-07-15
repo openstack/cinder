@@ -12,16 +12,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_log import log as logging
-
-from cinder.i18n import _LE
 from cinder.tests.unit.brick import fake_lvm
 from cinder.volume import driver
 from cinder.volume.drivers import lvm
 from cinder.zonemanager import utils as fczm_utils
-
-
-LOG = logging.getLogger(__name__)
 
 
 class FakeISCSIDriver(lvm.LVMISCSIDriver):
@@ -58,7 +52,6 @@ class FakeISCSIDriver(lvm.LVMISCSIDriver):
     @staticmethod
     def fake_execute(cmd, *_args, **_kwargs):
         """Execute that simply logs the command."""
-        LOG.debug("FAKE ISCSI: %s", cmd)
         return (None, None)
 
 
@@ -77,7 +70,6 @@ class FakeISERDriver(FakeISCSIDriver):
     @staticmethod
     def fake_execute(cmd, *_args, **_kwargs):
         """Execute that simply logs the command."""
-        LOG.debug("FAKE ISER: %s", cmd)
         return (None, None)
 
 
@@ -134,7 +126,6 @@ class LoggingVolumeDriver(driver.VolumeDriver):
         self.log_action('clear_volume', volume)
 
     def local_path(self, volume):
-        LOG.error(_LE("local_path not implemented"))
         raise NotImplementedError()
 
     def ensure_export(self, context, volume):
@@ -161,12 +152,10 @@ class LoggingVolumeDriver(driver.VolumeDriver):
     @staticmethod
     def log_action(action, parameters):
         """Logs the command."""
-        LOG.debug("LoggingVolumeDriver: %s" % (action))
         log_dictionary = {}
         if parameters:
             log_dictionary = dict(parameters)
         log_dictionary['action'] = action
-        LOG.debug("LoggingVolumeDriver: %s" % (log_dictionary))
         LoggingVolumeDriver._LOGS.append(log_dictionary)
 
     @staticmethod
