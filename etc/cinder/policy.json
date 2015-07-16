@@ -17,6 +17,8 @@
     "volume:update_volume_admin_metadata": "rule:admin_api",
     "volume:get_snapshot": "",
     "volume:get_all_snapshots": "",
+    "volume:delete_snapshot": "",
+    "volume:update_snapshot": "",
     "volume:extend": "",
     "volume:update_readonly_flag": "",
     "volume:retype": "",
