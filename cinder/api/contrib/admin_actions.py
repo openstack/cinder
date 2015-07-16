@@ -309,7 +309,7 @@ class BackupAdminController(AdminController):
         try:
             self.backup_api.reset_status(context=context, backup_id=id,
                                          status=update['status'])
-        except exception.VolumeNotFound as e:
+        except exception.BackupNotFound as e:
             raise exc.HTTPNotFound(explanation=e.msg)
         return webob.Response(status_int=202)
 
