@@ -212,6 +212,8 @@ class ScalityDriver(driver.VolumeDriver):
             'driver_volume_type': 'scality',
             'data': {
                 'sofs_path': self._sofs_path(volume),
+                'export': self.configuration.scality_sofs_volume_dir,
+                'name': volume['name'],
             }
         }
 

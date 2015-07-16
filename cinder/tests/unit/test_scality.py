@@ -221,6 +221,8 @@ class ScalityDriverTestCase(test.TestCase):
         self.assertEqual(ret['data']['sofs_path'],
                          os.path.join(self.TEST_VOLDIR,
                                       self.TEST_VOLNAME))
+        self.assertEqual(self.TEST_VOLDIR, ret['data']['export'])
+        self.assertEqual(self.TEST_VOLNAME, ret['data']['name'])
 
     def test_copy_image_to_volume(self):
         """Expected behaviour for copy_image_to_volume."""
