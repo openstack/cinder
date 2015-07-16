@@ -63,10 +63,11 @@ class FlashSystemFCDriver(fscommon.FlashSystemDriver,
             initialize/terminate
     1.0.3 - Initial driver for iSCSI
     1.0.4 - Split Flashsystem driver into common and FC
+    1.0.5 - Report capability of volume multiattach
 
     """
 
-    VERSION = "1.0.4"
+    VERSION = "1.0.5"
 
     def __init__(self, *args, **kwargs):
         super(FlashSystemFCDriver, self).__init__(*args, **kwargs)

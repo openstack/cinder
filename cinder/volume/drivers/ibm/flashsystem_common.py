@@ -72,10 +72,11 @@ class FlashSystemDriver(san.SanDriver):
             initialize/terminate
     1.0.3 - Initial driver for iSCSI
     1.0.4 - Split Flashsystem driver into common and FC
+    1.0.5 - Report capability of volume multiattach
 
     """
 
-    VERSION = "1.0.4"
+    VERSION = "1.0.5"
 
     def __init__(self, *args, **kwargs):
         super(FlashSystemDriver, self).__init__(*args, **kwargs)
@@ -843,16 +844,17 @@ class FlashSystemDriver(san.SanDriver):
         """Retrieve stats info from volume group."""
 
         LOG.debug("Updating volume stats.")
-        data = {}
 
-        data['vendor_name'] = 'IBM'
-        data['driver_version'] = self.VERSION
-        data['storage_protocol'] = self._protocol
-
-        data['total_capacity_gb'] = 0
-        data['free_capacity_gb'] = 0
-        data['reserved_percentage'] = self.configuration.reserved_percentage
-        data['QoS_support'] = False
+        data = {
+            'vendor_name': 'IBM',
+            'driver_version': self.VERSION,
+            'storage_protocol': self._protocol,
+            'total_capacity_gb': 0,
+            'free_capacity_gb': 0,
+            'reserved_percentage': self.configuration.reserved_percentage,
+            'QoS_support': False,
+            'multiattach': True,
+        }
 
         pool = FLASHSYSTEM_VOLPOOL_NAME
         backend_name = self.configuration.safe_get('volume_backend_name')
