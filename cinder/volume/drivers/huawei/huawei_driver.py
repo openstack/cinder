@@ -566,7 +566,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
     def migrate_volume(self, context, volume, host):
         return (False, None)
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         """Export a volume."""
         pass
 

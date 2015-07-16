@@ -267,7 +267,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
     def test_create_export(self):
         """Test create_export."""
-        self._driver.create_export(mox.IgnoreArg(), mox.IgnoreArg())
+        self._driver.create_export(mox.IgnoreArg(), mox.IgnoreArg(), {})
 
     def test_ensure_export(self):
         """Test ensure_export."""

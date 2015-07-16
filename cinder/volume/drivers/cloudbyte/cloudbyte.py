@@ -1012,7 +1012,7 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
         # Request the CloudByte api to update the volume
         self._api_request_for_cloudbyte('updateFileSystem', params)
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         """Setup the iscsi export info."""
 
         return self._export()

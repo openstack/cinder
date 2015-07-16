@@ -682,7 +682,7 @@ class BaseVD(object):
             model_update = None
             try:
                 LOG.debug("Volume %s: creating export", volume['id'])
-                model_update = self.create_export(context, volume)
+                model_update = self.create_export(context, volume, properties)
                 if model_update:
                     volume = self.db.volume_update(context, volume['id'],
                                                    model_update)
@@ -929,7 +929,7 @@ class BaseVD(object):
         return
 
     @abc.abstractmethod
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         """Exports the volume.
 
         Can optionally return a Dictionary of changes
@@ -1363,7 +1363,7 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
     def ensure_export(self, context, volume):
         raise NotImplementedError()
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         raise NotImplementedError()
 
     def remove_export(self, context, volume):
@@ -1811,7 +1811,7 @@ class FakeISCSIDriver(ISCSIDriver):
         """Synchronously recreates an export for a volume."""
         pass
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         """Exports the volume.
 
         Can optionally return a Dictionary of changes to the volume object to

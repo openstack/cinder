@@ -857,7 +857,7 @@ class DPLCOMMONDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
             raise exception.VolumeBackendAPIException(data=msg)
         return snapshotID
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         pass
 
     def ensure_export(self, context, volume):

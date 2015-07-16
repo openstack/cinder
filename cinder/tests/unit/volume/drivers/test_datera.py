@@ -179,13 +179,14 @@ class DateraVolumeTestCase(test.TestCase):
         }
 
         self.assertEqual(expected, self.driver.create_export(ctxt,
-                                                             self.volume))
+                                                             self.volume,
+                                                             {}))
 
     def test_create_export_fails(self):
         self.mock_api.side_effect = exception.DateraAPIException
         ctxt = context.get_admin_context()
         self.assertRaises(exception.DateraAPIException,
-                          self.driver.create_export, ctxt, self.volume)
+                          self.driver.create_export, ctxt, self.volume, {})
 
     def test_detach_volume_success(self):
         self.mock_api.return_value = {}

@@ -473,7 +473,7 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
     def discard_zero_page(self, volume):
         self.common.command.discard_zero_page(self.common.get_ldev(volume))
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         pass
 
     def ensure_export(self, context, volume):

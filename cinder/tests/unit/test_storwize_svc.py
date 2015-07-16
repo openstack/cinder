@@ -2117,7 +2117,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         self.driver.ensure_export(None, volume)
 
         # Do nothing
-        self.driver.create_export(None, volume)
+        self.driver.create_export(None, volume, {})
         self.driver.remove_export(None, volume)
 
         # Make sure volume attributes are as they should be

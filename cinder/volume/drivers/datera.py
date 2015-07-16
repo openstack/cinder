@@ -194,7 +194,7 @@ class DateraDriver(san.SanISCSIDriver):
     def ensure_export(self, context, volume):
         return self._do_export(context, volume)
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         return self._do_export(context, volume)
 
     def detach_volume(self, context, volume, attachment=None):

@@ -281,7 +281,7 @@ class RemoteFSDriver(driver.LocalVD, driver.TransferVD, driver.BaseVD):
         """Synchronously recreates an export for a logical volume."""
         self._ensure_share_mounted(volume['provider_location'])
 
-    def create_export(self, ctx, volume):
+    def create_export(self, ctx, volume, connector):
         """Exports the volume.
 
         Can optionally return a dictionary of changes

@@ -435,7 +435,7 @@ class BlockbridgeISCSIDriver(driver.ISCSIDriver):
                               user_id=snapshot['user_id'],
                               project_id=snapshot['project_id'])
 
-    def create_export(self, _ctx, volume):
+    def create_export(self, _ctx, volume, connector):
         """Do nothing: target created during instance attachment."""
         pass
 

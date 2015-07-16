@@ -133,7 +133,7 @@ class WindowsDriver(driver.ISCSIDriver):
         # iSCSI targets exported by WinTarget persist after host reboot.
         pass
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         """Driver entry point to get the export info for a new volume."""
         # Since the iSCSI targets are not reused, being deleted when the
         # volume is detached, we should clean up existing targets before

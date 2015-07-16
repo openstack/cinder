@@ -366,7 +366,7 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
             self._update_volume_status()
         return self._stats
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         pass
 
     def remove_export(self, context, volume):

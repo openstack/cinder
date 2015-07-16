@@ -790,7 +790,7 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
         """Synchronously recreates an export for a logical volume."""
         pass
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         """Exports the volume."""
         pass
 

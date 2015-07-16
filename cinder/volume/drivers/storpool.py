@@ -183,7 +183,7 @@ class StorPoolDriver(driver.TransferVD, driver.ExtendVD, driver.CloneableVD,
                               "%(msg)s"),
                           {'name': snapname, 'msg': e})
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         pass
 
     def remove_export(self, context, volume):

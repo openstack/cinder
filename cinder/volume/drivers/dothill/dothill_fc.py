@@ -141,7 +141,7 @@ class DotHillFCDriver(cinder.volume.driver.FibreChannelDriver):
                                         self.__class__.__name__)
         return stats
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         pass
 
     def ensure_export(self, context, volume):

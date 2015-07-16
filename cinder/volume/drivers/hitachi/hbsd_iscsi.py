@@ -384,7 +384,7 @@ class HBSDISCSIDriver(cinder.volume.driver.ISCSIDriver):
                 self.common.volume_info[ldev]['in_use']:
             self._terminate_connection(ldev, connector, hostgroups)
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         pass
 
     def ensure_export(self, context, volume):

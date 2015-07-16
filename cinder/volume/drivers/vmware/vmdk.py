@@ -587,7 +587,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
     def terminate_connection(self, volume, connector, force=False, **kwargs):
         pass
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         pass
 
     def ensure_export(self, context, volume):

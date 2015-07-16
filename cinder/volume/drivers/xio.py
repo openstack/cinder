@@ -1486,7 +1486,7 @@ class XIOISEISCSIDriver(driver.ISCSIDriver):
     def delete_snapshot(self, snapshot):
         return self.driver.delete_snapshot(snapshot)
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         return self.driver.create_export(context, volume)
 
     def ensure_export(self, context, volume):
@@ -1595,7 +1595,7 @@ class XIOISEFCDriver(driver.FibreChannelDriver):
     def delete_snapshot(self, snapshot):
         return self.driver.delete_snapshot(snapshot)
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         return self.driver.create_export(context, volume)
 
     def ensure_export(self, context, volume):

@@ -424,7 +424,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
     def ensure_export(self, context, volume):
         pass
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         """Create an export. Moved to initialize_connection.
 
         :param context:

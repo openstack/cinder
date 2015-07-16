@@ -205,7 +205,7 @@ class PureBaseVolumeDriver(san.SanDriver):
     def ensure_export(self, context, volume):
         pass
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         pass
 
     def _get_host(self, connector):

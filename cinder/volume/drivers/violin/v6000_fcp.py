@@ -125,7 +125,7 @@ class V6000FCDriver(driver.FibreChannelDriver):
         """Synchronously checks and re-exports volumes at cinder start time."""
         pass
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         """Exports the volume."""
         pass
 

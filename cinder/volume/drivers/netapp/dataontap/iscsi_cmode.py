@@ -67,7 +67,7 @@ class NetAppCmodeISCSIDriver(driver.ISCSIDriver):
     def ensure_export(self, context, volume):
         return self.library.ensure_export(context, volume)
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         return self.library.create_export(context, volume)
 
     def remove_export(self, context, volume):
