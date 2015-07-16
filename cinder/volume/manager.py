@@ -1505,6 +1505,10 @@ class VolumeManager(manager.SchedulerDependentManager):
                 # Append volume stats with 'allocated_capacity_gb'
                 self._append_volume_stats(volume_stats)
 
+                # Append filter and goodness function if needed
+                volume_stats = (
+                    self._append_filter_goodness_functions(volume_stats))
+
                 # queue it to be sent to the Schedulers.
                 self.update_service_capabilities(volume_stats)
 
@@ -1520,6 +1524,21 @@ class VolumeManager(manager.SchedulerDependentManager):
                     pool_stats = dict(allocated_capacity_gb=0)
 
                 pool.update(pool_stats)
+
+    def _append_filter_goodness_functions(self, volume_stats):
+        """Returns volume_stats updated as needed."""
+
+        # Append filter_function if needed
+        if 'filter_function' not in volume_stats:
+            volume_stats['filter_function'] = (
+                self.driver.get_filter_function())
+
+        # Append goodness_function if needed
+        if 'goodness_function' not in volume_stats:
+            volume_stats['goodness_function'] = (
+                self.driver.get_goodness_function())
+
+        return volume_stats
 
     def publish_service_capabilities(self, context):
         """Collect driver status and then publish."""

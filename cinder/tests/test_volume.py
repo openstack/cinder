@@ -327,6 +327,30 @@ class VolumeTestCase(BaseVolumeTestCase):
             manager.init_host()
         self.assertEqual(0, mock_add_p_task.call_count)
 
+    @mock.patch.object(vol_manager.VolumeManager,
+                       'update_service_capabilities')
+    def test_report_filter_goodness_function(self, mock_update):
+        manager = vol_manager.VolumeManager()
+        manager.driver.set_initialized()
+        myfilterfunction = "myFilterFunction"
+        mygoodnessfunction = "myGoodnessFunction"
+        expected = {'name': 'cinder-volumes',
+                    'filter_function': myfilterfunction,
+                    'goodness_function': mygoodnessfunction,
+                    }
+        with mock.patch.object(manager.driver,
+                               'get_volume_stats') as m_get_stats:
+            with mock.patch.object(manager.driver,
+                                   'get_goodness_function') as m_get_goodness:
+                with mock.patch.object(manager.driver,
+                                       'get_filter_function') as m_get_filter:
+                    m_get_stats.return_value = {'name': 'cinder-volumes'}
+                    m_get_filter.return_value = myfilterfunction
+                    m_get_goodness.return_value = mygoodnessfunction
+                    manager._report_driver_status(1)
+                    self.assertTrue(m_get_stats.called)
+                    mock_update.assert_called_once_with(expected)
+
     def test_create_volume_fails_with_creating_and_downloading_status(self):
         """Test init_host in case of volume.
 
