@@ -193,6 +193,30 @@ class VolumeRpcAPITestCase(test.TestCase):
             else:
                 self.assertEqual(expected_msg[kwarg], value)
 
+    def test_create_consistencygroup(self):
+        self._test_volume_api('create_consistencygroup', rpc_method='cast',
+                              group=self.fake_cg, host='fake_host1',
+                              version='1.26')
+
+    def test_delete_consistencygroup(self):
+        self._test_volume_api('delete_consistencygroup', rpc_method='cast',
+                              group=self.fake_cg, version='1.26')
+
+    def test_update_consistencygroup(self):
+        self._test_volume_api('update_consistencygroup', rpc_method='cast',
+                              group=self.fake_cg, add_volumes=['vol1'],
+                              remove_volumes=['vol2'], version='1.26')
+
+    def test_create_cgsnapshot(self):
+        self._test_volume_api('create_cgsnapshot', rpc_method='cast',
+                              group=self.fake_cg,
+                              cgsnapshot=self.fake_cgsnap, version='1.26')
+
+    def test_delete_cgsnapshot(self):
+        self._test_volume_api('delete_cgsnapshot', rpc_method='cast',
+                              cgsnapshot=self.fake_cgsnap, host='fake_host1',
+                              version='1.18')
+
     def test_create_volume(self):
         self._test_volume_api('create_volume',
                               rpc_method='cast',
