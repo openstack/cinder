@@ -179,10 +179,11 @@ class HP3PARCommon(object):
         2.0.44 - Update help strings to reduce the 3PAR user role requirements
         2.0.45 - Python 3 fixes
         2.0.46 - Improved VLUN creation and deletion logic. #1469816
+        2.0.47 - Changed initialize_connection to use getHostVLUNs. #1475064
 
     """
 
-    VERSION = "2.0.46"
+    VERSION = "2.0.47"
 
     stats = {}
 
@@ -2088,6 +2089,30 @@ class HP3PARCommon(object):
         old_volume_settings = self.get_volume_settings_from_type(volume, host)
         return self._retype_from_old_to_new(volume, new_type,
                                             old_volume_settings, host)
+
+    def find_existing_vlun(self, volume, host):
+        """Finds an existing VLUN for a volume on a host.
+
+        Returns an existing VLUN's information. If no existing VLUN is found,
+        None is returned.
+
+        :param volume: A dictionary describing a volume.
+        :param host: A dictionary describing a host.
+        """
+        existing_vlun = None
+        try:
+            vol_name = self._get_3par_vol_name(volume['id'])
+            host_vluns = self.client.getHostVLUNs(host['name'])
+
+            # The first existing VLUN found will be returned.
+            for vlun in host_vluns:
+                if vlun['volumeName'] == vol_name:
+                    existing_vlun = vlun
+                    break
+        except hpexceptions.HTTPNotFound:
+            # ignore, no existing VLUNs were found
+            pass
+        return existing_vlun
 
     class TaskWaiter(object):
         """TaskWaiter waits for task to be not active and returns status."""
