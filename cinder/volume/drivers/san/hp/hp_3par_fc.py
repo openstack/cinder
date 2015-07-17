@@ -79,10 +79,11 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         2.0.15 - Added support for updated detach_volume attachment.
         2.0.16 - Added encrypted property to initialize_connection #1439917
         2.0.17 - Improved VLUN creation and deletion logic. #1469816
+        2.0.18 - Changed initialize_connection to use getHostVLUNs. #1475064
 
     """
 
-    VERSION = "2.0.17"
+    VERSION = "2.0.18"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARFCDriver, self).__init__(*args, **kwargs)
@@ -230,16 +231,10 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
                 self._build_initiator_target_map(common, connector)
 
             # check if a VLUN already exists for this host
-            existing_vlun = None
-            try:
-                vol_name = common._get_3par_vol_name(volume['id'])
-                existing_vlun = common.client.getVLUN(vol_name)
-            except hpexceptions.HTTPNotFound:
-                # ignore, vlun will be created later
-                pass
+            existing_vlun = common.find_existing_vlun(volume, host)
 
             vlun = None
-            if not existing_vlun or host['name'] != existing_vlun['hostname']:
+            if existing_vlun is None:
                 # now that we have a host, create the VLUN
                 if self.lookup_service is not None and numPaths == 1:
                     nsp = None
