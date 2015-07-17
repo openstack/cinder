@@ -246,9 +246,21 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
         """Deletes a volume with the given volume['name']."""
         LOG.debug('zfssa.delete_volume: name=%s', volume['name'])
         lcfg = self.configuration
-        lun2del = self.zfssa.get_lun(lcfg.zfssa_pool,
-                                     lcfg.zfssa_project,
-                                     volume['name'])
+
+        try:
+            lun2del = self.zfssa.get_lun(lcfg.zfssa_pool,
+                                         lcfg.zfssa_project,
+                                         volume['name'])
+        except exception.VolumeBackendAPIException as ex:
+            # NOTE(jdg): This will log an error and continue
+            # if for some reason the volume no longer exists
+            # on the backend
+            if 'Error Getting Volume' in ex.message:
+                LOG.error(_LE("Volume ID %s was not found on "
+                              "the zfssa device while attempting "
+                              "delete_volume operation."), volume['id'])
+                return
+
         # Delete clone temp snapshot. see create_cloned_volume()
         if 'origin' in lun2del and 'id' in volume:
             if lun2del['nodestroy']:
