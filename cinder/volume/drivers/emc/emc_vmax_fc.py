@@ -38,9 +38,10 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
         2.1.2 - Clean up failed clones (bug #1440154)
         2.1.3 - Fixed a problem with FAST support (bug #1435069)
         2.2.0 - Add manage/unmanage
+        2.2.1 - Support for SE 8.0.3
     """
 
-    VERSION = "2.2.0"
+    VERSION = "2.2.1"
 
     def __init__(self, *args, **kwargs):
 
