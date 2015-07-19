@@ -99,6 +99,10 @@ loc_opts = [
                default='',
                help='Mapping between hostname and '
                'its iSCSI initiator IP addresses.'),
+    cfg.StrOpt('io_port_list',
+               default='*',
+               help='Comma separated iSCSI or FC ports '
+               'to be used in Nova or Cinder.'),
     cfg.BoolOpt('initiator_auto_registration',
                 default=False,
                 help='Automatically register initiators. '
@@ -1367,7 +1371,8 @@ class CommandLineHelper(object):
 
         return data
 
-    def get_status_up_ports(self, storage_group_name, poll=True):
+    def get_status_up_ports(self, storage_group_name, io_ports=None,
+                            poll=True):
         """Function to get ports whose status are up."""
         cmd_get_hba = ('storagegroup', '-list', '-gname', storage_group_name)
         out, rc = self.command_execute(*cmd_get_hba, poll=poll)
@@ -1383,6 +1388,9 @@ class CommandLineHelper(object):
             if 0 != rc:
                 self._raise_cli_error(cmd_get_port, rc, out)
             for i, sp in enumerate(sps):
+                if io_ports:  # Skip ports which are not in io_ports
+                    if (sp.split()[1], int(portid[i])) not in io_ports:
+                        continue
                 wwn = self.get_port_wwn(sp, portid[i], out)
                 if (wwn is not None) and (wwn not in wwns):
                     LOG.debug('Add wwn:%(wwn)s for sg:%(sg)s.',
@@ -1396,8 +1404,8 @@ class CommandLineHelper(object):
             self._raise_cli_error(cmd_get_hba, rc, out)
         return wwns
 
-    def get_login_ports(self, storage_group_name, connector_wwpns):
-
+    def get_login_ports(self, storage_group_name, connector_wwpns,
+                        io_ports=None):
         cmd_list_hba = ('port', '-list', '-gname', storage_group_name)
         out, rc = self.command_execute(*cmd_list_hba)
         ports = []
@@ -1418,9 +1426,14 @@ class CommandLineHelper(object):
                                   'HBA Devicename:.*\n\s*' +
                                   'Trusted:.*\n\s*' +
                                   'Logged In:\s*YES\n')
+
             for each in connector_hba_list:
                 ports.extend(re.findall(port_pat, each))
             ports = list(set(ports))
+            if io_ports:
+                ports = filter(lambda po:
+                               (po[0].split()[1], int(po[1])) in io_ports,
+                               ports)
             for each in ports:
                 wwn = self.get_port_wwn(each[0], each[1], allports)
                 if wwn:
@@ -1430,16 +1443,16 @@ class CommandLineHelper(object):
         return wwns
 
     def get_port_wwn(self, sp, port_id, allports=None):
+        """Returns wwn via sp and port_id
+
+        :param sp: should be in this format 'SP A'
+        :param port_id: '0' or 0
+        """
         wwn = None
         if allports is None:
-            cmd_get_port = ('port', '-list', '-sp')
-            out, rc = self.command_execute(*cmd_get_port)
-            if 0 != rc:
-                self._raise_cli_error(cmd_get_port, rc, out)
-            else:
-                allports = out
+            allports, rc = self.get_port_output()
         _re_port_wwn = re.compile('SP Name:\s*' + sp +
-                                  '\nSP Port ID:\s*' + port_id +
+                                  '\nSP Port ID:\s*' + str(port_id) +
                                   '\nSP UID:\s*((\w\w:){15}(\w\w))' +
                                   '\nLink Status:         Up' +
                                   '\nPort Status:         Online')
@@ -1449,11 +1462,7 @@ class CommandLineHelper(object):
         return wwn
 
     def get_fc_targets(self):
-        fc_getport = ('port', '-list', '-sp')
-        out, rc = self.command_execute(*fc_getport)
-        if rc != 0:
-            self._raise_cli_error(fc_getport, rc, out)
-
+        out, rc = self.get_port_output()
         fc_target_dict = {'A': [], 'B': []}
 
         _fcport_pat = (r'SP Name:             SP\s(\w)\s*'
@@ -1469,7 +1478,42 @@ class CommandLineHelper(object):
                                        'Port ID': sp_port_id})
         return fc_target_dict
 
-    def get_iscsi_targets(self, poll=True):
+    def get_port_output(self):
+        cmd_get_port = ('port', '-list', '-sp')
+        out, rc = self.command_execute(*cmd_get_port)
+        if 0 != rc:
+            self._raise_cli_error(cmd_get_port, rc, out)
+        return out, rc
+
+    def get_connection_getport_output(self):
+        connection_getport_cmd = ('connection', '-getport', '-vlanid')
+        out, rc = self.command_execute(*connection_getport_cmd)
+        if 0 != rc:
+            self._raise_cli_error(connection_getport_cmd, rc, out)
+        return out, rc
+
+    def _filter_iscsi_ports(self, all_ports, io_ports):
+        """Filter ports in white list from all iSCSI ports."""
+        new_iscsi_ports = {'A': [], 'B': []}
+        valid_ports = []
+        for sp in all_ports:
+            for port in all_ports[sp]:
+                port_tuple = (port['SP'],
+                              port['Port ID'],
+                              port['Virtual Port ID'])
+                if port_tuple in io_ports:
+                    new_iscsi_ports[sp].append(port)
+                    valid_ports.append(port_tuple)
+        if len(io_ports) != len(valid_ports):
+            invalid_port_set = set(io_ports) - set(valid_ports)
+            for invalid in invalid_port_set:
+                LOG.warning(_LW('Invalid iSCSI port %(sp)s-%(port)s-%(vlan)s '
+                                'found in io_port_list, will be ignored.'),
+                            {'sp': invalid[0], 'port': invalid[1],
+                             'vlan': invalid[2]})
+        return new_iscsi_ports
+
+    def get_iscsi_targets(self, poll=False, io_ports=None):
         cmd_getport = ('connection', '-getport', '-address', '-vlanid')
         out, rc = self.command_execute(*cmd_getport, poll=poll)
         if rc != 0:
@@ -1502,7 +1546,8 @@ class CommandLineHelper(object):
                                               'Port WWN': iqn,
                                               'Virtual Port ID': vport_id,
                                               'IP Address': ip_addr})
-
+        if io_ports:
+            return self._filter_iscsi_ports(iscsi_target_dict, io_ports)
         return iscsi_target_dict
 
     def get_registered_spport_set(self, initiator_iqn, sgname, sg_raw_out):
@@ -1759,8 +1804,11 @@ class EMCVnxCliBase(object):
         conf_pools = self.configuration.safe_get("storage_vnx_pool_names")
         self.storage_pools = self._get_managed_storage_pools(conf_pools)
         self.array_serial = None
+        self.io_ports = self._parse_ports(self.configuration.io_port_list,
+                                          self.protocol)
         if self.protocol == 'iSCSI':
-            self.iscsi_targets = self._client.get_iscsi_targets(poll=True)
+            self.iscsi_targets = self._client.get_iscsi_targets(
+                poll=True, io_ports=self.io_ports)
         self.hlu_cache = {}
         self.force_delete_lun_in_sg = (
             self.configuration.force_delete_lun_in_storagegroup)
@@ -1805,6 +1853,59 @@ class EMCVnxCliBase(object):
             LOG.debug("No storage pool is configured. This host will "
                       "manage all the pools on the VNX system.")
         return storage_pools
+
+    def _parse_ports(self, io_port_list, protocol):
+        """Validates IO port format, supported format is a-1, b-3, a-3-0."""
+        if not io_port_list or io_port_list == '*':
+            return None
+        ports = re.split('\s*,\s*', io_port_list)
+        valid_ports = []
+        invalid_ports = []
+        if 'iSCSI' == protocol:
+            out, rc = self._client.get_connection_getport_output()
+            for port in ports:
+                port_tuple = port.split('-')
+                if (re.match('[abAB]-\d+-\d+$', port) and
+                        self._validate_iscsi_port(
+                            port_tuple[0], port_tuple[1], port_tuple[2], out)):
+                    valid_ports.append(
+                        (port_tuple[0].upper(), int(port_tuple[1]),
+                         int(port_tuple[2])))
+                else:
+                    invalid_ports.append(port)
+        elif 'FC' == protocol:
+            out, rc = self._client.get_port_output()
+            for port in ports:
+                port_tuple = port.split('-')
+                if re.match('[abAB]-\d+$', port) and self._validate_fc_port(
+                        port_tuple[0], port_tuple[1], out):
+                    valid_ports.append(
+                        (port_tuple[0].upper(), int(port_tuple[1])))
+                else:
+                    invalid_ports.append(port)
+        if len(invalid_ports) > 0:
+            msg = _('Invalid %(protocol)s ports %(port)s specified '
+                    'for io_port_list.') % {'protocol': self.protocol,
+                                            'port': ','.join(invalid_ports)}
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        return valid_ports
+
+    def _validate_iscsi_port(self, sp, port_id, vlan_id, cmd_output):
+        """Validates whether the iSCSI port is existed on VNX"""
+        iscsi_pattern = ('SP:\s+' + sp.upper() +
+                         '\nPort ID:\s+' + str(port_id) +
+                         '\nPort WWN:\s+.*' +
+                         '\niSCSI Alias:\s+.*\n'
+                         '\nVirtual Port ID:\s+' + str(vlan_id))
+        return re.search(iscsi_pattern, cmd_output)
+
+    def _validate_fc_port(self, sp, port_id, cmd_output):
+        """Validates whether the FC port is existed on VNX"""
+        fc_pattern = ('SP Name:\s*SP\s*' + sp.upper() +
+                      '\nSP Port ID:\s*' + str(port_id) +
+                      '\nSP UID:\s*((\w\w:){15}(\w\w))')
+        return re.search(fc_pattern, cmd_output)
 
     def get_array_serial(self):
         if not self.array_serial:
@@ -2279,7 +2380,6 @@ class EMCVnxCliBase(object):
 
         self.stats['consistencygroup_support'] = (
             'True' if '-VNXSnapshots' in self.enablers else 'False')
-
         return self.stats
 
     def create_snapshot(self, snapshot):
@@ -2677,8 +2777,60 @@ class EMCVnxCliBase(object):
                          'portid': port_id,
                          'msg': out})
 
-    def _register_iscsi_initiator(self, ip, host, initiator_uids):
-        iscsi_targets = self.iscsi_targets
+    def auto_register_with_io_port_filter(self, connector, sgdata,
+                                          io_port_filter):
+        """Automatically register specific IO ports to storage group."""
+        initiator = connector['initiator']
+        ip = connector['ip']
+        host = connector['host']
+        new_white = {'A': [], 'B': []}
+        if self.protocol == 'iSCSI':
+            if sgdata:
+                sp_ports = self._client.get_registered_spport_set(
+                    initiator, host, sgdata['raw_output'])
+                # Normalize io_ports
+                for sp in ('A', 'B'):
+                    new_ports = filter(
+                        lambda pt: (pt['SP'], pt['Port ID']) not in sp_ports,
+                        self.iscsi_targets[sp])
+                    new_white[sp] = map(lambda white:
+                                        {'SP': white['SP'],
+                                         'Port ID': white['Port ID'],
+                                         'Virtual Port ID':
+                                             white['Virtual Port ID']},
+                                        new_ports)
+            else:
+                new_white = self.iscsi_targets
+            self._register_iscsi_initiator(ip, host, [initiator], new_white)
+
+        elif self.protocol == 'FC':
+            wwns = self._extract_fc_uids(connector)
+            ports_list = []
+            if sgdata:
+                for wwn in wwns:
+                    for port in io_port_filter:
+                        if ((port not in ports_list) and
+                                (not re.search(wwn + '\s+SP\s+' +
+                                               port[0] + '\s+' + str(port[1]),
+                                               sgdata['raw_output'],
+                                               re.IGNORECASE))):
+                            # Record ports to be added
+                            ports_list.append(port)
+                            new_white[port[0]].append({
+                                'SP': port[0],
+                                'Port ID': port[1]})
+            else:
+                # Need to translate to dict format
+                for fc_port in io_port_filter:
+                    new_white[fc_port[0]].append({'SP': fc_port[0],
+                                                  'Port ID': fc_port[1]})
+            self._register_fc_initiator(ip, host, wwns, new_white)
+        return new_white['A'] or new_white['B']
+
+    def _register_iscsi_initiator(self, ip, host, initiator_uids,
+                                  port_to_register=None):
+        iscsi_targets = (port_to_register if port_to_register else
+                         self.iscsi_targets)
         for initiator_uid in initiator_uids:
             LOG.info(_LI('Get ISCSI targets %(tg)s to register '
                          'initiator %(in)s.'),
@@ -2702,8 +2854,10 @@ class EMCVnxCliBase(object):
                 self._exec_command_setpath(initiator_uid, sp, port_id,
                                            ip, host, vport_id)
 
-    def _register_fc_initiator(self, ip, host, initiator_uids):
-        fc_targets = self._client.get_fc_targets()
+    def _register_fc_initiator(self, ip, host, initiator_uids,
+                               ports_to_register=None):
+        fc_targets = (ports_to_register if ports_to_register else
+                      self._client.get_fc_targets())
         for initiator_uid in initiator_uids:
             LOG.info(_LI('Get FC targets %(tg)s to register '
                          'initiator %(in)s.'),
@@ -2758,7 +2912,7 @@ class EMCVnxCliBase(object):
                 unregistered_initiators.append(initiator_uid)
         return unregistered_initiators
 
-    def auto_register_initiator(self, connector, sgdata):
+    def auto_register_initiator_to_all(self, connector, sgdata):
         """Automatically registers available initiators.
 
         Returns True if has registered initiator otherwise returns False.
@@ -2803,6 +2957,17 @@ class EMCVnxCliBase(object):
             self._register_fc_initiator(ip, host, itors_toReg)
             return True
 
+    def auto_register_initiator(self, connector, sgdata, io_ports_filter=None):
+        """Automatically register available initiators.
+
+        :returns: True if has registered initiator otherwise return False
+        """
+        if io_ports_filter:
+            return self.auto_register_with_io_port_filter(connector, sgdata,
+                                                          io_ports_filter)
+        else:
+            return self.auto_register_initiator_to_all(connector, sgdata)
+
     def assure_host_access(self, volume, connector):
         hostname = connector['host']
         volumename = volume['name']
@@ -2816,7 +2981,7 @@ class EMCVnxCliBase(object):
             # Storage Group has not existed yet
             self.assure_storage_group(hostname)
             if self.itor_auto_reg:
-                self.auto_register_initiator(connector, None)
+                self.auto_register_initiator(connector, None, self.io_ports)
                 auto_registration_done = True
             else:
                 self._client.connect_host_to_storage_group(hostname, hostname)
@@ -2825,7 +2990,8 @@ class EMCVnxCliBase(object):
                                                     poll=True)
 
         if self.itor_auto_reg and not auto_registration_done:
-            new_registerred = self.auto_register_initiator(connector, sgdata)
+            new_registerred = self.auto_register_initiator(connector, sgdata,
+                                                           self.io_ports)
             if new_registerred:
                 sgdata = self._client.get_storage_group(hostname,
                                                         poll=True)
@@ -2913,13 +3079,6 @@ class EMCVnxCliBase(object):
                 properties['target_portal'] = \
                     "%s:3260" % targets[0]['IP Address']
                 properties['target_lun'] = hlu
-
-                auth = volume['provider_auth']
-                if auth:
-                    (auth_method, auth_username, auth_secret) = auth.split()
-                    properties['auth_method'] = auth_method
-                    properties['auth_username'] = auth_username
-                    properties['auth_password'] = auth_secret
         else:
             properties = {'target_discovered': False,
                           'target_iqns': None,
@@ -2944,11 +3103,12 @@ class EMCVnxCliBase(object):
                          'target_dicovered': True,
                          'target_wwn': None}
         if self.zonemanager_lookup_service is None:
-            fc_properties['target_wwn'] = self.get_login_ports(connector)
+            fc_properties['target_wwn'] = self.get_login_ports(connector,
+                                                               self.io_ports)
         else:
             target_wwns, itor_tgt_map = self.get_initiator_target_map(
                 connector['wwpns'],
-                self.get_status_up_ports(connector))
+                self.get_status_up_ports(connector, self.io_ports))
             fc_properties['target_wwn'] = target_wwns
             fc_properties['initiator_target_map'] = itor_tgt_map
         return fc_properties
@@ -3098,12 +3258,14 @@ class EMCVnxCliBase(object):
                         self._build_provider_location_for_lun(lun_id)}
         return model_update
 
-    def get_login_ports(self, connector):
+    def get_login_ports(self, connector, io_ports=None):
         return self._client.get_login_ports(connector['host'],
-                                            connector['wwpns'])
+                                            connector['wwpns'],
+                                            io_ports)
 
-    def get_status_up_ports(self, connector):
-        return self._client.get_status_up_ports(connector['host'])
+    def get_status_up_ports(self, connector, io_ports=None):
+        return self._client.get_status_up_ports(connector['host'],
+                                                io_ports=io_ports)
 
     def get_initiator_target_map(self, fc_initiators, fc_targets):
         target_wwns = []
@@ -3276,9 +3438,9 @@ class EMCVnxCliBase(object):
     def update_volume_stats(self):
         """Retrieves stats info."""
         self.update_enabler_in_volume_stats()
-
         if self.protocol == 'iSCSI':
-            self.iscsi_targets = self._client.get_iscsi_targets(poll=False)
+            self.iscsi_targets = self._client.get_iscsi_targets(
+                poll=False, io_ports=self.io_ports)
 
         properties = [self._client.POOL_FREE_CAPACITY,
                       self._client.POOL_TOTAL_CAPACITY,

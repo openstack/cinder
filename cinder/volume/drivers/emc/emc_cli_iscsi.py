@@ -56,6 +56,7 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
                 Create consistency group from cgsnapshot support
                 Multiple pools support enhancement
                 Manage/unmanage volume revise
+                White list target ports support
     """
 
     def __init__(self, *args, **kwargs):
