@@ -113,10 +113,6 @@ volume_opts = [
     cfg.StrOpt('chiscsi_conf',
                default='/etc/chelsio-iscsi/chiscsi.conf',
                help='Chiscsi (CXT) global defaults configuration file'),
-    cfg.StrOpt('lio_initiator_iqns',
-               default='',
-               help='This option is deprecated and unused. '
-                    'It will be removed in the next release.'),
     cfg.StrOpt('iscsi_iotype',
                default='fileio',
                choices=['blockio', 'fileio', 'auto'],
