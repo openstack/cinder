@@ -21,9 +21,9 @@ from cinder import test
 
 
 CONF = cfg.CONF
-HUAWEI_ISCSI_MODULE = ("cinder.volume.drivers.huawei.huawei_18000."
+HUAWEI_ISCSI_MODULE = ("cinder.volume.drivers.huawei.huawei_driver."
                        "Huawei18000ISCSIDriver")
-HUAWEI_FC_MODULE = ("cinder.volume.drivers.huawei.huawei_18000."
+HUAWEI_FC_MODULE = ("cinder.volume.drivers.huawei.huawei_driver."
                     "Huawei18000FCDriver")
 
 
@@ -47,7 +47,7 @@ class VolumeDriverCompatibility(test.TestCase):
 
     def test_huawei_driver_iscsi_old(self):
         self._load_driver(
-            'cinder.volume.drivers.huawei.huawei_hvs.HuaweiHVSISCSIDriver')
+            'cinder.volume.drivers.huawei.huawei_18000.Huawei18000ISCSIDriver')
         self.assertEqual(self._driver_module_name(), HUAWEI_ISCSI_MODULE)
 
     def test_huawei_driver_iscsi_new(self):
@@ -56,7 +56,7 @@ class VolumeDriverCompatibility(test.TestCase):
 
     def test_huawei_driver_fc_old(self):
         self._load_driver(
-            'cinder.volume.drivers.huawei.huawei_hvs.HuaweiHVSFCDriver')
+            'cinder.volume.drivers.huawei.huawei_18000.Huawei18000FCDriver')
         self.assertEqual(self._driver_module_name(), HUAWEI_FC_MODULE)
 
     def test_huawei_driver_fc_new(self):
