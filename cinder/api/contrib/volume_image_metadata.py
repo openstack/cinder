@@ -57,41 +57,46 @@ class VolumeImageMetadataController(wsgi.Controller):
             all_metadata = {}
         return all_metadata
 
-    def _add_image_metadata(self, context, resp_volume, image_meta=None):
-        """Appends the image metadata to the given volume.
+    def _add_image_metadata(self, context, resp_volume_list, image_metas=None):
+        """Appends the image metadata to each of the given volume.
 
         :param context: the request context
-        :param resp_volume: the response volume
-        :param image_meta: The image metadata to append, if None is provided it
-                           will be retrieved from the database. An empty dict
-                           means there is no metadata and it should not be
-                           retrieved from the db.
+        :param resp_volume_list: the response volume list
+        :param image_metas: The image metadata to append, if None is provided
+                            it will be retrieved from the database. An empty
+                            dict means there is no metadata and it should not
+                            be retrieved from the db.
         """
-        if image_meta is None:
+        vol_id_list = []
+        for vol in resp_volume_list:
+            vol_id_list.append(vol['id'])
+        if image_metas is None:
             try:
-                image_meta = self.volume_api.get_volume_image_metadata(
-                    context, resp_volume)
-            except Exception:
+                image_metas = self.volume_api.get_list_volumes_image_metadata(
+                    context, vol_id_list)
+            except Exception as e:
+                LOG.debug('Get image metadata error: %s', e)
                 return
-        if image_meta:
-            resp_volume['volume_image_metadata'] = dict(image_meta)
+        if image_metas:
+            for vol in resp_volume_list:
+                image_meta = image_metas.get(vol['id'], {})
+                vol['volume_image_metadata'] = dict(image_meta)
 
     @wsgi.extends
     def show(self, req, resp_obj, id):
         context = req.environ['cinder.context']
         if authorize(context):
             resp_obj.attach(xml=VolumeImageMetadataTemplate())
-            self._add_image_metadata(context, resp_obj.obj['volume'])
+            self._add_image_metadata(context, [resp_obj.obj['volume']])
 
     @wsgi.extends
     def detail(self, req, resp_obj):
         context = req.environ['cinder.context']
         if authorize(context):
             resp_obj.attach(xml=VolumesImageMetadataTemplate())
-            all_meta = self._get_all_images_metadata(context)
-            for vol in list(resp_obj.obj.get('volumes', [])):
-                image_meta = all_meta.get(vol['id'], {})
-                self._add_image_metadata(context, vol, image_meta)
+            # Just get the image metadata of those volumes in response.
+            self._add_image_metadata(context,
+                                     list(resp_obj.obj.get('volumes', [])))
 
     @wsgi.action("os-set_image_metadata")
     @wsgi.serializers(xml=common.MetadataTemplate)
