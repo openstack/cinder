@@ -28,7 +28,6 @@ LOG = logging.getLogger(__name__)
 class NetApp7modeFibreChannelDriver(driver.BaseVD,
                                     driver.ManageableVD,
                                     driver.ExtendVD,
-                                    driver.CloneableVD,
                                     driver.TransferVD,
                                     driver.SnapshotVD):
     """NetApp 7-mode FibreChannel volume driver."""

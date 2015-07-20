@@ -54,7 +54,6 @@ CHAP_PASS_KEY = "HPQ-cinder-CHAP-secret"
 class HP3PARISCSIDriver(driver.TransferVD,
                         driver.ManageableVD,
                         driver.ExtendVD,
-                        driver.CloneableVD,
                         driver.SnapshotVD,
                         driver.MigrateVD,
                         driver.ConsistencyGroupVD,

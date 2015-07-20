@@ -62,7 +62,6 @@ CONF.register_opts(tintri_opts)
 
 
 class TintriDriver(driver.ManageableVD,
-                   driver.CloneableVD,
                    driver.CloneableImageVD,
                    driver.SnapshotVD,
                    nfs.NfsDriver):

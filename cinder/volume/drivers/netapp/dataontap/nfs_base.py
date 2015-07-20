@@ -52,7 +52,6 @@ CONF = cfg.CONF
 
 @six.add_metaclass(utils.TraceWrapperWithABCMetaclass)
 class NetAppNfsDriver(driver.ManageableVD,
-                      driver.CloneableVD,
                       driver.CloneableImageVD,
                       driver.SnapshotVD,
                       nfs.NfsDriver):
