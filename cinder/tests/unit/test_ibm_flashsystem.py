@@ -885,8 +885,34 @@ class FlashSystemDriverTestCase(test.TestCase):
                               self.driver.initialize_connection,
                               vol1, self.connector)
 
+        # case 4: terminate_connection with no host
+        with mock.patch.object(flashsystem_fc.FlashSystemFCDriver,
+                               '_get_hostvdisk_mappings') as mock_host:
+            mock_host.return_value = {}
+            vol3 = self._generate_vol_info(None)
+            self.driver.create_volume(vol3)
+            self.driver.initialize_connection(vol3, self.connector)
+            return_value = self.driver.terminate_connection(vol3,
+                                                            self.connector)
+            self.assertNotEqual({}, return_value['data'])
+
+        # case 5: terminate_connection with host
+        vol4 = self._generate_vol_info(None)
+        self.driver.create_volume(vol4)
+        self.driver.initialize_connection(vol4, self.connector)
+        vol5 = self._generate_vol_info(None)
+        self.driver.create_volume(vol5)
+        self.driver.initialize_connection(vol5, self.connector)
+        return_value = self.driver.terminate_connection(vol4,
+                                                        self.connector)
+        self.assertEqual({}, return_value['data'])
+
         # clear environment
         self.driver.delete_volume(vol1)
+        self.driver.delete_volume(vol2)
+        self.driver.delete_volume(vol3)
+        self.driver.delete_volume(vol4)
+        self.driver.delete_volume(vol5)
 
     @mock.patch.object(flashsystem_fc.FlashSystemFCDriver,
                        '_create_and_copy_vdisk_data')

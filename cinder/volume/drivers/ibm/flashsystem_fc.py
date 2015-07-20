@@ -64,10 +64,12 @@ class FlashSystemFCDriver(fscommon.FlashSystemDriver,
     1.0.3 - Initial driver for iSCSI
     1.0.4 - Split Flashsystem driver into common and FC
     1.0.5 - Report capability of volume multiattach
+    1.0.6 - Fix bug #1469581, add I/T mapping check in
+            terminate_connection
 
     """
 
-    VERSION = "1.0.5"
+    VERSION = "1.0.6"
 
     def __init__(self, *args, **kwargs):
         super(FlashSystemFCDriver, self).__init__(*args, **kwargs)
@@ -317,27 +319,30 @@ class FlashSystemFCDriver(fscommon.FlashSystemDriver,
             'connector %(conn)s.',
             {'vol': volume, 'conn': connector})
 
+        return_data = {
+            'driver_volume_type': 'fibre_channel',
+            'data': {},
+        }
+
         vdisk_name = volume['name']
         self._wait_vdisk_copy_completed(vdisk_name)
         self._unmap_vdisk_from_host(vdisk_name, connector)
 
-        properties = {}
-        conn_wwpns = self._get_conn_fc_wwpns()
-        properties['target_wwn'] = conn_wwpns
-        # TODO(edwin): add judgement here. No initiator_target_map within
-        # properties need if no more I/T connection. Otherwise the FCZone
-        # manager will remove the zoning between I/T.
-        properties['initiator_target_map'] = self._build_initiator_target_map(
-            connector['wwpns'], conn_wwpns)
+        host_name = self._get_host_from_connector(connector)
+        if not host_name:
+            properties = {}
+            conn_wwpns = self._get_conn_fc_wwpns()
+            properties['target_wwn'] = conn_wwpns
+            properties['initiator_target_map'] = (
+                self._build_initiator_target_map(
+                    connector['wwpns'], conn_wwpns))
+            return_data['data'] = properties
 
         LOG.debug(
             'leave: terminate_connection: volume %(vol)s with '
             'connector %(conn)s.', {'vol': volume, 'conn': connector})
 
-        return {
-            'driver_volume_type': 'fibre_channel',
-            'data': properties
-        }
+        return return_data
 
     def do_setup(self, ctxt):
         """Check that we have all configuration details from the storage."""

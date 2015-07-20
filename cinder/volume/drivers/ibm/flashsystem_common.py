@@ -73,10 +73,12 @@ class FlashSystemDriver(san.SanDriver):
     1.0.3 - Initial driver for iSCSI
     1.0.4 - Split Flashsystem driver into common and FC
     1.0.5 - Report capability of volume multiattach
+    1.0.6 - Fix bug #1469581, add I/T mapping check in
+            terminate_connection
 
     """
 
-    VERSION = "1.0.5"
+    VERSION = "1.0.6"
 
     def __init__(self, *args, **kwargs):
         super(FlashSystemDriver, self).__init__(*args, **kwargs)
