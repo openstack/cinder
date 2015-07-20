@@ -1182,6 +1182,15 @@ class API(base.Base):
                  resource=volume)
         return {meta_entry.key: meta_entry.value for meta_entry in db_data}
 
+    def get_list_volumes_image_metadata(self, context, volume_id_list):
+        db_data = self.db.volume_glance_metadata_list_get(context,
+                                                          volume_id_list)
+        results = collections.defaultdict(dict)
+        for meta_entry in db_data:
+            results[meta_entry['volume_id']].update({meta_entry['key']:
+                                                     meta_entry['value']})
+        return results
+
     def _check_volume_availability(self, volume, force):
         """Check if the volume can be used."""
         if volume['status'] not in ['available', 'in-use']:
