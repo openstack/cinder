@@ -847,6 +847,15 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         volumes = db_utils.get_table(engine, 'volumes')
         self.assertNotIn('previous_status', volumes.c)
 
+    def _check_051(self, engine, data):
+        consistencygroups = db_utils.get_table(engine, 'consistencygroups')
+        self.assertIsInstance(consistencygroups.c.source_cgid.type,
+                              sqlalchemy.types.VARCHAR)
+
+    def _post_downgrade_051(self, engine):
+        consistencygroups = db_utils.get_table(engine, 'consistencygroups')
+        self.assertNotIn('source_cgid', consistencygroups.c)
+
     def test_walk_versions(self):
         self.walk_versions(True, False)
 

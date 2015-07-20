@@ -1359,7 +1359,8 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
         raise NotImplementedError()
 
     def create_consistencygroup_from_src(self, context, group, volumes,
-                                         cgsnapshot=None, snapshots=None):
+                                         cgsnapshot=None, snapshots=None,
+                                         source_cg=None, source_vols=None):
         """Creates a consistencygroup from source.
 
         :param context: the context of the caller.
@@ -1367,9 +1368,11 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
         :param volumes: a list of volume dictionaries in the group.
         :param cgsnapshot: the dictionary of the cgsnapshot as source.
         :param snapshots: a list of snapshot dictionaries in the cgsnapshot.
+        :param source_cg: the dictionary of a consistency group as source.
+        :param source_vols: a list of volume dictionaries in the source_cg.
         :return model_update, volumes_model_update
 
-        Currently the source can only be cgsnapshot.
+        The source can be cgsnapshot or a source cg.
 
         param volumes is retrieved directly from the db. It is a list of
         cinder.db.sqlalchemy.models.Volume to be precise. It cannot be

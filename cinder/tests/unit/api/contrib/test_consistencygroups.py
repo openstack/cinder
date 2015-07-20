@@ -713,7 +713,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         db.consistencygroup_destroy(ctxt.elevated(), consistencygroup_id)
 
-    def test_create_consistencygroup_from_src(self):
+    def test_create_consistencygroup_from_src_cgsnapshot(self):
         self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
 
         ctxt = context.RequestContext('fake', 'fake', auth_token=True)
@@ -753,6 +753,76 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         db.volume_destroy(ctxt.elevated(), volume_id)
         db.consistencygroup_destroy(ctxt.elevated(), consistencygroup_id)
 
+    def test_create_consistencygroup_from_src_cg(self):
+        self.mock_object(volume_api.API, "create", stubs.stub_volume_create)
+
+        ctxt = context.RequestContext('fake', 'fake', auth_token=True)
+        source_cgid = utils.create_consistencygroup(ctxt)['id']
+        volume_id = utils.create_volume(
+            ctxt,
+            consistencygroup_id=source_cgid)['id']
+
+        test_cg_name = 'test cg'
+        body = {"consistencygroup-from-src": {"name": test_cg_name,
+                                              "description":
+                                              "Consistency Group 1",
+                                              "source_cgid": source_cgid}}
+        req = webob.Request.blank('/v2/fake/consistencygroups/create_from_src')
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = json.dumps(body)
+        res = req.get_response(fakes.wsgi_app())
+        res_dict = json.loads(res.body)
+
+        self.assertEqual(202, res.status_int)
+        self.assertIn('id', res_dict['consistencygroup'])
+        self.assertEqual(test_cg_name, res_dict['consistencygroup']['name'])
+
+        db.consistencygroup_destroy(ctxt.elevated(),
+                                    res_dict['consistencygroup']['id'])
+        db.volume_destroy(ctxt.elevated(), volume_id)
+        db.consistencygroup_destroy(ctxt.elevated(), source_cgid)
+
+    def test_create_consistencygroup_from_src_both_snap_cg(self):
+        self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
+
+        ctxt = context.RequestContext('fake', 'fake', auth_token=True)
+        consistencygroup_id = utils.create_consistencygroup(ctxt)['id']
+        volume_id = utils.create_volume(
+            ctxt,
+            consistencygroup_id=consistencygroup_id)['id']
+        cgsnapshot_id = utils.create_cgsnapshot(
+            ctxt,
+            consistencygroup_id=consistencygroup_id)['id']
+        snapshot_id = utils.create_snapshot(
+            ctxt,
+            volume_id,
+            cgsnapshot_id=cgsnapshot_id,
+            status='available')['id']
+
+        test_cg_name = 'test cg'
+        body = {"consistencygroup-from-src": {"name": test_cg_name,
+                                              "description":
+                                              "Consistency Group 1",
+                                              "cgsnapshot_id": cgsnapshot_id,
+                                              "source_cgid":
+                                                  consistencygroup_id}}
+        req = webob.Request.blank('/v2/fake/consistencygroups/create_from_src')
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = json.dumps(body)
+        res = req.get_response(fakes.wsgi_app())
+        res_dict = json.loads(res.body)
+
+        self.assertEqual(400, res.status_int)
+        self.assertEqual(400, res_dict['badRequest']['code'])
+        self.assertIsNotNone(res_dict['badRequest']['message'])
+
+        db.snapshot_destroy(ctxt.elevated(), snapshot_id)
+        db.cgsnapshot_destroy(ctxt.elevated(), cgsnapshot_id)
+        db.volume_destroy(ctxt.elevated(), volume_id)
+        db.consistencygroup_destroy(ctxt.elevated(), consistencygroup_id)
+
     def test_create_consistencygroup_from_src_invalid_body(self):
         name = 'cg1'
         body = {"invalid": {"name": name,
@@ -767,11 +837,10 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
-        msg = _("Missing required element 'consistencygroup-from-src' in "
-                "request body.")
-        self.assertEqual(msg, res_dict['badRequest']['message'])
+        # Missing 'consistencygroup-from-src' in the body.
+        self.assertIsNotNone(res_dict['badRequest']['message'])
 
-    def test_create_consistencygroup_from_src_no_cgsnapshot_id(self):
+    def test_create_consistencygroup_from_src_no_source_id(self):
         name = 'cg1'
         body = {"consistencygroup-from-src": {"name": name,
                                               "description":
@@ -785,9 +854,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
-        msg = (_('Cgsnapshot id must be provided to create '
-                 'consistency group %s from source.') % name)
-        self.assertEqual(msg, res_dict['badRequest']['message'])
+        self.assertIsNotNone(res_dict['badRequest']['message'])
 
     def test_create_consistencygroup_from_src_no_host(self):
         ctxt = context.RequestContext('fake', 'fake', auth_token=True)
@@ -854,18 +921,83 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
-        msg = _("Invalid ConsistencyGroup: Cgsnahost is empty. No "
-                "consistency group will be created.")
-        self.assertIn(msg, res_dict['badRequest']['message'])
+        self.assertIsNotNone(res_dict['badRequest']['message'])
 
         db.cgsnapshot_destroy(ctxt.elevated(), cgsnapshot_id)
         db.volume_destroy(ctxt.elevated(), volume_id)
         db.consistencygroup_destroy(ctxt.elevated(), consistencygroup_id)
 
+    def test_create_consistencygroup_from_src_source_cg_empty(self):
+        ctxt = context.RequestContext('fake', 'fake', auth_token=True)
+        source_cgid = utils.create_consistencygroup(
+            ctxt)['id']
+
+        test_cg_name = 'test cg'
+        body = {"consistencygroup-from-src": {"name": test_cg_name,
+                                              "description":
+                                              "Consistency Group 1",
+                                              "source_cgid": source_cgid}}
+        req = webob.Request.blank('/v2/fake/consistencygroups/create_from_src')
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = json.dumps(body)
+        res = req.get_response(fakes.wsgi_app())
+        res_dict = json.loads(res.body)
+
+        self.assertEqual(400, res.status_int)
+        self.assertEqual(400, res_dict['badRequest']['code'])
+        self.assertIsNotNone(res_dict['badRequest']['message'])
+
+        db.consistencygroup_destroy(ctxt.elevated(), source_cgid)
+
+    def test_create_consistencygroup_from_src_cgsnapshot_notfound(self):
+        ctxt = context.RequestContext('fake', 'fake', auth_token=True)
+        consistencygroup_id = utils.create_consistencygroup(
+            ctxt)['id']
+        volume_id = utils.create_volume(
+            ctxt,
+            consistencygroup_id=consistencygroup_id)['id']
+
+        test_cg_name = 'test cg'
+        body = {"consistencygroup-from-src": {"name": test_cg_name,
+                                              "description":
+                                              "Consistency Group 1",
+                                              "cgsnapshot_id": "fake_cgsnap"}}
+        req = webob.Request.blank('/v2/fake/consistencygroups/create_from_src')
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = json.dumps(body)
+        res = req.get_response(fakes.wsgi_app())
+        res_dict = json.loads(res.body)
+
+        self.assertEqual(404, res.status_int)
+        self.assertEqual(404, res_dict['itemNotFound']['code'])
+        self.assertIsNotNone(res_dict['itemNotFound']['message'])
+
+        db.volume_destroy(ctxt.elevated(), volume_id)
+        db.consistencygroup_destroy(ctxt.elevated(), consistencygroup_id)
+
+    def test_create_consistencygroup_from_src_source_cg_notfound(self):
+        test_cg_name = 'test cg'
+        body = {"consistencygroup-from-src": {"name": test_cg_name,
+                                              "description":
+                                              "Consistency Group 1",
+                                              "source_cgid": "fake_source_cg"}}
+        req = webob.Request.blank('/v2/fake/consistencygroups/create_from_src')
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = json.dumps(body)
+        res = req.get_response(fakes.wsgi_app())
+        res_dict = json.loads(res.body)
+
+        self.assertEqual(404, res.status_int)
+        self.assertEqual(404, res_dict['itemNotFound']['code'])
+        self.assertIsNotNone(res_dict['itemNotFound']['message'])
+
     @mock.patch.object(volume_api.API, 'create',
                        side_effect=exception.CinderException(
                            'Create volume failed.'))
-    def test_create_consistencygroup_from_src_create_volume_failed(
+    def test_create_consistencygroup_from_src_cgsnapshot_create_volume_failed(
             self, mock_create):
         ctxt = context.RequestContext('fake', 'fake', auth_token=True)
         consistencygroup_id = utils.create_consistencygroup(ctxt)['id']
@@ -902,3 +1034,33 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         db.cgsnapshot_destroy(ctxt.elevated(), cgsnapshot_id)
         db.volume_destroy(ctxt.elevated(), volume_id)
         db.consistencygroup_destroy(ctxt.elevated(), consistencygroup_id)
+
+    @mock.patch.object(volume_api.API, 'create',
+                       side_effect=exception.CinderException(
+                           'Create volume failed.'))
+    def test_create_consistencygroup_from_src_cg_create_volume_failed(
+            self, mock_create):
+        ctxt = context.RequestContext('fake', 'fake', auth_token=True)
+        source_cgid = utils.create_consistencygroup(ctxt)['id']
+        volume_id = utils.create_volume(
+            ctxt,
+            consistencygroup_id=source_cgid)['id']
+
+        test_cg_name = 'test cg'
+        body = {"consistencygroup-from-src": {"name": test_cg_name,
+                                              "description":
+                                              "Consistency Group 1",
+                                              "source_cgid": source_cgid}}
+        req = webob.Request.blank('/v2/fake/consistencygroups/create_from_src')
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = json.dumps(body)
+        res = req.get_response(fakes.wsgi_app())
+        res_dict = json.loads(res.body)
+
+        self.assertEqual(400, res.status_int)
+        self.assertEqual(400, res_dict['badRequest']['code'])
+        self.assertIsNotNone(res_dict['badRequest']['message'])
+
+        db.volume_destroy(ctxt.elevated(), volume_id)
+        db.consistencygroup_destroy(ctxt.elevated(), source_cgid)

@@ -64,7 +64,7 @@ def stub_volume(id, **kwargs):
     return volume
 
 
-def stub_volume_create(self, context, size, name, description, snapshot,
+def stub_volume_create(self, context, size, name, description, snapshot=None,
                        **param):
     vol = stub_volume('1')
     vol['size'] = size

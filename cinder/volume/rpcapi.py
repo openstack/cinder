@@ -68,6 +68,7 @@ class VolumeAPI(object):
                source_volid, source_replicaid, consistencygroup_id and
                cgsnapshot_id from create_volume. All off them are already
                passed either in request_spec or available in the DB.
+        1.25 - Add source_cg to create_consistencygroup_from_src.
     """
 
     BASE_RPC_API_VERSION = '1.0'
@@ -77,7 +78,7 @@ class VolumeAPI(object):
         target = messaging.Target(topic=CONF.volume_topic,
                                   version=self.BASE_RPC_API_VERSION)
         serializer = objects_base.CinderObjectSerializer()
-        self.client = rpc.get_client(target, '1.24', serializer=serializer)
+        self.client = rpc.get_client(target, '1.25', serializer=serializer)
 
     def create_consistencygroup(self, ctxt, group, host):
         new_host = utils.extract_host(host)
@@ -101,12 +102,14 @@ class VolumeAPI(object):
                    remove_volumes=remove_volumes)
 
     def create_consistencygroup_from_src(self, ctxt, group, host,
-                                         cgsnapshot=None):
+                                         cgsnapshot=None,
+                                         source_cg=None):
         new_host = utils.extract_host(host)
-        cctxt = self.client.prepare(server=new_host, version='1.22')
+        cctxt = self.client.prepare(server=new_host, version='1.25')
         cctxt.cast(ctxt, 'create_consistencygroup_from_src',
                    group_id=group['id'],
-                   cgsnapshot_id=cgsnapshot['id'])
+                   cgsnapshot_id=cgsnapshot['id'] if cgsnapshot else None,
+                   source_cgid=source_cg['id'] if source_cg else None)
 
     def create_cgsnapshot(self, ctxt, group, cgsnapshot):
 

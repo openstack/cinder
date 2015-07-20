@@ -25,6 +25,7 @@ from cinder import db
 from cinder import objects
 from cinder import test
 from cinder.tests.unit import fake_snapshot
+from cinder.tests.unit import utils as tests_utils
 from cinder.volume import rpcapi as volume_rpcapi
 
 
@@ -53,12 +54,41 @@ class VolumeRpcAPITestCase(test.TestCase):
             'display_name': 'fake_name',
             'display_description': 'fake_description'}
         snapshot = db.snapshot_create(self.context, snpshot)
+
+        source_group = tests_utils.create_consistencygroup(
+            self.context,
+            availability_zone=CONF.storage_availability_zone,
+            volume_type='type1,type2',
+            host='fakehost@fakedrv#fakepool')
+
+        cgsnapshot = tests_utils.create_cgsnapshot(
+            self.context,
+            consistencygroup_id=source_group['id'])
+
+        group = tests_utils.create_consistencygroup(
+            self.context,
+            availability_zone=CONF.storage_availability_zone,
+            volume_type='type1,type2',
+            host='fakehost@fakedrv#fakepool',
+            cgsnapshot_id=cgsnapshot['id'])
+
+        group2 = tests_utils.create_consistencygroup(
+            self.context,
+            availability_zone=CONF.storage_availability_zone,
+            volume_type='type1,type2',
+            host='fakehost@fakedrv#fakepool',
+            source_cgid=source_group['id'])
+
         self.fake_volume = jsonutils.to_primitive(volume)
         self.fake_volume_metadata = volume["volume_metadata"]
         self.fake_snapshot = jsonutils.to_primitive(snapshot)
         self.fake_snapshot_obj = fake_snapshot.fake_snapshot_obj(self.context,
                                                                  **snpshot)
         self.fake_reservations = ["RESERVATION"]
+        self.fake_cg = jsonutils.to_primitive(group)
+        self.fake_cg2 = jsonutils.to_primitive(group2)
+        self.fake_src_cg = jsonutils.to_primitive(source_group)
+        self.fake_cgsnap = jsonutils.to_primitive(cgsnapshot)
 
     def test_serialized_volume_has_id(self):
         self.assertIn('id', self.fake_volume)
@@ -104,6 +134,27 @@ class VolumeRpcAPITestCase(test.TestCase):
             volume = expected_msg['new_volume']
             del expected_msg['new_volume']
             expected_msg['new_volume_id'] = volume['id']
+
+        if 'group' in expected_msg:
+            group = expected_msg['group']
+            del expected_msg['group']
+            expected_msg['group_id'] = group['id']
+
+        if 'cgsnapshot' in expected_msg:
+            cgsnapshot = expected_msg['cgsnapshot']
+            if cgsnapshot:
+                del expected_msg['cgsnapshot']
+                expected_msg['cgsnapshot_id'] = cgsnapshot['id']
+            else:
+                expected_msg['cgsnapshot_id'] = None
+
+        if 'source_cg' in expected_msg:
+            source_cg = expected_msg['source_cg']
+            if source_cg:
+                del expected_msg['source_cg']
+                expected_msg['source_cgid'] = source_cg['id']
+            else:
+                expected_msg['source_cgid'] = None
 
         if 'host' in kwargs:
             host = kwargs['host']
@@ -307,3 +358,21 @@ class VolumeRpcAPITestCase(test.TestCase):
                               rpc_method='cast',
                               volume=self.fake_volume,
                               version='1.17')
+
+    def test_create_consistencygroup_from_src_cgsnapshot(self):
+        self._test_volume_api('create_consistencygroup_from_src',
+                              rpc_method='cast',
+                              group=self.fake_cg,
+                              host='fakehost',
+                              cgsnapshot=self.fake_cgsnap,
+                              source_cg=None,
+                              version='1.25')
+
+    def test_create_consistencygroup_from_src_cg(self):
+        self._test_volume_api('create_consistencygroup_from_src',
+                              rpc_method='cast',
+                              group=self.fake_cg2,
+                              host='fakehost',
+                              cgsnapshot=None,
+                              source_cg=self.fake_src_cg,
+                              version='1.25')
