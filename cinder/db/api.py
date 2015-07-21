@@ -639,6 +639,12 @@ def volume_glance_metadata_create(context, volume_id, key, value):
                                               value)
 
 
+def volume_glance_metadata_bulk_create(context, volume_id, metadata):
+    """Add Glance metadata for specified volume (multiple pairs)."""
+    return IMPL.volume_glance_metadata_bulk_create(context, volume_id,
+                                                   metadata)
+
+
 def volume_glance_metadata_get_all(context):
     """Return the glance metadata for all volumes."""
     return IMPL.volume_glance_metadata_get_all(context)
