@@ -156,6 +156,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         for tg in tg_list:
             if tg.startswith('%s-' % self._get_target_group_name()):
                 self.tg_dict[tg] = 0
+            else:
+                tg_list.remove(tg)
         zvol_list = self.nms.zvol.get_names(
             '%s/volume-' % self.volume)
         for zvol in zvol_list:
