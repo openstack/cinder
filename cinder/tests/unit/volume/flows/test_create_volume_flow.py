@@ -19,6 +19,7 @@ import mock
 from cinder import context
 from cinder import exception
 from cinder import test
+from cinder.tests.unit import fake_consistencygroup
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit.volume.flows import fake_volume_api
@@ -42,9 +43,13 @@ class CreateVolumeFlowTestCase(test.TestCase):
         self.counter = float(0)
 
     @mock.patch('time.time', side_effect=time_inc)
-    def test_cast_create_volume(self, mock_time):
-
+    @mock.patch('cinder.objects.ConsistencyGroup.get_by_id')
+    def test_cast_create_volume(self, consistencygroup_get_by_id, mock_time):
         props = {}
+        consistencygroup_obj = \
+            fake_consistencygroup.fake_consistencyobject_obj(
+                self.ctxt, consistencygroup_id=1, host=None)
+        consistencygroup_get_by_id.return_value = consistencygroup_obj
         spec = {'volume_id': None,
                 'source_volid': None,
                 'snapshot_id': None,
@@ -76,6 +81,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
             fake_volume_api.FakeDb())
 
         task._cast_create_volume(self.ctxt, spec, props)
+        consistencygroup_get_by_id.assert_called_once_with(self.ctxt, 5)
 
 
 class CreateVolumeFlowManagerTestCase(test.TestCase):

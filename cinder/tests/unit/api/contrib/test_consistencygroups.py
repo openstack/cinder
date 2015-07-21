@@ -28,6 +28,7 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
+from cinder import objects
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v2 import stubs
@@ -411,8 +412,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         cg = db.consistencygroup_get(
             context.get_admin_context(read_deleted='yes'),
             consistencygroup_id)
-        self.assertEqual(cg['status'], 'deleted')
-        self.assertEqual(cg['host'], None)
+        self.assertEqual('deleted', cg['status'])
+        self.assertIsNone(cg['host'])
 
     def test_create_delete_consistencygroup_update_quota(self):
         ctxt = context.RequestContext('fake', 'fake', auth_token=True)
@@ -429,19 +430,18 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         cg = self.cg_api.create(ctxt, name, description, fake_type['name'])
         self.cg_api.update_quota.assert_called_once_with(
-            ctxt, cg['id'], 1)
-        self.assertEqual(cg['status'], 'creating')
-        self.assertEqual(cg['host'], None)
+            ctxt, cg, 1)
+        self.assertEqual('creating', cg['status'])
+        self.assertIsNone(cg['host'])
         self.cg_api.update_quota.reset_mock()
-
-        cg['status'] = 'error'
+        cg.status = 'error'
         self.cg_api.delete(ctxt, cg)
         self.cg_api.update_quota.assert_called_once_with(
-            ctxt, cg['id'], -1, ctxt.project_id)
-        cg = db.consistencygroup_get(
+            ctxt, cg, -1, ctxt.project_id)
+        cg = objects.ConsistencyGroup.get_by_id(
             context.get_admin_context(read_deleted='yes'),
-            cg['id'])
-        self.assertEqual(cg['status'], 'deleted')
+            cg.id)
+        self.assertEqual('deleted', cg['status'])
 
     def test_delete_consistencygroup_with_invalid_body(self):
         consistencygroup_id = self._create_consistencygroup(status='available')

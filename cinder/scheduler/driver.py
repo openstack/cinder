@@ -46,19 +46,18 @@ def volume_update_db(context, volume_id, host):
 
     :returns: A Volume with the updated fields set properly.
     """
-    now = timeutils.utcnow()
-    values = {'host': host, 'scheduled_at': now}
+    values = {'host': host, 'scheduled_at': timeutils.utcnow()}
     return db.volume_update(context, volume_id, values)
 
 
-def group_update_db(context, group_id, host):
+def group_update_db(context, group, host):
     """Set the host and the scheduled_at field of a consistencygroup.
 
     :returns: A Consistencygroup with the updated fields set properly.
     """
-    now = timeutils.utcnow()
-    values = {'host': host, 'updated_at': now}
-    return db.consistencygroup_update(context, group_id, values)
+    group.update({'host': host, 'updated_at': timeutils.utcnow()})
+    group.save()
+    return group
 
 
 class Scheduler(object):
@@ -101,7 +100,7 @@ class Scheduler(object):
         """Must override schedule method for scheduler to work."""
         raise NotImplementedError(_("Must implement schedule_create_volume"))
 
-    def schedule_create_consistencygroup(self, context, group_id,
+    def schedule_create_consistencygroup(self, context, group,
                                          request_spec_list,
                                          filter_properties_list):
         """Must override schedule method for scheduler to work."""

@@ -27,7 +27,7 @@ from cinder.scheduler import driver
 from cinder.scheduler import filter_scheduler
 from cinder.scheduler import manager
 from cinder import test
-
+from cinder.tests.unit import fake_consistencygroup
 
 CONF = cfg.CONF
 
@@ -231,6 +231,8 @@ class SchedulerManagerTestCase(test.TestCase):
         with mock.patch.object(filter_scheduler.FilterScheduler,
                                'schedule_create_consistencygroup') as mock_cg:
             original_driver = self.manager.driver
+            consistencygroup_obj = \
+                fake_consistencygroup.fake_consistencyobject_obj(self.context)
             self.manager.driver = filter_scheduler.FilterScheduler
             LOG = self.mock_object(manager, 'LOG')
             self.stubs.Set(db, 'consistencygroup_update', mock.Mock())
@@ -242,7 +244,7 @@ class SchedulerManagerTestCase(test.TestCase):
                               self.manager.create_consistencygroup,
                               self.context,
                               'volume',
-                              group_id)
+                              consistencygroup_obj)
             self.assertTrue(LOG.exception.call_count > 0)
             db.consistencygroup_update.assert_called_once_with(
                 self.context, group_id, {'status': 'error'})
@@ -254,7 +256,7 @@ class SchedulerManagerTestCase(test.TestCase):
             mock_cg.side_effect = exception.NoValidHost(
                 reason="No weighed hosts available")
             self.manager.create_consistencygroup(
-                self.context, 'volume', group_id)
+                self.context, 'volume', consistencygroup_obj)
             self.assertTrue(LOG.error.call_count > 0)
             db.consistencygroup_update.assert_called_once_with(
                 self.context, group_id, {'status': 'error'})

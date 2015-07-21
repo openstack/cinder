@@ -42,8 +42,8 @@ class ViewBuilder(common.ViewBuilder):
         """Generic, non-detailed view of a consistency group."""
         return {
             'consistencygroup': {
-                'id': consistencygroup['id'],
-                'name': consistencygroup['name']
+                'id': consistencygroup.id,
+                'name': consistencygroup.name
             }
         }
 
@@ -51,12 +51,12 @@ class ViewBuilder(common.ViewBuilder):
         """Detailed view of a single consistency group."""
         return {
             'consistencygroup': {
-                'id': consistencygroup.get('id'),
-                'status': consistencygroup.get('status'),
-                'availability_zone': consistencygroup.get('availability_zone'),
-                'created_at': consistencygroup.get('created_at'),
-                'name': consistencygroup.get('name'),
-                'description': consistencygroup.get('description')
+                'id': consistencygroup.id,
+                'status': consistencygroup.status,
+                'availability_zone': consistencygroup.availability_zone,
+                'created_at': consistencygroup.created_at,
+                'name': consistencygroup.name,
+                'description': consistencygroup.description
             }
         }
 

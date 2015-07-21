@@ -240,9 +240,7 @@ class ConsistencyGroupsController(wsgi.Controller):
         except exception.ConsistencyGroupNotFound as error:
             raise exc.HTTPNotFound(explanation=error.msg)
 
-        retval = self._view_builder.summary(
-            req,
-            dict(new_consistencygroup))
+        retval = self._view_builder.summary(req, new_consistencygroup)
         return retval
 
     @wsgi.response(202)
@@ -299,9 +297,7 @@ class ConsistencyGroupsController(wsgi.Controller):
         except exception.CinderException as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
 
-        retval = self._view_builder.summary(
-            req,
-            dict(new_consistencygroup))
+        retval = self._view_builder.summary(req, new_consistencygroup)
         return retval
 
     @wsgi.serializers(xml=ConsistencyGroupTemplate)

@@ -671,9 +671,8 @@ class VolumeCastTask(flow_utils.CinderTask):
         cgsnapshot_id = request_spec['cgsnapshot_id']
 
         if cgroup_id:
-            cgroup = self.db.consistencygroup_get(context, cgroup_id)
-            if cgroup:
-                host = cgroup.get('host', None)
+            cgroup = objects.ConsistencyGroup.get_by_id(context, cgroup_id)
+            host = cgroup.host
         elif snapshot_id and CONF.snapshot_same_host:
             # NOTE(Rongze Zhu): A simple solution for bug 1008866.
             #

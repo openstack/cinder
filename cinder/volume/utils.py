@@ -201,13 +201,13 @@ def notify_about_replication_error(context, volume, suffix,
 
 
 def _usage_from_consistencygroup(group_ref, **kw):
-    usage_info = dict(tenant_id=group_ref['project_id'],
-                      user_id=group_ref['user_id'],
-                      availability_zone=group_ref['availability_zone'],
-                      consistencygroup_id=group_ref['id'],
-                      name=group_ref['name'],
-                      created_at=group_ref['created_at'].isoformat(),
-                      status=group_ref['status'])
+    usage_info = dict(tenant_id=group_ref.project_id,
+                      user_id=group_ref.user_id,
+                      availability_zone=group_ref.availability_zone,
+                      consistencygroup_id=group_ref.id,
+                      name=group_ref.name,
+                      created_at=group_ref.created_at.isoformat(),
+                      status=group_ref.status)
 
     usage_info.update(kw)
     return usage_info

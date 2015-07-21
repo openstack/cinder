@@ -27,3 +27,4 @@ def register_all():
     __import__('cinder.objects.volume')
     __import__('cinder.objects.snapshot')
     __import__('cinder.objects.backup')
+    __import__('cinder.objects.consistencygroup')

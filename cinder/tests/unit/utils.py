@@ -112,8 +112,8 @@ def create_consistencygroup(ctxt,
     """Create a consistencygroup object in the DB."""
     cg = {}
     cg['host'] = host
-    cg['user_id'] = ctxt.user_id
-    cg['project_id'] = ctxt.project_id
+    cg['user_id'] = ctxt.user_id or 'fake_user_id'
+    cg['project_id'] = ctxt.project_id or 'fake_project_id'
     cg['status'] = status
     cg['name'] = name
     cg['description'] = description
