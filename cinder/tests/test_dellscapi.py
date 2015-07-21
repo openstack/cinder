@@ -360,29 +360,6 @@ class DellSCSanAPITestCase(test.TestCase):
            u'instanceName': u'Other Multipath',
            u'objectType': u'ScServerOperatingSystem'}}]
 
-    MAP_PROFILES = [{u'instanceId': u'64702.2941',
-                     u'scName': u'Storage Center 64702',
-                     u'scSerialNumber': 64702,
-                     u'controller': {u'instanceId': u'64702.64703',
-                                     u'instanceName': u'SN 64703',
-                                     u'objectType': u'ScController'},
-                     u'lunUsed': [1],
-                     u'server': {u'instanceId': u'64702.47',
-                                 u'instanceName': u'Server_21000024ff30441d',
-                                 u'objectType': u'ScPhysicalServer'},
-                     u'volume':
-                         {u'instanceId': u'64702.6025',
-                          u'instanceName': u'Server_21000024ff30441d Test Vol',
-                          u'objectType': u'ScVolume'},
-                     u'connectivity': u'Up',
-                     u'readOnly': False,
-                     u'objectType': u'ScMappingProfile',
-                     u'hostCache': False,
-                     u'mappedVia': u'Server',
-                     u'mapCount': 3,
-                     u'instanceName': u'6025-47',
-                     u'lunRequested': u'N/A'}]
-
     MAP_PROFILE = {u'instanceId': u'64702.2941',
                    u'scName': u'Storage Center 64702',
                    u'scSerialNumber': 64702,
@@ -405,6 +382,8 @@ class DellSCSanAPITestCase(test.TestCase):
                    u'mapCount': 3,
                    u'instanceName': u'6025-47',
                    u'lunRequested': u'N/A'}
+
+    MAP_PROFILES = [MAP_PROFILE]
 
     MAPPINGS = [{u'profile': {u'instanceId': u'64702.104',
                               u'instanceName': u'92-30',
@@ -1271,6 +1250,57 @@ class DellSCSanAPITestCase(test.TestCase):
                   u'storageAlertThreshold': 10,
                   u'objectType': u'StorageCenterStorageUsage'}
 
+    ISCSI_CONFIG = {
+        u'initialReadyToTransfer': True,
+        u'scSerialNumber': 64065,
+        u'macAddress': u'00c0dd-1da173',
+        u'instanceId': u'64065.5764839588723573038.6',
+        u'vlanTagging': False,
+        u'mapCount': 8,
+        u'cardModel': u'Qle4062',
+        u'portNumber': 3260,
+        u'firstBurstSize': 256,
+        u'deviceName': u'PCIDEV09',
+        u'subnetMask': u'255.255.255.0',
+        u'speed': u'1 Gbps',
+        u'maximumVlanCount': 0,
+        u'gatewayIpAddress': u'192.168.0.1',
+        u'slot': 4,
+        u'sfpData': u'',
+        u'dataDigest': False,
+        u'chapEnabled': False,
+        u'firmwareVersion': u'03.00.01.77',
+        u'preferredControllerIndex': 64066,
+        u'defaultTimeToRetain': 20,
+        u'objectType': u'ScControllerPortIscsiConfiguration',
+        u'instanceName': u'5000d31000FCBE43',
+        u'scName': u'sc64065',
+        u'revision': u'0',
+        u'controllerPortIndex': 5764839588723573038,
+        u'maxBurstSize': 512,
+        u'targetCount': 20,
+        u'description': u'QLogic QLE4062 iSCSI Adapter Rev 0 Copper',
+        u'vlanSupported': True,
+        u'chapName': u'iqn.2002-03.com.compellent:5000d31000fcbe43',
+        u'windowSize': 128,
+        u'vlanId': 0,
+        u'defaultTimeToWait': 2,
+        u'headerDigest': False,
+        u'slotPort': 2,
+        u'immediateDataWrite': False,
+        u'storageCenterTargetCount': 20,
+        u'vlanCount': 0,
+        u'scsiCommandTimeout': 60,
+        u'slotType': u'PCI4',
+        u'ipAddress': u'192.168.0.21',
+        u'vlanUserPriority': 0,
+        u'bothCount': 0,
+        u'initiatorCount': 33,
+        u'keepAliveTimeout': 30,
+        u'homeControllerIndex': 64066,
+        u'chapSecret': u'',
+        u'maximumTransmissionUnit': 1500}
+
     IQN = 'iqn.2002-03.com.compellent:5000D31000000001'
     WWN = u'21000024FF30441C'
 
@@ -1300,6 +1330,12 @@ class DellSCSanAPITestCase(test.TestCase):
     response_nc.status_code = 204
     response_nc.reason = u'duplicate'
     RESPONSE_204 = response_nc
+
+    # Create a Response object is a pure error.
+    response_bad = models.Response()
+    response_bad.status_code = 400
+    response_bad.reason = u'bad request'
+    RESPONSE_400 = response_bad
 
     def setUp(self):
         super(DellSCSanAPITestCase, self).setUp()
@@ -2544,6 +2580,37 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertEqual([], res, 'Mapping count mismatch')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_json',
+                       return_value=MAP_PROFILES)
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'get',
+                       return_value=RESPONSE_200)
+    def test_find_mapping_profiles(self,
+                                   mock_get,
+                                   mock_get_json,
+                                   mock_close_connection,
+                                   mock_open_connection,
+                                   mock_init):
+        # Test case where ScVolume has no mappings
+        res = self.scapi._find_mapping_profiles(self.VOLUME)
+        self.assertTrue(mock_get.called)
+        self.assertTrue(mock_get_json.called)
+        self.assertEqual(self.MAP_PROFILES, res)
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'get',
+                       return_value=RESPONSE_204)
+    def test_find_mapping_profiles_error(self,
+                                         mock_get,
+                                         mock_close_connection,
+                                         mock_open_connection,
+                                         mock_init):
+        # Test case where ScVolume has no mappings
+        res = self.scapi._find_mapping_profiles(self.VOLUME)
+        self.assertTrue(mock_get.called)
+        self.assertEqual([], res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_first_result',
                        return_value=CTRLR_PORT)
     @mock.patch.object(dell_storagecenter_api.HttpClient,
@@ -2779,7 +2846,11 @@ class DellSCSanAPITestCase(test.TestCase):
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_mappings',
                        return_value=MAPPINGS)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_is_virtualport_mode',
+                       return_value=True)
     def test_find_iscsi_properties_mappings(self,
+                                            mock_is_virtualport_mode,
                                             mock_find_mappings,
                                             mock_find_domain,
                                             mock_find_ctrl_port,
@@ -2788,6 +2859,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                             mock_open_connection,
                                             mock_init):
         res = self.scapi.find_iscsi_properties(self.VOLUME)
+        self.assertTrue(mock_is_virtualport_mode.called)
         self.assertTrue(mock_find_mappings.called)
         self.assertTrue(mock_find_domain.called)
         self.assertTrue(mock_find_ctrl_port.called)
@@ -2813,7 +2885,11 @@ class DellSCSanAPITestCase(test.TestCase):
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_mappings',
                        return_value=MAPPINGS)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_is_virtualport_mode',
+                       return_value=True)
     def test_find_iscsi_properties_by_address(self,
+                                              mock_is_virtualport_mode,
                                               mock_find_mappings,
                                               mock_find_domain,
                                               mock_find_ctrl_port,
@@ -2824,6 +2900,7 @@ class DellSCSanAPITestCase(test.TestCase):
         # Test case to find iSCSI mappings by IP Address & port
         res = self.scapi.find_iscsi_properties(
             self.VOLUME, '192.168.0.21', 3260)
+        self.assertTrue(mock_is_virtualport_mode.called)
         self.assertTrue(mock_find_mappings.called)
         self.assertTrue(mock_find_domain.called)
         self.assertTrue(mock_find_ctrl_port.called)
@@ -2849,52 +2926,49 @@ class DellSCSanAPITestCase(test.TestCase):
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_mappings',
                        return_value=MAPPINGS)
-    def test_find_iscsi_properties_by_address_not_found(self,
-                                                        mock_find_mappings,
-                                                        mock_find_domain,
-                                                        mock_find_ctrl_port,
-                                                        mock_find_active_ctrl,
-                                                        mock_close_connection,
-                                                        mock_open_connection,
-                                                        mock_init):
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_is_virtualport_mode',
+                       return_value=True)
+    def test_find_iscsi_properties_by_address_not_found(
+            self,
+            mock_is_virtualport_mode,
+            mock_find_mappings,
+            mock_find_domains,
+            mock_find_ctrl_port,
+            mock_find_active_ctrl,
+            mock_close_connection,
+            mock_open_connection,
+            mock_init):
         # Test case to find iSCSI mappings by IP Address & port are not found
         res = self.scapi.find_iscsi_properties(
             self.VOLUME, '192.168.1.21', 3260)
+        self.assertTrue(mock_is_virtualport_mode.called)
         self.assertTrue(mock_find_mappings.called)
-        self.assertTrue(mock_find_domain.called)
+        self.assertTrue(mock_find_domains.called)
         self.assertTrue(mock_find_ctrl_port.called)
         self.assertTrue(mock_find_active_ctrl.called)
         expected = (0,
                     {'access_mode': 'rw',
                      'target_discovered': False,
-                     'target_iqns': [],
-                     'target_luns': [],
-                     'target_portals': []})
+                     'target_iqns':
+                         [u'iqn.2002-03.com.compellent:5000d31000fcbe43'],
+                     'target_luns': [1],
+                     'target_portals': [u'192.168.0.21:3260']})
         self.assertEqual(expected, res, 'Wrong Target Info')
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_find_active_controller',
-                       return_value='64702.5764839588723736131.91')
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_mappings',
                        return_value=[])
     def test_find_iscsi_properties_no_mapping(self,
                                               mock_find_mappings,
-                                              mock_find_active_controller,
                                               mock_close_connection,
                                               mock_open_connection,
                                               mock_init):
         # Test case where there are no ScMapping(s)
-        res = self.scapi.find_iscsi_properties(self.VOLUME)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.scapi.find_iscsi_properties,
+                          self.VOLUME)
         self.assertTrue(mock_find_mappings.called)
-        self.assertTrue(mock_find_active_controller.called)
-        expected = (0,
-                    {'access_mode': 'rw',
-                     'target_discovered': False,
-                     'target_iqns': [],
-                     'target_luns': [],
-                     'target_portals': []})
-        self.assertEqual(expected, res, 'Expected empty Target Info')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_active_controller',
@@ -2908,7 +2982,11 @@ class DellSCSanAPITestCase(test.TestCase):
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_mappings',
                        return_value=MAPPINGS)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_is_virtualport_mode',
+                       return_value=True)
     def test_find_iscsi_properties_no_domain(self,
+                                             mock_is_virtualport_mode,
                                              mock_find_mappings,
                                              mock_find_domain,
                                              mock_find_ctrl_port,
@@ -2917,18 +2995,14 @@ class DellSCSanAPITestCase(test.TestCase):
                                              mock_open_connection,
                                              mock_init):
         # Test case where there are no ScFaultDomain(s)
-        res = self.scapi.find_iscsi_properties(self.VOLUME)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.scapi.find_iscsi_properties,
+                          self.VOLUME)
+        self.assertTrue(mock_is_virtualport_mode.called)
         self.assertTrue(mock_find_mappings.called)
         self.assertTrue(mock_find_domain.called)
-        self.assertFalse(mock_find_ctrl_port.called)
+        self.assertTrue(mock_find_ctrl_port.called)
         self.assertTrue(mock_find_active_controller.called)
-        expected = (0,
-                    {'access_mode': 'rw',
-                     'target_discovered': False,
-                     'target_iqns': [],
-                     'target_luns': [],
-                     'target_portals': []})
-        self.assertEqual(expected, res, 'Expected empty Target Info')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_active_controller',
@@ -2937,32 +3011,27 @@ class DellSCSanAPITestCase(test.TestCase):
                        '_find_controller_port',
                        return_value=None)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_find_domains',
-                       return_value=ISCSI_FLT_DOMAINS)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_mappings',
                        return_value=MAPPINGS)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_is_virtualport_mode',
+                       return_value=True)
     def test_find_iscsi_properties_no_ctrl_port(self,
+                                                mock_is_virtualport_mode,
                                                 mock_find_mappings,
-                                                mock_find_domain,
                                                 mock_find_ctrl_port,
                                                 mock_find_active_controller,
                                                 mock_close_connection,
                                                 mock_open_connection,
                                                 mock_init):
         # Test case where there are no ScFaultDomain(s)
-        res = self.scapi.find_iscsi_properties(self.VOLUME)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.scapi.find_iscsi_properties,
+                          self.VOLUME)
+        self.assertTrue(mock_is_virtualport_mode.called)
         self.assertTrue(mock_find_mappings.called)
-        self.assertTrue(mock_find_domain.called)
         self.assertTrue(mock_find_ctrl_port.called)
         self.assertTrue(mock_find_active_controller.called)
-        expected = (0,
-                    {'access_mode': 'rw',
-                     'target_discovered': False,
-                     'target_iqns': [],
-                     'target_luns': [],
-                     'target_portals': []})
-        self.assertEqual(expected, res, 'Expected empty Target Info')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_active_controller',
@@ -2976,9 +3045,13 @@ class DellSCSanAPITestCase(test.TestCase):
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_mappings',
                        return_value=MAPPINGS_READ_ONLY)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_is_virtualport_mode',
+                       return_value=True)
     def test_find_iscsi_properties_ro(self,
+                                      mock_is_virtualport_mode,
                                       mock_find_mappings,
-                                      mock_find_domain,
+                                      mock_find_domains,
                                       mock_find_ctrl_port,
                                       mock_find_active_controller,
                                       mock_close_connection,
@@ -2986,8 +3059,9 @@ class DellSCSanAPITestCase(test.TestCase):
                                       mock_init):
         # Test case where Read Only mappings are found
         res = self.scapi.find_iscsi_properties(self.VOLUME)
+        self.assertTrue(mock_is_virtualport_mode.called)
         self.assertTrue(mock_find_mappings.called)
-        self.assertTrue(mock_find_domain.called)
+        self.assertTrue(mock_find_domains.called)
         self.assertTrue(mock_find_ctrl_port.called)
         self.assertTrue(mock_find_active_controller.called)
         expected = (0,
@@ -3011,7 +3085,11 @@ class DellSCSanAPITestCase(test.TestCase):
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_mappings',
                        return_value=MAPPINGS_MULTI_PORTAL)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_is_virtualport_mode',
+                       return_value=True)
     def test_find_iscsi_properties_multi_portals(self,
+                                                 mock_is_virtualport_mode,
                                                  mock_find_mappings,
                                                  mock_find_domain,
                                                  mock_find_ctrl_port,
@@ -3025,14 +3103,263 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertTrue(mock_find_domain.called)
         self.assertTrue(mock_find_ctrl_port.called)
         self.assertTrue(mock_find_active_controller.called)
+        self.assertTrue(mock_is_virtualport_mode.called)
         expected = (0,
                     {'access_mode': 'rw',
                      'target_discovered': False,
                      'target_iqns':
-                        [u'iqn.2002-03.com.compellent:5000d31000fcbe43'],
+                         [u'iqn.2002-03.com.compellent:5000d31000fcbe43',
+                          u'iqn.2002-03.com.compellent:5000d31000fcbe43',
+                          u'iqn.2002-03.com.compellent:5000d31000fcbe43',
+                          u'iqn.2002-03.com.compellent:5000d31000fcbe43'],
+                     'target_luns': [1, 1, 1, 1],
+                     'target_portals': [u'192.168.0.21:3260',
+                                        u'192.168.0.25:3260',
+                                        u'192.168.0.21:3260',
+                                        u'192.168.0.25:3260']})
+        self.assertEqual(expected, res, 'Wrong Target Info')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_active_controller',
+                       return_value='64702.5764839588723736131.91')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_controller_port',
+                       return_value=ISCSI_CTRLR_PORT)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_mappings',
+                       return_value=MAPPINGS)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_is_virtualport_mode',
+                       return_value=False)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_controller_port_iscsi_config',
+                       return_value=ISCSI_CONFIG)
+    def test_find_iscsi_properties_mappings_legacy(
+            self,
+            mock_find_controller_port_iscsi_config,
+            mock_is_virtualport_mode,
+            mock_find_mappings,
+            mock_find_ctrl_port,
+            mock_find_active_controller,
+            mock_close_connection,
+            mock_open_connection,
+            mock_init):
+        res = self.scapi.find_iscsi_properties(self.VOLUME)
+        self.assertTrue(mock_is_virtualport_mode.called)
+        self.assertTrue(mock_find_mappings.called)
+        self.assertTrue(mock_find_ctrl_port.called)
+        self.assertTrue(mock_find_controller_port_iscsi_config.called)
+        self.assertTrue(mock_find_active_controller.called)
+        expected = (0,
+                    {'access_mode': 'rw',
+                     'target_discovered': False,
+                     'target_iqns':
+                         [u'iqn.2002-03.com.compellent:5000d31000fcbe43'],
                      'target_luns': [1],
-                     'target_portals':
-                        [u'192.168.0.21:3260', u'192.168.0.25:3260']})
+                     'target_portals': [u'192.168.0.21:3260']})
+        self.assertEqual(expected, res, 'Wrong Target Info')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_active_controller',
+                       return_value='64702.5764839588723736131.91')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_controller_port',
+                       return_value=ISCSI_CTRLR_PORT)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_mappings',
+                       return_value=MAPPINGS)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_is_virtualport_mode',
+                       return_value=False)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_controller_port_iscsi_config',
+                       return_value=None)
+    def test_find_iscsi_properties_mappings_legacy_no_iscsi_config(
+            self,
+            mock_find_controller_port_iscsi_config,
+            mock_is_virtualport_mode,
+            mock_find_mappings,
+            mock_find_ctrl_port,
+            mock_find_active_controller,
+            mock_close_connection,
+            mock_open_connection,
+            mock_init):
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.scapi.find_iscsi_properties,
+                          self.VOLUME)
+        self.assertTrue(mock_is_virtualport_mode.called)
+        self.assertTrue(mock_find_mappings.called)
+        self.assertTrue(mock_find_ctrl_port.called)
+        self.assertTrue(mock_find_controller_port_iscsi_config.called)
+        self.assertTrue(mock_find_active_controller.called)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_active_controller',
+                       return_value='64702.64702')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_controller_port',
+                       return_value=ISCSI_CTRLR_PORT)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_mappings',
+                       return_value=MAPPINGS)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_is_virtualport_mode',
+                       return_value=False)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_controller_port_iscsi_config',
+                       return_value=ISCSI_CONFIG)
+    def test_find_iscsi_properties_by_address_legacy(
+            self,
+            mock_find_controller_port_iscsi_config,
+            mock_is_virtualport_mode,
+            mock_find_mappings,
+            mock_find_ctrl_port,
+            mock_find_active_controller,
+            mock_close_connection,
+            mock_open_connection,
+            mock_init):
+        # Test case to find iSCSI mappings by IP Address & port
+        res = self.scapi.find_iscsi_properties(
+            self.VOLUME, '192.168.0.21', 3260)
+        self.assertTrue(mock_is_virtualport_mode.called)
+        self.assertTrue(mock_find_mappings.called)
+        self.assertTrue(mock_find_ctrl_port.called)
+        self.assertTrue(mock_find_active_controller.called)
+        self.assertTrue(mock_find_controller_port_iscsi_config.called)
+        expected = (0,
+                    {'access_mode': 'rw',
+                     'target_discovered': False,
+                     'target_iqns':
+                         [u'iqn.2002-03.com.compellent:5000d31000fcbe43'],
+                     'target_luns': [1],
+                     'target_portals': [u'192.168.0.21:3260']})
+        self.assertEqual(expected, res, 'Wrong Target Info')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_active_controller',
+                       return_value='64702.64702')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_controller_port',
+                       return_value=ISCSI_CTRLR_PORT)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_mappings',
+                       return_value=MAPPINGS)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_is_virtualport_mode',
+                       return_value=False)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_controller_port_iscsi_config',
+                       return_value=ISCSI_CONFIG)
+    def test_find_iscsi_properties_by_address_not_found_legacy(
+            self,
+            mock_find_controller_port_iscsi_config,
+            mock_is_virtualport_mode,
+            mock_find_mappings,
+            mock_find_ctrl_port,
+            mock_find_active_ctrl,
+            mock_close_connection,
+            mock_open_connection,
+            mock_init):
+        # Test case to find iSCSI mappings by IP Address & port are not found
+        res = self.scapi.find_iscsi_properties(
+            self.VOLUME, '192.168.1.21', 3260)
+        self.assertTrue(mock_is_virtualport_mode.called)
+        self.assertTrue(mock_find_mappings.called)
+        self.assertTrue(mock_find_ctrl_port.called)
+        self.assertTrue(mock_find_active_ctrl.called)
+        self.assertTrue(mock_find_controller_port_iscsi_config.called)
+        expected = (0,
+                    {'access_mode': 'rw',
+                     'target_discovered': False,
+                     'target_iqns':
+                         [u'iqn.2002-03.com.compellent:5000d31000fcbe43'],
+                     'target_luns': [1],
+                     'target_portals': [u'192.168.0.21:3260']})
+        self.assertEqual(expected, res, 'Wrong Target Info')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_active_controller',
+                       return_value='64702.64702')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_controller_port',
+                       return_value=ISCSI_CTRLR_PORT)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_mappings',
+                       return_value=MAPPINGS_READ_ONLY)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_is_virtualport_mode',
+                       return_value=False)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_controller_port_iscsi_config',
+                       return_value=ISCSI_CONFIG)
+    def test_find_iscsi_properties_ro_legacy(self,
+                                             mock_find_iscsi_config,
+                                             mock_is_virtualport_mode,
+                                             mock_find_mappings,
+                                             mock_find_ctrl_port,
+                                             mock_find_active_controller,
+                                             mock_close_connection,
+                                             mock_open_connection,
+                                             mock_init):
+        # Test case where Read Only mappings are found
+        res = self.scapi.find_iscsi_properties(self.VOLUME)
+        self.assertTrue(mock_is_virtualport_mode.called)
+        self.assertTrue(mock_find_mappings.called)
+        self.assertTrue(mock_find_ctrl_port.called)
+        self.assertTrue(mock_find_active_controller.called)
+        self.assertTrue(mock_find_iscsi_config.called)
+        expected = (0,
+                    {'access_mode': 'ro',
+                     'target_discovered': False,
+                     'target_iqns':
+                         [u'iqn.2002-03.com.compellent:5000d31000fcbe43'],
+                     'target_luns': [1],
+                     'target_portals': [u'192.168.0.21:3260']})
+        self.assertEqual(expected, res, 'Wrong Target Info')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_active_controller',
+                       return_value='64702.64702')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_controller_port',
+                       return_value=ISCSI_CTRLR_PORT)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_mappings',
+                       return_value=MAPPINGS_MULTI_PORTAL)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_is_virtualport_mode',
+                       return_value=False)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_controller_port_iscsi_config',
+                       return_value=ISCSI_CONFIG)
+    def test_find_iscsi_properties_multi_portals_legacy(
+            self,
+            mock_find_controller_port_iscsi_config,
+            mock_is_virtualport_mode,
+            mock_find_mappings,
+            mock_find_ctrl_port,
+            mock_find_active_controller,
+            mock_close_connection,
+            mock_open_connection,
+            mock_init):
+        # Test case where there are multiple portals
+        res = self.scapi.find_iscsi_properties(self.VOLUME)
+        self.assertTrue(mock_find_mappings.called)
+        self.assertTrue(mock_find_ctrl_port.called)
+        self.assertTrue(mock_find_active_controller.called)
+        self.assertTrue(mock_is_virtualport_mode.called)
+        self.assertTrue(mock_find_controller_port_iscsi_config.called)
+        # Since we're feeding the same info back multiple times the information
+        # will be duped.
+        expected = (1,
+                    {'access_mode': 'rw',
+                     'target_discovered': False,
+                     'target_iqns':
+                         [u'iqn.2002-03.com.compellent:5000d31000fcbe43',
+                          u'iqn.2002-03.com.compellent:5000d31000fcbe43'],
+                     'target_luns': [1, 1],
+                     'target_portals': [u'192.168.0.21:3260',
+                                        u'192.168.0.21:3260']})
         self.assertEqual(expected, res, 'Wrong Target Info')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -3041,7 +3368,11 @@ class DellSCSanAPITestCase(test.TestCase):
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'post',
                        return_value=RESPONSE_200)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_mapping_profiles',
+                       return_value=[])
     def test_map_volume(self,
+                        mock_find_mapping_profiles,
                         mock_post,
                         mock_first_result,
                         mock_close_connection,
@@ -3049,6 +3380,54 @@ class DellSCSanAPITestCase(test.TestCase):
                         mock_init):
         res = self.scapi.map_volume(self.VOLUME,
                                     self.SCSERVER)
+        self.assertTrue(mock_find_mapping_profiles.called)
+        self.assertTrue(mock_post.called)
+        self.assertTrue(mock_first_result.called)
+        self.assertEqual(self.MAP_PROFILE, res, 'Incorrect ScMappingProfile')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_first_result',
+                       return_value=MAP_PROFILE)
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post',
+                       return_value=RESPONSE_200)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_mapping_profiles',
+                       return_value=MAP_PROFILES)
+    def test_map_volume_existing_mapping(self,
+                                         mock_find_mappings,
+                                         mock_post,
+                                         mock_first_result,
+                                         mock_close_connection,
+                                         mock_open_connection,
+                                         mock_init):
+        res = self.scapi.map_volume(self.VOLUME,
+                                    self.SCSERVER)
+        self.assertTrue(mock_find_mappings.called)
+        self.assertFalse(mock_post.called)
+        self.assertFalse(mock_first_result.called)
+        self.assertEqual(self.MAP_PROFILE, res, 'Incorrect ScMappingProfile')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_first_result',
+                       return_value=MAP_PROFILE)
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post',
+                       return_value=RESPONSE_200)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_mapping_profiles',
+                       return_value=[])
+    def test_map_volume_existing_mapping_not_us(self,
+                                                mock_find_mappings,
+                                                mock_post,
+                                                mock_first_result,
+                                                mock_close_connection,
+                                                mock_open_connection,
+                                                mock_init):
+        server = {'instanceId': 64702.48}
+        res = self.scapi.map_volume(self.VOLUME,
+                                    server)
+        self.assertTrue(mock_find_mappings.called)
         self.assertTrue(mock_post.called)
         self.assertTrue(mock_first_result.called)
         self.assertEqual(self.MAP_PROFILE, res, 'Incorrect ScMappingProfile')
@@ -3056,7 +3435,11 @@ class DellSCSanAPITestCase(test.TestCase):
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'post',
                        return_value=RESPONSE_204)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_mapping_profiles',
+                       return_value=[])
     def test_map_volume_failure(self,
+                                mock_find_mapping_profiles,
                                 mock_post,
                                 mock_close_connection,
                                 mock_open_connection,
@@ -3064,6 +3447,7 @@ class DellSCSanAPITestCase(test.TestCase):
         # Test case where mapping volume to server fails
         res = self.scapi.map_volume(self.VOLUME,
                                     self.SCSERVER)
+        self.assertTrue(mock_find_mapping_profiles.called)
         self.assertTrue(mock_post.called)
         self.assertIsNone(res, 'None expected')
 
@@ -3071,78 +3455,145 @@ class DellSCSanAPITestCase(test.TestCase):
                        'delete',
                        return_value=RESPONSE_200)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_get_json',
+                       '_find_mapping_profiles',
                        return_value=MAP_PROFILES)
-    @mock.patch.object(dell_storagecenter_api.HttpClient,
-                       'get',
-                       return_value=RESPONSE_200)
     def test_unmap_volume(self,
-                          mock_get,
-                          mock_get_json,
+                          mock_find_mapping_profiles,
                           mock_delete,
                           mock_close_connection,
                           mock_open_connection,
                           mock_init):
         res = self.scapi.unmap_volume(self.VOLUME,
                                       self.SCSERVER)
-        self.assertTrue(mock_get.called)
-        self.assertTrue(mock_get_json.called)
+        self.assertTrue(mock_find_mapping_profiles.called)
         self.assertTrue(mock_delete.called)
         self.assertTrue(res)
 
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_mapping_profiles',
+                       return_value=MAP_PROFILES)
     @mock.patch.object(dell_storagecenter_api.HttpClient,
-                       'get',
+                       'delete',
                        return_value=RESPONSE_204)
     def test_unmap_volume_failure(self,
-                                  mock_get,
+                                  mock_delete,
+                                  mock_find_mapping_profiles,
                                   mock_close_connection,
                                   mock_open_connection,
                                   mock_init):
         res = self.scapi.unmap_volume(self.VOLUME,
                                       self.SCSERVER)
-        self.assertTrue(mock_get.called)
+        self.assertTrue(mock_find_mapping_profiles.called)
+        self.assertTrue(mock_delete.called)
         self.assertFalse(res)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_get_json',
+                       '_find_mapping_profiles',
                        return_value=[])
-    @mock.patch.object(dell_storagecenter_api.HttpClient,
-                       'get',
-                       return_value=RESPONSE_200)
     def test_unmap_volume_no_map_profile(self,
-                                         mock_get,
-                                         mock_get_json,
+                                         mock_find_mapping_profiles,
                                          mock_close_connection,
                                          mock_open_connection,
                                          mock_init):
         res = self.scapi.unmap_volume(self.VOLUME,
                                       self.SCSERVER)
-        self.assertTrue(mock_get.called)
-        self.assertTrue(mock_get_json.called)
+        self.assertTrue(mock_find_mapping_profiles.called)
         self.assertTrue(res)
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'delete',
                        return_value=RESPONSE_204)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_get_json',
+                       '_find_mapping_profiles',
                        return_value=MAP_PROFILES)
-    @mock.patch.object(dell_storagecenter_api.HttpClient,
-                       'get',
-                       return_value=RESPONSE_200)
     def test_unmap_volume_del_fail(self,
-                                   mock_get,
-                                   mock_get_json,
+                                   mock_find_mapping_profiles,
                                    mock_delete,
                                    mock_close_connection,
                                    mock_open_connection,
                                    mock_init):
         res = self.scapi.unmap_volume(self.VOLUME,
                                       self.SCSERVER)
-        self.assertTrue(mock_get.called)
-        self.assertTrue(mock_get_json.called)
+        self.assertTrue(mock_find_mapping_profiles.called)
         self.assertTrue(mock_delete.called)
         self.assertFalse(res, False)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_id')
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'delete',
+                       return_value=RESPONSE_200)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_mapping_profiles',
+                       return_value=MAP_PROFILES)
+    def test_unmap_volume_no_vol_id(self,
+                                    mock_find_mapping_profiles,
+                                    mock_delete,
+                                    mock_get_id,
+                                    mock_close_connection,
+                                    mock_open_connection,
+                                    mock_init):
+        # Test case where ScVolume instanceId = None
+        mock_get_id.side_effect = [None, '64702.47']
+        res = self.scapi.unmap_volume(self.VOLUME,
+                                      self.SCSERVER)
+        self.assertFalse(mock_find_mapping_profiles.called)
+        self.assertFalse(mock_delete.called)
+        self.assertTrue(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_id')
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'delete',
+                       return_value=RESPONSE_200)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_mapping_profiles',
+                       return_value=MAP_PROFILES)
+    def test_unmap_volume_no_server_id(self,
+                                       mock_find_mapping_profiles,
+                                       mock_delete,
+                                       mock_get_id,
+                                       mock_close_connection,
+                                       mock_open_connection,
+                                       mock_init):
+        # Test case where ScVolume instanceId = None
+        mock_get_id.side_effect = ['64702.3494', None]
+        res = self.scapi.unmap_volume(self.VOLUME,
+                                      self.SCSERVER)
+        self.assertFalse(mock_find_mapping_profiles.called)
+        self.assertFalse(mock_delete.called)
+        self.assertTrue(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_json',
+                       return_value=[{'a': 1}, {'a': 2}])
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'get',
+                       return_value=RESPONSE_200)
+    def test_find_controller_port_iscsi_config(self,
+                                               mock_get,
+                                               mock_get_json,
+                                               mock_close_connection,
+                                               mock_open_connection,
+                                               mock_init):
+        # Not much to test here.  Just make sure we call our stuff and
+        # that we return the first item returned to us.
+        res = self.scapi._find_controller_port_iscsi_config('guid')
+        self.assertTrue(mock_get.called)
+        self.assertTrue(mock_get_json.called)
+        self.assertEqual({'a': 1}, res)
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'get',
+                       return_value=RESPONSE_400)
+    def test_find_controller_port_iscsi_config_err(self,
+                                                   mock_get,
+                                                   mock_close_connection,
+                                                   mock_open_connection,
+                                                   mock_init):
+        res = self.scapi._find_controller_port_iscsi_config('guid')
+        self.assertTrue(mock_get.called)
+        self.assertEqual(None, res)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_get_json',
@@ -3656,6 +4107,29 @@ class DellSCSanAPIConnectionTestCase(test.TestCase):
     response_nc.reason = u'duplicate'
     RESPONSE_204 = response_nc
 
+    APIDICT = {u'instanceId': u'0',
+               u'hostName': u'192.168.0.200',
+               u'userId': 434226,
+               u'connectionKey': u'',
+               u'minApiVersion': u'0.1',
+               u'webServicesPort': 3033,
+               u'locale': u'en_US',
+               u'objectType': u'ApiConnection',
+               u'secureString': u'',
+               u'applicationVersion': u'2.0.1',
+               u'source': u'REST',
+               u'commandLine': False,
+               u'application': u'Cinder REST Driver',
+               u'sessionKey': 1436460614863,
+               u'provider': u'EnterpriseManager',
+               u'instanceName': u'ApiConnection',
+               u'connected': True,
+               u'userName': u'Admin',
+               u'useHttps': False,
+               u'providerVersion': u'15.3.1.186',
+               u'apiVersion': u'2.2',
+               u'apiBuild': 199}
+
     def setUp(self):
         super(DellSCSanAPIConnectionTestCase, self).setUp()
 
@@ -3686,7 +4160,11 @@ class DellSCSanAPIConnectionTestCase(test.TestCase):
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'post',
                        return_value=RESPONSE_200)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_json',
+                       return_value=APIDICT)
     def test_open_connection(self,
+                             mock_get_json,
                              mock_post):
         self.scapi.open_connection()
         self.assertTrue(mock_post.called)

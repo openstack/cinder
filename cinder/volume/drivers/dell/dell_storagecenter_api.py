@@ -33,15 +33,34 @@ class PayloadFilter(object):
     '''PayloadFilter
 
     Simple class for creating filters for interacting with the Dell
-    Storage API.
-
-    Note that this defaults to "AND" filter types.
+    Storage API DropTop2 and later.
     '''
 
-    def __init__(self):
+    def __init__(self, filtertype='AND'):
         self.payload = {}
-        self.payload['filterType'] = 'AND'
-        self.payload['filters'] = []
+        self.payload['filter'] = {'filterType': filtertype,
+                                  'filters': []}
+
+    def append(self, name, val, filtertype='Equals'):
+        if val is not None:
+            apifilter = {}
+            apifilter['attributeName'] = name
+            apifilter['attributeValue'] = val
+            apifilter['filterType'] = filtertype
+            self.payload['filter']['filters'].append(apifilter)
+
+
+class LegacyPayloadFilter(object):
+
+    '''LegacyPayloadFilter
+
+    Simple class for creating filters for interacting with the Dell
+    Storage API pre DropTop2.
+    '''
+
+    def __init__(self, filter_type='AND'):
+        self.payload = {'filterType': filter_type,
+                        'filters': []}
 
     def append(self, name, val, filtertype='Equals'):
         if val is not None:
@@ -138,10 +157,11 @@ class StorageCenterApi(object):
     Handles calls to EnterpriseManager via the REST API interface.
     '''
 
-    APIVERSION = '1.0.1'
+    APIVERSION = '1.0.2'
 
     def __init__(self, host, port, user, password):
         self.notes = 'Created by Dell Cinder Driver'
+        self.legacypayloadfilters = False
         self.client = HttpClient(host,
                                  port,
                                  user,
@@ -205,6 +225,12 @@ class StorageCenterApi(object):
                       blob)
         return None
 
+    def _get_payload_filter(self, filterType='AND'):
+        # 2.1 or earlier and we are talking LegacyPayloadFilters.
+        if self.legacypayloadfilters:
+            return LegacyPayloadFilter(filterType)
+        return PayloadFilter(filterType)
+
     def open_connection(self):
         # Authenticate against EM
         payload = {}
@@ -212,12 +238,37 @@ class StorageCenterApi(object):
         payload['ApplicationVersion'] = self.APIVERSION
         r = self.client.post('ApiConnection/Login',
                              payload)
-        if r.status_code != 200:
-            LOG.error(_LE('Login error: %(c)d %(r)s'),
-                      {'c': r.status_code,
-                       'r': r.reason})
-            raise exception.VolumeBackendAPIException(
-                _('Failed to connect to Enterprise Manager'))
+
+        if r.status_code == 200:
+            # We should be logged in.  Try to grab the api version out of the
+            # response.
+            try:
+                apidict = self._get_json(r)
+                version = apidict['apiVersion']
+                splitver = version.split('.')
+                if splitver[0] == '2':
+                    if splitver[1] == '0' or splitver[1] == '1':
+                        self.legacypayloadfilters = True
+                return
+
+            except Exception:
+                # Good return but not the login response we were expecting.
+                # Log it and error out.
+                LOG.error(_LE('Unrecognized Login Response: %s'), r)
+        else:
+            # Call error.
+            LOG.error(_LE('Login error: %(code)d %(reason)s'),
+                      {'code': r.status_code,
+                       'reason': r.reason})
+
+            # Bad request.
+            # TODO(Swanson): Should add this to all returns.
+            if r.status_code == 400:
+                LOG.debug('Bad Request. Return text: %s', r.text)
+
+        # If we fell to this point then raise an exception.
+        raise exception.VolumeBackendAPIException(
+            _('Failed to connect to Enterprise Manager'))
 
     def close_connection(self):
         r = self.client.post('ApiConnection/Logout',
@@ -311,7 +362,7 @@ class StorageCenterApi(object):
 
         This is generic to server and volume folders.
         '''
-        pf = PayloadFilter()
+        pf = self._get_payload_filter()
         pf.append('scSerialNumber', ssn)
         basename = os.path.basename(foldername)
         pf.append('Name', basename)
@@ -351,7 +402,7 @@ class StorageCenterApi(object):
 
         Don't wig out if this fails.
         '''
-        pf = PayloadFilter()
+        pf = self._get_payload_filter()
         pf.append('scSerialNumber', scvolume.get('scSerialNumber'), 'Equals')
         r = self.client.post('StorageCenter/ScServer/GetList', pf.payload)
         if r.status_code == 200:
@@ -368,7 +419,15 @@ class StorageCenterApi(object):
                                     scserver)
                     self.unmap_volume(scvolume,
                                       scserver)
-                    break
+                    return
+        # We didn't map/unmap the volume.  So no initialization done.
+        # Warn the user before we leave.  Note that this is almost certainly
+        # a tempest test failure we are trying to catch here.  A snapshot
+        # has likely been attempted before the volume has been instantiated
+        # on the Storage Center.  In the real world no one will snapshot
+        # a volume without first putting some data in that volume.
+        LOG.warning(_LW('Volume initialization failure. (%s)'),
+                    self._get_id(scvolume))
 
     def create_volume(self, name, size, ssn, volfolder):
         '''This creates a new volume on the storage center.  It
@@ -432,7 +491,7 @@ class StorageCenterApi(object):
                   {'sn': ssn,
                    'name': name,
                    'id': instanceid})
-        pf = PayloadFilter()
+        pf = self._get_payload_filter()
         pf.append('scSerialNumber', ssn)
         # We need at least a name and or an instance id.  If we have
         # that we can find a volume.
@@ -510,7 +569,7 @@ class StorageCenterApi(object):
         '''Returns the serveros instance id of the specified osname.
         Required to create a server.
         '''
-        pf = PayloadFilter()
+        pf = self._get_payload_filter()
         pf.append('scSerialNumber', ssn)
         r = self.client.post('StorageCenter/ScServerOperatingSystem/GetList',
                              pf.payload)
@@ -613,7 +672,7 @@ class StorageCenterApi(object):
         # that we found one it actually has to be attached to a
         # server.
         if hba is not None and hba.get('server') is not None:
-            pf = PayloadFilter()
+            pf = self._get_payload_filter()
             pf.append('scSerialNumber', ssn)
             pf.append('instanceId', self._get_id(hba['server']))
             r = self.client.post('StorageCenter/ScServer/GetList',
@@ -637,7 +696,7 @@ class StorageCenterApi(object):
         '''
         scserverhba = None
         # We search for our server by first finding our HBA
-        pf = PayloadFilter()
+        pf = self._get_payload_filter()
         pf.append('scSerialNumber', ssn)
         pf.append('instanceName', instance_name)
         r = self.client.post('StorageCenter/ScServerHba/GetList',
@@ -730,6 +789,28 @@ class StorageCenterApi(object):
             LOG.error(_LE('_find_mappings: volume is not active'))
         return mappings
 
+    def _find_mapping_profiles(self, scvolume):
+        '''Find the Dell volume object mapping profiles.
+
+        :param scvolume: Dell volume object.
+        :returns: A list of Dell mapping profile objects.
+        '''
+        mapping_profiles = []
+        if scvolume.get('active', False):
+            r = self.client.get('StorageCenter/ScVolume/%s/MappingProfileList'
+                                % self._get_id(scvolume))
+            if r.status_code == 200:
+                mapping_profiles = self._get_json(r)
+            else:
+                LOG.debug('MappingProfileList error: %(code)d %(reason)s',
+                          {'code': r.status_code,
+                           'reason': r.reason})
+                LOG.error(_LE('Unable to find volume mapping profiles: %s'),
+                          scvolume.get('name'))
+        else:
+            LOG.error(_LE('_find_mappings: volume is not active'))
+        return mapping_profiles
+
     def _find_controller_port(self, cportid):
         '''_find_controller_port
 
@@ -811,85 +892,210 @@ class StorageCenterApi(object):
         LOG.debug('activecontroller %s', activecontroller)
         return activecontroller
 
+    def _is_virtualport_mode(self, ssn):
+        isvpmode = False
+        r = self.client.get('StorageCenter/ScConfiguration/%s' % ssn)
+        if r.status_code == 200:
+            scconfig = self._get_json(r)
+            if scconfig:
+                isvpmode = True if (scconfig['iscsiTransportMode'] ==
+                                    'VirtualPort') else False
+        return isvpmode
+
+    def _find_controller_port_iscsi_config(self, cportid):
+        '''Finds the SC controller port object for the specified cportid.
+
+        :param cportid: The instanceID of the Dell backend controller port.
+        :returns: The controller port object.
+        '''
+        controllerport = None
+        r = self.client.get('StorageCenter/'
+                            'ScControllerPortIscsiConfiguration/%s'
+                            % cportid)
+        if r.status_code == 200:
+            controllerport = self._first_result(r)
+        else:
+            LOG.debug('ScControllerPortIscsiConfiguration error: '
+                      '%(code)d %(reason)s',
+                      {'code': r.status_code,
+                       'reason': r.reason})
+            LOG.error(_LE('Unable to find controller '
+                          'port iscsi configuration: %s'),
+                      cportid)
+        return controllerport
+
+    def _get_controller_id(self, mapping):
+        # The mapping lists the associated controller.
+        return self._get_id(mapping.get('controller'))
+
+    def _get_domains(self, mapping):
+        # Return a list of domains associated with this controller port.
+        return self._find_domains(self._get_id(mapping.get('controllerPort')))
+
+    def _get_iqn(self, mapping):
+        # Get our iqn from the controller port listed in our our mapping.
+        iqn = None
+        cportid = self._get_id(mapping.get('controllerPort'))
+        controllerport = self._find_controller_port(cportid)
+        LOG.debug('controllerport: %s', controllerport)
+        if controllerport:
+            iqn = controllerport.get('iscsiName')
+        return iqn
+
     def find_iscsi_properties(self, scvolume, ip=None, port=None):
         LOG.debug('enter find_iscsi_properties')
         LOG.debug('scvolume: %s', scvolume)
-        activeindex = -1
         luns = []
         iqns = []
         portals = []
-        access_mode = 'rw'
+        # Our mutable process object.
+        pdata = {'active': -1,
+                 'up': -1,
+                 'access_mode': 'rw',
+                 'ip': ip,
+                 'port': port}
+        # Our output lists.
+
+        # Process just looks for the best port to return.
+        def process(lun, iqn, address, port, readonly, status, active):
+            '''Process this mapping information.
+
+            :param lun: SCSI Lun.
+            :param iqn: iSCSI IQN address.
+            :param address: IP address.
+            :param port: IP Port number
+            :param readonly: Boolean indicating mapping is readonly.
+            :param status: String indicating mapping status.  (Up is what we
+                           are looking for.)
+            :param active: Boolean indicating whether this is on the active
+                           controller or not.
+            :return: Nothing
+            '''
+            portals.append(address + ':' +
+                           six.text_type(port))
+            iqns.append(iqn)
+            luns.append(lun)
+
+            # We've all the information.  We need to find
+            # the best single portal to return.  So check
+            # this one if it is on the right IP, port and
+            # if the access and status are correct.
+            if ((pdata['ip'] is None or pdata['ip'] == address) and
+                    (pdata['port'] is None or pdata['port'] == port)):
+
+                # We need to point to the best link.
+                # So state active and status up is preferred
+                # but we don't actually need the state to be
+                # up at this point.
+                if pdata['up'] == -1:
+                    pdata['access_mode'] = 'rw' if readonly is False else 'ro'
+                    if active:
+                        pdata['active'] = len(iqns) - 1
+                        if status == 'Up':
+                            pdata['up'] = pdata['active']
+
+        # Start by getting our mappings.
         mappings = self._find_mappings(scvolume)
-        activecontroller = self._find_active_controller(scvolume)
+
+        # We should have mappings at the time of this call but do check.
         if len(mappings) > 0:
+            # In multipath (per Liberty) we will return all paths.  But
+            # if multipath is not set (ip and port are None) then we need
+            # to return a mapping from the controller on which the volume
+            # is active.  So find that controller.
+            actvctrl = self._find_active_controller(scvolume)
+            # Two different methods are used to find our luns and portals
+            # depending on whether we are in virtual or legacy port mode.
+            isvpmode = self._is_virtualport_mode(scvolume['scSerialNumber'])
+            # Trundle through our mappings.
             for mapping in mappings:
                 LOG.debug('mapping: %s', mapping)
-                # find the controller port for this mapping
-                cport = mapping.get('controllerPort')
-                cportid = self._get_id(cport)
-                domains = self._find_domains(cportid)
-                if domains:
-                    controllerport = self._find_controller_port(cportid)
-                    LOG.debug('controllerport: %s', controllerport)
-                    if controllerport is not None:
-                        appendproperties = False
-                        for d in domains:
-                            LOG.debug('domain: %s', d)
-                            ipaddress = d.get('targetIpv4Address',
-                                              d.get('wellKnownIpAddress'))
-                            portnumber = d.get('portNumber')
-                            if ((ip is None or ip == ipaddress) and
-                                    (port is None or port == portnumber)):
-                                portal = (ipaddress + ':' +
-                                          six.text_type(portnumber))
-                                # I'm not sure when we can have more than
-                                # one portal for a domain but since it is an
-                                # array being returned it is best to check.
-                                if portals.count(portal) == 0:
-                                    appendproperties = True
-                                    portals.append(portal)
-                                else:
-                                    LOG.debug('Domain %s has two portals.',
-                                              self._get_id(d))
-                        # We do not report lun and iqn info unless it is for
-                        # the configured port OR the user has not enabled
-                        # multipath.  (In which case ip and port sent in
-                        # will be None).
-                        if appendproperties is True:
-                            iqns.append(controllerport.get('iscsiName'))
-                            luns.append(mapping.get('lun'))
-                            if activeindex == -1:
-                                controller = controllerport.get('controller')
-                                controllerid = self._get_id(controller)
-                                if controllerid == activecontroller:
-                                    activeindex = len(iqns) - 1
-                        if mapping['readOnly'] is True:
-                            access_mode = 'ro'
+                lun = mapping.get('lun')
+                ro = mapping.get('readOnly', False)
+                status = mapping.get('status')
+                # Get our IQN from our mapping.
+                iqn = self._get_iqn(mapping)
+                # Check if our controller ID matches our active controller ID.
+                isactive = True if (self._get_controller_id(mapping) ==
+                                    actvctrl) else False
+                # If we have an IQN and are in virtual port mode.
+                if isvpmode and iqn:
+                    domains = self._get_domains(mapping)
+                    if domains:
+                        for dom in domains:
+                            LOG.debug('domain: %s', dom)
+                            ipaddress = dom.get('targetIpv4Address',
+                                                dom.get('wellKnownIpAddress'))
+                            portnumber = dom.get('portNumber')
+                            # We have all our information. Process this portal.
+                            process(lun, iqn, ipaddress, portnumber,
+                                    ro, status, isactive)
+                # Else we are in legacy mode.
+                elif iqn:
+                    # Need to get individual ports
+                    cportid = self._get_id(mapping.get('controllerPort'))
+                    # Legacy mode stuff is in the ISCSI configuration object.
+                    cpconfig = self._find_controller_port_iscsi_config(cportid)
+                    # This should really never fail. Things happen so if it
+                    # does just keep moving. Return what we can.
+                    if cpconfig:
+                        ipaddress = cpconfig.get('ipAddress')
+                        portnumber = cpconfig.get('portNumber')
+                        # We have all our information.  Process this portal.
+                        process(lun, iqn, ipaddress, portnumber,
+                                ro, status, isactive)
 
-        if activeindex == -1:
+        # We've gone through all our mappings.
+        # Make sure we found something to return.
+        if len(luns) == 0:
+            # Since we just mapped this and can't find that mapping the world
+            # is wrong so we raise exception.
+            raise exception.VolumeBackendAPIException(
+                _('Unable to find iSCSI mappings.'))
+
+        # Make sure we point to the best portal we can.  This means it is
+        # on the active controller and, preferably, up.  If it isn't return
+        # what we have.
+        if pdata['up'] != -1:
+            # We found a connection that is already up.  Return that.
+            pdata['active'] = pdata['up']
+        elif pdata['active'] == -1:
+            # This shouldn't be able to happen.  Maybe a controller went
+            # down in the middle of this so just return the first one and
+            # hope the ports are up by the time the connection is attempted.
             LOG.debug('Volume is not yet active on any controller.')
-            activeindex = 0
+            pdata['active'] = 0
 
         data = {'target_discovered': False,
                 'target_iqns': iqns,
                 'target_portals': portals,
                 'target_luns': luns,
-                'access_mode': access_mode
+                'access_mode': pdata['access_mode']
                 }
         LOG.debug('find_iscsi_properties return: %s', data)
 
-        return activeindex, data
+        return pdata['active'], data
 
     def map_volume(self, scvolume, scserver):
         '''map_volume
 
         The check for server existence is elsewhere;  does not create the
         server.
+
+        :param scvolume: Storage Center volume object.
+        :param scserver: Storage Center server opbject.
+        :returns: SC mapping profile or None
         '''
         # Make sure we have what we think we have
         serverid = self._get_id(scserver)
         volumeid = self._get_id(scvolume)
         if serverid is not None and volumeid is not None:
+            # If we have a mapping to our server return it here.
+            mprofiles = self._find_mapping_profiles(scvolume)
+            for mprofile in mprofiles:
+                if self._get_id(mprofile.get('server')) == serverid:
+                    return mprofile
+            # No?  Then map it up.
             payload = {}
             payload['server'] = serverid
             advanced = {}
@@ -921,34 +1127,26 @@ class StorageCenterApi(object):
         serverid = self._get_id(scserver)
         volumeid = self._get_id(scvolume)
         if serverid is not None and volumeid is not None:
-            r = self.client.get('StorageCenter/ScVolume/%s/MappingProfileList'
-                                % volumeid)
-            if r.status_code == 200:
-                profiles = self._get_json(r)
-                for profile in profiles:
-                    prosrv = profile.get('server')
-                    if prosrv is not None and self._get_id(prosrv) == serverid:
-                        r = self.client.delete(
-                            'StorageCenter/ScMappingProfile/%s'
-                            % self._get_id(profile))
-                        if (r.status_code != 200 or r.ok is False):
-                            LOG.debug('ScMappingProfile error: %(c)d %(r)s',
-                                      {'c': r.status_code,
-                                       'r': r.reason})
-                            LOG.error(_LE('Unable to unmap Volume %s'),
-                                      volumeid)
-                            # 1 failed unmap is as good as 100.
-                            # Fail it and leave
-                            rtn = False
-                            break
-                        LOG.debug('Volume %(v)s unmapped from %(s)s',
-                                  {'v': volumeid,
-                                   's': serverid})
-            else:
-                LOG.debug('MappingProfileList error: %(c)d %(r)s',
-                          {'c': r.status_code,
-                           'r': r.reason})
-                rtn = False
+            profiles = self._find_mapping_profiles(scvolume)
+            for profile in profiles:
+                prosrv = profile.get('server')
+                if prosrv is not None and self._get_id(prosrv) == serverid:
+                    r = self.client.delete('StorageCenter/ScMappingProfile/%s'
+                                           % self._get_id(profile))
+                    if (r.status_code != 200 or r.ok is False):
+                        LOG.debug('ScMappingProfile error: '
+                                  '%(code)d %(reason)s',
+                                  {'code': r.status_code,
+                                   'reason': r.reason})
+                        LOG.error(_LE('Unable to unmap Volume %s'),
+                                  volumeid)
+                        # 1 failed unmap is as good as 100.
+                        # Fail it and leave
+                        rtn = False
+                        break
+                    LOG.debug('Volume %(vol)s unmapped from %(srv)s',
+                              {'vol': volumeid,
+                               'srv': serverid})
         return rtn
 
     def get_storage_usage(self, ssn):
