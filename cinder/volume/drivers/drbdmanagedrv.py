@@ -63,7 +63,7 @@ CONF = cfg.CONF
 CONF.register_opts(drbd_opts)
 
 
-CINDER_AUX_PROP_id = "cinder-id"
+AUX_PROP_CINDER_VOL_ID = "cinder-id"
 DM_VN_PREFIX = 'CV_'  # sadly 2CV isn't allowed by DRBDmanage
 
 
@@ -188,7 +188,7 @@ class DrbdManageDriver(driver.VolumeDriver):
 
     def _priv_hash_from_volume(self, volume):
         return dm_utils.dict_to_aux_props({
-            CINDER_AUX_PROP_id: volume['id'],
+            AUX_PROP_CINDER_VOL_ID: volume['id'],
         })
 
     def snapshot_name_from_cinder_snapshot(self, snapshot):
@@ -216,7 +216,7 @@ class DrbdManageDriver(driver.VolumeDriver):
                                          self.empty_dict,
                                          0,
                                          dm_utils.dict_to_aux_props(
-                                             {CINDER_AUX_PROP_id: v_uuid}),
+                                             {AUX_PROP_CINDER_VOL_ID: v_uuid}),
                                          self.empty_dict)
         self._check_result(res)
 
@@ -253,7 +253,7 @@ class DrbdManageDriver(driver.VolumeDriver):
                                          self.empty_dict,
                                          0,
                                          dm_utils.dict_to_aux_props(
-                                             {CINDER_AUX_PROP_id: s_uuid}),
+                                             {AUX_PROP_CINDER_VOL_ID: s_uuid}),
                                          self.empty_dict)
         self._check_result(res)
 
