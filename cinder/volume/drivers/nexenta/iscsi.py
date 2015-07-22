@@ -152,12 +152,11 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         If there is a target with less than 255 mappings,
         Return targetgroup containing this target, else create new targetgroup
         """
-        tg_list = self.nms.stmf.list_targetgroups()
-        for tg in tg_list:
+        tg_list = []
+        for tg in self.nms.stmf.list_targetgroups():
             if tg.startswith('%s-' % self._get_target_group_name()):
                 self.tg_dict[tg] = 0
-            else:
-                tg_list.remove(tg)
+                tg_list.append(tg)
         zvol_list = self.nms.zvol.get_names(
             '%s/volume-' % self.volume)
         for zvol in zvol_list:
