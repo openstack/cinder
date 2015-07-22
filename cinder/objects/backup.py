@@ -165,8 +165,10 @@ class BackupList(base.ObjectListBase, base.CinderObject):
     }
 
     @base.remotable_classmethod
-    def get_all(cls, context, filters=None):
-        backups = db.backup_get_all(context, filters)
+    def get_all(cls, context, filters=None, marker=None, limit=None,
+                offset=None, sort_keys=None, sort_dirs=None):
+        backups = db.backup_get_all(context, filters, marker, limit, offset,
+                                    sort_keys, sort_dirs)
         return base.obj_make_list(context, cls(context), objects.Backup,
                                   backups)
 
@@ -177,8 +179,12 @@ class BackupList(base.ObjectListBase, base.CinderObject):
                                   backups)
 
     @base.remotable_classmethod
-    def get_all_by_project(cls, context, project_id, filters=None):
-        backups = db.backup_get_all_by_project(context, project_id, filters)
+    def get_all_by_project(cls, context, project_id, filters=None,
+                           marker=None, limit=None, offset=None,
+                           sort_keys=None, sort_dirs=None):
+        backups = db.backup_get_all_by_project(context, project_id, filters,
+                                               marker, limit, offset,
+                                               sort_keys, sort_dirs)
         return base.obj_make_list(context, cls(context), objects.Backup,
                                   backups)
 

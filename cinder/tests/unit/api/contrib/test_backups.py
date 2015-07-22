@@ -156,13 +156,13 @@ class BackupsAPITestCase(test.TestCase):
 
         self.assertEqual(200, res.status_int)
         self.assertEqual(3, len(res_dict['backups'][0]))
-        self.assertEqual(backup_id1, res_dict['backups'][0]['id'])
+        self.assertEqual(backup_id3, res_dict['backups'][0]['id'])
         self.assertEqual('test_backup', res_dict['backups'][0]['name'])
         self.assertEqual(3, len(res_dict['backups'][1]))
         self.assertEqual(backup_id2, res_dict['backups'][1]['id'])
         self.assertEqual('test_backup', res_dict['backups'][1]['name'])
         self.assertEqual(3, len(res_dict['backups'][2]))
-        self.assertEqual(backup_id3, res_dict['backups'][2]['id'])
+        self.assertEqual(backup_id1, res_dict['backups'][2]['id'])
         self.assertEqual('test_backup', res_dict['backups'][2]['name'])
 
         db.backup_destroy(context.get_admin_context(), backup_id3)
@@ -185,14 +185,84 @@ class BackupsAPITestCase(test.TestCase):
         backup_list = dom.getElementsByTagName('backup')
 
         self.assertEqual(2, backup_list.item(0).attributes.length)
-        self.assertEqual(backup_id1,
+        self.assertEqual(backup_id3,
                          backup_list.item(0).getAttribute('id'))
         self.assertEqual(2, backup_list.item(1).attributes.length)
         self.assertEqual(backup_id2,
                          backup_list.item(1).getAttribute('id'))
         self.assertEqual(2, backup_list.item(2).attributes.length)
-        self.assertEqual(backup_id3,
+        self.assertEqual(backup_id1,
                          backup_list.item(2).getAttribute('id'))
+
+        db.backup_destroy(context.get_admin_context(), backup_id3)
+        db.backup_destroy(context.get_admin_context(), backup_id2)
+        db.backup_destroy(context.get_admin_context(), backup_id1)
+
+    def test_list_backups_with_limit(self):
+        backup_id1 = self._create_backup()
+        backup_id2 = self._create_backup()
+        backup_id3 = self._create_backup()
+
+        req = webob.Request.blank('/v2/fake/backups?limit=2')
+        req.method = 'GET'
+        req.headers['Content-Type'] = 'application/json'
+        res = req.get_response(fakes.wsgi_app())
+        res_dict = json.loads(res.body)
+
+        self.assertEqual(200, res.status_int)
+        self.assertEqual(2, len(res_dict['backups']))
+        self.assertEqual(3, len(res_dict['backups'][0]))
+        self.assertEqual(backup_id3, res_dict['backups'][0]['id'])
+        self.assertEqual('test_backup', res_dict['backups'][0]['name'])
+        self.assertEqual(3, len(res_dict['backups'][1]))
+        self.assertEqual(backup_id2, res_dict['backups'][1]['id'])
+        self.assertEqual('test_backup', res_dict['backups'][1]['name'])
+
+        db.backup_destroy(context.get_admin_context(), backup_id3)
+        db.backup_destroy(context.get_admin_context(), backup_id2)
+        db.backup_destroy(context.get_admin_context(), backup_id1)
+
+    def test_list_backups_with_marker(self):
+        backup_id1 = self._create_backup()
+        backup_id2 = self._create_backup()
+        backup_id3 = self._create_backup()
+        url = ('/v2/fake/backups?marker=%s' % backup_id3)
+        req = webob.Request.blank(url)
+        req.method = 'GET'
+        req.headers['Content-Type'] = 'application/json'
+        res = req.get_response(fakes.wsgi_app())
+        res_dict = json.loads(res.body)
+
+        self.assertEqual(200, res.status_int)
+        self.assertEqual(2, len(res_dict['backups']))
+        self.assertEqual(3, len(res_dict['backups'][0]))
+        self.assertEqual(backup_id2, res_dict['backups'][0]['id'])
+        self.assertEqual('test_backup', res_dict['backups'][0]['name'])
+        self.assertEqual(3, len(res_dict['backups'][1]))
+        self.assertEqual(backup_id1, res_dict['backups'][1]['id'])
+        self.assertEqual('test_backup', res_dict['backups'][1]['name'])
+
+        db.backup_destroy(context.get_admin_context(), backup_id3)
+        db.backup_destroy(context.get_admin_context(), backup_id2)
+        db.backup_destroy(context.get_admin_context(), backup_id1)
+
+    def test_list_backups_with_limit_and_marker(self):
+        backup_id1 = self._create_backup()
+        backup_id2 = self._create_backup()
+        backup_id3 = self._create_backup()
+
+        url = ('/v2/fake/backups?limit=1&marker=%s' % backup_id3)
+        req = webob.Request.blank(url)
+        req.method = 'GET'
+        req.headers['Content-Type'] = 'application/json'
+        res = req.get_response(fakes.wsgi_app())
+        res_dict = json.loads(res.body)
+
+        self.assertEqual(200, res.status_int)
+        self.assertEqual(1, len(res_dict['backups']))
+        self.assertEqual(3, len(res_dict['backups'][0]))
+        self.assertEqual(backup_id2, res_dict['backups'][0]['id'])
+        self.assertEqual('test_backup', res_dict['backups'][0]['name'])
 
         db.backup_destroy(context.get_admin_context(), backup_id3)
         db.backup_destroy(context.get_admin_context(), backup_id2)
@@ -219,7 +289,7 @@ class BackupsAPITestCase(test.TestCase):
                          res_dict['backups'][0]['description'])
         self.assertEqual('test_backup',
                          res_dict['backups'][0]['name'])
-        self.assertEqual(backup_id1, res_dict['backups'][0]['id'])
+        self.assertEqual(backup_id3, res_dict['backups'][0]['id'])
         self.assertEqual(0, res_dict['backups'][0]['object_count'])
         self.assertEqual(0, res_dict['backups'][0]['size'])
         self.assertEqual('creating', res_dict['backups'][0]['status'])
@@ -241,13 +311,12 @@ class BackupsAPITestCase(test.TestCase):
 
         self.assertEqual(14, len(res_dict['backups'][2]))
         self.assertEqual('az1', res_dict['backups'][2]['availability_zone'])
-        self.assertEqual('volumebackups',
-                         res_dict['backups'][2]['container'])
+        self.assertEqual('volumebackups', res_dict['backups'][2]['container'])
         self.assertEqual('this is a test backup',
                          res_dict['backups'][2]['description'])
         self.assertEqual('test_backup',
                          res_dict['backups'][2]['name'])
-        self.assertEqual(backup_id3, res_dict['backups'][2]['id'])
+        self.assertEqual(backup_id1, res_dict['backups'][2]['id'])
         self.assertEqual(0, res_dict['backups'][2]['object_count'])
         self.assertEqual(0, res_dict['backups'][2]['size'])
         self.assertEqual('creating', res_dict['backups'][2]['status'])
@@ -325,7 +394,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(
             'test_backup', backup_detail.item(0).getAttribute('name'))
         self.assertEqual(
-            backup_id1, backup_detail.item(0).getAttribute('id'))
+            backup_id3, backup_detail.item(0).getAttribute('id'))
         self.assertEqual(
             0, int(backup_detail.item(0).getAttribute('object_count')))
         self.assertEqual(
@@ -367,7 +436,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(
             'test_backup', backup_detail.item(2).getAttribute('name'))
         self.assertEqual(
-            backup_id3, backup_detail.item(2).getAttribute('id'))
+            backup_id1, backup_detail.item(2).getAttribute('id'))
         self.assertEqual(
             0, int(backup_detail.item(2).getAttribute('object_count')))
         self.assertEqual(
@@ -376,6 +445,73 @@ class BackupsAPITestCase(test.TestCase):
             'creating', backup_detail.item(2).getAttribute('status'))
         self.assertEqual(
             1, int(backup_detail.item(2).getAttribute('volume_id')))
+
+        db.backup_destroy(context.get_admin_context(), backup_id3)
+        db.backup_destroy(context.get_admin_context(), backup_id2)
+        db.backup_destroy(context.get_admin_context(), backup_id1)
+
+    def test_list_backups_detail_with_limit_and_sort_args(self):
+        backup_id1 = self._create_backup()
+        backup_id2 = self._create_backup()
+        backup_id3 = self._create_backup()
+        url = ('/v2/fake/backups/detail?limit=2&sort_key=created_at'
+               '&sort_dir=desc')
+        req = webob.Request.blank(url)
+        req.method = 'GET'
+        req.headers['Content-Type'] = 'application/json'
+        res = req.get_response(fakes.wsgi_app())
+        res_dict = json.loads(res.body)
+
+        self.assertEqual(200, res.status_int)
+        self.assertEqual(2, len(res_dict['backups']))
+        self.assertEqual(14, len(res_dict['backups'][0]))
+        self.assertEqual(backup_id3, res_dict['backups'][0]['id'])
+        self.assertEqual(14, len(res_dict['backups'][1]))
+        self.assertEqual(backup_id2, res_dict['backups'][1]['id'])
+
+        db.backup_destroy(context.get_admin_context(), backup_id3)
+        db.backup_destroy(context.get_admin_context(), backup_id2)
+        db.backup_destroy(context.get_admin_context(), backup_id1)
+
+    def test_list_backups_detail_with_marker(self):
+        backup_id1 = self._create_backup()
+        backup_id2 = self._create_backup()
+        backup_id3 = self._create_backup()
+
+        url = ('/v2/fake/backups/detail?marker=%s' % backup_id3)
+        req = webob.Request.blank(url)
+        req.method = 'GET'
+        req.headers['Content-Type'] = 'application/json'
+        res = req.get_response(fakes.wsgi_app())
+        res_dict = json.loads(res.body)
+
+        self.assertEqual(200, res.status_int)
+        self.assertEqual(2, len(res_dict['backups']))
+        self.assertEqual(14, len(res_dict['backups'][0]))
+        self.assertEqual(backup_id2, res_dict['backups'][0]['id'])
+        self.assertEqual(14, len(res_dict['backups'][1]))
+        self.assertEqual(backup_id1, res_dict['backups'][1]['id'])
+
+        db.backup_destroy(context.get_admin_context(), backup_id3)
+        db.backup_destroy(context.get_admin_context(), backup_id2)
+        db.backup_destroy(context.get_admin_context(), backup_id1)
+
+    def test_list_backups_detail_with_limit_and_marker(self):
+        backup_id1 = self._create_backup()
+        backup_id2 = self._create_backup()
+        backup_id3 = self._create_backup()
+
+        url = ('/v2/fake/backups/detail?limit=1&marker=%s' % backup_id3)
+        req = webob.Request.blank(url)
+        req.method = 'GET'
+        req.headers['Content-Type'] = 'application/json'
+        res = req.get_response(fakes.wsgi_app())
+        res_dict = json.loads(res.body)
+
+        self.assertEqual(200, res.status_int)
+        self.assertEqual(1, len(res_dict['backups']))
+        self.assertEqual(14, len(res_dict['backups'][0]))
+        self.assertEqual(backup_id2, res_dict['backups'][0]['id'])
 
         db.backup_destroy(context.get_admin_context(), backup_id3)
         db.backup_destroy(context.get_admin_context(), backup_id2)

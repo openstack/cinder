@@ -3417,9 +3417,12 @@ def volume_glance_metadata_delete_by_snapshot(context, snapshot_id):
 
 @require_context
 def backup_get(context, backup_id):
-    result = model_query(context, models.Backup, project_only=True).\
-        filter_by(id=backup_id).\
-        first()
+    return _backup_get(context, backup_id)
+
+
+def _backup_get(context, backup_id, session=None):
+    result = model_query(context, models.Backup, session=session,
+                         project_only=True).filter_by(id=backup_id).first()
 
     if not result:
         raise exception.BackupNotFound(backup_id=backup_id)
@@ -3427,23 +3430,41 @@ def backup_get(context, backup_id):
     return result
 
 
-def _backup_get_all(context, filters=None):
+def _backup_get_all(context, filters=None, marker=None, limit=None,
+                    offset=None, sort_keys=None, sort_dirs=None):
     if filters and not is_valid_model_filters(models.Backup, filters):
         return []
 
     session = get_session()
     with session.begin():
-        # Generate the query
-        query = model_query(context, models.Backup)
-        if filters:
-            query = query.filter_by(**filters)
-
+        # Generate the paginate query
+        query = _generate_paginate_query(context, session, marker,
+                                         limit, sort_keys, sort_dirs, filters,
+                                         offset, models.Backup)
+        if query is None:
+            return []
         return query.all()
 
 
+def _backups_get_query(context, session=None, project_only=False):
+    return model_query(context, models.Backup, session=session,
+                       project_only=project_only)
+
+
+def _process_backups_filters(query, filters):
+    if filters:
+        # Ensure that filters' keys exist on the model
+        if not is_valid_model_filters(models.Backup, filters):
+            return
+        query = query.filter_by(**filters)
+    return query
+
+
 @require_admin_context
-def backup_get_all(context, filters=None):
-    return _backup_get_all(context, filters)
+def backup_get_all(context, filters=None, marker=None, limit=None,
+                   offset=None, sort_keys=None, sort_dirs=None):
+    return _backup_get_all(context, filters, marker, limit, offset, sort_keys,
+                           sort_dirs)
 
 
 @require_admin_context
@@ -3452,7 +3473,9 @@ def backup_get_all_by_host(context, host):
 
 
 @require_context
-def backup_get_all_by_project(context, project_id, filters=None):
+def backup_get_all_by_project(context, project_id, filters=None, marker=None,
+                              limit=None, offset=None, sort_keys=None,
+                              sort_dirs=None):
 
     authorize_project_context(context, project_id)
     if not filters:
@@ -3462,7 +3485,8 @@ def backup_get_all_by_project(context, project_id, filters=None):
 
     filters['project_id'] = project_id
 
-    return _backup_get_all(context, filters)
+    return _backup_get_all(context, filters, marker, limit, offset, sort_keys,
+                           sort_dirs)
 
 
 @require_context
@@ -3963,5 +3987,6 @@ def driver_initiator_data_get(context, initiator, namespace):
 
 PAGINATION_HELPERS = {
     models.Volume: (_volume_get_query, _process_volume_filters, _volume_get),
-    models.Snapshot: (_snaps_get_query, _process_snaps_filters, _snapshot_get)
+    models.Snapshot: (_snaps_get_query, _process_snaps_filters, _snapshot_get),
+    models.Backup: (_backups_get_query, _process_backups_filters, _backup_get)
 }

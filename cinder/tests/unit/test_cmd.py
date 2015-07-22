@@ -614,7 +614,8 @@ class TestCinderManageCmd(test.TestCase):
             backup_cmds.list()
 
             get_admin_context.assert_called_once_with()
-            backup_get_all.assert_called_once_with(ctxt, None)
+            backup_get_all.assert_called_once_with(ctxt, None, None, None,
+                                                   None, None, None)
             self.assertEqual(expected_out, fake_out.getvalue())
 
     @mock.patch('cinder.utils.service_is_up')
