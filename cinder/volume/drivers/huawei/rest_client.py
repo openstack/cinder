@@ -388,12 +388,14 @@ class RestClient(object):
 
         return lun_id
 
-    def ensure_initiator_added(self, initiator_name, host_id):
+    def ensure_initiator_added(self, xml_file_path, initiator_name, host_id):
         added = self._initiator_is_added_to_array(initiator_name)
         if not added:
             self._add_initiator_to_array(initiator_name)
         if not self.is_initiator_associated_to_host(initiator_name):
-            self._associate_initiator_to_host(initiator_name, host_id)
+            self._associate_initiator_to_host(xml_file_path,
+                                              initiator_name,
+                                              host_id)
 
     def _get_iscsi_tgt_port(self):
         url = self.url + "/iscsidevicename"
@@ -681,16 +683,106 @@ class RestClient(object):
         result = self.call(url, data)
         self._assert_rest_result(result, 'Add initiator to array error.')
 
-    def _associate_initiator_to_host(self, ininame, host_id):
-        """Associate initiator with the host."""
-        url = self.url + "/iscsi_initiator/" + ininame
+    def _add_initiator_to_host(self, initiator_name, host_id):
+        url = self.url + "/iscsi_initiator/" + initiator_name
         data = json.dumps({"TYPE": "222",
-                           "ID": ininame,
+                           "ID": initiator_name,
                            "USECHAP": "false",
                            "PARENTTYPE": "21",
                            "PARENTID": host_id})
         result = self.call(url, data, "PUT")
         self._assert_rest_result(result, 'Associate initiator to host error.')
+
+    def _associate_initiator_to_host(self,
+                                     xml_file_path,
+                                     initiator_name,
+                                     host_id):
+        """Associate initiator with the host."""
+        iscsi_conf = huawei_utils.get_iscsi_conf(xml_file_path)
+        chapinfo = None
+        multipathtype = None
+
+        chapinfo = self.find_chap_info(iscsi_conf,
+                                       initiator_name)
+        multipathtype = self._find_alua_info(iscsi_conf,
+                                             initiator_name)
+        if chapinfo:
+            LOG.info(_LI('Use CHAP when adding initiator to host.'))
+            self._use_chap(chapinfo, initiator_name, host_id)
+        else:
+            self._add_initiator_to_host(initiator_name, host_id)
+
+        if multipathtype:
+            LOG.info(_LI('Use ALUA when adding initiator to host.'))
+            self._use_alua(initiator_name, multipathtype)
+
+    def find_chap_info(self, iscsi_conf, initiator_name):
+        """Find CHAP info from xml."""
+        chapinfo = None
+        for ini in iscsi_conf['Initiator']:
+            if ini['Name'] == initiator_name:
+                if 'CHAPinfo' in ini:
+                    chapinfo = ini['CHAPinfo']
+                    break
+
+        return chapinfo
+
+    def _find_alua_info(self, iscsi_conf, initiator_name):
+        """Find ALUA info from xml."""
+        multipathtype = 0
+        for ini in iscsi_conf['Initiator']:
+            if ini['Name'] == initiator_name:
+                if 'ALUA' in ini:
+                    if ini['ALUA'] != '1' and ini['ALUA'] != '0':
+                        msg = (_(
+                            'Invalid ALUA value. '
+                            'ALUA value must be 1 or 0.'))
+                        LOG.error(msg)
+                        raise exception.InvalidInput(msg)
+                    else:
+                        multipathtype = ini['ALUA']
+                        break
+        return multipathtype
+
+    def _use_chap(self, chapinfo, initiator_name, host_id):
+        """Use CHAP when adding initiator to host."""
+        (chap_username, chap_password) = chapinfo.split(";")
+
+        url = self.url + "/iscsi_initiator/" + initiator_name
+        data = json.dumps({"TYPE": "222",
+                           "USECHAP": "true",
+                           "CHAPNAME": chap_username,
+                           "CHAPPASSWORD": chap_password,
+                           "ID": initiator_name,
+                           "PARENTTYPE": "21",
+                           "PARENTID": host_id})
+        result = self.call(url, data, "PUT")
+
+        self._assert_rest_result(result,
+                                 'Use CHAP to associate initiator '
+                                 'to host error. Please check the CHAP '
+                                 'username and password.')
+
+    def _use_alua(self, initiator_name, multipathtype):
+        """Use ALUA when adding initiator to host."""
+        url = self.url + "/iscsi_initiator"
+        data = json.dumps({"ID": initiator_name,
+                           "MULTIPATHTYPE": multipathtype})
+        result = self.call(url, data, "PUT")
+
+        self._assert_rest_result(result,
+                                 'Use ALUA to associate initiator '
+                                 'to host error.')
+
+    def remove_chap(self, initiator_name):
+        """Remove CHAP when terminate connection."""
+        url = self.url + "/iscsi_initiator"
+        data = json.dumps({"USECHAP": "false",
+                           "MULTIPATHTYPE": "0",
+                           "ID": initiator_name})
+        result = self.call(url, data, "PUT")
+
+        self._assert_rest_result(result, 'Remove CHAP error.')
 
     def find_mapping_view(self, name):
         """Find mapping view."""
