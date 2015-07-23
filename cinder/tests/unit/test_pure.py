@@ -482,6 +482,21 @@ class PureBaseVolumeDriverTestCase(PureDriverTestCase):
         self.assertFalse(self.array.list_host_connections.called)
         self.assertFalse(self.array.delete_host.called)
 
+    @mock.patch(BASE_DRIVER_OBJ + "._get_host", autospec=True)
+    def test_terminate_connection_host_deleted(self, mock_host):
+        vol_name = VOLUME["name"] + "-cinder"
+        mock_host.return_value = PURE_HOST.copy()
+        self.array.reset_mock()
+        self.array.list_host_connections.return_value = []
+        self.array.delete_host.side_effect = \
+            self.purestorage_module.PureHTTPError(code=400,
+                                                  text='Host does not exist.')
+        self.driver.terminate_connection(VOLUME, ISCSI_CONNECTOR)
+        self.array.disconnect_host.assert_called_with(PURE_HOST_NAME, vol_name)
+        self.array.list_host_connections.assert_called_with(PURE_HOST_NAME,
+                                                            private=True)
+        self.array.delete_host.assert_called_once_with(PURE_HOST_NAME)
+
     @mock.patch(BASE_DRIVER_OBJ + ".get_filter_function", autospec=True)
     @mock.patch(BASE_DRIVER_OBJ + "._get_provisioned_space", autospec=True)
     def test_get_volume_stats(self, mock_space, mock_filter):

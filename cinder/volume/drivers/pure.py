@@ -60,6 +60,8 @@ CHAP_SECRET_KEY = "PURE_TARGET_CHAP_SECRET"
 ERR_MSG_NOT_EXIST = "does not exist"
 ERR_MSG_PENDING_ERADICATION = "has been destroyed"
 
+CONNECT_LOCK_NAME = 'PureVolumeDriver_connect'
+
 
 def log_debug_trace(f):
     def wrapper(*args, **kwargs):
@@ -213,6 +215,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         """
         raise NotImplementedError
 
+    @utils.synchronized(CONNECT_LOCK_NAME, external=True)
     def _disconnect(self, volume, connector, **kwargs):
         vol_name = self._get_vol_name(volume)
         host = self._get_host(connector)
@@ -247,7 +250,16 @@ class PureBaseVolumeDriver(san.SanDriver):
                                                   private=True)):
             LOG.info(_LI("Deleting unneeded host %(host_name)r."),
                      {"host_name": host_name})
-            self._array.delete_host(host_name)
+            try:
+                self._array.delete_host(host_name)
+            except purestorage.PureHTTPError as err:
+                with excutils.save_and_reraise_exception() as ctxt:
+                    if err.code == 400 and ERR_MSG_NOT_EXIST in err.text:
+                        # Happens if the host is already deleted.
+                        # This is fine though, just treat it as a warning.
+                        ctxt.reraise = False
+                        LOG.warning(_LW("Purity host deletion failed: "
+                                        "%(msg)s."), {"msg": err.text})
             return True
 
         return False
@@ -704,7 +716,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
             }
         return username, password, initiator_updates
 
-    @utils.synchronized('PureISCSIDriver._connect', external=True)
+    @utils.synchronized(CONNECT_LOCK_NAME, external=True)
     def _connect(self, volume, connector, initiator_data):
         """Connect the host and volume; return dict describing connection."""
         iqn = connector["initiator"]
@@ -810,7 +822,7 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
 
         return properties
 
-    @utils.synchronized('PureFCDriver._connect', external=True)
+    @utils.synchronized(CONNECT_LOCK_NAME, external=True)
     def _connect(self, volume, connector):
         """Connect the host and volume; return dict describing connection."""
         wwns = connector["wwpns"]
