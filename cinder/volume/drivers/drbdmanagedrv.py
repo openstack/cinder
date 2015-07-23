@@ -65,6 +65,7 @@ CONF.register_opts(drbd_opts)
 
 AUX_PROP_CINDER_VOL_ID = "cinder-id"
 DM_VN_PREFIX = 'CV_'  # sadly 2CV isn't allowed by DRBDmanage
+DM_SN_PREFIX = 'SN_'
 
 
 class DrbdManageDriver(driver.VolumeDriver):
@@ -172,17 +173,17 @@ class DrbdManageDriver(driver.VolumeDriver):
     def _vol_size_to_cinder(self, size):
         return int(size * units.Ki / units.Gi)
 
-    def is_clean_volume_name(self, name):
+    def is_clean_volume_name(self, name, prefix):
         try:
             if (name.startswith(CONF.volume_name_template % "") and
                     uuid.UUID(name[7:]) is not None):
-                return DM_VN_PREFIX + name[7:]
+                return prefix + name[7:]
         except ValueError:
             return None
 
         try:
             if uuid.UUID(name) is not None:
-                return DM_VN_PREFIX + name
+                return prefix + name
         except ValueError:
             return None
 
@@ -192,7 +193,7 @@ class DrbdManageDriver(driver.VolumeDriver):
         })
 
     def snapshot_name_from_cinder_snapshot(self, snapshot):
-        sn_name = self.is_clean_volume_name(snapshot['id'])
+        sn_name = self.is_clean_volume_name(snapshot['id'], DM_SN_PREFIX)
         return sn_name
 
     def _res_and_vl_data_for_volume(self, volume, empty_ok=False):
@@ -306,7 +307,7 @@ class DrbdManageDriver(driver.VolumeDriver):
         """
 
         # TODO(PM): consistency groups
-        dres = self.is_clean_volume_name(volume['id'])
+        dres = self.is_clean_volume_name(volume['id'], DM_VN_PREFIX)
 
         res = self.call_or_reconnect(self.odm.create_resource,
                                      dres,
@@ -381,7 +382,7 @@ class DrbdManageDriver(driver.VolumeDriver):
         dres, sname, sprop = self._resource_and_snap_data_from_snapshot(
             snapshot)
 
-        new_res = self.is_clean_volume_name(volume['id'])
+        new_res = self.is_clean_volume_name(volume['id'], DM_VN_PREFIX)
 
         r_props = self.empty_dict
         # TODO(PM): consistency groups => different volume number possible
