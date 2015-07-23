@@ -5175,6 +5175,39 @@ class VolumeTestCase(BaseVolumeTestCase):
         volume = db.volume_get(context.get_admin_context(), test_vol_id)
         self.assertEqual('error', volume['status'])
 
+    def test_create_volume_with_consistencygroup_invalid_type(self):
+        """Test volume creation with ConsistencyGroup & invalid volume type."""
+        vol_type = db.volume_type_create(
+            context.get_admin_context(),
+            dict(name=conf_fixture.def_vol_type, extra_specs={})
+        )
+        db_vol_type = db.volume_type_get(context.get_admin_context(),
+                                         vol_type.id)
+        cg = {
+            'id': '1',
+            'name': 'cg1',
+            'volume_type_id': db_vol_type['id'],
+        }
+        fake_type = {
+            'id': '9999',
+            'name': 'fake',
+        }
+        vol_api = cinder.volume.api.API()
+
+        # Volume type must be provided when creating a volume in a
+        # consistency group.
+        self.assertRaises(exception.InvalidInput,
+                          vol_api.create,
+                          self.context, 1, 'vol1', 'volume 1',
+                          consistencygroup=cg)
+
+        # Volume type must be valid.
+        self.assertRaises(exception.InvalidInput,
+                          vol_api.create,
+                          self.context, 1, 'vol1', 'volume 1',
+                          volume_type=fake_type,
+                          consistencygroup=cg)
+
 
 class CopyVolumeToImageTestCase(BaseVolumeTestCase):
     def fake_local_path(self, volume):
