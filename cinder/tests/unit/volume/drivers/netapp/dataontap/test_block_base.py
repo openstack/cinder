@@ -382,6 +382,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
     def test_do_setup_san_configured(self, mock_check_flags):
         self.library.configuration.netapp_lun_ostype = 'windows'
         self.library.configuration.netapp_host_type = 'solaris'
+        self.library.configuration.netapp_lun_space_reservation = 'disabled'
         self.library.do_setup(mock.Mock())
         self.assertTrue(mock_check_flags.called)
         self.assertEqual('windows', self.library.lun_ostype)
@@ -391,10 +392,31 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
     def test_do_setup_san_unconfigured(self, mock_check_flags):
         self.library.configuration.netapp_lun_ostype = None
         self.library.configuration.netapp_host_type = None
+        self.library.configuration.netapp_lun_space_reservation = 'enabled'
         self.library.do_setup(mock.Mock())
         self.assertTrue(mock_check_flags.called)
         self.assertEqual('linux', self.library.lun_ostype)
         self.assertEqual('linux', self.library.host_type)
+
+    def test_do_setup_space_reservation_disabled(self):
+        self.mock_object(na_utils, 'check_flags')
+        self.library.configuration.netapp_lun_ostype = None
+        self.library.configuration.netapp_host_type = None
+        self.library.configuration.netapp_lun_space_reservation = 'disabled'
+
+        self.library.do_setup(mock.Mock())
+
+        self.assertEqual('false', self.library.lun_space_reservation)
+
+    def test_do_setup_space_reservation_enabled(self):
+        self.mock_object(na_utils, 'check_flags')
+        self.library.configuration.netapp_lun_ostype = None
+        self.library.configuration.netapp_host_type = None
+        self.library.configuration.netapp_lun_space_reservation = 'enabled'
+
+        self.library.do_setup(mock.Mock())
+
+        self.assertEqual('true', self.library.lun_space_reservation)
 
     def test_get_existing_vol_manage_missing_id_path(self):
         self.assertRaises(exception.ManageExistingInvalidReference,
@@ -675,6 +697,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.mock_object(self.library, 'extend_volume')
         self.mock_object(self.library, 'delete_volume')
         self.mock_object(self.library, '_mark_qos_policy_group_for_deletion')
+        self.library.lun_space_reservation = 'false'
 
         self.library._clone_source_to_destination(fake.CLONE_SOURCE,
                                                   fake.CLONE_DESTINATION)
@@ -685,7 +708,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
             fake.CLONE_DESTINATION, fake.EXTRA_SPECS)
         self.library._clone_lun.assert_called_once_with(
             fake.CLONE_SOURCE_NAME, fake.CLONE_DESTINATION_NAME,
-            space_reserved='true',
+            space_reserved='false',
             qos_policy_group_name=fake.QOS_POLICY_GROUP_NAME)
         self.library.extend_volume.assert_called_once_with(
             fake.CLONE_DESTINATION, fake.CLONE_DESTINATION_SIZE,
@@ -704,6 +727,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
             side_effect=Exception))
         self.mock_object(self.library, 'delete_volume')
         self.mock_object(self.library, '_mark_qos_policy_group_for_deletion')
+        self.library.lun_space_reservation = 'true'
 
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.library._clone_source_to_destination,

@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
+
 VOLUME_ID = 'f10d1a84-9b7b-427e-8fec-63c48b509a56'
 LUN_ID = 'ee6b4cc7-477b-4016-aa0c-7127b4e3af86'
 LUN_HANDLE = 'fake_lun_handle'
@@ -209,3 +211,28 @@ SNAPSHOT = {
 VOLUME_REF = {'name': 'fake_vref_name', 'size': 42}
 
 FILE_LIST = ['file1', 'file2', 'file3']
+
+FAKE_LUN = netapp_api.NaElement.create_node_with_children(
+    'lun-info',
+    **{'alignment': 'indeterminate',
+       'block-size': '512',
+       'comment': '',
+       'creation-timestamp': '1354536362',
+       'is-space-alloc-enabled': 'false',
+       'is-space-reservation-enabled': 'true',
+       'mapped': 'false',
+       'multiprotocol-type': 'linux',
+       'online': 'true',
+       'path': '/vol/fakeLUN/fakeLUN',
+       'prefix-size': '0',
+       'qtree': '',
+       'read-only': 'false',
+       'serial-number': '2FfGI$APyN68',
+       'share-state': 'none',
+       'size': '20971520',
+       'size-used': '0',
+       'staging': 'false',
+       'suffix-size': '0',
+       'uuid': 'cec1f3d7-3d41-11e2-9cf4-123478563412',
+       'volume': 'fakeLUN',
+       'vserver': 'fake_vserver'})

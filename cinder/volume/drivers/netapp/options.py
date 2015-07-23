@@ -83,7 +83,14 @@ netapp_provisioning_opts = [
                      'to restrict provisioning to the specified controller '
                      'volumes. Specify the value of this option to be a '
                      'comma separated list of NetApp controller volume names '
-                     'to be used for provisioning.')), ]
+                     'to be used for provisioning.')),
+    cfg.StrOpt('netapp_lun_space_reservation',
+               default='enabled',
+               choices=['enabled', 'disabled'],
+               help=('This option determines if storage space is reserved '
+                     'for LUN allocation. If enabled, LUNs are thick '
+                     'provisioned. If space reservation is disabled, '
+                     'storage space is allocated on demand.')), ]
 
 netapp_cluster_opts = [
     cfg.StrOpt('netapp_vserver',

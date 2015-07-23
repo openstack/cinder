@@ -181,10 +181,12 @@ class NetAppBlockStorage7modeLibrary(block_base.NetAppBlockStorageLibrary):
             return True
         return False
 
-    def _clone_lun(self, name, new_name, space_reserved='true',
+    def _clone_lun(self, name, new_name, space_reserved=None,
                    qos_policy_group_name=None, src_block=0, dest_block=0,
                    block_count=0):
         """Clone LUN with the given handle to the new name."""
+        if not space_reserved:
+            space_reserved = self.lun_space_reservation
         if qos_policy_group_name is not None:
             msg = _('Data ONTAP operating in 7-Mode does not support QoS '
                     'policy groups.')

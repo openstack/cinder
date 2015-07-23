@@ -269,42 +269,32 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
 
     def test_clone_lun_zero_block_count(self):
         """Test for when clone lun is not passed a block count."""
-
-        lun = netapp_api.NaElement.create_node_with_children(
-            'lun-info',
-            **{'alignment': 'indeterminate',
-               'block-size': '512',
-               'comment': '',
-               'creation-timestamp': '1354536362',
-               'is-space-alloc-enabled': 'false',
-               'is-space-reservation-enabled': 'true',
-               'mapped': 'false',
-               'multiprotocol-type': 'linux',
-               'online': 'true',
-               'path': '/vol/fakeLUN/fakeLUN',
-               'prefix-size': '0',
-               'qtree': '',
-               'read-only': 'false',
-               'serial-number': '2FfGI$APyN68',
-               'share-state': 'none',
-               'size': '20971520',
-               'size-used': '0',
-               'staging': 'false',
-               'suffix-size': '0',
-               'uuid': 'cec1f3d7-3d41-11e2-9cf4-123478563412',
-               'volume': 'fakeLUN',
-               'vserver': 'fake_vserver'})
         self.library._get_lun_attr = mock.Mock(return_value={
             'Volume': 'fakeLUN', 'Path': '/vol/fake/fakeLUN'})
         self.library.zapi_client = mock.Mock()
-        self.library.zapi_client.get_lun_by_args.return_value = [lun]
+        self.library.zapi_client.get_lun_by_args.return_value = [fake.FAKE_LUN]
+        self.library._add_lun_to_table = mock.Mock()
+
+        self.library._clone_lun('fakeLUN', 'newFakeLUN', 'false')
+
+        self.library.zapi_client.clone_lun.assert_called_once_with(
+            '/vol/fake/fakeLUN', '/vol/fake/newFakeLUN', 'fakeLUN',
+            'newFakeLUN', 'false', block_count=0, dest_block=0, src_block=0)
+
+    def test_clone_lun_no_space_reservation(self):
+        """Test for when space_reservation is not passed."""
+        self.library._get_lun_attr = mock.Mock(return_value={
+            'Volume': 'fakeLUN', 'Path': '/vol/fake/fakeLUN'})
+        self.library.lun_space_reservation = 'false'
+        self.library.zapi_client = mock.Mock()
+        self.library.zapi_client.get_lun_by_args.return_value = [fake.FAKE_LUN]
         self.library._add_lun_to_table = mock.Mock()
 
         self.library._clone_lun('fakeLUN', 'newFakeLUN')
 
         self.library.zapi_client.clone_lun.assert_called_once_with(
             '/vol/fake/fakeLUN', '/vol/fake/newFakeLUN', 'fakeLUN',
-            'newFakeLUN', 'true', block_count=0, dest_block=0, src_block=0)
+            'newFakeLUN', 'false', block_count=0, dest_block=0, src_block=0)
 
     def test_clone_lun_qos_supplied(self):
         """Test for qos supplied in clone lun invocation."""
