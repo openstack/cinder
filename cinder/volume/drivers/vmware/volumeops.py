@@ -1413,3 +1413,49 @@ class VMwareVolumeOps(object):
                                                 profile_manager,
                                                 profileIds=profile_ids)
             return profiles[0].name
+
+    def _get_all_clusters(self):
+        clusters = {}
+        retrieve_result = self._session.invoke_api(vim_util, 'get_objects',
+                                                   self._session.vim,
+                                                   'ClusterComputeResource',
+                                                   self._max_objects)
+        while retrieve_result:
+            if retrieve_result.objects:
+                for cluster in retrieve_result.objects:
+                    name = urllib.unquote(cluster.propSet[0].val)
+                    clusters[name] = cluster.obj
+            retrieve_result = self.continue_retrieval(retrieve_result)
+        return clusters
+
+    def get_cluster_refs(self, names):
+        """Get references to given clusters.
+
+        :param names: list of cluster names
+        :return: Dictionary of cluster names to references
+        """
+        clusters = self._get_all_clusters()
+        for name in names:
+            if name not in clusters:
+                LOG.error(_LE("Compute cluster: %s not found."), name)
+                raise vmdk_exceptions.ClusterNotFoundException(cluster=name)
+
+        return {name: clusters[name] for name in names}
+
+    def get_cluster_hosts(self, cluster):
+        """Get hosts in the given cluster.
+
+        :param cluster: cluster reference
+        :return: references to hosts in the cluster
+        """
+        hosts = self._session.invoke_api(vim_util,
+                                         'get_object_property',
+                                         self._session.vim,
+                                         cluster,
+                                         'host')
+
+        host_refs = []
+        if hosts and hosts.ManagedObjectReference:
+            host_refs.extend(hosts.ManagedObjectReference)
+
+        return host_refs

@@ -117,6 +117,10 @@ vmdk_opts = [
                      'verified. If false, then the default CA truststore is '
                      'used for verification. This option is ignored if '
                      '"vmware_ca_file" is set.'),
+    cfg.MultiStrOpt('vmware_cluster_name',
+                    default=None,
+                    help='Name of a vCenter compute cluster where volumes '
+                         'should be created.'),
 ]
 
 CONF = cfg.CONF
@@ -226,6 +230,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         # directly to ESX
         self._storage_policy_enabled = False
         self._ds_sel = None
+        self._clusters = None
 
     @property
     def session(self):
@@ -461,13 +466,28 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
     def _relocate_backing(self, volume, backing, host):
         pass
 
+    def _get_hosts(self, clusters):
+        hosts = []
+        if clusters:
+            for cluster in clusters:
+                hosts.extend(self.volumeops.get_cluster_hosts(cluster))
+        return hosts
+
     def _select_datastore(self, req, host=None):
         """Selects datastore satisfying the given requirements.
 
         :return: (host, resource_pool, summary)
         """
+        hosts = None
+        if host:
+            hosts = [host]
+        elif self._clusters:
+            hosts = self._get_hosts(self._clusters)
+            if not hosts:
+                LOG.error(_LE("There are no valid hosts available in "
+                              "configured cluster(s): %s."), self._clusters)
+                raise vmdk_exceptions.NoValidHostException()
 
-        hosts = [host] if host else None
         best_candidate = self.ds_sel.select_datastore(req, hosts=hosts)
         if not best_candidate:
             LOG.error(_LE("There is no valid datastore satisfying "
@@ -1836,6 +1856,13 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
         self._volumeops = volumeops.VMwareVolumeOps(self.session, max_objects)
         self._ds_sel = hub.DatastoreSelector(self.volumeops, self.session)
 
+        # Get clusters to be used for backing VM creation.
+        cluster_names = self.configuration.vmware_cluster_name
+        if cluster_names:
+            self._clusters = self.volumeops.get_cluster_refs(
+                cluster_names).values()
+            LOG.info(_LI("Using compute cluster(s): %s."), cluster_names)
+
         LOG.info(_LI("Successfully setup driver: %(driver)s for server: "
                      "%(ip)s."), {'driver': self.__class__.__name__,
                                   'ip': self.configuration.vmware_host_ip})
@@ -1889,15 +1916,7 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
         req[hub.DatastoreSelector.PROFILE_NAME] = backing_profile
 
         # Select datastore satisfying the requirements.
-        best_candidate = self.ds_sel.select_datastore(req, hosts=[host])
-        if not best_candidate:
-            # No candidate datastore to relocate.
-            msg = _("There are no datastores matching volume requirements;"
-                    " can't relocate volume: %s.") % volume['name']
-            LOG.error(msg)
-            raise vmdk_exceptions.NoValidDatastoreException(msg)
-
-        (host, resource_pool, summary) = best_candidate
+        (host, resource_pool, summary) = self._select_datastore(req, host)
         dc = self.volumeops.get_dc(resource_pool)
         folder = self._get_volume_group_folder(dc)
 

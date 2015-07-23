@@ -1510,6 +1510,58 @@ class VolumeOpsTestCase(test.TestCase):
                                            eagerZero=False)
         self.session.wait_for_task.assert_called_once_with(task)
 
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                '_get_all_clusters')
+    def test_get_cluster_refs(self, get_all_clusters):
+        cls_1 = mock.sentinel.cls_1
+        cls_2 = mock.sentinel.cls_2
+        clusters = {"cls_1": cls_1, "cls_2": cls_2}
+        get_all_clusters.return_value = clusters
+
+        self.assertEqual({"cls_2": cls_2},
+                         self.vops.get_cluster_refs(["cls_2"]))
+
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                '_get_all_clusters')
+    def test_get_cluster_refs_with_invalid_cluster(self, get_all_clusters):
+        cls_1 = mock.sentinel.cls_1
+        cls_2 = mock.sentinel.cls_2
+        clusters = {"cls_1": cls_1, "cls_2": cls_2}
+        get_all_clusters.return_value = clusters
+
+        self.assertRaises(vmdk_exceptions.ClusterNotFoundException,
+                          self.vops.get_cluster_refs,
+                          ["cls_1", "cls_3"])
+
+    def test_get_cluster_hosts(self):
+        host_1 = mock.sentinel.host_1
+        host_2 = mock.sentinel.host_2
+        hosts = mock.Mock(ManagedObjectReference=[host_1, host_2])
+        self.session.invoke_api.return_value = hosts
+
+        cluster = mock.sentinel.cluster
+        ret = self.vops.get_cluster_hosts(cluster)
+
+        self.assertEqual([host_1, host_2], ret)
+        self.session.invoke_api.assert_called_once_with(vim_util,
+                                                        'get_object_property',
+                                                        self.session.vim,
+                                                        cluster,
+                                                        'host')
+
+    def test_get_cluster_hosts_with_no_host(self):
+        self.session.invoke_api.return_value = None
+
+        cluster = mock.sentinel.cluster
+        ret = self.vops.get_cluster_hosts(cluster)
+
+        self.assertEqual([], ret)
+        self.session.invoke_api.assert_called_once_with(vim_util,
+                                                        'get_object_property',
+                                                        self.session.vim,
+                                                        cluster,
+                                                        'host')
+
 
 class VirtualDiskPathTest(test.TestCase):
     """Unit tests for VirtualDiskPath."""
