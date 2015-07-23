@@ -467,11 +467,26 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
     def backup_volume(self, context, backup, backup_service):
         """Create a new backup from an existing volume."""
-        volume = self.db.volume_get(context, backup['volume_id'])
-        volume_path = self.local_path(volume)
-        with utils.temporary_chown(volume_path):
-            with fileutils.file_open(volume_path) as volume_file:
-                backup_service.backup(backup, volume_file)
+        volume = self.db.volume_get(context, backup.volume_id)
+        temp_snapshot = None
+        previous_status = volume['previous_status']
+        if previous_status == 'in-use':
+            temp_snapshot = self._create_temp_snapshot(context, volume)
+            backup.temp_snapshot_id = temp_snapshot.id
+            backup.save()
+            volume_path = self.local_path(temp_snapshot)
+        else:
+            volume_path = self.local_path(volume)
+
+        try:
+            with utils.temporary_chown(volume_path):
+                with fileutils.file_open(volume_path) as volume_file:
+                    backup_service.backup(backup, volume_file)
+        finally:
+            if temp_snapshot:
+                self._delete_snapshot(context, temp_snapshot)
+                backup.temp_snapshot_id = None
+                backup.save()
 
     def restore_backup(self, context, backup, volume, backup_service):
         """Restore an existing backup to a new or existing volume."""

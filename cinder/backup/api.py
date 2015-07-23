@@ -139,17 +139,23 @@ class API(base.Base):
         return [srv['host'] for srv in services if not srv['disabled']]
 
     def create(self, context, name, description, volume_id,
-               container, incremental=False, availability_zone=None):
+               container, incremental=False, availability_zone=None,
+               force=False):
         """Make the RPC call to create a volume backup."""
         check_policy(context, 'create')
         volume = self.volume_api.get(context, volume_id)
 
-        if volume['status'] != "available":
+        if volume['status'] not in ["available", "in-use"]:
             msg = (_('Volume to be backed up must be available '
-                     'but the current status is "%s".')
+                     'or in-use, but the current status is "%s".')
                    % volume['status'])
             raise exception.InvalidVolume(reason=msg)
+        elif volume['status'] in ["in-use"] and not force:
+            msg = _('Backing up an in-use volume must use '
+                    'the force flag.')
+            raise exception.InvalidVolume(reason=msg)
 
+        previous_status = volume['status']
         volume_host = volume_utils.extract_host(volume['host'], 'host')
         if not self._is_backup_service_enabled(volume, volume_host):
             raise exception.ServiceNotFound(service_id='cinder-backup')
@@ -212,7 +218,9 @@ class API(base.Base):
                         'incremental backup.')
                 raise exception.InvalidBackup(reason=msg)
 
-        self.db.volume_update(context, volume_id, {'status': 'backing-up'})
+        self.db.volume_update(context, volume_id,
+                              {'status': 'backing-up',
+                               'previous_status': previous_status})
         try:
             kwargs = {
                 'user_id': context.user_id,

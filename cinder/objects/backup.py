@@ -56,6 +56,9 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
         'service': fields.StringField(nullable=True),
 
         'object_count': fields.IntegerField(),
+
+        'temp_volume_id': fields.StringField(nullable=True),
+        'temp_snapshot_id': fields.StringField(nullable=True),
     }
 
     obj_extra_fields = ['name']

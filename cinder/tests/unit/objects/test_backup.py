@@ -29,6 +29,8 @@ fake_backup = {
     'display_description': 'fake_description',
     'user_id': 'fake_user',
     'project_id': 'fake_project',
+    'temp_volume_id': None,
+    'temp_snapshot_id': None,
 }
 
 
@@ -74,6 +76,13 @@ class TestBackup(test_objects.BaseObjectsTestCase):
         self.assertTrue(backup_destroy.called)
         admin_context = backup_destroy.call_args[0][0]
         self.assertTrue(admin_context.is_admin)
+
+    def test_obj_field_temp_volume_snapshot_id(self):
+        backup = objects.Backup(context=self.context,
+                                temp_volume_id='2',
+                                temp_snapshot_id='3')
+        self.assertEqual('2', backup.temp_volume_id)
+        self.assertEqual('3', backup.temp_snapshot_id)
 
 
 class TestBackupList(test_objects.BaseObjectsTestCase):

@@ -64,6 +64,11 @@ class TestVolume(test_objects.BaseObjectsTestCase):
         self.assertEqual('volume-2', volume.name)
         self.assertEqual('2', volume.name_id)
 
+    def test_obj_field_previous_status(self):
+        volume = objects.Volume(context=self.context,
+                                previous_status='backing-up')
+        self.assertEqual('backing-up', volume.previous_status)
+
 
 class TestVolumeList(test_objects.BaseObjectsTestCase):
     @mock.patch('cinder.db.volume_get_all')

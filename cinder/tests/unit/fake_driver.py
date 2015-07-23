@@ -143,6 +143,9 @@ class LoggingVolumeDriver(driver.VolumeDriver):
     def terminate_connection(self, volume, connector):
         self.log_action('terminate_connection', volume)
 
+    def create_cloned_volume(self, volume, src_vol):
+        self.log_action('create_cloned_volume', volume)
+
     _LOGS = []
 
     @staticmethod
