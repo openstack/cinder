@@ -53,8 +53,6 @@
     "volume_extension:volume_manage": "rule:admin_api",
     "volume_extension:volume_unmanage": "rule:admin_api",
 
-    "volume:services": "rule:admin_api",
-
     "volume:create_transfer": "",
     "volume:accept_transfer": "",
     "volume:delete_transfer": "",
