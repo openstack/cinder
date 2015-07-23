@@ -993,6 +993,64 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(res.status_int, 202)
         self.assertEqual(res_dict['restore']['backup_id'], backup_id)
 
+    @mock.patch('cinder.volume.API.create')
+    def test_restore_backup_name_specified(self,
+                                           _mock_volume_api_create):
+
+        # Intercept volume creation to ensure created volume
+        # has status of available
+        def fake_volume_api_create(context, size, name, description):
+            volume_id = utils.create_volume(self.context, size=size,
+                                            display_name=name)['id']
+            return db.volume_get(context, volume_id)
+
+        _mock_volume_api_create.side_effect = fake_volume_api_create
+
+        backup_id = self._create_backup(size=5, status='available')
+
+        body = {"restore": {'name': 'vol-01'}}
+        req = webob.Request.blank('/v2/fake/backups/%s/restore' %
+                                  backup_id)
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = json.dumps(body)
+        res = req.get_response(fakes.wsgi_app())
+        res_dict = json.loads(res.body)
+
+        description = 'auto-created_from_restore_from_backup'
+        # Assert that we have indeed passed on the name parameter
+        _mock_volume_api_create.assert_called_once_with(
+            mock.ANY,
+            5,
+            body['restore']['name'],
+            description)
+
+        self.assertEqual(202, res.status_int)
+        self.assertEqual(backup_id, res_dict['restore']['backup_id'])
+
+    def test_restore_backup_name_volume_id_specified(self):
+
+        backup_id = self._create_backup(size=5, status='available')
+        orig_vol_name = "vol-00"
+        volume_id = utils.create_volume(self.context, size=5,
+                                        display_name=orig_vol_name)['id']
+        body = {"restore": {'name': 'vol-01', 'volume_id': volume_id}}
+        req = webob.Request.blank('/v2/fake/backups/%s/restore' %
+                                  backup_id)
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = json.dumps(body)
+        res = req.get_response(fakes.wsgi_app())
+        res_dict = json.loads(res.body)
+
+        self.assertEqual(202, res.status_int)
+        self.assertEqual(backup_id, res_dict['restore']['backup_id'])
+        self.assertEqual(volume_id, res_dict['restore']['volume_id'])
+        restored_vol = db.volume_get(self.context,
+                                     res_dict['restore']['volume_id'])
+        # Ensure that the original volume name wasn't overridden
+        self.assertEqual(orig_vol_name, restored_vol['display_name'])
+
     @mock.patch('cinder.backup.API.restore')
     def test_restore_backup_with_InvalidInput(self,
                                               _mock_volume_api_restore):
