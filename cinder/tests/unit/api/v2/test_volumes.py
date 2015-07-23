@@ -27,6 +27,7 @@ import webob
 
 from cinder.api import extensions
 from cinder.api.v2 import volumes
+from cinder import consistencygroup as consistencygroupAPI
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -41,22 +42,10 @@ CONF = cfg.CONF
 
 NS = '{http://docs.openstack.org/api/openstack-block-storage/2.0/content}'
 
-TEST_SNAPSHOT_UUID = '00000000-0000-0000-0000-000000000001'
-
-
-def stub_snapshot_get(self, context, snapshot_id):
-    if snapshot_id != TEST_SNAPSHOT_UUID:
-        raise exception.NotFound
-
-    return {
-        'id': snapshot_id,
-        'volume_id': 12,
-        'status': 'available',
-        'volume_size': 100,
-        'created_at': None,
-        'name': 'Default name',
-        'description': 'Default description',
-    }
+DEFAULT_VOL_NAME = "Volume Test Name"
+DEFAULT_VOL_DESCRIPTION = "Volume Test Desc"
+DEFAULT_AZ = "zone1:host1"
+DEFAULT_VOL_SIZE = 100
 
 
 class VolumeApiTest(test.TestCase):
@@ -185,6 +174,205 @@ class VolumeApiTest(test.TestCase):
                                           volume_type={'name': vol_type})])
         req = fakes.HTTPRequest.blank('/v2/volumes/detail')
         res_dict = self.controller.detail(req)
+
+    def _vol_in_request_body(
+            self, size=DEFAULT_VOL_SIZE, name=DEFAULT_VOL_NAME,
+            description=DEFAULT_VOL_DESCRIPTION, availability_zone=DEFAULT_AZ,
+            snapshot_id=None, source_volid=None, source_replica=None,
+            consistencygroup_id=None):
+        return {"size": size,
+                "name": name,
+                "description": description,
+                "availability_zone": availability_zone,
+                "snapshot_id": snapshot_id,
+                "source_volid": source_volid,
+                "source_replica": source_replica,
+                "consistencygroup_id": consistencygroup_id,
+                }
+
+    def _expected_vol_from_create_api(
+            self, size=DEFAULT_VOL_SIZE, availability_zone=DEFAULT_AZ,
+            description=DEFAULT_VOL_DESCRIPTION, name=DEFAULT_VOL_NAME,
+            consistencygroup_id=None, source_volid=None, snapshot_id=None):
+        return {'volume':
+                {'attachments': [],
+                 'availability_zone': availability_zone,
+                 'bootable': 'false',
+                 'consistencygroup_id': consistencygroup_id,
+                 'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
+                 'description': description,
+                 'id': '1',
+                 'links':
+                 [{'href': 'http://localhost/v2/fakeproject/volumes/1',
+                   'rel': 'self'},
+                  {'href': 'http://localhost/fakeproject/volumes/1',
+                   'rel': 'bookmark'}],
+                 'metadata': {},
+                 'name': name,
+                 'replication_status': 'disabled',
+                 'multiattach': False,
+                 'size': size,
+                 'snapshot_id': snapshot_id,
+                 'source_volid': source_volid,
+                 'status': 'fakestatus',
+                 'user_id': 'fakeuser',
+                 'volume_type': 'vol_type_name',
+                 'encrypted': False}}
+
+    def _expected_volume_api_create_kwargs(self, snapshot=None,
+                                           availability_zone=DEFAULT_AZ,
+                                           source_volume=None):
+        return {'metadata': None,
+                'snapshot': snapshot,
+                'source_volume': source_volume,
+                'source_replica': None,
+                'consistencygroup': None,
+                'availability_zone': availability_zone,
+                'scheduler_hints': None,
+                'multiattach': False,
+                }
+
+    @mock.patch.object(volume_api.API, 'get_snapshot', autospec=True)
+    @mock.patch.object(volume_api.API, 'create', autospec=True)
+    def test_volume_creation_from_snapshot(self, create, get_snapshot):
+
+        create.side_effect = stubs.stub_volume_create
+        get_snapshot.side_effect = stubs.stub_snapshot_get
+
+        snapshot_id = stubs.TEST_SNAPSHOT_UUID
+        vol = self._vol_in_request_body(snapshot_id=stubs.TEST_SNAPSHOT_UUID)
+        body = {"volume": vol}
+        req = fakes.HTTPRequest.blank('/v2/volumes')
+        res_dict = self.controller.create(req, body)
+
+        ex = self._expected_vol_from_create_api(snapshot_id=snapshot_id)
+        self.assertEqual(ex, res_dict)
+
+        context = req.environ['cinder.context']
+        get_snapshot.assert_called_once_with(self.controller.volume_api,
+                                             context, snapshot_id)
+
+        kwargs = self._expected_volume_api_create_kwargs(
+            stubs.stub_snapshot(snapshot_id))
+        create.assert_called_once_with(self.controller.volume_api, context,
+                                       vol['size'], DEFAULT_VOL_NAME,
+                                       DEFAULT_VOL_DESCRIPTION, **kwargs)
+
+    @mock.patch.object(volume_api.API, 'get_snapshot', autospec=True)
+    def test_volume_creation_fails_with_invalid_snapshot(self, get_snapshot):
+
+        get_snapshot.side_effect = stubs.stub_snapshot_get
+
+        snapshot_id = "fake_id"
+        vol = self._vol_in_request_body(snapshot_id=snapshot_id)
+        body = {"volume": vol}
+        req = fakes.HTTPRequest.blank('/v2/volumes')
+        # Raise 404 when snapshot cannot be found.
+        self.assertRaises(webob.exc.HTTPNotFound, self.controller.create,
+                          req, body)
+
+        context = req.environ['cinder.context']
+        get_snapshot.assert_called_once_with(self.controller.volume_api,
+                                             context, snapshot_id)
+
+    @mock.patch.object(volume_api.API, 'get_volume', autospec=True)
+    @mock.patch.object(volume_api.API, 'create', autospec=True)
+    def test_volume_creation_from_source_volume(self, create, get_volume):
+
+        get_volume.side_effect = stubs.stub_volume_get
+        create.side_effect = stubs.stub_volume_create
+
+        source_volid = '2f49aa3a-6aae-488d-8b99-a43271605af6'
+        vol = self._vol_in_request_body(source_volid=source_volid)
+        body = {"volume": vol}
+        req = fakes.HTTPRequest.blank('/v2/volumes')
+        res_dict = self.controller.create(req, body)
+
+        ex = self._expected_vol_from_create_api(source_volid=source_volid)
+        self.assertEqual(ex, res_dict)
+
+        context = req.environ['cinder.context']
+        get_volume.assert_called_once_with(self.controller.volume_api,
+                                           context, source_volid)
+
+        kwargs = self._expected_volume_api_create_kwargs(
+            source_volume=stubs.stub_volume(source_volid))
+        create.assert_called_once_with(self.controller.volume_api, context,
+                                       vol['size'], DEFAULT_VOL_NAME,
+                                       DEFAULT_VOL_DESCRIPTION, **kwargs)
+
+    @mock.patch.object(volume_api.API, 'get_volume', autospec=True)
+    def test_volume_creation_fails_with_invalid_source_volume(self,
+                                                              get_volume):
+
+        get_volume.side_effect = stubs.stub_volume_get_notfound
+
+        source_volid = "fake_id"
+        vol = self._vol_in_request_body(source_volid=source_volid)
+        body = {"volume": vol}
+        req = fakes.HTTPRequest.blank('/v2/volumes')
+        # Raise 404 when source volume cannot be found.
+        self.assertRaises(webob.exc.HTTPNotFound, self.controller.create,
+                          req, body)
+
+        context = req.environ['cinder.context']
+        get_volume.assert_called_once_with(self.controller.volume_api,
+                                           context, source_volid)
+
+    @mock.patch.object(volume_api.API, 'get_volume', autospec=True)
+    def test_volume_creation_fails_with_invalid_source_replica(self,
+                                                               get_volume):
+
+        get_volume.side_effect = stubs.stub_volume_get_notfound
+
+        source_replica = "fake_id"
+        vol = self._vol_in_request_body(source_replica=source_replica)
+        body = {"volume": vol}
+        req = fakes.HTTPRequest.blank('/v2/volumes')
+        # Raise 404 when source replica cannot be found.
+        self.assertRaises(webob.exc.HTTPNotFound, self.controller.create,
+                          req, body)
+
+        context = req.environ['cinder.context']
+        get_volume.assert_called_once_with(self.controller.volume_api,
+                                           context, source_replica)
+
+    @mock.patch.object(volume_api.API, 'get_volume', autospec=True)
+    def test_volume_creation_fails_with_invalid_source_replication_status(
+            self, get_volume):
+
+        get_volume.side_effect = stubs.stub_volume_get
+
+        source_replica = '2f49aa3a-6aae-488d-8b99-a43271605af6'
+        vol = self._vol_in_request_body(source_replica=source_replica)
+        body = {"volume": vol}
+        req = fakes.HTTPRequest.blank('/v2/volumes')
+        # Raise 404 when replication status is disabled.
+        self.assertRaises(webob.exc.HTTPNotFound, self.controller.create,
+                          req, body)
+
+        context = req.environ['cinder.context']
+        get_volume.assert_called_once_with(self.controller.volume_api,
+                                           context, source_replica)
+
+    @mock.patch.object(consistencygroupAPI.API, 'get', autospec=True)
+    def test_volume_creation_fails_with_invalid_consistency_group(self,
+                                                                  get_cg):
+
+        get_cg.side_effect = stubs.stub_consistencygroup_get_notfound
+
+        consistencygroup_id = '4f49aa3a-6aae-488d-8b99-a43271605af6'
+        vol = self._vol_in_request_body(
+            consistencygroup_id=consistencygroup_id)
+        body = {"volume": vol}
+        req = fakes.HTTPRequest.blank('/v2/volumes')
+        # Raise 404 when consistency group is not found.
+        self.assertRaises(webob.exc.HTTPNotFound, self.controller.create,
+                          req, body)
+
+        context = req.environ['cinder.context']
+        get_cg.assert_called_once_with(self.controller.consistencygroup_api,
+                                       context, consistencygroup_id)
 
     def test_volume_creation_fails_with_bad_size(self):
         vol = {"size": '',
