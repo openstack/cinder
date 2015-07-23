@@ -1033,41 +1033,45 @@ class CephBackupDriver(driver.BackupDriver):
 
     def _diff_restore_allowed(self, base_name, backup, volume, volume_file,
                               rados_client):
-        """Determine whether a differential restore is possible/allowed.
+        """Determine if differential restore is possible and restore point.
+
+        Determine whether a differential restore is possible/allowed,
+        and find out the restore point if backup base is diff-format.
 
         In order for a differential restore to be performed we need:
             * destination volume must be RBD
             * destination volume must have zero extents
             * backup base image must exist
             * backup must have a restore point
+            * target volume is different from source volume of backup
 
         Returns True if differential restore is allowed, False otherwise.
+        Return the restore point if back base is diff-format.
         """
-        not_allowed = (False, None)
+        # NOTE(dosaboy): base_name here must be diff format.
+        rbd_exists, base_name = self._rbd_image_exists(base_name,
+                                                       backup['volume_id'],
+                                                       rados_client)
 
-        if self._file_is_rbd(volume_file):
-            # NOTE(dosaboy): base_name here must be diff format.
-            rbd_exists, base_name = self._rbd_image_exists(base_name,
-                                                           backup['volume_id'],
-                                                           rados_client)
+        if not rbd_exists:
+            return False, None
 
-            if not rbd_exists:
-                return not_allowed
+        # Get the restore point. If no restore point is found, we assume
+        # that the backup was not performed using diff/incremental methods
+        # so we enforce full copy.
+        restore_point = self._get_restore_point(base_name, backup['id'])
 
-            # Get the restore point. If no restore point is found, we assume
-            # that the backup was not performed using diff/incremental methods
-            # so we enforce full copy.
-            restore_point = self._get_restore_point(base_name, backup['id'])
+        if restore_point:
+            if self._file_is_rbd(volume_file):
 
-            # If the volume we are restoring to is the volume the backup was
-            # made from, force a full restore since a diff will not work in
-            # this case.
-            if volume['id'] == backup['volume_id']:
-                LOG.debug("Destination volume is same as backup source volume "
-                          "%s - forcing full copy.", volume['id'])
-                return False, restore_point
+                # If the volume we are restoring to is the volume the backup
+                # was made from, force a full restore since a diff will not
+                # work in this case.
+                if volume['id'] == backup['volume_id']:
+                    LOG.debug("Destination volume is same as backup source "
+                              "volume %s - forcing full copy.", volume['id'])
+                    return False, restore_point
 
-            if restore_point:
                 # If the destination volume has extents we cannot allow a diff
                 # restore.
                 if self._rbd_has_extents(volume_file.rbd_image):
@@ -1077,14 +1081,14 @@ class CephBackupDriver(driver.BackupDriver):
                     return False, restore_point
 
                 return True, restore_point
-            else:
-                LOG.info(_LI("No restore point found for "
-                             "backup='%(backup)s' of "
-                             "volume %(volume)s - forcing full copy."),
-                         {'backup': backup['id'],
-                          'volume': backup['volume_id']})
-
-        return not_allowed
+        else:
+            LOG.info(_LI("No restore point found for backup="
+                         "'%(backup)s' of volume %(volume)s "
+                         "although base image is found - "
+                         "forcing full copy."),
+                     {'backup': backup['id'],
+                      'volume': backup['volume_id']})
+        return False, restore_point
 
     def _restore_volume(self, backup, volume, volume_file):
         """Restore volume from backup using diff transfer if possible.
