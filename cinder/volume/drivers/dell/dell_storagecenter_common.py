@@ -17,6 +17,7 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 
 from cinder import exception
+from cinder import objects
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.volume import driver
 from cinder.volume.drivers.dell import dell_storagecenter_api
@@ -99,6 +100,20 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
 
         return {}
 
+    def _add_volume_to_consistency_group(self, api, scvolume, volume):
+        '''Just a helper to add a volume to a consistency group.
+
+        :param api: Dell SC API opbject.
+        :param scvolume: Dell SC Volume object.
+        :param volume: Cinder Volume object.
+        :return: Nothing.
+        '''
+        if scvolume and volume.get('consistencygroup_id'):
+            profile = api.find_replay_profile(
+                volume.get('consistencygroup_id'))
+            if profile:
+                api.update_cg_volumes(profile, [volume])
+
     def create_volume(self, volume):
         '''Create a volume.'''
 
@@ -120,6 +135,8 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                     scvolume = api.create_volume(volume_name,
                                                  volume_size,
                                                  storage_profile)
+                # Update Consistency Group
+                self._add_volume_to_consistency_group(api, scvolume, volume)
             except Exception:
                 with excutils.save_and_reraise_exception():
                     LOG.error(_LE('Failed to create volume %s'),
@@ -178,7 +195,15 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         '''Create new volume from other volume's snapshot on appliance.'''
         scvolume = None
         src_volume_name = snapshot.get('volume_id')
-        snapshot_id = snapshot.get('id')
+        # This snapshot could have been created on its own or as part of a
+        # cgsnapshot.  If it was a cgsnapshot it will be identified on the Dell
+        # backend under cgsnapshot_id.  Given the volume ID and the
+        # cgsnapshot_id we can find the appropriate snapshot.
+        # So first we look for cgsnapshot_id.  If that is blank then it must
+        # have been a normal snapshot which will be found under snapshot_id.
+        snapshot_id = snapshot.get('cgsnapshot_id')
+        if not snapshot_id:
+            snapshot_id = snapshot.get('id')
         volume_name = volume.get('id')
         LOG.debug(
             'Creating new volume %(vol)s from snapshot %(snap)s '
@@ -197,6 +222,10 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                             volume_name = volume.get('id')
                             scvolume = api.create_view_volume(volume_name,
                                                               replay)
+                            # Update Consistency Group
+                            self._add_volume_to_consistency_group(api,
+                                                                  scvolume,
+                                                                  volume)
             except Exception:
                 with excutils.save_and_reraise_exception():
                     LOG.error(_LE('Failed to create volume %s'),
@@ -224,6 +253,10 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                     if srcvol is not None:
                         scvolume = api.create_cloned_volume(volume_name,
                                                             srcvol)
+                        # Update Consistency Group
+                        self._add_volume_to_consistency_group(api,
+                                                              scvolume,
+                                                              volume)
             except Exception:
                 with excutils.save_and_reraise_exception():
                     LOG.error(_LE('Failed to create volume %s'),
@@ -479,13 +512,10 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
             if profile:
                 LOG.debug('profile %s replayid %s', profile, snapshotid)
                 if api.snap_cg_replay(profile, snapshotid, 0):
-                    snapshots = self.db.snapshot_get_all_for_cgsnapshot(
-                        context,
-                        snapshotid)
-                    LOG.debug(snapshots)
+                    snapshots = objects.SnapshotList().get_all_for_cgsnapshot(
+                        context, snapshotid)
                     for snapshot in snapshots:
-                        LOG.debug(snapshot)
-                        snapshot['status'] = 'available'
+                        snapshot.status = 'available'
 
                     model_update = {'status': 'available'}
 
@@ -524,11 +554,10 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                         _('Unable to delete Consistency Group snapshot %s') %
                         snapshotid)
 
-            snapshots = self.db.snapshot_get_all_for_cgsnapshot(context,
-                                                                snapshotid)
-
+            snapshots = objects.SnapshotList().get_all_for_cgsnapshot(
+                context, snapshotid)
             for snapshot in snapshots:
-                snapshot['status'] = 'deleted'
+                snapshot.status = 'deleted'
 
             model_update = {'status': 'deleted'}
 

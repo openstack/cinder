@@ -1742,6 +1742,21 @@ class StorageCenterApi(object):
             ret = self._remove_cg_volumes(profileid, remove_volumes)
         return ret
 
+    def _init_cg_volumes(self, profileid):
+        '''Gets the cg volume list and maps/unmaps the non active volumes.
+
+        :param profileid: Replay profile identifier.
+        :return: Nothing
+        '''
+        r = self.client.get('StorageCenter/ScReplayProfile/%s/VolumeList' %
+                            profileid)
+        if r.status_code == 200:
+            vols = self._get_json(r)
+            for vol in vols:
+                if (vol.get('active') is not True or
+                   vol.get('replayAllowed') is not True):
+                    self._init_volume(vol)
+
     def snap_cg_replay(self, profile, replayid, expire):
         '''Snaps a replay of a consistency group.
 
@@ -1752,6 +1767,10 @@ class StorageCenterApi(object):
         :returns: Dell SC replay object.
         '''
         if profile:
+            # We have to make sure these are snappable.
+            self._init_cg_volumes(self._get_id(profile))
+
+            # Succeed or fail we soldier on.
             payload = {}
             payload['description'] = replayid
             payload['expireTime'] = expire

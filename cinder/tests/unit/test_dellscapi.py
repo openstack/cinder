@@ -4523,12 +4523,57 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertFalse(res)
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'get',
+                       return_value=RESPONSE_200)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_json',
+                       return_value=[INACTIVE_VOLUME])
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_init_volume')
+    def test_init_cg_volumes_inactive(self,
+                                      mock_init_volume,
+                                      mock_get_json,
+                                      mock_get,
+                                      mock_close_connection,
+                                      mock_open_connection,
+                                      mock_init):
+        profileid = 100
+        self.scapi._init_cg_volumes(profileid)
+        self.assertTrue(mock_get.called)
+        self.assertTrue(mock_get_json.called)
+        mock_init_volume.assert_called_once_with(self.INACTIVE_VOLUME)
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'get',
+                       return_value=RESPONSE_200)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_json',
+                       return_value=[VOLUME])
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_init_volume')
+    def test_init_cg_volumes_active(self,
+                                    mock_init_volume,
+                                    mock_get_json,
+                                    mock_get,
+                                    mock_close_connection,
+                                    mock_open_connection,
+                                    mock_init):
+        profileid = 100
+        self.scapi._init_cg_volumes(profileid)
+        self.assertTrue(mock_get.called)
+        self.assertTrue(mock_get_json.called)
+        self.assertFalse(mock_init_volume.called)
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'post',
                        return_value=RESPONSE_204)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_get_id',
                        return_value='100')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_init_cg_volumes')
     def test_snap_cg_replay(self,
+                            mock_init_cg_volumes,
                             mock_get_id,
                             mock_post,
                             mock_close_connection,
@@ -4543,6 +4588,7 @@ class DellSCSanAPITestCase(test.TestCase):
         res = self.scapi.snap_cg_replay(profile, replayid, expire)
         mock_post.assert_called_once_with(expected_url, expected_payload)
         self.assertTrue(mock_get_id.called)
+        self.assertTrue(mock_init_cg_volumes.called)
         self.assertTrue(res)
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
@@ -4551,7 +4597,10 @@ class DellSCSanAPITestCase(test.TestCase):
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_get_id',
                        return_value='100')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_init_cg_volumes')
     def test_snap_cg_replay_bad_return(self,
+                                       mock_init_cg_volumes,
                                        mock_get_id,
                                        mock_post,
                                        mock_close_connection,
@@ -4566,6 +4615,7 @@ class DellSCSanAPITestCase(test.TestCase):
         res = self.scapi.snap_cg_replay(profile, replayid, expire)
         mock_post.assert_called_once_with(expected_url, expected_payload)
         self.assertTrue(mock_get_id.called)
+        self.assertTrue(mock_init_cg_volumes.called)
         self.assertFalse(res)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
