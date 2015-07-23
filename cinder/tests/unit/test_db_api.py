@@ -29,7 +29,6 @@ from cinder import exception
 from cinder import quota
 from cinder import test
 
-
 CONF = cfg.CONF
 
 THREE = 3
@@ -1187,6 +1186,57 @@ class DBAPISnapshotTestCase(BaseTest):
         db.snapshot_metadata_delete(self.ctxt, 1, 'c')
 
         self.assertEqual(should_be, db.snapshot_metadata_get(self.ctxt, 1))
+
+
+class DBAPICgsnapshotTestCase(BaseTest):
+    """Tests for cinder.db.api.cgsnapshot_*."""
+
+    def test_cgsnapshot_get_all_by_filter(self):
+        cgsnapshot1 = db.cgsnapshot_create(self.ctxt, {'id': 1,
+                                           'consistencygroup_id': 'g1'})
+        cgsnapshot2 = db.cgsnapshot_create(self.ctxt, {'id': 2,
+                                           'consistencygroup_id': 'g1'})
+        cgsnapshot3 = db.cgsnapshot_create(self.ctxt, {'id': 3,
+                                           'consistencygroup_id': 'g2'})
+        tests = [
+            ({'consistencygroup_id': 'g1'}, [cgsnapshot1, cgsnapshot2]),
+            ({'id': 3}, [cgsnapshot3]),
+            ({'fake_key': 'fake'}, [])
+        ]
+
+        # no filter
+        filters = None
+        cgsnapshots = db.cgsnapshot_get_all(self.ctxt, filters=filters)
+        self.assertEqual(3, len(cgsnapshots))
+
+        for filters, expected in tests:
+            self._assertEqualListsOfObjects(expected,
+                                            db.cgsnapshot_get_all(
+                                                self.ctxt,
+                                                filters))
+
+    def test_cgsnapshot_get_all_by_project(self):
+        cgsnapshot1 = db.cgsnapshot_create(self.ctxt,
+                                           {'id': 1,
+                                            'consistencygroup_id': 'g1',
+                                            'project_id': 1})
+        cgsnapshot2 = db.cgsnapshot_create(self.ctxt,
+                                           {'id': 2,
+                                            'consistencygroup_id': 'g1',
+                                            'project_id': 1})
+        project_id = 1
+        tests = [
+            ({'id': 1}, [cgsnapshot1]),
+            ({'consistencygroup_id': 'g1'}, [cgsnapshot1, cgsnapshot2]),
+            ({'fake_key': 'fake'}, [])
+        ]
+
+        for filters, expected in tests:
+            self._assertEqualListsOfObjects(expected,
+                                            db.cgsnapshot_get_all_by_project(
+                                                self.ctxt,
+                                                project_id,
+                                                filters))
 
 
 class DBAPIVolumeTypeTestCase(BaseTest):

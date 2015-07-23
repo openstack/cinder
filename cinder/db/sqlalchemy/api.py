@@ -3601,23 +3601,52 @@ def cgsnapshot_get(context, cgsnapshot_id):
     return _cgsnapshot_get(context, cgsnapshot_id)
 
 
-@require_admin_context
-def cgsnapshot_get_all(context):
-    return model_query(context, models.Cgsnapshot).all()
+def is_valid_model_filters(model, filters):
+    """Return True if filter values exist on the model
+
+    :param model: a Cinder model
+    :param filters: dictionary of filters
+    """
+    for key in filters.keys():
+        try:
+            getattr(model, key)
+        except AttributeError:
+            LOG.debug("'%s' filter key is not valid.", key)
+            return False
+    return True
+
+
+def _cgsnapshot_get_all(context, project_id=None, group_id=None, filters=None):
+    query = model_query(context, models.Cgsnapshot)
+
+    if filters:
+        if not is_valid_model_filters(models.Cgsnapshot, filters):
+            return []
+        query = query.filter_by(**filters)
+
+    if project_id:
+        query.filter_by(project_id=project_id)
+
+    if group_id:
+        query.filter_by(consistencygroup_id=group_id)
+
+    return query.all()
 
 
 @require_admin_context
-def cgsnapshot_get_all_by_group(context, group_id):
-    return model_query(context, models.Cgsnapshot).\
-        filter_by(consistencygroup_id=group_id).all()
+def cgsnapshot_get_all(context, filters=None):
+    return _cgsnapshot_get_all(context, filters=filters)
+
+
+@require_admin_context
+def cgsnapshot_get_all_by_group(context, group_id, filters=None):
+    return _cgsnapshot_get_all(context, group_id=group_id, filters=filters)
 
 
 @require_context
-def cgsnapshot_get_all_by_project(context, project_id):
+def cgsnapshot_get_all_by_project(context, project_id, filters=None):
     authorize_project_context(context, project_id)
-
-    return model_query(context, models.Cgsnapshot).\
-        filter_by(project_id=project_id).all()
+    return _cgsnapshot_get_all(context, project_id=project_id, filters=filters)
 
 
 @require_context

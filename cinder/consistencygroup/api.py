@@ -686,21 +686,9 @@ class API(base.Base):
         if (context.is_admin and 'all_tenants' in search_opts):
             # Need to remove all_tenants to pass the filtering below.
             del search_opts['all_tenants']
-            cgsnapshots = self.db.cgsnapshot_get_all(context)
+            cgsnapshots = self.db.cgsnapshot_get_all(context, search_opts)
         else:
             cgsnapshots = self.db.cgsnapshot_get_all_by_project(
-                context.elevated(), context.project_id)
+                context.elevated(), context.project_id, search_opts)
 
-        if search_opts:
-            LOG.debug("Searching by: %s", search_opts)
-
-            results = []
-            not_found = object()
-            for cgsnapshot in cgsnapshots:
-                for opt, value in search_opts.items():
-                    if cgsnapshot.get(opt, not_found) != value:
-                        break
-                else:
-                    results.append(cgsnapshot)
-            cgsnapshots = results
         return cgsnapshots
