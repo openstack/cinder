@@ -1028,6 +1028,12 @@ class PureBaseVolumeDriverTestCase(PureDriverTestCase):
         self.array.rename_volume.assert_called_with(vol_name,
                                                     unmanaged_vol_name)
 
+    def test_retype(self):
+        # Ensure that we return true no matter what the inputs are
+        retyped, update = self.driver.retype(None, None, None, None, None)
+        self.assertTrue(retyped)
+        self.assertIsNone(update)
+
 
 class PureISCSIDriverTestCase(PureDriverTestCase):
 
