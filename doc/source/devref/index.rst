@@ -40,7 +40,7 @@ Background Concepts for Cinder
 
    architecture
    threading
-   il8n
+   i18n
    rpc
 
 Other Resources
