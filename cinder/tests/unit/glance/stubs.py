@@ -18,6 +18,13 @@ import glanceclient.exc
 NOW_GLANCE_FORMAT = "2010-10-11T10:30:22"
 
 
+IMAGE_ATTRIBUTES = ['size', 'disk_format', 'owner',
+                    'container_format', 'checksum', 'id',
+                    'name', 'created_at', 'updated_at',
+                    'deleted', 'status',
+                    'min_disk', 'min_ram', 'is_public']
+
+
 class StubGlanceClient(object):
 
     def __init__(self, images=None):
@@ -88,11 +95,6 @@ class StubGlanceClient(object):
 
 class FakeImage(object):
     def __init__(self, metadata):
-        IMAGE_ATTRIBUTES = ['size', 'disk_format', 'owner',
-                            'container_format', 'checksum', 'id',
-                            'name', 'created_at', 'updated_at',
-                            'deleted', 'status',
-                            'min_disk', 'min_ram', 'is_public']
         raw = dict.fromkeys(IMAGE_ATTRIBUTES)
         raw.update(metadata)
         self.__dict__['raw'] = raw
@@ -108,3 +110,14 @@ class FakeImage(object):
             self.__dict__['raw'][key] = value
         except KeyError:
             raise AttributeError(key)
+
+    def keys(self):
+        return self.__dict__['raw'].keys()
+
+
+class FakeSchema(object):
+    def is_base_property(self, key):
+        if key in IMAGE_ATTRIBUTES:
+            return True
+        else:
+            return False
