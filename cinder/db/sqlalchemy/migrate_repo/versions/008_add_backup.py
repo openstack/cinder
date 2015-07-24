@@ -13,13 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_log import log as logging
 from sqlalchemy import Boolean, Column, DateTime
 from sqlalchemy import MetaData, Integer, String, Table
-
-from cinder.i18n import _LE
-
-LOG = logging.getLogger(__name__)
 
 
 def upgrade(migrate_engine):
@@ -51,11 +46,7 @@ def upgrade(migrate_engine):
         mysql_engine='InnoDB'
     )
 
-    try:
-        backups.create()
-    except Exception:
-        LOG.error(_LE("Table |%s| not created!"), repr(backups))
-        raise
+    backups.create()
 
 
 def downgrade(migrate_engine):
@@ -63,8 +54,4 @@ def downgrade(migrate_engine):
     meta.bind = migrate_engine
 
     backups = Table('backups', meta, autoload=True)
-    try:
-        backups.drop()
-    except Exception:
-        LOG.error(_LE("backups table not dropped"))
-        raise
+    backups.drop()

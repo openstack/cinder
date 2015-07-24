@@ -10,13 +10,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_log import log as logging
 from sqlalchemy import Column
 from sqlalchemy import MetaData, String, Table
-
-from cinder.i18n import _LE
-
-LOG = logging.getLogger(__name__)
 
 
 def upgrade(migrate_engine):
@@ -27,13 +22,8 @@ def upgrade(migrate_engine):
     consistencygroups = Table('consistencygroups', meta, autoload=True)
     cgsnapshot_id = Column('cgsnapshot_id', String(36))
 
-    try:
-        consistencygroups.create_column(cgsnapshot_id)
-        consistencygroups.update().values(cgsnapshot_id=None).execute()
-    except Exception:
-        LOG.error(_LE("Adding cgsnapshot_id column to consistencygroups "
-                      "table failed."))
-        raise
+    consistencygroups.create_column(cgsnapshot_id)
+    consistencygroups.update().values(cgsnapshot_id=None).execute()
 
 
 def downgrade(migrate_engine):
@@ -44,9 +34,4 @@ def downgrade(migrate_engine):
     consistencygroups = Table('consistencygroups', meta, autoload=True)
     cgsnapshot_id = consistencygroups.columns.cgsnapshot_id
 
-    try:
-        consistencygroups.drop_column(cgsnapshot_id)
-    except Exception:
-        LOG.error(_LE("Dropping cgsnapshot_id column from consistencygroups "
-                      "table failed."))
-        raise
+    consistencygroups.drop_column(cgsnapshot_id)

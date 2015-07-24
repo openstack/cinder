@@ -12,13 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_log import log as logging
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey
 from sqlalchemy import Integer, MetaData, String, Table
-
-from cinder.i18n import _LE
-
-LOG = logging.getLogger(__name__)
 
 
 def upgrade(migrate_engine):
@@ -32,12 +27,7 @@ def upgrade(migrate_engine):
     tables = [sm_volume, sm_backend_config, sm_flavors]
 
     for table in tables:
-        try:
-            table.drop()
-        except Exception:
-            LOG.exception(_LE('Exception while dropping table %s.'),
-                          repr(table))
-            raise
+        table.drop()
 
 
 def downgrade(migrate_engine):
@@ -95,9 +85,4 @@ def downgrade(migrate_engine):
     tables = [sm_flavors, sm_backend_config, sm_volume]
 
     for table in tables:
-        try:
-            table.create()
-        except Exception:
-            LOG.exception(_LE('Exception while creating table %s.'),
-                          repr(table))
-            raise
+        table.create()

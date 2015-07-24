@@ -13,13 +13,8 @@
 #    under the License.
 
 from migrate import ForeignKeyConstraint
-from oslo_log import log as logging
 from sqlalchemy import Boolean, Column, DateTime
 from sqlalchemy import MetaData, Integer, String, Table, ForeignKey
-
-from cinder.i18n import _LE
-
-LOG = logging.getLogger(__name__)
 
 
 def upgrade(migrate_engine):
@@ -44,11 +39,7 @@ def upgrade(migrate_engine):
                           mysql_charset='utf8',
                           )
 
-    try:
-        quota_classes.create()
-    except Exception:
-        LOG.error(_LE("Table |%s| not created!"), repr(quota_classes))
-        raise
+    quota_classes.create()
 
     quota_usages = Table('quota_usages', meta,
                          Column('created_at', DateTime(timezone=False)),
@@ -69,11 +60,7 @@ def upgrade(migrate_engine):
                          mysql_charset='utf8',
                          )
 
-    try:
-        quota_usages.create()
-    except Exception:
-        LOG.error(_LE("Table |%s| not created!"), repr(quota_usages))
-        raise
+    quota_usages.create()
 
     reservations = Table('reservations', meta,
                          Column('created_at', DateTime(timezone=False)),
@@ -100,11 +87,7 @@ def upgrade(migrate_engine):
                          mysql_charset='utf8',
                          )
 
-    try:
-        reservations.create()
-    except Exception:
-        LOG.error(_LE("Table |%s| not created!"), repr(reservations))
-        raise
+    reservations.create()
 
 
 def downgrade(migrate_engine):
@@ -128,29 +111,14 @@ def downgrade(migrate_engine):
               'name': fk_name}
 
     if fk_name:
-        try:
-            fkey = ForeignKeyConstraint(**params)
-            fkey.drop()
-        except Exception:
-            LOG.error(_LE("Dropping foreign key %s failed."), fk_name)
+        fkey = ForeignKeyConstraint(**params)
+        fkey.drop()
 
     quota_classes = Table('quota_classes', meta, autoload=True)
-    try:
-        quota_classes.drop()
-    except Exception:
-        LOG.error(_LE("quota_classes table not dropped"))
-        raise
+    quota_classes.drop()
 
     quota_usages = Table('quota_usages', meta, autoload=True)
-    try:
-        quota_usages.drop()
-    except Exception:
-        LOG.error(_LE("quota_usages table not dropped"))
-        raise
+    quota_usages.drop()
 
     reservations = Table('reservations', meta, autoload=True)
-    try:
-        reservations.drop()
-    except Exception:
-        LOG.error(_LE("reservations table not dropped"))
-        raise
+    reservations.drop()

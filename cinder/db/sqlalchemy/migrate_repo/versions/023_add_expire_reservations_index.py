@@ -12,12 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_log import log as logging
 from sqlalchemy import Index, MetaData, Table
-
-from cinder.i18n import _LI
-
-LOG = logging.getLogger(__name__)
 
 
 def _get_deleted_expire_index(table):
@@ -33,8 +28,6 @@ def upgrade(migrate_engine):
 
     reservations = Table('reservations', meta, autoload=True)
     if _get_deleted_expire_index(reservations):
-        LOG.info(_LI('Skipped adding reservations_deleted_expire_idx '
-                     'because an equivalent index already exists.'))
         return
 
     # Based on expire_reservations query
@@ -54,6 +47,3 @@ def downgrade(migrate_engine):
     index = _get_deleted_expire_index(reservations)
     if index:
         index.drop(migrate_engine)
-    else:
-        LOG.info(_LI('Skipped removing reservations_deleted_expire_idx '
-                     'because index does not exist.'))

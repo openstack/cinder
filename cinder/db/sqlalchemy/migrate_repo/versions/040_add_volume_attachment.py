@@ -16,14 +16,9 @@
 import datetime
 import uuid
 
-from oslo_log import log as logging
 import six
 from sqlalchemy import Boolean, Column, DateTime
 from sqlalchemy import ForeignKey, MetaData, String, Table
-
-from cinder.i18n import _LE
-
-LOG = logging.getLogger(__name__)
 
 CREATED_AT = datetime.datetime.now()  # noqa
 
@@ -59,11 +54,7 @@ def upgrade(migrate_engine):
         mysql_engine='InnoDB'
     )
 
-    try:
-        volume_attachment.create()
-    except Exception:
-        LOG.error(_LE("Table volume_attachment not created!"))
-        raise
+    volume_attachment.create()
 
     # now migrate existing volume attachment info into the
     # new volume_attachment table
@@ -139,9 +130,4 @@ def downgrade(migrate_engine):
                        attach_time=attachment.attach_time,
                        instance_uuid=attachment.instance_uuid).\
                 execute()
-    try:
-        volume_attachment.drop()
-
-    except Exception:
-        LOG.error(_LE("Dropping volume_attachment table failed."))
-        raise
+    volume_attachment.drop()

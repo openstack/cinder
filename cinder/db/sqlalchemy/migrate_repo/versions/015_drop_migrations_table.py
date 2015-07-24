@@ -10,13 +10,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_log import log as logging
 from sqlalchemy import Boolean, Column, DateTime, Integer
 from sqlalchemy import MetaData, String, Table
-
-from cinder.i18n import _LE
-
-LOG = logging.getLogger(__name__)
 
 
 TABLE_NAME = 'migrations'
@@ -26,11 +21,7 @@ def upgrade(migrate_engine):
     meta = MetaData()
     meta.bind = migrate_engine
     table = Table(TABLE_NAME, meta, autoload=True)
-    try:
-        table.drop()
-    except Exception:
-        LOG.error(_LE("migrations table not dropped"))
-        raise
+    table.drop()
 
 
 def downgrade(migrate_engine):
@@ -56,8 +47,4 @@ def downgrade(migrate_engine):
         mysql_charset='utf8'
     )
 
-    try:
-        table.create()
-    except Exception:
-        LOG.error(_LE("Table |%s| not created"), repr(table))
-        raise
+    table.create()

@@ -10,18 +10,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_log import log as logging
 from oslo_utils import timeutils
 from sqlalchemy import MetaData, Table
 
-from cinder.i18n import _LE
 
 # Get default value via config. The default will either
 # come from the default value set in the quota configuration option
 # or via cinder.conf if the user has configured
 # default value for per volume size limit there.
-
-LOG = logging.getLogger(__name__)
 
 
 def upgrade(migrate_engine):
@@ -39,18 +35,13 @@ def upgrade(migrate_engine):
     if row:
         return
 
-    try:
-        # Set default per_volume_gigabytes for per volume size
-        qci = quota_classes.insert()
-        qci.execute({'created_at': timeutils.utcnow(),
-                     'class_name': 'default',
-                     'resource': 'per_volume_gigabytes',
-                     'hard_limit': -1,
-                     'deleted': False, })
-    except Exception:
-        LOG.error(_LE("Default per_volume_gigabytes row not inserted "
-                      "into the quota_classes."))
-        raise
+    # Set default per_volume_gigabytes for per volume size
+    qci = quota_classes.insert()
+    qci.execute({'created_at': timeutils.utcnow(),
+                 'class_name': 'default',
+                 'resource': 'per_volume_gigabytes',
+                 'hard_limit': -1,
+                 'deleted': False, })
 
 
 def downgrade(migrate_engine):

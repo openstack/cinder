@@ -14,14 +14,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_log import log as logging
 from sqlalchemy import Boolean, Column, DateTime
 from sqlalchemy import ForeignKey, MetaData, String, Table
 from migrate import ForeignKeyConstraint
-
-from cinder.i18n import _LE
-
-LOG = logging.getLogger(__name__)
 
 
 def upgrade(migrate_engine):
@@ -44,23 +39,14 @@ def upgrade(migrate_engine):
         mysql_charset='utf8'
     )
 
-    try:
-        quality_of_service_specs.create()
-    except Exception:
-        LOG.error(_LE("Table quality_of_service_specs not created!"))
-        raise
+    quality_of_service_specs.create()
 
     volume_types = Table('volume_types', meta, autoload=True)
     qos_specs_id = Column('qos_specs_id', String(36),
                           ForeignKey('quality_of_service_specs.id'))
 
-    try:
-        volume_types.create_column(qos_specs_id)
-        volume_types.update().values(qos_specs_id=None).execute()
-    except Exception:
-        LOG.error(_LE("Added qos_specs_id column to volume type table "
-                      "failed."))
-        raise
+    volume_types.create_column(qos_specs_id)
+    volume_types.update().values(qos_specs_id=None).execute()
 
 
 def downgrade(migrate_engine):
@@ -80,24 +66,11 @@ def downgrade(migrate_engine):
                   'refcolumns': [ref_table.c['id']],
                   'name': 'volume_types_ibfk_1'}
 
-        try:
-            fkey = ForeignKeyConstraint(**params)
-            fkey.drop()
-        except Exception:
-            LOG.error(_LE("Dropping foreign key volume_types_ibfk_1 failed"))
+        fkey = ForeignKeyConstraint(**params)
+        fkey.drop()
 
     volume_types = Table('volume_types', meta, autoload=True)
     qos_specs_id = Column('qos_specs_id', String(36))
 
-    try:
-        volume_types.drop_column(qos_specs_id)
-    except Exception:
-        LOG.error(_LE("Dropping qos_specs_id column failed."))
-        raise
-
-    try:
-        qos_specs.drop()
-
-    except Exception:
-        LOG.error(_LE("Dropping quality_of_service_specs table failed."))
-        raise
+    volume_types.drop_column(qos_specs_id)
+    qos_specs.drop()
