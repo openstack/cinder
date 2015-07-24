@@ -69,6 +69,7 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
 
     def obj_make_compatible(self, primitive, target_version):
         """Make an object representation compatible with a target version."""
+        super(Backup, self).obj_make_compatible(primitive, target_version)
         target_version = utils.convert_version_to_tuple(target_version)
 
     @staticmethod
