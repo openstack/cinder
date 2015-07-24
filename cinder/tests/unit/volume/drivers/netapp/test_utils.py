@@ -767,14 +767,27 @@ class FeaturesTestCase(test.TestCase):
     def test_add_feature_default(self):
         self.features.add_feature('FEATURE_1')
 
-        self.assertTrue(self.features.FEATURE_1)
+        self.assertTrue(self.features.FEATURE_1.supported)
         self.assertIn('FEATURE_1', self.features.defined_features)
 
     @ddt.data(True, False)
     def test_add_feature(self, value):
         self.features.add_feature('FEATURE_2', value)
 
-        self.assertEqual(value, self.features.FEATURE_2)
+        self.assertEqual(value, bool(self.features.FEATURE_2))
+        self.assertEqual(value, self.features.FEATURE_2.supported)
+        self.assertEqual(None, self.features.FEATURE_2.minimum_version)
+        self.assertIn('FEATURE_2', self.features.defined_features)
+
+    @ddt.data((True, '1'), (False, 2), (False, None), (True, None))
+    @ddt.unpack
+    def test_add_feature_min_version(self, enabled, min_version):
+        self.features.add_feature('FEATURE_2', enabled,
+                                  min_version=min_version)
+
+        self.assertEqual(enabled, bool(self.features.FEATURE_2))
+        self.assertEqual(enabled, self.features.FEATURE_2.supported)
+        self.assertEqual(min_version, self.features.FEATURE_2.minimum_version)
         self.assertIn('FEATURE_2', self.features.defined_features)
 
     @ddt.data('True', 'False', 0, 1, 1.0, None, [], {}, (True,))

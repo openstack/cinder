@@ -47,6 +47,8 @@ class RestClient(object):
     """REST client specific to e-series storage service."""
 
     ASUP_VALID_VERSION = (1, 52, 9000, 3)
+    # We need to check for both the release and the pre-release versions
+    SSC_VALID_VERSIONS = ((1, 53, 9000, 1), (1, 53, 9010, 16))
 
     def __init__(self, scheme, host, port, service_path, username,
                  password, **kwargs):
@@ -67,10 +69,26 @@ class RestClient(object):
 
         api_version_tuple = tuple(int(version)
                                   for version in self.api_version.split('.'))
-        api_valid_version = self._validate_version(self.ASUP_VALID_VERSION,
-                                                   api_version_tuple)
 
-        self.features.add_feature('AUTOSUPPORT', supported=api_valid_version)
+        asup_api_valid_version = self._validate_version(
+            self.ASUP_VALID_VERSION, api_version_tuple)
+
+        ssc_api_valid_version = any(self._validate_version(valid_version,
+                                                           api_version_tuple)
+                                    for valid_version
+                                    in self.SSC_VALID_VERSIONS)
+
+        self.features.add_feature('AUTOSUPPORT',
+                                  supported=asup_api_valid_version,
+                                  min_version=self._version_tuple_to_str(
+                                      self.ASUP_VALID_VERSION))
+        self.features.add_feature('SSC_API_V2',
+                                  supported=ssc_api_valid_version,
+                                  min_version=self._version_tuple_to_str(
+                                      self.SSC_VALID_VERSIONS[0]))
+
+    def _version_tuple_to_str(self, version):
+        return ".".join([str(part) for part in version])
 
     def _validate_version(self, version, actual_version):
         """Determine if version is newer than, or equal to the actual version
@@ -194,11 +212,57 @@ class RestClient(object):
                 msg = _("Response error code - %s.") % status_code
             raise exception.NetAppDriverException(msg)
 
-    def create_volume(self, pool, label, size, unit='gb', seg_size=0):
-        """Creates volume on array."""
-        path = "/storage-systems/{system-id}/volumes"
-        data = {'poolId': pool, 'name': label, 'sizeUnit': unit,
-                'size': int(size), 'segSize': seg_size}
+    def create_volume(self, pool, label, size, unit='gb', seg_size=0,
+                      read_cache=None, write_cache=None, flash_cache=None,
+                      data_assurance=None):
+        """Creates a volume on array with the configured attributes
+
+        Note: if read_cache, write_cache, flash_cache, or data_assurance
+         are not provided, the default will be utilized by the Webservice.
+
+        :param pool: The pool unique identifier
+        :param label: The unqiue label for the volume
+        :param size: The capacity in units
+        :param unit: The unit for capacity
+        :param seg_size: The segment size for the volume, expressed in KB.
+        Default will allow the Webservice to choose.
+        :param read_cache: If true, enable read caching, if false,
+        explicitly disable it.
+        :param write_cache: If true, enable write caching, if false,
+        explicitly disable it.
+        :param flash_cache: If true, add the volume to a Flash Cache
+        :param data_assurance: If true, enable the Data Assurance capability
+        :return The created volume
+        """
+
+        # Utilize the new API if it is available
+        if self.features.SSC_API_V2:
+            path = "/storage-systems/{system-id}/ssc/volumes"
+            data = {'poolId': pool, 'name': label, 'sizeUnit': unit,
+                    'size': int(size), 'dataAssuranceEnable': data_assurance,
+                    'flashCacheEnable': flash_cache,
+                    'readCacheEnable': read_cache,
+                    'writeCacheEnable': write_cache}
+        # Use the old API
+        else:
+            # Determine if there are were extra specs provided that are not
+            # supported
+            extra_specs = [read_cache, write_cache]
+            unsupported_spec = any([spec is not None for spec in extra_specs])
+            if(unsupported_spec):
+                msg = _("E-series proxy API version %(current_version)s does "
+                        "not support full set of SSC extra specs. The proxy"
+                        " version must be at at least %(min_version)s.")
+                min_version = self.features.SSC_API_V2.minimum_version
+                raise exception.NetAppDriverException(msg %
+                                                      {'current_version':
+                                                       self.api_version,
+                                                       'min_version':
+                                                       min_version})
+
+            path = "/storage-systems/{system-id}/volumes"
+            data = {'poolId': pool, 'name': label, 'sizeUnit': unit,
+                    'size': int(size), 'segSize': seg_size}
         return self._invoke('POST', path, data)
 
     def delete_volume(self, object_id):
@@ -419,6 +483,16 @@ class RestClient(object):
         """Deletes given snapshot volume."""
         path = "/storage-systems/{system-id}/snapshot-volumes/{object-id}"
         return self._invoke('DELETE', path, **{'object-id': object_id})
+
+    def list_ssc_storage_pools(self):
+        """Lists pools and their service quality defined on the array."""
+        path = "/storage-systems/{system-id}/ssc/pools"
+        return self._invoke('GET', path)
+
+    def get_ssc_storage_pool(self, volume_group_ref):
+        """Get storage pool service quality information from the array."""
+        path = "/storage-systems/{system-id}/ssc/pools/{object-id}"
+        return self._invoke('GET', path, **{'object-id': volume_group_ref})
 
     def list_storage_pools(self):
         """Lists storage pools in the array."""

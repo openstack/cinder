@@ -42,170 +42,220 @@ FOREIGN_HOST_GROUP = {
     'label': 'FOREIGN HOST GROUP',
 }
 
-STORAGE_POOLS = [
+SSC_POOLS = [
     {
-        "sequenceNum": 1,
-        "offline": False,
+        "poolId": "0400000060080E5000290D8000009C9955828DD2",
+        "name": "DDP",
+        "pool": {
+            "sequenceNum": 2,
+            "offline": False,
+            "raidLevel": "raidDiskPool",
+            "worldWideName": "60080E5000290D8000009C9955828DD2",
+            "volumeGroupRef": "0400000060080E5000290D8000009C9955828DD2",
+            "reserved1": "000000000000000000000000",
+            "reserved2": "",
+            "trayLossProtection": False,
+            "label": "DDP",
+            "state": "complete",
+            "spindleSpeedMatch": True,
+            "spindleSpeed": 7200,
+            "isInaccessible": False,
+            "securityType": "none",
+            "drawerLossProtection": True,
+            "protectionInformationCapable": False,
+            "protectionInformationCapabilities": {
+                "protectionInformationCapable": True,
+                "protectionType": "type2Protection"
+            },
+            "volumeGroupData": {
+                "type": "diskPool",
+                "diskPoolData": {
+                    "reconstructionReservedDriveCount": 1,
+                    "reconstructionReservedAmt": "2992518463488",
+                    "reconstructionReservedDriveCountCurrent": 1,
+                    "poolUtilizationWarningThreshold": 100,
+                    "poolUtilizationCriticalThreshold": 100,
+                    "poolUtilizationState": "utilizationOptimal",
+                    "unusableCapacity": "0",
+                    "degradedReconstructPriority": "high",
+                    "criticalReconstructPriority": "highest",
+                    "backgroundOperationPriority": "low",
+                    "allocGranularity": "4294967296"
+                }
+            },
+            "usage": "standard",
+            "driveBlockFormat": "allNative",
+            "reservedSpaceAllocated": True,
+            "usedSpace": "13653701033984",
+            "totalRaidedSpace": "23459111370752",
+            "extents": [
+                {
+                    "sectorOffset": "0",
+                    "rawCapacity": "9805410336768",
+                    "raidLevel": "raidDiskPool",
+                    "volumeGroupRef":
+                        "0400000060080E5000290D8000009C9955828DD2",
+                    "freeExtentRef":
+                        "0301000060080E5000290D8000009C9955828DD2",
+                    "reserved1": "000000000000000000000000",
+                    "reserved2": ""
+                }
+            ],
+            "largestFreeExtentSize": "9805410336768",
+            "raidStatus": "optimal",
+            "freeSpace": "9805410336768",
+            "drivePhysicalType": "sas",
+            "driveMediaType": "hdd",
+            "normalizedSpindleSpeed": "spindleSpeed7200",
+            "id": "0400000060080E5000290D8000009C9955828DD2",
+            "diskPool": True,
+            "name": "DDP"
+        },
+        "flashCacheCapable": True,
+        "dataAssuranceCapable": True,
+        "encrypted": False,
+        "thinProvisioningCapable": True,
+        "spindleSpeed": "spindleSpeed7200",
         "raidLevel": "raidDiskPool",
-        "worldWideName": "60080E50002998A00000A387558A7514",
-        "volumeGroupRef": "0400000060080E50002998A00000A387558A7514",
-        "reserved1": "000000000000000000000000",
-        "reserved2": "",
-        "trayLossProtection": False,
-        "label": "DDP",
-        "state": "complete",
-        "spindleSpeedMatch": True,
-        "spindleSpeed": 10033,
-        "isInaccessible": False,
-        "securityType": "none",
-        "drawerLossProtection": False,
-        "protectionInformationCapable": False,
-        "protectionInformationCapabilities": {
-            "protectionInformationCapable": False,
-            "protectionType": "type0Protection"
-        },
-        "volumeGroupData": {
-            "type": "diskPool",
-            "diskPoolData": {
-                "reconstructionReservedDriveCount": 1,
-                "reconstructionReservedAmt": "138512695296",
-                "reconstructionReservedDriveCountCurrent": 1,
-                "poolUtilizationWarningThreshold": 50,
-                "poolUtilizationCriticalThreshold": 85,
-                "poolUtilizationState": "utilizationOptimal",
-                "unusableCapacity": "0",
-                "degradedReconstructPriority": "high",
-                "criticalReconstructPriority": "highest",
-                "backgroundOperationPriority": "low",
-                "allocGranularity": "4294967296"
-            }
-        },
-        "usage": "standard",
-        "driveBlockFormat": "allNative",
-        "reservedSpaceAllocated": True,
-        "usedSpace": "55834574848",
-        "totalRaidedSpace": "1060856922112",
-        "extents": [
-            {
-                "sectorOffset": "0",
-                "rawCapacity": "1005022347264",
-                "raidLevel": "raidDiskPool",
-                "volumeGroupRef": "0400000060080E50002998A00000A387558A7514",
-                "freeExtentRef": "0301000060080E50002998A00000A387558A7514",
-                "reserved1": "000000000000000000000000",
-                "reserved2": ""
-            }
-        ],
-        "largestFreeExtentSize": "1005022347264",
-        "raidStatus": "optimal",
-        "freeSpace": "1005022347264",
-        "drivePhysicalType": "sas",
-        "driveMediaType": "hdd",
-        "normalizedSpindleSpeed": "spindleSpeed10k",
-        "id": "0400000060080E50002998A00000A387558A7514",
-        "diskPool": True
+        "availableFreeExtentCapacities": [
+            "9805410336768"
+        ]
     },
     {
-        "sequenceNum": 1,
-        "offline": False,
-        "raidLevel": "raid5",
-        "worldWideName": "60080E500029E0B4000059A0553E1725",
-        "volumeGroupRef": "0400000060080E500029E0B4000059A0553E1725",
-        "reserved1": "000000000000000000000000",
-        "reserved2": "",
-        "trayLossProtection": False,
-        "label": "test_vg_1",
-        "state": "complete",
-        "spindleSpeedMatch": False,
-        "spindleSpeed": 10000,
-        "isInaccessible": False,
-        "securityType": "enabled",
-        "drawerLossProtection": False,
-        "protectionInformationCapable": False,
-        "protectionInformationCapabilities": {
+        "poolId": "0400000060080E5000290D8000009CBA55828E96",
+        "name": "pool_raid1",
+        "pool": {
+            "sequenceNum": 6,
+            "offline": False,
+            "raidLevel": "raid1",
+            "worldWideName": "60080E5000290D8000009CBA55828E96",
+            "volumeGroupRef": "0400000060080E5000290D8000009CBA55828E96",
+            "reserved1": "000000000000000000000000",
+            "reserved2": "",
+            "trayLossProtection": False,
+            "label": "pool_raid1",
+            "state": "complete",
+            "spindleSpeedMatch": True,
+            "spindleSpeed": 10000,
+            "isInaccessible": False,
+            "securityType": "none",
+            "drawerLossProtection": True,
             "protectionInformationCapable": False,
-            "protectionType": "type0Protection"
+            "protectionInformationCapabilities": {
+                "protectionInformationCapable": True,
+                "protectionType": "type2Protection"
+            },
+            "volumeGroupData": {
+                "type": "unknown",
+                "diskPoolData": None
+            },
+            "usage": "standard",
+            "driveBlockFormat": "allNative",
+            "reservedSpaceAllocated": True,
+            "usedSpace": "2978559819776",
+            "totalRaidedSpace": "6662444097536",
+            "extents": [
+                {
+                    "sectorOffset": "387891200",
+                    "rawCapacity": "3683884277760",
+                    "raidLevel": "raid1",
+                    "volumeGroupRef":
+                        "0400000060080E5000290D8000009CBA55828E96",
+                    "freeExtentRef":
+                        "030000B360080E5000290D8000009CBA55828E96",
+                    "reserved1": "000000000000000000000000",
+                    "reserved2": ""
+                }
+            ],
+            "largestFreeExtentSize": "3683884277760",
+            "raidStatus": "optimal",
+            "freeSpace": "3683884277760",
+            "drivePhysicalType": "sas",
+            "driveMediaType": "hdd",
+            "normalizedSpindleSpeed": "spindleSpeed10k",
+            "id": "0400000060080E5000290D8000009CBA55828E96",
+            "diskPool": False,
+            "name": "pool_raid1"
         },
-        "volumeGroupData": {
-            "type": "unknown",
-            "diskPoolData": None
-        },
-        "usage": "standard",
-        "driveBlockFormat": "allNative",
-        "reservedSpaceAllocated": False,
-        "usedSpace": "28366077952",
-        "totalRaidedSpace": "292557733888",
-        "extents": [
-            {
-                "sectorOffset": "27701248",
-                "rawCapacity": "264191655936",
-                "raidLevel": "raid5",
-                "volumeGroupRef": "0400000060080E500029E0B4000059A0553E1725",
-                "freeExtentRef": "0300001B60080E500029E0B4000059A0553E1725",
-                "reserved1": "000000000000000000000000",
-                "reserved2": ""
-            }
-        ],
-        "largestFreeExtentSize": "264191655936",
-        "raidStatus": "optimal",
-        "freeSpace": "264191655936",
-        "drivePhysicalType": "sas",
-        "driveMediaType": "ssd",
-        "normalizedSpindleSpeed": "spindleSpeed10k",
-        "id": "0400000060080E500029E0B4000059A0553E1725",
-        "diskPool": False
+        "flashCacheCapable": False,
+        "dataAssuranceCapable": True,
+        "encrypted": False,
+        "thinProvisioningCapable": False,
+        "spindleSpeed": "spindleSpeed10k",
+        "raidLevel": "raid1",
+        "availableFreeExtentCapacities": [
+            "3683884277760"
+        ]
     },
     {
-        "sequenceNum": 3,
-        "offline": False,
+        "poolId": "0400000060080E5000290D8000009CAB55828E51",
+        "name": "pool_raid6",
+        "pool": {
+            "sequenceNum": 3,
+            "offline": False,
+            "raidLevel": "raid6",
+            "worldWideName": "60080E5000290D8000009CAB55828E51",
+            "volumeGroupRef": "0400000060080E5000290D8000009CAB55828E51",
+            "reserved1": "000000000000000000000000",
+            "reserved2": "",
+            "trayLossProtection": False,
+            "label": "pool_raid6",
+            "state": "complete",
+            "spindleSpeedMatch": True,
+            "spindleSpeed": 15000,
+            "isInaccessible": False,
+            "securityType": "enabled",
+            "drawerLossProtection": False,
+            "protectionInformationCapable": False,
+            "protectionInformationCapabilities": {
+                "protectionInformationCapable": True,
+                "protectionType": "type2Protection"
+            },
+            "volumeGroupData": {
+                "type": "unknown",
+                "diskPoolData": None
+            },
+            "usage": "standard",
+            "driveBlockFormat": "allNative",
+            "reservedSpaceAllocated": True,
+            "usedSpace": "16413217521664",
+            "totalRaidedSpace": "16637410312192",
+            "extents": [
+                {
+                    "sectorOffset": "1144950784",
+                    "rawCapacity": "224192790528",
+                    "raidLevel": "raid6",
+                    "volumeGroupRef":
+                        "0400000060080E5000290D8000009CAB55828E51",
+                    "freeExtentRef":
+                        "0300005960080E5000290D8000009CAB55828E51",
+                    "reserved1": "000000000000000000000000",
+                    "reserved2": ""
+                }
+            ],
+            "largestFreeExtentSize": "224192790528",
+            "raidStatus": "optimal",
+            "freeSpace": "224192790528",
+            "drivePhysicalType": "sas",
+            "driveMediaType": "hdd",
+            "normalizedSpindleSpeed": "spindleSpeed15k",
+            "id": "0400000060080E5000290D8000009CAB55828E51",
+            "diskPool": False,
+            "name": "pool_raid6"
+        },
+        "flashCacheCapable": False,
+        "dataAssuranceCapable": True,
+        "encrypted": True,
+        "thinProvisioningCapable": False,
+        "spindleSpeed": "spindleSpeed15k",
         "raidLevel": "raid6",
-        "worldWideName": "60080E500029E0B4000059A2553E1739",
-        "volumeGroupRef": "0400000060080E500029E0B4000059A2553E1739",
-        "reserved1": "000000000000000000000000",
-        "reserved2": "",
-        "trayLossProtection": False,
-        "label": "test_vg_2",
-        "state": "complete",
-        "spindleSpeedMatch": True,
-        "spindleSpeed": 10020,
-        "isInaccessible": False,
-        "securityType": "enabled",
-        "drawerLossProtection": False,
-        "protectionInformationCapable": False,
-        "protectionInformationCapabilities": {
-            "protectionInformationCapable": False,
-            "protectionType": "type2Protection"
-        },
-        "volumeGroupData": {
-            "type": "unknown",
-            "diskPoolData": None
-        },
-        "usage": "standard",
-        "driveBlockFormat": "allNative",
-        "reservedSpaceAllocated": False,
-        "usedSpace": "27399710720",
-        "totalRaidedSpace": "1798769641472",
-        "extents": [
-            {
-                "sectorOffset": "17839360",
-                "rawCapacity": "1771369930752",
-                "raidLevel": "raid6",
-                "volumeGroupRef": "0400000060080E500029E0B4000059A2553E1739",
-                "freeExtentRef": "0300001360080E500029E0B4000059A2553E1739",
-                "reserved1": "000000000000000000000000",
-                "reserved2": ""
-            }
-        ],
-        "largestFreeExtentSize": "1771369930752",
-        "raidStatus": "optimal",
-        "freeSpace": "1771369930752",
-        "drivePhysicalType": "sas",
-        "driveMediaType": "hdd",
-        "normalizedSpindleSpeed": "spindleSpeed10k",
-        "id": "0400000060080E500029E0B4000059A2553E1739",
-        "diskPool": False
+        "availableFreeExtentCapacities": [
+            "224192790528"
+        ]
     }
 ]
+
+STORAGE_POOLS = [ssc_pool['pool'] for ssc_pool in SSC_POOLS]
 
 VOLUME = {
     'extremeProtection': False,

@@ -19,10 +19,13 @@ import copy
 import ddt
 import mock
 
+from cinder import exception
 from cinder import test
 from cinder.tests.unit.volume.drivers.netapp.eseries import fakes as \
     eseries_fake
+
 from cinder.volume.drivers.netapp.eseries import client
+from cinder.volume.drivers.netapp import utils as na_utils
 
 
 @ddt.ddt
@@ -382,6 +385,69 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
                           eseries_fake.FAKE_ABOUT_RESPONSE['version']),
                          eseries_info)
 
+    def test_list_ssc_storage_pools(self):
+        self.my_client.features = mock.Mock()
+        self.my_client._invoke = mock.Mock(
+            return_value=eseries_fake.SSC_POOLS)
+
+        pools = client.RestClient.list_ssc_storage_pools(self.my_client)
+
+        self.assertEqual(eseries_fake.SSC_POOLS, pools)
+
+    def test_get_ssc_storage_pool(self):
+        fake_pool = eseries_fake.SSC_POOLS[0]
+        self.my_client.features = mock.Mock()
+        self.my_client._invoke = mock.Mock(
+            return_value=fake_pool)
+
+        pool = client.RestClient.get_ssc_storage_pool(self.my_client,
+                                                      fake_pool['poolId'])
+
+        self.assertEqual(fake_pool, pool)
+
+    def test_create_volume_V1(self):
+        self.my_client.features = mock.Mock()
+        self.my_client.features.SSC_API_V2 = na_utils.FeatureState(
+            supported=False)
+        create_volume = self.my_client._invoke = mock.Mock(
+            return_value=eseries_fake.VOLUME)
+
+        volume = client.RestClient.create_volume(self.my_client,
+                                                 'fakePool', '1', 1)
+
+        args, kwargs = create_volume.call_args
+        verb, url, body = args
+        # Ensure the correct API was used
+        self.assertEqual('/storage-systems/{system-id}/volumes', url)
+        self.assertEqual(eseries_fake.VOLUME, volume)
+
+    def test_create_volume_V2(self):
+        self.my_client.features = mock.Mock()
+        self.my_client.features.SSC_API_V2 = na_utils.FeatureState(
+            supported=True)
+        create_volume = self.my_client._invoke = mock.Mock(
+            return_value=eseries_fake.VOLUME)
+
+        volume = client.RestClient.create_volume(self.my_client,
+                                                 'fakePool', '1', 1)
+
+        args, kwargs = create_volume.call_args
+        verb, url, body = args
+        # Ensure the correct API was used
+        self.assertIn('/storage-systems/{system-id}/ssc/volumes', url,
+                      'The legacy API was used!')
+        self.assertEqual(eseries_fake.VOLUME, volume)
+
+    def test_create_volume_unsupported_specs(self):
+        self.my_client.features = mock.Mock()
+        self.my_client.features.SSC_API_V2 = na_utils.FeatureState(
+            supported=False)
+        self.my_client.api_version = '01.52.9000.1'
+
+        self.assertRaises(exception.NetAppDriverException,
+                          client.RestClient.create_volume, self.my_client,
+                          '1', 'label', 1, read_cache=True)
+
     @ddt.data('00.00.00.00', '01.52.9000.2', '01.52.9001.2', '01.51.9000.3',
               '01.51.9001.3', '01.51.9010.5', '0.53.9000.3', '0.53.9001.4')
     def test_api_version_not_support_asup(self, api_version):
@@ -392,7 +458,7 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
 
         client.RestClient._init_features(self.my_client)
 
-        self.assertFalse(self.my_client.features.AUTOSUPPORT)
+        self.assertFalse(self.my_client.features.AUTOSUPPORT.supported)
 
     @ddt.data('01.52.9000.3', '01.52.9000.4', '01.52.8999.2',
               '01.52.8999.3', '01.53.8999.3', '01.53.9000.2',
@@ -405,4 +471,29 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
 
         client.RestClient._init_features(self.my_client)
 
-        self.assertTrue(self.my_client.features.AUTOSUPPORT)
+        self.assertTrue(self.my_client.features.AUTOSUPPORT.supported)
+
+    @ddt.data('00.00.00.00', '01.52.9000.1', '01.52.9001.2', '00.53.9001.3',
+              '01.53.9090.1', '1.53.9010.14', '0.53.9011.15')
+    def test_api_version_not_support_ssc_api(self, api_version):
+
+        self.mock_object(client.RestClient,
+                         'get_eseries_api_info',
+                         mock.Mock(return_value=('proxy', api_version)))
+
+        client.RestClient._init_features(self.my_client)
+
+        self.assertFalse(self.my_client.features.SSC_API_V2.supported)
+
+    @ddt.data('01.53.9000.1', '01.53.9000.5', '01.53.8999.1',
+              '01.53.9010.20', '01.53.9010.16', '01.54.9000.1',
+              '02.51.9000.3', '02.52.8999.3', '02.51.8999.2')
+    def test_api_version_supports_ssc_api(self, api_version):
+
+        self.mock_object(client.RestClient,
+                         'get_eseries_api_info',
+                         mock.Mock(return_value=('proxy', api_version)))
+
+        client.RestClient._init_features(self.my_client)
+
+        self.assertTrue(self.my_client.features.SSC_API_V2.supported)
