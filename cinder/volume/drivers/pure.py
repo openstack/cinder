@@ -605,6 +605,15 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         return connection
 
+    def retype(self, context, volume, new_type, diff, host):
+        """Retype from one volume type to another on the same backend.
+
+        For a Pure Array there is currently no differentiation between types
+        of volumes. This means that changing from one type to another on the
+        same array should be a no-op.
+        """
+        return True, None
+
 
 class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
 
