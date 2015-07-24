@@ -160,6 +160,7 @@ ISCSI_CONNECTION_INFO = {
         "target_lun": 1,
         "target_discovered": True,
         "access_mode": "rw",
+        "discard": True,
     },
 }
 FC_CONNECTION_INFO = {
@@ -170,6 +171,7 @@ FC_CONNECTION_INFO = {
         "target_discovered": True,
         "access_mode": "rw",
         "initiator_target_map": INITIATOR_TARGET_MAP,
+        "discard": True,
     },
 }
 

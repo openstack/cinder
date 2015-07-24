@@ -78,6 +78,8 @@ class ISCSITarget(driver.Target):
         :access_mode:    the volume access mode allow client used
                          ('rw' or 'ro' currently supported)
 
+        :discard:    boolean indicating if discard is supported
+
         In some of drivers that support multiple connections (for multipath
         and for single path with failover on connection failure), it returns
         :target_iqns, :target_portals, :target_luns, which contain lists of
@@ -289,7 +291,8 @@ class ISCSITarget(driver.Target):
                     'target_iqn': 'iqn.2010-10.org.openstack:volume-00000001',
                     'target_portal': '127.0.0.0.1:3260',
                     'volume_id': '9a0d35d0-175a-11e4-8c21-0800200c9a66',
-                    'access_mode': 'rw'
+                    'access_mode': 'rw',
+                    'discard': False,
                 }
             }
         """
