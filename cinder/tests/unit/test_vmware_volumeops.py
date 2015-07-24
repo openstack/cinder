@@ -1443,51 +1443,35 @@ class VolumeOpsTestCase(test.TestCase):
                                            datacenter=dc_ref)
         self.session.wait_for_task.assert_called_once_with(task)
 
-    def test_get_profile(self):
-        server_obj = mock.Mock()
-        self.session.pbm.client.factory.create.return_value = server_obj
+    @mock.patch('oslo_vmware.pbm.get_profiles_by_ids')
+    @mock.patch('oslo_vmware.pbm.get_profiles')
+    def test_get_profile(self, get_profiles, get_profiles_by_ids):
 
         profile_ids = [mock.sentinel.profile_id]
+        get_profiles.return_value = profile_ids
+
         profile_name = mock.sentinel.profile_name
         profile = mock.Mock()
         profile.name = profile_name
-        self.session.invoke_api.side_effect = [profile_ids, [profile]]
+        get_profiles_by_ids.return_value = [profile]
 
-        value = mock.sentinel.value
-        backing = mock.Mock(value=value)
+        backing = mock.sentinel.backing
         self.assertEqual(profile_name, self.vops.get_profile(backing))
+        get_profiles.assert_called_once_with(self.session, backing)
+        get_profiles_by_ids.assert_called_once_with(self.session, profile_ids)
 
-        pbm = self.session.pbm
-        profile_manager = pbm.service_content.profileManager
-        exp_calls = [mock.call(pbm, 'PbmQueryAssociatedProfile',
-                               profile_manager, entity=server_obj),
-                     mock.call(pbm, 'PbmRetrieveContent', profile_manager,
-                               profileIds=profile_ids)]
-        self.assertEqual(exp_calls, self.session.invoke_api.call_args_list)
+    @mock.patch('oslo_vmware.pbm.get_profiles_by_ids')
+    @mock.patch('oslo_vmware.pbm.get_profiles')
+    def test_get_profile_with_no_profile(self, get_profiles,
+                                         get_profiles_by_ids):
 
-        self.assertEqual(value, server_obj.key)
-        self.assertEqual('virtualMachine', server_obj.objectType)
-        self.session.invoke_api.side_effect = None
+        get_profiles.return_value = []
 
-    def test_get_profile_with_no_profile(self):
-        server_obj = mock.Mock()
-        self.session.pbm.client.factory.create.return_value = server_obj
-
-        self.session.invoke_api.side_effect = [[]]
-
-        value = mock.sentinel.value
-        backing = mock.Mock(value=value)
+        backing = mock.sentinel.backing
         self.assertIsNone(self.vops.get_profile(backing))
 
-        pbm = self.session.pbm
-        profile_manager = pbm.service_content.profileManager
-        exp_calls = [mock.call(pbm, 'PbmQueryAssociatedProfile',
-                               profile_manager, entity=server_obj)]
-        self.assertEqual(exp_calls, self.session.invoke_api.call_args_list)
-
-        self.assertEqual(value, server_obj.key)
-        self.assertEqual('virtualMachine', server_obj.objectType)
-        self.session.invoke_api.side_effect = None
+        get_profiles.assert_called_once_with(self.session, backing)
+        self.assertFalse(get_profiles_by_ids.called)
 
     def test_extend_virtual_disk(self):
         """Test volumeops.extend_virtual_disk."""
