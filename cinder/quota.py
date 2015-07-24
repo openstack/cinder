@@ -188,8 +188,8 @@ class DbQuotaDriver(object):
                          default value, if there is no value from the
                          quota class) will be reported if there is no
                          specific value for the resource.
-        :param usages: If True, the current in_use and reserved counts
-                       will also be returned.
+        :param usages: If True, the current in_use, reserved and allocated
+                       counts will also be returned.
         :param parent_project_id: The id of the current project's parent,
                                   if any.
         """
@@ -199,6 +199,9 @@ class DbQuotaDriver(object):
         if usages:
             project_usages = db.quota_usage_get_all_by_project(context,
                                                                project_id)
+            allocated_quotas = db.quota_allocated_get_all_by_project(
+                context, project_id)
+            allocated_quotas.pop('project_id')
 
         # Get the quotas for the appropriate class.  If the project ID
         # matches the one in the context, we use the quota_class from
@@ -234,6 +237,10 @@ class DbQuotaDriver(object):
                 quotas[resource.name].update(
                     in_use=usage.get('in_use', 0),
                     reserved=usage.get('reserved', 0), )
+
+                if parent_project_id or allocated_quotas:
+                    quotas[resource.name].update(
+                        allocated=allocated_quotas.get(resource.name, 0), )
 
         return quotas
 
@@ -700,8 +707,8 @@ class QuotaEngine(object):
                          default value, if there is no value from the
                          quota class) will be reported if there is no
                          specific value for the resource.
-        :param usages: If True, the current in_use and reserved counts
-                       will also be returned.
+        :param usages: If True, the current in_use, reserved and
+                       allocated counts will also be returned.
         :param parent_project_id: The id of the current project's parent,
                                   if any.
         """

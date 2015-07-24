@@ -1025,15 +1025,27 @@ class DbQuotaDriverTestCase(test.TestCase):
 
         self._stub_quota_class_get_all_by_name()
 
+    def _stub_allocated_get_all_by_project(self, allocated_quota=False):
+        def fake_qagabp(context, project_id):
+            self.calls.append('quota_allocated_get_all_by_project')
+            self.assertEqual('test_project', project_id)
+            if allocated_quota:
+                return dict(project_id=project_id, volumes=3)
+            return dict(project_id=project_id)
+
+        self.stubs.Set(db, 'quota_allocated_get_all_by_project', fake_qagabp)
+
     def test_get_project_quotas(self):
         self._stub_get_by_project()
         self._stub_volume_type_get_all()
+        self._stub_allocated_get_all_by_project()
         result = self.driver.get_project_quotas(
             FakeContext('test_project', 'test_class'),
             quota.QUOTAS.resources, 'test_project')
 
         self.assertEqual(['quota_get_all_by_project',
                           'quota_usage_get_all_by_project',
+                          'quota_allocated_get_all_by_project',
                           'quota_class_get_all_by_name',
                           'quota_class_get_default', ], self.calls)
         self.assertEqual(dict(volumes=dict(limit=10,
@@ -1056,9 +1068,48 @@ class DbQuotaDriverTestCase(test.TestCase):
                                                         reserved= 0)
                               ), result)
 
+    def test_get_root_project_with_subprojects_quotas(self):
+        self._stub_get_by_project()
+        self._stub_volume_type_get_all()
+        self._stub_allocated_get_all_by_project(allocated_quota=True)
+        result = self.driver.get_project_quotas(
+            FakeContext('test_project', None),
+            quota.QUOTAS.resources, 'test_project')
+
+        self.assertEqual(['quota_get_all_by_project',
+                          'quota_usage_get_all_by_project',
+                          'quota_allocated_get_all_by_project',
+                          'quota_class_get_default', ], self.calls)
+        self.assertEqual(dict(volumes=dict(limit=10,
+                                           in_use=2,
+                                           reserved=0,
+                                           allocated=3, ),
+                              snapshots=dict(limit=10,
+                                             in_use=2,
+                                             reserved=0,
+                                             allocated=0, ),
+                              gigabytes=dict(limit=50,
+                                             in_use=10,
+                                             reserved=0,
+                                             allocated=0, ),
+                              backups=dict(limit=10,
+                                           in_use=2,
+                                           reserved=0,
+                                           allocated=0, ),
+                              backup_gigabytes=dict(limit=50,
+                                                    in_use=10,
+                                                    reserved=0,
+                                                    allocated=0, ),
+                              per_volume_gigabytes=dict(in_use=0,
+                                                        limit=-1,
+                                                        reserved=0,
+                                                        allocated=0)
+                              ), result)
+
     def test_get_subproject_quotas(self):
         self._stub_get_by_subproject()
         self._stub_volume_type_get_all()
+        self._stub_allocated_get_all_by_project(allocated_quota=True)
         parent_project_id = 'test_parent_project_id'
         result = self.driver.get_project_quotas(
             FakeContext('test_project', None),
@@ -1066,25 +1117,32 @@ class DbQuotaDriverTestCase(test.TestCase):
             parent_project_id=parent_project_id)
 
         self.assertEqual(['quota_get_all_by_project',
-                          'quota_usage_get_all_by_project', ], self.calls)
+                          'quota_usage_get_all_by_project',
+                          'quota_allocated_get_all_by_project', ], self.calls)
         self.assertEqual(dict(volumes=dict(limit=10,
                                            in_use=2,
-                                           reserved=0, ),
+                                           reserved=0,
+                                           allocated=3, ),
                               snapshots=dict(limit=0,
                                              in_use=0,
-                                             reserved=0, ),
+                                             reserved=0,
+                                             allocated=0, ),
                               gigabytes=dict(limit=50,
                                              in_use=10,
-                                             reserved=0, ),
+                                             reserved=0,
+                                             allocated=0, ),
                               backups=dict(limit=0,
                                            in_use=0,
-                                           reserved=0, ),
+                                           reserved=0,
+                                           allocated=0, ),
                               backup_gigabytes=dict(limit=0,
                                                     in_use=0,
-                                                    reserved=0, ),
+                                                    reserved=0,
+                                                    allocated=0, ),
                               per_volume_gigabytes=dict(in_use=0,
                                                         limit=0,
-                                                        reserved= 0)
+                                                        reserved=0,
+                                                        allocated=0)
                               ), result)
 
     def test_get_project_quotas_alt_context_no_class(self):

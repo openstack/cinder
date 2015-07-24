@@ -541,6 +541,16 @@ def quota_get_all_by_project(context, project_id):
     return result
 
 
+@require_context
+def quota_allocated_get_all_by_project(context, project_id):
+    rows = model_query(context, models.Quota, read_deleted='no').filter_by(
+        project_id=project_id).all()
+    result = {'project_id': project_id}
+    for row in rows:
+        result[row.resource] = row.allocated
+    return result
+
+
 @require_admin_context
 def quota_create(context, project_id, resource, limit):
     quota_ref = models.Quota()
@@ -560,6 +570,15 @@ def quota_update(context, project_id, resource, limit):
     with session.begin():
         quota_ref = _quota_get(context, project_id, resource, session=session)
         quota_ref.hard_limit = limit
+        return quota_ref
+
+
+@require_admin_context
+def quota_allocated_update(context, project_id, resource, allocated):
+    session = get_session()
+    with session.begin():
+        quota_ref = _quota_get(context, project_id, resource, session=session)
+        quota_ref.allocated = allocated
         return quota_ref
 
 
