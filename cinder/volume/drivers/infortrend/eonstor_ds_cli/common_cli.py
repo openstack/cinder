@@ -155,9 +155,10 @@ class InfortrendCommon(object):
 
     Version history:
         1.0.0 - Initial driver
+        1.0.1 - Support DS4000
     """
 
-    VERSION = '1.0.0'
+    VERSION = '1.0.1'
 
     constants = {
         'ISCSI_PORT': 3260,
@@ -1466,7 +1467,7 @@ class InfortrendCommon(object):
 
         for entry in wwn_list:
             channel_id = entry['CH']
-            if 'BID:113' == entry['ID']:
+            if 'BID' in entry['ID']:
                 slot_name = 'slot_b'
             else:
                 slot_name = 'slot_a'
