@@ -23,7 +23,6 @@
 from oslo_config import cfg
 from oslo_db import exception as db_exc
 from oslo_log import log as logging
-import six
 
 from cinder import context
 from cinder import db
@@ -51,8 +50,8 @@ def create(context,
                                               is_public=is_public,
                                               description=description),
                                          projects=projects)
-    except db_exc.DBError as e:
-        LOG.exception(_LE('DB error: %s') % six.text_type(e))
+    except db_exc.DBError:
+        LOG.exception(_LE('DB error:'))
         raise exception.VolumeTypeCreateFailed(name=name,
                                                extra_specs=extra_specs)
     return type_ref
@@ -68,8 +67,8 @@ def update(context, id, name, description):
                                              id,
                                              dict(name=name,
                                                   description=description))
-    except db_exc.DBError as e:
-        LOG.exception(_LE('DB error: %s') % six.text_type(e))
+    except db_exc.DBError:
+        LOG.exception(_LE('DB error:'))
         raise exception.VolumeTypeUpdateFailed(id=id)
     return type_updated
 
@@ -99,7 +98,7 @@ def get_all_types(context, inactive=0, search_opts=None):
     vol_types = db.volume_type_get_all(context, inactive, filters=filters)
 
     if search_opts:
-        LOG.debug("Searching by: %s" % search_opts)
+        LOG.debug("Searching by: %s", search_opts)
 
         def _check_extra_specs_match(vol_type, searchdict):
             for k, v in searchdict.items():
@@ -158,13 +157,12 @@ def get_default_volume_type():
         ctxt = context.get_admin_context()
         try:
             vol_type = get_volume_type_by_name(ctxt, name)
-        except exception.VolumeTypeNotFoundByName as e:
+        except exception.VolumeTypeNotFoundByName:
             # Couldn't find volume type with the name in default_volume_type
             # flag, record this issue and move on
             # TODO(zhiteng) consider add notification to warn admin
-            LOG.exception(_LE('Default volume type is not found,'
-                          'please check default_volume_type config: %s') %
-                          six.text_type(e))
+            LOG.exception(_LE('Default volume type is not found. '
+                          'Please check default_volume_type config:'))
 
     return vol_type
 
