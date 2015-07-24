@@ -317,8 +317,8 @@ class VolumeApiTest(test.TestCase):
         vol = self._vol_in_request_body(source_replica=source_replica)
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
-        # Raise 404 when replication status is disabled.
-        self.assertRaises(webob.exc.HTTPNotFound, self.controller.create,
+        # Raise 400 when replication status is disabled.
+        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.create,
                           req, body)
 
         context = req.environ['cinder.context']
