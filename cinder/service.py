@@ -135,6 +135,7 @@ class Service(service.Service):
         self.timers = []
 
         setup_profiler(binary, host)
+        self.rpcserver = None
 
     def start(self):
         version_string = version.version_string()
@@ -263,7 +264,6 @@ class Service(service.Service):
         # errors, go ahead and ignore them.. as we're shutting down anyway
         try:
             self.rpcserver.stop()
-            self.rpcserver.wait()
         except Exception:
             pass
         for x in self.timers:
@@ -280,6 +280,8 @@ class Service(service.Service):
                 x.wait()
             except Exception:
                 pass
+        if self.rpcserver:
+            self.rpcserver.wait()
 
     def periodic_tasks(self, raise_on_error=False):
         """Tasks to be run at a periodic interval."""

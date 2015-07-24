@@ -240,6 +240,7 @@ class ServiceTestCase(test.TestCase):
         )
         serv.start()
         serv.stop()
+        serv.wait()
         serv.rpcserver.start.assert_called_once_with()
         serv.rpcserver.stop.assert_called_once_with()
         serv.rpcserver.wait.assert_called_once_with()
