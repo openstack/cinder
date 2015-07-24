@@ -636,3 +636,43 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
             scvolume = api.find_volume(volume['id'])
             if scvolume:
                 api.unmanage(scvolume)
+
+    def retype(self, ctxt, volume, new_type, diff, host):
+        """Convert the volume to be of the new type.
+
+        Returns a boolean indicating whether the retype occurred.
+
+        :param ctxt: Context
+        :param volume: A dictionary describing the volume to migrate
+        :param new_type: A dictionary describing the volume type to convert to
+        :param diff: A dictionary with the difference between the two types
+        :param host: A dictionary describing the host to migrate to, where
+                     host['host'] is its name, and host['capabilities'] is a
+                     dictionary of its reported capabilities (Not Used).
+        """
+        # We currently only support retyping for the Storage Profile extra spec
+        if diff['extra_specs']:
+            storage_profiles = diff['extra_specs'].get(
+                'storagetype:storageprofile')
+            if storage_profiles:
+                if len(storage_profiles) != 2:
+                    LOG.warning(_LW('Unable to retype Storage Profile, '
+                                    'expected to receive current and '
+                                    'requested storagetype:storageprofile '
+                                    'values. Value received: %s'),
+                                storage_profiles)
+                    return False
+
+                requested = storage_profiles[1]
+                volume_name = volume.get('id')
+                LOG.debug('Retyping volume %(vol)s to use storage '
+                          'profile %(profile)s',
+                          {'vol': volume_name,
+                           'profile': requested})
+                with self._client.open_connection() as api:
+                    if api.find_sc():
+                        scvolume = api.find_volume(volume_name)
+                        return api.update_storage_profile(
+                            scvolume, requested)
+
+        return False

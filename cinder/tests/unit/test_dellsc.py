@@ -12,14 +12,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import uuid
-
 import mock
+import uuid
 
 from cinder import context
 from cinder import exception
 from cinder import test
 from cinder.volume.drivers.dell import dell_storagecenter_api
+from cinder.volume.drivers.dell import dell_storagecenter_common
 from cinder.volume.drivers.dell import dell_storagecenter_iscsi
 from cinder.volume import volume_types
 
@@ -1636,6 +1636,37 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           volume,
                           existing_ref)
 
+    def test_retype_not_extra_specs(self,
+                                    mock_close_connection,
+                                    mock_open_connection,
+                                    mock_init):
+        res = self.driver.retype(
+            None, None, None, {'extra_specs': None}, None)
+        self.assertFalse(res)
+
+    def test_retype_not_storage_profile(self,
+                                        mock_close_connection,
+                                        mock_open_connection,
+                                        mock_init):
+        res = self.driver.retype(
+            None, None, None, {'extra_specs': {'something': 'else'}}, None)
+        self.assertFalse(res)
+
+    def test_retype_malformed(self,
+                              mock_close_connection,
+                              mock_open_connection,
+                              mock_init):
+        LOG = self.mock_object(dell_storagecenter_common, "LOG")
+        res = self.driver.retype(
+            None, None, None,
+            {'extra_specs': {
+                'storagetype:storageprofile': ['something',
+                                               'not',
+                                               'right']}},
+            None)
+        self.assertFalse(res)
+        self.assertEqual(1, LOG.warning.call_count)
+
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_volume',
                        return_value=VOLUME)
@@ -1667,3 +1698,26 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.driver.unmanage(volume)
         mock_find_volume.assert_called_once_with(volume['id'])
         self.assertFalse(mock_unmanage.called)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'update_storage_profile')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_volume',
+                       return_value=VOLUME)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_sc',
+                       return_value=12345)
+    def test_retype(self,
+                    mock_find_sc,
+                    mock_find_volume,
+                    mock_update_storage_profile,
+                    mock_close_connection,
+                    mock_open_connection,
+                    mock_init):
+        res = self.driver.retype(
+            None, {'id': 'volid'}, None,
+            {'extra_specs': {'storagetype:storageprofile': ['A', 'B']}},
+            None)
+        mock_update_storage_profile.ssert_called_once_with(
+            self.VOLUME, 'B')
+        self.assertTrue(res)

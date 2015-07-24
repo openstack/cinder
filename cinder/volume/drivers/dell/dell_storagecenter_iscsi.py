@@ -39,9 +39,10 @@ class DellStorageCenterISCSIDriver(dell_storagecenter_common.DellCommonDriver,
         2.0.0 - Switched to inheriting functional objects rather than volume
                 driver.
         2.1.0 - Added support for ManageableVD.
+        2.2.0 - Driver retype support for switching volume's Storage Profile
     '''
 
-    VERSION = '2.1.0'
+    VERSION = '2.2.0'
 
     def __init__(self, *args, **kwargs):
         super(DellStorageCenterISCSIDriver, self).__init__(*args, **kwargs)
