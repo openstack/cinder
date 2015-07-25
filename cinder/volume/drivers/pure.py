@@ -589,9 +589,11 @@ class PureBaseVolumeDriver(san.SanDriver):
                 if (err.code == 400 and
                         "Connection already exists" in err.text):
                     # Happens if the volume is already connected to the host.
+                    # Treat this as a success.
                     ctxt.reraise = False
-                    LOG.warning(_LW("Volume connection already exists with "
-                                    "message: %s"), err.text)
+                    LOG.debug("Volume connection already exists for Purity "
+                              "host with message: %s", err.text)
+
                     # Get the info for the existing connection
                     connected_hosts = \
                         self._array.list_volume_private_connections(vol_name)
