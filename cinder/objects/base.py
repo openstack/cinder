@@ -16,13 +16,10 @@
 
 import contextlib
 import datetime
-import functools
-import traceback
 
 from oslo_log import log as logging
 from oslo_versionedobjects import base
 from oslo_versionedobjects import fields
-import six
 
 from cinder import exception
 from cinder import objects
@@ -144,27 +141,3 @@ class ObjectListBase(base.ObjectListBase):
 
 class CinderObjectSerializer(base.VersionedObjectSerializer):
     OBJ_BASE_CLASS = CinderObject
-
-
-def serialize_args(fn):
-    """Decorator that will do the arguments serialization before remoting."""
-    def wrapper(obj, *args, **kwargs):
-        for kw in kwargs:
-            value_arg = kwargs.get(kw)
-            if kw == 'exc_val' and value_arg:
-                kwargs[kw] = str(value_arg)
-            elif kw == 'exc_tb' and (
-                    not isinstance(value_arg, six.string_types) and value_arg):
-                kwargs[kw] = ''.join(traceback.format_tb(value_arg))
-            elif isinstance(value_arg, datetime.datetime):
-                kwargs[kw] = value_arg.isoformat()
-        if hasattr(fn, '__call__'):
-            return fn(obj, *args, **kwargs)
-        # NOTE(danms): We wrap a descriptor, so use that protocol
-        return fn.__get__(None, obj)(*args, **kwargs)
-
-    # NOTE(danms): Make this discoverable
-    wrapper.remotable = getattr(fn, 'remotable', False)
-    wrapper.original_fn = fn
-    return (functools.wraps(fn)(wrapper) if hasattr(fn, '__call__')
-            else classmethod(wrapper))
