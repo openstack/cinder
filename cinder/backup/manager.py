@@ -265,10 +265,16 @@ class BackupManager(manager.SchedulerDependentManager):
         # create by the backup job are deleted when service is started.
         ctxt = context.get_admin_context()
         for backup in backups:
-            volume = self.db.volume_get(ctxt, backup.volume_id)
-            volume_host = volume_utils.extract_host(volume['host'], 'backend')
-            backend = self._get_volume_backend(host=volume_host)
-            mgr = self._get_manager(backend)
+            try:
+                volume = self.db.volume_get(ctxt, backup.volume_id)
+                volume_host = volume_utils.extract_host(volume['host'],
+                                                        'backend')
+                backend = self._get_volume_backend(host=volume_host)
+                mgr = self._get_manager(backend)
+            except (KeyError, exception.VolumeNotFound):
+                LOG.debug("Could not find a volume to clean up for "
+                          "backup %s.", backup.id)
+                continue
             if backup.temp_volume_id and backup.status == 'error':
                 temp_volume = self.db.volume_get(ctxt,
                                                  backup.temp_volume_id)
