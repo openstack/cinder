@@ -149,9 +149,11 @@ class TestCinderAllCmd(test.TestCase):
         wsgi_service.assert_called_once_with('osapi_volume')
         launcher.launch_service.assert_any_call(server, workers=server.workers)
 
-        service_create.assert_has_calls([mock.call(binary='cinder-scheduler'),
-                                         mock.call(binary='cinder-backup'),
-                                         mock.call(binary='cinder-volume')])
+        service_create.assert_has_calls([
+            mock.call(binary='cinder-scheduler'),
+            mock.call(binary='cinder-backup'),
+            mock.call(binary='cinder-volume', coordination=True)],
+            any_order=True)
         self.assertEqual(3, service_create.call_count)
         launcher.launch_service.assert_has_calls([mock.call(service)] * 3)
         self.assertEqual(4, launcher.launch_service.call_count)
@@ -191,7 +193,9 @@ class TestCinderAllCmd(test.TestCase):
                                          mock.call(binary='cinder-backup'),
                                          mock.call(binary='cinder-volume',
                                                    host='host@backend1',
-                                                   service_name='backend1')])
+                                                   service_name='backend1',
+                                                   coordination=True)],
+                                        any_order=True)
         self.assertEqual(3, service_create.call_count)
         launcher.launch_service.assert_has_calls([mock.call(service)] * 3)
         self.assertEqual(4, launcher.launch_service.call_count)
@@ -274,8 +278,11 @@ class TestCinderAllCmd(test.TestCase):
         wsgi_service.assert_called_once_with('osapi_volume')
         launcher.launch_service.assert_any_call(server,
                                                 workers=server.workers)
-        for binary in ['cinder-volume', 'cinder-scheduler', 'cinder-backup']:
-            service_create.assert_any_call(binary=binary)
+        services = (('cinder-volume', {'coordination': True}),
+                    ('cinder-backup', {}),
+                    ('cinder-scheduler', {}))
+        for binary, params in services:
+            service_create.assert_any_call(binary=binary, **params)
             launcher.launch_service.assert_called_with(service)
         rpc_init.assert_called_once_with(CONF)
         self.assertTrue(mock_log.exception.called)

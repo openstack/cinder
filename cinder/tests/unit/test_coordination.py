@@ -75,12 +75,16 @@ class CoordinatorTestCase(test.TestCase):
         agent1.start()
         agent2 = coordination.Coordinator()
         agent2.start()
-        self.assertNotIn('lock', MockToozLock.active_locks)
-        with agent1.get_lock('lock'):
-            self.assertIn('lock', MockToozLock.active_locks)
-            self.assertRaises(Locked, agent1.get_lock('lock').acquire)
-            self.assertRaises(Locked, agent2.get_lock('lock').acquire)
-        self.assertNotIn('lock', MockToozLock.active_locks)
+
+        lock_name = 'lock'
+        expected_name = lock_name.encode('ascii')
+
+        self.assertNotIn(expected_name, MockToozLock.active_locks)
+        with agent1.get_lock(lock_name):
+            self.assertIn(expected_name, MockToozLock.active_locks)
+            self.assertRaises(Locked, agent1.get_lock(lock_name).acquire)
+            self.assertRaises(Locked, agent2.get_lock(lock_name).acquire)
+        self.assertNotIn(expected_name, MockToozLock.active_locks)
 
     def test_coordinator_offline(self, get_coordinator, heartbeat):
         crd = get_coordinator.return_value

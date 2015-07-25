@@ -113,8 +113,10 @@ class Coordinator(object):
         :param str name: The lock name that is used to identify it
             across all nodes.
         """
+        # NOTE(bluex): Tooz expects lock name as a byte string.
+        lock_name = (self.prefix + name).encode('ascii')
         if self.coordinator is not None:
-            return self.coordinator.get_lock(self.prefix + name)
+            return self.coordinator.get_lock(lock_name)
         else:
             raise exception.LockCreationFailed(_('Coordinator uninitialized.'))
 
@@ -139,7 +141,8 @@ class Coordinator(object):
                 self._dead.wait(cfg.CONF.coordination.heartbeat)
 
     def _start(self):
-        member_id = self.prefix + self.agent_id
+        # NOTE(bluex): Tooz expects member_id as a byte string.
+        member_id = (self.prefix + self.agent_id).encode('ascii')
         self.coordinator = coordination.get_coordinator(
             cfg.CONF.coordination.backend_url, member_id)
         self.coordinator.start()
