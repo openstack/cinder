@@ -22,7 +22,8 @@ supported XtremIO version 2.4 and up
 1.0.3 - update logging level, add translation
 1.0.4 - support for FC zones
 1.0.5 - add support for XtremIO 4.0
-1.0.6 - add support for iSCSI and CA validation
+1.0.6 - add support for iSCSI multipath, CA validation, consistency groups,
+        R/O snapshots
 """
 
 import json
@@ -38,6 +39,7 @@ import six
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
+from cinder import objects
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
 from cinder.zonemanager import utils as fczm_utils
@@ -163,6 +165,9 @@ class XtremIOClient(object):
         """
         raise NotImplementedError()
 
+    def get_extra_capabilities(self):
+        return {}
+
 
 class XtremIOClient3(XtremIOClient):
     def __init__(self, configuration, cluster_id):
@@ -217,6 +222,9 @@ class XtremIOClient4(XtremIOClient):
         super(XtremIOClient4, self).__init__(configuration, cluster_id)
         self._cluster_name = None
 
+    def get_extra_capabilities(self):
+        return {'consistencygroup_support': True}
+
     def find_lunmap(self, ig_name, vol_name):
         try:
             return (self.req('lun-maps',
@@ -268,6 +276,10 @@ class XtremIOClient4(XtremIOClient):
             LOG.error(msg)
             self.req(typ, 'DELETE', idx=int(idx))
             raise
+
+    def add_vol_to_cg(self, vol_id, cg_id):
+        add_data = {'vol-id': vol_id, 'cg-id': cg_id}
+        self.req('consistency-group-volumes', 'POST', add_data, ver='v2')
 
 
 class XtremIOVolumeDriver(san.SanDriver):
@@ -322,16 +334,27 @@ class XtremIOVolumeDriver(san.SanDriver):
         data = {'vol-name': volume['id'],
                 'vol-size': str(volume['size']) + 'g'
                 }
-
         self.client.req('volumes', 'POST', data)
+
+        if volume.get('consistencygroup_id'):
+            self.client.add_vol_to_cg(volume['id'],
+                                      volume['consistencygroup_id'])
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
         self.client.create_snapshot(snapshot.id, volume['id'])
 
+        if snapshot.get('consistencygroup_id'):
+            self.client.add_vol_to_cg(volume['id'],
+                                      snapshot['consistencygroup_id'])
+
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
         self.client.create_snapshot(src_vref['id'], volume['id'])
+
+        if volume.get('consistencygroup_id'):
+            self.client.add_vol_to_cg(volume['id'],
+                                      volume['consistencygroup_id'])
 
     def delete_volume(self, volume):
         """Deletes a volume."""
@@ -370,7 +393,9 @@ class XtremIOVolumeDriver(san.SanDriver):
                        'thick_provisioning_support': False,
                        'reserved_percentage':
                        self.configuration.reserved_percentage,
-                       'QoS_support': False}
+                       'QoS_support': False,
+                       }
+        self._stats.update(self.client.get_extra_capabilities())
 
     def get_volume_stats(self, refresh=False):
         """Get volume stats.
@@ -435,7 +460,7 @@ class XtremIOVolumeDriver(san.SanDriver):
             self.client.req('volumes', 'PUT', data, name=volume['id'])
         except exception.NotFound:
             msg = _("can't find the volume to extend")
-            raise (exception.VolumeDriverException(message=msg))
+            raise exception.VolumeDriverException(message=msg)
 
     def check_for_export(self, context, volume_id):
         """Make sure volume is exported."""
@@ -478,6 +503,117 @@ class XtremIOVolumeDriver(san.SanDriver):
 
     def _get_ig(self, connector):
         raise NotImplementedError()
+
+    def create_consistencygroup(self, context, group):
+        """Creates a consistency group.
+
+        :param context: the context
+        :param group: the group object to be created
+        :returns: dict -- modelUpdate = {'status': 'available'}
+        :raises: VolumeBackendAPIException
+        """
+        create_data = {'consistency-group-name': group['id']}
+        self.client.req('consistency-groups', 'POST', data=create_data,
+                        ver='v2')
+        return {'status': 'available'}
+
+    def delete_consistencygroup(self, context, group):
+        """Deletes a consistency group."""
+        self.client.req('consistency-groups', 'DELETE', name=group['id'],
+                        ver='v2')
+
+        volumes = self.db.volume_get_all_by_group(context, group['id'])
+
+        for volume in volumes:
+            self.delete_volume(volume)
+            volume.status = 'deleted'
+
+        model_update = {'status': group['status']}
+
+        return model_update, volumes
+
+    def create_consistencygroup_from_src(self, context, group, volumes,
+                                         cgsnapshot=None, snapshots=None):
+        """Creates a consistencygroup from source.
+
+        :param context: the context of the caller.
+        :param group: the dictionary of the consistency group to be created.
+        :param volumes: a list of volume dictionaries in the group.
+        :param cgsnapshot: the dictionary of the cgsnapshot as source.
+        :param snapshots: a list of snapshot dictionaries in the cgsnapshot.
+        :return model_update, volumes_model_update
+        """
+        if cgsnapshot and snapshots:
+            for volume, snapshot in zip(volumes, snapshots):
+                self.create_volume_from_snapshot(volume, snapshot)
+            create_data = {'consistency-group-name': group['id'],
+                           'vol-list': [v['id'] for v in volumes]}
+            self.client.req('consistency-groups', 'POST', data=create_data,
+                            ver='v2')
+        else:
+            msg = _("create_consistencygroup_from_src only supports a"
+                    " cgsnapshot source, other sources cannot be used.")
+            raise exception.InvalidInput(msg)
+
+        return None, None
+
+    def update_consistencygroup(self, context, group,
+                                add_volumes=None, remove_volumes=None):
+        """Updates a consistency group.
+
+        :param context: the context of the caller.
+        :param group: the dictionary of the consistency group to be updated.
+        :param add_volumes: a list of volume dictionaries to be added.
+        :param remove_volumes: a list of volume dictionaries to be removed.
+        :return model_update, add_volumes_update, remove_volumes_update
+        """
+        add_volumes = add_volumes if add_volumes else []
+        remove_volumes = remove_volumes if remove_volumes else []
+        for vol in add_volumes:
+            add_data = {'vol-id': vol['id'], 'cg-id': group['id']}
+            self.client.req('consistency-group-volumes', 'POST', add_data,
+                            ver='v2')
+        for vol in remove_volumes:
+            remove_data = {'vol-id': vol['id'], 'cg-id': group['id']}
+            self.client.req('consistency-group-volumes', 'DELETE', remove_data,
+                            name=group['id'], ver='v2')
+        return None, None, None
+
+    def _get_cgsnap_name(self, cgsnapshot):
+        return '%(cg)s%(snap)s' % {'cg': cgsnapshot['consistencygroup_id']
+                                   .replace('-', ''),
+                                   'snap': cgsnapshot['id'].replace('-', '')}
+
+    def create_cgsnapshot(self, context, cgsnapshot):
+        """Creates a cgsnapshot."""
+        data = {'consistency-group-id': cgsnapshot['consistencygroup_id'],
+                'snapshot-set-name': self._get_cgsnap_name(cgsnapshot)}
+        self.client.req('snapshots', 'POST', data, ver='v2')
+
+        snapshots = objects.SnapshotList().get_all_for_cgsnapshot(
+            context, cgsnapshot['id'])
+
+        for snapshot in snapshots:
+            snapshot.status = 'available'
+
+        model_update = {'status': 'available'}
+
+        return model_update, snapshots
+
+    def delete_cgsnapshot(self, context, cgsnapshot):
+        """Deletes a cgsnapshot."""
+        self.client.req('snapshot-sets', 'DELETE',
+                        name=self._get_cgsnap_name(cgsnapshot), ver='v2')
+
+        snapshots = objects.SnapshotList().get_all_for_cgsnapshot(
+            context, cgsnapshot['id'])
+
+        for snapshot in snapshots:
+            snapshot.status = 'deleted'
+
+        model_update = {'status': cgsnapshot.status}
+
+        return model_update, snapshots
 
 
 class XtremIOISCSIDriver(XtremIOVolumeDriver, driver.ISCSIDriver):
