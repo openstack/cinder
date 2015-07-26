@@ -154,13 +154,7 @@ class VolumeRpcAPITestCase(test.TestCase):
                               request_spec='fake_request_spec',
                               filter_properties='fake_properties',
                               allow_reschedule=True,
-                              snapshot_id='fake_snapshot_id',
-                              image_id='fake_image_id',
-                              source_volid='fake_src_id',
-                              source_replicaid='fake_replica_id',
-                              consistencygroup_id='fake_cg_id',
-                              cgsnapshot_id=None,
-                              version='1.4')
+                              version='1.24')
 
     def test_create_volume_serialization(self):
         request_spec = {"metadata": self.fake_volume_metadata}
@@ -171,13 +165,7 @@ class VolumeRpcAPITestCase(test.TestCase):
                               request_spec=request_spec,
                               filter_properties='fake_properties',
                               allow_reschedule=True,
-                              snapshot_id='fake_snapshot_id',
-                              image_id='fake_image_id',
-                              source_volid='fake_src_id',
-                              source_replicaid='fake_replica_id',
-                              consistencygroup_id='fake_cg_id',
-                              cgsnapshot_id=None,
-                              version='1.4')
+                              version='1.24')
 
     def test_delete_volume(self):
         self._test_volume_api('delete_volume',

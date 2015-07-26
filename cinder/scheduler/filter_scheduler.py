@@ -90,8 +90,6 @@ class FilterScheduler(driver.Scheduler):
 
         host = weighed_host.obj.host
         volume_id = request_spec['volume_id']
-        snapshot_id = request_spec['snapshot_id']
-        image_id = request_spec['image_id']
 
         updated_volume = driver.volume_update_db(context, volume_id, host)
         self._post_select_populate_filter_properties(filter_properties,
@@ -102,9 +100,7 @@ class FilterScheduler(driver.Scheduler):
 
         self.volume_rpcapi.create_volume(context, updated_volume, host,
                                          request_spec, filter_properties,
-                                         allow_reschedule=True,
-                                         snapshot_id=snapshot_id,
-                                         image_id=image_id)
+                                         allow_reschedule=True)
 
     def host_passes_filters(self, context, host, request_spec,
                             filter_properties):
