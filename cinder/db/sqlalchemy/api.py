@@ -3155,6 +3155,34 @@ def volume_glance_metadata_create(context, volume_id, key, value):
 
 
 @require_context
+@require_volume_exists
+def volume_glance_metadata_bulk_create(context, volume_id, metadata):
+    """Update the Glance metadata for a volume by adding new key:value pairs.
+
+    This API does not support changing the value of a key once it has been
+    created.
+    """
+
+    session = get_session()
+    with session.begin():
+        for (key, value) in metadata.items():
+            rows = session.query(models.VolumeGlanceMetadata).\
+                filter_by(volume_id=volume_id).\
+                filter_by(key=key).\
+                filter_by(deleted=False).all()
+
+            if len(rows) > 0:
+                raise exception.GlanceMetadataExists(key=key,
+                                                     volume_id=volume_id)
+
+            vol_glance_metadata = models.VolumeGlanceMetadata()
+            vol_glance_metadata.volume_id = volume_id
+            vol_glance_metadata.key = key
+            vol_glance_metadata.value = six.text_type(value)
+            session.add(vol_glance_metadata)
+
+
+@require_context
 @require_snapshot_exists
 def volume_glance_metadata_copy_to_snapshot(context, snapshot_id, volume_id):
     """Update the Glance metadata for a snapshot.

@@ -466,24 +466,31 @@ class VolumeManager(manager.SchedulerDependentManager):
         # NOTE(dulek): Flag to indicate if volume was rescheduled. Used to
         # decide if allocated_capacity should be incremented.
         rescheduled = False
+        vol_ref = None
 
         try:
             if locked_action is None:
                 _run_flow()
             else:
                 _run_flow_locked()
-        except Exception as e:
-            if hasattr(e, 'rescheduled'):
-                rescheduled = e.rescheduled
-            raise
         finally:
             try:
                 vol_ref = flow_engine.storage.fetch('volume_ref')
-            except tfe.NotFound as e:
-                # Flow was reverted, fetching volume_ref from the DB.
-                vol_ref = self.db.volume_get(context, volume_id)
+            except tfe.NotFound:
+                # If there's no vol_ref, then flow is reverted. Lets check out
+                # if rescheduling occurred.
+                try:
+                    rescheduled = flow_engine.storage.get_revert_result(
+                        create_volume.OnFailureRescheduleTask.make_name(
+                            [create_volume.ACTION]))
+                except tfe.NotFound:
+                    pass
 
             if not rescheduled:
+                if not vol_ref:
+                    # Flow was reverted and not rescheduled, fetching
+                    # volume_ref from the DB, because it will be needed.
+                    vol_ref = self.db.volume_get(context, volume_id)
                 # NOTE(dulek): Volume wasn't rescheduled so we need to update
                 # volume stats as these are decremented on delete.
                 self._update_allocated_capacity(vol_ref)
