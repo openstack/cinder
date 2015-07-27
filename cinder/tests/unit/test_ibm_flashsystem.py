@@ -846,10 +846,28 @@ class FlashSystemDriverTestCase(test.TestCase):
         attr_size = float(attributes['capacity']) / units.Gi
         self.assertEqual(float(vol['size']), attr_size)
 
-        # case 2: delete volume
+        # case 2: create volume with empty returning value
+        with mock.patch.object(FlashSystemFakeDriver,
+                               '_ssh') as mock_ssh:
+            mock_ssh.return_value = ("", "")
+            vol1 = self._generate_vol_info(None)
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.driver.create_volume, vol1)
+
+        # case 3: create volume with error returning value
+        with mock.patch.object(FlashSystemFakeDriver,
+                               '_ssh') as mock_ssh:
+            mock_ssh.return_value = ("CMMVC6070E",
+                                     "An invalid or duplicated "
+                                     "parameter has been detected.")
+            vol2 = self._generate_vol_info(None)
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.driver.create_volume, vol2)
+
+        # case 4: delete volume
         self.driver.delete_volume(vol)
 
-        # case 3: delete volume that doesn't exist (expected not fail)
+        # case 5: delete volume that doesn't exist (expected not fail)
         vol_no_exist = self._generate_vol_info(None)
         self.driver.delete_volume(vol_no_exist)
 
