@@ -1,4 +1,4 @@
-# Copyright (C) 2014, Hitachi, Ltd.
+# Copyright (C) 2014, 2015, Hitachi, Ltd.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -203,8 +203,6 @@ HBSD-127.0.0.1None1A30 HBSD-ldev-1-1 R CL1-A-1 0 0 0 None 1 S-VOL PAIR - 1 -"
         [1, "", ""],
         ('raidcom', 'get ldev -ldev_id 0 -cnt 2'):
         [0, "%s" % raidcom_get_result, ""],
-        ('raidcom', 'lock resource'):
-        [0, "", ""],
         ('raidcom',
          'add ldev -pool 30 -ldev_id 1 -capacity 128G -emulation OPEN-V'):
         [0, "", ""],
@@ -544,6 +542,7 @@ STS : NML"
         self.configuration.hitachi_horcm_numbers = "409,419"
         self.configuration.hitachi_horcm_user = "user"
         self.configuration.hitachi_horcm_password = "pasword"
+        self.configuration.hitachi_horcm_resource_lock_timeout = 600
 
     def _setup_driver(self):
         self.driver = hbsd_fc.HBSDFCDriver(
@@ -999,3 +998,11 @@ STS : NML"
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver.manage_existing_get_size, self._VOLUME,
                           self.test_existing_ref)
+
+    def test_invalid_resource_lock_timeout_below_limit(self):
+        self.configuration.hitachi_horcm_resource_lock_timeout = -1
+        self.assertRaises(exception.HBSDError, self.driver.check_param)
+
+    def test_invalid_resource_lock_timeout_over_limit(self):
+        self.configuration.hitachi_horcm_resource_lock_timeout = 7201
+        self.assertRaises(exception.HBSDError, self.driver.check_param)
