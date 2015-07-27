@@ -293,9 +293,11 @@ class Service(service.Service):
         if not self.manager.is_working():
             # NOTE(dulek): If manager reports a problem we're not sending
             # heartbeats - to indicate that service is actually down.
-            LOG.error(_LE('Manager for service %s is reporting problems, skip '
-                          'sending heartbeat. Service will appear "down".'),
-                      self.binary)
+            LOG.error(_LE('Manager for service %(binary)s %(host)s is '
+                          'reporting problems, not sending heartbeat. '
+                          'Service will appear "down".'),
+                      {'binary': self.binary,
+                       'host': self.host})
             return
 
         ctxt = context.get_admin_context()
