@@ -540,7 +540,7 @@ class DBAPIVolumeTestCase(BaseTest):
                                        match_keys=['id', 'display_name',
                                                    'volume_metadata',
                                                    'created_at']):
-        """"Verifies that volumes are returned in the correct order."""
+        """Verifies that volumes are returned in the correct order."""
         if project_id:
             result = db.volume_get_all_by_project(self.ctxt, project_id,
                                                   marker, limit,
@@ -821,7 +821,7 @@ class DBAPIVolumeTestCase(BaseTest):
         self._assertEqualsVolumeOrderResult(correct_order)
 
     def test_volume_get_all_by_filters_sort_keys_paginate(self):
-        '''Verifies sort order with pagination.'''
+        """Verifies sort order with pagination."""
         # Volumes that will reply to the query
         test1_avail = db.volume_create(self.ctxt, {'display_name': 'test',
                                                    'size': 1,
@@ -1814,7 +1814,7 @@ class DBAPIBackupTestCase(BaseTest):
 class DBAPIProcessSortParamTestCase(test.TestCase):
 
     def test_process_sort_params_defaults(self):
-        '''Verifies default sort parameters.'''
+        """Verifies default sort parameters."""
         sort_keys, sort_dirs = sqlalchemy_api.process_sort_params([], [])
         self.assertEqual(['created_at', 'id'], sort_keys)
         self.assertEqual(['asc', 'asc'], sort_dirs)
@@ -1824,21 +1824,21 @@ class DBAPIProcessSortParamTestCase(test.TestCase):
         self.assertEqual(['asc', 'asc'], sort_dirs)
 
     def test_process_sort_params_override_default_keys(self):
-        '''Verifies that the default keys can be overridden.'''
+        """Verifies that the default keys can be overridden."""
         sort_keys, sort_dirs = sqlalchemy_api.process_sort_params(
             [], [], default_keys=['key1', 'key2', 'key3'])
         self.assertEqual(['key1', 'key2', 'key3'], sort_keys)
         self.assertEqual(['asc', 'asc', 'asc'], sort_dirs)
 
     def test_process_sort_params_override_default_dir(self):
-        '''Verifies that the default direction can be overridden.'''
+        """Verifies that the default direction can be overridden."""
         sort_keys, sort_dirs = sqlalchemy_api.process_sort_params(
             [], [], default_dir='dir1')
         self.assertEqual(['created_at', 'id'], sort_keys)
         self.assertEqual(['dir1', 'dir1'], sort_dirs)
 
     def test_process_sort_params_override_default_key_and_dir(self):
-        '''Verifies that the default key and dir can be overridden.'''
+        """Verifies that the default key and dir can be overridden."""
         sort_keys, sort_dirs = sqlalchemy_api.process_sort_params(
             [], [], default_keys=['key1', 'key2', 'key3'],
             default_dir='dir1')
@@ -1851,7 +1851,7 @@ class DBAPIProcessSortParamTestCase(test.TestCase):
         self.assertEqual([], sort_dirs)
 
     def test_process_sort_params_non_default(self):
-        '''Verifies that non-default keys are added correctly.'''
+        """Verifies that non-default keys are added correctly."""
         sort_keys, sort_dirs = sqlalchemy_api.process_sort_params(
             ['key1', 'key2'], ['asc', 'desc'])
         self.assertEqual(['key1', 'key2', 'created_at', 'id'], sort_keys)
@@ -1859,7 +1859,7 @@ class DBAPIProcessSortParamTestCase(test.TestCase):
         self.assertEqual(['asc', 'desc', 'asc', 'asc'], sort_dirs)
 
     def test_process_sort_params_default(self):
-        '''Verifies that default keys are added correctly.'''
+        """Verifies that default keys are added correctly."""
         sort_keys, sort_dirs = sqlalchemy_api.process_sort_params(
             ['id', 'key2'], ['asc', 'desc'])
         self.assertEqual(['id', 'key2', 'created_at'], sort_keys)
@@ -1872,7 +1872,7 @@ class DBAPIProcessSortParamTestCase(test.TestCase):
         self.assertEqual(['asc', 'asc', 'asc'], sort_dirs)
 
     def test_process_sort_params_default_dir(self):
-        '''Verifies that the default dir is applied to all keys.'''
+        """Verifies that the default dir is applied to all keys."""
         # Direction is set, ignore default dir
         sort_keys, sort_dirs = sqlalchemy_api.process_sort_params(
             ['id', 'key2'], ['desc'], default_dir='dir')
@@ -1886,7 +1886,7 @@ class DBAPIProcessSortParamTestCase(test.TestCase):
         self.assertEqual(['dir', 'dir', 'dir'], sort_dirs)
 
     def test_process_sort_params_unequal_length(self):
-        '''Verifies that a sort direction list is applied correctly.'''
+        """Verifies that a sort direction list is applied correctly."""
         sort_keys, sort_dirs = sqlalchemy_api.process_sort_params(
             ['id', 'key2', 'key3'], ['desc'])
         self.assertEqual(['id', 'key2', 'key3', 'created_at'], sort_keys)
@@ -1904,14 +1904,14 @@ class DBAPIProcessSortParamTestCase(test.TestCase):
         self.assertEqual(['desc', 'asc', 'asc', 'desc'], sort_dirs)
 
     def test_process_sort_params_extra_dirs_lengths(self):
-        '''InvalidInput raised if more directions are given.'''
+        """InvalidInput raised if more directions are given."""
         self.assertRaises(exception.InvalidInput,
                           sqlalchemy_api.process_sort_params,
                           ['key1', 'key2'],
                           ['asc', 'desc', 'desc'])
 
     def test_process_sort_params_invalid_sort_dir(self):
-        '''InvalidInput raised if invalid directions are given.'''
+        """InvalidInput raised if invalid directions are given."""
         for dirs in [['foo'], ['asc', 'foo'], ['asc', 'desc', 'foo']]:
             self.assertRaises(exception.InvalidInput,
                               sqlalchemy_api.process_sort_params,

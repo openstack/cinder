@@ -12,7 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-'''Volume driver for Dell Storage Center.'''
+"""Volume driver for Dell Storage Center."""
 
 from oslo_log import log as logging
 from oslo_utils import excutils
@@ -29,7 +29,7 @@ LOG = logging.getLogger(__name__)
 class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
                                 driver.FibreChannelDriver):
 
-    '''Implements commands for Dell EqualLogic SAN ISCSI management.
+    """Implements commands for Dell EqualLogic SAN ISCSI management.
 
     To enable the driver add the following line to the cinder configuration:
         volume_driver=cinder.volume.drivers.dell.DellStorageCenterFCDriver
@@ -42,7 +42,7 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
                 driver.
         2.1.0 - Added support for ManageableVD.
         2.2.0 - Driver retype support for switching volume's Storage Profile
-    '''
+    """
 
     VERSION = '2.2.0'
 
@@ -53,7 +53,7 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
 
     @fczm_utils.AddFCZone
     def initialize_connection(self, volume, connector):
-        '''Initializes the connection and returns connection info.
+        """Initializes the connection and returns connection info.
 
         Assign any created volume to a compute node/host so that it can be
         used from that host.
@@ -61,7 +61,7 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
         The  driver returns a driver_volume_type of 'fibre_channel'.
         The target_wwn can be a single entry or a list of wwns that
         correspond to the list of remote wwn(s) that will export the volume.
-        '''
+        """
 
         # We use id to name the volume name as it is a
         # known unique name.
@@ -154,10 +154,10 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
             _('Terminate connection unable to connect to backend.'))
 
     def get_volume_stats(self, refresh=False):
-        '''Get volume status.
+        """Get volume status.
 
         If 'refresh' is True, run update the stats first.
-        '''
+        """
         if refresh:
             self._update_volume_stats()
             # Update our protocol to the correct one.

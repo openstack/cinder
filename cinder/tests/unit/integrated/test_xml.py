@@ -24,7 +24,7 @@ LOG = logging.getLogger(__name__)
 
 
 class XmlTests(integrated_helpers._IntegratedTestBase):
-    """"Some basic XML sanity checks."""
+    """Some basic XML sanity checks."""
 
     # FIXME(ja): does cinder need limits?
     # def test_namespace_limits(self):

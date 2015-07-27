@@ -218,14 +218,14 @@ class LVM(lvm.LVM):
 
 @contextlib.contextmanager
 def patched(obj, attr, fun):
-    '''Context manager to locally patch a method.
+    """Context manager to locally patch a method.
 
     Within the managed context, the `attr` method of `obj` will be replaced by
     a method which calls `fun` passing in the original `attr` attribute of
     `obj` as well as any positional and keyword arguments.
 
     At the end of the context, the original method is restored.
-    '''
+    """
 
     orig = getattr(obj, attr)
 
@@ -242,7 +242,7 @@ def patched(obj, attr, fun):
 
 @contextlib.contextmanager
 def handle_process_execution_error(message, info_message, reraise=True):
-    '''Consistently handle `putils.ProcessExecutionError` exceptions
+    """Consistently handle `putils.ProcessExecutionError` exceptions
 
     This context-manager will catch any `putils.ProcessExecutionError`
     exceptions raised in the managed block, and generate logging output
@@ -259,7 +259,7 @@ def handle_process_execution_error(message, info_message, reraise=True):
     object will be raised instead (so you most likely want it to be some
     `Exception`). Any `False` value will result in the exception to be
     swallowed.
-    '''
+    """
 
     try:
         yield
@@ -460,8 +460,8 @@ class SRBDriver(driver.VolumeDriver):
 
     @staticmethod
     def _activate_lv(orig, *args, **kwargs):
-        '''Use with `patched` to patch `lvm.LVM.activate_lv` to ignore `EEXIST`
-        '''
+        """Use with `patched` to patch `lvm.LVM.activate_lv` to ignore `EEXIST`
+        """
         try:
             orig(*args, **kwargs)
         except putils.ProcessExecutionError as exc:

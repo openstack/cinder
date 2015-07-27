@@ -29,7 +29,7 @@ CONF = cfg.CONF
 
 
 class VolumeAPI(object):
-    '''Client side of the volume rpc API.
+    """Client side of the volume rpc API.
 
     API version history:
 
@@ -68,7 +68,7 @@ class VolumeAPI(object):
                source_volid, source_replicaid, consistencygroup_id and
                cgsnapshot_id from create_volume. All off them are already
                passed either in request_spec or available in the DB.
-    '''
+    """
 
     BASE_RPC_API_VERSION = '1.0'
 

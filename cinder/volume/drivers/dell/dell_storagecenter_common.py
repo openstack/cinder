@@ -61,12 +61,12 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
             self.configuration.safe_get('volume_backend_name') or 'Dell'
 
     def _bytes_to_gb(self, spacestring):
-        '''Space is returned in a string like ...
+        """Space is returned in a string like ...
         7.38197504E8 Bytes
         Need to split that apart and convert to GB.
 
         returns gbs in int form
-        '''
+        """
         try:
             n = spacestring.split(' ', 1)
             fgbs = float(n[0]) / 1073741824.0
@@ -78,22 +78,22 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
             return None
 
     def do_setup(self, context):
-        '''One time driver setup.
+        """One time driver setup.
 
         Called once by the manager after the driver is loaded.
         Sets up clients, check licenses, sets up protocol
         specific helpers.
-        '''
+        """
         self._client = dell_storagecenter_api.StorageCenterApiHelper(
             self.configuration)
 
     def check_for_setup_error(self):
-        '''Validates the configuration information.'''
+        """Validates the configuration information."""
         with self._client.open_connection() as api:
             api.find_sc()
 
     def _get_volume_extra_specs(self, volume):
-        '''Gets extra specs for the given volume.'''
+        """Gets extra specs for the given volume."""
         type_id = volume.get('volume_type_id')
         if type_id:
             return volume_types.get_volume_type_extra_specs(type_id)
@@ -101,13 +101,13 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         return {}
 
     def _add_volume_to_consistency_group(self, api, scvolume, volume):
-        '''Just a helper to add a volume to a consistency group.
+        """Just a helper to add a volume to a consistency group.
 
         :param api: Dell SC API opbject.
         :param scvolume: Dell SC Volume object.
         :param volume: Cinder Volume object.
         :return: Nothing.
-        '''
+        """
         if scvolume and volume.get('consistencygroup_id'):
             profile = api.find_replay_profile(
                 volume.get('consistencygroup_id'))
@@ -115,7 +115,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                 api.update_cg_volumes(profile, [volume])
 
     def create_volume(self, volume):
-        '''Create a volume.'''
+        """Create a volume."""
 
         # We use id as our name as it is unique.
         volume_name = volume.get('id')
@@ -166,7 +166,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
             raise exception.VolumeIsBusy(volume_name=volume_name)
 
     def create_snapshot(self, snapshot):
-        '''Create snapshot'''
+        """Create snapshot"""
         # our volume name is the volume id
         volume_name = snapshot.get('volume_id')
         snapshot_id = snapshot.get('id')
@@ -192,7 +192,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
             snapshot_id)
 
     def create_volume_from_snapshot(self, volume, snapshot):
-        '''Create new volume from other volume's snapshot on appliance.'''
+        """Create new volume from other volume's snapshot on appliance."""
         scvolume = None
         src_volume_name = snapshot.get('volume_id')
         # This snapshot could have been created on its own or as part of a
@@ -239,7 +239,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                 _('Failed to create volume %s') % volume_name)
 
     def create_cloned_volume(self, volume, src_vref):
-        '''Creates a clone of the specified volume.'''
+        """Creates a clone of the specified volume."""
         scvolume = None
         src_volume_name = src_vref.get('id')
         volume_name = volume.get('id')
@@ -270,7 +270,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                 _('Failed to create volume %s') % volume_name)
 
     def delete_snapshot(self, snapshot):
-        '''delete_snapshot'''
+        """delete_snapshot"""
         volume_name = snapshot.get('volume_id')
         snapshot_id = snapshot.get('id')
         LOG.debug('Deleting snapshot %(snap)s from volume %(vol)s',
@@ -289,19 +289,19 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
             _('Failed to delete snapshot %s') % snapshot_id)
 
     def create_export(self, context, volume):
-        '''Create an export of a volume.
+        """Create an export of a volume.
 
         The volume exists on creation and will be visible on
         initialize connection.  So nothing to do here.
-        '''
+        """
         pass
 
     def ensure_export(self, context, volume):
-        '''Ensure an export of a volume.
+        """Ensure an export of a volume.
 
         Per the eqlx driver we just make sure that the volume actually
         exists where we think it does.
-        '''
+        """
         scvolume = None
         volume_name = volume.get('id')
         LOG.debug('Checking existence of volume %s', volume_name)
@@ -318,15 +318,15 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                 _('Unable to find volume %s') % volume_name)
 
     def remove_export(self, context, volume):
-        '''Remove an export of a volume.
+        """Remove an export of a volume.
 
         We do nothing here to match the nothing we do in create export.  Again
         we do everything in initialize and terminate connection.
-        '''
+        """
         pass
 
     def extend_volume(self, volume, new_size):
-        '''Extend the size of the volume.'''
+        """Extend the size of the volume."""
         volume_name = volume.get('id')
         LOG.debug('Extending volume %(vol)s to %(size)s',
                   {'vol': volume_name,
@@ -342,17 +342,17 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
             _('Unable to extend volume %s') % volume_name)
 
     def get_volume_stats(self, refresh=False):
-        '''Get volume status.
+        """Get volume status.
 
         If 'refresh' is True, run update the stats first.
-        '''
+        """
         if refresh:
             self._update_volume_stats()
 
         return self._stats
 
     def _update_volume_stats(self):
-        '''Retrieve stats info from volume group.'''
+        """Retrieve stats info from volume group."""
         with self._client.open_connection() as api:
             storageusage = api.get_storage_usage() if api.find_sc() else None
 
@@ -383,14 +383,14 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
 
     def update_migrated_volume(self, ctxt, volume, new_volume,
                                original_volume_status):
-        '''Return model update for migrated volume.
+        """Return model update for migrated volume.
 
         :param volume: The original volume that was migrated to this backend
         :param new_volume: The migration volume object that was created on
                            this backend as part of the migration process
         :param original_volume_status: The status of the original volume
         :return model_update to update DB with any needed changes
-        '''
+        """
         # We use id as our volume name so we need to rename the backend
         # volume to the original volume name.
         original_volume_name = volume.get('id')
@@ -413,13 +413,13 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         return {'_name_id': new_volume['_name_id'] or new_volume['id']}
 
     def create_consistencygroup(self, context, group):
-        '''This creates a replay profile on the storage backend.
+        """This creates a replay profile on the storage backend.
 
         :param context: the context of the caller.
         :param group: the dictionary of the consistency group to be created.
         :return: Nothing on success.
         :raises: VolumeBackendAPIException
-        '''
+        """
         gid = group['id']
         with self._client.open_connection() as api:
             cgroup = api.create_replay_profile(gid)
@@ -430,12 +430,12 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
             _('Unable to create consistency group %s') % gid)
 
     def delete_consistencygroup(self, context, group):
-        '''Delete the Dell SC profile associated with this consistency group.
+        """Delete the Dell SC profile associated with this consistency group.
 
         :param context: the context of the caller.
         :param group: the dictionary of the consistency group to be created.
         :return: Updated model_update, volumes.
-        '''
+        """
         gid = group['id']
         with self._client.open_connection() as api:
             profile = api.find_replay_profile(gid)
@@ -457,7 +457,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
 
     def update_consistencygroup(self, context, group,
                                 add_volumes=None, remove_volumes=None):
-        '''Updates a consistency group.
+        """Updates a consistency group.
 
         :param context: the context of the caller.
         :param group: the dictionary of the consistency group to be updated.
@@ -480,7 +480,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
 
         If the driver throws an exception, the status of the group as well as
         those of the volumes to be added/removed will be set to 'error'.
-        '''
+        """
         gid = group['id']
         with self._client.open_connection() as api:
             profile = api.find_replay_profile(gid)
@@ -497,13 +497,13 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
             _('Unable to update consistency group %s') % gid)
 
     def create_cgsnapshot(self, context, cgsnapshot):
-        '''Takes a snapshot of the consistency group.
+        """Takes a snapshot of the consistency group.
 
         :param context: the context of the caller.
         :param cgsnapshot: Information about the snapshot to take.
         :return: Updated model_update, snapshots.
         :raises: VolumeBackendAPIException.
-        '''
+        """
         cgid = cgsnapshot['consistencygroup_id']
         snapshotid = cgsnapshot['id']
 
@@ -530,7 +530,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
             _('Unable to snap Consistency Group %s') % cgid)
 
     def delete_cgsnapshot(self, context, cgsnapshot):
-        '''Deletes a cgsnapshot.
+        """Deletes a cgsnapshot.
 
         If profile isn't found return success.  If failed to delete the
         replay (the snapshot) then raise an exception.
@@ -539,7 +539,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         :param cgsnapshot: Information about the snapshot to delete.
         :return: Updated model_update, snapshots.
         :raises: VolumeBackendAPIException.
-        '''
+        """
         cgid = cgsnapshot['consistencygroup_id']
         snapshotid = cgsnapshot['id']
 

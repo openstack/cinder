@@ -773,7 +773,7 @@ class BackupCephTestCase(test.TestCase):
 
     @common_mocks
     def test_diff_restore_allowed_with_image_not_exists(self):
-        '''Test diff restore not allowed when backup not diff-format.'''
+        """Test diff restore not allowed when backup not diff-format."""
         not_allowed = (False, None)
         backup_base = 'backup.base'
         rbd_io = self._get_wrapped_rbd_io(self.service.rbd.Image())
@@ -794,12 +794,12 @@ class BackupCephTestCase(test.TestCase):
 
     @common_mocks
     def test_diff_restore_allowed_with_no_restore_point(self):
-        '''Test diff restore not allowed when no restore point found.
+        """Test diff restore not allowed when no restore point found.
 
         Detail conditions:
           1. backup base is diff-format
           2. restore point does not exist
-        '''
+        """
         not_allowed = (False, None)
         backup_base = 'backup.base'
         rbd_io = self._get_wrapped_rbd_io(self.service.rbd.Image())
@@ -824,13 +824,13 @@ class BackupCephTestCase(test.TestCase):
 
     @common_mocks
     def test_diff_restore_allowed_with_not_rbd(self):
-        '''Test diff restore not allowed when destination volume is not rbd.
+        """Test diff restore not allowed when destination volume is not rbd.
 
         Detail conditions:
           1. backup base is diff-format
           2. restore point exists
           3. destination volume is not an rbd.
-        '''
+        """
         backup_base = 'backup.base'
         restore_point = 'backup.snap.1'
         rbd_io = self._get_wrapped_rbd_io(self.service.rbd.Image())
@@ -858,14 +858,14 @@ class BackupCephTestCase(test.TestCase):
 
     @common_mocks
     def test_diff_restore_allowed_with_same_volume(self):
-        '''Test diff restore not allowed when volumes are same.
+        """Test diff restore not allowed when volumes are same.
 
         Detail conditions:
           1. backup base is diff-format
           2. restore point exists
           3. destination volume is an rbd
           4. source and destination volumes are the same
-        '''
+        """
         backup_base = 'backup.base'
         restore_point = 'backup.snap.1'
         rbd_io = self._get_wrapped_rbd_io(self.service.rbd.Image())
@@ -891,7 +891,7 @@ class BackupCephTestCase(test.TestCase):
 
     @common_mocks
     def test_diff_restore_allowed_with_has_extents(self):
-        '''Test diff restore not allowed when destination volume has data.
+        """Test diff restore not allowed when destination volume has data.
 
         Detail conditions:
           1. backup base is diff-format
@@ -899,7 +899,7 @@ class BackupCephTestCase(test.TestCase):
           3. destination volume is an rbd
           4. source and destination volumes are different
           5. destination volume has data on it - full copy is mandated
-        '''
+        """
         backup_base = 'backup.base'
         restore_point = 'backup.snap.1'
         rbd_io = self._get_wrapped_rbd_io(self.service.rbd.Image())
@@ -931,7 +931,7 @@ class BackupCephTestCase(test.TestCase):
 
     @common_mocks
     def test_diff_restore_allowed_with_no_extents(self):
-        '''Test diff restore allowed when no data in destination volume.
+        """Test diff restore allowed when no data in destination volume.
 
         Detail conditions:
           1. backup base is diff-format
@@ -939,7 +939,7 @@ class BackupCephTestCase(test.TestCase):
           3. destination volume is an rbd
           4. source and destination volumes are different
           5. destination volume no data on it
-        '''
+        """
         backup_base = 'backup.base'
         restore_point = 'backup.snap.1'
         rbd_io = self._get_wrapped_rbd_io(self.service.rbd.Image())

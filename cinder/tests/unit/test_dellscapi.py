@@ -35,10 +35,10 @@ from cinder.volume.drivers.dell import dell_storagecenter_api
                    'close_connection')
 class DellSCSanAPITestCase(test.TestCase):
 
-    '''DellSCSanAPITestCase
+    """DellSCSanAPITestCase
 
     Class to test the Storage Center API using Mock.
-    '''
+    """
 
     SC = {u'IPv6ManagementIPPrefix': 128,
           u'connectionError': u'',
@@ -5635,10 +5635,10 @@ class DellSCSanAPITestCase(test.TestCase):
 
 class DellSCSanAPIConnectionTestCase(test.TestCase):
 
-    '''DellSCSanAPIConnectionTestCase
+    """DellSCSanAPIConnectionTestCase
 
     Class to test the Storage Center API connection using Mock.
-    '''
+    """
 
     # Create a Response object that indicates OK
     response_ok = models.Response()

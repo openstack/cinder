@@ -433,7 +433,7 @@ def create_configuration_eseries():
 
 
 def deepcopy_return_value_method_decorator(fn):
-    '''Returns a deepcopy of the returned value of the wrapped function.'''
+    """Returns a deepcopy of the returned value of the wrapped function."""
     def decorator(*args, **kwargs):
         return copy.deepcopy(fn(*args, **kwargs))
 
@@ -441,9 +441,9 @@ def deepcopy_return_value_method_decorator(fn):
 
 
 def deepcopy_return_value_class_decorator(cls):
-    '''Wraps all 'non-protected' methods of a class with the
+    """Wraps all 'non-protected' methods of a class with the
     deepcopy_return_value_method_decorator decorator.
-    '''
+    """
     class NewClass(cls):
         def __getattribute__(self, attr_name):
             obj = super(NewClass, self).__getattribute__(attr_name)

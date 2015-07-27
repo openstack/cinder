@@ -56,7 +56,7 @@ NETAPP_UNIFIED_DRIVER_REGISTRY = {
 
 
 class NetAppDriver(driver.ProxyVD):
-    """"NetApp unified block storage driver.
+    """NetApp unified block storage driver.
 
        Acts as a factory to create NetApp storage drivers based on the
        storage family and protocol configured.
@@ -85,7 +85,7 @@ class NetAppDriver(driver.ProxyVD):
 
     @staticmethod
     def create_driver(storage_family, storage_protocol, *args, **kwargs):
-        """"Creates an appropriate driver based on family and protocol."""
+        """Creates an appropriate driver based on family and protocol."""
 
         storage_family = storage_family.lower()
         storage_protocol = storage_protocol.lower()

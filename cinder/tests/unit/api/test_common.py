@@ -208,34 +208,34 @@ class PaginationParamsTest(test.TestCase):
 class SortParamUtilsTest(test.TestCase):
 
     def test_get_sort_params_defaults(self):
-        '''Verifies the default sort key and direction.'''
+        """Verifies the default sort key and direction."""
         sort_keys, sort_dirs = common.get_sort_params({})
         self.assertEqual(['created_at'], sort_keys)
         self.assertEqual(['desc'], sort_dirs)
 
     def test_get_sort_params_override_defaults(self):
-        '''Verifies that the defaults can be overriden.'''
+        """Verifies that the defaults can be overriden."""
         sort_keys, sort_dirs = common.get_sort_params({}, default_key='key1',
                                                       default_dir='dir1')
         self.assertEqual(['key1'], sort_keys)
         self.assertEqual(['dir1'], sort_dirs)
 
     def test_get_sort_params_single_value_sort_param(self):
-        '''Verifies a single sort key and direction.'''
+        """Verifies a single sort key and direction."""
         params = {'sort': 'key1:dir1'}
         sort_keys, sort_dirs = common.get_sort_params(params)
         self.assertEqual(['key1'], sort_keys)
         self.assertEqual(['dir1'], sort_dirs)
 
     def test_get_sort_params_single_value_old_params(self):
-        '''Verifies a single sort key and direction.'''
+        """Verifies a single sort key and direction."""
         params = {'sort_key': 'key1', 'sort_dir': 'dir1'}
         sort_keys, sort_dirs = common.get_sort_params(params)
         self.assertEqual(['key1'], sort_keys)
         self.assertEqual(['dir1'], sort_dirs)
 
     def test_get_sort_params_single_with_default_sort_param(self):
-        '''Verifies a single sort value with a default direction.'''
+        """Verifies a single sort value with a default direction."""
         params = {'sort': 'key1'}
         sort_keys, sort_dirs = common.get_sort_params(params)
         self.assertEqual(['key1'], sort_keys)
@@ -243,7 +243,7 @@ class SortParamUtilsTest(test.TestCase):
         self.assertEqual(['desc'], sort_dirs)
 
     def test_get_sort_params_single_with_default_old_params(self):
-        '''Verifies a single sort value with a default direction.'''
+        """Verifies a single sort value with a default direction."""
         params = {'sort_key': 'key1'}
         sort_keys, sort_dirs = common.get_sort_params(params)
         self.assertEqual(['key1'], sort_keys)
@@ -251,14 +251,14 @@ class SortParamUtilsTest(test.TestCase):
         self.assertEqual(['desc'], sort_dirs)
 
     def test_get_sort_params_multiple_values(self):
-        '''Verifies multiple sort parameter values.'''
+        """Verifies multiple sort parameter values."""
         params = {'sort': 'key1:dir1,key2:dir2,key3:dir3'}
         sort_keys, sort_dirs = common.get_sort_params(params)
         self.assertEqual(['key1', 'key2', 'key3'], sort_keys)
         self.assertEqual(['dir1', 'dir2', 'dir3'], sort_dirs)
 
     def test_get_sort_params_multiple_not_all_dirs(self):
-        '''Verifies multiple sort keys without all directions.'''
+        """Verifies multiple sort keys without all directions."""
         params = {'sort': 'key1:dir1,key2,key3:dir3'}
         sort_keys, sort_dirs = common.get_sort_params(params)
         self.assertEqual(['key1', 'key2', 'key3'], sort_keys)
@@ -266,7 +266,7 @@ class SortParamUtilsTest(test.TestCase):
         self.assertEqual(['dir1', 'desc', 'dir3'], sort_dirs)
 
     def test_get_sort_params_multiple_override_default_dir(self):
-        '''Verifies multiple sort keys and overriding default direction.'''
+        """Verifies multiple sort keys and overriding default direction."""
         params = {'sort': 'key1:dir1,key2,key3'}
         sort_keys, sort_dirs = common.get_sort_params(params,
                                                       default_dir='foo')
@@ -274,7 +274,7 @@ class SortParamUtilsTest(test.TestCase):
         self.assertEqual(['dir1', 'foo', 'foo'], sort_dirs)
 
     def test_get_sort_params_params_modified(self):
-        '''Verifies that the input sort parameter are modified.'''
+        """Verifies that the input sort parameter are modified."""
         params = {'sort': 'key1:dir1,key2:dir2,key3:dir3'}
         common.get_sort_params(params)
         self.assertEqual({}, params)
@@ -284,14 +284,14 @@ class SortParamUtilsTest(test.TestCase):
         self.assertEqual({}, params)
 
     def test_get_sort_params_random_spaces(self):
-        '''Verifies that leading and trailing spaces are removed.'''
+        """Verifies that leading and trailing spaces are removed."""
         params = {'sort': ' key1 : dir1,key2: dir2 , key3 '}
         sort_keys, sort_dirs = common.get_sort_params(params)
         self.assertEqual(['key1', 'key2', 'key3'], sort_keys)
         self.assertEqual(['dir1', 'dir2', 'desc'], sort_dirs)
 
     def test_get_params_mix_sort_and_old_params(self):
-        '''An exception is raised if both types of sorting params are given.'''
+        """An exception is raised if both types of sorting params are given."""
         for params in ({'sort': 'k1', 'sort_key': 'k1'},
                        {'sort': 'k1', 'sort_dir': 'd1'},
                        {'sort': 'k1', 'sort_key': 'k1', 'sort_dir': 'd2'}):

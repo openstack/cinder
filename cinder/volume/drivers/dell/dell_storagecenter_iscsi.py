@@ -12,7 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-'''Volume driver for Dell Storage Center.'''
+"""Volume driver for Dell Storage Center."""
 
 from oslo_log import log as logging
 from oslo_utils import excutils
@@ -27,7 +27,7 @@ LOG = logging.getLogger(__name__)
 class DellStorageCenterISCSIDriver(dell_storagecenter_common.DellCommonDriver,
                                    driver.ISCSIDriver):
 
-    '''Implements commands for Dell StorageCenter ISCSI management.
+    """Implements commands for Dell StorageCenter ISCSI management.
 
     To enable the driver add the following line to the cinder configuration:
         volume_driver=cinder.volume.drivers.dell.DellStorageCenterISCSIDriver
@@ -40,7 +40,7 @@ class DellStorageCenterISCSIDriver(dell_storagecenter_common.DellCommonDriver,
                 driver.
         2.1.0 - Added support for ManageableVD.
         2.2.0 - Driver retype support for switching volume's Storage Profile
-    '''
+    """
 
     VERSION = '2.2.0'
 

@@ -28,7 +28,7 @@ CONF = cfg.CONF
 
 
 class SchedulerAPI(object):
-    '''Client side of the scheduler rpc API.
+    """Client side of the scheduler rpc API.
 
     API version history:
 
@@ -41,7 +41,7 @@ class SchedulerAPI(object):
         1.5 - Add manage_existing method
         1.6 - Add create_consistencygroup method
         1.7 - Add get_active_pools method
-    '''
+    """
 
     RPC_API_VERSION = '1.0'
 

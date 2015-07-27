@@ -1024,7 +1024,7 @@ class VolumeTestCase(BaseVolumeTestCase):
     @mock.patch.object(db, 'volume_get', side_effect=exception.VolumeNotFound(
                        volume_id='12345678-1234-5678-1234-567812345678'))
     def test_delete_volume_not_found(self, mock_get_volume):
-        """"Test delete volume moves on if the volume does not exist."""
+        """Test delete volume moves on if the volume does not exist."""
         volume_id = '12345678-1234-5678-1234-567812345678'
         self.assertTrue(self.volume.delete_volume(self.context, volume_id))
         self.assertTrue(mock_get_volume.called)

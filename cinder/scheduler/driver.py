@@ -42,10 +42,10 @@ CONF.register_opts(scheduler_driver_opts)
 
 
 def volume_update_db(context, volume_id, host):
-    '''Set the host and set the scheduled_at field of a volume.
+    """Set the host and set the scheduled_at field of a volume.
 
     :returns: A Volume with the updated fields set properly.
-    '''
+    """
     now = timeutils.utcnow()
     values = {'host': host, 'scheduled_at': now}
     return db.volume_update(context, volume_id, values)
