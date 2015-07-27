@@ -89,7 +89,7 @@ def _get_opts_from_specs(opts_capability, opts_value, specs):
     opts.update(opts_capability)
     opts.update(opts_value)
 
-    for key, value in specs.iteritems():
+    for key, value in specs.items():
 
         # Get the scope, if is using scope format.
         scope = None
@@ -206,7 +206,7 @@ def get_qos_by_volume_type(volume_type):
         return qos
 
     LOG.info(_LI('The QoS sepcs is: %s.'), kvs)
-    for key, value in kvs.iteritems():
+    for key, value in kvs.items():
         if key in constants.HUAWEI_VALID_KEYS:
             if (key.upper() != 'IOTYPE') and (int(value) <= 0):
                 err_msg = (_('Qos config is wrong. %(key)s'
@@ -243,7 +243,7 @@ def _get_volume_type(type_id):
 def get_lun_conf_params(xml_file_path):
     """Get parameters from config file for creating lun."""
     lunsetinfo = {
-        'LUNType': 'Thick',
+        'LUNType': 0,
         'StripUnitSize': '64',
         'WriteType': '1',
         'MirrorSwitch': '1',
@@ -361,7 +361,7 @@ def get_wait_interval(xml_file_path, event_type):
     return int(wait_interval)
 
 
-def _get_default_timeout(xml_file_path):
+def get_default_timeout(xml_file_path):
     """Get timeout from huawei conf file."""
     root = parse_xml_file(xml_file_path)
     timeout = root.findtext('LUN/Timeout')
@@ -378,7 +378,7 @@ def _get_default_timeout(xml_file_path):
 def wait_for_condition(xml_file_path, func, interval, timeout=None):
     start_time = time.time()
     if timeout is None:
-        timeout = _get_default_timeout(xml_file_path)
+        timeout = get_default_timeout(xml_file_path)
 
     def _inner():
         try:
@@ -440,7 +440,7 @@ def get_iscsi_conf(xml_file_path):
 
 def check_qos_high_priority(qos):
     """Check QoS priority."""
-    for key, value in qos.iteritems():
+    for key, value in qos.items():
         if (key.find('MIN') == 0) or (key.find('LATENCY') == 0):
             return True
 

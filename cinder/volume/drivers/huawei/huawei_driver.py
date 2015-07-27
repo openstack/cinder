@@ -27,6 +27,7 @@ from cinder.volume import driver
 from cinder.volume.drivers.huawei import constants
 from cinder.volume.drivers.huawei import huawei_utils
 from cinder.volume.drivers.huawei import rest_client
+from cinder.volume import utils as volume_utils
 from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)
@@ -69,7 +70,15 @@ class HuaweiBaseDriver(driver.VolumeDriver):
     @utils.synchronized('huawei', external=True)
     def create_volume(self, volume):
         """Create a volume."""
-        pool_info = self.restclient.find_pool_info()
+        pool_name = volume_utils.extract_host(volume['host'],
+                                              level='pool')
+        pools = self.restclient.find_all_pools()
+        pool_info = self.restclient.find_pool_info(pool_name, pools)
+        if not pool_info:
+            msg = (_('Error in getting pool information for the pool: %s.')
+                   % pool_name)
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
         volume_name = huawei_utils.encode_name(volume['id'])
         volume_description = volume['name']
         volume_size = huawei_utils.get_volume_size(volume)
@@ -156,8 +165,8 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         def _volume_ready():
             result = self.restclient.get_lun_info(tgt_lun_id)
 
-            if result['HEALTHSTATUS'] == "1":
-                if result['RUNNINGSTATUS'] == "27":
+            if result['HEALTHSTATUS'] == constants.STATUS_HEALTH:
+                if result['RUNNINGSTATUS'] == constants.STATUS_VOLUME_READY:
                     return True
             return False
 
@@ -545,12 +554,12 @@ class HuaweiBaseDriver(driver.VolumeDriver):
 
             def _luncopy_complete():
                 luncopy_info = self.restclient.get_luncopy_info(luncopy_id)
-                if luncopy_info['status'] == '40':
+                if luncopy_info['status'] == constants.STATUS_LUNCOPY_READY:
                     # luncopy_info['status'] means for the running status of
                     # the luncopy. If luncopy_info['status'] is equal to '40',
                     # this luncopy is completely ready.
                     return True
-                elif luncopy_info['state'] != '1':
+                elif luncopy_info['state'] != constants.STATUS_HEALTH:
                     # luncopy_info['state'] means for the healthy status of the
                     # luncopy. If luncopy_info['state'] is not equal to '1',
                     # this means that an error occurred during the LUNcopy
