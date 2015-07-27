@@ -781,7 +781,7 @@ class API(base.Base):
             with excutils.save_and_reraise_exception():
                 try:
                     for snap in snapshot_list:
-                        snapshot.destroy()
+                        snap.destroy()
                 finally:
                     QUOTAS.rollback(context, reservations)
 
