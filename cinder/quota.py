@@ -122,17 +122,18 @@ class DbQuotaDriver(object):
 
         quotas = {}
         default_quotas = {}
-        if CONF.use_default_quota_class:
+        if CONF.use_default_quota_class and not parent_project_id:
             default_quotas = db.quota_class_get_default(context)
 
         for resource in resources.values():
-            if resource.name not in default_quotas:
-                versionutils.report_deprecated_feature(LOG, _(
-                    "Default quota for resource: %(res)s is set "
-                    "by the default quota flag: quota_%(res)s, "
-                    "it is now deprecated. Please use the "
-                    "default quota class for default "
-                    "quota.") % {'res': resource.name})
+            if default_quotas:
+                if resource.name not in default_quotas:
+                    versionutils.report_deprecated_feature(LOG, _(
+                        "Default quota for resource: %(res)s is set "
+                        "by the default quota flag: quota_%(res)s, "
+                        "it is now deprecated. Please use the "
+                        "default quota class for default "
+                        "quota.") % {'res': resource.name})
             quotas[resource.name] = default_quotas.get(resource.name,
                                                        (0 if parent_project_id
                                                         else resource.default))

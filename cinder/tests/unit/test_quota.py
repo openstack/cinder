@@ -913,7 +913,6 @@ class DbQuotaDriverTestCase(test.TestCase):
 
     def test_subproject_get_defaults(self):
         # Test subproject default values.
-        self._stub_quota_class_get_default_subproject()
         self._stub_volume_type_get_all()
         parent_project_id = 'test_parent_project_id'
         result = self.driver.get_defaults(None,
@@ -940,13 +939,6 @@ class DbQuotaDriverTestCase(test.TestCase):
                         backups=10,
                         backup_gigabytes=1000
                         )
-        self.stubs.Set(db, 'quota_class_get_default', fake_qcgd)
-
-    def _stub_quota_class_get_default_subproject(self):
-        # Stub out quota_class_get_default for subprojects
-        def fake_qcgd(context):
-            self.calls.append('quota_class_get_default')
-            return {}
         self.stubs.Set(db, 'quota_class_get_default', fake_qcgd)
 
     def _stub_volume_type_get_all(self):
@@ -1029,7 +1021,6 @@ class DbQuotaDriverTestCase(test.TestCase):
         self.stubs.Set(db, 'quota_usage_get_all_by_project', fake_qugabp)
 
         self._stub_quota_class_get_all_by_name()
-        self._stub_quota_class_get_default_subproject()
 
     def test_get_project_quotas(self):
         self._stub_get_by_project()
@@ -1072,8 +1063,7 @@ class DbQuotaDriverTestCase(test.TestCase):
             parent_project_id=parent_project_id)
 
         self.assertEqual(self.calls, ['quota_get_all_by_project',
-                                      'quota_usage_get_all_by_project',
-                                      'quota_class_get_default', ])
+                                      'quota_usage_get_all_by_project', ])
         self.assertEqual(result, dict(volumes=dict(limit=10,
                                                    in_use=2,
                                                    reserved=0, ),
