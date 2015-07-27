@@ -31,6 +31,7 @@ from six.moves import urllib
 
 from cinder import exception
 from cinder.i18n import _, _LE
+import cinder.utils as cinder_utils
 from cinder.volume.drivers.netapp.eseries import utils
 
 
@@ -83,12 +84,7 @@ class WebserviceClient(object):
                               " Error - %s."), e)
             raise exception.NetAppDriverException(
                 _("Invoking web service failed."))
-        self._eval_response(response)
         return response
-
-    def _eval_response(self, response):
-        """Evaluates response before passing result to invoker."""
-        pass
 
 
 class RestClient(WebserviceClient):
@@ -125,34 +121,65 @@ class RestClient(WebserviceClient):
     def _invoke(self, method, path, data=None, use_system=True,
                 timeout=None, verify=False, **kwargs):
         """Invokes end point for resource on path."""
-        scrubbed_data = copy.deepcopy(data)
-        if scrubbed_data:
-            if 'password' in scrubbed_data:
-                scrubbed_data['password'] = "****"
-            if 'storedPassword' in scrubbed_data:
-                scrubbed_data['storedPassword'] = "****"
-
-        LOG.debug("Invoking rest with method: %(m)s, path: %(p)s,"
-                  " data: %(d)s, use_system: %(sys)s, timeout: %(t)s,"
-                  " verify: %(v)s, kwargs: %(k)s.",
-                  {'m': method, 'p': path, 'd': scrubbed_data,
-                   'sys': use_system, 't': timeout, 'v': verify, 'k': kwargs})
         url = self._get_resource_url(path, use_system, **kwargs)
         if self._content_type == 'json':
             headers = {'Accept': 'application/json',
                        'Content-Type': 'application/json'}
+            if cinder_utils.TRACE_API:
+                self._log_http_request(method, url, headers, data)
             data = json.dumps(data) if data else None
             res = self.invoke_service(method, url, data=data,
                                       headers=headers,
                                       timeout=timeout, verify=verify)
-            return res.json() if res.text else None
+            res_dict = res.json() if res.text else None
+
+            if cinder_utils.TRACE_API:
+                self._log_http_response(res.status_code, dict(res.headers),
+                                        res_dict)
+
+            self._eval_response(res)
+            return res_dict
         else:
             raise exception.NetAppDriverException(
                 _("Content type not supported."))
 
+    def _to_pretty_dict_string(self, data):
+        """Convert specified dict to pretty printed string."""
+        return json.dumps(data, sort_keys=True,
+                          indent=2, separators=(',', ': '))
+
+    def _log_http_request(self, verb, url, headers, body):
+        scrubbed_body = copy.deepcopy(body)
+        if scrubbed_body:
+            if 'password' in scrubbed_body:
+                scrubbed_body['password'] = "****"
+            if 'storedPassword' in scrubbed_body:
+                scrubbed_body['storedPassword'] = "****"
+
+        params = {'verb': verb, 'path': url,
+                  'body': self._to_pretty_dict_string(scrubbed_body) or "",
+                  'headers': self._to_pretty_dict_string(headers)}
+        LOG.debug("Invoking ESeries Rest API, Request:\n"
+                  "HTTP Verb: %(verb)s\n"
+                  "URL Path: %(path)s\n"
+                  "HTTP Headers:\n"
+                  "%(headers)s\n"
+                  "Body:\n"
+                  "%(body)s\n", (params))
+
+    def _log_http_response(self, status, headers, body):
+        params = {'status': status,
+                  'body': self._to_pretty_dict_string(body) or "",
+                  'headers': self._to_pretty_dict_string(headers)}
+        LOG.debug("ESeries Rest API, Response:\n"
+                  "HTTP Status Code: %(status)s\n"
+                  "HTTP Headers:\n"
+                  "%(headers)s\n"
+                  "Body:\n"
+                  "%(body)s\n", (params))
+
     def _eval_response(self, response):
         """Evaluates response before passing result to invoker."""
-        super(RestClient, self)._eval_response(response)
         status_code = int(response.status_code)
         # codes >= 300 are not ok and to be treated as errors
         if status_code >= 300:

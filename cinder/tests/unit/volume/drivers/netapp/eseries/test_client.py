@@ -35,7 +35,9 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
         self.my_client = client.RestClient('http', 'host', '80', '/test',
                                            'user', self.fake_password,
                                            system_id='fake_sys_id')
-        self.my_client.invoke_service = mock.Mock()
+        fake_response = mock.Mock()
+        fake_response.status_code = 200
+        self.my_client.invoke_service = mock.Mock(return_value=fake_response)
 
     def test_register_storage_system_does_not_log_password(self):
         self.my_client.register_storage_system([], password=self.fake_password)
@@ -188,3 +190,101 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
             'hostGroupRef')
 
         self.assertEqual([volume_mapping_2], mappings)
+
+    def test_to_pretty_dict_string(self):
+        dict = {
+            'foo': 'bar',
+            'fu': {
+                'nested': 'boo'
+            }
+        }
+        expected_dict_string = ("""{
+  "foo": "bar",
+  "fu": {
+    "nested": "boo"
+  }
+}""")
+
+        dict_string = self.my_client._to_pretty_dict_string(dict)
+
+        self.assertEqual(expected_dict_string, dict_string)
+
+    def test_log_http_request(self):
+        mock_log = self.mock_object(client, 'LOG')
+        verb = "POST"
+        url = "/v2/test/me"
+        headers = {"Content-Type": "application/json"}
+        headers_string = """{
+  "Content-Type": "application/json"
+}"""
+        body = {}
+        body_string = "{}"
+
+        self.my_client._log_http_request(verb, url, headers, body)
+
+        args = mock_log.debug.call_args
+        log_message, log_params = args[0]
+        final_msg = log_message % log_params
+        self.assertIn(verb, final_msg)
+        self.assertIn(url, final_msg)
+        self.assertIn(headers_string, final_msg)
+        self.assertIn(body_string, final_msg)
+
+    def test_log_http_request_no_body(self):
+        mock_log = self.mock_object(client, 'LOG')
+        verb = "POST"
+        url = "/v2/test/me"
+        headers = {"Content-Type": "application/json"}
+        headers_string = """{
+  "Content-Type": "application/json"
+}"""
+        body = None
+        body_string = ""
+
+        self.my_client._log_http_request(verb, url, headers, body)
+
+        args = mock_log.debug.call_args
+        log_message, log_params = args[0]
+        final_msg = log_message % log_params
+        self.assertIn(verb, final_msg)
+        self.assertIn(url, final_msg)
+        self.assertIn(headers_string, final_msg)
+        self.assertIn(body_string, final_msg)
+
+    def test_log_http_response(self):
+        mock_log = self.mock_object(client, 'LOG')
+        status = "200"
+        headers = {"Content-Type": "application/json"}
+        headers_string = """{
+  "Content-Type": "application/json"
+}"""
+        body = {}
+        body_string = "{}"
+
+        self.my_client._log_http_response(status, headers, body)
+
+        args = mock_log.debug.call_args
+        log_message, log_params = args[0]
+        final_msg = log_message % log_params
+        self.assertIn(status, final_msg)
+        self.assertIn(headers_string, final_msg)
+        self.assertIn(body_string, final_msg)
+
+    def test_log_http_response_no_body(self):
+        mock_log = self.mock_object(client, 'LOG')
+        status = "200"
+        headers = {"Content-Type": "application/json"}
+        headers_string = """{
+  "Content-Type": "application/json"
+}"""
+        body = None
+        body_string = ""
+
+        self.my_client._log_http_response(status, headers, body)
+
+        args = mock_log.debug.call_args
+        log_message, log_params = args[0]
+        final_msg = log_message % log_params
+        self.assertIn(status, final_msg)
+        self.assertIn(headers_string, final_msg)
+        self.assertIn(body_string, final_msg)
