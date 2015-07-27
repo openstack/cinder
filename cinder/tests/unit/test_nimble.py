@@ -19,6 +19,7 @@ from oslo_config import cfg
 from cinder import exception
 from cinder import test
 from cinder.volume.drivers import nimble
+from cinder.volume import volume_types
 
 
 CONF = cfg.CONF
@@ -59,12 +60,32 @@ FAKE_NEGATIVE_NETCONFIG_RESPONSE = {'err-list': {'err-list':
                                                  [{'code': 13}]}}
 
 FAKE_CREATE_VOLUME_POSITIVE_RESPONSE = {'err-list': {'err-list':
-                                                     [{'code': 0}]},
+                                        [{'code': 0}]},
                                         'name': "openstack-test11"}
+
+FAKE_CREATE_VOLUME_POSITIVE_RESPONSE_ENCRYPTION = {'err-list': {'err-list':
+                                                   [{'code': 0}]},
+                                                   'name':
+                                                   "openstack-test-encryption"}
+
+FAKE_CREATE_VOLUME_POSITIVE_RESPONSE_PERFPOLICY = {'err-list': {'err-list':
+                                                   [{'code': 0}]},
+                                                   'name':
+                                                   "openstack-test-perfpolicy"}
 
 FAKE_CREATE_VOLUME_NEGATIVE_RESPONSE = {'err-list': {'err-list':
                                                      [{'code': 17}]},
                                         'name': "openstack-test11"}
+
+FAKE_CREATE_VOLUME_NEGATIVE_RESPONSE_ENCRYPTION = {'err-list': {'err-list':
+                                                   [{'code': 17}]},
+                                                   'name':
+                                                   "openstack-test-encryption"}
+
+FAKE_CREATE_VOLUME_NEGATIVE_RESPONSE_PERFPOLICY = {'err-list': {'err-list':
+                                                   [{'code': 17}]},
+                                                   'name':
+                                                   "openstack-test-perfpolicy"}
 
 FAKE_GENERIC_POSITIVE_RESPONSE = {'err-list': {'err-list':
                                                [{'code': 0}]}}
@@ -89,6 +110,8 @@ FAKE_IGROUP_LIST_RESPONSE = {
 FAKE_GET_VOL_INFO_RESPONSE = {'err-list': {'err-list':
                                            [{'code': 0}]},
                               'vol': {'target-name': 'iqn.test'}}
+
+FAKE_TYPE_ID = 12345
 
 
 def create_configuration(username, password, ip_address,
@@ -214,6 +237,7 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
             'provider_auth': None},
             self.driver.create_volume({'name': 'testvolume',
                                        'size': 1,
+                                       'volume_type_id': None,
                                        'display_name': '',
                                        'display_description': ''}))
         self.mock_client_service.service.createVol.assert_called_once_with(
@@ -222,7 +246,84 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
                          'name': 'testvolume', 'reserve': 0,
                          'online': True, 'pool-name': 'default',
                          'size': 1073741824, 'quota': 1073741824,
-                         'perfpol-name': 'default', 'description': ''},
+                         'perfpol-name': 'default', 'description': '',
+                         'encryptionAttr': {'cipher': 3}},
+                'sid': 'a9b9aba7'})
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs',
+                       mock.Mock(type_id=FAKE_TYPE_ID, return_value={
+                                 'nimble:perfpol-name': 'default',
+                                 'nimble:encryption': 'yes'}))
+    @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
+        'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
+    def test_create_volume_encryption_positive(self):
+        self.mock_client_service.service.createVol.return_value = \
+            FAKE_CREATE_VOLUME_POSITIVE_RESPONSE_ENCRYPTION
+        self.mock_client_service.service.getVolInfo.return_value = \
+            FAKE_GET_VOL_INFO_RESPONSE
+        self.mock_client_service.service.getNetConfig.return_value = \
+            FAKE_POSITIVE_NETCONFIG_RESPONSE
+
+        self.assertEqual({
+            'provider_location': '172.18.108.21:3260 iqn.test 0',
+            'provider_auth': None},
+            self.driver.create_volume({'name': 'testvolume-encryption',
+                                       'size': 1,
+                                       'volume_type_id': FAKE_TYPE_ID,
+                                       'display_name': '',
+                                       'display_description': ''}))
+
+        mock_volume_type = volume_types.get_volume_type_extra_specs
+        mock_volume_type.assert_called_once_with(FAKE_TYPE_ID)
+
+        self.mock_client_service.service.createVol.assert_called_once_with(
+            request={
+                'attr': {'snap-quota': 1073741824, 'warn-level': 858993459,
+                         'name': 'testvolume-encryption', 'reserve': 0,
+                         'online': True, 'pool-name': 'default',
+                         'size': 1073741824, 'quota': 1073741824,
+                         'perfpol-name': 'default', 'description': '',
+                         'encryptionAttr': {'cipher': 2}},
+                'sid': 'a9b9aba7'})
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs',
+                       mock.Mock(type_id=FAKE_TYPE_ID, return_value={
+                                 'nimble:perfpol-name': 'VMware ESX',
+                                 'nimble:encryption': 'no'}))
+    @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
+        'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
+    def test_create_volume_perfpolicy_positive(self):
+        self.mock_client_service.service.createVol.return_value = \
+            FAKE_CREATE_VOLUME_POSITIVE_RESPONSE_PERFPOLICY
+        self.mock_client_service.service.getVolInfo.return_value = \
+            FAKE_GET_VOL_INFO_RESPONSE
+        self.mock_client_service.service.getNetConfig.return_value = \
+            FAKE_POSITIVE_NETCONFIG_RESPONSE
+
+        self.assertEqual(
+            {'provider_location': '172.18.108.21:3260 iqn.test 0',
+             'provider_auth': None},
+            self.driver.create_volume({'name': 'testvolume-perfpolicy',
+                                       'size': 1,
+                                       'volume_type_id': FAKE_TYPE_ID,
+                                       'display_name': '',
+                                       'display_description': ''}))
+
+        mock_volume_type = volume_types.get_volume_type_extra_specs
+        mock_volume_type.assert_called_once_with(FAKE_TYPE_ID)
+
+        self.mock_client_service.service.createVol.assert_called_once_with(
+            request={
+                'attr': {'snap-quota': 1073741824, 'warn-level': 858993459,
+                         'name': 'testvolume-perfpolicy', 'reserve': 0,
+                         'online': True, 'pool-name': 'default',
+                         'size': 1073741824, 'quota': 1073741824,
+                         'perfpol-name': 'VMware ESX', 'description': '',
+                         'encryptionAttr': {'cipher': 3}},
                 'sid': 'a9b9aba7'})
 
     @mock.patch(NIMBLE_URLLIB2)
@@ -237,6 +338,39 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
             self.driver.create_volume,
             {'name': 'testvolume',
              'size': 1,
+             'volume_type_id': None,
+             'display_name': '',
+             'display_description': ''})
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
+        'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
+    def test_create_volume_encryption_negative(self):
+        self.mock_client_service.service.createVol.return_value = \
+            FAKE_CREATE_VOLUME_NEGATIVE_RESPONSE_ENCRYPTION
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.driver.create_volume,
+            {'name': 'testvolume-encryption',
+             'size': 1,
+             'volume_type_id': None,
+             'display_name': '',
+             'display_description': ''})
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
+        'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
+    def test_create_volume_perfpolicy_negative(self):
+        self.mock_client_service.service.createVol.return_value = \
+            FAKE_CREATE_VOLUME_NEGATIVE_RESPONSE_PERFPOLICY
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.driver.create_volume,
+            {'name': 'testvolume-perfpolicy',
+             'size': 1,
+             'volume_type_id': None,
              'display_name': '',
              'display_description': ''})
 
@@ -328,7 +462,7 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
     def test_get_volume_stats(self):
         self.mock_client_service.service.getGroupConfig.return_value = \
             FAKE_POSITIVE_GROUP_CONFIG_RESPONSE
-        expected_res = {'driver_version': '1.0',
+        expected_res = {'driver_version': '1.1.0',
                         'total_capacity_gb': 7466.30419921875,
                         'QoS_support': False,
                         'reserved_percentage': 0,

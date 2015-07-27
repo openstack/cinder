@@ -33,9 +33,16 @@ from suds import client
 from cinder import exception
 from cinder.i18n import _, _LE, _LI
 from cinder.volume.drivers.san import san
+from cinder.volume import volume_types
 
 
-DRIVER_VERSION = '1.0'
+DRIVER_VERSION = '1.1.0'
+AES_256_XTS_CIPHER = 2
+DEFAULT_CIPHER = 3
+EXTRA_SPEC_ENCRYPTION = 'nimble:encryption'
+EXTRA_SPEC_PERF_POLICY = 'nimble:perfpol-name'
+DEFAULT_PERF_POLICY_SETTING = 'default'
+DEFAULT_ENCRYPTION_SETTING = 'no'
 VOL_EDIT_MASK = 4 + 16 + 32 + 64 + 512
 SOAP_PORT = 5391
 SM_ACL_APPLY_TO_BOTH = 3
@@ -74,6 +81,7 @@ class NimbleISCSIDriver(san.SanISCSIDriver):
 
     Version history:
         1.0 - Initial driver
+        1.1.0 - Added Extra Spec Capability
 
     """
 
@@ -412,6 +420,7 @@ class NimbleAPIExecutor(object):
         self.sid = None
         self.username = kwargs['username']
         self.password = kwargs['password']
+
         wsdl_url = 'https://%s/wsdl/NsGroupManagement.wsdl' % (kwargs['ip'])
         LOG.debug('Using Nimble wsdl_url: %s', wsdl_url)
         self.err_string_dict = self._create_err_code_to_str_mapper(wsdl_url)
@@ -469,6 +478,23 @@ class NimbleAPIExecutor(object):
         response = self._execute_get_netconfig(name)
         return response['config']
 
+    def _get_volumetype_extraspecs(self, volume):
+        specs = {}
+
+        type_id = volume['volume_type_id']
+        if type_id is not None:
+            specs = volume_types.get_volume_type_extra_specs(type_id)
+        return specs
+
+    def _get_extra_spec_values(self, extra_specs):
+        """Nimble specific extra specs."""
+        perf_policy_name = extra_specs.get(EXTRA_SPEC_PERF_POLICY,
+                                           DEFAULT_PERF_POLICY_SETTING)
+        encryption = extra_specs.get(EXTRA_SPEC_ENCRYPTION,
+                                     DEFAULT_ENCRYPTION_SETTING)
+
+        return perf_policy_name, encryption
+
     @_connection_checker
     @_response_checker
     def _execute_create_vol(self, volume, pool_name, reserve):
@@ -482,26 +508,40 @@ class NimbleAPIExecutor(object):
         # Limit description size to 254 characters
         description = description[:254]
 
-        LOG.info(_LI('Creating a new volume=%(vol)s size=%(size)s'
-                     ' reserve=%(reserve)s in pool=%(pool)s'
-                     ' description=%(description)s'),
-                 {'vol': volume['name'],
-                  'size': volume_size,
-                  'reserve': reserve,
-                  'pool': pool_name,
-                  'description': description})
+        specs = self._get_volumetype_extraspecs(volume)
+        perf_policy_name, encrypt = self._get_extra_spec_values(specs)
+        # default value of cipher for encryption
+        cipher = DEFAULT_CIPHER
+        if encrypt.lower() == 'yes':
+            cipher = AES_256_XTS_CIPHER
+
+        LOG.debug('Creating a new volume=%(vol)s size=%(size)s'
+                  ' reserve=%(reserve)s in pool=%(pool)s'
+                  ' description=%(description)s with Extra Specs'
+                  ' perfpol-name=%(perfpol-name)s'
+                  ' encryption=%(encryption)s cipher=%(cipher)s',
+                  {'vol': volume['name'],
+                   'size': volume_size,
+                   'reserve': reserve,
+                   'pool': pool_name,
+                   'description': description,
+                   'perfpol-name': perf_policy_name,
+                   'encryption': encrypt,
+                   'cipher': cipher})
+
         return self.client.service.createVol(
             request={'sid': self.sid,
                      'attr': {'name': volume['name'],
                               'description': description,
                               'size': volume_size,
-                              'perfpol-name': 'default',
                               'reserve': reserve_size,
                               'warn-level': int(volume_size * WARN_LEVEL),
                               'quota': volume_size,
                               'snap-quota': volume_size,
                               'online': True,
-                              'pool-name': pool_name}})
+                              'pool-name': pool_name,
+                              'perfpol-name': perf_policy_name,
+                              'encryptionAttr': {'cipher': cipher}}})
 
     def create_vol(self, volume, pool_name, reserve):
         """Execute createVol API."""
