@@ -36,9 +36,6 @@ from __future__ import print_function
 
 import datetime
 import sys
-import warnings
-
-warnings.simplefilter('once', DeprecationWarning)
 
 from oslo_config import cfg
 from oslo_log import log as logging

@@ -357,23 +357,6 @@ class HostManager(object):
                                                         'weights')
         self.weight_classes = self.weight_handler.get_all_classes()
 
-        default_filters = ['AvailabilityZoneFilter',
-                           'CapacityFilter',
-                           'CapabilitiesFilter']
-        chance = 'cinder.scheduler.chance.ChanceScheduler'
-        simple = 'cinder.scheduler.simple.SimpleScheduler'
-        if CONF.scheduler_driver == simple:
-            CONF.set_override('scheduler_default_filters', default_filters)
-            CONF.set_override('scheduler_default_weighers',
-                              ['AllocatedCapacityWeigher'])
-        elif CONF.scheduler_driver == chance:
-            CONF.set_override('scheduler_default_filters', default_filters)
-            CONF.set_override('scheduler_default_weighers',
-                              ['ChanceWeigher'])
-        else:
-            # Do nothing when some other scheduler is configured
-            pass
-
         self._no_capabilities_hosts = set()  # Hosts having no capabilities
         self._update_host_state_map(cinder_context.get_admin_context())
 

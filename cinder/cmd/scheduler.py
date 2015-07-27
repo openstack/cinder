@@ -21,9 +21,6 @@ import eventlet
 eventlet.monkey_patch()
 
 import sys
-import warnings
-
-warnings.simplefilter('once', DeprecationWarning)
 
 from oslo_config import cfg
 from oslo_log import log as logging
