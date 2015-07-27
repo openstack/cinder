@@ -1225,6 +1225,34 @@ class VMwareVolumeOps(object):
                   {'backing': backing,
                    'profile': profile_id})
 
+    def update_backing_disk_uuid(self, backing, disk_uuid):
+        """Update backing VM's disk UUID.
+
+        :param backing: Reference to backing VM
+        :param disk_uuid: New disk UUID
+        """
+        LOG.debug("Reconfiguring backing VM: %(backing)s to change disk UUID "
+                  "to: %(disk_uuid)s.",
+                  {'backing': backing,
+                   'disk_uuid': disk_uuid})
+
+        disk_device = self._get_disk_device(backing)
+        disk_device.backing.uuid = disk_uuid
+
+        cf = self._session.vim.client.factory
+        disk_spec = cf.create('ns0:VirtualDeviceConfigSpec')
+        disk_spec.device = disk_device
+        disk_spec.operation = 'edit'
+
+        reconfig_spec = cf.create('ns0:VirtualMachineConfigSpec')
+        reconfig_spec.deviceChange = [disk_spec]
+        self._reconfigure_backing(backing, reconfig_spec)
+
+        LOG.debug("Backing VM: %(backing)s reconfigured with new disk UUID: "
+                  "%(disk_uuid)s.",
+                  {'backing': backing,
+                   'disk_uuid': disk_uuid})
+
     def delete_file(self, file_path, datacenter=None):
         """Delete file or folder on the datastore.
 

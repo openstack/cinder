@@ -462,16 +462,19 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         size_kb = volume['size'] * units.Mi
         adapter_type = create_params.get(CREATE_PARAM_ADAPTER_TYPE,
                                          'lsiLogic')
-        return self.volumeops.create_backing(backing_name,
-                                             size_kb,
-                                             disk_type,
-                                             folder,
-                                             resource_pool,
-                                             host_ref,
-                                             summary.name,
-                                             profileId=profile_id,
-                                             adapter_type=adapter_type,
-                                             extra_config=extra_config)
+        backing = self.volumeops.create_backing(backing_name,
+                                                size_kb,
+                                                disk_type,
+                                                folder,
+                                                resource_pool,
+                                                host_ref,
+                                                summary.name,
+                                                profileId=profile_id,
+                                                adapter_type=adapter_type,
+                                                extra_config=extra_config)
+
+        self.volumeops.update_backing_disk_uuid(backing, volume['id'])
+        return backing
 
     def _relocate_backing(self, volume, backing, host):
         pass
@@ -1072,15 +1075,17 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                 datastore = summary.datastore
                 LOG.debug("Cloning temporary backing: %s for disk type "
                           "conversion.", backing)
-                self.volumeops.clone_backing(volume['name'],
-                                             backing,
-                                             None,
-                                             volumeops.FULL_CLONE_TYPE,
-                                             datastore,
-                                             disk_type,
-                                             host,
-                                             rp)
+                clone = self.volumeops.clone_backing(volume['name'],
+                                                     backing,
+                                                     None,
+                                                     volumeops.FULL_CLONE_TYPE,
+                                                     datastore,
+                                                     disk_type,
+                                                     host,
+                                                     rp)
                 self._delete_temp_backing(backing)
+                backing = clone
+            self.volumeops.update_backing_disk_uuid(backing, volume['id'])
         except Exception:
             # Delete backing and virtual disk created from image.
             with excutils.save_and_reraise_exception():
@@ -1143,7 +1148,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
             host_ip = self.configuration.vmware_host_ip
             LOG.debug("Fetching glance image: %(id)s to server: %(host)s.",
                       {'id': image_id, 'host': host_ip})
-            image_transfer.download_stream_optimized_image(
+            backing = image_transfer.download_stream_optimized_image(
                 context,
                 timeout,
                 image_service,
@@ -1155,6 +1160,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                 vm_folder=folder,
                 vm_import_spec=vm_import_spec,
                 image_size=image_size)
+            self.volumeops.update_backing_disk_uuid(backing, volume['id'])
         except (exceptions.VimException,
                 exceptions.VMwareDriverException):
             with excutils.save_and_reraise_exception():
@@ -1463,6 +1469,8 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                         volume['name'], backing, None,
                         volumeops.FULL_CLONE_TYPE, datastore, new_disk_type,
                         host, rp)
+                    self.volumeops.update_backing_disk_uuid(new_backing,
+                                                            volume['id'])
                     self._delete_temp_backing(backing)
                     backing = new_backing
                 except exceptions.VimException:
@@ -1699,6 +1707,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
             dest = self.volumeops.clone_backing(dest_name, src, None,
                                                 volumeops.FULL_CLONE_TYPE,
                                                 datastore, disk_type, host, rp)
+            self.volumeops.update_backing_disk_uuid(dest, volume['id'])
             if new_backing:
                 LOG.debug("Created new backing: %s for restoring backup.",
                           dest_name)
@@ -1974,6 +1983,7 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
                                              snapshot, clone_type, datastore,
                                              host=host, resource_pool=rp,
                                              extra_config=extra_config)
+        self.volumeops.update_backing_disk_uuid(clone, volume['id'])
         # If the volume size specified by the user is greater than
         # the size of the source volume, the newly created volume will
         # allocate the capacity to the size of the source volume in the backend

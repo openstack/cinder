@@ -753,6 +753,9 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         create_disk_from_sparse_image.return_value = path
         create_disk_from_preallocated_image.return_value = path
 
+        clone = mock.sentinel.clone
+        vops.clone_backing.return_value = clone
+
         volume_size = 2
         vops.get_disk_size.return_value = volume_size * units.Gi
 
@@ -780,12 +783,15 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
             volume['name'], backing, None, volumeops.FULL_CLONE_TYPE,
             summary.datastore, disk_type, mock.sentinel.host, mock.sentinel.rp)
         vops.delete_backing.assert_called_once_with(backing)
+        vops.update_backing_disk_uuid.assert_called_once_with(clone,
+                                                              volume['id'])
         self.assertFalse(extend_disk.called)
 
         vops.get_disk_size.return_value = 1 * units.Gi
         create_backing.reset_mock()
         vops.attach_disk_to_backing.reset_mock()
         vops.delete_backing.reset_mock()
+        vops.update_backing_disk_uuid.reset_mock()
         image_meta['properties']['vmware_disktype'] = 'preallocated'
 
         self._driver.copy_image_to_volume(
@@ -800,6 +806,8 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         vops.attach_disk_to_backing.assert_called_once_with(
             backing, image_size_in_bytes / units.Ki, disk_type,
             adapter_type, path.get_descriptor_ds_file_path())
+        vops.update_backing_disk_uuid.assert_called_once_with(backing,
+                                                              volume['id'])
         extend_disk.assert_called_once_with(volume['name'], volume['size'])
 
         extend_disk.reset_mock()
@@ -1089,6 +1097,9 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
         volumeops.get_disk_size.return_value = size
 
+        backing = mock.sentinel.backing
+        download_image.return_value = backing
+
         self._driver.copy_image_to_volume(fake_context, fake_volume,
                                           image_service, fake_image_id)
 
@@ -1114,6 +1125,8 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
                                           vm_folder=fake_folder,
                                           vm_import_spec=vm_import_spec,
                                           image_size=size)
+        volumeops.update_backing_disk_uuid.assert_called_once_with(
+            backing, fake_volume['id'])
         _extend_virtual_disk.assert_called_once_with(fake_volume['name'],
                                                      fake_volume_size)
 
@@ -1269,6 +1282,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
         # Test with in-use volume.
         vol = {'size': 1, 'status': 'retyping', 'name': 'vol-1',
+               'id': 'd11a82de-ddaa-448d-b50a-a255a7e61a1e',
                'volume_type_id': 'def'}
         vol['volume_attachment'] = [mock.sentinel.volume_attachment]
         self.assertFalse(self._driver.retype(context, vol, new_type, diff,
@@ -1401,6 +1415,7 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         vops.clone_backing.assert_called_once_with(
             vol['name'], backing, None, volumeops.FULL_CLONE_TYPE,
             datastore, vmdk.THIN_VMDK_TYPE, host, rp)
+        vops.update_backing_disk_uuid.assert_called_once_with(clone, vol['id'])
         delete_temp_backing.assert_called_once_with(backing)
         vops.change_backing_profile.assert_called_once_with(clone,
                                                             profile_id)
@@ -1413,12 +1428,14 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
 
         vops.clone_backing.side_effect = exceptions.VimException('error')
 
+        vops.update_backing_disk_uuid.reset_mock()
         vops.rename_backing.reset_mock()
         vops.change_backing_profile.reset_mock()
 
         self.assertRaises(
             exceptions.VimException, self._driver.retype, context, vol,
             new_type, diff, host)
+        self.assertFalse(vops.update_backing_disk_uuid.called)
         exp_rename_calls = [mock.call(backing, uuid),
                             mock.call(backing, vol['name'])]
         self.assertEqual(exp_rename_calls, vops.rename_backing.call_args_list)
@@ -1618,8 +1635,12 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         disk_type = vmdk.THIN_VMDK_TYPE
         get_disk_type.return_value = disk_type
 
+        dest = mock.sentinel.dest
+        vops.clone_backing.return_value = dest
+
         context = mock.sentinel.context
-        volume = {'name': 'vol-1', 'id': 1, 'size': 1}
+        volume = {'name': 'vol-1',
+                  'id': 'bd45dfe5-d411-435d-85ac-2605fe7d5d8f', 'size': 1}
         backing = None
         tmp_file_path = mock.sentinel.tmp_file_path
         backup_size = units.Gi
@@ -1631,18 +1652,18 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         vops.clone_backing.assert_called_once_with(
             volume['name'], src, None, volumeops.FULL_CLONE_TYPE,
             summary.datastore, disk_type, mock.sentinel.host, mock.sentinel.rp)
+        vops.update_backing_disk_uuid.assert_called_once_with(dest,
+                                                              volume['id'])
         delete_temp_backing.assert_called_once_with(src)
 
         create_backing.reset_mock()
         vops.clone_backing.reset_mock()
+        vops.update_backing_disk_uuid.reset_mock()
         delete_temp_backing.reset_mock()
 
         dest_uuid = "de4b0708-f947-4abe-98f8-75e52ce03b7b"
         tmp_uuid = "82c2a4f0-9064-4d95-bd88-6567a36018fa"
         generate_uuid.side_effect = [src_uuid, dest_uuid, tmp_uuid]
-
-        dest = mock.sentinel.dest
-        vops.clone_backing.return_value = dest
 
         backing = mock.sentinel.backing
         self._driver._restore_backing(
@@ -1653,6 +1674,8 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         vops.clone_backing.assert_called_once_with(
             dest_uuid, src, None, volumeops.FULL_CLONE_TYPE,
             summary.datastore, disk_type, mock.sentinel.host, mock.sentinel.rp)
+        vops.update_backing_disk_uuid.assert_called_once_with(dest,
+                                                              volume['id'])
         exp_rename_calls = [mock.call(backing, tmp_uuid),
                             mock.call(dest, volume['name'])]
         self.assertEqual(exp_rename_calls, vops.rename_backing.call_args_list)
@@ -2058,6 +2081,9 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     def test_clone_backing_linked(self, volume_ops, _extend_vmdk_virtual_disk):
         """Test _clone_backing with clone type - linked."""
+        clone = mock.sentinel.clone
+        volume_ops.clone_backing.return_value = clone
+
         fake_size = 3
         fake_volume = {'volume_type_id': None, 'name': 'fake_name',
                        'id': '51e47214-8e3c-475d-b44b-aea6cd3eef53',
@@ -2070,6 +2096,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         self._driver._clone_backing(fake_volume, fake_backing, fake_snapshot,
                                     volumeops.LINKED_CLONE_TYPE,
                                     fake_snapshot['volume_size'])
+
         extra_config = {vmdk.EXTRA_CONFIG_VOLUME_ID_KEY: fake_volume['id']}
         volume_ops.clone_backing.assert_called_with(fake_volume['name'],
                                                     fake_backing,
@@ -2079,6 +2106,9 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
                                                     host=None,
                                                     resource_pool=None,
                                                     extra_config=extra_config)
+        volume_ops.update_backing_disk_uuid.assert_called_once_with(
+            clone, fake_volume['id'])
+
         # If the volume size is greater than the original snapshot size,
         # _extend_vmdk_virtual_disk will be called.
         _extend_vmdk_virtual_disk.assert_called_with(fake_volume['name'],
@@ -2101,24 +2131,29 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
                                 _extend_vmdk_virtual_disk):
         """Test _clone_backing with clone type - full."""
         fake_host = mock.sentinel.host
-        fake_backing = mock.sentinel.backing
         fake_folder = mock.sentinel.folder
         fake_datastore = mock.sentinel.datastore
         fake_resource_pool = mock.sentinel.resourcePool
         fake_summary = mock.Mock(spec=object)
         fake_summary.datastore = fake_datastore
         fake_size = 3
+        _select_ds_for_volume.return_value = (fake_host,
+                                              fake_resource_pool,
+                                              fake_folder, fake_summary)
+
+        clone = mock.sentinel.clone
+        volume_ops.clone_backing.return_value = clone
+
+        fake_backing = mock.sentinel.backing
         fake_volume = {'volume_type_id': None, 'name': 'fake_name',
                        'id': '51e47214-8e3c-475d-b44b-aea6cd3eef53',
                        'size': fake_size}
         fake_snapshot = {'volume_name': 'volume_name', 'name': 'snapshot_name',
                          'volume_size': 2}
-        _select_ds_for_volume.return_value = (fake_host,
-                                              fake_resource_pool,
-                                              fake_folder, fake_summary)
         self._driver._clone_backing(fake_volume, fake_backing, fake_snapshot,
                                     volumeops.FULL_CLONE_TYPE,
                                     fake_snapshot['volume_size'])
+
         _select_ds_for_volume.assert_called_with(fake_volume)
         extra_config = {vmdk.EXTRA_CONFIG_VOLUME_ID_KEY: fake_volume['id']}
         volume_ops.clone_backing.assert_called_with(fake_volume['name'],
@@ -2130,6 +2165,9 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
                                                     resource_pool=
                                                     fake_resource_pool,
                                                     extra_config=extra_config)
+        volume_ops.update_backing_disk_uuid.assert_called_once_with(
+            clone, fake_volume['id'])
+
         # If the volume size is greater than the original snapshot size,
         # _extend_vmdk_virtual_disk will be called.
         _extend_vmdk_virtual_disk.assert_called_with(fake_volume['name'],
@@ -2563,12 +2601,15 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         summary = mock.sentinel.summary
         select_ds_for_volume.return_value = (host, resource_pool, folder,
                                              summary)
+        backing = mock.sentinel.backing
+        vops.create_backing_disk_less.return_value = backing
 
         volume = {'name': 'vol-1', 'volume_type_id': None, 'size': 1,
                   'id': 'd11a82de-ddaa-448d-b50a-a255a7e61a1e'}
         create_params = {vmdk.CREATE_PARAM_DISK_LESS: True}
-        self._driver._create_backing(volume, host, create_params)
+        ret = self._driver._create_backing(volume, host, create_params)
 
+        self.assertEqual(backing, ret)
         extra_config = {vmdk.EXTRA_CONFIG_VOLUME_ID_KEY: volume['id']}
         vops.create_backing_disk_less.assert_called_once_with(
             'vol-1',
@@ -2578,10 +2619,13 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
             summary.name,
             profileId=None,
             extra_config=extra_config)
+        self.assertFalse(vops.update_backing_disk_uuid.called)
 
+        vops.create_backing.return_value = backing
         create_params = {vmdk.CREATE_PARAM_ADAPTER_TYPE: 'ide'}
-        self._driver._create_backing(volume, host, create_params)
+        ret = self._driver._create_backing(volume, host, create_params)
 
+        self.assertEqual(backing, ret)
         vops.create_backing.assert_called_once_with('vol-1',
                                                     units.Mi,
                                                     vmdk.THIN_VMDK_TYPE,
@@ -2592,12 +2636,16 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
                                                     profileId=None,
                                                     adapter_type='ide',
                                                     extra_config=extra_config)
+        vops.update_backing_disk_uuid.assert_called_once_with(backing,
+                                                              volume['id'])
 
         vops.create_backing.reset_mock()
+        vops.update_backing_disk_uuid.reset_mock()
         backing_name = "temp-vol"
         create_params = {vmdk.CREATE_PARAM_BACKING_NAME: backing_name}
-        self._driver._create_backing(volume, host, create_params)
+        ret = self._driver._create_backing(volume, host, create_params)
 
+        self.assertEqual(backing, ret)
         vops.create_backing.assert_called_once_with(backing_name,
                                                     units.Mi,
                                                     vmdk.THIN_VMDK_TYPE,
@@ -2608,6 +2656,8 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
                                                     profileId=None,
                                                     adapter_type='lsiLogic',
                                                     extra_config=extra_config)
+        vops.update_backing_disk_uuid.assert_called_once_with(backing,
+                                                              volume['id'])
 
     @mock.patch('cinder.openstack.common.fileutils.ensure_tree')
     @mock.patch('cinder.openstack.common.fileutils.delete_if_exists')

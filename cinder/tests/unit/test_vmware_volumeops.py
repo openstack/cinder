@@ -1199,6 +1199,35 @@ class VolumeOpsTestCase(test.TestCase):
                                                         newName=new_name)
         self.session.wait_for_task.assert_called_once_with(task)
 
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                '_get_disk_device')
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                '_reconfigure_backing')
+    def test_update_backing_disk_uuid(self, reconfigure_backing,
+                                      get_disk_device):
+        disk_spec = mock.Mock()
+        reconfig_spec = mock.Mock()
+        self.session.vim.client.factory.create.side_effect = [disk_spec,
+                                                              reconfig_spec]
+
+        disk_device = mock.Mock()
+        get_disk_device.return_value = disk_device
+
+        self.vops.update_backing_disk_uuid(mock.sentinel.backing,
+                                           mock.sentinel.disk_uuid)
+
+        get_disk_device.assert_called_once_with(mock.sentinel.backing)
+        self.assertEqual(mock.sentinel.disk_uuid, disk_device.backing.uuid)
+        self.assertEqual('edit', disk_spec.operation)
+        self.assertEqual(disk_device, disk_spec.device)
+        self.assertEqual([disk_spec], reconfig_spec.deviceChange)
+        reconfigure_backing.assert_called_once_with(mock.sentinel.backing,
+                                                    reconfig_spec)
+        exp_factory_create_calls = [mock.call('ns0:VirtualDeviceConfigSpec'),
+                                    mock.call('ns0:VirtualMachineConfigSpec')]
+        self.assertEqual(exp_factory_create_calls,
+                         self.session.vim.client.factory.create.call_args_list)
+
     def test_change_backing_profile(self):
         # Test change to empty profile.
         reconfig_spec = mock.Mock()
