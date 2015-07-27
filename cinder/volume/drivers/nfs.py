@@ -110,8 +110,6 @@ class NfsDriver(driver.ExtendVD, remotefs.RemoteFSDriver):
             nfs_mount_point_base=self.base,
             nfs_mount_options=opts)
 
-        self._sparse_copy_volume_data = True
-
     def set_execute(self, execute):
         super(NfsDriver, self).set_execute(execute)
         if self._remotefsclient:
@@ -368,3 +366,9 @@ class NfsDriver(driver.ExtendVD, remotefs.RemoteFSDriver):
                             "environment. Please see %s "
                             "for information on a secure NAS configuration."),
                         doc_html)
+
+    def _update_volume_stats(self):
+        """Retrieve stats info from volume group."""
+
+        super(NfsDriver, self)._update_volume_stats()
+        self._stats['sparse_copy_volume'] = True

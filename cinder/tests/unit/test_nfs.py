@@ -850,6 +850,7 @@ class NfsDriverTestCase(test.TestCase):
         self.assertEqual(30.0, drv._stats['total_capacity_gb'])
         self.assertEqual(5.0, drv._stats['free_capacity_gb'])
         self.assertEqual(0, drv._stats['reserved_percentage'])
+        self.assertTrue(drv._stats['sparse_copy_volume'])
 
         mox.VerifyAll()
 
