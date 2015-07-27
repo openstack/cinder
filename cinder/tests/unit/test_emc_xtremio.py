@@ -377,8 +377,37 @@ class EMCXIODriverISCSITestCase(test.TestCase):
         map_data = self.driver.initialize_connection(self.data.test_volume,
                                                      self.data.connector)
         self.assertEqual(map_data['data']['target_lun'], 1)
+        i1 = xms_data['initiators'][1]
+        i1['ig-id'] = ['', i1['ig-id'], 1]
+        i1['chap-authentication-initiator-password'] = 'chap_password1'
+        i1['chap-discovery-initiator-password'] = 'chap_password2'
+        map_data = self.driver.initialize_connection(self.data.test_volume2,
+                                                     self.data.connector)
         self.driver.terminate_connection(self.data.test_volume,
                                          self.data.connector)
+
+    def test_initialize_chap_connection(self, req):
+        req.side_effect = xms_request
+        clean_xms_data()
+        self.driver.create_volume(self.data.test_volume)
+        map_data = self.driver.initialize_connection(self.data.test_volume,
+                                                     self.data.connector)
+        c1 = xms_data['clusters'][1]
+        c1['chap-authentication-mode'] = 'initiator'
+        c1['chap-discovery-mode'] = 'initiator'
+        i1 = xms_data['initiators'][1]
+        i1['ig-id'] = ['', i1['ig-id'], 1]
+        i1['chap-authentication-initiator-password'] = 'chap_password1'
+        i1['chap-discovery-initiator-password'] = 'chap_password2'
+        map_data = self.driver.initialize_connection(self.data.test_volume2,
+                                                     self.data.connector)
+        self.assertEqual('chap_password1', map_data['data']['auth_password'])
+        self.assertEqual('chap_password2',
+                         map_data['data']['discovery_auth_password'])
+        i1['chap-authentication-initiator-password'] = None
+        i1['chap-discovery-initiator-password'] = None
+        map_data = self.driver.initialize_connection(self.data.test_volume2,
+                                                     self.data.connector)
 
     def test_initialize_connection_bad_ig(self, req):
         req.side_effect = xms_bad_request
@@ -445,6 +474,47 @@ class EMCXIODriverISCSITestCase(test.TestCase):
                           d.context, d.group, [])
         self.driver.delete_cgsnapshot(d.context, d.cgsnapshot)
         self.driver.delete_consistencygroup(d.context, d.group)
+
+
+@mock.patch('requests.request')
+class EMCXIODriverTestCase(test.TestCase):
+    def setUp(self):
+        super(EMCXIODriverTestCase, self).setUp()
+
+        configuration = mock.Mock()
+        configuration.san_login = ''
+        configuration.san_password = ''
+        configuration.san_ip = ''
+        configuration.xtremio_cluster_name = ''
+
+        def safe_get(key):
+            getattr(configuration, key)
+
+        configuration.safe_get = safe_get
+        self.driver = xtremio.XtremIOISCSIDriver(configuration=configuration)
+
+        self.data = CommonData()
+
+    def test_retry_request(self, req):
+        busy_response = mock.MagicMock()
+        busy_response.status_code = 400
+        busy_response.json.return_value = {
+            "message": "system_is_busy",
+            "error_code": 400
+        }
+        good_response = mock.MagicMock()
+        good_response.status_code = 200
+
+        EMCXIODriverTestCase.req_count = 0
+
+        def busy_request(*args, **kwargs):
+            if EMCXIODriverTestCase.req_count < 1:
+                EMCXIODriverTestCase.req_count += 1
+                return busy_response
+            return good_response
+
+        req.side_effect = busy_request
+        self.driver.create_volume(self.data.test_volume)
 
 
 @mock.patch('cinder.volume.drivers.emc.xtremio.XtremIOClient.req')
