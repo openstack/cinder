@@ -323,8 +323,8 @@ class GlanceImageService(object):
         try:
             # NOTE(dosaboy): the v2 api separates update from upload
             if data and CONF.glance_api_version > 1:
-                image_meta = self._client.call(context, 'upload', image_id,
-                                               image_meta['data'])
+                self._client.call(context, 'upload', image_id, data)
+                image_meta = self._client.call(context, 'get', image_id)
             else:
                 image_meta = self._client.call(context, 'update', image_id,
                                                **image_meta)

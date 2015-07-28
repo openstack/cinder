@@ -334,6 +334,24 @@ class TestGlanceImageService(test.TestCase):
         new_image_data = self.service.show(self.context, image_id)
         self.assertEqual('new image name', new_image_data['name'])
 
+    def test_update_v2(self):
+        self.flags(glance_api_version=2)
+        self.test_update()
+
+    def test_update_with_data(self):
+        fixture = self._make_fixture(name='test image')
+        image = self.service.create(self.context, fixture)
+        image_id = image['id']
+        data = '*' * 256
+        self.service.update(self.context, image_id, fixture, data=data)
+
+        new_image_data = self.service.show(self.context, image_id)
+        self.assertEqual(256, new_image_data['size'])
+
+    def test_update_with_data_v2(self):
+        self.flags(glance_api_version=2)
+        self.test_update_with_data()
+
     def test_delete(self):
         fixture1 = self._make_fixture(name='test image 1')
         fixture2 = self._make_fixture(name='test image 2')
