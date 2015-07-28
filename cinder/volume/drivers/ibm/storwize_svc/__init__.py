@@ -48,6 +48,7 @@ from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder import utils
+from cinder.volume import driver
 from cinder.volume.drivers.ibm.storwize_svc import helpers as storwize_helpers
 from cinder.volume.drivers.ibm.storwize_svc import replication as storwize_rep
 from cinder.volume.drivers.san import san
@@ -126,7 +127,14 @@ CONF = cfg.CONF
 CONF.register_opts(storwize_svc_opts)
 
 
-class StorwizeSVCDriver(san.SanDriver):
+class StorwizeSVCDriver(san.SanDriver,
+                        driver.ManageableVD,
+                        driver.ExtendVD, driver.SnapshotVD,
+                        driver.MigrateVD, driver.ReplicaVD,
+                        driver.ConsistencyGroupVD,
+                        driver.CloneableVD, driver.CloneableImageVD,
+                        driver.RetypeVD,
+                        driver.TransferVD):
     """IBM Storwize V7000 and SVC iSCSI/FC volume driver.
 
     Version history:
@@ -144,9 +152,10 @@ class StorwizeSVCDriver(san.SanDriver):
     1.2.6 - Added QoS support in terms of I/O throttling rate
     1.3.1 - Added support for volume replication
     1.3.2 - Added support for consistency group
+    1.3.3 - Update driver to use ABC metaclasses
     """
 
-    VERSION = "1.3.2"
+    VERSION = "1.3.3"
     VDISKCOPYOPS_INTERVAL = 600
 
     def __init__(self, *args, **kwargs):
@@ -1054,6 +1063,10 @@ class StorwizeSVCDriver(san.SanDriver):
                                                            reason=reason)
 
         return int(math.ceil(float(vdisk['capacity']) / units.Gi))
+
+    def unmanage(self, volume):
+        """Remove the specified volume from Cinder management."""
+        pass
 
     def get_volume_stats(self, refresh=False):
         """Get volume stats.
