@@ -27,6 +27,7 @@ from oslo_log import log as logging
 from oslo_utils import importutils
 
 from cinder import exception
+from cinder.volume import driver
 from cinder.volume.drivers.san import san
 
 xiv_ds8k_opts = [
@@ -57,7 +58,17 @@ CONF.register_opts(xiv_ds8k_opts)
 LOG = logging.getLogger(__name__)
 
 
-class XIVDS8KDriver(san.SanDriver):
+class XIVDS8KDriver(san.SanDriver,
+                    driver.ManageableVD,
+                    driver.ExtendVD,
+                    driver.SnapshotVD,
+                    driver.MigrateVD,
+                    driver.ReplicaVD,
+                    driver.ConsistencyGroupVD,
+                    driver.CloneableVD,
+                    driver.CloneableImageVD,
+                    driver.RetypeVD,
+                    driver.TransferVD):
     """Unified IBM XIV and DS8K volume driver."""
 
     def __init__(self, *args, **kwargs):
