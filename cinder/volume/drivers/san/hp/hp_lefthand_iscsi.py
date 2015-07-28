@@ -50,7 +50,6 @@ class HPLeftHandISCSIDriver(driver.TransferVD,
                             driver.ExtendVD,
                             driver.CloneableVD,
                             driver.SnapshotVD,
-                            driver.RetypeVD,
                             driver.MigrateVD,
                             driver.BaseVD):
     """Executes commands relating to HP/LeftHand SAN ISCSI volumes.

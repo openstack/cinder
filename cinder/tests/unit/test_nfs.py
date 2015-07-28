@@ -1308,3 +1308,17 @@ class NfsDriverDoSetupTestCase(test.TestCase):
                           v1,
                           v2,
                           mock.sentinel)
+
+    def test_retype_is_there(self):
+        "Ensure that driver.retype() is there."""
+
+        drv = nfs.NfsDriver(configuration=self.configuration)
+        v1 = DumbVolume()
+
+        ret = drv.retype(self.context,
+                         v1,
+                         mock.sentinel.new_type,
+                         mock.sentinel.diff,
+                         mock.sentinel.host)
+
+        self.assertEqual((False, None), ret)
