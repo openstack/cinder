@@ -400,12 +400,16 @@ class API(base.Base):
         LOG.info(_LI("Volume updated successfully."), resource=vref)
 
     def get(self, context, volume_id, viewable_admin_meta=False):
+        rv = self.db.volume_get(context, volume_id)
+
+        volume = dict(rv)
+
         if viewable_admin_meta:
             ctxt = context.elevated()
-        else:
-            ctxt = context
-        rv = self.db.volume_get(ctxt, volume_id)
-        volume = dict(rv)
+            admin_metadata = self.db.volume_admin_metadata_get(ctxt,
+                                                               volume_id)
+            volume['volume_admin_metadata'] = admin_metadata
+
         try:
             check_policy(context, 'get', volume)
         except exception.PolicyNotAuthorized:
