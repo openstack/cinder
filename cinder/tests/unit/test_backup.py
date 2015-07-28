@@ -17,6 +17,7 @@ Tests for Backup code.
 
 """
 
+import ddt
 import tempfile
 
 import mock
@@ -170,6 +171,7 @@ class BaseBackupTest(test.TestCase):
         return backup
 
 
+@ddt.ddt
 class BackupTestCase(BaseBackupTest):
     """Test Case for backups."""
 
@@ -226,6 +228,20 @@ class BackupTestCase(BaseBackupTest):
 
         self.assertTrue(mock_delete_volume.called)
         self.assertTrue(mock_delete_snapshot.called)
+
+    @mock.patch.object(db, 'volume_get')
+    @ddt.data(KeyError, exception.VolumeNotFound)
+    def test_cleanup_temp_volumes_snapshots(self,
+                                            err,
+                                            mock_volume_get):
+        """Ensure we handle missing volume for a backup."""
+        mock_volume_get.side_effect = [err]
+
+        backup1 = self._create_backup_db_entry(status='creating')
+        backups = [backup1]
+
+        self.assertIsNone(self.backup_mgr._cleanup_temp_volumes_snapshots(
+            backups))
 
     def test_create_backup_with_bad_volume_status(self):
         """Test creating a backup from a volume with a bad status."""
