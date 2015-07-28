@@ -51,9 +51,9 @@ class VolumeGlanceMetadataTestCase(test.TestCase):
                                'value': 'value1'}
 
         metadata = db.volume_glance_metadata_get(ctxt, 1)
-        self.assertEqual(len(metadata), 1)
+        self.assertEqual(1, len(metadata))
         for key, value in expected_metadata_1.items():
-            self.assertEqual(metadata[0][key], value)
+            self.assertEqual(value, metadata[0][key])
 
         expected_metadata_2 = ({'volume_id': '2',
                                 'key': 'key1',
@@ -66,19 +66,19 @@ class VolumeGlanceMetadataTestCase(test.TestCase):
                                 'value': '123'})
 
         metadata = db.volume_glance_metadata_get(ctxt, 2)
-        self.assertEqual(len(metadata), 3)
+        self.assertEqual(3, len(metadata))
         for expected, meta in zip(expected_metadata_2, metadata):
             for key, value in expected.items():
-                self.assertEqual(meta[key], value)
+                self.assertEqual(value, meta[key])
 
         self.assertRaises(exception.GlanceMetadataExists,
                           db.volume_glance_metadata_create,
                           ctxt, 1, 'key1', 'value1a')
 
         metadata = db.volume_glance_metadata_get(ctxt, 1)
-        self.assertEqual(len(metadata), 1)
+        self.assertEqual(1, len(metadata))
         for key, value in expected_metadata_1.items():
-            self.assertEqual(metadata[0][key], value)
+            self.assertEqual(value, metadata[0][key])
 
     def test_vols_get_glance_metadata(self):
         ctxt = context.get_admin_context()
@@ -90,7 +90,7 @@ class VolumeGlanceMetadataTestCase(test.TestCase):
         db.volume_glance_metadata_create(ctxt, '2', 'key22', 'value22')
 
         metadata = db.volume_glance_metadata_get_all(ctxt)
-        self.assertEqual(len(metadata), 3)
+        self.assertEqual(3, len(metadata))
         self._assert_metadata_equals('1', 'key1', 'value1', metadata[0])
         self._assert_metadata_equals('2', 'key2', 'value2', metadata[1])
         self._assert_metadata_equals('2', 'key22', 'value22', metadata[2])
@@ -122,7 +122,7 @@ class VolumeGlanceMetadataTestCase(test.TestCase):
 
         for meta in db.volume_snapshot_glance_metadata_get(ctxt, 100):
             for (key, value) in expected_meta.items():
-                self.assertEqual(meta[key], value)
+                self.assertEqual(value, meta[key])
 
     def test_vol_glance_metadata_copy_from_volume_to_volume(self):
         ctxt = context.get_admin_context()
@@ -136,7 +136,7 @@ class VolumeGlanceMetadataTestCase(test.TestCase):
 
         for meta in db.volume_glance_metadata_get(ctxt, 100):
             for (key, value) in expected_meta.items():
-                self.assertEqual(meta[key], value)
+                self.assertEqual(value, meta[key])
 
     def test_volume_glance_metadata_copy_to_volume(self):
         vol1 = db.volume_create(self.ctxt, {})
@@ -149,7 +149,7 @@ class VolumeGlanceMetadataTestCase(test.TestCase):
                                                  snapshot['id'])
         metadata = db.volume_glance_metadata_get(self.ctxt, vol2['id'])
         metadata = {m['key']: m['value'] for m in metadata}
-        self.assertEqual(metadata, {'m1': 'v1'})
+        self.assertEqual({'m1': 'v1'}, metadata)
 
     def test_volume_snapshot_glance_metadata_get_nonexistent(self):
         vol = db.volume_create(self.ctxt, {})

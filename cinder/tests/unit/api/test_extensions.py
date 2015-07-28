@@ -60,7 +60,7 @@ class ExtensionControllerTest(ExtensionTestCase):
         names = [str(x['name']) for x in data['extensions']
                  if str(x['name']) in self.ext_list]
         names.sort()
-        self.assertEqual(names, self.ext_list)
+        self.assertEqual(self.ext_list, names)
 
         # Ensure all the timestamps are valid according to iso8601
         for ext in data['extensions']:
@@ -70,19 +70,21 @@ class ExtensionControllerTest(ExtensionTestCase):
         (fox_ext, ) = [
             x for x in data['extensions'] if x['alias'] == 'FOXNSOX']
         self.assertEqual(
-            fox_ext, {'namespace': 'http://www.fox.in.socks/api/ext/pie/v1.0',
-                      'name': 'Fox In Socks',
-                      'updated': '2011-01-22T13:25:27-06:00',
-                      'description': 'The Fox In Socks Extension.',
-                      'alias': 'FOXNSOX',
-                      'links': []}, )
+            {'namespace': 'http://www.fox.in.socks/api/ext/pie/v1.0',
+             'name': 'Fox In Socks',
+             'updated': '2011-01-22T13:25:27-06:00',
+             'description': 'The Fox In Socks Extension.',
+             'alias': 'FOXNSOX',
+             'links': []},
+            fox_ext)
 
         for ext in data['extensions']:
             url = '/fake/extensions/%s' % ext['alias']
             request = webob.Request.blank(url)
             response = request.get_response(app)
             output = jsonutils.loads(response.body)
-            self.assertEqual(output['extension']['alias'], ext['alias'])
+            self.assertEqual(output['extension']['alias'],
+                             ext['alias'])
 
     def test_get_extension_json(self):
         app = router.APIRouter()
@@ -92,13 +94,12 @@ class ExtensionControllerTest(ExtensionTestCase):
 
         data = jsonutils.loads(response.body)
         self.assertEqual(
-            data['extension'],
             {"namespace": "http://www.fox.in.socks/api/ext/pie/v1.0",
              "name": "Fox In Socks",
              "updated": "2011-01-22T13:25:27-06:00",
              "description": "The Fox In Socks Extension.",
              "alias": "FOXNSOX",
-             "links": []})
+             "links": []}, data['extension'])
 
     def test_get_non_existing_extension_json(self):
         app = router.APIRouter()
@@ -122,14 +123,14 @@ class ExtensionControllerTest(ExtensionTestCase):
 
         # Make sure that at least Fox in Sox is correct.
         (fox_ext, ) = [x for x in exts if x.get('alias') == 'FOXNSOX']
-        self.assertEqual(fox_ext.get('name'), 'Fox In Socks')
+        self.assertEqual('Fox In Socks', fox_ext.get('name'))
         self.assertEqual(
-            fox_ext.get('namespace'),
-            'http://www.fox.in.socks/api/ext/pie/v1.0')
-        self.assertEqual(fox_ext.get('updated'), '2011-01-22T13:25:27-06:00')
+            'http://www.fox.in.socks/api/ext/pie/v1.0',
+            fox_ext.get('namespace'))
+        self.assertEqual('2011-01-22T13:25:27-06:00', fox_ext.get('updated'))
         self.assertEqual(
-            fox_ext.findtext('{0}description'.format(NS)),
-            'The Fox In Socks Extension.')
+            'The Fox In Socks Extension.',
+            fox_ext.findtext('{0}description'.format(NS)))
 
         xmlutil.validate_schema(root, 'extensions')
 
@@ -143,15 +144,15 @@ class ExtensionControllerTest(ExtensionTestCase):
 
         root = etree.XML(xml)
         self.assertEqual(root.tag.split('extension')[0], NS)
-        self.assertEqual(root.get('alias'), 'FOXNSOX')
-        self.assertEqual(root.get('name'), 'Fox In Socks')
+        self.assertEqual('FOXNSOX', root.get('alias'))
+        self.assertEqual('Fox In Socks', root.get('name'))
         self.assertEqual(
-            root.get('namespace'),
-            'http://www.fox.in.socks/api/ext/pie/v1.0')
-        self.assertEqual(root.get('updated'), '2011-01-22T13:25:27-06:00')
+            'http://www.fox.in.socks/api/ext/pie/v1.0',
+            root.get('namespace'))
+        self.assertEqual('2011-01-22T13:25:27-06:00', root.get('updated'))
         self.assertEqual(
-            root.findtext('{0}description'.format(NS)),
-            'The Fox In Socks Extension.')
+            'The Fox In Socks Extension.',
+            root.findtext('{0}description'.format(NS)))
 
         xmlutil.validate_schema(root, 'extension')
 
@@ -200,12 +201,12 @@ class ExtensionControllerIdFormatTest(test.TestCase):
 
     def test_id_with_xml_format(self):
         result = self._bounce_id('foo.xml')
-        self.assertEqual(result, 'foo')
+        self.assertEqual('foo', result)
 
     def test_id_with_json_format(self):
         result = self._bounce_id('foo.json')
-        self.assertEqual(result, 'foo')
+        self.assertEqual('foo', result)
 
     def test_id_with_bad_format(self):
         result = self._bounce_id('foo.bad')
-        self.assertEqual(result, 'foo.bad')
+        self.assertEqual('foo.bad', result)

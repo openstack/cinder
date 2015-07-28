@@ -132,11 +132,11 @@ class VolumeRpcAPITestCase(test.TestCase):
 
         retval = getattr(rpcapi, method)(ctxt, **kwargs)
 
-        self.assertEqual(retval, expected_retval)
+        self.assertEqual(expected_retval, retval)
         expected_args = [ctxt, method]
 
         for arg, expected_arg in zip(self.fake_args, expected_args):
-            self.assertEqual(arg, expected_arg)
+            self.assertEqual(expected_arg, arg)
 
         for kwarg, value in self.fake_kwargs.items():
             if isinstance(value, objects.Snapshot):

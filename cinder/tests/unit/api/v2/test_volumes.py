@@ -111,7 +111,7 @@ class VolumeApiTest(test.TestCase):
                          'user_id': 'fakeuser',
                          'volume_type': 'vol_type_name',
                          'encrypted': False}}
-        self.assertEqual(res_dict, ex)
+        self.assertEqual(ex, res_dict)
 
     def test_volume_create_with_consistencygroup_invalid_type(self):
         ctxt = context.RequestContext('fake', 'fake', auth_token=True)
@@ -170,14 +170,14 @@ class VolumeApiTest(test.TestCase):
         body.update(dict(volume=vol))
         res_dict = self.controller.create(req, body)
         volume_id = res_dict['volume']['id']
-        self.assertEqual(len(res_dict), 1)
+        self.assertEqual(1, len(res_dict))
 
         # Use correct volume type id
         vol.update(dict(volume_type=db_vol_type['id']))
         body.update(dict(volume=vol))
         res_dict = self.controller.create(req, body)
         volume_id = res_dict['volume']['id']
-        self.assertEqual(len(res_dict), 1)
+        self.assertEqual(1, len(res_dict))
 
         self.stubs.Set(volume_api.API, 'get_all',
                        lambda *args, **kwargs:
@@ -476,7 +476,7 @@ class VolumeApiTest(test.TestCase):
         }
         body = {"volume": updates}
         req = fakes.HTTPRequest.blank('/v2/volumes/1')
-        self.assertEqual(len(self.notifier.notifications), 0)
+        self.assertEqual(0, len(self.notifier.notifications))
         res_dict = self.controller.update(req, '1', body)
         expected = {
             'volume': {
@@ -510,8 +510,8 @@ class VolumeApiTest(test.TestCase):
                 ],
             }
         }
-        self.assertEqual(res_dict, expected)
-        self.assertEqual(len(self.notifier.notifications), 2)
+        self.assertEqual(expected, res_dict)
+        self.assertEqual(2, len(self.notifier.notifications))
 
     def test_volume_update_deprecation(self):
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
@@ -523,7 +523,7 @@ class VolumeApiTest(test.TestCase):
         }
         body = {"volume": updates}
         req = fakes.HTTPRequest.blank('/v2/volumes/1')
-        self.assertEqual(len(self.notifier.notifications), 0)
+        self.assertEqual(0, len(self.notifier.notifications))
         res_dict = self.controller.update(req, '1', body)
         expected = {
             'volume': {
@@ -557,8 +557,8 @@ class VolumeApiTest(test.TestCase):
                 ],
             }
         }
-        self.assertEqual(res_dict, expected)
-        self.assertEqual(len(self.notifier.notifications), 2)
+        self.assertEqual(expected, res_dict)
+        self.assertEqual(2, len(self.notifier.notifications))
 
     def test_volume_update_deprecation_key_priority(self):
         """Test current update keys have priority over deprecated keys."""
@@ -573,7 +573,7 @@ class VolumeApiTest(test.TestCase):
         }
         body = {"volume": updates}
         req = fakes.HTTPRequest.blank('/v2/volumes/1')
-        self.assertEqual(len(self.notifier.notifications), 0)
+        self.assertEqual(0, len(self.notifier.notifications))
         res_dict = self.controller.update(req, '1', body)
         expected = {
             'volume': {
@@ -607,8 +607,8 @@ class VolumeApiTest(test.TestCase):
                 ],
             }
         }
-        self.assertEqual(res_dict, expected)
-        self.assertEqual(len(self.notifier.notifications), 2)
+        self.assertEqual(expected, res_dict)
+        self.assertEqual(2, len(self.notifier.notifications))
 
     def test_volume_update_metadata(self):
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
@@ -619,7 +619,7 @@ class VolumeApiTest(test.TestCase):
         }
         body = {"volume": updates}
         req = fakes.HTTPRequest.blank('/v2/volumes/1')
-        self.assertEqual(len(self.notifier.notifications), 0)
+        self.assertEqual(0, len(self.notifier.notifications))
         res_dict = self.controller.update(req, '1', body)
         expected = {'volume': {
             'status': 'fakestatus',
@@ -653,8 +653,8 @@ class VolumeApiTest(test.TestCase):
                 }
             ],
         }}
-        self.assertEqual(res_dict, expected)
-        self.assertEqual(len(self.notifier.notifications), 2)
+        self.assertEqual(expected, res_dict)
+        self.assertEqual(2, len(self.notifier.notifications))
 
     def test_volume_update_with_admin_metadata(self):
         self.stubs.Set(volume_api.API, "update", stubs.stub_volume_update)
@@ -679,7 +679,7 @@ class VolumeApiTest(test.TestCase):
         }
         body = {"volume": updates}
         req = fakes.HTTPRequest.blank('/v2/volumes/1')
-        self.assertEqual(len(self.notifier.notifications), 0)
+        self.assertEqual(0, len(self.notifier.notifications))
         admin_ctx = context.RequestContext('admin', 'fake', True)
         req.environ['cinder.context'] = admin_ctx
         res_dict = self.controller.update(req, '1', body)
@@ -777,7 +777,7 @@ class VolumeApiTest(test.TestCase):
                 }
             ]
         }
-        self.assertEqual(res_dict, expected)
+        self.assertEqual(expected, res_dict)
         # Finally test that we cached the returned volumes
         self.assertEqual(1, len(req.cached_resource()))
 
@@ -823,7 +823,7 @@ class VolumeApiTest(test.TestCase):
                 }
             ]
         }
-        self.assertEqual(res_dict, expected)
+        self.assertEqual(expected, res_dict)
         # Finally test that we cached the returned volumes
         self.assertEqual(1, len(req.cached_resource()))
 
@@ -891,7 +891,7 @@ class VolumeApiTest(test.TestCase):
                 }
             ]
         }
-        self.assertEqual(res_dict, expected)
+        self.assertEqual(expected, res_dict)
 
     def test_volume_index_with_marker(self):
         def stub_volume_get_all_by_project(context, project_id, marker, limit,
@@ -910,8 +910,8 @@ class VolumeApiTest(test.TestCase):
         res_dict = self.controller.index(req)
         volumes = res_dict['volumes']
         self.assertEqual(len(volumes), 2)
-        self.assertEqual(volumes[0]['id'], 1)
-        self.assertEqual(volumes[1]['id'], 2)
+        self.assertEqual(1, volumes[0]['id'])
+        self.assertEqual(2, volumes[1]['id'])
 
     def test_volume_index_limit(self):
         self.stubs.Set(db, 'volume_get_all_by_project',
@@ -923,7 +923,7 @@ class VolumeApiTest(test.TestCase):
                                       '&sort=id1:asc')
         res_dict = self.controller.index(req)
         volumes = res_dict['volumes']
-        self.assertEqual(len(volumes), 1)
+        self.assertEqual(1, len(volumes))
 
         # Ensure that the next link is correctly formatted, it should
         # contain the same limit, filter, and sort information as the
@@ -931,7 +931,7 @@ class VolumeApiTest(test.TestCase):
         # caller can simply use the "next" link and that they do not
         # need to manually insert the limit and sort information.
         links = res_dict['volumes_links']
-        self.assertEqual(links[0]['rel'], 'next')
+        self.assertEqual('next', links[0]['rel'])
         href_parts = urllib.parse.urlparse(links[0]['href'])
         self.assertEqual('/v2/fakeproject/volumes', href_parts.path)
         params = urllib.parse.parse_qs(href_parts.query)
@@ -960,8 +960,8 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/volumes?marker=1&limit=1')
         res_dict = self.controller.index(req)
         volumes = res_dict['volumes']
-        self.assertEqual(len(volumes), 1)
-        self.assertEqual(volumes[0]['id'], '1')
+        self.assertEqual(1, len(volumes))
+        self.assertEqual('1', volumes[0]['id'])
 
     def test_volume_index_limit_offset(self):
         def stub_volume_get_all_by_project(context, project_id, marker, limit,
@@ -979,8 +979,8 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/volumes?limit=2&offset=1')
         res_dict = self.controller.index(req)
         volumes = res_dict['volumes']
-        self.assertEqual(len(volumes), 1)
-        self.assertEqual(volumes[0]['id'], 2)
+        self.assertEqual(1, len(volumes))
+        self.assertEqual(2, volumes[0]['id'])
 
         req = fakes.HTTPRequest.blank('/v2/volumes?limit=-1&offset=1')
         self.assertRaises(exception.InvalidInput,
@@ -1008,9 +1008,9 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/volumes/detail?marker=1')
         res_dict = self.controller.detail(req)
         volumes = res_dict['volumes']
-        self.assertEqual(len(volumes), 2)
-        self.assertEqual(volumes[0]['id'], 1)
-        self.assertEqual(volumes[1]['id'], 2)
+        self.assertEqual(2, len(volumes))
+        self.assertEqual(1, volumes[0]['id'])
+        self.assertEqual(2, volumes[1]['id'])
 
     def test_volume_detail_limit(self):
         self.stubs.Set(db, 'volume_get_all_by_project',
@@ -1020,11 +1020,11 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=1')
         res_dict = self.controller.detail(req)
         volumes = res_dict['volumes']
-        self.assertEqual(len(volumes), 1)
+        self.assertEqual(1, len(volumes))
 
         # Ensure that the next link is correctly formatted
         links = res_dict['volumes_links']
-        self.assertEqual(links[0]['rel'], 'next')
+        self.assertEqual('next', links[0]['rel'])
         href_parts = urllib.parse.urlparse(links[0]['href'])
         self.assertEqual('/v2/fakeproject/volumes/detail', href_parts.path)
         params = urllib.parse.parse_qs(href_parts.query)
@@ -1051,8 +1051,8 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/volumes/detail?marker=1&limit=1')
         res_dict = self.controller.detail(req)
         volumes = res_dict['volumes']
-        self.assertEqual(len(volumes), 1)
-        self.assertEqual(volumes[0]['id'], '1')
+        self.assertEqual(1, len(volumes))
+        self.assertEqual('1', volumes[0]['id'])
 
     def test_volume_detail_limit_offset(self):
         def stub_volume_get_all_by_project(context, project_id, marker, limit,
@@ -1070,15 +1070,15 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=2&offset=1')
         res_dict = self.controller.detail(req)
         volumes = res_dict['volumes']
-        self.assertEqual(len(volumes), 1)
-        self.assertEqual(volumes[0]['id'], 2)
+        self.assertEqual(1, len(volumes))
+        self.assertEqual(2, volumes[0]['id'])
 
         req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=2&offset=1',
                                       use_admin_context=True)
         res_dict = self.controller.detail(req)
         volumes = res_dict['volumes']
-        self.assertEqual(len(volumes), 1)
-        self.assertEqual(volumes[0]['id'], 2)
+        self.assertEqual(1, len(volumes))
+        self.assertEqual(2, volumes[0]['id'])
 
         req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=-1&offset=1')
         self.assertRaises(exception.InvalidInput,

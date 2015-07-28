@@ -62,8 +62,8 @@ class HostManagerTestCase(test.TestCase):
 
         # Test 'volume' returns 1 correct function
         filter_classes = self.host_manager._choose_host_filters(None)
-        self.assertEqual(len(filter_classes), 1)
-        self.assertEqual(filter_classes[0].__name__, 'FakeFilterClass2')
+        self.assertEqual(1, len(filter_classes))
+        self.assertEqual('FakeFilterClass2', filter_classes[0].__name__)
 
     @mock.patch('cinder.scheduler.host_manager.HostManager.'
                 '_choose_host_filters')
@@ -82,7 +82,7 @@ class HostManagerTestCase(test.TestCase):
         result = self.host_manager.get_filtered_hosts(self.fake_hosts,
                                                       fake_properties)
         self.assertEqual(expected, mock_func.call_args_list)
-        self.assertEqual(set(result), set(self.fake_hosts))
+        self.assertEqual(set(self.fake_hosts), set(result))
 
     @mock.patch('oslo_utils.timeutils.utcnow')
     def test_update_service_capabilities(self, _mock_utcnow):
@@ -105,7 +105,7 @@ class HostManagerTestCase(test.TestCase):
         # Make sure dictionary isn't re-assigned
         self.assertEqual(self.host_manager.service_states, service_states)
         # Make sure original dictionary wasn't copied
-        self.assertEqual(host1_volume_capabs['timestamp'], 1)
+        self.assertEqual(1, host1_volume_capabs['timestamp'])
 
         host1_volume_capabs['timestamp'] = 31337
         host2_volume_capabs['timestamp'] = 31338
@@ -253,7 +253,7 @@ class HostManagerTestCase(test.TestCase):
 
         # Get host_state_map and make sure we have the first 4 hosts
         host_state_map = self.host_manager.host_state_map
-        self.assertEqual(len(host_state_map), 3)
+        self.assertEqual(3, len(host_state_map))
         for i in range(3):
             volume_node = services[i]
             host = volume_node['host']
@@ -279,7 +279,7 @@ class HostManagerTestCase(test.TestCase):
         # Get host_state_map and make sure we have the first 2 hosts (host3 is
         # down, host4 is missing capabilities)
         host_state_map = self.host_manager.host_state_map
-        self.assertEqual(len(host_state_map), 2)
+        self.assertEqual(2, len(host_state_map))
         for i in range(2):
             volume_node = services[i]
             host = volume_node['host']
@@ -450,16 +450,16 @@ class HostStateTestCase(test.TestCase):
 
         fake_host.update_from_volume_capability(capability)
 
-        self.assertEqual(fake_host.volume_backend_name, 'Local iSCSI')
-        self.assertEqual(fake_host.storage_protocol, 'iSCSI')
-        self.assertEqual(fake_host.vendor_name, 'OpenStack')
-        self.assertEqual(fake_host.driver_version, '1.0.1')
+        self.assertEqual('Local iSCSI', fake_host.volume_backend_name)
+        self.assertEqual('iSCSI', fake_host.storage_protocol)
+        self.assertEqual('OpenStack', fake_host.vendor_name)
+        self.assertEqual('1.0.1', fake_host.driver_version)
 
         # Backend level stats remain uninitialized
-        self.assertEqual(fake_host.total_capacity_gb, 0)
-        self.assertEqual(fake_host.free_capacity_gb, None)
+        self.assertEqual(0, fake_host.total_capacity_gb)
+        self.assertEqual(None, fake_host.free_capacity_gb)
         # Pool stats has been updated
-        self.assertEqual(len(fake_host.pools), 2)
+        self.assertEqual(2, len(fake_host.pools))
 
         self.assertEqual(500, fake_host.pools['1st pool'].total_capacity_gb)
         self.assertEqual(230, fake_host.pools['1st pool'].free_capacity_gb)
@@ -491,10 +491,10 @@ class HostStateTestCase(test.TestCase):
         # test update HostState Record
         fake_host.update_from_volume_capability(capability)
 
-        self.assertEqual(fake_host.driver_version, '1.0.2')
+        self.assertEqual('1.0.2', fake_host.driver_version)
 
         # Non-active pool stats has been removed
-        self.assertEqual(len(fake_host.pools), 1)
+        self.assertEqual(1, len(fake_host.pools))
 
         self.assertRaises(KeyError, lambda: fake_host.pools['1st pool'])
         self.assertRaises(KeyError, lambda: fake_host.pools['2nd pool'])
@@ -515,13 +515,15 @@ class HostStateTestCase(test.TestCase):
 
         fake_host.update_from_volume_capability(volume_capability)
         # Backend level stats remain uninitialized
-        self.assertEqual(fake_host.total_capacity_gb, 0)
-        self.assertEqual(fake_host.free_capacity_gb, None)
+        self.assertEqual(0, fake_host.total_capacity_gb)
+        self.assertEqual(None, fake_host.free_capacity_gb)
         # Pool stats has been updated
-        self.assertEqual(fake_host.pools['_pool0'].total_capacity_gb,
-                         'infinite')
-        self.assertEqual(fake_host.pools['_pool0'].free_capacity_gb,
-                         'infinite')
+        self.assertEqual(
+            'infinite',
+            fake_host.pools['_pool0'].total_capacity_gb)
+        self.assertEqual(
+            'infinite',
+            fake_host.pools['_pool0'].free_capacity_gb)
 
     def test_update_from_volume_unknown_capability(self):
         fake_host = host_manager.HostState('host1')
@@ -534,13 +536,15 @@ class HostStateTestCase(test.TestCase):
 
         fake_host.update_from_volume_capability(volume_capability)
         # Backend level stats remain uninitialized
-        self.assertEqual(fake_host.total_capacity_gb, 0)
-        self.assertEqual(fake_host.free_capacity_gb, None)
+        self.assertEqual(0, fake_host.total_capacity_gb)
+        self.assertEqual(None, fake_host.free_capacity_gb)
         # Pool stats has been updated
-        self.assertEqual(fake_host.pools['_pool0'].total_capacity_gb,
-                         'infinite')
-        self.assertEqual(fake_host.pools['_pool0'].free_capacity_gb,
-                         'unknown')
+        self.assertEqual(
+            'infinite',
+            fake_host.pools['_pool0'].total_capacity_gb)
+        self.assertEqual(
+            'unknown',
+            fake_host.pools['_pool0'].free_capacity_gb)
 
     def test_update_from_empty_volume_capability(self):
         fake_host = host_manager.HostState('host1')

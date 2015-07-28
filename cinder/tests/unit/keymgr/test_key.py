@@ -46,13 +46,13 @@ class SymmetricKeyTestCase(KeyTestCase):
         super(SymmetricKeyTestCase, self).setUp()
 
     def test_get_algorithm(self):
-        self.assertEqual(self.key.get_algorithm(), self.algorithm)
+        self.assertEqual(self.algorithm, self.key.get_algorithm())
 
     def test_get_format(self):
-        self.assertEqual(self.key.get_format(), 'RAW')
+        self.assertEqual('RAW', self.key.get_format())
 
     def test_get_encoded(self):
-        self.assertEqual(self.key.get_encoded(), self.encoded)
+        self.assertEqual(self.encoded, self.key.get_encoded())
 
     def test___eq__(self):
         self.assertTrue(self.key == self.key)

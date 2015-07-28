@@ -256,12 +256,12 @@ class TestWSGIServer(test.TestCase):
 
         # Stopping the server, which in turn sets pool size to 0
         server.stop()
-        self.assertEqual(server._pool.size, 0)
+        self.assertEqual(0, server._pool.size)
 
         # Resetting pool size to default
         server.reset()
         server.start()
-        self.assertEqual(server._pool.size, 1000)
+        self.assertEqual(1000, server._pool.size)
 
 
 class ExceptionTest(test.TestCase):
@@ -294,7 +294,7 @@ class ExceptionTest(test.TestCase):
                     'The server has either erred or is incapable '
                     'of performing the requested operation.')
         self.assertIn(expected, resp.body)
-        self.assertEqual(resp.status_int, 500, resp.body)
+        self.assertEqual(500, resp.status_int, resp.body)
 
     def test_safe_exceptions_are_described_in_faults(self):
         self._do_test_exception_safety_reflected_in_faults(True)
@@ -310,7 +310,7 @@ class ExceptionTest(test.TestCase):
         api = self._wsgi_app(fail)
         resp = webob.Request.blank('/').get_response(api)
         self.assertIn(msg, resp.body)
-        self.assertEqual(resp.status_int, exception_type.code, resp.body)
+        self.assertEqual(exception_type.code, resp.status_int, resp.body)
 
         if hasattr(exception_type, 'headers'):
             for (key, value) in exception_type.headers.items():

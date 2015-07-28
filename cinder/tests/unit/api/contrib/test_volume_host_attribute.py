@@ -74,7 +74,7 @@ class VolumeHostAttributeTest(test.TestCase):
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
         vol = json.loads(res.body)['volume']
-        self.assertEqual(vol['os-vol-host-attr:host'], 'host001')
+        self.assertEqual('host001', vol['os-vol-host-attr:host'])
 
     def test_get_volume_unallowed(self):
         ctx = context.RequestContext('non-admin', 'fake', False)
@@ -92,7 +92,7 @@ class VolumeHostAttributeTest(test.TestCase):
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
         vol = json.loads(res.body)['volumes']
-        self.assertEqual(vol[0]['os-vol-host-attr:host'], 'host001')
+        self.assertEqual('host001', vol[0]['os-vol-host-attr:host'])
 
     def test_list_detail_volumes_unallowed(self):
         ctx = context.RequestContext('non-admin', 'fake', False)
@@ -122,7 +122,7 @@ class VolumeHostAttributeTest(test.TestCase):
         vol = etree.XML(res.body)
         host_key = ('{http://docs.openstack.org/volume/ext/'
                     'volume_host_attribute/api/v2}host')
-        self.assertEqual(vol.get(host_key), 'host001')
+        self.assertEqual('host001', vol.get(host_key))
 
     def test_list_volumes_detail_xml(self):
         ctx = context.RequestContext('admin', 'fake', True)
@@ -134,4 +134,4 @@ class VolumeHostAttributeTest(test.TestCase):
         vol = list(etree.XML(res.body))[0]
         host_key = ('{http://docs.openstack.org/volume/ext/'
                     'volume_host_attribute/api/v2}host')
-        self.assertEqual(vol.get(host_key), 'host001')
+        self.assertEqual('host001', vol.get(host_key))

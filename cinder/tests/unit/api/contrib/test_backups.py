@@ -93,16 +93,16 @@ class BackupsAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app())
         res_dict = json.loads(res.body)
 
-        self.assertEqual(res.status_int, 200)
-        self.assertEqual(res_dict['backup']['availability_zone'], 'az1')
-        self.assertEqual(res_dict['backup']['container'], 'volumebackups')
-        self.assertEqual(res_dict['backup']['description'],
-                         'this is a test backup')
-        self.assertEqual(res_dict['backup']['name'], 'test_backup')
+        self.assertEqual(200, res.status_int)
+        self.assertEqual('az1', res_dict['backup']['availability_zone'])
+        self.assertEqual('volumebackups', res_dict['backup']['container'])
+        self.assertEqual('this is a test backup',
+                         res_dict['backup']['description'])
+        self.assertEqual('test_backup', res_dict['backup']['name'])
         self.assertEqual(res_dict['backup']['id'], backup_id)
-        self.assertEqual(res_dict['backup']['object_count'], 0)
-        self.assertEqual(res_dict['backup']['size'], 0)
-        self.assertEqual(res_dict['backup']['status'], 'creating')
+        self.assertEqual(0, res_dict['backup']['object_count'])
+        self.assertEqual(0, res_dict['backup']['size'])
+        self.assertEqual('creating', res_dict['backup']['status'])
         self.assertEqual(res_dict['backup']['volume_id'], volume_id)
 
         db.backup_destroy(context.get_admin_context(), backup_id)
@@ -117,13 +117,13 @@ class BackupsAPITestCase(test.TestCase):
         req.headers['Content-Type'] = 'application/xml'
         req.headers['Accept'] = 'application/xml'
         res = req.get_response(fakes.wsgi_app())
-        self.assertEqual(res.status_int, 200)
+        self.assertEqual(200, res.status_int)
         dom = minidom.parseString(res.body)
         backup = dom.getElementsByTagName('backup')
         name = backup.item(0).getAttribute('name')
         container_name = backup.item(0).getAttribute('container')
-        self.assertEqual(container_name.strip(), "volumebackups")
-        self.assertEqual(name.strip(), "test_backup")
+        self.assertEqual('volumebackups', container_name.strip())
+        self.assertEqual('test_backup', name.strip())
         db.backup_destroy(context.get_admin_context(), backup_id)
         db.volume_destroy(context.get_admin_context(), volume_id)
 
@@ -134,8 +134,8 @@ class BackupsAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app())
         res_dict = json.loads(res.body)
 
-        self.assertEqual(res.status_int, 404)
-        self.assertEqual(res_dict['itemNotFound']['code'], 404)
+        self.assertEqual(404, res.status_int)
+        self.assertEqual(404, res_dict['itemNotFound']['code'])
         self.assertEqual(res_dict['itemNotFound']['message'],
                          'Backup 9999 could not be found.')
 
@@ -150,16 +150,16 @@ class BackupsAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app())
         res_dict = json.loads(res.body)
 
-        self.assertEqual(res.status_int, 200)
-        self.assertEqual(len(res_dict['backups'][0]), 3)
+        self.assertEqual(200, res.status_int)
+        self.assertEqual(3, len(res_dict['backups'][0]))
         self.assertEqual(res_dict['backups'][0]['id'], backup_id1)
-        self.assertEqual(res_dict['backups'][0]['name'], 'test_backup')
-        self.assertEqual(len(res_dict['backups'][1]), 3)
+        self.assertEqual('test_backup', res_dict['backups'][0]['name'])
+        self.assertEqual(3, len(res_dict['backups'][1]))
         self.assertEqual(res_dict['backups'][1]['id'], backup_id2)
-        self.assertEqual(res_dict['backups'][1]['name'], 'test_backup')
-        self.assertEqual(len(res_dict['backups'][2]), 3)
+        self.assertEqual('test_backup', res_dict['backups'][1]['name'])
+        self.assertEqual(3, len(res_dict['backups'][2]))
         self.assertEqual(res_dict['backups'][2]['id'], backup_id3)
-        self.assertEqual(res_dict['backups'][2]['name'], 'test_backup')
+        self.assertEqual('test_backup', res_dict['backups'][2]['name'])
 
         db.backup_destroy(context.get_admin_context(), backup_id3)
         db.backup_destroy(context.get_admin_context(), backup_id2)
@@ -176,17 +176,17 @@ class BackupsAPITestCase(test.TestCase):
         req.headers['Accept'] = 'application/xml'
         res = req.get_response(fakes.wsgi_app())
 
-        self.assertEqual(res.status_int, 200)
+        self.assertEqual(200, res.status_int)
         dom = minidom.parseString(res.body)
         backup_list = dom.getElementsByTagName('backup')
 
-        self.assertEqual(backup_list.item(0).attributes.length, 2)
+        self.assertEqual(2, backup_list.item(0).attributes.length)
         self.assertEqual(backup_list.item(0).getAttribute('id'),
                          backup_id1)
-        self.assertEqual(backup_list.item(1).attributes.length, 2)
+        self.assertEqual(2, backup_list.item(1).attributes.length)
         self.assertEqual(backup_list.item(1).getAttribute('id'),
                          backup_id2)
-        self.assertEqual(backup_list.item(2).attributes.length, 2)
+        self.assertEqual(2, backup_list.item(2).attributes.length)
         self.assertEqual(backup_list.item(2).getAttribute('id'),
                          backup_id3)
 
@@ -206,9 +206,9 @@ class BackupsAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app())
         res_dict = json.loads(res.body)
 
-        self.assertEqual(res.status_int, 200)
-        self.assertEqual(len(res_dict['backups'][0]), 12)
-        self.assertEqual(res_dict['backups'][0]['availability_zone'], 'az1')
+        self.assertEqual(200, res.status_int)
+        self.assertEqual(12, len(res_dict['backups'][0]))
+        self.assertEqual('az1', res_dict['backups'][0]['availability_zone'])
         self.assertEqual(res_dict['backups'][0]['container'],
                          'volumebackups')
         self.assertEqual(res_dict['backups'][0]['description'],
