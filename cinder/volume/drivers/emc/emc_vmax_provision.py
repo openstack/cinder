@@ -967,10 +967,16 @@ class EMCVMAXProvision(object):
         """
         startTime = time.time()
 
+        if isinstance(volumeInstanceName, list):
+            theElements = volumeInstanceName
+            volumeName = 'Bulk Add'
+        else:
+            theElements = [volumeInstanceName]
+
         rc, job = conn.InvokeMethod(
             'AddMembers',
             replicationService,
-            Members=[volumeInstanceName],
+            Members=theElements,
             ReplicationGroup=cgInstanceName)
 
         if rc != 0:
@@ -978,9 +984,9 @@ class EMCVMAXProvision(object):
                                                              extraSpecs)
             if rc != 0:
                 exceptionMessage = (_(
-                    "Failed to add volume %(volumeName)s: "
-                    "to consistency group %(cgName)s "
-                    "Return code: %(rc)lu.  Error: %(error)s.")
+                    "Failed to add volume %(volumeName)s "
+                    "to consistency group %(cgName)s. "
+                    "Return code: %(rc)lu. Error: %(error)s.")
                     % {'volumeName': volumeName,
                        'cgName': cgName,
                        'rc': rc,
@@ -1013,21 +1019,26 @@ class EMCVMAXProvision(object):
         """
         startTime = time.time()
 
+        if isinstance(volumeInstanceName, list):
+            theElements = volumeInstanceName
+            volumeName = 'Bulk Remove'
+        else:
+            theElements = [volumeInstanceName]
+
         rc, job = conn.InvokeMethod(
             'RemoveMembers',
             replicationService,
-            Members=[volumeInstanceName],
-            ReplicationGroup=cgInstanceName,
-            RemoveElements=True)
+            Members=theElements,
+            ReplicationGroup=cgInstanceName)
 
         if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(conn, job,
                                                              extraSpecs)
             if rc != 0:
                 exceptionMessage = (_(
-                    "Failed to remove volume %(volumeName)s: "
-                    "to consistency group %(cgName)s "
-                    "Return code: %(rc)lu.  Error: %(error)s.")
+                    "Failed to remove volume %(volumeName)s "
+                    "from consistency group %(cgName)s. "
+                    "Return code: %(rc)lu. Error: %(error)s.")
                     % {'volumeName': volumeName,
                        'cgName': cgName,
                        'rc': rc,
