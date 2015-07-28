@@ -57,8 +57,7 @@ LOG = logging.getLogger(__name__)
 backup_manager_opts = [
     cfg.StrOpt('backup_driver',
                default='cinder.backup.drivers.swift',
-               help='Driver to use for backups.',
-               deprecated_name='backup_service'),
+               help='Driver to use for backups.',)
 ]
 
 # This map doesn't need to be extended in the future since it's only

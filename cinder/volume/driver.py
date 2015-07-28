@@ -67,7 +67,6 @@ volume_opts = [
                default=3260,
                help='The port that the iSCSI daemon is listening on'),
     cfg.IntOpt('num_volume_device_scan_tries',
-               deprecated_name='num_iscsi_scan_tries',
                default=3,
                help='The maximum number of times to rescan targets'
                     ' to find volume'),
