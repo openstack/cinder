@@ -97,6 +97,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
             db=self.db,
             executor=self._execute)
         self.protocol = self.target_driver.protocol
+        self.sparse_copy_volume = False
 
     def _sizestr(self, size_in_g):
         return '%sg' % size_in_g
@@ -295,6 +296,9 @@ class LVMVolumeDriver(driver.VolumeDriver):
                     raise exception.VolumeBackendAPIException(
                         data=exception_message)
 
+            # Enable sparse copy since lvm_type is 'thin'
+            self.sparse_copy_volume = True
+
     def create_volume(self, volume):
         """Creates a logical volume."""
         mirror_count = 0
@@ -358,7 +362,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
                              self.local_path(volume),
                              snapshot['volume_size'] * units.Ki,
                              self.configuration.volume_dd_blocksize,
-                             execute=self._execute)
+                             execute=self._execute,
+                             sparse=self.sparse_copy_volume)
 
     def delete_volume(self, volume):
         """Deletes a logical volume."""
@@ -449,14 +454,13 @@ class LVMVolumeDriver(driver.VolumeDriver):
                                 mirror_count)
 
             self.vg.activate_lv(temp_snapshot['name'], is_snapshot=True)
-            sparse = True if self.configuration.lvm_type == 'thin' else False
             volutils.copy_volume(
                 self.local_path(temp_snapshot),
                 self.local_path(volume),
                 src_vref['size'] * units.Ki,
                 self.configuration.volume_dd_blocksize,
                 execute=self._execute,
-                sparse=sparse)
+                sparse=self.sparse_copy_volume)
         finally:
             self.delete_snapshot(temp_snapshot)
 
@@ -621,7 +625,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
                                  self.local_path(volume, vg=dest_vg),
                                  size_in_mb,
                                  self.configuration.volume_dd_blocksize,
-                                 execute=self._execute)
+                                 execute=self._execute,
+                                 sparse=self.sparse_copy_volume)
             self._delete_volume(volume)
 
             return (True, None)

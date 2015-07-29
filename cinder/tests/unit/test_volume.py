@@ -5827,7 +5827,56 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
                 '/dev/mapper/cinder--volumes--2-testvol',
                 2048,
                 '1M',
-                execute=mock_execute)
+                execute=mock_execute,
+                sparse=False)
+
+    def test_lvm_migrate_volume_proceed_with_thin(self):
+        hostname = socket.gethostname()
+        capabilities = {'location_info': 'LVMVolumeDriver:%s:'
+                        'cinder-volumes-2:default:0' % hostname}
+        host = {'capabilities': capabilities}
+        vol = {'name': 'testvol', 'id': 1, 'size': 2, 'status': 'available'}
+
+        def fake_execute(*args, **kwargs):
+            pass
+
+        def get_all_volume_groups():
+            # NOTE(flaper87) Return just the destination
+            # host to test the check of dest VG existence.
+            return [{'name': 'cinder-volumes-2'}]
+
+        def _fake_get_all_physical_volumes(obj, root_helper, vg_name):
+            return [{}]
+
+        self.configuration.lvm_type = 'thin'
+        lvm_driver = lvm.LVMVolumeDriver(configuration=self.configuration,
+                                         db=db)
+
+        with mock.patch.object(brick_lvm.LVM, 'get_all_physical_volumes',
+                               return_value = [{}]), \
+                mock.patch.object(lvm_driver, '_execute') \
+                as mock_execute, \
+                mock.patch.object(volutils, 'copy_volume') as mock_copy, \
+                mock.patch.object(volutils, 'get_all_volume_groups',
+                                  side_effect = get_all_volume_groups), \
+                mock.patch.object(lvm_driver, '_delete_volume'):
+
+            lvm_driver.vg = fake_lvm.FakeBrickLVM('cinder-volumes',
+                                                  False,
+                                                  None,
+                                                  'default')
+            lvm_driver.sparse_copy_volume = True
+            moved, model_update = \
+                lvm_driver.migrate_volume(self.context, vol, host)
+            self.assertTrue(moved)
+            self.assertIsNone(model_update)
+            mock_copy.assert_called_once_with(
+                '/dev/mapper/cinder--volumes-testvol',
+                '/dev/mapper/cinder--volumes--2-testvol',
+                2048,
+                '1M',
+                execute=mock_execute,
+                sparse=True)
 
     @staticmethod
     def _get_manage_existing_lvs(name):
@@ -6121,6 +6170,61 @@ class LVMVolumeDriverTestCase(DriverTestCase):
                                          backup_service)
 
         mock_volume_get.assert_called_with(self.context, vol['id'])
+
+    def test_create_volume_from_snapshot_none_sparse(self):
+
+        with mock.patch.object(self.volume.driver, 'vg'), \
+                mock.patch.object(self.volume.driver, '_create_volume'), \
+                mock.patch.object(volutils, 'copy_volume') as mock_copy:
+
+            # Test case for thick LVM
+            src_volume = tests_utils.create_volume(self.context)
+            snapshot_ref = tests_utils.create_snapshot(self.context,
+                                                       src_volume['id'])
+            dst_volume = tests_utils.create_volume(self.context)
+            self.volume.driver.create_volume_from_snapshot(dst_volume,
+                                                           snapshot_ref)
+
+            volume_path = self.volume.driver.local_path(dst_volume)
+            snapshot_path = self.volume.driver.local_path(snapshot_ref)
+            volume_size = 1024
+            block_size = '1M'
+            mock_copy.assert_called_with(snapshot_path,
+                                         volume_path,
+                                         volume_size,
+                                         block_size,
+                                         execute=self.volume.driver._execute,
+                                         sparse=False)
+
+    def test_create_volume_from_snapshot_sparse(self):
+
+        self.configuration.lvm_type = 'thin'
+        lvm_driver = lvm.LVMVolumeDriver(configuration=self.configuration,
+                                         db=db)
+
+        with mock.patch.object(lvm_driver, 'vg'), \
+                mock.patch.object(lvm_driver, '_create_volume'), \
+                mock.patch.object(volutils, 'copy_volume') as mock_copy:
+
+            # Test case for thin LVM
+            lvm_driver.sparse_copy_volume = True
+            src_volume = tests_utils.create_volume(self.context)
+            snapshot_ref = tests_utils.create_snapshot(self.context,
+                                                       src_volume['id'])
+            dst_volume = tests_utils.create_volume(self.context)
+            lvm_driver.create_volume_from_snapshot(dst_volume,
+                                                   snapshot_ref)
+
+            volume_path = lvm_driver.local_path(dst_volume)
+            snapshot_path = lvm_driver.local_path(snapshot_ref)
+            volume_size = 1024
+            block_size = '1M'
+            mock_copy.assert_called_with(snapshot_path,
+                                         volume_path,
+                                         volume_size,
+                                         block_size,
+                                         execute=lvm_driver._execute,
+                                         sparse=True)
 
 
 class ISCSITestCase(DriverTestCase):
