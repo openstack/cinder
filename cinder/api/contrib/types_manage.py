@@ -73,6 +73,11 @@ class VolumeTypesManageController(wsgi.Controller):
             utils.check_string_length(description, 'Type description',
                                       min_length=0, max_length=255)
 
+        if not utils.is_valid_boolstr(is_public):
+            msg = _("Invalid value '%s' for is_public. Accepted values: "
+                    "True or False.") % is_public
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
         try:
             volume_types.create(context,
                                 name,

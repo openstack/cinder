@@ -186,6 +186,7 @@ class VolumeTypesManageApiTest(test.TestCase):
                        return_volume_types_get_by_name)
 
         body = {"volume_type": {"name": "vol_type_1",
+                                "os-volume-type-access:is_public": True,
                                 "extra_specs": {"key1": "value1"}}}
         req = fakes.HTTPRequest.blank('/v2/fake/types')
 
@@ -244,6 +245,15 @@ class VolumeTypesManageApiTest(test.TestCase):
                                 "extra_specs": {"key1": "value1"}}}
         req = fakes.HTTPRequest.blank('/v2/fake/types')
         self.assertRaises(webob.exc.HTTPConflict,
+                          self.controller._create, req, body)
+
+    def test_create_type_with_invalid_is_public(self):
+        body = {"volume_type": {"name": "vol_type_1",
+                                "os-volume-type-access:is_public": "fake",
+                                "description": "test description",
+                                "extra_specs": {"key1": "value1"}}}
+        req = fakes.HTTPRequest.blank('/v2/fake/types')
+        self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller._create, req, body)
 
     def _create_volume_type_bad_body(self, body):
