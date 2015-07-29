@@ -1,4 +1,4 @@
-#    (c) Copyright 2014 Hewlett-Packard Development Company, L.P.
+#    (c) Copyright 2014-2015 Hewlett-Packard Development Company, L.P.
 #    All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -105,9 +105,10 @@ class HPLeftHandRESTProxy(driver.ISCSIDriver):
         1.0.8 - Fixed bug #1418201, A cloned volume fails to attach.
         1.0.9 - Adding support for manage/unmanage.
         1.0.10 - Add stats for goodness_function and filter_function
+        1.0.11 - Add over subscription support
     """
 
-    VERSION = "1.0.10"
+    VERSION = "1.0.11"
 
     device_stats = {}
 
@@ -303,6 +304,10 @@ class HPLeftHandRESTProxy(driver.ISCSIDriver):
         data['location_info'] = (self.DRIVER_LOCATION % {
             'cluster': self.configuration.hplefthand_clustername,
             'vip': self.cluster_vip})
+        data['thin_provisioning_support'] = True
+        data['thick_provisioning_support'] = True
+        data['max_over_subscription_ratio'] = (
+            self.configuration.safe_get('max_over_subscription_ratio'))
 
         cluster_info = client.getCluster(self.cluster_id)
 
@@ -321,11 +326,15 @@ class HPLeftHandRESTProxy(driver.ISCSIDriver):
         # so try to limit the size of data for now. Once new lefthand API is
         # available, replace this call.
         total_volumes = 0
+        provisioned_size = 0
         volumes = client.getVolumes(
             cluster=self.configuration.hplefthand_clustername,
-            fields=['members[id]', 'members[clusterName]'])
+            fields=['members[id]', 'members[clusterName]', 'members[size]'])
         if volumes:
             total_volumes = volumes['total']
+            provisioned_size = sum(
+                members['size'] for members in volumes['members'])
+        data['provisioned_capacity_gb'] = int(provisioned_size) / units.Gi
         data['capacity_utilization'] = capacity_utilization
         data['total_volumes'] = total_volumes
         data['filter_function'] = self.get_filter_function()
