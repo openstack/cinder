@@ -589,6 +589,21 @@ class LVM(executor.Executor):
             return name
         return '_' + name
 
+    def deactivate_lv(self, name):
+        lv_path = self.vg_name + '/' + self._mangle_lv_name(name)
+        cmd = ['lvchange', '-a', 'n']
+        cmd.append(lv_path)
+        try:
+            self._execute(*cmd,
+                          root_helper=self._root_helper,
+                          run_as_root=True)
+        except putils.ProcessExecutionError as err:
+            LOG.exception(_LE('Error deactivating LV'))
+            LOG.error(_LE('Cmd     :%s'), err.cmd)
+            LOG.error(_LE('StdOut  :%s'), err.stdout)
+            LOG.error(_LE('StdErr  :%s'), err.stderr)
+            raise
+
     def activate_lv(self, name, is_snapshot=False):
         """Ensure that logical volume/snapshot logical volume is activated.
 
@@ -696,7 +711,12 @@ class LVM(executor.Executor):
 
     def extend_volume(self, lv_name, new_size):
         """Extend the size of an existing volume."""
-
+        # Volumes with snaps have attributes 'o' or 'O' and will be
+        # deactivated, but Thin Volumes with snaps have attribute 'V'
+        # and won't be deactivated because the lv_has_snapshot method looks
+        # for 'o' or 'O'
+        if self.lv_has_snapshot(lv_name):
+            self.deactivate_lv(lv_name)
         try:
             self._execute('lvextend', '-L', new_size,
                           '%s/%s' % (self.vg_name, lv_name),
