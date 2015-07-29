@@ -153,6 +153,7 @@ class VolumeTypesApiTest(test.TestCase):
         raw_volume_type = dict(
             name='new_type',
             description='new_type_desc',
+            is_public=True,
             deleted=False,
             created_at=now,
             updated_at=now,
@@ -168,6 +169,7 @@ class VolumeTypesApiTest(test.TestCase):
         expected_volume_type = dict(
             name='new_type',
             description='new_type_desc',
+            is_public=True,
             extra_specs={},
             id=42,
         )
@@ -183,6 +185,7 @@ class VolumeTypesApiTest(test.TestCase):
                 dict(
                     name='new_type',
                     description='new_type_desc',
+                    is_public=True,
                     deleted=False,
                     created_at=now,
                     updated_at=now,
@@ -200,6 +203,7 @@ class VolumeTypesApiTest(test.TestCase):
             expected_volume_type = dict(
                 name='new_type',
                 description='new_type_desc',
+                is_public=True,
                 extra_specs={},
                 id=42 + i
             )

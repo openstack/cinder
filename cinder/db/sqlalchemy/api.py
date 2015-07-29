@@ -2302,6 +2302,10 @@ def volume_type_update(context, volume_type_id, values):
         if values['description'] is None:
             del values['description']
 
+        # No is_public change
+        if values['is_public'] is None:
+            del values['is_public']
+
         # No name change
         if values['name'] is None:
             del values['name']
