@@ -30,6 +30,7 @@ from cinder.volume import driver
 from cinder.volume.drivers.windows import constants
 from cinder.volume.drivers.windows import vhdutils
 from cinder.volume.drivers.windows import windows_utils
+from cinder.volume import utils
 
 LOG = logging.getLogger(__name__)
 
@@ -134,15 +135,34 @@ class WindowsDriver(driver.ISCSIDriver):
 
     def create_export(self, context, volume):
         """Driver entry point to get the export info for a new volume."""
+        # Since the iSCSI targets are not reused, being deleted when the
+        # volume is detached, we should clean up existing targets before
+        # creating a new one.
+        self.remove_export(context, volume)
+
         target_name = "%s%s" % (self.configuration.iscsi_target_prefix,
                                 volume['name'])
+        updates = {'provider_location': target_name}
         self.utils.create_iscsi_target(target_name)
 
+        if self.configuration.use_chap_auth:
+            chap_username = (self.configuration.chap_username or
+                             utils.generate_username())
+            chap_password = (self.configuration.chap_password or
+                             utils.generate_password())
+
+            self.utils.set_chap_credentials(target_name,
+                                            chap_username,
+                                            chap_password)
+
+            updates['provider_auth'] = ' '.join(('CHAP',
+                                                 chap_username,
+                                                 chap_password))
         # Get the disk to add
         vol_name = volume['name']
         self.utils.add_disk_to_target(vol_name, target_name)
 
-        return {'provider_location': target_name}
+        return updates
 
     def remove_export(self, context, volume):
         """Driver entry point to remove an export for a volume.

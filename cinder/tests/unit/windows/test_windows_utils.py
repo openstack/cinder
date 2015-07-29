@@ -90,3 +90,49 @@ class WindowsUtilsTestCase(test.TestCase):
             exception.VolumeBackendAPIException,
             self.wutils.is_resize_needed,
             mock.sentinel.vhd_path, 1, 2)
+
+    @mock.patch.object(windows_utils.WindowsUtils, '_wmi_obj_set_attr')
+    @mock.patch.object(windows_utils, 'wmi', create=True)
+    def test_set_chap_credentials(self, mock_wmi, mock_set_attr):
+        mock_wt_host = mock.Mock()
+        mock_wt_host_class = self.wutils._conn_wmi.WT_Host
+        mock_wt_host_class.return_value = [mock_wt_host]
+
+        self.wutils.set_chap_credentials(mock.sentinel.target_name,
+                                         mock.sentinel.chap_username,
+                                         mock.sentinel.chap_password)
+
+        mock_wt_host_class.assert_called_once_with(
+            HostName=mock.sentinel.target_name)
+
+        mock_set_attr.assert_has_calls([
+            mock.call(mock_wt_host, 'EnableCHAP', True),
+            mock.call(mock_wt_host, 'CHAPUserName',
+                      mock.sentinel.chap_username),
+            mock.call(mock_wt_host, 'CHAPSecret',
+                      mock.sentinel.chap_password)])
+
+        mock_wt_host.put.assert_called_once_with()
+
+    @mock.patch.object(windows_utils.WindowsUtils, '_wmi_obj_set_attr')
+    @mock.patch.object(windows_utils, 'wmi', create=True)
+    def test_set_chap_credentials_exc(self, mock_wmi, mock_set_attr):
+        mock_wmi.x_wmi = Exception
+        mock_set_attr.side_effect = mock_wmi.x_wmi
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.wutils.set_chap_credentials,
+                          mock.sentinel.target_name,
+                          mock.sentinel.chap_username,
+                          mock.sentinel.chap_password)
+
+    def test_set_wmi_obj_attr(self):
+        wmi_obj = mock.Mock()
+        wmi_property_method = wmi_obj.wmi_property
+        wmi_property = wmi_obj.wmi_property.return_value
+
+        self.wutils._wmi_obj_set_attr(wmi_obj,
+                                      mock.sentinel.key,
+                                      mock.sentinel.value)
+
+        wmi_property_method.assert_called_once_with(mock.sentinel.key)
+        wmi_property.set.assert_called_once_with(mock.sentinel.value)
