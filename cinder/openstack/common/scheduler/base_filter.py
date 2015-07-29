@@ -16,8 +16,12 @@
 """
 Filter support
 """
+import logging
 
+from cinder.openstack.common._i18n import _LI
 from cinder.openstack.common.scheduler import base_handler
+
+LOG = logging.getLogger(__name__)
 
 
 class BaseFilter(object):
@@ -39,6 +43,17 @@ class BaseFilter(object):
             if self._filter_one(obj, filter_properties):
                 yield obj
 
+    # Set to true in a subclass if a filter only needs to be run once
+    # for each request rather than for each instance
+    run_filter_once_per_request = False
+
+    def run_filter_for_index(self, index):
+        """Return True if the filter needs to be run for the "index-th"
+        instance in a request.  Only need to override this if a filter
+        needs anything other than "first only" or "all" behaviour.
+        """
+        return not (self.run_filter_once_per_request and index > 0)
+
 
 class BaseFilterHandler(base_handler.BaseHandler):
     """Base class to handle loading filter classes.
@@ -47,7 +62,34 @@ class BaseFilterHandler(base_handler.BaseHandler):
     """
 
     def get_filtered_objects(self, filter_classes, objs,
-                             filter_properties):
+                             filter_properties, index=0):
+        """Get objects after filter
+
+        :param filter_classes: filters that will be used to filter the
+                               objects
+        :param objs: objects that will be filtered
+        :param filter_properties: client filter properties
+        :param index: This value needs to be increased in the caller
+                      function of get_filtered_objects when handling
+                      each resource.
+        """
+        list_objs = list(objs)
+        LOG.debug("Starting with %d host(s)", len(list_objs))
         for filter_cls in filter_classes:
-            objs = filter_cls().filter_all(objs, filter_properties)
-        return list(objs)
+            cls_name = filter_cls.__name__
+            filter_class = filter_cls()
+
+            if filter_class.run_filter_for_index(index):
+                objs = filter_class.filter_all(list_objs, filter_properties)
+                if objs is None:
+                    LOG.debug("Filter %(cls_name)s says to stop filtering",
+                              {'cls_name': cls_name})
+                    return
+                list_objs = list(objs)
+                msg = (_LI("Filter %(cls_name)s returned %(obj_len)d host(s)")
+                       % {'cls_name': cls_name, 'obj_len': len(list_objs)})
+                if not list_objs:
+                    LOG.info(msg)
+                    break
+                LOG.debug(msg)
+        return list_objs

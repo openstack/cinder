@@ -57,14 +57,15 @@ class AllocatedCapacityWeigherTestCase(test.TestCase):
     def test_default_of_spreading_first(self):
         hostinfo_list = self._get_all_hosts()
 
-        # host1: allocated_capacity_gb=0, weight=0
+        # host1: allocated_capacity_gb=0, weight=0        Norm=0.0
         # host2: allocated_capacity_gb=1748, weight=-1748
         # host3: allocated_capacity_gb=256, weight=-256
-        # host4: allocated_capacity_gb=1848, weight=-1848
+        # host4: allocated_capacity_gb=1848, weight=-1848 Norm=-1.0
+        # host5: allocated_capacity_gb=1548, weight=-1540
 
         # so, host1 should win:
         weighed_host = self._get_weighed_host(hostinfo_list)
-        self.assertEqual(0, weighed_host.weight)
+        self.assertEqual(0.0, weighed_host.weight)
         self.assertEqual(
             'host1', utils.extract_host(weighed_host.obj.host))
 
@@ -72,14 +73,15 @@ class AllocatedCapacityWeigherTestCase(test.TestCase):
         self.flags(allocated_capacity_weight_multiplier=1.0)
         hostinfo_list = self._get_all_hosts()
 
-        # host1: allocated_capacity_gb=0, weight=0
+        # host1: allocated_capacity_gb=0, weight=0          Norm=0.0
         # host2: allocated_capacity_gb=1748, weight=1748
         # host3: allocated_capacity_gb=256, weight=256
-        # host4: allocated_capacity_gb=1848, weight=1848
+        # host4: allocated_capacity_gb=1848, weight=1848    Norm=1.0
+        # host5: allocated_capacity_gb=1548, weight=1540
 
         # so, host4 should win:
         weighed_host = self._get_weighed_host(hostinfo_list)
-        self.assertEqual(1848.0, weighed_host.weight)
+        self.assertEqual(1.0, weighed_host.weight)
         self.assertEqual(
             'host4', utils.extract_host(weighed_host.obj.host))
 
@@ -87,13 +89,14 @@ class AllocatedCapacityWeigherTestCase(test.TestCase):
         self.flags(allocated_capacity_weight_multiplier=-2.0)
         hostinfo_list = self._get_all_hosts()
 
-        # host1: allocated_capacity_gb=0, weight=0
+        # host1: allocated_capacity_gb=0, weight=0        Norm=0.0
         # host2: allocated_capacity_gb=1748, weight=-3496
         # host3: allocated_capacity_gb=256, weight=-512
-        # host4: allocated_capacity_gb=1848, weight=-3696
+        # host4: allocated_capacity_gb=1848, weight=-3696 Norm=-2.0
+        # host5: allocated_capacity_gb=1548, weight=-3080
 
         # so, host1 should win:
         weighed_host = self._get_weighed_host(hostinfo_list)
-        self.assertEqual(weighed_host.weight, 0)
+        self.assertEqual(0.0, weighed_host.weight)
         self.assertEqual(
             'host1', utils.extract_host(weighed_host.obj.host))

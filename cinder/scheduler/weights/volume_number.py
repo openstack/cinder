@@ -44,7 +44,7 @@ CONF.register_opts(volume_number_weight_opts)
 
 
 class VolumeNumberWeigher(weights.BaseHostWeigher):
-    def _weight_multiplier(self):
+    def weight_multiplier(self):
         """Override the weight multiplier."""
         return CONF.volume_number_multiplier
 
