@@ -286,7 +286,14 @@ FAKE_GET_ISCSI_INFO_RESPONSE = """
         "ID": "iqn.oceanstor:21004846fb8ca15f::22003:111.111.101.244",
         "TPGT": "8196",
         "TYPE": 249
-    }],
+    },
+    {
+        "ETHPORTID": "139268",
+        "ID": "iqn.oceanstor:21004846fb8ca15f::22003:111.111.102.244",
+        "TPGT": "8196",
+        "TYPE": 249
+    }
+    ],
     "error": {
         "code": 0,
         "description": "0"
@@ -305,7 +312,7 @@ FAKE_GET_ETH_INFO_RESPONSE = """
         "MACADDRESS": "00:22:a1:0a:79:57",
         "ETHNEGOTIATE": "-1",
         "ERRORPACKETS": "0",
-        "IPV4ADDR": "192.168.100.2",
+        "IPV4ADDR": "198.100.10.1",
         "IPV6GATEWAY": "",
         "IPV6MASK": "0",
         "OVERFLOWEDPACKETS": "0",
@@ -326,7 +333,37 @@ FAKE_GET_ETH_INFO_RESPONSE = """
         "IPV4MASK": "255.255.0.0",
         "IPV6ADDR": "",
         "LOGICTYPE": "0",
-        "LOCATION": "ENG0.B5.P0",
+        "LOCATION": "ENG0.A5.P0",
+        "MTU": "1500",
+        "PARENTID": "1.5"
+    },
+    {
+        "PARENTTYPE": 209,
+        "MACADDRESS": "00:22:a1:0a:79:57",
+        "ETHNEGOTIATE": "-1",
+        "ERRORPACKETS": "0",
+        "IPV4ADDR": "198.100.10.2",
+        "IPV6GATEWAY": "",
+        "IPV6MASK": "0",
+        "OVERFLOWEDPACKETS": "0",
+        "ISCSINAME": "P0",
+        "HEALTHSTATUS": "1",
+        "ETHDUPLEX": "2",
+        "ID": "16909568",
+        "LOSTPACKETS": "0",
+        "TYPE": 213,
+        "NAME": "P0",
+        "INIORTGT": "4",
+        "RUNNINGSTATUS": "10",
+        "IPV4GATEWAY": "",
+        "BONDNAME": "",
+        "STARTTIME": "1371684218",
+        "SPEED": "1000",
+        "ISCSITCPPORT": "0",
+        "IPV4MASK": "255.255.0.0",
+        "IPV6ADDR": "",
+        "LOGICTYPE": "0",
+        "LOCATION": "ENG0.A5.P3",
         "MTU": "1500",
         "PARENTID": "1.5"
     }]
@@ -339,10 +376,16 @@ FAKE_GET_ETH_ASSOCIATE_RESPONSE = """
         "code":0
     },
     "data":[{
-        "IPV4ADDR":"192.168.100.10",
-        "HEALTHSTATUS":"1",
-        "RUNNINGSTATUS":"10"
-    }]
+        "IPV4ADDR": "198.100.10.1",
+        "HEALTHSTATUS": "1",
+        "RUNNINGSTATUS": "10"
+    },
+    {
+        "IPV4ADDR": "198.100.10.2",
+        "HEALTHSTATUS": "1",
+        "RUNNINGSTATUS": "10"
+    }
+    ]
 }
 """
 # A fake response of get iscsi device info response
@@ -352,8 +395,7 @@ FAKE_GET_ISCSI_DEVICE_RESPONSE = """
         "code": 0
     },
     "data": [{
-        "CMO_ISCSI_DEVICE_NAME":\
-        "iqn.2006-08.com.huawei:oceanstor:21000022a10a2a39:iscsinametest"
+        "CMO_ISCSI_DEVICE_NAME": "iqn.2006-08.com.huawei:oceanstor:21000022a:"
     }]
 }
 """
@@ -406,7 +448,7 @@ FAKE_GET_ALL_HOST_GROUP_INFO_RESPONSE = """
         "code": 0
     },
     "data": [{
-        "NAME":"ubuntuc",
+        "NAME":"OpenStack_HostGroup_1",
         "DESCRIPTION":"",
         "ID":"0",
         "TYPE":14
@@ -603,7 +645,27 @@ FAKE_PORT_GROUP_RESPONSE = """
     },
     "data":[{
         "ID":11,
-        "NAME":"test"
+        "NAME":"portgroup-test"
+    }]
+}
+"""
+
+FAKE_ISCSI_INITIATOR_RESPONSE = """
+{
+    "error":{
+        "code":0
+    },
+    "data":[{
+        "CHAPNAME":"mm-user",
+        "HEALTHSTATUS":"1",
+        "ID":"iqn.1993-08.org.debian:01:9073aba6c6f",
+        "ISFREE":"true",
+        "MULTIPATHTYPE":"1",
+        "NAME":"",
+        "OPERATIONSYSTEM":"255",
+        "RUNNINGSTATUS":"28",
+        "TYPE":222,
+        "USECHAP":"true"
     }]
 }
 """
@@ -770,7 +832,7 @@ MAP_COMMAND_TO_FAKE_RESPONSE['iscsi_initiator?range=[0-256]/GET'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['iscsi_initiator/'] = (
-    FAKE_ISCSI_INITIATOR_RESPONSE)
+    FAKE_COMMON_SUCCESS_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['iscsi_initiator/POST'] = (
     FAKE_ISCSI_INITIATOR_RESPONSE)
@@ -938,8 +1000,14 @@ class Huawei18000ISCSIDriverTestCase(test.TestCase):
         driver = Fake18000ISCSIStorage(configuration=self.configuration)
         self.driver = driver
         self.driver.do_setup()
-        self.portgroup = 'test'
-        self.target_ip = '192.168.100.10'
+        self.portgroup = 'portgroup-test'
+        self.iscsi_iqns = ['iqn.2006-08.com.huawei:oceanstor:21000022a:'
+                           ':20500:198.100.10.1',
+                           'iqn.2006-08.com.huawei:oceanstor:21000022a:'
+                           ':20503:198.100.10.2']
+        self.target_ips = ['198.100.10.1',
+                           '198.100.10.2']
+        self.portgroup_id = 11
 
     def test_login_success(self):
         deviceid = self.driver.restclient.login()
@@ -1028,9 +1096,10 @@ class Huawei18000ISCSIDriverTestCase(test.TestCase):
     def test_initialize_connection_fail(self):
         self.driver.restclient.login()
         self.driver.restclient.test_fail = True
-        iscsi_properties = self.driver.initialize_connection(test_volume,
-                                                             FakeConnector)
-        self.assertEqual(1, iscsi_properties['data']['target_lun'])
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.initialize_connection,
+                          test_volume, FakeConnector)
 
     def test_get_default_timeout(self):
         result = huawei_utils.get_default_timeout(self.xml_file_path)
@@ -1060,7 +1129,16 @@ class Huawei18000ISCSIDriverTestCase(test.TestCase):
         self.driver.restclient.login()
         portg_id = self.driver.restclient.find_tgt_port_group(self.portgroup)
         result = self.driver.restclient._get_tgt_ip_from_portgroup(portg_id)
-        self.assertEqual(result, self.target_ip)
+        self.assertEqual(self.target_ips, result)
+
+    def test_get_iscsi_params(self):
+        self.driver.restclient.login()
+        (iscsi_iqns, target_ips, portgroup_id) = (
+            self.driver.restclient.get_iscsi_params(self.xml_file_path,
+                                                    FakeConnector))
+        self.assertEqual(self.iscsi_iqns, iscsi_iqns)
+        self.assertEqual(self.target_ips, target_ips)
+        self.assertEqual(self.portgroup_id, portgroup_id)
 
     def test_get_lun_conf_params(self):
         self.driver.restclient.login()
@@ -1222,6 +1300,7 @@ class Huawei18000ISCSIDriverTestCase(test.TestCase):
         initiator.setAttribute('TargetIP', '192.168.100.2')
         initiator.setAttribute('CHAPinfo', 'mm-user;mm-user@storage')
         initiator.setAttribute('ALUA', '1')
+        initiator.setAttribute('TargetPortGroup', 'portgroup-test')
         iscsi.appendChild(initiator)
 
         host = doc.createElement('Host')

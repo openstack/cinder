@@ -121,7 +121,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             if self.restclient.check_lun_exist(lun_id):
                 self.restclient.delete_lun(lun_id)
         else:
-            LOG.warning(_LW("Can't find %s on the array."), lun_id)
+            LOG.warning(_LW("Can't find lun %s on the array."), lun_id)
             return False
 
         return True
@@ -342,15 +342,15 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             {'initiator_name': initiator_name,
              'volume': volume_name})
 
-        (iscsi_iqn,
-         target_ip,
+        (iscsi_iqns,
+         target_ips,
          portgroup_id) = self.restclient.get_iscsi_params(self.xml_file_path,
                                                           connector)
         LOG.info(_LI('initialize_connection_iscsi, iscsi_iqn: %(iscsi_iqn)s, '
                      'target_ip: %(target_ip)s, '
-                     'TargetPortGroup: %(portgroup_id)s.'),
-                 {'iscsi_iqn': iscsi_iqn,
-                  'target_ip': target_ip,
+                     'portgroup_id: %(portgroup_id)s.'),
+                 {'iscsi_iqn': iscsi_iqns,
+                  'target_ip': target_ips,
                   'portgroup_id': portgroup_id},)
 
         # Create hostgroup if not exist.
@@ -385,10 +385,18 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         # Return iSCSI properties.
         properties = {}
         properties['target_discovered'] = False
-        properties['target_portal'] = ('%s:%s' % (target_ip, '3260'))
-        properties['target_iqn'] = iscsi_iqn
-        properties['target_lun'] = int(hostlun_id)
         properties['volume_id'] = volume['id']
+        multipath = connector.get('multipath', False)
+        hostlun_id = int(hostlun_id)
+        if not multipath:
+            properties['target_portal'] = ('%s:3260' % target_ips[0])
+            properties['target_iqn'] = iscsi_iqns[0]
+            properties['target_lun'] = hostlun_id
+        else:
+            properties['target_iqns'] = [iqn for iqn in iscsi_iqns]
+            properties['target_portals'] = [
+                '%s:3260' % ip for ip in target_ips]
+            properties['target_luns'] = [hostlun_id] * len(target_ips)
 
         # If use CHAP, return CHAP info.
         if chapinfo:
@@ -591,7 +599,11 @@ class Huawei18000ISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
 
     Version history:
         1.0.0 - Initial driver
-        1.1.0 - Provide Huawei OceanStor 18000 storage volume driver.
+        1.1.0 - Provide Huawei OceanStor 18000 storage volume driver
+        1.1.1 - Code refactor
+                CHAP support
+                Multiple pools support
+                ISCSI multipath support
     """
 
     VERSION = "1.1.1"
@@ -625,7 +637,9 @@ class Huawei18000FCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
 
     Version history:
         1.0.0 - Initial driver
-        1.1.0 - Provide Huawei OceanStor 18000 storage volume driver.
+        1.1.0 - Provide Huawei OceanStor 18000 storage volume driver
+        1.1.1 - Code refactor
+                Multiple pools support
     """
 
     VERSION = "1.1.1"
