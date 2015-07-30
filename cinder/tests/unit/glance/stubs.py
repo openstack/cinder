@@ -34,8 +34,12 @@ class StubGlanceClient(object):
 
         # NOTE(bcwaldon): HACK to get client.images.* to work
         self.images = lambda: None
-        for fn in ('list', 'get', 'data', 'create', 'update', 'delete'):
+        for fn in ('list', 'get', 'data', 'create', 'update', 'upload',
+                   'delete'):
             setattr(self.images, fn, getattr(self, fn))
+
+        self.schemas = lambda: None
+        setattr(self.schemas, 'get', getattr(self, 'schemas_get'))
 
     # TODO(bcwaldon): implement filters
     def list(self, filters=None, marker=None, limit=30):
@@ -58,8 +62,11 @@ class StubGlanceClient(object):
         raise glanceclient.exc.NotFound(image_id)
 
     def data(self, image_id):
-        self.get(image_id)
-        return []
+        image = self.get(image_id)
+        if getattr(image, 'size', 0):
+            return ['*' * image.size]
+        else:
+            return []
 
     def create(self, **metadata):
         metadata['created_at'] = NOW_GLANCE_FORMAT
@@ -81,7 +88,10 @@ class StubGlanceClient(object):
         for i, image in enumerate(self._images):
             if image.id == str(image_id):
                 for k, v in metadata.items():
-                    setattr(self._images[i], k, v)
+                    if k == 'data':
+                        setattr(self._images[i], 'size', len(v))
+                    else:
+                        setattr(self._images[i], k, v)
                 return self._images[i]
         raise glanceclient.exc.NotFound(image_id)
 
@@ -91,6 +101,18 @@ class StubGlanceClient(object):
                 del self._images[i]
                 return
         raise glanceclient.exc.NotFound(image_id)
+
+    def upload(self, image_id, data):
+        for i, image in enumerate(self._images):
+            if image.id == image_id:
+                setattr(self._images[i], 'size', len(data))
+                return
+        raise glanceclient.exc.NotFound(image_id)
+
+    def schemas_get(self, schema_name):
+        if schema_name != 'image':
+            raise glanceclient.exc.NotFound()
+        return FakeSchema()
 
 
 class FakeImage(object):
