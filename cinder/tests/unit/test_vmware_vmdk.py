@@ -2759,6 +2759,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch.object(VMDK_DRIVER, 'ds_sel')
     def test_relocate_backing_nop(self, ds_sel, vops):
+        self._driver._storage_policy_enabled = True
         volume = {'name': 'vol-1', 'size': 1}
 
         datastore = mock.sentinel.datastore
@@ -2783,6 +2784,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
     @mock.patch.object(VMDK_DRIVER, 'ds_sel')
     def test_relocate_backing_with_no_datastore(
             self, ds_sel, vops):
+        self._driver._storage_policy_enabled = True
         volume = {'name': 'vol-1', 'size': 1}
 
         profile = mock.sentinel.profile
@@ -2836,6 +2838,40 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
                                                       host)
         vops.move_backing_to_folder.assert_called_once_with(backing,
                                                             folder)
+
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, '_get_volume_group_folder')
+    @mock.patch.object(VMDK_DRIVER, 'ds_sel')
+    def test_relocate_backing_with_pbm_disabled(
+            self, ds_sel, get_volume_group_folder, vops):
+        self._driver._storage_policy_enabled = False
+        volume = {'name': 'vol-1', 'size': 1, 'project_id': 'abc'}
+
+        vops.is_datastore_accessible.return_value = False
+
+        backing = mock.sentinel.backing
+        host = mock.sentinel.host
+
+        rp = mock.sentinel.rp
+        datastore = mock.sentinel.datastore
+        summary = mock.Mock(datastore=datastore)
+        ds_sel.select_datastore.return_value = (host, rp, summary)
+
+        folder = mock.sentinel.folder
+        get_volume_group_folder.return_value = folder
+
+        self._driver._relocate_backing(volume, backing, host)
+
+        self.assertFalse(vops.get_profile.called)
+        vops.relocate_backing.assert_called_once_with(backing,
+                                                      datastore,
+                                                      rp,
+                                                      host)
+        vops.move_backing_to_folder.assert_called_once_with(backing,
+                                                            folder)
+        ds_sel.select_datastore.assert_called_once_with(
+            {hub.DatastoreSelector.SIZE_BYTES: volume['size'] * units.Gi,
+             hub.DatastoreSelector.PROFILE_NAME: None}, hosts=[host])
 
     @mock.patch('oslo_vmware.api.VMwareAPISession')
     def test_session(self, apiSession):
