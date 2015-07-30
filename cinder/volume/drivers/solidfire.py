@@ -166,6 +166,11 @@ class SolidFireDriver(san.SanISCSIDriver):
 
     def _create_template_account(self, account_name):
         # We raise an API exception if the account doesn't exist
+
+        # We need to take account_prefix settings into consideration
+        # This just uses the same method to do template account create
+        # as we use for any other OpenStack account
+        account_name = self._get_sf_account_name(account_name)
         try:
             id = self._issue_api_request(
                 'GetAccountByName',
