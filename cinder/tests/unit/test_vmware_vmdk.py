@@ -1748,16 +1748,38 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         version = self._driver._get_vc_version()
         self.assertEqual(ver.LooseVersion('6.0.1'), version)
 
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.LOG')
+    def test_validate_vcenter_version(self, log):
+        vc_version = ver.LooseVersion('5.5')
+        self._driver._validate_vcenter_version(vc_version)
+        self.assertFalse(log.warning.called)
+
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.LOG')
+    def test_validate_vcenter_version_with_min_supported_version(self, log):
+        vc_version = self._driver.MIN_SUPPORTED_VC_VERSION
+        self._driver._validate_vcenter_version(vc_version)
+        self.assertFalse(log.warning.called)
+
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.LOG')
+    def test_validate_vcenter_version_with_less_than_min_supported_version(
+            self, log):
+        vc_version = ver.LooseVersion('5.0')
+        self._driver._validate_vcenter_version(vc_version)
+        self.assertTrue(log.warning.called)
+
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
+                '_validate_vcenter_version')
     @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps')
     @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
                 '_get_vc_version')
     @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
                 'session', new_callable=mock.PropertyMock)
     def test_do_setup_with_pbm_disabled(self, session, get_vc_version,
-                                        vops_cls):
+                                        vops_cls, validate_vc_version):
         session_obj = mock.Mock(name='session')
         session.return_value = session_obj
-        get_vc_version.return_value = ver.LooseVersion('5.0')
+        vc_version = ver.LooseVersion('5.0')
+        get_vc_version.return_value = vc_version
 
         cluster_refs = mock.Mock()
         cluster_refs.values.return_value = mock.sentinel.cluster_refs
@@ -1773,6 +1795,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
 
         self._driver.do_setup(mock.ANY)
 
+        validate_vc_version.assert_called_once_with(vc_version)
         self.assertFalse(self._driver._storage_policy_enabled)
         get_vc_version.assert_called_once_with()
         self.assertEqual(session_obj, self._driver.volumeops._session)
@@ -1780,11 +1803,14 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         self.assertEqual(mock.sentinel.cluster_refs, self._driver._clusters)
         vops.get_cluster_refs.assert_called_once_with(self.CLUSTERS)
 
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
+                '_validate_vcenter_version')
     @mock.patch('oslo_vmware.pbm.get_pbm_wsdl_location')
     @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
                 '_get_vc_version')
     def test_do_setup_with_invalid_pbm_wsdl(self, get_vc_version,
-                                            get_pbm_wsdl_location):
+                                            get_pbm_wsdl_location,
+                                            validate_vc_version):
         vc_version = ver.LooseVersion('5.5')
         get_vc_version.return_value = vc_version
         get_pbm_wsdl_location.return_value = None
@@ -1793,11 +1819,14 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
                           self._driver.do_setup,
                           mock.ANY)
 
+        validate_vc_version.assert_called_once_with(vc_version)
         self.assertFalse(self._driver._storage_policy_enabled)
         get_vc_version.assert_called_once_with()
         get_pbm_wsdl_location.assert_called_once_with(
             six.text_type(vc_version))
 
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
+                '_validate_vcenter_version')
     @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps')
     @mock.patch('oslo_vmware.pbm.get_pbm_wsdl_location')
     @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
@@ -1805,7 +1834,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
     @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
                 'session', new_callable=mock.PropertyMock)
     def test_do_setup(self, session, get_vc_version, get_pbm_wsdl_location,
-                      vops_cls):
+                      vops_cls, validate_vc_version):
         session_obj = mock.Mock(name='session')
         session.return_value = session_obj
 
@@ -1827,6 +1856,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
 
         self._driver.do_setup(mock.ANY)
 
+        validate_vc_version.assert_called_once_with(vc_version)
         self.assertTrue(self._driver._storage_policy_enabled)
         get_vc_version.assert_called_once_with()
         get_pbm_wsdl_location.assert_called_once_with(
