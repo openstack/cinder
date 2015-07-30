@@ -4675,14 +4675,13 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertDictMatch(expected, msg['payload'])
         self.assertEqual(
             group.id,
-            db.consistencygroup_get(context.get_admin_context(),
-                                    group.id).id)
+            objects.ConsistencyGroup.get_by_id(context.get_admin_context(),
+                                               group.id).id)
 
         self.volume.delete_consistencygroup(self.context, group)
-        cg = db.consistencygroup_get(
-            context.get_admin_context(read_deleted='yes'),
-            group.id)
-        self.assertEqual('deleted', cg['status'])
+        cg = objects.ConsistencyGroup.get_by_id(
+            context.get_admin_context(read_deleted='yes'), group.id)
+        self.assertEqual('deleted', cg.status)
         self.assertEqual(4, len(self.notifier.notifications),
                          self.notifier.notifications)
         msg = self.notifier.notifications[2]
@@ -4693,7 +4692,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         expected['status'] = 'deleted'
         self.assertDictMatch(expected, msg['payload'])
         self.assertRaises(exception.NotFound,
-                          db.consistencygroup_get,
+                          objects.ConsistencyGroup.get_by_id,
                           self.context,
                           group.id)
 
@@ -4714,7 +4713,6 @@ class VolumeTestCase(BaseVolumeTestCase):
             self.context,
             availability_zone=CONF.storage_availability_zone,
             volume_type='type1,type2')
-        group = objects.ConsistencyGroup.get_by_id(self.context, group['id'])
         self.volume.create_consistencygroup(self.context, group)
 
         volume = tests_utils.create_volume(
@@ -4819,14 +4817,12 @@ class VolumeTestCase(BaseVolumeTestCase):
             availability_zone=CONF.storage_availability_zone,
             volume_type='type1,type2',
             status='available')
-        group_id = group['id']
         volume = tests_utils.create_volume(
             self.context,
-            consistencygroup_id=group_id,
+            consistencygroup_id=group.id,
             status='available',
             host=CONF.host,
             size=1)
-        group = objects.ConsistencyGroup.get_by_id(self.context, group['id'])
         volume_id = volume['id']
         cgsnapshot_returns = self._create_cgsnapshot(group.id, volume_id)
         cgsnapshot_id = cgsnapshot_returns[0]['id']
@@ -4838,7 +4834,6 @@ class VolumeTestCase(BaseVolumeTestCase):
             availability_zone=CONF.storage_availability_zone,
             volume_type='type1,type2',
             cgsnapshot_id=cgsnapshot_id)
-        group2 = objects.ConsistencyGroup.get_by_id(self.context, group2.id)
         volume2 = tests_utils.create_volume(
             self.context,
             consistencygroup_id=group2.id,
@@ -4895,7 +4890,7 @@ class VolumeTestCase(BaseVolumeTestCase):
             context.get_admin_context(read_deleted='yes'), group2.id)
         self.assertEqual('deleted', cg2.status)
         self.assertRaises(exception.NotFound,
-                          db.consistencygroup_get,
+                          objects.ConsistencyGroup.get_by_id,
                           self.context,
                           group2.id)
 
@@ -4904,8 +4899,7 @@ class VolumeTestCase(BaseVolumeTestCase):
             self.context,
             availability_zone=CONF.storage_availability_zone,
             volume_type='type1,type2',
-            source_cgid=group_id)
-        group3 = objects.ConsistencyGroup.get_by_id(self.context, group3.id)
+            source_cgid=group.id)
         volume3 = tests_utils.create_volume(
             self.context,
             consistencygroup_id=group3.id,
@@ -4920,7 +4914,7 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         self.assertEqual('available', cg3.status)
         self.assertEqual(group3.id, cg3.id)
-        self.assertEqual(group_id, cg3.source_cgid)
+        self.assertEqual(group.id, cg3.source_cgid)
         self.assertIsNone(cg3.cgsnapshot_id)
 
         self.volume.delete_cgsnapshot(self.context, cgsnapshot_id)
@@ -5060,17 +5054,12 @@ class VolumeTestCase(BaseVolumeTestCase):
             self.context,
             availability_zone=CONF.storage_availability_zone,
             volume_type='type1,type2')
-        group = objects.ConsistencyGroup.get_by_id(self.context, group['id'])
         volume = tests_utils.create_volume(
             self.context,
             consistencygroup_id=group.id,
             **self.volume_params)
         volume_id = volume['id']
         self.volume.create_volume(self.context, volume_id)
-        cgsnapshot = tests_utils.create_cgsnapshot(
-            self.context,
-            consistencygroup_id=group.id)
-        cgsnapshot_id = cgsnapshot['id']
 
         if len(self.notifier.notifications) > 2:
             self.assertFalse(self.notifier.notifications[2])
@@ -5159,7 +5148,6 @@ class VolumeTestCase(BaseVolumeTestCase):
             availability_zone=CONF.storage_availability_zone,
             volume_type='type1,type2')
 
-        group = objects.ConsistencyGroup.get_by_id(self.context, group['id'])
         volume = tests_utils.create_volume(
             self.context,
             consistencygroup_id=group.id,
@@ -5171,12 +5159,12 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.volume.create_volume(self.context, volume_id)
 
         self.volume.delete_consistencygroup(self.context, group)
-        cg = db.consistencygroup_get(
+        cg = objects.ConsistencyGroup.get_by_id(
             context.get_admin_context(read_deleted='yes'),
             group.id)
-        self.assertEqual('deleted', cg['status'])
+        self.assertEqual('deleted', cg.status)
         self.assertRaises(exception.NotFound,
-                          db.consistencygroup_get,
+                          objects.ConsistencyGroup.get_by_id,
                           self.context,
                           group.id)
 
@@ -5196,7 +5184,6 @@ class VolumeTestCase(BaseVolumeTestCase):
             availability_zone=CONF.storage_availability_zone,
             volume_type='type1,type2')
 
-        group = objects.ConsistencyGroup.get_by_id(self.context, group['id'])
         volume = tests_utils.create_volume(
             self.context,
             consistencygroup_id=group.id,
@@ -5211,10 +5198,9 @@ class VolumeTestCase(BaseVolumeTestCase):
                           self.volume.delete_consistencygroup,
                           self.context,
                           group)
-        cg = db.consistencygroup_get(self.context,
-                                     group.id)
+        cg = objects.ConsistencyGroup.get_by_id(self.context, group.id)
         # Group is not deleted
-        self.assertEqual('available', cg['status'])
+        self.assertEqual('available', cg.status)
 
     def test_secure_file_operations_enabled(self):
         """Test secure file operations setting for base driver.

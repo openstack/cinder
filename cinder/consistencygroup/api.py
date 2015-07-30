@@ -205,9 +205,9 @@ class API(base.Base):
             kwargs['host'] = orig_cg.host
 
         if source_cg:
-            kwargs['volume_type_id'] = source_cg.get('volume_type_id')
-            kwargs['availability_zone'] = source_cg.get('availability_zone')
-            kwargs['host'] = source_cg.get('host')
+            kwargs['volume_type_id'] = source_cg.volume_type_id
+            kwargs['availability_zone'] = source_cg.availability_zone
+            kwargs['host'] = source_cg.host
 
         group = None
         try:
