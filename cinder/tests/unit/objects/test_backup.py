@@ -109,3 +109,10 @@ class TestBackupList(test_objects.BaseObjectsTestCase):
                                                      fake_volume_obj.id)
         self.assertEqual(1, len(backups))
         TestBackup._compare(self, fake_backup, backups[0])
+
+    @mock.patch('cinder.db.backup_get_all', return_value=[fake_backup])
+    def test_get_all_tenants(self, backup_get_all):
+        search_opts = {'all_tenants': 1}
+        backups = objects.BackupList.get_all(self.context, search_opts)
+        self.assertEqual(1, len(backups))
+        TestBackup._compare(self, fake_backup, backups[0])
