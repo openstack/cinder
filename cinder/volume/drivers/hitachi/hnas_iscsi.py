@@ -20,6 +20,7 @@ iSCSI Cinder Volume driver for Hitachi Unified Storage (HUS-HNAS) platform.
 import os
 from xml.etree import ElementTree as ETree
 
+from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
@@ -27,13 +28,14 @@ from oslo_utils import units
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
+from cinder import utils as cinder_utils
 from cinder.volume import driver
 from cinder.volume.drivers.hitachi import hnas_backend
 from cinder.volume import utils
 from cinder.volume import volume_types
 
 
-HDS_HNAS_ISCSI_VERSION = '3.0.1'
+HDS_HNAS_ISCSI_VERSION = '3.1.0'
 
 LOG = logging.getLogger(__name__)
 
@@ -550,6 +552,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
                             self.config['password'],
                             hdp, lun)
 
+    @cinder_utils.synchronized('volume_mapping')
     def initialize_connection(self, volume, connector):
         """Map the created volume to connector['initiator'].
 
@@ -572,12 +575,18 @@ class HDSISCSIDriver(driver.ISCSIDriver):
         loc = arid + '.' + lun
         # sps, use target if provided
         iqn = target
-        out = self.bend.add_iscsi_conn(self.config['hnas_cmd'],
-                                       self.config['mgmt_ip0'],
-                                       self.config['username'],
-                                       self.config['password'],
-                                       lun, _hdp, port, iqn,
-                                       connector['initiator'])
+
+        try:
+            out = self.bend.add_iscsi_conn(self.config['hnas_cmd'],
+                                           self.config['mgmt_ip0'],
+                                           self.config['username'],
+                                           self.config['password'],
+                                           lun, _hdp, port, iqn,
+                                           connector['initiator'])
+        except processutils.ProcessExecutionError:
+            msg = _("Error attaching volume %s. "
+                    "Target limit might be reached!") % volume['id']
+            raise exception.ISCSITargetAttachFailed(message=msg)
 
         hnas_portal = ip + ':' + ipp
         # sps need hlun, fulliqn
@@ -604,6 +613,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
 
         return {'driver_volume_type': 'iscsi', 'data': properties}
 
+    @cinder_utils.synchronized('volume_mapping')
     def terminate_connection(self, volume, connector, **kwargs):
         """Terminate a connection to a volume.
 

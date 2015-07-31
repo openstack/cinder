@@ -20,16 +20,18 @@ Hitachi Unified Storage (HUS-HNAS) platform. Backend operations.
 
 import re
 
-from oslo_concurrency import processutils
+from oslo_concurrency import processutils as putils
 from oslo_log import log as logging
 from oslo_utils import units
 import six
 
-from cinder.i18n import _LE, _LW, _LI
+from cinder.i18n import _, _LW, _LI
+from cinder import exception
 from cinder import ssh_utils
 from cinder import utils
 
 LOG = logging.getLogger("cinder.volume.driver")
+HNAS_SSC_RETRIES = 5
 
 
 class HnasBackend(object):
@@ -38,6 +40,7 @@ class HnasBackend(object):
         self.drv_configs = drv_configs
         self.sshpool = None
 
+    @utils.retry(exceptions=exception.HNASConnError, retries=HNAS_SSC_RETRIES)
     def run_cmd(self, cmd, ip0, user, pw, *args, **kwargs):
         """Run a command on SMU or using SSH
 
@@ -53,10 +56,20 @@ class HnasBackend(object):
         if self.drv_configs['ssh_enabled'] != 'True':
             # Direct connection via ssc
             args = (cmd, '-u', user, '-p', pw, ip0) + args
-            out, err = utils.execute(*args, **kwargs)
-            LOG.debug("command %(cmd)s result: out = %(out)s - err = "
-                      "%(err)s", {'cmd': cmd, 'out': out, 'err': err})
-            return out, err
+
+            try:
+                out, err = utils.execute(*args, **kwargs)
+                LOG.debug("command %(cmd)s result: out = %(out)s - err = "
+                          "%(err)s", {'cmd': cmd, 'out': out, 'err': err})
+                return out, err
+            except putils.ProcessExecutionError as e:
+                if 'Failed to establish SSC connection' in e.stderr:
+                    LOG.debug("SSC connection error!")
+                    msg = _("Failed to establish SSC connection.")
+                    raise exception.HNASConnError(msg)
+                else:
+                    raise putils.ProcessExecutionError
+
         else:
             if self.drv_configs['cluster_admin_ip0'] is None:
                 # Connect to SMU through SSH and run ssc locally
@@ -84,15 +97,21 @@ class HnasBackend(object):
                                                  privatekey=privatekey)
 
             with self.sshpool.item() as ssh:
+
                 try:
-                    out, err = processutils.ssh_execute(ssh, command,
-                                                        check_exit_code=True)
-                    LOG.debug("command %(cmd)s result: out = %(out)s - err = "
-                              "%(err)s", {'cmd': cmd, 'out': out, 'err': err})
+                    out, err = putils.ssh_execute(ssh, command,
+                                                  check_exit_code=True)
+                    LOG.debug("command %(cmd)s result: out = "
+                              "%(out)s - err = %(err)s",
+                              {'cmd': cmd, 'out': out, 'err': err})
                     return out, err
-                except processutils.ProcessExecutionError:
-                    LOG.error(_LE("Error running SSH command."))
-                    raise
+                except putils.ProcessExecutionError as e:
+                    if 'Failed to establish SSC connection' in e.stderr:
+                        LOG.debug("SSC connection error!")
+                        msg = _("Failed to establish SSC connection.")
+                        raise exception.HNASConnError(msg)
+                    else:
+                        raise putils.ProcessExecutionError
 
     def get_version(self, cmd, ver, ip0, user, pw):
         """Gets version information from the storage unit
@@ -446,6 +465,7 @@ class HnasBackend(object):
         LOG.debug('extend_vol: %s', out)
         return out
 
+    @utils.retry(putils.ProcessExecutionError, retries=HNAS_SSC_RETRIES)
     def add_iscsi_conn(self, cmd, ip0, user, pw, lun, hdp,
                        port, iqn, initiator):
         """Setup the lun on on the specified target port

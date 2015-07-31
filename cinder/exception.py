@@ -985,3 +985,8 @@ class MetadataAbsent(CinderException):
 class NotSupportedOperation(Invalid):
     message = _("Operation not supported: %(operation)s.")
     code = 405
+
+
+# Hitachi HNAS drivers
+class HNASConnError(CinderException):
+    message = _("%(message)s")
