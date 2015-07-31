@@ -99,7 +99,8 @@ class _IntegratedTestBase(test.TestCase):
 
         # Use simple scheduler to avoid complications - we test schedulers
         # separately
-        f['scheduler_driver'] = 'cinder.scheduler.simple.SimpleScheduler'
+        f['scheduler_driver'] = ('cinder.scheduler.filter_scheduler.FilterSche'
+                                 'duler')
 
         return f
 

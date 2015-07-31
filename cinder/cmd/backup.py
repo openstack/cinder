@@ -18,9 +18,6 @@
 """Starter script for Cinder Volume Backup."""
 
 import sys
-import warnings
-
-warnings.simplefilter('once', DeprecationWarning)
 
 import eventlet
 from oslo_config import cfg

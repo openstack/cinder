@@ -57,9 +57,6 @@ from __future__ import print_function
 
 import os
 import sys
-import warnings
-
-warnings.simplefilter('once', DeprecationWarning)
 
 from oslo_config import cfg
 from oslo_db.sqlalchemy import migration
