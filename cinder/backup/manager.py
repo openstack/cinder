@@ -189,9 +189,7 @@ class BackupManager(manager.SchedulerDependentManager):
         backup.save()
 
     def init_host(self):
-        """Do any initialization that needs to be run if this is a
-           standalone service.
-        """
+        """Run initialization needed for a standalone service."""
         ctxt = context.get_admin_context()
 
         for mgr in self.volume_managers.values():

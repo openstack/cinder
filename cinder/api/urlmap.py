@@ -36,6 +36,7 @@ LOG = logging.getLogger(__name__)
 
 def unquote_header_value(value):
     """Unquotes a header value.
+
     This does not use the real unquoting but what browsers are actually
     using for quoting.
 
@@ -75,7 +76,9 @@ def parse_list_header(value):
 
 
 def parse_options_header(value):
-    """Parse a ``Content-Type`` like header into a tuple with the content
+    """Parse 'Content-Type'-like header into a tuple.
+
+    Parse a ``Content-Type`` like header into a tuple with the content
     type and the options:
 
     >>> parse_options_header('Content-Type: text/html; mimetype=text/html')

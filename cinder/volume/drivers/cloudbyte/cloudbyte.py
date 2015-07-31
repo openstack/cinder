@@ -181,8 +181,7 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
         return data
 
     def _override_params(self, default_dict, filtered_user_dict):
-        """Override the default config values with user provided values.
-        """
+        """Override the default config values with user provided values."""
 
         if filtered_user_dict is None:
             # Nothing to override

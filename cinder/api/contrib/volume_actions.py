@@ -387,8 +387,7 @@ class VolumeActionsController(wsgi.Controller):
 
 
 class Volume_actions(extensions.ExtensionDescriptor):
-    """Enable volume actions
-    """
+    """Enable volume actions."""
 
     name = "VolumeActions"
     alias = "os-volume-actions"

@@ -56,8 +56,9 @@ CONF.register_opts(volume_opts)
 
 class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver, driver.CloneableVD,
                       driver.ExtendVD):
-    """Gluster based cinder driver. Creates file on Gluster share for using it
-    as block device on hypervisor.
+    """Gluster based cinder driver.
+
+    Creates file on Gluster share for using it as block device on hypervisor.
 
     Operations such as create/delete/extend volume/snapshot use locking on a
     per-process basis to prevent multiple threads from modifying qcow2 chains
@@ -376,6 +377,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver, driver.CloneableVD,
 
     def _ensure_share_mounted(self, glusterfs_share):
         """Mount GlusterFS share.
+
         :param glusterfs_share: string
         """
         mount_path = self._get_mount_point_for_share(glusterfs_share)
@@ -398,6 +400,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver, driver.CloneableVD,
 
     def _find_share(self, volume_size_for):
         """Choose GlusterFS share among available ones for given volume size.
+
         Current implementation looks for greatest capacity.
         :param volume_size_for: int size in GB
         """

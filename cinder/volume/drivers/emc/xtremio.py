@@ -431,6 +431,7 @@ class XtremIOVolumeDriver(san.SanDriver):
 
     def get_volume_stats(self, refresh=False):
         """Get volume stats.
+
         If 'refresh' is True, run update the stats first.
         """
         if refresh:
@@ -765,7 +766,8 @@ class XtremIOISCSIDriver(XtremIOVolumeDriver, driver.ISCSIDriver):
         }
 
     def _get_iscsi_properties(self, lunmap):
-        """Gets iscsi configuration
+        """Gets iscsi configuration.
+
         :target_discovered:    boolean indicating whether discovery was used
         :target_iqn:    the IQN of the iSCSI target
         :target_portal:    the portal of the iSCSI target

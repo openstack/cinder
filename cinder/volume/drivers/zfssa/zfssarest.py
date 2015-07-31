@@ -39,9 +39,7 @@ class ZFSSAApi(object):
             self.rclient.logout()
 
     def _is_pool_owned(self, pdata):
-        """returns True if the pool's owner is the
-           same as the host.
-        """
+        """Returns True if the pool's owner is the same as the host."""
         svc = '/api/system/v1/version'
         ret = self.rclient.get(svc)
         if ret.status != restclient.Status.OK:
@@ -70,8 +68,10 @@ class ZFSSAApi(object):
             self.rclient.login(auth_str)
 
     def get_pool_stats(self, pool):
-        """Get space available and total properties of a pool
-           returns (avail, total).
+        """Get pool stats.
+
+        Get space available and total properties of a pool
+        returns (avail, total).
         """
         svc = '/api/storage/v1/pools/' + pool
         ret = self.rclient.get(svc)
@@ -100,8 +100,9 @@ class ZFSSAApi(object):
         return avail, total
 
     def create_project(self, pool, project, compression=None, logbias=None):
-        """Create a project on a pool
-           Check first whether the pool exists.
+        """Create a project on a pool.
+
+        Check first whether the pool exists.
         """
         self.verify_pool(pool)
         svc = '/api/storage/v1/pools/' + pool + '/projects/' + project
@@ -222,9 +223,10 @@ class ZFSSAApi(object):
     def create_target(self, alias, interfaces=None, tchapuser=None,
                       tchapsecret=None):
         """Create an iSCSI target.
-           interfaces: an array with network interfaces
-           tchapuser, tchapsecret: target's chapuser and chapsecret
-           returns target iqn
+
+        :param interfaces: an array with network interfaces
+        :param tchapuser, tchapsecret: target's chapuser and chapsecret
+        :returns: target iqn
         """
         svc = '/api/san/v1/iscsi/targets/alias=' + alias
         ret = self.rclient.get(svc)
@@ -384,9 +386,9 @@ class ZFSSAApi(object):
             raise exception.VolumeBackendAPIException(data=exception_msg)
 
     def create_lun(self, pool, project, lun, volsize, targetgroup, specs):
-
         """Create a LUN.
-           specs - contains volume properties (e.g blocksize, compression).
+
+        specs - contains volume properties (e.g blocksize, compression).
         """
         svc = '/api/storage/v1/pools/' + pool + '/projects/' + \
               project + '/luns'

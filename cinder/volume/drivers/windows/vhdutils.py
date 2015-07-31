@@ -402,7 +402,9 @@ class VHDUtils(object):
         return vhd_info
 
     def get_vhd_size(self, vhd_path):
-        """Returns a dict containing the virtual size, physical size,
+        """Return vhd size.
+
+        Returns a dict containing the virtual size, physical size,
         block size and sector size of the vhd.
         """
         size = self.get_vhd_info(vhd_path,

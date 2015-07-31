@@ -294,8 +294,10 @@ class SchedulerTestCase(test.TestCase):
 
 
 class SchedulerDriverBaseTestCase(SchedulerTestCase):
-    """Test cases for base scheduler driver class methods
-       that can't will fail if the driver is changed.
+    """Test schedule driver class.
+
+    Test cases for base scheduler driver class methods
+    that will fail if the driver is changed.
     """
 
     def test_unimplemented_schedule(self):

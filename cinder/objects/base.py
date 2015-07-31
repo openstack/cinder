@@ -103,6 +103,7 @@ class CinderObjectDictCompat(base.VersionedObjectDictCompat):
 
 class CinderPersistentObject(object):
     """Mixin class for Persistent objects.
+
     This adds the fields that we use in common for all persistent objects.
     """
     fields = {

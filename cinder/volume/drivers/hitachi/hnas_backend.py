@@ -625,6 +625,7 @@ class HnasBackend(object):
 
     def set_targetsecret(self, cmd, ip0, user, pw, targetalias, hdp, secret):
         """Sets the chap secret for the specified target.
+
         :param ip0: string IP address of controller
         :param user: string user authentication for array
         :param pw: string password authentication for array
@@ -657,6 +658,7 @@ class HnasBackend(object):
 
     def get_targetsecret(self, cmd, ip0, user, pw, targetalias, hdp):
         """Returns the chap secret for the specified target.
+
         :param ip0: string IP address of controller
         :param user: string user authentication for array
         :param pw: string password authentication for array

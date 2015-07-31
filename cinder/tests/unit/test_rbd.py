@@ -1060,8 +1060,7 @@ class ManagedRBDTestCase(test_volume.DriverTestCase):
 
     def _create_volume_from_image(self, expected_status, raw=False,
                                   clone_error=False):
-        """Try to clone a volume from an image, and check the status
-        afterwards.
+        """Try to clone a volume from an image, and check status afterwards.
 
         NOTE: if clone_error is True we force the image type to raw otherwise
               clone_image is not called

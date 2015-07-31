@@ -15,9 +15,7 @@
 #    under the License.
 #
 
-"""
-Tests for the IBM FlashSystem volume driver.
-"""
+"""Tests for the IBM FlashSystem volume driver."""
 
 import mock
 from oslo_concurrency import processutils
@@ -138,7 +136,9 @@ class FlashSystemManagementSimulator(object):
         return six.text_type(num)
 
     def _cmd_lshost(self, **kwargs):
-        """svcinfo lshost -delim !
+        """lshost command.
+
+        svcinfo lshost -delim !
         svcinfo lshost -delim ! <host>
         """
         if 'obj' not in kwargs:
@@ -238,7 +238,9 @@ class FlashSystemManagementSimulator(object):
         return ('%s' % '\n'.join(objrows), '')
 
     def _cmd_lsnode(self, **kwargs):
-        """svcinfo lsnode -delim !
+        """lsnode command.
+
+        svcinfo lsnode -delim !
         svcinfo lsnode -delim ! <node>
         """
 
@@ -448,7 +450,9 @@ class FlashSystemManagementSimulator(object):
         return ('', '')
 
     def _cmd_mkvdisk(self, **kwargs):
-        """svctask mkvdisk -name <name> -mdiskgrp <mdiskgrp> -iogrp <iogrp>
+        """mkvdisk command.
+
+        svctask mkvdisk -name <name> -mdiskgrp <mdiskgrp> -iogrp <iogrp>
         -size <size> -unit <unit>
         """
 
@@ -507,7 +511,9 @@ class FlashSystemManagementSimulator(object):
         return ('', '')
 
     def _cmd_mkhost(self, **kwargs):
-        """svctask mkhost -force -hbawwpn <wwpn> -name <host_name>
+        """mkhost command.
+
+        svctask mkhost -force -hbawwpn <wwpn> -name <host_name>
         svctask mkhost -force -iscsiname <initiator> -name <host_name>
         """
 
@@ -535,7 +541,9 @@ class FlashSystemManagementSimulator(object):
             return (out, err)
 
     def _cmd_addhostport(self, **kwargs):
-        """svctask addhostport -force -hbawwpn <wwpn> <host>
+        """addhostport command.
+
+        svctask addhostport -force -hbawwpn <wwpn> <host>
         svctask addhostport -force -iscsiname <initiator> <host>
         """
 

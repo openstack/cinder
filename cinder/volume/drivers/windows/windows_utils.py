@@ -49,6 +49,7 @@ class WindowsUtils(object):
 
     def check_for_setup_error(self):
         """Check that the driver is working and can communicate.
+
         Invokes the portal and checks that is listening ISCSI traffic.
         """
         try:

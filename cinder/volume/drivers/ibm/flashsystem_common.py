@@ -377,8 +377,8 @@ class FlashSystemDriver(san.SanDriver):
 
     def _get_hdr_dic(self, header, row, delim):
         """Return CLI row data as a dictionary indexed by names from header.
-        string. The strings are converted to columns using the delimiter in
-        delim.
+
+        The strings are converted to columns using the delimiter in delim.
         """
 
         attributes = header.split(delim)

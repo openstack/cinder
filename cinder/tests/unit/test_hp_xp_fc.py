@@ -495,7 +495,9 @@ class HPXPFCDriverTest(test.TestCase):
         self.assertTrue(has_volume)
 
     def test_create_volume_from_snapshot_error_on_non_existing_snapshot(self):
-        """Test create_volume_from_snapshot is error on non existing snapshot.
+        """Test create_volume_from_snapshot.
+
+        Test create_volume_from_snapshot is error on non existing snapshot.
         """
         volume2 = fake_volume.fake_db_volume(**self._VOLUME2)
         snapshot = fake_snapshot.fake_db_snapshot(**self._TEST_SNAPSHOT)

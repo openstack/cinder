@@ -441,7 +441,9 @@ def deepcopy_return_value_method_decorator(fn):
 
 
 def deepcopy_return_value_class_decorator(cls):
-    """Wraps all 'non-protected' methods of a class with the
+    """Wraps 'non-protected' methods of a class with decorator.
+
+    Wraps all 'non-protected' methods of a class with the
     deepcopy_return_value_method_decorator decorator.
     """
     class NewClass(cls):

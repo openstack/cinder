@@ -251,14 +251,18 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
         return swift_object_names
 
     def get_object_writer(self, container, object_name, extra_metadata=None):
-        """Returns a writer object that stores a chunk of volume data in a
-           Swift object store.
+        """Return a writer object.
+
+        Returns a writer object that stores a chunk of volume data in a
+        Swift object store.
         """
         return self.SwiftObjectWriter(container, object_name, self.conn)
 
     def get_object_reader(self, container, object_name, extra_metadata=None):
-        """Returns a reader object that retrieves a chunk of backed-up volume data
-           from a Swift object store.
+        """Return reader object.
+
+        Returns a reader object that retrieves a chunk of backed-up volume data
+        from a Swift object store.
         """
         return self.SwiftObjectReader(container, object_name, self.conn)
 

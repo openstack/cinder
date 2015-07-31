@@ -70,8 +70,7 @@ CONF.register_opts(volume_opts)
 
 
 class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
-    """SMBFS based cinder volume driver.
-    """
+    """SMBFS based cinder volume driver."""
 
     driver_volume_type = 'smbfs'
     driver_prefix = 'smbfs'
@@ -167,6 +166,7 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
 
     def local_path(self, volume):
         """Get volume path (mounted locally fs path) for given volume.
+
         :param volume: volume reference
         """
         volume_path_template = self._get_local_volume_path_template(volume)

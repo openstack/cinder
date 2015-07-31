@@ -345,8 +345,7 @@ class StorwizeSVCDriver(san.SanDriver,
     @fczm_utils.AddFCZone
     @utils.synchronized('storwize-host', external=True)
     def initialize_connection(self, volume, connector):
-        """Perform the necessary work so that an iSCSI/FC connection can
-        be made.
+        """Perform necessary work to make an iSCSI/FC connection.
 
         To be able to create an iSCSI/FC connection from a given host to a
         volume, we must:

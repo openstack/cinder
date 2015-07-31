@@ -1243,9 +1243,7 @@ class SSHPoolTestCase(test.TestCase):
 
 
 class BrickUtils(test.TestCase):
-    """Unit test to test the brick utility
-    wrapper functions.
-    """
+    """Unit test to test the brick utility wrapper functions."""
 
     @mock.patch('cinder.utils.CONF')
     @mock.patch('os_brick.initiator.connector.get_connector_properties')

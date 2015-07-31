@@ -13,8 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""
-Configuration support for all drivers.
+"""Configuration support for all drivers.
 
 This module allows support for setting configurations either from default
 or from a particular FLAGS group, to be able to set multiple configurations
@@ -51,8 +50,10 @@ LOG = logging.getLogger(__name__)
 class Configuration(object):
 
     def __init__(self, volume_opts, config_group=None):
-        """This takes care of grafting the implementation's config
-           values into the config group
+        """Initialize configuration.
+
+        This takes care of grafting the implementation's config
+        values into the config group
         """
         self.config_group = config_group
 

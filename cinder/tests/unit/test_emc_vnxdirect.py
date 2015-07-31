@@ -2009,7 +2009,9 @@ Time Remaining:  0 second(s)
     @mock.patch('random.randint',
                 mock.Mock(return_value=0))
     def test_initialize_connection_exist(self):
-        """A LUN is added to the SG right before the attach,
+        """Test if initialize connection exists.
+
+        A LUN is added to the SG right before the attach,
         it may not exists in the first SG query
         """
         # Test for auto registration
@@ -2125,7 +2127,9 @@ Time Remaining:  0 second(s)
     @mock.patch('random.randint',
                 mock.Mock(return_value=0))
     def test_initialize_connection_no_hlu_left_1(self):
-        """There is no hlu per the first SG query
+        """Test initialize connection with no hlu per first SG query.
+
+        There is no hlu per the first SG query
         But there are hlu left after the full poll
         """
         # Test for auto registration
@@ -2172,8 +2176,7 @@ Time Remaining:  0 second(s)
     @mock.patch('random.randint',
                 mock.Mock(return_value=0))
     def test_initialize_connection_no_hlu_left_2(self):
-        """There is no usable hlu for the SG
-        """
+        """Test initialize connection with no hlu left."""
         # Test for auto registration
         self.configuration.initiator_auto_registration = True
         self.configuration.max_luns_per_storage_group = 2
@@ -2887,7 +2890,9 @@ Time Remaining:  0 second(s)
         mock.Mock(return_value={'storagetype:provisioning': 'deduplicated',
                                 'storagetype:pool': 'unit_test_pool'}))
     def test_retype_pool_changed_dedup_to_compressed_auto(self):
-        """Unit test for retype dedup to compressed and auto tiering
+        """Test retype from dedup to compressed and auto tiering.
+
+        Unit test for retype dedup to compressed and auto tiering
         and pool changed
         """
         diff_data = {'encryption': {}, 'qos_specs': {},
@@ -3229,7 +3234,7 @@ Time Remaining:  0 second(s)
         "get_volume_type_extra_specs",
         mock.Mock(return_value={'fast_cache_enabled': 'True'}))
     def test_create_volume_with_fastcache(self):
-        """Enable fastcache when creating volume."""
+        """Test creating volume with fastcache enabled."""
         commands = [self.testData.NDU_LIST_CMD,
                     self.testData.POOL_PROPERTY_W_FASTCACHE_CMD,
                     self.testData.LUN_PROPERTY_ALL_CMD('vol_with_type'),

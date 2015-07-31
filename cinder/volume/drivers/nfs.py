@@ -74,8 +74,9 @@ CONF.register_opts(nfs_opts)
 
 
 class NfsDriver(driver.ExtendVD, remotefs.RemoteFSDriver):
-    """NFS based cinder driver. Creates file on NFS share for using it
-    as block device on hypervisor.
+    """NFS based cinder driver.
+
+    Creates file on NFS share for using it as block device on hypervisor.
     """
 
     driver_volume_type = 'nfs'

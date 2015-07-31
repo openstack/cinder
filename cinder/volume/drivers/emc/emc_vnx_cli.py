@@ -1697,7 +1697,8 @@ class CommandLineHelper(object):
         return out, rc
 
     def _toggle_sp(self):
-        """This function toggles the storage IP
+        """Toggle the storage IP.
+
         Address between primary IP and secondary IP, if no SP IP address has
         exchanged, return False, otherwise True will be returned.
         """
@@ -1715,9 +1716,7 @@ class CommandLineHelper(object):
         return True
 
     def get_enablers_on_array(self, poll=False):
-        """The function would get all the enabler installed
-        on array.
-        """
+        """The function would get all the enablers installed on array."""
         enablers = []
         cmd_list = ('ndu', '-list')
         out, rc = self.command_execute(*cmd_list, poll=poll)
@@ -1733,9 +1732,7 @@ class CommandLineHelper(object):
         return enablers
 
     def enable_or_disable_compression_on_lun(self, volumename, compression):
-        """The function will enable or disable the compression
-        on lun
-        """
+        """The function will enable or disable the compression on lun."""
         lun_data = self.get_lun_by_name(volumename)
 
         command_compression_cmd = ('compression', '-' + compression,

@@ -170,7 +170,9 @@ class DbQuotaDriver(object):
     def get_project_quotas(self, context, resources, project_id,
                            quota_class=None, defaults=True,
                            usages=True, parent_project_id=None):
-        """Given a list of resources, retrieve the quotas for the given
+        """Retrieve quotas for a project.
+
+        Given a list of resources, retrieve the quotas for the given
         project.
 
         :param context: The request context, for access checks.

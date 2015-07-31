@@ -160,8 +160,7 @@ class GlusterFsDriverTestCase(test.TestCase):
             mock_mount.assert_called_once_with(self.TEST_EXPORT1, [])
 
     def test_mount_glusterfs_should_reraise_exception_on_failure(self):
-        """_mount_glusterfs should reraise exception if mount fails.
-        """
+        """_mount_glusterfs should reraise exception if mount fails."""
         drv = self._driver
 
         with mock.patch.object(os_brick.remotefs.remotefs.RemoteFsClient,

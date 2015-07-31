@@ -13,9 +13,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Drivers for volumes.
-"""
+"""Drivers for volumes."""
 
 import abc
 import time
@@ -419,8 +417,10 @@ class BaseVD(object):
 
     @abc.abstractmethod
     def create_volume(self, volume):
-        """Creates a volume. Can optionally return a Dictionary of
-        changes to the volume object to be persisted.
+        """Creates a volume.
+
+        Can optionally return a Dictionary of changes to the volume object to
+        be persisted.
 
         If volume_type extra specs includes
         'capabilities:replication <is> True' the driver
@@ -452,11 +452,12 @@ class BaseVD(object):
         return False
 
     def get_volume_stats(self, refresh=False):
-        """Return the current state of the volume service. If 'refresh' is
-           True, run the update first.
+        """Return the current state of the volume service.
 
-           For replication the following state should be reported:
-           replication = True (None or false disables replication)
+        If 'refresh' is True, run the update first.
+
+        For replication the following state should be reported:
+        replication = True (None or false disables replication)
         """
         return None
 
@@ -1297,8 +1298,9 @@ class ReplicaVD(object):
 class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
                    CloneableVD, CloneableImageVD, SnapshotVD, ReplicaVD,
                    RetypeVD, LocalVD, MigrateVD, BaseVD):
-    """This class will be deprecated soon. Please us the abstract classes
-       above for new drivers.
+    """This class will be deprecated soon.
+
+    Please use the abstract classes above for new drivers.
     """
     def check_for_setup_error(self):
         raise NotImplementedError()
@@ -1469,7 +1471,9 @@ class ProxyVD(object):
         class can help marking them and retrieve the actual used driver object.
     """
     def _get_driver(self):
-        """Returns the actual driver object. Can be overloaded by the proxy.
+        """Returns the actual driver object.
+
+        Can be overloaded by the proxy.
         """
         return getattr(self, "driver", None)
 
@@ -1805,8 +1809,10 @@ class FakeISCSIDriver(ISCSIDriver):
         pass
 
     def create_export(self, context, volume):
-        """Exports the volume. Can optionally return a Dictionary of changes
-        to the volume object to be persisted.
+        """Exports the volume.
+
+        Can optionally return a Dictionary of changes to the volume object to
+        be persisted.
         """
         pass
 

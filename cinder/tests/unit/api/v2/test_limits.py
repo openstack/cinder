@@ -578,7 +578,9 @@ class WsgiLimiterTest(BaseLimitTestSuite):
         return jsonutils.dumps({"verb": verb, "path": path})
 
     def _request(self, verb, url, username=None):
-        """Make sure that POSTing to the given url causes the given username
+        """POST request to given url by given username.
+
+        Make sure that POSTing to the given url causes the given username
         to perform the given action.  Make the internal rate limiter return
         delay and make sure that the WSGI app returns the correct response.
         """
@@ -683,7 +685,9 @@ class FakeHttplibConnection(object):
 
 
 def wire_HTTPConnection_to_WSGI(host, app):
-    """Monkeypatches HTTPConnection so that if you try to connect to host, you
+    """Monkeypatches HTTPConnection.
+
+    Monkeypatches HTTPConnection so that if you try to connect to host, you
     are instead routed straight to the given WSGI app.
 
     After calling this method, when any code calls
@@ -702,7 +706,9 @@ def wire_HTTPConnection_to_WSGI(host, app):
     can restore the default HTTPConnection interface (for all hosts).
     """
     class HTTPConnectionDecorator(object):
-        """Wraps the real HTTPConnection class so that when you instantiate
+        """Decorator to mock the HTTPConecction class.
+
+        Wraps the real HTTPConnection class so that when you instantiate
         the class you might instead get a fake instance.
         """
 

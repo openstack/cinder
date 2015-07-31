@@ -528,8 +528,10 @@ def volume_type_extra_specs_delete(context, volume_type_id, key):
 def volume_type_extra_specs_update_or_create(context,
                                              volume_type_id,
                                              extra_specs):
-    """Create or update volume type extra specs. This adds or modifies the
-    key/value pairs specified in the extra specs dict argument
+    """Create or update volume type extra specs.
+
+    This adds or modifies the key/value pairs specified in the extra specs dict
+    argument.
     """
     return IMPL.volume_type_extra_specs_update_or_create(context,
                                                          volume_type_id,
@@ -694,7 +696,9 @@ def volume_glance_metadata_delete_by_snapshot(context, snapshot_id):
 def volume_glance_metadata_copy_from_volume_to_volume(context,
                                                       src_volume_id,
                                                       volume_id):
-    """Update the Glance metadata for a volume by copying all of the key:value
+    """Update the Glance metadata for a volume.
+
+    Update the Glance metadata for a volume by copying all of the key:value
     pairs from the originating volume.
 
     This is so that a volume created from the volume (clone) will retain the

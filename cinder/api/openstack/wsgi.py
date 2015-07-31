@@ -134,7 +134,9 @@ class Request(webob.Request):
         return resources.get(resource_id)
 
     def cache_db_items(self, key, items, item_key='id'):
-        """Allow API methods to store objects from a DB query to be
+        """Get cached database items.
+
+        Allow API methods to store objects from a DB query to be
         used by API extensions within the same API request.
 
         An instance of this class only lives for the lifetime of a
@@ -144,7 +146,9 @@ class Request(webob.Request):
         self.cache_resource(items, item_key, key)
 
     def get_db_items(self, key):
-        """Allow an API extension to get previously stored objects within
+        """Get database items.
+
+        Allow an API extension to get previously stored objects within
         the same API request.
 
         Note that the object data will be slightly stale.
@@ -152,7 +156,9 @@ class Request(webob.Request):
         return self.cached_resource(key)
 
     def get_db_item(self, key, item_key):
-        """Allow an API extension to get a previously stored object
+        """Get database item.
+
+        Allow an API extension to get a previously stored object
         within the same API request.
 
         Note that the object data will be slightly stale.
@@ -238,7 +244,6 @@ class Request(webob.Request):
         """Determine content type of the request body.
 
         Does not do any body introspection, only checks header
-
         """
         if "Content-Type" not in self.headers:
             return None
@@ -325,7 +330,6 @@ class XMLDeserializer(TextDeserializer):
 
         :param listnames: list of XML node names whose subnodes should
                           be considered list items.
-
         """
         if len(node.childNodes) == 1 and node.childNodes[0].nodeType == 3:
             return node.childNodes[0].nodeValue
@@ -768,7 +772,6 @@ class Resource(wsgi.Application):
 
     Exceptions derived from webob.exc.HTTPException will be automatically
     wrapped in Fault() to provide API friendly error responses.
-
     """
 
     def __init__(self, controller, action_peek=None, **deserializers):

@@ -94,7 +94,8 @@ def args(*args, **kwargs):
 
 def param2id(object_id):
     """Helper function to convert various id types to internal id.
-    args: [object_id], e.g. 'vol-0000000a' or 'volume-0000000a' or '10'
+
+    :param object_id: e.g. 'vol-0000000a' or 'volume-0000000a' or '10'
     """
     if uuidutils.is_uuid_like(object_id):
         return object_id
@@ -177,9 +178,7 @@ class ShellCommands(object):
 
     @args('--path', required=True, help='Script path')
     def script(self, path):
-        """Runs the script from the specified path with flags set properly.
-        arguments: path
-        """
+        """Runs the script from the specified path with flags set properly."""
         exec(compile(open(path).read(), path, 'exec'), locals(), globals())
 
 
@@ -197,7 +196,9 @@ class HostCommands(object):
     @args('zone', nargs='?', default=None,
           help='Availability Zone (default: %(default)s)')
     def list(self, zone=None):
-        """Show a list of all physical hosts. Filter by zone.
+        """Show a list of all physical hosts.
+
+        Can be filtered by zone.
         args: [zone]
         """
         print(_("%(host)-25s\t%(zone)-15s") % {'host': 'host', 'zone': 'zone'})
@@ -278,9 +279,7 @@ class VolumeCommands(object):
     @args('volume_id',
           help='Volume ID to be deleted')
     def delete(self, volume_id):
-        """Delete a volume, bypassing the check that it
-        must be available.
-        """
+        """Delete a volume, bypassing the check that it must be available."""
         ctxt = context.get_admin_context()
         volume = db.volume_get(ctxt, param2id(volume_id))
         host = vutils.extract_host(volume['host']) if volume['host'] else None
@@ -396,7 +395,9 @@ class BackupCommands(object):
     """Methods for managing backups."""
 
     def list(self):
-        """List all backups (including ones in progress) and the host
+        """List all backups.
+
+        List all backups (including ones in progress) and the host
         on which the backup operation is running.
         """
         ctxt = context.get_admin_context()
@@ -467,8 +468,10 @@ CATEGORIES = {
 
 
 def methods_of(obj):
-    """Get all callable methods of an object that don't start with underscore
-    returns a list of tuples of the form (method_name, method)
+    """Return non-private methods from an object.
+
+    Get all callable methods of an object that don't start with underscore
+    :return: a list of tuples of the form (method_name, method)
     """
     result = []
     for i in dir(obj):

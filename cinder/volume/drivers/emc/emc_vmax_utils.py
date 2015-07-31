@@ -69,8 +69,7 @@ class EMCVMAXUtils(object):
         self.protocol = prtcl
 
     def find_storage_configuration_service(self, conn, storageSystemName):
-        """Given the storage system name, get the storage configuration
-        service.
+        """Get storage configuration service with given storage system name.
 
         :param conn: connection to the ecom server
         :param storageSystemName: the storage system name
@@ -2099,7 +2098,9 @@ class EMCVMAXUtils(object):
 
     def get_associated_replication_from_source_volume(
             self, conn, storageSystem, sourceDeviceId):
-        """Given the source volume device ID, find associated replication
+        """Get associated replication from source volume.
+
+        Given the source volume device ID, find associated replication
         storage synchronized instance names.
 
         :param conn: connection to the ecom server

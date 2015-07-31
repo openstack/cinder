@@ -53,8 +53,7 @@ LOG = logging.getLogger(__name__)
 
 
 class V6000FCDriver(driver.FibreChannelDriver):
-    """Executes commands relating to fibre channel based Violin Memory
-    Arrays.
+    """Executes commands relating to fibre channel based Violin Memory Arrays.
 
     Version history:
         1.0 - Initial driver
@@ -422,7 +421,9 @@ class V6000FCDriver(driver.FibreChannelDriver):
         return False
 
     def _update_stats(self):
-        """Gathers array stats from the backend and converts them to GB values.
+        """Update array stats.
+
+        Gathers array stats from the backend and converts them to GB values.
         """
         data = {}
         total_gb = 0

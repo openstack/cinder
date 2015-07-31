@@ -421,8 +421,7 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
         return self._stats
 
     def _get_clone_depth(self, client, volume_name, depth=0):
-        """Returns the number of ancestral clones (if any) of the given volume.
-        """
+        """Returns the number of ancestral clones of the given volume."""
         parent_volume = self.rbd.Image(client.ioctx, volume_name)
         try:
             _pool, parent, _snap = self._get_clone_info(parent_volume,

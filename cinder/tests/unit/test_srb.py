@@ -12,9 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""
-Unit tests for the Scality Rest Block Volume Driver.
-"""
+"""Unit tests for the Scality Rest Block Volume Driver."""
 
 import mock
 from oslo_concurrency import processutils
@@ -761,8 +759,9 @@ class SRBDriverTestCase(test.TestCase):
                           self._driver.do_setup, None)
 
     def test_volume_create(self):
-        """The volume shall be added in the internal
-            state through fake_execute
+        """"Test volume create.
+
+        The volume will be added in the internal state through fake_execute.
         """
         volume = {'name': 'volume-test', 'id': 'test', 'size': 4 * units.Gi}
         old_vols = self._volumes
