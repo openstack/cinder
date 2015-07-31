@@ -323,7 +323,9 @@ class SnapshotApiTest(test.TestCase):
                                                   snapshot_metadata_get):
         def list_snapshots_with_limit_and_offset(is_admin):
             def stub_snapshot_get_all_by_project(context, project_id,
-                                                 search_opts):
+                                                 filters=None, marker=None,
+                                                 limit=None, sort_keys=None,
+                                                 sort_dirs=None, offset=None):
                 return [
                     stubs.stub_snapshot(1, display_name='backup1'),
                     stubs.stub_snapshot(2, display_name='backup2'),

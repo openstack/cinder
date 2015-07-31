@@ -177,13 +177,16 @@ def stub_snapshot(id, **kwargs):
     return snapshot
 
 
-def stub_snapshot_get_all(self, search_opts=None):
+def stub_snapshot_get_all(context, filters=None, marker=None, limit=None,
+                          sort_keys=None, sort_dirs=None, offset=None):
     return [stub_snapshot(100, project_id='fake'),
             stub_snapshot(101, project_id='superfake'),
             stub_snapshot(102, project_id='superduperfake')]
 
 
-def stub_snapshot_get_all_by_project(self, context, search_opts=None):
+def stub_snapshot_get_all_by_project(context, project_id, filters=None,
+                                     marker=None, limit=None, sort_keys=None,
+                                     sort_dirs=None, offset=None):
     return [stub_snapshot(1)]
 
 

@@ -292,14 +292,20 @@ def snapshot_get(context, snapshot_id):
     return IMPL.snapshot_get(context, snapshot_id)
 
 
-def snapshot_get_all(context, filters=None):
+def snapshot_get_all(context, filters=None, marker=None, limit=None,
+                     sort_keys=None, sort_dirs=None, offset=None):
     """Get all snapshots."""
-    return IMPL.snapshot_get_all(context, filters)
+    return IMPL.snapshot_get_all(context, filters, marker, limit, sort_keys,
+                                 sort_dirs, offset)
 
 
-def snapshot_get_all_by_project(context, project_id, filters=None):
+def snapshot_get_all_by_project(context, project_id, filters=None, marker=None,
+                                limit=None, sort_keys=None, sort_dirs=None,
+                                offset=None):
     """Get all snapshots belonging to a project."""
-    return IMPL.snapshot_get_all_by_project(context, project_id, filters)
+    return IMPL.snapshot_get_all_by_project(context, project_id, filters,
+                                            marker, limit, sort_keys,
+                                            sort_dirs, offset)
 
 
 def snapshot_get_by_host(context, host, filters=None):

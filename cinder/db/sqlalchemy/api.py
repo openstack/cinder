@@ -1505,7 +1505,8 @@ def volume_get_all_by_project(context, project_id, marker, limit,
 
 
 def _generate_paginate_query(context, session, marker, limit, sort_keys,
-                             sort_dirs, filters, offset=None):
+                             sort_dirs, filters, offset=None,
+                             paginate_type=models.Volume):
     """Generate the query to include the filters and the paginate options.
 
     Returns a query with sorting / pagination criteria added or None
@@ -1525,23 +1526,26 @@ def _generate_paginate_query(context, session, marker, limit, sort_keys,
                     is used for other values, see _process_volume_filters
                     function for more information
     :param offset: number of items to skip
+    :param paginate_type: type of pagination to generate
     :returns: updated query or None
     """
+    get_query, process_filters, get = PAGINATION_HELPERS[paginate_type]
+
     sort_keys, sort_dirs = process_sort_params(sort_keys,
                                                sort_dirs,
                                                default_dir='desc')
-    query = _volume_get_query(context, session=session)
+    query = get_query(context, session=session)
 
     if filters:
-        query = _process_volume_filters(query, filters)
+        query = process_filters(query, filters)
         if query is None:
             return None
 
     marker_volume = None
     if marker is not None:
-        marker_volume = _volume_get(context, marker, session)
+        marker_volume = get(context, marker, session)
 
-    return sqlalchemyutils.paginate_query(query, models.Volume, limit,
+    return sqlalchemyutils.paginate_query(query, paginate_type, limit,
                                           sort_keys,
                                           marker=marker_volume,
                                           sort_dirs=sort_dirs,
@@ -2057,22 +2061,50 @@ def snapshot_get(context, snapshot_id):
 
 
 @require_admin_context
-def snapshot_get_all(context, filters=None):
-    # Ensure that the filter value exists on the model
-    if filters:
-        for key in filters.keys():
-            try:
-                getattr(models.Snapshot, key)
-            except AttributeError:
-                LOG.debug("'%s' filter key is not valid.", key)
-                return []
+def snapshot_get_all(context, filters=None, marker=None, limit=None,
+                     sort_keys=None, sort_dirs=None, offset=None):
+    """Retrieves all snapshots.
 
-    query = model_query(context, models.Snapshot)
+    If no sorting parameters are specified then returned snapshots are sorted
+    first by the 'created_at' key and then by the 'id' key in descending
+    order.
 
+    :param context: context to query under
+    :param filters: dictionary of filters; will do exact matching on values
+    :param marker: the last item of the previous page, used to determine the
+                   next page of results to return
+    :param limit: maximum number of items to return
+    :param sort_keys: list of attributes by which results should be sorted,
+                      paired with corresponding item in sort_dirs
+    :param sort_dirs: list of directions in which results should be sorted,
+                      paired with corresponding item in sort_keys
+    :returns: list of matching snapshots
+    """
+    session = get_session()
+    with session.begin():
+        query = _generate_paginate_query(context, session, marker, limit,
+                                         sort_keys, sort_dirs, filters,
+                                         offset, models.Snapshot)
+
+    # No snapshots would match, return empty list
+    if not query:
+        return []
+    return query.all()
+
+
+def _snaps_get_query(context, session=None, project_only=False):
+    return model_query(context, models.Snapshot, session=session,
+                       project_only=project_only).\
+        options(joinedload('snapshot_metadata'))
+
+
+def _process_snaps_filters(query, filters):
     if filters:
+        # Ensure that filters' keys exist on the model
+        if not is_valid_model_filters(models.Snapshot, filters):
+            return None
         query = query.filter_by(**filters)
-
-    return query.options(joinedload('snapshot_metadata')).all()
+    return query
 
 
 @require_context
@@ -2107,15 +2139,43 @@ def snapshot_get_all_for_cgsnapshot(context, cgsnapshot_id):
 
 
 @require_context
-def snapshot_get_all_by_project(context, project_id, filters=None):
+def snapshot_get_all_by_project(context, project_id, filters=None, marker=None,
+                                limit=None, sort_keys=None, sort_dirs=None,
+                                offset=None):
+    """"Retrieves all snapshots in a project.
+
+    If no sorting parameters are specified then returned snapshots are sorted
+    first by the 'created_at' key and then by the 'id' key in descending
+    order.
+
+    :param context: context to query under
+    :param project_id: project for all snapshots being retrieved
+    :param filters: dictionary of filters; will do exact matching on values
+    :param marker: the last item of the previous page, used to determine the
+                   next page of results to return
+    :param limit: maximum number of items to return
+    :param sort_keys: list of attributes by which results should be sorted,
+                      paired with corresponding item in sort_dirs
+    :param sort_dirs: list of directions in which results should be sorted,
+                      paired with corresponding item in sort_keys
+    :returns: list of matching snapshots
+    """
     authorize_project_context(context, project_id)
-    query = model_query(context, models.Snapshot)
 
-    if filters:
-        query = query.filter_by(**filters)
+    # Add project_id to filters
+    filters = filters.copy() if filters else {}
+    filters['project_id'] = project_id
 
-    return query.filter_by(project_id=project_id).\
-        options(joinedload('snapshot_metadata')).all()
+    session = get_session()
+    with session.begin():
+        query = _generate_paginate_query(context, session, marker, limit,
+                                         sort_keys, sort_dirs, filters,
+                                         offset, models.Snapshot)
+
+    # No snapshots would match, return empty list
+    if not query:
+        return []
+    return query.all()
 
 
 @require_context
@@ -3854,3 +3914,12 @@ def driver_initiator_data_get(context, initiator, namespace):
             filter_by(initiator=initiator).\
             filter_by(namespace=namespace).\
             all()
+
+
+###############################
+
+
+PAGINATION_HELPERS = {
+    models.Volume: (_volume_get_query, _process_volume_filters, _volume_get),
+    models.Snapshot: (_snaps_get_query, _process_snaps_filters, _snapshot_get)
+}

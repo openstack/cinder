@@ -30,12 +30,12 @@ class ViewBuilder(common.ViewBuilder):
         """Initialize view builder."""
         super(ViewBuilder, self).__init__()
 
-    def summary_list(self, request, snapshots, snapshot_count):
+    def summary_list(self, request, snapshots, snapshot_count=None):
         """Show a list of snapshots without many details."""
         return self._list_view(self.summary, request, snapshots,
                                snapshot_count)
 
-    def detail_list(self, request, snapshots, snapshot_count):
+    def detail_list(self, request, snapshots, snapshot_count=None):
         """Detailed view of a list of snapshots."""
         return self._list_view(self.detail, request, snapshots, snapshot_count,
                                coll_name=self._collection_name + '/detail')
@@ -70,6 +70,13 @@ class ViewBuilder(common.ViewBuilder):
         """Provide a view for a list of snapshots."""
         snapshots_list = [func(request, snapshot)['snapshot']
                           for snapshot in snapshots]
+        snapshots_links = self._get_collection_links(request,
+                                                     snapshots,
+                                                     coll_name,
+                                                     snapshot_count)
         snapshots_dict = {self._collection_name: snapshots_list}
+
+        if snapshots_links:
+            snapshots_dict[self._collection_name + '_links'] = snapshots_links
 
         return snapshots_dict
