@@ -22,6 +22,7 @@ from webob import exc
 
 from cinder.api import common
 from cinder.api.openstack import wsgi
+from cinder.api.views import snapshots as snapshot_views
 from cinder.api import xmlutil
 from cinder import exception
 from cinder.i18n import _, _LI
@@ -31,35 +32,6 @@ from cinder.volume import utils as volume_utils
 
 
 LOG = logging.getLogger(__name__)
-
-
-def _translate_snapshot_detail_view(snapshot):
-    """Maps keys for snapshots details view."""
-
-    d = _translate_snapshot_summary_view(snapshot)
-
-    # NOTE(gagupta): No additional data / lookups at the moment
-    return d
-
-
-def _translate_snapshot_summary_view(snapshot):
-    """Maps keys for snapshots summary view."""
-    d = {}
-
-    d['id'] = snapshot['id']
-    d['created_at'] = snapshot['created_at']
-    d['name'] = snapshot['display_name']
-    d['description'] = snapshot['display_description']
-    d['volume_id'] = snapshot['volume_id']
-    d['status'] = snapshot['status']
-    d['size'] = snapshot['volume_size']
-
-    if snapshot.get('metadata') and isinstance(snapshot.get('metadata'),
-                                               dict):
-        d['metadata'] = snapshot['metadata']
-    else:
-        d['metadata'] = {}
-    return d
 
 
 def make_snapshot(elem):
@@ -92,6 +64,8 @@ class SnapshotsTemplate(xmlutil.TemplateBuilder):
 class SnapshotsController(wsgi.Controller):
     """The Snapshots API controller for the OpenStack API."""
 
+    _view_builder_class = snapshot_views.ViewBuilder
+
     def __init__(self, ext_mgr=None):
         self.volume_api = volume.API()
         self.ext_mgr = ext_mgr
@@ -108,7 +82,7 @@ class SnapshotsController(wsgi.Controller):
         except exception.SnapshotNotFound as error:
             raise exc.HTTPNotFound(explanation=error.msg)
 
-        return {'snapshot': _translate_snapshot_detail_view(snapshot)}
+        return self._view_builder.detail(req, snapshot)
 
     def delete(self, req, id):
         """Delete a snapshot."""
@@ -127,23 +101,23 @@ class SnapshotsController(wsgi.Controller):
     @wsgi.serializers(xml=SnapshotsTemplate)
     def index(self, req):
         """Returns a summary list of snapshots."""
-        return self._items(req, entity_maker=_translate_snapshot_summary_view)
+        return self._items(req, is_detail=False)
 
     @wsgi.serializers(xml=SnapshotsTemplate)
     def detail(self, req):
         """Returns a detailed list of snapshots."""
-        return self._items(req, entity_maker=_translate_snapshot_detail_view)
+        return self._items(req, is_detail=True)
 
-    def _items(self, req, entity_maker):
-        """Returns a list of snapshots, transformed through entity_maker."""
+    def _items(self, req, is_detail=True):
+        """Returns a list of snapshots, transformed through view builder."""
         context = req.environ['cinder.context']
 
-        # pop out limit and offset , they are not search_opts
+        # Pop out non search_opts and create local variables
         search_opts = req.GET.copy()
         search_opts.pop('limit', None)
         search_opts.pop('offset', None)
 
-        # filter out invalid option
+        # Filter out invalid options
         allowed_search_options = ('status', 'volume_id', 'name')
         utils.remove_invalid_filter_options(context, search_opts,
                                             allowed_search_options)
@@ -155,10 +129,18 @@ class SnapshotsController(wsgi.Controller):
 
         snapshots = self.volume_api.get_all_snapshots(context,
                                                       search_opts=search_opts)
+
         limited_list = common.limited(snapshots.objects, req)
         req.cache_db_snapshots(limited_list)
-        res = [entity_maker(snapshot) for snapshot in limited_list]
-        return {'snapshots': res}
+        snapshot_count = len(snapshots)
+
+        if is_detail:
+            snapshots = self._view_builder.detail_list(req, limited_list,
+                                                       snapshot_count)
+        else:
+            snapshots = self._view_builder.summary_list(req, limited_list,
+                                                        snapshot_count)
+        return snapshots
 
     @wsgi.response(202)
     @wsgi.serializers(xml=SnapshotTemplate)
@@ -213,9 +195,7 @@ class SnapshotsController(wsgi.Controller):
                 **kwargs)
         req.cache_db_snapshot(new_snapshot)
 
-        retval = _translate_snapshot_detail_view(new_snapshot)
-
-        return {'snapshot': retval}
+        return self._view_builder.detail(req, new_snapshot)
 
     @wsgi.serializers(xml=SnapshotTemplate)
     def update(self, req, id, body):
@@ -268,7 +248,7 @@ class SnapshotsController(wsgi.Controller):
         volume_utils.notify_about_snapshot_usage(context, snapshot,
                                                  'update.end')
 
-        return {'snapshot': _translate_snapshot_detail_view(snapshot)}
+        return self._view_builder.detail(req, snapshot)
 
 
 def create_resource(ext_mgr):

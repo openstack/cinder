@@ -28,6 +28,7 @@ from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v2 import stubs
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit import utils
 from cinder import volume
 
 
@@ -49,17 +50,6 @@ def _get_default_snapshot_param():
         'deleted': None,
         'volume': {'availability_zone': 'test_zone'}
     }
-
-
-def stub_snapshot_create(self, context,
-                         volume_id, name,
-                         description, metadata):
-    snapshot = _get_default_snapshot_param()
-    snapshot['volume_id'] = volume_id
-    snapshot['display_name'] = name
-    snapshot['display_description'] = description
-    snapshot['metadata'] = metadata
-    return snapshot
 
 
 def stub_snapshot_delete(self, context, snapshot):
@@ -89,16 +79,16 @@ class SnapshotApiTest(test.TestCase):
                        stubs.stub_snapshot_get_all_by_project)
         self.stubs.Set(db, 'snapshot_get_all',
                        stubs.stub_snapshot_get_all)
+        self.ctx = context.RequestContext('admin', 'fakeproject', True)
 
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
     def test_snapshot_create(self, mock_validate):
-        self.stubs.Set(volume.api.API, "create_snapshot", stub_snapshot_create)
-        self.stubs.Set(volume.api.API, 'get', stubs.stub_volume_get)
+        volume = utils.create_volume(self.ctx)
         snapshot_name = 'Snapshot Test Name'
         snapshot_description = 'Snapshot Test Desc'
         snapshot = {
-            "volume_id": '12',
+            "volume_id": volume.id,
             "force": False,
             "name": snapshot_name,
             "description": snapshot_description
@@ -113,15 +103,14 @@ class SnapshotApiTest(test.TestCase):
         self.assertEqual(snapshot_description,
                          resp_dict['snapshot']['description'])
         self.assertTrue(mock_validate.called)
+        db.volume_destroy(self.ctx, volume.id)
 
     def test_snapshot_create_force(self):
-        self.stubs.Set(volume.api.API, "create_snapshot_force",
-                       stub_snapshot_create)
-        self.stubs.Set(volume.api.API, 'get', stubs.stub_volume_get)
+        volume = utils.create_volume(self.ctx, status='in-use')
         snapshot_name = 'Snapshot Test Name'
         snapshot_description = 'Snapshot Test Desc'
         snapshot = {
-            "volume_id": '12',
+            "volume_id": volume.id,
             "force": True,
             "name": snapshot_name,
             "description": snapshot_description
@@ -137,7 +126,7 @@ class SnapshotApiTest(test.TestCase):
                          resp_dict['snapshot']['description'])
 
         snapshot = {
-            "volume_id": "12",
+            "volume_id": volume.id,
             "force": "**&&^^%%$$##@@",
             "name": "Snapshot Test Name",
             "description": "Snapshot Test Desc"
@@ -148,6 +137,8 @@ class SnapshotApiTest(test.TestCase):
                           self.controller.create,
                           req,
                           body)
+
+        db.volume_destroy(self.ctx, volume.id)
 
     def test_snapshot_create_without_volume_id(self):
         snapshot_name = 'Snapshot Test Name'
