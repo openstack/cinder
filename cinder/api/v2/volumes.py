@@ -385,7 +385,7 @@ class VolumeController(wsgi.Controller):
                                                      source_replica)
                 if src_vol['replication_status'] == 'disabled':
                     explanation = _('source volume id:%s is not'
-                                    ' replicated') % source_volid
+                                    ' replicated') % source_replica
                     raise exc.HTTPBadRequest(explanation=explanation)
                 kwargs['source_replica'] = src_vol
             except exception.VolumeNotFound as error:
