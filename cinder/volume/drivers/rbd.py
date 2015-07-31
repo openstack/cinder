@@ -435,9 +435,9 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
 
         # If clone depth was reached, flatten should have occurred so if it has
         # been exceeded then something has gone wrong.
-        if depth > CONF.rbd_max_clone_depth:
+        if depth > self.configuration.rbd_max_clone_depth:
             raise Exception(_("clone depth exceeds limit of %s") %
-                            (CONF.rbd_max_clone_depth))
+                            (self.configuration.rbd_max_clone_depth))
 
         return self._get_clone_depth(client, parent, depth + 1)
 
@@ -457,7 +457,7 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
         flatten_parent = False
 
         # Do full copy if requested
-        if CONF.rbd_max_clone_depth <= 0:
+        if self.configuration.rbd_max_clone_depth <= 0:
             with RBDVolumeProxy(self, src_name, read_only=True) as vol:
                 vol.copy(vol.ioctx, dest_name)
 
@@ -469,10 +469,10 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
             # If source volume is a clone and rbd_max_clone_depth reached,
             # flatten the source before cloning. Zero rbd_max_clone_depth means
             # infinite is allowed.
-            if depth == CONF.rbd_max_clone_depth:
+            if depth == self.configuration.rbd_max_clone_depth:
                 LOG.debug("maximum clone depth (%d) has been reached - "
                           "flattening source volume",
-                          CONF.rbd_max_clone_depth)
+                          self.configuration.rbd_max_clone_depth)
                 flatten_parent = True
 
             src_volume = self.rbd.Image(client.ioctx, src_name)
