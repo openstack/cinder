@@ -198,12 +198,12 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
     def test_get_volume_stats(self):
         """Test get_volume_stats."""
         stats = self._driver.get_volume_stats()
-        self.assertEqual(stats['vendor_name'], 'VMware')
-        self.assertEqual(stats['driver_version'], self._driver.VERSION)
-        self.assertEqual(stats['storage_protocol'], 'LSI Logic SCSI')
-        self.assertEqual(stats['reserved_percentage'], 0)
-        self.assertEqual(stats['total_capacity_gb'], 'unknown')
-        self.assertEqual(stats['free_capacity_gb'], 'unknown')
+        self.assertEqual('VMware', stats['vendor_name'])
+        self.assertEqual(self._driver.VERSION, stats['driver_version'])
+        self.assertEqual('vmdk', stats['storage_protocol'])
+        self.assertEqual(0, stats['reserved_percentage'])
+        self.assertEqual('unknown', stats['total_capacity_gb'])
+        self.assertEqual('unknown', stats['free_capacity_gb'])
 
     def test_create_volume(self):
         """Test create_volume."""

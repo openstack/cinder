@@ -303,7 +303,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
             data = {'volume_backend_name': backend_name,
                     'vendor_name': 'VMware',
                     'driver_version': self.VERSION,
-                    'storage_protocol': 'LSI Logic SCSI',
+                    'storage_protocol': 'vmdk',
                     'reserved_percentage': 0,
                     'total_capacity_gb': 'unknown',
                     'free_capacity_gb': 'unknown'}
