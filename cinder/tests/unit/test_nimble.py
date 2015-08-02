@@ -462,7 +462,7 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
     def test_get_volume_stats(self):
         self.mock_client_service.service.getGroupConfig.return_value = \
             FAKE_POSITIVE_GROUP_CONFIG_RESPONSE
-        expected_res = {'driver_version': '1.1.0',
+        expected_res = {'driver_version': '1.1.1',
                         'total_capacity_gb': 7466.30419921875,
                         'QoS_support': False,
                         'reserved_percentage': 0,
