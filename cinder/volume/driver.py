@@ -756,7 +756,7 @@ class BaseVD(object):
         # volume.
         previous_status = volume.get('previous_status', None)
         temp_vol_ref = None
-        if previous_status == "in_use":
+        if previous_status == "in-use":
             temp_vol_ref = self._create_temp_cloned_volume(
                 context, volume)
             backup.temp_volume_id = temp_vol_ref['id']
