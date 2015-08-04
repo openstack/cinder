@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import sys
+
 import mock
 from oslo_config import cfg
 
@@ -242,7 +244,8 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
                                        'display_description': ''}))
         self.mock_client_service.service.createVol.assert_called_once_with(
             request={
-                'attr': {'snap-quota': 1073741824, 'warn-level': 858993459,
+                'attr': {'snap-quota': sys.maxsize,
+                         'warn-level': 858993459,
                          'name': 'testvolume', 'reserve': 0,
                          'online': True, 'pool-name': 'default',
                          'size': 1073741824, 'quota': 1073741824,
@@ -280,7 +283,8 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
 
         self.mock_client_service.service.createVol.assert_called_once_with(
             request={
-                'attr': {'snap-quota': 1073741824, 'warn-level': 858993459,
+                'attr': {'snap-quota': sys.maxsize,
+                         'warn-level': 858993459,
                          'name': 'testvolume-encryption', 'reserve': 0,
                          'online': True, 'pool-name': 'default',
                          'size': 1073741824, 'quota': 1073741824,
@@ -318,7 +322,8 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
 
         self.mock_client_service.service.createVol.assert_called_once_with(
             request={
-                'attr': {'snap-quota': 1073741824, 'warn-level': 858993459,
+                'attr': {'snap-quota': sys.maxsize,
+                         'warn-level': 858993459,
                          'name': 'testvolume-perfpolicy', 'reserve': 0,
                          'online': True, 'pool-name': 'default',
                          'size': 1073741824, 'quota': 1073741824,
@@ -405,11 +410,11 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
         self.driver.extend_volume({'name': 'testvolume'}, 5)
         self.mock_client_service.service.editVol.assert_called_once_with(
             request={'attr': {'size': 5368709120,
-                              'snap-quota': 5368709120,
+                              'snap-quota': sys.maxsize,
                               'warn-level': 4294967296,
                               'reserve': 0,
                               'quota': 5368709120},
-                     'mask': 628,
+                     'mask': 884,
                      'name': 'testvolume',
                      'sid': 'a9b9aba7'})
 
@@ -444,7 +449,7 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
             mock.call.service.cloneVol(
                 request={
                     'snap-name': 'openstack-clone-volume-abcdefghijkl',
-                    'attr': {'snap-quota': 5368709120,
+                    'attr': {'snap-quota': sys.maxsize,
                              'name': 'volume',
                              'quota': 5368709120,
                              'reserve': 5368709120,
@@ -462,7 +467,7 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
     def test_get_volume_stats(self):
         self.mock_client_service.service.getGroupConfig.return_value = \
             FAKE_POSITIVE_GROUP_CONFIG_RESPONSE
-        expected_res = {'driver_version': '1.1.1',
+        expected_res = {'driver_version': '1.1.2',
                         'total_capacity_gb': 7466.30419921875,
                         'QoS_support': False,
                         'reserved_percentage': 0,
@@ -545,7 +550,7 @@ class NimbleDriverSnapshotTestCase(NimbleDriverBaseTestCase):
         expected_calls = [
             mock.call.service.cloneVol(
                 request={'snap-name': 'testvolume-snap1',
-                         'attr': {'snap-quota': 1073741824,
+                         'attr': {'snap-quota': sys.maxsize,
                                   'name': 'clone-testvolume',
                                   'quota': 1073741824,
                                   'online': True,
@@ -556,11 +561,11 @@ class NimbleDriverSnapshotTestCase(NimbleDriverBaseTestCase):
                          'sid': 'a9b9aba7'}),
             mock.call.service.editVol(
                 request={'attr': {'size': 2147483648,
-                                  'snap-quota': 2147483648,
+                                  'snap-quota': sys.maxsize,
                                   'warn-level': 1717986918,
                                   'reserve': 0,
                                   'quota': 2147483648},
-                         'mask': 628,
+                         'mask': 884,
                          'name': 'clone-testvolume',
                          'sid': 'a9b9aba7'})]
         self.mock_client_service.assert_has_calls(expected_calls)
