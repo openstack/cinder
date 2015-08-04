@@ -21,6 +21,7 @@ import datetime
 import mock
 from oslo_config import cfg
 from oslo_utils import timeutils
+import six
 
 from cinder import backup
 from cinder import context
@@ -114,10 +115,13 @@ class QuotaIntegrationTestCase(test.TestCase):
         for _i in range(CONF.quota_volumes):
             vol_ref = self._create_volume()
             volume_ids.append(vol_ref['id'])
-        self.assertRaises(exception.VolumeLimitExceeded,
-                          volume.API().create,
-                          self.context, 1, '', '',
-                          volume_type=self.volume_type)
+        ex = self.assertRaises(exception.VolumeLimitExceeded,
+                               volume.API().create,
+                               self.context, 1, '', '',
+                               volume_type=self.volume_type)
+        msg = ("Maximum number of volumes allowed (%d) exceeded for"
+               " quota 'volumes'." % CONF.quota_volumes)
+        self.assertEqual(msg, six.text_type(ex))
         for volume_id in volume_ids:
             db.volume_destroy(self.context, volume_id)
 
@@ -130,10 +134,13 @@ class QuotaIntegrationTestCase(test.TestCase):
         }
         self.flags(**flag_args)
         vol_ref = self._create_volume()
-        self.assertRaises(exception.VolumeLimitExceeded,
-                          volume.API().create,
-                          self.context, 1, '', '',
-                          volume_type=self.volume_type)
+        ex = self.assertRaises(exception.VolumeLimitExceeded,
+                               volume.API().create,
+                               self.context, 1, '', '',
+                               volume_type=self.volume_type)
+        msg = ("Maximum number of volumes allowed (1) exceeded for"
+               " quota '%s'." % resource)
+        self.assertEqual(msg, six.text_type(ex))
         db.volume_destroy(self.context, vol_ref['id'])
 
     def test_too_many_snapshots_of_type(self):

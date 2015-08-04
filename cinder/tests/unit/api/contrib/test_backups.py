@@ -1213,10 +1213,10 @@ class BackupsAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app())
         res_dict = json.loads(res.body)
 
-        self.assertEqual(res.status_int, 413)
-        self.assertEqual(res_dict['overLimit']['code'], 413)
-        self.assertEqual(res_dict['overLimit']['message'],
-                         'Maximum number of volumes allowed (1) exceeded')
+        self.assertEqual(413, res.status_int)
+        self.assertEqual(413, res_dict['overLimit']['code'])
+        self.assertEqual("Maximum number of volumes allowed (1) exceeded for"
+                         " quota 'volumes'.", res_dict['overLimit']['message'])
 
     def test_restore_backup_to_undersized_volume(self):
         backup_size = 10

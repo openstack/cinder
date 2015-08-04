@@ -589,6 +589,6 @@ class VolumeTransferAPITestCase(test.TestCase):
 
         self.assertEqual(413, res.status_int)
         self.assertEqual(413, res_dict['overLimit']['code'])
-        self.assertEqual('VolumeLimitExceeded: Maximum number of volumes '
-                         'allowed (1) exceeded',
+        self.assertEqual("VolumeLimitExceeded: Maximum number of volumes "
+                         "allowed (1) exceeded for quota 'volumes'.",
                          res_dict['overLimit']['message'])
