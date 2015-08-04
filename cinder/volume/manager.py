@@ -77,6 +77,7 @@ QUOTAS = quota.QUOTAS
 CGQUOTAS = quota.CGQUOTAS
 VALID_REMOVE_VOL_FROM_CG_STATUS = ('available', 'in-use',)
 VALID_CREATE_CG_SRC_SNAP_STATUS = ('available',)
+VALID_CREATE_CG_SRC_CG_STATUS = ('available',)
 
 volume_manager_opts = [
     cfg.StrOpt('volume_driver',
@@ -188,7 +189,7 @@ def locked_snapshot_operation(f):
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '1.24'
+    RPC_API_VERSION = '1.25'
 
     target = messaging.Target(version=RPC_API_VERSION)
 
@@ -1956,10 +1957,11 @@ class VolumeManager(manager.SchedulerDependentManager):
         return group_ref['id']
 
     def create_consistencygroup_from_src(self, context, group_id,
-                                         cgsnapshot_id=None):
+                                         cgsnapshot_id=None,
+                                         source_cgid=None):
         """Creates the consistency group from source.
 
-        Currently the source can only be a cgsnapshot.
+        The source can be a CG snapshot or a source CG.
         """
         group_ref = self.db.consistencygroup_get(context, group_id)
 
@@ -1995,9 +1997,49 @@ class VolumeManager(manager.SchedulerDependentManager):
                                     'valid': VALID_CREATE_CG_SRC_SNAP_STATUS})
                             raise exception.InvalidConsistencyGroup(reason=msg)
 
+            source_cg = None
+            source_vols = None
+            if source_cgid:
+                try:
+                    source_cg = self.db.consistencygroup_get(
+                        context, source_cgid)
+                except exception.ConsistencyGroupNotFound:
+                    LOG.error(_LE("Create consistency group "
+                                  "from source cg-%(cg)s failed: "
+                                  "ConsistencyGroupNotFound."),
+                              {'cg': source_cgid},
+                              resource={'type': 'consistency_group',
+                                        'id': group_ref['id']})
+                    raise
+                if source_cg:
+                    source_vols = self.db.volume_get_all_by_group(
+                        context, source_cgid)
+                    for source_vol in source_vols:
+                        if (source_vol['status'] not in
+                                VALID_CREATE_CG_SRC_CG_STATUS):
+                            msg = (_("Cannot create consistency group "
+                                     "%(group)s because source volume "
+                                     "%(source_vol)s is not in a valid "
+                                     "state. Valid states are: "
+                                     "%(valid)s.") %
+                                   {'group': group_id,
+                                    'source_vol': source_vol['id'],
+                                    'valid': VALID_CREATE_CG_SRC_CG_STATUS})
+                            raise exception.InvalidConsistencyGroup(reason=msg)
+
             # Sort source snapshots so that they are in the same order as their
             # corresponding target volumes.
-            sorted_snapshots = self._sort_snapshots(volumes, snapshots)
+            sorted_snapshots = None
+            if cgsnapshot and snapshots:
+                sorted_snapshots = self._sort_snapshots(volumes, snapshots)
+
+            # Sort source volumes so that they are in the same order as their
+            # corresponding target volumes.
+            sorted_source_vols = None
+            if source_cg and source_vols:
+                sorted_source_vols = self._sort_source_vols(volumes,
+                                                            source_vols)
+
             self._notify_about_consistencygroup_usage(
                 context, group_ref, "create.start")
 
@@ -2006,7 +2048,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             model_update, volumes_model_update = (
                 self.driver.create_consistencygroup_from_src(
                     context, group_ref, volumes, cgsnapshot,
-                    sorted_snapshots))
+                    sorted_snapshots, source_cg, sorted_source_vols))
 
             if volumes_model_update:
                 for update in volumes_model_update:
@@ -2022,9 +2064,15 @@ class VolumeManager(manager.SchedulerDependentManager):
                     context,
                     group_id,
                     {'status': 'error'})
+                if cgsnapshot_id:
+                    source = _("snapshot-%s") % cgsnapshot_id
+                elif source_cgid:
+                    source = _("cg-%s") % source_cgid
+                else:
+                    source = None
                 LOG.error(_LE("Create consistency group "
-                              "from snapshot-%(snap)s failed."),
-                          {'snap': cgsnapshot_id},
+                              "from source %(source)s failed."),
+                          {'source': source},
                           resource={'type': 'consistency_group',
                                     'id': group_ref['id']})
                 # Update volume status to 'error' as well.
@@ -2078,15 +2126,41 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         return sorted_snapshots
 
+    def _sort_source_vols(self, volumes, source_vols):
+        # Sort source volumes so that they are in the same order as their
+        # corresponding target volumes. Each source volume in the source_vols
+        # list should have a corresponding target volume in the volumes list.
+        if not volumes or not source_vols or len(volumes) != len(source_vols):
+            msg = _("Input volumes or source volumes are invalid.")
+            LOG.error(msg)
+            raise exception.InvalidInput(reason=msg)
+
+        sorted_source_vols = []
+        for vol in volumes:
+            found_source_vols = filter(
+                lambda source_vol: source_vol['id'] == vol['source_volid'],
+                source_vols)
+            if not found_source_vols:
+                LOG.error(_LE("Source volumes cannot be found for target "
+                              "volume %(volume_id)s."),
+                          {'volume_id': vol['id']})
+                raise exception.VolumeNotFound(
+                    volume_id=vol['source_volid'])
+            sorted_source_vols.extend(found_source_vols)
+
+        return sorted_source_vols
+
     def _update_volume_from_src(self, context, vol, update, group_id=None):
         try:
-            snapshot = objects.Snapshot.get_by_id(context, vol['snapshot_id'])
-            orig_vref = self.db.volume_get(context,
-                                           snapshot.volume_id)
-            if orig_vref.bootable:
-                update['bootable'] = True
-                self.db.volume_glance_metadata_copy_to_volume(
-                    context, vol['id'], vol['snapshot_id'])
+            snapshot_id = vol.get('snapshot_id')
+            if snapshot_id:
+                snapshot = objects.Snapshot.get_by_id(context, snapshot_id)
+                orig_vref = self.db.volume_get(context,
+                                               snapshot.volume_id)
+                if orig_vref.bootable:
+                    update['bootable'] = True
+                    self.db.volume_glance_metadata_copy_to_volume(
+                        context, vol['id'], snapshot_id)
         except exception.SnapshotNotFound:
             LOG.error(_LE("Source snapshot %(snapshot_id)s cannot be found."),
                       {'snapshot_id': vol['snapshot_id']})

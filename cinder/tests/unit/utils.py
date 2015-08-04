@@ -107,6 +107,7 @@ def create_consistencygroup(ctxt,
                             availability_zone='fake_az',
                             volume_type_id=None,
                             cgsnapshot_id=None,
+                            source_cgid=None,
                             **kwargs):
     """Create a consistencygroup object in the DB."""
     cg = {}
@@ -119,6 +120,8 @@ def create_consistencygroup(ctxt,
     cg['availability_zone'] = availability_zone
     if volume_type_id:
         cg['volume_type_id'] = volume_type_id
+    cg['cgsnapshot_id'] = cgsnapshot_id
+    cg['source_cgid'] = source_cgid
     for key in kwargs:
         cg[key] = kwargs[key]
     return db.consistencygroup_create(ctxt, cg)

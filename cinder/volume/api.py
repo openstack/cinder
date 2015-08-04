@@ -189,7 +189,7 @@ class API(base.Base):
                availability_zone=None, source_volume=None,
                scheduler_hints=None,
                source_replica=None, consistencygroup=None,
-               cgsnapshot=None, multiattach=False):
+               cgsnapshot=None, multiattach=False, source_cg=None):
 
         # NOTE(jdg): we can have a create without size if we're
         # doing a create from snap or volume.  Currently
@@ -207,7 +207,7 @@ class API(base.Base):
                     'than zero).') % size
             raise exception.InvalidInput(reason=msg)
 
-        if consistencygroup and not cgsnapshot:
+        if consistencygroup and (not cgsnapshot and not source_cg):
             if not volume_type:
                 msg = _("volume_type must be provided when creating "
                         "a volume in a consistency group.")
@@ -276,8 +276,10 @@ class API(base.Base):
             'multiattach': multiattach,
         }
         try:
-            sched_rpcapi = self.scheduler_rpcapi if not cgsnapshot else None
-            volume_rpcapi = self.volume_rpcapi if not cgsnapshot else None
+            sched_rpcapi = (self.scheduler_rpcapi if (not cgsnapshot and
+                            not source_cg) else None)
+            volume_rpcapi = (self.volume_rpcapi if (not cgsnapshot and
+                             not source_cg) else None)
             flow_engine = create_volume.get_flow(self.db,
                                                  self.image_service,
                                                  availability_zones,

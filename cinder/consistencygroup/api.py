@@ -161,29 +161,55 @@ class API(base.Base):
 
         return group
 
-    def create_from_src(self, context, name, description, cgsnapshot_id):
+    def create_from_src(self, context, name, description=None,
+                        cgsnapshot_id=None,
+                        source_cgid=None):
         check_policy(context, 'create')
 
         cgsnapshot = None
         orig_cg = None
         if cgsnapshot_id:
-            cgsnapshot = self.db.cgsnapshot_get(context, cgsnapshot_id)
-            if cgsnapshot:
-                orig_cg = self.db.consistencygroup_get(
-                    context,
-                    cgsnapshot['consistencygroup_id'])
+            try:
+                cgsnapshot = self.db.cgsnapshot_get(context, cgsnapshot_id)
+            except exception.CgSnapshotNotFound:
+                with excutils.save_and_reraise_exception():
+                    LOG.error(_LE("CG snapshot %(cgsnap) not found when "
+                                  "creating consistency group %(cg)s from "
+                                  "source."),
+                              {'cg': name, 'cgsnap': cgsnapshot_id})
+            orig_cg = self.db.consistencygroup_get(
+                context,
+                cgsnapshot['consistencygroup_id'])
+
+        source_cg = None
+        if source_cgid:
+            try:
+                source_cg = self.db.consistencygroup_get(
+                    context, source_cgid)
+            except exception.ConsistencyGroupNotFound:
+                with excutils.save_and_reraise_exception():
+                    LOG.error(_LE("Source CG %(source_cg) not found when "
+                                  "creating consistency group %(cg)s from "
+                                  "source."),
+                              {'cg': name, 'source_cg': source_cgid})
 
         options = {'user_id': context.user_id,
                    'project_id': context.project_id,
                    'status': "creating",
                    'name': name,
                    'description': description,
-                   'cgsnapshot_id': cgsnapshot_id}
+                   'cgsnapshot_id': cgsnapshot_id,
+                   'source_cgid': source_cgid}
 
         if orig_cg:
             options['volume_type_id'] = orig_cg.get('volume_type_id')
             options['availability_zone'] = orig_cg.get('availability_zone')
             options['host'] = orig_cg.get('host')
+
+        if source_cg:
+            options['volume_type_id'] = source_cg.get('volume_type_id')
+            options['availability_zone'] = source_cg.get('availability_zone')
+            options['host'] = source_cg.get('host')
 
         group = None
         try:
@@ -202,7 +228,10 @@ class API(base.Base):
             LOG.error(msg)
             raise exception.InvalidConsistencyGroup(reason=msg)
 
-        self._create_cg_from_cgsnapshot(context, group, cgsnapshot)
+        if cgsnapshot:
+            self._create_cg_from_cgsnapshot(context, group, cgsnapshot)
+        elif source_cg:
+            self._create_cg_from_source_cg(context, group, source_cg)
 
         return group
 
@@ -267,6 +296,68 @@ class API(base.Base):
 
         self.volume_rpcapi.create_consistencygroup_from_src(
             context, group, group['host'], cgsnapshot)
+
+    def _create_cg_from_source_cg(self, context, group, source_cg):
+        try:
+            source_vols = self.db.volume_get_all_by_group(context,
+                                                          source_cg['id'])
+
+            if not source_vols:
+                msg = _("Source CG is empty. No consistency group "
+                        "will be created.")
+                raise exception.InvalidConsistencyGroup(reason=msg)
+
+            for source_vol in source_vols:
+                kwargs = {}
+                kwargs['availability_zone'] = group.get('availability_zone')
+                kwargs['source_cg'] = source_cg
+                kwargs['consistencygroup'] = group
+                kwargs['source_volume'] = source_vol
+                volume_type_id = source_vol.get('volume_type_id')
+                if volume_type_id:
+                    kwargs['volume_type'] = volume_types.get_volume_type(
+                        context, volume_type_id)
+
+                # Since source_cg is passed in, the following call will
+                # create a db entry for the volume, but will not call the
+                # volume manager to create a real volume in the backend yet.
+                # If error happens, taskflow will handle rollback of quota
+                # and removal of volume entry in the db.
+                try:
+                    self.volume_api.create(context,
+                                           source_vol['size'],
+                                           None,
+                                           None,
+                                           **kwargs)
+                except exception.CinderException:
+                    with excutils.save_and_reraise_exception():
+                        LOG.error(_LE("Error occurred when creating cloned "
+                                      "volume in the process of creating "
+                                      "consistency group %(group)s from "
+                                      "source CG %(source_cg)s."),
+                                  {'group': group['id'],
+                                   'source_cg': source_cg['id']})
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                try:
+                    self.db.consistencygroup_destroy(context.elevated(),
+                                                     group['id'])
+                finally:
+                    LOG.error(_LE("Error occurred when creating consistency "
+                                  "group %(group)s from source CG "
+                                  "%(source_cg)s."),
+                              {'group': group['id'],
+                               'source_cg': source_cg['id']})
+
+        volumes = self.db.volume_get_all_by_group(context,
+                                                  group['id'])
+        for vol in volumes:
+            # Update the host field for the volume.
+            self.db.volume_update(context, vol['id'],
+                                  {'host': group.get('host')})
+
+        self.volume_rpcapi.create_consistencygroup_from_src(
+            context, group, group['host'], None, source_cg)
 
     def _cast_create_consistencygroup(self, context, group_id,
                                       request_spec_list,
