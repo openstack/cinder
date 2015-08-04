@@ -668,7 +668,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         mock.call.getCluster(1),
         mock.call.getVolumes(
             cluster='CloudCluster1',
-            fields=['members[id]', 'members[clusterName]']),
+            fields=['members[id]', 'members[clusterName]', 'members[size]']),
     ]
 
     def default_mock_conf(self):
@@ -1719,10 +1719,11 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             mock_client.getVolumes.return_value = {
                 "type": "volume",
                 "total": 1,
-                "members": {
+                "members": [{
                     "id": self.volume_id,
-                    "clusterName": self.cluster_name
-                }
+                    "clusterName": self.cluster_name,
+                    "size": 1
+                }]
             }
 
             existing_ref = {'source-name': self.volume_name}
@@ -1769,10 +1770,11 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             mock_client.getVolumes.return_value = {
                 "type": "volume",
                 "total": 1,
-                "members": {
+                "members": [{
                     "id": self.volume_id,
-                    "clusterName": self.cluster_name
-                }
+                    "clusterName": self.cluster_name,
+                    "size": 1
+                }]
             }
 
             existing_ref = {'source-name': self.volume_name}
@@ -1822,10 +1824,11 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             mock_client.getVolumes.return_value = {
                 "type": "volume",
                 "total": 1,
-                "members": {
+                "members": [{
                     "id": self.volume_id,
-                    "clusterName": self.cluster_name
-                }
+                    "clusterName": self.cluster_name,
+                    "size": 1
+                }]
             }
 
             existing_ref = {'source-name': self.volume_name}
@@ -1865,10 +1868,11 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             mock_client.getVolumes.return_value = {
                 "type": "volume",
                 "total": 1,
-                "members": {
+                "members": [{
                     "id": self.volume_id,
-                    "clusterName": self.cluster_name
-                }
+                    "clusterName": self.cluster_name,
+                    "size": 1
+                }]
             }
 
             existing_ref = {'source-name': self.volume_name}
@@ -1895,10 +1899,11 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             mock_client.getVolumes.return_value = {
                 "type": "volume",
                 "total": 1,
-                "members": {
+                "members": [{
                     "id": self.volume_id,
-                    "clusterName": self.cluster_name
-                }
+                    "clusterName": self.cluster_name,
+                    "size": 1
+                }]
             }
 
             volume = {}
@@ -1957,10 +1962,11 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             mock_client.getVolumes.return_value = {
                 "type": "volume",
                 "total": 1,
-                "members": {
+                "members": [{
                     "id": self.volume_id,
-                    "clusterName": self.cluster_name
-                }
+                    "clusterName": self.cluster_name,
+                    "size": 1
+                }]
             }
 
             volume = {}
@@ -1985,10 +1991,11 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         mock_client.getVolumes.return_value = {
             "type": "volume",
             "total": 1,
-            "members": {
+            "members": [{
                 "id": self.volume_id,
-                "clusterName": self.cluster_name
-            }
+                "clusterName": self.cluster_name,
+                "size": 1
+            }]
         }
 
         self.driver.proxy.api_version = "1.1"
@@ -2028,10 +2035,11 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         mock_client.getVolumes.return_value = {
             "type": "volume",
             "total": 1,
-            "members": {
+            "members": [{
                 "id": 12345,
-                "clusterName": self.cluster_name
-            }
+                "clusterName": self.cluster_name,
+                "size": 1 * units.Gi
+            }]
         }
 
         with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
@@ -2045,6 +2053,9 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             self.assertEqual(GOODNESS_FUNCTION, stats['goodness_function'])
             self.assertEqual(FILTER_FUNCTION, stats['filter_function'])
             self.assertEqual(1, int(stats['total_volumes']))
+            self.assertEqual(True, stats['thin_provisioning_support'])
+            self.assertEqual(True, stats['thick_provisioning_support'])
+            self.assertEqual(1, int(stats['provisioned_capacity_gb']))
 
             cap_util = (
                 float(units.Gi * 500 - units.Gi * 250) / float(units.Gi * 500)
@@ -2055,7 +2066,8 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             expected = self.driver_startup_call_stack + [
                 mock.call.getCluster(1),
                 mock.call.getVolumes(fields=['members[id]',
-                                             'members[clusterName]'],
+                                             'members[clusterName]',
+                                             'members[size]'],
                                      cluster=self.cluster_name),
                 mock.call.logout()]
 
