@@ -376,7 +376,7 @@ class EMCXIODriverISCSITestCase(test.TestCase):
         self.driver.create_volume(self.data.test_volume)
         map_data = self.driver.initialize_connection(self.data.test_volume,
                                                      self.data.connector)
-        self.assertEqual(map_data['data']['target_lun'], 1)
+        self.assertEqual(1, map_data['data']['target_lun'])
         i1 = xms_data['initiators'][1]
         i1['ig-id'] = ['', i1['ig-id'], 1]
         i1['chap-authentication-initiator-password'] = 'chap_password1'
@@ -420,8 +420,8 @@ class EMCXIODriverISCSITestCase(test.TestCase):
     def test_get_stats(self, req):
         req.side_effect = xms_request
         stats = self.driver.get_volume_stats(True)
-        self.assertEqual(stats['volume_backend_name'],
-                         self.driver.backend_name)
+        self.assertEqual(self.driver.backend_name,
+                         stats['volume_backend_name'])
 
     def test_manage_unmanage(self, req):
         req.side_effect = xms_request
@@ -542,7 +542,7 @@ class EMCXIODriverFibreChannelTestCase(test.TestCase):
         self.driver.create_volume(self.data.test_volume)
         map_data = self.driver.initialize_connection(self.data.test_volume,
                                                      self.data.connector)
-        self.assertEqual(map_data['data']['target_lun'], 1)
+        self.assertEqual(1, map_data['data']['target_lun'])
         self.driver.terminate_connection(self.data.test_volume,
                                          self.data.connector)
         self.driver.delete_volume(self.data.test_volume)

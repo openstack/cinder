@@ -488,7 +488,7 @@ class GenericUtilsTestCase(test.TestCase):
         test_file = '/var/tmp/made_up_file'
         mock_stat.return_value = stat_result
         mode = utils.get_file_mode(test_file)
-        self.assertEqual(mode, 0o777)
+        self.assertEqual(0o777, mode)
         mock_stat.assert_called_once_with(test_file)
 
     @mock.patch('os.stat')
@@ -501,7 +501,7 @@ class GenericUtilsTestCase(test.TestCase):
         test_file = '/var/tmp/made_up_file'
         mock_stat.return_value = stat_result
         gid = utils.get_file_gid(test_file)
-        self.assertEqual(gid, 33333)
+        self.assertEqual(33333, gid)
         mock_stat.assert_called_once_with(test_file)
 
     @mock.patch('cinder.utils.CONF')
@@ -595,11 +595,11 @@ class WalkClassHierarchyTestCase(test.TestCase):
         class_pairs = zip((D, B, E),
                           utils.walk_class_hierarchy(A, encountered=[C]))
         for actual, expected in class_pairs:
-            self.assertEqual(actual, expected)
+            self.assertEqual(expected, actual)
 
         class_pairs = zip((D, B, C, E), utils.walk_class_hierarchy(A))
         for actual, expected in class_pairs:
-            self.assertEqual(actual, expected)
+            self.assertEqual(expected, actual)
 
 
 class GetDiskOfPartitionTestCase(test.TestCase):
@@ -765,14 +765,14 @@ class MonkeyPatchTestCase(test.TestCase):
         exampleA = example_a.ExampleClassA()
         exampleA.example_method()
         ret_a = exampleA.example_method_add(3, 5)
-        self.assertEqual(ret_a, 8)
+        self.assertEqual(8, ret_a)
 
         self.assertEqual('Example function', example_b.example_function_b())
         exampleB = example_b.ExampleClassB()
         exampleB.example_method()
         ret_b = exampleB.example_method_add(3, 5)
 
-        self.assertEqual(ret_b, 8)
+        self.assertEqual(8, ret_b)
         package_a = self.example_package + 'example_a.'
         self.assertTrue(
             package_a + 'example_function_a'
@@ -813,99 +813,74 @@ class AuditPeriodTest(test.TestCase):
 
     def test_hour(self):
         begin, end = utils.last_completed_audit_period(unit='hour')
-        self.assertEqual(begin,
-                         datetime.datetime(hour=7,
-                                           day=5,
-                                           month=3,
-                                           year=2012))
-        self.assertEqual(end, datetime.datetime(hour=8,
-                                                day=5,
-                                                month=3,
-                                                year=2012))
+        self.assertEqual(datetime.datetime(hour=7, day=5, month=3, year=2012),
+                         begin)
+        self.assertEqual(datetime.datetime(hour=8, day=5, month=3, year=2012),
+                         end)
 
     def test_hour_with_offset_before_current(self):
         begin, end = utils.last_completed_audit_period(unit='hour@10')
-        self.assertEqual(begin, datetime.datetime(minute=10,
-                                                  hour=7,
-                                                  day=5,
-                                                  month=3,
-                                                  year=2012))
-        self.assertEqual(end, datetime.datetime(minute=10,
-                                                hour=8,
-                                                day=5,
-                                                month=3,
-                                                year=2012))
+        self.assertEqual(datetime.datetime(minute=10,
+                                           hour=7,
+                                           day=5,
+                                           month=3,
+                                           year=2012),
+                         begin)
+        self.assertEqual(datetime.datetime(minute=10,
+                                           hour=8,
+                                           day=5,
+                                           month=3,
+                                           year=2012),
+                         end)
 
     def test_hour_with_offset_after_current(self):
         begin, end = utils.last_completed_audit_period(unit='hour@30')
-        self.assertEqual(begin, datetime.datetime(minute=30,
-                                                  hour=6,
-                                                  day=5,
-                                                  month=3,
-                                                  year=2012))
-        self.assertEqual(end, datetime.datetime(minute=30,
-                                                hour=7,
-                                                day=5,
-                                                month=3,
-                                                year=2012))
+        self.assertEqual(datetime.datetime(minute=30,
+                                           hour=6,
+                                           day=5,
+                                           month=3,
+                                           year=2012),
+                         begin)
+        self.assertEqual(datetime.datetime(minute=30,
+                                           hour=7,
+                                           day=5,
+                                           month=3,
+                                           year=2012),
+                         end)
 
     def test_day(self):
         begin, end = utils.last_completed_audit_period(unit='day')
-        self.assertEqual(begin, datetime.datetime(day=4,
-                                                  month=3,
-                                                  year=2012))
-        self.assertEqual(end, datetime.datetime(day=5,
-                                                month=3,
-                                                year=2012))
+        self.assertEqual(datetime.datetime(day=4, month=3, year=2012), begin)
+        self.assertEqual(datetime.datetime(day=5, month=3, year=2012), end)
 
     def test_day_with_offset_before_current(self):
         begin, end = utils.last_completed_audit_period(unit='day@6')
-        self.assertEqual(begin, datetime.datetime(hour=6,
-                                                  day=4,
-                                                  month=3,
-                                                  year=2012))
-        self.assertEqual(end, datetime.datetime(hour=6,
-                                                day=5,
-                                                month=3,
-                                                year=2012))
+        self.assertEqual(datetime.datetime(hour=6, day=4, month=3, year=2012),
+                         begin)
+        self.assertEqual(datetime.datetime(hour=6, day=5, month=3, year=2012),
+                         end)
 
     def test_day_with_offset_after_current(self):
         begin, end = utils.last_completed_audit_period(unit='day@10')
-        self.assertEqual(begin, datetime.datetime(hour=10,
-                                                  day=3,
-                                                  month=3,
-                                                  year=2012))
-        self.assertEqual(end, datetime.datetime(hour=10,
-                                                day=4,
-                                                month=3,
-                                                year=2012))
+        self.assertEqual(datetime.datetime(hour=10, day=3, month=3, year=2012),
+                         begin)
+        self.assertEqual(datetime.datetime(hour=10, day=4, month=3, year=2012),
+                         end)
 
     def test_month(self):
         begin, end = utils.last_completed_audit_period(unit='month')
-        self.assertEqual(begin, datetime.datetime(day=1,
-                                                  month=2,
-                                                  year=2012))
-        self.assertEqual(end, datetime.datetime(day=1,
-                                                month=3,
-                                                year=2012))
+        self.assertEqual(datetime.datetime(day=1, month=2, year=2012), begin)
+        self.assertEqual(datetime.datetime(day=1, month=3, year=2012), end)
 
     def test_month_with_offset_before_current(self):
         begin, end = utils.last_completed_audit_period(unit='month@2')
-        self.assertEqual(begin, datetime.datetime(day=2,
-                                                  month=2,
-                                                  year=2012))
-        self.assertEqual(end, datetime.datetime(day=2,
-                                                month=3,
-                                                year=2012))
+        self.assertEqual(datetime.datetime(day=2, month=2, year=2012), begin)
+        self.assertEqual(datetime.datetime(day=2, month=3, year=2012), end)
 
     def test_month_with_offset_after_current(self):
         begin, end = utils.last_completed_audit_period(unit='month@15')
-        self.assertEqual(begin, datetime.datetime(day=15,
-                                                  month=1,
-                                                  year=2012))
-        self.assertEqual(end, datetime.datetime(day=15,
-                                                month=2,
-                                                year=2012))
+        self.assertEqual(datetime.datetime(day=15, month=1, year=2012), begin)
+        self.assertEqual(datetime.datetime(day=15, month=2, year=2012), end)
 
     @mock.patch('oslo_utils.timeutils.utcnow',
                 return_value=datetime.datetime(day=1,
@@ -927,30 +902,18 @@ class AuditPeriodTest(test.TestCase):
 
     def test_year(self):
         begin, end = utils.last_completed_audit_period(unit='year')
-        self.assertEqual(begin, datetime.datetime(day=1,
-                                                  month=1,
-                                                  year=2011))
-        self.assertEqual(end, datetime.datetime(day=1,
-                                                month=1,
-                                                year=2012))
+        self.assertEqual(datetime.datetime(day=1, month=1, year=2011), begin)
+        self.assertEqual(datetime.datetime(day=1, month=1, year=2012), end)
 
     def test_year_with_offset_before_current(self):
         begin, end = utils.last_completed_audit_period(unit='year@2')
-        self.assertEqual(begin, datetime.datetime(day=1,
-                                                  month=2,
-                                                  year=2011))
-        self.assertEqual(end, datetime.datetime(day=1,
-                                                month=2,
-                                                year=2012))
+        self.assertEqual(datetime.datetime(day=1, month=2, year=2011), begin)
+        self.assertEqual(datetime.datetime(day=1, month=2, year=2012), end)
 
     def test_year_with_offset_after_current(self):
         begin, end = utils.last_completed_audit_period(unit='year@6')
-        self.assertEqual(begin, datetime.datetime(day=1,
-                                                  month=6,
-                                                  year=2010))
-        self.assertEqual(end, datetime.datetime(day=1,
-                                                month=6,
-                                                year=2011))
+        self.assertEqual(datetime.datetime(day=1, month=6, year=2010), begin)
+        self.assertEqual(datetime.datetime(day=1, month=6, year=2011), end)
 
     def test_invalid_unit(self):
         self.assertRaises(ValueError,
@@ -1425,8 +1388,8 @@ class TestRetryDecorator(test.TestCase):
 
             ret = succeeds()
             self.assertFalse(mock_sleep.called)
-            self.assertEqual(ret, 'success')
-            self.assertEqual(self.counter, 1)
+            self.assertEqual('success', ret)
+            self.assertEqual(1, self.counter)
 
     def test_retries_once(self):
         self.counter = 0
@@ -1447,9 +1410,9 @@ class TestRetryDecorator(test.TestCase):
                     return 'success'
 
             ret = fails_once()
-            self.assertEqual(ret, 'success')
-            self.assertEqual(self.counter, 2)
-            self.assertEqual(mock_sleep.call_count, 1)
+            self.assertEqual('success', ret)
+            self.assertEqual(2, self.counter)
+            self.assertEqual(1, mock_sleep.call_count)
             mock_sleep.assert_called_with(interval * backoff_rate)
 
     def test_limit_is_reached(self):
@@ -1493,18 +1456,18 @@ class TestRetryDecorator(test.TestCase):
 
 class VersionTestCase(test.TestCase):
     def test_convert_version_to_int(self):
-        self.assertEqual(utils.convert_version_to_int('6.2.0'), 6002000)
-        self.assertEqual(utils.convert_version_to_int((6, 4, 3)), 6004003)
-        self.assertEqual(utils.convert_version_to_int((5, )), 5)
+        self.assertEqual(6002000, utils.convert_version_to_int('6.2.0'))
+        self.assertEqual(6004003, utils.convert_version_to_int((6, 4, 3)))
+        self.assertEqual(5, utils.convert_version_to_int((5, )))
         self.assertRaises(exception.CinderException,
                           utils.convert_version_to_int, '5a.6b')
 
     def test_convert_version_to_string(self):
-        self.assertEqual(utils.convert_version_to_str(6007000), '6.7.0')
-        self.assertEqual(utils.convert_version_to_str(4), '4')
+        self.assertEqual('6.7.0', utils.convert_version_to_str(6007000))
+        self.assertEqual('4', utils.convert_version_to_str(4))
 
     def test_convert_version_to_tuple(self):
-        self.assertEqual(utils.convert_version_to_tuple('6.7.0'), (6, 7, 0))
+        self.assertEqual((6, 7, 0), utils.convert_version_to_tuple('6.7.0'))
 
 
 class LogTracingTestCase(test.TestCase):

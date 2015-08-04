@@ -420,8 +420,8 @@ class SscUtilsTestCase(test.TestCase):
         self.mox.VerifyAll()
         for vol in res_vols:
             if vol.id['name'] == 'volc':
-                self.assertEqual(vol.sis['compression'], False)
-                self.assertEqual(vol.sis['dedup'], False)
+                self.assertEqual(False, vol.sis['compression'])
+                self.assertEqual(False, vol.sis['dedup'])
             else:
                 pass
 
@@ -459,7 +459,7 @@ class SscUtilsTestCase(test.TestCase):
             na_server, vserver, volume='vola')
 
         self.mox.VerifyAll()
-        self.assertEqual(len(res_vols), 1)
+        self.assertEqual(1, len(res_vols))
 
     def test_get_cluster_ssc(self):
         """Test get cluster ssc map."""
@@ -476,11 +476,11 @@ class SscUtilsTestCase(test.TestCase):
         res_map = ssc_cmode.get_cluster_ssc(na_server, vserver)
 
         self.mox.VerifyAll()
-        self.assertEqual(len(res_map['mirrored']), 1)
-        self.assertEqual(len(res_map['dedup']), 3)
-        self.assertEqual(len(res_map['compression']), 1)
-        self.assertEqual(len(res_map['thin']), 2)
-        self.assertEqual(len(res_map['all']), 5)
+        self.assertEqual(1, len(res_map['mirrored']))
+        self.assertEqual(3, len(res_map['dedup']))
+        self.assertEqual(1, len(res_map['compression']))
+        self.assertEqual(2, len(res_map['thin']))
+        self.assertEqual(5, len(res_map['all']))
 
     def test_vols_for_boolean_specs(self):
         """Test ssc for boolean specs."""
@@ -500,16 +500,16 @@ class SscUtilsTestCase(test.TestCase):
             # type
             extra_specs = {test_map[type][0]: 'true'}
             res = ssc_cmode.get_volumes_for_specs(ssc_map, extra_specs)
-            self.assertEqual(len(res), len(ssc_map[type]))
+            self.assertEqual(len(ssc_map[type]), len(res))
             # opposite type
             extra_specs = {test_map[type][1]: 'true'}
             res = ssc_cmode.get_volumes_for_specs(ssc_map, extra_specs)
-            self.assertEqual(len(res), len(ssc_map['all'] - ssc_map[type]))
+            self.assertEqual(len(ssc_map['all'] - ssc_map[type]), len(res))
             # both types
             extra_specs =\
                 {test_map[type][0]: 'true', test_map[type][1]: 'true'}
             res = ssc_cmode.get_volumes_for_specs(ssc_map, extra_specs)
-            self.assertEqual(len(res), len(ssc_map['all']))
+            self.assertEqual(len(ssc_map['all']), len(res))
 
     def test_vols_for_optional_specs(self):
         """Test ssc for optional specs."""
@@ -517,7 +517,7 @@ class SscUtilsTestCase(test.TestCase):
             {'netapp_dedup': 'true',
              'netapp:raid_type': 'raid4', 'netapp:disk_type': 'SSD'}
         res = ssc_cmode.get_volumes_for_specs(self.ssc_map, extra_specs)
-        self.assertEqual(len(res), 1)
+        self.assertEqual(1, len(res))
 
     def test_get_volumes_for_specs_none_specs(self):
         none_specs = None
@@ -549,7 +549,7 @@ class SscUtilsTestCase(test.TestCase):
         na_server = api.NaServer('127.0.0.1')
         na_server.set_api_version(1, 15)
         vols = ssc_cmode.query_cluster_vols_for_ssc(na_server, 'Openstack')
-        self.assertEqual(len(vols), 2)
+        self.assertEqual(2, len(vols))
         for vol in vols:
             if vol.id['name'] != 'iscsi' or vol.id['name'] != 'nfsvol':
                 pass
@@ -560,12 +560,12 @@ class SscUtilsTestCase(test.TestCase):
         na_server = api.NaServer('127.0.0.1')
         aggr_attribs = ssc_cmode.query_aggr_options(na_server, 'aggr0')
         if aggr_attribs:
-            self.assertEqual(aggr_attribs['ha_policy'], 'cfo')
-            self.assertEqual(aggr_attribs['raid_type'], 'raid_dp')
+            self.assertEqual('cfo', aggr_attribs['ha_policy'])
+            self.assertEqual('raid_dp', aggr_attribs['raid_type'])
         else:
             raise exception.InvalidParameterValue("Incorrect aggr options")
 
     def test_query_aggr_storage_disk(self):
         na_server = api.NaServer('127.0.0.1')
         eff_disk_type = ssc_cmode.query_aggr_storage_disk(na_server, 'aggr0')
-        self.assertEqual(eff_disk_type, 'SATA')
+        self.assertEqual('SATA', eff_disk_type)

@@ -64,6 +64,6 @@ class Test(test.TestCase):
                 super(Router, self).__init__(mapper)
 
         result = webob.Request.blank('/test').get_response(Router())
-        self.assertEqual(result.body, "Router result")
+        self.assertEqual("Router result", result.body)
         result = webob.Request.blank('/bad').get_response(Router())
         self.assertNotEqual("Router result", result.body)

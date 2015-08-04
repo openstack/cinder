@@ -127,8 +127,7 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
         with mock.patch.object(self.drv, 'find_appropriate_size_device',
                                return_value='dev_path') as fasd_mocked:
             result = self.drv.create_volume(TEST_VOLUME)
-            self.assertEqual(result, {
-                'provider_location': 'dev_path'})
+            self.assertEqual({'provider_location': 'dev_path'}, result)
             fasd_mocked.assert_called_once_with(TEST_VOLUME['size'])
 
     def test_update_volume_stats(self):
@@ -141,8 +140,7 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
                     gud_mocked:
                 self.drv._update_volume_stats()
 
-                self.assertEqual(self.drv._stats,
-                                 {'total_capacity_gb': 2,
+                self.assertEqual({'total_capacity_gb': 2,
                                   'free_capacity_gb': 2,
                                   'reserved_percentage':
                                   self.configuration.reserved_percentage,
@@ -151,7 +149,7 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
                                   'driver_version': self.drv.VERSION,
                                   'storage_protocol': 'unknown',
                                   'volume_backend_name': 'BlockDeviceDriver',
-                                  })
+                                  }, self.drv._stats)
                 gud_mocked.assert_called_once_with()
                 ds_mocked.assert_called_once_with()
 
@@ -173,9 +171,9 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
                                          mock.sentinel,
                                          execute=self.drv._execute)
 
-                    self.assertEqual(self.drv.create_cloned_volume(
-                                     TEST_VOLUME, TEST_SRC),
-                                     {'provider_location': '/dev/loop2'})
+                    self.assertEqual({'provider_location': '/dev/loop2'},
+                                     self.drv.create_cloned_volume(TEST_VOLUME,
+                                                                   TEST_SRC))
                     fasd_mocked.assert_called_once_with(TEST_SRC['size'])
                     lp_mocked.assert_called_once_with(TEST_SRC)
                     gds_mocked.assert_called_once_with('/dev/loop2')
@@ -231,8 +229,8 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
                                        return_value=fake_local_path):
                     path1 = self.drv.local_path(TEST_VOLUME1)
                     path2 = self.drv.local_path(TEST_VOLUME2)
-                    self.assertEqual(self.drv._get_used_devices(),
-                                     set([path1, path2]))
+                    self.assertEqual(set([path1, path2]),
+                                     self.drv._get_used_devices())
 
     def test_get_device_size(self):
         dev_path = '/dev/loop1'
@@ -240,15 +238,15 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
         with mock.patch.object(self.drv,
                                '_execute',
                                return_value=(out, None)) as _execute:
-            self.assertEqual(self.drv._get_device_size(dev_path), 1)
+            self.assertEqual(1, self.drv._get_device_size(dev_path))
             _execute.assert_called_once_with('blockdev', '--getsz', dev_path,
                                              run_as_root=True)
 
     def test_devices_sizes(self):
         with mock.patch.object(self.drv, '_get_device_size') as _get_dvc_size:
             _get_dvc_size.return_value = 1
-            self.assertEqual(self.drv._devices_sizes(),
-                             {'/dev/loop1': 1, '/dev/loop2': 1})
+            self.assertEqual({'/dev/loop1': 1, '/dev/loop2': 1},
+                             self.drv._devices_sizes())
 
     def test_find_appropriate_size_device_no_free_disks(self):
         size = 1
@@ -280,5 +278,5 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
                 _dvc_sizes.return_value = {'/dev/loop1': 2048,
                                            '/dev/loop2': 1024}
                 _get_used_dvc.return_value = set()
-                self.assertEqual(self.drv.find_appropriate_size_device(size),
-                                 '/dev/loop2')
+                self.assertEqual('/dev/loop2',
+                                 self.drv.find_appropriate_size_device(size))

@@ -25,22 +25,22 @@ class ContextTestCase(test.TestCase):
         ctxt = context.RequestContext('111',
                                       '222',
                                       roles=['admin', 'weasel'])
-        self.assertEqual(ctxt.is_admin, True)
+        self.assertEqual(True, ctxt.is_admin)
 
     def test_request_context_sets_is_admin_upcase(self):
         ctxt = context.RequestContext('111',
                                       '222',
                                       roles=['Admin', 'weasel'])
-        self.assertEqual(ctxt.is_admin, True)
+        self.assertEqual(True, ctxt.is_admin)
 
     def test_request_context_read_deleted(self):
         ctxt = context.RequestContext('111',
                                       '222',
                                       read_deleted='yes')
-        self.assertEqual(ctxt.read_deleted, 'yes')
+        self.assertEqual('yes', ctxt.read_deleted)
 
         ctxt.read_deleted = 'no'
-        self.assertEqual(ctxt.read_deleted, 'no')
+        self.assertEqual('no', ctxt.read_deleted)
 
     def test_request_context_read_deleted_invalid(self):
         self.assertRaises(ValueError,
@@ -82,13 +82,13 @@ class ContextTestCase(test.TestCase):
         object_catalog = [{u'name': u'swift', u'type': u'object-store'}]
         ctxt = context.RequestContext('111', '222',
                                       service_catalog=service_catalog)
-        self.assertEqual(len(ctxt.service_catalog), 3)
+        self.assertEqual(3, len(ctxt.service_catalog))
         return_compute = [v for v in ctxt.service_catalog if
                           v['type'] == u'compute']
         return_object = [v for v in ctxt.service_catalog if
                          v['type'] == u'object-store']
-        self.assertEqual(return_compute, compute_catalog)
-        self.assertEqual(return_object, object_catalog)
+        self.assertEqual(compute_catalog, return_compute)
+        self.assertEqual(object_catalog, return_object)
 
     def test_user_identity(self):
         ctx = context.RequestContext("user", "tenant",

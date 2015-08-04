@@ -215,7 +215,7 @@ class HDSNFSDriverTest(test.TestCase):
 
         loc = self.driver.create_snapshot(svol)
         out = "{'provider_location': \'" + _SHARE + "'}"
-        self.assertEqual(str(loc), out)
+        self.assertEqual(out, str(loc))
 
     @mock.patch.object(nfs.HDSNFSDriver, '_get_service')
     @mock.patch.object(nfs.HDSNFSDriver, '_id_to_vol', side_effect=id_to_vol)
@@ -234,7 +234,7 @@ class HDSNFSDriverTest(test.TestCase):
         loc = self.driver.create_cloned_volume(vol, svol)
 
         out = "{'provider_location': \'" + _SHARE + "'}"
-        self.assertEqual(str(loc), out)
+        self.assertEqual(out, str(loc))
 
     @mock.patch.object(nfs.HDSNFSDriver, '_ensure_shares_mounted')
     @mock.patch.object(nfs.HDSNFSDriver, '_do_create_volume')
@@ -268,7 +268,7 @@ class HDSNFSDriverTest(test.TestCase):
         m_volume_not_present.return_value = True
 
         self.driver.delete_snapshot(svol)
-        self.assertEqual(svol['provider_location'], None)
+        self.assertEqual(None, svol['provider_location'])
 
     @mock.patch.object(nfs.HDSNFSDriver, '_get_service')
     @mock.patch.object(nfs.HDSNFSDriver, '_id_to_vol', side_effect=id_to_vol)
@@ -289,11 +289,11 @@ class HDSNFSDriverTest(test.TestCase):
 
         loc = self.driver.create_volume_from_snapshot(vol, svol)
         out = "{'provider_location': \'" + _SHARE + "'}"
-        self.assertEqual(str(loc), out)
+        self.assertEqual(out, str(loc))
 
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs',
                        return_value={'key': 'type', 'service_label': 'silver'})
     def test_get_pool(self, m_ext_spec):
         vol = _VOLUME.copy()
 
-        self.assertEqual(self.driver.get_pool(vol), 'silver')
+        self.assertEqual('silver', self.driver.get_pool(vol))

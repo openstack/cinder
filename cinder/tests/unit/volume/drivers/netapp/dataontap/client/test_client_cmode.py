@@ -794,8 +794,9 @@ class NetAppCmodeClientTestCase(test.TestCase):
         self.assertEqual(expected_flex_vol, actual_flex_vol)
         self.assertEqual(expected_src_path, actual_src_path)
         self.assertEqual(expected_dest_path, actual_dest_path)
-        self.assertEqual(actual_request.get_child_by_name(
-            'destination-exists').get_content(), 'true')
+        self.assertEqual('true',
+                         actual_request.get_child_by_name(
+                             'destination-exists').get_content())
 
     def test_clone_file_when_destination_exists_and_version_less_than_1_20(
             self):
@@ -820,8 +821,9 @@ class NetAppCmodeClientTestCase(test.TestCase):
         self.assertEqual(expected_flex_vol, actual_flex_vol)
         self.assertEqual(expected_src_path, actual_src_path)
         self.assertEqual(expected_dest_path, actual_dest_path)
-        self.assertEqual(actual_request.get_child_by_name(
-            'destination-exists'), None)
+        self.assertEqual(None,
+                         actual_request.get_child_by_name(
+                             'destination-exists'))
 
     def test_get_file_usage(self):
         expected_bytes = "2048"

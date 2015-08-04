@@ -231,7 +231,7 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
                                '_eql_execute') as mock_eql_execute:
             mock_eql_execute.side_effect = my_side_effect
             self.driver.do_setup(self._context)
-            self.assertEqual(self.driver._group_ip, fake_group_ip)
+            self.assertEqual(fake_group_ip, self.driver._group_ip)
 
     def test_update_volume_stats(self):
         mock_attrs = {'args': ['pool', 'select',
@@ -411,7 +411,7 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
         def w_timeout(cmd, *args, **kwargs):
             time.sleep(1)
 
-        self.assertEqual(no_timeout('fake cmd'), 'no timeout')
+        self.assertEqual('no timeout', no_timeout('fake cmd'))
         self.assertRaises(exception.VolumeBackendAPIException,
                           w_timeout, 'fake cmd', timeout=0.1)
 

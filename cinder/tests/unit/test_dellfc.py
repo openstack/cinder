@@ -614,7 +614,7 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                                               mock_open_connection,
                                               mock_init):
         stats = self.driver.get_volume_stats(True)
-        self.assertEqual(stats['storage_protocol'], 'FC')
+        self.assertEqual('FC', stats['storage_protocol'])
         mock_get_storage_usage.called_once_with(64702)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -630,5 +630,5 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                                          mock_open_connection,
                                          mock_init):
         stats = self.driver.get_volume_stats(False)
-        self.assertEqual(stats['storage_protocol'], 'FC')
+        self.assertEqual('FC', stats['storage_protocol'])
         assert mock_get_storage_usage.called is False

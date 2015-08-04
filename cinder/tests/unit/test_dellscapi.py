@@ -2196,7 +2196,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                  mock_init):
         # Test calling find_volume with no name or instanceid
         res = self.scapi.find_volume(None)
-        self.assertEqual(res, None, 'Expected None')
+        self.assertEqual(None, res, 'Expected None')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_get_volume_list')

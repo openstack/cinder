@@ -109,7 +109,7 @@ class SmbFsTestCase(test.TestCase):
         else:
             self._smbfs_driver.do_setup(mock.sentinel.context)
             mock_check_qemu_img_version.assert_called_once_with()
-            self.assertEqual(self._smbfs_driver.shares, {})
+            self.assertEqual({}, self._smbfs_driver.shares)
             fake_ensure_mounted.assert_called_once_with()
 
     def test_setup_missing_shares_config_option(self):
@@ -225,7 +225,7 @@ class SmbFsTestCase(test.TestCase):
                 self._FAKE_VOLUME['size'])
             # The eligible share with the minimum allocated space
             # will be selected
-            self.assertEqual(ret_value, 'fake_share3')
+            self.assertEqual('fake_share3', ret_value)
 
     def test_find_share(self):
         self._test_find_share()
@@ -369,7 +369,7 @@ class SmbFsTestCase(test.TestCase):
 
     def test_get_existing_raw_volume_format(self):
         fmt = self._mock_get_volume_format()
-        self.assertEqual(fmt, 'raw')
+        self.assertEqual('raw', fmt)
 
     def test_get_new_vhd_volume_format(self):
         expected_fmt = 'vhd'

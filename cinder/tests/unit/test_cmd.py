@@ -1221,7 +1221,7 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
         exit = self.assertRaises(SystemExit, volume_usage_audit.main)
 
         get_admin_context.assert_called_once_with()
-        self.assertEqual(CONF.project, 'cinder')
+        self.assertEqual('cinder', CONF.project)
         self.assertEqual(CONF.version, version.version_string())
         log_setup.assert_called_once_with(CONF, "cinder")
         get_logger.assert_called_once_with('cinder')

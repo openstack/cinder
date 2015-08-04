@@ -284,7 +284,7 @@ Host Group\n    abcdefg                           10000000C97BCE7A  \
         ret = self.driver.create_volume(self._VOLUME)
         vol = self._VOLUME.copy()
         vol['provider_location'] = ret['provider_location']
-        self.assertEqual(vol['provider_location'], '1')
+        self.assertEqual('1', vol['provider_location'])
 
     @mock.patch.object(hbsd_basiclib, 'get_process_lock')
     @mock.patch.object(hbsd_common.HBSDCommon, 'get_volume_metadata')
@@ -300,7 +300,7 @@ Host Group\n    abcdefg                           10000000C97BCE7A  \
     def test_get_volume_stats(self, arg1, arg2):
         """test get_volume_stats."""
         stats = self.driver.get_volume_stats(True)
-        self.assertEqual(stats['vendor_name'], 'Hitachi')
+        self.assertEqual('Hitachi', stats['vendor_name'])
 
     @mock.patch.object(hbsd_basiclib, 'get_process_lock')
     @mock.patch.object(hbsd_snm2.HBSDSNM2, 'exec_hsnm', side_effect=_exec_hsnm)
@@ -308,7 +308,7 @@ Host Group\n    abcdefg                           10000000C97BCE7A  \
         """test get_volume_stats."""
         self.configuration.hitachi_pool_id = 29
         stats = self.driver.get_volume_stats(True)
-        self.assertEqual(stats, {})
+        self.assertEqual({}, stats)
         self.configuration.hitachi_pool_id = 30
 
     @mock.patch.object(hbsd_basiclib, 'get_process_lock')
@@ -350,7 +350,7 @@ Host Group\n    abcdefg                           10000000C97BCE7A  \
         """test create_snapshot."""
         ret = self.driver.create_volume(self._VOLUME)
         ret = self.driver.create_snapshot(self.test_snapshot)
-        self.assertEqual(ret['provider_location'], '1')
+        self.assertEqual('1', ret['provider_location'])
 
     @mock.patch.object(hbsd_basiclib, 'get_process_lock')
     @mock.patch.object(hbsd_common.HBSDCommon, 'get_snapshot_metadata',
@@ -434,9 +434,9 @@ Host Group\n    abcdefg                           10000000C97BCE7A  \
         """test initialize connection."""
         connector = {'wwpns': '0x100000', 'ip': '0xc0a80100'}
         rc = self.driver.initialize_connection(self._VOLUME, connector)
-        self.assertEqual(rc['driver_volume_type'], 'fibre_channel')
-        self.assertEqual(rc['data']['target_wwn'], ['50060E801053C2E0'])
-        self.assertEqual(rc['data']['target_lun'], 1)
+        self.assertEqual('fibre_channel', rc['driver_volume_type'])
+        self.assertEqual(['50060E801053C2E0'], rc['data']['target_wwn'])
+        self.assertEqual(1, rc['data']['target_lun'])
         return
 
     @mock.patch.object(hbsd_basiclib, 'get_process_lock')
@@ -454,8 +454,8 @@ Host Group\n    abcdefg                           10000000C97BCE7A  \
         """test terminate connection."""
         connector = {'wwpns': '0x100000', 'ip': '0xc0a80100'}
         rc = self.driver.terminate_connection(self._VOLUME, connector)
-        self.assertEqual(rc['driver_volume_type'], 'fibre_channel')
-        self.assertEqual(rc['data']['target_wwn'], ['50060E801053C2E0'])
+        self.assertEqual('fibre_channel', rc['driver_volume_type'])
+        self.assertEqual(['50060E801053C2E0'], rc['data']['target_wwn'])
         return
 
     @mock.patch.object(hbsd_snm2.HBSDSNM2, 'exec_hsnm', side_effect=_exec_hsnm)

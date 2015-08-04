@@ -435,7 +435,7 @@ class AdminActionsTest(test.TestCase):
         volume = db.volume_get(ctx, volume['id'])
         self.assertEqual('in-use', volume['status'])
         self.assertEqual(stubs.FAKE_UUID, attachment['instance_uuid'])
-        self.assertEqual(attachment['mountpoint'], mountpoint)
+        self.assertEqual(mountpoint, attachment['mountpoint'])
         self.assertEqual('attached', attachment['attach_status'])
         admin_metadata = volume['volume_admin_metadata']
         self.assertEqual(2, len(admin_metadata))
@@ -446,7 +446,7 @@ class AdminActionsTest(test.TestCase):
         conn_info = self.volume_api.initialize_connection(ctx,
                                                           volume,
                                                           connector)
-        self.assertEqual(conn_info['data']['access_mode'], 'rw')
+        self.assertEqual('rw', conn_info['data']['access_mode'])
         # build request to force detach
         req = webob.Request.blank('/v2/fake/volumes/%s/action' % volume['id'])
         req.method = 'POST'
@@ -492,8 +492,8 @@ class AdminActionsTest(test.TestCase):
         volume = db.volume_get(ctx, volume['id'])
         self.assertEqual('in-use', volume['status'])
         self.assertIsNone(attachment['instance_uuid'])
-        self.assertEqual(attachment['attached_host'], host_name)
-        self.assertEqual(attachment['mountpoint'], mountpoint)
+        self.assertEqual(host_name, attachment['attached_host'])
+        self.assertEqual(mountpoint, attachment['mountpoint'])
         self.assertEqual('attached', attachment['attach_status'])
         admin_metadata = volume['volume_admin_metadata']
         self.assertEqual(2, len(admin_metadata))
@@ -547,7 +547,7 @@ class AdminActionsTest(test.TestCase):
         volume = db.volume_get(ctx, volume['id'])
         self.assertEqual('in-use', volume['status'])
         self.assertEqual(stubs.FAKE_UUID, attachment['instance_uuid'])
-        self.assertEqual(attachment['mountpoint'], mountpoint)
+        self.assertEqual(mountpoint, attachment['mountpoint'])
         self.assertEqual('attached', attachment['attach_status'])
         admin_metadata = volume['volume_admin_metadata']
         self.assertEqual(2, len(admin_metadata))
@@ -596,7 +596,7 @@ class AdminActionsTest(test.TestCase):
         volume = db.volume_get(ctx, volume['id'])
         self.assertEqual('in-use', volume['status'])
         self.assertEqual(stubs.FAKE_UUID, attachment['instance_uuid'])
-        self.assertEqual(attachment['mountpoint'], mountpoint)
+        self.assertEqual(mountpoint, attachment['mountpoint'])
         self.assertEqual('attached', attachment['attach_status'])
         admin_metadata = volume['volume_admin_metadata']
         self.assertEqual(2, len(admin_metadata))

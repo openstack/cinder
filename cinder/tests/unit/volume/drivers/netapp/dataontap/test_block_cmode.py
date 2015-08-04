@@ -215,7 +215,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
 
         self.library.get_volume_stats(refresh=True)
 
-        self.assertEqual(self.library.zapi_client.provide_ems.call_count, 1)
+        self.assertEqual(1, self.library.zapi_client.provide_ems.call_count)
 
     def test_create_lun(self):
         self.library._update_stale_vols = mock.Mock()

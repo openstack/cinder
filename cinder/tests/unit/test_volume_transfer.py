@@ -106,9 +106,9 @@ class VolumeTransferTestCase(test.TestCase):
                                  transfer['id'],
                                  transfer['auth_key'])
         volume = db.volume_get(self.ctxt, '1')
-        self.assertEqual(volume['project_id'], 'new_project_id',
+        self.assertEqual('new_project_id', volume['project_id'],
                          'Unexpected project id')
-        self.assertEqual(volume['user_id'], 'new_user_id',
+        self.assertEqual('new_user_id', volume['user_id'],
                          'Unexpected user id')
 
         self.assertEqual(volume['id'], response['volume_id'],

@@ -55,21 +55,21 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
                        mock.Mock(return_value={'Volume': 'vol1'}))
     def test_get_pool(self):
         pool = self.library.get_pool({'name': 'volume-fake-uuid'})
-        self.assertEqual(pool, 'vol1')
+        self.assertEqual('vol1', pool)
 
     @mock.patch.object(block_base.NetAppBlockStorageLibrary,
                        '_get_lun_attr',
                        mock.Mock(return_value=None))
     def test_get_pool_no_metadata(self):
         pool = self.library.get_pool({'name': 'volume-fake-uuid'})
-        self.assertEqual(pool, None)
+        self.assertEqual(None, pool)
 
     @mock.patch.object(block_base.NetAppBlockStorageLibrary,
                        '_get_lun_attr',
                        mock.Mock(return_value=dict()))
     def test_get_pool_volume_unknown(self):
         pool = self.library.get_pool({'name': 'volume-fake-uuid'})
-        self.assertEqual(pool, None)
+        self.assertEqual(None, pool)
 
     def test_create_volume(self):
         volume_size_in_bytes = int(fake.SIZE) * units.Gi
@@ -142,7 +142,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
                                        fake.FC_FORMATTED_INITIATORS,
                                        protocol, None)
 
-        self.assertEqual(lun_id, '1')
+        self.assertEqual('1', lun_id)
         mock_get_or_create_igroup.assert_called_once_with(
             fake.FC_FORMATTED_INITIATORS, protocol, os)
         self.zapi_client.map_lun.assert_called_once_with(
@@ -189,7 +189,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         lun_id = self.library._map_lun(
             'fake_volume', fake.FC_FORMATTED_INITIATORS, protocol, None)
 
-        self.assertEqual(lun_id, '2')
+        self.assertEqual('2', lun_id)
         mock_find_mapped_lun_igroup.assert_called_once_with(
             fake.LUN_PATH, fake.FC_FORMATTED_INITIATORS)
 
@@ -258,7 +258,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         igroup_name, os, ig_type = self.library._get_or_create_igroup(
             fake.FC_FORMATTED_INITIATORS, 'fcp', 'linux')
 
-        self.assertEqual(igroup_name, 'openstack-' + fake.UUID1)
+        self.assertEqual('openstack-' + fake.UUID1, igroup_name)
         self.zapi_client.create_igroup.assert_called_once_with(
             igroup_name, 'fcp', 'linux')
         self.assertEqual(len(fake.FC_FORMATTED_INITIATORS),

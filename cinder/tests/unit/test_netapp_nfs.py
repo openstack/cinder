@@ -180,7 +180,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
 
         loc = drv.create_volume_from_snapshot(volume, snapshot)
 
-        self.assertEqual(loc, expected_result)
+        self.assertEqual(expected_result, loc)
 
         mox.VerifyAll()
 
@@ -861,7 +861,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
 
     def test_get_pool(self):
         pool = self._driver.get_pool({'provider_location': 'fake-share'})
-        self.assertEqual(pool, 'fake-share')
+        self.assertEqual('fake-share', pool)
 
     def _set_config(self, configuration):
         configuration.netapp_storage_family = 'ontap_cluster'
@@ -1542,7 +1542,7 @@ class NetApp7modeNfsDriverTestCase(NetAppCmodeNfsDriverTestCase):
 
     def test_get_pool(self):
         pool = self._driver.get_pool({'provider_location': 'fake-share'})
-        self.assertEqual(pool, 'fake-share')
+        self.assertEqual('fake-share', pool)
 
     def _set_config(self, configuration):
         super(NetApp7modeNfsDriverTestCase, self)._set_config(

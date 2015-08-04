@@ -40,15 +40,15 @@ class VolumeOpsTestCase(test.TestCase):
     def test_split_datastore_path(self):
         test1 = '[datastore1] myfolder/mysubfolder/myvm.vmx'
         (datastore, folder, file_name) = volumeops.split_datastore_path(test1)
-        self.assertEqual(datastore, 'datastore1')
-        self.assertEqual(folder, 'myfolder/mysubfolder/')
-        self.assertEqual(file_name, 'myvm.vmx')
+        self.assertEqual('datastore1', datastore)
+        self.assertEqual('myfolder/mysubfolder/', folder)
+        self.assertEqual('myvm.vmx', file_name)
 
         test2 = '[datastore2 ]   myfolder/myvm.vmdk'
         (datastore, folder, file_name) = volumeops.split_datastore_path(test2)
-        self.assertEqual(datastore, 'datastore2')
-        self.assertEqual(folder, 'myfolder/')
-        self.assertEqual(file_name, 'myvm.vmdk')
+        self.assertEqual('datastore2', datastore)
+        self.assertEqual('myfolder/', folder)
+        self.assertEqual('myvm.vmdk', file_name)
 
         test3 = 'myfolder/myvm.vmdk'
         self.assertRaises(IndexError, volumeops.split_datastore_path, test3)
@@ -356,7 +356,7 @@ class VolumeOpsTestCase(test.TestCase):
         child = mock.Mock(spec=object)
         child._type = 'Parent'
         ret = self.vops._get_parent(child, 'Parent')
-        self.assertEqual(ret, child)
+        self.assertEqual(child, ret)
 
         # Recursive
         parent = mock.Mock(spec=object)
@@ -365,7 +365,7 @@ class VolumeOpsTestCase(test.TestCase):
         child._type = 'Child'
         self.session.invoke_api.return_value = parent
         ret = self.vops._get_parent(child, 'Parent')
-        self.assertEqual(ret, parent)
+        self.assertEqual(parent, ret)
         self.session.invoke_api.assert_called_with(vim_util,
                                                    'get_object_property',
                                                    self.session.vim, child,
@@ -893,7 +893,7 @@ class VolumeOpsTestCase(test.TestCase):
         node.name = name
         node.snapshot = snapshot
         ret = volops._get_snapshot_from_tree(name, node)
-        self.assertEqual(ret, snapshot)
+        self.assertEqual(snapshot, ret)
         # Test root.childSnapshotList == None
         root = mock.Mock(spec=object)
         root.name = 'root'
@@ -903,7 +903,7 @@ class VolumeOpsTestCase(test.TestCase):
         # Test root.child == snapshot
         root.childSnapshotList = [node]
         ret = volops._get_snapshot_from_tree(name, root)
-        self.assertEqual(ret, snapshot)
+        self.assertEqual(snapshot, ret)
 
     def test_get_snapshot(self):
         # build out the root snapshot tree

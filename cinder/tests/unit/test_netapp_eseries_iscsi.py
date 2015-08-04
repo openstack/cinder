@@ -689,8 +689,8 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
         configuration.netapp_controller_ips = '127.0.0.1,127.0.0.3'
         driver = common.NetAppDriver(configuration=configuration)
         driver.do_setup(context='context')
-        self.assertEqual(driver.library._client.get_system_id(),
-                         '1fa6efb5-f07b-4de4-9f0e-52e5f7ff5d1b')
+        self.assertEqual('1fa6efb5-f07b-4de4-9f0e-52e5f7ff5d1b',
+                         driver.library._client.get_system_id())
 
     def test_check_system_pwd_not_sync(self):
         def list_system():
@@ -723,7 +723,7 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
 
         pool = self.driver.get_pool({'name_id': 'fake-uuid'})
 
-        self.assertEqual(pool, 'ddp1')
+        self.assertEqual('ddp1', pool)
 
     def test_get_pool_no_pools(self):
         self.mock_object(self.library, '_get_volume',
@@ -734,7 +734,7 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
 
         pool = self.driver.get_pool({'name_id': 'fake-uuid'})
 
-        self.assertEqual(pool, None)
+        self.assertEqual(None, pool)
 
     @mock.patch.object(library.NetAppESeriesLibrary, '_create_volume',
                        mock.Mock())
@@ -808,9 +808,9 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
         portals = [{'controller': 'ctrl2', 'iqn': 'iqn2'},
                    {'controller': 'ctrl1', 'iqn': 'iqn1'}]
         portal = self.library._get_iscsi_portal_for_vol(volume, portals)
-        self.assertEqual(portal, {'controller': 'ctrl1', 'iqn': 'iqn1'})
+        self.assertEqual({'controller': 'ctrl1', 'iqn': 'iqn1'}, portal)
         portal = self.library._get_iscsi_portal_for_vol(vol_nomatch, portals)
-        self.assertEqual(portal, {'controller': 'ctrl2', 'iqn': 'iqn2'})
+        self.assertEqual({'controller': 'ctrl2', 'iqn': 'iqn2'}, portal)
 
     def test_portal_for_vol_any_false(self):
         vol_nomatch = {'id': 'vol_id', 'currentManager': 'ctrl3'}

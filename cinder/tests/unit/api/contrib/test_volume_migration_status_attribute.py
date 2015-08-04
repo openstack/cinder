@@ -71,8 +71,8 @@ class VolumeMigStatusAttributeTest(test.TestCase):
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
         vol = json.loads(res.body)['volume']
-        self.assertEqual(vol['os-vol-mig-status-attr:migstat'], 'migrating')
-        self.assertEqual(vol['os-vol-mig-status-attr:name_id'], 'fake2')
+        self.assertEqual('migrating', vol['os-vol-mig-status-attr:migstat'])
+        self.assertEqual('fake2', vol['os-vol-mig-status-attr:name_id'])
 
     def test_get_volume_unallowed(self):
         ctx = context.RequestContext('non-admin', 'fake', False)
@@ -91,8 +91,8 @@ class VolumeMigStatusAttributeTest(test.TestCase):
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
         vol = json.loads(res.body)['volumes']
-        self.assertEqual(vol[0]['os-vol-mig-status-attr:migstat'], 'migrating')
-        self.assertEqual(vol[0]['os-vol-mig-status-attr:name_id'], 'fake2')
+        self.assertEqual('migrating', vol[0]['os-vol-mig-status-attr:migstat'])
+        self.assertEqual('fake2', vol[0]['os-vol-mig-status-attr:name_id'])
 
     def test_list_detail_volumes_unallowed(self):
         ctx = context.RequestContext('non-admin', 'fake', False)
@@ -124,10 +124,10 @@ class VolumeMigStatusAttributeTest(test.TestCase):
         vol = etree.XML(res.body)
         mig_key = ('{http://docs.openstack.org/volume/ext/'
                    'volume_mig_status_attribute/api/v1}migstat')
-        self.assertEqual(vol.get(mig_key), 'migrating')
+        self.assertEqual('migrating', vol.get(mig_key))
         mig_key = ('{http://docs.openstack.org/volume/ext/'
                    'volume_mig_status_attribute/api/v1}name_id')
-        self.assertEqual(vol.get(mig_key), 'fake2')
+        self.assertEqual('fake2', vol.get(mig_key))
 
     def test_list_volumes_detail_xml(self):
         ctx = context.RequestContext('admin', 'fake', True)
@@ -139,7 +139,7 @@ class VolumeMigStatusAttributeTest(test.TestCase):
         vol = list(etree.XML(res.body))[0]
         mig_key = ('{http://docs.openstack.org/volume/ext/'
                    'volume_mig_status_attribute/api/v1}migstat')
-        self.assertEqual(vol.get(mig_key), 'migrating')
+        self.assertEqual('migrating', vol.get(mig_key))
         mig_key = ('{http://docs.openstack.org/volume/ext/'
                    'volume_mig_status_attribute/api/v1}name_id')
-        self.assertEqual(vol.get(mig_key), 'fake2')
+        self.assertEqual('fake2', vol.get(mig_key))

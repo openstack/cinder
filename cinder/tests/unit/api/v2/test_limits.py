@@ -512,7 +512,7 @@ class LimiterTest(BaseLimitTestSuite):
 
     def test_user_limit(self):
         """Test user-specific limits."""
-        self.assertEqual(self.limiter.levels['user3'], [])
+        self.assertEqual([], self.limiter.levels['user3'])
         self.assertEqual(2, len(self.limiter.levels['user0']))
 
     def test_multiple_users(self):
