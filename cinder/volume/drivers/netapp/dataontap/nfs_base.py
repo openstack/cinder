@@ -39,6 +39,7 @@ from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
 from cinder import utils
+from cinder.volume import driver
 from cinder.volume.drivers.netapp import options as na_opts
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume.drivers import nfs
@@ -50,7 +51,11 @@ CONF = cfg.CONF
 
 
 @six.add_metaclass(utils.TraceWrapperWithABCMetaclass)
-class NetAppNfsDriver(nfs.NfsDriver):
+class NetAppNfsDriver(driver.ManageableVD,
+                      driver.CloneableVD,
+                      driver.CloneableImageVD,
+                      driver.SnapshotVD,
+                      nfs.NfsDriver):
     """Base class for NetApp NFS driver for Data ONTAP."""
 
     # do not increment this as it may be used in volume type definitions
