@@ -197,6 +197,38 @@ HNAS_RESULT21 = "Target created successfully."
 
 HNAS_RESULT22 = "Failed to establish SSC connection"
 
+HNAS_RESULT23 = "\n\
+Alias               : cinder-Gold\n\
+Globally unique name: iqn.2015-06.10.10.10.10:evstest1.cinder-gold\n\
+Comment             :\n\
+Secret              : None\n\
+Authentication      : Enabled\n\
+Logical units       : No logical units.\n\
+Access configuration :\n\
+\n\
+Alias               : cinder-GoldIsh\n\
+Globally unique name: iqn.2015-06.10.10.10.10:evstest1.cinder-goldish\n\
+Comment             :\n\
+Secret              : None\n\
+Authentication      : Enabled\n\
+Logical units       : No logical units.\n\
+Access configuration :\n\
+\n\
+Alias               : cinder-default\n\
+Globally unique name: iqn.2014-12.10.10.10.10:evstest1.cinder-default\n\
+Comment             :\n\
+Secret              : pxr6U37LZZJBoMc\n\
+Authentication      : Disabled\n\
+Logical units       : Logical units       :\n\
+\n\
+  LUN   Logical Unit\n\
+  ----  --------------------------------\n\
+  0     volume-8ddd1a54-9daf-4fa5-842...\n\
+  1     volume-99da7ae7-1e7f-4d57-8bf...\n\
+\n\
+Access configuration :\n\
+"
+
 HNAS_CMDS = {
     ('ssh', '0.0.0.0', 'supervisor', 'supervisor', 'evsfs', 'list'):
         ["%s" % HNAS_RESULT1, ""],
@@ -257,7 +289,14 @@ HNAS_CMDS = {
      '/.cinder/test_clone.iscsi'):
         ["%s" % HNAS_RESULT16, ""],
     ('ssh', '0.0.0.0', 'supervisor', 'supervisor', 'evsipaddr', '-e', '1'):
-        ["%s" % HNAS_RESULT17, ""]
+        ["%s" % HNAS_RESULT17, ""],
+    ('ssh', '0.0.0.0', 'supervisor', 'supervisor',
+     'console-context', '--evs', '1', 'iscsi-target', 'list'):
+        ["%s" % HNAS_RESULT23, ""],
+    ('ssh', '0.0.0.0', 'supervisor', 'supervisor', 'console-context', '--evs',
+     '1', 'iscsi-target', 'addlu', 'cinder-default',
+     'volume-8ddd1a54-0000-0000-0000', '2'):
+        ["%s" % HNAS_RESULT13, ""]
 }
 
 DRV_CONF = {'ssh_enabled': 'True',
@@ -431,9 +470,10 @@ class HDSHNASBendTest(test.TestCase):
                        side_effect=m_run_cmd)
     def test_add_iscsi_conn(self, m_cmd):
         out = self.hnas_bend.add_iscsi_conn("ssh", "0.0.0.0", "supervisor",
-                                            "supervisor", "test_lun",
+                                            "supervisor",
+                                            "volume-8ddd1a54-0000-0000-0000",
                                             "test_hdp", "test_port",
-                                            "test_iqn", "test_init")
+                                            "cinder-default", "test_init")
 
         self.assertIn('successfully paired', out)
 
@@ -445,7 +485,7 @@ class HDSHNASBendTest(test.TestCase):
 
         self.assertIn('already deleted', out)
 
-    @mock.patch.object(hnas_backend.HnasBackend, '_get_evs', return_value=0)
+    @mock.patch.object(hnas_backend.HnasBackend, 'get_evs', return_value=0)
     @mock.patch.object(hnas_backend.HnasBackend, 'run_cmd')
     def test_get_targetiqn(self, m_cmd, m_get_evs):
 
@@ -493,3 +533,60 @@ class HDSHNASBendTest(test.TestCase):
                                               "supervisor", "test_iqn",
                                               "test_hdp")
         self.assertEqual('', out)
+
+    @mock.patch.object(hnas_backend.HnasBackend, 'run_cmd')
+    def test_get_targets(self, m_run_cmd):
+        # Test normal behaviour
+        m_run_cmd.return_value = (HNAS_RESULT23, "")
+        tgt_list = self.hnas_bend._get_targets("ssh", "0.0.0.0", "supervisor",
+                                               "supervisor", 1)
+        self.assertEqual(3, len(tgt_list))
+        self.assertEqual(2, len(tgt_list[2]['luns']))
+
+        # Test calling with parameter
+        tgt_list = self.hnas_bend._get_targets("ssh", "0.0.0.0", "supervisor",
+                                               "supervisor", 1,
+                                               'cinder-default')
+        self.assertEqual(1, len(tgt_list))
+        self.assertEqual(2, len(tgt_list[0]['luns']))
+
+        # Test error in BE command
+        m_run_cmd.side_effect = putils.ProcessExecutionError
+        tgt_list = self.hnas_bend._get_targets("ssh", "0.0.0.0", "supervisor",
+                                               "supervisor", 1)
+        self.assertEqual(0, len(tgt_list))
+
+    @mock.patch.object(hnas_backend.HnasBackend,
+                       'run_cmd', side_effect=m_run_cmd)
+    def test_check_targets(self, m_run_cmd):
+        result, tgt = self.hnas_bend.check_target("ssh", "0.0.0.0",
+                                                  "supervisor",
+                                                  "supervisor", "test_hdp",
+                                                  "cinder-default")
+        self.assertTrue(result)
+        self.assertEqual('cinder-default', tgt['alias'])
+
+        result, tgt = self.hnas_bend.check_target("ssh", "0.0.0.0",
+                                                  "supervisor",
+                                                  "supervisor", "test_hdp",
+                                                  "cinder-no-target")
+        self.assertFalse(result)
+        self.assertIsNone(tgt)
+
+    @mock.patch.object(hnas_backend.HnasBackend,
+                       'run_cmd', side_effect=m_run_cmd)
+    def test_check_lu(self, m_run_cmd):
+        ret = self.hnas_bend.check_lu("ssh", "0.0.0.0", "supervisor",
+                                      "supervisor",
+                                      "volume-8ddd1a54-9daf-4fa5-842",
+                                      "test_hdp")
+        result, lunid, tgt = ret
+        self.assertTrue(result)
+        self.assertEqual('0', lunid)
+
+        ret = self.hnas_bend.check_lu("ssh", "0.0.0.0", "supervisor",
+                                      "supervisor",
+                                      "volume-8ddd1a54-0000-0000-000",
+                                      "test_hdp")
+        result, lunid, tgt = ret
+        self.assertFalse(result)
