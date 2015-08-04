@@ -476,7 +476,7 @@ class NetAppESeriesLibrary(object):
         try:
             vol = self._get_volume(volume['name_id'])
             self._client.delete_volume(vol['volumeRef'])
-        except exception.NetAppDriverException:
+        except (exception.NetAppDriverException, KeyError):
             LOG.warning(_LI("Volume %s already deleted."), volume['id'])
             return
 

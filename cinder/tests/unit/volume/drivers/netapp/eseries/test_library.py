@@ -775,6 +775,20 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         # Ensure the volume we created is not cleaned up
         self.assertEqual(0, self.library._client.delete_volume.call_count)
 
+    def test_get_non_existing_volume_raises_keyerror(self):
+        volume2 = get_fake_volume()
+        # Change to a nonexistent id.
+        volume2['name_id'] = '88888888-4444-4444-4444-cccccccccccc'
+        self.assertRaises(KeyError,
+                          self.library._get_volume,
+                          volume2['name_id'])
+
+    def test_delete_non_existing_volume(self):
+        volume2 = get_fake_volume()
+        # Change to a nonexistent id.
+        volume2['name_id'] = '88888888-4444-4444-4444-cccccccccccc'
+        self.assertIsNone(self.library.delete_volume(volume2))
+
     def test_map_volume_to_host_volume_not_mapped(self):
         """Map the volume directly to destination host."""
         self.mock_object(self.library._client,
