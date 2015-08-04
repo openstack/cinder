@@ -13,10 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from copy import deepcopy
 import sys
 
 import mock
-from oslo_concurrency import processutils
 from oslo_utils import units
 
 from cinder import exception
@@ -155,12 +155,15 @@ SPACE_INFO_EMPTY = {
 ISCSI_CONNECTION_INFO = {
     "driver_volume_type": "iscsi",
     "data": {
-        "target_iqn": TARGET_IQN,
-        "target_portal": ISCSI_IPS[0] + ":" + TARGET_PORT,
-        "target_lun": 1,
-        "target_discovered": True,
+        "target_discovered": False,
         "access_mode": "rw",
         "discard": True,
+        "target_luns": [1, 1, 1, 1],
+        "target_iqns": [TARGET_IQN, TARGET_IQN, TARGET_IQN, TARGET_IQN],
+        "target_portals": [ISCSI_IPS[0] + ":" + TARGET_PORT,
+                           ISCSI_IPS[1] + ":" + TARGET_PORT,
+                           ISCSI_IPS[2] + ":" + TARGET_PORT,
+                           ISCSI_IPS[3] + ":" + TARGET_PORT],
     },
 }
 FC_CONNECTION_INFO = {
@@ -1045,9 +1048,7 @@ class PureISCSIDriverTestCase(PureDriverTestCase):
         self.driver = pure.PureISCSIDriver(configuration=self.mock_config)
         self.driver._array = self.array
 
-    @mock.patch(ISCSI_DRIVER_OBJ + "._choose_target_iscsi_port")
-    def test_do_setup(self, mock_choose_target_iscsi_port):
-        mock_choose_target_iscsi_port.return_value = ISCSI_PORTS[0]
+    def test_do_setup(self):
         self.purestorage_module.FlashArray.return_value = self.array
         self.array.get_rest_version.return_value = \
             self.driver.SUPPORTED_REST_API_VERSIONS[0]
@@ -1060,15 +1061,6 @@ class PureISCSIDriverTestCase(PureDriverTestCase):
         self.assertEqual(
             self.driver.SUPPORTED_REST_API_VERSIONS,
             self.purestorage_module.FlashArray.supported_rest_versions
-        )
-        mock_choose_target_iscsi_port.assert_called_with()
-        self.assertEqual(ISCSI_PORTS[0], self.driver._iscsi_port)
-        self.assert_error_propagates(
-            [
-                self.purestorage_module.FlashArray,
-                mock_choose_target_iscsi_port
-            ],
-            self.driver.do_setup, None
         )
 
     def test_get_host(self):
@@ -1085,31 +1077,35 @@ class PureISCSIDriverTestCase(PureDriverTestCase):
                                      self.driver._get_host, ISCSI_CONNECTOR)
 
     @mock.patch(ISCSI_DRIVER_OBJ + "._connect")
-    @mock.patch(ISCSI_DRIVER_OBJ + "._get_target_iscsi_port")
-    def test_initialize_connection(self, mock_get_iscsi_port, mock_connection):
-        mock_get_iscsi_port.return_value = ISCSI_PORTS[0]
-        mock_connection.return_value = {
+    @mock.patch(ISCSI_DRIVER_OBJ + "._get_target_iscsi_ports")
+    def test_initialize_connection(self, mock_get_iscsi_ports,
+                                   mock_connection):
+        mock_get_iscsi_ports.return_value = ISCSI_PORTS
+        lun = 1
+        connection = {
             "vol": VOLUME["name"] + "-cinder",
-            "lun": 1,
+            "lun": lun,
         }
-        result = ISCSI_CONNECTION_INFO
+        mock_connection.return_value = connection
+        result = deepcopy(ISCSI_CONNECTION_INFO)
+
         real_result = self.driver.initialize_connection(VOLUME,
                                                         ISCSI_CONNECTOR)
         self.assertDictMatch(result, real_result)
-        mock_get_iscsi_port.assert_called_with()
+        mock_get_iscsi_ports.assert_called_with()
         mock_connection.assert_called_with(VOLUME, ISCSI_CONNECTOR, None)
-        self.assert_error_propagates([mock_get_iscsi_port, mock_connection],
+        self.assert_error_propagates([mock_get_iscsi_ports, mock_connection],
                                      self.driver.initialize_connection,
                                      VOLUME, ISCSI_CONNECTOR)
 
     @mock.patch(ISCSI_DRIVER_OBJ + "._connect")
-    @mock.patch(ISCSI_DRIVER_OBJ + "._get_target_iscsi_port")
-    def test_initialize_connection_with_auth(self, mock_get_iscsi_port,
+    @mock.patch(ISCSI_DRIVER_OBJ + "._get_target_iscsi_ports")
+    def test_initialize_connection_with_auth(self, mock_get_iscsi_ports,
                                              mock_connection):
         auth_type = "CHAP"
         chap_username = ISCSI_CONNECTOR["host"]
         chap_password = "password"
-        mock_get_iscsi_port.return_value = ISCSI_PORTS[0]
+        mock_get_iscsi_ports.return_value = ISCSI_PORTS
         initiator_update = [{"key": pure.CHAP_SECRET_KEY,
                             "value": chap_password}]
         mock_connection.return_value = {
@@ -1118,7 +1114,7 @@ class PureISCSIDriverTestCase(PureDriverTestCase):
             "auth_username": chap_username,
             "auth_password": chap_password,
         }
-        result = ISCSI_CONNECTION_INFO.copy()
+        result = deepcopy(ISCSI_CONNECTION_INFO)
         result["data"]["auth_method"] = auth_type
         result["data"]["auth_username"] = chap_username
         result["data"]["auth_password"] = chap_password
@@ -1139,37 +1135,56 @@ class PureISCSIDriverTestCase(PureDriverTestCase):
         mock_connection.assert_called_with(VOLUME, ISCSI_CONNECTOR, None)
         self.assertDictMatch(result, real_result)
 
-        self.assert_error_propagates([mock_get_iscsi_port, mock_connection],
+        self.assert_error_propagates([mock_get_iscsi_ports, mock_connection],
                                      self.driver.initialize_connection,
                                      VOLUME, ISCSI_CONNECTOR)
 
-    @mock.patch(ISCSI_DRIVER_OBJ + "._choose_target_iscsi_port")
-    @mock.patch(ISCSI_DRIVER_OBJ + "._run_iscsiadm_bare")
-    def test_get_target_iscsi_port(self, mock_iscsiadm, mock_choose_port):
-        self.driver._iscsi_port = ISCSI_PORTS[1]
-        self.assertEqual(ISCSI_PORTS[1], self.driver._get_target_iscsi_port())
-        mock_iscsiadm.assert_called_with(["-m", "discovery",
-                                          "-t", "sendtargets",
-                                          "-p", ISCSI_PORTS[1]["portal"]])
-        self.assertFalse(mock_choose_port.called)
-        mock_iscsiadm.side_effect = [processutils.ProcessExecutionError, None]
-        mock_choose_port.return_value = ISCSI_PORTS[2]
-        self.assertEqual(ISCSI_PORTS[2], self.driver._get_target_iscsi_port())
-        mock_choose_port.assert_called_with()
-        mock_iscsiadm.side_effect = processutils.ProcessExecutionError
-        self.assert_error_propagates([mock_choose_port],
-                                     self.driver._get_target_iscsi_port)
+    @mock.patch(ISCSI_DRIVER_OBJ + "._connect")
+    @mock.patch(ISCSI_DRIVER_OBJ + "._get_target_iscsi_ports")
+    def test_initialize_connection_multipath(self,
+                                             mock_get_iscsi_ports,
+                                             mock_connection):
+        mock_get_iscsi_ports.return_value = ISCSI_PORTS
+        lun = 1
+        connection = {
+            "vol": VOLUME["name"] + "-cinder",
+            "lun": lun,
+        }
+        mock_connection.return_value = connection
+        multipath_connector = deepcopy(ISCSI_CONNECTOR)
+        multipath_connector["multipath"] = True
+        result = deepcopy(ISCSI_CONNECTION_INFO)
 
-    @mock.patch(ISCSI_DRIVER_OBJ + "._run_iscsiadm_bare")
-    def test_choose_target_iscsi_port(self, mock_iscsiadm):
+        real_result = self.driver.initialize_connection(VOLUME,
+                                                        multipath_connector)
+        self.assertDictMatch(result, real_result)
+        mock_get_iscsi_ports.assert_called_with()
+        mock_connection.assert_called_with(VOLUME, multipath_connector, None)
+
+        multipath_connector["multipath"] = False
+        self.driver.initialize_connection(VOLUME, multipath_connector)
+
+    def test_get_target_iscsi_ports(self):
+        self.array.list_ports.return_value = ISCSI_PORTS
+        ret = self.driver._get_target_iscsi_ports()
+        self.assertEqual(ISCSI_PORTS, ret)
+
+    def test_get_target_iscsi_ports_with_iscsi_and_fc(self):
+        self.array.list_ports.return_value = PORTS_WITH
+        ret = self.driver._get_target_iscsi_ports()
+        self.assertEqual(ISCSI_PORTS, ret)
+
+    def test_get_target_iscsi_ports_with_no_ports(self):
+        # Should raise an exception if there are no ports
+        self.array.list_ports.return_value = []
+        self.assertRaises(exception.PureDriverException,
+                          self.driver._get_target_iscsi_ports)
+
+    def test_get_target_iscsi_ports_with_only_fc_ports(self):
+        # Should raise an exception of there are no iscsi ports
         self.array.list_ports.return_value = PORTS_WITHOUT
         self.assertRaises(exception.PureDriverException,
-                          self.driver._choose_target_iscsi_port)
-        self.array.list_ports.return_value = PORTS_WITH
-        self.assertEqual(ISCSI_PORTS[0],
-                         self.driver._choose_target_iscsi_port())
-        self.assert_error_propagates([mock_iscsiadm, self.array.list_ports],
-                                     self.driver._choose_target_iscsi_port)
+                          self.driver._get_target_iscsi_ports)
 
     @mock.patch("cinder.volume.utils.generate_password", autospec=True)
     @mock.patch(ISCSI_DRIVER_OBJ + "._get_host", autospec=True)
