@@ -66,7 +66,7 @@ class SchedulerHintsTestCase(test.TestCase):
         @wsgi.response(202)
         def fake_create(*args, **kwargs):
             self.assertIn('scheduler_hints', kwargs['body'])
-            self.assertEqual(kwargs['body']['scheduler_hints'], {"a": "b"})
+            self.assertEqual({"a": "b"}, kwargs['body']['scheduler_hints'])
             return self.fake_instance
 
         self.stubs.Set(cinder.api.v2.volumes.VolumeController, 'create',

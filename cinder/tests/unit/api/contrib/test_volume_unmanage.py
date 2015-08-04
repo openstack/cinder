@@ -137,29 +137,29 @@ class VolumeUnmanageTest(test.TestCase):
         res = self._get_resp(detached_vol_id)
 
         # volume_update is (context, id, new_data)
-        self.assertEqual(mock_db.call_count, 1)
-        self.assertEqual(len(mock_db.call_args[0]), 3, mock_db.call_args)
+        self.assertEqual(1, mock_db.call_count)
+        self.assertEqual(3, len(mock_db.call_args[0]), mock_db.call_args)
         self.assertEqual(mock_db.call_args[0][1], detached_vol_id)
 
         # delete_volume is (context, status, unmanageOnly)
-        self.assertEqual(mock_rpcapi.call_count, 1)
-        self.assertEqual(len(mock_rpcapi.call_args[0]), 3)
-        self.assertEqual(mock_rpcapi.call_args[0][2], True)
+        self.assertEqual(1, mock_rpcapi.call_count)
+        self.assertEqual(3, len(mock_rpcapi.call_args[0]))
+        self.assertEqual(True, mock_rpcapi.call_args[0][2])
 
-        self.assertEqual(res.status_int, 202, res)
+        self.assertEqual(202, res.status_int, res)
 
     def test_unmanage_volume_bad_volume_id(self):
         """Return 404 if the volume does not exist."""
         res = self._get_resp(bad_vol_id)
-        self.assertEqual(res.status_int, 404, res)
+        self.assertEqual(404, res.status_int, res)
 
     def test_unmanage_volume_attached_(self):
         """Return 400 if the volume exists but is attached."""
         res = self._get_resp(attached_vol_id)
-        self.assertEqual(res.status_int, 400, res)
+        self.assertEqual(400, res.status_int, res)
 
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
     def test_unmanage_volume_with_snapshots(self, metadata_get):
         """Return 400 if the volume exists but has snapshots."""
         res = self._get_resp(snapshot_vol_id)
-        self.assertEqual(res.status_int, 400, res)
+        self.assertEqual(400, res.status_int, res)

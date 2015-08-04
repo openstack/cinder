@@ -37,19 +37,19 @@ class ConfigTestCase(test.TestCase):
         self.assertNotIn('answer', CONF)
         CONF.import_opt('answer', 'cinder.tests.unit.declare_conf')
         self.assertIn('answer', CONF)
-        self.assertEqual(CONF.answer, 42)
+        self.assertEqual(42, CONF.answer)
 
         # Make sure we don't overwrite anything
         CONF.set_override('answer', 256)
-        self.assertEqual(CONF.answer, 256)
+        self.assertEqual(256, CONF.answer)
         CONF.import_opt('answer', 'cinder.tests.unit.declare_conf')
-        self.assertEqual(CONF.answer, 256)
+        self.assertEqual(256, CONF.answer)
 
     def test_runtime_and_unknown_conf(self):
         self.assertNotIn('runtime_answer', CONF)
         import cinder.tests.unit.runtime_conf    # noqa
         self.assertIn('runtime_answer', CONF)
-        self.assertEqual(CONF.runtime_answer, 54)
+        self.assertEqual(54, CONF.runtime_answer)
 
     def test_long_vs_short_conf(self):
         CONF.clear()
@@ -62,22 +62,22 @@ class ConfigTestCase(test.TestCase):
 
         argv = ['--duplicate_answer=60']
         CONF(argv, default_config_files=[])
-        self.assertEqual(CONF.duplicate_answer, 60)
-        self.assertEqual(CONF.duplicate_answer_long, 'val')
+        self.assertEqual(60, CONF.duplicate_answer)
+        self.assertEqual('val', CONF.duplicate_answer_long)
 
     def test_conf_leak_left(self):
-        self.assertEqual(CONF.conf_unittest, 'foo')
+        self.assertEqual('foo', CONF.conf_unittest)
         self.flags(conf_unittest='bar')
-        self.assertEqual(CONF.conf_unittest, 'bar')
+        self.assertEqual('bar', CONF.conf_unittest)
 
     def test_conf_leak_right(self):
-        self.assertEqual(CONF.conf_unittest, 'foo')
+        self.assertEqual('foo', CONF.conf_unittest)
         self.flags(conf_unittest='bar')
-        self.assertEqual(CONF.conf_unittest, 'bar')
+        self.assertEqual('bar', CONF.conf_unittest)
 
     def test_conf_overrides(self):
-        self.assertEqual(CONF.conf_unittest, 'foo')
+        self.assertEqual('foo', CONF.conf_unittest)
         self.flags(conf_unittest='bar')
-        self.assertEqual(CONF.conf_unittest, 'bar')
+        self.assertEqual('bar', CONF.conf_unittest)
         CONF.reset()
-        self.assertEqual(CONF.conf_unittest, 'foo')
+        self.assertEqual('foo', CONF.conf_unittest)

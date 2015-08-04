@@ -79,12 +79,13 @@ class CgsnapshotsAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app())
         res_dict = json.loads(res.body)
 
-        self.assertEqual(res.status_int, 200)
-        self.assertEqual(res_dict['cgsnapshot']['description'],
-                         'this is a test cgsnapshot')
-        self.assertEqual(res_dict['cgsnapshot']['name'],
-                         'test_cgsnapshot')
-        self.assertEqual(res_dict['cgsnapshot']['status'], 'creating')
+        self.assertEqual(200, res.status_int)
+        self.assertEqual('this is a test cgsnapshot',
+                         res_dict['cgsnapshot']['description'])
+
+        self.assertEqual('test_cgsnapshot',
+                         res_dict['cgsnapshot']['name'])
+        self.assertEqual('creating', res_dict['cgsnapshot']['status'])
 
         db.cgsnapshot_destroy(context.get_admin_context(),
                               cgsnapshot_id)
@@ -106,11 +107,11 @@ class CgsnapshotsAPITestCase(test.TestCase):
         req.headers['Content-Type'] = 'application/xml'
         req.headers['Accept'] = 'application/xml'
         res = req.get_response(fakes.wsgi_app())
-        self.assertEqual(res.status_int, 200)
+        self.assertEqual(200, res.status_int)
         dom = minidom.parseString(res.body)
         cgsnapshot = dom.getElementsByTagName('cgsnapshot')
         name = cgsnapshot.item(0).getAttribute('name')
-        self.assertEqual(name.strip(), "test_cgsnapshot")
+        self.assertEqual('test_cgsnapshot', name.strip())
         db.cgsnapshot_destroy(context.get_admin_context(),
                               cgsnapshot_id)
         db.volume_destroy(context.get_admin_context(),
@@ -125,10 +126,10 @@ class CgsnapshotsAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app())
         res_dict = json.loads(res.body)
 
-        self.assertEqual(res.status_int, 404)
-        self.assertEqual(res_dict['itemNotFound']['code'], 404)
-        self.assertEqual(res_dict['itemNotFound']['message'],
-                         'CgSnapshot 9999 could not be found.')
+        self.assertEqual(404, res.status_int)
+        self.assertEqual(404, res_dict['itemNotFound']['code'])
+        self.assertEqual('CgSnapshot 9999 could not be found.',
+                         res_dict['itemNotFound']['message'])
 
     def test_list_cgsnapshots_json(self):
         consistencygroup_id = utils.create_consistencygroup(self.context)['id']
@@ -148,19 +149,19 @@ class CgsnapshotsAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app())
         res_dict = json.loads(res.body)
 
-        self.assertEqual(res.status_int, 200)
+        self.assertEqual(200, res.status_int)
         self.assertEqual(res_dict['cgsnapshots'][0]['id'],
                          cgsnapshot_id1)
-        self.assertEqual(res_dict['cgsnapshots'][0]['name'],
-                         'test_cgsnapshot')
+        self.assertEqual('test_cgsnapshot',
+                         res_dict['cgsnapshots'][0]['name'])
         self.assertEqual(res_dict['cgsnapshots'][1]['id'],
                          cgsnapshot_id2)
-        self.assertEqual(res_dict['cgsnapshots'][1]['name'],
-                         'test_cgsnapshot')
+        self.assertEqual('test_cgsnapshot',
+                         res_dict['cgsnapshots'][1]['name'])
         self.assertEqual(res_dict['cgsnapshots'][2]['id'],
                          cgsnapshot_id3)
-        self.assertEqual(res_dict['cgsnapshots'][2]['name'],
-                         'test_cgsnapshot')
+        self.assertEqual('test_cgsnapshot',
+                         res_dict['cgsnapshots'][2]['name'])
 
         db.cgsnapshot_destroy(context.get_admin_context(),
                               cgsnapshot_id3)
@@ -191,7 +192,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
         req.headers['Accept'] = 'application/xml'
         res = req.get_response(fakes.wsgi_app())
 
-        self.assertEqual(res.status_int, 200)
+        self.assertEqual(200, res.status_int)
         dom = minidom.parseString(res.body)
         cgsnapshot_list = dom.getElementsByTagName('cgsnapshot')
 
@@ -232,34 +233,33 @@ class CgsnapshotsAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app())
         res_dict = json.loads(res.body)
 
-        self.assertEqual(res.status_int, 200)
-        self.assertEqual(res_dict['cgsnapshots'][0]['description'],
-                         'this is a test cgsnapshot')
-        self.assertEqual(res_dict['cgsnapshots'][0]['name'],
-                         'test_cgsnapshot')
+        self.assertEqual(200, res.status_int)
+        self.assertEqual('this is a test cgsnapshot',
+                         res_dict['cgsnapshots'][0]['description'])
+        self.assertEqual('test_cgsnapshot',
+                         res_dict['cgsnapshots'][0]['name'])
         self.assertEqual(res_dict['cgsnapshots'][0]['id'],
                          cgsnapshot_id1)
-        self.assertEqual(res_dict['cgsnapshots'][0]['status'],
-                         'creating')
+        self.assertEqual('creating',
+                         res_dict['cgsnapshots'][0]['status'])
 
-        self.assertEqual(res_dict['cgsnapshots'][1]['description'],
-                         'this is a test cgsnapshot')
-        self.assertEqual(res_dict['cgsnapshots'][1]['name'],
-                         'test_cgsnapshot')
+        self.assertEqual('this is a test cgsnapshot',
+                         res_dict['cgsnapshots'][1]['description'])
+        self.assertEqual('test_cgsnapshot',
+                         res_dict['cgsnapshots'][1]['name'])
         self.assertEqual(res_dict['cgsnapshots'][1]['id'],
                          cgsnapshot_id2)
-        self.assertEqual(res_dict['cgsnapshots'][1]['status'],
-                         'creating')
+        self.assertEqual('creating',
+                         res_dict['cgsnapshots'][1]['status'])
 
-        self.assertEqual(res_dict['cgsnapshots'][2]['description'],
-                         'this is a test cgsnapshot')
+        self.assertEqual('this is a test cgsnapshot',
+                         res_dict['cgsnapshots'][2]['description'])
         self.assertEqual(res_dict['cgsnapshots'][2]['name'],
                          'test_cgsnapshot')
         self.assertEqual(res_dict['cgsnapshots'][2]['id'],
                          cgsnapshot_id3)
-        self.assertEqual(res_dict['cgsnapshots'][2]['status'],
-                         'creating')
-
+        self.assertEqual('creating',
+                         res_dict['cgsnapshots'][2]['status'])
         db.cgsnapshot_destroy(context.get_admin_context(),
                               cgsnapshot_id3)
         db.cgsnapshot_destroy(context.get_admin_context(),
@@ -289,45 +289,36 @@ class CgsnapshotsAPITestCase(test.TestCase):
         req.headers['Accept'] = 'application/xml'
         res = req.get_response(fakes.wsgi_app())
 
-        self.assertEqual(res.status_int, 200)
+        self.assertEqual(200, res.status_int)
         dom = minidom.parseString(res.body)
         cgsnapshot_detail = dom.getElementsByTagName('cgsnapshot')
 
-        self.assertEqual(
-            cgsnapshot_detail.item(0).getAttribute('description'),
-            'this is a test cgsnapshot')
-        self.assertEqual(
-            cgsnapshot_detail.item(0).getAttribute('name'),
-            'test_cgsnapshot')
-        self.assertEqual(
-            cgsnapshot_detail.item(0).getAttribute('id'),
-            cgsnapshot_id1)
-        self.assertEqual(
-            cgsnapshot_detail.item(0).getAttribute('status'), 'creating')
+        self.assertEqual('this is a test cgsnapshot',
+                         cgsnapshot_detail.item(0).getAttribute('description'))
+        self.assertEqual('test_cgsnapshot',
+                         cgsnapshot_detail.item(0).getAttribute('name'))
+        self.assertEqual(cgsnapshot_detail.item(0).getAttribute('id'),
+                         cgsnapshot_id1)
+        self.assertEqual('creating',
+                         cgsnapshot_detail.item(0).getAttribute('status'))
 
-        self.assertEqual(
-            cgsnapshot_detail.item(1).getAttribute('description'),
-            'this is a test cgsnapshot')
-        self.assertEqual(
-            cgsnapshot_detail.item(1).getAttribute('name'),
-            'test_cgsnapshot')
-        self.assertEqual(
-            cgsnapshot_detail.item(1).getAttribute('id'),
-            cgsnapshot_id2)
-        self.assertEqual(
-            cgsnapshot_detail.item(1).getAttribute('status'), 'creating')
+        self.assertEqual(cgsnapshot_detail.item(1).getAttribute('description'),
+                         'this is a test cgsnapshot')
+        self.assertEqual('test_cgsnapshot',
+                         cgsnapshot_detail.item(1).getAttribute('name'))
+        self.assertEqual(cgsnapshot_detail.item(1).getAttribute('id'),
+                         cgsnapshot_id2)
+        self.assertEqual('creating',
+                         cgsnapshot_detail.item(1).getAttribute('status'))
 
-        self.assertEqual(
-            cgsnapshot_detail.item(2).getAttribute('description'),
-            'this is a test cgsnapshot')
-        self.assertEqual(
-            cgsnapshot_detail.item(2).getAttribute('name'),
-            'test_cgsnapshot')
-        self.assertEqual(
-            cgsnapshot_detail.item(2).getAttribute('id'),
-            cgsnapshot_id3)
-        self.assertEqual(
-            cgsnapshot_detail.item(2).getAttribute('status'), 'creating')
+        self.assertEqual(cgsnapshot_detail.item(2).getAttribute('description'),
+                         'this is a test cgsnapshot')
+        self.assertEqual('test_cgsnapshot',
+                         cgsnapshot_detail.item(2).getAttribute('name'))
+        self.assertEqual(cgsnapshot_detail.item(2).getAttribute('id'),
+                         cgsnapshot_id3)
+        self.assertEqual('creating',
+                         cgsnapshot_detail.item(2).getAttribute('status'))
 
         db.cgsnapshot_destroy(context.get_admin_context(),
                               cgsnapshot_id3)
@@ -360,7 +351,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
 
         res_dict = json.loads(res.body)
 
-        self.assertEqual(res.status_int, 202)
+        self.assertEqual(202, res.status_int)
         self.assertIn('id', res_dict['cgsnapshot'])
 
         db.cgsnapshot_destroy(context.get_admin_context(), cgsnapshot_id)
@@ -375,8 +366,8 @@ class CgsnapshotsAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app())
         res_dict = json.loads(res.body)
 
-        self.assertEqual(res.status_int, 400)
-        self.assertEqual(res_dict['badRequest']['code'], 400)
+        self.assertEqual(400, res.status_int)
+        self.assertEqual(400, res_dict['badRequest']['code'])
         self.assertEqual("Missing required element 'cgsnapshot' in "
                          "request body.",
                          res_dict['badRequest']['message'])
@@ -446,10 +437,9 @@ class CgsnapshotsAPITestCase(test.TestCase):
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
 
-        self.assertEqual(res.status_int, 202)
-        self.assertEqual(self._get_cgsnapshot_attrib(cgsnapshot_id,
-                         'status'),
-                         'deleting')
+        self.assertEqual(202, res.status_int)
+        self.assertEqual('deleting', self._get_cgsnapshot_attrib(cgsnapshot_id,
+                         'status'))
 
         db.cgsnapshot_destroy(context.get_admin_context(),
                               cgsnapshot_id)
@@ -465,10 +455,10 @@ class CgsnapshotsAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app())
         res_dict = json.loads(res.body)
 
-        self.assertEqual(res.status_int, 404)
-        self.assertEqual(res_dict['itemNotFound']['code'], 404)
-        self.assertEqual(res_dict['itemNotFound']['message'],
-                         'CgSnapshot 9999 could not be found.')
+        self.assertEqual(404, res.status_int)
+        self.assertEqual(404, res_dict['itemNotFound']['code'])
+        self.assertEqual('CgSnapshot 9999 could not be found.',
+                         res_dict['itemNotFound']['message'])
 
     def test_delete_cgsnapshot_with_Invalidcgsnapshot(self):
         consistencygroup_id = utils.create_consistencygroup(self.context)['id']
@@ -485,10 +475,10 @@ class CgsnapshotsAPITestCase(test.TestCase):
         res = req.get_response(fakes.wsgi_app())
         res_dict = json.loads(res.body)
 
-        self.assertEqual(res.status_int, 400)
-        self.assertEqual(res_dict['badRequest']['code'], 400)
-        self.assertEqual(res_dict['badRequest']['message'],
-                         'Invalid cgsnapshot')
+        self.assertEqual(400, res.status_int)
+        self.assertEqual(400, res_dict['badRequest']['code'])
+        self.assertEqual('Invalid cgsnapshot',
+                         res_dict['badRequest']['message'])
 
         db.cgsnapshot_destroy(context.get_admin_context(),
                               cgsnapshot_id)

@@ -59,7 +59,7 @@ class TestFaults(test.TestCase):
             }
             actual = jsonutils.loads(response.body)
 
-            self.assertEqual(response.content_type, "application/json")
+            self.assertEqual("application/json", response.content_type)
             self.assertEqual(expected, actual)
 
     def test_413_fault_json(self):
@@ -84,7 +84,7 @@ class TestFaults(test.TestCase):
             }
             actual = jsonutils.loads(response.body)
 
-            self.assertEqual(response.content_type, "application/json")
+            self.assertEqual("application/json", response.content_type)
             self.assertEqual(expected, actual)
 
     def test_raise(self):
@@ -95,8 +95,8 @@ class TestFaults(test.TestCase):
 
         req = webob.Request.blank('/.xml')
         resp = req.get_response(raiser)
-        self.assertEqual(resp.content_type, "application/xml")
-        self.assertEqual(resp.status_int, 404)
+        self.assertEqual("application/xml", resp.content_type)
+        self.assertEqual(404, resp.status_int)
         self.assertIn('whut?', resp.body)
 
     def test_raise_403(self):
@@ -107,8 +107,8 @@ class TestFaults(test.TestCase):
 
         req = webob.Request.blank('/.xml')
         resp = req.get_response(raiser)
-        self.assertEqual(resp.content_type, "application/xml")
-        self.assertEqual(resp.status_int, 403)
+        self.assertEqual("application/xml", resp.content_type)
+        self.assertEqual(403, resp.status_int)
         self.assertNotIn('resizeNotAllowed', resp.body)
         self.assertIn('forbidden', resp.body)
 
@@ -128,15 +128,15 @@ class TestFaults(test.TestCase):
 
         req = webob.Request.blank('/.xml')
         resp = req.get_response(raiser)
-        self.assertEqual(resp.content_type, "application/xml")
-        self.assertEqual(resp.status_int, 404)
+        self.assertEqual("application/xml", resp.content_type)
+        self.assertEqual(404, resp.status_int)
         self.assertIn(("Mensaje traducido"), resp.body)
         self.stubs.UnsetAll()
 
     def test_fault_has_status_int(self):
         """Ensure the status_int is set correctly on faults."""
         fault = wsgi.Fault(webob.exc.HTTPBadRequest(explanation='what?'))
-        self.assertEqual(fault.status_int, 400)
+        self.assertEqual(400, fault.status_int)
 
     def test_xml_serializer(self):
         """Ensure that a v2 request responds with a v2 xmlns."""
@@ -147,8 +147,8 @@ class TestFaults(test.TestCase):
         response = request.get_response(fault)
 
         self.assertIn(common.XML_NS_V2, response.body)
-        self.assertEqual(response.content_type, "application/xml")
-        self.assertEqual(response.status_int, 400)
+        self.assertEqual("application/xml", response.content_type)
+        self.assertEqual(400, response.status_int)
 
 
 class FaultsXMLSerializationTestV11(test.TestCase):

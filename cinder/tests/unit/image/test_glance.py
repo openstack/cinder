@@ -64,8 +64,8 @@ class TestGlanceSerializer(test.TestCase):
                 '[{"device_name": "/dev/fake"}, '
                 '{"device_name": "/dev/fake0"}]'}}
         converted = glance._convert_to_string(metadata)
-        self.assertEqual(converted, converted_expected)
-        self.assertEqual(glance._convert_from_string(converted), metadata)
+        self.assertEqual(converted_expected, converted)
+        self.assertEqual(metadata, glance._convert_from_string(converted))
 
 
 class TestGlanceImageService(test.TestCase):
@@ -220,8 +220,8 @@ class TestGlanceImageService(test.TestCase):
         self.context.project_id = proj
 
         self.assertEqual(1, len(image_metas))
-        self.assertEqual(image_metas[0]['name'], 'test image')
-        self.assertEqual(image_metas[0]['is_public'], False)
+        self.assertEqual('test image', image_metas[0]['name'])
+        self.assertEqual(False, image_metas[0]['is_public'])
 
     def test_detail_marker(self):
         fixtures = []
@@ -232,7 +232,7 @@ class TestGlanceImageService(test.TestCase):
             ids.append(self.service.create(self.context, fixture)['id'])
 
         image_metas = self.service.detail(self.context, marker=ids[1])
-        self.assertEqual(len(image_metas), 8)
+        self.assertEqual(8, len(image_metas))
         i = 2
         for meta in image_metas:
             expected = {
@@ -266,7 +266,7 @@ class TestGlanceImageService(test.TestCase):
             ids.append(self.service.create(self.context, fixture)['id'])
 
         image_metas = self.service.detail(self.context, limit=5)
-        self.assertEqual(len(image_metas), 5)
+        self.assertEqual(5, len(image_metas))
 
     def test_detail_default_limit(self):
         fixtures = []
@@ -289,7 +289,7 @@ class TestGlanceImageService(test.TestCase):
             ids.append(self.service.create(self.context, fixture)['id'])
 
         image_metas = self.service.detail(self.context, marker=ids[3], limit=5)
-        self.assertEqual(len(image_metas), 5)
+        self.assertEqual(5, len(image_metas))
         i = 4
         for meta in image_metas:
             expected = {
@@ -396,7 +396,7 @@ class TestGlanceImageService(test.TestCase):
             'properties': {},
             'owner': None,
         }
-        self.assertEqual(image_meta, expected)
+        self.assertEqual(expected, image_meta)
 
     def test_show_raises_when_no_authtoken_in_the_context(self):
         fixture = self._make_fixture(name='image1',
@@ -433,21 +433,21 @@ class TestGlanceImageService(test.TestCase):
                 'owner': None,
             },
         ]
-        self.assertEqual(image_metas, expected)
+        self.assertEqual(expected, image_metas)
 
     def test_show_makes_datetimes(self):
         fixture = self._make_datetime_fixture()
         image_id = self.service.create(self.context, fixture)['id']
         image_meta = self.service.show(self.context, image_id)
-        self.assertEqual(image_meta['created_at'], self.NOW_DATETIME)
-        self.assertEqual(image_meta['updated_at'], self.NOW_DATETIME)
+        self.assertEqual(self.NOW_DATETIME, image_meta['created_at'])
+        self.assertEqual(self.NOW_DATETIME, image_meta['updated_at'])
 
     def test_detail_makes_datetimes(self):
         fixture = self._make_datetime_fixture()
         self.service.create(self.context, fixture)
         image_meta = self.service.detail(self.context)[0]
-        self.assertEqual(image_meta['created_at'], self.NOW_DATETIME)
-        self.assertEqual(image_meta['updated_at'], self.NOW_DATETIME)
+        self.assertEqual(self.NOW_DATETIME, image_meta['created_at'])
+        self.assertEqual(self.NOW_DATETIME, image_meta['updated_at'])
 
     def test_download_with_retries(self):
         tries = [0]
@@ -570,13 +570,13 @@ class TestGlanceImageService(test.TestCase):
         (service, same_id) = glance.get_remote_image_service(self.context,
                                                              image_url)
         self.assertEqual(same_id, image_id)
-        self.assertEqual(service._client.netloc, 'something-less-likely')
+        self.assertEqual('something-less-likely', service._client.netloc)
         for ipv6_url in ('[::1]', '::1', '[::1]:444'):
             image_url = 'http://%s/%s' % (ipv6_url, image_id)
             (service, same_id) = glance.get_remote_image_service(self.context,
                                                                  image_url)
             self.assertEqual(same_id, image_id)
-            self.assertEqual(service._client.netloc, ipv6_url)
+            self.assertEqual(ipv6_url, service._client.netloc)
 
     def test_extracting_missing_attributes(self):
         """Verify behavior from glance objects that are missing attributes
@@ -620,7 +620,7 @@ class TestGlanceImageService(test.TestCase):
             'properties': {},
             'owner': None,
         }
-        self.assertEqual(actual, expected)
+        self.assertEqual(expected, actual)
 
     @mock.patch('cinder.image.glance.CONF')
     def test_extracting_v2_boot_properties(self, config):

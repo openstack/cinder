@@ -88,22 +88,22 @@ class HostTestCase(test.TestCase):
     def _test_host_update(self, host, key, val, expected_value):
         body = {key: val}
         result = self.controller.update(self.req, host, body=body)
-        self.assertEqual(result[key], expected_value)
+        self.assertEqual(expected_value, result[key])
 
     def test_list_hosts(self):
         """Verify that the volume hosts are returned."""
         hosts = os_hosts._list_hosts(self.req)
-        self.assertEqual(hosts, LIST_RESPONSE)
+        self.assertEqual(LIST_RESPONSE, hosts)
 
         cinder_hosts = os_hosts._list_hosts(self.req, 'cinder-volume')
         expected = [host for host in LIST_RESPONSE
                     if host['service'] == 'cinder-volume']
-        self.assertEqual(cinder_hosts, expected)
+        self.assertEqual(expected, cinder_hosts)
 
     def test_list_hosts_with_zone(self):
         req = FakeRequestWithcinderZone()
         hosts = os_hosts._list_hosts(req)
-        self.assertEqual(hosts, LIST_RESPONSE)
+        self.assertEqual(LIST_RESPONSE, hosts)
 
     def test_bad_status_value(self):
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,

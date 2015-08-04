@@ -132,7 +132,7 @@ class VolumeTransferTestCase(test.TestCase):
         self.assertEqual(t['id'], transfer['id'], 'Unexpected transfer id')
 
         ts = tx_api.get_all(self.ctxt)
-        self.assertEqual(len(ts), 1, 'Unexpected number of transfers.')
+        self.assertEqual(1, len(ts), 'Unexpected number of transfers.')
 
         nctxt = context.RequestContext(user_id='new_user_id',
                                        project_id='new_project_id')
@@ -143,7 +143,7 @@ class VolumeTransferTestCase(test.TestCase):
                           transfer['id'])
 
         ts = tx_api.get_all(nctxt)
-        self.assertEqual(len(ts), 0, 'Unexpected transfers listed.')
+        self.assertEqual(0, len(ts), 'Unexpected transfers listed.')
 
     @mock.patch('cinder.volume.utils.notify_about_volume_usage')
     def test_delete_transfer_with_deleted_volume(self, mock_notify):

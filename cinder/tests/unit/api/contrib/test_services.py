@@ -211,7 +211,7 @@ class ServicesTest(test.TestCase):
                                   'status': 'enabled', 'state': 'down',
                                   'updated_at': datetime.datetime(
                                       2012, 9, 18, 8, 3, 38)}]}
-        self.assertEqual(res_dict, response)
+        self.assertEqual(response, res_dict)
 
     def test_services_detail(self):
         self.ext_mgr.extensions['os-extended-services'] = True
@@ -259,7 +259,7 @@ class ServicesTest(test.TestCase):
                                   'updated_at': datetime.datetime(
                                       2012, 9, 18, 8, 3, 38),
                                   'disabled_reason': ''}]}
-        self.assertEqual(res_dict, response)
+        self.assertEqual(response, res_dict)
 
     def test_services_list_with_host(self):
         req = FakeRequestWithHost()
@@ -278,7 +278,7 @@ class ServicesTest(test.TestCase):
              'status': 'disabled', 'state': 'up',
              'updated_at': datetime.datetime(2012, 10, 29,
                                              13, 42, 5)}]}
-        self.assertEqual(res_dict, response)
+        self.assertEqual(response, res_dict)
 
     def test_services_detail_with_host(self):
         self.ext_mgr.extensions['os-extended-services'] = True
@@ -301,7 +301,7 @@ class ServicesTest(test.TestCase):
              'updated_at': datetime.datetime(2012, 10, 29,
                                              13, 42, 5),
              'disabled_reason': 'test2'}]}
-        self.assertEqual(res_dict, response)
+        self.assertEqual(response, res_dict)
 
     def test_services_list_with_service(self):
         req = FakeRequestWithService()
@@ -336,7 +336,7 @@ class ServicesTest(test.TestCase):
              'state': 'down',
              'updated_at': datetime.datetime(2012, 9, 18,
                                              8, 3, 38)}]}
-        self.assertEqual(res_dict, response)
+        self.assertEqual(response, res_dict)
 
     def test_services_detail_with_service(self):
         self.ext_mgr.extensions['os-extended-services'] = True
@@ -377,7 +377,7 @@ class ServicesTest(test.TestCase):
              'updated_at': datetime.datetime(2012, 9, 18,
                                              8, 3, 38),
              'disabled_reason': ''}]}
-        self.assertEqual(res_dict, response)
+        self.assertEqual(response, res_dict)
 
     def test_services_list_with_binary(self):
         req = FakeRequestWithBinary()
@@ -412,7 +412,7 @@ class ServicesTest(test.TestCase):
              'state': 'down',
              'updated_at': datetime.datetime(2012, 9, 18,
                                              8, 3, 38)}]}
-        self.assertEqual(res_dict, response)
+        self.assertEqual(response, res_dict)
 
     def test_services_detail_with_binary(self):
         self.ext_mgr.extensions['os-extended-services'] = True
@@ -453,7 +453,7 @@ class ServicesTest(test.TestCase):
              'updated_at': datetime.datetime(2012, 9, 18,
                                              8, 3, 38),
              'disabled_reason': ''}]}
-        self.assertEqual(res_dict, response)
+        self.assertEqual(response, res_dict)
 
     def test_services_list_with_host_service(self):
         req = FakeRequestWithHostService()
@@ -467,7 +467,7 @@ class ServicesTest(test.TestCase):
              'state': 'up',
              'updated_at': datetime.datetime(2012, 10, 29,
                                              13, 42, 5)}]}
-        self.assertEqual(res_dict, response)
+        self.assertEqual(response, res_dict)
 
     def test_services_detail_with_host_service(self):
         self.ext_mgr.extensions['os-extended-services'] = True
@@ -484,7 +484,7 @@ class ServicesTest(test.TestCase):
              'updated_at': datetime.datetime(2012, 10, 29,
                                              13, 42, 5),
              'disabled_reason': 'test2'}]}
-        self.assertEqual(res_dict, response)
+        self.assertEqual(response, res_dict)
 
     def test_services_list_with_host_binary(self):
         req = FakeRequestWithHostBinary()
@@ -498,7 +498,7 @@ class ServicesTest(test.TestCase):
              'state': 'up',
              'updated_at': datetime.datetime(2012, 10, 29,
                                              13, 42, 5)}]}
-        self.assertEqual(res_dict, response)
+        self.assertEqual(response, res_dict)
 
     def test_services_detail_with_host_binary(self):
         self.ext_mgr.extensions['os-extended-services'] = True
@@ -515,35 +515,35 @@ class ServicesTest(test.TestCase):
              'updated_at': datetime.datetime(2012, 10, 29,
                                              13, 42, 5),
              'disabled_reason': 'test2'}]}
-        self.assertEqual(res_dict, response)
+        self.assertEqual(response, res_dict)
 
     def test_services_enable_with_service_key(self):
         body = {'host': 'host1', 'service': 'cinder-volume'}
         req = fakes.HTTPRequest.blank('/v2/fake/os-services/enable')
         res_dict = self.controller.update(req, "enable", body)
 
-        self.assertEqual(res_dict['status'], 'enabled')
+        self.assertEqual('enabled', res_dict['status'])
 
     def test_services_enable_with_binary_key(self):
         body = {'host': 'host1', 'binary': 'cinder-volume'}
         req = fakes.HTTPRequest.blank('/v2/fake/os-services/enable')
         res_dict = self.controller.update(req, "enable", body)
 
-        self.assertEqual(res_dict['status'], 'enabled')
+        self.assertEqual('enabled', res_dict['status'])
 
     def test_services_disable_with_service_key(self):
         req = fakes.HTTPRequest.blank('/v2/fake/os-services/disable')
         body = {'host': 'host1', 'service': 'cinder-volume'}
         res_dict = self.controller.update(req, "disable", body)
 
-        self.assertEqual(res_dict['status'], 'disabled')
+        self.assertEqual('disabled', res_dict['status'])
 
     def test_services_disable_with_binary_key(self):
         req = fakes.HTTPRequest.blank('/v2/fake/os-services/disable')
         body = {'host': 'host1', 'binary': 'cinder-volume'}
         res_dict = self.controller.update(req, "disable", body)
 
-        self.assertEqual(res_dict['status'], 'disabled')
+        self.assertEqual('disabled', res_dict['status'])
 
     def test_services_disable_log_reason(self):
         self.ext_mgr.extensions['os-extended-services'] = True
@@ -556,8 +556,8 @@ class ServicesTest(test.TestCase):
                 }
         res_dict = self.controller.update(req, "disable-log-reason", body)
 
-        self.assertEqual(res_dict['status'], 'disabled')
-        self.assertEqual(res_dict['disabled_reason'], 'test-reason')
+        self.assertEqual('disabled', res_dict['status'])
+        self.assertEqual('test-reason', res_dict['disabled_reason'])
 
     def test_services_disable_log_reason_none(self):
         self.ext_mgr.extensions['os-extended-services'] = True

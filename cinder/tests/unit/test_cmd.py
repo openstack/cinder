@@ -65,7 +65,7 @@ class TestCinderApiCmd(test.TestCase):
 
         cinder_api.main()
 
-        self.assertEqual(CONF.project, 'cinder')
+        self.assertEqual('cinder', CONF.project)
         self.assertEqual(CONF.version, version.version_string())
         log_setup.assert_called_once_with(CONF, "cinder")
         monkey_patch.assert_called_once_with()
@@ -98,7 +98,7 @@ class TestCinderBackupCmd(test.TestCase):
 
         cinder_backup.main()
 
-        self.assertEqual(CONF.project, 'cinder')
+        self.assertEqual('cinder', CONF.project)
         self.assertEqual(CONF.version, version.version_string())
         log_setup.assert_called_once_with(CONF, "cinder")
         monkey_patch.assert_called_once_with()
@@ -132,7 +132,7 @@ class TestCinderAllCmd(test.TestCase):
 
         cinder_all.main()
 
-        self.assertEqual(CONF.project, 'cinder')
+        self.assertEqual('cinder', CONF.project)
         self.assertEqual(CONF.version, version.version_string())
         log_setup.assert_called_once_with(CONF, "cinder")
         get_logger.assert_called_once_with('cinder.all')
@@ -169,7 +169,7 @@ class TestCinderAllCmd(test.TestCase):
 
             cinder_all.main()
 
-            self.assertEqual(CONF.project, 'cinder')
+            self.assertEqual('cinder', CONF.project)
             self.assertEqual(CONF.version, version.version_string())
             log_setup.assert_called_once_with(CONF, "cinder")
             get_logger.assert_called_once_with('cinder.all')
@@ -211,7 +211,7 @@ class TestCinderAllCmd(test.TestCase):
 
         cinder_all.main()
 
-        self.assertEqual(CONF.project, 'cinder')
+        self.assertEqual('cinder', CONF.project)
         self.assertEqual(CONF.version, version.version_string())
         log_setup.assert_called_once_with(CONF, "cinder")
         get_logger.assert_called_once_with('cinder.all')
@@ -247,7 +247,7 @@ class TestCinderSchedulerCmd(test.TestCase):
 
         cinder_scheduler.main()
 
-        self.assertEqual(CONF.project, 'cinder')
+        self.assertEqual('cinder', CONF.project)
         self.assertEqual(CONF.version, version.version_string())
         log_setup.assert_called_once_with(CONF, "cinder")
         monkey_patch.assert_called_once_with()
@@ -278,7 +278,7 @@ class TestCinderVolumeCmd(test.TestCase):
 
         cinder_volume.main()
 
-        self.assertEqual(CONF.project, 'cinder')
+        self.assertEqual('cinder', CONF.project)
         self.assertEqual(CONF.version, version.version_string())
         log_setup.assert_called_once_with(CONF, "cinder")
         monkey_patch.assert_called_once_with()
@@ -299,7 +299,7 @@ class TestCinderVolumeCmd(test.TestCase):
 
         cinder_volume.main()
 
-        self.assertEqual(CONF.project, 'cinder')
+        self.assertEqual('cinder', CONF.project)
         self.assertEqual(CONF.version, version.version_string())
         log_setup.assert_called_once_with(CONF, "cinder")
         monkey_patch.assert_called_once_with()
@@ -1052,7 +1052,7 @@ class TestCinderRtstoolCmd(test.TestCase):
         exit = self.assertRaises(SystemExit, cinder_rtstool.usage)
 
         self.assertTrue(usage.called)
-        self.assertEqual(exit.code, 1)
+        self.assertEqual(1, exit.code)
 
     def test_main_create_argv_lt_6(self):
         sys.argv = ['cinder-rtstool', 'create']
@@ -1083,7 +1083,7 @@ class TestCinderRtstoolCmd(test.TestCase):
             exit = self.assertRaises(SystemExit, cinder_rtstool.main)
 
             self.assertTrue(usage.called)
-            self.assertEqual(exit.code, 1)
+            self.assertEqual(1, exit.code)
 
     @mock.patch('cinder.cmd.rtstool.save_to_file')
     def test_main_save(self, mock_save):
@@ -1225,7 +1225,7 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
         self.assertEqual(CONF.version, version.version_string())
         log_setup.assert_called_once_with(CONF, "cinder")
         get_logger.assert_called_once_with('cinder')
-        self.assertEqual(exit.code, -1)
+        self.assertEqual(-1, exit.code)
         rpc_init.assert_called_once_with(CONF)
         last_completed_audit_period.assert_called_once_with()
 
@@ -1277,7 +1277,7 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
         volume_usage_audit.main()
 
         get_admin_context.assert_called_once_with()
-        self.assertEqual(CONF.project, 'cinder')
+        self.assertEqual('cinder', CONF.project)
         self.assertEqual(CONF.version, version.version_string())
         log_setup.assert_called_once_with(CONF, "cinder")
         get_logger.assert_called_once_with('cinder')
@@ -1343,7 +1343,7 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
         volume_usage_audit.main()
 
         get_admin_context.assert_called_once_with()
-        self.assertEqual(CONF.project, 'cinder')
+        self.assertEqual('cinder', CONF.project)
         self.assertEqual(CONF.version, version.version_string())
         log_setup.assert_called_once_with(CONF, "cinder")
         get_logger.assert_called_once_with('cinder')
@@ -1421,7 +1421,7 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
         volume_usage_audit.main()
 
         get_admin_context.assert_called_once_with()
-        self.assertEqual(CONF.project, 'cinder')
+        self.assertEqual('cinder', CONF.project)
         self.assertEqual(CONF.version, version.version_string())
         log_setup.assert_called_once_with(CONF, "cinder")
         get_logger.assert_called_once_with('cinder')
@@ -1498,7 +1498,7 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
         volume_usage_audit.main()
 
         get_admin_context.assert_called_once_with()
-        self.assertEqual(CONF.project, 'cinder')
+        self.assertEqual('cinder', CONF.project)
         self.assertEqual(CONF.version, version.version_string())
         log_setup.assert_called_once_with(CONF, "cinder")
         get_logger.assert_called_once_with('cinder')

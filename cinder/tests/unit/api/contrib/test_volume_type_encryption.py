@@ -162,7 +162,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
                                'provider': provider,
                                'volume_type_id': volume_type['id']}}
 
-        self.assertEqual(len(self.notifier.notifications), 0)
+        self.assertEqual(0, len(self.notifier.notifications))
         res = self._get_response(volume_type)
         res_dict = json.loads(res.body)
         self.assertEqual(200, res.status_code)
@@ -177,7 +177,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
                                  req_headers='application/json')
         res_dict = json.loads(res.body)
 
-        self.assertEqual(len(self.notifier.notifications), 1)
+        self.assertEqual(1, len(self.notifier.notifications))
 
         # check response
         self.assertIn('encryption', res_dict)
@@ -218,7 +218,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
         req.headers['Accept'] = 'application/xml'
         res = req.get_response(fakes.wsgi_app(fake_auth_context=ctxt))
 
-        self.assertEqual(res.status_int, 200)
+        self.assertEqual(200, res.status_int)
 
         db.volume_type_destroy(context.get_admin_context(), volume_type['id'])
 
@@ -232,7 +232,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
                                  req_headers='application/json')
         res_dict = json.loads(res.body)
 
-        self.assertEqual(len(self.notifier.notifications), 0)
+        self.assertEqual(0, len(self.notifier.notifications))
         self.assertEqual(404, res.status_code)
 
         expected = {

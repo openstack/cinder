@@ -74,9 +74,9 @@ class ExtendedSnapshotAttributesTest(test.TestCase):
         return jsonutils.loads(body).get('snapshots')
 
     def assertSnapshotAttributes(self, snapshot, project_id, progress):
-        self.assertEqual(snapshot.get('%sproject_id' % self.prefix),
-                         project_id)
-        self.assertEqual(snapshot.get('%sprogress' % self.prefix), progress)
+        self.assertEqual(project_id,
+                         snapshot.get('%sproject_id' % self.prefix))
+        self.assertEqual(progress, snapshot.get('%sprogress' % self.prefix))
 
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
     @mock.patch('cinder.objects.Volume.get_by_id')
@@ -93,7 +93,7 @@ class ExtendedSnapshotAttributesTest(test.TestCase):
         url = '/v2/fake/snapshots/%s' % UUID1
         res = self._make_request(url)
 
-        self.assertEqual(res.status_int, 200)
+        self.assertEqual(200, res.status_int)
         self.assertSnapshotAttributes(self._get_snapshot(res.body),
                                       project_id='fake',
                                       progress='0%')
@@ -102,7 +102,7 @@ class ExtendedSnapshotAttributesTest(test.TestCase):
         url = '/v2/fake/snapshots/detail'
         res = self._make_request(url)
 
-        self.assertEqual(res.status_int, 200)
+        self.assertEqual(200, res.status_int)
         for snapshot in self._get_snapshots(res.body):
             self.assertSnapshotAttributes(snapshot,
                                           project_id='fake',

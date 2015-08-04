@@ -234,7 +234,7 @@ class DBAPIVolumeTestCase(BaseTest):
     def test_volume_create(self):
         volume = db.volume_create(self.ctxt, {'host': 'host1'})
         self.assertTrue(uuidutils.is_uuid_like(volume['id']))
-        self.assertEqual(volume.host, 'host1')
+        self.assertEqual('host1', volume.host)
 
     def test_volume_attached_invalid_uuid(self):
         self.assertRaises(exception.InvalidUUID, db.volume_attached, self.ctxt,
@@ -486,16 +486,16 @@ class DBAPIVolumeTestCase(BaseTest):
         # no name filter
         volumes = db.volume_get_all(self.ctxt, None, None, ['created_at'],
                                     ['asc'])
-        self.assertEqual(len(volumes), 3)
+        self.assertEqual(3, len(volumes))
         # filter on name
         volumes = db.volume_get_all(self.ctxt, None, None, ['created_at'],
                                     ['asc'], {'display_name': 'vol2'})
-        self.assertEqual(len(volumes), 1)
+        self.assertEqual(1, len(volumes))
         self.assertEqual(volumes[0]['display_name'], 'vol2')
         # filter no match
         volumes = db.volume_get_all(self.ctxt, None, None, ['created_at'],
                                     ['asc'], {'display_name': 'vol4'})
-        self.assertEqual(len(volumes), 0)
+        self.assertEqual(0, len(volumes))
 
     def test_volume_list_by_status(self):
         db.volume_create(self.ctxt, {'display_name': 'vol1',
@@ -508,30 +508,30 @@ class DBAPIVolumeTestCase(BaseTest):
         # no status filter
         volumes = db.volume_get_all(self.ctxt, None, None, ['created_at'],
                                     ['asc'])
-        self.assertEqual(len(volumes), 3)
+        self.assertEqual(3, len(volumes))
         # single match
         volumes = db.volume_get_all(self.ctxt, None, None, ['created_at'],
                                     ['asc'], {'status': 'in-use'})
-        self.assertEqual(len(volumes), 1)
-        self.assertEqual(volumes[0]['status'], 'in-use')
+        self.assertEqual(1, len(volumes))
+        self.assertEqual('in-use', volumes[0]['status'])
         # multiple match
         volumes = db.volume_get_all(self.ctxt, None, None, ['created_at'],
                                     ['asc'], {'status': 'available'})
-        self.assertEqual(len(volumes), 2)
+        self.assertEqual(2, len(volumes))
         for volume in volumes:
-            self.assertEqual(volume['status'], 'available')
+            self.assertEqual('available', volume['status'])
         # multiple filters
         volumes = db.volume_get_all(self.ctxt, None, None, ['created_at'],
                                     ['asc'], {'status': 'available',
                                               'display_name': 'vol1'})
-        self.assertEqual(len(volumes), 1)
+        self.assertEqual(1, len(volumes))
         self.assertEqual(volumes[0]['display_name'], 'vol1')
-        self.assertEqual(volumes[0]['status'], 'available')
+        self.assertEqual('available', volumes[0]['status'])
         # no match
         volumes = db.volume_get_all(self.ctxt, None, None, ['created_at'],
                                     ['asc'], {'status': 'in-use',
                                               'display_name': 'vol1'})
-        self.assertEqual(len(volumes), 0)
+        self.assertEqual(0, len(volumes))
 
     def _assertEqualsVolumeOrderResult(self, correct_order, limit=None,
                                        sort_keys=None, sort_dirs=None,
@@ -1046,7 +1046,7 @@ class DBAPISnapshotTestCase(BaseTest):
                                        'project_id': 'project1',
                                        'volume_size': 42})
         actual = db.snapshot_data_get_for_project(self.ctxt, 'project1')
-        self.assertEqual(actual, (1, 42))
+        self.assertEqual((1, 42), actual)
 
     def test_snapshot_get_all_by_filter(self):
         db.volume_create(self.ctxt, {'id': 1})
@@ -1531,8 +1531,8 @@ class DBAPIQuotaTestCase(BaseTest):
     def test_quota_create(self):
         quota = db.quota_create(self.ctxt, 'project1', 'resource', 99)
         self.assertEqual(quota.resource, 'resource')
-        self.assertEqual(quota.hard_limit, 99)
-        self.assertEqual(quota.project_id, 'project1')
+        self.assertEqual(99, quota.hard_limit)
+        self.assertEqual('project1', quota.project_id)
 
     def test_quota_get(self):
         quota = db.quota_create(self.ctxt, 'project1', 'resource', 99)
@@ -1554,9 +1554,9 @@ class DBAPIQuotaTestCase(BaseTest):
         db.quota_create(self.ctxt, 'project1', 'resource1', 41)
         db.quota_update(self.ctxt, 'project1', 'resource1', 42)
         quota = db.quota_get(self.ctxt, 'project1', 'resource1')
-        self.assertEqual(quota.hard_limit, 42)
-        self.assertEqual(quota.resource, 'resource1')
-        self.assertEqual(quota.project_id, 'project1')
+        self.assertEqual(42, quota.hard_limit)
+        self.assertEqual('resource1', quota.resource)
+        self.assertEqual('project1', quota.project_id)
 
     def test_quota_update_nonexistent(self):
         self.assertRaises(exception.ProjectQuotaNotFound,

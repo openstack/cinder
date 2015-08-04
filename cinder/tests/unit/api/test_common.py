@@ -65,9 +65,9 @@ class LimiterTest(test.TestCase):
     def test_limiter_offset_over_max(self):
         """Test offset key works with a number over 1000 (max_limit)."""
         req = webob.Request.blank('/?offset=1001')
-        self.assertEqual(common.limited(self.tiny, req), [])
-        self.assertEqual(common.limited(self.small, req), [])
-        self.assertEqual(common.limited(self.medium, req), [])
+        self.assertEqual([], common.limited(self.tiny, req))
+        self.assertEqual([], common.limited(self.small, req))
+        self.assertEqual([], common.limited(self.medium, req))
         self.assertEqual(
             common.limited(self.large, req), self.large[1001:2001])
 
@@ -177,19 +177,19 @@ class PaginationParamsTest(test.TestCase):
     def test_no_params(self):
         """Test no params."""
         req = webob.Request.blank('/')
-        self.assertEqual(common.get_pagination_params(req), {})
+        self.assertEqual({}, common.get_pagination_params(req))
 
     def test_valid_marker(self):
         """Test valid marker param."""
         req = webob.Request.blank(
             '/?marker=263abb28-1de6-412f-b00b-f0ee0c4333c2')
-        self.assertEqual(common.get_pagination_params(req),
-                         {'marker': '263abb28-1de6-412f-b00b-f0ee0c4333c2'})
+        self.assertEqual({'marker': '263abb28-1de6-412f-b00b-f0ee0c4333c2'},
+                         common.get_pagination_params(req))
 
     def test_valid_limit(self):
         """Test valid limit param."""
         req = webob.Request.blank('/?limit=10')
-        self.assertEqual(common.get_pagination_params(req), {'limit': 10})
+        self.assertEqual({'limit': 10}, common.get_pagination_params(req))
 
     def test_invalid_limit(self):
         """Test invalid limit param."""
@@ -201,8 +201,8 @@ class PaginationParamsTest(test.TestCase):
         """Test valid limit and marker parameters."""
         marker = '263abb28-1de6-412f-b00b-f0ee0c4333c2'
         req = webob.Request.blank('/?limit=20&marker=%s' % marker)
-        self.assertEqual(common.get_pagination_params(req),
-                         {'marker': marker, 'limit': 20})
+        self.assertEqual({'marker': marker, 'limit': 20},
+                         common.get_pagination_params(req))
 
 
 class SortParamUtilsTest(test.TestCase):
@@ -306,31 +306,31 @@ class MiscFunctionsTest(test.TestCase):
         fixture = 'http://www.testsite.com/v1/images'
         expected = 'http://www.testsite.com/images'
         actual = common.remove_version_from_href(fixture)
-        self.assertEqual(actual, expected)
+        self.assertEqual(expected, actual)
 
     def test_remove_version_from_href(self):
         fixture = 'http://www.testsite.com/v1.1/images'
         expected = 'http://www.testsite.com/images'
         actual = common.remove_version_from_href(fixture)
-        self.assertEqual(actual, expected)
+        self.assertEqual(expected, actual)
 
     def test_remove_version_from_href_2(self):
         fixture = 'http://www.testsite.com/v1.1/'
         expected = 'http://www.testsite.com/'
         actual = common.remove_version_from_href(fixture)
-        self.assertEqual(actual, expected)
+        self.assertEqual(expected, actual)
 
     def test_remove_version_from_href_3(self):
         fixture = 'http://www.testsite.com/v10.10'
         expected = 'http://www.testsite.com'
         actual = common.remove_version_from_href(fixture)
-        self.assertEqual(actual, expected)
+        self.assertEqual(expected, actual)
 
     def test_remove_version_from_href_4(self):
         fixture = 'http://www.testsite.com/v1.1/images/v10.5'
         expected = 'http://www.testsite.com/images/v10.5'
         actual = common.remove_version_from_href(fixture)
-        self.assertEqual(actual, expected)
+        self.assertEqual(expected, actual)
 
     def test_remove_version_from_href_bad_request(self):
         fixture = 'http://www.testsite.com/1.1/images'

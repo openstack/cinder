@@ -568,7 +568,7 @@ class NfsDriverTestCase(test.TestCase):
         drv._load_shares_config(drv.configuration.nfs_shares_config)
 
         self.assertIn(self.TEST_NFS_EXPORT1, drv.shares)
-        self.assertEqual(len(drv.shares), 1)
+        self.assertEqual(1, len(drv.shares))
 
         mox.VerifyAll()
 
@@ -1194,7 +1194,7 @@ class NfsDriverDoSetupTestCase(test.TestCase):
             [mock.call(self.configuration.nfs_shares_config)])
         self.assertEqual(1, mock_execute.call_count)
         self.assertEqual(1, mock_set_security.call_count)
-        self.assertEqual(self.configuration.nfs_oversub_ratio, 1.0)
+        self.assertEqual(1.0, self.configuration.nfs_oversub_ratio)
 
     def test_setup_should_throw_error_if_used_ratio_less_than_zero(self):
         """do_setup should throw error if nfs_used_ratio is less than 0."""
@@ -1246,7 +1246,7 @@ class NfsDriverDoSetupTestCase(test.TestCase):
             [mock.call(self.configuration.nfs_shares_config)])
         self.assertEqual(1, mock_execute.call_count)
         self.assertEqual(1, mock_set_security.call_count)
-        self.assertEqual(self.configuration.nfs_used_ratio, 0.95)
+        self.assertEqual(0.95, self.configuration.nfs_used_ratio)
 
     def test_setup_should_throw_exception_if_nfs_client_is_not_installed(self):
         """do_setup should throw error if nfs client is not installed."""

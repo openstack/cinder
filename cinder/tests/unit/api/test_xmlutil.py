@@ -28,34 +28,34 @@ class SelectorTest(test.TestCase):
 
     def test_empty_selector(self):
         sel = xmlutil.Selector()
-        self.assertEqual(len(sel.chain), 0)
+        self.assertEqual(0, len(sel.chain))
         self.assertEqual(sel(self.obj_for_test), self.obj_for_test)
 
     def test_dict_selector(self):
         sel = xmlutil.Selector('test')
-        self.assertEqual(len(sel.chain), 1)
-        self.assertEqual(sel.chain[0], 'test')
+        self.assertEqual(1, len(sel.chain))
+        self.assertEqual('test', sel.chain[0])
         self.assertEqual(sel(self.obj_for_test),
                          self.obj_for_test['test'])
 
     def test_datum_selector(self):
         sel = xmlutil.Selector('test', 'name')
-        self.assertEqual(len(sel.chain), 2)
-        self.assertEqual(sel.chain[0], 'test')
-        self.assertEqual(sel.chain[1], 'name')
-        self.assertEqual(sel(self.obj_for_test), 'test')
+        self.assertEqual(2, len(sel.chain))
+        self.assertEqual('test', sel.chain[0])
+        self.assertEqual('name', sel.chain[1])
+        self.assertEqual('test', sel(self.obj_for_test))
 
     def test_list_selector(self):
         sel = xmlutil.Selector('test', 'values', 0)
-        self.assertEqual(len(sel.chain), 3)
-        self.assertEqual(sel.chain[0], 'test')
-        self.assertEqual(sel.chain[1], 'values')
-        self.assertEqual(sel.chain[2], 0)
-        self.assertEqual(sel(self.obj_for_test), 1)
+        self.assertEqual(3, len(sel.chain))
+        self.assertEqual('test', sel.chain[0])
+        self.assertEqual('values', sel.chain[1])
+        self.assertEqual(0, sel.chain[2])
+        self.assertEqual(1, sel(self.obj_for_test))
 
     def test_items_selector(self):
         sel = xmlutil.Selector('test', 'attrs', xmlutil.get_items)
-        self.assertEqual(len(sel.chain), 3)
+        self.assertEqual(3, len(sel.chain))
         self.assertEqual(sel.chain[2], xmlutil.get_items)
         for key, val in sel(self.obj_for_test):
             self.assertEqual(self.obj_for_test['test']['attrs'][key], val)
@@ -67,8 +67,8 @@ class SelectorTest(test.TestCase):
 
     def test_constant_selector(self):
         sel = xmlutil.ConstantSelector('Foobar')
-        self.assertEqual(sel.value, 'Foobar')
-        self.assertEqual(sel(self.obj_for_test), 'Foobar')
+        self.assertEqual('Foobar', sel.value)
+        self.assertEqual('Foobar', sel(self.obj_for_test))
 
 
 class TemplateElementTest(test.TestCase):
@@ -103,10 +103,10 @@ class TemplateElementTest(test.TestCase):
             elem.set(k, v)
 
         # Now verify what got set
-        self.assertEqual(len(elem.attrib['a'].chain), 1)
-        self.assertEqual(elem.attrib['a'].chain[0], 'a')
-        self.assertEqual(len(elem.attrib['b'].chain), 1)
-        self.assertEqual(elem.attrib['b'].chain[0], 'foo')
+        self.assertEqual(1, len(elem.attrib['a'].chain))
+        self.assertEqual('a', elem.attrib['a'].chain[0])
+        self.assertEqual(1, len(elem.attrib['b'].chain))
+        self.assertEqual('foo', elem.attrib['b'].chain[0])
         self.assertEqual(elem.attrib['c'], attrs['c'])
 
     def test_element_attribute_keys(self):
@@ -117,7 +117,7 @@ class TemplateElementTest(test.TestCase):
         elem = xmlutil.TemplateElement('test', attrib=attrs)
 
         # Now verify keys
-        self.assertEqual(set(elem.keys()), expected)
+        self.assertEqual(expected, set(elem.keys()))
 
     def test_element_attribute_items(self):
         expected = dict(a=xmlutil.Selector(1),
@@ -134,20 +134,20 @@ class TemplateElementTest(test.TestCase):
             keys.remove(k)
 
         # Did we visit all keys?
-        self.assertEqual(len(keys), 0)
+        self.assertEqual(0, len(keys))
 
     def test_element_selector_none(self):
         # Create a template element with no selector
         elem = xmlutil.TemplateElement('test')
 
-        self.assertEqual(len(elem.selector.chain), 0)
+        self.assertEqual(0, len(elem.selector.chain))
 
     def test_element_selector_string(self):
         # Create a template element with a string selector
         elem = xmlutil.TemplateElement('test', selector='test')
 
-        self.assertEqual(len(elem.selector.chain), 1)
-        self.assertEqual(elem.selector.chain[0], 'test')
+        self.assertEqual(1, len(elem.selector.chain))
+        self.assertEqual('test', elem.selector.chain[0])
 
     def test_element_selector(self):
         sel = xmlutil.Selector('a', 'b')
@@ -167,8 +167,8 @@ class TemplateElementTest(test.TestCase):
         # Create a template element with a string subselector
         elem = xmlutil.TemplateElement('test', subselector='test')
 
-        self.assertEqual(len(elem.subselector.chain), 1)
-        self.assertEqual(elem.subselector.chain[0], 'test')
+        self.assertEqual(1, len(elem.subselector.chain))
+        self.assertEqual('test', elem.subselector.chain[0])
 
     def test_element_subselector(self):
         sel = xmlutil.Selector('a', 'b')
@@ -183,7 +183,7 @@ class TemplateElementTest(test.TestCase):
         elem = xmlutil.TemplateElement('test')
 
         # Make sure the element starts off empty
-        self.assertEqual(len(elem), 0)
+        self.assertEqual(0, len(elem))
 
         # Create a child element
         child = xmlutil.TemplateElement('child')
@@ -192,7 +192,7 @@ class TemplateElementTest(test.TestCase):
         elem.append(child)
 
         # Verify that the child was added
-        self.assertEqual(len(elem), 1)
+        self.assertEqual(1, len(elem))
         self.assertEqual(elem[0], child)
         self.assertIn('child', elem)
         self.assertEqual(elem['child'], child)
@@ -206,7 +206,7 @@ class TemplateElementTest(test.TestCase):
         elem = xmlutil.TemplateElement('test')
 
         # Make sure the element starts off empty
-        self.assertEqual(len(elem), 0)
+        self.assertEqual(0, len(elem))
 
         # Create a few children
         children = [xmlutil.TemplateElement('child1'),
@@ -229,15 +229,15 @@ class TemplateElementTest(test.TestCase):
         self.assertRaises(KeyError, elem.extend, children2)
 
         # Also ensure that child4 was not added
-        self.assertEqual(len(elem), 3)
-        self.assertEqual(elem[-1].tag, 'child3')
+        self.assertEqual(3, len(elem))
+        self.assertEqual('child3', elem[-1].tag)
 
     def test_element_insert_child(self):
         # Create an element
         elem = xmlutil.TemplateElement('test')
 
         # Make sure the element starts off empty
-        self.assertEqual(len(elem), 0)
+        self.assertEqual(0, len(elem))
 
         # Create a few children
         children = [xmlutil.TemplateElement('child1'),
@@ -254,7 +254,7 @@ class TemplateElementTest(test.TestCase):
         elem.insert(1, child)
 
         # Ensure the child was inserted in the right place
-        self.assertEqual(len(elem), 4)
+        self.assertEqual(4, len(elem))
         children.insert(1, child)
         for idx in range(len(elem)):
             self.assertEqual(children[idx], elem[idx])
@@ -270,7 +270,7 @@ class TemplateElementTest(test.TestCase):
         elem = xmlutil.TemplateElement('test')
 
         # Make sure the element starts off empty
-        self.assertEqual(len(elem), 0)
+        self.assertEqual(0, len(elem))
 
         # Create a few children
         children = [xmlutil.TemplateElement('child1'),
@@ -287,15 +287,15 @@ class TemplateElementTest(test.TestCase):
         self.assertRaises(ValueError, elem.remove, child)
 
         # Ensure that no child was removed
-        self.assertEqual(len(elem), 3)
+        self.assertEqual(3, len(elem))
 
         # Now remove a legitimate child
         elem.remove(children[1])
 
         # Ensure that the child was removed
-        self.assertEqual(len(elem), 2)
-        self.assertEqual(elem[0], children[0])
-        self.assertEqual(elem[1], children[2])
+        self.assertEqual(2, len(elem))
+        self.assertEqual(children[0], elem[0])
+        self.assertEqual(children[2], elem[1])
         self.assertNotIn('child2', elem)
 
         # Ensure the child cannot be retrieved by name
@@ -312,9 +312,9 @@ class TemplateElementTest(test.TestCase):
 
         # Try setting it to a string and ensure it becomes a selector
         elem.text = 'test'
-        self.assertEqual(hasattr(elem.text, 'chain'), True)
-        self.assertEqual(len(elem.text.chain), 1)
-        self.assertEqual(elem.text.chain[0], 'test')
+        self.assertEqual(True, hasattr(elem.text, 'chain'))
+        self.assertEqual(1, len(elem.text.chain))
+        self.assertEqual('test', elem.text.chain[0])
 
         # Try resetting the text to None
         elem.text = None
@@ -375,8 +375,8 @@ class TemplateElementTest(test.TestCase):
         elem = master_elem._render(None, None, slave_elems, None)
 
         # Verify the particulars of the render
-        self.assertEqual(elem.tag, 'test')
-        self.assertEqual(len(elem.nsmap), 0)
+        self.assertEqual('test', elem.tag)
+        self.assertEqual(0, len(elem.nsmap))
         for k, v in elem.items():
             self.assertEqual(str(attrs[k].value), v)
 
@@ -387,10 +387,10 @@ class TemplateElementTest(test.TestCase):
         elem = master_elem._render(parent, None, slave_elems, dict(a='foo'))
 
         # Verify the particulars of the render
-        self.assertEqual(len(parent), 1)
+        self.assertEqual(1, len(parent))
         self.assertEqual(parent[0], elem)
-        self.assertEqual(len(elem.nsmap), 1)
-        self.assertEqual(elem.nsmap['a'], 'foo')
+        self.assertEqual(1, len(elem.nsmap))
+        self.assertEqual('foo', elem.nsmap['a'])
 
     def test_render(self):
         # Create a template element
@@ -402,18 +402,18 @@ class TemplateElementTest(test.TestCase):
 
         # Try a render with no object
         elems = tmpl_elem.render(None, None)
-        self.assertEqual(len(elems), 0)
+        self.assertEqual(0, len(elems))
 
         # Try a render with one object
         elems = tmpl_elem.render(None, 'foo')
-        self.assertEqual(len(elems), 1)
-        self.assertEqual(elems[0][0].text, 'foo')
-        self.assertEqual(elems[0][1], 'foo')
+        self.assertEqual(1, len(elems))
+        self.assertEqual('foo', elems[0][0].text)
+        self.assertEqual('foo', elems[0][1])
 
         # Now, try rendering an object with multiple entries
         parent = etree.Element('parent')
         elems = tmpl_elem.render(parent, obj)
-        self.assertEqual(len(elems), 4)
+        self.assertEqual(4, len(elems))
 
         # Check the results
         for idx in range(len(obj)):
@@ -423,13 +423,13 @@ class TemplateElementTest(test.TestCase):
     def test_subelement(self):
         # Try the SubTemplateElement constructor
         parent = xmlutil.SubTemplateElement(None, 'parent')
-        self.assertEqual(parent.tag, 'parent')
-        self.assertEqual(len(parent), 0)
+        self.assertEqual('parent', parent.tag)
+        self.assertEqual(0, len(parent))
 
         # Now try it with a parent element
         child = xmlutil.SubTemplateElement(parent, 'child')
-        self.assertEqual(child.tag, 'child')
-        self.assertEqual(len(parent), 1)
+        self.assertEqual('child', child.tag)
+        self.assertEqual(1, len(parent))
         self.assertEqual(parent[0], child)
 
     def test_wrap(self):
@@ -449,7 +449,7 @@ class TemplateElementTest(test.TestCase):
         elems = tmpl_elem.render(parent, obj)
 
         # Verify the particulars of the render
-        self.assertEqual(len(elems), len(obj))
+        self.assertEqual(len(obj), len(elems))
         for idx in range(len(obj)):
             self.assertEqual(elems[idx][0].tag, obj[idx])
 
@@ -469,7 +469,7 @@ class TemplateTest(test.TestCase):
 
         # Check that we get the right siblings
         siblings = tmpl._siblings()
-        self.assertEqual(len(siblings), 1)
+        self.assertEqual(1, len(siblings))
         self.assertEqual(siblings[0], elem)
 
     def test__splitTagName(self):
@@ -492,8 +492,8 @@ class TemplateTest(test.TestCase):
         # Check out that we get the right namespace dictionary
         nsmap = tmpl._nsmap()
         self.assertNotEqual(id(nsmap), id(tmpl.nsmap))
-        self.assertEqual(len(nsmap), 1)
-        self.assertEqual(nsmap['a'], 'foo')
+        self.assertEqual(1, len(nsmap))
+        self.assertEqual('foo', nsmap['a'])
 
     def test_master_attach(self):
         # Set up a master template
@@ -502,17 +502,17 @@ class TemplateTest(test.TestCase):
 
         # Make sure it has a root but no slaves
         self.assertEqual(tmpl.root, elem)
-        self.assertEqual(len(tmpl.slaves), 0)
+        self.assertEqual(0, len(tmpl.slaves))
 
         # Try to attach an invalid slave
         bad_elem = xmlutil.TemplateElement('test2')
         self.assertRaises(ValueError, tmpl.attach, bad_elem)
-        self.assertEqual(len(tmpl.slaves), 0)
+        self.assertEqual(0, len(tmpl.slaves))
 
         # Try to attach an invalid and a valid slave
         good_elem = xmlutil.TemplateElement('test')
         self.assertRaises(ValueError, tmpl.attach, good_elem, bad_elem)
-        self.assertEqual(len(tmpl.slaves), 0)
+        self.assertEqual(0, len(tmpl.slaves))
 
         # Try to attach an inapplicable template
         class InapplicableTemplate(xmlutil.Template):
@@ -520,12 +520,12 @@ class TemplateTest(test.TestCase):
                 return False
         inapp_tmpl = InapplicableTemplate(good_elem)
         tmpl.attach(inapp_tmpl)
-        self.assertEqual(len(tmpl.slaves), 0)
+        self.assertEqual(0, len(tmpl.slaves))
 
         # Now try attaching an applicable template
         tmpl.attach(good_elem)
-        self.assertEqual(len(tmpl.slaves), 1)
-        self.assertEqual(tmpl.slaves[0].root, good_elem)
+        self.assertEqual(1, len(tmpl.slaves))
+        self.assertEqual(good_elem, tmpl.slaves[0].root)
 
     def test_master_copy(self):
         # Construct a master template
@@ -555,31 +555,31 @@ class TemplateTest(test.TestCase):
 
         # Construct a slave template with applicable minimum version
         slave = xmlutil.SlaveTemplate(elem, 2)
-        self.assertEqual(slave.apply(master), True)
+        self.assertEqual(True, slave.apply(master))
 
         # Construct a slave template with equal minimum version
         slave = xmlutil.SlaveTemplate(elem, 3)
-        self.assertEqual(slave.apply(master), True)
+        self.assertEqual(True, slave.apply(master))
 
         # Construct a slave template with inapplicable minimum version
         slave = xmlutil.SlaveTemplate(elem, 4)
-        self.assertEqual(slave.apply(master), False)
+        self.assertEqual(False, slave.apply(master))
 
         # Construct a slave template with applicable version range
         slave = xmlutil.SlaveTemplate(elem, 2, 4)
-        self.assertEqual(slave.apply(master), True)
+        self.assertEqual(True, slave.apply(master))
 
         # Construct a slave template with low version range
         slave = xmlutil.SlaveTemplate(elem, 1, 2)
-        self.assertEqual(slave.apply(master), False)
+        self.assertEqual(False, slave.apply(master))
 
         # Construct a slave template with high version range
         slave = xmlutil.SlaveTemplate(elem, 4, 5)
-        self.assertEqual(slave.apply(master), False)
+        self.assertEqual(False, slave.apply(master))
 
         # Construct a slave template with matching version range
         slave = xmlutil.SlaveTemplate(elem, 3, 3)
-        self.assertEqual(slave.apply(master), True)
+        self.assertEqual(True, slave.apply(master))
 
     def test__serialize(self):
         # Our test object to serialize
@@ -617,10 +617,10 @@ class TemplateTest(test.TestCase):
         result = master._serialize(None, obj, siblings, nsmap)
 
         # Now we get to manually walk the element tree...
-        self.assertEqual(result.tag, 'test')
-        self.assertEqual(len(result.nsmap), 2)
-        self.assertEqual(result.nsmap['f'], 'foo')
-        self.assertEqual(result.nsmap['b'], 'bar')
+        self.assertEqual('test', result.tag)
+        self.assertEqual(2, len(result.nsmap))
+        self.assertEqual('foo', result.nsmap['f'])
+        self.assertEqual('bar', result.nsmap['b'])
         self.assertEqual(result.get('name'), obj['test']['name'])
         for idx, val in enumerate(obj['test']['values']):
             self.assertEqual(result[idx].tag, 'value')
@@ -628,14 +628,14 @@ class TemplateTest(test.TestCase):
         idx += 1
         self.assertEqual(result[idx].tag, 'attrs')
         for attr in result[idx]:
-            self.assertEqual(attr.tag, 'attr')
-            self.assertEqual(attr.get('value'),
-                             str(obj['test']['attrs'][attr.get('key')]))
+            self.assertEqual('attr', attr.tag)
+            self.assertEqual(str(obj['test']['attrs'][attr.get('key')]),
+                             attr.get('value'))
         idx += 1
-        self.assertEqual(result[idx].tag, 'image')
-        self.assertEqual(result[idx].get('id'),
-                         str(obj['test']['image']['id']))
-        self.assertEqual(result[idx].text, obj['test']['image']['name'])
+        self.assertEqual('image', result[idx].tag)
+        self.assertEqual(str(obj['test']['image']['id']),
+                         result[idx].get('id'))
+        self.assertEqual(obj['test']['image']['name'], result[idx].text)
 
     def test_serialize_with_delimiter(self):
         # Our test object to serialize
@@ -664,7 +664,7 @@ class TemplateTest(test.TestCase):
         expected_xml = ''.join(xml_list)
         result = serializer.serialize(obj)
         result = result.replace('\n', '').replace(' ', '')
-        self.assertEqual(result, expected_xml)
+        self.assertEqual(expected_xml, result)
 
 
 class MasterTemplateBuilder(xmlutil.TemplateBuilder):
@@ -733,4 +733,4 @@ class MiscellaneousXMLUtilTests(test.TestCase):
         root = xmlutil.make_flat_dict('wrapper')
         tmpl = xmlutil.MasterTemplate(root, 1)
         result = tmpl.serialize(dict(wrapper=dict(a='foo', b='bar')))
-        self.assertEqual(result, expected_xml)
+        self.assertEqual(expected_xml, result)

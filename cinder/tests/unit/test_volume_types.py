@@ -179,7 +179,7 @@ class VolumeTypeTestCase(test.TestCase):
         vol_types = volume_types.get_all_types(
             self.ctxt,
             search_opts={'extra_specs': {"key1": "val1"}})
-        self.assertEqual(len(vol_types), 1)
+        self.assertEqual(1, len(vol_types))
         self.assertIn("type1", vol_types.keys())
         self.assertEqual(vol_types['type1']['extra_specs'],
                          {"key1": "val1", "key2": "val2"})
@@ -187,14 +187,14 @@ class VolumeTypeTestCase(test.TestCase):
         vol_types = volume_types.get_all_types(
             self.ctxt,
             search_opts={'extra_specs': {"key2": "val2"}})
-        self.assertEqual(len(vol_types), 2)
+        self.assertEqual(2, len(vol_types))
         self.assertIn("type1", vol_types.keys())
         self.assertIn("type2", vol_types.keys())
 
         vol_types = volume_types.get_all_types(
             self.ctxt,
             search_opts={'extra_specs': {"key3": "val3"}})
-        self.assertEqual(len(vol_types), 1)
+        self.assertEqual(1, len(vol_types))
         self.assertIn("type2", vol_types.keys())
 
     def test_volume_type_search_by_extra_spec_multiple(self):
@@ -345,20 +345,19 @@ class VolumeTypeTestCase(test.TestCase):
         diff, same = volume_types.volume_types_diff(self.ctxt, None,
                                                     type_ref1['id'])
         self.assertFalse(same)
-        self.assertEqual(diff['extra_specs'],
-                         {'key1': (None, 'val1'), 'key2': (None, 'val2')})
-        self.assertEqual(diff['qos_specs'],
-                         {'consumer': (None, 'back-end'),
+        self.assertEqual({'key1': (None, 'val1'), 'key2': (None, 'val2')},
+                         diff['extra_specs'])
+        self.assertEqual({'consumer': (None, 'back-end'),
                           'k1': (None, 'v1'),
                           'k2': (None, 'v2'),
-                          'k3': (None, 'v3')})
-        self.assertEqual(diff['encryption'],
-                         {'cipher': (None, 'c1'),
+                          'k3': (None, 'v3')}, diff['qos_specs'])
+        self.assertEqual({'cipher': (None, 'c1'),
                           'control_location': (None, 'front-end'),
                           'deleted': (None, False),
                           'key_size': (None, 256),
                           'provider': (None, 'p1'),
-                          'encryption_id': (None, 'uuid1')})
+                          'encryption_id': (None, 'uuid1')},
+                         diff['encryption'])
 
     def test_encryption_create(self):
         volume_type = volume_types.create(self.ctxt, "type1")

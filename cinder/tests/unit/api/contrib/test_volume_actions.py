@@ -74,7 +74,7 @@ class VolumeActionsTest(test.TestCase):
             req.body = jsonutils.dumps({_action: None})
             req.content_type = 'application/json'
             res = req.get_response(app)
-            self.assertEqual(res.status_int, 202)
+            self.assertEqual(202, res.status_int)
 
     def test_initialize_connection(self):
         with mock.patch.object(volume_api.API,
@@ -87,7 +87,7 @@ class VolumeActionsTest(test.TestCase):
             req.headers["content-type"] = "application/json"
 
             res = req.get_response(fakes.wsgi_app())
-            self.assertEqual(res.status_int, 200)
+            self.assertEqual(200, res.status_int)
 
     def test_initialize_connection_without_connector(self):
         with mock.patch.object(volume_api.API,
@@ -100,7 +100,7 @@ class VolumeActionsTest(test.TestCase):
             req.headers["content-type"] = "application/json"
 
             res = req.get_response(fakes.wsgi_app())
-            self.assertEqual(res.status_int, 400)
+            self.assertEqual(400, res.status_int)
 
     def test_initialize_connection_exception(self):
         with mock.patch.object(volume_api.API,
@@ -114,7 +114,7 @@ class VolumeActionsTest(test.TestCase):
             req.headers["content-type"] = "application/json"
 
             res = req.get_response(fakes.wsgi_app())
-            self.assertEqual(res.status_int, 500)
+            self.assertEqual(500, res.status_int)
 
     def test_terminate_connection(self):
         with mock.patch.object(volume_api.API,
@@ -127,7 +127,7 @@ class VolumeActionsTest(test.TestCase):
             req.headers["content-type"] = "application/json"
 
             res = req.get_response(fakes.wsgi_app())
-            self.assertEqual(res.status_int, 202)
+            self.assertEqual(202, res.status_int)
 
     def test_terminate_connection_without_connector(self):
         with mock.patch.object(volume_api.API,
@@ -140,7 +140,7 @@ class VolumeActionsTest(test.TestCase):
             req.headers["content-type"] = "application/json"
 
             res = req.get_response(fakes.wsgi_app())
-            self.assertEqual(res.status_int, 400)
+            self.assertEqual(400, res.status_int)
 
     def test_terminate_connection_with_exception(self):
         with mock.patch.object(volume_api.API,
@@ -154,7 +154,7 @@ class VolumeActionsTest(test.TestCase):
             req.headers["content-type"] = "application/json"
 
             res = req.get_response(fakes.wsgi_app())
-            self.assertEqual(res.status_int, 500)
+            self.assertEqual(500, res.status_int)
 
     def test_attach_to_instance(self):
         body = {'os-attach': {'instance_uuid': 'fake',
@@ -166,7 +166,7 @@ class VolumeActionsTest(test.TestCase):
         req.headers["content-type"] = "application/json"
 
         res = req.get_response(fakes.wsgi_app())
-        self.assertEqual(res.status_int, 202)
+        self.assertEqual(202, res.status_int)
 
     def test_attach_to_host(self):
         # using 'read-write' mode attach volume by default
@@ -178,7 +178,7 @@ class VolumeActionsTest(test.TestCase):
         req.headers["content-type"] = "application/json"
 
         res = req.get_response(fakes.wsgi_app())
-        self.assertEqual(res.status_int, 202)
+        self.assertEqual(202, res.status_int)
 
     def test_volume_attach_to_instance_raises_remote_error(self):
         volume_remote_error = \
@@ -264,7 +264,7 @@ class VolumeActionsTest(test.TestCase):
         req.headers["content-type"] = "application/json"
         req.body = jsonutils.dumps(body)
         res = req.get_response(fakes.wsgi_app())
-        self.assertEqual(res.status_int, 400)
+        self.assertEqual(400, res.status_int)
 
         # Invalid request to attach volume to an instance and a host
         body = {'os-attach': {'instance_uuid': 'fake',
@@ -275,7 +275,7 @@ class VolumeActionsTest(test.TestCase):
         req.headers["content-type"] = "application/json"
         req.body = jsonutils.dumps(body)
         res = req.get_response(fakes.wsgi_app())
-        self.assertEqual(res.status_int, 400)
+        self.assertEqual(400, res.status_int)
 
         # Invalid request to attach volume with an invalid mode
         body = {'os-attach': {'instance_uuid': 'fake',
@@ -286,7 +286,7 @@ class VolumeActionsTest(test.TestCase):
         req.headers["content-type"] = "application/json"
         req.body = jsonutils.dumps(body)
         res = req.get_response(fakes.wsgi_app())
-        self.assertEqual(res.status_int, 400)
+        self.assertEqual(400, res.status_int)
         body = {'os-attach': {'host_name': 'fake_host',
                               'mountpoint': '/dev/vdc',
                               'mode': 'ww'}}
@@ -295,7 +295,7 @@ class VolumeActionsTest(test.TestCase):
         req.headers["content-type"] = "application/json"
         req.body = jsonutils.dumps(body)
         res = req.get_response(fakes.wsgi_app())
-        self.assertEqual(res.status_int, 400)
+        self.assertEqual(400, res.status_int)
 
     def test_begin_detaching(self):
         def fake_begin_detaching(*args, **kwargs):
@@ -310,7 +310,7 @@ class VolumeActionsTest(test.TestCase):
         req.headers["content-type"] = "application/json"
 
         res = req.get_response(fakes.wsgi_app())
-        self.assertEqual(res.status_int, 202)
+        self.assertEqual(202, res.status_int)
 
     def test_roll_detaching(self):
         def fake_roll_detaching(*args, **kwargs):
@@ -325,7 +325,7 @@ class VolumeActionsTest(test.TestCase):
         req.headers["content-type"] = "application/json"
 
         res = req.get_response(fakes.wsgi_app())
-        self.assertEqual(res.status_int, 202)
+        self.assertEqual(202, res.status_int)
 
     def test_extend_volume(self):
         def fake_extend_volume(*args, **kwargs):
@@ -340,7 +340,7 @@ class VolumeActionsTest(test.TestCase):
         req.headers["content-type"] = "application/json"
 
         res = req.get_response(fakes.wsgi_app())
-        self.assertEqual(res.status_int, 202)
+        self.assertEqual(202, res.status_int)
 
     def test_update_readonly_flag(self):
         def fake_update_readonly_flag(*args, **kwargs):
@@ -357,7 +357,7 @@ class VolumeActionsTest(test.TestCase):
             req.body = jsonutils.dumps(body)
             req.headers["content-type"] = "application/json"
             res = req.get_response(fakes.wsgi_app())
-            self.assertEqual(res.status_int, return_code)
+            self.assertEqual(return_code, res.status_int)
 
         make_update_readonly_flag_test(self, True, 202)
         make_update_readonly_flag_test(self, False, 202)
@@ -380,7 +380,7 @@ class VolumeActionsTest(test.TestCase):
             req.body = jsonutils.dumps(body)
             req.headers["content-type"] = "application/json"
             res = req.get_response(fakes.wsgi_app())
-            self.assertEqual(res.status_int, return_code)
+            self.assertEqual(return_code, res.status_int)
 
         make_set_bootable_test(self, True, 200)
         make_set_bootable_test(self, False, 200)
@@ -427,7 +427,7 @@ class VolumeRetypeActionsTest(VolumeActionsTest):
         retype_body = {'new_type': new_type, 'migration_policy': 'never'}
         req.body = jsonutils.dumps({'os-retype': retype_body})
         res = req.get_response(fakes.wsgi_app())
-        self.assertEqual(res.status_int, expected_status)
+        self.assertEqual(expected_status, res.status_int)
 
     @mock.patch('cinder.volume.qos_specs.get_qos_specs')
     def test_retype_volume_success(self, _mock_get_qspecs):
@@ -446,7 +446,7 @@ class VolumeRetypeActionsTest(VolumeActionsTest):
         req.headers['content-type'] = 'application/json'
         req.body = jsonutils.dumps({'os-retype': None})
         res = req.get_response(fakes.wsgi_app())
-        self.assertEqual(res.status_int, 400)
+        self.assertEqual(400, res.status_int)
 
     def test_retype_volume_bad_policy(self):
         # Request with invalid migration policy should fail
@@ -456,7 +456,7 @@ class VolumeRetypeActionsTest(VolumeActionsTest):
         retype_body = {'new_type': 'foo', 'migration_policy': 'invalid'}
         req.body = jsonutils.dumps({'os-retype': retype_body})
         res = req.get_response(fakes.wsgi_app())
-        self.assertEqual(res.status_int, 400)
+        self.assertEqual(400, res.status_int)
 
     def test_retype_volume_bad_status(self):
         # Should fail if volume does not have proper status
@@ -691,7 +691,7 @@ class VolumeImageActionsTest(test.TestCase):
         req.headers['Content-Type'] = 'application/json'
         req.body = json.dumps(body)
         res = req.get_response(fakes.wsgi_app())
-        self.assertEqual(res.status_int, 400)
+        self.assertEqual(400, res.status_int)
 
     def test_volume_upload_image_without_type(self):
         id = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
@@ -705,7 +705,7 @@ class VolumeImageActionsTest(test.TestCase):
         req.headers['Content-Type'] = 'application/json'
         req.body = json.dumps(body)
         res = req.get_response(fakes.wsgi_app())
-        self.assertEqual(res.status_int, 400)
+        self.assertEqual(400, res.status_int)
 
     def test_extend_volume_valueerror(self):
         id = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'

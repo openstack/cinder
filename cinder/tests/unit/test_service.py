@@ -267,13 +267,12 @@ class TestWSGIService(test.TestCase):
 
             # Stopping the service, which in turn sets pool size to 0
             test_service.stop()
-            self.assertEqual(test_service.server._pool.size, 0)
+            self.assertEqual(0, test_service.server._pool.size)
 
             # Resetting pool size to default
             test_service.reset()
             test_service.start()
-            self.assertEqual(test_service.server._pool.size,
-                             1000)
+            self.assertEqual(1000, test_service.server._pool.size)
             self.assertTrue(mock_load_app.called)
 
     @mock.patch('cinder.wsgi.Server')

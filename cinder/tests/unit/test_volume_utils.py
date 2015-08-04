@@ -356,32 +356,32 @@ class LVMVolumeDriverTestCase(test.TestCase):
     def test_convert_blocksize_option(self):
         # Test valid volume_dd_blocksize
         bs, count = volume_utils._calculate_count(1024, '10M')
-        self.assertEqual(bs, '10M')
-        self.assertEqual(count, 103)
+        self.assertEqual('10M', bs)
+        self.assertEqual(103, count)
 
         bs, count = volume_utils._calculate_count(1024, '1xBBB')
-        self.assertEqual(bs, '1M')
-        self.assertEqual(count, 1024)
+        self.assertEqual('1M', bs)
+        self.assertEqual(1024, count)
 
         # Test 'volume_dd_blocksize' with fraction
         bs, count = volume_utils._calculate_count(1024, '1.3M')
-        self.assertEqual(bs, '1M')
-        self.assertEqual(count, 1024)
+        self.assertEqual('1M', bs)
+        self.assertEqual(1024, count)
 
         # Test zero-size 'volume_dd_blocksize'
         bs, count = volume_utils._calculate_count(1024, '0M')
-        self.assertEqual(bs, '1M')
-        self.assertEqual(count, 1024)
+        self.assertEqual('1M', bs)
+        self.assertEqual(1024, count)
 
         # Test negative 'volume_dd_blocksize'
         bs, count = volume_utils._calculate_count(1024, '-1M')
-        self.assertEqual(bs, '1M')
-        self.assertEqual(count, 1024)
+        self.assertEqual('1M', bs)
+        self.assertEqual(1024, count)
 
         # Test non-digital 'volume_dd_blocksize'
         bs, count = volume_utils._calculate_count(1024, 'ABM')
-        self.assertEqual(bs, '1M')
-        self.assertEqual(count, 1024)
+        self.assertEqual('1M', bs)
+        self.assertEqual(1024, count)
 
 
 class OdirectSupportTestCase(test.TestCase):
@@ -651,61 +651,62 @@ class VolumeUtilsTestCase(test.TestCase):
     def test_extract_host(self):
         host = 'Host'
         # default level is 'backend'
-        self.assertEqual(
-            volume_utils.extract_host(host), 'Host')
-        self.assertEqual(
-            volume_utils.extract_host(host, 'host'), 'Host')
-        self.assertEqual(
-            volume_utils.extract_host(host, 'backend'), 'Host')
+        self.assertEqual(host,
+                         volume_utils.extract_host(host))
+        self.assertEqual(host,
+                         volume_utils.extract_host(host, 'host'))
+        self.assertEqual(host,
+                         volume_utils.extract_host(host, 'backend'))
         # default_pool_name doesn't work for level other than 'pool'
-        self.assertEqual(
-            volume_utils.extract_host(host, 'host', True), 'Host')
-        self.assertEqual(
-            volume_utils.extract_host(host, 'host', False), 'Host')
-        self.assertEqual(
-            volume_utils.extract_host(host, 'backend', True), 'Host')
-        self.assertEqual(
-            volume_utils.extract_host(host, 'backend', False), 'Host')
-        self.assertEqual(
-            volume_utils.extract_host(host, 'pool'), None)
-        self.assertEqual(
-            volume_utils.extract_host(host, 'pool', True), '_pool0')
+        self.assertEqual(host,
+                         volume_utils.extract_host(host, 'host', True))
+        self.assertEqual(host,
+                         volume_utils.extract_host(host, 'host', False))
+        self.assertEqual(host,
+                         volume_utils.extract_host(host, 'backend', True))
+        self.assertEqual(host,
+                         volume_utils.extract_host(host, 'backend', False))
+        self.assertEqual(None,
+                         volume_utils.extract_host(host, 'pool'))
+        self.assertEqual('_pool0',
+                         volume_utils.extract_host(host, 'pool', True))
 
         host = 'Host@Backend'
-        self.assertEqual(
-            volume_utils.extract_host(host), 'Host@Backend')
-        self.assertEqual(
-            volume_utils.extract_host(host, 'host'), 'Host')
-        self.assertEqual(
-            volume_utils.extract_host(host, 'backend'), 'Host@Backend')
-        self.assertEqual(
-            volume_utils.extract_host(host, 'pool'), None)
-        self.assertEqual(
-            volume_utils.extract_host(host, 'pool', True), '_pool0')
+        self.assertEqual('Host@Backend',
+                         volume_utils.extract_host(host))
+        self.assertEqual('Host',
+                         volume_utils.extract_host(host, 'host'))
+        self.assertEqual(host,
+                         volume_utils.extract_host(host, 'backend'))
+        self.assertEqual(None,
+                         volume_utils.extract_host(host, 'pool'))
+        self.assertEqual('_pool0',
+                         volume_utils.extract_host(host, 'pool', True))
 
         host = 'Host@Backend#Pool'
-        self.assertEqual(
-            volume_utils.extract_host(host), 'Host@Backend')
-        self.assertEqual(
-            volume_utils.extract_host(host, 'host'), 'Host')
-        self.assertEqual(
-            volume_utils.extract_host(host, 'backend'), 'Host@Backend')
-        self.assertEqual(
-            volume_utils.extract_host(host, 'pool'), 'Pool')
-        self.assertEqual(
-            volume_utils.extract_host(host, 'pool', True), 'Pool')
+        pool = 'Pool'
+        self.assertEqual('Host@Backend',
+                         volume_utils.extract_host(host))
+        self.assertEqual('Host',
+                         volume_utils.extract_host(host, 'host'))
+        self.assertEqual('Host@Backend',
+                         volume_utils.extract_host(host, 'backend'))
+        self.assertEqual(pool,
+                         volume_utils.extract_host(host, 'pool'))
+        self.assertEqual(pool,
+                         volume_utils.extract_host(host, 'pool', True))
 
         host = 'Host#Pool'
-        self.assertEqual(
-            volume_utils.extract_host(host), 'Host')
-        self.assertEqual(
-            volume_utils.extract_host(host, 'host'), 'Host')
-        self.assertEqual(
-            volume_utils.extract_host(host, 'backend'), 'Host')
-        self.assertEqual(
-            volume_utils.extract_host(host, 'pool'), 'Pool')
-        self.assertEqual(
-            volume_utils.extract_host(host, 'pool', True), 'Pool')
+        self.assertEqual('Host',
+                         volume_utils.extract_host(host))
+        self.assertEqual('Host',
+                         volume_utils.extract_host(host, 'host'))
+        self.assertEqual('Host',
+                         volume_utils.extract_host(host, 'backend'))
+        self.assertEqual(pool,
+                         volume_utils.extract_host(host, 'pool'))
+        self.assertEqual(pool,
+                         volume_utils.extract_host(host, 'pool', True))
 
     def test_append_host(self):
         host = 'Host'
