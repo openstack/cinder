@@ -22,6 +22,18 @@ FAKE_UUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
 FAKE_UUIDS = {}
 TEST_SNAPSHOT_UUID = '00000000-0000-0000-0000-000000000001'
 
+DEFAULT_VOL_NAME = "displayname"
+DEFAULT_VOL_DESCRIPTION = "displaydesc"
+DEFAULT_VOL_SIZE = 1
+DEFAULT_VOL_TYPE = "vol_type_name"
+DEFAULT_VOL_STATUS = "fakestatus"
+DEFAULT_VOL_ID = '1'
+
+# TODO(vbala): api.v1 tests use hard-coded "fakeaz" for verifying
+# post-conditions. Update value to "zone1:host1" once we remove
+# api.v1 tests and use it in api.v2 tests.
+DEFAULT_AZ = "fakeaz"
+
 
 def stub_volume(id, **kwargs):
     volume = {
@@ -29,15 +41,15 @@ def stub_volume(id, **kwargs):
         'user_id': 'fakeuser',
         'project_id': 'fakeproject',
         'host': 'fakehost',
-        'size': 1,
-        'availability_zone': 'fakeaz',
-        'status': 'fakestatus',
+        'size': DEFAULT_VOL_SIZE,
+        'availability_zone': DEFAULT_AZ,
+        'status': DEFAULT_VOL_STATUS,
         'migration_status': None,
         'attach_status': 'attached',
         'bootable': 'false',
         'name': 'vol name',
-        'display_name': 'displayname',
-        'display_description': 'displaydesc',
+        'display_name': DEFAULT_VOL_NAME,
+        'display_description': DEFAULT_VOL_DESCRIPTION,
         'updated_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
         'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
         'snapshot_id': None,
@@ -48,7 +60,7 @@ def stub_volume(id, **kwargs):
                                   {'key': 'readonly', 'value': 'False'}],
         'bootable': False,
         'launched_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
-        'volume_type': {'name': 'vol_type_name'},
+        'volume_type': {'name': DEFAULT_VOL_TYPE},
         'replication_status': 'disabled',
         'replication_extended_status': None,
         'replication_driver_data': None,
@@ -66,7 +78,7 @@ def stub_volume(id, **kwargs):
 
 def stub_volume_create(self, context, size, name, description, snapshot=None,
                        **param):
-    vol = stub_volume('1')
+    vol = stub_volume(DEFAULT_VOL_ID)
     vol['size'] = size
     vol['display_name'] = name
     vol['display_description'] = description

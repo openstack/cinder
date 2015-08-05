@@ -42,10 +42,7 @@ CONF = cfg.CONF
 
 NS = '{http://docs.openstack.org/api/openstack-block-storage/2.0/content}'
 
-DEFAULT_VOL_NAME = "Volume Test Name"
-DEFAULT_VOL_DESCRIPTION = "Volume Test Desc"
 DEFAULT_AZ = "zone1:host1"
-DEFAULT_VOL_SIZE = 100
 
 
 class VolumeApiTest(test.TestCase):
@@ -68,38 +65,11 @@ class VolumeApiTest(test.TestCase):
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
         self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
 
-        vol = {
-            "size": 100,
-            "name": "Volume Test Name",
-            "description": "Volume Test Desc",
-            "availability_zone": "zone1:host1"
-        }
+        vol = self._vol_in_request_body()
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
         res_dict = self.controller.create(req, body)
-        ex = {'volume': {'attachments': [],
-                         'availability_zone': 'zone1:host1',
-                         'bootable': 'false',
-                         'consistencygroup_id': None,
-                         'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
-                         'description': 'Volume Test Desc',
-                         'id': '1',
-                         'links':
-                         [{'href': 'http://localhost/v2/fakeproject/volumes/1',
-                           'rel': 'self'},
-                          {'href': 'http://localhost/fakeproject/volumes/1',
-                           'rel': 'bookmark'}],
-                         'metadata': {},
-                         'name': 'Volume Test Name',
-                         'replication_status': 'disabled',
-                         'multiattach': False,
-                         'size': 100,
-                         'snapshot_id': None,
-                         'source_volid': None,
-                         'status': 'fakestatus',
-                         'user_id': 'fakeuser',
-                         'volume_type': 'vol_type_name',
-                         'encrypted': False}}
+        ex = self._expected_vol_from_controller()
         self.assertEqual(ex, res_dict)
 
     def test_volume_create_with_type(self):
@@ -111,13 +81,7 @@ class VolumeApiTest(test.TestCase):
         db_vol_type = db.volume_type_get(context.get_admin_context(),
                                          vol_type.id)
 
-        vol = {
-            "size": 100,
-            "name": "Volume Test Name",
-            "description": "Volume Test Desc",
-            "availability_zone": "zone1:host1",
-            "volume_type": "FakeTypeName",
-        }
+        vol = self._vol_in_request_body(volume_type="FakeTypeName")
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
         # Raise 404 when type name isn't valid
@@ -145,48 +109,74 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/volumes/detail')
         res_dict = self.controller.detail(req)
 
-    def _vol_in_request_body(
-            self, size=DEFAULT_VOL_SIZE, name=DEFAULT_VOL_NAME,
-            description=DEFAULT_VOL_DESCRIPTION, availability_zone=DEFAULT_AZ,
-            snapshot_id=None, source_volid=None, source_replica=None,
-            consistencygroup_id=None):
-        return {"size": size,
-                "name": name,
-                "description": description,
-                "availability_zone": availability_zone,
-                "snapshot_id": snapshot_id,
-                "source_volid": source_volid,
-                "source_replica": source_replica,
-                "consistencygroup_id": consistencygroup_id,
-                }
+    def _vol_in_request_body(self,
+                             size=stubs.DEFAULT_VOL_SIZE,
+                             name=stubs.DEFAULT_VOL_NAME,
+                             description=stubs.DEFAULT_VOL_DESCRIPTION,
+                             availability_zone=DEFAULT_AZ,
+                             snapshot_id=None,
+                             source_volid=None,
+                             source_replica=None,
+                             consistencygroup_id=None,
+                             volume_type=None,
+                             image_ref=None,
+                             image_id=None):
+        vol = {"size": size,
+               "name": name,
+               "description": description,
+               "availability_zone": availability_zone,
+               "snapshot_id": snapshot_id,
+               "source_volid": source_volid,
+               "source_replica": source_replica,
+               "consistencygroup_id": consistencygroup_id,
+               "volume_type": volume_type,
+               }
 
-    def _expected_vol_from_create_api(
-            self, size=DEFAULT_VOL_SIZE, availability_zone=DEFAULT_AZ,
-            description=DEFAULT_VOL_DESCRIPTION, name=DEFAULT_VOL_NAME,
-            consistencygroup_id=None, source_volid=None, snapshot_id=None):
+        if image_id is not None:
+            vol['image_id'] = image_id
+        elif image_ref is not None:
+            vol['imageRef'] = image_ref
+
+        return vol
+
+    def _expected_vol_from_controller(
+            self,
+            size=stubs.DEFAULT_VOL_SIZE,
+            availability_zone=DEFAULT_AZ,
+            description=stubs.DEFAULT_VOL_DESCRIPTION,
+            name=stubs.DEFAULT_VOL_NAME,
+            consistencygroup_id=None,
+            source_volid=None,
+            snapshot_id=None,
+            metadata=None,
+            attachments=None,
+            volume_type=stubs.DEFAULT_VOL_TYPE,
+            status=stubs.DEFAULT_VOL_STATUS):
+        metadata = metadata or {}
+        attachments = attachments or []
         return {'volume':
-                {'attachments': [],
+                {'attachments': attachments,
                  'availability_zone': availability_zone,
                  'bootable': 'false',
                  'consistencygroup_id': consistencygroup_id,
                  'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
                  'description': description,
-                 'id': '1',
+                 'id': stubs.DEFAULT_VOL_ID,
                  'links':
                  [{'href': 'http://localhost/v2/fakeproject/volumes/1',
                    'rel': 'self'},
                   {'href': 'http://localhost/fakeproject/volumes/1',
                    'rel': 'bookmark'}],
-                 'metadata': {},
+                 'metadata': metadata,
                  'name': name,
                  'replication_status': 'disabled',
                  'multiattach': False,
                  'size': size,
                  'snapshot_id': snapshot_id,
                  'source_volid': source_volid,
-                 'status': 'fakestatus',
+                 'status': status,
                  'user_id': 'fakeuser',
-                 'volume_type': 'vol_type_name',
+                 'volume_type': volume_type,
                  'encrypted': False}}
 
     def _expected_volume_api_create_kwargs(self, snapshot=None,
@@ -215,7 +205,7 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/volumes')
         res_dict = self.controller.create(req, body)
 
-        ex = self._expected_vol_from_create_api(snapshot_id=snapshot_id)
+        ex = self._expected_vol_from_controller(snapshot_id=snapshot_id)
         self.assertEqual(ex, res_dict)
 
         context = req.environ['cinder.context']
@@ -225,8 +215,8 @@ class VolumeApiTest(test.TestCase):
         kwargs = self._expected_volume_api_create_kwargs(
             stubs.stub_snapshot(snapshot_id))
         create.assert_called_once_with(self.controller.volume_api, context,
-                                       vol['size'], DEFAULT_VOL_NAME,
-                                       DEFAULT_VOL_DESCRIPTION, **kwargs)
+                                       vol['size'], stubs.DEFAULT_VOL_NAME,
+                                       stubs.DEFAULT_VOL_DESCRIPTION, **kwargs)
 
     @mock.patch.object(volume_api.API, 'get_snapshot', autospec=True)
     def test_volume_creation_fails_with_invalid_snapshot(self, get_snapshot):
@@ -258,7 +248,7 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/volumes')
         res_dict = self.controller.create(req, body)
 
-        ex = self._expected_vol_from_create_api(source_volid=source_volid)
+        ex = self._expected_vol_from_controller(source_volid=source_volid)
         self.assertEqual(ex, res_dict)
 
         context = req.environ['cinder.context']
@@ -268,8 +258,8 @@ class VolumeApiTest(test.TestCase):
         kwargs = self._expected_volume_api_create_kwargs(
             source_volume=stubs.stub_volume(source_volid))
         create.assert_called_once_with(self.controller.volume_api, context,
-                                       vol['size'], DEFAULT_VOL_NAME,
-                                       DEFAULT_VOL_DESCRIPTION, **kwargs)
+                                       vol['size'], stubs.DEFAULT_VOL_NAME,
+                                       stubs.DEFAULT_VOL_DESCRIPTION, **kwargs)
 
     @mock.patch.object(volume_api.API, 'get_volume', autospec=True)
     def test_volume_creation_fails_with_invalid_source_volume(self,
@@ -345,10 +335,7 @@ class VolumeApiTest(test.TestCase):
                                        context, consistencygroup_id)
 
     def test_volume_creation_fails_with_bad_size(self):
-        vol = {"size": '',
-               "name": "Volume Test Name",
-               "description": "Volume Test Desc",
-               "availability_zone": "zone1:host1"}
+        vol = self._vol_in_request_body(size="")
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
         self.assertRaises(exception.InvalidInput,
@@ -357,10 +344,7 @@ class VolumeApiTest(test.TestCase):
                           body)
 
     def test_volume_creation_fails_with_bad_availability_zone(self):
-        vol = {"size": '1',
-               "name": "Volume Test Name",
-               "description": "Volume Test Desc",
-               "availability_zone": "zonen:hostn"}
+        vol = self._vol_in_request_body(availability_zone="zonen:hostn")
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
         self.assertRaises(exception.InvalidInput,
@@ -372,34 +356,10 @@ class VolumeApiTest(test.TestCase):
         self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
 
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
-        vol = {"size": '1',
-               "name": "Volume Test Name",
-               "description": "Volume Test Desc",
-               "availability_zone": "nova",
-               "imageRef": 'c905cedb-7281-47e4-8a62-f26bc5fc4c77'}
-        ex = {'volume': {'attachments': [],
-                         'availability_zone': 'nova',
-                         'bootable': 'false',
-                         'consistencygroup_id': None,
-                         'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
-                         'description': 'Volume Test Desc',
-                         'encrypted': False,
-                         'id': '1',
-                         'links':
-                         [{'href': 'http://localhost/v2/fakeproject/volumes/1',
-                           'rel': 'self'},
-                          {'href': 'http://localhost/fakeproject/volumes/1',
-                           'rel': 'bookmark'}],
-                         'metadata': {},
-                         'name': 'Volume Test Name',
-                         'replication_status': 'disabled',
-                         'multiattach': False,
-                         'size': '1',
-                         'snapshot_id': None,
-                         'source_volid': None,
-                         'status': 'fakestatus',
-                         'user_id': 'fakeuser',
-                         'volume_type': 'vol_type_name'}}
+        vol = self._vol_in_request_body(
+            availability_zone="nova",
+            image_ref="c905cedb-7281-47e4-8a62-f26bc5fc4c77")
+        ex = self._expected_vol_from_controller(availability_zone="nova")
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
         res_dict = self.controller.create(req, body)
@@ -408,13 +368,8 @@ class VolumeApiTest(test.TestCase):
     def test_volume_create_with_image_ref_is_integer(self):
         self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
-        vol = {
-            "size": '1',
-            "name": "Volume Test Name",
-            "description": "Volume Test Desc",
-            "availability_zone": "cinder",
-            "imageRef": 1234,
-        }
+        vol = self._vol_in_request_body(availability_zone="cinder",
+                                        image_ref=1234)
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -425,13 +380,8 @@ class VolumeApiTest(test.TestCase):
     def test_volume_create_with_image_ref_not_uuid_format(self):
         self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
-        vol = {
-            "size": '1',
-            "name": "Volume Test Name",
-            "description": "Volume Test Desc",
-            "availability_zone": "cinder",
-            "imageRef": '12345'
-        }
+        vol = self._vol_in_request_body(availability_zone="cinder",
+                                        image_ref="12345")
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -442,11 +392,8 @@ class VolumeApiTest(test.TestCase):
     def test_volume_create_with_image_ref_with_empty_string(self):
         self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
-        vol = {"size": 1,
-               "display_name": "Volume Test Name",
-               "display_description": "Volume Test Desc",
-               "availability_zone": "cinder",
-               "imageRef": ''}
+        vol = self._vol_in_request_body(availability_zone="cinder",
+                                        image_ref="")
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -459,34 +406,10 @@ class VolumeApiTest(test.TestCase):
         self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
 
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
-        vol = {"size": '1',
-               "name": "Volume Test Name",
-               "description": "Volume Test Desc",
-               "availability_zone": "nova",
-               "image_id": 'c905cedb-7281-47e4-8a62-f26bc5fc4c77'}
-        ex = {'volume': {'attachments': [],
-                         'availability_zone': 'nova',
-                         'bootable': 'false',
-                         'consistencygroup_id': None,
-                         'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
-                         'description': 'Volume Test Desc',
-                         'encrypted': False,
-                         'id': '1',
-                         'links':
-                         [{'href': 'http://localhost/v2/fakeproject/volumes/1',
-                           'rel': 'self'},
-                          {'href': 'http://localhost/fakeproject/volumes/1',
-                           'rel': 'bookmark'}],
-                         'metadata': {},
-                         'name': 'Volume Test Name',
-                         'replication_status': 'disabled',
-                         'multiattach': False,
-                         'size': '1',
-                         'snapshot_id': None,
-                         'source_volid': None,
-                         'status': 'fakestatus',
-                         'user_id': 'fakeuser',
-                         'volume_type': 'vol_type_name'}}
+        vol = self._vol_in_request_body(
+            availability_zone="nova",
+            image_id="c905cedb-7281-47e4-8a62-f26bc5fc4c77")
+        ex = self._expected_vol_from_controller(availability_zone="nova")
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
         res_dict = self.controller.create(req, body)
@@ -495,13 +418,8 @@ class VolumeApiTest(test.TestCase):
     def test_volume_create_with_image_id_is_integer(self):
         self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
-        vol = {
-            "size": '1',
-            "name": "Volume Test Name",
-            "description": "Volume Test Desc",
-            "availability_zone": "cinder",
-            "image_id": 1234,
-        }
+        vol = self._vol_in_request_body(availability_zone="cinder",
+                                        image_id=1234)
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -512,13 +430,8 @@ class VolumeApiTest(test.TestCase):
     def test_volume_create_with_image_id_not_uuid_format(self):
         self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
-        vol = {
-            "size": '1',
-            "name": "Volume Test Name",
-            "description": "Volume Test Desc",
-            "availability_zone": "cinder",
-            "image_id": '12345'
-        }
+        vol = self._vol_in_request_body(availability_zone="cinder",
+                                        image_id="12345")
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -529,11 +442,8 @@ class VolumeApiTest(test.TestCase):
     def test_volume_create_with_image_id_with_empty_string(self):
         self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
-        vol = {"size": 1,
-               "display_name": "Volume Test Name",
-               "display_description": "Volume Test Desc",
-               "availability_zone": "cinder",
-               "image_id": ''}
+        vol = self._vol_in_request_body(availability_zone="cinder",
+                                        image_id="")
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -550,34 +460,9 @@ class VolumeApiTest(test.TestCase):
 
         test_id = "Fedora-x86_64-20-20140618-sda"
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
-        vol = {"size": '1',
-               "name": "Volume Test Name",
-               "description": "Volume Test Desc",
-               "availability_zone": "nova",
-               "imageRef": test_id}
-        ex = {'volume': {'attachments': [],
-                         'availability_zone': 'nova',
-                         'bootable': 'false',
-                         'consistencygroup_id': None,
-                         'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
-                         'description': 'Volume Test Desc',
-                         'encrypted': False,
-                         'id': '1',
-                         'links':
-                         [{'href': 'http://localhost/v2/fakeproject/volumes/1',
-                           'rel': 'self'},
-                          {'href': 'http://localhost/fakeproject/volumes/1',
-                           'rel': 'bookmark'}],
-                         'metadata': {},
-                         'name': 'Volume Test Name',
-                         'replication_status': 'disabled',
-                         'multiattach': False,
-                         'size': '1',
-                         'snapshot_id': None,
-                         'source_volid': None,
-                         'status': 'fakestatus',
-                         'user_id': 'fakeuser',
-                         'volume_type': 'vol_type_name'}}
+        vol = self._vol_in_request_body(availability_zone="nova",
+                                        image_ref=test_id)
+        ex = self._expected_vol_from_controller(availability_zone="nova")
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
         res_dict = self.controller.create(req, body)
@@ -592,11 +477,8 @@ class VolumeApiTest(test.TestCase):
 
         test_id = "multi"
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
-        vol = {"size": '1',
-               "name": "Volume Test Name",
-               "description": "Volume Test Desc",
-               "availability_zone": "nova",
-               "imageRef": test_id}
+        vol = self._vol_in_request_body(availability_zone="nova",
+                                        image_ref=test_id)
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -613,11 +495,8 @@ class VolumeApiTest(test.TestCase):
 
         test_id = "MissingName"
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
-        vol = {"size": '1',
-               "name": "Volume Test Name",
-               "description": "Volume Test Desc",
-               "availability_zone": "nova",
-               "imageRef": test_id}
+        vol = self._vol_in_request_body(availability_zone="nova",
+                                        image_ref=test_id)
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -636,38 +515,9 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/volumes/1')
         self.assertEqual(0, len(self.notifier.notifications))
         res_dict = self.controller.update(req, '1', body)
-        expected = {
-            'volume': {
-                'status': 'fakestatus',
-                'description': 'displaydesc',
-                'encrypted': False,
-                'availability_zone': 'fakeaz',
-                'bootable': 'false',
-                'consistencygroup_id': None,
-                'name': 'Updated Test Name',
-                'replication_status': 'disabled',
-                'multiattach': False,
-                'attachments': [],
-                'user_id': 'fakeuser',
-                'volume_type': 'vol_type_name',
-                'snapshot_id': None,
-                'source_volid': None,
-                'metadata': {'attached_mode': 'rw', 'readonly': 'False'},
-                'id': '1',
-                'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
-                'size': 1,
-                'links': [
-                    {
-                        'href': 'http://localhost/v2/fakeproject/volumes/1',
-                        'rel': 'self'
-                    },
-                    {
-                        'href': 'http://localhost/fakeproject/volumes/1',
-                        'rel': 'bookmark'
-                    }
-                ],
-            }
-        }
+        expected = self._expected_vol_from_controller(
+            availability_zone=stubs.DEFAULT_AZ, name="Updated Test Name",
+            metadata={'attached_mode': 'rw', 'readonly': 'False'})
         self.assertEqual(expected, res_dict)
         self.assertEqual(2, len(self.notifier.notifications))
 
@@ -683,38 +533,10 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/volumes/1')
         self.assertEqual(0, len(self.notifier.notifications))
         res_dict = self.controller.update(req, '1', body)
-        expected = {
-            'volume': {
-                'status': 'fakestatus',
-                'description': 'Updated Test Description',
-                'encrypted': False,
-                'availability_zone': 'fakeaz',
-                'bootable': 'false',
-                'consistencygroup_id': None,
-                'name': 'Updated Test Name',
-                'replication_status': 'disabled',
-                'multiattach': False,
-                'attachments': [],
-                'user_id': 'fakeuser',
-                'volume_type': 'vol_type_name',
-                'snapshot_id': None,
-                'source_volid': None,
-                'metadata': {'attached_mode': 'rw', 'readonly': 'False'},
-                'id': '1',
-                'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
-                'size': 1,
-                'links': [
-                    {
-                        'href': 'http://localhost/v2/fakeproject/volumes/1',
-                        'rel': 'self'
-                    },
-                    {
-                        'href': 'http://localhost/fakeproject/volumes/1',
-                        'rel': 'bookmark'
-                    }
-                ],
-            }
-        }
+        expected = self._expected_vol_from_controller(
+            availability_zone=stubs.DEFAULT_AZ, name="Updated Test Name",
+            description="Updated Test Description",
+            metadata={'attached_mode': 'rw', 'readonly': 'False'})
         self.assertEqual(expected, res_dict)
         self.assertEqual(2, len(self.notifier.notifications))
 
@@ -733,38 +555,10 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/volumes/1')
         self.assertEqual(0, len(self.notifier.notifications))
         res_dict = self.controller.update(req, '1', body)
-        expected = {
-            'volume': {
-                'status': 'fakestatus',
-                'description': 'New Description',
-                'encrypted': False,
-                'availability_zone': 'fakeaz',
-                'bootable': 'false',
-                'consistencygroup_id': None,
-                'name': 'New Name',
-                'replication_status': 'disabled',
-                'multiattach': False,
-                'attachments': [],
-                'user_id': 'fakeuser',
-                'volume_type': 'vol_type_name',
-                'snapshot_id': None,
-                'source_volid': None,
-                'metadata': {'attached_mode': 'rw', 'readonly': 'False'},
-                'id': '1',
-                'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
-                'size': 1,
-                'links': [
-                    {
-                        'href': 'http://localhost/v2/fakeproject/volumes/1',
-                        'rel': 'self'
-                    },
-                    {
-                        'href': 'http://localhost/fakeproject/volumes/1',
-                        'rel': 'bookmark'
-                    }
-                ],
-            }
-        }
+        expected = self._expected_vol_from_controller(
+            availability_zone=stubs.DEFAULT_AZ,
+            name="New Name", description="New Description",
+            metadata={'attached_mode': 'rw', 'readonly': 'False'})
         self.assertEqual(expected, res_dict)
         self.assertEqual(2, len(self.notifier.notifications))
 
@@ -779,38 +573,10 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/volumes/1')
         self.assertEqual(0, len(self.notifier.notifications))
         res_dict = self.controller.update(req, '1', body)
-        expected = {'volume': {
-            'status': 'fakestatus',
-            'description': 'displaydesc',
-            'encrypted': False,
-            'availability_zone': 'fakeaz',
-            'bootable': 'false',
-            'consistencygroup_id': None,
-            'name': 'displayname',
-            'replication_status': 'disabled',
-            'multiattach': False,
-            'attachments': [],
-            'user_id': 'fakeuser',
-            'volume_type': 'vol_type_name',
-            'snapshot_id': None,
-            'source_volid': None,
-            'metadata': {"qos_max_iops": 2000,
-                         "readonly": "False",
-                         "attached_mode": "rw"},
-            'id': '1',
-            'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
-            'size': 1,
-            'links': [
-                {
-                    'href': 'http://localhost/v2/fakeproject/volumes/1',
-                    'rel': 'self'
-                },
-                {
-                    'href': 'http://localhost/fakeproject/volumes/1',
-                    'rel': 'bookmark'
-                }
-            ],
-        }}
+        expected = self._expected_vol_from_controller(
+            availability_zone=stubs.DEFAULT_AZ,
+            metadata={'attached_mode': 'rw', 'readonly': 'False',
+                      'qos_max_iops': 2000})
         self.assertEqual(expected, res_dict)
         self.assertEqual(2, len(self.notifier.notifications))
 
@@ -838,47 +604,21 @@ class VolumeApiTest(test.TestCase):
         body = {"volume": updates}
         req = fakes.HTTPRequest.blank('/v2/volumes/1')
         self.assertEqual(0, len(self.notifier.notifications))
-        admin_ctx = context.RequestContext('admin', 'fake', True)
+        admin_ctx = context.RequestContext('admin', 'fakeproject', True)
         req.environ['cinder.context'] = admin_ctx
         res_dict = self.controller.update(req, '1', body)
-        expected = {'volume': {
-            'status': 'in-use',
-            'description': 'displaydesc',
-            'encrypted': False,
-            'availability_zone': 'fakeaz',
-            'bootable': 'false',
-            'consistencygroup_id': None,
-            'name': 'Updated Test Name',
-            'replication_status': 'disabled',
-            'multiattach': False,
-            'attachments': [{
+        expected = self._expected_vol_from_controller(
+            availability_zone=stubs.DEFAULT_AZ, volume_type=None,
+            status='in-use', name='Updated Test Name',
+            attachments=[{
                 'id': '1',
                 'attachment_id': attachment['id'],
-                'volume_id': '1',
+                'volume_id': stubs.DEFAULT_VOL_ID,
                 'server_id': stubs.FAKE_UUID,
                 'host_name': None,
                 'device': '/',
             }],
-            'user_id': 'fakeuser',
-            'volume_type': None,
-            'snapshot_id': None,
-            'source_volid': None,
-            'metadata': {'key': 'value',
-                         'readonly': 'True'},
-            'id': '1',
-            'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
-            'size': 1,
-            'links': [
-                {
-                    'href': 'http://localhost/v2/fake/volumes/1',
-                    'rel': 'self'
-                },
-                {
-                    'href': 'http://localhost/fake/volumes/1',
-                    'rel': 'bookmark'
-                }
-            ],
-        }}
+            metadata={'key': 'value', 'readonly': 'True'})
         self.assertEqual(expected, res_dict)
         self.assertEqual(2, len(self.notifier.notifications))
 
@@ -919,7 +659,7 @@ class VolumeApiTest(test.TestCase):
         expected = {
             'volumes': [
                 {
-                    'name': 'displayname',
+                    'name': stubs.DEFAULT_VOL_NAME,
                     'id': '1',
                     'links': [
                         {
@@ -946,41 +686,10 @@ class VolumeApiTest(test.TestCase):
 
         req = fakes.HTTPRequest.blank('/v2/volumes/detail')
         res_dict = self.controller.detail(req)
-        expected = {
-            'volumes': [
-                {
-                    'status': 'fakestatus',
-                    'description': 'displaydesc',
-                    'encrypted': False,
-                    'availability_zone': 'fakeaz',
-                    'bootable': 'false',
-                    'consistencygroup_id': None,
-                    'name': 'displayname',
-                    'replication_status': 'disabled',
-                    'multiattach': False,
-                    'attachments': [],
-                    'user_id': 'fakeuser',
-                    'volume_type': 'vol_type_name',
-                    'snapshot_id': None,
-                    'source_volid': None,
-                    'metadata': {'attached_mode': 'rw', 'readonly': 'False'},
-                    'id': '1',
-                    'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
-                    'size': 1,
-                    'links': [
-                        {
-                            'href': 'http://localhost/v2/fakeproject/volumes/'
-                                    '1',
-                            'rel': 'self'
-                        },
-                        {
-                            'href': 'http://localhost/fakeproject/volumes/1',
-                            'rel': 'bookmark'
-                        }
-                    ],
-                }
-            ]
-        }
+        exp_vol = self._expected_vol_from_controller(
+            availability_zone=stubs.DEFAULT_AZ,
+            metadata={'attached_mode': 'rw', 'readonly': 'False'})
+        expected = {'volumes': [exp_vol['volume']]}
         self.assertEqual(expected, res_dict)
         # Finally test that we cached the returned volumes
         self.assertEqual(1, len(req.cached_resource()))
@@ -1005,50 +714,17 @@ class VolumeApiTest(test.TestCase):
         admin_ctx = context.RequestContext('admin', 'fakeproject', True)
         req.environ['cinder.context'] = admin_ctx
         res_dict = self.controller.detail(req)
-        expected = {
-            'volumes': [
-                {
-                    'status': 'in-use',
-                    'description': 'displaydesc',
-                    'encrypted': False,
-                    'availability_zone': 'fakeaz',
-                    'bootable': 'false',
-                    'consistencygroup_id': None,
-                    'name': 'displayname',
-                    'replication_status': 'disabled',
-                    'multiattach': False,
-                    'attachments': [
-                        {
-                            'attachment_id': attachment['id'],
-                            'device': '/',
-                            'server_id': stubs.FAKE_UUID,
-                            'host_name': None,
-                            'id': '1',
-                            'volume_id': '1'
-                        }
-                    ],
-                    'user_id': 'fakeuser',
-                    'volume_type': None,
-                    'snapshot_id': None,
-                    'source_volid': None,
-                    'metadata': {'key': 'value', 'readonly': 'True'},
-                    'id': '1',
-                    'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
-                    'size': 1,
-                    'links': [
-                        {
-                            'href': 'http://localhost/v2/fakeproject'
-                                    '/volumes/1',
-                            'rel': 'self'
-                        },
-                        {
-                            'href': 'http://localhost/fakeproject/volumes/1',
-                            'rel': 'bookmark'
-                        }
-                    ],
-                }
-            ]
-        }
+        exp_vol = self._expected_vol_from_controller(
+            availability_zone=stubs.DEFAULT_AZ,
+            status="in-use", volume_type=None,
+            attachments=[{'attachment_id': attachment['id'],
+                          'device': '/',
+                          'server_id': stubs.FAKE_UUID,
+                          'host_name': None,
+                          'id': '1',
+                          'volume_id': stubs.DEFAULT_VOL_ID}],
+            metadata={'key': 'value', 'readonly': 'True'})
+        expected = {'volumes': [exp_vol['volume']]}
         self.assertEqual(expected, res_dict)
 
     def test_volume_index_with_marker(self):
@@ -1425,39 +1101,10 @@ class VolumeApiTest(test.TestCase):
 
         req = fakes.HTTPRequest.blank('/v2/volumes/1')
         res_dict = self.controller.show(req, '1')
-        expected = {
-            'volume': {
-                'status': 'fakestatus',
-                'description': 'displaydesc',
-                'encrypted': False,
-                'availability_zone': 'fakeaz',
-                'bootable': 'false',
-                'consistencygroup_id': None,
-                'name': 'displayname',
-                'replication_status': 'disabled',
-                'multiattach': False,
-                'attachments': [],
-                'user_id': 'fakeuser',
-                'volume_type': 'vol_type_name',
-                'snapshot_id': None,
-                'source_volid': None,
-                'metadata': {'attached_mode': 'rw', 'readonly': 'False'},
-                'id': '1',
-                'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
-                'size': 1,
-                'links': [
-                    {
-                        'href': 'http://localhost/v2/fakeproject/volumes/1',
-                        'rel': 'self'
-                    },
-                    {
-                        'href': 'http://localhost/fakeproject/volumes/1',
-                        'rel': 'bookmark'
-                    }
-                ],
-            }
-        }
-        self.assertEqual(res_dict, expected)
+        expected = self._expected_vol_from_controller(
+            availability_zone=stubs.DEFAULT_AZ,
+            metadata={'attached_mode': 'rw', 'readonly': 'False'})
+        self.assertEqual(expected, res_dict)
         # Finally test that we cached the returned volume
         self.assertIsNotNone(req.cached_resource_by_id('1'))
 
@@ -1469,40 +1116,11 @@ class VolumeApiTest(test.TestCase):
 
         req = fakes.HTTPRequest.blank('/v2/volumes/1')
         res_dict = self.controller.show(req, '1')
-        expected = {
-            'volume': {
-                'status': 'fakestatus',
-                'description': 'displaydesc',
-                'encrypted': False,
-                'availability_zone': 'fakeaz',
-                'bootable': 'false',
-                'consistencygroup_id': None,
-                'name': 'displayname',
-                'replication_status': 'disabled',
-                'multiattach': False,
-                'attachments': [],
-                'user_id': 'fakeuser',
-                'volume_type': 'vol_type_name',
-                'snapshot_id': None,
-                'source_volid': None,
-                'metadata': {'readonly': 'False'},
-                'id': '1',
-                'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
-                'size': 1,
-                'links': [
-                    {
-                        'href': 'http://localhost/v2/fakeproject/volumes/1',
-                        'rel': 'self'
-                    },
-                    {
-                        'href': 'http://localhost/fakeproject/volumes/1',
-                        'rel': 'bookmark'
-                    }
-                ],
-            }
-        }
+        expected = self._expected_vol_from_controller(
+            availability_zone=stubs.DEFAULT_AZ,
+            metadata={'readonly': 'False'})
 
-        self.assertEqual(res_dict, expected)
+        self.assertEqual(expected, res_dict)
 
     def test_volume_show_no_volume(self):
         self.stubs.Set(volume_api.API, "get", stubs.stub_volume_get_notfound)
@@ -1533,49 +1151,18 @@ class VolumeApiTest(test.TestCase):
         admin_ctx = context.RequestContext('admin', 'fakeproject', True)
         req.environ['cinder.context'] = admin_ctx
         res_dict = self.controller.show(req, '1')
-        expected = {
-            'volume': {
-                'status': 'in-use',
-                'description': 'displaydesc',
-                'encrypted': False,
-                'availability_zone': 'fakeaz',
-                'bootable': 'false',
-                'consistencygroup_id': None,
-                'name': 'displayname',
-                'replication_status': 'disabled',
-                'multiattach': False,
-                'attachments': [
-                    {
-                        'attachment_id': attachment['id'],
-                        'device': '/',
-                        'server_id': stubs.FAKE_UUID,
-                        'host_name': None,
-                        'id': '1',
-                        'volume_id': '1'
-                    }
-                ],
-                'user_id': 'fakeuser',
-                'volume_type': None,
-                'snapshot_id': None,
-                'source_volid': None,
-                'metadata': {'key': 'value',
-                             'readonly': 'True'},
+        expected = self._expected_vol_from_controller(
+            availability_zone=stubs.DEFAULT_AZ,
+            volume_type=None, status='in-use',
+            attachments=[{
                 'id': '1',
-                'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
-                'size': 1,
-                'links': [
-                    {
-                        'href': 'http://localhost/v2/fakeproject/volumes/1',
-                        'rel': 'self'
-                    },
-                    {
-                        'href': 'http://localhost/fakeproject/volumes/1',
-                        'rel': 'bookmark'
-                    }
-                ],
-            }
-        }
-        self.assertEqual(res_dict, expected)
+                'attachment_id': attachment['id'],
+                'volume_id': stubs.DEFAULT_VOL_ID,
+                'server_id': stubs.FAKE_UUID,
+                'host_name': None,
+                'device': '/'}],
+            metadata={'key': 'value', 'readonly': 'True'})
+        self.assertEqual(expected, res_dict)
 
     def test_volume_show_with_encrypted_volume(self):
         def stub_volume_get(self, context, volume_id, **kwargs):
