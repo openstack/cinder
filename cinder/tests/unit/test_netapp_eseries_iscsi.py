@@ -2,6 +2,7 @@
 # Copyright (c) 2015 Alex Meade.  All Rights Reserved.
 # Copyright (c) 2015 Rushil Chugh.  All Rights Reserved.
 # Copyright (c) 2015 Navneet Singh.  All Rights Reserved.
+# Copyright (c) 2015 Michael Price.  All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -17,6 +18,7 @@
 """Tests for NetApp e-series iscsi volume driver."""
 
 import copy
+import ddt
 import json
 import re
 import socket
@@ -26,7 +28,8 @@ import requests
 
 from cinder import exception
 from cinder import test
-from cinder.tests.unit.volume.drivers.netapp.eseries import fakes
+from cinder.tests.unit.volume.drivers.netapp.eseries import fakes as \
+    fakes
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.netapp import common
 from cinder.volume.drivers.netapp.eseries import client
@@ -610,6 +613,7 @@ class FakeEseriesHTTPSession(object):
             raise exception.Invalid()
 
 
+@ddt.ddt
 class NetAppEseriesISCSIDriverTestCase(test.TestCase):
     """Test case for NetApp e-series iscsi driver."""
 
@@ -720,14 +724,13 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
         self.assertTrue(result)
 
     def test_create_destroy(self):
-        FAKE_POOLS = [{'label': 'DDP', 'volumeGroupRef': 'test'}]
-        self.library._get_storage_pools = mock.Mock(return_value=FAKE_POOLS)
-        self.library._client.features = mock.Mock()
-        self.mock_object(self.library._client, '_get_resource_url', mock.Mock(
-            return_value=fakes.FAKE_ENDPOINT_HTTP))
-        self.mock_object(self.library._client, '_eval_response')
-        self.mock_object(self.library._client, 'list_volumes', mock.Mock(
-            return_value=FAKE_POOLS))
+        self.mock_object(client.RestClient, 'delete_volume',
+                         mock.Mock(return_value='None'))
+        self.mock_object(self.driver.library, 'create_volume',
+                         mock.Mock(return_value=self.volume))
+        self.mock_object(self.library._client, 'list_volume', mock.Mock(
+            return_value=fakes.VOLUME))
+
         self.driver.create_volume(self.volume)
         self.driver.delete_volume(self.volume)
 
@@ -967,72 +970,43 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
             exception.NoValidHost,
             driver.library._check_mode_get_or_register_storage_system)
 
-    def test_get_vol_with_label_wwn_missing(self):
-        self.assertRaises(exception.InvalidInput,
-                          self.library._get_volume_with_label_wwn,
-                          None, None)
-
-    def test_get_vol_with_label_wwn_found(self):
-        fake_vl_list = [{'volumeRef': '1', 'volumeUse': 'standardVolume',
-                         'label': 'l1', 'volumeGroupRef': 'g1',
-                         'worlWideName': 'w1ghyu'},
-                        {'volumeRef': '2', 'volumeUse': 'standardVolume',
-                         'label': 'l2', 'volumeGroupRef': 'g2',
-                         'worldWideName': 'w2ghyu'}]
-        self.library._get_storage_pools = mock.Mock(return_value=['g2', 'g3'])
-        self.library._client.list_volumes = mock.Mock(
-            return_value=fake_vl_list)
-        vol = self.library._get_volume_with_label_wwn('l2', 'w2:gh:yu')
-        self.assertEqual(1, self.library._client.list_volumes.call_count)
-        self.assertEqual('2', vol['volumeRef'])
-
-    def test_get_vol_with_label_wwn_unmatched(self):
-        fake_vl_list = [{'volumeRef': '1', 'volumeUse': 'standardVolume',
-                         'label': 'l1', 'volumeGroupRef': 'g1',
-                         'worlWideName': 'w1ghyu'},
-                        {'volumeRef': '2', 'volumeUse': 'standardVolume',
-                         'label': 'l2', 'volumeGroupRef': 'g2',
-                         'worldWideName': 'w2ghyu'}]
-        self.library._get_storage_pools = mock.Mock(return_value=['g2', 'g3'])
-        self.library._client.list_volumes = mock.Mock(
-            return_value=fake_vl_list)
-        self.assertRaises(KeyError, self.library._get_volume_with_label_wwn,
-                          'l2', 'abcdef')
-        self.assertEqual(1, self.library._client.list_volumes.call_count)
-
     def test_manage_existing_get_size(self):
         self.library._get_existing_vol_with_manage_ref = mock.Mock(
             return_value=self.fake_ret_vol)
         size = self.driver.manage_existing_get_size(self.volume, self.fake_ref)
         self.assertEqual(3, size)
         self.library._get_existing_vol_with_manage_ref.assert_called_once_with(
-            self.volume, self.fake_ref)
+            self.fake_ref)
 
     def test_get_exist_vol_source_name_missing(self):
+        self.library._client.list_volume = mock.Mock(
+            side_effect=exception.InvalidInput)
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.library._get_existing_vol_with_manage_ref,
-                          self.volume, {'id': '1234'})
+                          {'id': '1234'})
 
-    def test_get_exist_vol_source_not_found(self):
-        def _get_volume(v_id, v_name):
-            d = {'id': '1'}
+    @ddt.data('source-id', 'source-name')
+    def test_get_exist_vol_source_not_found(self, attr_name):
+        def _get_volume(v_id):
+            d = {'id': '1', 'name': 'volume1', 'worldWideName': '0'}
             return d[v_id]
 
-        self.library._get_volume_with_label_wwn = mock.Mock(wraps=_get_volume)
+        self.library._client.list_volume = mock.Mock(wraps=_get_volume)
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.library._get_existing_vol_with_manage_ref,
-                          {'id': 'id2'}, {'source-name': 'name2'})
-        self.library._get_volume_with_label_wwn.assert_called_once_with(
-            'name2', None)
+                          {attr_name: 'name2'})
+
+        self.library._client.list_volume.assert_called_once_with(
+            'name2')
 
     def test_get_exist_vol_with_manage_ref(self):
         fake_ret_vol = {'id': 'right'}
-        self.library._get_volume_with_label_wwn = mock.Mock(
-            return_value=fake_ret_vol)
+        self.library._client.list_volume = mock.Mock(return_value=fake_ret_vol)
+
         actual_vol = self.library._get_existing_vol_with_manage_ref(
-            {'id': 'id2'}, {'source-name': 'name2'})
-        self.library._get_volume_with_label_wwn.assert_called_once_with(
-            'name2', None)
+            {'source-name': 'name2'})
+
+        self.library._client.list_volume.assert_called_once_with('name2')
         self.assertEqual(fake_ret_vol, actual_vol)
 
     @mock.patch.object(utils, 'convert_uuid_to_es_fmt')
@@ -1042,7 +1016,7 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
         mock_convert_es_fmt.return_value = 'label'
         self.driver.manage_existing(self.volume, self.fake_ref)
         self.library._get_existing_vol_with_manage_ref.assert_called_once_with(
-            self.volume, self.fake_ref)
+            self.fake_ref)
         mock_convert_es_fmt.assert_called_once_with(
             '114774fb-e15a-4fae-8ee2-c9723e3645ef')
 
@@ -1055,7 +1029,7 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
             return_value={'id': 'update', 'worldWideName': 'wwn'})
         self.driver.manage_existing(self.volume, self.fake_ref)
         self.library._get_existing_vol_with_manage_ref.assert_called_once_with(
-            self.volume, self.fake_ref)
+            self.fake_ref)
         mock_convert_es_fmt.assert_called_once_with(
             '114774fb-e15a-4fae-8ee2-c9723e3645ef')
         self.library._client.update_volume.assert_called_once_with(

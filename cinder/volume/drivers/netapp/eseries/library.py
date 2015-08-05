@@ -2,6 +2,7 @@
 # Copyright (c) 2015 Rushil Chugh
 # Copyright (c) 2015 Navneet Singh
 # Copyright (c) 2015 Yogesh Kshirsagar
+# Copyright (c) 2015 Michael Price
 #  All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -110,6 +111,7 @@ class NetAppESeriesLibrary(object):
     ENCRYPTION_UQ_SPEC = 'netapp_disk_encryption'
     SPINDLE_SPD_UQ_SPEC = 'netapp_eseries_disk_spindle_speed'
     RAID_UQ_SPEC = 'netapp_raid_type'
+    THIN_UQ_SPEC = 'netapp_thin_provisioned'
     SSC_UPDATE_INTERVAL = 60  # seconds
     WORLDWIDENAME = 'worldWideName'
 
@@ -280,27 +282,14 @@ class NetAppESeriesLibrary(object):
         return True
 
     def _get_volume(self, uid):
-        label = utils.convert_uuid_to_es_fmt(uid)
-        return self._get_volume_with_label_wwn(label)
+        """Retrieve a volume by its label"""
+        if uid is None:
+            raise exception.InvalidInput(_('The volume label is required'
+                                           ' as input.'))
 
-    def _get_volume_with_label_wwn(self, label=None, wwn=None):
-        """Searches volume with label or wwn or both."""
-        if not (label or wwn):
-            raise exception.InvalidInput(_('Either volume label or wwn'
-                                           ' is required as input.'))
-        wwn = wwn.replace(':', '').upper() if wwn else None
-        eseries_volume = None
-        for vol in self._client.list_volumes():
-            if label and vol.get('label') != label:
-                continue
-            if wwn and vol.get(self.WORLDWIDENAME).upper() != wwn:
-                continue
-            eseries_volume = vol
-            break
+        uid = utils.convert_uuid_to_es_fmt(uid)
 
-        if not eseries_volume:
-            raise KeyError()
-        return eseries_volume
+        return self._client.list_volume(uid)
 
     def _get_snapshot_group_for_snapshot(self, snapshot_id):
         label = utils.convert_uuid_to_es_fmt(snapshot_id)
@@ -400,6 +389,10 @@ class NetAppESeriesLibrary(object):
         if data_assurance is not None:
             data_assurance = na_utils.to_bool(data_assurance)
 
+        thin_provision = extra_specs.get(self.THIN_UQ_SPEC)
+        if(thin_provision is not None):
+            thin_provision = na_utils.to_bool(thin_provision)
+
         target_pool = None
 
         pools = self._get_storage_pools()
@@ -418,7 +411,8 @@ class NetAppESeriesLibrary(object):
                                              read_cache=read_cache,
                                              write_cache=write_cache,
                                              flash_cache=flash_cache,
-                                             data_assurance=data_assurance)
+                                             data_assurance=data_assurance,
+                                             thin_provision=thin_provision)
             LOG.info(_LI("Created volume with "
                          "label %s."), eseries_volume_label)
         except exception.NetAppDriverException as e:
@@ -1018,9 +1012,8 @@ class NetAppESeriesLibrary(object):
 
             pool_ssc_info = ssc_stats[poolId]
 
-            encrypted = pool['encrypted']
             pool_ssc_info[self.ENCRYPTION_UQ_SPEC] = (
-                six.text_type(encrypted).lower())
+                six.text_type(pool['encrypted']).lower())
 
             pool_ssc_info[self.SPINDLE_SPD_UQ_SPEC] = (pool['spindleSpeed'])
 
@@ -1036,6 +1029,9 @@ class NetAppESeriesLibrary(object):
 
             pool_ssc_info[self.RAID_UQ_SPEC] = (
                 self.SSC_RAID_TYPE_MAPPING.get(pool['raidLevel'], 'unknown'))
+
+            pool_ssc_info[self.THIN_UQ_SPEC] = (
+                six.text_type(pool['thinProvisioningCapable']).lower())
 
             if pool['pool'].get("driveMediaType") == 'ssd':
                 pool_ssc_info[self.DISK_TYPE_UQ_SPEC] = 'SSD'
@@ -1182,7 +1178,7 @@ class NetAppESeriesLibrary(object):
     @cinder_utils.synchronized('manage_existing')
     def manage_existing(self, volume, existing_ref):
         """Brings an existing storage object under Cinder management."""
-        vol = self._get_existing_vol_with_manage_ref(volume, existing_ref)
+        vol = self._get_existing_vol_with_manage_ref(existing_ref)
         label = utils.convert_uuid_to_es_fmt(volume['id'])
         if label == vol['label']:
             LOG.info(_LI("Volume with given ref %s need not be renamed during"
@@ -1199,13 +1195,14 @@ class NetAppESeriesLibrary(object):
 
         When calculating the size, round up to the next GB.
         """
-        vol = self._get_existing_vol_with_manage_ref(volume, existing_ref)
+        vol = self._get_existing_vol_with_manage_ref(existing_ref)
         return int(math.ceil(float(vol['capacity']) / units.Gi))
 
-    def _get_existing_vol_with_manage_ref(self, volume, existing_ref):
+    def _get_existing_vol_with_manage_ref(self, existing_ref):
         try:
-            return self._get_volume_with_label_wwn(
-                existing_ref.get('source-name'), existing_ref.get('source-id'))
+            vol_id = existing_ref.get('source-name') or existing_ref.get(
+                'source-id')
+            return self._client.list_volume(vol_id)
         except exception.InvalidInput:
             reason = _('Reference must contain either source-name'
                        ' or source-id element.')

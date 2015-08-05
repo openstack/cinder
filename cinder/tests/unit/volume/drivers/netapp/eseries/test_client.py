@@ -1,5 +1,6 @@
 # Copyright (c) 2014 Alex Meade
 # Copyright (c) 2015 Yogesh Kshirsagar
+# Copyright (c) 2015 Michael Price
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -23,6 +24,8 @@ from cinder import exception
 from cinder import test
 from cinder.tests.unit.volume.drivers.netapp.eseries import fakes as \
     eseries_fake
+from cinder.volume.drivers.netapp.eseries import exception as es_exception
+
 
 from cinder.volume.drivers.netapp.eseries import client
 from cinder.volume.drivers.netapp import utils as na_utils
@@ -45,19 +48,53 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
                                            'user', self.fake_password,
                                            system_id='fake_sys_id')
         self.my_client.client._endpoint = eseries_fake.FAKE_ENDPOINT_HTTP
-        self.mock_object(self.my_client, '_eval_response')
 
         fake_response = mock.Mock()
         fake_response.status_code = 200
         self.my_client.invoke_service = mock.Mock(return_value=fake_response)
 
+    @ddt.data(200, 201, 203, 204)
+    def test_eval_response_success(self, status_code):
+        fake_resp = mock.Mock()
+        fake_resp.status_code = status_code
+
+        self.assertIsNone(self.my_client._eval_response(fake_resp))
+
+    @ddt.data(300, 400, 404, 500)
+    def test_eval_response_failure(self, status_code):
+        fake_resp = mock.Mock()
+        fake_resp.status_code = status_code
+        expected_msg = "Response error code - %s." % status_code
+
+        with self.assertRaisesRegexp(es_exception.WebServiceException,
+                                     expected_msg) as exc:
+            self.my_client._eval_response(fake_resp)
+
+            self.assertEqual(status_code, exc.status_code)
+
+    def test_eval_response_422(self):
+        status_code = 422
+        resp_text = "Fake Error Message"
+        fake_resp = mock.Mock()
+        fake_resp.status_code = status_code
+        fake_resp.text = resp_text
+        expected_msg = "Response error - %s." % resp_text
+
+        with self.assertRaisesRegexp(es_exception.WebServiceException,
+                                     expected_msg) as exc:
+            self.my_client._eval_response(fake_resp)
+
+            self.assertEqual(status_code, exc.status_code)
+
     def test_register_storage_system_does_not_log_password(self):
+        self.my_client._eval_response = mock.Mock()
         self.my_client.register_storage_system([], password=self.fake_password)
         for call in self.mock_log.debug.mock_calls:
             __, args, __ = call
             self.assertNotIn(self.fake_password, args[0])
 
     def test_update_stored_system_password_does_not_log_password(self):
+        self.my_client._eval_response = mock.Mock()
         self.my_client.update_stored_system_password(
             password=self.fake_password)
         for call in self.mock_log.debug.mock_calls:
@@ -405,6 +442,126 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
 
         self.assertEqual(fake_pool, pool)
 
+    @ddt.data(('volumes', True), ('volumes', False),
+              ('volume', True), ('volume', False))
+    @ddt.unpack
+    def test_get_volume_api_path(self, path_key, ssc_available):
+        self.my_client.features = mock.Mock()
+        self.my_client.features.SSC_API_V2 = na_utils.FeatureState(
+            supported=ssc_available)
+        expected_key = 'ssc_' + path_key if ssc_available else path_key
+        expected = self.my_client.RESOURCE_PATHS.get(expected_key)
+
+        actual = self.my_client._get_volume_api_path(path_key)
+
+        self.assertEqual(expected, actual)
+
+    @ddt.data(True, False)
+    def test_get_volume_api_path_invalid(self, ssc_available):
+        key = 'invalidKey'
+        self.my_client.features = mock.Mock()
+        self.my_client.features.SSC_API_V2 = na_utils.FeatureState(
+            supported=ssc_available)
+
+        self.assertRaises(KeyError, self.my_client._get_volume_api_path, key)
+
+    def test_list_volumes(self):
+        url = client.RestClient.RESOURCE_PATHS['ssc_volumes']
+        self.my_client.features = mock.Mock()
+        self.my_client.features.SSC_API_V2 = na_utils.FeatureState(
+            supported=True)
+        self.my_client._invoke = mock.Mock(
+            return_value=eseries_fake.VOLUMES)
+
+        volumes = client.RestClient.list_volumes(self.my_client)
+
+        self.assertEqual(eseries_fake.VOLUMES, volumes)
+        self.my_client._invoke.assert_called_once_with('GET', url)
+
+    @ddt.data(client.RestClient.ID, client.RestClient.WWN,
+              client.RestClient.NAME)
+    def test_list_volume_v1(self, uid_field_name):
+        url = client.RestClient.RESOURCE_PATHS['volumes']
+        self.my_client.features = mock.Mock()
+        self.my_client.features.SSC_API_V2 = na_utils.FeatureState(
+            supported=False)
+        fake_volume = copy.deepcopy(eseries_fake.VOLUME)
+        self.my_client._invoke = mock.Mock(
+            return_value=eseries_fake.VOLUMES)
+
+        volume = client.RestClient.list_volume(self.my_client,
+                                               fake_volume[uid_field_name])
+
+        self.my_client._invoke.assert_called_once_with('GET', url)
+        self.assertEqual(fake_volume, volume)
+
+    def test_list_volume_v1_not_found(self):
+        url = client.RestClient.RESOURCE_PATHS['volumes']
+        self.my_client.features = mock.Mock()
+        self.my_client.features.SSC_API_V2 = na_utils.FeatureState(
+            supported=False)
+        self.my_client._invoke = mock.Mock(
+            return_value=eseries_fake.VOLUMES)
+
+        self.assertRaises(exception.VolumeNotFound,
+                          client.RestClient.list_volume,
+                          self.my_client, 'fakeId')
+        self.my_client._invoke.assert_called_once_with('GET', url)
+
+    def test_list_volume_v2(self):
+        url = client.RestClient.RESOURCE_PATHS['ssc_volume']
+        self.my_client.features = mock.Mock()
+        self.my_client.features.SSC_API_V2 = na_utils.FeatureState(
+            supported=True)
+        fake_volume = copy.deepcopy(eseries_fake.VOLUME)
+        self.my_client._invoke = mock.Mock(return_value=fake_volume)
+
+        volume = client.RestClient.list_volume(self.my_client,
+                                               fake_volume['id'])
+
+        self.my_client._invoke.assert_called_once_with('GET', url,
+                                                       **{'object-id':
+                                                          mock.ANY})
+        self.assertEqual(fake_volume, volume)
+
+    def test_list_volume_v2_not_found(self):
+        status_code = 404
+        url = client.RestClient.RESOURCE_PATHS['ssc_volume']
+        self.my_client.features = mock.Mock()
+        self.my_client.features.SSC_API_V2 = na_utils.FeatureState(
+            supported=True)
+        msg = "Response error code - %s." % status_code
+        self.my_client._invoke = mock.Mock(
+            side_effect=es_exception.WebServiceException(message=msg,
+                                                         status_code=
+                                                         status_code))
+
+        self.assertRaises(exception.VolumeNotFound,
+                          client.RestClient.list_volume,
+                          self.my_client, 'fakeId')
+        self.my_client._invoke.assert_called_once_with('GET', url,
+                                                       **{'object-id':
+                                                          mock.ANY})
+
+    def test_list_volume_v2_failure(self):
+        status_code = 422
+        url = client.RestClient.RESOURCE_PATHS['ssc_volume']
+        self.my_client.features = mock.Mock()
+        self.my_client.features.SSC_API_V2 = na_utils.FeatureState(
+            supported=True)
+        msg = "Response error code - %s." % status_code
+        self.my_client._invoke = mock.Mock(
+            side_effect=es_exception.WebServiceException(message=msg,
+                                                         status_code=
+                                                         status_code))
+
+        self.assertRaises(es_exception.WebServiceException,
+                          client.RestClient.list_volume, self.my_client,
+                          'fakeId')
+        self.my_client._invoke.assert_called_once_with('GET', url,
+                                                       **{'object-id':
+                                                          mock.ANY})
+
     def test_create_volume_V1(self):
         self.my_client.features = mock.Mock()
         self.my_client.features.SSC_API_V2 = na_utils.FeatureState(
@@ -448,6 +605,52 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
                           client.RestClient.create_volume, self.my_client,
                           '1', 'label', 1, read_cache=True)
 
+    @ddt.data(True, False)
+    def test_update_volume(self, ssc_api_enabled):
+        label = 'updatedName'
+        fake_volume = copy.deepcopy(eseries_fake.VOLUME)
+        expected_volume = copy.deepcopy(fake_volume)
+        expected_volume['name'] = label
+        self.my_client.features = mock.Mock()
+        self.my_client.features.SSC_API_V2 = na_utils.FeatureState(
+            supported=ssc_api_enabled)
+        self.my_client._invoke = mock.Mock(return_value=expected_volume)
+
+        updated_volume = self.my_client.update_volume(fake_volume['id'],
+                                                      label)
+
+        if ssc_api_enabled:
+            url = self.my_client.RESOURCE_PATHS.get('ssc_volume')
+        else:
+            url = self.my_client.RESOURCE_PATHS.get('volume')
+
+        self.my_client._invoke.assert_called_once_with('POST', url,
+                                                       {'name': label},
+                                                       **{'object-id':
+                                                          fake_volume['id']}
+                                                       )
+        self.assertDictMatch(expected_volume, updated_volume)
+
+    @ddt.data(True, False)
+    def test_delete_volume(self, ssc_api_enabled):
+        fake_volume = copy.deepcopy(eseries_fake.VOLUME)
+        self.my_client.features = mock.Mock()
+        self.my_client.features.SSC_API_V2 = na_utils.FeatureState(
+            supported=ssc_api_enabled)
+        self.my_client._invoke = mock.Mock()
+
+        self.my_client.delete_volume(fake_volume['id'])
+
+        if ssc_api_enabled:
+            url = self.my_client.RESOURCE_PATHS.get('ssc_volume')
+        else:
+            url = self.my_client.RESOURCE_PATHS.get('volume')
+
+        self.my_client._invoke.assert_called_once_with('DELETE', url,
+                                                       **{'object-id':
+                                                          fake_volume['id']}
+                                                       )
+
     @ddt.data('00.00.00.00', '01.52.9000.2', '01.52.9001.2', '01.51.9000.3',
               '01.51.9001.3', '01.51.9010.5', '0.53.9000.3', '0.53.9001.4')
     def test_api_version_not_support_asup(self, api_version):
@@ -486,7 +689,7 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
         self.assertFalse(self.my_client.features.SSC_API_V2.supported)
 
     @ddt.data('01.53.9000.1', '01.53.9000.5', '01.53.8999.1',
-              '01.53.9010.20', '01.53.9010.16', '01.54.9000.1',
+              '01.53.9010.20', '01.53.9010.17', '01.54.9000.1',
               '02.51.9000.3', '02.52.8999.3', '02.51.8999.2')
     def test_api_version_supports_ssc_api(self, api_version):
 

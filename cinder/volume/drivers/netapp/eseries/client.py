@@ -3,6 +3,7 @@
 # Copyright (c) 2015 Alex Meade
 # Copyright (c) 2015 Rushil Chugh
 # Copyright (c) 2015 Yogesh Kshirsagar
+# Copyright (c) 2015 Michael Price
 #  All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -32,6 +33,7 @@ from six.moves import urllib
 from cinder import exception
 from cinder.i18n import _
 import cinder.utils as cinder_utils
+from cinder.volume.drivers.netapp.eseries import exception as es_exception
 from cinder.volume.drivers.netapp.eseries import utils
 from cinder.volume.drivers.netapp import utils as na_utils
 
@@ -46,9 +48,20 @@ LOG = logging.getLogger(__name__)
 class RestClient(object):
     """REST client specific to e-series storage service."""
 
+    ID = 'id'
+    WWN = 'worldWideName'
+    NAME = 'label'
+
     ASUP_VALID_VERSION = (1, 52, 9000, 3)
     # We need to check for both the release and the pre-release versions
-    SSC_VALID_VERSIONS = ((1, 53, 9000, 1), (1, 53, 9010, 16))
+    SSC_VALID_VERSIONS = ((1, 53, 9000, 1), (1, 53, 9010, 17))
+
+    RESOURCE_PATHS = {
+        'volumes': '/storage-systems/{system-id}/volumes',
+        'volume': '/storage-systems/{system-id}/volumes/{object-id}',
+        'ssc_volumes': '/storage-systems/{system-id}/ssc/volumes',
+        'ssc_volume': '/storage-systems/{system-id}/ssc/volumes/{object-id}'
+    }
 
     def __init__(self, scheme, host, port, service_path, username,
                  password, **kwargs):
@@ -210,11 +223,22 @@ class RestClient(object):
                 msg = _("Response error - %s.") % response.text
             else:
                 msg = _("Response error code - %s.") % status_code
-            raise exception.NetAppDriverException(msg)
+            raise es_exception.WebServiceException(msg,
+                                                   status_code=status_code)
+
+    def _get_volume_api_path(self, path_key):
+        """Retrieve the correct API path based on API availability
+
+        :param path_key: The volume API to request (volume or volumes)
+        :raise KeyError: If the path_key is not valid
+        """
+        if self.features.SSC_API_V2:
+            path_key = 'ssc_' + path_key
+        return self.RESOURCE_PATHS[path_key]
 
     def create_volume(self, pool, label, size, unit='gb', seg_size=0,
                       read_cache=None, write_cache=None, flash_cache=None,
-                      data_assurance=None):
+                      data_assurance=None, thin_provision=False):
         """Creates a volume on array with the configured attributes
 
         Note: if read_cache, write_cache, flash_cache, or data_assurance
@@ -242,7 +266,8 @@ class RestClient(object):
                     'size': int(size), 'dataAssuranceEnable': data_assurance,
                     'flashCacheEnable': flash_cache,
                     'readCacheEnable': read_cache,
-                    'writeCacheEnable': write_cache}
+                    'writeCacheEnable': write_cache,
+                    'thinProvision': thin_provision}
         # Use the old API
         else:
             # Determine if there are were extra specs provided that are not
@@ -267,22 +292,61 @@ class RestClient(object):
 
     def delete_volume(self, object_id):
         """Deletes given volume from array."""
-        path = "/storage-systems/{system-id}/volumes/{object-id}"
+        if self.features.SSC_API_V2:
+            path = self.RESOURCE_PATHS.get('ssc_volume')
+        else:
+            path = self.RESOURCE_PATHS.get('volume')
         return self._invoke('DELETE', path, **{'object-id': object_id})
 
     def list_volumes(self):
         """Lists all volumes in storage array."""
-        path = "/storage-systems/{system-id}/volumes"
+        if self.features.SSC_API_V2:
+            path = self.RESOURCE_PATHS.get('ssc_volumes')
+        else:
+            path = self.RESOURCE_PATHS.get('volumes')
+
         return self._invoke('GET', path)
 
     def list_volume(self, object_id):
-        """List given volume from array."""
-        path = "/storage-systems/{system-id}/volumes/{object-id}"
-        return self._invoke('GET', path, **{'object-id': object_id})
+        """Retrieve the given volume from array.
+
+        :param object_id: The volume id, label, or wwn
+        :return The volume identified by object_id
+        :raise VolumeNotFound if the volume could not be found
+        """
+
+        if self.features.SSC_API_V2:
+            return self._list_volume_v2(object_id)
+        # The new API is not available,
+        else:
+            # Search for the volume with label, id, or wwn.
+            return self._list_volume_v1(object_id)
+
+    def _list_volume_v1(self, object_id):
+        # Search for the volume with label, id, or wwn.
+        for vol in self.list_volumes():
+            if (object_id == vol.get(self.NAME) or object_id == vol.get(
+                    self.WWN) or object_id == vol.get(self.ID)):
+                return vol
+        # The volume could not be found
+        raise exception.VolumeNotFound(volume_id=object_id)
+
+    def _list_volume_v2(self, object_id):
+        path = self.RESOURCE_PATHS.get('ssc_volume')
+        try:
+            return self._invoke('GET', path, **{'object-id': object_id})
+        except es_exception.WebServiceException as e:
+            if(404 == e.status_code):
+                raise exception.VolumeNotFound(volume_id=object_id)
+            else:
+                raise
 
     def update_volume(self, object_id, label):
-        """Renames given volume in array."""
-        path = "/storage-systems/{system-id}/volumes/{object-id}"
+        """Renames given volume on array."""
+        if self.features.SSC_API_V2:
+            path = self.RESOURCE_PATHS.get('ssc_volume')
+        else:
+            path = self.RESOURCE_PATHS.get('volume')
         data = {'name': label}
         return self._invoke('POST', path, data, **{'object-id': object_id})
 
