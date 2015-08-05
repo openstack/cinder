@@ -32,8 +32,6 @@ from cinder.volume.drivers.vmware import exceptions as vmdk_exceptions
 LOG = logging.getLogger(__name__)
 LINKED_CLONE_TYPE = 'linked'
 FULL_CLONE_TYPE = 'full'
-ALREADY_EXISTS = 'AlreadyExists'
-FILE_ALREADY_EXISTS = 'FileAlreadyExists'
 
 
 def split_datastore_path(datastore_path):
