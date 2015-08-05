@@ -792,26 +792,32 @@ VLAN ID:  Disabled
 IP Address:  192.168.4.53
 """, 0)
 
-    iscsi_connection_info = \
-        {'data': {'target_discovered': True,
-                  'target_iqn':
-                  'iqn.1992-04.com.emc:cx.fnm00124000215.a4',
-                  'target_lun': 2,
-                  'target_portal': '10.244.214.118:3260',
-                  'volume_id': '1'},
-         'driver_volume_type': 'iscsi'}
+    iscsi_connection_info = {
+        'data': {'target_discovered': True,
+                 'target_iqn':
+                 'iqn.1992-04.com.emc:cx.fnm00124000215.a4',
+                 'target_lun': 2,
+                 'target_portal': '10.244.214.118:3260',
+                 'target_iqns': ['iqn.1992-04.com.emc:cx.fnm00124000215.a4'],
+                 'target_luns': [2],
+                 'target_portals': ['10.244.214.118:3260'],
+                 'volume_id': '1'},
+        'driver_volume_type': 'iscsi'}
 
-    iscsi_connection_info_mp = \
-        {'data': {'target_discovered': True,
-                  'target_iqns': [
-                      'iqn.1992-04.com.emc:cx.fnm00124000215.a4',
-                      'iqn.1992-04.com.emc:cx.fnm00124000215.a5'],
-                  'target_luns': [2, 2],
-                  'target_portals': [
-                      '10.244.214.118:3260',
-                      '10.244.214.119:3260'],
-                  'volume_id': '1'},
-         'driver_volume_type': 'iscsi'}
+    iscsi_connection_info_mp = {
+        'data': {'target_discovered': True,
+                 'target_iqns': [
+                     'iqn.1992-04.com.emc:cx.fnm00124000215.a4',
+                     'iqn.1992-04.com.emc:cx.fnm00124000215.a5'],
+                 'target_iqn': 'iqn.1992-04.com.emc:cx.fnm00124000215.a4',
+                 'target_luns': [2, 2],
+                 'target_lun': 2,
+                 'target_portals': [
+                     '10.244.214.118:3260',
+                     '10.244.214.119:3260'],
+                 'target_portal': '10.244.214.118:3260',
+                 'volume_id': '1'},
+        'driver_volume_type': 'iscsi'}
 
     PING_OK = ("Reply from 10.0.0.2:  bytes=32 time=1ms TTL=30\n" +
                "Reply from 10.0.0.2:  bytes=32 time=1ms TTL=30\n" +
@@ -2038,6 +2044,10 @@ Time Remaining:  0 second(s)
 
     @mock.patch('random.randint',
                 mock.Mock(return_value=0))
+    @mock.patch('cinder.volume.drivers.emc.emc_vnx_cli.'
+                'CommandLineHelper.ping_node',
+                mock.Mock(return_value=True))
+    @mock.patch('random.shuffle', mock.Mock(return_value=0))
     def test_initialize_connection_multipath(self):
         self.configuration.initiator_auto_registration = False
 
@@ -4048,6 +4058,111 @@ Time Remaining:  0 second(s)
             self.driver.unmanage(self.testData.test_volume)
         except NotImplementedError:
             self.fail('Interface unmanage need to be implemented')
+
+    @mock.patch("random.shuffle", mock.Mock())
+    def test_find_available_iscsi_targets_without_pingnode(self):
+        self.configuration.iscsi_initiators = None
+        self.driverSetup()
+        port_a1 = {'Port WWN': 'fake_iqn_a1',
+                   'SP': 'A',
+                   'Port ID': 1,
+                   'Virtual Port ID': 0,
+                   'IP Address': 'fake_ip_a1'}
+        port_a2 = {'Port WWN': 'fake_iqn_a2',
+                   'SP': 'A',
+                   'Port ID': 2,
+                   'Virtual Port ID': 0,
+                   'IP Address': 'fake_ip_a2'}
+        port_b1 = {'Port WWN': 'fake_iqn_b1',
+                   'SP': 'B',
+                   'Port ID': 1,
+                   'Virtual Port ID': 0,
+                   'IP Address': 'fake_ip_b1'}
+        all_targets = {'A': [port_a1, port_a2],
+                       'B': [port_b1]}
+        targets = self.driver.cli._client.find_available_iscsi_targets(
+            'fakehost',
+            'B',
+            {('A', 2), ('B', 1)},
+            all_targets)
+        self.assertEqual([port_b1, port_a2], targets)
+
+    @mock.patch("random.shuffle", mock.Mock())
+    @mock.patch.object(emc_vnx_cli.CommandLineHelper,
+                       'ping_node')
+    def test_find_available_iscsi_targets_with_pingnode(self, ping_node):
+        self.configuration.iscsi_initiators = (
+            '{"fakehost": ["10.0.0.2"]}')
+        self.driverSetup()
+        port_a1 = {'Port WWN': 'fake_iqn_a1',
+                   'SP': 'A',
+                   'Port ID': 1,
+                   'Virtual Port ID': 0,
+                   'IP Address': 'fake_ip_a1'}
+        port_a2 = {'Port WWN': 'fake_iqn_a2',
+                   'SP': 'A',
+                   'Port ID': 2,
+                   'Virtual Port ID': 0,
+                   'IP Address': 'fake_ip_a2'}
+        port_b1 = {'Port WWN': 'fake_iqn_b1',
+                   'SP': 'B',
+                   'Port ID': 1,
+                   'Virtual Port ID': 0,
+                   'IP Address': 'fake_ip_b1'}
+        all_targets = {'A': [port_a1, port_a2],
+                       'B': [port_b1]}
+        ping_node.side_effect = [False, True]
+        targets = self.driver.cli._client.find_available_iscsi_targets(
+            'fakehost',
+            'B',
+            {('A', 2), ('A', 1), ('B', 1)},
+            all_targets)
+        self.assertEqual([port_a1, port_b1, port_a2], targets)
+        ping_node.side_effect = [False, False, True]
+        targets = self.driver.cli._client.find_available_iscsi_targets(
+            'fakehost',
+            'B',
+            {('A', 2), ('A', 1), ('B', 1)},
+            all_targets)
+        self.assertEqual([port_a2, port_b1, port_a1], targets)
+
+    @mock.patch('cinder.volume.drivers.emc.emc_vnx_cli.'
+                'EMCVnxCliBase.get_lun_owner',
+                mock.Mock(return_value='A'))
+    @mock.patch('cinder.volume.drivers.emc.emc_vnx_cli.'
+                'CommandLineHelper.get_registered_spport_set',
+                mock.Mock())
+    @mock.patch.object(emc_vnx_cli.CommandLineHelper,
+                       'find_available_iscsi_targets')
+    def test_vnx_get_iscsi_properties(self, find_available_iscsi_targets):
+        self.driverSetup()
+        port_a1 = {'Port WWN': 'fake_iqn_a1',
+                   'SP': 'A',
+                   'Port ID': 1,
+                   'Virtual Port ID': 0,
+                   'IP Address': 'fake_ip_a1'}
+        port_b1 = {'Port WWN': 'fake_iqn_b1',
+                   'SP': 'B',
+                   'Port ID': 1,
+                   'Virtual Port ID': 0,
+                   'IP Address': 'fake_ip_b1'}
+        find_available_iscsi_targets.return_value = [port_a1, port_b1]
+        connect_info = self.driver.cli.vnx_get_iscsi_properties(
+            self.testData.test_volume, self.testData.connector, 1, '')
+        expected_info = {
+            'target_discovered': True,
+            'target_iqns': [
+                'fake_iqn_a1',
+                'fake_iqn_b1'],
+            'target_iqn': 'fake_iqn_a1',
+            'target_luns': [1, 1],
+            'target_lun': 1,
+            'target_portals': [
+                'fake_ip_a1:3260',
+                'fake_ip_b1:3260'],
+            'target_portal': 'fake_ip_a1:3260',
+            'volume_id': '1'}
+        self.assertEqual(expected_info, connect_info)
 
 
 class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
