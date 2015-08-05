@@ -664,16 +664,25 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                                 storage_profiles)
                     return False
 
+                current = storage_profiles[0]
                 requested = storage_profiles[1]
-                volume_name = volume.get('id')
-                LOG.debug('Retyping volume %(vol)s to use storage '
-                          'profile %(profile)s',
-                          {'vol': volume_name,
-                           'profile': requested})
-                with self._client.open_connection() as api:
-                    if api.find_sc():
-                        scvolume = api.find_volume(volume_name)
-                        return api.update_storage_profile(
-                            scvolume, requested)
+
+                if current != requested:
+                    volume_name = volume.get('id')
+                    LOG.debug('Retyping volume %(vol)s to use storage '
+                              'profile %(profile)s.',
+                              {'vol': volume_name,
+                               'profile': requested})
+                    with self._client.open_connection() as api:
+                        if api.find_sc():
+                            scvolume = api.find_volume(volume_name)
+                            return api.update_storage_profile(
+                                scvolume, requested)
+                else:
+                    # We only support retype of Storage Profile and they are
+                    # the same, so just return True to avoid unnecessary data
+                    # migration.
+                    LOG.info(_LI('Retype was to same Storage Profile.'))
+                    return True
 
         return False

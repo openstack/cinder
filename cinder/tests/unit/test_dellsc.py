@@ -1652,6 +1652,16 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
             None, None, None, {'extra_specs': {'something': 'else'}}, None)
         self.assertFalse(res)
 
+    def test_retype_same(self,
+                         mock_close_connection,
+                         mock_open_connection,
+                         mock_init):
+        res = self.driver.retype(
+            None, None, None,
+            {'extra_specs': {'storagetype:storageprofile': ['A', 'A']}},
+            None)
+        self.assertTrue(res)
+
     def test_retype_malformed(self,
                               mock_close_connection,
                               mock_open_connection,
