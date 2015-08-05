@@ -193,10 +193,13 @@ class BackupTestCase(BaseBackupTest):
         temp_vol_id = self._create_volume_db_entry()
         db.volume_update(self.ctxt, temp_vol_id, {'status': 'available'})
         vol5_id = self._create_volume_db_entry()
-        db.volume_update(self.ctxt, vol4_id, {'status': 'backing-up'})
+        db.volume_update(self.ctxt, vol5_id, {'status': 'backing-up'})
         temp_snap = self._create_snapshot_db_entry()
         temp_snap.status = 'available'
         temp_snap.save()
+        vol6_id = self._create_volume_db_entry()
+        db.volume_update(self.ctxt, vol6_id, {'status': 'restoring-backup'})
+
         backup1 = self._create_backup_db_entry(status='creating',
                                                volume_id=vol1_id)
         backup2 = self._create_backup_db_entry(status='restoring',
@@ -215,6 +218,14 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual('available', vol1['status'])
         vol2 = db.volume_get(self.ctxt, vol2_id)
         self.assertEqual('error_restoring', vol2['status'])
+        vol3 = db.volume_get(self.ctxt, vol3_id)
+        self.assertEqual('available', vol3['status'])
+        vol4 = db.volume_get(self.ctxt, vol4_id)
+        self.assertEqual('available', vol4['status'])
+        vol5 = db.volume_get(self.ctxt, vol5_id)
+        self.assertEqual('available', vol5['status'])
+        vol6 = db.volume_get(self.ctxt, vol6_id)
+        self.assertEqual('error_restoring', vol6['status'])
 
         backup1 = db.backup_get(self.ctxt, backup1.id)
         self.assertEqual('error', backup1['status'])
