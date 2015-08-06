@@ -312,7 +312,7 @@ class TemplateElementTest(test.TestCase):
 
         # Try setting it to a string and ensure it becomes a selector
         elem.text = 'test'
-        self.assertEqual(True, hasattr(elem.text, 'chain'))
+        self.assertTrue(hasattr(elem.text, 'chain'))
         self.assertEqual(1, len(elem.text.chain))
         self.assertEqual('test', elem.text.chain[0])
 
@@ -555,31 +555,31 @@ class TemplateTest(test.TestCase):
 
         # Construct a slave template with applicable minimum version
         slave = xmlutil.SlaveTemplate(elem, 2)
-        self.assertEqual(True, slave.apply(master))
+        self.assertTrue(slave.apply(master))
 
         # Construct a slave template with equal minimum version
         slave = xmlutil.SlaveTemplate(elem, 3)
-        self.assertEqual(True, slave.apply(master))
+        self.assertTrue(slave.apply(master))
 
         # Construct a slave template with inapplicable minimum version
         slave = xmlutil.SlaveTemplate(elem, 4)
-        self.assertEqual(False, slave.apply(master))
+        self.assertFalse(slave.apply(master))
 
         # Construct a slave template with applicable version range
         slave = xmlutil.SlaveTemplate(elem, 2, 4)
-        self.assertEqual(True, slave.apply(master))
+        self.assertTrue(slave.apply(master))
 
         # Construct a slave template with low version range
         slave = xmlutil.SlaveTemplate(elem, 1, 2)
-        self.assertEqual(False, slave.apply(master))
+        self.assertFalse(slave.apply(master))
 
         # Construct a slave template with high version range
         slave = xmlutil.SlaveTemplate(elem, 4, 5)
-        self.assertEqual(False, slave.apply(master))
+        self.assertFalse(slave.apply(master))
 
         # Construct a slave template with matching version range
         slave = xmlutil.SlaveTemplate(elem, 3, 3)
-        self.assertEqual(True, slave.apply(master))
+        self.assertTrue(slave.apply(master))
 
     def test__serialize(self):
         # Our test object to serialize

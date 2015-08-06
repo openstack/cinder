@@ -575,7 +575,7 @@ class HGSTTestCase(test.TestCase):
         # Check the returned provider
         expected_pid = {'provider_id': 'volume10'}
         self.assertDictMatch(expected_pid, ret)
-        self.assertEqual(True, self._request_cancel)
+        self.assertTrue(self._request_cancel)
 
     @mock.patch('socket.gethostbyname', return_value='123.123.123.123')
     def test_create_volume_blocked_and_fail(self, mock_ghn):
@@ -595,7 +595,7 @@ class HGSTTestCase(test.TestCase):
         self._return_blocked = 2  # Block & pass cancel => create failed. :(
         self.assertRaises(exception.VolumeDriverException,
                           self.driver.create_volume, volume)
-        self.assertEqual(True, self._request_cancel)
+        self.assertTrue(self._request_cancel)
 
     def test_delete_volume(self):
         """Test deleting existing volume, ensure proper name used."""
@@ -721,7 +721,7 @@ class HGSTTestCase(test.TestCase):
         self._fail_extend = True
         self.assertRaises(exception.VolumeDriverException,
                           self.driver.extend_volume, volume, 12)
-        self.assertEqual(False, self._request_cancel)
+        self.assertFalse(self._request_cancel)
 
     @mock.patch('socket.gethostbyname', return_value='123.123.123.123')
     def test_initialize_connection(self, moch_ghn):

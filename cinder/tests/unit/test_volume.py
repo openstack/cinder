@@ -2246,7 +2246,7 @@ class VolumeTestCase(BaseVolumeTestCase):
                                                 mountpoint2, 'ro')
         vol = db.volume_get(context.get_admin_context(), volume_id)
         self.assertEqual('in-use', vol['status'])
-        self.assertEqual(True, vol['multiattach'])
+        self.assertTrue(vol['multiattach'])
         self.assertEqual('attached', attachment2['attach_status'])
         self.assertEqual(mountpoint2, attachment2['mountpoint'])
         self.assertEqual(instance2_uuid, attachment2['instance_uuid'])
@@ -2315,7 +2315,7 @@ class VolumeTestCase(BaseVolumeTestCase):
                                                 mountpoint2, 'ro')
         vol = db.volume_get(context.get_admin_context(), volume_id)
         self.assertEqual('in-use', vol['status'])
-        self.assertEqual(True, vol['multiattach'])
+        self.assertTrue(vol['multiattach'])
         self.assertIsNone(attachment2)
 
         self.assertRaises(exception.VolumeAttached,
