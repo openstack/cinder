@@ -21,6 +21,7 @@ import six
 
 from cinder import exception
 from cinder import test
+from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.emc import emc_cli_fc
@@ -3369,15 +3370,18 @@ Time Remaining:  0 second(s)
             mock.call(*self.testData.LUN_DELETE_CMD('vol1'))]
         fake_cli.assert_has_calls(expect_cmd)
 
-    def test_create_cgsnapshot(self):
+    @mock.patch(
+        'cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
+    def test_create_cgsnapshot(self, get_all_for_cgsnapshot):
         cgsnapshot = self.testData.test_cgsnapshot['id']
         cg_name = self.testData.test_cgsnapshot['consistencygroup_id']
         commands = [self.testData.CREATE_CG_SNAPSHOT(cg_name, cgsnapshot)]
         results = [SUCCEED]
         fake_cli = self.driverSetup(commands, results)
-        self.driver.db = mock.MagicMock()
-        self.driver.db.volume_get_all_by_group.return_value =\
-            self.testData.SNAPS_IN_SNAP_GROUP()
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(
+            self.testData.SNAPS_IN_SNAP_GROUP())
+        snapshot_obj.consistencygroup_id = cg_name
+        get_all_for_cgsnapshot.return_value = [snapshot_obj]
         self.driver.create_cgsnapshot(None, self.testData.test_cgsnapshot)
         expect_cmd = [
             mock.call(
@@ -3385,14 +3389,18 @@ Time Remaining:  0 second(s)
                     cg_name, cgsnapshot))]
         fake_cli.assert_has_calls(expect_cmd)
 
-    def test_delete_cgsnapshot(self):
+    @mock.patch(
+        'cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
+    def test_delete_cgsnapshot(self, get_all_for_cgsnapshot):
         snap_name = self.testData.test_cgsnapshot['id']
         commands = [self.testData.DELETE_CG_SNAPSHOT(snap_name)]
         results = [SUCCEED]
         fake_cli = self.driverSetup(commands, results)
-        self.driver.db = mock.MagicMock()
-        self.driver.db.snapshot_get_all_for_cgsnapshot.return_value =\
-            self.testData.SNAPS_IN_SNAP_GROUP()
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(
+            self.testData.SNAPS_IN_SNAP_GROUP())
+        cg_name = self.testData.test_cgsnapshot['consistencygroup_id']
+        snapshot_obj.consistencygroup_id = cg_name
+        get_all_for_cgsnapshot.return_value = [snapshot_obj]
         self.driver.delete_cgsnapshot(None,
                                       self.testData.test_cgsnapshot)
         expect_cmd = [

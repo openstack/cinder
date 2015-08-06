@@ -40,6 +40,7 @@ from taskflow.types import failure
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
+from cinder import objects
 from cinder import utils
 from cinder.volume import configuration as config
 from cinder.volume.drivers.san import san
@@ -2623,7 +2624,7 @@ class EMCVnxCliBase(object):
     def create_cgsnapshot(self, driver, context, cgsnapshot):
         """Creates a cgsnapshot (snap group)."""
         cgsnapshot_id = cgsnapshot['id']
-        snapshots = driver.db.snapshot_get_all_for_cgsnapshot(
+        snapshots = objects.SnapshotList().get_all_for_cgsnapshot(
             context, cgsnapshot_id)
 
         model_update = {}
@@ -2647,7 +2648,7 @@ class EMCVnxCliBase(object):
     def delete_cgsnapshot(self, driver, context, cgsnapshot):
         """Deletes a cgsnapshot (snap group)."""
         cgsnapshot_id = cgsnapshot['id']
-        snapshots = driver.db.snapshot_get_all_for_cgsnapshot(
+        snapshots = objects.SnapshotList().get_all_for_cgsnapshot(
             context, cgsnapshot_id)
 
         model_update = {}
