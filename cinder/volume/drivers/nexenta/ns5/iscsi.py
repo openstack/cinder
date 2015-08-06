@@ -205,13 +205,6 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         }
         self.nef(url, data)
 
-        # zvol_name = self._get_zvol_name(volume['name'])
-        # target_group_name = self._get_target_group_name(volume['name'])
-
-        # if not self._lu_exists(volume['name']):
-        #     url = 'san/targetgroups/%s/luns' % target_group_name
-        #     data = {'volume': zvol_name}
-        #     self.nef(url, data)
         url = 'san/targetgroups/%s-%s/luns' % (
             self._get_target_group_name(), self.current_num)
         data = {'volume': '%s/%s/%s' % (pool, dataset, volume['name'])}
@@ -223,6 +216,17 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
         :param volume: volume reference
         """
+        url = 'san/targetgroups'
+        tg_list = self.nef(url)['data']
+        for tg in tg_list:
+            url = 'san/targetgroups/%s/luns' % tg['name']
+            lun_list = self.nef(url)['data']
+            for lun in lun_list:
+                if lun['volume'].split('/')[-1] == volume['name']:
+                    url = 'san/targetgroups/%s/luns/%s' % (
+                        tg['name'], lun['guid'])
+                    self.nef(url, method='DELETE')
+                    return
         volume_name = self._get_zvol_name(volume['name'])
         pool, group, name = volume_name.split('/')
         url = ('storage/pools/%(pool)s/datasetGroups/%(group)s'
@@ -238,17 +242,6 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             LOG.warning(_LW('Got error trying to delete volume %(volume)s,'
                             ' assuming it is already gone: %(exc)s'),
                         {'volume': volume, 'exc': exc})
-        url = 'san/targetgroups'
-        tg_list = self.nef(url)['data']
-        for tg in tg_list:
-            url = 'san/targetgroups/%s/luns' % tg['name']
-            lun_list = self.nef(url)
-            for lun in lun_list:
-                if lun['volume'] == volume['name']:
-                    url = 'san/targetgroups/%s/luns/%s' % (
-                        tg, lun['guid'])
-                    self.nef(url, method='DELETE')
-                    return
 
     def extend_volume(self, volume, new_size):
         """Extend an existing volume.
@@ -362,21 +355,6 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         ctxt = context.get_admin_context()
         return db.volume_get(ctxt, snapshot['volume_id'])
 
-    # def _target_exists(self, target):
-    #     """Check if iSCSI target exist.
-
-    #     :param target: target name
-    #     :return: True if target exist, else False
-    #     """
-    #     url = 'san/iscsi/targets'
-    #     resp = self.nef(url).get('data')
-    #     if not resp:
-    #         return False
-    #     targets = []
-    #     for target in resp:
-    #         targets.append(target['name'])
-    #     return target in targets
-
     def _target_group_exists(self, target_group):
         """Check if target group exist.
 
@@ -388,19 +366,6 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             return True
         else:
             return False
-
-    # def _lu_exists(self, volume_name):
-    #     """Check if LU exists on appliance.
-
-    #     :param zvol_name: Zvol name
-    #     :raises: NexentaException if zvol not exists
-    #     :return: True if LU exists, else False
-    #     """
-    #     try:
-    #         self._get_lun(volume_name)
-    #     except LookupError:
-    #         return False
-    #     return True
 
     def _get_lun(self, volume_name):
         """Get lu mapping number for Zvol.
@@ -431,7 +396,6 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             }
             return volume['provider_location']
         else:
-            LOG.warning(volume['provider_location'])
             return volume['provider_location']
 
     def create_export(self, _ctx, volume):
@@ -441,13 +405,6 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :return: iscsiadm-formatted provider location string
         """
         return {'provider_location': self._get_provider_location(volume)}
-
-    # def ensure_export(self, _ctx, volume):
-    #     """Recreate parts of export if necessary.
-
-    #     :param volume: reference of volume to be exported
-    #     """
-    #     self._do_export(_ctx, volume, ensure=True)
 
     def remove_export(self, _ctx, volume):
         """Driver entry point to remove an export for a volume.
