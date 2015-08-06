@@ -248,7 +248,7 @@ class BackupMetadataAPI(base.Base):
 
         Returns a dictionary of the form:
 
-            {<type tag>: (<fields list>, <restore function>)}
+            {<type tag>: (<restore function>, <fields list>)}
 
         Empty field list indicates that all backed up fields should be
         restored.
@@ -263,7 +263,7 @@ class BackupMetadataAPI(base.Base):
 
         Returns a dictionary of the form:
 
-            {<type tag>: (<fields list>, <restore function>)}
+            {<type tag>: (<restore function>, <fields list>)}
 
         Empty field list indicates that all backed up fields should be
         restored.
