@@ -2200,9 +2200,9 @@ Time Remaining:  0 second(s)
         ]
         fake_cli.assert_has_calls(expected)
 
-    def test_terminate_connection(self):
+    @mock.patch('os.path.exists', return_value=True)
+    def test_terminate_connection(self, _mock_exists):
 
-        os.path.exists = mock.Mock(return_value=1)
         self.driver = emc_cli_iscsi.EMCCLIISCSIDriver(
             configuration=self.configuration)
         cli_helper = self.driver.cli._client
