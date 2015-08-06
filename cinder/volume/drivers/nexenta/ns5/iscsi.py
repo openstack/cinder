@@ -49,6 +49,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
     def __init__(self, *args, **kwargs):
         super(NexentaISCSIDriver, self).__init__(*args, **kwargs)
         self.nef = None
+        self.current_num = None
         if self.configuration:
             self.configuration.append_config_values(
                 options.NEXENTA_CONNECTION_OPTIONS)
@@ -99,11 +100,47 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         }
         try:
             self.nef(url, data)
-        except nexenta.NexentaException:
-            pass
+        except nexenta.NexentaException as exc:
+            if 'exists' in exc.args[0]:
+                LOG.info(_LI('Dataset Group alredy exists on appliance'))
+            else:
+                raise
         url = 'services/iscsit'
         data = {'enabled': True}
         self.nef(url, data, method='PUT')
+
+        target_name = self._get_target_name()
+        target_group_name = self.get_valid_target_group()
+        if not self._target_group_exists(target_group_name):
+            url = 'san/targetgroups'
+            data = {'name': target_group_name,
+                    'targets': [target_name]}
+            self.nef(url, data)
+
+    def get_valid_target_group(self):
+        """Check NexentaStor appliance for all existing LU mappings.
+        Fill in zvol_dict with info for existing zvols
+        If there is a target with less than 255 mappings,
+        Return targetgroup containing this target, else create new targetgroup
+        """
+        tg_list = []
+        url = 'san/targetgroups'
+        for tg in self.nef(url).get('data'):
+            if tg['name'].startswith('%s-' % self._get_target_group_name()):
+                tg_list.append(tg['name'])
+        if tg_list:
+            tg = sorted(tg_list)[-1]
+            base, num = tg.split('-')
+            url = 'san/targetgroups/%s/luns' % tg
+            if len(self.nef(url)) < 255:
+                self.current_num = int(num)
+                return tg
+            else:
+                self.current_num = int(num) + 1
+                return '%s-%s' % (base, int(num) + 1)
+        else:
+            self.current_num = 1
+            return '%s-%s' % (self._get_target_group_name(), 1)
 
     def check_for_setup_error(self):
         """Verify that the volume for our zvols exists.
@@ -129,18 +166,21 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         """Return zvol name that corresponds given volume name."""
         return '%s/%s' % (self.volume, volume_name)
 
-    def _get_target_name(self, volume_name):
+    def _get_target_name(self):
         """Return iSCSI target name to access volume."""
-        url = 'san/iscsi/targets?alias=%s' % volume_name
+        url = 'san/iscsi/targets?alias=cinder-%s' % self.current_num
         data = self.nef(url)['data']
         if data:
             return self.nef(url)['data'][0]['name']
         else:
-            return False
+            url = 'san/iscsi/targets'
+            data = {'alias': 'cinder-%s' % self.current_num}
+            self.nef(url, data)
+            return self.nef(url)['data'][0]['name']
 
-    def _get_target_group_name(self, volume_name):
+    def _get_target_group_name(self):
         """Return Nexenta iSCSI target group name for volume."""
-        return 'cinder_%s' % volume_name
+        return 'cinder'
 
     @staticmethod
     def _get_clone_snapshot_name(volume):
@@ -163,6 +203,18 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 self.configuration.nexenta_ns5_blocksize * units.Ki),
             'sparseVolume': self.configuration.nexenta_sparse
         }
+        self.nef(url, data)
+
+        # zvol_name = self._get_zvol_name(volume['name'])
+        # target_group_name = self._get_target_group_name(volume['name'])
+
+        # if not self._lu_exists(volume['name']):
+        #     url = 'san/targetgroups/%s/luns' % target_group_name
+        #     data = {'volume': zvol_name}
+        #     self.nef(url, data)
+        url = 'san/targetgroups/%s-%s/luns' % (
+            self._get_target_group_name(), self.current_num)
+        data = {'volume': '%s/%s/%s' % (pool, dataset, volume['name'])}
         self.nef(url, data)
         return self.create_export(None, volume)
 
@@ -299,20 +351,20 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         ctxt = context.get_admin_context()
         return db.volume_get(ctxt, snapshot['volume_id'])
 
-    def _target_exists(self, target):
-        """Check if iSCSI target exist.
+    # def _target_exists(self, target):
+    #     """Check if iSCSI target exist.
 
-        :param target: target name
-        :return: True if target exist, else False
-        """
-        url = 'san/iscsi/targets'
-        resp = self.nef(url).get('data')
-        if not resp:
-            return False
-        targets = []
-        for target in resp:
-            targets.append(target['name'])
-        return target in targets
+    #     :param target: target name
+    #     :return: True if target exist, else False
+    #     """
+    #     url = 'san/iscsi/targets'
+    #     resp = self.nef(url).get('data')
+    #     if not resp:
+    #         return False
+    #     targets = []
+    #     for target in resp:
+    #         targets.append(target['name'])
+    #     return target in targets
 
     def _target_group_exists(self, target_group):
         """Check if target group exist.
@@ -326,18 +378,18 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         else:
             return False
 
-    def _lu_exists(self, volume_name):
-        """Check if LU exists on appliance.
+    # def _lu_exists(self, volume_name):
+    #     """Check if LU exists on appliance.
 
-        :param zvol_name: Zvol name
-        :raises: NexentaException if zvol not exists
-        :return: True if LU exists, else False
-        """
-        try:
-            self._get_lun(volume_name)
-        except LookupError:
-            return False
-        return True
+    #     :param zvol_name: Zvol name
+    #     :raises: NexentaException if zvol not exists
+    #     :return: True if LU exists, else False
+    #     """
+    #     try:
+    #         self._get_lun(volume_name)
+    #     except LookupError:
+    #         return False
+    #     return True
 
     def _get_lun(self, volume_name):
         """Get lu mapping number for Zvol.
@@ -347,50 +399,23 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :return: LUN
         """
         zvol_name = self._get_zvol_name(volume_name)
-        target_group_name = self._get_target_group_name(volume_name)
+        target_group_name = '%s-%s' % (
+            self._get_target_group_name(), self.current_num)
         url = 'san/targetgroups/%s/luns?volume=%s' % (
             target_group_name, zvol_name.replace('/', '%2F'))
-        if not self.nef(url)['data']:
-            raise LookupError(_("LU does not exist for ZVol: %s"), zvol_name)
-        else:
-            return int(self.nef(url)['data'][0]['guid'], 16)
+        guid = self.nef(url)['data'][0]['guid']
+        url = 'san/targetgroups/%s/luns/%s/views' % (
+            target_group_name, guid)
+        return self.nef(url)['data'][0]['lunNumber']
 
     def _get_provider_location(self, volume):
         """Returns volume iscsiadm-formatted provider location string."""
-        return '%(host)s:%(port)s,1 %(name)s 0' % {
+        return '%(host)s:%(port)s,1 %(name)s %(lun)s' % {
             'host': self.nef_host,
             'port': self.configuration.nexenta_iscsi_target_portal_port,
-            'name': self._get_target_name(volume['name']),
+            'name': self._get_target_name(),
             'lun': self._get_lun(volume['name'])
         }
-
-    def _do_export(self, _ctx, volume, ensure=False):
-        """Do all steps to get zvol exported at separate target.
-
-        :param volume: reference of volume to be exported
-        :param ensure: if True, ignore errors caused by already existing
-            resources
-        """
-        zvol_name = self._get_zvol_name(volume['name'])
-        target_group_name = self._get_target_group_name(volume['name'])
-
-        target_name = self._get_target_name(volume['name'])
-        if not target_name:
-            url = 'san/iscsi/targets'
-            data = {'alias': volume['name']}
-            self.nef(url, data)
-            target_name = self._get_target_name(volume['name'])
-
-        if not self._target_group_exists(target_group_name):
-            url = 'san/targetgroups'
-            data = {'name': target_group_name,
-                    'targets': [target_name]}
-            self.nef(url, data)
-
-        if not self._lu_exists(volume['name']):
-            url = 'san/targetgroups/%s/luns' % target_group_name
-            data = {'volume': zvol_name}
-            self.nef(url, data)
 
     def create_export(self, _ctx, volume):
         """Create new export for zvol.
@@ -398,7 +423,6 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :param volume: reference of volume to be exported
         :return: iscsiadm-formatted provider location string
         """
-        self._do_export(_ctx, volume, ensure=False)
         return {'provider_location': self._get_provider_location(volume)}
 
     def ensure_export(self, _ctx, volume):
