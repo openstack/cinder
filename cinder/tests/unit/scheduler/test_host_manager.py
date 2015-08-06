@@ -103,7 +103,7 @@ class HostManagerTestCase(test.TestCase):
                                                       host3_volume_capabs)
 
         # Make sure dictionary isn't re-assigned
-        self.assertEqual(self.host_manager.service_states, service_states)
+        self.assertEqual(service_states, self.host_manager.service_states)
         # Make sure original dictionary wasn't copied
         self.assertEqual(1, host1_volume_capabs['timestamp'])
 
@@ -114,7 +114,7 @@ class HostManagerTestCase(test.TestCase):
         expected = {'host1': host1_volume_capabs,
                     'host2': host2_volume_capabs,
                     'host3': host3_volume_capabs}
-        self.assertDictMatch(service_states, expected)
+        self.assertDictMatch(expected, service_states)
 
     @mock.patch('cinder.utils.service_is_up')
     @mock.patch('cinder.db.service_get_all_by_topic')
@@ -257,7 +257,7 @@ class HostManagerTestCase(test.TestCase):
         for i in range(3):
             volume_node = services[i]
             host = volume_node['host']
-            self.assertEqual(host_state_map[host].service, volume_node)
+            self.assertEqual(volume_node, host_state_map[host].service)
 
         # Second test: Now service_is_up returns False for host3
         _mock_service_is_up.reset_mock()
@@ -283,8 +283,8 @@ class HostManagerTestCase(test.TestCase):
         for i in range(2):
             volume_node = services[i]
             host = volume_node['host']
-            self.assertEqual(host_state_map[host].service,
-                             volume_node)
+            self.assertEqual(volume_node,
+                             host_state_map[host].service)
 
     @mock.patch('cinder.db.service_get_all_by_topic')
     @mock.patch('cinder.utils.service_is_up')
@@ -399,7 +399,7 @@ class HostStateTestCase(test.TestCase):
         # Test update for existing host state
         volume_capability.update(dict(total_capacity_gb=1000))
         fake_host.update_from_volume_capability(volume_capability)
-        self.assertEqual(fake_host.pools['_pool0'].total_capacity_gb, 1000)
+        self.assertEqual(1000, fake_host.pools['_pool0'].total_capacity_gb)
 
         # Test update for existing host state with different backend name
         volume_capability.update(dict(volume_backend_name='magic'))
@@ -552,8 +552,8 @@ class HostStateTestCase(test.TestCase):
         vol_cap = {'timestamp': None}
 
         fake_host.update_from_volume_capability(vol_cap)
-        self.assertEqual(fake_host.total_capacity_gb, 0)
-        self.assertEqual(fake_host.free_capacity_gb, None)
+        self.assertEqual(0, fake_host.total_capacity_gb)
+        self.assertEqual(None, fake_host.free_capacity_gb)
         # Pool stats has been updated
         self.assertEqual(0,
                          fake_host.pools['_pool0'].total_capacity_gb)

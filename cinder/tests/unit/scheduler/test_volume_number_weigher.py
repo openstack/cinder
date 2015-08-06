@@ -85,9 +85,9 @@ class VolumeNumberWeigherTestCase(test.TestCase):
         with mock.patch.object(api, 'volume_data_get_for_host',
                                fake_volume_data_get_for_host):
             weighed_host = self._get_weighed_host(hostinfo_list)
-            self.assertEqual(weighed_host.weight, 0.0)
-            self.assertEqual(utils.extract_host(weighed_host.obj.host),
-                             'host1')
+            self.assertEqual(0.0, weighed_host.weight)
+            self.assertEqual('host1',
+                             utils.extract_host(weighed_host.obj.host))
 
     def test_volume_number_weight_multiplier2(self):
         self.flags(volume_number_multiplier=1.0)
@@ -102,6 +102,6 @@ class VolumeNumberWeigherTestCase(test.TestCase):
         with mock.patch.object(api, 'volume_data_get_for_host',
                                fake_volume_data_get_for_host):
             weighed_host = self._get_weighed_host(hostinfo_list)
-            self.assertEqual(weighed_host.weight, 1.0)
-            self.assertEqual(utils.extract_host(weighed_host.obj.host),
-                             'host5')
+            self.assertEqual(1.0, weighed_host.weight)
+            self.assertEqual('host5',
+                             utils.extract_host(weighed_host.obj.host))
