@@ -410,12 +410,18 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def _get_provider_location(self, volume):
         """Returns volume iscsiadm-formatted provider location string."""
-        return '%(host)s:%(port)s,1 %(name)s %(lun)s' % {
-            'host': self.nef_host,
-            'port': self.configuration.nexenta_iscsi_target_portal_port,
-            'name': self._get_target_name(),
-            'lun': self._get_lun(volume['name'])
-        }
+        if not volume['provider_location']:
+            volume['provider_location'] = (
+                '%(host)s:%(port)s,1 %(name)s %(lun)s') % {
+                'host': self.nef_host,
+                'port': self.configuration.nexenta_iscsi_target_portal_port,
+                'name': self._get_target_name(),
+                'lun': self._get_lun(volume['name'])
+            }
+            return volume['provider_location']
+        else:
+            LOG.warning(volume['provider_location'])
+            volume['provider_location']
 
     def create_export(self, _ctx, volume):
         """Create new export for zvol.
@@ -425,40 +431,20 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         """
         return {'provider_location': self._get_provider_location(volume)}
 
-    def ensure_export(self, _ctx, volume):
-        """Recreate parts of export if necessary.
+    # def ensure_export(self, _ctx, volume):
+    #     """Recreate parts of export if necessary.
 
-        :param volume: reference of volume to be exported
-        """
-        self._do_export(_ctx, volume, ensure=True)
+    #     :param volume: reference of volume to be exported
+    #     """
+    #     self._do_export(_ctx, volume, ensure=True)
 
     def remove_export(self, _ctx, volume):
-        """Destroy all resources created to export zvol.
+        """Driver entry point to remove an export for a volume.
 
-        :param volume: reference of volume to be unexported
+        Since exporting is idempotent in this driver, we have nothing
+        to do for unexporting.
         """
-        volume_name = self._get_zvol_name(volume['name'])
-        pool, group, name = volume_name.split('/')
-        target = self._get_target_name(volume['name'])
-        try:
-            url = 'san/iscsi/targets/%s' % target
-            self.nef(url, method='DELETE')
-        except nexenta.NexentaException as exc:
-            # We assume that target is gone as well
-            LOG.warning(_LW('Got error trying to delete target %(target)s,'
-                            ' assuming it is already gone: %(exc)s') %
-                        {'target': target, 'exc': exc})
-
-        tg_name = self._get_target_group_name(volume['name'])
-        try:
-            url = 'san/targetgroups/%s' % (tg_name)
-            self.nef(url, method='DELETE')
-        except nexenta.NexentaException as exc:
-            # We assume that target group is already gone
-            LOG.warning(_LW('Got error trying to destroy target group'
-                            ' %(target_group)s, assuming it is '
-                            'already gone: %(exc)s'),
-                        {'target_group': tg_name, 'exc': exc})
+        pass
 
     def get_volume_stats(self, refresh=False):
         """Get volume stats.
