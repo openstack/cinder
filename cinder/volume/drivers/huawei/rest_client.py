@@ -253,12 +253,8 @@ class RestClient(object):
             {'snapshot': snapshot_name,
              'volume': volume_name})
 
-        lun_id = self.get_volume_by_name(volume_name)
-        if lun_id is None:
-            msg = (_("Can't find lun info on the array, "
-                     "lun name is: %(name)s.") % {'name': volume_name})
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+        volume = snapshot['volume']
+        lun_id = self.get_lunid(volume, volume_name)
 
         url = "/snapshot"
         data = json.dumps({"TYPE": "27",
@@ -273,6 +269,16 @@ class RestClient(object):
         self._assert_data_in_result(result, msg)
 
         return result['data']
+
+    def get_lunid(self, volume, volume_name):
+        lun_id = (volume.get('provider_location') or
+                  self.get_volume_by_name(volume_name))
+        if not lun_id:
+            msg = (_("Can't find lun info on the array, "
+                     "lun name is: %(name)s.") % {'name': volume_name})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        return lun_id
 
     def check_snapshot_exist(self, snapshot_id):
         url = "/snapshot/%s" % snapshot_id
@@ -374,17 +380,15 @@ class RestClient(object):
                     return True
         return False
 
-    def mapping_hostgroup_and_lungroup(self, volume_name, hostgroup_id,
-                                       host_id, tgtportgroup_id=None):
+    def do_mapping(self, lun_id, hostgroup_id, host_id, tgtportgroup_id=None):
         """Add hostgroup and lungroup to mapping view."""
         lungroup_name = constants.LUNGROUP_PREFIX + host_id
         mapping_view_name = constants.MAPPING_VIEW_PREFIX + host_id
         lungroup_id = self._find_lungroup(lungroup_name)
-        lun_id = self.get_volume_by_name(volume_name)
         view_id = self.find_mapping_view(mapping_view_name)
 
         LOG.info(_LI(
-            'mapping_hostgroup_and_lungroup, lun_group: %(lun_group)s, '
+            'do_mapping, lun_group: %(lun_group)s, '
             'view_id: %(view_id)s, lun_id: %(lun_id)s.'),
             {'lun_group': lungroup_id,
              'view_id': view_id,
@@ -423,8 +427,6 @@ class RestClient(object):
                     'Error occurred when adding hostgroup and lungroup to '
                     'view. Remove lun from lungroup now.'))
                 self.remove_lun_from_lungroup(lungroup_id, lun_id)
-
-        return lun_id
 
     def ensure_initiator_added(self, xml_file_path, initiator_name, host_id):
         added = self._initiator_is_added_to_array(initiator_name)
@@ -1364,7 +1366,7 @@ class RestClient(object):
         return result['data']['IOCLASSID']
 
     def get_lungroupids_by_lunid(self, lun_id):
-        """Get lungroup id by lun id."""
+        """Get lungroup ids by lun id."""
         url = ("/lungroup/associate?TYPE=256"
                "&ASSOCIATEOBJTYPE=11&ASSOCIATEOBJID=%s" % lun_id)
 

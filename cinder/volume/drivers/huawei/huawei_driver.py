@@ -50,7 +50,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
 
     def __init__(self, *args, **kwargs):
         super(HuaweiBaseDriver, self).__init__(*args, **kwargs)
-        self.configuration = kwargs.get('configuration', None)
+        self.configuration = kwargs.get('configuration')
         if not self.configuration:
             msg = _('_instantiate_driver: configuration not found.')
             raise exception.InvalidInput(reason=msg)
@@ -136,7 +136,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         Thirdly, remove the lun.
         """
         name = huawei_utils.encode_name(volume['id'])
-        lun_id = volume.get('provider_location', None)
+        lun_id = volume.get('provider_location')
         LOG.info(_LI('Delete volume: %(name)s, array lun id: %(lun_id)s.'),
                  {'name': name, 'lun_id': lun_id},)
         if lun_id:
@@ -313,7 +313,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         pool_info = self.restclient.find_pool_info(pool_name, pools)
         src_volume_name = huawei_utils.encode_name(volume['id'])
         dst_volume_name = six.text_type(hash(src_volume_name))
-        src_id = volume.get('provider_location', None)
+        src_id = volume.get('provider_location')
 
         src_lun_params = self.restclient.get_lun_info(src_id)
 
@@ -396,7 +396,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         """
         snapshotname = huawei_utils.encode_name(snapshot['id'])
 
-        snapshot_id = snapshot.get('provider_location', None)
+        snapshot_id = snapshot.get('provider_location')
         if snapshot_id is None:
             snapshot_id = self.restclient.get_snapshotid_by_name(snapshotname)
             if snapshot_id is None:
@@ -484,15 +484,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
              'oldsize': volume_size,
              'newsize': new_volume_size},)
 
-        lun_id = self.restclient.get_volume_by_name(volume_name)
-
-        if lun_id is None:
-            msg = (_(
-                "Can't find lun info on the array, lun name is: %(name)s.")
-                % {'name': volume_name})
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-
+        lun_id = self.restclient.get_lunid(volume, volume_name)
         luninfo = self.restclient.extend_volume(lun_id, new_volume_size)
 
         return {'provider_location': luninfo['ID'],
@@ -518,7 +510,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             {'snapshot': snapshotname,
              'volume': volume_name},)
 
-        snapshot_id = snapshot.get('provider_location', None)
+        snapshot_id = snapshot.get('provider_location')
         if snapshot_id is None:
             snapshot_id = self.restclient.get_snapshotid_by_name(snapshotname)
 
@@ -566,7 +558,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             return False
 
     def modify_lun(self, lun_id, change_opts):
-        if change_opts.get('partitionid', None):
+        if change_opts.get('partitionid'):
             old, new = change_opts['partitionid']
             old_id = old[0]
             old_name = old[1]
@@ -583,7 +575,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                       "old_id": old_id, "old_name": old_name,
                       "new_id": new_id, "new_name": new_name})
 
-        if change_opts.get('cacheid', None):
+        if change_opts.get('cacheid'):
             old, new = change_opts['cacheid']
             old_id = old[0]
             old_name = old[1]
@@ -600,7 +592,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                       'old_id': old_id, "old_name": old_name,
                       'new_id': new_id, "new_name": new_name})
 
-        if change_opts.get('policy', None):
+        if change_opts.get('policy'):
             old_policy, new_policy = change_opts['policy']
             self.restclient.change_lun_smarttier(lun_id, new_policy)
             LOG.info(_LI("Retype LUN(id: %(lun_id)s) smarttier policy from "
@@ -609,7 +601,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                       'old_policy': old_policy,
                       'new_policy': new_policy})
 
-        if change_opts.get('qos', None):
+        if change_opts.get('qos'):
             old_qos, new_qos = change_opts['qos']
             old_qos_id = old_qos[0]
             old_qos_value = old_qos[1]
@@ -654,7 +646,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             'LUNType': None,
         }
 
-        lun_id = volume.get('provider_location', None)
+        lun_id = volume.get('provider_location')
         old_opts = self.get_lun_specs(lun_id)
 
         new_specs = new_type['extra_specs']
@@ -873,11 +865,11 @@ class Huawei18000ISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
                                                host_id)
         hostgroup_id = self.restclient.add_host_into_hostgroup(host_id)
 
+        lun_id = self.restclient.get_lunid(volume, volume_name)
+
         # Mapping lungroup and hostgroup to view.
-        lun_id = self.restclient.mapping_hostgroup_and_lungroup(volume_name,
-                                                                hostgroup_id,
-                                                                host_id,
-                                                                portgroup_id)
+        self.restclient.do_mapping(volume_name, hostgroup_id,
+                                   host_id, portgroup_id)
 
         hostlun_id = self.restclient.find_host_lun_id(host_id, lun_id)
 
@@ -919,7 +911,7 @@ class Huawei18000ISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
         """Delete map between a volume and a host."""
         initiator_name = connector['initiator']
         volume_name = huawei_utils.encode_name(volume['id'])
-        lun_id = volume.get('provider_location', None)
+        lun_id = volume.get('provider_location')
         host_name = connector['host']
         lungroup_id = None
 
@@ -1042,6 +1034,8 @@ class Huawei18000FCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
             {'wwpns': wwns,
              'volume': volume_name},)
 
+        lun_id = self.restclient.get_lunid(volume, volume_name)
+
         host_name_before_hash = None
         host_name = connector['host']
         if host_name and (len(host_name) > constants.MAX_HOSTNAME_LENGTH):
@@ -1091,9 +1085,7 @@ class Huawei18000FCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
 
         # Add host into hostgroup.
         hostgroup_id = self.restclient.add_host_into_hostgroup(host_id)
-        lun_id = self.restclient.mapping_hostgroup_and_lungroup(volume_name,
-                                                                hostgroup_id,
-                                                                host_id)
+        self.restclient.do_mapping(volume_name, hostgroup_id, host_id)
         host_lun_id = self.restclient.find_host_lun_id(host_id, lun_id)
 
         # Return FC properties.
@@ -1115,7 +1107,7 @@ class Huawei18000FCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
         """Delete map between a volume and a host."""
         wwns = connector['wwpns']
         volume_name = huawei_utils.encode_name(volume['id'])
-        lun_id = volume.get('provider_location', None)
+        lun_id = volume.get('provider_location')
         host_name = connector['host']
         left_lunnum = -1
         lungroup_id = None
