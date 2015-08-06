@@ -109,8 +109,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         data = {'enabled': True}
         self.nef(url, data, method='PUT')
 
-        target_name = self._get_target_name()
         target_group_name = self.get_valid_target_group()
+        target_name = self._get_target_name()
         if not self._target_group_exists(target_group_name):
             url = 'san/targetgroups'
             data = {'name': target_group_name,
@@ -238,6 +238,17 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             LOG.warning(_LW('Got error trying to delete volume %(volume)s,'
                             ' assuming it is already gone: %(exc)s'),
                         {'volume': volume, 'exc': exc})
+        url = 'san/targetgroups'
+        tg_list = self.nef(url)['data']
+        for tg in tg_list:
+            url = 'san/targetgroups/%s/luns' % tg['name']
+            lun_list = self.nef(url)
+            for lun in lun_list:
+                if lun['volume'] == volume['name']:
+                    url = 'san/targetgroups/%s/luns/%s' % (
+                        tg, lun['guid'])
+                    self.nef(url, method='DELETE')
+                    return
 
     def extend_volume(self, volume, new_size):
         """Extend an existing volume.
@@ -412,16 +423,16 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         """Returns volume iscsiadm-formatted provider location string."""
         if not volume['provider_location']:
             volume['provider_location'] = (
-                '%(host)s:%(port)s,1 %(name)s %(lun)s') % {
+                '%(host)s:%(port)s,1 %(target)s %(lun)s') % {
                 'host': self.nef_host,
                 'port': self.configuration.nexenta_iscsi_target_portal_port,
-                'name': self._get_target_name(),
+                'target': self._get_target_name(),
                 'lun': self._get_lun(volume['name'])
             }
             return volume['provider_location']
         else:
             LOG.warning(volume['provider_location'])
-            volume['provider_location']
+            return volume['provider_location']
 
     def create_export(self, _ctx, volume):
         """Create new export for zvol.
