@@ -865,7 +865,7 @@ class XIOISEDriverTestCase(object):
             protocol = 'fibre_channel'
         exp_result = {}
         exp_result = {'vendor_name': "X-IO",
-                      'driver_version': "1.1.2",
+                      'driver_version': "1.1.3",
                       'volume_backend_name': backend_name,
                       'reserved_percentage': 0,
                       'total_capacity_gb': 100,
@@ -987,7 +987,34 @@ class XIOISEDriverTestCase(object):
                                      ISE_GET_ALLOC_WITH_EP_RESP,
                                      ISE_DELETE_ALLOC_RESP,
                                      ISE_GET_VOL1_STATUS_RESP,
-                                     ISE_DELETE_VOLUME_RESP])
+                                     ISE_DELETE_VOLUME_RESP,
+                                     ISE_GET_VOL_STATUS_404_RESP])
+        self.setup_driver()
+        self.driver.delete_volume(VOLUME1)
+
+    def test_delete_volume_delayed(self, mock_req):
+        mock_req.side_effect = iter([ISE_GET_QUERY_RESP,
+                                     ISE_GET_ALLOC_WITH_EP_RESP,
+                                     ISE_DELETE_ALLOC_RESP,
+                                     ISE_GET_VOL1_STATUS_RESP,
+                                     ISE_DELETE_VOLUME_RESP,
+                                     ISE_GET_VOL1_STATUS_RESP,
+                                     ISE_GET_VOL1_STATUS_RESP,
+                                     ISE_GET_VOL_STATUS_404_RESP])
+        self.setup_driver()
+        self.driver.delete_volume(VOLUME1)
+
+    def test_delete_volume_timeout(self, mock_req):
+        mock_req.side_effect = iter([ISE_GET_QUERY_RESP,
+                                     ISE_GET_ALLOC_WITH_EP_RESP,
+                                     ISE_DELETE_ALLOC_RESP,
+                                     ISE_GET_VOL1_STATUS_RESP,
+                                     ISE_DELETE_VOLUME_RESP,
+                                     ISE_GET_VOL1_STATUS_RESP,
+                                     ISE_GET_VOL1_STATUS_RESP,
+                                     ISE_GET_VOL1_STATUS_RESP])
+
+        self.configuration.ise_completion_retries = 3
         self.setup_driver()
         self.driver.delete_volume(VOLUME1)
 
