@@ -53,12 +53,9 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
 
     def _test_delete_snapshot(self, volume_in_use=False,
                               stale_snapshot=False,
-                              is_active_image=True,
-                              highest_file_exists=False):
+                              is_active_image=True):
         # If the snapshot is not the active image, it is guaranteed that
         # another snapshot exists having it as backing file.
-        # If yet another file is backed by the file from the next level,
-        # it means that the 'highest file' exists and it needs to be rebased.
 
         fake_snapshot_name = os.path.basename(self._FAKE_SNAPSHOT_PATH)
         fake_info = {'active': fake_snapshot_name,
@@ -71,6 +68,7 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
             fake_snap_img_info.backing_file = self._FAKE_VOLUME_NAME
         fake_snap_img_info.file_format = 'qcow2'
         fake_base_img_info.backing_file = None
+        fake_base_img_info.file_format = 'raw'
 
         self._driver._local_path_volume_info = mock.Mock(
             return_value=mock.sentinel.fake_info_path)
@@ -121,6 +119,7 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
 
             self._driver._img_commit.assert_called_once_with(
                 self._FAKE_SNAPSHOT_PATH)
+            self.assertNotIn(self._FAKE_SNAPSHOT_ID, fake_info)
             self._driver._write_info_file.assert_called_once_with(
                 mock.sentinel.fake_info_path, fake_info)
         else:
@@ -139,31 +138,10 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
 
             fake_info[fake_upper_snap_id] = fake_upper_snap_name
             fake_info[self._FAKE_SNAPSHOT_ID] = fake_snapshot_name
-
-            if highest_file_exists:
-                fake_highest_snap_id = 'fake_highest_snap_id'
-                fake_highest_snap_path = (
-                    self._FAKE_VOLUME_PATH + '-snapshot' +
-                    fake_highest_snap_id)
-                fake_highest_snap_name = os.path.basename(
-                    fake_highest_snap_path)
-
-                fake_highest_snap_info = {
-                    'filename': fake_highest_snap_name,
-                    'backing-filename': fake_upper_snap_name,
-                }
-                fake_backing_chain.insert(0, fake_highest_snap_info)
-
-                fake_info['active'] = fake_highest_snap_name
-                fake_info[fake_highest_snap_id] = fake_highest_snap_name
-            else:
-                fake_info['active'] = fake_upper_snap_name
+            fake_info['active'] = fake_upper_snap_name
 
             expected_info = copy.deepcopy(fake_info)
-            expected_info[fake_upper_snap_id] = fake_snapshot_name
             del expected_info[self._FAKE_SNAPSHOT_ID]
-            if not highest_file_exists:
-                expected_info['active'] = fake_snapshot_name
 
             self._driver._read_info_file.return_value = fake_info
             self._driver._get_backing_chain_for_path = mock.Mock(
@@ -171,12 +149,11 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
 
             self._driver._delete_snapshot(self._FAKE_SNAPSHOT)
 
-            self._driver._img_commit.assert_any_call(
-                fake_upper_snap_path)
-            if highest_file_exists:
-                self._driver._rebase_img.assert_called_once_with(
-                    fake_highest_snap_path, fake_snapshot_name, 'qcow2')
-
+            self._driver._img_commit.assert_called_once_with(
+                self._FAKE_SNAPSHOT_PATH)
+            self._driver._rebase_img.assert_called_once_with(
+                fake_upper_snap_path, self._FAKE_VOLUME_NAME,
+                fake_base_img_info.file_format)
             self._driver._write_info_file.assert_called_once_with(
                 mock.sentinel.fake_info_path, expected_info)
 
@@ -192,10 +169,6 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
 
     def test_delete_snapshot_with_one_upper_file(self):
         self._test_delete_snapshot(is_active_image=False)
-
-    def test_delete_snapshot_with_two_or_more_upper_files(self):
-        self._test_delete_snapshot(is_active_image=False,
-                                   highest_file_exists=True)
 
     def test_delete_stale_snapshot(self):
         fake_snapshot_name = os.path.basename(self._FAKE_SNAPSHOT_PATH)

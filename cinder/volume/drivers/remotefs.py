@@ -923,8 +923,8 @@ class RemoteFSSnapDriver(RemoteFSDriver, driver.SnapshotVD):
             msg = _('Volume status must be "available" or "in-use".')
             raise exception.InvalidVolume(msg)
 
-        self._ensure_share_writable(
-            self._local_volume_dir(snapshot['volume']))
+        vol_path = self._local_volume_dir(snapshot['volume'])
+        self._ensure_share_writable(vol_path)
 
         # Determine the true snapshot file for this snapshot
         # based on the .info file
@@ -950,7 +950,20 @@ class RemoteFSSnapDriver(RemoteFSDriver, driver.SnapshotVD):
             snapshot_path,
             snapshot['volume']['name'])
 
-        vol_path = self._local_volume_dir(snapshot['volume'])
+        base_file = snapshot_path_img_info.backing_file
+        if base_file is None:
+            # There should always be at least the original volume
+            # file as base.
+            LOG.warning(_LW('No backing file found for %s, allowing '
+                            'snapshot to be deleted.'), snapshot_path)
+
+            # Snapshot may be stale, so just delete it and update the
+            # info file instead of blocking
+            return self._delete_stale_snapshot(snapshot)
+
+        base_path = os.path.join(vol_path, base_file)
+        base_file_img_info = self._qemu_img_info(base_path,
+                                                 snapshot['volume']['name'])
 
         # Find what file has this as its backing file
         active_file = self.get_active_image_from_info(snapshot['volume'])
@@ -960,22 +973,6 @@ class RemoteFSSnapDriver(RemoteFSDriver, driver.SnapshotVD):
             # Online delete
             context = snapshot['context']
 
-            base_file = snapshot_path_img_info.backing_file
-            if base_file is None:
-                # There should always be at least the original volume
-                # file as base.
-                LOG.warning(_LW('No backing file found for %s, allowing '
-                                'snapshot to be deleted.'), snapshot_path)
-
-                # Snapshot may be stale, so just delete it and update the
-                # info file instead of blocking
-                return self._delete_stale_snapshot(snapshot)
-
-            base_path = os.path.join(
-                self._local_volume_dir(snapshot['volume']), base_file)
-            base_file_img_info = self._qemu_img_info(
-                base_path,
-                snapshot['volume']['name'])
             new_base_file = base_file_img_info.backing_file
 
             base_id = None
@@ -1001,28 +998,21 @@ class RemoteFSSnapDriver(RemoteFSDriver, driver.SnapshotVD):
                                                 online_delete_info)
 
         if snapshot_file == active_file:
-            # Need to merge snapshot_file into its backing file
             # There is no top file
             #      T0       |        T1         |
             #     base      |   snapshot_file   | None
-            # (guaranteed to|  (being deleted)  |
-            #    exist)     |                   |
-
-            base_file = snapshot_path_img_info.backing_file
+            # (guaranteed to|  (being deleted,  |
+            #    exist)     |   commited down)  |
 
             self._img_commit(snapshot_path)
-
-            # Remove snapshot_file from info
-            del(snap_info[snapshot['id']])
             # Active file has changed
             snap_info['active'] = base_file
-            self._write_info_file(info_path, snap_info)
         else:
-            #      T0        |      T1        |     T2         |       T3
-            #     base       |  snapshot_file |  higher_file   |  highest_file
-            # (guaranteed to | (being deleted)|(guaranteed to  |   (may exist,
-            #   exist, not   |                | exist, being   |    needs ptr
-            #   used here)   |                | committed down)|  update if so)
+            #      T0        |      T1         |     T2         |      T3
+            #     base       |  snapshot_file  |  higher_file   | highest_file
+            # (guaranteed to | (being deleted, | (guaranteed to |  (may exist)
+            #   exist, not   |  commited down) |  exist, needs  |
+            #   used here)   |                 |   ptr update)  |
 
             backing_chain = self._get_backing_chain_for_path(
                 snapshot['volume'], active_file_path)
@@ -1047,37 +1037,15 @@ class RemoteFSSnapDriver(RemoteFSDriver, driver.SnapshotVD):
                     higher_file
                 raise exception.RemoteFSException(msg)
 
-            # Is there a file depending on higher_file?
-            highest_file = next((os.path.basename(f['filename'])
-                                for f in backing_chain
-                                if f.get('backing-filename', '') ==
-                                higher_file),
-                                None)
-            if highest_file is None:
-                LOG.debug('No file depends on %s.', higher_file)
+            self._img_commit(snapshot_path)
 
-            # Committing higher_file into snapshot_file
-            # And update pointer in highest_file
             higher_file_path = os.path.join(vol_path, higher_file)
-            self._img_commit(higher_file_path)
-            if highest_file is not None:
-                highest_file_path = os.path.join(vol_path, highest_file)
-                snapshot_file_fmt = snapshot_path_img_info.file_format
-                self._rebase_img(highest_file_path, snapshot_file,
-                                 snapshot_file_fmt)
+            base_file_fmt = base_file_img_info.file_format
+            self._rebase_img(higher_file_path, base_file, base_file_fmt)
 
-            # Remove snapshot_file from info
-            del(snap_info[snapshot['id']])
-            snap_info[higher_id] = snapshot_file
-            if higher_file == active_file:
-                if highest_file is not None:
-                    msg = _('Check condition failed: '
-                            '%s expected to be None.') % 'highest_file'
-                    raise exception.RemoteFSException(msg)
-                # Active file has changed
-                snap_info['active'] = snapshot_file
-
-            self._write_info_file(info_path, snap_info)
+        # Remove snapshot_file from info
+        del(snap_info[snapshot['id']])
+        self._write_info_file(info_path, snap_info)
 
     def _create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot.
@@ -1216,19 +1184,16 @@ class RemoteFSSnapDriver(RemoteFSDriver, driver.SnapshotVD):
         5. Snapshot deletion when volume is detached ('available' state):
 
             * When first snapshot is deleted, Cinder does the snapshot
-              deletion. volume-1234.aaaa is removed (logically) from the
-              snapshot chain. The data from volume-1234.bbbb is merged into
-              it.
+              deletion. volume-1234.aaaa is removed from the snapshot chain.
+              The data from it is merged into its parent.
 
-              Since bbbb's data was committed into the aaaa file, we have
-              "removed" aaaa's snapshot point but the .aaaa file now
-              represents snapshot with id "bbbb". Also .aaaa file becomes the
-              "active" disk image as it represent snapshot with id "bbbb".
+              volume-1234.bbbb is rebased, having volume-1234 as its new
+              parent.
 
-              volume-1234 <- volume-1234.aaaa(* now with bbbb's data)
+              volume-1234 <- volume-1234.bbbb
 
-              info file: { 'active': 'volume-1234.aaaa',  (* changed!)
-                           'bbbb':   'volume-1234.aaaa'   (* changed!)
+              info file: { 'active': 'volume-1234.bbbb',
+                           'bbbb':   'volume-1234.bbbb'
                          }
 
             * When second snapshot is deleted, Cinder does the snapshot
