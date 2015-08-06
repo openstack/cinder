@@ -48,15 +48,17 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
         2.2.0 - Add manage/unmanage
         2.2.1 - Support for SE 8.0.3
         2.2.2 - Update Consistency Group
+        2.2.3 - Pool aware scheduler(multi-pool) support
     """
 
-    VERSION = "2.2.2"
+    VERSION = "2.2.3"
 
     def __init__(self, *args, **kwargs):
 
         super(EMCVMAXISCSIDriver, self).__init__(*args, **kwargs)
         self.common = (
             emc_vmax_common.EMCVMAXCommon('iSCSI',
+                                          self.VERSION,
                                           configuration=self.configuration))
 
     def check_for_setup_error(self):

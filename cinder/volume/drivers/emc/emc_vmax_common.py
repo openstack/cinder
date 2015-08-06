@@ -29,6 +29,7 @@ from cinder.volume.drivers.emc import emc_vmax_masking
 from cinder.volume.drivers.emc import emc_vmax_provision
 from cinder.volume.drivers.emc import emc_vmax_provision_v3
 from cinder.volume.drivers.emc import emc_vmax_utils
+from cinder.volume import utils as volume_utils
 
 
 LOG = logging.getLogger(__name__)
@@ -44,6 +45,9 @@ except ImportError:
 CINDER_EMC_CONFIG_FILE = '/etc/cinder/cinder_emc_config.xml'
 CINDER_EMC_CONFIG_FILE_PREFIX = '/etc/cinder/cinder_emc_config_'
 CINDER_EMC_CONFIG_FILE_POSTFIX = '.xml'
+BACKENDNAME = 'volume_backend_name'
+PREFIXBACKENDNAME = 'capabilities:volume_backend_name'
+PORTGROUPNAME = 'portgroupname'
 EMC_ROOT = 'root/emc'
 POOL = 'storagetype:pool'
 ARRAY = 'storagetype:array'
@@ -54,7 +58,6 @@ STRIPECOUNT = 'storagetype:stripecount'
 MEMBERCOUNT = 'storagetype:membercount'
 STRIPED = 'striped'
 CONCATENATED = 'concatenated'
-SMI_VERSION_8 = 800
 # V3
 SLO = 'storagetype:slo'
 WORKLOAD = 'storagetype:workload'
@@ -88,14 +91,11 @@ class EMCVMAXCommon(object):
              'vendor_name': 'EMC',
              'volume_backend_name': None}
 
-    pool_info = {'pool_name': None,
-                 'fast_policy': None,
-                 'backend_name': None,
-                 'serial_number': None,
-                 'is_v3': False,
-                 'config_file': None}
+    pool_info = {'backend_name': None,
+                 'config_file': None,
+                 'arrays_info': {}}
 
-    def __init__(self, prtcl, configuration=None):
+    def __init__(self, prtcl, version, configuration=None):
 
         if not pywbemAvailable:
             LOG.info(_LI(
@@ -114,6 +114,7 @@ class EMCVMAXCommon(object):
         self.fast = emc_vmax_fast.EMCVMAXFast(prtcl)
         self.provision = emc_vmax_provision.EMCVMAXProvision(prtcl)
         self.provisionv3 = emc_vmax_provision_v3.EMCVMAXProvisionV3(prtcl)
+        self.version = version
         self._gather_info()
 
     def _gather_info(self):
@@ -133,32 +134,9 @@ class EMCVMAXCommon(object):
             {'emcConfigFileName': self.pool_info['config_file'],
              'backendName': self.pool_info['backend_name']})
 
-        if self.conn is None:
-            self._set_ecom_credentials(self.pool_info['config_file'])
-
-        self.pool_info['serial_number'] = (
-            self.utils.parse_array_name_from_file(
+        self.pool_info['arrays_info'] = (
+            self.utils.parse_file_to_get_array_map(
                 self.pool_info['config_file']))
-
-        if self.pool_info['serial_number'] is None:
-            LOG.error(_LE(
-                "Array Serial Number %(arrayName)s must be in the file "
-                "%(emcConfigFileName)s."),
-                {'arrayName': self.pool_info['serial_number'],
-                 'emcConfigFileName': self.pool_info['config_file']})
-
-        self.pool_info['pool_name'] = (
-            self.utils.parse_pool_name_from_file(
-                self.pool_info['config_file']))
-        if self.pool_info['pool_name'] is None:
-            LOG.error(_LE(
-                "PoolName %(poolName)s must be in the file "
-                "%(emcConfigFileName)s."),
-                {'poolName': self.pool_info['pool_name'],
-                 'emcConfigFileName': self.pool_info['config_file']})
-
-        self.pool_info['is_v3'] = (
-            self.utils.isArrayV3(self.conn, self.pool_info['serial_number']))
 
     def create_volume(self, volume):
         """Creates a EMC(VMAX) volume from a pre-existing storage pool.
@@ -215,6 +193,8 @@ class EMCVMAXCommon(object):
                  {'volumeName': volumeName,
                   'rc': rc,
                   'name': volumeDict})
+        # Adding version information
+        volumeDict['version'] = self.version
 
         return volumeDict
 
@@ -229,7 +209,8 @@ class EMCVMAXCommon(object):
         :raises: VolumeBackendAPIException
         """
         LOG.debug("Entering create_volume_from_snapshot.")
-        extraSpecs = self._initial_setup(volume)
+        snapshot['host'] = volume['host']
+        extraSpecs = self._initial_setup(snapshot)
         self.conn = self._get_ecom_connection()
         snapshotInstance = self._find_lun(snapshot)
         storageSystem = snapshotInstance['SystemName']
@@ -249,7 +230,8 @@ class EMCVMAXCommon(object):
             self.provision.delete_clone_relationship(
                 self.conn, repservice, syncName, extraSpecs)
 
-        return self._create_cloned_volume(volume, snapshot, False)
+        snapshot['host'] = volume['host']
+        return self._create_cloned_volume(volume, snapshot, extraSpecs, False)
 
     def create_cloned_volume(self, cloneVolume, sourceVolume):
         """Creates a clone of the specified volume.
@@ -258,7 +240,9 @@ class EMCVMAXCommon(object):
         :param sourceVolume: volume object
         :returns: cloneVolumeDict -- the cloned volume dictionary
         """
-        return self._create_cloned_volume(cloneVolume, sourceVolume, False)
+        extraSpecs = self._initial_setup(sourceVolume)
+        return self._create_cloned_volume(cloneVolume, sourceVolume,
+                                          extraSpecs, False)
 
     def delete_volume(self, volume):
         """Deletes a EMC(VMAX) volume.
@@ -283,7 +267,8 @@ class EMCVMAXCommon(object):
         :param volume: volume Object to create snapshot from
         :returns: dict -- the cloned volume dictionary
         """
-        return self._create_cloned_volume(snapshot, volume, True)
+        extraSpecs = self._initial_setup(volume)
+        return self._create_cloned_volume(snapshot, volume, extraSpecs, True)
 
     def delete_snapshot(self, snapshot, volume):
         """Deletes a snapshot.
@@ -293,6 +278,7 @@ class EMCVMAXCommon(object):
         """
         LOG.info(_LI("Delete Snapshot: %(snapshotName)s."),
                  {'snapshotName': snapshot['name']})
+        snapshot['host'] = volume['host']
         self._delete_snapshot(snapshot)
 
     def _remove_members(self, controllerConfigService,
@@ -564,64 +550,76 @@ class EMCVMAXCommon(object):
 
     def update_volume_stats(self):
         """Retrieve stats info."""
+        pools = []
+        backendName = self.pool_info['backend_name']
+        for arrayInfo in self.pool_info['arrays_info']:
+            self._set_ecom_credentials(arrayInfo)
+            # Check what type of array it is
+            isV3 = self.utils.isArrayV3(self.conn, arrayInfo['SerialNumber'])
+            if isV3:
+                location_info, total_capacity_gb, free_capacity_gb = (
+                    self._update_srp_stats(arrayInfo))
+                poolName = ("%(slo)s+%(poolName)s+%(array)s"
+                            % {'slo': arrayInfo['SLO'],
+                               'poolName': arrayInfo['PoolName'],
+                               'array': arrayInfo['SerialNumber']})
+            else:
+                # This is V2
+                location_info, total_capacity_gb, free_capacity_gb = (
+                    self._update_pool_stats(backendName, arrayInfo))
+                poolName = ("%(poolName)s+%(array)s"
+                            % {'poolName': arrayInfo['PoolName'],
+                               'array': arrayInfo['SerialNumber']})
 
-        if self.pool_info['is_v3']:
-            location_info, total_capacity_gb, free_capacity_gb = (
-                self._update_srp_stats(self.pool_info['config_file'],
-                                       self.pool_info['serial_number'],
-                                       self.pool_info['pool_name']))
-        else:
-            # This is V2.
-            location_info, total_capacity_gb, free_capacity_gb = (
-                self._update_pool_stats(self.pool_info['config_file'],
-                                        self.pool_info['backend_name'],
-                                        self.pool_info['serial_number'],
-                                        self.pool_info['pool_name']))
+            pool = {'pool_name': poolName,
+                    'total_capacity_gb': total_capacity_gb,
+                    'free_capacity_gb': free_capacity_gb,
+                    'reserved_percentage': 0,
+                    'QoS_support': False,
+                    'location_info': location_info,
+                    'consistencygroup_support': True}
+            pools.append(pool)
 
-        data = {'total_capacity_gb': total_capacity_gb,
-                'free_capacity_gb': free_capacity_gb,
-                'reserved_percentage': 0,
-                'QoS_support': False,
+        data = {'vendor_name': "EMC",
+                'driver_version': self.version,
+                'storage_protocol': 'unknown',
                 'volume_backend_name': self.pool_info['backend_name'] or
                 self.__class__.__name__,
-                'vendor_name': "EMC",
-                'driver_version': self.VERSION,
-                'storage_protocol': 'unknown',
-                'location_info': location_info,
-                'consistencygroup_support': True}
+                # Use zero capacities here so we always use a pool.
+                'total_capacity_gb': 0,
+                'free_capacity_gb': 0,
+                'reserved_percentage': 0,
+                'pools': pools}
 
         return data
 
-    def _update_srp_stats(self, emcConfigFileName, arrayName, poolName):
+    def _update_srp_stats(self, arrayInfo):
         """Update SRP stats.
 
-        :param emcConfigFileName: the EMC configuration file
-        :param arrayName: the array
-        :param poolName: the pool
+        :param arrayInfo: array information
         :returns: location_info
         :returns: totalManagedSpaceGbs
         :returns: remainingManagedSpaceGbs
         """
 
         totalManagedSpaceGbs, remainingManagedSpaceGbs = (
-            self.utils.get_srp_pool_stats(self.conn, arrayName, poolName))
+            self.provisionv3.get_srp_pool_stats(self.conn,
+                                                arrayInfo))
 
         LOG.info(_LI(
             "Capacity stats for SRP pool %(poolName)s on array "
             "%(arrayName)s total_capacity_gb=%(total_capacity_gb)lu, "
-            "free_capacity_gb=%(free_capacity_gb)lu."),
-            {'poolName': poolName,
-             'arrayName': arrayName,
+            "free_capacity_gb=%(free_capacity_gb)lu"),
+            {'poolName': arrayInfo['PoolName'],
+             'arrayName': arrayInfo['SerialNumber'],
              'total_capacity_gb': totalManagedSpaceGbs,
              'free_capacity_gb': remainingManagedSpaceGbs})
-        slo = self.utils.parse_slo_from_file(emcConfigFileName)
-        workload = self.utils.parse_workload_from_file(emcConfigFileName)
 
         location_info = ("%(arrayName)s#%(poolName)s#%(slo)s#%(workload)s"
-                         % {'arrayName': arrayName,
-                            'poolName': poolName,
-                            'slo': slo,
-                            'workload': workload})
+                         % {'arrayName': arrayInfo['SerialNumber'],
+                            'poolName': arrayInfo['PoolName'],
+                            'slo': arrayInfo['SLO'],
+                            'workload': arrayInfo['Workload']})
 
         return location_info, totalManagedSpaceGbs, remainingManagedSpaceGbs
 
@@ -1203,7 +1201,6 @@ class EMCVMAXCommon(object):
         # If there are no extra specs then the default case is assumed.
         if extraSpecs:
             configGroup = self.configuration.config_group
-
         configurationFile = self._register_config_file_from_config_group(
             configGroup)
 
@@ -1317,23 +1314,13 @@ class EMCVMAXCommon(object):
 
         if isinstance(loc, six.string_types):
             name = eval(loc)
-            keys = name['keybindings']
-            systemName = keys['SystemName']
-
-            prefix1 = 'SYMMETRIX+'
-            prefix2 = 'SYMMETRIX-+-'
-            smiversion = self.utils.get_smi_version(self.conn)
-            if smiversion > SMI_VERSION_8 and prefix1 in systemName:
-                keys['SystemName'] = systemName.replace(prefix1, prefix2)
-                name['keybindings'] = keys
 
             instancename = self.utils.get_instance_name(
                 name['classname'], name['keybindings'])
+
             # Handle the case where volume cannot be found.
-            try:
-                foundVolumeinstance = self.conn.GetInstance(instancename)
-            except Exception:
-                foundVolumeinstance = None
+            foundVolumeinstance = self.utils.get_existing_instance(
+                self.conn, instancename)
 
         if foundVolumeinstance is None:
             LOG.debug("Volume %(volumename)s not found on the array.",
@@ -1566,7 +1553,6 @@ class EMCVMAXCommon(object):
         :returns: string -- configurationFile - name of the configuration file
         """
         if configGroupName is None:
-            self._set_ecom_credentials(CINDER_EMC_CONFIG_FILE)
             return CINDER_EMC_CONFIG_FILE
         if hasattr(self.configuration, 'cinder_emc_config_file'):
             configurationFile = self.configuration.cinder_emc_config_file
@@ -1586,15 +1572,6 @@ class EMCVMAXCommon(object):
                     'configGroupName': configGroupName,
                     'postfix': CINDER_EMC_CONFIG_FILE_POSTFIX}))
 
-        self._set_ecom_credentials(configurationFile)
-        return configurationFile
-
-    def _set_ecom_credentials(self, configurationFile):
-        """Given the configuration file set the ecom credentials.
-
-        :param configurationFile: name of the file (String)
-        :raises: VolumeBackendAPIException
-        """
         if os.path.isfile(configurationFile):
             LOG.debug("Configuration file : %(configurationFile)s exists.",
                       {'configurationFile': configurationFile})
@@ -1605,10 +1582,21 @@ class EMCVMAXCommon(object):
             LOG.error(exceptionMessage)
             raise exception.VolumeBackendAPIException(data=exceptionMessage)
 
-        ip, port = self.utils.get_ecom_server(configurationFile)
-        self.user, self.passwd = self.utils.get_ecom_cred(configurationFile)
-        self.ecomUseSSL, self.ecomCACert, self.ecomNoVerification = (
-            self.utils.get_ecom_cred_SSL(configurationFile))
+        return configurationFile
+
+    def _set_ecom_credentials(self, arrayInfo):
+        """Given the array record set the ecom credentials.
+
+        :param arrayInfo: record
+        :raises: VolumeBackendAPIException
+        """
+        ip = arrayInfo['EcomServerIp']
+        port = arrayInfo['EcomServerPort']
+        self.user = arrayInfo['EcomUserName']
+        self.passwd = arrayInfo['EcomPassword']
+        self.ecomUseSSL = arrayInfo['EcomUseSSL']
+        self.ecomCACert = arrayInfo['EcomCACert']
+        self.ecomNoVerification = arrayInfo['EcomNoVerification']
         ip_port = ("%(ip)s:%(port)s"
                    % {'ip': ip,
                       'port': port})
@@ -1641,33 +1629,34 @@ class EMCVMAXCommon(object):
                 self._set_config_file_and_get_extra_specs(
                     volume, volumeTypeId))
 
-            arrayName = self.utils.parse_array_name_from_file(
+            pool = self._validate_pool(volume)
+            LOG.debug("Pool returned is %(pool)s.",
+                      {'pool': pool})
+            arrayInfo = self.utils.parse_file_to_get_array_map(
                 configurationFile)
-            if arrayName is None:
+            poolRecord = self.utils.extract_record(arrayInfo, pool)
+
+            if not poolRecord:
                 exceptionMessage = (_(
-                    "The array cannot be null. The pool must be configured "
-                    "either as a cinder extra spec for multi-backend or in "
-                    "the EMC configuration file for the default case."))
-                LOG.error(exceptionMessage)
+                    "Unable to get corresponding record for pool."))
                 raise exception.VolumeBackendAPIException(
                     data=exceptionMessage)
 
-            isV3 = self.utils.isArrayV3(self.conn, arrayName)
+            self._set_ecom_credentials(poolRecord)
+            isV3 = self.utils.isArrayV3(
+                self.conn, poolRecord['SerialNumber'])
 
             if isV3:
-                extraSpecs = self._set_v3_extra_specs(
-                    configurationFile, arrayName, extraSpecs)
+                extraSpecs = self._set_v3_extra_specs(extraSpecs, poolRecord)
             else:
-                # V2 extra specs.
-                extraSpecs = self._set_v2_extra_specs(
-                    configurationFile, arrayName, extraSpecs)
+                # V2 extra specs
+                extraSpecs = self._set_v2_extra_specs(extraSpecs, poolRecord)
         except Exception:
+            import sys
             exceptionMessage = (_(
-                "Unable to get configuration information necessary to create "
-                "a volume. Please check that there is a configuration file "
-                "for each config group, if multi-backend is enabled. "
-                "The file should be in the following format "
-                "/etc/cinder/cinder_emc_config_<CONFIG_GROUP>.xml."))
+                "Unable to get configuration information necessary to "
+                "create a volume: %(errorMessage)s.")
+                % {'errorMessage': sys.exc_info()[1]})
             raise exception.VolumeBackendAPIException(data=exceptionMessage)
 
         return extraSpecs
@@ -1732,9 +1721,7 @@ class EMCVMAXCommon(object):
                  % {'shortHostName': shortHostName,
                     'poolName': poolName,
                     'protocol': protocol}))
-            maskingViewDict['fastPolicy'] = (
-                self.utils.parse_fast_policy_name_from_file(
-                    self.configuration.cinder_emc_config_file))
+            maskingViewDict['fastPolicy'] = extraSpecs[FASTPOLICY]
 
         maskingViewDict['sgGroupName'] = ("%(prefix)s-SG"
                                           % {'prefix': prefix})
@@ -1749,9 +1736,7 @@ class EMCVMAXCommon(object):
             self.utils.find_controller_configuration_service(
                 self.conn, storageSystemName))
         # The portGroup is gotten from emc xml config file.
-        maskingViewDict['pgGroupName'] = (
-            self.utils.parse_file_to_get_port_group_name(
-                self.configuration.cinder_emc_config_file))
+        maskingViewDict['pgGroupName'] = extraSpecs[PORTGROUPNAME]
 
         maskingViewDict['igGroupName'] = (
             ("OS-%(shortHostName)s-%(protocol)s-IG"
@@ -1843,8 +1828,8 @@ class EMCVMAXCommon(object):
         if 'True' in isVolumeBound:
             appendVolumeInstance = (
                 self._unbind_and_get_volume_from_storage_pool(
-                    conn, storageConfigService, appendVolumeInstance.path,
-                    'appendVolume', extraSpecs))
+                    conn, storageConfigService, assocPoolInstanceName,
+                    appendVolumeInstance.path, 'appendVolume', extraSpecs))
 
         return appendVolumeInstance
 
@@ -1870,33 +1855,27 @@ class EMCVMAXCommon(object):
         return volumeInstance
 
     def _unbind_and_get_volume_from_storage_pool(
-            self, conn, storageConfigService, volumeInstanceName,
-            volumeName, extraSpecs):
+            self, conn, storageConfigService, poolInstanceName,
+            volumeInstanceName, volumeName, extraSpecs):
         """Unbind a volume from a pool and return the unbound volume.
 
         :param conn: the connection information to the ecom server
         :param storageConfigService: the storage config service instance name
+        :param poolInstanceName: the pool instance name
         :param volumeInstanceName: the volume instance name
         :param volumeName: string the volumeName
         :param extraSpecs: extra specifications
         :returns: unboundVolumeInstance -- the unbound volume instance
         """
 
-        rc, job = (
+        _rc, job = (
             self.provision.unbind_volume_from_storage_pool(
-                conn, storageConfigService, volumeInstanceName,
+                conn, storageConfigService, poolInstanceName,
+                volumeInstanceName,
                 volumeName, extraSpecs))
-        # Check that the volume is unbound
-        volumeInstance = conn.GetInstance(volumeInstanceName)
-        isVolumeBound = self.utils.is_volume_bound_to_pool(
-            conn, volumeInstance)
-        if 'False' not in isVolumeBound:
-            exceptionMessage = (_(
-                "Failed to unbind volume: %(volume)s")
-                % {'volume': volumeInstanceName})
-            LOG.error(exceptionMessage)
-            raise exception.VolumeBackendAPIException(data=exceptionMessage)
-
+        volumeDict = self.provision.get_volume_dict_from_job(conn, job['Job'])
+        volumeInstance = self.utils.find_volume_instance(
+            self.conn, volumeDict, volumeName)
         return volumeInstance
 
     def _modify_and_get_composite_volume_instance(
@@ -1964,16 +1943,16 @@ class EMCVMAXCommon(object):
         return defaultStorageGroupInstanceName
 
     def _create_cloned_volume(
-            self, cloneVolume, sourceVolume, isSnapshot=False):
+            self, cloneVolume, sourceVolume, extraSpecs, isSnapshot=False):
         """Create a clone volume from the source volume.
 
         :param cloneVolume: clone volume
         :param sourceVolume: source of the clone volume
+        :param extraSpecs: extra specs
         :param isSnapshot: boolean -- Defaults to False
         :returns: dict -- cloneDict the cloned volume dictionary
+        :raises: VolumeBackendAPIException
         """
-        extraSpecs = self._initial_setup(cloneVolume)
-
         sourceName = sourceVolume['name']
         cloneName = cloneVolume['name']
 
@@ -2035,6 +2014,8 @@ class EMCVMAXCommon(object):
                   {'cloneName': cloneName,
                    'sourceName': sourceName,
                    'rc': rc})
+        # Adding version information
+        cloneDict['version'] = self.version
 
         return cloneDict
 
@@ -2823,28 +2804,6 @@ class EMCVMAXCommon(object):
         storageConfigService = self.utils.find_storage_configuration_service(
             self.conn, storageSystemName)
 
-        # Check the SLO range.
-        maximumVolumeSize, minimumVolumeSize = (
-            self.provisionv3.get_volume_range(
-                self.conn, storageConfigService, poolInstanceName,
-                extraSpecs[SLO], extraSpecs[WORKLOAD],
-                extraSpecs))
-        if not self.utils.is_in_range(
-                volumeSize, maximumVolumeSize, minimumVolumeSize):
-            LOG.warning(_LW(
-                "Volume: %(volume)s with size: %(volumeSize)s bits "
-                "is not in the Performance Capacity range: "
-                "%(minimumVolumeSize)s-%(maximumVolumeSize)s bits. "
-                "for SLO:%(slo)s and workload:%(workload)s. "
-                "Unpredictable results may occur."),
-                {'volume': volumeName,
-                 'volumeSize': volumeSize,
-                 'minimumVolumeSize': minimumVolumeSize,
-                 'maximumVolumeSize': maximumVolumeSize,
-                 'slo': extraSpecs[SLO],
-                 'workload': extraSpecs[WORKLOAD]
-                 })
-
         # A volume created without specifying a storage group during
         # creation time is allocated from the default SRP pool and
         # assigned the optimized SLO.
@@ -2979,7 +2938,6 @@ class EMCVMAXCommon(object):
                 storageGroupName))
 
         storageSystemName = volumeInstance['SystemName']
-
         if not isValid:
             LOG.error(_LE(
                 "Volume %(name)s is not suitable for storage "
@@ -3022,6 +2980,7 @@ class EMCVMAXCommon(object):
         controllerConfigService = (
             self.utils.find_controller_configuration_service(
                 self.conn, storageSystemName))
+
         defaultSgName = self.utils.get_v3_storage_group_name(
             extraSpecs[POOL], extraSpecs[SLO], extraSpecs[WORKLOAD])
 
@@ -3122,83 +3081,72 @@ class EMCVMAXCommon(object):
         return False
 
     def _update_pool_stats(
-            self, emcConfigFileName, backendName, arrayName, poolName):
+            self, backendName, arrayInfo):
         """Update pool statistics (V2).
 
-        :param emcConfigFileName: the EMC configuration file
         :param backendName: the backend name
-        :param arrayName: the array name
-        :param poolName: the pool name
+        :param arrayInfo: the arrayInfo
         :returns: location_info, total_capacity_gb, free_capacity_gb
         """
-        # This value can be None.
-        fastPolicyName = self.utils.parse_fast_policy_name_from_file(
-            emcConfigFileName)
-        if fastPolicyName is not None:
+
+        if arrayInfo['FastPolicy']:
             LOG.debug(
                 "Fast policy %(fastPolicyName)s is enabled on %(arrayName)s.",
-                {'fastPolicyName': fastPolicyName,
-                 'arrayName': arrayName})
+                {'fastPolicyName': arrayInfo['FastPolicy'],
+                 'arrayName': arrayInfo['SerialNumber']})
         else:
             LOG.debug(
                 "No Fast policy for Array:%(arrayName)s "
                 "backend:%(backendName)s.",
-                {'arrayName': arrayName,
+                {'arrayName': arrayInfo['SerialNumber'],
                  'backendName': backendName})
 
         storageSystemInstanceName = self.utils.find_storageSystem(
-            self.conn, arrayName)
+            self.conn, arrayInfo['SerialNumber'])
         isTieringPolicySupported = (
             self.fast.is_tiering_policy_enabled_on_storage_system(
                 self.conn, storageSystemInstanceName))
 
-        if (fastPolicyName is not None and
-                isTieringPolicySupported is True):  # FAST enabled.
+        if (arrayInfo['FastPolicy'] is not None and
+                isTieringPolicySupported is True):  # FAST enabled
             total_capacity_gb, free_capacity_gb = (
                 self.fast.get_capacities_associated_to_policy(
-                    self.conn, arrayName, fastPolicyName))
+                    self.conn, arrayInfo['SerialNumber'],
+                    arrayInfo['FastPolicy']))
             LOG.info(_LI(
-                "FAST: capacity stats for policy %(fastPolicyName)s on "
-                "array: %(arrayName)s total_capacity_gb=%(total_capacity_gb)lu"
-                ", free_capacity_gb=%(free_capacity_gb)lu."),
-                {'fastPolicyName': fastPolicyName,
-                 'arrayName': arrayName,
+                "FAST: capacity stats for policy %(fastPolicyName)s on array "
+                "%(arrayName)s. total_capacity_gb=%(total_capacity_gb)lu, "
+                "free_capacity_gb=%(free_capacity_gb)lu."),
+                {'fastPolicyName': arrayInfo['FastPolicy'],
+                 'arrayName': arrayInfo['SerialNumber'],
                  'total_capacity_gb': total_capacity_gb,
                  'free_capacity_gb': free_capacity_gb})
         else:  # NON-FAST
             total_capacity_gb, free_capacity_gb = (
-                self.utils.get_pool_capacities(self.conn, poolName, arrayName))
+                self.utils.get_pool_capacities(self.conn,
+                                               arrayInfo['PoolName'],
+                                               arrayInfo['SerialNumber']))
             LOG.info(_LI(
-                "NON-FAST: capacity stats for pool %(poolName)s on array: "
+                "NON-FAST: capacity stats for pool %(poolName)s on array "
                 "%(arrayName)s total_capacity_gb=%(total_capacity_gb)lu, "
                 "free_capacity_gb=%(free_capacity_gb)lu."),
-                {'poolName': poolName,
-                 'arrayName': arrayName,
+                {'poolName': arrayInfo['PoolName'],
+                 'arrayName': arrayInfo['SerialNumber'],
                  'total_capacity_gb': total_capacity_gb,
                  'free_capacity_gb': free_capacity_gb})
 
-        if poolName is None:
-            LOG.debug("Unable to get the poolName for location_info.")
-        if arrayName is None:
-            LOG.debug("Unable to get the arrayName for location_info.")
-        if fastPolicyName is None:
-            LOG.debug("FAST is not enabled for this configuration: "
-                      "%(emcConfigFileName)s.",
-                      {'emcConfigFileName': emcConfigFileName})
-
         location_info = ("%(arrayName)s#%(poolName)s#%(policyName)s"
-                         % {'arrayName': arrayName,
-                            'poolName': poolName,
-                            'policyName': fastPolicyName})
+                         % {'arrayName': arrayInfo['SerialNumber'],
+                            'poolName': arrayInfo['PoolName'],
+                            'policyName': arrayInfo['FastPolicy']})
 
         return location_info, total_capacity_gb, free_capacity_gb
 
-    def _set_v2_extra_specs(self, configurationFile, arrayName, extraSpecs):
+    def _set_v2_extra_specs(self, extraSpecs, poolRecord):
         """Set the VMAX V2 extra specs.
 
-        :param configurationFile: the EMC configuration file
-        :param arrayName: the array serial number
         :param extraSpecs: extra specifications
+        :param poolRecord: pool record
         :returns: dict -- the extraSpecs
         :raises: VolumeBackendAPIException
         """
@@ -3217,29 +3165,14 @@ class EMCVMAXCommon(object):
             extraSpecs[COMPOSITETYPE] = CONCATENATED
             LOG.debug("StripedMetaCount is not in the extra specs.")
 
-        poolName = self.utils.parse_pool_name_from_file(configurationFile)
-        if poolName is None:
-            exceptionMessage = (_(
-                "The pool cannot be null. The pool must be configured "
-                "either in the extra specs or in the EMC configuration "
-                "file corresponding to the Volume Type."))
-            LOG.error(exceptionMessage)
-            raise exception.VolumeBackendAPIException(
-                data=exceptionMessage)
-
         # Get the FAST policy from the file. This value can be None if the
         # user doesn't want to associate with any FAST policy.
-        fastPolicyName = self.utils.parse_fast_policy_name_from_file(
-            configurationFile)
-        if fastPolicyName is not None:
+        if poolRecord['FastPolicy']:
             LOG.debug("The fast policy name is: %(fastPolicyName)s.",
-                      {'fastPolicyName': fastPolicyName})
-
-        extraSpecs[POOL] = poolName
-        extraSpecs[ARRAY] = arrayName
-        extraSpecs[FASTPOLICY] = fastPolicyName
+                      {'fastPolicyName': poolRecord['FastPolicy']})
+        extraSpecs[FASTPOLICY] = poolRecord['FastPolicy']
         extraSpecs[ISV3] = False
-        extraSpecs = self._get_job_extra_specs(configurationFile, extraSpecs)
+        extraSpecs = self._set_common_extraSpecs(extraSpecs, poolRecord)
 
         LOG.debug("Pool is: %(pool)s "
                   "Array is: %(array)s "
@@ -3253,27 +3186,21 @@ class EMCVMAXCommon(object):
                    'memberCount': extraSpecs[MEMBERCOUNT]})
         return extraSpecs
 
-    def _set_v3_extra_specs(self, configurationFile, arrayName, extraSpecs):
+    def _set_v3_extra_specs(self, extraSpecs, poolRecord):
         """Set the VMAX V3 extra specs.
 
         If SLO or workload are not specified then the default
         values are NONE and the Optimized SLO will be assigned to the
         volume.
 
-        :param configurationFile: the EMC configuration file
-        :param arrayName: the array serial number
-        :returns: dict -- the extraSpecs
+        :param extraSpecs: extra specifications
+        :param poolRecord: pool record
+        :returns: dict -- the extra specifications dictionary
         """
-        extraSpecs[SLO] = self.utils.parse_slo_from_file(
-            configurationFile)
-        extraSpecs[WORKLOAD] = self.utils.parse_workload_from_file(
-            configurationFile)
-        extraSpecs[POOL] = self.utils.parse_pool_name_from_file(
-            configurationFile)
-        extraSpecs[ARRAY] = arrayName
+        extraSpecs[SLO] = poolRecord['SLO']
+        extraSpecs[WORKLOAD] = poolRecord['Workload']
         extraSpecs[ISV3] = True
-        extraSpecs = self._get_job_extra_specs(configurationFile, extraSpecs)
-
+        extraSpecs = self._set_common_extraSpecs(extraSpecs, poolRecord)
         LOG.debug("Pool is: %(pool)s "
                   "Array is: %(array)s "
                   "SLO is: %(slo)s "
@@ -3284,27 +3211,30 @@ class EMCVMAXCommon(object):
                    'workload': extraSpecs[WORKLOAD]})
         return extraSpecs
 
-    def _get_job_extra_specs(self, configurationFile, extraSpecs):
-        """Get user defined extra specs around job intervals and retries.
+    def _set_common_extraSpecs(self, extraSpecs, poolRecord):
+        """Set common extra specs.
 
-        :param configurationFile: the EMC configuration file
-        :param extraSpecs: extraSpecs (in)
-        :returns: extraSpecs (out)
+        The extraSpecs are common to v2 and v3
+
+        :param extraSpecs: extra specifications
+        :param poolRecord: pool record
+        :returns: dict -- the extra specifications dictionary
         """
-        intervalInSecs = self.utils.parse_interval_from_file(
-            configurationFile)
-        if intervalInSecs is not None:
+        extraSpecs[POOL] = poolRecord['PoolName']
+        extraSpecs[ARRAY] = poolRecord['SerialNumber']
+        extraSpecs[PORTGROUPNAME] = poolRecord['PortGroup']
+        if 'Interval' in poolRecord and poolRecord['Interval']:
+            extraSpecs[INTERVAL] = poolRecord['Interval']
             LOG.debug("The user defined interval is : %(intervalInSecs)s.",
-                      {'intervalInSecs': intervalInSecs})
-            extraSpecs[INTERVAL] = intervalInSecs
-
-        retries = self.utils.parse_retries_from_file(
-            configurationFile)
-        if retries is not None:
+                      {'intervalInSecs': poolRecord['Interval']})
+        else:
+            LOG.debug("Interval not overridden, default of 10 assumed.")
+        if 'Retries' in poolRecord and poolRecord['Retries']:
+            extraSpecs[RETRIES] = poolRecord['Retries']
             LOG.debug("The user defined retries is : %(retries)s.",
-                      {'retries': retries})
-            extraSpecs[RETRIES] = retries
-
+                      {'retries': poolRecord['Retries']})
+        else:
+            LOG.debug("Retries not overridden, default of 60 assumed.")
         return extraSpecs
 
     def _delete_from_pool(self, storageConfigService, volumeInstance,
@@ -3348,8 +3278,12 @@ class EMCVMAXCommon(object):
                 controllerConfigurationService,
                 volumeInstance.path, volumeName, extraSpecs)
 
-        LOG.debug("Deleting Volume: %(name)s with deviceId: %(deviceId)s.",
-                  {'name': volumeName,
+        LOG.debug("Delete Volume: %(name)s Method: EMCReturnToStoragePool "
+                  "ConfigService: %(service)s TheElement: %(vol_instance)s "
+                  "DeviceId: %(deviceId)s.",
+                  {'service': storageConfigService,
+                   'name': volumeName,
+                   'vol_instance': volumeInstance.path,
                    'deviceId': deviceId})
         try:
             rc = self.provision.delete_volume_from_pool(
@@ -3382,7 +3316,6 @@ class EMCVMAXCommon(object):
                             {'volumeName': volumeName})
             LOG.exception(errorMessage)
             raise exception.VolumeBackendAPIException(data=errorMessage)
-
         return rc
 
     def _delete_from_pool_v3(self, storageConfigService, volumeInstance,
@@ -3476,9 +3409,9 @@ class EMCVMAXCommon(object):
         else:  # Composite volume with meta device members.
             # Check if the meta members capacity.
             metaMemberInstanceNames = (
-                self.utils.get_composite_elements(
-                    self.conn, sourceInstance))
-            volumeCapacities = self.utils.get_meta_members_capacity_in_byte(
+                self.utils.get_meta_members_of_composite_volume(
+                    self.conn, metaHeadInstanceName))
+            volumeCapacities = self.utils.get_meta_members_capacity_in_bit(
                 self.conn, metaMemberInstanceNames)
             LOG.debug("Volume capacities:  %(metasizes)s.",
                       {'metasizes': volumeCapacities})
@@ -3741,9 +3674,6 @@ class EMCVMAXCommon(object):
         # Default operation 8: Detach for clone.
         operation = self.utils.get_num(8, '16')
 
-        # Create target volume
-        extraSpecs = self._initial_setup(cloneVolume)
-
         numOfBlocks = sourceInstance['NumberOfBlocks']
         blockSize = sourceInstance['BlockSize']
         volumeSizeInbits = numOfBlocks * blockSize
@@ -3903,6 +3833,67 @@ class EMCVMAXCommon(object):
                                     extraSpecs[FASTPOLICY],
                                     extraSpecs)
         return rc
+
+    def _validate_pool(self, volume):
+        """Get the pool from volume['host'].
+
+        There may be backward compatibiliy concerns, so putting in a
+        check to see if a version has been added to provider_location.
+        If it has, we know we are at the current version, if not, we
+        assume it was created pre 'Pool Aware Scheduler' feature.
+
+        :param volume: the volume Object
+        :returns: string -- pool
+        :raises: VolumeBackendAPIException
+        """
+        pool = None
+        # Volume is None in CG ops.
+        if volume is None:
+            return pool
+
+        # This check is for all operations except a create.
+        # On a create provider_location is None
+        try:
+            if volume['provider_location']:
+                version = self._get_version_from_provider_location(
+                    volume['provider_location'])
+                if not version:
+                    return pool
+        except KeyError:
+            return pool
+        try:
+            pool = volume_utils.extract_host(volume['host'], 'pool')
+            if pool:
+                LOG.debug("Pool from volume['host'] is %(pool)s.",
+                          {'pool': pool})
+            else:
+                exceptionMessage = (_(
+                    "Pool from volume['host'] %(host)s not found.")
+                    % {'host': volume['host']})
+                raise exception.VolumeBackendAPIException(
+                    data=exceptionMessage)
+        except Exception as ex:
+            exceptionMessage = (_(
+                "Pool from volume['host'] failed with: %(ex)s.")
+                % {'ex': ex})
+            raise exception.VolumeBackendAPIException(
+                data=exceptionMessage)
+        return pool
+
+    def _get_version_from_provider_location(self, loc):
+        """Get the version from the provider location.
+
+        :param loc: the provider_location dict
+        :returns: version or None
+        """
+        version = None
+        try:
+            if isinstance(loc, six.string_types):
+                name = eval(loc)
+                version = name['version']
+        except KeyError:
+            pass
+        return version
 
     def manage_existing(self, volume, external_ref):
         """Manages an existing VMAX Volume (import to Cinder).

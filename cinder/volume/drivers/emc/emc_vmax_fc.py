@@ -40,15 +40,17 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
         2.2.0 - Add manage/unmanage
         2.2.1 - Support for SE 8.0.3
         2.2.2 - Update Consistency Group
+        2.2.3 - Pool aware scheduler(multi-pool) support
     """
 
-    VERSION = "2.2.2"
+    VERSION = "2.2.3"
 
     def __init__(self, *args, **kwargs):
 
         super(EMCVMAXFCDriver, self).__init__(*args, **kwargs)
         self.common = emc_vmax_common.EMCVMAXCommon(
             'FC',
+            self.VERSION,
             configuration=self.configuration)
         self.zonemanager_lookup_service = fczm_utils.create_lookup_service()
 

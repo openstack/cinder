@@ -623,6 +623,7 @@ class EMCVMAXMasking(object):
         :param conn: the connection to  ecom
         :param storageGroupInstanceName: the storage group instance name
         :param volumeInstance: the volume instance
+        :param sgName: the storage group name
         :returns: boolean
         """
         foundStorageGroupInstanceName = (
@@ -901,8 +902,8 @@ class EMCVMAXMasking(object):
             conn.AssociatorNames(controllerConfigService,
                                  ResultClass='CIM_InitiatorMaskingGroup'))
 
-        for initiatorMaskingGroupInstanceName in \
-                initiatorMaskingGroupInstanceNames:
+        for initiatorMaskingGroupInstanceName in (
+                initiatorMaskingGroupInstanceNames):
             # Check that it hasn't been deleted. If it has, break out
             # of the for loop.
             instance = self.utils.get_existing_instance(
@@ -919,8 +920,8 @@ class EMCVMAXMasking(object):
                 # we found the existing CIM_InitiatorMaskingGroup.
                 hardwareid = storageHardwareIdInstance['StorageID']
                 for initiator in initiatorNames:
-                    if six.text_type(hardwareid).lower() == \
-                            six.text_type(initiator).lower():
+                    if six.text_type(hardwareid).lower() == (
+                            six.text_type(initiator).lower()):
                         foundInitiatorMaskingGroupInstanceName = (
                             initiatorMaskingGroupInstanceName)
                         break
@@ -2037,10 +2038,10 @@ class EMCVMAXMasking(object):
             maskingViewDict['sgGroupName'] = defaultStorageGroupName
             maskingViewDict['volumeInstance'] = volumeInstance
             maskingViewDict['volumeName'] = volumeName
-            maskingViewDict['controllerConfigService'] = \
-                controllerConfigService
-            maskingViewDict['storageSystemName'] = \
-                storageSystemInstanceName
+            maskingViewDict['controllerConfigService'] = (
+                controllerConfigService)
+            maskingViewDict['storageSystemName'] = (
+                storageSystemInstanceName)
             sgInstanceName = self.utils.find_storage_masking_group(
                 conn, controllerConfigService, defaultStorageGroupName)
             if sgInstanceName is not None:

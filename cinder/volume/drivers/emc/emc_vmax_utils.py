@@ -500,6 +500,7 @@ class EMCVMAXUtils(object):
 
         :param conn: connection to the ecom server
         :param volumeInstanceName: the volume instance name
+        :param sgName: the storage group name
         :returns: foundStorageGroupInstanceName
         """
         foundStorageGroupInstanceName = None
@@ -568,8 +569,7 @@ class EMCVMAXUtils(object):
             conn.Associators(controllerConfigService,
                              ResultClass='CIM_DeviceMaskingGroup'))
 
-        for storageMaskingGroupInstance in \
-                storageMaskingGroupInstances:
+        for storageMaskingGroupInstance in storageMaskingGroupInstances:
 
             if storageGroupName == storageMaskingGroupInstance['ElementName']:
                 # Check that it has not been deleted recently.
@@ -653,242 +653,6 @@ class EMCVMAXUtils(object):
             instanceName = None
 
         return instanceName
-
-    def get_ecom_server(self, filename):
-        """Given the file name get the ecomPort and ecomIP from it.
-
-        :param filename: the path and file name of the emc configuration file
-        :returns: ecomIp - the ecom IP address
-        :returns: ecomPort - the ecom port
-        """
-        ecomIp = self._parse_from_file(filename, 'EcomServerIp')
-        ecomPort = self._parse_from_file(filename, 'EcomServerPort')
-        if ecomIp is not None and ecomPort is not None:
-            LOG.debug("Ecom IP: %(ecomIp)s Port: %(ecomPort)s.",
-                      {'ecomIp': ecomIp, 'ecomPort': ecomPort})
-            return ecomIp, ecomPort
-        else:
-            LOG.debug("Ecom server not found.")
-            return None
-
-    def get_ecom_cred(self, filename):
-        """Given the filename get the ecomUser and ecomPasswd.
-
-        :param filename: the path and filename of the emc configuration file
-        :returns: ecomUser - the ecom user
-        :returns: ecomPasswd - the ecom password
-        """
-        ecomUser = self._parse_from_file(filename, 'EcomUserName')
-        ecomPasswd = self._parse_from_file(filename, 'EcomPassword')
-        if ecomUser is not None and ecomPasswd is not None:
-            return ecomUser, ecomPasswd
-        else:
-            LOG.debug("Ecom user not found.")
-            return None
-
-    def get_ecom_cred_SSL(self, filename):
-        """Given the filename get the ecomUser and ecomPasswd.
-
-        :param filename: the path and filename of the emc configuration file
-        :returns: string -- ecomUseSSL
-        :returns: string -- ecomCACert
-        :returns: string -- ecomNoVerification
-        """
-        ecomUseSSL = self._parse_from_file(filename, 'EcomUseSSL')
-        ecomCACert = self._parse_from_file(filename, 'EcomCACert')
-        ecomNoVerification = self._parse_from_file(
-            filename, 'EcomNoVerification')
-        if ecomUseSSL is not None and ecomUseSSL == 'True':
-            ecomUseSSL = True
-            if ecomNoVerification is not None and ecomNoVerification == 'True':
-                ecomNoVerification = True
-            return ecomUseSSL, ecomCACert, ecomNoVerification
-        else:
-            ecomUseSSL = False
-            ecomNoVerification = False
-            return ecomUseSSL, ecomCACert, ecomNoVerification
-
-    def parse_file_to_get_port_group_name(self, fileName):
-        """Parses a file and chooses a port group randomly.
-
-        Given a file, parse it to get all the possible
-        portGroupElements and choose one randomly.
-
-        :param fileName: the path and name of the file
-        :returns: string -- portGroupName - the name of the port group chosen
-        :raises: VolumeBackendAPIException
-        """
-        portGroupName = None
-        myFile = open(fileName, 'r')
-        data = myFile.read()
-        myFile.close()
-        dom = minidom.parseString(data)
-        portGroupElements = dom.getElementsByTagName('PortGroup')
-
-        if portGroupElements is not None and len(portGroupElements) > 0:
-            portGroupNames = []
-            for portGroupElement in portGroupElements:
-                if portGroupElement.hasChildNodes():
-                    portGroupName = portGroupElement.childNodes[0].nodeValue
-                    portGroupName = portGroupName.replace('\n', '')
-                    portGroupName = portGroupName.replace('\r', '')
-                    portGroupName = portGroupName.replace('\t', '')
-                    portGroupName = portGroupName.strip()
-                    if portGroupName:
-                        portGroupNames.append(portGroupName)
-
-            LOG.debug("portGroupNames: %(portGroupNames)s.",
-                      {'portGroupNames': portGroupNames})
-            numPortGroups = len(portGroupNames)
-            if numPortGroups > 0:
-                selectedPortGroupName = (
-                    portGroupNames[random.randint(0, numPortGroups - 1)])
-                LOG.debug("Returning Selected Port Group: "
-                          "%(selectedPortGroupName)s.",
-                          {'selectedPortGroupName': selectedPortGroupName})
-                return selectedPortGroupName
-
-        # If reaches here without returning yet, raise exception.
-        exception_message = (_("No Port Group elements found in config file."))
-        LOG.error(exception_message)
-        raise exception.VolumeBackendAPIException(data=exception_message)
-
-    def _parse_from_file(self, fileName, stringToParse):
-        """Parse the string from XML.
-
-        Remove newlines, tabs and trailing spaces.
-
-        :param fileName: the path and name of the file
-        :param stringToParse: the name of the tag to get the value for
-        :returns: string -- the returned string; value of the tag
-        """
-        retString = None
-        myFile = open(fileName, 'r')
-        data = myFile.read()
-        myFile.close()
-        dom = minidom.parseString(data)
-        tag = dom.getElementsByTagName(stringToParse)
-        if tag is not None and len(tag) > 0:
-            strXml = tag[0].toxml()
-            strXml = strXml.replace('<%s>' % stringToParse, '')
-            strXml = strXml.replace('\n', '')
-            strXml = strXml.replace('\r', '')
-            strXml = strXml.replace('\t', '')
-            retString = strXml.replace('</%s>' % stringToParse, '')
-            retString = retString.strip()
-        return retString
-
-    def parse_fast_policy_name_from_file(self, fileName):
-        """Parse the fast policy name from config file.
-
-        If it is not there, then NON FAST is assumed.
-
-        :param fileName: the path and name of the file
-        :returns: fastPolicyName - the fast policy name
-        """
-
-        fastPolicyName = self._parse_from_file(fileName, 'FastPolicy')
-        if fastPolicyName:
-            LOG.debug("File %(fileName)s: Fast Policy is %(fastPolicyName)s.",
-                      {'fileName': fileName,
-                       'fastPolicyName': fastPolicyName})
-            return fastPolicyName
-        else:
-            LOG.info(_LI("Fast Policy not found."))
-            return None
-
-    def parse_array_name_from_file(self, fileName):
-        """Parse the array name from config file.
-
-        If it is not there then there should only be one array configured to
-        the ecom. If there is more than one then erroneous results can occur.
-
-        :param fileName: the path and name of the file
-        :returns: string -- arrayName - the array name
-        """
-        arrayName = self._parse_from_file(fileName, 'Array')
-        if arrayName:
-            return arrayName
-        else:
-            LOG.debug("Array not found from config file.")
-            return None
-
-    def parse_pool_name_from_file(self, fileName):
-        """Parse the pool name from config file.
-
-        If it is not there then we will attempt to get it from extra specs.
-
-        :param fileName: the path and name of the file
-        :returns: string -- poolName - the pool name
-        """
-        poolName = self._parse_from_file(fileName, 'Pool')
-        if poolName:
-            return poolName
-        else:
-            LOG.debug("Pool not found from config file.")
-            return None
-
-    def parse_slo_from_file(self, fileName):
-        """Parse the slo from config file.
-
-        Please note that the string 'NONE' is returned if it is not found.
-
-        :param fileName: the path and name of the file
-        :returns: string -- the slo or 'NONE'
-        """
-        slo = self._parse_from_file(fileName, 'SLO')
-        if slo:
-            return slo
-        else:
-            LOG.debug("SLO not in config file. "
-                      "Defaulting to NONE.")
-            return 'NONE'
-
-    def parse_workload_from_file(self, fileName):
-        """Parse the workload from config file.
-
-        Please note that the string 'NONE' is returned if it is not found.
-
-        :param fileName: the path and name of the file
-        :returns: string -- the workload or 'NONE'
-        """
-        workload = self._parse_from_file(fileName, 'Workload')
-        if workload:
-            return workload
-        else:
-            LOG.debug("Workload not in config file. "
-                      "Defaulting to NONE.")
-            return 'NONE'
-
-    def parse_interval_from_file(self, fileName):
-        """Parse the interval from config file.
-
-        If it is not there then the default will be used.
-
-        :param fileName: the path and name of the file
-        :returns: interval - the interval in seconds
-        """
-        interval = self._parse_from_file(fileName, 'Interval')
-        if interval:
-            return interval
-        else:
-            LOG.debug("Interval not overridden, default of 10 assumed.")
-            return None
-
-    def parse_retries_from_file(self, fileName):
-        """Parse the retries from config file.
-
-        If it is not there then the default will be used.
-
-        :param fileName: the path and name of the file
-        :returns: retries - the max number of retries
-        """
-        retries = self._parse_from_file(fileName, 'Retries')
-        if retries:
-            return retries
-        else:
-            LOG.debug("Retries not overridden, default of 60 assumed.")
-            return None
 
     def parse_pool_instance_id(self, poolInstanceId):
         """Given the instance Id parse the pool name and system name from it.
@@ -1223,14 +987,13 @@ class EMCVMAXUtils(object):
         LOG.debug(
             "storagePoolName: %(poolName)s, storageSystemName: %(array)s.",
             {'poolName': storagePoolName, 'array': storageSystemName})
-        storageSystemInstanceName = self.find_storageSystem(conn,
-                                                            storageSystemName)
-        poolInstanceNames = conn.AssociatorNames(
-            storageSystemInstanceName,
-            ResultClass='EMC_VirtualProvisioningPool')
+        poolInstanceNames = conn.EnumerateInstanceNames(
+            'EMC_VirtualProvisioningPool')
         for poolInstanceName in poolInstanceNames:
-            poolName = self._get_pool_name(conn, poolInstanceName)
-            if (poolName == storagePoolName):
+            poolName, systemName = (
+                self.parse_pool_instance_id(poolInstanceName['InstanceID']))
+            if (poolName == storagePoolName and
+                    storageSystemName in systemName):
                 # Check that the pool hasn't been recently deleted.
                 instance = self.get_existing_instance(conn, poolInstanceName)
                 if instance is None:
@@ -1622,13 +1385,27 @@ class EMCVMAXUtils(object):
         :returns: foundPoolInstanceName
         :returns: string -- systemNameStr
         """
+        foundPoolInstanceName = None
         vpoolInstanceNames = conn.AssociatorNames(
             storageSystemInstanceName,
             ResultClass='EMC_VirtualProvisioningPool')
 
-        return self._get_pool_instance_and_system_name(
-            conn, vpoolInstanceNames, storageSystemInstanceName,
-            poolNameInStr)
+        for vpoolInstanceName in vpoolInstanceNames:
+            poolInstanceId = vpoolInstanceName['InstanceID']
+            # Example: SYMMETRIX+000195900551+TP+Sol_Innov
+            poolnameStr, systemNameStr = self.parse_pool_instance_id(
+                poolInstanceId)
+            if poolnameStr is not None and systemNameStr is not None:
+                if six.text_type(poolNameInStr) == six.text_type(poolnameStr):
+                    # check that the pool hasn't recently been deleted.
+                    try:
+                        conn.GetInstance(vpoolInstanceName)
+                        foundPoolInstanceName = vpoolInstanceName
+                    except Exception:
+                        foundPoolInstanceName = None
+                    break
+
+        return foundPoolInstanceName, systemNameStr
 
     def get_pool_and_system_name_v3(
             self, conn, storageSystemInstanceName, poolNameInStr):
@@ -1640,41 +1417,29 @@ class EMCVMAXUtils(object):
         :returns: foundPoolInstanceName
         :returns: string -- systemNameStr
         """
+        foundPoolInstanceName = None
         srpPoolInstanceNames = conn.AssociatorNames(
             storageSystemInstanceName,
             ResultClass='Symm_SRPStoragePool')
 
-        return self._get_pool_instance_and_system_name(
-            conn, srpPoolInstanceNames, storageSystemInstanceName,
-            poolNameInStr)
-
-    def _get_pool_instance_and_system_name(
-            self, conn, poolInstanceNames, storageSystemInstanceName,
-            poolname):
-        """Get the pool instance and the system name
-
-        :param conn: the ecom connection
-        :param poolInstanceNames: list of pool instances
-        :param storageSystemInstanceName: storage system instance name
-        :param poolname: pool name (string)
-        :returns: foundPoolInstanceName, systemNameStr
-        """
-        foundPoolInstanceName = None
-        poolnameStr = None
-        systemNameStr = storageSystemInstanceName['Name']
-        for poolInstanceName in poolInstanceNames:
+        for srpPoolInstanceName in srpPoolInstanceNames:
+            poolInstanceID = srpPoolInstanceName['InstanceID']
             # Example: SYMMETRIX-+-000196700535-+-SR-+-SRP_1
-            # Example: SYMMETRIX+000195900551+TP+Sol_Innov
-            poolnameStr = self._get_pool_name(conn, poolInstanceName)
-            if poolnameStr is not None:
-                if six.text_type(poolname) == six.text_type(poolnameStr):
-                    foundPoolInstanceName = poolInstanceName
+            poolnameStr, systemNameStr = self.parse_pool_instance_id_v3(
+                poolInstanceID)
+            if poolnameStr is not None and systemNameStr is not None:
+                if six.text_type(poolNameInStr) == six.text_type(poolnameStr):
+                    try:
+                        conn.GetInstance(srpPoolInstanceName)
+                        foundPoolInstanceName = srpPoolInstanceName
+                    except Exception:
+                        foundPoolInstanceName = None
                     break
 
         return foundPoolInstanceName, systemNameStr
 
-    def _get_pool_name(self, conn, poolInstanceName):
-        """The pool name from the instance
+    def get_pool_name(self, conn, poolInstanceName):
+        """Get the pool name from the instance
 
         :param conn: the ecom connection
         :param poolInstanceName: the pool instance
@@ -1689,7 +1454,7 @@ class EMCVMAXUtils(object):
         return poolnameStr
 
     def find_storageSystem(self, conn, arrayStr):
-        """Find an array instance name given the array name.
+        """Find an array instance name by the array name.
 
         :param conn: the ecom connection
         :param arrayStr: the array Serial number (string)
@@ -1844,28 +1609,21 @@ class EMCVMAXUtils(object):
         LOG.debug("metaMembers: %(members)s.", {'members': metaMembers})
         return metaMembers
 
-    def get_meta_members_capacity_in_byte(self, conn, volumeInstanceNames):
-        """Get the capacity in byte of all meta device member volumes.
+    def get_meta_members_capacity_in_bit(self, conn, volumeInstanceNames):
+        """Get the capacity in bits of all meta device member volumes.
 
         :param conn: the ecom connection
         :param volumeInstanceNames: array contains meta device member volumes
         :returns: array contains capacities of each member device in bits
         """
-        capacitiesInByte = []
-        headVolume = conn.GetInstance(volumeInstanceNames[0])
-        totalSizeInByte = (
-            headVolume['ConsumableBlocks'] * headVolume['BlockSize'])
-        volumeInstanceNames.pop(0)
+        capacitiesInBit = []
         for volumeInstanceName in volumeInstanceNames:
             volumeInstance = conn.GetInstance(volumeInstanceName)
             numOfBlocks = volumeInstance['ConsumableBlocks']
             blockSize = volumeInstance['BlockSize']
-            volumeSizeInByte = numOfBlocks * blockSize
-            capacitiesInByte.append(volumeSizeInByte)
-            totalSizeInByte = totalSizeInByte - volumeSizeInByte
-
-        capacitiesInByte.insert(0, totalSizeInByte)
-        return capacitiesInByte
+            volumeSizeInbits = numOfBlocks * blockSize
+            capacitiesInBit.append(volumeSizeInbits)
+        return capacitiesInBit
 
     def get_existing_instance(self, conn, instanceName):
         """Check that the instance name still exists and return the instance.
@@ -2002,6 +1760,373 @@ class EMCVMAXUtils(object):
             LOG.warning(_LW("Cannot determine the hardware type."))
         return hardwareTypeId
 
+    def _process_tag(self, element, tagName):
+        """Process the tag to get the value.
+
+        :param element: the parent element
+        :param tagName: the tag name
+        :returns: nodeValue(can be None)
+        """
+        nodeValue = None
+        try:
+            processedElement = element.getElementsByTagName(tagName)[0]
+            nodeValue = processedElement.childNodes[0].nodeValue
+            if nodeValue:
+                nodeValue = nodeValue.strip()
+        except IndexError:
+            pass
+        return nodeValue
+
+    def _get_connection_info(self, ecomElement):
+        """Given the filename get the ecomUser and ecomPasswd.
+
+        :param ecomElement: the ecom element
+        :returns: dict -- connargs - the connection info dictionary
+        :raises: VolumeBackendAPIException
+        """
+        connargs = {}
+        connargs['EcomServerIp'] = (
+            self._process_tag(ecomElement, 'EcomServerIp'))
+        connargs['EcomServerPort'] = (
+            self._process_tag(ecomElement, 'EcomServerPort'))
+        connargs['EcomUserName'] = (
+            self._process_tag(ecomElement, 'EcomUserName'))
+        connargs['EcomPassword'] = (
+            self._process_tag(ecomElement, 'EcomPassword'))
+
+        for k, __ in connargs.items():
+            if connargs[k] is None:
+                exceptionMessage = (_(
+                    "EcomServerIp, EcomServerPort, EcomUserName, "
+                    "EcomPassword must have valid values."))
+                LOG.error(exceptionMessage)
+                raise exception.VolumeBackendAPIException(
+                    data=exceptionMessage)
+
+        # These can be None
+        connargs['EcomUseSSL'] = self._process_tag(ecomElement, 'EcomUseSSL')
+        connargs['EcomCACert'] = self._process_tag(ecomElement, 'EcomCACert')
+        connargs['EcomNoVerification'] = (
+            self._process_tag(ecomElement, 'EcomNoVerification'))
+
+        if connargs['EcomUseSSL'] and connargs['EcomUseSSL'] == 'True':
+            connargs['EcomUseSSL'] = True
+            if connargs['EcomNoVerification'] and (
+               connargs['EcomNoVerification'] == 'True'):
+                connargs['EcomNoVerification'] = True
+        else:
+            connargs['EcomUseSSL'] = False
+            connargs['EcomNoVerification'] = False
+
+        return connargs
+
+    def _fill_record(self, connargs, serialNumber, poolName,
+                     portGroup, element):
+        """Fill a single record.
+
+        :param connargs: the connection info
+        :param serialNumber: the serial number of array
+        :param poolName: the poolname
+        :param portGroup: the portGroup
+        :param element: the parent element
+        :returns: dict -- kwargs
+        """
+        kwargs = {}
+        kwargs['EcomServerIp'] = connargs['EcomServerIp']
+        kwargs['EcomServerPort'] = connargs['EcomServerPort']
+        kwargs['EcomUserName'] = connargs['EcomUserName']
+        kwargs['EcomPassword'] = connargs['EcomPassword']
+        kwargs['EcomUseSSL'] = connargs['EcomUseSSL']
+        kwargs['EcomCACert'] = connargs['EcomCACert']
+        kwargs['EcomNoVerification'] = connargs['EcomNoVerification']
+
+        slo = self._process_tag(element, 'SLO')
+        if slo is None:
+            slo = 'NONE'
+        kwargs['SLO'] = slo
+        workload = self._process_tag(element, 'Workload')
+        if workload is None:
+            workload = 'NONE'
+        kwargs['Workload'] = workload
+        fastPolicy = self._process_tag(element, 'FastPolicy')
+        kwargs['FastPolicy'] = fastPolicy
+        kwargs['SerialNumber'] = serialNumber
+        kwargs['PoolName'] = poolName
+        kwargs['PortGroup'] = portGroup
+
+        return kwargs
+
+    def _multi_pool_support(self, fileName):
+        """Multi pool support.
+
+        <EMC>
+        <EcomServers>
+            <EcomServer>
+                <EcomServerIp>10.108.246.202</EcomServerIp>
+                ...
+                <Arrays>
+                    <Array>
+                        <SerialNumber>000198700439</SerialNumber>
+                        ...
+                        <Pools>
+                            <Pool>
+                                <PoolName>FC_SLVR1</PoolName>
+                                ...
+                            </Pool>
+                        </Pools>
+                    </Array>
+                </Arrays>
+            </EcomServer>
+        </EcomServers>
+        </EMC>
+
+        :param fileName: the configuration file
+        :returns: list
+        """
+        myList = []
+        connargs = {}
+        myFile = open(fileName, 'r')
+        data = myFile.read()
+        myFile.close()
+        dom = minidom.parseString(data)
+        interval = self._process_tag(dom, 'Interval')
+        retries = self._process_tag(dom, 'Retries')
+        try:
+            ecomElements = dom.getElementsByTagName('EcomServer')
+            if ecomElements and len(ecomElements) > 0:
+                for ecomElement in ecomElements:
+                    connargs = self._get_connection_info(ecomElement)
+                    arrayElements = ecomElement.getElementsByTagName('Array')
+                    if arrayElements and len(arrayElements) > 0:
+                        for arrayElement in arrayElements:
+                            myList = self._get_pool_info(arrayElement,
+                                                         fileName, connargs,
+                                                         interval, retries,
+                                                         myList)
+                    else:
+                        LOG.error(_LE(
+                            "Please check your xml for format or syntax "
+                            "errors. Please see documentation for more "
+                            "details."))
+        except IndexError:
+            pass
+        return myList
+
+    def _single_pool_support(self, fileName):
+        """Single pool support.
+
+        <EMC>
+        <EcomServerIp>10.108.246.202</EcomServerIp>
+        <EcomServerPort>5988</EcomServerPort>
+        <EcomUserName>admin</EcomUserName>
+        <EcomPassword>#1Password</EcomPassword>
+        <PortGroups>
+            <PortGroup>OS-PORTGROUP1-PG</PortGroup>
+        </PortGroups>
+        <Array>000198700439</Array>
+        <Pool>FC_SLVR1</Pool>
+        </EMC>
+
+        :param fileName: the configuration file
+        :returns: list
+        """
+        myList = []
+        kwargs = {}
+        connargs = {}
+        myFile = open(fileName, 'r')
+        data = myFile.read()
+        myFile.close()
+        dom = minidom.parseString(data)
+        try:
+            connargs = self._get_connection_info(dom)
+            interval = self._process_tag(dom, 'Interval')
+            retries = self._process_tag(dom, 'Retries')
+            portGroup = self._get_random_portgroup(dom)
+
+            serialNumber = self._process_tag(dom, 'Array')
+            if serialNumber is None:
+                LOG.error(_LE(
+                    "Array Serial Number must be in the file "
+                    "%(fileName)s."),
+                    {'fileName': fileName})
+            poolName = self._process_tag(dom, 'Pool')
+            if poolName is None:
+                LOG.error(_LE(
+                    "PoolName must be in the file "
+                    "%(fileName)s."),
+                    {'fileName': fileName})
+            kwargs = self._fill_record(
+                connargs, serialNumber, poolName, portGroup, dom)
+            if interval:
+                kwargs['Interval'] = interval
+            if retries:
+                kwargs['Retries'] = retries
+
+            myList.append(kwargs)
+        except IndexError:
+            pass
+        return myList
+
+    def parse_file_to_get_array_map(self, fileName):
+        """Parses a file and gets array map.
+
+        Given a file, parse it to get array and any pool(s) or
+        fast policy(s), SLOs, Workloads that might exist.
+
+        :param fileName: the path and name of the file
+        :returns: list
+        """
+        # Multi-pool support.
+        myList = self._multi_pool_support(fileName)
+        if len(myList) == 0:
+            myList = self._single_pool_support(fileName)
+
+        return myList
+
+    def extract_record(self, arrayInfo, pool):
+        """Given pool string determine the correct record.
+
+        The poolName and the serialNumber will determine the
+        correct record to return in VMAX2.
+        The poolName, SLO and the serialNumber will determine the
+        correct record to return in VMAX3.
+
+        :param arrayInfo: list of records
+        :param pool: e.g 'SATA_BRONZE1+000198700439'
+                         'SRP_1+Bronze+000198700555'
+        :returns: single record
+        """
+        foundArrayInfoRec = {}
+        if pool:
+            for arrayInfoRec in arrayInfo:
+                if pool.count('+') == 2:
+                    compString = ("%(slo)s+%(poolName)s+%(array)s"
+                                  % {'slo': arrayInfoRec['SLO'],
+                                     'poolName': arrayInfoRec['PoolName'],
+                                     'array': arrayInfoRec['SerialNumber']})
+                else:
+                    compString = ("%(poolName)s+%(array)s"
+                                  % {'poolName': arrayInfoRec['PoolName'],
+                                     'array': arrayInfoRec['SerialNumber']})
+                if compString == pool:
+                    LOG.info(_LI(
+                        "The pool_name from extraSpecs is %(pool)s."),
+                        {'pool': pool})
+                    foundArrayInfoRec = arrayInfoRec
+                    break
+        else:
+            foundArrayInfoRec = self._get_serial_number(arrayInfo)
+
+        return foundArrayInfoRec
+
+    def _get_random_portgroup(self, element):
+        """Get a portgroup from list of portgroup.
+
+        Parse all available port groups under a particular
+        array and choose one.
+
+        :param element: the parent element
+        :returns: the randomly chosen port group
+        :raises: VolumeBackendAPIException
+        """
+        portGroupElements = element.getElementsByTagName('PortGroup')
+        if portGroupElements and len(portGroupElements) > 0:
+            portGroupNames = []
+            for __ in portGroupElements:
+                portGroupName = self._process_tag(
+                    element, 'PortGroup')
+                if portGroupName:
+                    portGroupNames.append(portGroupName)
+
+            LOG.debug("portGroupNames: %(portGroupNames)s.",
+                      {'portGroupNames': portGroupNames})
+            numPortGroups = len(portGroupNames)
+            if numPortGroups > 0:
+                selectedPortGroupName = (
+                    portGroupNames[random.randint(0, numPortGroups - 1)])
+                LOG.debug("Returning selected PortGroup: "
+                          "%(selectedPortGroupName)s.",
+                          {'selectedPortGroupName': selectedPortGroupName})
+                return selectedPortGroupName
+
+        exception_message = (_("No PortGroup elements found in config file."))
+        LOG.error(exception_message)
+        raise exception.VolumeBackendAPIException(data=exception_message)
+
+    def _get_serial_number(self, arrayInfo):
+        """If we don't have a pool then we just get the serial number.
+
+        If there is more then one serial number we must return an
+        error and a recommendation to edit the EMC conf file.
+
+        :param arrayInfo: list of records
+        :returns: any record where serial number exists
+        :raises: VolumeBackendAPIException
+        """
+        serialNumberList = []
+        foundRecord = {}
+
+        for arrayInfoRec in arrayInfo:
+            serialNumberList.append(arrayInfoRec['SerialNumber'])
+            foundRecord = arrayInfoRec
+
+        if len(set(serialNumberList)) > 1:
+            # We have more than one serial number in the dict.
+            exception_message = (_("Multiple SerialNumbers found, when only "
+                                   "one was expected for this operation. "
+                                   "Please change your EMC config file."))
+            raise exception.VolumeBackendAPIException(data=exception_message)
+
+        return foundRecord
+
+    def _get_pool_info(self, arrayElement, fileName, connargs, interval,
+                       retries, myList):
+        """Get pool information from element.
+
+        :param arrayElement: arrayElement
+        :param fileName: configuration file
+        :param connargs: connection arguments
+        :param interval: interval, can be None
+        :param retries: retries, can be None
+        :param myList: list (input)
+        :returns: list (output)
+        :raises: VolumeBackendAPIException
+        """
+        kwargs = {}
+        portGroup = self._get_random_portgroup(arrayElement)
+        serialNumber = self._process_tag(
+            arrayElement, 'SerialNumber')
+        if serialNumber is None:
+            exceptionMessage = (_(
+                "SerialNumber must be in the file "
+                "%(fileName)s."),
+                {'fileName': fileName})
+            LOG.error(exceptionMessage)
+            raise exception.VolumeBackendAPIException(
+                data=exceptionMessage)
+
+        poolElements = arrayElement.getElementsByTagName('Pool')
+        if poolElements and len(poolElements) > 0:
+            for poolElement in poolElements:
+                poolName = self._process_tag(poolElement, 'PoolName')
+                if poolName is None:
+                    exceptionMessage = (_(
+                        "PoolName must be in the file "
+                        "%(fileName)s."),
+                        {'fileName': fileName})
+                    LOG.error(exceptionMessage)
+                    raise exception.VolumeBackendAPIException(
+                        data=exceptionMessage)
+                kwargs = self._fill_record(connargs, serialNumber,
+                                           poolName, portGroup,
+                                           poolElement)
+                if interval:
+                    kwargs['Interval'] = interval
+                if retries:
+                    kwargs['Retries'] = retries
+                myList.append(kwargs)
+        return myList
+
     def find_volume_by_device_id_on_array(self, conn, storageSystem, deviceID):
         """Find the volume by device ID on a specific array.
 
@@ -2134,48 +2259,3 @@ class EMCVMAXUtils(object):
                 {'source': sourceDeviceId, 'storageSystem': storageSystem})
 
         return foundSyncInstanceName
-
-    def get_smi_version(self, conn):
-        intVersion = 0
-        swIndentityInstances = conn.EnumerateInstances(
-            'SE_ManagementServerSoftwareIdentity')
-        if swIndentityInstances:
-            swIndentityInstance = swIndentityInstances[0]
-            majorVersion = swIndentityInstance['MajorVersion']
-            minorVersion = swIndentityInstance['MinorVersion']
-            revisionNumber = swIndentityInstance['RevisionNumber']
-
-            intVersion = int(str(majorVersion) + str(minorVersion)
-                             + str(revisionNumber))
-
-            LOG.debug("Major version: %(majV)lu, Minor version: %(minV)lu, "
-                      "Revision number: %(revNum)lu, Version: %(intV)lu.",
-                      {'majV': majorVersion,
-                       'minV': minorVersion,
-                       'revNum': revisionNumber,
-                       'intV': intVersion})
-        return intVersion
-
-    def get_composite_elements(
-            self, conn, volumeInstance):
-        """Get the meta members of a composite volume.
-
-        :param conn: ECOM connection
-        :param volumeInstance: the volume instance
-        :returns memberVolumes: a list of meta members
-        """
-        memberVolumes = None
-        storageSystemName = volumeInstance['SystemName']
-        elementCompositionService = self.find_element_composition_service(
-            conn, storageSystemName)
-        rc, ret = conn.InvokeMethod(
-            'GetCompositeElements',
-            elementCompositionService,
-            TheElement=volumeInstance.path)
-
-        if 'OutElements' in ret:
-            LOG.debug("Get composite elements of volume "
-                      "%(volume)s rc=%(rc)d, ret=%(ret)s",
-                      {'volume': volumeInstance.path, 'rc': rc, 'ret': ret})
-            memberVolumes = ret['OutElements']
-        return memberVolumes

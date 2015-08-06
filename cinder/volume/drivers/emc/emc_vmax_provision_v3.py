@@ -16,9 +16,10 @@
 import time
 
 from oslo_log import log as logging
+import six
 
 from cinder import exception
-from cinder.i18n import _, _LE
+from cinder.i18n import _, _LE, _LW
 from cinder.volume.drivers.emc import emc_vmax_utils
 
 LOG = logging.getLogger(__name__)
@@ -29,6 +30,7 @@ POSTGROUPTYPE = 3
 EMC_ROOT = 'root/emc'
 THINPROVISIONINGCOMPOSITE = 32768
 THINPROVISIONING = 5
+INFO_SRC_V3 = 3
 
 
 class EMCVMAXProvisionV3(object):
@@ -411,12 +413,9 @@ class EMCVMAXProvisionV3(object):
         :param slo: slo string e.g Bronze
         :param workload: workload string e.g DSS
         :param extraSpecs: additional info
-        :returns: maximumVolumeSize - the maximum volume size supported
-        :returns: minimumVolumeSize - the minimum volume size supported
+        :returns: supportedSizeDict
         """
-        maximumVolumeSize = None
-        minimumVolumeSize = None
-
+        supportedSizeDict = {}
         storagePoolCapabilityInstanceName = self._get_storage_pool_capability(
             conn, poolInstanceName)
         if storagePoolCapabilityInstanceName:
@@ -426,11 +425,7 @@ class EMCVMAXProvisionV3(object):
                 supportedSizeDict = self._get_supported_size_range_for_SLO(
                     conn, storageConfigService, poolInstanceName,
                     storagePoolSettingInstanceName, extraSpecs)
-
-                maximumVolumeSize = supportedSizeDict['MaximumVolumeSize']
-                minimumVolumeSize = supportedSizeDict['MinimumVolumeSize']
-
-        return maximumVolumeSize, minimumVolumeSize
+        return supportedSizeDict
 
     def activate_snap_relationship(
             self, conn, repServiceInstanceName, syncInstanceName, extraSpecs):
@@ -578,3 +573,97 @@ class EMCVMAXProvisionV3(object):
                 LOG.error(exceptionMsg)
                 raise exception.VolumeBackendAPIException(data=exceptionMsg)
         return rc, job
+
+    def get_srp_pool_stats(self, conn, arrayInfo):
+        """Get the totalManagedSpace, remainingManagedSpace.
+
+        :param conn: the connection to the ecom server
+        :param arrayInfo: the array dict
+        :returns: totalCapacityGb
+        :returns: remainingCapacityGb
+        """
+        totalCapacityGb = -1
+        remainingCapacityGb = -1
+        storageSystemInstanceName = self.utils.find_storageSystem(
+            conn, arrayInfo['SerialNumber'])
+
+        srpPoolInstanceNames = conn.AssociatorNames(
+            storageSystemInstanceName,
+            ResultClass='Symm_SRPStoragePool')
+
+        for srpPoolInstanceName in srpPoolInstanceNames:
+            poolnameStr = self.utils.get_pool_name(conn, srpPoolInstanceName)
+
+            if six.text_type(arrayInfo['PoolName']) == (
+                    six.text_type(poolnameStr)):
+                try:
+                    # Check that pool hasn't suddently been deleted.
+                    srpPoolInstance = conn.GetInstance(srpPoolInstanceName)
+                    propertiesList = srpPoolInstance.properties.items()
+                    for properties in propertiesList:
+                        if properties[0] == 'TotalManagedSpace':
+                            cimProperties = properties[1]
+                            totalManagedSpace = cimProperties.value
+                            totalCapacityGb = self.utils.convert_bits_to_gbs(
+                                totalManagedSpace)
+                        elif properties[0] == 'RemainingManagedSpace':
+                            cimProperties = properties[1]
+                            remainingManagedSpace = cimProperties.value
+                            remainingCapacityGb = (
+                                self.utils.convert_bits_to_gbs(
+                                    remainingManagedSpace))
+                except Exception:
+                    pass
+                remainingSLOCapacityGb = (
+                    self._get_remaining_slo_capacity_wlp(
+                        conn, srpPoolInstanceName, arrayInfo,
+                        storageSystemInstanceName['Name']))
+                if remainingSLOCapacityGb != -1:
+                    remainingCapacityGb = remainingSLOCapacityGb
+                else:
+                    LOG.warning(_LW(
+                        "Remaining capacity %(remainingCapacityGb)s "
+                        "GBs is determined from SRP pool capacity "
+                        "and not the SLO capacity. Performance may "
+                        "not be what you expect."),
+                        {'remainingCapacityGb': remainingCapacityGb})
+
+        return totalCapacityGb, remainingCapacityGb
+
+    def _get_remaining_slo_capacity_wlp(self, conn, srpPoolInstanceName,
+                                        arrayInfo, systemName):
+        """Get the remaining SLO capacity.
+
+        This is derived from the WLP portion of Unisphere. Please
+        see the SMIProvider doc and the readme doc for details.
+
+        :param conn: the connection to the ecom server
+        :param srpPoolInstanceName: SRP instance name
+        :param arrayInfo: the array dict
+        :param systemName: the system name
+        :returns: remainingCapacityGb
+        """
+        remainingCapacityGb = -1
+        storageConfigService = (
+            self.utils.find_storage_configuration_service(
+                conn, systemName))
+
+        supportedSizeDict = (
+            self.get_volume_range(
+                conn, storageConfigService, srpPoolInstanceName,
+                arrayInfo['SLO'], arrayInfo['Workload'],
+                None))
+        try:
+            # Information source is V3.
+            if supportedSizeDict['EMCInformationSource'] == INFO_SRC_V3:
+                remainingCapacityGb = self.utils.convert_bits_to_gbs(
+                    supportedSizeDict['EMCRemainingSLOCapacity'])
+                LOG.debug("Received remaining SLO Capacity "
+                          "%(remainingCapacityGb)s GBs for SLO "
+                          "%(SLO)s and workload %(workload)s.",
+                          {'remainingCapacityGb': remainingCapacityGb,
+                           'SLO': arrayInfo['SLO'],
+                           'workload': arrayInfo['Workload']})
+        except KeyError:
+            pass
+        return remainingCapacityGb
