@@ -66,19 +66,24 @@ class CapacityWeigherTestCase(test.TestCase):
         # host1: thin_provisioning_support = False
         #        free_capacity_gb=1024,
         #        free=1024-math.floor(1024*0.1)=922
+        #        Norm=0.837837837838
         # host2: thin_provisioning_support = True
         #        free_capacity_gb=300,
         #        free=2048*1.5-1748-math.floor(2048*0.1)=1120
+        #        Norm=1.0
         # host3: thin_provisioning_support = False
         #        free_capacity_gb=512, free=256-512*0=256
+        #        Norm=0.292383292383
         # host4: thin_provisioning_support = True
         #        free_capacity_gb=200,
         #        free=2048*1.0-2047-math.floor(2048*0.05)=-101
+        #        Norm=0.0
         # host5: free_capacity_gb=unknown free=-1
+        #        Norm=0.0819000819001
 
         # so, host2 should win:
         weighed_host = self._get_weighed_host(hostinfo_list)
-        self.assertEqual(weighed_host.weight, 1120.0)
+        self.assertEqual(weighed_host.weight, 1.0)
         self.assertEqual(
             utils.extract_host(weighed_host.obj.host), 'host2')
 
@@ -89,19 +94,24 @@ class CapacityWeigherTestCase(test.TestCase):
         # host1: thin_provisioning_support = False
         #        free_capacity_gb=1024,
         #        free=-(1024-math.floor(1024*0.1))=-922
+        #        Norm=-0.00829542413701
         # host2: thin_provisioning_support = True
         #        free_capacity_gb=300,
         #        free=-(2048*1.5-1748-math.floor(2048*0.1))=-1120
+        #        Norm=-0.00990099009901
         # host3: thin_provisioning_support = False
         #        free_capacity_gb=512, free=-(256-512*0)=-256
+        #        Norm=--0.002894884083
         # host4: thin_provisioning_support = True
         #        free_capacity_gb=200,
         #        free=-(2048*1.0-2047-math.floor(2048*0.05))=101
+        #        Norm=0.0
         # host5: free_capacity_gb=unknown free=-float('inf')
+        #        Norm=-1.0
 
         # so, host4 should win:
         weighed_host = self._get_weighed_host(hostinfo_list)
-        self.assertEqual(weighed_host.weight, 101.0)
+        self.assertEqual(weighed_host.weight, 0.0)
         self.assertEqual(
             utils.extract_host(weighed_host.obj.host), 'host4')
 
@@ -112,18 +122,23 @@ class CapacityWeigherTestCase(test.TestCase):
         # host1: thin_provisioning_support = False
         #        free_capacity_gb=1024,
         #        free=(1024-math.floor(1024*0.1))*2=1844
+        #        Norm=1.67567567568
         # host2: thin_provisioning_support = True
         #        free_capacity_gb=300,
         #        free=(2048*1.5-1748-math.floor(2048*0.1))*2=2240
+        #        Norm=2.0
         # host3: thin_provisioning_support = False
         #        free_capacity_gb=512, free=(256-512*0)*2=512
+        #        Norm=0.584766584767
         # host4: thin_provisioning_support = True
         #        free_capacity_gb=200,
         #        free=(2048*1.0-2047-math.floor(2048*0.05))*2=-202
+        #        Norm=0.0
         # host5: free_capacity_gb=unknown free=-2
+        #        Norm=0.1638001638
 
         # so, host2 should win:
         weighed_host = self._get_weighed_host(hostinfo_list)
-        self.assertEqual(weighed_host.weight, 1120.0 * 2)
+        self.assertEqual(weighed_host.weight, 1.0 * 2)
         self.assertEqual(
             utils.extract_host(weighed_host.obj.host), 'host2')
