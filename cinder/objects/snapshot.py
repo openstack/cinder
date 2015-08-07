@@ -57,6 +57,7 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
         'provider_location': fields.StringField(nullable=True),
         'provider_id': fields.UUIDField(nullable=True),
         'metadata': fields.DictOfStringsField(),
+        'provider_auth': fields.StringField(nullable=True),
 
         'volume': fields.ObjectField('Volume', nullable=True),
     }

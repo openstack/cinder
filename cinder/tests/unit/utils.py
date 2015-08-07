@@ -39,6 +39,7 @@ def create_volume(ctxt,
                   replication_extended_status=None,
                   replication_driver_data=None,
                   consistencygroup_id=None,
+                  previous_status=None,
                   **kwargs):
     """Create a volume object in the DB."""
     vol = {}
@@ -61,6 +62,7 @@ def create_volume(ctxt,
     vol['replication_status'] = replication_status
     vol['replication_extended_status'] = replication_extended_status
     vol['replication_driver_data'] = replication_driver_data
+    vol['previous_status'] = previous_status
 
     return db.volume_create(ctxt, vol)
 

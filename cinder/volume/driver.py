@@ -379,6 +379,49 @@ class BaseVD(object):
                 raise exception.RemoveExportException(volume=volume['id'],
                                                       reason=ex)
 
+    def _detach_snapshot(self, context, attach_info, snapshot, properties,
+                         force=False, remote=False):
+        """Disconnect the snapshot from the host."""
+        # Use Brick's code to do attach/detach
+        connector = attach_info['connector']
+        connector.disconnect_volume(attach_info['conn']['data'],
+                                    attach_info['device'])
+
+        # NOTE(xyang): This method is introduced for non-disruptive backup.
+        # Currently backup service has to be on the same node as the volume
+        # driver. Therefore it is not possible to call a volume driver on a
+        # remote node. In the future, if backup can be done from a remote
+        # node, this function can be modified to allow RPC calls. The remote
+        # flag in the interface is for anticipation that it will be enabled
+        # in the future.
+        if remote:
+            LOG.exception(_LE("Detaching snapshot from a remote node "
+                              "is not supported."))
+            raise exception.NotSupportedOperation(
+                operation=_("detach snapshot from remote node"))
+        else:
+            # Call local driver's terminate_connection and remove export.
+            # NOTE(avishay) This is copied from the manager's code - need to
+            # clean this up in the future.
+            try:
+                self.terminate_connection_snapshot(snapshot, properties,
+                                                   force=force)
+            except Exception as err:
+                err_msg = (_('Unable to terminate volume connection: %(err)s')
+                           % {'err': six.text_type(err)})
+                LOG.error(err_msg)
+                raise exception.VolumeBackendAPIException(data=err_msg)
+
+            try:
+                LOG.debug("Snapshot %s: removing export.", snapshot.id)
+                self.remove_export_snapshot(context, snapshot)
+            except Exception as ex:
+                LOG.exception(_LE("Error detaching snapshot %(snapshot)s, "
+                                  "due to remove export failure."),
+                              {"snapshot": snapshot.id})
+                raise exception.RemoveExportException(volume=snapshot.id,
+                                                      reason=ex)
+
     def set_execute(self, execute):
         self._execute = execute
 
@@ -714,6 +757,64 @@ class BaseVD(object):
                 raise exception.VolumeBackendAPIException(data=err_msg)
         return (self._connect_device(conn), volume)
 
+    def _attach_snapshot(self, context, snapshot, properties, remote=False):
+        """Attach the snapshot."""
+        # NOTE(xyang): This method is introduced for non-disruptive backup.
+        # Currently backup service has to be on the same node as the volume
+        # driver. Therefore it is not possible to call a volume driver on a
+        # remote node. In the future, if backup can be done from a remote
+        # node, this function can be modified to allow RPC calls. The remote
+        # flag in the interface is for anticipation that it will be enabled
+        # in the future.
+        if remote:
+            LOG.exception(_LE("Attaching snapshot from a remote node "
+                              "is not supported."))
+            raise exception.NotSupportedOperation(
+                operation=_("attach snapshot from remote node"))
+        else:
+            # Call local driver's create_export and initialize_connection.
+            # NOTE(avishay) This is copied from the manager's code - need to
+            # clean this up in the future.
+            model_update = None
+            try:
+                LOG.debug("Snapshot %s: creating export.", snapshot.id)
+                model_update = self.create_export_snapshot(context, snapshot,
+                                                           properties)
+                if model_update:
+                    snapshot.provider_location = model_update.get(
+                        'provider_location', None)
+                    snapshot.provider_auth = model_update.get(
+                        'provider_auth', None)
+                    snapshot.save()
+            except exception.CinderException as ex:
+                if model_update:
+                    LOG.exception(_LE("Failed updating model of snapshot "
+                                      "%(snapshot_id)s with driver provided "
+                                      "model %(model)s."),
+                                  {'snapshot_id': snapshot.id,
+                                   'model': model_update})
+                    raise exception.ExportFailure(reason=ex)
+
+            try:
+                conn = self.initialize_connection_snapshot(
+                    snapshot, properties)
+            except Exception as err:
+                try:
+                    err_msg = (_('Unable to fetch connection information from '
+                                 'backend: %(err)s') %
+                               {'err': six.text_type(err)})
+                    LOG.error(err_msg)
+                    LOG.debug("Cleaning up failed connect initialization.")
+                    self.remove_export_snapshot(context, snapshot)
+                except Exception as ex:
+                    ex_msg = (_('Error encountered during cleanup '
+                                'of a failed attach: %(ex)s') %
+                              {'ex': six.text_type(ex)})
+                    LOG.error(err_msg)
+                    raise exception.VolumeBackendAPIException(data=ex_msg)
+                raise exception.VolumeBackendAPIException(data=err_msg)
+        return (self._connect_device(conn), snapshot)
+
     def _connect_device(self, conn):
         # Use Brick's code to do attach/detach
         use_multipath = self.configuration.use_multipath_for_image_xfer
@@ -744,49 +845,112 @@ class BaseVD(object):
                     image_service):
         return None, False
 
+    def backup_use_temp_snapshot(self):
+        return False
+
     def backup_volume(self, context, backup, backup_service):
         """Create a new backup from an existing volume."""
+        if self.backup_use_temp_snapshot():
+            self._backup_volume_temp_snapshot(context, backup,
+                                              backup_service)
+        else:
+            self._backup_volume_temp_volume(context, backup,
+                                            backup_service)
+
+    def _backup_volume_temp_volume(self, context, backup, backup_service):
+        """Create a new backup from an existing volume.
+
+        For in-use volume, create a temp volume and back it up.
+        """
         volume = self.db.volume_get(context, backup.volume_id)
 
         LOG.debug('Creating a new backup for volume %s.', volume['name'])
 
-        # NOTE(xyang): Check volume status; if not 'available', create a
-        # a temp volume from the volume, and backup the temp volume, and
+        # NOTE(xyang): Check volume status; if 'in-use', create a temp
+        # volume from the source volume, backup the temp volume, and
         # then clean up the temp volume; if 'available', just backup the
         # volume.
         previous_status = volume.get('previous_status', None)
+        device_to_backup = volume
         temp_vol_ref = None
         if previous_status == "in-use":
             temp_vol_ref = self._create_temp_cloned_volume(
                 context, volume)
             backup.temp_volume_id = temp_vol_ref['id']
             backup.save()
-            volume = temp_vol_ref
+            device_to_backup = temp_vol_ref
 
+        self._backup_device(context, backup, backup_service, device_to_backup)
+
+        if temp_vol_ref:
+            self._delete_temp_volume(context, temp_vol_ref)
+            backup.temp_volume_id = None
+            backup.save()
+
+    def _backup_volume_temp_snapshot(self, context, backup, backup_service):
+        """Create a new backup from an existing volume.
+
+        For in-use volume, create a temp snapshot and back it up.
+        """
+        volume = self.db.volume_get(context, backup.volume_id)
+
+        LOG.debug('Creating a new backup for volume %s.', volume['name'])
+
+        # NOTE(xyang): Check volume status; if 'in-use', create a temp
+        # snapshot from the source volume, backup the temp snapshot, and
+        # then clean up the temp snapshot; if 'available', just backup the
+        # volume.
+        previous_status = volume.get('previous_status', None)
+        device_to_backup = volume
+        is_snapshot = False
+        temp_snapshot = None
+        if previous_status == "in-use":
+            temp_snapshot = self._create_temp_snapshot(context, volume)
+            backup.temp_snapshot_id = temp_snapshot.id
+            backup.save()
+            device_to_backup = temp_snapshot
+            is_snapshot = True
+
+        self._backup_device(context, backup, backup_service, device_to_backup,
+                            is_snapshot)
+
+        if temp_snapshot:
+            self._delete_temp_snapshot(context, temp_snapshot)
+            backup.temp_snapshot_id = None
+            backup.save()
+
+    def _backup_device(self, context, backup, backup_service, device,
+                       is_snapshot=False):
+        """Create a new backup from a volume or snapshot."""
+
+        LOG.debug('Creating a new backup for %s.', device['name'])
         use_multipath = self.configuration.use_multipath_for_image_xfer
         enforce_multipath = self.configuration.enforce_multipath_for_image_xfer
         properties = utils.brick_get_connector_properties(use_multipath,
                                                           enforce_multipath)
-        attach_info, volume = self._attach_volume(context, volume, properties)
-
+        if is_snapshot:
+            attach_info, device = self._attach_snapshot(context, device,
+                                                        properties)
+        else:
+            attach_info, device = self._attach_volume(context, device,
+                                                      properties)
         try:
-            volume_path = attach_info['device']['path']
+            device_path = attach_info['device']['path']
 
             # Secure network file systems will not chown files.
             if self.secure_file_operations_enabled():
-                with fileutils.file_open(volume_path) as volume_file:
-                    backup_service.backup(backup, volume_file)
+                with fileutils.file_open(device_path) as device_file:
+                    backup_service.backup(backup, device_file)
             else:
-                with utils.temporary_chown(volume_path):
-                    with fileutils.file_open(volume_path) as volume_file:
-                        backup_service.backup(backup, volume_file)
+                with utils.temporary_chown(device_path):
+                    with fileutils.file_open(device_path) as device_file:
+                        backup_service.backup(backup, device_file)
 
         finally:
-            self._detach_volume(context, attach_info, volume, properties)
-            if temp_vol_ref:
-                self._delete_volume(context, temp_vol_ref)
-                backup.temp_volume_id = None
-                backup.save()
+            if is_snapshot:
+                self._detach_snapshot(context, attach_info, device, properties)
+            else:
+                self._detach_volume(context, attach_info, device, properties)
 
     def restore_backup(self, context, backup, volume, backup_service):
         """Restore an existing backup to a new or existing volume."""
@@ -867,15 +1031,16 @@ class BaseVD(object):
                               {'status': 'available'})
         return temp_vol_ref
 
-    def _delete_snapshot(self, context, snapshot):
+    def _delete_temp_snapshot(self, context, snapshot):
         self.delete_snapshot(snapshot)
         with snapshot.obj_as_admin():
             self.db.volume_glance_metadata_delete_by_snapshot(
                 context, snapshot.id)
             snapshot.destroy()
 
-    def _delete_volume(self, context, volume):
+    def _delete_temp_volume(self, context, volume):
         self.delete_volume(volume)
+        context = context.elevated()
         self.db.volume_destroy(context, volume['id'])
 
     def clear_download(self, context, volume):
@@ -937,9 +1102,21 @@ class BaseVD(object):
         """
         return
 
+    def create_export_snapshot(self, context, snapshot, connector):
+        """Exports the snapshot.
+
+        Can optionally return a Dictionary of changes
+        to the snapshot object to be persisted.
+        """
+        return
+
     @abc.abstractmethod
     def remove_export(self, context, volume):
         """Removes an export for a volume."""
+        return
+
+    def remove_export_snapshot(self, context, snapshot):
+        """Removes an export for a snapshot."""
         return
 
     @abc.abstractmethod
@@ -963,9 +1140,30 @@ class BaseVD(object):
         """
         return
 
+    def initialize_connection_snapshot(self, snapshot, connector, **kwargs):
+        """Allow connection to connector and return connection info.
+
+        :param snapshot: The snapshot to be attached
+        :param connector: Dictionary containing information about what is being
+        connected to.
+        :returns conn_info: A dictionary of connection information. This can
+        optionally include a "initiator_updates" field.
+
+        The "initiator_updates" field must be a dictionary containing a
+        "set_values" and/or "remove_values" field. The "set_values" field must
+        be a dictionary of key-value pairs to be set/updated in the db. The
+        "remove_values" field must be a list of keys, previously set with
+        "set_values", that will be deleted from the db.
+        """
+        return
+
     @abc.abstractmethod
     def terminate_connection(self, volume, connector, **kwargs):
-        """Disallow connection from connector"""
+        """Disallow connection from connector."""
+        return
+
+    def terminate_connection_snapshot(self, snapshot, connector, **kwargs):
+        """Disallow connection from connector."""
         return
 
     def get_pool(self, volume):
@@ -1366,14 +1564,26 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
     def create_export(self, context, volume, connector):
         raise NotImplementedError()
 
+    def create_export_snapshot(self, context, snapshot, connector):
+        raise NotImplementedError()
+
     def remove_export(self, context, volume):
+        raise NotImplementedError()
+
+    def remove_export_snapshot(self, context, snapshot):
         raise NotImplementedError()
 
     def initialize_connection(self, volume, connector):
         raise NotImplementedError()
 
+    def initialize_connection_snapshot(self, snapshot, connector, **kwargs):
+        """Allow connection from connector for a snapshot."""
+
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector"""
+
+    def terminate_connection_snapshot(self, snapshot, connector, **kwargs):
+        """Disallow connection from connector for a snapshot."""
 
     def create_consistencygroup(self, context, group):
         """Creates a consistencygroup."""
@@ -1780,7 +1990,16 @@ class FakeISCSIDriver(ISCSIDriver):
             'discard': False,
         }
 
+    def initialize_connection_snapshot(self, snapshot, connector):
+        return {
+            'driver_volume_type': 'iscsi',
+            'data': {'access_mode': 'rw'}
+        }
+
     def terminate_connection(self, volume, connector, **kwargs):
+        pass
+
+    def terminate_connection_snapshot(self, snapshot, connector, **kwargs):
         pass
 
     @staticmethod
@@ -1824,8 +2043,20 @@ class FakeISCSIDriver(ISCSIDriver):
         """
         pass
 
+    def create_export_snapshot(self, context, snapshot, connector):
+        """Exports the snapshot.
+
+        Can optionally return a Dictionary of changes to the snapshot object to
+        be persisted.
+        """
+        pass
+
     def remove_export(self, context, volume):
         """Removes an export for a volume."""
+        pass
+
+    def remove_export_snapshot(self, context, snapshot):
+        """Removes an export for a snapshot."""
         pass
 
 

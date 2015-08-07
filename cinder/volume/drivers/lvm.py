@@ -488,7 +488,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
                     backup_service.backup(backup, volume_file)
         finally:
             if temp_snapshot:
-                self._delete_snapshot(context, temp_snapshot)
+                self._delete_temp_snapshot(context, temp_snapshot)
                 backup.temp_snapshot_id = None
                 backup.save()
 
