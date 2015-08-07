@@ -438,6 +438,13 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         volume_type_id = self._get_volume_type_id(volume_type,
                                                   source_volume, snapshot)
 
+        if image_id and volume_types.is_encrypted(context, volume_type_id):
+            msg = _('Create encrypted volumes with type %(type)s '
+                    'from image %(image)s is not supported.')
+            msg = msg % {'type': volume_type_id,
+                         'image': image_id, }
+            raise exception.InvalidInput(reason=msg)
+
         encryption_key_id = self._get_encryption_key_id(key_manager,
                                                         context,
                                                         volume_type_id,
