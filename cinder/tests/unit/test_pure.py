@@ -664,7 +664,9 @@ class PureBaseVolumeDriverTestCase(PureDriverTestCase):
             mock_group,
             mock_volumes,
             cgsnapshot=mock_cgsnapshot,
-            snapshots=mock_snapshots
+            snapshots=mock_snapshots,
+            source_cg=None,
+            source_vols=None
         )
         mock_create_cg.assert_called_with(mock_context, mock_group)
         expected_calls = [mock.call(vol, snap)
@@ -679,7 +681,9 @@ class PureBaseVolumeDriverTestCase(PureDriverTestCase):
             mock_group,
             mock_volumes,
             cgsnapshot=mock_cgsnapshot,
-            snapshots=mock_snapshots
+            snapshots=mock_snapshots,
+            source_cg=None,
+            source_vols=None
         )
 
     def test_create_consistencygroup_from_src_no_snap(self):

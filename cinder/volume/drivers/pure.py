@@ -337,7 +337,8 @@ class PureBaseVolumeDriver(san.SanDriver):
 
     @log_debug_trace
     def create_consistencygroup_from_src(self, context, group, volumes,
-                                         cgsnapshot=None, snapshots=None):
+                                         cgsnapshot=None, snapshots=None,
+                                         source_cg=None, source_vols=None):
 
         if cgsnapshot and snapshots:
             self.create_consistencygroup(context, group)
