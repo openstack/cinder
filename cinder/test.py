@@ -73,6 +73,10 @@ class Database(fixtures.Fixture):
         self.sqlite_db = sqlite_db
         self.sqlite_clean_db = sqlite_clean_db
 
+        # Suppress logging for test runs
+        migrate_logger = logging.getLogger('migrate')
+        migrate_logger.setLevel(logging.WARNING)
+
         self.engine = db_api.get_engine()
         self.engine.dispose()
         conn = self.engine.connect()
