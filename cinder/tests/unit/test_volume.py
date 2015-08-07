@@ -5983,6 +5983,33 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
         self.stubs.Set(self.volume.driver.vg, 'get_volume',
                        self._get_manage_existing_lvs)
 
+    @mock.patch.object(db, 'volume_get', side_effect=exception.VolumeNotFound(
+                       volume_id='d8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'))
+    def test_lvm_manage_existing_not_found(self, mock_vol_get):
+        self._setup_stubs_for_manage_existing()
+
+        vol_name = 'volume-d8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'
+        ref = {'source-name': 'fake_lv'}
+        vol = {'name': vol_name, 'id': 1, 'size': 0}
+
+        with mock.patch.object(self.volume.driver.vg, 'rename_volume'):
+            model_update = self.volume.driver.manage_existing(vol, ref)
+            self.assertIsNone(model_update)
+
+    @mock.patch.object(db, 'volume_get')
+    def test_lvm_manage_existing_already_managed(self, mock_conf):
+        self._setup_stubs_for_manage_existing()
+
+        mock_conf.volume_name_template = 'volume-%s'
+        vol_name = 'volume-d8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'
+        ref = {'source-name': vol_name}
+        vol = {'name': 'test', 'id': 1, 'size': 0}
+
+        with mock.patch.object(self.volume.driver.vg, 'rename_volume'):
+            self.assertRaises(exception.ManageExistingAlreadyManaged,
+                              self.volume.driver.manage_existing,
+                              vol, ref)
+
     def test_lvm_manage_existing(self):
         """Good pass on managing an LVM volume.
 

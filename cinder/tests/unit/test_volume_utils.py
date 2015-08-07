@@ -742,3 +742,55 @@ class VolumeUtilsTestCase(test.TestCase):
 
         host_2 = 'fake_host2@backend1'
         self.assertFalse(volume_utils.hosts_are_equivalent(host_1, host_2))
+
+    def test_check_managed_volume_already_managed(self):
+        mock_db = mock.Mock()
+
+        result = volume_utils.check_already_managed_volume(
+            mock_db, 'volume-d8cd1feb-2dcc-404d-9b15-b86fe3bec0a1')
+        self.assertTrue(result)
+
+    @mock.patch('cinder.volume.utils.CONF')
+    def test_check_already_managed_with_vol_id_vol_pattern(self, conf_mock):
+        mock_db = mock.Mock()
+        conf_mock.volume_name_template = 'volume-%s-volume'
+
+        result = volume_utils.check_already_managed_volume(
+            mock_db, 'volume-d8cd1feb-2dcc-404d-9b15-b86fe3bec0a1-volume')
+        self.assertTrue(result)
+
+    @mock.patch('cinder.volume.utils.CONF')
+    def test_check_already_managed_with_id_vol_pattern(self, conf_mock):
+        mock_db = mock.Mock()
+        conf_mock.volume_name_template = '%s-volume'
+
+        result = volume_utils.check_already_managed_volume(
+            mock_db, 'd8cd1feb-2dcc-404d-9b15-b86fe3bec0a1-volume')
+        self.assertTrue(result)
+
+    def test_check_managed_volume_not_managed_cinder_like_name(self):
+        mock_db = mock.Mock()
+        mock_db.volume_get = mock.Mock(
+            side_effect=exception.VolumeNotFound(
+                'volume-d8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'))
+
+        result = volume_utils.check_already_managed_volume(
+            mock_db, 'volume-d8cd1feb-2dcc-404d-9b15-b86fe3bec0a1')
+
+        self.assertFalse(result)
+
+    def test_check_managed_volume_not_managed(self):
+        mock_db = mock.Mock()
+
+        result = volume_utils.check_already_managed_volume(
+            mock_db, 'test-volume')
+
+        self.assertFalse(result)
+
+    def test_check_managed_volume_not_managed_id_like_uuid(self):
+        mock_db = mock.Mock()
+
+        result = volume_utils.check_already_managed_volume(
+            mock_db, 'volume-d8cd1fe')
+
+        self.assertFalse(result)

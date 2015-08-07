@@ -16,6 +16,8 @@
 
 
 import math
+import re
+import uuid
 
 from Crypto.Random import random
 from oslo_concurrency import processutils
@@ -27,6 +29,7 @@ from oslo_utils import units
 from six.moves import range
 
 from cinder.brick.local_dev import lvm as brick_lvm
+from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.i18n import _LI, _LW
@@ -541,3 +544,28 @@ def read_proc_mounts():
     """
     with open('/proc/mounts') as mounts:
         return mounts.readlines()
+
+
+def _extract_id(vol_name):
+    regex = re.compile(
+        CONF.volume_name_template.replace('%s', '(?P<uuid>.+)'))
+    match = regex.match(vol_name)
+    return match.group('uuid') if match else None
+
+
+def check_already_managed_volume(db, vol_name):
+    """Check cinder db for already managed volume.
+
+    :param db: database api parameter
+    :param vol_name: volume name parameter
+    :returns: bool -- return True, if db entry with specified
+                      volume name exist, otherwise return False
+    """
+    vol_id = _extract_id(vol_name)
+    try:
+        if vol_id and uuid.UUID(vol_id, version=4):
+            db.volume_get(context.get_admin_context(), vol_id)
+            return True
+    except (exception.VolumeNotFound, ValueError):
+        return False
+    return False
