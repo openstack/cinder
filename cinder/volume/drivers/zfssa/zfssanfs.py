@@ -1,4 +1,4 @@
-# Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -64,7 +64,13 @@ def factory_zfssa():
 
 
 class ZFSSANFSDriver(nfs.NfsDriver):
-    VERSION = '1.0.0'
+    """ZFSSA Cinder NFS volume driver.
+
+    Version history:
+    1.0.1: Backend enabled volume migration.
+    """
+
+    VERSION = '1.0.1'
     volume_backend_name = 'ZFSSA_NFS'
     protocol = driver_prefix = driver_volume_type = 'nfs'
 
@@ -280,11 +286,15 @@ class ZFSSANFSDriver(nfs.NfsDriver):
         """Get volume stats from zfssa"""
         self._ensure_shares_mounted()
         data = {}
+        lcfg = self.configuration
         backend_name = self.configuration.safe_get('volume_backend_name')
         data['volume_backend_name'] = backend_name or self.__class__.__name__
         data['vendor_name'] = 'Oracle'
         data['driver_version'] = self.VERSION
         data['storage_protocol'] = self.protocol
+
+        asn = self.zfssa.get_asn()
+        data['location_info'] = '%s:%s' % (asn, lcfg.zfssa_nfs_share)
 
         free, used = self._get_share_capacity_info()
         capacity = float(free) + float(used)
@@ -301,3 +311,73 @@ class ZFSSANFSDriver(nfs.NfsDriver):
         data['free_capacity_gb'] = float(free) / units.Gi
 
         self._stats = data
+
+    def migrate_volume(self, ctxt, volume, host):
+        LOG.debug('Attempting ZFSSA enabled volume migration. volume: %(id)s, '
+                  'host: %(host)s, status=%(status)s',
+                  {'id': volume['id'],
+                   'host': host,
+                   'status': volume['status']})
+
+        lcfg = self.configuration
+        default_ret = (False, None)
+
+        if volume['status'] != "available":
+            LOG.debug('Only available volumes can be migrated using backend '
+                      'assisted migration. Defaulting to generic migration.')
+            return default_ret
+
+        if (host['capabilities']['vendor_name'] != 'Oracle' or
+                host['capabilities']['storage_protocol'] != self.protocol):
+            LOG.debug('Source and destination drivers need to be Oracle iSCSI '
+                      'to use backend assisted migration. Defaulting to '
+                      'generic migration.')
+            return default_ret
+
+        if 'location_info' not in host['capabilities']:
+            LOG.debug('Could not find location_info in capabilities reported '
+                      'by the destination driver. Defaulting to generic '
+                      'migration.')
+            return default_ret
+
+        loc_info = host['capabilities']['location_info']
+
+        try:
+            (tgt_asn, tgt_share) = loc_info.split(':')
+        except ValueError:
+            LOG.error(_LE("Location info needed for backend enabled volume "
+                          "migration not in correct format: %s. Continuing "
+                          "with generic volume migration."), loc_info)
+            return default_ret
+
+        src_asn = self.zfssa.get_asn()
+
+        if tgt_asn == src_asn and lcfg.zfssa_nfs_share == tgt_share:
+            LOG.info(_LI('Source and destination ZFSSA shares are the same. '
+                         'Do nothing. volume: %s'), volume['name'])
+            return (True, None)
+
+        return (False, None)
+
+    def update_migrated_volume(self, ctxt, volume, new_volume,
+                               original_volume_status):
+        """Return model update for migrated volume.
+
+        :param volume: The original volume that was migrated to this backend
+        :param new_volume: The migration volume object that was created on
+                           this backend as part of the migration process
+        :param original_volume_status: The status of the original volume
+        :return model_update to update DB with any needed changes
+        """
+
+        original_name = CONF.volume_name_template % volume['id']
+        current_name = CONF.volume_name_template % new_volume['id']
+
+        LOG.debug('Renaming migrated volume: %(cur)s to %(org)s.',
+                  {'cur': current_name,
+                   'org': original_name})
+        self.zfssa.create_volume_from_snapshot_file(src_file=current_name,
+                                                    dst_file=original_name,
+                                                    method='MOVE')
+        provider_location = new_volume['provider_location']
+        return {'_name_id': None, 'provider_location': provider_location}

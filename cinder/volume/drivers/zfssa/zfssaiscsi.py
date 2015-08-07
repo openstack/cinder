@@ -1,4 +1,4 @@
-# Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -27,6 +27,10 @@ from cinder.volume import driver
 from cinder.volume.drivers.san import san
 from cinder.volume.drivers.zfssa import zfssarest
 from cinder.volume import volume_types
+
+import taskflow.engines
+from taskflow.patterns import linear_flow as lf
+from taskflow import task
 
 CONF = cfg.CONF
 LOG = log.getLogger(__name__)
@@ -69,7 +73,10 @@ ZFSSA_OPTS = [
     cfg.StrOpt('zfssa_target_interfaces',
                help='Network interfaces of iSCSI targets. (comma separated)'),
     cfg.IntOpt('zfssa_rest_timeout',
-               help='REST connection timeout. (seconds)')
+               help='REST connection timeout. (seconds)'),
+    cfg.StrOpt('zfssa_replication_ip', default='',
+               help='IP address used for replication data. (maybe the same as '
+                    'data ip)')
 
 ]
 
@@ -88,9 +95,13 @@ def factory_zfssa():
 
 
 class ZFSSAISCSIDriver(driver.ISCSIDriver):
-    """ZFSSA Cinder iSCSI volume driver."""
+    """ZFSSA Cinder iSCSI volume driver.
 
-    VERSION = '1.0.0'
+    Version history:
+    1.0.1: Backend enabled volume migration.
+    """
+
+    VERSION = '1.0.1'
     protocol = 'iSCSI'
 
     def __init__(self, *args, **kwargs):
@@ -98,6 +109,7 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
         self.configuration.append_config_values(ZFSSA_OPTS)
         self.configuration.append_config_values(san.san_opts)
         self.zfssa = None
+        self.tgt_zfssa = None
         self._stats = None
         self.tgtiqn = None
 
@@ -113,11 +125,13 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
         lcfg = self.configuration
         LOG.info(_LI('Connecting to host: %s.'), lcfg.san_ip)
         self.zfssa = factory_zfssa()
+        self.tgt_zfssa = factory_zfssa()
         self.zfssa.set_host(lcfg.san_ip, timeout=lcfg.zfssa_rest_timeout)
         auth_str = base64.encodestring('%s:%s' %
                                        (lcfg.san_login,
                                         lcfg.san_password))[:-1]
         self.zfssa.login(auth_str)
+
         self.zfssa.create_project(lcfg.zfssa_pool, lcfg.zfssa_project,
                                   compression=lcfg.zfssa_lun_compression,
                                   logbias=lcfg.zfssa_lun_logbias)
@@ -351,6 +365,20 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
         if avail is None or total is None:
             return
 
+        host = lcfg.san_ip
+        pool = lcfg.zfssa_pool
+        project = lcfg.zfssa_project
+        auth_str = base64.encodestring('%s:%s' %
+                                       (lcfg.san_login,
+                                        lcfg.san_password))[:-1]
+        zfssa_tgt_group = lcfg.zfssa_target_group
+        repl_ip = lcfg.zfssa_replication_ip
+
+        data['location_info'] = "%s:%s:%s:%s:%s:%s" % (host, auth_str, pool,
+                                                       project,
+                                                       zfssa_tgt_group,
+                                                       repl_ip)
+
         data['total_capacity_gb'] = int(total) / units.Gi
         data['free_capacity_gb'] = int(avail) / units.Gi
         data['reserved_percentage'] = 0
@@ -486,3 +514,234 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
                 result.update({prop: val})
 
         return result
+
+    def migrate_volume(self, ctxt, volume, host):
+        LOG.debug('Attempting ZFSSA enabled volume migration. volume: %(id)s, '
+                  'host: %(host)s, status=%(status)s.',
+                  {'id': volume['id'],
+                   'host': host,
+                   'status': volume['status']})
+
+        lcfg = self.configuration
+        default_ret = (False, None)
+
+        if volume['status'] != "available":
+            LOG.debug('Only available volumes can be migrated using backend '
+                      'assisted migration. Defaulting to generic migration.')
+            return default_ret
+
+        if (host['capabilities']['vendor_name'] != 'Oracle' or
+                host['capabilities']['storage_protocol'] != self.protocol):
+            LOG.debug('Source and destination drivers need to be Oracle iSCSI '
+                      'to use backend assisted migration. Defaulting to '
+                      'generic migration.')
+            return default_ret
+
+        if 'location_info' not in host['capabilities']:
+            LOG.debug('Could not find location_info in capabilities reported '
+                      'by the destination driver. Defaulting to generic '
+                      'migration.')
+            return default_ret
+
+        loc_info = host['capabilities']['location_info']
+
+        try:
+            (tgt_host, auth_str, tgt_pool, tgt_project, tgt_tgtgroup,
+             tgt_repl_ip) = loc_info.split(':')
+        except ValueError:
+            LOG.error(_LE("Location info needed for backend enabled volume "
+                          "migration not in correct format: %s. Continuing "
+                          "with generic volume migration."), loc_info)
+            return default_ret
+
+        if tgt_repl_ip == '':
+            msg = _LE("zfssa_replication_ip not set in cinder.conf. "
+                      "zfssa_replication_ip is needed for backend enabled "
+                      "volume migration. Continuing with generic volume "
+                      "migration.")
+            LOG.error(msg)
+            return default_ret
+
+        src_pool = lcfg.zfssa_pool
+        src_project = lcfg.zfssa_project
+
+        try:
+            LOG.info(_LI('Connecting to target host: %s for backend enabled '
+                         'migration.'), tgt_host)
+            self.tgt_zfssa.set_host(tgt_host)
+            self.tgt_zfssa.login(auth_str)
+
+            # Verify that the replication service is online
+            try:
+                self.zfssa.verify_service('replication')
+                self.tgt_zfssa.verify_service('replication')
+            except exception.VolumeBackendAPIException:
+                return default_ret
+
+            # ensure that a target group by the same name exists on the target
+            # system also, if not, use default migration.
+            lun = self.zfssa.get_lun(src_pool, src_project, volume['name'])
+
+            if lun['targetgroup'] != tgt_tgtgroup:
+                return default_ret
+
+            tgt_asn = self.tgt_zfssa.get_asn()
+            src_asn = self.zfssa.get_asn()
+
+            # verify on the source system that the destination has been
+            # registered as a replication target
+            tgts = self.zfssa.get_replication_targets()
+            targets = []
+            for target in tgts['targets']:
+                if target['asn'] == tgt_asn:
+                    targets.append(target)
+
+            if targets == []:
+                LOG.debug('Target host: %(host)s for volume migration '
+                          'not configured as a replication target '
+                          'for volume: %(vol)s.',
+                          {'host': tgt_repl_ip,
+                           'vol': volume['name']})
+                return default_ret
+
+            # Multiple ips from the same appliance may be configured
+            # as different targets
+            for target in targets:
+                if target['address'] == tgt_repl_ip + ':216':
+                    break
+
+            if target['address'] != tgt_repl_ip + ':216':
+                LOG.debug('Target with replication ip: %s not configured on '
+                          'the source appliance for backend enabled volume '
+                          'migration. Proceeding with default migration.',
+                          tgt_repl_ip)
+                return default_ret
+
+            flow = lf.Flow('zfssa_volume_migration').add(
+                MigrateVolumeInit(),
+                MigrateVolumeCreateAction(provides='action_id'),
+                MigrateVolumeSendReplUpdate(),
+                MigrateVolumeSeverRepl(),
+                MigrateVolumeMoveVol(),
+                MigrateVolumeCleanUp()
+            )
+            taskflow.engines.run(flow,
+                                 store={'driver': self,
+                                        'tgt_zfssa': self.tgt_zfssa,
+                                        'tgt_pool': tgt_pool,
+                                        'tgt_project': tgt_project,
+                                        'volume': volume, 'tgt_asn': tgt_asn,
+                                        'src_zfssa': self.zfssa,
+                                        'src_asn': src_asn,
+                                        'src_pool': src_pool,
+                                        'src_project': src_project,
+                                        'target': target})
+
+            return(True, None)
+
+        except Exception:
+            LOG.error(_LE("Error migrating volume: %s"), volume['name'])
+            raise
+
+    def update_migrated_volume(self, ctxt, volume, new_volume,
+                               original_volume_status):
+        """Return model update for migrated volume.
+
+        :param volume: The original volume that was migrated to this backend
+        :param new_volume: The migration volume object that was created on
+                           this backend as part of the migration process
+        :param original_volume_status: The status of the original volume
+        :return model_update to update DB with any needed changes
+        """
+
+        lcfg = self.configuration
+        original_name = CONF.volume_name_template % volume['id']
+        current_name = CONF.volume_name_template % new_volume['id']
+
+        LOG.debug('Renaming migrated volume: %(cur)s to %(org)s',
+                  {'cur': current_name,
+                   'org': original_name})
+        self.zfssa.set_lun_props(lcfg.zfssa_pool, lcfg.zfssa_project,
+                                 current_name, name=original_name)
+        return {'_name_id': None}
+
+
+class MigrateVolumeInit(task.Task):
+    def execute(self, src_zfssa, volume, src_pool, src_project):
+        LOG.debug('Setting inherit flag on source backend to False.')
+        src_zfssa.edit_inherit_replication_flag(src_pool, src_project,
+                                                volume['name'], set=False)
+
+    def revert(self, src_zfssa, volume, src_pool, src_project, **kwargs):
+        LOG.debug('Rollback: Setting inherit flag on source appliance to '
+                  'True.')
+        src_zfssa.edit_inherit_replication_flag(src_pool, src_project,
+                                                volume['name'], set=True)
+
+
+class MigrateVolumeCreateAction(task.Task):
+    def execute(self, src_zfssa, volume, src_pool, src_project, target,
+                tgt_pool):
+        LOG.debug('Creating replication action on source appliance.')
+        action_id = src_zfssa.create_replication_action(src_pool,
+                                                        src_project,
+                                                        target['label'],
+                                                        tgt_pool,
+                                                        volume['name'])
+
+        self._action_id = action_id
+        return action_id
+
+    def revert(self, src_zfssa, **kwargs):
+        if hasattr(self, '_action_id'):
+            LOG.debug('Rollback: deleting replication action on source '
+                      'appliance.')
+            src_zfssa.delete_replication_action(self._action_id)
+
+
+class MigrateVolumeSendReplUpdate(task.Task):
+    def execute(self, src_zfssa, action_id):
+        LOG.debug('Sending replication update from source appliance.')
+        src_zfssa.send_repl_update(action_id)
+        LOG.debug('Deleting replication action on source appliance.')
+        src_zfssa.delete_replication_action(action_id)
+        self._action_deleted = True
+
+
+class MigrateVolumeSeverRepl(task.Task):
+    def execute(self, tgt_zfssa, src_asn, action_id, driver):
+        source = tgt_zfssa.get_replication_source(src_asn)
+        if not source:
+            err = (_('Source with host ip/name: %s not found on the '
+                     'target appliance for backend enabled volume '
+                     'migration, procedding with default migration.'),
+                   driver.configuration.san_ip)
+            LOG.error(err)
+            raise exception.VolumeBackendAPIException(data=err)
+        LOG.debug('Severing replication package on destination appliance.')
+        tgt_zfssa.sever_replication(action_id, source['name'],
+                                    project=action_id)
+
+
+class MigrateVolumeMoveVol(task.Task):
+    def execute(self, tgt_zfssa, tgt_pool, tgt_project, action_id, volume):
+        LOG.debug('Moving LUN to destination project on destination '
+                  'appliance.')
+        tgt_zfssa.move_volume(tgt_pool, action_id, volume['name'], tgt_project)
+        LOG.debug('Deleting temporary project on destination appliance.')
+        tgt_zfssa.delete_project(tgt_pool, action_id)
+        self._project_deleted = True
+
+    def revert(self, tgt_zfssa, tgt_pool, tgt_project, action_id, volume,
+               **kwargs):
+        if not hasattr(self, '_project_deleted'):
+            LOG.debug('Rollback: deleting temporary project on destination '
+                      'appliance.')
+            tgt_zfssa.delete_project(tgt_pool, action_id)
+
+
+class MigrateVolumeCleanUp(task.Task):
+    def execute(self, driver, volume, tgt_zfssa):
+        LOG.debug('Finally, delete source volume on source appliance.')
+        driver.delete_volume(volume)
+        tgt_zfssa.logout()
