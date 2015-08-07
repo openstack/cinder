@@ -237,7 +237,8 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
         self.cli.unmanage(volume)
 
     def create_consistencygroup_from_src(self, context, group, volumes,
-                                         cgsnapshot=None, snapshots=None):
+                                         cgsnapshot=None, snapshots=None,
+                                         source_cg=None, source_vols=None):
         """Creates a consistency group from source."""
         return self.cli.create_consistencygroup_from_src(context,
                                                          group,

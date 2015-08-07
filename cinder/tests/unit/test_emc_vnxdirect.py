@@ -3655,7 +3655,8 @@ Time Remaining:  0 second(s)
             self.driver.create_consistencygroup_from_src(
                 None, new_cg, [vol1_in_new_cg, vol2_in_new_cg],
                 cgsnapshot=src_cgsnap, snapshots=[snap1_in_src_cgsnap,
-                                                  snap2_in_src_cgsnap]))
+                                                  snap2_in_src_cgsnap],
+                source_cg=None, source_vols=None))
         self.assertEqual(2, len(volumes_model_update))
         self.assertTrue('id^%s' % 6231 in
                         volumes_model_update[0]['provider_location'])
@@ -3725,7 +3726,7 @@ Time Remaining:  0 second(s)
             exception.InvalidInput,
             self.driver.create_consistencygroup_from_src,
             new_cg, [vol1_in_new_cg, vol2_in_new_cg],
-            None, None)
+            None, None, None, None)
 
     def test_create_cg_from_cgsnapshot_migrate_failed(self):
         new_cg = self.testData.test_cg.copy()
@@ -3774,7 +3775,8 @@ Time Remaining:  0 second(s)
                                None, new_cg, [vol1_in_new_cg, vol2_in_new_cg],
                                cgsnapshot=src_cgsnap,
                                snapshots=[snap1_in_src_cgsnap,
-                                          snap2_in_src_cgsnap])
+                                          snap2_in_src_cgsnap],
+                               source_cg=None, source_vols=None)
 
         expect_cmd = [
             mock.call(*self.testData.LUN_DELETE_CMD(
