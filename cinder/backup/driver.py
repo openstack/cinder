@@ -151,7 +151,7 @@ class BackupMetadataAPI(base.Base):
 
         If fields is empty list, the full set is returned.
         """
-        if fields == []:
+        if not fields:
             return metadata
 
         subset = {}

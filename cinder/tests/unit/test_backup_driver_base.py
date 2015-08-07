@@ -206,7 +206,8 @@ class BackupMetadataAPITestCase(test.TestCase):
             func({}, self.volume_id, fields)
 
     def test_restore_vol_glance_meta(self):
-        fields = {}
+        # Fields is an empty list for _restore_vol_glance_meta method.
+        fields = []
         container = {}
         self.bak_meta_api._save_vol_glance_meta(container, self.volume_id)
         self.bak_meta_api._restore_vol_glance_meta(container, self.volume_id,
@@ -217,16 +218,24 @@ class BackupMetadataAPITestCase(test.TestCase):
                                                    fields)
 
     def test_restore_vol_meta(self):
-        fields = {}
+        # Fields is an empty list for _restore_vol_meta method.
+        fields = []
         container = {}
         self.bak_meta_api._save_vol_meta(container, self.volume_id)
-        self.bak_meta_api._restore_vol_meta(container, self.volume_id, fields)
+        # Extract volume metadata from container.
+        metadata = container.get('volume-metadata', {})
+        self.bak_meta_api._restore_vol_meta(metadata, self.volume_id,
+                                            fields)
         self._add_metadata(vol_meta=True)
         self.bak_meta_api._save_vol_meta(container, self.volume_id)
-        self.bak_meta_api._restore_vol_meta(container, self.volume_id, fields)
+        # Extract volume metadata from container.
+        metadata = container.get('volume-metadata', {})
+        self.bak_meta_api._restore_vol_meta(metadata, self.volume_id, fields)
 
     def test_restore_vol_base_meta(self):
-        fields = {}
+        # Fields is a list with 'encryption_key_id' for
+        # _restore_vol_base_meta method.
+        fields = ['encryption_key_id']
         container = {}
         self.bak_meta_api._save_vol_base_meta(container, self.volume_id)
         self.bak_meta_api._restore_vol_base_meta(container, self.volume_id,
