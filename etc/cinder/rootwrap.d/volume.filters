@@ -103,6 +103,7 @@ netapp_nfs_find: RegExpFilter, find, root, find, ^[/]*([^/\0]+(/+)?)*$, -maxdept
 # cinder/volume/drivers/glusterfs.py
 chgrp: CommandFilter, chgrp, root
 umount: CommandFilter, umount, root
+fallocate: CommandFilter, fallocate, root
 
 # cinder/volumes/drivers/hds/hds.py:
 hus-cmd: CommandFilter, hus-cmd, root

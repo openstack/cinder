@@ -90,8 +90,6 @@ class GlusterFsDriverTestCase(test.TestCase):
             self.TEST_SHARES_CONFIG_FILE
         self._configuration.glusterfs_mount_point_base = \
             self.TEST_MNT_POINT_BASE
-        self._configuration.glusterfs_sparsed_volumes = True
-        self._configuration.glusterfs_qcow2_volumes = False
         self._configuration.nas_secure_file_permissions = 'false'
         self._configuration.nas_secure_file_operations = 'false'
         self._configuration.nas_ip = None
@@ -227,8 +225,8 @@ class GlusterFsDriverTestCase(test.TestCase):
 
             self.assertEqual(3.0, provisioned_capacity)
 
-    def test_update_volume_stats_sparse(self):
-        """_update_volume_stats_sparse with sparse files."""
+    def test_update_volume_stats_thin(self):
+        """_update_volume_stats_thin with qcow2 files."""
         drv = self._driver
         rfsdriver = remotefs_drv.RemoteFSSnapDriver
 
@@ -239,33 +237,7 @@ class GlusterFsDriverTestCase(test.TestCase):
             data = {'total_capacity_gb': 10.0,
                     'free_capacity_gb': 2.0}
             drv._stats = data
-            drv.configuration.glusterfs_sparsed_volumes = True
-            drv.configuration.glusterfs_qcow2_volumes = False
-            drv.configuration.max_over_subscription_ratio = 20.0
-            mock_get_provisioned_capacity.return_value = 8.0
-            drv._update_volume_stats()
-            data['max_over_subscription_ratio'] = 20.0
-            data['thick_provisioning_support'] = False
-            data['thin_provisioning_support'] = True
-
-            self.assertEqual(data, drv._stats)
-            self.assertTrue(mock_get_provisioned_capacity.called)
-            self.assertTrue(mock_update_volume_stats.called)
-
-    def test_update_volume_stats_qcow2(self):
-        """_update_volume_stats_sparse with qcow2 files."""
-        drv = self._driver
-        rfsdriver = remotefs_drv.RemoteFSSnapDriver
-
-        with mock.patch.object(rfsdriver, '_update_volume_stats') as \
-                mock_update_volume_stats,\
-                mock.patch.object(drv, '_get_provisioned_capacity') as \
-                mock_get_provisioned_capacity:
-            data = {'total_capacity_gb': 10.0,
-                    'free_capacity_gb': 2.0}
-            drv._stats = data
-            drv.configuration.glusterfs_sparsed_volumes = False
-            drv.configuration.glusterfs_qcow2_volumes = True
+            drv.configuration.nas_volume_prov_type = 'thin'
             drv.configuration.max_over_subscription_ratio = 20.0
             mock_get_provisioned_capacity.return_value = 8.0
             drv._update_volume_stats()
@@ -278,7 +250,7 @@ class GlusterFsDriverTestCase(test.TestCase):
             self.assertTrue(mock_update_volume_stats.called)
 
     def test_update_volume_stats_thick(self):
-        """_update_volume_stats_sparse with raw files."""
+        """_update_volume_stats_thick with raw files."""
         drv = self._driver
         rfsdriver = remotefs_drv.RemoteFSSnapDriver
 
@@ -287,8 +259,7 @@ class GlusterFsDriverTestCase(test.TestCase):
             data = {'total_capacity_gb': 10.0,
                     'free_capacity_gb': 2.0}
             drv._stats = data
-            drv.configuration.glusterfs_sparsed_volumes = False
-            drv.configuration.glusterfs_qcow2_volumes = False
+            drv.configuration.nas_volume_prov_type = 'thick'
             drv.configuration.max_over_subscription_ratio = 20.0
             drv._update_volume_stats()
             data['provisioned_capacity_gb'] = 8.0
@@ -525,74 +496,68 @@ class GlusterFsDriverTestCase(test.TestCase):
 
         return volume
 
-    def test_create_sparsed_volume(self):
+    def test_create_thin_volume(self):
         drv = self._driver
         volume = self._simple_volume()
 
-        self.override_config('glusterfs_sparsed_volumes', True)
+        self._configuration.nas_volume_prov_type = 'thin'
 
-        with mock.patch.object(drv, '_create_sparsed_file') as \
-                mock_create_sparsed_file,\
+        with mock.patch.object(drv, '_create_qcow2_file') as \
+                mock_create_qcow2_file,\
                 mock.patch.object(drv, '_set_rw_permissions_for_all') as \
                 mock_set_rw_permissions_for_all:
             drv._do_create_volume(volume)
 
             volume_path = drv.local_path(volume)
             volume_size = volume['size']
-            mock_create_sparsed_file.assert_called_once_with(volume_path,
-                                                             volume_size)
+            mock_create_qcow2_file.assert_called_once_with(volume_path,
+                                                           volume_size)
             mock_set_rw_permissions_for_all.\
                 assert_called_once_with(volume_path)
 
-    def test_create_nonsparsed_volume(self):
+    def test_create_thick_fallocate_volume(self):
         drv = self._driver
         volume = self._simple_volume()
 
-        old_value = self._configuration.glusterfs_sparsed_volumes
-        self._configuration.glusterfs_sparsed_volumes = False
+        self._configuration.nas_volume_prov_type = 'thick'
 
-        with mock.patch.object(drv, '_create_regular_file') as \
-                mock_create_regular_file,\
+        with mock.patch.object(drv, '_fallocate') as \
+                mock_fallocate,\
                 mock.patch.object(drv, '_set_rw_permissions_for_all') as \
                 mock_set_rw_permissions_for_all:
             drv._do_create_volume(volume)
 
             volume_path = drv.local_path(volume)
             volume_size = volume['size']
+            mock_fallocate.assert_called_once_with(volume_path,
+                                                   volume_size)
+            mock_set_rw_permissions_for_all.\
+                assert_called_once_with(volume_path)
+
+    def test_create_thick_dd_volume(self):
+        drv = self._driver
+        volume = self._simple_volume()
+
+        self._configuration.nas_volume_prov_type = 'thick'
+
+        with mock.patch.object(drv, '_fallocate') as \
+                mock_fallocate,\
+                mock.patch.object(drv, '_create_regular_file') as \
+                mock_create_regular_file,\
+                mock.patch.object(drv, '_set_rw_permissions_for_all') as \
+                mock_set_rw_permissions_for_all:
+            mock_fallocate.side_effect = putils.ProcessExecutionError(
+                stderr='Fallocate: Operation not supported.')
+            drv._do_create_volume(volume)
+
+            volume_path = drv.local_path(volume)
+            volume_size = volume['size']
+            mock_fallocate.assert_called_once_with(volume_path,
+                                                   volume_size)
             mock_create_regular_file.assert_called_once_with(volume_path,
                                                              volume_size)
             mock_set_rw_permissions_for_all.\
                 assert_called_once_with(volume_path)
-        self._configuration.glusterfs_sparsed_volumes = old_value
-
-    def test_create_qcow2_volume(self):
-        drv = self._driver
-        volume = self._simple_volume()
-
-        old_value = self._configuration.glusterfs_qcow2_volumes
-        self._configuration.glusterfs_qcow2_volumes = True
-
-        with mock.patch.object(drv, '_execute') as mock_execute,\
-                mock.patch.object(drv, '_set_rw_permissions_for_all') as \
-                mock_set_rw_permissions_for_all:
-            hashed = drv._get_hash_str(volume['provider_location'])
-            path = '%s/%s/volume-%s' % (self.TEST_MNT_POINT_BASE,
-                                        hashed,
-                                        self.VOLUME_UUID)
-
-            drv._do_create_volume(volume)
-
-            volume_path = drv.local_path(volume)
-            volume_size = volume['size']
-            mock_execute.assert_called_once_with('qemu-img', 'create',
-                                                 '-f', 'qcow2', '-o',
-                                                 'preallocation=metadata',
-                                                 path,
-                                                 str(volume_size * units.Gi),
-                                                 run_as_root=True)
-            mock_set_rw_permissions_for_all.\
-                assert_called_once_with(volume_path)
-        self._configuration.glusterfs_qcow2_volumes = old_value
 
     def test_create_volume_should_ensure_glusterfs_mounted(self):
         """create_volume ensures shares provided in config are mounted."""

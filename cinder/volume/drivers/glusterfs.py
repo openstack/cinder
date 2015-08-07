@@ -16,6 +16,7 @@
 import errno
 import os
 import stat
+import warnings
 
 from os_brick.remotefs import remotefs as remotefs_brick
 from oslo_concurrency import processutils
@@ -33,18 +34,11 @@ from cinder.volume.drivers import remotefs as remotefs_drv
 
 LOG = logging.getLogger(__name__)
 
+
 volume_opts = [
     cfg.StrOpt('glusterfs_shares_config',
                default='/etc/cinder/glusterfs_shares',
                help='File with the list of available gluster shares'),
-    cfg.BoolOpt('glusterfs_sparsed_volumes',
-                default=True,
-                help=('Create volumes as sparsed files which take no space.'
-                      'If set to False volume is created as regular file.'
-                      'In such case volume creation takes a lot of time.')),
-    cfg.BoolOpt('glusterfs_qcow2_volumes',
-                default=False,
-                help=('Create volumes as QCOW2 files rather than raw files.')),
     cfg.StrOpt('glusterfs_mount_point_base',
                default='$state_path/mnt',
                help='Base dir containing mount points for gluster shares.'),
@@ -171,8 +165,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver, driver.CloneableVD,
         global_capacity = data['total_capacity_gb']
         global_free = data['free_capacity_gb']
 
-        thin_enabled = (self.configuration.glusterfs_sparsed_volumes or
-                        self.configuration.glusterfs_qcow2_volumes)
+        thin_enabled = self.configuration.nas_volume_prov_type == 'thin'
         if thin_enabled:
             provisioned_capacity = self._get_provisioned_capacity()
         else:
@@ -229,7 +222,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver, driver.CloneableVD,
 
         LOG.debug("will copy from snapshot at %s", path_to_snap_img)
 
-        if self.configuration.glusterfs_qcow2_volumes:
+        if self.configuration.nas_volume_prov_type == 'thin':
             out_format = 'qcow2'
         else:
             out_format = 'raw'
@@ -349,13 +342,19 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver, driver.CloneableVD,
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 
-        if self.configuration.glusterfs_qcow2_volumes:
+        if self.configuration.nas_volume_prov_type == 'thin':
             self._create_qcow2_file(volume_path, volume_size)
         else:
-            if self.configuration.glusterfs_sparsed_volumes:
-                self._create_sparsed_file(volume_path, volume_size)
-            else:
-                self._create_regular_file(volume_path, volume_size)
+            try:
+                self._fallocate(volume_path, volume_size)
+            except processutils.ProcessExecutionError as exc:
+                if 'Operation not supported' in exc.stderr:
+                    warnings.warn('Fallocate not supported by current version '
+                                  'of glusterfs. So falling back to dd.')
+                    self._create_regular_file(volume_path, volume_size)
+                else:
+                    fileutils.delete_if_exists(volume_path)
+                    raise
 
         self._set_rw_permissions_for_all(volume_path)
 
