@@ -652,6 +652,11 @@ class ManageExistingInvalidReference(CinderException):
                 "reference %(existing_ref)s: %(reason)s")
 
 
+class ManageExistingAlreadyManaged(CinderException):
+    message = _("Unable to manage existing volume. "
+                "Volume %(volume_ref)s already managed.")
+
+
 class ReplicationError(CinderException):
     message = _("Volume %(volume_id)s replication "
                 "error: %(reason)s")

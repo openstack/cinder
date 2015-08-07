@@ -44,6 +44,7 @@ from cinder import quota_utils
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import utils
 from cinder.volume.flows.api import create_volume
+from cinder.volume.flows.api import manage_existing
 from cinder.volume import qos_specs
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import utils as volume_utils
@@ -1466,36 +1467,36 @@ class API(base.Base):
                     LOG.error(_LE('Unable to find service for given host.'))
             availability_zone = service.get('availability_zone')
 
-        volume_type_id = volume_type['id'] if volume_type else None
-        volume_properties = {
-            'size': 0,
-            'user_id': context.user_id,
-            'project_id': context.project_id,
-            'status': 'creating',
-            'attach_status': 'detached',
-            # Rename these to the internal name.
-            'display_description': description,
-            'display_name': name,
+        manage_what = {
+            'context': context,
+            'name': name,
+            'description': description,
             'host': host,
-            'availability_zone': availability_zone,
-            'volume_type_id': volume_type_id,
+            'ref': ref,
+            'volume_type': volume_type,
             'metadata': metadata,
-            'bootable': bootable
+            'availability_zone': availability_zone,
+            'bootable': bootable,
         }
 
-        # Call the scheduler to ensure that the host exists and that it can
-        # accept the volume
-        volume = self.db.volume_create(context, volume_properties)
-        request_spec = {'volume_properties': volume,
-                        'volume_type': volume_type,
-                        'volume_id': volume['id'],
-                        'ref': ref}
-        self.scheduler_rpcapi.manage_existing(context, CONF.volume_topic,
-                                              volume['id'],
-                                              request_spec=request_spec)
-        LOG.info(_LI("Manage volume request issued successfully."),
-                 resource=volume)
-        return volume
+        try:
+            flow_engine = manage_existing.get_flow(self.scheduler_rpcapi,
+                                                   self.db,
+                                                   manage_what)
+        except Exception:
+            msg = _('Failed to manage api volume flow.')
+            LOG.exception(msg)
+            raise exception.CinderException(msg)
+
+        # Attaching this listener will capture all of the notifications that
+        # taskflow sends out and redirect them to a more useful log for
+        # cinder's debugging (or error reporting) usage.
+        with flow_utils.DynamicLogListener(flow_engine, logger=LOG):
+            flow_engine.run()
+            vol_ref = flow_engine.storage.fetch('volume')
+            LOG.info(_LI("Manage volume request issued successfully."),
+                     resource=vol_ref)
+            return vol_ref
 
 
 class HostAPI(base.Base):
