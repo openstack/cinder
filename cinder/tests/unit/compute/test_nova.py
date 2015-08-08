@@ -38,7 +38,7 @@ class NovaClientTestCase(test.TestCase):
         self.override_config('os_privileged_user_name', 'adminuser')
         self.override_config('os_privileged_user_password', 'strongpassword')
 
-    @mock.patch('novaclient.v1_1.client.Client')
+    @mock.patch('novaclient.v2.client.Client')
     def test_nova_client_regular(self, p_client):
         nova.novaclient(self.ctx)
         p_client.assert_called_once_with(
@@ -47,7 +47,7 @@ class NovaClientTestCase(test.TestCase):
             insecure=False, endpoint_type='publicURL', cacert=None,
             timeout=None, extensions=nova.nova_extensions)
 
-    @mock.patch('novaclient.v1_1.client.Client')
+    @mock.patch('novaclient.v2.client.Client')
     def test_nova_client_admin_endpoint(self, p_client):
         nova.novaclient(self.ctx, admin_endpoint=True)
         p_client.assert_called_once_with(
@@ -56,7 +56,7 @@ class NovaClientTestCase(test.TestCase):
             insecure=False, endpoint_type='adminURL', cacert=None,
             timeout=None, extensions=nova.nova_extensions)
 
-    @mock.patch('novaclient.v1_1.client.Client')
+    @mock.patch('novaclient.v2.client.Client')
     def test_nova_client_privileged_user(self, p_client):
         nova.novaclient(self.ctx, privileged_user=True)
         p_client.assert_called_once_with(
@@ -65,7 +65,7 @@ class NovaClientTestCase(test.TestCase):
             insecure=False, endpoint_type='publicURL', cacert=None,
             timeout=None, extensions=nova.nova_extensions)
 
-    @mock.patch('novaclient.v1_1.client.Client')
+    @mock.patch('novaclient.v2.client.Client')
     def test_nova_client_privileged_user_custom_auth_url(self, p_client):
         self.override_config('os_privileged_user_auth_url',
                              'http://privatekeystonehost:5000/v2.0')
@@ -76,7 +76,7 @@ class NovaClientTestCase(test.TestCase):
             insecure=False, endpoint_type='publicURL', cacert=None,
             timeout=None, extensions=nova.nova_extensions)
 
-    @mock.patch('novaclient.v1_1.client.Client')
+    @mock.patch('novaclient.v2.client.Client')
     def test_nova_client_custom_region(self, p_client):
         self.override_config('os_region_name', 'farfaraway')
         nova.novaclient(self.ctx)
