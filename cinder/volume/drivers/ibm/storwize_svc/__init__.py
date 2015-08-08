@@ -315,7 +315,7 @@ class StorwizeSVCDriver(san.SanDriver,
             LOG.error(_LE('ensure_export: Volume %s not found on storage.'),
                       volume['name'])
 
-    def create_export(self, ctxt, volume):
+    def create_export(self, ctxt, volume, connector):
         model_update = None
         return model_update
 

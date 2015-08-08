@@ -508,7 +508,7 @@ class HPLeftHandRESTProxy(driver.ISCSIDriver):
                                           optional)
         return server_info
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         pass
 
     def ensure_export(self, context, volume):

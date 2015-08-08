@@ -268,7 +268,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver, driver.CloneableVD,
 
         self._ensure_share_mounted(volume['provider_location'])
 
-    def create_export(self, ctx, volume):
+    def create_export(self, ctx, volume, connector):
         """Exports the volume."""
         pass
 

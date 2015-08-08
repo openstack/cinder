@@ -227,7 +227,7 @@ class NimbleISCSIDriver(san.SanISCSIDriver):
         self._clone_volume_from_snapshot(volume, snapshot)
         return self._get_model_info(volume['name'])
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         """Driver entry point to get the export info for a new volume."""
         return self._get_model_info(volume['name'])
 

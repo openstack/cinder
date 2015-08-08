@@ -1084,7 +1084,7 @@ class GPFSDriverTestCase(test.TestCase):
         self.assertEqual(None, self.driver.ensure_export('', ''))
 
     def test_create_export(self):
-        self.assertEqual(None, self.driver.create_export('', ''))
+        self.assertEqual(None, self.driver.create_export('', '', {}))
 
     def test_remove_export(self):
         self.assertEqual(None, self.driver.remove_export('', ''))

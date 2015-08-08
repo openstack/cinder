@@ -218,7 +218,7 @@ class SheepdogDriver(driver.VolumeDriver):
         """Safely and synchronously recreate an export for a logical volume."""
         pass
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         """Export a volume."""
         pass
 

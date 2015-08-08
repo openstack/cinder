@@ -850,7 +850,7 @@ class SRBISCSIDriver(SRBDriver, driver.ISCSIDriver):
         if model_update:
             self.db.volume_update(context, volume['id'], model_update)
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         """Creates an export for a logical volume."""
         self._attach_file(volume)
         vg = self._get_lvm_vg(volume)

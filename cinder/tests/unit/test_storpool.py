@@ -222,7 +222,7 @@ class StorPoolTestCase(test.TestCase):
         self.assertDictEqual({'client_id': 2, 'volume': '616'}, c['data'])
 
         self.driver.terminate_connection(None, None)
-        self.driver.create_export(None, None)
+        self.driver.create_export(None, None, {})
         self.driver.remove_export(None, None)
 
     def test_stats(self):

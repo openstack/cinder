@@ -123,7 +123,7 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
         """Synchronously recreates an export for a volume."""
         pass
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         """Exports the volume.
 
         Can optionally return a Dictionary of changes

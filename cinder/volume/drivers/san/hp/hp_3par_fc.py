@@ -411,7 +411,7 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
             host = common._get_3par_host(host['name'])
         return host
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         pass
 
     def ensure_export(self, context, volume):

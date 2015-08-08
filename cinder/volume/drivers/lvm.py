@@ -654,7 +654,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
             self.target_driver.ensure_export(context, volume, volume_path)
         return model_update
 
-    def create_export(self, context, volume, vg=None):
+    def create_export(self, context, volume, connector, vg=None):
         if vg is None:
             vg = self.configuration.volume_group
 

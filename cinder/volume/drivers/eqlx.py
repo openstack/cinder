@@ -510,7 +510,7 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
                               'to volume "%s".'),
                           volume['name'])
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         """Create an export of a volume.
 
         Driver has nothing to do here for the volume has been exported

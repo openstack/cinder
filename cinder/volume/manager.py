@@ -1085,7 +1085,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         try:
             model_update = self.driver.create_export(context.elevated(),
-                                                     volume)
+                                                     volume, connector)
         except exception.CinderException:
             err_msg = (_("Create export for volume failed."))
             LOG.exception(err_msg, resource=volume)

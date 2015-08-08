@@ -554,7 +554,7 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
 
         return model_update
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         common = self._login()
         try:
             return self._do_export(common, volume)

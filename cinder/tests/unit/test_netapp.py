@@ -643,7 +643,7 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
                          'get_operational_network_interface_addresses',
                          mock.Mock(return_value=[]))
         self.driver.create_volume(self.volume)
-        updates = self.driver.create_export(None, self.volume)
+        updates = self.driver.create_export(None, self.volume, {})
         self.assertTrue(updates['provider_location'])
         self.volume['provider_location'] = updates['provider_location']
 
@@ -667,7 +667,7 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
                          'get_operational_network_interface_addresses',
                          mock.Mock(return_value=[]))
         self.driver.create_volume(self.volume)
-        updates = self.driver.create_export(None, self.volume)
+        updates = self.driver.create_export(None, self.volume, {})
         self.assertTrue(updates['provider_location'])
         self.volume['provider_location'] = updates['provider_location']
         connector_new = {'initiator': 'iqn.1993-08.org.debian:01:1001'}

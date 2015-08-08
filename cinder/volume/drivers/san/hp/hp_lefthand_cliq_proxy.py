@@ -450,7 +450,7 @@ class HPLeftHandCLIQProxy(san.SanISCSIDriver):
     def create_cloned_volume(self, volume, src_vref):
         raise NotImplementedError()
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         pass
 
     def ensure_export(self, context, volume):

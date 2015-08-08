@@ -585,7 +585,7 @@ class HGSTDriver(driver.VolumeDriver):
         """Query the provider_id to figure out the proper devnode."""
         return "/dev/" + self._get_space_name(volume)
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         # Not needed for spaces
         pass
 

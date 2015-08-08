@@ -189,7 +189,7 @@ class TestWindowsDriver(test.TestCase):
 
         self.mox.ReplayAll()
 
-        export_info = drv.create_export(None, volume)
+        export_info = drv.create_export(None, volume, {})
 
         self.assertEqual(initiator_name, export_info['provider_location'])
         if chap_enabled:

@@ -150,7 +150,7 @@ class V6000ISCSIDriver(driver.ISCSIDriver):
         """Synchronously checks and re-exports volumes at cinder start time."""
         pass
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         """Exports the volume."""
         pass
 

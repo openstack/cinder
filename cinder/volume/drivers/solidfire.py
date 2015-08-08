@@ -1229,7 +1229,7 @@ class SolidFireDriver(san.SanISCSIDriver):
     def ensure_export(self, context, volume):
         return self.target_driver.ensure_export(context, volume, None)
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         return self.target_driver.create_export(
             context,
             volume,

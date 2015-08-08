@@ -134,7 +134,7 @@ class HPXPFCDriver(driver.FibreChannelDriver):
     def ensure_export(self, context, volume):
         pass
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         pass
 
     def remove_export(self, context, volume):

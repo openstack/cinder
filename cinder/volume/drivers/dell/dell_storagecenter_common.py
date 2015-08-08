@@ -289,7 +289,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         raise exception.VolumeBackendAPIException(
             _('Failed to delete snapshot %s') % snapshot_id)
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         """Create an export of a volume.
 
         The volume exists on creation and will be visible on

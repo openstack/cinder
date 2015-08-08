@@ -1299,7 +1299,7 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
         mock_api_req.side_effect = self._side_effect_api_req
 
         # now run the test
-        model_update = self.driver.create_export({}, {})
+        model_update = self.driver.create_export({}, {}, {})
 
         # assert the result
         self.assertEqual('CHAP fakeauthgroupchapuser fakeauthgroupchapsecret',
@@ -1317,7 +1317,7 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
         mock_api_req.side_effect = self._side_effect_api_req
 
         # now run the test
-        model_update = self.driver.create_export({}, {})
+        model_update = self.driver.create_export({}, {}, {})
 
         # assert the result
         self.assertEqual(None,
@@ -1354,7 +1354,7 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
         mock_api_req.side_effect = self._side_effect_api_req
 
         # now run the test
-        model_update = self.driver.create_export({}, {})
+        model_update = self.driver.create_export({}, {}, {})
 
         # assert the result
         self.assertEqual(None,
