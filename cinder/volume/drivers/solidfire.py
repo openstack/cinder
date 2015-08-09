@@ -26,6 +26,9 @@ from oslo_utils import importutils
 from oslo_utils import timeutils
 from oslo_utils import units
 import requests
+from requests.packages.urllib3 import exceptions
+import warnings
+
 import six
 
 from cinder import context
@@ -212,11 +215,13 @@ class SolidFireDriver(san.SanISCSIDriver):
         payload = {'method': method, 'params': params}
 
         url = '%s/json-rpc/%s/' % (endpoint['url'], version)
-        req = requests.post(url,
-                            data=json.dumps(payload),
-                            auth=(endpoint['login'], endpoint['passwd']),
-                            verify=False,
-                            timeout=30)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", exceptions.InsecureRequestWarning)
+            req = requests.post(url,
+                                data=json.dumps(payload),
+                                auth=(endpoint['login'], endpoint['passwd']),
+                                verify=False,
+                                timeout=30)
 
         response = req.json()
         req.close()
