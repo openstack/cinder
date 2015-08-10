@@ -388,7 +388,7 @@ class FlashSystemDriver(san.SanDriver):
             (_('_get_hdr_dic: attribute headers and values do not match.\n '
                'Headers: %(header)s\n Values: %(row)s.')
              % {'header': six.text_type(header), 'row': six.text_type(row)}))
-        dic = {a: v for a, v in map(None, attributes, values)}
+        dic = {a: v for a, v in zip(attributes, values)}
         return dic
 
     def _get_host_from_connector(self, connector):
