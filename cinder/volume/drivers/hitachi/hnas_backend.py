@@ -40,7 +40,8 @@ class HnasBackend(object):
         self.drv_configs = drv_configs
         self.sshpool = None
 
-    @utils.retry(exceptions=exception.HNASConnError, retries=HNAS_SSC_RETRIES)
+    @utils.retry(exceptions=exception.HNASConnError, retries=HNAS_SSC_RETRIES,
+                 wait_random=True)
     def run_cmd(self, cmd, ip0, user, pw, *args, **kwargs):
         """Run a command on SMU or using SSH
 
@@ -560,7 +561,8 @@ class HnasBackend(object):
         LOG.debug('extend_vol: %s.', out)
         return out
 
-    @utils.retry(putils.ProcessExecutionError, retries=HNAS_SSC_RETRIES)
+    @utils.retry(putils.ProcessExecutionError, retries=HNAS_SSC_RETRIES,
+                 wait_random=True)
     def add_iscsi_conn(self, cmd, ip0, user, pw, lun_name, hdp,
                        port, tgtalias, initiator):
         """Setup the lun on on the specified target port

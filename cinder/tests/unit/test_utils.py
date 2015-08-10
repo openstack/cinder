@@ -1391,6 +1391,24 @@ class TestRetryDecorator(test.TestCase):
             self.assertEqual('success', ret)
             self.assertEqual(1, self.counter)
 
+    def test_no_retry_required_random(self):
+        self.counter = 0
+
+        with mock.patch.object(time, 'sleep') as mock_sleep:
+            @utils.retry(exception.VolumeBackendAPIException,
+                         interval=2,
+                         retries=3,
+                         backoff_rate=2,
+                         wait_random=True)
+            def succeeds():
+                self.counter += 1
+                return 'success'
+
+            ret = succeeds()
+            self.assertFalse(mock_sleep.called)
+            self.assertEqual('success', ret)
+            self.assertEqual(1, self.counter)
+
     def test_retries_once(self):
         self.counter = 0
         interval = 2
@@ -1414,6 +1432,31 @@ class TestRetryDecorator(test.TestCase):
             self.assertEqual(2, self.counter)
             self.assertEqual(1, mock_sleep.call_count)
             mock_sleep.assert_called_with(interval * backoff_rate)
+
+    def test_retries_once_random(self):
+        self.counter = 0
+        interval = 2
+        backoff_rate = 2
+        retries = 3
+
+        with mock.patch.object(time, 'sleep') as mock_sleep:
+            @utils.retry(exception.VolumeBackendAPIException,
+                         interval,
+                         retries,
+                         backoff_rate,
+                         wait_random=True)
+            def fails_once():
+                self.counter += 1
+                if self.counter < 2:
+                    raise exception.VolumeBackendAPIException(data='fake')
+                else:
+                    return 'success'
+
+            ret = fails_once()
+            self.assertEqual('success', ret)
+            self.assertEqual(2, self.counter)
+            self.assertEqual(1, mock_sleep.call_count)
+            self.assertTrue(mock_sleep.called)
 
     def test_limit_is_reached(self):
         self.counter = 0
