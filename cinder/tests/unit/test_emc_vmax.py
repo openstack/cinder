@@ -5127,18 +5127,6 @@ class EMCV3DriverTestCase(test.TestCase):
                 'isV3': True,
                 'portgroupname': 'OS-portgroup-PG'}
 
-    def test_initial_setup(self):
-        self.driver.common._register_config_file_from_config_group = (
-            mock.Mock(return_value=self.config_file_path))
-        extraSpecs = (
-            self.driver.common._initial_setup(self.data.test_volume_v3))
-        self.assertEqual('SRP_1', extraSpecs['storagetype:pool'])
-        self.assertEqual('DSS', extraSpecs['storagetype:workload'])
-        self.assertEqual('Bronze', extraSpecs['storagetype:slo'])
-        self.assertEqual('1234567891011', extraSpecs['storagetype:array'])
-        self.assertEqual('OS-portgroup-PG', extraSpecs['portgroupname'])
-        self.assertTrue(extraSpecs['isV3'])
-
     @mock.patch.object(
         emc_vmax_utils.EMCVMAXUtils,
         'isArrayV3',
@@ -5796,18 +5784,6 @@ class EMCV2MultiPoolDriverTestCase(test.TestCase):
                 'isV3': False,
                 'portgroupname': u'OS-portgroup-PG'}
 
-    def test_initial_setup(self):
-        self.driver.common._register_config_file_from_config_group = (
-            mock.Mock(return_value=self.config_file_path))
-        extraSpecs = self.driver.common._initial_setup(self.vol_v2)
-        self.assertEqual('gold', extraSpecs['storagetype:pool'])
-        self.assertEqual(None, extraSpecs['storagetype:fastpolicy'])
-        self.assertEqual('concatenated',
-                         extraSpecs['storagetype:compositetype'])
-        self.assertEqual('1234567891011', extraSpecs['storagetype:array'])
-        self.assertEqual('OS-portgroup-PG', extraSpecs['portgroupname'])
-        self.assertFalse(extraSpecs['isV3'])
-
     def test_validate_pool(self):
         v2_valid_pool = self.data.test_volume_v2.copy()
         # Pool aware scheduler enabled
@@ -6096,17 +6072,6 @@ class EMCV3MultiSloDriverTestCase(test.TestCase):
                 'storagetype:array': u'1234567891011',
                 'isV3': True,
                 'portgroupname': u'OS-portgroup-PG'}
-
-    def test_initial_setup(self):
-        self.driver.common._register_config_file_from_config_group = (
-            mock.Mock(return_value=self.config_file_path))
-        extraSpecs = self.driver.common._initial_setup(self.vol_v3)
-        self.assertEqual('SRP_1', extraSpecs['storagetype:pool'])
-        self.assertEqual('DSS', extraSpecs['storagetype:workload'])
-        self.assertEqual('Bronze', extraSpecs['storagetype:slo'])
-        self.assertEqual('1234567891011', extraSpecs['storagetype:array'])
-        self.assertEqual('OS-portgroup-PG', extraSpecs['portgroupname'])
-        self.assertTrue(extraSpecs['isV3'])
 
     def test_validate_pool(self):
         v3_valid_pool = self.data.test_volume_v3.copy()
