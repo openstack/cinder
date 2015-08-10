@@ -532,7 +532,7 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
 
         LOG.debug("creating volume '%s'", volume['name'])
 
-        chunk_size = CONF.rbd_store_chunk_size * units.Mi
+        chunk_size = self.configuration.rbd_store_chunk_size * units.Mi
         order = int(math.log(chunk_size, 2))
 
         with RADOSClient(self) as client:
@@ -921,7 +921,7 @@ class RBDDriver(driver.RetypeVD, driver.TransferVD, driver.ExtendVD,
 
             self.delete_volume(volume)
 
-            chunk_size = CONF.rbd_store_chunk_size * units.Mi
+            chunk_size = self.configuration.rbd_store_chunk_size * units.Mi
             order = int(math.log(chunk_size, 2))
             # keep using the command line import instead of librbd since it
             # detects zeroes to preserve sparseness in the image
