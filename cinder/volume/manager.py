@@ -29,7 +29,7 @@ intact.
                   :class:`manager.Manager` (default:
                   :class:`cinder.volume.manager.Manager`).
 :volume_driver:  Used by :class:`Manager`.  Defaults to
-                 :class:`cinder.volume.drivers.lvm.LVMISCSIDriver`.
+                 :class:`cinder.volume.drivers.lvm.LVMVolumeDriver`.
 :volume_group:  Name of the group that will contain exported volumes (default:
                 `cinder-volumes`)
 :num_shell_tries:  Number of times to attempt to run commands (default: 3)
@@ -81,7 +81,7 @@ VALID_CREATE_CG_SRC_CG_STATUS = ('available',)
 
 volume_manager_opts = [
     cfg.StrOpt('volume_driver',
-               default='cinder.volume.drivers.lvm.LVMISCSIDriver',
+               default='cinder.volume.drivers.lvm.LVMVolumeDriver',
                help='Driver to use for volume creation'),
     cfg.IntOpt('migration_create_volume_timeout_secs',
                default=300,
