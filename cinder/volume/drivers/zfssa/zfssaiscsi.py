@@ -393,7 +393,8 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
         data["storage_protocol"] = self.protocol
 
         lcfg = self.configuration
-        (avail, total) = self.zfssa.get_pool_stats(lcfg.zfssa_pool)
+        (avail, total) = self.zfssa.get_project_stats(lcfg.zfssa_pool,
+                                                      lcfg.zfssa_project)
         if avail is None or total is None:
             return
 

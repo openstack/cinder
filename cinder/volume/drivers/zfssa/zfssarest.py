@@ -352,35 +352,30 @@ class ZFSSAApi(object):
             LOG.error(exception_msg)
             raise exception.VolumeBackendAPIException(data=exception_msg)
 
-    def get_pool_stats(self, pool):
-        """Get pool stats.
+    def get_project_stats(self, pool, project):
+        """Get project stats.
 
-        Get space available and total properties of a pool
-        returns (avail, total).
+           Get available space and total space of a project
+           returns (avail, total).
         """
-        svc = '/api/storage/v1/pools/' + pool
+        svc = '/api/storage/v1/pools/%s/projects/%s' % (pool, project)
         ret = self.rclient.get(svc)
         if ret.status != restclient.Status.OK:
-            exception_msg = (_('Error Getting Pool Stats: '
+            exception_msg = (_('Error Getting Project Stats: '
                                'Pool: %(pool)s '
+                               'Project: %(project)s '
                                'Return code: %(ret.status)d '
                                'Message: %(ret.data)s.')
                              % {'pool': pool,
+                                'project': project,
                                 'ret.status': ret.status,
                                 'ret.data': ret.data})
             LOG.error(exception_msg)
-            raise exception.InvalidVolume(reason=exception_msg)
+            raise exception.VolumeBackendAPIException(data=exception_msg)
 
         val = json.loads(ret.data)
-
-        if not self._is_pool_owned(val):
-            LOG.error(_LE('Error Pool ownership: Pool %(pool)s is not owned '
-                          'by %(host)s.'),
-                      {'pool': pool, 'host': self.host})
-            raise exception.InvalidInput(reason=pool)
-
-        avail = val['pool']['usage']['available']
-        total = val['pool']['usage']['total']
+        avail = val['project']['space_available']
+        total = avail + val['project']['space_total']
 
         return avail, total
 
