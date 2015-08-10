@@ -468,7 +468,12 @@ class VolumeBackupSizeExceedsAvailableQuota(QuotaError):
 
 
 class VolumeLimitExceeded(QuotaError):
-    message = _("Maximum number of volumes allowed (%(allowed)d) exceeded")
+    message = _("Maximum number of volumes allowed (%(allowed)d) exceeded for "
+                "quota '%(name)s'.")
+
+    def __init__(self, message=None, **kwargs):
+        kwargs.setdefault('name', 'volumes')
+        super(VolumeLimitExceeded, self).__init__(message, **kwargs)
 
 
 class SnapshotLimitExceeded(QuotaError):
