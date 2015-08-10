@@ -209,7 +209,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             self._get_target_group_name(), self.current_num)
         data = {'volume': '%s/%s/%s' % (pool, dataset, volume['name'])}
         self.nef(url, data)
-        return self.create_export(None, volume)
+        return self.create_export(None, volume, None)
 
     def delete_volume(self, volume):
         """Destroy a zvol on appliance.
