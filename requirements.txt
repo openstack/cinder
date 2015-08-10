@@ -2,7 +2,7 @@
 # of appearance. Changing the order has an impact on the overall integration
 # process, which may cause wedges in the gate later.
 
-pbr<2.0,>=1.3
+pbr<2.0,>=1.4
 anyjson>=0.3.3
 Babel>=1.3
 enum34;python_version=='2.7' or python_version=='2.6'
@@ -26,7 +26,7 @@ oslo.rootwrap>=2.0.0 # Apache-2.0
 oslo.serialization>=1.4.0 # Apache-2.0
 oslo.service>=0.1.0 # Apache-2.0
 oslo.utils>=1.9.0 # Apache-2.0
-oslo.versionedobjects!=0.5.0,>=0.3.0
+oslo.versionedobjects>=0.6.0
 osprofiler>=0.3.0 # Apache-2.0
 paramiko>=1.13.0
 Paste
@@ -35,7 +35,7 @@ pycrypto>=2.6
 pyparsing>=2.0.1
 python-barbicanclient>=3.0.1
 python-glanceclient>=0.18.0
-python-novaclient>=2.22.0
+python-novaclient>=2.26.0
 python-swiftclient>=2.2.0
 requests>=2.5.2
 retrying!=1.3.0,>=1.2.3 # Apache-2.0
