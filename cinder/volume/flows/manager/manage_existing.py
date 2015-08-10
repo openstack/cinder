@@ -114,7 +114,8 @@ def get_flow(context, db, driver, host, volume_id, ref):
                     create_api.QuotaReserveTask(),
                     ManageExistingTask(db, driver),
                     create_api.QuotaCommitTask(),
-                    create_mgr.CreateVolumeOnFinishTask(db, "create.end"))
+                    create_mgr.CreateVolumeOnFinishTask(db,
+                                                        "manage_existing.end"))
 
     # Now load (but do not run) the flow using the provided initial data.
     return taskflow.engines.load(volume_flow, store=create_what)
