@@ -1215,6 +1215,32 @@ class DBAPICgsnapshotTestCase(BaseTest):
                                                 self.ctxt,
                                                 filters))
 
+    def test_cgsnapshot_get_all_by_group(self):
+        cgsnapshot1 = db.cgsnapshot_create(self.ctxt, {'id': 1,
+                                           'consistencygroup_id': 'g1'})
+        cgsnapshot2 = db.cgsnapshot_create(self.ctxt, {'id': 2,
+                                           'consistencygroup_id': 'g1'})
+        db.cgsnapshot_create(self.ctxt, {'id': 3,
+                             'consistencygroup_id': 'g2'})
+        tests = [
+            ({'consistencygroup_id': 'g1'}, [cgsnapshot1, cgsnapshot2]),
+            ({'id': 3}, []),
+            ({'fake_key': 'fake'}, []),
+            ({'consistencygroup_id': 'g2'}, []),
+            (None, [cgsnapshot1, cgsnapshot2]),
+        ]
+
+        for filters, expected in tests:
+            self._assertEqualListsOfObjects(expected,
+                                            db.cgsnapshot_get_all_by_group(
+                                                self.ctxt,
+                                                'g1',
+                                                filters))
+
+        db.cgsnapshot_destroy(self.ctxt, '1')
+        db.cgsnapshot_destroy(self.ctxt, '2')
+        db.cgsnapshot_destroy(self.ctxt, '3')
+
     def test_cgsnapshot_get_all_by_project(self):
         cgsnapshot1 = db.cgsnapshot_create(self.ctxt,
                                            {'id': 1,
