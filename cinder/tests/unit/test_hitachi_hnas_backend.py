@@ -285,7 +285,7 @@ class HDSHNASBendTest(test.TestCase):
         super(HDSHNASBendTest, self).setUp()
         self.hnas_bend = hnas_backend.HnasBackend(DRV_CONF)
 
-    @mock.patch('__builtin__.open')
+    @mock.patch('six.moves.builtins.open')
     @mock.patch('os.path.isfile', return_value=True)
     @mock.patch('paramiko.RSAKey.from_private_key_file')
     @mock.patch('paramiko.SSHClient')

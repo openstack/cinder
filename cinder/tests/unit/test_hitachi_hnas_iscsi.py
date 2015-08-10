@@ -270,19 +270,16 @@ class HNASiSCSIDriverTest(test.TestCase):
         self.backend = SimulatedHnasBackend()
         _factory_bend.return_value = self.backend
 
-        (handle, self.config_file) = tempfile.mkstemp('.xml')
-        os.write(handle, HNASCONF)
-        os.close(handle)
+        self.config_file = tempfile.NamedTemporaryFile("w+", suffix='.xml')
+        self.addCleanup(self.config_file.close)
+        self.config_file.write(HNASCONF)
+        self.config_file.flush()
 
         self.configuration = mock.Mock(spec=conf.Configuration)
-        self.configuration.hds_hnas_iscsi_config_file = self.config_file
+        self.configuration.hds_hnas_iscsi_config_file = self.config_file.name
         self.configuration.hds_svc_iscsi_chap_enabled = True
         self.driver = iscsi.HDSISCSIDriver(configuration=self.configuration)
         self.driver.do_setup("")
-        self.addCleanup(self._clean)
-
-    def _clean(self):
-        os.remove(self.config_file)
 
     def _create_volume(self):
         loc = self.driver.create_volume(_VOLUME)
@@ -290,7 +287,7 @@ class HNASiSCSIDriverTest(test.TestCase):
         vol['provider_location'] = loc['provider_location']
         return vol
 
-    @mock.patch('__builtin__.open')
+    @mock.patch('six.moves.builtins.open')
     @mock.patch.object(os, 'access')
     def test_read_config(self, m_access, m_open):
         # Test exception when file is not found
