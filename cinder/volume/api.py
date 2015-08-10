@@ -355,7 +355,7 @@ class API(base.Base):
                       'vol_status': volume['status']})
             raise exception.InvalidVolume(reason=msg)
 
-        if volume['migration_status'] is not None:
+        if volume['migration_status'] not in (None, 'deleting'):
             # Volume is migrating, wait until done
             LOG.info(_LI('Unable to delete volume: %s, '
                          'volume is currently migrating.'), volume['id'])
