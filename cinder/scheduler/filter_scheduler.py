@@ -61,7 +61,7 @@ class FilterScheduler(driver.Scheduler):
         filter_properties['metadata'] = vol.get('metadata')
         filter_properties['qos_specs'] = vol.get('qos_specs')
 
-    def schedule_create_consistencygroup(self, context, group_id,
+    def schedule_create_consistencygroup(self, context, group,
                                          request_spec_list,
                                          filter_properties_list):
 
@@ -75,7 +75,7 @@ class FilterScheduler(driver.Scheduler):
 
         host = weighed_host.obj.host
 
-        updated_group = driver.group_update_db(context, group_id, host)
+        updated_group = driver.group_update_db(context, group, host)
 
         self.volume_rpcapi.create_consistencygroup(context,
                                                    updated_group, host)

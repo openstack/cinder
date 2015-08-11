@@ -41,6 +41,7 @@ class SchedulerAPI(object):
         1.5 - Add manage_existing method
         1.6 - Add create_consistencygroup method
         1.7 - Add get_active_pools method
+        1.8 - Add sending object over RPC in create_consistencygroup method
     """
 
     RPC_API_VERSION = '1.0'
@@ -50,14 +51,14 @@ class SchedulerAPI(object):
         target = messaging.Target(topic=CONF.scheduler_topic,
                                   version=self.RPC_API_VERSION)
         serializer = objects_base.CinderObjectSerializer()
-        self.client = rpc.get_client(target, version_cap='1.7',
+        self.client = rpc.get_client(target, version_cap='1.8',
                                      serializer=serializer)
 
-    def create_consistencygroup(self, ctxt, topic, group_id,
+    def create_consistencygroup(self, ctxt, topic, group,
                                 request_spec_list=None,
                                 filter_properties_list=None):
 
-        cctxt = self.client.prepare(version='1.6')
+        cctxt = self.client.prepare(version='1.8')
         request_spec_p_list = []
         for request_spec in request_spec_list:
             request_spec_p = jsonutils.to_primitive(request_spec)
@@ -65,7 +66,7 @@ class SchedulerAPI(object):
 
         return cctxt.cast(ctxt, 'create_consistencygroup',
                           topic=topic,
-                          group_id=group_id,
+                          group=group,
                           request_spec_list=request_spec_p_list,
                           filter_properties_list=filter_properties_list)
 

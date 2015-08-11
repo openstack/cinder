@@ -55,7 +55,7 @@ LOG = logging.getLogger(__name__)
 class SchedulerManager(manager.Manager):
     """Chooses a host to create volumes."""
 
-    RPC_API_VERSION = '1.7'
+    RPC_API_VERSION = '1.8'
 
     target = messaging.Target(version=RPC_API_VERSION)
 
@@ -90,29 +90,29 @@ class SchedulerManager(manager.Manager):
             eventlet.sleep(1)
 
     def create_consistencygroup(self, context, topic,
-                                group_id,
+                                group,
                                 request_spec_list=None,
                                 filter_properties_list=None):
 
         self._wait_for_scheduler()
         try:
             self.driver.schedule_create_consistencygroup(
-                context, group_id,
+                context, group,
                 request_spec_list,
                 filter_properties_list)
         except exception.NoValidHost:
             LOG.error(_LE("Could not find a host for consistency group "
                           "%(group_id)s."),
-                      {'group_id': group_id})
-            db.consistencygroup_update(context, group_id,
-                                       {'status': 'error'})
+                      {'group_id': group.id})
+            group.status = 'error'
+            group.save()
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.exception(_LE("Failed to create consistency group "
                                   "%(group_id)s."),
-                              {'group_id': group_id})
-                db.consistencygroup_update(context, group_id,
-                                           {'status': 'error'})
+                              {'group_id': group.id})
+                group.status = 'error'
+                group.save()
 
     def create_volume(self, context, topic, volume_id, snapshot_id=None,
                       image_id=None, request_spec=None,

@@ -189,7 +189,7 @@ def locked_snapshot_operation(f):
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '1.25'
+    RPC_API_VERSION = '1.26'
 
     target = messaging.Target(version=RPC_API_VERSION)
 
@@ -1560,7 +1560,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             extra_usage_info=extra_usage_info, host=self.host)
 
         if not volumes:
-            volumes = self.db.volume_get_all_by_group(context, group['id'])
+            volumes = self.db.volume_get_all_by_group(context, group.id)
         if volumes:
             for volume in volumes:
                 vol_utils.notify_about_volume_usage(
@@ -1906,65 +1906,55 @@ class VolumeManager(manager.SchedulerDependentManager):
                 LOG.exception(_LE("Get replication status for volume failed."),
                               resource=vol)
 
-    def create_consistencygroup(self, context, group_id):
+    def create_consistencygroup(self, context, group):
         """Creates the consistency group."""
         context = context.elevated()
-        group_ref = self.db.consistencygroup_get(context, group_id)
 
         status = 'available'
         model_update = False
 
         self._notify_about_consistencygroup_usage(
-            context, group_ref, "create.start")
+            context, group, "create.start")
 
         try:
             utils.require_driver_initialized(self.driver)
 
-            LOG.info(_LI("Consistency group %s: creating"), group_ref['name'])
+            LOG.info(_LI("Consistency group %s: creating"), group.name)
             model_update = self.driver.create_consistencygroup(context,
-                                                               group_ref)
+                                                               group)
 
             if model_update:
-                group_ref = self.db.consistencygroup_update(
-                    context, group_ref['id'], model_update)
-
+                group.update(model_update)
+                group.save()
         except Exception:
             with excutils.save_and_reraise_exception():
-                self.db.consistencygroup_update(
-                    context,
-                    group_ref['id'],
-                    {'status': 'error'})
+                group.status = 'error'
+                group.save()
                 LOG.error(_LE("Consistency group %s: create failed"),
-                          group_ref['name'])
+                          group.name)
 
-        now = timeutils.utcnow()
-        self.db.consistencygroup_update(context,
-                                        group_ref['id'],
-                                        {'status': status,
-                                         'created_at': now})
+        group.status = status
+        group.created_at = timeutils.utcnow()
+        group.save()
         LOG.info(_LI("Consistency group %s: created successfully"),
-                 group_ref['name'])
+                 group.name)
 
         self._notify_about_consistencygroup_usage(
-            context, group_ref, "create.end")
+            context, group, "create.end")
 
         LOG.info(_LI("Create consistency group completed successfully."),
                  resource={'type': 'consistency_group',
-                           'id': group_ref['id']})
-        return group_ref['id']
+                           'id': group.id})
+        return group
 
-    def create_consistencygroup_from_src(self, context, group_id,
-                                         cgsnapshot_id=None,
-                                         source_cgid=None):
+    def create_consistencygroup_from_src(self, context, group,
+                                         cgsnapshot_id=None, source_cg=None):
         """Creates the consistency group from source.
 
         The source can be a CG snapshot or a source CG.
         """
-        group_ref = self.db.consistencygroup_get(context, group_id)
-
         try:
-            volumes = self.db.volume_get_all_by_group(
-                context, group_id)
+            volumes = self.db.volume_get_all_by_group(context, group.id)
 
             cgsnapshot = None
             snapshots = None
@@ -1977,7 +1967,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                                   "SnapshotNotFound."),
                               {'snap': cgsnapshot_id},
                               resource={'type': 'consistency_group',
-                                        'id': group_ref['id']})
+                                        'id': group.id})
                     raise
                 if cgsnapshot:
                     snapshots = objects.SnapshotList.get_all_for_cgsnapshot(
@@ -1989,28 +1979,26 @@ class VolumeManager(manager.SchedulerDependentManager):
                                      "%(group)s because snapshot %(snap)s is "
                                      "not in a valid state. Valid states are: "
                                      "%(valid)s.") %
-                                   {'group': group_id,
+                                   {'group': group.id,
                                     'snap': snap['id'],
                                     'valid': VALID_CREATE_CG_SRC_SNAP_STATUS})
                             raise exception.InvalidConsistencyGroup(reason=msg)
 
-            source_cg = None
-            source_vols = None
-            if source_cgid:
+            if source_cg:
                 try:
-                    source_cg = self.db.consistencygroup_get(
-                        context, source_cgid)
+                    source_cg = objects.ConsistencyGroup.get_by_id(
+                        context, source_cg.id)
                 except exception.ConsistencyGroupNotFound:
                     LOG.error(_LE("Create consistency group "
                                   "from source cg-%(cg)s failed: "
                                   "ConsistencyGroupNotFound."),
-                              {'cg': source_cgid},
+                              {'cg': source_cg.id},
                               resource={'type': 'consistency_group',
-                                        'id': group_ref['id']})
+                                        'id': group.id})
                     raise
                 if source_cg:
                     source_vols = self.db.volume_get_all_by_group(
-                        context, source_cgid)
+                        context, source_cg.id)
                     for source_vol in source_vols:
                         if (source_vol['status'] not in
                                 VALID_CREATE_CG_SRC_CG_STATUS):
@@ -2019,7 +2007,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                                      "%(source_vol)s is not in a valid "
                                      "state. Valid states are: "
                                      "%(valid)s.") %
-                                   {'group': group_id,
+                                   {'group': group.id,
                                     'source_vol': source_vol['id'],
                                     'valid': VALID_CREATE_CG_SRC_CG_STATUS})
                             raise exception.InvalidConsistencyGroup(reason=msg)
@@ -2038,13 +2026,13 @@ class VolumeManager(manager.SchedulerDependentManager):
                                                             source_vols)
 
             self._notify_about_consistencygroup_usage(
-                context, group_ref, "create.start")
+                context, group, "create.start")
 
             utils.require_driver_initialized(self.driver)
 
             model_update, volumes_model_update = (
                 self.driver.create_consistencygroup_from_src(
-                    context, group_ref, volumes, cgsnapshot,
+                    context, group, volumes, cgsnapshot,
                     sorted_snapshots, source_cg, sorted_source_vols))
 
             if volumes_model_update:
@@ -2052,26 +2040,24 @@ class VolumeManager(manager.SchedulerDependentManager):
                     self.db.volume_update(context, update['id'], update)
 
             if model_update:
-                group_ref = self.db.consistencygroup_update(
-                    context, group_id, model_update)
+                group.update(model_update)
+                group.save()
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                self.db.consistencygroup_update(
-                    context,
-                    group_id,
-                    {'status': 'error'})
+                group.status = 'error'
+                group.save()
                 if cgsnapshot_id:
                     source = _("snapshot-%s") % cgsnapshot_id
-                elif source_cgid:
-                    source = _("cg-%s") % source_cgid
+                elif source_cg:
+                    source = _("cg-%s") % source_cg.id
                 else:
                     source = None
                 LOG.error(_LE("Create consistency group "
                               "from source %(source)s failed."),
                           {'source': source},
                           resource={'type': 'consistency_group',
-                                    'id': group_ref['id']})
+                                    'id': group.id})
                 # Update volume status to 'error' as well.
                 for vol in volumes:
                     self.db.volume_update(
@@ -2081,24 +2067,22 @@ class VolumeManager(manager.SchedulerDependentManager):
         status = 'available'
         for vol in volumes:
             update = {'status': status, 'created_at': now}
-            self._update_volume_from_src(context, vol, update,
-                                         group_id=group_id)
+            self._update_volume_from_src(context, vol, update, group=group)
             self._update_allocated_capacity(vol)
 
-        self.db.consistencygroup_update(context,
-                                        group_id,
-                                        {'status': status,
-                                         'created_at': now})
+        group.status = status
+        group.created_at = now
+        group.save()
 
         self._notify_about_consistencygroup_usage(
-            context, group_ref, "create.end")
+            context, group, "create.end")
 
         LOG.info(_LI("Create consistency group "
                      "from snapshot-%(snap)s completed successfully."),
                  {'snap': cgsnapshot_id},
                  resource={'type': 'consistency_group',
-                           'id': group_ref['id']})
-        return group_ref['id']
+                           'id': group.id})
+        return group
 
     def _sort_snapshots(self, volumes, snapshots):
         # Sort source snapshots so that they are in the same order as their
@@ -2147,7 +2131,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         return sorted_source_vols
 
-    def _update_volume_from_src(self, context, vol, update, group_id=None):
+    def _update_volume_from_src(self, context, vol, update, group=None):
         try:
             snapshot_id = vol.get('snapshot_id')
             if snapshot_id:
@@ -2163,9 +2147,9 @@ class VolumeManager(manager.SchedulerDependentManager):
                       {'snapshot_id': vol['snapshot_id']})
             self.db.volume_update(context, vol['id'],
                                   {'status': 'error'})
-            if group_id:
-                self.db.consistencygroup_update(
-                    context, group_id, {'status': 'error'})
+            if group:
+                group.status = 'error'
+                group.save()
             raise
         except exception.VolumeNotFound:
             LOG.error(_LE("The source volume %(volume_id)s "
@@ -2173,9 +2157,9 @@ class VolumeManager(manager.SchedulerDependentManager):
                       {'volume_id': snapshot.volume_id})
             self.db.volume_update(context, vol['id'],
                                   {'status': 'error'})
-            if group_id:
-                self.db.consistencygroup_update(
-                    context, group_id, {'status': 'error'})
+            if group:
+                group.status = 'error'
+                group.save()
             raise
         except exception.CinderException as ex:
             LOG.error(_LE("Failed to update %(volume_id)s"
@@ -2185,9 +2169,9 @@ class VolumeManager(manager.SchedulerDependentManager):
                        'snapshot_id': vol['snapshot_id']})
             self.db.volume_update(context, vol['id'],
                                   {'status': 'error'})
-            if group_id:
-                self.db.consistencygroup_update(
-                    context, group_id, {'status': 'error'})
+            if group:
+                group.status = 'error'
+                group.save()
             raise exception.MetadataCopyFailure(reason=six.text_type(ex))
 
         self.db.volume_update(context, vol['id'], update)
@@ -2208,18 +2192,17 @@ class VolumeManager(manager.SchedulerDependentManager):
             self.stats['pools'][pool] = dict(
                 allocated_capacity_gb=vol['size'])
 
-    def delete_consistencygroup(self, context, group_id):
+    def delete_consistencygroup(self, context, group):
         """Deletes consistency group and the volumes in the group."""
         context = context.elevated()
-        group_ref = self.db.consistencygroup_get(context, group_id)
-        project_id = group_ref['project_id']
+        project_id = group.project_id
 
-        if context.project_id != group_ref['project_id']:
-            project_id = group_ref['project_id']
+        if context.project_id != group.project_id:
+            project_id = group.project_id
         else:
             project_id = context.project_id
 
-        volumes = self.db.volume_get_all_by_group(context, group_id)
+        volumes = self.db.volume_get_all_by_group(context, group.id)
 
         for volume_ref in volumes:
             if volume_ref['attach_status'] == "attached":
@@ -2234,13 +2217,13 @@ class VolumeManager(manager.SchedulerDependentManager):
                     reason=_("Volume is not local to this node"))
 
         self._notify_about_consistencygroup_usage(
-            context, group_ref, "delete.start")
+            context, group, "delete.start")
 
         try:
             utils.require_driver_initialized(self.driver)
 
             model_update, volumes = self.driver.delete_consistencygroup(
-                context, group_ref)
+                context, group)
 
             if volumes:
                 for volume in volumes:
@@ -2259,18 +2242,16 @@ class VolumeManager(manager.SchedulerDependentManager):
                     msg = (_('Delete consistency group failed.'))
                     LOG.exception(msg,
                                   resource={'type': 'consistency_group',
-                                            'id': group_ref['id']})
+                                            'id': group.id})
                     raise exception.VolumeDriverException(message=msg)
                 else:
-                    self.db.consistencygroup_update(context, group_ref['id'],
-                                                    model_update)
+                    group.update(model_update)
+                    group.save()
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                self.db.consistencygroup_update(
-                    context,
-                    group_ref['id'],
-                    {'status': 'error_deleting'})
+                group.status = 'error_deleting'
+                group.save()
 
         # Get reservations for group
         try:
@@ -2283,7 +2264,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             LOG.exception(_LE("Delete consistency group "
                               "failed to update usages."),
                           resource={'type': 'consistency_group',
-                                    'id': group_id})
+                                    'id': group.id})
 
         for volume_ref in volumes:
             # Get reservations for volume
@@ -2302,7 +2283,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                 LOG.exception(_LE("Delete consistency group "
                                   "failed to update usages."),
                               resource={'type': 'consistency_group',
-                                        'id': group_id})
+                                        'id': group.id})
 
             # Delete glance metadata if it exists
             self.db.volume_glance_metadata_delete_by_volume(context, volume_id)
@@ -2319,25 +2300,24 @@ class VolumeManager(manager.SchedulerDependentManager):
             CGQUOTAS.commit(context, cgreservations,
                             project_id=project_id)
 
-        self.db.consistencygroup_destroy(context, group_id)
+        group.destroy()
         self._notify_about_consistencygroup_usage(
-            context, group_ref, "delete.end", volumes)
+            context, group, "delete.end", volumes)
         self.publish_service_capabilities(context)
         LOG.info(_LI("Delete consistency group "
                      "completed successfully."),
                  resource={'type': 'consistency_group',
-                           'id': group_id})
+                           'id': group.id})
 
         return True
 
-    def update_consistencygroup(self, context, group_id,
+    def update_consistencygroup(self, context, group,
                                 add_volumes=None, remove_volumes=None):
         """Updates consistency group.
 
         Update consistency group by adding volumes to the group,
         or removing volumes from the group.
         """
-        group = self.db.consistencygroup_get(context, group_id)
 
         add_volumes_ref = []
         remove_volumes_ref = []
@@ -2356,14 +2336,14 @@ class VolumeManager(manager.SchedulerDependentManager):
                               "VolumeNotFound."),
                           {'volume_id': add_vol_ref['id']},
                           resource={'type': 'consistency_group',
-                                    'id': group_id})
+                                    'id': group.id})
                 raise
             if add_vol_ref['status'] not in ['in-use', 'available']:
                 msg = (_("Cannot add volume %(volume_id)s to consistency "
                          "group %(group_id)s because volume is in an invalid "
                          "state: %(status)s. Valid states are: %(valid)s.") %
                        {'volume_id': add_vol_ref['id'],
-                        'group_id': group_id,
+                        'group_id': group.id,
                         'status': add_vol_ref['status'],
                         'valid': VALID_REMOVE_VOL_FROM_CG_STATUS})
                 raise exception.InvalidVolume(reason=msg)
@@ -2385,7 +2365,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                               "VolumeNotFound."),
                           {'volume_id': remove_vol_ref['id']},
                           resource={'type': 'consistency_group',
-                                    'id': group_id})
+                                    'id': group.id})
                 raise
             remove_volumes_ref.append(remove_vol_ref)
 
@@ -2412,19 +2392,19 @@ class VolumeManager(manager.SchedulerDependentManager):
             if model_update:
                 if model_update['status'] in ['error']:
                     msg = (_('Error occurred when updating consistency group '
-                             '%s.') % group_id)
+                             '%s.') % group.id)
                     LOG.exception(msg)
                     raise exception.VolumeDriverException(message=msg)
-                self.db.consistencygroup_update(context, group_id,
-                                                model_update)
+                group.update(model_update)
+                group.save()
 
         except exception.VolumeDriverException:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE("Error occurred in the volume driver when "
                               "updating consistency group %(group_id)s."),
-                          {'group_id': group_id})
-                self.db.consistencygroup_update(context, group_id,
-                                                {'status': 'error'})
+                          {'group_id': group.id})
+                group.status = 'error'
+                group.save()
                 for add_vol in add_volumes_ref:
                     self.db.volume_update(context, add_vol['id'],
                                           {'status': 'error'})
@@ -2435,9 +2415,9 @@ class VolumeManager(manager.SchedulerDependentManager):
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE("Error occurred when updating consistency "
                               "group %(group_id)s."),
-                          {'group_id': group['id']})
-                self.db.consistencygroup_update(context, group_id,
-                                                {'status': 'error'})
+                          {'group_id': group.id})
+                group.status = 'error'
+                group.save()
                 for add_vol in add_volumes_ref:
                     self.db.volume_update(context, add_vol['id'],
                                           {'status': 'error'})
@@ -2446,12 +2426,12 @@ class VolumeManager(manager.SchedulerDependentManager):
                                           {'status': 'error'})
 
         now = timeutils.utcnow()
-        self.db.consistencygroup_update(context, group_id,
-                                        {'status': 'available',
-                                         'updated_at': now})
+        group.status = 'available'
+        group.update_at = now
+        group.save()
         for add_vol in add_volumes_ref:
             self.db.volume_update(context, add_vol['id'],
-                                  {'consistencygroup_id': group_id,
+                                  {'consistencygroup_id': group.id,
                                    'updated_at': now})
         for rem_vol in remove_volumes_ref:
             self.db.volume_update(context, rem_vol['id'],
@@ -2463,11 +2443,11 @@ class VolumeManager(manager.SchedulerDependentManager):
         LOG.info(_LI("Delete consistency group "
                      "completed successfully."),
                  resource={'type': 'consistency_group',
-                           'id': group_id})
+                           'id': group.id})
 
         return True
 
-    def create_cgsnapshot(self, context, group_id, cgsnapshot_id):
+    def create_cgsnapshot(self, context, group, cgsnapshot_id):
         """Creates the cgsnapshot."""
         caller_context = context
         context = context.elevated()

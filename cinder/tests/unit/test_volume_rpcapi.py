@@ -27,6 +27,7 @@ from cinder import test
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import utils as tests_utils
 from cinder.volume import rpcapi as volume_rpcapi
+from cinder.volume import utils
 
 
 CONF = cfg.CONF
@@ -79,14 +80,16 @@ class VolumeRpcAPITestCase(test.TestCase):
             host='fakehost@fakedrv#fakepool',
             source_cgid=source_group['id'])
 
+        group = objects.ConsistencyGroup.get_by_id(self.context, group.id)
+        group2 = objects.ConsistencyGroup.get_by_id(self.context, group2.id)
         self.fake_volume = jsonutils.to_primitive(volume)
         self.fake_volume_metadata = volume["volume_metadata"]
         self.fake_snapshot = jsonutils.to_primitive(snapshot)
         self.fake_snapshot_obj = fake_snapshot.fake_snapshot_obj(self.context,
                                                                  **snpshot)
         self.fake_reservations = ["RESERVATION"]
-        self.fake_cg = jsonutils.to_primitive(group)
-        self.fake_cg2 = jsonutils.to_primitive(group2)
+        self.fake_cg = group
+        self.fake_cg2 = group2
         self.fake_src_cg = jsonutils.to_primitive(source_group)
         self.fake_cgsnap = jsonutils.to_primitive(cgsnapshot)
 
@@ -135,11 +138,6 @@ class VolumeRpcAPITestCase(test.TestCase):
             del expected_msg['new_volume']
             expected_msg['new_volume_id'] = volume['id']
 
-        if 'group' in expected_msg:
-            group = expected_msg['group']
-            del expected_msg['group']
-            expected_msg['group_id'] = group['id']
-
         if 'cgsnapshot' in expected_msg:
             cgsnapshot = expected_msg['cgsnapshot']
             if cgsnapshot:
@@ -148,20 +146,14 @@ class VolumeRpcAPITestCase(test.TestCase):
             else:
                 expected_msg['cgsnapshot_id'] = None
 
-        if 'source_cg' in expected_msg:
-            source_cg = expected_msg['source_cg']
-            if source_cg:
-                del expected_msg['source_cg']
-                expected_msg['source_cgid'] = source_cg['id']
-            else:
-                expected_msg['source_cgid'] = None
-
         if 'host' in kwargs:
             host = kwargs['host']
+        elif 'group' in kwargs:
+            host = kwargs['group']['host']
         else:
             host = kwargs['volume']['host']
 
-        target['server'] = host
+        target['server'] = utils.extract_host(host)
         target['topic'] = '%s.%s' % (CONF.volume_topic, host)
 
         self.fake_args = None
@@ -194,6 +186,10 @@ class VolumeRpcAPITestCase(test.TestCase):
                 expected_snapshot = expected_msg[kwarg].obj_to_primitive()
                 snapshot = value.obj_to_primitive()
                 self.assertEqual(expected_snapshot, snapshot)
+            elif isinstance(value, objects.ConsistencyGroup):
+                expected_cg = expected_msg[kwarg].obj_to_primitive()
+                cg = value.obj_to_primitive()
+                self.assertEqual(expected_cg, cg)
             else:
                 self.assertEqual(expected_msg[kwarg], value)
 
@@ -363,16 +359,14 @@ class VolumeRpcAPITestCase(test.TestCase):
         self._test_volume_api('create_consistencygroup_from_src',
                               rpc_method='cast',
                               group=self.fake_cg,
-                              host='fakehost',
                               cgsnapshot=self.fake_cgsnap,
                               source_cg=None,
-                              version='1.25')
+                              version='1.26')
 
     def test_create_consistencygroup_from_src_cg(self):
         self._test_volume_api('create_consistencygroup_from_src',
                               rpc_method='cast',
                               group=self.fake_cg2,
-                              host='fakehost',
                               cgsnapshot=None,
                               source_cg=self.fake_src_cg,
-                              version='1.25')
+                              version='1.26')

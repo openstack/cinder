@@ -69,6 +69,9 @@ class VolumeAPI(object):
                cgsnapshot_id from create_volume. All off them are already
                passed either in request_spec or available in the DB.
         1.25 - Add source_cg to create_consistencygroup_from_src.
+        1.26 - Adds support for sending objects over RPC in
+               create_consistencygroup(), create_consistencygroup_from_src(),
+               update_consistencygroup() and delete_consistencygroup().
     """
 
     BASE_RPC_API_VERSION = '1.0'
@@ -78,45 +81,44 @@ class VolumeAPI(object):
         target = messaging.Target(topic=CONF.volume_topic,
                                   version=self.BASE_RPC_API_VERSION)
         serializer = objects_base.CinderObjectSerializer()
-        self.client = rpc.get_client(target, '1.25', serializer=serializer)
+        self.client = rpc.get_client(target, '1.26', serializer=serializer)
 
     def create_consistencygroup(self, ctxt, group, host):
         new_host = utils.extract_host(host)
-        cctxt = self.client.prepare(server=new_host, version='1.18')
+        cctxt = self.client.prepare(server=new_host, version='1.26')
         cctxt.cast(ctxt, 'create_consistencygroup',
-                   group_id=group['id'])
+                   group=group)
 
     def delete_consistencygroup(self, ctxt, group):
-        host = utils.extract_host(group['host'])
-        cctxt = self.client.prepare(server=host, version='1.18')
+        host = utils.extract_host(group.host)
+        cctxt = self.client.prepare(server=host, version='1.26')
         cctxt.cast(ctxt, 'delete_consistencygroup',
-                   group_id=group['id'])
+                   group=group)
 
     def update_consistencygroup(self, ctxt, group, add_volumes=None,
                                 remove_volumes=None):
-        host = utils.extract_host(group['host'])
-        cctxt = self.client.prepare(server=host, version='1.21')
+        host = utils.extract_host(group.host)
+        cctxt = self.client.prepare(server=host, version='1.26')
         cctxt.cast(ctxt, 'update_consistencygroup',
-                   group_id=group['id'],
+                   group=group,
                    add_volumes=add_volumes,
                    remove_volumes=remove_volumes)
 
-    def create_consistencygroup_from_src(self, ctxt, group, host,
-                                         cgsnapshot=None,
+    def create_consistencygroup_from_src(self, ctxt, group, cgsnapshot=None,
                                          source_cg=None):
-        new_host = utils.extract_host(host)
-        cctxt = self.client.prepare(server=new_host, version='1.25')
+        new_host = utils.extract_host(group.host)
+        cctxt = self.client.prepare(server=new_host, version='1.26')
         cctxt.cast(ctxt, 'create_consistencygroup_from_src',
-                   group_id=group['id'],
+                   group=group,
                    cgsnapshot_id=cgsnapshot['id'] if cgsnapshot else None,
-                   source_cgid=source_cg['id'] if source_cg else None)
+                   source_cg=source_cg)
 
     def create_cgsnapshot(self, ctxt, group, cgsnapshot):
 
         host = utils.extract_host(group['host'])
-        cctxt = self.client.prepare(server=host, version='1.18')
+        cctxt = self.client.prepare(server=host, version='1.26')
         cctxt.cast(ctxt, 'create_cgsnapshot',
-                   group_id=group['id'],
+                   group=group,
                    cgsnapshot_id=cgsnapshot['id'])
 
     def delete_cgsnapshot(self, ctxt, cgsnapshot, host):
