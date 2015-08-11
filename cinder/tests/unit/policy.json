@@ -63,6 +63,8 @@
     "volume_extension:quotas:update": "",
     "volume_extension:quotas:delete": "",
     "volume_extension:quota_classes": "",
+    "volume_extension:services:index": "",
+    "volume_extension:services:update" : "rule:admin_api",
     "volume_extension:volume_manage": "rule:admin_api",
     "volume_extension:volume_unmanage": "rule:admin_api",
 

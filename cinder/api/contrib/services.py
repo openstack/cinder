@@ -79,7 +79,7 @@ class ServiceController(wsgi.Controller):
         Filter by host & service name.
         """
         context = req.environ['cinder.context']
-        authorize(context)
+        authorize(context, action='index')
         detailed = self.ext_mgr.is_loaded('os-extended-services')
         now = timeutils.utcnow()
         services = db.service_get_all(context)
@@ -142,7 +142,7 @@ class ServiceController(wsgi.Controller):
     def update(self, req, id, body):
         """Enable/Disable scheduling for a service."""
         context = req.environ['cinder.context']
-        authorize(context)
+        authorize(context, action='update')
 
         ext_loaded = self.ext_mgr.is_loaded('os-extended-services')
         ret_val = {}
