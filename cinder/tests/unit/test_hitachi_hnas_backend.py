@@ -346,7 +346,7 @@ class HDSHNASBendTest(test.TestCase):
         self.assertIn('172.24.44.20', out)
         self.assertIn('172.24.44.21', out)
         self.assertIn('10.0.0.20', out)
-        self.assertEqual(len(out.split('\n')), 4)
+        self.assertEqual(4, len(out.split('\n')))
 
     @mock.patch.object(hnas_backend.HnasBackend, 'run_cmd')
     def test_get_hdp_info(self, m_run_cmd):
@@ -355,21 +355,21 @@ class HDSHNASBendTest(test.TestCase):
         out = self.hnas_bend.get_hdp_info("ssh", "0.0.0.0", "supervisor",
                                           "supervisor")
 
-        self.assertEqual(len(out.split('\n')), 10)
+        self.assertEqual(10, len(out.split('\n')))
         self.assertIn('gold', out)
         self.assertIn('silver', out)
         line1 = out.split('\n')[0]
-        self.assertEqual(len(line1.split()), 12)
+        self.assertEqual(12, len(line1.split()))
 
         # test when there is only one evs
         m_run_cmd.return_value = (HNAS_RESULT19, "")
         out = self.hnas_bend.get_hdp_info("ssh", "0.0.0.0", "supervisor",
                                           "supervisor")
-        self.assertEqual(len(out.split('\n')), 3)
+        self.assertEqual(3, len(out.split('\n')))
         self.assertIn('fs01-husvm', out)
         self.assertIn('manage_test02', out)
         line1 = out.split('\n')[0]
-        self.assertEqual(len(line1.split()), 12)
+        self.assertEqual(12, len(line1.split()))
 
     @mock.patch.object(hnas_backend.HnasBackend, 'run_cmd',
                        side_effect=m_run_cmd)
@@ -377,7 +377,7 @@ class HDSHNASBendTest(test.TestCase):
         out = self.hnas_bend.get_nfs_info("ssh", "0.0.0.0", "supervisor",
                                           "supervisor")
 
-        self.assertEqual(len(out.split('\n')), 2)
+        self.assertEqual(2, len(out.split('\n')))
         self.assertIn('/export01-husvm', out)
         self.assertIn('172.24.44.20', out)
         self.assertIn('10.0.0.20', out)

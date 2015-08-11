@@ -41,7 +41,7 @@ class TestIserAdmDriver(tf.TargetDriverFixture):
                                                            connector))
 
     def test_iscsi_protocol(self):
-        self.assertEqual(self.target.iscsi_protocol, 'iser')
+        self.assertEqual('iser', self.target.iscsi_protocol)
 
 
 class TestIserTgtDriver(tf.TargetDriverFixture):
@@ -54,7 +54,7 @@ class TestIserTgtDriver(tf.TargetDriverFixture):
                                  configuration=self.configuration)
 
     def test_iscsi_protocol(self):
-        self.assertEqual(self.target.iscsi_protocol, 'iser')
+        self.assertEqual('iser', self.target.iscsi_protocol)
 
     @mock.patch.object(tgt.TgtAdm, '_get_iscsi_properties')
     def test_initialize_connection(self, mock_get_iscsi):
@@ -81,7 +81,7 @@ class TestIserLioAdmDriver(tf.TargetDriverFixture):
             volume_get=lambda x, y: {'provider_auth': 'IncomingUser foo bar'})
 
     def test_iscsi_protocol(self):
-        self.assertEqual(self.target.iscsi_protocol, 'iser')
+        self.assertEqual('iser', self.target.iscsi_protocol)
 
     @mock.patch('cinder.utils.execute')
     @mock.patch.object(lio.LioAdm, '_get_iscsi_properties')
@@ -92,4 +92,4 @@ class TestIserLioAdmDriver(tf.TargetDriverFixture):
         mock_get_iscsi.return_value = {}
         ret = self.target.initialize_connection(self.testvol, connector)
         driver_volume_type = ret['driver_volume_type']
-        self.assertEqual(driver_volume_type, 'iser')
+        self.assertEqual('iser', driver_volume_type)

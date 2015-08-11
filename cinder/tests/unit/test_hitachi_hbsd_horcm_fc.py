@@ -562,7 +562,7 @@ STS : NML"
         ret = self.driver.create_volume(self._VOLUME)
         vol = self._VOLUME.copy()
         vol['provider_location'] = ret['provider_location']
-        self.assertEqual(vol['provider_location'], '1')
+        self.assertEqual('1', vol['provider_location'])
 
     @mock.patch.object(hbsd_basiclib, 'get_process_lock')
     @mock.patch.object(hbsd_common.HBSDCommon, 'get_volume_metadata')
@@ -579,7 +579,7 @@ STS : NML"
     def test_get_volume_stats(self, arg1, arg2):
         """test get_volume_stats."""
         stats = self.driver.get_volume_stats(True)
-        self.assertEqual(stats['vendor_name'], 'Hitachi')
+        self.assertEqual('Hitachi', stats['vendor_name'])
 
     @mock.patch.object(hbsd_basiclib, 'get_process_lock')
     @mock.patch.object(hbsd_horcm.HBSDHORCM, 'exec_raidcom',
@@ -588,7 +588,7 @@ STS : NML"
         """test get_volume_stats."""
         self.configuration.hitachi_pool_id = 29
         stats = self.driver.get_volume_stats(True)
-        self.assertEqual(stats, {})
+        self.assertEqual({}, stats)
         self.configuration.hitachi_pool_id = 30
 
     @mock.patch.object(hbsd_basiclib, 'get_process_lock')
@@ -653,7 +653,7 @@ STS : NML"
         """test create_snapshot."""
         ret = self.driver.create_volume(self._VOLUME)
         ret = self.driver.create_snapshot(self.test_snapshot)
-        self.assertEqual(ret['provider_location'], '1')
+        self.assertEqual('1', ret['provider_location'])
 
     @mock.patch.object(hbsd_basiclib, 'get_process_lock')
     @mock.patch.object(hbsd_common.HBSDCommon, 'get_snapshot_metadata',
@@ -673,7 +673,7 @@ STS : NML"
         """test create_snapshot."""
         ret = self.driver.create_volume(self.test_volume)
         ret = self.driver.create_snapshot(self.test_snapshot_error)
-        self.assertEqual(ret['provider_location'], '1')
+        self.assertEqual('1', ret['provider_location'])
 
     @mock.patch.object(hbsd_basiclib, 'get_process_lock')
     @mock.patch.object(hbsd_horcm.HBSDHORCM, 'exec_raidcom',
@@ -749,7 +749,7 @@ STS : NML"
         """test create_cloned_volume."""
         vol = self.driver.create_cloned_volume(self.test_volume,
                                                self._VOLUME)
-        self.assertEqual(vol['provider_location'], '1')
+        self.assertEqual('1', vol['provider_location'])
         return
 
     @mock.patch.object(hbsd_common.HBSDCommon, 'get_volume_metadata',
@@ -779,9 +779,9 @@ STS : NML"
         connector = {'wwpns': ['12345678912345aa', '12345678912345bb'],
                      'ip': '127.0.0.1'}
         rc = self.driver.initialize_connection(self._VOLUME, connector)
-        self.assertEqual(rc['driver_volume_type'], 'fibre_channel')
-        self.assertEqual(rc['data']['target_wwn'], ['50060E801053C2E0'])
-        self.assertEqual(rc['data']['target_lun'], 0)
+        self.assertEqual('fibre_channel', rc['driver_volume_type'])
+        self.assertEqual(['50060E801053C2E0'], rc['data']['target_wwn'])
+        self.assertEqual(0, rc['data']['target_lun'])
         return
 
     @mock.patch.object(hbsd_basiclib, 'get_process_lock')
@@ -803,8 +803,8 @@ STS : NML"
         connector = {'wwpns': ['12345678912345aa', '12345678912345bb'],
                      'ip': '127.0.0.1'}
         rc = self.driver.terminate_connection(self._VOLUME, connector)
-        self.assertEqual(rc['driver_volume_type'], 'fibre_channel')
-        self.assertEqual(rc['data']['target_wwn'], ['50060E801053C2E0'])
+        self.assertEqual('fibre_channel', rc['driver_volume_type'])
+        self.assertEqual(['50060E801053C2E0'], rc['data']['target_wwn'])
         return
 
     @mock.patch.object(hbsd_basiclib, 'get_process_lock')

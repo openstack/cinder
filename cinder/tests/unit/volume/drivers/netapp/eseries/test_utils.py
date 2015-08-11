@@ -27,9 +27,9 @@ class NetAppEseriesDriverUtilsTestCase(test.TestCase):
     def test_convert_uuid_to_es_fmt(self):
         value = 'e67e931a-b2ed-4890-938b-3acc6a517fac'
         result = utils.convert_uuid_to_es_fmt(value)
-        self.assertEqual(result, '4Z7JGGVS5VEJBE4LHLGGUUL7VQ')
+        self.assertEqual('4Z7JGGVS5VEJBE4LHLGGUUL7VQ', result)
 
     def test_convert_es_fmt_to_uuid(self):
         value = '4Z7JGGVS5VEJBE4LHLGGUUL7VQ'
         result = six.text_type(utils.convert_es_fmt_to_uuid(value))
-        self.assertEqual(result, 'e67e931a-b2ed-4890-938b-3acc6a517fac')
+        self.assertEqual('e67e931a-b2ed-4890-938b-3acc6a517fac', result)

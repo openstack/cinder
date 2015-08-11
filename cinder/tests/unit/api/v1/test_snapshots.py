@@ -96,10 +96,10 @@ class SnapshotApiTest(test.TestCase):
         resp_dict = self.controller.create(req, body)
 
         self.assertIn('snapshot', resp_dict)
-        self.assertEqual(resp_dict['snapshot']['display_name'],
-                         snapshot['display_name'])
-        self.assertEqual(resp_dict['snapshot']['display_description'],
-                         snapshot['display_description'])
+        self.assertEqual(snapshot['display_name'],
+                         resp_dict['snapshot']['display_name'])
+        self.assertEqual(snapshot['display_description'],
+                         resp_dict['snapshot']['display_description'])
 
     def test_snapshot_create_force(self):
         self.stubs.Set(volume.api.API,
@@ -115,10 +115,10 @@ class SnapshotApiTest(test.TestCase):
         resp_dict = self.controller.create(req, body)
 
         self.assertIn('snapshot', resp_dict)
-        self.assertEqual(resp_dict['snapshot']['display_name'],
-                         snapshot['display_name'])
-        self.assertEqual(resp_dict['snapshot']['display_description'],
-                         snapshot['display_description'])
+        self.assertEqual(snapshot['display_name'],
+                         resp_dict['snapshot']['display_name'])
+        self.assertEqual(snapshot['display_description'],
+                         resp_dict['snapshot']['display_description'])
 
         snapshot = {"volume_id": "12",
                     "force": "**&&^^%%$$##@@",
@@ -230,7 +230,7 @@ class SnapshotApiTest(test.TestCase):
         snapshot_id = UUID
         req = fakes.HTTPRequest.blank('/v1/snapshots/%s' % snapshot_id)
         resp = self.controller.delete(req, snapshot_id)
-        self.assertEqual(resp.status_int, 202)
+        self.assertEqual(202, resp.status_int)
 
     def test_snapshot_delete_invalid_id(self):
         self.stubs.Set(volume.api.API, "delete_snapshot", stub_snapshot_delete)
@@ -265,7 +265,7 @@ class SnapshotApiTest(test.TestCase):
         resp_dict = self.controller.show(req, UUID)
 
         self.assertIn('snapshot', resp_dict)
-        self.assertEqual(resp_dict['snapshot']['id'], UUID)
+        self.assertEqual(UUID, resp_dict['snapshot']['id'])
 
     def test_snapshot_show_invalid_id(self):
         snapshot_id = INVALID_UUID
@@ -303,10 +303,10 @@ class SnapshotApiTest(test.TestCase):
 
         self.assertIn('snapshots', resp_dict)
         resp_snapshots = resp_dict['snapshots']
-        self.assertEqual(len(resp_snapshots), 1)
+        self.assertEqual(1, len(resp_snapshots))
 
         resp_snapshot = resp_snapshots.pop()
-        self.assertEqual(resp_snapshot['id'], UUID)
+        self.assertEqual(UUID, resp_snapshot['id'])
 
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
     def test_admin_list_snapshots_limited_to_project(self,
@@ -373,7 +373,7 @@ class SnapshotApiTest(test.TestCase):
 
 class SnapshotSerializerTest(test.TestCase):
     def _verify_snapshot(self, snap, tree):
-        self.assertEqual(tree.tag, 'snapshot')
+        self.assertEqual('snapshot', tree.tag)
 
         for attr in ('id', 'status', 'size', 'created_at',
                      'display_name', 'display_description', 'volume_id'):

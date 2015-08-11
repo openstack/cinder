@@ -147,8 +147,8 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
         (igroup, lun_id) = self.library._find_mapped_lun_igroup('path',
                                                                 initiators)
 
-        self.assertEqual(igroup, fake.IGROUP1_NAME)
-        self.assertEqual(lun_id, '2')
+        self.assertEqual(fake.IGROUP1_NAME, igroup)
+        self.assertEqual('2', lun_id)
 
     def test_find_mapped_lun_igroup_initiator_mismatch(self):
         response = netapp_api.NaElement(etree.XML("""
@@ -351,7 +351,7 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
 
         self.library.get_volume_stats(refresh=True)
 
-        self.assertEqual(self.library.zapi_client.provide_ems.call_count, 1)
+        self.assertEqual(1, self.library.zapi_client.provide_ems.call_count)
 
     def test_create_lun(self):
         self.library.vol_refresh_voluntary = False

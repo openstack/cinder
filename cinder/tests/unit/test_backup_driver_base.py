@@ -63,7 +63,7 @@ class BackupBaseDriverTestCase(test.TestCase):
     def test_get_metadata(self):
         json_metadata = self.driver.get_metadata(self.volume_id)
         metadata = jsonutils.loads(json_metadata)
-        self.assertEqual(metadata['version'], 2)
+        self.assertEqual(2, metadata['version'])
 
     def test_put_metadata(self):
         metadata = {'version': 1}
@@ -79,7 +79,7 @@ class BackupBaseDriverTestCase(test.TestCase):
         # Make sure we don't lose data when converting to string
         for key in _backup_db_fields:
             self.assertTrue(key in export_dict)
-            self.assertEqual(self.backup[key], export_dict[key])
+            self.assertEqual(export_dict[key], self.backup[key])
 
     def test_import_record(self):
         export_string = self.driver.export_record(self.backup)
@@ -87,7 +87,7 @@ class BackupBaseDriverTestCase(test.TestCase):
         # Make sure we don't lose data when converting from string
         for key in _backup_db_fields:
             self.assertTrue(key in imported_backup)
-            self.assertEqual(imported_backup[key], self.backup[key])
+            self.assertEqual(self.backup[key], imported_backup[key])
 
 
 class BackupMetadataAPITestCase(test.TestCase):
@@ -130,7 +130,7 @@ class BackupMetadataAPITestCase(test.TestCase):
         meta = self.bak_meta_api.get(self.volume_id)
         s1 = set(jsonutils.loads(meta).keys())
         s2 = ['version', self.bak_meta_api.TYPE_TAG_VOL_BASE_META]
-        self.assertEqual(s1.symmetric_difference(s2), set())
+        self.assertEqual(set(), s1.symmetric_difference(s2))
 
         self._add_metadata(vol_glance_meta=True)
 
@@ -138,7 +138,7 @@ class BackupMetadataAPITestCase(test.TestCase):
         s1 = set(jsonutils.loads(meta).keys())
         s2 = ['version', self.bak_meta_api.TYPE_TAG_VOL_BASE_META,
               self.bak_meta_api.TYPE_TAG_VOL_GLANCE_META]
-        self.assertEqual(s1.symmetric_difference(s2), set())
+        self.assertEqual(set(), s1.symmetric_difference(s2))
 
         self._add_metadata(vol_meta=True)
 
@@ -147,7 +147,7 @@ class BackupMetadataAPITestCase(test.TestCase):
         s2 = ['version', self.bak_meta_api.TYPE_TAG_VOL_BASE_META,
               self.bak_meta_api.TYPE_TAG_VOL_GLANCE_META,
               self.bak_meta_api.TYPE_TAG_VOL_META]
-        self.assertEqual(s1.symmetric_difference(s2), set())
+        self.assertEqual(set(), s1.symmetric_difference(s2))
 
     def test_put(self):
         meta = self.bak_meta_api.get(self.volume_id)
@@ -172,8 +172,8 @@ class BackupMetadataAPITestCase(test.TestCase):
         keys = [self.bak_meta_api.TYPE_TAG_VOL_META,
                 self.bak_meta_api.TYPE_TAG_VOL_GLANCE_META]
 
-        self.assertEqual(set(keys).symmetric_difference(set(fact.keys())),
-                         set([]))
+        self.assertEqual(set([]),
+                         set(keys).symmetric_difference(set(fact.keys())))
 
         meta_container = {self.bak_meta_api.TYPE_TAG_VOL_BASE_META:
                           {'display_name': 'vol-2',
@@ -197,8 +197,8 @@ class BackupMetadataAPITestCase(test.TestCase):
                 self.bak_meta_api.TYPE_TAG_VOL_META,
                 self.bak_meta_api.TYPE_TAG_VOL_GLANCE_META]
 
-        self.assertEqual(set(keys).symmetric_difference(set(fact.keys())),
-                         set([]))
+        self.assertEqual(set([]),
+                         set(keys).symmetric_difference(set(fact.keys())))
 
         for f in fact:
             func = fact[f][0]

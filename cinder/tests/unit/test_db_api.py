@@ -491,7 +491,7 @@ class DBAPIVolumeTestCase(BaseTest):
         volumes = db.volume_get_all(self.ctxt, None, None, ['created_at'],
                                     ['asc'], {'display_name': 'vol2'})
         self.assertEqual(1, len(volumes))
-        self.assertEqual(volumes[0]['display_name'], 'vol2')
+        self.assertEqual('vol2', volumes[0]['display_name'])
         # filter no match
         volumes = db.volume_get_all(self.ctxt, None, None, ['created_at'],
                                     ['asc'], {'display_name': 'vol4'})
@@ -525,7 +525,7 @@ class DBAPIVolumeTestCase(BaseTest):
                                     ['asc'], {'status': 'available',
                                               'display_name': 'vol1'})
         self.assertEqual(1, len(volumes))
-        self.assertEqual(volumes[0]['display_name'], 'vol1')
+        self.assertEqual('vol1', volumes[0]['display_name'])
         self.assertEqual('available', volumes[0]['status'])
         # no match
         volumes = db.volume_get_all(self.ctxt, None, None, ['created_at'],
@@ -1038,7 +1038,7 @@ class DBAPISnapshotTestCase(BaseTest):
 
     def test_snapshot_data_get_for_project(self):
         actual = db.snapshot_data_get_for_project(self.ctxt, 'project1')
-        self.assertEqual(actual, (0, 0))
+        self.assertEqual((0, 0), actual)
         db.volume_create(self.ctxt, {'id': 1,
                                      'project_id': 'project1',
                                      'size': 42})
@@ -1530,7 +1530,7 @@ class DBAPIQuotaTestCase(BaseTest):
 
     def test_quota_create(self):
         quota = db.quota_create(self.ctxt, 'project1', 'resource', 99)
-        self.assertEqual(quota.resource, 'resource')
+        self.assertEqual('resource', quota.resource)
         self.assertEqual(99, quota.hard_limit)
         self.assertEqual('project1', quota.project_id)
 
@@ -1545,10 +1545,10 @@ class DBAPIQuotaTestCase(BaseTest):
                 db.quota_create(self.ctxt, 'proj%d' % i, 'res%d' % j, j)
         for i in range(3):
             quotas_db = db.quota_get_all_by_project(self.ctxt, 'proj%d' % i)
-            self.assertEqual(quotas_db, {'project_id': 'proj%d' % i,
-                                         'res0': 0,
-                                         'res1': 1,
-                                         'res2': 2})
+            self.assertEqual({'project_id': 'proj%d' % i,
+                              'res0': 0,
+                              'res1': 1,
+                              'res2': 2}, quotas_db)
 
     def test_quota_update(self):
         db.quota_create(self.ctxt, 'project1', 'resource1', 41)
@@ -1575,7 +1575,7 @@ class DBAPIQuotaTestCase(BaseTest):
 
     def test_quota_reserve(self):
         reservations = _quota_reserve(self.ctxt, 'project1')
-        self.assertEqual(len(reservations), 2)
+        self.assertEqual(2, len(reservations))
         quota_usage = db.quota_usage_get_all_by_project(self.ctxt, 'project1')
         self.assertEqual({'project_id': 'project1',
                           'gigabytes': {'reserved': 2, 'in_use': 0},
@@ -1676,16 +1676,16 @@ class DBAPIIscsiTargetTestCase(BaseTest):
         target = db.iscsi_target_create_safe(self.ctxt,
                                              self._get_base_values())
         self.assertTrue(target['id'])
-        self.assertEqual(target['host'], 'fake_host')
-        self.assertEqual(target['target_num'], 10)
+        self.assertEqual('fake_host', target['host'])
+        self.assertEqual(10, target['target_num'])
 
     def test_iscsi_target_count_by_host(self):
         for i in range(3):
             values = self._get_base_values()
             values['target_num'] += i
             db.iscsi_target_create_safe(self.ctxt, values)
-        self.assertEqual(db.iscsi_target_count_by_host(self.ctxt, 'fake_host'),
-                         3)
+        self.assertEqual(3,
+                         db.iscsi_target_count_by_host(self.ctxt, 'fake_host'))
 
     def test_integrity_error(self):
         values = self._get_base_values()

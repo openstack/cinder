@@ -2093,7 +2093,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         ret = {}
         for item in admin_metadata:
             ret.update({item['key']: item['value']})
-        self.assertDictMatch(ret, expected)
+        self.assertDictMatch(expected, ret)
 
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         conn_info = self.volume.initialize_connection(self.context,
@@ -2404,7 +2404,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         ret = {}
         for item in admin_metadata:
             ret.update({item['key']: item['value']})
-        self.assertDictMatch(ret, expected)
+        self.assertDictMatch(expected, ret)
 
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         conn_info = self.volume.initialize_connection(self.context,
@@ -2558,7 +2558,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         ret = {}
         for item in admin_metadata:
             ret.update({item['key']: item['value']})
-        self.assertDictMatch(ret, expected)
+        self.assertDictMatch(expected, ret)
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         conn_info = self.volume.initialize_connection(self.context,
                                                       volume_id, connector)
@@ -2618,7 +2618,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         ret = {}
         for item in admin_metadata:
             ret.update({item['key']: item['value']})
-        self.assertDictMatch(ret, expected)
+        self.assertDictMatch(expected, ret)
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         conn_info = self.volume.initialize_connection(self.context,
                                                       volume_id, connector)
@@ -2630,7 +2630,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         attachment = vol['volume_attachment']
         self.assertEqual('available', vol['status'])
         self.assertEqual('detached', vol['attach_status'])
-        self.assertEqual(attachment, [])
+        self.assertEqual([], attachment)
         admin_metadata = vol['volume_admin_metadata']
         self.assertEqual(1, len(admin_metadata))
         self.assertEqual('readonly', admin_metadata[0]['key'])
@@ -2651,7 +2651,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         ret = {}
         for item in admin_metadata:
             ret.update({item['key']: item['value']})
-        self.assertDictMatch(ret, expected)
+        self.assertDictMatch(expected, ret)
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         conn_info = self.volume.initialize_connection(self.context,
                                                       volume_id, connector)
@@ -2663,7 +2663,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         attachment = vol['volume_attachment']
         self.assertEqual('available', vol['status'])
         self.assertEqual('detached', vol['attach_status'])
-        self.assertEqual(attachment, [])
+        self.assertEqual([], attachment)
         admin_metadata = vol['volume_admin_metadata']
         self.assertEqual(1, len(admin_metadata))
         self.assertEqual('readonly', admin_metadata[0]['key'])
@@ -2701,7 +2701,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         ret = {}
         for item in admin_metadata:
             ret.update({item['key']: item['value']})
-        self.assertDictMatch(ret, expected)
+        self.assertDictMatch(expected, ret)
 
         db.volume_update(self.context, volume_id, {'status': 'available'})
         self.assertRaises(exception.InvalidVolumeAttachMode,
@@ -2721,7 +2721,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         ret = {}
         for item in admin_metadata:
             ret.update({item['key']: item['value']})
-        self.assertDictMatch(ret, expected)
+        self.assertDictMatch(expected, ret)
 
     def test_run_api_attach_detach_volume_with_wrong_attach_mode(self):
         # Not allow using 'read-write' mode attach readonly volume
@@ -4632,7 +4632,7 @@ class VolumeTestCase(BaseVolumeTestCase):
             self.assertIn('host', group)
             host = group.host
             pool = volutils.extract_host(host, level='pool')
-            self.assertEqual(pool, 'fakepool')
+            self.assertEqual('fakepool', pool)
             return {'status': 'available'}
 
         self.stubs.Set(self.volume.driver, 'create_consistencygroup',
@@ -4662,7 +4662,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         }
         self.assertDictMatch(expected, msg['payload'])
         msg = self.notifier.notifications[1]
-        self.assertEqual(msg['event_type'], 'consistencygroup.create.end')
+        self.assertEqual('consistencygroup.create.end', msg['event_type'])
         self.assertDictMatch(expected, msg['payload'])
         self.assertEqual(
             group.id,

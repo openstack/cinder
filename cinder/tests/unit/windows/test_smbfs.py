@@ -103,7 +103,7 @@ class WindowsSmbFsTestCase(test.TestCase):
         expected_ret_val = [int(x) for x in [self._FAKE_TOTAL_SIZE,
                             self._FAKE_TOTAL_AVAILABLE,
                             self._FAKE_TOTAL_ALLOCATED]]
-        self.assertEqual(ret_val, expected_ret_val)
+        self.assertEqual(expected_ret_val, ret_val)
 
     def test_get_total_allocated(self):
         fake_listdir = mock.Mock(side_effect=[self._FAKE_LISTDIR,
@@ -121,7 +121,7 @@ class WindowsSmbFsTestCase(test.TestCase):
             with mock.patch('os.listdir', fake_listdir):
                 ret_val = self._smbfs_driver._get_total_allocated(
                     self._FAKE_SHARE)
-                self.assertEqual(ret_val, 4)
+                self.assertEqual(4, ret_val)
 
     def _test_get_img_info(self, backing_file=None):
         self._smbfs_driver.vhdutils.get_vhd_parent_path.return_value = (

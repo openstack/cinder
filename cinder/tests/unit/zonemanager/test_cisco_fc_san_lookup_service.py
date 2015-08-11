@@ -95,7 +95,7 @@ class TestCiscoFCSanLookupService(cisco_lookup.CiscoFCSanLookupService,
                                  '10:00:00:49:c9:28:c7:01']
         get_switch_data_mock.return_value = (switch_data)
         ns_info_list = self.get_nameserver_info('304')
-        self.assertEqual(ns_info_list, ns_info_list_expected)
+        self.assertEqual(ns_info_list_expected, ns_info_list)
 
     def test_parse_ns_output(self):
         invalid_switch_data = [' N 011a00;20:1a:00:05:1e:e8:e3:29']
@@ -103,7 +103,7 @@ class TestCiscoFCSanLookupService(cisco_lookup.CiscoFCSanLookupService,
         expected_wwn_list = ['20:1a:00:05:1e:e8:e3:29',
                              '10:00:00:49:c9:28:c7:01']
         return_wwn_list = self._parse_ns_output(switch_data)
-        self.assertEqual(return_wwn_list, expected_wwn_list)
+        self.assertEqual(expected_wwn_list, return_wwn_list)
         self.assertRaises(exception.InvalidParameterValue,
                           self._parse_ns_output, invalid_switch_data)
 
@@ -112,7 +112,7 @@ class TestCiscoFCSanLookupService(cisco_lookup.CiscoFCSanLookupService,
         return_wwn_list = []
         expected_wwn_list = ['10:00:8c:7c:ff:52:3b:01']
         return_wwn_list.append(zm_utils.get_formatted_wwn(wwn_list[0]))
-        self.assertEqual(return_wwn_list, expected_wwn_list)
+        self.assertEqual(expected_wwn_list, return_wwn_list)
 
     @mock.patch.object(cisco_lookup.CiscoFCSanLookupService,
                        '_run_ssh')
@@ -122,7 +122,7 @@ class TestCiscoFCSanLookupService(cisco_lookup.CiscoFCSanLookupService,
         nsshow_list = [nsshow]
         run_ssh_mock.return_value = (Stream(nsshow), Stream())
         switch_data = self._get_switch_info(cmd_list)
-        self.assertEqual(switch_data, nsshow_list)
+        self.assertEqual(nsshow_list, switch_data)
         run_ssh_mock.assert_called_once_with(cmd_list, True, 1)
 
 

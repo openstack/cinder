@@ -152,10 +152,10 @@ class IBMNASDriverTestCase(test.TestCase):
                         '_get_capacity_info',
                         return_value=(fake_avail, fake_size, fake_used)):
             stats = drv.get_volume_stats()
-            self.assertEqual(stats['volume_backend_name'], 'IBMNAS_NFS')
-            self.assertEqual(stats['storage_protocol'], 'nfs')
-            self.assertEqual(stats['driver_version'], '1.1.0')
-            self.assertEqual(stats['vendor_name'], 'IBM')
+            self.assertEqual('IBMNAS_NFS', stats['volume_backend_name'])
+            self.assertEqual('nfs', stats['storage_protocol'])
+            self.assertEqual('1.1.0', stats['driver_version'])
+            self.assertEqual('IBM', stats['vendor_name'])
 
     @mock.patch('cinder.volume.drivers.ibm.ibmnas.IBMNAS_NFSDriver._run_ssh')
     def test_ssh_operation(self, mock_ssh):

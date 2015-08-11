@@ -292,7 +292,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertTrue(transfer.item(0).hasAttribute('id'))
         self.assertTrue(transfer.item(0).hasAttribute('auth_key'))
         self.assertTrue(transfer.item(0).hasAttribute('created_at'))
-        self.assertEqual(transfer.item(0).getAttribute('name'), 'transfer-001')
+        self.assertEqual('transfer-001', transfer.item(0).getAttribute('name'))
         self.assertTrue(transfer.item(0).hasAttribute('volume_id'))
         db.volume_destroy(context.get_admin_context(), volume_id)
 

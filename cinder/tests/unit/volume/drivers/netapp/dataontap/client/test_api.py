@@ -36,30 +36,30 @@ class NetAppApiElementTransTests(test.TestCase):
         root = netapp_api.NaElement('root')
         child = {'e1': 'v1', 'e2': 'v2', 'e3': 'v3'}
         root.translate_struct(child)
-        self.assertEqual(len(root.get_children()), 3)
-        self.assertEqual(root.get_child_content('e1'), 'v1')
-        self.assertEqual(root.get_child_content('e2'), 'v2')
-        self.assertEqual(root.get_child_content('e3'), 'v3')
+        self.assertEqual(3, len(root.get_children()))
+        self.assertEqual('v1', root.get_child_content('e1'))
+        self.assertEqual('v2', root.get_child_content('e2'))
+        self.assertEqual('v3', root.get_child_content('e3'))
 
     def test_translate_struct_dict_nonunique_key(self):
         """Tests if list/dict gets properly converted to NaElements."""
         root = netapp_api.NaElement('root')
         child = [{'e1': 'v1', 'e2': 'v2'}, {'e1': 'v3'}]
         root.translate_struct(child)
-        self.assertEqual(len(root.get_children()), 3)
+        self.assertEqual(3, len(root.get_children()))
         children = root.get_children()
         for c in children:
             if c.get_name() == 'e1':
                 self.assertIn(c.get_content(), ['v1', 'v3'])
             else:
-                self.assertEqual(c.get_content(), 'v2')
+                self.assertEqual('v2', c.get_content())
 
     def test_translate_struct_list(self):
         """Tests if list gets properly converted to NaElements."""
         root = netapp_api.NaElement('root')
         child = ['e1', 'e2']
         root.translate_struct(child)
-        self.assertEqual(len(root.get_children()), 2)
+        self.assertEqual(2, len(root.get_children()))
         self.assertIsNone(root.get_child_content('e1'))
         self.assertIsNone(root.get_child_content('e2'))
 
@@ -68,7 +68,7 @@ class NetAppApiElementTransTests(test.TestCase):
         root = netapp_api.NaElement('root')
         child = ('e1', 'e2')
         root.translate_struct(child)
-        self.assertEqual(len(root.get_children()), 2)
+        self.assertEqual(2, len(root.get_children()))
         self.assertIsNone(root.get_child_content('e1'))
         self.assertIsNone(root.get_child_content('e2'))
 
@@ -85,17 +85,17 @@ class NetAppApiElementTransTests(test.TestCase):
         root['e2'] = 1
         root['e3'] = 2.0
         root['e4'] = 8l
-        self.assertEqual(len(root.get_children()), 4)
-        self.assertEqual(root.get_child_content('e1'), 'v1')
-        self.assertEqual(root.get_child_content('e2'), '1')
-        self.assertEqual(root.get_child_content('e3'), '2.0')
-        self.assertEqual(root.get_child_content('e4'), '8')
+        self.assertEqual(4, len(root.get_children()))
+        self.assertEqual('v1', root.get_child_content('e1'))
+        self.assertEqual('1', root.get_child_content('e2'))
+        self.assertEqual('2.0', root.get_child_content('e3'))
+        self.assertEqual('8', root.get_child_content('e4'))
 
     def test_setter_na_element(self):
         """Tests na_element gets appended as child."""
         root = netapp_api.NaElement('root')
         root['e1'] = netapp_api.NaElement('nested')
-        self.assertEqual(len(root.get_children()), 1)
+        self.assertEqual(1, len(root.get_children()))
         e1 = root.get_child_by_name('e1')
         self.assertIsInstance(e1, netapp_api.NaElement)
         self.assertIsInstance(e1.get_child_by_name('nested'),
@@ -108,13 +108,13 @@ class NetAppApiElementTransTests(test.TestCase):
         e1 = root.get_child_by_name('d')
         self.assertIsInstance(e1, netapp_api.NaElement)
         sub_ch = e1.get_children()
-        self.assertEqual(len(sub_ch), 2)
+        self.assertEqual(2, len(sub_ch))
         for c in sub_ch:
             self.assertIn(c.get_name(), ['e1', 'e2'])
             if c.get_name() == 'e1':
-                self.assertEqual(c.get_content(), 'v1')
+                self.assertEqual('v1', c.get_content())
             else:
-                self.assertEqual(c.get_content(), 'v2')
+                self.assertEqual('v2', c.get_content())
 
     def test_setter_child_list_tuple(self):
         """Tests list/tuple are appended as child to root."""

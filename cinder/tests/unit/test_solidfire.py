@@ -340,8 +340,8 @@ class SolidFireVolumeTestCase(test.TestCase):
             self.configuration.sf_emulate_512 = False
             model_update = sfv.create_volume(testvol)
             self.configuration.sf_emulate_512 = True
-            self.assertEqual(model_update.get('provider_geometry', None),
-                             '4096 4096')
+            self.assertEqual('4096 4096',
+                             model_update.get('provider_geometry', None))
 
     def test_create_delete_snapshot(self):
         testsnap = {'project_id': 'testprjid',
@@ -609,7 +609,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                                           qos_ref['id'],
                                           type_ref['id'])
         qos = sfv._set_qos_by_volume_type(self.ctxt, type_ref['id'])
-        self.assertEqual(qos, self.expected_qos_results)
+        self.assertEqual(self.expected_qos_results, qos)
 
     def test_set_by_qos_spec(self):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
@@ -625,7 +625,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                                           qos_ref['id'],
                                           type_ref['id'])
         qos = sfv._set_qos_by_volume_type(self.ctxt, type_ref['id'])
-        self.assertEqual(qos, self.expected_qos_results)
+        self.assertEqual(self.expected_qos_results, qos)
 
     def test_set_by_qos_by_type_only(self):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
@@ -634,9 +634,9 @@ class SolidFireVolumeTestCase(test.TestCase):
                                                  "qos:burstIOPS": "300",
                                                  "qos:maxIOPS": "200"})
         qos = sfv._set_qos_by_volume_type(self.ctxt, type_ref['id'])
-        self.assertEqual(qos, {'minIOPS': 100,
-                               'maxIOPS': 200,
-                               'burstIOPS': 300})
+        self.assertEqual({'minIOPS': 100,
+                          'maxIOPS': 200,
+                          'burstIOPS': 300}, qos)
 
     def test_accept_transfer(self):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
@@ -649,10 +649,10 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
                    'created_at': timeutils.utcnow()}
         expected = {'provider_auth': 'CHAP cinder-new_project 123456789012'}
-        self.assertEqual(sfv.accept_transfer(self.ctxt,
+        self.assertEqual(expected,
+                         sfv.accept_transfer(self.ctxt,
                                              testvol,
-                                             'new_user', 'new_project'),
-                         expected)
+                                             'new_user', 'new_project'))
 
     def test_accept_transfer_volume_not_found_raises(self):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
@@ -748,8 +748,8 @@ class SolidFireVolumeTestCase(test.TestCase):
                        self.fake_issue_api_request)
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         sfv._update_cluster_status()
-        self.assertEqual(sfv.cluster_stats['free_capacity_gb'], 99.0)
-        self.assertEqual(sfv.cluster_stats['total_capacity_gb'], 100.0)
+        self.assertEqual(99.0, sfv.cluster_stats['free_capacity_gb'])
+        self.assertEqual(100.0, sfv.cluster_stats['total_capacity_gb'])
 
     def test_manage_existing_volume(self):
         external_ref = {'name': 'existing volume', 'source-id': 5}

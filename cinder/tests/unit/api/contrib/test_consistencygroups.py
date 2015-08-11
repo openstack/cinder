@@ -407,7 +407,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         body = {"consistencygroup": {"force": True}}
         req.body = json.dumps(body)
         res = req.get_response(fakes.wsgi_app())
-        self.assertEqual(res.status_int, 202)
+        self.assertEqual(202, res.status_int)
 
         cg = db.consistencygroup_get(
             context.get_admin_context(read_deleted='yes'),

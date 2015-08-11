@@ -319,7 +319,7 @@ Authentication\n\
         ret = self.driver.create_volume(self._VOLUME)
         vol = self._VOLUME.copy()
         vol['provider_location'] = ret['provider_location']
-        self.assertEqual(vol['provider_location'], '1')
+        self.assertEqual('1', vol['provider_location'])
 
     @mock.patch.object(hbsd_basiclib, 'get_process_lock')
     @mock.patch.object(hbsd_common.HBSDCommon, 'get_volume_metadata')
@@ -335,7 +335,7 @@ Authentication\n\
     def test_get_volume_stats(self, arg1, arg2):
         """test get_volume_stats."""
         stats = self.driver.get_volume_stats(True)
-        self.assertEqual(stats['vendor_name'], 'Hitachi')
+        self.assertEqual('Hitachi', stats['vendor_name'])
 
     @mock.patch.object(hbsd_basiclib, 'get_process_lock')
     @mock.patch.object(hbsd_snm2.HBSDSNM2, 'exec_hsnm', side_effect=_exec_hsnm)
@@ -343,7 +343,7 @@ Authentication\n\
         """test get_volume_stats."""
         self.configuration.hitachi_pool_id = 29
         stats = self.driver.get_volume_stats(True)
-        self.assertEqual(stats, {})
+        self.assertEqual({}, stats)
         self.configuration.hitachi_pool_id = 30
 
     @mock.patch.object(hbsd_basiclib, 'get_process_lock')
@@ -385,7 +385,7 @@ Authentication\n\
         """test create_snapshot."""
         ret = self.driver.create_volume(self._VOLUME)
         ret = self.driver.create_snapshot(self.test_snapshot)
-        self.assertEqual(ret['provider_location'], '1')
+        self.assertEqual('1', ret['provider_location'])
 
     @mock.patch.object(hbsd_basiclib, 'get_process_lock')
     @mock.patch.object(hbsd_common.HBSDCommon, 'get_snapshot_metadata',
@@ -471,9 +471,9 @@ Authentication\n\
             'wwpns': '0x100000', 'ip': '0.0.0.0', 'initiator':
             'iqn'}
         rc = self.driver.initialize_connection(self._VOLUME, connector)
-        self.assertEqual(rc['driver_volume_type'], 'iscsi')
-        self.assertEqual(rc['data']['target_iqn'], 'iqn-target')
-        self.assertEqual(rc['data']['target_lun'], 1)
+        self.assertEqual('iscsi', rc['driver_volume_type'])
+        self.assertEqual('iqn-target', rc['data']['target_iqn'])
+        self.assertEqual(1, rc['data']['target_lun'])
         return
 
     @mock.patch.object(hbsd_basiclib, 'get_process_lock')

@@ -743,7 +743,7 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/volumes?marker=1')
         res_dict = self.controller.index(req)
         volumes = res_dict['volumes']
-        self.assertEqual(len(volumes), 2)
+        self.assertEqual(2, len(volumes))
         self.assertEqual(1, volumes[0]['id'])
         self.assertEqual(2, volumes[1]['id'])
 
@@ -931,14 +931,14 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/volumes?limit=0')
         res_dict = self.controller.index(req)
         expected = {'volumes': []}
-        self.assertEqual(res_dict, expected)
+        self.assertEqual(expected, res_dict)
 
     def test_volume_default_limit(self):
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
 
         def _verify_links(links, url_key):
             """Verify next link and url."""
-            self.assertEqual(links[0]['rel'], 'next')
+            self.assertEqual('next', links[0]['rel'])
             href_parts = urllib.parse.urlparse(links[0]['href'])
             self.assertEqual('/v2/fakeproject/%s' % key, href_parts.path)
 
@@ -979,7 +979,7 @@ class VolumeApiTest(test.TestCase):
             req = fakes.HTTPRequest.blank('/v2/%s?all_tenants=1' % key,
                                           use_admin_context=True)
             res_dict = fn(req)
-            self.assertEqual(len(res_dict['volumes']), 100)
+            self.assertEqual(100, len(res_dict['volumes']))
             self.assertFalse('volumes_links' in res_dict)
 
         # Number of volumes more than the max, include next link
@@ -997,7 +997,7 @@ class VolumeApiTest(test.TestCase):
             req = fakes.HTTPRequest.blank('/v2/%s?all_tenants=1' % key,
                                           use_admin_context=True)
             res_dict = fn(req)
-            self.assertEqual(len(res_dict['volumes']), CONF.osapi_max_limit)
+            self.assertEqual(CONF.osapi_max_limit, len(res_dict['volumes']))
             volumes_links = res_dict['volumes_links']
             _verify_links(volumes_links, key)
         # Pass a limit that is greater than the max and the total number of
@@ -1008,7 +1008,7 @@ class VolumeApiTest(test.TestCase):
                                           % (key, CONF.osapi_max_limit * 2),
                                           use_admin_context=True)
             res_dict = fn(req)
-            self.assertEqual(len(res_dict['volumes']), CONF.osapi_max_limit)
+            self.assertEqual(CONF.osapi_max_limit, len(res_dict['volumes']))
             volumes_links = res_dict['volumes_links']
             _verify_links(volumes_links, key)
 
@@ -1028,7 +1028,7 @@ class VolumeApiTest(test.TestCase):
                                            sort_keys=None, sort_dirs=None,
                                            filters=None,
                                            viewable_admin_meta=False):
-            self.assertEqual(filters['no_migration_targets'], True)
+            self.assertEqual(True, filters['no_migration_targets'])
             self.assertFalse('all_tenants' in filters)
             return [stubs.stub_volume(1, display_name='vol1')]
 
@@ -1045,8 +1045,8 @@ class VolumeApiTest(test.TestCase):
         for params in ['', '?all_tenants=1']:
             req = fakes.HTTPRequest.blank('/v2/volumes%s' % params)
             resp = self.controller.index(req)
-            self.assertEqual(len(resp['volumes']), 1)
-            self.assertEqual(resp['volumes'][0]['name'], 'vol1')
+            self.assertEqual(1, len(resp['volumes']))
+            self.assertEqual('vol1', resp['volumes'][0]['name'])
 
         # Admin, all_tenants is not set, project function should be called
         # without no_migration_status
@@ -1068,8 +1068,8 @@ class VolumeApiTest(test.TestCase):
 
         req = fakes.HTTPRequest.blank('/v2/volumes', use_admin_context=True)
         resp = self.controller.index(req)
-        self.assertEqual(len(resp['volumes']), 1)
-        self.assertEqual(resp['volumes'][0]['name'], 'vol2')
+        self.assertEqual(1, len(resp['volumes']))
+        self.assertEqual('vol2', resp['volumes'][0]['name'])
 
         # Admin, all_tenants is set, get_all function should be called
         # without no_migration_status
@@ -1093,8 +1093,8 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/volumes?all_tenants=1',
                                       use_admin_context=True)
         resp = self.controller.index(req)
-        self.assertEqual(len(resp['volumes']), 1)
-        self.assertEqual(resp['volumes'][0]['name'], 'vol3')
+        self.assertEqual(1, len(resp['volumes']))
+        self.assertEqual('vol3', resp['volumes'][0]['name'])
 
     def test_volume_show(self):
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
@@ -1172,7 +1172,7 @@ class VolumeApiTest(test.TestCase):
 
         req = fakes.HTTPRequest.blank('/v2/volumes/1')
         res_dict = self.controller.show(req, 1)
-        self.assertEqual(res_dict['volume']['encrypted'], True)
+        self.assertEqual(True, res_dict['volume']['encrypted'])
 
     def test_volume_show_with_unencrypted_volume(self):
         def stub_volume_get(self, context, volume_id, **kwargs):
@@ -1182,14 +1182,14 @@ class VolumeApiTest(test.TestCase):
 
         req = fakes.HTTPRequest.blank('/v2/volumes/1')
         res_dict = self.controller.show(req, 1)
-        self.assertEqual(res_dict['volume']['encrypted'], False)
+        self.assertEqual(False, res_dict['volume']['encrypted'])
 
     def test_volume_delete(self):
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
 
         req = fakes.HTTPRequest.blank('/v2/volumes/1')
         resp = self.controller.delete(req, 1)
-        self.assertEqual(resp.status_int, 202)
+        self.assertEqual(202, resp.status_int)
 
     def test_volume_delete_attached(self):
         def stub_volume_attached(self, context, volume, force=False):
@@ -1392,7 +1392,7 @@ class VolumeSerializerTest(test.TestCase):
             self.assertEqual(str(attach[attr]), tree.get(attr))
 
     def _verify_volume(self, vol, tree):
-        self.assertEqual(tree.tag, NS + 'volume')
+        self.assertEqual(NS + 'volume', tree.tag)
 
         for attr in ('id', 'status', 'size', 'availability_zone', 'created_at',
                      'name', 'description', 'volume_type', 'bootable',
@@ -1516,7 +1516,7 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
                 "size": "1",
             },
         }
-        self.assertEqual(request['body'], expected)
+        self.assertEqual(expected, request['body'])
 
     def test_name(self):
         self_request = """
@@ -1530,7 +1530,7 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
                 "name": "Volume-xml",
             },
         }
-        self.assertEqual(request['body'], expected)
+        self.assertEqual(expected, request['body'])
 
     def test_description(self):
         self_request = """
@@ -1546,7 +1546,7 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
                 "description": "description",
             },
         }
-        self.assertEqual(request['body'], expected)
+        self.assertEqual(expected, request['body'])
 
     def test_volume_type(self):
         self_request = """
@@ -1565,7 +1565,7 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
                 "volume_type": "289da7f8-6440-407c-9fb4-7db01ec49164",
             },
         }
-        self.assertEqual(request['body'], expected)
+        self.assertEqual(expected, request['body'])
 
     def test_availability_zone(self):
         self_request = """
@@ -1585,7 +1585,7 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
                 "availability_zone": "us-east1",
             },
         }
-        self.assertEqual(request['body'], expected)
+        self.assertEqual(expected, request['body'])
 
     def test_metadata(self):
         self_request = """
@@ -1603,7 +1603,7 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
                 },
             },
         }
-        self.assertEqual(request['body'], expected)
+        self.assertEqual(expected, request['body'])
 
     def test_full_volume(self):
         self_request = """
@@ -1627,7 +1627,7 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
                 },
             },
         }
-        self.assertEqual(request['body'], expected)
+        self.assertEqual(expected, request['body'])
 
     def test_imageref(self):
         self_request = """

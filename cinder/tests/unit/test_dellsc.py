@@ -417,7 +417,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         volume = {'id': self.volume_name}
         connector = self.connector
         data = self.driver.initialize_connection(volume, connector)
-        self.assertEqual(data['driver_volume_type'], 'iscsi')
+        self.assertEqual('iscsi', data['driver_volume_type'])
         # verify find_volume has been called and that is has been called twice
         mock_find_volume.assert_any_call(self.volume_name)
         assert mock_find_volume.call_count == 2
@@ -458,7 +458,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         connector = self.connector_multipath
 
         data = self.driver.initialize_connection(volume, connector)
-        self.assertEqual(data['driver_volume_type'], 'iscsi')
+        self.assertEqual('iscsi', data['driver_volume_type'])
         # verify find_volume has been called and that is has been called twice
         mock_find_volume.assert_any_call(self.volume_name)
         assert mock_find_volume.call_count == 2
@@ -1134,7 +1134,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                               mock_open_connection,
                                               mock_init):
         stats = self.driver.get_volume_stats(True)
-        self.assertEqual(stats['storage_protocol'], 'iSCSI')
+        self.assertEqual('iSCSI', stats['storage_protocol'])
         mock_get_storage_usage.called_once_with(64702)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -1150,7 +1150,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                          mock_open_connection,
                                          mock_init):
         stats = self.driver.get_volume_stats(False)
-        self.assertEqual(stats['storage_protocol'], 'iSCSI')
+        self.assertEqual('iSCSI', stats['storage_protocol'])
         assert mock_get_storage_usage.called is False
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,

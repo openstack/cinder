@@ -39,13 +39,13 @@ class NetAppDriverUtilsTestCase(test.TestCase):
     def test_validate_instantiation_proxy(self):
         kwargs = {'netapp_mode': 'proxy'}
         na_utils.validate_instantiation(**kwargs)
-        self.assertEqual(na_utils.LOG.warning.call_count, 0)
+        self.assertEqual(0, na_utils.LOG.warning.call_count)
 
     @mock.patch.object(na_utils, 'LOG', mock.Mock())
     def test_validate_instantiation_no_proxy(self):
         kwargs = {'netapp_mode': 'asdf'}
         na_utils.validate_instantiation(**kwargs)
-        self.assertEqual(na_utils.LOG.warning.call_count, 1)
+        self.assertEqual(1, na_utils.LOG.warning.call_count)
 
     def test_check_flags(self):
 
@@ -94,12 +94,12 @@ class NetAppDriverUtilsTestCase(test.TestCase):
         fake_object.fake_attr = 'fake_value'
         self.assertFalse(na_utils.set_safe_attr(fake_object, 'fake_attr',
                                                 'fake_value'))
-        self.assertEqual(fake_object.fake_attr, 'fake_value')
+        self.assertEqual('fake_value', fake_object.fake_attr)
 
         # test value is changed if it should be and retval is True
         self.assertTrue(na_utils.set_safe_attr(fake_object, 'fake_attr',
                                                'new_fake_value'))
-        self.assertEqual(fake_object.fake_attr, 'new_fake_value')
+        self.assertEqual('new_fake_value', fake_object.fake_attr)
 
     def test_round_down(self):
         self.assertAlmostEqual(na_utils.round_down(5.567, '0.00'), 5.56)

@@ -79,7 +79,7 @@ class TestBrcdFCSanLookupService(brcd_lookup.BrcdFCSanLookupService,
         mock_args['known_hosts_file'] = 'dummy_host_key_file'
         mock_args['missing_key_policy'] = paramiko.RejectPolicy()
         ssh_client = self.create_ssh_client(**mock_args)
-        self.assertEqual(ssh_client._host_keys_filename, 'dummy_host_key_file')
+        self.assertEqual('dummy_host_key_file', ssh_client._host_keys_filename)
         self.assertTrue(isinstance(ssh_client._policy, paramiko.RejectPolicy))
         mock_args = {}
         ssh_client = self.create_ssh_client(**mock_args)
@@ -104,7 +104,7 @@ class TestBrcdFCSanLookupService(brcd_lookup.BrcdFCSanLookupService,
                                  '20:1a:00:05:1e:e8:e3:29']
         get_switch_data_mock.return_value = (switch_data)
         ns_info_list = self.get_nameserver_info()
-        self.assertEqual(ns_info_list, ns_info_list_expected)
+        self.assertEqual(ns_info_list_expected, ns_info_list)
 
     def test__get_switch_data(self):
         cmd = fc_zone_constants.NS_SHOW
@@ -115,7 +115,7 @@ class TestBrcdFCSanLookupService(brcd_lookup.BrcdFCSanLookupService,
                                               Stream(nsshow),
                                               Stream())
             switch_data = self._get_switch_data(cmd)
-            self.assertEqual(switch_data, nsshow)
+            self.assertEqual(nsshow, switch_data)
             exec_command_mock.assert_called_once_with(cmd)
 
     def test__parse_ns_output(self):
@@ -123,7 +123,7 @@ class TestBrcdFCSanLookupService(brcd_lookup.BrcdFCSanLookupService,
         return_wwn_list = []
         expected_wwn_list = ['20:1a:00:05:1e:e8:e3:29']
         return_wwn_list = self._parse_ns_output(switch_data)
-        self.assertEqual(return_wwn_list, expected_wwn_list)
+        self.assertEqual(expected_wwn_list, return_wwn_list)
         self.assertRaises(exception.InvalidParameterValue,
                           self._parse_ns_output, invalid_switch_data)
 
@@ -132,7 +132,7 @@ class TestBrcdFCSanLookupService(brcd_lookup.BrcdFCSanLookupService,
         return_wwn_list = []
         expected_wwn_list = ['10:00:8c:7c:ff:52:3b:01']
         return_wwn_list.append(self.get_formatted_wwn(wwn_list[0]))
-        self.assertEqual(return_wwn_list, expected_wwn_list)
+        self.assertEqual(expected_wwn_list, return_wwn_list)
 
 
 class Channel(object):

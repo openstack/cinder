@@ -404,12 +404,12 @@ class TestZFSSAISCSIDriver(test.TestCase):
             'zfssa:compression': 'gzip'
         }
         ret = self.drv._get_voltype_specs(volume)
-        self.assertEqual(ret.get('volblocksize'), '128k')
-        self.assertEqual(ret.get('sparse'),
-                         self.configuration.zfssa_lun_sparse)
-        self.assertEqual(ret.get('compression'), 'gzip')
-        self.assertEqual(ret.get('logbias'),
-                         self.configuration.zfssa_lun_logbias)
+        self.assertEqual('128k', ret.get('volblocksize'))
+        self.assertEqual(self.configuration.zfssa_lun_sparse,
+                         ret.get('sparse'))
+        self.assertEqual('gzip', ret.get('compression'))
+        self.assertEqual(self.configuration.zfssa_lun_logbias,
+                         ret.get('logbias'))
 
     def tearDown(self):
         super(TestZFSSAISCSIDriver, self).tearDown()

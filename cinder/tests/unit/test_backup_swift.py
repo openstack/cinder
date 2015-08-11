@@ -154,7 +154,7 @@ class BackupSwiftTestCase(test.TestCase):
         backup = objects.Backup.get_by_id(self.ctxt, 123)
         service.backup(backup, self.volume_file)
         backup = objects.Backup.get_by_id(self.ctxt, 123)
-        self.assertEqual(backup['container'], 'volumebackups')
+        self.assertEqual('volumebackups', backup['container'])
 
     @mock.patch('cinder.backup.drivers.swift.SwiftBackupDriver.'
                 '_send_progress_end')
@@ -207,7 +207,7 @@ class BackupSwiftTestCase(test.TestCase):
         backup = objects.Backup.get_by_id(self.ctxt, 123)
         service.backup(backup, self.volume_file)
         backup = objects.Backup.get_by_id(self.ctxt, 123)
-        self.assertEqual(backup['container'], container_name)
+        self.assertEqual(container_name, backup['container'])
 
     def test_backup_shafile(self):
 
@@ -233,7 +233,7 @@ class BackupSwiftTestCase(test.TestCase):
         backup = objects.Backup.get_by_id(self.ctxt, 123)
         service.backup(backup, self.volume_file)
         backup = objects.Backup.get_by_id(self.ctxt, 123)
-        self.assertEqual(backup['container'], container_name)
+        self.assertEqual(container_name, backup['container'])
 
         # Verify sha contents
         content1 = service._read_sha256file(backup)
@@ -264,7 +264,7 @@ class BackupSwiftTestCase(test.TestCase):
         backup = objects.Backup.get_by_id(self.ctxt, 123)
         service.backup(backup, self.volume_file)
         backup = objects.Backup.get_by_id(self.ctxt, 123)
-        self.assertEqual(backup['container'], container_name)
+        self.assertEqual(container_name, backup['container'])
 
         # Create incremental backup with no change to contents
         self._create_backup_db_entry(container=container_name, backup_id=124,
@@ -276,7 +276,7 @@ class BackupSwiftTestCase(test.TestCase):
         deltabackup = objects.Backup.get_by_id(self.ctxt, 124)
         service.backup(deltabackup, self.volume_file)
         deltabackup = objects.Backup.get_by_id(self.ctxt, 124)
-        self.assertEqual(deltabackup['container'], container_name)
+        self.assertEqual(container_name, deltabackup['container'])
 
         # Compare shas from both files
         content1 = service._read_sha256file(backup)
@@ -312,7 +312,7 @@ class BackupSwiftTestCase(test.TestCase):
         backup = objects.Backup.get_by_id(self.ctxt, 123)
         service.backup(backup, self.volume_file)
         backup = objects.Backup.get_by_id(self.ctxt, 123)
-        self.assertEqual(backup['container'], container_name)
+        self.assertEqual(container_name, backup['container'])
 
         # Create incremental backup with no change to contents
         self.volume_file.seek(2 * 8 * 1024)
@@ -329,7 +329,7 @@ class BackupSwiftTestCase(test.TestCase):
         deltabackup = objects.Backup.get_by_id(self.ctxt, 124)
         service.backup(deltabackup, self.volume_file)
         deltabackup = objects.Backup.get_by_id(self.ctxt, 124)
-        self.assertEqual(deltabackup['container'], container_name)
+        self.assertEqual(container_name, deltabackup['container'])
 
         content1 = service._read_sha256file(backup)
         content2 = service._read_sha256file(deltabackup)
@@ -365,7 +365,7 @@ class BackupSwiftTestCase(test.TestCase):
         backup = objects.Backup.get_by_id(self.ctxt, 123)
         service.backup(backup, self.volume_file)
         backup = objects.Backup.get_by_id(self.ctxt, 123)
-        self.assertEqual(backup['container'], container_name)
+        self.assertEqual(container_name, backup['container'])
 
         # Create incremental backup with no change to contents
         self.volume_file.seek(16 * 1024)
@@ -382,7 +382,7 @@ class BackupSwiftTestCase(test.TestCase):
         deltabackup = objects.Backup.get_by_id(self.ctxt, 124)
         service.backup(deltabackup, self.volume_file)
         deltabackup = objects.Backup.get_by_id(self.ctxt, 124)
-        self.assertEqual(deltabackup['container'], container_name)
+        self.assertEqual(container_name, deltabackup['container'])
 
         # Verify that two shas are changed at index 16 and 20
         content1 = service._read_sha256file(backup)
@@ -553,9 +553,9 @@ class BackupSwiftTestCase(test.TestCase):
         compressor = service._get_compressor('None')
         self.assertIsNone(compressor)
         compressor = service._get_compressor('zlib')
-        self.assertEqual(compressor, zlib)
+        self.assertEqual(zlib, compressor)
         compressor = service._get_compressor('bz2')
-        self.assertEqual(compressor, bz2)
+        self.assertEqual(bz2, compressor)
         self.assertRaises(ValueError, service._get_compressor, 'fake')
 
     def test_prepare_output_data_effective_compression(self):

@@ -304,7 +304,7 @@ class TestLioAdmDriver(tf.TargetDriverFixture):
         self.assertFalse(mpersist_cfg.called)
 
     def test_iscsi_protocol(self):
-        self.assertEqual(self.target.iscsi_protocol, 'iscsi')
+        self.assertEqual('iscsi', self.target.iscsi_protocol)
 
     @mock.patch.object(lio.LioAdm, '_get_target_and_lun', return_value=(1, 2))
     @mock.patch.object(lio.LioAdm, 'create_iscsi_target', return_value=3)

@@ -37,7 +37,7 @@ class RequestTest(test.TestCase):
         request = wsgi.Request.blank('/tests/123')
         request.headers["Content-Type"] = "application/json; charset=UTF-8"
         result = request.get_content_type()
-        self.assertEqual(result, "application/json")
+        self.assertEqual("application/json", result)
 
     def test_content_type_from_accept(self):
         for content_type in ('application/xml',
@@ -47,44 +47,44 @@ class RequestTest(test.TestCase):
             request = wsgi.Request.blank('/tests/123')
             request.headers["Accept"] = content_type
             result = request.best_match_content_type()
-            self.assertEqual(result, content_type)
+            self.assertEqual(content_type, result)
 
     def test_content_type_from_accept_best(self):
         request = wsgi.Request.blank('/tests/123')
         request.headers["Accept"] = "application/xml, application/json"
         result = request.best_match_content_type()
-        self.assertEqual(result, "application/json")
+        self.assertEqual("application/json", result)
 
         request = wsgi.Request.blank('/tests/123')
         request.headers["Accept"] = ("application/json; q=0.3, "
                                      "application/xml; q=0.9")
         result = request.best_match_content_type()
-        self.assertEqual(result, "application/xml")
+        self.assertEqual("application/xml", result)
 
     def test_content_type_from_query_extension(self):
         request = wsgi.Request.blank('/tests/123.xml')
         result = request.best_match_content_type()
-        self.assertEqual(result, "application/xml")
+        self.assertEqual("application/xml", result)
 
         request = wsgi.Request.blank('/tests/123.json')
         result = request.best_match_content_type()
-        self.assertEqual(result, "application/json")
+        self.assertEqual("application/json", result)
 
         request = wsgi.Request.blank('/tests/123.invalid')
         result = request.best_match_content_type()
-        self.assertEqual(result, "application/json")
+        self.assertEqual("application/json", result)
 
     def test_content_type_accept_and_query_extension(self):
         request = wsgi.Request.blank('/tests/123.xml')
         request.headers["Accept"] = "application/json"
         result = request.best_match_content_type()
-        self.assertEqual(result, "application/xml")
+        self.assertEqual("application/xml", result)
 
     def test_content_type_accept_default(self):
         request = wsgi.Request.blank('/tests/123.unsupported')
         request.headers["Accept"] = "application/unsupported1"
         result = request.best_match_content_type()
-        self.assertEqual(result, "application/json")
+        self.assertEqual("application/json", result)
 
     def test_best_match_language(self):
         # Test that we are actually invoking language negotiation by webob
@@ -169,39 +169,38 @@ class RequestTest(test.TestCase):
         # Store 1
         getattr(r, cache_one_func)(resources[2])
 
-        self.assertEqual(getattr(r, get_db_one_func)('id0'), resources[0])
-        self.assertEqual(getattr(r, get_db_one_func)('id1'), resources[1])
-        self.assertEqual(getattr(r, get_db_one_func)('id2'), resources[2])
+        self.assertEqual(resources[0], getattr(r, get_db_one_func)('id0'))
+        self.assertEqual(resources[1], getattr(r, get_db_one_func)('id1'))
+        self.assertEqual(resources[2], getattr(r, get_db_one_func)('id2'))
         self.assertIsNone(getattr(r, get_db_one_func)('id3'))
-        self.assertEqual(getattr(r, get_db_all_func)(), {
-                         'id0': resources[0],
-                         'id1': resources[1],
-                         'id2': resources[2]})
+        self.assertEqual({'id0': resources[0],
+                          'id1': resources[1],
+                          'id2': resources[2]}, getattr(r, get_db_all_func)())
 
 
 class ActionDispatcherTest(test.TestCase):
     def test_dispatch(self):
         serializer = wsgi.ActionDispatcher()
         serializer.create = lambda x: 'pants'
-        self.assertEqual(serializer.dispatch({}, action='create'), 'pants')
+        self.assertEqual('pants', serializer.dispatch({}, action='create'))
 
     def test_dispatch_action_None(self):
         serializer = wsgi.ActionDispatcher()
         serializer.create = lambda x: 'pants'
         serializer.default = lambda x: 'trousers'
-        self.assertEqual(serializer.dispatch({}, action=None), 'trousers')
+        self.assertEqual('trousers', serializer.dispatch({}, action=None))
 
     def test_dispatch_default(self):
         serializer = wsgi.ActionDispatcher()
         serializer.create = lambda x: 'pants'
         serializer.default = lambda x: 'trousers'
-        self.assertEqual(serializer.dispatch({}, action='update'), 'trousers')
+        self.assertEqual('trousers', serializer.dispatch({}, action='update'))
 
 
 class DictSerializerTest(test.TestCase):
     def test_dispatch_default(self):
         serializer = wsgi.DictSerializer()
-        self.assertEqual(serializer.serialize({}, 'update'), '')
+        self.assertEqual('', serializer.serialize({}, 'update'))
 
 
 class XMLDictSerializerTest(test.TestCase):
@@ -211,7 +210,7 @@ class XMLDictSerializerTest(test.TestCase):
         serializer = wsgi.XMLDictSerializer(xmlns="asdf")
         result = serializer.serialize(input_dict)
         result = result.replace('\n', '').replace(' ', '')
-        self.assertEqual(result, expected_xml)
+        self.assertEqual(expected_xml, result)
 
 
 class JSONDictSerializerTest(test.TestCase):
@@ -221,13 +220,13 @@ class JSONDictSerializerTest(test.TestCase):
         serializer = wsgi.JSONDictSerializer()
         result = serializer.serialize(input_dict)
         result = result.replace('\n', '').replace(' ', '')
-        self.assertEqual(result, expected_json)
+        self.assertEqual(expected_json, result)
 
 
 class TextDeserializerTest(test.TestCase):
     def test_dispatch_default(self):
         deserializer = wsgi.TextDeserializer()
-        self.assertEqual(deserializer.deserialize({}, 'update'), {})
+        self.assertEqual({}, deserializer.deserialize({}, 'update'))
 
 
 class JSONDeserializerTest(test.TestCase):
@@ -250,7 +249,7 @@ class JSONDeserializerTest(test.TestCase):
             },
         }
         deserializer = wsgi.JSONDeserializer()
-        self.assertEqual(deserializer.deserialize(data), as_dict)
+        self.assertEqual(as_dict, deserializer.deserialize(data))
 
 
 class XMLDeserializerTest(test.TestCase):
@@ -275,13 +274,13 @@ class XMLDeserializerTest(test.TestCase):
         }
         metadata = {'plurals': {'bs': 'b', 'ts': 't'}}
         deserializer = wsgi.XMLDeserializer(metadata=metadata)
-        self.assertEqual(deserializer.deserialize(xml), as_dict)
+        self.assertEqual(as_dict, deserializer.deserialize(xml))
 
     def test_xml_empty(self):
         xml = """<a></a>"""
         as_dict = {"body": {"a": {}}}
         deserializer = wsgi.XMLDeserializer()
-        self.assertEqual(deserializer.deserialize(xml), as_dict)
+        self.assertEqual(as_dict, deserializer.deserialize(xml))
 
 
 class MetadataXMLDeserializerTest(test.TestCase):
@@ -318,8 +317,8 @@ class ResourceTest(test.TestCase):
         req = webob.Request.blank('/tests')
         app = fakes.TestRouter(Controller())
         response = req.get_response(app)
-        self.assertEqual(response.body, 'off')
-        self.assertEqual(response.status_int, 200)
+        self.assertEqual('off', response.body)
+        self.assertEqual(200, response.status_int)
 
     def test_resource_not_authorized(self):
         class Controller(object):
@@ -329,7 +328,7 @@ class ResourceTest(test.TestCase):
         req = webob.Request.blank('/tests')
         app = fakes.TestRouter(Controller())
         response = req.get_response(app)
-        self.assertEqual(response.status_int, 403)
+        self.assertEqual(403, response.status_int)
 
     def test_dispatch(self):
         class Controller(object):
@@ -341,7 +340,7 @@ class ResourceTest(test.TestCase):
         method, _extensions = resource.get_method(None, 'index', None, '')
         actual = resource.dispatch(method, None, {'pants': 'off'})
         expected = 'off'
-        self.assertEqual(actual, expected)
+        self.assertEqual(expected, actual)
 
     def test_get_method_undefined_controller_action(self):
         class Controller(object):
@@ -432,7 +431,7 @@ class ResourceTest(test.TestCase):
 
         expected = {'action': 'update', 'id': 12}
 
-        self.assertEqual(resource.get_action_args(env), expected)
+        self.assertEqual(expected, resource.get_action_args(env))
 
     def test_get_body_bad_content(self):
         class Controller(object):
@@ -448,7 +447,7 @@ class ResourceTest(test.TestCase):
 
         content_type, body = resource.get_body(request)
         self.assertIsNone(content_type)
-        self.assertEqual(body, '')
+        self.assertEqual('', body)
 
     def test_get_body_no_content_type(self):
         class Controller(object):
@@ -463,7 +462,7 @@ class ResourceTest(test.TestCase):
 
         content_type, body = resource.get_body(request)
         self.assertIsNone(content_type)
-        self.assertEqual(body, '')
+        self.assertEqual('', body)
 
     def test_get_body_no_content_body(self):
         class Controller(object):
@@ -479,7 +478,7 @@ class ResourceTest(test.TestCase):
 
         content_type, body = resource.get_body(request)
         self.assertIsNone(content_type)
-        self.assertEqual(body, '')
+        self.assertEqual('', body)
 
     def test_get_body(self):
         class Controller(object):
@@ -494,8 +493,8 @@ class ResourceTest(test.TestCase):
         request.body = 'foo'
 
         content_type, body = resource.get_body(request)
-        self.assertEqual(content_type, 'application/json')
-        self.assertEqual(body, 'foo')
+        self.assertEqual('application/json', content_type)
+        self.assertEqual('foo', body)
 
     def test_deserialize_badtype(self):
         class Controller(object):
@@ -526,7 +525,7 @@ class ResourceTest(test.TestCase):
         resource = wsgi.Resource(controller, json=JSONDeserializer)
 
         obj = resource.deserialize(controller.index, 'application/json', 'foo')
-        self.assertEqual(obj, 'json')
+        self.assertEqual('json', obj)
 
     def test_deserialize_decorator(self):
         class JSONDeserializer(object):
@@ -546,7 +545,7 @@ class ResourceTest(test.TestCase):
         resource = wsgi.Resource(controller, json=JSONDeserializer)
 
         obj = resource.deserialize(controller.index, 'application/xml', 'foo')
-        self.assertEqual(obj, 'xml')
+        self.assertEqual('xml', obj)
 
     def test_register_actions(self):
         class Controller(object):
@@ -612,8 +611,8 @@ class ResourceTest(test.TestCase):
         resource = wsgi.Resource(controller)
         resource.register_extensions(extended)
         method, extensions = resource.get_method(None, 'index', None, '')
-        self.assertEqual(method, controller.index)
-        self.assertEqual(extensions, [extended.index])
+        self.assertEqual(controller.index, method)
+        self.assertEqual([extended.index], extensions)
 
     def test_get_method_action_extensions(self):
         class Controller(wsgi.Controller):
@@ -636,8 +635,8 @@ class ResourceTest(test.TestCase):
         method, extensions = resource.get_method(None, 'action',
                                                  'application/json',
                                                  '{"fooAction": true}')
-        self.assertEqual(method, controller._action_foo)
-        self.assertEqual(extensions, [extended._action_foo])
+        self.assertEqual(controller._action_foo, method)
+        self.assertEqual([extended._action_foo], extensions)
 
     def test_get_method_action_whitelist_extensions(self):
         class Controller(wsgi.Controller):
@@ -661,12 +660,12 @@ class ResourceTest(test.TestCase):
         method, extensions = resource.get_method(None, 'create',
                                                  'application/json',
                                                  '{"create": true}')
-        self.assertEqual(method, extended._create)
-        self.assertEqual(extensions, [])
+        self.assertEqual(extended._create, method)
+        self.assertEqual([], extensions)
 
         method, extensions = resource.get_method(None, 'delete', None, None)
-        self.assertEqual(method, extended._delete)
-        self.assertEqual(extensions, [])
+        self.assertEqual(extended._delete, method)
+        self.assertEqual([], extensions)
 
     def test_pre_process_extensions_regular(self):
         class Controller(object):
@@ -688,9 +687,9 @@ class ResourceTest(test.TestCase):
 
         extensions = [extension1, extension2]
         response, post = resource.pre_process_extensions(extensions, None, {})
-        self.assertEqual(called, [])
+        self.assertEqual([], called)
         self.assertIsNone(response)
-        self.assertEqual(list(post), [extension2, extension1])
+        self.assertEqual([extension2, extension1], list(post))
 
     def test_pre_process_extensions_generator(self):
         class Controller(object):
@@ -715,9 +714,9 @@ class ResourceTest(test.TestCase):
         extensions = [extension1, extension2]
         response, post = resource.pre_process_extensions(extensions, None, {})
         post = list(post)
-        self.assertEqual(called, ['pre1', 'pre2'])
+        self.assertEqual(['pre1', 'pre2'], called)
         self.assertIsNone(response)
-        self.assertEqual(len(post), 2)
+        self.assertEqual(2, len(post))
         self.assertTrue(inspect.isgenerator(post[0]))
         self.assertTrue(inspect.isgenerator(post[1]))
 
@@ -727,7 +726,7 @@ class ResourceTest(test.TestCase):
             except StopIteration:
                 continue
 
-        self.assertEqual(called, ['pre1', 'pre2', 'post2', 'post1'])
+        self.assertEqual(['pre1', 'pre2', 'post2', 'post1'], called)
 
     def test_pre_process_extensions_generator_response(self):
         class Controller(object):
@@ -748,9 +747,9 @@ class ResourceTest(test.TestCase):
 
         extensions = [extension1, extension2]
         response, post = resource.pre_process_extensions(extensions, None, {})
-        self.assertEqual(called, ['pre1'])
-        self.assertEqual(response, 'foo')
-        self.assertEqual(post, [])
+        self.assertEqual(['pre1'], called)
+        self.assertEqual('foo', response)
+        self.assertEqual([], post)
 
     def test_post_process_extensions_regular(self):
         class Controller(object):
@@ -772,7 +771,7 @@ class ResourceTest(test.TestCase):
 
         response = resource.post_process_extensions([extension2, extension1],
                                                     None, None, {})
-        self.assertEqual(called, [2, 1])
+        self.assertEqual([2, 1], called)
         self.assertIsNone(response)
 
     def test_post_process_extensions_regular_response(self):
@@ -795,8 +794,8 @@ class ResourceTest(test.TestCase):
 
         response = resource.post_process_extensions([extension2, extension1],
                                                     None, None, {})
-        self.assertEqual(called, [2])
-        self.assertEqual(response, 'foo')
+        self.assertEqual([2], called)
+        self.assertEqual('foo', response)
 
     def test_post_process_extensions_generator(self):
         class Controller(object):
@@ -824,7 +823,7 @@ class ResourceTest(test.TestCase):
         response = resource.post_process_extensions([ext2, ext1],
                                                     None, None, {})
 
-        self.assertEqual(called, [2, 1])
+        self.assertEqual([2, 1], called)
         self.assertIsNone(response)
 
     def test_post_process_extensions_generator_response(self):
@@ -854,38 +853,38 @@ class ResourceTest(test.TestCase):
         response = resource.post_process_extensions([ext2, ext1],
                                                     None, None, {})
 
-        self.assertEqual(called, [2])
-        self.assertEqual(response, 'foo')
+        self.assertEqual([2], called)
+        self.assertEqual('foo', response)
 
 
 class ResponseObjectTest(test.TestCase):
     def test_default_code(self):
         robj = wsgi.ResponseObject({})
-        self.assertEqual(robj.code, 200)
+        self.assertEqual(200, robj.code)
 
     def test_modified_code(self):
         robj = wsgi.ResponseObject({})
         robj._default_code = 202
-        self.assertEqual(robj.code, 202)
+        self.assertEqual(202, robj.code)
 
     def test_override_default_code(self):
         robj = wsgi.ResponseObject({}, code=404)
-        self.assertEqual(robj.code, 404)
+        self.assertEqual(404, robj.code)
 
     def test_override_modified_code(self):
         robj = wsgi.ResponseObject({}, code=404)
         robj._default_code = 202
-        self.assertEqual(robj.code, 404)
+        self.assertEqual(404, robj.code)
 
     def test_set_header(self):
         robj = wsgi.ResponseObject({})
         robj['Header'] = 'foo'
-        self.assertEqual(robj.headers, {'header': 'foo'})
+        self.assertEqual({'header': 'foo'}, robj.headers)
 
     def test_get_header(self):
         robj = wsgi.ResponseObject({})
         robj['Header'] = 'foo'
-        self.assertEqual(robj['hEADER'], 'foo')
+        self.assertEqual('foo', robj['hEADER'])
 
     def test_del_header(self):
         robj = wsgi.ResponseObject({})
@@ -898,22 +897,22 @@ class ResponseObjectTest(test.TestCase):
         robj['Header'] = 'foo'
         hdrs = robj.headers
         hdrs['hEADER'] = 'bar'
-        self.assertEqual(robj['hEADER'], 'foo')
+        self.assertEqual('foo', robj['hEADER'])
 
     def test_default_serializers(self):
         robj = wsgi.ResponseObject({})
-        self.assertEqual(robj.serializers, {})
+        self.assertEqual({}, robj.serializers)
 
     def test_bind_serializers(self):
         robj = wsgi.ResponseObject({}, json='foo')
         robj._bind_method_serializers(dict(xml='bar', json='baz'))
-        self.assertEqual(robj.serializers, dict(xml='bar', json='foo'))
+        self.assertEqual(dict(xml='bar', json='foo'), robj.serializers)
 
     def test_get_serializer(self):
         robj = wsgi.ResponseObject({}, json='json', xml='xml', atom='atom')
         for content_type, mtype in wsgi._MEDIA_TYPE_MAP.items():
             _mtype, serializer = robj.get_serializer(content_type)
-            self.assertEqual(serializer, mtype)
+            self.assertEqual(mtype, serializer)
 
     def test_get_serializer_defaults(self):
         robj = wsgi.ResponseObject({})
@@ -923,7 +922,7 @@ class ResponseObjectTest(test.TestCase):
                               robj.get_serializer, content_type)
             _mtype, serializer = robj.get_serializer(content_type,
                                                      default_serializers)
-            self.assertEqual(serializer, mtype)
+            self.assertEqual(mtype, serializer)
 
     def test_serialize(self):
         class JSONSerializer(object):
@@ -949,11 +948,11 @@ class ResponseObjectTest(test.TestCase):
             request = wsgi.Request.blank('/tests/123')
             response = robj.serialize(request, content_type)
 
-            self.assertEqual(response.headers['Content-Type'], content_type)
-            self.assertEqual(response.headers['X-header1'], 'header1')
-            self.assertEqual(response.headers['X-header2'], 'header2')
-            self.assertEqual(response.status_int, 202)
-            self.assertEqual(response.body, mtype)
+            self.assertEqual(content_type, response.headers['Content-Type'])
+            self.assertEqual('header1', response.headers['X-header1'])
+            self.assertEqual('header2', response.headers['X-header2'])
+            self.assertEqual(202, response.status_int)
+            self.assertEqual(mtype, response.body)
 
 
 class ValidBodyTest(test.TestCase):

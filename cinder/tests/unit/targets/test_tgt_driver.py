@@ -81,7 +81,7 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
             return getattr(self, value, default)
 
     def test_iscsi_protocol(self):
-        self.assertEqual(self.target.iscsi_protocol, 'iscsi')
+        self.assertEqual('iscsi', self.target.iscsi_protocol)
 
     def test_get_target(self):
         with mock.patch('cinder.utils.execute',

@@ -109,9 +109,9 @@ class TestHPLeftHandCLIQISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
                 <response description="Operation succeeded."
                           name="CliqSuccess" processingTime="181" result="0"/>
                 </gauche>"""
-            self.assertEqual(cliq_args['volumeName'], self.volume_name)
-            self.assertEqual(cliq_args['thinProvision'], '1')
-            self.assertEqual(cliq_args['size'], '1GB')
+            self.assertEqual(self.volume_name, cliq_args['volumeName'])
+            self.assertEqual('1', cliq_args['thinProvision'])
+            self.assertEqual('1GB', cliq_args['size'])
             return output, None
 
         def delete_volume(cliq_args):
@@ -124,8 +124,8 @@ class TestHPLeftHandCLIQISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
                 <response description="Operation succeeded."
                           name="CliqSuccess" processingTime="164" result="0"/>
                 </gauche>"""
-            self.assertEqual(cliq_args['volumeName'], self.volume_name)
-            self.assertEqual(cliq_args['prompt'], 'false')
+            self.assertEqual(self.volume_name, cliq_args['volumeName'])
+            self.assertEqual('false', cliq_args['prompt'])
             return output, None
 
         def extend_volume(cliq_args):
@@ -139,8 +139,8 @@ class TestHPLeftHandCLIQISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
                 <response description="Operation succeeded."
                           name="CliqSuccess" processingTime="181" result="0"/>
                 </gauche>"""
-            self.assertEqual(cliq_args['volumeName'], self.volume_name)
-            self.assertEqual(cliq_args['size'], '2GB')
+            self.assertEqual(self.volume_name, cliq_args['volumeName'])
+            self.assertEqual('2GB', cliq_args['size'])
             return output, None
 
         def assign_volume(cliq_args):
@@ -154,9 +154,9 @@ class TestHPLeftHandCLIQISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
                 <response description="Operation succeeded."
                           name="CliqSuccess" processingTime="174" result="0"/>
                 </gauche>"""
-            self.assertEqual(cliq_args['volumeName'], self.volume_name)
-            self.assertEqual(cliq_args['serverName'],
-                             self.connector['host'])
+            self.assertEqual(self.volume_name, cliq_args['volumeName'])
+            self.assertEqual(self.connector['host'],
+                             cliq_args['serverName'])
             return output, None
 
         def unassign_volume(cliq_args):
@@ -169,9 +169,9 @@ class TestHPLeftHandCLIQISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
                 <response description="Operation succeeded."
                           name="CliqSuccess" processingTime="205" result="0"/>
                 </gauche>"""
-            self.assertEqual(cliq_args['volumeName'], self.volume_name)
-            self.assertEqual(cliq_args['serverName'],
-                             self.connector['host'])
+            self.assertEqual(self.volume_name, cliq_args['volumeName'])
+            self.assertEqual(self.connector['host'],
+                             cliq_args['serverName'])
             return output, None
 
         def create_snapshot(cliq_args):
@@ -186,8 +186,8 @@ class TestHPLeftHandCLIQISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
                 <response description="Operation succeeded."
                           name="CliqSuccess" processingTime="181" result="0"/>
                 </gauche>"""
-            self.assertEqual(cliq_args['snapshotName'], self.snapshot_name)
-            self.assertEqual(cliq_args['volumeName'], self.volume_name)
+            self.assertEqual(self.snapshot_name, cliq_args['snapshotName'])
+            self.assertEqual(self.volume_name, cliq_args['volumeName'])
             return output, None
 
         def delete_snapshot(cliq_args):
@@ -200,8 +200,8 @@ class TestHPLeftHandCLIQISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
                 <response description="Operation succeeded."
                           name="CliqSuccess" processingTime="164" result="0"/>
                 </gauche>"""
-            self.assertEqual(cliq_args['snapshotName'], self.snapshot_name)
-            self.assertEqual(cliq_args['prompt'], 'false')
+            self.assertEqual(self.snapshot_name, cliq_args['snapshotName'])
+            self.assertEqual('false', cliq_args['prompt'])
             return output, None
 
         def create_volume_from_snapshot(cliq_args):
@@ -216,8 +216,8 @@ class TestHPLeftHandCLIQISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
                 <response description="Operation succeeded."
                           name="CliqSuccess" processingTime="181" result="0"/>
                 </gauche>"""
-            self.assertEqual(cliq_args['snapshotName'], self.snapshot_name)
-            self.assertEqual(cliq_args['volumeName'], self.volume_name)
+            self.assertEqual(self.snapshot_name, cliq_args['snapshotName'])
+            self.assertEqual(self.volume_name, cliq_args['volumeName'])
             return output, None
 
         def get_cluster_info(cliq_args):
@@ -362,7 +362,7 @@ class TestHPLeftHandCLIQISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
                 '</gauche>\n    ')
             return output, None
 
-        self.assertEqual(cliq_args['output'], 'XML')
+        self.assertEqual('XML', cliq_args['output'])
         try:
             verbs = {'createVolume': create_volume,
                      'deleteVolume': delete_volume,
@@ -428,7 +428,7 @@ class TestHPLeftHandCLIQISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         model_update = self.driver.create_volume(volume)
         expected_iqn = "iqn.2003-10.com.lefthandnetworks:group01:25366:fakev 0"
         expected_location = "10.0.1.6:3260,1 %s" % expected_iqn
-        self.assertEqual(model_update['provider_location'], expected_location)
+        self.assertEqual(expected_location, model_update['provider_location'])
 
         expected = [
             mock.call(
@@ -508,7 +508,7 @@ class TestHPLeftHandCLIQISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         volume = {'name': self.volume_name}
         result = self.driver.initialize_connection(volume,
                                                    self.connector)
-        self.assertEqual(result['driver_volume_type'], 'iscsi')
+        self.assertEqual('iscsi', result['driver_volume_type'])
         self.assertDictMatch(result['data'], self.properties)
 
         expected = [
@@ -602,7 +602,7 @@ class TestHPLeftHandCLIQISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
                                                                snapshot)
         expected_iqn = "iqn.2003-10.com.lefthandnetworks:group01:25366:fakev 0"
         expected_location = "10.0.1.6:3260,1 %s" % expected_iqn
-        self.assertEqual(model_update['provider_location'], expected_location)
+        self.assertEqual(expected_location, model_update['provider_location'])
 
         expected = [
             mock.call(
@@ -633,8 +633,8 @@ class TestHPLeftHandCLIQISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         mock_cliq_run = self.setup_driver()
         volume_stats = self.driver.get_volume_stats(True)
 
-        self.assertEqual(volume_stats['vendor_name'], 'Hewlett-Packard')
-        self.assertEqual(volume_stats['storage_protocol'], 'iSCSI')
+        self.assertEqual('Hewlett-Packard', volume_stats['vendor_name'])
+        self.assertEqual('iSCSI', volume_stats['storage_protocol'])
 
         expected = [
             mock.call('getClusterInfo', {

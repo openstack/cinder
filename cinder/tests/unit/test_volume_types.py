@@ -104,8 +104,8 @@ class VolumeTypeTestCase(test.TestCase):
         """Ensures default volume type can be retrieved."""
         volume_types.create(self.ctxt, conf_fixture.def_vol_type, {})
         default_vol_type = volume_types.get_default_volume_type()
-        self.assertEqual(default_vol_type.get('name'),
-                         conf_fixture.def_vol_type)
+        self.assertEqual(conf_fixture.def_vol_type,
+                         default_vol_type.get('name'))
 
     def test_default_volume_type_missing_in_db(self):
         """Test default volume type is missing in database.
@@ -114,7 +114,7 @@ class VolumeTypeTestCase(test.TestCase):
         is not in database.
         """
         default_vol_type = volume_types.get_default_volume_type()
-        self.assertEqual(default_vol_type, {})
+        self.assertEqual({}, default_vol_type)
 
     def test_get_default_volume_type_under_non_default(self):
         cfg.CONF.set_default('default_volume_type', None)
@@ -181,8 +181,8 @@ class VolumeTypeTestCase(test.TestCase):
             search_opts={'extra_specs': {"key1": "val1"}})
         self.assertEqual(1, len(vol_types))
         self.assertIn("type1", vol_types.keys())
-        self.assertEqual(vol_types['type1']['extra_specs'],
-                         {"key1": "val1", "key2": "val2"})
+        self.assertEqual({"key1": "val1", "key2": "val2"},
+                         vol_types['type1']['extra_specs'])
 
         vol_types = volume_types.get_all_types(
             self.ctxt,
@@ -212,13 +212,13 @@ class VolumeTypeTestCase(test.TestCase):
             self.ctxt,
             search_opts={'extra_specs': {"key1": "val1",
                                          "key3": "val3"}})
-        self.assertEqual(len(vol_types), 2)
+        self.assertEqual(2, len(vol_types))
         self.assertIn("type1", vol_types.keys())
         self.assertIn("type3", vol_types.keys())
-        self.assertEqual(vol_types['type1']['extra_specs'],
-                         {"key1": "val1", "key2": "val2", "key3": "val3"})
-        self.assertEqual(vol_types['type3']['extra_specs'],
-                         {"key1": "val1", "key3": "val3", "key4": "val4"})
+        self.assertEqual({"key1": "val1", "key2": "val2", "key3": "val3"},
+                         vol_types['type1']['extra_specs'])
+        self.assertEqual({"key1": "val1", "key3": "val3", "key4": "val4"},
+                         vol_types['type3']['extra_specs'])
 
     def test_is_encrypted(self):
         volume_type = volume_types.create(self.ctxt, "type1")
@@ -286,11 +286,11 @@ class VolumeTypeTestCase(test.TestCase):
         diff, same = volume_types.volume_types_diff(self.ctxt, type_ref1['id'],
                                                     type_ref2['id'])
         self.assertTrue(same)
-        self.assertEqual(diff['extra_specs']['key1'], ('val1', 'val1'))
+        self.assertEqual(('val1', 'val1'), diff['extra_specs']['key1'])
         diff, same = volume_types.volume_types_diff(self.ctxt, type_ref1['id'],
                                                     type_ref3['id'])
         self.assertFalse(same)
-        self.assertEqual(diff['extra_specs']['key1'], ('val1', 'val0'))
+        self.assertEqual(('val1', 'val0'), diff['extra_specs']['key1'])
 
         # qos_ref 1 and 2 have the same specs, while 3 has different
         qos_keyvals1 = {'k1': 'v1', 'k2': 'v2', 'k3': 'v3'}
@@ -307,8 +307,8 @@ class VolumeTypeTestCase(test.TestCase):
         diff, same = volume_types.volume_types_diff(self.ctxt, type_ref1['id'],
                                                     type_ref2['id'])
         self.assertTrue(same)
-        self.assertEqual(diff['extra_specs']['key1'], ('val1', 'val1'))
-        self.assertEqual(diff['qos_specs']['k1'], ('v1', 'v1'))
+        self.assertEqual(('val1', 'val1'), diff['extra_specs']['key1'])
+        self.assertEqual(('v1', 'v1'), diff['qos_specs']['k1'])
         qos_specs.disassociate_qos_specs(self.ctxt, qos_ref2['id'],
                                          type_ref2['id'])
         qos_specs.associate_qos_with_type(self.ctxt, qos_ref3['id'],
@@ -316,8 +316,8 @@ class VolumeTypeTestCase(test.TestCase):
         diff, same = volume_types.volume_types_diff(self.ctxt, type_ref1['id'],
                                                     type_ref2['id'])
         self.assertFalse(same)
-        self.assertEqual(diff['extra_specs']['key1'], ('val1', 'val1'))
-        self.assertEqual(diff['qos_specs']['k1'], ('v1', 'v0'))
+        self.assertEqual(('val1', 'val1'), diff['extra_specs']['key1'])
+        self.assertEqual(('v1', 'v0'), diff['qos_specs']['k1'])
         qos_specs.disassociate_qos_specs(self.ctxt, qos_ref3['id'],
                                          type_ref2['id'])
         qos_specs.associate_qos_with_type(self.ctxt, qos_ref2['id'],
@@ -337,9 +337,9 @@ class VolumeTypeTestCase(test.TestCase):
         diff, same = volume_types.volume_types_diff(self.ctxt, type_ref1['id'],
                                                     type_ref2['id'])
         self.assertFalse(same)
-        self.assertEqual(diff['extra_specs']['key1'], ('val1', 'val1'))
-        self.assertEqual(diff['qos_specs']['k1'], ('v1', 'v1'))
-        self.assertEqual(diff['encryption']['key_size'], (256, 128))
+        self.assertEqual(('val1', 'val1'), diff['extra_specs']['key1'])
+        self.assertEqual(('v1', 'v1'), diff['qos_specs']['k1'])
+        self.assertEqual((256, 128), diff['encryption']['key_size'])
 
         # Check diff equals type specs when one type is None
         diff, same = volume_types.volume_types_diff(self.ctxt, None,

@@ -149,7 +149,7 @@ class VolumeManageTest(test.TestCase):
         self.assertEqual(202, res.status_int, res)
 
         # Check that the manage API was called with the correct arguments.
-        self.assertEqual(mock_api_manage.call_count, 1)
+        self.assertEqual(1, mock_api_manage.call_count)
         args = mock_api_manage.call_args[0]
         self.assertEqual(args[1], body['volume']['host'])
         self.assertEqual(args[2], body['volume']['ref'])
@@ -203,7 +203,7 @@ class VolumeManageTest(test.TestCase):
                            'volume_type':
                            'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'}}
         res = self._get_resp(body)
-        self.assertEqual(res.status_int, 404, res)
+        self.assertEqual(404, res.status_int, res)
         pass
 
     def test_manage_volume_bad_volume_type_by_name(self):

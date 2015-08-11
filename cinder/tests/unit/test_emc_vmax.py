@@ -1745,8 +1745,8 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         storageHardwareIDInstanceNames = (
             self.driver.common.masking._create_hardware_ids(
                 conn, initiatorNames, self.data.storage_system))
-        self.assertEqual(storageHardwareIDInstanceNames[0],
-                         self.data.iscsi_initiator)
+        self.assertEqual(self.data.iscsi_initiator,
+                         storageHardwareIDInstanceNames[0])
 
     def test_format_system_name(self):
         v2array = ['SYMMETRIX', '000195900551', 'U', 'gold']
@@ -3087,7 +3087,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         expectVolume['CreationClassName'] = 'Symm_StorageVolume'
         expectVolume['DeviceID'] = self.data.test_volume['device_id']
         expect = conn.GetInstance(expectVolume)
-        self.assertEqual(volumeInstanceName, expect)
+        self.assertEqual(expect, volumeInstanceName)
 
     def test_get_volume_element_name(self):
         volumeId = 'ea95aa39-080b-4f11-9856-a03acf9112ad'
@@ -3095,7 +3095,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         volumeElementName = utils.get_volume_element_name(volumeId)
         expectVolumeElementName = (
             emc_vmax_utils.VOLUME_ELEMENT_NAME_PREFIX + volumeId)
-        self.assertEqual(volumeElementName, expectVolumeElementName)
+        self.assertEqual(expectVolumeElementName, volumeElementName)
 
     def test_get_associated_replication_from_source_volume(self):
         conn = self.fake_ecom_connection()
@@ -3106,7 +3106,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
                 self.data.test_volume['device_id']))
         expectInstanceName = (
             conn.EnumerateInstanceNames('SE_StorageSynchronized_SV_SV')[0])
-        self.assertEqual(repInstanceName, expectInstanceName)
+        self.assertEqual(expectInstanceName, repInstanceName)
 
     def test_get_array_and_device_id_success(self):
         deviceId = '0123'
@@ -3116,8 +3116,8 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
                   }
         utils = self.driver.common.utils
         (arrId, devId) = utils.get_array_and_device_id(volume, external_ref)
-        self.assertEqual(arrId, arrayId)
-        self.assertEqual(devId, deviceId)
+        self.assertEqual(arrayId, arrId)
+        self.assertEqual(deviceId, devId)
 
     def test_get_array_and_device_id_failed(self):
         deviceId = '0123'

@@ -64,7 +64,7 @@ class VolumeReplicationTestCase(test.TestCase):
             {'replication_status': 'inactive'}
         self.manager.promote_replica(self.adm_ctxt, vol['id'])
         vol_after = db.volume_get(self.ctxt, vol['id'])
-        self.assertEqual(vol_after['replication_status'], 'inactive')
+        self.assertEqual('inactive', vol_after['replication_status'])
 
     def test_promote_replica_fail(self):
         """Test promote replication when promote fails."""
@@ -86,7 +86,7 @@ class VolumeReplicationTestCase(test.TestCase):
             {'replication_status': 'copying'}
         self.manager.reenable_replication(self.adm_ctxt, vol['id'])
         vol_after = db.volume_get(self.ctxt, vol['id'])
-        self.assertEqual(vol_after['replication_status'], 'copying')
+        self.assertEqual('copying', vol_after['replication_status'])
 
     @mock.patch('cinder.utils.require_driver_initialized')
     def test_reenable_replication_uninit_driver(self, _init):

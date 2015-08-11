@@ -316,9 +316,9 @@ class HNASiSCSIDriverTest(test.TestCase):
 
     def test_get_volume_stats(self):
         stats = self.driver.get_volume_stats(True)
-        self.assertEqual(stats["vendor_name"], "HDS")
-        self.assertEqual(stats["storage_protocol"], "iSCSI")
-        self.assertEqual(len(stats['pools']), 2)
+        self.assertEqual("HDS", stats["vendor_name"])
+        self.assertEqual("iSCSI", stats["storage_protocol"])
+        self.assertEqual(2, len(stats['pools']))
 
     def test_delete_volume(self):
         vol = self._create_volume()
