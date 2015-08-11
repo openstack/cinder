@@ -19,15 +19,19 @@ import mock
 from oslo_concurrency import processutils
 import six
 
+from cinder import context
 from cinder import exception
 from cinder import test
 from cinder.tests.unit import fake_snapshot
+from cinder.tests.unit import fake_volume
 from cinder.tests.unit import utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.emc import emc_cli_fc
 from cinder.volume.drivers.emc import emc_cli_iscsi
 from cinder.volume.drivers.emc import emc_vnx_cli
 from cinder.zonemanager import fc_san_lookup_service as fc_service
+
+from mock import patch
 
 
 SUCCEED = ("", 0)
@@ -38,6 +42,7 @@ VERSION = emc_vnx_cli.EMCVnxCliBase.VERSION
 class EMCVNXCLIDriverTestData(object):
 
     test_volume = {
+        'status': 'creating',
         'name': 'vol1',
         'size': 1,
         'volume_name': 'vol1',
@@ -4884,7 +4889,68 @@ Message : Error occurred because of time out"""
             mock_utils.assert_has_calls(expected)
 
 
-class EMCVNXCLIDMultiPoolsTestCase(DriverTestCaseBase):
+class EMCVNXCLIBackupTestCase(DriverTestCaseBase):
+    """Provides cli-level and client-level mock test."""
+
+    def driverSetup(self):
+        self.context = context.get_admin_context()
+        self.driver = self.generate_driver(self.configuration)
+        self.driver.cli._client = mock.Mock()
+        self.snapshot = fake_snapshot.fake_snapshot_obj(
+            self.context, **self.testData.test_snapshot)
+        volume = fake_volume.fake_volume_obj(self.context)
+        self.snapshot.volume = volume
+        return self.driver.cli._client
+
+    def generate_driver(self, conf):
+        driver = emc_cli_iscsi.EMCCLIISCSIDriver(configuration=conf)
+        return driver
+
+    @patch.object(emc_vnx_cli.EMCVnxCliBase, 'terminate_connection')
+    def test_terminate_connection_snapshot(self, terminate_connection):
+        fake_client = self.driverSetup()
+        connector = self.testData.connector
+        smp_name = 'tmp-smp-' + self.snapshot['id']
+        volume = {'name': smp_name}
+        self.driver.terminate_connection_snapshot(
+            self.snapshot, connector)
+        terminate_connection.assert_called_once_with(
+            volume, connector)
+        fake_client.detach_mount_point.assert_called_once_with(
+            smp_name)
+
+    @patch.object(emc_vnx_cli.EMCVnxCliBase, 'initialize_connection')
+    def test_initialize_connection_snapshot(self, initialize_connection):
+        fake_client = self.driverSetup()
+        connector = self.testData.connector
+        smp_name = 'tmp-smp-' + self.snapshot['id']
+        self.driver.initialize_connection_snapshot(
+            self.snapshot, connector)
+        fake_client.attach_mount_point.assert_called_once_with(
+            smp_name, self.snapshot['name'])
+        volume = {'name': smp_name, 'id': self.snapshot['id']}
+        initialize_connection.assert_called_once_with(
+            volume, connector)
+
+    def test_create_export_snapshot(self):
+        fake_client = self.driverSetup()
+        connector = self.testData.connector
+        smp_name = 'tmp-smp-' + self.snapshot['id']
+        self.driver.create_export_snapshot(
+            None, self.snapshot, connector)
+        fake_client.create_mount_point.assert_called_once_with(
+            self.snapshot['volume_name'], smp_name)
+
+    @patch.object(emc_vnx_cli.EMCVnxCliBase, 'delete_volume')
+    def test_remove_export_snapshot(self, delete_volume):
+        self.driverSetup()
+        smp_name = 'tmp-smp-' + self.snapshot['id']
+        self.driver.remove_export_snapshot(None, self.snapshot)
+        volume = {'name': smp_name, 'provider_location': None}
+        delete_volume.assert_called_once_with(volume, True)
+
+
+class EMCVNXCLIMultiPoolsTestCase(DriverTestCaseBase):
 
     def generate_driver(self, conf):
         driver = emc_cli_iscsi.EMCCLIISCSIDriver(configuration=conf)

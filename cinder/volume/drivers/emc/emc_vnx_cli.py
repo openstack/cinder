@@ -536,7 +536,7 @@ class CommandLineHelper(object):
         return lun
 
     def delete_lun(self, name):
-
+        """Deletes a LUN or mount point."""
         command_delete_lun = ['lun', '-destroy',
                               '-name', name,
                               '-forceDetach',
@@ -1781,6 +1781,7 @@ class EMCVnxCliBase(object):
     tmp_snap_prefix = 'tmp-snap-'
     snap_as_vol_prefix = 'snap-as-vol-'
     tmp_cgsnap_prefix = 'tmp-cgsnapshot-'
+    tmp_smp_for_backup_prefix = 'tmp-smp-'
 
     def __init__(self, prtcl, configuration=None):
         self.protocol = prtcl
@@ -1958,6 +1959,9 @@ class EMCVnxCliBase(object):
     def _construct_tmp_snap_name(self, volume):
         return self.tmp_snap_prefix + volume['id']
 
+    def _construct_tmp_smp_name(self, snapshot):
+        return self.tmp_smp_for_backup_prefix + snapshot.id
+
     def create_volume(self, volume):
         """Creates a EMC volume."""
         volume_size = volume['size']
@@ -1993,7 +1997,7 @@ class EMCVnxCliBase(object):
             provisioning, tiering, volume['consistencygroup_id'],
             ignore_thresholds=self.ignore_pool_full_threshold,
             poll=False)
-        pl = self._build_provider_location_for_lun(data['lun_id'])
+        pl = self._build_provider_location(data['lun_id'])
         volume_metadata['lun_type'] = 'lun'
         model_update = {'provider_location': pl,
                         'metadata': volume_metadata}
@@ -2097,13 +2101,13 @@ class EMCVnxCliBase(object):
             raise exception.VolumeBackendAPIException(data=msg)
         return
 
-    def delete_volume(self, volume):
+    def delete_volume(self, volume, force_delete=False):
         """Deletes an EMC volume."""
         try:
             self._client.delete_lun(volume['name'])
         except exception.EMCVnxCLICmdError as ex:
             orig_out = "\n".join(ex.kwargs["out"])
-            if (self.force_delete_lun_in_sg and
+            if ((force_delete or self.force_delete_lun_in_sg) and
                     VNXError.has_error(orig_out, VNXError.LUN_IN_SG)):
                 LOG.warning(_LW('LUN corresponding to %s is still '
                                 'in some Storage Groups.'
@@ -2251,7 +2255,7 @@ class EMCVnxCliBase(object):
             self._client.delete_snapshot(
                 self._construct_snap_as_vol_name(volume))
 
-        pl = self._build_provider_location_for_lun(src_id, 'lun')
+        pl = self._build_provider_location(src_id, 'lun')
         volume_metadata = self._get_volume_metadata(volume)
         volume_metadata['lun_type'] = 'lun'
         model_update = {'provider_location': pl,
@@ -2516,7 +2520,7 @@ class EMCVnxCliBase(object):
                                                 store=store_spec)
             flow_engine.run()
             new_lun_id = flow_engine.storage.fetch('new_lun_id')
-            pl = self._build_provider_location_for_lun(new_lun_id, 'lun')
+            pl = self._build_provider_location(new_lun_id, 'lun')
             volume_metadata['lun_type'] = 'lun'
         else:
             work_flow.add(CopySnapshotTask(),
@@ -2527,7 +2531,7 @@ class EMCVnxCliBase(object):
                                                 store=store_spec)
             flow_engine.run()
             new_lun_id = flow_engine.storage.fetch('new_smp_id')
-            pl = self._build_provider_location_for_lun(new_lun_id, 'smp')
+            pl = self._build_provider_location(new_lun_id, 'smp')
             volume_metadata['lun_type'] = 'smp'
         model_update = {'provider_location': pl,
                         'metadata': volume_metadata}
@@ -2591,7 +2595,7 @@ class EMCVnxCliBase(object):
                 self._client.delete_cgsnapshot(snapshot['id'])
             else:
                 self.delete_snapshot(snapshot)
-            pl = self._build_provider_location_for_lun(new_lun_id, 'lun')
+            pl = self._build_provider_location(new_lun_id, 'lun')
             volume_metadata['lun_type'] = 'lun'
         else:
             work_flow.add(CreateSnapshotTask(),
@@ -2601,7 +2605,7 @@ class EMCVnxCliBase(object):
                                                 store=store_spec)
             flow_engine.run()
             new_lun_id = flow_engine.storage.fetch('new_smp_id')
-            pl = self._build_provider_location_for_lun(new_lun_id, 'smp')
+            pl = self._build_provider_location(new_lun_id, 'smp')
             volume_metadata['lun_type'] = 'smp'
 
         model_update = {'provider_location': pl,
@@ -2624,7 +2628,8 @@ class EMCVnxCliBase(object):
     def dumps_provider_location(self, pl_dict):
         return '|'.join([k + '^' + pl_dict[k] for k in pl_dict])
 
-    def _build_provider_location_for_lun(self, lun_id, type='lun'):
+    def _build_provider_location(self, lun_id, type='lun'):
+        """Builds provider_location for volume or snapshot."""
         pl_dict = {'system': self.get_array_serial(),
                    'type': type,
                    'id': six.text_type(lun_id),
@@ -3331,6 +3336,34 @@ class EMCVnxCliBase(object):
             return conn_info
         return do_terminate_connection()
 
+    def initialize_connection_snapshot(self, snapshot, connector, **kwargs):
+        """Initializes connection for mount point."""
+        smp_name = self._construct_tmp_smp_name(snapshot)
+        self._client.attach_mount_point(smp_name, snapshot.name)
+        volume = {'name': smp_name, 'id': snapshot.id}
+        return self.initialize_connection(volume, connector)
+
+    def terminate_connection_snapshot(self, snapshot, connector, **kwargs):
+        """Disallows connection for mount point."""
+        smp_name = self._construct_tmp_smp_name(snapshot)
+        volume = {'name': smp_name}
+        conn_info = self.terminate_connection(volume, connector)
+        self._client.detach_mount_point(smp_name)
+        return conn_info
+
+    def create_export_snapshot(self, context, snapshot, connector):
+        """Creates mount point for a snapshot."""
+        smp_name = self._construct_tmp_smp_name(snapshot)
+        primary_lun_name = snapshot.volume_name
+        self._client.create_mount_point(primary_lun_name, smp_name)
+        return None
+
+    def remove_export_snapshot(self, context, snapshot):
+        """Removes mount point for a snapshot."""
+        smp_name = self._construct_tmp_smp_name(snapshot)
+        volume = {'name': smp_name, 'provider_location': None}
+        self.delete_volume(volume, True)
+
     def manage_existing_get_size(self, volume, existing_ref):
         """Returns size of volume to be managed by manage_existing."""
         if 'source-id' in existing_ref:
@@ -3378,7 +3411,7 @@ class EMCVnxCliBase(object):
                 existing_ref=manage_existing_ref, reason=reason)
         self._client.rename_lun(lun_id, volume['name'])
         model_update = {'provider_location':
-                        self._build_provider_location_for_lun(lun_id)}
+                        self._build_provider_location(lun_id)}
         return model_update
 
     def get_login_ports(self, connector, io_ports=None):
@@ -3515,7 +3548,7 @@ class EMCVnxCliBase(object):
         for i, update in enumerate(volume_model_updates):
             new_lun_id = flow_engine.storage.fetch(lun_id_key_template % i)
             update['provider_location'] = (
-                self._build_provider_location_for_lun(new_lun_id))
+                self._build_provider_location(new_lun_id))
 
         return None, volume_model_updates
 
