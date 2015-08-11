@@ -144,7 +144,7 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
                              request_spec=request_spec,
                              filter_properties=filter_properties)
 
-    def _post_reschedule(self, context, volume_id):
+    def _post_reschedule(self, volume_id):
         """Actions that happen after the rescheduling attempt occur here."""
 
         LOG.debug("Volume %s: re-scheduled", volume_id)
@@ -177,7 +177,7 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
             try:
                 self._pre_reschedule(context, volume_id)
                 self._reschedule(context, cause, volume_id=volume_id, **kwargs)
-                self._post_reschedule(context, volume_id)
+                self._post_reschedule(volume_id)
                 return True
             except exception.CinderException:
                 LOG.exception(_LE("Volume %s: rescheduling failed"), volume_id)
@@ -614,7 +614,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                                                  image_meta=image_meta)
         return model_update
 
-    def _create_raw_volume(self, context, volume_ref, **kwargs):
+    def _create_raw_volume(self, volume_ref, **kwargs):
         return self.driver.create_volume(volume_ref)
 
     def execute(self, context, volume_ref, volume_spec):
@@ -636,8 +636,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                  {'volume_spec': volume_spec, 'volume_id': volume_id,
                   'create_type': create_type})
         if create_type == 'raw':
-            model_update = self._create_raw_volume(context,
-                                                   volume_ref=volume_ref,
+            model_update = self._create_raw_volume(volume_ref=volume_ref,
                                                    **volume_spec)
         elif create_type == 'snap':
             model_update = self._create_from_snapshot(context,

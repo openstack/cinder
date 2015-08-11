@@ -1531,9 +1531,6 @@ class VolumeManager(manager.SchedulerDependentManager):
         self._report_driver_status(context)
         self._publish_service_capabilities(context)
 
-    def notification(self, context, event):
-        LOG.info(_LI("Notification {%s} received"), event)
-
     def _notify_about_volume_usage(self,
                                    context,
                                    volume,

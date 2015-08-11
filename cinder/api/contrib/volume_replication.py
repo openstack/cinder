@@ -39,7 +39,7 @@ class VolumeReplicationController(wsgi.Controller):
         self.volume_api = volume.API()
         self.replication_api = replicationAPI.API()
 
-    def _add_replication_attributes(self, req, context, resp_volume):
+    def _add_replication_attributes(self, req, resp_volume):
         db_volume = req.cached_resource_by_id(resp_volume['id'])
         key = "%s:extended_status" % Volume_replication.alias
         resp_volume[key] = db_volume['replication_extended_status']
@@ -51,8 +51,7 @@ class VolumeReplicationController(wsgi.Controller):
         context = req.environ['cinder.context']
         if authorize(context):
             resp_obj.attach(xml=VolumeReplicationAttributeTemplate())
-            self._add_replication_attributes(req, context,
-                                             resp_obj.obj['volume'])
+            self._add_replication_attributes(req, resp_obj.obj['volume'])
 
     @wsgi.extends
     def detail(self, req, resp_obj):
@@ -60,7 +59,7 @@ class VolumeReplicationController(wsgi.Controller):
         if authorize(context):
             resp_obj.attach(xml=VolumeReplicationListAttributeTemplate())
             for vol in list(resp_obj.obj['volumes']):
-                self._add_replication_attributes(req, context, vol)
+                self._add_replication_attributes(req, vol)
 
     @wsgi.response(202)
     @wsgi.action('os-promote-replica')

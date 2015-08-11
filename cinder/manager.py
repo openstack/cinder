@@ -108,10 +108,10 @@ class Manager(base.Base, PeriodicTasks):
         """
         pass
 
-    def service_version(self, context):
+    def service_version(self):
         return version.version_string()
 
-    def service_config(self, context):
+    def service_config(self):
         config = {}
         for key in CONF:
             config[key] = CONF.get(key, None)
