@@ -520,7 +520,7 @@ def refresh_cluster_ssc(backend, na_server, vserver, synchronous=False):
         return
     elif (getattr(backend, 'ssc_run_time', None) is None or
           (backend.ssc_run_time and
-           timeutils.is_newer_than(backend.ssc_run_time, delta_secs))):
+           timeutils.is_older_than(backend.ssc_run_time, delta_secs))):
         if synchronous:
             get_cluster_latest_ssc(backend, na_server, vserver)
         else:
