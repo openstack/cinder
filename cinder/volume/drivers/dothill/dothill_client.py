@@ -20,8 +20,8 @@ import time
 
 from lxml import etree
 from oslo_log import log as logging
+import requests
 import six
-from six.moves import urllib
 
 from cinder import exception
 from cinder.i18n import _LE
@@ -53,11 +53,11 @@ class DotHillClient(object):
 
         url = self._base_url + "/login/" + digest
         try:
-            xml = urllib.request.urlopen(url).read()
-        except urllib.error.URLError:
+            xml = requests.get(url)
+        except requests.exceptions.RequestException:
             raise exception.DotHillConnectionError
 
-        self._get_auth_token(xml)
+        self._get_auth_token(xml.text.encode('utf8'))
 
         if self._session_key is None:
             raise exception.DotHillAuthenticationError
@@ -95,10 +95,9 @@ class DotHillClient(object):
 
         url = self._build_request_url(path, *args, **kargs)
         headers = {'dataType': 'api', 'sessionKey': self._session_key}
-        req = urllib.request.Request(url, headers=headers)
         try:
-            xml = urllib.request.urlopen(req).read()
-            tree = etree.XML(xml)
+            xml = requests.get(url, headers=headers)
+            tree = etree.XML(xml.text.encode('utf8'))
         except Exception:
             raise exception.DotHillConnectionError
 
@@ -110,7 +109,7 @@ class DotHillClient(object):
     def logout(self):
         url = self._base_url + '/exit'
         try:
-            urllib.request.urlopen(url)
+            requests.get(url)
             return True
         except Exception:
             return False
