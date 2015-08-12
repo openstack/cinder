@@ -731,7 +731,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
         :param volume: reference of volume to be exported
         """
-        self._do_export(_ctx, volume, ensure=True)
+        self.create_export(_ctx, None, volume, None)
 
     def remove_export(self, _ctx, volume):
         """Driver entry point to remove an export for a volume.
