@@ -197,10 +197,11 @@ class HP3PARCommon(object):
         2.0.47 - Changed initialize_connection to use getHostVLUNs. #1475064
         2.0.48 - Adding changes to support 3PAR iSCSI multipath.
         2.0.49 - Added client CPG stats to driver volume stats. bug #1482741
+        2.0.50 - Add over subscription support
 
     """
 
-    VERSION = "2.0.49"
+    VERSION = "2.0.50"
 
     stats = {}
 
@@ -778,6 +779,10 @@ class HP3PARCommon(object):
                 capacity_utilization = (
                     (float(total_capacity - free_capacity) /
                      float(total_capacity)) * 100)
+                provisioned_capacity = int((cpg['UsrUsage']['totalMiB'] +
+                                            cpg['SAUsage']['totalMiB'] +
+                                            cpg['SDUsage']['totalMiB']) *
+                                           const)
 
             except hpexceptions.HTTPNotFound:
                 err = (_("CPG (%s) doesn't exist on array")
@@ -788,8 +793,14 @@ class HP3PARCommon(object):
             pool = {'pool_name': cpg_name,
                     'total_capacity_gb': total_capacity,
                     'free_capacity_gb': free_capacity,
+                    'provisioned_capacity_gb': provisioned_capacity,
                     'QoS_support': True,
-                    'reserved_percentage': 0,
+                    'thin_provisioning_support': True,
+                    'thick_provisioning_support': True,
+                    'max_over_subscription_ratio': (
+                        self.config.safe_get('max_over_subscription_ratio')),
+                    'reserved_percentage': (
+                        self.config.safe_get('reserved_percentage')),
                     'location_info': ('HP3PARDriver:%(sys_id)s:%(dest_cpg)s' %
                                       {'sys_id': info['serialNumber'],
                                        'dest_cpg': cpg_name}),
@@ -812,10 +823,6 @@ class HP3PARCommon(object):
                       'storage_protocol': None,
                       'vendor_name': 'Hewlett-Packard',
                       'volume_backend_name': None,
-                      # Use zero capacities here so we always use a pool.
-                      'total_capacity_gb': 0,
-                      'free_capacity_gb': 0,
-                      'reserved_percentage': 0,
                       'pools': pools}
 
     def _get_vlun(self, volume_name, hostname, lun_id=None, nsp=None):
