@@ -93,6 +93,7 @@ SNAPSHOT = {
     "display_name": "fake_snapshot",
     "cgsnapshot_id": None,
 }
+SNAPSHOT_PURITY_NAME = SRC_VOL["name"] + '-cinder.' + SNAPSHOT["name"]
 SNAPSHOT_WITH_CGROUP = SNAPSHOT.copy()
 SNAPSHOT_WITH_CGROUP['cgsnapshot_id'] = \
     "4a2f7e3a-312a-40c5-96a8-536b8a0fe075"
@@ -177,6 +178,13 @@ FC_CONNECTION_INFO = {
         "discard": True,
     },
 }
+PURE_SNAPSHOT = {
+    "created": "2015-05-27T17:34:33Z",
+    "name": "vol1.snap1",
+    "serial": "8343DFDE2DAFBE40000115E4",
+    "size": 3221225472,
+    "source": "vol1"
+}
 
 
 class FakePureStorageHTTPError(Exception):
@@ -229,6 +237,7 @@ class PureBaseVolumeDriverTestCase(PureDriverTestCase):
         self.driver = self.fake_pure_base_volume_driver(
             configuration=self.mock_config)
         self.driver._array = self.array
+        self.array.get_rest_version.return_value = '1.4'
 
     def test_generate_purity_host_name(self):
         result = self.driver._generate_purity_host_name(
@@ -1050,7 +1059,7 @@ class PureBaseVolumeDriverTestCase(PureDriverTestCase):
         size = self.driver.manage_existing_get_size(VOLUME, volume_ref)
 
         self.assertEqual(expected_size, size)
-        self.array.get_volume.assert_called_with(ref_name)
+        self.array.get_volume.assert_called_with(ref_name, snap=False)
 
     def test_manage_existing_get_size_error_propagates(self):
         self.array.get_volume.return_value = mock.MagicMock()
@@ -1098,6 +1107,157 @@ class PureBaseVolumeDriverTestCase(PureDriverTestCase):
 
         self.array.rename_volume.assert_called_with(vol_name,
                                                     unmanaged_vol_name)
+
+    def test_manage_existing_snapshot(self):
+        ref_name = PURE_SNAPSHOT['name']
+        snap_ref = {'name': ref_name}
+        self.array.get_volume.return_value = [PURE_SNAPSHOT]
+        self.driver.manage_existing_snapshot(SNAPSHOT, snap_ref)
+        self.array.rename_volume.assert_called_once_with(ref_name,
+                                                         SNAPSHOT_PURITY_NAME)
+        self.array.get_volume.assert_called_with(PURE_SNAPSHOT['source'],
+                                                 snap=True)
+
+    def test_manage_existing_snapshot_multiple_snaps_on_volume(self):
+        ref_name = PURE_SNAPSHOT['name']
+        snap_ref = {'name': ref_name}
+        pure_snaps = [PURE_SNAPSHOT]
+        for i in range(5):
+            snap = PURE_SNAPSHOT.copy()
+            snap['name'] += str(i)
+            pure_snaps.append(snap)
+        self.array.get_volume.return_value = pure_snaps
+        self.driver.manage_existing_snapshot(SNAPSHOT, snap_ref)
+        self.array.rename_volume.assert_called_once_with(ref_name,
+                                                         SNAPSHOT_PURITY_NAME)
+
+    def test_manage_existing_snapshot_error_propagates(self):
+        self.array.get_volume.return_value = [PURE_SNAPSHOT]
+        self.assert_error_propagates(
+            [self.array.rename_volume],
+            self.driver.manage_existing_snapshot,
+            SNAPSHOT, {'name': PURE_SNAPSHOT['name']}
+        )
+
+    def test_manage_existing_snapshot_bad_ref(self):
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_snapshot,
+                          SNAPSHOT, {'bad_key': 'bad_value'})
+
+    def test_manage_existing_snapshot_empty_ref(self):
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_snapshot,
+                          SNAPSHOT, {'name': ''})
+
+    def test_manage_existing_snapshot_none_ref(self):
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_snapshot,
+                          SNAPSHOT, {'name': None})
+
+    def test_manage_existing_snapshot_volume_ref_not_exist(self):
+        self.array.get_volume.side_effect = \
+            self.purestorage_module.PureHTTPError(
+                text="Volume does not exist.",
+                code=400
+            )
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_snapshot,
+                          SNAPSHOT, {'name': 'non-existing-volume.snap1'})
+
+    def test_manage_existing_snapshot_ref_not_exist(self):
+        ref_name = PURE_SNAPSHOT['name'] + '-fake'
+        snap_ref = {'name': ref_name}
+        self.array.get_volume.return_value = [PURE_SNAPSHOT]
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_snapshot,
+                          SNAPSHOT, snap_ref)
+
+    def test_manage_existing_snapshot_bad_api_version(self):
+        self.array.get_rest_version.return_value = '1.3'
+        self.assertRaises(exception.PureDriverException,
+                          self.driver.manage_existing_snapshot,
+                          SNAPSHOT, {'name': PURE_SNAPSHOT['name']})
+
+    def test_manage_existing_snapshot_get_size(self):
+        ref_name = PURE_SNAPSHOT['name']
+        snap_ref = {'name': ref_name}
+        self.array.get_volume.return_value = [PURE_SNAPSHOT]
+
+        size = self.driver.manage_existing_snapshot_get_size(SNAPSHOT,
+                                                             snap_ref)
+        expected_size = 3.0
+        self.assertEqual(expected_size, size)
+        self.array.get_volume.assert_called_with(PURE_SNAPSHOT['source'],
+                                                 snap=True)
+
+    def test_manage_existing_snapshot_get_size_error_propagates(self):
+        self.array.get_volume.return_value = [PURE_SNAPSHOT]
+        self.assert_error_propagates(
+            [self.array.get_volume],
+            self.driver.manage_existing_snapshot_get_size,
+            SNAPSHOT, {'name': PURE_SNAPSHOT['name']}
+        )
+
+    def test_manage_existing_snapshot_get_size_bad_ref(self):
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_snapshot_get_size,
+                          SNAPSHOT, {'bad_key': 'bad_value'})
+
+    def test_manage_existing_snapshot_get_size_empty_ref(self):
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_snapshot_get_size,
+                          SNAPSHOT, {'name': ''})
+
+    def test_manage_existing_snapshot_get_size_none_ref(self):
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_snapshot_get_size,
+                          SNAPSHOT, {'name': None})
+
+    def test_manage_existing_snapshot_get_size_volume_ref_not_exist(self):
+        self.array.get_volume.side_effect = \
+            self.purestorage_module.PureHTTPError(
+                text="Volume does not exist.",
+                code=400
+            )
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_snapshot_get_size,
+                          SNAPSHOT, {'name': 'non-existing-volume.snap1'})
+
+    def test_manage_existing_snapshot_get_size_bad_api_version(self):
+        self.array.get_rest_version.return_value = '1.3'
+        self.assertRaises(exception.PureDriverException,
+                          self.driver.manage_existing_snapshot_get_size,
+                          SNAPSHOT, {'name': PURE_SNAPSHOT['name']})
+
+    def test_unmanage_snapshot(self):
+        unmanaged_snap_name = SNAPSHOT_PURITY_NAME + "-unmanaged"
+        self.driver.unmanage_snapshot(SNAPSHOT)
+        self.array.rename_volume.assert_called_with(SNAPSHOT_PURITY_NAME,
+                                                    unmanaged_snap_name)
+
+    def test_unmanage_snapshot_error_propagates(self):
+        self.assert_error_propagates([self.array.rename_volume],
+                                     self.driver.unmanage_snapshot,
+                                     SNAPSHOT)
+
+    def test_unmanage_snapshot_with_deleted_snapshot(self):
+        unmanaged_snap_name = SNAPSHOT_PURITY_NAME + "-unmanaged"
+        self.array.rename_volume.side_effect = \
+            self.purestorage_module.PureHTTPError(
+                text="Snapshot does not exist.",
+                code=400
+            )
+
+        self.driver.unmanage_snapshot(SNAPSHOT)
+
+        self.array.rename_volume.assert_called_with(SNAPSHOT_PURITY_NAME,
+                                                    unmanaged_snap_name)
+
+    def test_unmanage_snapshot_bad_api_version(self):
+        self.array.get_rest_version.return_value = '1.3'
+        self.assertRaises(exception.PureDriverException,
+                          self.driver.unmanage_snapshot,
+                          SNAPSHOT)
 
     def test_retype(self):
         # Ensure that we return true no matter what the inputs are
