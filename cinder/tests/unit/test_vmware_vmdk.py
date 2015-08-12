@@ -59,18 +59,6 @@ class FakeVim(object):
         pass
 
 
-class FakeTaskInfo(object):
-    def __init__(self, state, result=None):
-        self.state = state
-        self.result = result
-
-        class FakeError(object):
-            def __init__(self):
-                self.localizedMessage = None
-
-        self.error = FakeError()
-
-
 class FakeMor(object):
     def __init__(self, type, val):
         self._type = type
@@ -86,50 +74,6 @@ class FakeObject(object):
 
     def __getitem__(self, item):
         return self._fields[item]
-
-
-class FakeManagedObjectReference(object):
-    def __init__(self, lis=None):
-        self.ManagedObjectReference = lis or []
-
-
-class FakeDatastoreSummary(object):
-    def __init__(self, freeSpace, capacity, datastore=None, name=None):
-        self.freeSpace = freeSpace
-        self.capacity = capacity
-        self.datastore = datastore
-        self.name = name
-
-
-class FakeSnapshotTree(object):
-    def __init__(self, tree=None, name=None,
-                 snapshot=None, childSnapshotList=None):
-        self.rootSnapshotList = tree
-        self.name = name
-        self.snapshot = snapshot
-        self.childSnapshotList = childSnapshotList
-
-
-class FakeElem(object):
-    def __init__(self, prop_set=None):
-        self.propSet = prop_set
-
-
-class FakeProp(object):
-    def __init__(self, name=None, val=None):
-        self.name = name
-        self.val = val
-
-
-class FakeRetrieveResult(object):
-    def __init__(self, objects, token):
-        self.objects = objects
-        self.token = token
-
-
-class FakeObj(object):
-    def __init__(self, obj=None):
-        self.obj = obj
 
 
 # TODO(vbala) Split test methods handling multiple cases into multiple methods,
