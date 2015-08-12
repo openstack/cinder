@@ -25,6 +25,7 @@ from six.moves import range
 from six.moves import urllib
 import webob
 
+from cinder.api import common
 from cinder.api import extensions
 from cinder.api.v2 import volumes
 from cinder import consistencygroup as consistencygroupAPI
@@ -36,6 +37,7 @@ from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v2 import stubs
 from cinder.tests.unit import fake_notifier
 from cinder.tests.unit.image import fake as fake_image
+from cinder.tests.unit import utils
 from cinder.volume import api as volume_api
 
 CONF = cfg.CONF
@@ -60,6 +62,7 @@ class VolumeApiTest(test.TestCase):
         self.stubs.Set(db, 'service_get_all_by_topic',
                        stubs.stub_service_get_all_by_topic)
         self.maxDiff = None
+        self.ctxt = context.RequestContext('admin', 'fakeproject', True)
 
     def test_volume_create(self):
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
@@ -731,7 +734,8 @@ class VolumeApiTest(test.TestCase):
         def stub_volume_get_all_by_project(context, project_id, marker, limit,
                                            sort_keys=None, sort_dirs=None,
                                            filters=None,
-                                           viewable_admin_meta=False):
+                                           viewable_admin_meta=False,
+                                           offset=0):
             return [
                 stubs.stub_volume(1, display_name='vol1'),
                 stubs.stub_volume(2, display_name='vol2'),
@@ -776,13 +780,13 @@ class VolumeApiTest(test.TestCase):
 
     def test_volume_index_limit_negative(self):
         req = fakes.HTTPRequest.blank('/v2/volumes?limit=-1')
-        self.assertRaises(exception.Invalid,
+        self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.index,
                           req)
 
     def test_volume_index_limit_non_int(self):
         req = fakes.HTTPRequest.blank('/v2/volumes?limit=a')
-        self.assertRaises(exception.Invalid,
+        self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.index,
                           req)
 
@@ -797,32 +801,29 @@ class VolumeApiTest(test.TestCase):
         self.assertEqual(1, len(volumes))
         self.assertEqual('1', volumes[0]['id'])
 
-    def test_volume_index_limit_offset(self):
-        def stub_volume_get_all_by_project(context, project_id, marker, limit,
-                                           sort_keys=None, sort_dirs=None,
-                                           filters=None,
-                                           viewable_admin_meta=False):
-            return [
-                stubs.stub_volume(1, display_name='vol1'),
-                stubs.stub_volume(2, display_name='vol2'),
-            ]
-        self.stubs.Set(db, 'volume_get_all_by_project',
-                       stub_volume_get_all_by_project)
-        self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
+    def _create_db_volumes(self, num_volumes):
+        volumes = [utils.create_volume(self.ctxt, display_name='vol%s' % i)
+                   for i in range(num_volumes)]
+        for vol in volumes:
+            self.addCleanup(db.volume_destroy, self.ctxt, vol.id)
+        volumes.reverse()
+        return volumes
 
+    def test_volume_index_limit_offset(self):
+        created_volumes = self._create_db_volumes(2)
         req = fakes.HTTPRequest.blank('/v2/volumes?limit=2&offset=1')
         res_dict = self.controller.index(req)
         volumes = res_dict['volumes']
         self.assertEqual(1, len(volumes))
-        self.assertEqual(2, volumes[0]['id'])
+        self.assertEqual(created_volumes[1].id, volumes[0]['id'])
 
         req = fakes.HTTPRequest.blank('/v2/volumes?limit=-1&offset=1')
-        self.assertRaises(exception.InvalidInput,
+        self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.index,
                           req)
 
         req = fakes.HTTPRequest.blank('/v2/volumes?limit=a&offset=1')
-        self.assertRaises(exception.InvalidInput,
+        self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.index,
                           req)
 
@@ -830,7 +831,8 @@ class VolumeApiTest(test.TestCase):
         def stub_volume_get_all_by_project(context, project_id, marker, limit,
                                            sort_keys=None, sort_dirs=None,
                                            filters=None,
-                                           viewable_admin_meta=False):
+                                           viewable_admin_meta=False,
+                                           offset=0):
             return [
                 stubs.stub_volume(1, display_name='vol1'),
                 stubs.stub_volume(2, display_name='vol2'),
@@ -867,13 +869,13 @@ class VolumeApiTest(test.TestCase):
 
     def test_volume_detail_limit_negative(self):
         req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=-1')
-        self.assertRaises(exception.Invalid,
+        self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.detail,
                           req)
 
     def test_volume_detail_limit_non_int(self):
         req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=a')
-        self.assertRaises(exception.Invalid,
+        self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.detail,
                           req)
 
@@ -889,38 +891,27 @@ class VolumeApiTest(test.TestCase):
         self.assertEqual('1', volumes[0]['id'])
 
     def test_volume_detail_limit_offset(self):
-        def stub_volume_get_all_by_project(context, project_id, marker, limit,
-                                           sort_keys=None, sort_dirs=None,
-                                           filters=None,
-                                           viewable_admin_meta=False):
-            return [
-                stubs.stub_volume(1, display_name='vol1'),
-                stubs.stub_volume(2, display_name='vol2'),
-            ]
-        self.stubs.Set(db, 'volume_get_all_by_project',
-                       stub_volume_get_all_by_project)
-        self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
-
+        created_volumes = self._create_db_volumes(2)
         req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=2&offset=1')
         res_dict = self.controller.detail(req)
         volumes = res_dict['volumes']
         self.assertEqual(1, len(volumes))
-        self.assertEqual(2, volumes[0]['id'])
+        self.assertEqual(created_volumes[1].id, volumes[0]['id'])
 
         req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=2&offset=1',
                                       use_admin_context=True)
         res_dict = self.controller.detail(req)
         volumes = res_dict['volumes']
         self.assertEqual(1, len(volumes))
-        self.assertEqual(2, volumes[0]['id'])
+        self.assertEqual(created_volumes[1].id, volumes[0]['id'])
 
         req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=-1&offset=1')
-        self.assertRaises(exception.InvalidInput,
+        self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.detail,
                           req)
 
         req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=a&offset=1')
-        self.assertRaises(exception.InvalidInput,
+        self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.detail,
                           req)
 
@@ -933,84 +924,71 @@ class VolumeApiTest(test.TestCase):
         expected = {'volumes': []}
         self.assertEqual(expected, res_dict)
 
-    def test_volume_default_limit(self):
-        self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
+    def _validate_next_link(self, detailed, item_count, osapi_max_limit, limit,
+                            should_link_exist):
+        keys_fns = (('volumes', self.controller.index),
+                    ('volumes/detail', self.controller.detail))
+        key, fn = keys_fns[detailed]
 
-        def _verify_links(links, url_key):
-            """Verify next link and url."""
-            self.assertEqual('next', links[0]['rel'])
-            href_parts = urllib.parse.urlparse(links[0]['href'])
-            self.assertEqual('/v2/fakeproject/%s' % key, href_parts.path)
+        req_string = '/v2/%s?all_tenants=1' % key
+        if limit:
+            req_string += '&limit=%s' % limit
+        req = fakes.HTTPRequest.blank(req_string, use_admin_context=True)
+
+        link_return = [{"rel": "next", "href": "fake_link"}]
+        self.flags(osapi_max_limit=osapi_max_limit)
+
+        def get_pagination_params(params, max_limit=CONF.osapi_max_limit,
+                                  original_call=common.get_pagination_params):
+            return original_call(params, max_limit)
+
+        def _get_limit_param(params, max_limit=CONF.osapi_max_limit,
+                             original_call=common._get_limit_param):
+            return original_call(params, max_limit)
+
+        with mock.patch.object(common, 'get_pagination_params',
+                               get_pagination_params), \
+                mock.patch.object(common, '_get_limit_param',
+                                  _get_limit_param), \
+                mock.patch.object(common.ViewBuilder, '_generate_next_link',
+                                  return_value=link_return):
+            res_dict = fn(req)
+            self.assertEqual(item_count, len(res_dict['volumes']))
+            self.assertEqual(should_link_exist, 'volumes_links' in res_dict)
+
+    def test_volume_default_limit(self):
+        self.stubs.UnsetAll()
+        self._create_db_volumes(3)
 
         # Verify both the index and detail queries
-        api_keys = ['volumes', 'volumes/detail']
-        fns = [self.controller.index, self.controller.detail]
+        for detailed in (True, False):
+            # Number of volumes less than max, do not include
+            self._validate_next_link(detailed, item_count=3, osapi_max_limit=4,
+                                     limit=None, should_link_exist=False)
 
-        # Number of volumes equals the max, next link not included
-        def stub_volume_get_all(context, marker, limit,
-                                sort_keys=None, sort_dirs=None,
-                                filters=None,
-                                viewable_admin_meta=False):
-            vols = [stubs.stub_volume(i)
-                    for i in range(CONF.osapi_max_limit)]
-            if limit is None or limit >= len(vols):
-                return vols
-            return vols[:limit]
-        self.stubs.Set(db, 'volume_get_all', stub_volume_get_all)
-        for key, fn in zip(api_keys, fns):
-            req = fakes.HTTPRequest.blank('/v2/%s?all_tenants=1' % key,
-                                          use_admin_context=True)
-            res_dict = fn(req)
-            self.assertEqual(len(res_dict['volumes']), CONF.osapi_max_limit)
-            self.assertFalse('volumes_links' in res_dict)
+            # Number of volumes equals the max, next link will be included
+            self._validate_next_link(detailed, item_count=3, osapi_max_limit=3,
+                                     limit=None, should_link_exist=True)
 
-        # Number of volumes less than max, do not include
-        def stub_volume_get_all2(context, marker, limit,
-                                 sort_keys=None, sort_dirs=None,
-                                 filters=None,
-                                 viewable_admin_meta=False):
-            vols = [stubs.stub_volume(i)
-                    for i in range(100)]
-            if limit is None or limit >= len(vols):
-                return vols
-            return vols[:limit]
-        self.stubs.Set(db, 'volume_get_all', stub_volume_get_all2)
-        for key, fn in zip(api_keys, fns):
-            req = fakes.HTTPRequest.blank('/v2/%s?all_tenants=1' % key,
-                                          use_admin_context=True)
-            res_dict = fn(req)
-            self.assertEqual(100, len(res_dict['volumes']))
-            self.assertFalse('volumes_links' in res_dict)
+            # Number of volumes more than the max, include next link
+            self._validate_next_link(detailed, item_count=2, osapi_max_limit=2,
+                                     limit=None, should_link_exist=True)
 
-        # Number of volumes more than the max, include next link
-        def stub_volume_get_all3(context, marker, limit,
-                                 sort_keys=None, sort_dirs=None,
-                                 filters=None,
-                                 viewable_admin_meta=False):
-            vols = [stubs.stub_volume(i)
-                    for i in range(CONF.osapi_max_limit + 100)]
-            if limit is None or limit >= len(vols):
-                return vols
-            return vols[:limit]
-        self.stubs.Set(db, 'volume_get_all', stub_volume_get_all3)
-        for key, fn in zip(api_keys, fns):
-            req = fakes.HTTPRequest.blank('/v2/%s?all_tenants=1' % key,
-                                          use_admin_context=True)
-            res_dict = fn(req)
-            self.assertEqual(CONF.osapi_max_limit, len(res_dict['volumes']))
-            volumes_links = res_dict['volumes_links']
-            _verify_links(volumes_links, key)
-        # Pass a limit that is greater than the max and the total number of
-        # volumes, ensure only the maximum is returned and that the next
-        # link is present.
-        for key, fn in zip(api_keys, fns):
-            req = fakes.HTTPRequest.blank('/v2/%s?all_tenants=1&limit=%d'
-                                          % (key, CONF.osapi_max_limit * 2),
-                                          use_admin_context=True)
-            res_dict = fn(req)
-            self.assertEqual(CONF.osapi_max_limit, len(res_dict['volumes']))
-            volumes_links = res_dict['volumes_links']
-            _verify_links(volumes_links, key)
+            # Limit lower than max but doesn't limit, no next link
+            self._validate_next_link(detailed, item_count=3, osapi_max_limit=5,
+                                     limit=4, should_link_exist=False)
+
+            # Limit lower than max and limits, we have next link
+            self._validate_next_link(detailed, item_count=2, osapi_max_limit=4,
+                                     limit=2, should_link_exist=True)
+
+            # Limit higher than max and max limits, we have next link
+            self._validate_next_link(detailed, item_count=2, osapi_max_limit=2,
+                                     limit=4, should_link_exist=True)
+
+            # Limit higher than max but none of them limiting, no next link
+            self._validate_next_link(detailed, item_count=3, osapi_max_limit=4,
+                                     limit=5, should_link_exist=False)
 
     def test_volume_list_default_filters(self):
         """Tests that the default filters from volume.api.API.get_all are set.
@@ -1027,7 +1005,8 @@ class VolumeApiTest(test.TestCase):
         def stub_volume_get_all_by_project(context, project_id, marker, limit,
                                            sort_keys=None, sort_dirs=None,
                                            filters=None,
-                                           viewable_admin_meta=False):
+                                           viewable_admin_meta=False,
+                                           offset=0):
             self.assertEqual(True, filters['no_migration_targets'])
             self.assertFalse('all_tenants' in filters)
             return [stubs.stub_volume(1, display_name='vol1')]
@@ -1035,7 +1014,7 @@ class VolumeApiTest(test.TestCase):
         def stub_volume_get_all(context, marker, limit,
                                 sort_keys=None, sort_dirs=None,
                                 filters=None,
-                                viewable_admin_meta=False):
+                                viewable_admin_meta=False, offset=0):
             return []
         self.stubs.Set(db, 'volume_get_all_by_project',
                        stub_volume_get_all_by_project)
@@ -1053,14 +1032,15 @@ class VolumeApiTest(test.TestCase):
         def stub_volume_get_all_by_project2(context, project_id, marker, limit,
                                             sort_keys=None, sort_dirs=None,
                                             filters=None,
-                                            viewable_admin_meta=False):
+                                            viewable_admin_meta=False,
+                                            offset=0):
             self.assertFalse('no_migration_targets' in filters)
             return [stubs.stub_volume(1, display_name='vol2')]
 
         def stub_volume_get_all2(context, marker, limit,
                                  sort_keys=None, sort_dirs=None,
                                  filters=None,
-                                 viewable_admin_meta=False):
+                                 viewable_admin_meta=False, offset=0):
             return []
         self.stubs.Set(db, 'volume_get_all_by_project',
                        stub_volume_get_all_by_project2)
@@ -1076,13 +1056,14 @@ class VolumeApiTest(test.TestCase):
         def stub_volume_get_all_by_project3(context, project_id, marker, limit,
                                             sort_keys=None, sort_dirs=None,
                                             filters=None,
-                                            viewable_admin_meta=False):
+                                            viewable_admin_meta=False,
+                                            offset=0):
             return []
 
         def stub_volume_get_all3(context, marker, limit,
                                  sort_keys=None, sort_dirs=None,
                                  filters=None,
-                                 viewable_admin_meta=False):
+                                 viewable_admin_meta=False, offset=0):
             self.assertFalse('no_migration_targets' in filters)
             self.assertFalse('all_tenants' in filters)
             return [stubs.stub_volume(1, display_name='vol3')]
@@ -1279,10 +1260,10 @@ class VolumeApiTest(test.TestCase):
         self.controller._view_builder.detail_list = mock.Mock()
         self.controller._get_volumes(req, True)
         get_all.assert_called_once_with(
-            context, None, None,
+            context, None, CONF.osapi_max_limit,
             sort_keys=['created_at'], sort_dirs=['desc'],
             filters={'display_name': 'Volume-573108026'},
-            viewable_admin_meta=True)
+            viewable_admin_meta=True, offset=0)
 
     @mock.patch('cinder.volume.api.API.get_all')
     def test_get_volumes_filter_with_list(self, get_all):
@@ -1293,9 +1274,10 @@ class VolumeApiTest(test.TestCase):
         self.controller._view_builder.detail_list = mock.Mock()
         self.controller._get_volumes(req, True)
         get_all.assert_called_once_with(
-            context, None, None,
+            context, None, CONF.osapi_max_limit,
             sort_keys=['created_at'], sort_dirs=['desc'],
-            filters={'id': ['1', '2', '3']}, viewable_admin_meta=True)
+            filters={'id': ['1', '2', '3']}, viewable_admin_meta=True,
+            offset=0)
 
     @mock.patch('cinder.volume.api.API.get_all')
     def test_get_volumes_filter_with_expression(self, get_all):
@@ -1306,9 +1288,9 @@ class VolumeApiTest(test.TestCase):
         self.controller._view_builder.detail_list = mock.Mock()
         self.controller._get_volumes(req, True)
         get_all.assert_called_once_with(
-            context, None, None,
+            context, None, CONF.osapi_max_limit,
             sort_keys=['created_at'], sort_dirs=['desc'],
-            filters={'display_name': 'd-'}, viewable_admin_meta=True)
+            filters={'display_name': 'd-'}, viewable_admin_meta=True, offset=0)
 
     @mock.patch('cinder.volume.api.API.get_all')
     def test_get_volumes_filter_with_status(self, get_all):
@@ -1319,9 +1301,10 @@ class VolumeApiTest(test.TestCase):
         self.controller._view_builder.detail_list = mock.Mock()
         self.controller._get_volumes(req, True)
         get_all.assert_called_once_with(
-            ctxt, None, None,
+            ctxt, None, CONF.osapi_max_limit,
             sort_keys=['created_at'], sort_dirs=['desc'],
-            filters={'status': 'available'}, viewable_admin_meta=True)
+            filters={'status': 'available'}, viewable_admin_meta=True,
+            offset=0)
 
     @mock.patch('cinder.volume.api.API.get_all')
     def test_get_volumes_filter_with_metadata(self, get_all):
@@ -1332,10 +1315,10 @@ class VolumeApiTest(test.TestCase):
         self.controller._view_builder.detail_list = mock.Mock()
         self.controller._get_volumes(req, True)
         get_all.assert_called_once_with(
-            ctxt, None, None,
+            ctxt, None, CONF.osapi_max_limit,
             sort_keys=['created_at'], sort_dirs=['desc'],
             filters={'metadata': {'fake_key': 'fake_value'}},
-            viewable_admin_meta=True)
+            viewable_admin_meta=True, offset=0)
 
     @mock.patch('cinder.volume.api.API.get_all')
     def test_get_volumes_filter_with_availability_zone(self, get_all):
@@ -1346,9 +1329,10 @@ class VolumeApiTest(test.TestCase):
         self.controller._view_builder.detail_list = mock.Mock()
         self.controller._get_volumes(req, True)
         get_all.assert_called_once_with(
-            ctxt, None, None,
+            ctxt, None, CONF.osapi_max_limit,
             sort_keys=['created_at'], sort_dirs=['desc'],
-            filters={'availability_zone': 'nova'}, viewable_admin_meta=True)
+            filters={'availability_zone': 'nova'}, viewable_admin_meta=True,
+            offset=0)
 
     @mock.patch('cinder.volume.api.API.get_all')
     def test_get_volumes_filter_with_invalid_filter(self, get_all):
@@ -1360,9 +1344,10 @@ class VolumeApiTest(test.TestCase):
         self.controller._view_builder.detail_list = mock.Mock()
         self.controller._get_volumes(req, True)
         get_all.assert_called_once_with(
-            ctxt, None, None,
+            ctxt, None, CONF.osapi_max_limit,
             sort_keys=['created_at'], sort_dirs=['desc'],
-            filters={'availability_zone': 'nova'}, viewable_admin_meta=True)
+            filters={'availability_zone': 'nova'}, viewable_admin_meta=True,
+            offset=0)
 
     @mock.patch('cinder.volume.api.API.get_all')
     def test_get_volumes_sort_by_name(self, get_all):
@@ -1375,9 +1360,9 @@ class VolumeApiTest(test.TestCase):
         self.controller._view_builder.detail_list = mock.Mock()
         self.controller._get_volumes(req, True)
         get_all.assert_called_once_with(
-            ctxt, None, None,
+            ctxt, None, CONF.osapi_max_limit,
             sort_dirs=['desc'], viewable_admin_meta=True,
-            sort_keys=['display_name'], filters={})
+            sort_keys=['display_name'], filters={}, offset=0)
 
     def test_get_volume_filter_options_using_config(self):
         self.override_config('query_volume_filters', ['name', 'status',

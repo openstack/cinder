@@ -620,7 +620,8 @@ class VolumeApiTest(test.TestCase):
             def stub_volume_get_all_by_project(context, project_id, marker,
                                                limit, sort_keys=None,
                                                sort_dirs=None, filters=None,
-                                               viewable_admin_meta=False):
+                                               viewable_admin_meta=False,
+                                               offset=None):
                 return [
                     stubs.stub_volume(1, display_name='vol1'),
                     stubs.stub_volume(2, display_name='vol2'),

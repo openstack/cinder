@@ -31,7 +31,7 @@ LOG = logging.getLogger(__name__)
 
 # copied from glance/db/sqlalchemy/api.py
 def paginate_query(query, model, limit, sort_keys, marker=None,
-                   sort_dir=None, sort_dirs=None):
+                   sort_dir=None, sort_dirs=None, offset=None):
     """Returns a query with sorting / pagination criteria added.
 
     Pagination works by requiring a unique sort_key, specified by sort_keys.
@@ -124,5 +124,8 @@ def paginate_query(query, model, limit, sort_keys, marker=None,
 
     if limit is not None:
         query = query.limit(limit)
+
+    if offset:
+        query = query.offset(offset)
 
     return query
