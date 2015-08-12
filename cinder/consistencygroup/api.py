@@ -611,6 +611,19 @@ class API(base.Base):
                        {'volume_id': add_vol,
                         'group_id': group.id})
                 raise exception.InvalidVolume(reason=msg)
+            orig_group = add_vol_ref.get('consistencygroup_id', None)
+            if orig_group:
+                # If volume to be added is already in the group to be updated,
+                # it should have been removed from the add_volumes_list in the
+                # beginning of this function. If we are here, it means it is
+                # in a different group.
+                msg = (_("Cannot add volume %(volume_id)s to consistency "
+                         "group %(group_id)s because it is already in "
+                         "consistency group %(orig_group)s.") %
+                       {'volume_id': add_vol_ref['id'],
+                        'group_id': group.id,
+                        'orig_group': orig_group})
+                raise exception.InvalidVolume(reason=msg)
             if add_vol_ref:
                 add_vol_type_id = add_vol_ref.get('volume_type_id', None)
                 if not add_vol_type_id:
