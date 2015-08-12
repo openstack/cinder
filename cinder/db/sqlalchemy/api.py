@@ -1194,8 +1194,12 @@ def volume_detached(context, volume_id, attachment_id):
     """
     session = get_session()
     with session.begin():
-        attachment = volume_attachment_get(context, attachment_id,
-                                           session=session)
+        attachment = None
+        try:
+            attachment = volume_attachment_get(context, attachment_id,
+                                               session=session)
+        except exception.VolumeAttachmentNotFound:
+            pass
 
         # If this is already detached, attachment will be None
         if attachment:

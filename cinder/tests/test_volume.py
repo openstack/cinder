@@ -1911,22 +1911,35 @@ class VolumeTestCase(BaseVolumeTestCase):
     def test_detach_invalid_attachment_id(self):
         """Make sure if the attachment id isn't found we raise."""
         attachment_id = "notfoundid"
-        volume_id = "abc123"
-        self.assertRaises(exception.VolumeAttachmentNotFound,
-                          self.volume.detach_volume,
-                          self.context,
-                          volume_id,
-                          attachment_id)
-
-    def test_detach_no_attachments(self):
         volume = tests_utils.create_volume(self.context,
                                            admin_metadata={'readonly': 'True'},
                                            multiattach=False,
                                            **self.volume_params)
-        self.assertRaises(exception.InvalidVolume,
-                          self.volume.detach_volume,
-                          self.context,
-                          volume['id'])
+        self.volume.detach_volume(self.context, volume['id'],
+                                  attachment_id)
+        volume = db.volume_get(self.context, volume['id'])
+        self.assertEqual('available', volume['status'])
+
+        instance_uuid = '12345678-1234-5678-1234-567812345678'
+        attached_host = 'fake_host'
+        mountpoint = '/dev/fake'
+        tests_utils.attach_volume(self.context, volume['id'],
+                                  instance_uuid, attached_host,
+                                  mountpoint)
+        self.volume.detach_volume(self.context, volume['id'],
+                                  attachment_id)
+        volume = db.volume_get(self.context, volume['id'])
+        self.assertEqual('in-use', volume['status'])
+
+    def test_detach_no_attachments(self):
+        self.volume_params['status'] = 'detaching'
+        volume = tests_utils.create_volume(self.context,
+                                           admin_metadata={'readonly': 'True'},
+                                           multiattach=False,
+                                           **self.volume_params)
+        self.volume.detach_volume(self.context, volume['id'])
+        volume = db.volume_get(self.context, volume['id'])
+        self.assertEqual('available', volume['status'])
 
     def test_run_attach_detach_volume_for_instance_no_attachment_id(self):
         """Make sure volume can be attached and detached from instance."""

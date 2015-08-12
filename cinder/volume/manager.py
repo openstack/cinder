@@ -854,12 +854,14 @@ class VolumeManager(manager.SchedulerDependentManager):
                 attachment = self.db.volume_attachment_get(context,
                                                            attachment_id)
             except exception.VolumeAttachmentNotFound:
-                LOG.error(_LE("We couldn't find the volume attachment"
-                              " for volume %(volume_id)s and"
-                              " attachment id %(id)s"),
-                          {"volume_id": volume_id,
-                           "id": attachment_id})
-                raise
+                LOG.info(_LI("Volume detach called, but volume %(id)s not "
+                             "attached."),
+                         {'id': volume_id})
+                # We need to make sure the volume status is set to the correct
+                # status.  It could be in detaching status now, and we don't
+                # want to leave it there.
+                self.db.volume_detached(context, volume_id, attachment_id)
+                return
         else:
             # We can try and degrade gracefuly here by trying to detach
             # a volume without the attachment_id here if the volume only has
@@ -878,10 +880,14 @@ class VolumeManager(manager.SchedulerDependentManager):
                 attachment = attachments[0]
             else:
                 # there aren't any attachments for this volume.
-                msg = _("Volume %(id)s doesn't have any attachments "
-                        "to detach") % {'id': volume_id}
-                LOG.error(msg)
-                raise exception.InvalidVolume(reason=msg)
+                # so set the status to available and move on.
+                LOG.info(_LI("Volume detach called, but volume %(id)s not "
+                             "attached."),
+                         {'id': volume_id})
+                self.db.volume_update(context, volume_id,
+                                      {'status': 'available',
+                                       'attach_status': 'detached'})
+                return
 
         volume = self.db.volume_get(context, volume_id)
         self._notify_about_volume_usage(context, volume, "detach.start")
