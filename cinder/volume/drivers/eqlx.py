@@ -24,6 +24,7 @@ import greenlet
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_log import versionutils
 from oslo_utils import excutils
 from six.moves import range
 
@@ -43,7 +44,10 @@ eqlx_opts = [
     cfg.IntOpt('eqlx_cli_timeout',
                default=30,
                help='Timeout for the Group Manager cli command execution. '
-                    'Default is 30.'),
+                    'Default is 30. Note that this option is deprecated '
+                    'in favour of "ssh_conn_timeout" as '
+                    'specified in cinder/volume/drivers/san/san.py '
+                    'and will be removed in M release.'),
     cfg.IntOpt('eqlx_cli_max_retries',
                default=5,
                help='Maximum retry count for reconnection. Default is 5.'),
@@ -133,11 +137,14 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
     without '>' ending. E.g. if prompt looks like 'group-0>', then the
     parameter must be set to 'group-0'
 
-    Also, the default CLI command execution timeout is 30 secs. Adjustable by
-        eqlx_cli_timeout=<seconds>
+    Version history:
+        1.0   - Initial driver
+        1.1.0 - Misc fixes
+        1.2.0 - Deprecated eqlx_cli_timeout infavor of ssh_conn_timeout
+
     """
 
-    VERSION = "1.1.0"
+    VERSION = "1.2.0"
 
     def __init__(self, *args, **kwargs):
         super(DellEQLSanISCSIDriver, self).__init__(*args, **kwargs)
@@ -152,12 +159,20 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
                 'use_chap_auth, chap_username and chap_password '
                 'respectively for the same.'))
 
-            self.configuration.use_chap_auth = \
-                self.configuration.eqlx_use_chap
-            self.configuration.chap_username = \
-                self.configuration.eqlx_chap_login
-            self.configuration.chap_password = \
-                self.configuration.eqlx_chap_password
+            self.configuration.use_chap_auth = (
+                self.configuration.eqlx_use_chap)
+            self.configuration.chap_username = (
+                self.configuration.eqlx_chap_login)
+            self.configuration.chap_password = (
+                self.configuration.eqlx_chap_password)
+
+        if self.configuration.eqlx_cli_timeout:
+            msg = _LW('Configuration option eqlx_cli_timeout '
+                      'is deprecated and will be removed in M release. '
+                      'Use ssh_conn_timeout instead.')
+            self.configuration.ssh_conn_timeout = (
+                self.configuration.eqlx_cli_timeout)
+            versionutils.report_deprecated_feature(LOG, msg)
 
     def _get_output(self, chan):
         out = ''
@@ -245,7 +260,7 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
                         LOG.info(_LI('EQL-driver: executing "%s".'), command)
                         return self._ssh_execute(
                             ssh, command,
-                            timeout=self.configuration.eqlx_cli_timeout)
+                            timeout=self.configuration.ssh_conn_timeout)
                     except Exception:
                         LOG.exception(_LE('Error running command.'))
                         greenthread.sleep(random.randint(20, 500) / 100.0)
