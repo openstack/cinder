@@ -65,13 +65,15 @@ EXTRA_CONFIG_VOLUME_ID_KEY = "cinder.volume.id"
 vmdk_opts = [
     cfg.StrOpt('vmware_host_ip',
                default=None,
-               help='IP address for connecting to VMware ESX/VC server.'),
+               help='IP address for connecting to VMware ESX/vCenter server.'),
     cfg.StrOpt('vmware_host_username',
                default=None,
-               help='Username for authenticating with VMware ESX/VC server.'),
+               help='Username for authenticating with VMware ESX/vCenter '
+                    'server.'),
     cfg.StrOpt('vmware_host_password',
                default=None,
-               help='Password for authenticating with VMware ESX/VC server.',
+               help='Password for authenticating with VMware ESX/vCenter '
+                    'server.',
                secret=True),
     cfg.StrOpt('vmware_wsdl_location',
                default=None,
@@ -80,12 +82,12 @@ vmdk_opts = [
                     'to default location for bug work-arounds.'),
     cfg.IntOpt('vmware_api_retry_count',
                default=10,
-               help='Number of times VMware ESX/VC server API must be '
+               help='Number of times VMware ESX/vCenter server API must be '
                     'retried upon connection related issues.'),
     cfg.FloatOpt('vmware_task_poll_interval',
                  default=0.5,
                  help='The interval (in seconds) for polling remote tasks '
-                      'invoked on VMware ESX/VC server.'),
+                      'invoked on VMware ESX/vCenter server.'),
     cfg.StrOpt('vmware_volume_folder',
                default='Volumes',
                help='Name of the vCenter inventory folder that will '
@@ -103,10 +105,11 @@ vmdk_opts = [
                     'server and not in one shot. Server may still limit the '
                     'count to something less than the configured value.'),
     cfg.StrOpt('vmware_host_version',
-               help='Optional string specifying the VMware VC server version. '
+               help='Optional string specifying the VMware vCenter server '
+                    'version. '
                     'The driver attempts to retrieve the version from VMware '
-                    'VC server. Set this configuration only if you want to '
-                    'override the VC server version.'),
+                    'vCenter server. Set this configuration only if you want '
+                    'to override the vCenter server version.'),
     cfg.StrOpt('vmware_tmp_dir',
                default='/tmp',
                help='Directory where virtual disks are stored during volume '
@@ -1111,7 +1114,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         """Creates volume from image using HttpNfc VM import.
 
         Uses Nfc API to download the VMDK file from Glance. Nfc creates the
-        backing VM that wraps the VMDK in the ESX/VC inventory.
+        backing VM that wraps the VMDK in the ESX/vCenter inventory.
         This method assumes glance image is VMDK disk format and its
         vmware_disktype is 'streamOptimized'.
         """
@@ -1132,7 +1135,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         disk_type = VMwareEsxVmdkDriver._get_disk_type(volume)
 
         # The size of stream optimized glance image is often suspect,
-        # so better let VC figure out the disk capacity during import.
+        # so better let vCenter figure out the disk capacity during import.
         dummy_disk_size = 0
         extra_config = self._get_extra_config(volume)
         vm_create_spec = self.volumeops.get_create_spec(
@@ -1221,7 +1224,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         This method only supports Glance image of VMDK disk format.
         Uses flat vmdk file copy for "sparse" and "preallocated" disk types
         Uses HttpNfc import API for "streamOptimized" disk types. This API
-        creates a backing VM that wraps the VMDK in the ESX/VC inventory.
+        creates a backing VM that wraps the VMDK in the ESX/vCenter inventory.
 
         :param context: context
         :param volume: Volume object
@@ -1806,12 +1809,12 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
 
 
 class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
-    """Manage volumes on VMware VC server."""
+    """Manage volumes on VMware vCenter server."""
 
     # Minimum supported vCenter version.
     MIN_SUPPORTED_VC_VERSION = dist_version.LooseVersion('5.1')
 
-    # PBM is enabled only for VC versions 5.5 and above
+    # PBM is enabled only for vCenter versions 5.5 and above
     PBM_ENABLED_VC_VERSION = dist_version.LooseVersion('5.5')
 
     def _do_deprecation_warning(self):
@@ -1844,10 +1847,10 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
         return self._session
 
     def _get_vc_version(self):
-        """Connect to VC server and fetch version.
+        """Connect to vCenter server and fetch version.
 
         Can be over-ridden by setting 'vmware_host_version' config.
-        :returns: VC version as a LooseVersion object
+        :returns: vCenter version as a LooseVersion object
         """
         version_str = self.configuration.vmware_host_version
         if version_str:
@@ -1855,7 +1858,7 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
                          "%s"), version_str)
         else:
             version_str = vim_util.get_vc_version(self.session)
-            LOG.info(_LI("Fetched VC server version: %s"), version_str)
+            LOG.info(_LI("Fetched vCenter server version: %s"), version_str)
         # Convert version_str to LooseVersion and return.
         version = None
         try:
@@ -1879,7 +1882,7 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
         super(VMwareVcVmdkDriver, self).do_setup(context)
-        # VC specific setup is done here
+        # vCenter specific setup is done here
 
         # Validate vCenter version.
         vc_version = self._get_vc_version()
@@ -1890,8 +1893,8 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
             self.pbm_wsdl = pbm.get_pbm_wsdl_location(
                 six.text_type(vc_version))
             if not self.pbm_wsdl:
-                LOG.error(_LE("Not able to configure PBM for VC server: %s"),
-                          vc_version)
+                LOG.error(_LE("Not able to configure PBM for vCenter server: "
+                              "%s"), vc_version)
                 raise exceptions.VMwareDriverException()
             self._storage_policy_enabled = True
             # Destroy current session so that it is recreated with pbm enabled
