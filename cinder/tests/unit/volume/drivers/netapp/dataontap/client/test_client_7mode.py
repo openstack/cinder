@@ -21,9 +21,11 @@ import mock
 import six
 
 from cinder import test
+from cinder.tests.unit.volume.drivers.netapp.dataontap.client import (
+    fake_api as netapp_api)
 from cinder.tests.unit.volume.drivers.netapp.dataontap import fakes as fake
-from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_7mode
+from cinder.volume.drivers.netapp.dataontap.client import client_base
 from cinder.volume.drivers.netapp import utils as netapp_utils
 
 CONNECTION_INFO = {'hostname': 'hostname',
@@ -39,6 +41,9 @@ class NetApp7modeClientTestCase(test.TestCase):
         super(NetApp7modeClientTestCase, self).setUp()
 
         self.fake_volume = six.text_type(uuid.uuid4())
+
+        # Inject fake netapp_lib module classes.
+        netapp_api.mock_netapp_lib([client_7mode, netapp_utils, client_base])
 
         with mock.patch.object(client_7mode.Client,
                                'get_ontapi_version',

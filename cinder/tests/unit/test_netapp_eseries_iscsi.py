@@ -22,10 +22,10 @@ import re
 
 import mock
 import requests
-from six.moves import urllib
 
 from cinder import exception
 from cinder import test
+from cinder.tests.unit.volume.drivers.netapp.eseries import fakes
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.netapp import common
 from cinder.volume.drivers.netapp.eseries import client
@@ -662,12 +662,19 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
 
     def _custom_setup(self):
         self.mock_object(na_utils, 'OpenStackInfo')
+
+        # Inject fake netapp_lib module classes.
+        fakes.mock_netapp_lib([client])
+        self.mock_object(common.na_utils, 'check_netapp_lib')
+
         configuration = self._set_config(create_configuration())
         self.driver = common.NetAppDriver(configuration=configuration)
         self.library = self.driver.library
         self.mock_object(requests, 'Session', FakeEseriesHTTPSession)
+        self.mock_object(self.library,
+                         '_check_mode_get_or_register_storage_system')
         self.driver.do_setup(context='context')
-        self.driver.check_for_setup_error()
+        self.driver.library._client._endpoint = fakes.FAKE_ENDPOINT_HTTP
 
     def _set_config(self, configuration):
         configuration.netapp_storage_family = 'eseries'
@@ -688,6 +695,8 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
         configuration = self._set_config(create_configuration())
         configuration.netapp_controller_ips = '127.0.0.1,127.0.0.3'
         driver = common.NetAppDriver(configuration=configuration)
+        self.mock_object(client.RestClient, 'list_storage_systems', mock.Mock(
+            return_value=[fakes.STORAGE_SYSTEM]))
         driver.do_setup(context='context')
         self.assertEqual('1fa6efb5-f07b-4de4-9f0e-52e5f7ff5d1b',
                          driver.library._client.get_system_id())
@@ -703,10 +712,14 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
         result = self.library._check_storage_system()
         self.assertTrue(result)
 
-    def test_connect(self):
-        self.driver.check_for_setup_error()
-
     def test_create_destroy(self):
+        FAKE_POOLS = [{'label': 'DDP', 'volumeGroupRef': 'test'}]
+        self.library._get_storage_pools = mock.Mock(return_value=FAKE_POOLS)
+        self.mock_object(self.library._client, '_get_resource_url', mock.Mock(
+            return_value=fakes.FAKE_ENDPOINT_HTTP))
+        self.mock_object(self.library._client, '_eval_response')
+        self.mock_object(self.library._client, 'list_volumes', mock.Mock(
+            return_value=FAKE_POOLS))
         self.driver.create_volume(self.volume)
         self.driver.delete_volume(self.volume)
 
@@ -837,48 +850,39 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
         configuration = self._set_config(create_configuration())
         driver = common.NetAppDriver(configuration=configuration)
         driver.library._check_mode_get_or_register_storage_system = mock.Mock()
+        mock_invoke = self.mock_object(client, 'RestClient')
         driver.do_setup(context='context')
-        url = urllib.parse.urlparse(driver.library._client._endpoint)
-        port = url.port
-        scheme = url.scheme
-        self.assertEqual(8080, port)
-        self.assertEqual('http', scheme)
+        mock_invoke.assert_called_with(**fakes.FAKE_CLIENT_PARAMS)
 
     def test_do_setup_http_default_port(self):
         configuration = self._set_config(create_configuration())
         configuration.netapp_transport_type = 'http'
         driver = common.NetAppDriver(configuration=configuration)
         driver.library._check_mode_get_or_register_storage_system = mock.Mock()
+        mock_invoke = self.mock_object(client, 'RestClient')
         driver.do_setup(context='context')
-        url = urllib.parse.urlparse(driver.library._client._endpoint)
-        port = url.port
-        scheme = url.scheme
-        self.assertEqual(8080, port)
-        self.assertEqual('http', scheme)
+        mock_invoke.assert_called_with(**fakes.FAKE_CLIENT_PARAMS)
 
     def test_do_setup_https_default_port(self):
         configuration = self._set_config(create_configuration())
         configuration.netapp_transport_type = 'https'
         driver = common.NetAppDriver(configuration=configuration)
         driver.library._check_mode_get_or_register_storage_system = mock.Mock()
+        mock_invoke = self.mock_object(client, 'RestClient')
         driver.do_setup(context='context')
-        url = urllib.parse.urlparse(driver.library._client._endpoint)
-        port = url.port
-        scheme = url.scheme
-        self.assertEqual(8443, port)
-        self.assertEqual('https', scheme)
+        FAKE_EXPECTED_PARAMS = dict(fakes.FAKE_CLIENT_PARAMS, port=8443,
+                                    scheme='https')
+        mock_invoke.assert_called_with(**FAKE_EXPECTED_PARAMS)
 
     def test_do_setup_http_non_default_port(self):
         configuration = self._set_config(create_configuration())
         configuration.netapp_server_port = 81
         driver = common.NetAppDriver(configuration=configuration)
         driver.library._check_mode_get_or_register_storage_system = mock.Mock()
+        mock_invoke = self.mock_object(client, 'RestClient')
         driver.do_setup(context='context')
-        url = urllib.parse.urlparse(driver.library._client._endpoint)
-        port = url.port
-        scheme = url.scheme
-        self.assertEqual(81, port)
-        self.assertEqual('http', scheme)
+        FAKE_EXPECTED_PARAMS = dict(fakes.FAKE_CLIENT_PARAMS, port=81)
+        mock_invoke.assert_called_with(**FAKE_EXPECTED_PARAMS)
 
     def test_do_setup_https_non_default_port(self):
         configuration = self._set_config(create_configuration())
@@ -886,12 +890,11 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
         configuration.netapp_server_port = 446
         driver = common.NetAppDriver(configuration=configuration)
         driver.library._check_mode_get_or_register_storage_system = mock.Mock()
+        mock_invoke = self.mock_object(client, 'RestClient')
         driver.do_setup(context='context')
-        url = urllib.parse.urlparse(driver.library._client._endpoint)
-        port = url.port
-        scheme = url.scheme
-        self.assertEqual(446, port)
-        self.assertEqual('https', scheme)
+        FAKE_EXPECTED_PARAMS = dict(fakes.FAKE_CLIENT_PARAMS, port=446,
+                                    scheme='https')
+        mock_invoke.assert_called_with(**FAKE_EXPECTED_PARAMS)
 
     def test_setup_good_controller_ip(self):
         configuration = self._set_config(create_configuration())

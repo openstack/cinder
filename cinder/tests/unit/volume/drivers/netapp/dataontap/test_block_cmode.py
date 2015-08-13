@@ -22,11 +22,12 @@ from oslo_service import loopingcall
 
 from cinder import exception
 from cinder import test
+from cinder.tests.unit.volume.drivers.netapp.dataontap.client import (
+    fake_api as netapp_api)
 import cinder.tests.unit.volume.drivers.netapp.dataontap.fakes as fake
 import cinder.tests.unit.volume.drivers.netapp.fakes as na_fakes
 from cinder.volume.drivers.netapp.dataontap import block_base
 from cinder.volume.drivers.netapp.dataontap import block_cmode
-from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_base
 from cinder.volume.drivers.netapp.dataontap import ssc_cmode
 from cinder.volume.drivers.netapp import utils as na_utils
@@ -37,6 +38,9 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
 
     def setUp(self):
         super(NetAppBlockStorageCmodeLibraryTestCase, self).setUp()
+
+        # Inject fake netapp_lib module classes.
+        netapp_api.mock_netapp_lib([block_cmode])
 
         kwargs = {'configuration': self.get_config_cmode()}
         self.library = block_cmode.NetAppBlockStorageCmodeLibrary(

@@ -28,9 +28,10 @@ from oslo_utils import units
 from cinder import exception
 from cinder.i18n import _
 from cinder import test
+from cinder.tests.unit.volume.drivers.netapp.dataontap.client import (
+    fake_api as netapp_api)
 from cinder.tests.unit.volume.drivers.netapp.dataontap import fakes as fake
 from cinder.volume.drivers.netapp.dataontap import block_base
-from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume import utils as volume_utils
 
@@ -39,6 +40,9 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
 
     def setUp(self):
         super(NetAppBlockStorageLibraryTestCase, self).setUp()
+
+        # Inject fake netapp_lib module classes.
+        netapp_api.mock_netapp_lib([block_base])
 
         kwargs = {'configuration': mock.Mock()}
         self.library = block_base.NetAppBlockStorageLibrary(
