@@ -10,66 +10,30 @@
 # CINDER_CONFIG_GENERATOR_EXTRA_LIBRARIES: list of libraries to discover.
 # CINDER_CONFIG_GENERATOR_EXCLUDED_FILES: list of files to remove from automatic listing.
 
-print_hint() {
-    echo "Try \`${0##*/} --help' for more information." >&2
+BASEDIR=${BASEDIR:-`pwd`}
+
+print_error ()
+{
+    echo -en "\n\n##########################################################"
+    echo -en "\nERROR: ${0} was not called from tox."
+    echo -en "\n        Execute 'tox -e genconfig' for cinder.conf.sample"
+    echo -en "\n        generation."
+    echo -en "\n##########################################################\n\n"
 }
 
-PARSED_OPTIONS=$(getopt -n "${0##*/}" -o hb:p:m:l:o: \
-                 --long help,base-dir:,package-name:,output-dir:,module:,library: -- "$@")
+if [ -z ${1} ] ; then
+    print_error
+    exit 1
+fi
 
-if [ $? != 0 ] ; then print_hint ; exit 1 ; fi
+if [ ${1} != "from_tox" ] ; then
+    print_error
+    exit 1
+fi
 
-eval set -- "$PARSED_OPTIONS"
-
-while true; do
-    case "$1" in
-        -h|--help)
-            echo "${0##*/} [options]"
-            echo ""
-            echo "options:"
-            echo "-h, --help                show brief help"
-            echo "-b, --base-dir=DIR        project base directory"
-            echo "-p, --package-name=NAME   project package name"
-            echo "-o, --output-dir=DIR      file output directory"
-            echo "-m, --module=MOD          extra python module to interrogate for options"
-            echo "-l, --library=LIB         extra library that registers options for discovery"
-            exit 0
-            ;;
-        -b|--base-dir)
-            shift
-            BASEDIR=`echo $1 | sed -e 's/\/*$//g'`
-            shift
-            ;;
-        -p|--package-name)
-            shift
-            PACKAGENAME=`echo $1`
-            shift
-            ;;
-        -o|--output-dir)
-            shift
-            OUTPUTDIR=`echo $1 | sed -e 's/\/*$//g'`
-            shift
-            ;;
-        -m|--module)
-            shift
-            MODULES="$MODULES -m $1"
-            shift
-            ;;
-        -l|--library)
-            shift
-            LIBRARIES="$LIBRARIES -l $1"
-            shift
-            ;;
-        --)
-            break
-            ;;
-    esac
-done
-
-BASEDIR=${BASEDIR:-`pwd`}
 if ! [ -d $BASEDIR ]
 then
-    echo "${0##*/}: missing project base directory" >&2 ; print_hint ; exit 1
+    echo "${0##*/}: missing project base directory" >&2 ; exit 1
 elif [[ $BASEDIR != /* ]]
 then
     BASEDIR=$(cd "$BASEDIR" && pwd)
@@ -77,84 +41,44 @@ fi
 
 PACKAGENAME=${PACKAGENAME:-$(python setup.py --name)}
 TARGETDIR=$BASEDIR/$PACKAGENAME
-if ! [ -d $TARGETDIR ]
-then
-    echo "${0##*/}: invalid project package name" >&2 ; print_hint ; exit 1
-fi
-
-OUTPUTDIR=${OUTPUTDIR:-$BASEDIR/etc}
-# NOTE(bnemec): Some projects put their sample config in etc/,
-#               some in etc/$PACKAGENAME/
-if [ -d $OUTPUTDIR/$PACKAGENAME ]
-then
-    OUTPUTDIR=$OUTPUTDIR/$PACKAGENAME
-elif ! [ -d $OUTPUTDIR ]
-then
-    echo "${0##*/}: cannot access \`$OUTPUTDIR': No such file or directory" >&2
-    exit 1
+if ! [ -d $TARGETDIR ] ; then
+    echo "${0##*/}: invalid project package name" >&2 ; exit 1
 fi
 
 BASEDIRESC=`echo $BASEDIR | sed -e 's/\//\\\\\//g'`
 find $TARGETDIR -type f -name "*.pyc" -delete
-FILES=$(find $TARGETDIR -type f -name "*.py" ! -path "*/tests/*" \
-        -exec grep -l "Opt(" {} + | sed -e "s/^$BASEDIRESC\///g" | sort -u)
 
-RC_FILE="`dirname $0`/oslo.config.generator.rc"
-if test -r "$RC_FILE"
+export TARGETDIR=$TARGETDIR
+export BASEDIRESC=$BASEDIRESC
+
+python cinder/config/generate_cinder_opts.py
+
+if [ $? -ne 0 ]
 then
-    source "$RC_FILE"
-fi
-
-for filename in ${CINDER_CONFIG_GENERATOR_EXCLUDED_FILES}; do
-    FILES="${FILES[@]/$filename/}"
-done
-
-for mod in ${CINDER_CONFIG_GENERATOR_EXTRA_MODULES}; do
-    MODULES="$MODULES -m $mod"
-done
-
-for lib in ${CINDER_CONFIG_GENERATOR_EXTRA_LIBRARIES}; do
-    LIBRARIES="$LIBRARIES -l $lib"
-done
-
-export EVENTLET_NO_GREENDNS=yes
-
-OS_VARS=$(set | sed -n '/^OS_/s/=[^=]*$//gp' | xargs)
-[ "$OS_VARS" ] && eval "unset \$OS_VARS"
-DEFAULT_MODULEPATH=cinder.openstack.common.config.generator
-MODULEPATH=${MODULEPATH:-$DEFAULT_MODULEPATH}
-OUTPUTFILE=$OUTPUTDIR/$PACKAGENAME.conf.sample
-python -m $MODULEPATH $MODULES $LIBRARIES $FILES > $OUTPUTFILE
-if [ $? != 0 ]
-then
-    echo "Can not generate $OUTPUTFILE"
+    echo -en "\n\n#################################################"
+    echo -en "\nERROR: Non-zero exit from generate_cinder_opts.py."
+    echo -en "\n       See output above for details.\n"
+    echo -en "#################################################\n"
     exit 1
 fi
 
-# Hook to allow projects to append custom config file snippets
-CONCAT_FILES=$(ls $BASEDIR/tools/config/*.conf.sample 2>/dev/null)
-for CONCAT_FILE in $CONCAT_FILES; do
-    cat $CONCAT_FILE >> $OUTPUTFILE
-done
+oslo-config-generator --config-file=cinder/config/cinder-config-generator.conf
 
-# NOTE(jsbryant): We collect the lib config options separately and
-# append them. The generator requires that the name of the library be used
-# as the entry point so we need to use oslo.*, not oslo_* .
-oslo-config-generator \
---namespace oslo.concurrency \
---namespace oslo.config \
---namespace oslo.context \
---namespace oslo.log \
---namespace oslo.serialization \
---namespace oslo.utils \
---namespace oslo.db \
---namespace oslo.rootwrap \
---namespace oslo.messaging \
---namespace oslo.i18n \
---namespace oslo.middleware \
---namespace oslo.service.service \
---namespace oslo.service.periodic_task \
---namespace policy \
---namespace oslo.policy \
---namespace oslo.db.concurrency \
---namespace keystonemiddleware.auth_token | grep -v '^\[DEFAULT\]'  >> $OUTPUTFILE
+if [ $? -ne 0 ]
+then
+    echo -en "\n\n#################################################"
+    echo -en "\nERROR: Non-zero exit from oslo-config-generator."
+    echo -en "\n       See output above for details.\n"
+    echo -en "#################################################\n"
+    exit 1
+fi
+if [ ! -s ./etc/cinder/cinder.conf.sample ] ; then
+    echo -en "\n\n#########################################################"
+    echo -en "\nERROR: etc/cinder/cinder.sample.conf not created properly."
+    echo -en "\n        See above output for details.\n"
+    echo -en "###########################################################\n"
+    exit 1
+fi
+
+rm -f cinder/opts.py
+rm -f cinder/opts.pyc
