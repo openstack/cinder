@@ -875,9 +875,9 @@ class RestClient(object):
         return lunnum
 
     def is_portgroup_associated_to_view(self, view_id, portgroup_id):
-        """Check whether the portgroup is associated to the mapping view."""
-        url_subfix = ("/mappingview/associate/portgroup?TYPE=257&"
-                      "ASSOCIATEOBJTYPE=245&ASSOCIATEOBJID=%s" % view_id)
+        """Check whether the port group is associated to the mapping view."""
+        url_subfix = ("/portgroup/associate?ASSOCIATEOBJTYPE=245&"
+                      "ASSOCIATEOBJID=%s&range=[0-8191]" % view_id)
         url = self.url + url_subfix
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Find portgroup from mapping view '
