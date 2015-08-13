@@ -143,6 +143,18 @@ class LoggingVolumeDriver(driver.VolumeDriver):
     def terminate_connection(self, volume, connector):
         self.log_action('terminate_connection', volume)
 
+    def create_export_snapshot(self, context, snapshot):
+        self.log_action('create_export_snapshot', snapshot)
+
+    def remove_export_snapshot(self, context, snapshot):
+        self.log_action('remove_export_snapshot', snapshot)
+
+    def initialize_connection_snapshot(self, snapshot, connector):
+        self.log_action('initialize_connection_snapshot', snapshot)
+
+    def terminate_connection_snapshot(self, snapshot, connector):
+        self.log_action('terminate_connection_snapshot', snapshot)
+
     def create_cloned_volume(self, volume, src_vol):
         self.log_action('create_cloned_volume', volume)
 

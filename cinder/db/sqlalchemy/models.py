@@ -460,6 +460,7 @@ class Snapshot(BASE, CinderBase):
 
     provider_location = Column(String(255))
     provider_id = Column(String(255))
+    provider_auth = Column(String(255))
 
     volume = relationship(Volume, backref="snapshots",
                           foreign_keys=volume_id,
