@@ -23,6 +23,7 @@ import random
 import re
 import six
 import string
+import sys
 
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -36,14 +37,15 @@ from cinder.volume.drivers.san import san
 from cinder.volume import volume_types
 
 
-DRIVER_VERSION = '1.1.1'
+DRIVER_VERSION = '1.1.2'
 AES_256_XTS_CIPHER = 2
 DEFAULT_CIPHER = 3
 EXTRA_SPEC_ENCRYPTION = 'nimble:encryption'
 EXTRA_SPEC_PERF_POLICY = 'nimble:perfpol-name'
 DEFAULT_PERF_POLICY_SETTING = 'default'
 DEFAULT_ENCRYPTION_SETTING = 'no'
-VOL_EDIT_MASK = 4 + 16 + 32 + 64 + 512
+DEFAULT_SNAP_QUOTA = sys.maxsize
+VOL_EDIT_MASK = 4 + 16 + 32 + 64 + 256 + 512
 SOAP_PORT = 5391
 SM_ACL_APPLY_TO_BOTH = 3
 SM_ACL_CHAP_USER_ANY = '*'
@@ -83,7 +85,7 @@ class NimbleISCSIDriver(san.SanISCSIDriver):
         1.0 - Initial driver
         1.1.0 - Added Extra Spec Capability
         1.1.1 - Updated VERSION to Nimble driver version
-
+        1.1.2 - Update snap-quota to unlimited
     """
 
     VERSION = DRIVER_VERSION
@@ -210,7 +212,7 @@ class NimbleISCSIDriver(san.SanISCSIDriver):
                  'reserve': reserve_size,
                  'warn-level': int(vol_size * WARN_LEVEL),
                  'quota': vol_size,
-                 'snap-quota': vol_size})
+                 'snap-quota': DEFAULT_SNAP_QUOTA})
         return self._get_model_info(volume['name'])
 
     def create_cloned_volume(self, volume, src_vref):
@@ -302,7 +304,7 @@ class NimbleISCSIDriver(san.SanISCSIDriver):
              'reserve': reserve_size,
              'warn-level': int(vol_size * WARN_LEVEL),
              'quota': vol_size,
-             'snap-quota': vol_size})
+             'snap-quota': DEFAULT_SNAP_QUOTA})
 
     def _create_igroup_for_initiator(self, initiator_name):
         """Creates igroup for an initiator and returns the igroup name."""
@@ -537,7 +539,7 @@ class NimbleAPIExecutor(object):
                               'reserve': reserve_size,
                               'warn-level': int(volume_size * WARN_LEVEL),
                               'quota': volume_size,
-                              'snap-quota': volume_size,
+                              'snap-quota': DEFAULT_SNAP_QUOTA,
                               'online': True,
                               'pool-name': pool_name,
                               'perfpol-name': perf_policy_name,
@@ -702,7 +704,7 @@ class NimbleAPIExecutor(object):
                               'reserve': reserve_size,
                               'warn-level': int(clone_size * WARN_LEVEL),
                               'quota': clone_size,
-                              'snap-quota': clone_size,
+                              'snap-quota': DEFAULT_SNAP_QUOTA,
                               'online': True},
                      'snap-name': snap_name})
 
