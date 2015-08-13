@@ -2259,3 +2259,27 @@ class EMCVMAXUtils(object):
                 {'source': sourceDeviceId, 'storageSystem': storageSystem})
 
         return foundSyncInstanceName
+
+    def get_volume_model_updates(
+            self, context, db, cgId, status='available'):
+        """Update the volume model's status and return it.
+
+        :param context: the context
+        :param db: cinder database
+        :param cgId: cg id
+        :param status: string value reflects the status of the member volume
+        :returns: volume_model_updates - updated volumes
+        """
+        volume_model_updates = []
+        volumes = db.volume_get_all_by_group(context, cgId)
+        LOG.info(_LI(
+            "Updating status for CG: %(id)s."),
+            {'id': cgId})
+        if volumes:
+            for volume in volumes:
+                volume_model_updates.append({'id': volume['id'],
+                                             'status': status})
+        else:
+            LOG.info(_LI("No volume found for CG: %(cg)s."),
+                     {'cg': cgId})
+        return volume_model_updates

@@ -41,9 +41,10 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
         2.2.1 - Support for SE 8.0.3
         2.2.2 - Update Consistency Group
         2.2.3 - Pool aware scheduler(multi-pool) support
+        2.2.4 - Create CG from CG snapshot
     """
 
-    VERSION = "2.2.3"
+    VERSION = "2.2.4"
 
     def __init__(self, *args, **kwargs):
 
@@ -356,3 +357,21 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
         """Updates LUNs in consistency group."""
         return self.common.update_consistencygroup(group, add_volumes,
                                                    remove_volumes)
+
+    def create_consistencygroup_from_src(self, context, group, volumes,
+                                         cgsnapshot=None, snapshots=None,
+                                         source_cg=None, source_vols=None):
+        """Creates the consistency group from source.
+
+        Currently the source can only be a cgsnapshot.
+
+        :param context: the context
+        :param group: the consistency group object to be created
+        :param volumes: volumes in the consistency group
+        :param cgsnapshot: the source consistency group snapshot
+        :param snapshots: snapshots of the source volumes
+        :param source_cg: the dictionary of a consistency group as source.
+        :param source_vols: a list of volume dictionaries in the source_cg.
+        """
+        return self.common.create_consistencygroup_from_src(
+            context, group, volumes, cgsnapshot, snapshots, self.db)
