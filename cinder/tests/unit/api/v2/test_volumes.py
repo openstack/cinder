@@ -15,6 +15,7 @@
 
 
 import datetime
+import functools
 
 from lxml import etree
 import mock
@@ -245,7 +246,8 @@ class VolumeApiTest(test.TestCase):
     @mock.patch.object(volume_api.API, 'create', autospec=True)
     def test_volume_creation_from_source_volume(self, create, get_volume):
 
-        get_volume.side_effect = stubs.stub_volume_get
+        get_volume.side_effect = functools.partial(stubs.stub_volume_get,
+                                                   viewable_admin_meta=True)
         create.side_effect = stubs.stub_volume_create
 
         source_volid = '2f49aa3a-6aae-488d-8b99-a43271605af6'

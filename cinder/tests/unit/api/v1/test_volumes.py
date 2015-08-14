@@ -235,10 +235,13 @@ class VolumeApiTest(test.TestCase):
                           req,
                           body)
 
-    def test_volume_update(self):
-        self.stubs.Set(db, 'volume_get', stubs.stub_volume_get_db)
-        self.stubs.Set(volume_api.API, "update", stubs.stub_volume_update)
-
+    @mock.patch.object(db, 'volume_admin_metadata_get',
+                       return_value={'attached_mode': 'rw',
+                                     'readonly': 'False'})
+    @mock.patch.object(db, 'volume_get', side_effect=stubs.stub_volume_get_db)
+    @mock.patch.object(volume_api.API, 'update',
+                       side_effect=stubs.stub_volume_update)
+    def test_volume_update(self, *args):
         updates = {
             "display_name": "Updated Test Name",
         }
@@ -266,10 +269,14 @@ class VolumeApiTest(test.TestCase):
         self.assertEqual(expected, res_dict)
         self.assertEqual(2, len(self.notifier.notifications))
 
-    def test_volume_update_metadata(self):
-        self.stubs.Set(db, 'volume_get', stubs.stub_volume_get_db)
-        self.stubs.Set(volume_api.API, "update", stubs.stub_volume_update)
-
+    @mock.patch.object(db, 'volume_admin_metadata_get',
+                       return_value={"qos_max_iops": 2000,
+                                     "readonly": "False",
+                                     "attached_mode": "rw"})
+    @mock.patch.object(db, 'volume_get', side_effect=stubs.stub_volume_get_db)
+    @mock.patch.object(volume_api.API, 'update',
+                       side_effect=stubs.stub_volume_update)
+    def test_volume_update_metadata(self, *args):
         updates = {
             "metadata": {"qos_max_iops": 2000}
         }
@@ -300,6 +307,11 @@ class VolumeApiTest(test.TestCase):
         self.assertEqual(2, len(self.notifier.notifications))
 
     def test_volume_update_with_admin_metadata(self):
+        def stubs_volume_admin_metadata_get(context, volume_id):
+            return {'key': 'value',
+                    'readonly': 'True'}
+        self.stubs.Set(db, 'volume_admin_metadata_get',
+                       stubs_volume_admin_metadata_get)
         self.stubs.Set(volume_api.API, "update", stubs.stub_volume_update)
 
         volume = stubs.stub_volume("1")
@@ -379,6 +391,11 @@ class VolumeApiTest(test.TestCase):
                           req, '1', body)
 
     def test_volume_list(self):
+        def stubs_volume_admin_metadata_get(context, volume_id):
+            return {'attached_mode': 'rw',
+                    'readonly': 'False'}
+        self.stubs.Set(db, 'volume_admin_metadata_get',
+                       stubs_volume_admin_metadata_get)
         self.stubs.Set(db, 'volume_get', stubs.stub_volume_get_db)
         self.stubs.Set(volume_api.API, 'get_all',
                        stubs.stub_volume_get_all_by_project)
@@ -524,9 +541,11 @@ class VolumeApiTest(test.TestCase):
                                  'size': 1}]}
         self.assertEqual(expected, res_dict)
 
-    def test_volume_show(self):
-        self.stubs.Set(db, 'volume_get', stubs.stub_volume_get_db)
-
+    @mock.patch.object(db, 'volume_admin_metadata_get',
+                       return_value={'attached_mode': 'rw',
+                                     'readonly': 'False'})
+    @mock.patch.object(db, 'volume_get', side_effect=stubs.stub_volume_get_db)
+    def test_volume_show(self, *args):
         req = fakes.HTTPRequest.blank('/v1/volumes/1')
         res_dict = self.controller.show(req, '1')
         expected = {'volume': {'status': 'fakestatus',

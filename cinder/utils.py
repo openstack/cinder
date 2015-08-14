@@ -705,9 +705,15 @@ def add_visible_admin_metadata(volume):
     visible_admin_meta = {}
 
     if volume.get('volume_admin_metadata'):
-        for item in volume['volume_admin_metadata']:
-            if item['key'] in _visible_admin_metadata_keys:
-                visible_admin_meta[item['key']] = item['value']
+        if isinstance(volume['volume_admin_metadata'], dict):
+            volume_admin_metadata = volume['volume_admin_metadata']
+            for key in volume_admin_metadata:
+                if key in _visible_admin_metadata_keys:
+                    visible_admin_meta[key] = volume_admin_metadata[key]
+        else:
+            for item in volume['volume_admin_metadata']:
+                if item['key'] in _visible_admin_metadata_keys:
+                    visible_admin_meta[item['key']] = item['value']
     # avoid circular ref when volume is a Volume instance
     elif (volume.get('admin_metadata') and
             isinstance(volume.get('admin_metadata'), dict)):
