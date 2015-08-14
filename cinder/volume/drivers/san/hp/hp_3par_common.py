@@ -180,10 +180,11 @@ class HP3PARCommon(object):
         2.0.45 - Python 3 fixes
         2.0.46 - Improved VLUN creation and deletion logic. #1469816
         2.0.47 - Changed initialize_connection to use getHostVLUNs. #1475064
+        2.0.48 - Adding changes to support 3PAR iSCSI multipath.
 
     """
 
-    VERSION = "2.0.47"
+    VERSION = "2.0.48"
 
     stats = {}
 
@@ -764,16 +765,22 @@ class HP3PARCommon(object):
                       'reserved_percentage': 0,
                       'pools': pools}
 
-    def _get_vlun(self, volume_name, hostname, lun_id=None):
+    def _get_vlun(self, volume_name, hostname, lun_id=None, nsp=None):
         """find a VLUN on a 3PAR host."""
         vluns = self.client.getHostVLUNs(hostname)
         found_vlun = None
         for vlun in vluns:
             if volume_name in vlun['volumeName']:
-                if lun_id:
+                if lun_id is not None:
                     if vlun['lun'] == lun_id:
-                        found_vlun = vlun
-                        break
+                        if nsp:
+                            port = self.build_portPos(nsp)
+                            if vlun['portPos'] == port:
+                                found_vlun = vlun
+                                break
+                        else:
+                            found_vlun = vlun
+                            break
                 else:
                     found_vlun = vlun
                     break
@@ -790,7 +797,10 @@ class HP3PARCommon(object):
         """
         volume_name = self._get_3par_vol_name(volume['id'])
         vlun_info = self._create_3par_vlun(volume_name, host['name'], nsp)
-        return self._get_vlun(volume_name, host['name'], vlun_info['lun_id'])
+        return self._get_vlun(volume_name,
+                              host['name'],
+                              vlun_info['lun_id'],
+                              nsp)
 
     def delete_vlun(self, volume, hostname):
         volume_name = self._get_3par_vol_name(volume['id'])
@@ -2111,8 +2121,32 @@ class HP3PARCommon(object):
                     break
         except hpexceptions.HTTPNotFound:
             # ignore, no existing VLUNs were found
+            LOG.debug("No existing VLUNs were found for host/volume "
+                      "combination: %(host)s, %(vol)s",
+                      {'host': host['name'],
+                       'vol': vol_name})
             pass
         return existing_vlun
+
+    def find_existing_vluns(self, volume, host):
+        existing_vluns = []
+        try:
+            vol_name = self._get_3par_vol_name(volume['id'])
+            host_vluns = self.client.getHostVLUNs(host['name'])
+
+            # The first existing VLUN found will be returned.
+            for vlun in host_vluns:
+                if vlun['volumeName'] == vol_name:
+                    existing_vluns.append(vlun)
+                    break
+        except hpexceptions.HTTPNotFound:
+            # ignore, no existing VLUNs were found
+            LOG.debug("No existing VLUNs were found for host/volume "
+                      "combination: %(host)s, %(vol)s",
+                      {'host': host['name'],
+                       'vol': vol_name})
+            pass
+        return existing_vluns
 
     class TaskWaiter(object):
         """TaskWaiter waits for task to be not active and returns status."""

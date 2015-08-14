@@ -179,7 +179,17 @@ class HP3PARBaseDriver(object):
                  'initiator': 'iqn.1993-08.org.debian:01:222',
                  'wwpns': [wwn[0], wwn[1]],
                  'wwnns': ["223456789012345", "223456789054321"],
-                 'host': FAKE_HOST}
+                 'host': FAKE_HOST,
+                 'multipath': False}
+
+    connector_multipath_enabled = {'ip': '10.0.0.2',
+                                   'initiator': ('iqn.1993-08.org'
+                                                 '.debian:01:222'),
+                                   'wwpns': [wwn[0], wwn[1]],
+                                   'wwnns': ["223456789012345",
+                                             "223456789054321"],
+                                   'host': FAKE_HOST,
+                                   'multipath': True}
 
     volume_type = {'name': 'gold',
                    'deleted': False,
@@ -3076,7 +3086,8 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
             hpexceptions.HTTPNotFound('fake'),
             [{'active': True,
               'volumeName': self.VOLUME_3PAR_NAME,
-              'lun': 90, 'type': 0}]]
+              'lun': 90, 'type': 0,
+              'portPos': {'cardPort': 1, 'node': 7, 'slot': 1}, }]]
 
         location = ("%(volume_name)s,%(lun_id)s,%(host)s,%(nsp)s" %
                     {'volume_name': self.VOLUME_3PAR_NAME,
@@ -3704,6 +3715,15 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
             'target_lun': TARGET_LUN,
             'target_portal': '1.1.1.2:1234'}}
 
+    multipath_properties = {
+        'driver_volume_type': 'iscsi',
+        'data':
+        {'encrypted': False,
+            'target_discovered': True,
+            'target_iqns': [TARGET_IQN],
+            'target_luns': [TARGET_LUN],
+            'target_portals': ['1.1.1.2:1234']}}
+
     def setup_driver(self, config=None, mock_conf=None, wsapi_version=None):
 
         self.ctxt = context.get_admin_context()
@@ -3787,6 +3807,123 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
                 self.standard_logout)
 
             self.assertDictMatch(result, self.properties)
+
+    def test_initialize_connection_multipath(self):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        mock_client = self.setup_driver()
+        mock_client.getVolume.return_value = {'userCPG': HP3PAR_CPG}
+        mock_client.getCPG.return_value = {}
+        mock_client.getHost.side_effect = [
+            hpexceptions.HTTPNotFound('fake'),
+            {'name': self.FAKE_HOST}]
+        mock_client.queryHost.return_value = {
+            'members': [{
+                'name': self.FAKE_HOST
+            }]
+        }
+
+        mock_client.getHostVLUNs.side_effect = [
+            hpexceptions.HTTPNotFound('fake'),
+            [{'active': True,
+              'volumeName': self.VOLUME_3PAR_NAME,
+              'lun': self.TARGET_LUN, 'type': 0,
+              'portPos': {'node': 8, 'slot': 1, 'cardPort': 1}}]]
+
+        location = ("%(volume_name)s,%(lun_id)s,%(host)s,%(nsp)s" %
+                    {'volume_name': self.VOLUME_3PAR_NAME,
+                     'lun_id': self.TARGET_LUN,
+                     'host': self.FAKE_HOST,
+                     'nsp': 'something'})
+        mock_client.createVLUN.return_value = location
+
+        mock_client.getiSCSIPorts.return_value = [{
+            'IPAddr': '1.1.1.2',
+            'iSCSIName': self.TARGET_IQN,
+        }]
+
+        with mock.patch.object(hpcommon.HP3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            result = self.driver.initialize_connection(
+                self.volume,
+                self.connector_multipath_enabled)
+
+            expected = [
+                mock.call.getVolume(self.VOLUME_3PAR_NAME),
+                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.getHost(self.FAKE_HOST),
+                mock.call.queryHost(iqns=['iqn.1993-08.org.debian:01:222']),
+                mock.call.getHost(self.FAKE_HOST),
+                mock.call.getiSCSIPorts(
+                    state=self.mock_client_conf['PORT_STATE_READY']),
+                mock.call.getHostVLUNs(self.FAKE_HOST),
+                mock.call.createVLUN(
+                    self.VOLUME_3PAR_NAME,
+                    auto=True,
+                    hostname=self.FAKE_HOST,
+                    portPos=self.FAKE_ISCSI_PORT['portPos']),
+                mock.call.getHostVLUNs(self.FAKE_HOST)]
+
+            mock_client.assert_has_calls(
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
+            self.assertDictMatch(self.multipath_properties, result)
+
+    def test_initialize_connection_multipath_existing_nsp(self):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        mock_client = self.setup_driver()
+        mock_client.getVolume.return_value = {'userCPG': HP3PAR_CPG}
+        mock_client.getCPG.return_value = {}
+        mock_client.getHost.side_effect = [
+            hpexceptions.HTTPNotFound('fake'),
+            {'name': self.FAKE_HOST}]
+        mock_client.queryHost.return_value = {
+            'members': [{
+                'name': self.FAKE_HOST
+            }]
+        }
+
+        mock_client.getHostVLUNs.side_effect = [
+            [{'hostname': self.FAKE_HOST,
+              'volumeName': self.VOLUME_3PAR_NAME,
+              'lun': self.TARGET_LUN,
+              'portPos': {'node': 8, 'slot': 1, 'cardPort': 1}}],
+            [{'active': True,
+              'volumeName': self.VOLUME_3PAR_NAME,
+              'lun': self.TARGET_LUN, 'type': 0}]]
+
+        mock_client.getiSCSIPorts.return_value = [{
+            'IPAddr': '1.1.1.2',
+            'iSCSIName': self.TARGET_IQN,
+        }]
+
+        with mock.patch.object(hpcommon.HP3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            result = self.driver.initialize_connection(
+                self.volume,
+                self.connector_multipath_enabled)
+
+            expected = [
+                mock.call.getVolume(self.VOLUME_3PAR_NAME),
+                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.getHost(self.FAKE_HOST),
+                mock.call.queryHost(iqns=['iqn.1993-08.org.debian:01:222']),
+                mock.call.getHost(self.FAKE_HOST),
+                mock.call.getiSCSIPorts(
+                    state=self.mock_client_conf['PORT_STATE_READY']),
+                mock.call.getHostVLUNs(self.FAKE_HOST)]
+
+            mock_client.assert_has_calls(
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
+            self.assertDictMatch(self.multipath_properties, result)
 
     def test_initialize_connection_encrypted(self):
         # setup_mock_client drive with default configuration

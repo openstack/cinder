@@ -89,10 +89,11 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         2.0.17 - Python 3 fixes
         2.0.18 - Improved VLUN creation and deletion logic. #1469816
         2.0.19 - Changed initialize_connection to use getHostVLUNs. #1475064
+        2.0.20 - Adding changes to support 3PAR iSCSI multipath.
 
     """
 
-    VERSION = "2.0.19"
+    VERSION = "2.0.20"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -291,48 +292,98 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
                 volume,
                 connector)
 
-            least_used_nsp = None
+            if connector['multipath']:
+                ready_ports = common.client.getiSCSIPorts(
+                    state=common.client.PORT_STATE_READY)
 
-            # check if a VLUN already exists for this host
-            existing_vlun = common.find_existing_vlun(volume, host)
+                target_portals = []
+                target_iqns = []
+                target_luns = []
 
-            if existing_vlun:
-                # We override the nsp here on purpose to force the
-                # volume to be exported out the same IP as it already is.
-                # This happens during nova live-migration, we want to
-                # disable the picking of a different IP that we export
-                # the volume to, or nova complains.
-                least_used_nsp = common.build_nsp(existing_vlun['portPos'])
+                # Target portal ips are defined in cinder.conf.
+                target_portal_ips = self.iscsi_ips.keys()
 
-            if not least_used_nsp:
-                least_used_nsp = self._get_least_used_nsp_for_host(
-                    common,
-                    host['name'])
+                # Collect all existing VLUNs for this volume/host combination.
+                existing_vluns = common.find_existing_vluns(volume, host)
 
-            vlun = None
-            if existing_vlun is None:
-                # now that we have a host, create the VLUN
-                vlun = common.create_vlun(volume, host, least_used_nsp)
+                # Cycle through each ready iSCSI port and determine if a new
+                # VLUN should be created or an existing one used.
+                for port in ready_ports:
+                    iscsi_ip = port['IPAddr']
+                    if iscsi_ip in target_portal_ips:
+                        vlun = None
+                        # check for an already existing VLUN matching the
+                        # nsp for this iSCSI IP. If one is found, use it
+                        # instead of creating a new VLUN.
+                        for v in existing_vluns:
+                            portPos = common.build_portPos(
+                                self.iscsi_ips[iscsi_ip]['nsp'])
+                            if v['portPos'] == portPos:
+                                vlun = v
+                                break
+                        else:
+                            vlun = common.create_vlun(
+                                volume, host, self.iscsi_ips[iscsi_ip]['nsp'])
+                        iscsi_ip_port = "%s:%s" % (
+                            iscsi_ip, self.iscsi_ips[iscsi_ip]['ip_port'])
+                        target_portals.append(iscsi_ip_port)
+                        target_iqns.append(port['iSCSIName'])
+                        target_luns.append(vlun['lun'])
+                    else:
+                        LOG.warning(_LW("iSCSI IP: '%s' was not found in "
+                                        "hp3par_iscsi_ips list defined in "
+                                        "cinder.conf."), iscsi_ip)
+
+                info = {'driver_volume_type': 'iscsi',
+                        'data': {'target_portals': target_portals,
+                                 'target_iqns': target_iqns,
+                                 'target_luns': target_luns,
+                                 'target_discovered': True
+                                 }
+                        }
             else:
-                vlun = existing_vlun
+                least_used_nsp = None
 
-            if least_used_nsp is None:
-                LOG.warning(_LW("Least busy iSCSI port not found, "
-                                "using first iSCSI port in list."))
-                iscsi_ip = self.iscsi_ips.keys()[0]
-            else:
-                iscsi_ip = self._get_ip_using_nsp(least_used_nsp)
+                # check if a VLUN already exists for this host
+                existing_vlun = common.find_existing_vlun(volume, host)
 
-            iscsi_ip_port = self.iscsi_ips[iscsi_ip]['ip_port']
-            iscsi_target_iqn = self.iscsi_ips[iscsi_ip]['iqn']
-            info = {'driver_volume_type': 'iscsi',
-                    'data': {'target_portal': "%s:%s" %
-                             (iscsi_ip, iscsi_ip_port),
-                             'target_iqn': iscsi_target_iqn,
-                             'target_lun': vlun['lun'],
-                             'target_discovered': True
-                             }
-                    }
+                if existing_vlun:
+                    # We override the nsp here on purpose to force the
+                    # volume to be exported out the same IP as it already is.
+                    # This happens during nova live-migration, we want to
+                    # disable the picking of a different IP that we export
+                    # the volume to, or nova complains.
+                    least_used_nsp = common.build_nsp(existing_vlun['portPos'])
+
+                if not least_used_nsp:
+                    least_used_nsp = self._get_least_used_nsp_for_host(
+                        common,
+                        host['name'])
+
+                vlun = None
+                if existing_vlun is None:
+                    # now that we have a host, create the VLUN
+                    vlun = common.create_vlun(volume, host, least_used_nsp)
+                else:
+                    vlun = existing_vlun
+
+                if least_used_nsp is None:
+                    LOG.warning(_LW("Least busy iSCSI port not found, "
+                                    "using first iSCSI port in list."))
+                    iscsi_ip = self.iscsi_ips.keys()[0]
+                else:
+                    iscsi_ip = self._get_ip_using_nsp(least_used_nsp)
+
+                iscsi_ip_port = self.iscsi_ips[iscsi_ip]['ip_port']
+                iscsi_target_iqn = self.iscsi_ips[iscsi_ip]['iqn']
+                info = {'driver_volume_type': 'iscsi',
+                        'data': {'target_portal': "%s:%s" %
+                                 (iscsi_ip, iscsi_ip_port),
+                                 'target_iqn': iscsi_target_iqn,
+                                 'target_lun': vlun['lun'],
+                                 'target_discovered': True
+                                 }
+                        }
 
             if self.configuration.hp3par_iscsi_chap_enabled:
                 info['data']['auth_method'] = 'CHAP'
