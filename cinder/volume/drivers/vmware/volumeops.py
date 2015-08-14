@@ -23,6 +23,7 @@ from oslo_utils import units
 from oslo_vmware import exceptions
 from oslo_vmware import pbm
 from oslo_vmware import vim_util
+import six
 from six.moves import urllib
 
 from cinder.i18n import _, _LE, _LI
@@ -680,12 +681,28 @@ class VMwareVolumeOps(object):
             specs.append(controller_spec)
         return specs
 
-    def _get_create_spec_disk_less(self, name, ds_name, profileId=None):
+    def _get_extra_config_option_values(self, extra_config):
+
+        cf = self._session.vim.client.factory
+        option_values = []
+
+        for key, value in six.iteritems(extra_config):
+            opt = cf.create('ns0:OptionValue')
+            opt.key = key
+            opt.value = value
+            option_values.append(opt)
+
+        return option_values
+
+    def _get_create_spec_disk_less(self, name, ds_name, profileId=None,
+                                   extra_config=None):
         """Return spec for creating disk-less backing.
 
         :param name: Name of the backing
         :param ds_name: Datastore name where the disk is to be provisioned
-        :param profileId: storage profile ID for the backing
+        :param profileId: Storage profile ID for the backing
+        :param extra_config: Key-value pairs to be written to backing's
+                             extra-config
         :return: Spec for creation
         """
         cf = self._session.vim.client.factory
@@ -709,10 +726,15 @@ class VMwareVolumeOps(object):
             vmProfile.profileId = profileId
             create_spec.vmProfile = [vmProfile]
 
+        if extra_config:
+            create_spec.extraConfig = self._get_extra_config_option_values(
+                extra_config)
+
         return create_spec
 
     def get_create_spec(self, name, size_kb, disk_type, ds_name,
-                        profileId=None, adapter_type='lsiLogic'):
+                        profileId=None, adapter_type='lsiLogic',
+                        extra_config=None):
         """Return spec for creating backing with a single disk.
 
         :param name: name of the backing
@@ -721,9 +743,12 @@ class VMwareVolumeOps(object):
         :param ds_name: datastore name where the disk is to be provisioned
         :param profileId: storage profile ID for the backing
         :param adapter_type: disk adapter type
+        :param extra_config: key-value pairs to be written to backing's
+                             extra-config
         :return: spec for creation
         """
-        create_spec = self._get_create_spec_disk_less(name, ds_name, profileId)
+        create_spec = self._get_create_spec_disk_less(
+            name, ds_name, profileId=profileId, extra_config=extra_config)
         create_spec.deviceChange = self._create_specs_for_disk_add(
             size_kb, disk_type, adapter_type)
         return create_spec
@@ -740,7 +765,8 @@ class VMwareVolumeOps(object):
         return backing
 
     def create_backing(self, name, size_kb, disk_type, folder, resource_pool,
-                       host, ds_name, profileId=None, adapter_type='lsiLogic'):
+                       host, ds_name, profileId=None, adapter_type='lsiLogic',
+                       extra_config=None):
         """Create backing for the volume.
 
         Creates a VM with one VMDK based on the given inputs.
@@ -752,8 +778,10 @@ class VMwareVolumeOps(object):
         :param resource_pool: Resource pool reference
         :param host: Host reference
         :param ds_name: Datastore name where the disk is to be provisioned
-        :param profileId: storage profile ID to be associated with backing
+        :param profileId: Storage profile ID to be associated with backing
         :param adapter_type: Disk adapter type
+        :param extra_config: Key-value pairs to be written to backing's
+                             extra-config
         :return: Reference to the created backing entity
         """
         LOG.debug("Creating volume backing with name: %(name)s "
@@ -766,13 +794,15 @@ class VMwareVolumeOps(object):
                    'ds_name': ds_name, 'profile': profileId, 'host': host,
                    'adapter_type': adapter_type})
 
-        create_spec = self.get_create_spec(name, size_kb, disk_type, ds_name,
-                                           profileId, adapter_type)
+        create_spec = self.get_create_spec(
+            name, size_kb, disk_type, ds_name, profileId=profileId,
+            adapter_type=adapter_type, extra_config=extra_config)
         return self._create_backing_int(folder, resource_pool, host,
                                         create_spec)
 
     def create_backing_disk_less(self, name, folder, resource_pool,
-                                 host, ds_name, profileId=None):
+                                 host, ds_name, profileId=None,
+                                 extra_config=None):
         """Create disk-less volume backing.
 
         This type of backing is useful for creating volume from image. The
@@ -785,6 +815,8 @@ class VMwareVolumeOps(object):
         :param host: Host reference
         :param ds_name: Name of the datastore used for VM storage
         :param profileId: Storage profile ID to be associated with backing
+        :param extra_config: Key-value pairs to be written to backing's
+                             extra-config
         :return: Reference to the created backing entity
         """
         LOG.debug("Creating disk-less volume backing with name: %(name)s "
@@ -795,7 +827,8 @@ class VMwareVolumeOps(object):
                    'resource_pool': resource_pool, 'host': host,
                    'ds_name': ds_name})
 
-        create_spec = self._get_create_spec_disk_less(name, ds_name, profileId)
+        create_spec = self._get_create_spec_disk_less(
+            name, ds_name, profileId=profileId, extra_config=extra_config)
         return self._create_backing_int(folder, resource_pool, host,
                                         create_spec)
 
@@ -1021,7 +1054,8 @@ class VMwareVolumeOps(object):
         return self._get_parent(backing, 'Folder')
 
     def _get_clone_spec(self, datastore, disk_move_type, snapshot, backing,
-                        disk_type, host=None, resource_pool=None):
+                        disk_type, host=None, resource_pool=None,
+                        extra_config=None):
         """Get the clone spec.
 
         :param datastore: Reference to datastore
@@ -1031,6 +1065,8 @@ class VMwareVolumeOps(object):
         :param disk_type: Disk type of clone
         :param host: Target host
         :param resource_pool: Target resource pool
+        :param extra_config: Key-value pairs to be written to backing's
+                             extra-config
         :return: Clone spec
         """
         if disk_type is not None:
@@ -1048,11 +1084,18 @@ class VMwareVolumeOps(object):
         clone_spec.template = False
         clone_spec.snapshot = snapshot
 
+        if extra_config:
+            config_spec = cf.create('ns0:VirtualMachineConfigSpec')
+            config_spec.extraConfig = self._get_extra_config_option_values(
+                extra_config)
+            clone_spec.config = config_spec
+
         LOG.debug("Spec for cloning the backing: %s.", clone_spec)
         return clone_spec
 
     def clone_backing(self, name, backing, snapshot, clone_type, datastore,
-                      disk_type=None, host=None, resource_pool=None):
+                      disk_type=None, host=None, resource_pool=None,
+                      extra_config=None):
         """Clone backing.
 
         If the clone_type is 'full', then a full clone of the source volume
@@ -1067,6 +1110,8 @@ class VMwareVolumeOps(object):
         :param disk_type: Disk type of the clone
         :param host: Target host
         :param resource_pool: Target resource pool
+        :param extra_config: Key-value pairs to be written to backing's
+                             extra-config
         """
         LOG.debug("Creating a clone of backing: %(back)s, named: %(name)s, "
                   "clone type: %(type)s from snapshot: %(snap)s on "
@@ -1080,9 +1125,9 @@ class VMwareVolumeOps(object):
             disk_move_type = 'createNewChildDiskBacking'
         else:
             disk_move_type = 'moveAllDiskBackingsAndDisallowSharing'
-        clone_spec = self._get_clone_spec(datastore, disk_move_type, snapshot,
-                                          backing, disk_type, host,
-                                          resource_pool)
+        clone_spec = self._get_clone_spec(
+            datastore, disk_move_type, snapshot, backing, disk_type, host=host,
+            resource_pool=resource_pool, extra_config=extra_config)
         task = self._session.invoke_api(self._session.vim, 'CloneVM_Task',
                                         backing, folder=folder, name=name,
                                         spec=clone_spec)

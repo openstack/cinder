@@ -65,6 +65,8 @@ CREATE_PARAM_BACKING_NAME = 'name'
 
 TMP_IMAGES_DATASTORE_FOLDER_PATH = "cinder_temp/"
 
+EXTRA_CONFIG_VOLUME_ID_KEY = "cinder.volume.id"
+
 vmdk_opts = [
     cfg.StrOpt('vmware_host_ip',
                default=None,
@@ -424,6 +426,9 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                 profile_id = profile.uniqueId
         return profile_id
 
+    def _get_extra_config(self, volume):
+        return {EXTRA_CONFIG_VOLUME_ID_KEY: volume['id']}
+
     def _create_backing(self, volume, host=None, create_params=None):
         """Create volume backing under the given host.
 
@@ -446,17 +451,21 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         backing_name = create_params.get(CREATE_PARAM_BACKING_NAME,
                                          volume['name'])
 
+        extra_config = self._get_extra_config(volume)
+
         # default is a backing with single disk
         disk_less = create_params.get(CREATE_PARAM_DISK_LESS, False)
         if disk_less:
             # create a disk-less backing-- disk can be added later; for e.g.,
             # by copying an image
-            return self.volumeops.create_backing_disk_less(backing_name,
-                                                           folder,
-                                                           resource_pool,
-                                                           host_ref,
-                                                           summary.name,
-                                                           profile_id)
+            return self.volumeops.create_backing_disk_less(
+                backing_name,
+                folder,
+                resource_pool,
+                host_ref,
+                summary.name,
+                profileId=profile_id,
+                extra_config=extra_config)
 
         # create a backing with single disk
         disk_type = VMwareEsxVmdkDriver._get_disk_type(volume)
@@ -470,8 +479,9 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                                              resource_pool,
                                              host_ref,
                                              summary.name,
-                                             profile_id,
-                                             adapter_type)
+                                             profileId=profile_id,
+                                             adapter_type=adapter_type,
+                                             extra_config=extra_config)
 
     def _relocate_backing(self, volume, backing, host):
         pass
@@ -1123,12 +1133,15 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         # The size of stream optimized glance image is often suspect,
         # so better let VC figure out the disk capacity during import.
         dummy_disk_size = 0
-        vm_create_spec = self.volumeops.get_create_spec(volume['name'],
-                                                        dummy_disk_size,
-                                                        disk_type,
-                                                        summary.name,
-                                                        profile_id,
-                                                        adapter_type)
+        extra_config = self._get_extra_config(volume)
+        vm_create_spec = self.volumeops.get_create_spec(
+            volume['name'],
+            dummy_disk_size,
+            disk_type,
+            summary.name,
+            profileId=profile_id,
+            adapter_type=adapter_type,
+            extra_config=extra_config)
         # convert vm_create_spec to vm_import_spec
         cf = self.session.vim.client.factory
         vm_import_spec = cf.create('ns0:VirtualMachineImportSpec')
@@ -1629,11 +1642,13 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
 
         profile_id = self._get_storage_profile_id(volume)
         disk_type = VMwareEsxVmdkDriver._get_disk_type(volume)
-        vm_create_spec = self.volumeops.get_create_spec(name,
-                                                        0,
-                                                        disk_type,
-                                                        summary.name,
-                                                        profile_id)
+        extra_config = self._get_extra_config(volume)
+        # We cannot determine the size of a virtual disk created from
+        # streamOptimized disk image. Set size to 0 and let vCenter
+        # figure out the size after virtual disk creation.
+        vm_create_spec = self.volumeops.get_create_spec(
+            name, 0, disk_type, summary.name, profileId=profile_id,
+            extra_config=extra_config)
         vm_import_spec.configSpec = vm_create_spec
 
         timeout = self.configuration.vmware_image_transfer_timeout_secs
@@ -1964,9 +1979,11 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
             # Pick a datastore where to create the full clone under any host
             (host, rp, _folder, summary) = self._select_ds_for_volume(volume)
             datastore = summary.datastore
+        extra_config = self._get_extra_config(volume)
         clone = self.volumeops.clone_backing(volume['name'], backing,
                                              snapshot, clone_type, datastore,
-                                             host=host, resource_pool=rp)
+                                             host=host, resource_pool=rp,
+                                             extra_config=extra_config)
         # If the volume size specified by the user is greater than
         # the size of the source volume, the newly created volume will
         # allocate the capacity to the size of the source volume in the backend
