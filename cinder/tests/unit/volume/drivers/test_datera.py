@@ -20,6 +20,7 @@ from cinder import exception
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import datera
+from cinder.volume import volume_types
 
 
 class DateraVolumeTestCase(test.TestCase):
@@ -102,6 +103,57 @@ class DateraVolumeTestCase(test.TestCase):
         self.mock_api.return_value = _progress_api_return(self.mock_api)
         self.assertEqual(1, self.mock_api.retry_count)
         self.assertIsNone(self.driver.create_volume(self.volume))
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_create_volume_with_extra_specs(self, mock_get_type):
+        self.mock_api.return_value = {
+            u'status': u'available',
+            u'name': u'volume-00000001',
+            u'parent': u'00000000-0000-0000-0000-000000000000',
+            u'uuid': u'c20aba21-6ef6-446b-b374-45733b4883ba',
+            u'snapshots': {},
+            u'targets': {},
+            u'num_replicas': u'2',
+            u'sub_type': u'IS_ORIGINAL',
+            u'size': u'1073741824'
+        }
+
+        mock_get_type.return_value = {
+            'name': u'The Best',
+            'qos_specs_id': None,
+            'deleted': False,
+            'created_at': '2015-08-14 04:18:11',
+            'updated_at': None,
+            'extra_specs': {
+                u'volume_backend_name': u'datera',
+                u'qos:max_iops_read': u'2000',
+                u'qos:max_iops_write': u'4000',
+                u'qos:max_iops_total': u'4000'
+            },
+            'is_public': True,
+            'deleted_at': None,
+            'id': u'dffb4a83-b8fb-4c19-9f8c-713bb75db3b1',
+            'description': None
+        }
+
+        mock_volume = _stub_volume(
+            volume_type_id='dffb4a83-b8fb-4c19-9f8c-713bb75db3b1'
+        )
+
+        assert_body = {
+            u'max_iops_read': u'2000',
+            'numReplicas': '2',
+            'uuid': u'c20aba21-6ef6-446b-b374-45733b4883ba',
+            'size': '1073741824',
+            u'max_iops_write': u'4000',
+            u'max_iops_total': u'4000',
+            'name': u'volume-00000001'
+        }
+
+        self.assertIsNone(self.driver.create_volume(mock_volume))
+        self.mock_api.assert_called_once_with('volumes', 'post',
+                                              body=assert_body)
+        self.assertTrue(mock_get_type.called)
 
     def test_create_cloned_volume_success(self):
         self.mock_api.return_value = {
@@ -416,6 +468,7 @@ def _stub_volume(*args, **kwargs):
     volume['display_name'] = kwargs.get('display_name', name)
     volume['size'] = kwargs.get('size', size)
     volume['provider_location'] = kwargs.get('provider_location', None)
+    volume['volume_type_id'] = kwargs.get('volume_type_id', None)
     return volume
 
 
