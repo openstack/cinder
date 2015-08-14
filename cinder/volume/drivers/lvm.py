@@ -51,8 +51,9 @@ volume_opts = [
                     'this requires lvm_mirrors + 2 PVs with available space'),
     cfg.StrOpt('lvm_type',
                default='default',
-               choices=['default', 'thin'],
-               help='Type of LVM volumes to deploy'),
+               choices=['default', 'thin', 'auto'],
+               help='Type of LVM volumes to deploy; (default, thin, or auto). '
+                    'Auto defaults to thin if thin is supported.'),
     cfg.StrOpt('lvm_conf_file',
                default='/etc/cinder/lvm.conf',
                help='LVM conf file to use for the LVM driver in Cinder; '
@@ -278,6 +279,26 @@ class LVMVolumeDriver(driver.VolumeDriver):
                        self.configuration.volume_group)
             raise exception.VolumeBackendAPIException(data=message)
 
+        pool_name = "%s-pool" % self.configuration.volume_group
+
+        if self.configuration.lvm_type == 'auto':
+            # Default to thin provisioning if it is supported and
+            # the volume group is empty, or contains a thin pool
+            # for us to use.
+            self.vg.update_volume_group_info()
+
+            self.configuration.lvm_type = 'default'
+
+            if volutils.supports_thin_provisioning():
+                if self.vg.get_volume(pool_name) is not None:
+                    LOG.info(_LI('Enabling LVM thin provisioning by default '
+                                 'because a thin pool exists.'))
+                    self.configuration.lvm_type = 'thin'
+                elif len(self.vg.get_volumes()) == 0:
+                    LOG.info(_LI('Enabling LVM thin provisioning by default '
+                                 'because no LVs exist.'))
+                    self.configuration.lvm_type = 'thin'
+
         if self.configuration.lvm_type == 'thin':
             # Specific checks for using Thin provisioned LV's
             if not volutils.supports_thin_provisioning():
@@ -285,7 +306,6 @@ class LVMVolumeDriver(driver.VolumeDriver):
                             "on this version of LVM.")
                 raise exception.VolumeBackendAPIException(data=message)
 
-            pool_name = "%s-pool" % self.configuration.volume_group
             if self.vg.get_volume(pool_name) is None:
                 try:
                     self.vg.create_thin_pool(pool_name)
