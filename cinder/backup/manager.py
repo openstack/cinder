@@ -273,22 +273,38 @@ class BackupManager(manager.SchedulerDependentManager):
                           "backup %s.", backup.id)
                 continue
             if backup.temp_volume_id and backup.status == 'error':
-                temp_volume = self.db.volume_get(ctxt,
-                                                 backup.temp_volume_id)
-                # The temp volume should be deleted directly thru the
-                # the volume driver, not thru the volume manager.
-                mgr.driver.delete_volume(temp_volume)
-                self.db.volume_destroy(ctxt, temp_volume['id'])
+                try:
+                    temp_volume = self.db.volume_get(ctxt,
+                                                     backup.temp_volume_id)
+                    # The temp volume should be deleted directly thru the
+                    # the volume driver, not thru the volume manager.
+                    mgr.driver.delete_volume(temp_volume)
+                    self.db.volume_destroy(ctxt, temp_volume['id'])
+                except exception.VolumeNotFound:
+                    LOG.debug("Could not find temp volume %(vol)s to clean up "
+                              "for backup %(backup)s.",
+                              {'vol': backup.temp_volume_id,
+                               'backup': backup.id})
+                backup.temp_volume_id = None
+                backup.save()
             if backup.temp_snapshot_id and backup.status == 'error':
-                temp_snapshot = objects.Snapshot.get_by_id(
-                    ctxt, backup.temp_snapshot_id)
-                # The temp snapshot should be deleted directly thru the
-                # volume driver, not thru the volume manager.
-                mgr.driver.delete_snapshot(temp_snapshot)
-                with temp_snapshot.obj_as_admin():
-                    self.db.volume_glance_metadata_delete_by_snapshot(
-                        ctxt, temp_snapshot.id)
-                    temp_snapshot.destroy()
+                try:
+                    temp_snapshot = objects.Snapshot.get_by_id(
+                        ctxt, backup.temp_snapshot_id)
+                    # The temp snapshot should be deleted directly thru the
+                    # volume driver, not thru the volume manager.
+                    mgr.driver.delete_snapshot(temp_snapshot)
+                    with temp_snapshot.obj_as_admin():
+                        self.db.volume_glance_metadata_delete_by_snapshot(
+                            ctxt, temp_snapshot.id)
+                        temp_snapshot.destroy()
+                except exception.SnapshotNotFound:
+                    LOG.debug("Could not find temp snapshot %(snap)s to clean "
+                              "up for backup %(backup)s.",
+                              {'snap': backup.temp_snapshot_id,
+                               'backup': backup.id})
+                backup.temp_snapshot_id = None
+                backup.save()
 
     def create_backup(self, context, backup):
         """Create volume backups using configured backup service."""
