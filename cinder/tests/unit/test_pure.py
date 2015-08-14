@@ -830,17 +830,16 @@ class PureBaseVolumeDriverTestCase(PureDriverTestCase):
             remvollist=[]
         )
 
-    def test_create_cgsnapshot(self):
+    @mock.patch('cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
+    def test_create_cgsnapshot(self, mock_snap_list):
         mock_cgsnap = mock.Mock()
         mock_cgsnap.id = "4a2f7e3a-312a-40c5-96a8-536b8a0fe074"
         mock_cgsnap.consistencygroup_id = \
             "4a2f7e3a-312a-40c5-96a8-536b8a0fe075"
         mock_context = mock.Mock()
-        self.driver.db = mock.Mock()
         mock_snap = mock.MagicMock()
         expected_snaps = [mock_snap]
-        self.driver.db.snapshot_get_all_for_cgsnapshot.return_value = \
-            expected_snaps
+        mock_snap_list.return_value = expected_snaps
 
         model_update, snapshots = \
             self.driver.create_cgsnapshot(mock_context, mock_cgsnap)
@@ -861,18 +860,17 @@ class PureBaseVolumeDriverTestCase(PureDriverTestCase):
 
     @mock.patch(BASE_DRIVER_OBJ + "._get_pgroup_snap_name",
                 spec=pure.PureBaseVolumeDriver._get_pgroup_snap_name)
-    def test_delete_cgsnapshot(self, mock_get_snap_name):
+    @mock.patch('cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
+    def test_delete_cgsnapshot(self, mock_snap_list, mock_get_snap_name):
         snap_name = "consisgroup-4a2f7e3a-312a-40c5-96a8-536b8a0f" \
                     "e074-cinder.4a2f7e3a-312a-40c5-96a8-536b8a0fe075"
         mock_get_snap_name.return_value = snap_name
         mock_cgsnap = mock.Mock()
         mock_cgsnap.status = 'deleted'
         mock_context = mock.Mock()
-        mock_snap = mock.MagicMock()
+        mock_snap = mock.Mock()
         expected_snaps = [mock_snap]
-        self.driver.db = mock.Mock()
-        self.driver.db.snapshot_get_all_for_cgsnapshot.return_value = \
-            expected_snaps
+        mock_snap_list.return_value = expected_snaps
 
         model_update, snapshots = \
             self.driver.delete_cgsnapshot(mock_context, mock_cgsnap)

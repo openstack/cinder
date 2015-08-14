@@ -30,6 +30,7 @@ from oslo_utils import units
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
+from cinder import objects
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
@@ -407,7 +408,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         pgsnap_suffix = self._get_pgroup_snap_suffix(cgsnapshot)
         self._array.create_pgroup_snapshot(pgroup_name, suffix=pgsnap_suffix)
 
-        snapshots = self.db.snapshot_get_all_for_cgsnapshot(
+        snapshots = objects.SnapshotList().get_all_for_cgsnapshot(
             context, cgsnapshot.id)
 
         for snapshot in snapshots:
@@ -438,7 +439,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                     LOG.warning(_LW("Unable to delete Protection Group "
                                     "Snapshot: %s"), err.text)
 
-        snapshots = self.db.snapshot_get_all_for_cgsnapshot(
+        snapshots = objects.SnapshotList.get_all_for_cgsnapshot(
             context, cgsnapshot.id)
 
         for snapshot in snapshots:
