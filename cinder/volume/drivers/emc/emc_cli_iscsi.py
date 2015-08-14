@@ -56,6 +56,7 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
                 White list target ports support
                 Snap copy support
                 Support efficient non-disruptive backup
+        7.0.0 - Clone consistency group support
     """
 
     def __init__(self, *args, **kwargs):
@@ -246,7 +247,9 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
                                                          group,
                                                          volumes,
                                                          cgsnapshot,
-                                                         snapshots)
+                                                         snapshots,
+                                                         source_cg,
+                                                         source_vols)
 
     def update_migrated_volume(self, context, volume, new_volume,
                                original_volume_status=None):
