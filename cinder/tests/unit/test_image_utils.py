@@ -578,7 +578,8 @@ class TestFetchToVolumeFormat(test.TestCase):
     def test_defaults(self, mock_conf, mock_temp, mock_info, mock_fetch,
                       mock_is_xen, mock_repl_xen, mock_copy, mock_convert):
         ctxt = mock.sentinel.context
-        image_service = mock.Mock()
+        ctxt.user_id = mock.sentinel.user_id
+        image_service = mock.Mock(temp_images=None)
         image_id = mock.sentinel.image_id
         dest = mock.sentinel.dest
         volume_format = mock.sentinel.volume_format
@@ -621,12 +622,12 @@ class TestFetchToVolumeFormat(test.TestCase):
     def test_kwargs(self, mock_conf, mock_temp, mock_info, mock_fetch,
                     mock_is_xen, mock_repl_xen, mock_copy, mock_convert):
         ctxt = mock.sentinel.context
-        image_service = mock.Mock()
+        image_service = mock.Mock(temp_images=None)
         image_id = mock.sentinel.image_id
         dest = mock.sentinel.dest
         volume_format = mock.sentinel.volume_format
         blocksize = mock.sentinel.blocksize
-        user_id = mock.sentinel.user_id
+        ctxt.user_id = user_id = mock.sentinel.user_id
         project_id = mock.sentinel.project_id
         size = 4321
         run_as_root = mock.sentinel.run_as_root
@@ -663,6 +664,58 @@ class TestFetchToVolumeFormat(test.TestCase):
     @mock.patch('cinder.image.image_utils.is_xenserver_image',
                 return_value=False)
     @mock.patch('cinder.image.image_utils.fetch')
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    @mock.patch('cinder.image.image_utils.temporary_file')
+    @mock.patch('cinder.image.image_utils.CONF')
+    def test_temporary_images(self, mock_conf, mock_temp, mock_info,
+                              mock_fetch, mock_is_xen, mock_repl_xen,
+                              mock_copy, mock_convert):
+        ctxt = mock.sentinel.context
+        ctxt.user_id = mock.sentinel.user_id
+        image_service = mock.Mock(temp_images=None)
+        image_id = mock.sentinel.image_id
+        dest = mock.sentinel.dest
+        volume_format = mock.sentinel.volume_format
+        blocksize = mock.sentinel.blocksize
+
+        data = mock_info.return_value
+        data.file_format = volume_format
+        data.backing_file = None
+        data.virtual_size = 1234
+        tmp = mock.sentinel.tmp
+        dummy = mock.sentinel.dummy
+        mock_temp.return_value.__enter__.side_effect = [tmp, dummy]
+
+        with image_utils.TemporaryImages.fetch(image_service, ctxt,
+                                               image_id) as tmp_img:
+            self.assertEqual(tmp_img, tmp)
+            output = image_utils.fetch_to_volume_format(ctxt, image_service,
+                                                        image_id, dest,
+                                                        volume_format,
+                                                        blocksize)
+
+        self.assertIsNone(output)
+        image_service.show.assert_called_once_with(ctxt, image_id)
+        self.assertEqual(2, mock_temp.call_count)
+        mock_info.assert_has_calls([
+            mock.call(tmp, run_as_root=True),
+            mock.call(dummy, run_as_root=True),
+            mock.call(tmp, run_as_root=True),
+            mock.call(dest, run_as_root=True)])
+        mock_fetch.assert_called_once_with(ctxt, image_service, image_id,
+                                           tmp, None, None)
+        self.assertFalse(mock_repl_xen.called)
+        self.assertFalse(mock_copy.called)
+        mock_convert.assert_called_once_with(tmp, dest, volume_format,
+                                             run_as_root=True)
+
+    @mock.patch('cinder.image.image_utils.convert_image')
+    @mock.patch('cinder.image.image_utils.volume_utils.copy_volume')
+    @mock.patch(
+        'cinder.image.image_utils.replace_xenserver_image_with_coalesced_vhd')
+    @mock.patch('cinder.image.image_utils.is_xenserver_image',
+                return_value=False)
+    @mock.patch('cinder.image.image_utils.fetch')
     @mock.patch('cinder.image.image_utils.qemu_img_info',
                 side_effect=processutils.ProcessExecutionError)
     @mock.patch('cinder.image.image_utils.temporary_file')
@@ -671,12 +724,12 @@ class TestFetchToVolumeFormat(test.TestCase):
                                     mock_fetch, mock_is_xen, mock_repl_xen,
                                     mock_copy, mock_convert):
         ctxt = mock.sentinel.context
-        image_service = mock.Mock()
+        image_service = mock.Mock(temp_images=None)
         image_id = mock.sentinel.image_id
         dest = mock.sentinel.dest
         volume_format = mock.sentinel.volume_format
         blocksize = mock.sentinel.blocksize
-        user_id = mock.sentinel.user_id
+        ctxt.user_id = user_id = mock.sentinel.user_id
         project_id = mock.sentinel.project_id
         size = 4321
         run_as_root = mock.sentinel.run_as_root
@@ -760,12 +813,12 @@ class TestFetchToVolumeFormat(test.TestCase):
                                      mock_fetch, mock_is_xen, mock_repl_xen,
                                      mock_copy, mock_convert):
         ctxt = mock.sentinel.context
-        image_service = mock.Mock()
+        image_service = mock.Mock(temp_images=None)
         image_id = mock.sentinel.image_id
         dest = mock.sentinel.dest
         volume_format = mock.sentinel.volume_format
         blocksize = mock.sentinel.blocksize
-        user_id = mock.sentinel.user_id
+        ctxt.user_id = user_id = mock.sentinel.user_id
         project_id = mock.sentinel.project_id
         size = 4321
         run_as_root = mock.sentinel.run_as_root
@@ -801,12 +854,12 @@ class TestFetchToVolumeFormat(test.TestCase):
     def test_size_error(self, mock_conf, mock_temp, mock_info, mock_fetch,
                         mock_is_xen, mock_repl_xen, mock_copy, mock_convert):
         ctxt = mock.sentinel.context
-        image_service = mock.Mock()
+        image_service = mock.Mock(temp_images=None)
         image_id = mock.sentinel.image_id
         dest = mock.sentinel.dest
         volume_format = mock.sentinel.volume_format
         blocksize = mock.sentinel.blocksize
-        user_id = mock.sentinel.user_id
+        ctxt.user_id = user_id = mock.sentinel.user_id
         project_id = mock.sentinel.project_id
         size = 1234
         run_as_root = mock.sentinel.run_as_root
@@ -849,12 +902,12 @@ class TestFetchToVolumeFormat(test.TestCase):
                                   mock_fetch, mock_is_xen, mock_repl_xen,
                                   mock_copy, mock_convert):
         ctxt = mock.sentinel.context
-        image_service = mock.Mock()
+        image_service = mock.Mock(temp_images=None)
         image_id = mock.sentinel.image_id
         dest = mock.sentinel.dest
         volume_format = mock.sentinel.volume_format
         blocksize = mock.sentinel.blocksize
-        user_id = mock.sentinel.user_id
+        ctxt.user_id = user_id = mock.sentinel.user_id
         project_id = mock.sentinel.project_id
         size = 4321
         run_as_root = mock.sentinel.run_as_root
@@ -897,12 +950,12 @@ class TestFetchToVolumeFormat(test.TestCase):
                                 mock_fetch, mock_is_xen, mock_repl_xen,
                                 mock_copy, mock_convert):
         ctxt = mock.sentinel.context
-        image_service = mock.Mock()
+        image_service = mock.Mock(temp_images=None)
         image_id = mock.sentinel.image_id
         dest = mock.sentinel.dest
         volume_format = mock.sentinel.volume_format
         blocksize = mock.sentinel.blocksize
-        user_id = mock.sentinel.user_id
+        ctxt.user_id = user_id = mock.sentinel.user_id
         project_id = mock.sentinel.project_id
         size = 4321
         run_as_root = mock.sentinel.run_as_root
@@ -946,12 +999,12 @@ class TestFetchToVolumeFormat(test.TestCase):
                                    mock_copy, mock_convert,
                                    legacy_format_name=False):
         ctxt = mock.sentinel.context
-        image_service = mock.Mock()
+        image_service = mock.Mock(temp_images=None)
         image_id = mock.sentinel.image_id
         dest = mock.sentinel.dest
         volume_format = 'vhd'
         blocksize = mock.sentinel.blocksize
-        user_id = mock.sentinel.user_id
+        ctxt.user_id = user_id = mock.sentinel.user_id
         project_id = mock.sentinel.project_id
         size = 4321
         run_as_root = mock.sentinel.run_as_root
@@ -1010,12 +1063,12 @@ class TestFetchToVolumeFormat(test.TestCase):
                               mock_fetch, mock_is_xen, mock_repl_xen,
                               mock_copy, mock_convert):
         ctxt = mock.sentinel.context
-        image_service = mock.Mock()
+        image_service = mock.Mock(temp_images=None)
         image_id = mock.sentinel.image_id
         dest = mock.sentinel.dest
         volume_format = mock.sentinel.volume_format
         blocksize = mock.sentinel.blocksize
-        user_id = mock.sentinel.user_id
+        ctxt.user_id = user_id = mock.sentinel.user_id
         project_id = mock.sentinel.project_id
         size = 4321
         run_as_root = mock.sentinel.run_as_root

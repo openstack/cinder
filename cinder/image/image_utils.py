@@ -264,7 +264,12 @@ def fetch_to_volume_format(context, image_service,
                              "can be used if qemu-img is not installed."),
                     image_id=image_id)
 
-        fetch(context, image_service, image_id, tmp, user_id, project_id)
+        tmp_images = TemporaryImages.for_image_service(image_service)
+        tmp_image = tmp_images.get(context, image_id)
+        if tmp_image:
+            tmp = tmp_image
+        else:
+            fetch(context, image_service, image_id, tmp, user_id, project_id)
 
         if is_xenserver_image(context, image_service, image_id):
             replace_xenserver_image_with_coalesced_vhd(tmp)
@@ -486,3 +491,48 @@ def replace_xenserver_image_with_coalesced_vhd(image_file):
         coalesced = coalesce_chain(chain)
         fileutils.delete_if_exists(image_file)
         os.rename(coalesced, image_file)
+
+
+class TemporaryImages(object):
+    """Manage temporarily downloaded images to avoid downloading it twice.
+
+    In the 'with TemporaryImages.fetch(image_service, ctx, image_id) as tmp'
+    clause, 'tmp' can be used as the downloaded image path. In addition,
+    image_utils.fetch() will use the pre-fetched image by the TemporaryImages.
+    This is useful to inspect image contents before conversion.
+    """
+
+    def __init__(self, image_service):
+        self.temporary_images = {}
+        self.image_service = image_service
+        image_service.temp_images = self
+
+    @staticmethod
+    def for_image_service(image_service):
+        instance = image_service.temp_images
+        if instance:
+            return instance
+        return TemporaryImages(image_service)
+
+    @classmethod
+    @contextlib.contextmanager
+    def fetch(cls, image_service, context, image_id):
+        tmp_images = cls.for_image_service(image_service).temporary_images
+        with temporary_file() as tmp:
+            fetch_verify_image(context, image_service, image_id, tmp)
+            user = context.user_id
+            if not tmp_images.get(user):
+                tmp_images[user] = {}
+            tmp_images[user][image_id] = tmp
+            LOG.debug("Temporary image %(id)s is fetched for user %(user)s.",
+                      {'id': image_id, 'user': user})
+            yield tmp
+            del tmp_images[user][image_id]
+        LOG.debug("Temporary image %(id)s for user %(user)s is deleted.",
+                  {'id': image_id, 'user': user})
+
+    def get(self, context, image_id):
+        user = context.user_id
+        if not self.temporary_images.get(user):
+            return None
+        return self.temporary_images[user].get(image_id)
