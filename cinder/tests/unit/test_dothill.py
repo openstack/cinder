@@ -18,7 +18,7 @@
 
 from lxml import etree
 import mock
-from six.moves import urllib
+import requests
 
 from cinder import exception
 from cinder import test
@@ -149,14 +149,14 @@ class TestDotHillClient(test.TestCase):
         self.client = dothill.DotHillClient(self.ip, self.login, self.passwd,
                                             self.protocol)
 
-    @mock.patch('six.moves.urllib.request.urlopen')
-    def test_login(self, mock_url_open):
+    @mock.patch('requests.get')
+    def test_login(self, mock_requests_get):
         m = mock.Mock()
-        m.read.side_effect = [resp_login]
-        mock_url_open.return_value = m
+        m.text.encode.side_effect = [resp_login]
+        mock_requests_get.return_value = m
         self.client.login()
         self.assertEqual(session_key, self.client._session_key)
-        m.read.side_effect = [resp_badlogin]
+        m.text.encode.side_effect = [resp_badlogin]
         self.assertRaises(exception.DotHillAuthenticationError,
                           self.client.login)
 
@@ -175,14 +175,15 @@ class TestDotHillClient(test.TestCase):
                                              arg2='val2')
         self.assertEqual('http://10.0.0.1/api/path/arg2/val2/arg1/arg3', url)
 
-    @mock.patch('six.moves.urllib.request.urlopen')
-    def test_request(self, mock_url_open):
+    @mock.patch('requests.get')
+    def test_request(self, mock_requests_get):
         self.client._session_key = session_key
 
         m = mock.Mock()
-        m.read.side_effect = [response_ok, malformed_xml,
-                              urllib.error.URLError("error")]
-        mock_url_open.return_value = m
+        m.text.encode.side_effect = [response_ok, malformed_xml,
+                                     requests.exceptions.
+                                     RequestException("error")]
+        mock_requests_get.return_value = m
         ret = self.client._request('/path')
         self.assertTrue(type(ret) == etree._Element)
         self.assertRaises(exception.DotHillConnectionError,

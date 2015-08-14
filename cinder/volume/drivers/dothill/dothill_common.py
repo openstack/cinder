@@ -129,29 +129,16 @@ class DotHillCommon(object):
         fceec30e-98bc-4ce5-85ff-d7309cc17cc2
         to
         v_O7DDpi8TOWF_9cwnMF
-
-        We convert the 128(32*4) bits of the uuid into a 24character long
+        We convert the 128(32*4) bits of the uuid into a 24 characters long
         base64 encoded string. This still exceeds the limit of 20 characters
-        so we truncate the name later.
+        in some models so we return 19 characters because the
+        _get_{vol,snap}_name functions prepend a character.
         """
         uuid_str = name.replace("-", "")
         vol_uuid = uuid.UUID('urn:uuid:%s' % uuid_str)
-        vol_encoded = base64.b64encode(vol_uuid.bytes)
+        vol_encoded = base64.urlsafe_b64encode(vol_uuid.bytes)
         if six.PY3:
             vol_encoded = vol_encoded.decode('ascii')
-        vol_encoded = vol_encoded.replace('=', '')
-
-        # + is not a valid character for DotHill
-        vol_encoded = vol_encoded.replace('+', '.')
-        # since we use http URLs to send paramters, '/' is not an acceptable
-        # parameter
-        vol_encoded = vol_encoded.replace('/', '_')
-
-        # NOTE:we limit the size to 20 characters since the array
-        # doesn't support more than that for now. Duplicates should happen very
-        # rarely.
-        # We return 19 chars here because the _get_{vol,snap}_name functions
-        # prepend a character
         return vol_encoded[:19]
 
     def check_flags(self, options, required_flags):
