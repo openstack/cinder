@@ -71,8 +71,10 @@ from taskflow.patterns import linear_flow
 LOG = logging.getLogger(__name__)
 
 MIN_CLIENT_VERSION = '3.1.2'
+GETCPGSTATDATA_VERSION = '3.2.2'
 DEDUP_API_VERSION = 30201120
 FLASH_CACHE_API_VERSION = 30201200
+SRSTATLD_API_VERSION = 30201200
 
 hp3par_opts = [
     cfg.StrOpt('hp3par_api_url',
@@ -115,6 +117,19 @@ hp3par_opts = [
 
 CONF = cfg.CONF
 CONF.register_opts(hp3par_opts)
+
+# Input/output (total read/write) operations per second.
+THROUGHPUT = 'throughput'
+# Data processed (total read/write) per unit time: kilobytes per second.
+BANDWIDTH = 'bandwidth'
+# Response time (total read/write): microseconds.
+LATENCY = 'latency'
+# IO size (total read/write): kilobytes.
+IO_SIZE = 'io_size'
+# Queue length for processing IO requests
+QUEUE_LENGTH = 'queue_length'
+# Average busy percentage
+AVG_BUSY_PERC = 'avg_busy_perc'
 
 
 class HP3PARCommon(object):
@@ -181,10 +196,11 @@ class HP3PARCommon(object):
         2.0.46 - Improved VLUN creation and deletion logic. #1469816
         2.0.47 - Changed initialize_connection to use getHostVLUNs. #1475064
         2.0.48 - Adding changes to support 3PAR iSCSI multipath.
+        2.0.49 - Added client CPG stats to driver volume stats. bug #1482741
 
     """
 
-    VERSION = "2.0.48"
+    VERSION = "2.0.49"
 
     stats = {}
 
@@ -240,13 +256,21 @@ class HP3PARCommon(object):
         cl = client.HP3ParClient(self.config.hp3par_api_url)
         client_version = hp3parclient.version
 
-        if (client_version < MIN_CLIENT_VERSION):
+        if client_version < MIN_CLIENT_VERSION:
             ex_msg = (_('Invalid hp3parclient version found (%(found)s). '
                         'Version %(minimum)s or greater required.')
                       % {'found': client_version,
                          'minimum': MIN_CLIENT_VERSION})
             LOG.error(ex_msg)
             raise exception.InvalidInput(reason=ex_msg)
+        if client_version < GETCPGSTATDATA_VERSION:
+            # getCPGStatData is only found in client version 3.2.2 or later
+            LOG.warning(_LW("getCPGStatData requires "
+                            "hp3parclient version "
+                            "'%(getcpgstatdata_version)s' "
+                            "version '%(version)s' is installed.") %
+                        {'getcpgstatdata_version': GETCPGSTATDATA_VERSION,
+                         'version': client_version})
 
         return cl
 
@@ -298,6 +322,13 @@ class HP3PARCommon(object):
                       "rest_ver": hp3parclient.get_version_string()})
         if self.config.hp3par_debug:
             self.client.debug_rest(True)
+        if self.API_VERSION < SRSTATLD_API_VERSION:
+            # Firmware version not compatible with srstatld
+            LOG.warning(_LW("srstatld requires "
+                            "WSAPI version '%(srstatld_version)s' "
+                            "version '%(version)s' is installed.") %
+                        {'srstatld_version': SRSTATLD_API_VERSION,
+                         'version': self.API_VERSION})
 
     def check_for_setup_error(self):
         self.client_login()
@@ -703,6 +734,22 @@ class HP3PARCommon(object):
         for cpg_name in self.config.hp3par_cpg:
             try:
                 cpg = self.client.getCPG(cpg_name)
+                if (self.API_VERSION >= SRSTATLD_API_VERSION
+                        and hp3parclient.version >= GETCPGSTATDATA_VERSION):
+                    interval = 'daily'
+                    history = '7d'
+                    stat_capabilities = self.client.getCPGStatData(cpg_name,
+                                                                   interval,
+                                                                   history)
+                else:
+                    stat_capabilities = {
+                        THROUGHPUT: None,
+                        BANDWIDTH: None,
+                        LATENCY: None,
+                        IO_SIZE: None,
+                        QUEUE_LENGTH: None,
+                        AVG_BUSY_PERC: None
+                    }
                 if 'numTDVVs' in cpg:
                     total_volumes = int(
                         cpg['numFPVVs'] + cpg['numTPVVs'] + cpg['numTDVVs']
@@ -748,6 +795,12 @@ class HP3PARCommon(object):
                                        'dest_cpg': cpg_name}),
                     'total_volumes': total_volumes,
                     'capacity_utilization': capacity_utilization,
+                    THROUGHPUT: stat_capabilities[THROUGHPUT],
+                    BANDWIDTH: stat_capabilities[BANDWIDTH],
+                    LATENCY: stat_capabilities[LATENCY],
+                    IO_SIZE: stat_capabilities[IO_SIZE],
+                    QUEUE_LENGTH: stat_capabilities[QUEUE_LENGTH],
+                    AVG_BUSY_PERC: stat_capabilities[AVG_BUSY_PERC],
                     'filter_function': filter_function,
                     'goodness_function': goodness_function,
                     'multiattach': True,
