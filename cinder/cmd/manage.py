@@ -73,6 +73,7 @@ from cinder import context
 from cinder import db
 from cinder.db import migration as db_migration
 from cinder.db.sqlalchemy import api as db_api
+from cinder import exception
 from cinder.i18n import _
 from cinder import objects
 from cinder import rpc
@@ -453,6 +454,24 @@ class ServiceCommands(object):
                                   svc['availability_zone'], status, art,
                                   svc['updated_at']))
 
+    @args('binary', type=str,
+          help='Service to delete from the host.')
+    @args('host_name', type=str,
+          help='Host from which to remove the service.')
+    def remove(self, binary, host_name):
+        """Completely removes a service."""
+        ctxt = context.get_admin_context()
+        try:
+            svc = db.service_get_by_args(ctxt, host_name, binary)
+            db.service_destroy(ctxt, svc['id'])
+        except exception.HostBinaryNotFound as e:
+            print(_("Host not found. Failed to remove %(service)s"
+                    " on %(host)s.") %
+                  {'service': binary, 'host': host_name})
+            print (u"%s" % e.args)
+            return 2
+        print(_("Service %(service)s on host %(host)s removed.") %
+              {'service': binary, 'host': host_name})
 
 CATEGORIES = {
     'backup': BackupCommands,
