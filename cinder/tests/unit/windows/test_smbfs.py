@@ -55,7 +55,7 @@ class WindowsSmbFsTestCase(test.TestCase):
 
         mock.patch('sys.platform', 'win32').start()
         mock.patch.dict(sys.modules, ctypes=mock.DEFAULT).start()
-        mock.patch('__builtin__.wmi', create=True).start()
+        mock.patch('six.moves.builtins.wmi', create=True).start()
 
         self.addCleanup(mock.patch.stopall)
 
