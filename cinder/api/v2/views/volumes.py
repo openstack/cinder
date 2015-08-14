@@ -30,12 +30,12 @@ class ViewBuilder(common.ViewBuilder):
         """Initialize view builder."""
         super(ViewBuilder, self).__init__()
 
-    def summary_list(self, request, volumes, volume_count):
+    def summary_list(self, request, volumes, volume_count=None):
         """Show a list of volumes without many details."""
         return self._list_view(self.summary, request, volumes,
                                volume_count)
 
-    def detail_list(self, request, volumes, volume_count):
+    def detail_list(self, request, volumes, volume_count=None):
         """Detailed view of a list of volumes."""
         return self._list_view(self.detail, request, volumes,
                                volume_count,

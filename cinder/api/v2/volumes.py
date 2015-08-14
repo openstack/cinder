@@ -227,10 +227,8 @@ class VolumeController(wsgi.Controller):
         context = req.environ['cinder.context']
 
         params = req.params.copy()
-        marker = params.pop('marker', None)
-        limit = params.pop('limit', None)
+        marker, limit, offset = common.get_pagination_params(params)
         sort_keys, sort_dirs = common.get_sort_params(params)
-        params.pop('offset', None)
         filters = params
 
         utils.remove_invalid_filter_options(context,
@@ -255,23 +253,20 @@ class VolumeController(wsgi.Controller):
                                           sort_keys=sort_keys,
                                           sort_dirs=sort_dirs,
                                           filters=filters,
-                                          viewable_admin_meta=True)
+                                          viewable_admin_meta=True,
+                                          offset=offset)
 
         volumes = [dict(vol) for vol in volumes]
 
         for volume in volumes:
             utils.add_visible_admin_metadata(volume)
 
-        limited_list = common.limited(volumes, req)
-        volume_count = len(volumes)
-        req.cache_db_volumes(limited_list)
+        req.cache_db_volumes(volumes)
 
         if is_detail:
-            volumes = self._view_builder.detail_list(req, limited_list,
-                                                     volume_count)
+            volumes = self._view_builder.detail_list(req, volumes)
         else:
-            volumes = self._view_builder.summary_list(req, limited_list,
-                                                      volume_count)
+            volumes = self._view_builder.summary_list(req, volumes)
         return volumes
 
     def _image_uuid_from_ref(self, image_ref, context):
