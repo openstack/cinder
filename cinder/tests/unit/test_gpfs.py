@@ -69,6 +69,7 @@ class GPFSDriverTestCase(test.TestCase):
         self.driver._cluster_id = '123456'
         self.driver._gpfs_device = '/dev/gpfs'
         self.driver._storage_pool = 'system'
+        self.driver._encryption_state = 'yes'
 
         self.flags(volume_driver=self.driver_name,
                    gpfs_mount_point_base=self.volumes_path)
@@ -410,6 +411,10 @@ class GPFSDriverTestCase(test.TestCase):
         host = {'host': 'foo', 'capabilities': cap}
         self.assertEqual('testpath', self.driver._can_migrate_locally(host))
 
+    @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.'
+                '_get_gpfs_encryption_status')
+    @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.'
+                '_get_gpfs_cluster_release_level')
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._verify_gpfs_pool')
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.'
                 '_get_filesystem_from_path')
@@ -420,11 +425,36 @@ class GPFSDriverTestCase(test.TestCase):
                          mock_exec,
                          mock_get_gpfs_cluster_id,
                          mock_get_filesystem_from_path,
-                         mock_verify_gpfs_pool):
+                         mock_verify_gpfs_pool,
+                         mock_get_gpfs_fs_rel_lev,
+                         mock_verify_encryption_state):
         ctxt = self.context
         mock_get_gpfs_cluster_id.return_value = self.driver._cluster_id
         mock_get_filesystem_from_path.return_value = '/dev/gpfs'
         mock_verify_gpfs_pool.return_value = True
+        mock_get_gpfs_fs_rel_lev.return_value = 1405
+        mock_verify_encryption_state.return_value = 'Yes'
+        self.driver.do_setup(ctxt)
+
+    @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.'
+                '_get_gpfs_cluster_release_level')
+    @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._verify_gpfs_pool')
+    @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.'
+                '_get_filesystem_from_path')
+    @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.'
+                '_get_gpfs_cluster_id')
+    @mock.patch('cinder.utils.execute')
+    def test_do_setup_no_encryption(self,
+                                    mock_exec,
+                                    mock_get_gpfs_cluster_id,
+                                    mock_get_filesystem_from_path,
+                                    mock_verify_gpfs_pool,
+                                    mock_get_gpfs_fs_rel_lev):
+        ctxt = self.context
+        mock_get_gpfs_cluster_id.return_value = self.driver._cluster_id
+        mock_get_filesystem_from_path.return_value = '/dev/gpfs'
+        mock_verify_gpfs_pool.return_value = True
+        mock_get_gpfs_fs_rel_lev.return_value = 1403
         self.driver.do_setup(ctxt)
 
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._verify_gpfs_pool')
@@ -1108,9 +1138,32 @@ class GPFSDriverTestCase(test.TestCase):
             stats = self.driver.get_volume_stats()
             self.assertEqual('GPFS', stats['volume_backend_name'])
             self.assertEqual('file', stats['storage_protocol'])
+            self.assertTrue(stats['gpfs_encryption_rest'])
             stats = self.driver.get_volume_stats(True)
             self.assertEqual('GPFS', stats['volume_backend_name'])
             self.assertEqual('file', stats['storage_protocol'])
+            self.assertTrue(stats['gpfs_encryption_rest'])
+
+    @mock.patch('cinder.utils.execute')
+    def test_get_gpfs_encryption_status_true(self, mock_exec):
+        mock_exec.return_value = ('mmlsfs::HEADER:version:reserved:reserved:'
+                                  'deviceName:fieldName:data:remarks:\n'
+                                  'mmlsfs::0:1:::gpfs:encryption:Yes:', '')
+        self.assertEqual('Yes', self.driver._get_gpfs_encryption_status())
+
+    @mock.patch('cinder.utils.execute')
+    def test_get_gpfs_encryption_status_false(self, mock_exec):
+        mock_exec.return_value = ('mmlsfs::HEADER:version:reserved:reserved:'
+                                  'deviceName:fieldName:data:remarks:\n'
+                                  'mmlsfs::0:1:::gpfs:encryption:No:', '')
+        self.assertEqual('No', self.driver._get_gpfs_encryption_status())
+
+    @mock.patch('cinder.utils.execute')
+    def test_get_gpfs_encryption_status_fail(self, mock_exec):
+        mock_exec.side_effect = (
+            processutils.ProcessExecutionError(stdout='test', stderr='test'))
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver._get_gpfs_encryption_status)
 
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.'
                 '_update_volume_stats')
