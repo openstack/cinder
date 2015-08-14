@@ -61,7 +61,9 @@ class VolumeApiTest(test.TestCase):
                        stubs.stub_service_get_all_by_topic)
         self.maxDiff = None
 
-    def test_volume_create(self):
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
+    def test_volume_create(self, mock_validate):
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
         self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
 
@@ -71,8 +73,11 @@ class VolumeApiTest(test.TestCase):
         res_dict = self.controller.create(req, body)
         ex = self._expected_vol_from_controller()
         self.assertEqual(ex, res_dict)
+        self.assertTrue(mock_validate.called)
 
-    def test_volume_create_with_type(self):
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
+    def test_volume_create_with_type(self, mock_validate):
         vol_type = db.volume_type_create(
             context.get_admin_context(),
             dict(name=CONF.default_volume_type, extra_specs={})
@@ -108,6 +113,7 @@ class VolumeApiTest(test.TestCase):
                                           volume_type={'name': vol_type})])
         req = fakes.HTTPRequest.blank('/v2/volumes/detail')
         res_dict = self.controller.detail(req)
+        self.assertTrue(mock_validate.called)
 
     def _vol_in_request_body(self,
                              size=stubs.DEFAULT_VOL_SIZE,
@@ -351,7 +357,9 @@ class VolumeApiTest(test.TestCase):
                           self.controller.create,
                           req, body)
 
-    def test_volume_create_with_image_ref(self):
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
+    def test_volume_create_with_image_ref(self, mock_validate):
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
         self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
 
@@ -364,6 +372,7 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/volumes')
         res_dict = self.controller.create(req, body)
         self.assertEqual(ex, res_dict)
+        self.assertTrue(mock_validate.called)
 
     def test_volume_create_with_image_ref_is_integer(self):
         self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
@@ -401,7 +410,9 @@ class VolumeApiTest(test.TestCase):
                           req,
                           body)
 
-    def test_volume_create_with_image_id(self):
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
+    def test_volume_create_with_image_id(self, mock_validate):
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
         self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
 
@@ -414,6 +425,7 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/volumes')
         res_dict = self.controller.create(req, body)
         self.assertEqual(ex, res_dict)
+        self.assertTrue(mock_validate.called)
 
     def test_volume_create_with_image_id_is_integer(self):
         self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
@@ -451,7 +463,9 @@ class VolumeApiTest(test.TestCase):
                           req,
                           body)
 
-    def test_volume_create_with_image_name(self):
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
+    def test_volume_create_with_image_name(self, mock_validate):
         self.stubs.Set(db, 'volume_get', stubs.stub_volume_get_db)
         self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
         self.stubs.Set(fake_image._FakeImageService,
@@ -467,6 +481,7 @@ class VolumeApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/volumes')
         res_dict = self.controller.create(req, body)
         self.assertEqual(ex, res_dict)
+        self.assertTrue(mock_validate.called)
 
     def test_volume_create_with_image_name_has_multiple(self):
         self.stubs.Set(db, 'volume_get', stubs.stub_volume_get_db)
@@ -504,7 +519,9 @@ class VolumeApiTest(test.TestCase):
                           req,
                           body)
 
-    def test_volume_update(self):
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
+    def test_volume_update(self, mock_validate):
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
         self.stubs.Set(volume_api.API, "update", stubs.stub_volume_update)
 
@@ -520,8 +537,11 @@ class VolumeApiTest(test.TestCase):
             metadata={'attached_mode': 'rw', 'readonly': 'False'})
         self.assertEqual(expected, res_dict)
         self.assertEqual(2, len(self.notifier.notifications))
+        self.assertTrue(mock_validate.called)
 
-    def test_volume_update_deprecation(self):
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
+    def test_volume_update_deprecation(self, mock_validate):
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
         self.stubs.Set(volume_api.API, "update", stubs.stub_volume_update)
 
@@ -539,8 +559,11 @@ class VolumeApiTest(test.TestCase):
             metadata={'attached_mode': 'rw', 'readonly': 'False'})
         self.assertEqual(expected, res_dict)
         self.assertEqual(2, len(self.notifier.notifications))
+        self.assertTrue(mock_validate.called)
 
-    def test_volume_update_deprecation_key_priority(self):
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
+    def test_volume_update_deprecation_key_priority(self, mock_validate):
         """Test current update keys have priority over deprecated keys."""
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
         self.stubs.Set(volume_api.API, "update", stubs.stub_volume_update)
@@ -561,8 +584,11 @@ class VolumeApiTest(test.TestCase):
             metadata={'attached_mode': 'rw', 'readonly': 'False'})
         self.assertEqual(expected, res_dict)
         self.assertEqual(2, len(self.notifier.notifications))
+        self.assertTrue(mock_validate.called)
 
-    def test_volume_update_metadata(self):
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
+    def test_volume_update_metadata(self, mock_validate):
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
         self.stubs.Set(volume_api.API, "update", stubs.stub_volume_update)
 
@@ -579,8 +605,11 @@ class VolumeApiTest(test.TestCase):
                       'qos_max_iops': 2000})
         self.assertEqual(expected, res_dict)
         self.assertEqual(2, len(self.notifier.notifications))
+        self.assertTrue(mock_validate.called)
 
-    def test_volume_update_with_admin_metadata(self):
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
+    def test_volume_update_with_admin_metadata(self, mock_validate):
         self.stubs.Set(volume_api.API, "update", stubs.stub_volume_update)
 
         volume = stubs.stub_volume("1")
@@ -621,6 +650,7 @@ class VolumeApiTest(test.TestCase):
             metadata={'key': 'value', 'readonly': 'True'})
         self.assertEqual(expected, res_dict)
         self.assertEqual(2, len(self.notifier.notifications))
+        self.assertTrue(mock_validate.called)
 
     def test_update_empty_body(self):
         body = {}

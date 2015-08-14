@@ -326,17 +326,16 @@ class VolumeController(wsgi.Controller):
         volume = body['volume']
 
         kwargs = {}
+        self.validate_name_and_description(volume)
 
         # NOTE(thingee): v2 API allows name instead of display_name
-        if volume.get('name'):
-            volume['display_name'] = volume.get('name')
-            del volume['name']
+        if 'name' in volume:
+            volume['display_name'] = volume.pop('name')
 
         # NOTE(thingee): v2 API allows description instead of
         #                display_description
-        if volume.get('description'):
-            volume['display_description'] = volume.get('description')
-            del volume['description']
+        if 'description' in volume:
+            volume['display_description'] = volume.pop('description')
 
         if 'image_id' in volume:
             volume['imageRef'] = volume.get('image_id')
@@ -471,15 +470,16 @@ class VolumeController(wsgi.Controller):
             if key in volume:
                 update_dict[key] = volume[key]
 
-        # NOTE(thingee): v2 API allows name instead of display_name
-        if 'name' in update_dict:
-            update_dict['display_name'] = update_dict['name']
-            del update_dict['name']
+        self.validate_name_and_description(update_dict)
 
         # NOTE(thingee): v2 API allows name instead of display_name
+        if 'name' in update_dict:
+            update_dict['display_name'] = update_dict.pop('name')
+
+        # NOTE(thingee): v2 API allows description instead of
+        #                display_description
         if 'description' in update_dict:
-            update_dict['display_description'] = update_dict['description']
-            del update_dict['description']
+            update_dict['display_description'] = update_dict.pop('description')
 
         try:
             volume = self.volume_api.get(context, id, viewable_admin_meta=True)

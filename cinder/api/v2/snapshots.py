@@ -185,11 +185,11 @@ class SnapshotsController(wsgi.Controller):
         force = snapshot.get('force', False)
         msg = _LI("Create snapshot from volume %s")
         LOG.info(msg, volume_id, context=context)
+        self.validate_name_and_description(snapshot)
 
         # NOTE(thingee): v2 API allows name instead of display_name
         if 'name' in snapshot:
-            snapshot['display_name'] = snapshot.get('name')
-            del snapshot['name']
+            snapshot['display_name'] = snapshot.pop('name')
 
         try:
             force = strutils.bool_from_string(force, strict=True)
@@ -240,17 +240,16 @@ class SnapshotsController(wsgi.Controller):
             'display_name',
             'display_description',
         )
+        self.validate_name_and_description(snapshot)
 
         # NOTE(thingee): v2 API allows name instead of display_name
         if 'name' in snapshot:
-            snapshot['display_name'] = snapshot['name']
-            del snapshot['name']
+            snapshot['display_name'] = snapshot.pop('name')
 
         # NOTE(thingee): v2 API allows description instead of
         # display_description
         if 'description' in snapshot:
-            snapshot['display_description'] = snapshot['description']
-            del snapshot['description']
+            snapshot['display_description'] = snapshot.pop('description')
 
         for key in valid_update_keys:
             if key in snapshot:
