@@ -471,7 +471,7 @@ class EMCXIODriverISCSITestCase(test.TestCase):
         xms_data['snapshot-sets'] = {snaps_name: snaps, 1: snaps}
         self.assertRaises(exception.InvalidInput,
                           self.driver.create_consistencygroup_from_src,
-                          d.context, d.group, [])
+                          d.context, d.group, [], None, None, None, None)
         self.driver.delete_cgsnapshot(d.context, d.cgsnapshot)
         self.driver.delete_consistencygroup(d.context, d.group)
 

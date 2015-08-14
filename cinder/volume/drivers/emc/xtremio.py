@@ -567,7 +567,8 @@ class XtremIOVolumeDriver(san.SanDriver):
         return model_update, volumes
 
     def create_consistencygroup_from_src(self, context, group, volumes,
-                                         cgsnapshot=None, snapshots=None):
+                                         cgsnapshot=None, snapshots=None,
+                                         source_cg=None, source_vols=None):
         """Creates a consistencygroup from source.
 
         :param context: the context of the caller.
