@@ -145,7 +145,7 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
                          mock.Mock(return_value=mock_remotefsclient))
         # Remove tempdir.
         self.addCleanup(shutil.rmtree, self.temp_dir)
-        for _i in range(0, 128):
+        for _i in range(0, 32):
             self.volume_file.write(os.urandom(1024))
 
     def test_backup_uncompressed(self):
@@ -261,7 +261,7 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
 
         # Verify sha contents
         content1 = service._read_sha256file(backup)
-        self.assertEqual(128 * 1024 / content1['chunk_size'],
+        self.assertEqual(32 * 1024 / content1['chunk_size'],
                          len(content1['sha256s']))
 
     def test_backup_cmp_shafiles(self):
