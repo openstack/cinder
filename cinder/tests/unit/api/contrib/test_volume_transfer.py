@@ -18,6 +18,7 @@ Tests for volume transfer code.
 """
 
 import json
+import mock
 from xml.dom import minidom
 
 import webob
@@ -252,9 +253,11 @@ class VolumeTransferAPITestCase(test.TestCase):
         db.transfer_destroy(context.get_admin_context(), transfer1['id'])
         db.volume_destroy(context.get_admin_context(), volume_id_1)
 
-    def test_create_transfer_json(self):
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_string_length')
+    def test_create_transfer_json(self, mock_validate):
         volume_id = self._create_volume(status='available', size=5)
-        body = {"transfer": {"display_name": "transfer1",
+        body = {"transfer": {"name": "transfer1",
                              "volume_id": volume_id}}
 
         req = webob.Request.blank('/v2/fake/os-volume-transfer')
@@ -271,10 +274,13 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertIn('created_at', res_dict['transfer'])
         self.assertIn('name', res_dict['transfer'])
         self.assertIn('volume_id', res_dict['transfer'])
+        self.assertTrue(mock_validate.called)
 
         db.volume_destroy(context.get_admin_context(), volume_id)
 
-    def test_create_transfer_xml(self):
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_string_length')
+    def test_create_transfer_xml(self, mock_validate):
         volume_size = 2
         volume_id = self._create_volume(status='available', size=volume_size)
 
@@ -294,6 +300,8 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertTrue(transfer.item(0).hasAttribute('created_at'))
         self.assertEqual('transfer-001', transfer.item(0).getAttribute('name'))
         self.assertTrue(transfer.item(0).hasAttribute('volume_id'))
+        self.assertTrue(mock_validate.called)
+
         db.volume_destroy(context.get_admin_context(), volume_id)
 
     def test_create_transfer_with_no_body(self):
@@ -312,7 +320,7 @@ class VolumeTransferAPITestCase(test.TestCase):
                          res_dict['badRequest']['message'])
 
     def test_create_transfer_with_body_KeyError(self):
-        body = {"transfer": {"display_name": "transfer1"}}
+        body = {"transfer": {"name": "transfer1"}}
         req = webob.Request.blank('/v2/fake/os-volume-transfer')
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
@@ -326,7 +334,7 @@ class VolumeTransferAPITestCase(test.TestCase):
                          res_dict['badRequest']['message'])
 
     def test_create_transfer_with_VolumeNotFound(self):
-        body = {"transfer": {"display_name": "transfer1",
+        body = {"transfer": {"name": "transfer1",
                              "volume_id": 1234}}
 
         req = webob.Request.blank('/v2/fake/os-volume-transfer')
@@ -343,7 +351,7 @@ class VolumeTransferAPITestCase(test.TestCase):
 
     def test_create_transfer_with_InvalidVolume(self):
         volume_id = self._create_volume(status='attached')
-        body = {"transfer": {"display_name": "transfer1",
+        body = {"transfer": {"name": "transfer1",
                              "volume_id": volume_id}}
         req = webob.Request.blank('/v2/fake/os-volume-transfer')
         req.method = 'POST'

@@ -123,7 +123,9 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPNotFound, self.controller.delete,
                           req, 1, 'key6')
 
-    def test_create(self):
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_string_length')
+    def test_create(self, mock_validate):
         self.stubs.Set(cinder.db,
                        'volume_type_extra_specs_update_or_create',
                        return_create_volume_type_extra_specs)
@@ -133,12 +135,14 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         req = fakes.HTTPRequest.blank(self.api_path)
         res_dict = self.controller.create(req, 1, body)
         self.assertEqual(1, len(self.notifier.notifications))
-
+        self.assertTrue(mock_validate.called)
         self.assertEqual('value1', res_dict['extra_specs']['key1'])
 
     @mock.patch.object(cinder.db, 'volume_type_extra_specs_update_or_create')
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_string_length')
     def test_create_key_allowed_chars(
-            self, volume_type_extra_specs_update_or_create):
+            self, mock_validate, volume_type_extra_specs_update_or_create):
         mock_return_value = {"key1": "value1",
                              "key2": "value2",
                              "key3": "value3",
@@ -154,12 +158,15 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         req = fakes.HTTPRequest.blank(self.api_path)
         res_dict = self.controller.create(req, 1, body)
         self.assertEqual(1, len(self.notifier.notifications))
+        self.assertTrue(mock_validate.called)
         self.assertEqual('value1',
                          res_dict['extra_specs']['other_alphanum.-_:'])
 
     @mock.patch.object(cinder.db, 'volume_type_extra_specs_update_or_create')
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_string_length')
     def test_create_too_many_keys_allowed_chars(
-            self, volume_type_extra_specs_update_or_create):
+            self, mock_validate, volume_type_extra_specs_update_or_create):
         mock_return_value = {"key1": "value1",
                              "key2": "value2",
                              "key3": "value3",
@@ -177,6 +184,7 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         req = fakes.HTTPRequest.blank(self.api_path)
         res_dict = self.controller.create(req, 1, body)
         self.assertEqual(1, len(self.notifier.notifications))
+        self.assertTrue(mock_validate.called)
         self.assertEqual('value1',
                          res_dict['extra_specs']['other_alphanum.-_:'])
         self.assertEqual('value2',
@@ -184,7 +192,9 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         self.assertEqual('value3',
                          res_dict['extra_specs']['other3_alphanum.-_:'])
 
-    def test_update_item(self):
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_string_length')
+    def test_update_item(self, mock_validate):
         self.stubs.Set(cinder.db,
                        'volume_type_extra_specs_update_or_create',
                        return_create_volume_type_extra_specs)
@@ -194,6 +204,7 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         req = fakes.HTTPRequest.blank(self.api_path + '/key1')
         res_dict = self.controller.update(req, 1, 'key1', body)
         self.assertEqual(1, len(self.notifier.notifications))
+        self.assertTrue(mock_validate.called)
 
         self.assertEqual('value1', res_dict['key1'])
 

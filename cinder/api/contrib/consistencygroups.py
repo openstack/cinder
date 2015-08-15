@@ -216,6 +216,7 @@ class ConsistencyGroupsController(wsgi.Controller):
 
         context = req.environ['cinder.context']
         consistencygroup = body['consistencygroup']
+        self.validate_name_and_description(consistencygroup)
         name = consistencygroup.get('name', None)
         description = consistencygroup.get('description', None)
         volume_types = consistencygroup.get('volume_types', None)
@@ -258,6 +259,7 @@ class ConsistencyGroupsController(wsgi.Controller):
 
         context = req.environ['cinder.context']
         consistencygroup = body['consistencygroup-from-src']
+        self.validate_name_and_description(consistencygroup)
         name = consistencygroup.get('name', None)
         description = consistencygroup.get('description', None)
         cgsnapshot_id = consistencygroup.get('cgsnapshot_id', None)
@@ -325,6 +327,7 @@ class ConsistencyGroupsController(wsgi.Controller):
         context = req.environ['cinder.context']
 
         consistencygroup = body.get('consistencygroup', None)
+        self.validate_name_and_description(consistencygroup)
         name = consistencygroup.get('name', None)
         description = consistencygroup.get('description', None)
         add_volumes = consistencygroup.get('add_volumes', None)

@@ -331,7 +331,9 @@ class CgsnapshotsAPITestCase(test.TestCase):
         db.consistencygroup_destroy(context.get_admin_context(),
                                     consistencygroup_id)
 
-    def test_create_cgsnapshot_json(self):
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
+    def test_create_cgsnapshot_json(self, mock_validate):
         cgsnapshot_id = "1"
 
         consistencygroup_id = utils.create_consistencygroup(self.context)['id']
@@ -353,6 +355,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
 
         self.assertEqual(202, res.status_int)
         self.assertIn('id', res_dict['cgsnapshot'])
+        self.assertTrue(mock_validate.called)
 
         db.cgsnapshot_destroy(context.get_admin_context(), cgsnapshot_id)
 

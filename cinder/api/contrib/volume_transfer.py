@@ -161,6 +161,11 @@ class VolumeTransferController(wsgi.Controller):
             raise exc.HTTPBadRequest(explanation=msg)
 
         name = transfer.get('name', None)
+        if name is not None:
+            self.validate_string_length(name, 'Transfer name',
+                                        min_length=1, max_length=255,
+                                        remove_whitespaces=True)
+            name = name.strip()
 
         LOG.info(_LI("Creating transfer of volume %s"),
                  volume_id,

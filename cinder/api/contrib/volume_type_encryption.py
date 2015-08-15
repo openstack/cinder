@@ -57,16 +57,10 @@ class VolumeTypeEncryptionController(wsgi.Controller):
             raise webob.exc.HTTPNotFound(explanation=ex.msg)
 
     def _check_encryption_input(self, encryption, create=True):
-        if 'key_size' in encryption.keys():
-            key_size = encryption['key_size']
-            if key_size is not None:
-                if isinstance(key_size, (int, long)):
-                    if key_size < 0:
-                        msg = _('key_size must be non-negative')
-                        raise exception.InvalidInput(reason=msg)
-                else:
-                    msg = _('key_size must be an integer')
-                    raise exception.InvalidInput(reason=msg)
+        if encryption.get('key_size') is not None:
+            encryption['key_size'] = self.validate_integer(
+                encryption['key_size'], 'key_size',
+                min_value=0, max_value=db.MAX_INT)
 
         if create:
             msg = None

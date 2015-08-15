@@ -135,7 +135,9 @@ class VolumeManageTest(test.TestCase):
         return res
 
     @mock.patch('cinder.volume.api.API.manage_existing', wraps=api_manage)
-    def test_manage_volume_ok(self, mock_api_manage):
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
+    def test_manage_volume_ok(self, mock_validate, mock_api_manage):
         """Test successful manage volume execution.
 
         Tests for correct operation when valid arguments are passed in the
@@ -153,6 +155,7 @@ class VolumeManageTest(test.TestCase):
         args = mock_api_manage.call_args[0]
         self.assertEqual(args[1], body['volume']['host'])
         self.assertEqual(args[2], body['volume']['ref'])
+        self.assertTrue(mock_validate.called)
 
     def test_manage_volume_missing_host(self):
         """Test correct failure when host is not specified."""
@@ -168,7 +171,9 @@ class VolumeManageTest(test.TestCase):
         pass
 
     @mock.patch('cinder.volume.api.API.manage_existing', api_manage)
-    def test_manage_volume_volume_type_by_uuid(self):
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
+    def test_manage_volume_volume_type_by_uuid(self, mock_validate):
         """Tests for correct operation when a volume type is specified by ID.
 
         We wrap cinder.volume.api.API.manage_existing so that managing is not
@@ -180,10 +185,13 @@ class VolumeManageTest(test.TestCase):
                            'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'}}
         res = self._get_resp(body)
         self.assertEqual(202, res.status_int, res)
+        self.assertTrue(mock_validate.called)
         pass
 
     @mock.patch('cinder.volume.api.API.manage_existing', api_manage)
-    def test_manage_volume_volume_type_by_name(self):
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
+    def test_manage_volume_volume_type_by_name(self, mock_validate):
         """Tests for correct operation when a volume type is specified by name.
 
         We wrap cinder.volume.api.API.manage_existing so that managing is not
@@ -194,6 +202,7 @@ class VolumeManageTest(test.TestCase):
                            'volume_type': 'good_fakevt'}}
         res = self._get_resp(body)
         self.assertEqual(202, res.status_int, res)
+        self.assertTrue(mock_validate.called)
         pass
 
     def test_manage_volume_bad_volume_type_by_uuid(self):

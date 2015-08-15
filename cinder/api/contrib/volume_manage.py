@@ -99,6 +99,7 @@ class VolumeManageController(wsgi.Controller):
         self.assert_valid_body(body, 'volume')
 
         volume = body['volume']
+        self.validate_name_and_description(volume)
 
         # Check that the required keys are present, return an error if they
         # are not.

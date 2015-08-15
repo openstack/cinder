@@ -127,9 +127,13 @@ class QoSSpecsController(wsgi.Controller):
 
         specs = body['qos_specs']
         name = specs.get('name', None)
-        if name is None or name == "":
+        if name is None:
             msg = _("Please specify a name for QoS specs.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        self.validate_string_length(name, 'name', min_length=1,
+                                    max_length=255, remove_whitespaces=True)
+        name = name.strip()
 
         try:
             qos_specs.create(context, name, specs)

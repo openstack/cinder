@@ -14,9 +14,11 @@
 #    under the License.
 
 import json
+import mock
 
 import webob
 
+from cinder.api.openstack import wsgi
 from cinder import context
 from cinder import db
 from cinder import test
@@ -201,7 +203,11 @@ class VolumeTypeEncryptionTest(test.TestCase):
         db.volume_type_destroy(context.get_admin_context(), volume_type['id'])
 
     def test_create_json(self):
-        self._create('fake_cipher', 'front-end', 128, 'fake_encryptor')
+        with mock.patch.object(wsgi.Controller,
+                               'validate_integer') as mock_validate_integer:
+            mock_validate_integer.return_value = 128
+            self._create('fake_cipher', 'front-end', 128, 'fake_encryptor')
+            self.assertTrue(mock_validate_integer.called)
 
     def test_create_xml(self):
         volume_type = self._default_volume_type
@@ -337,7 +343,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
                                'key_size': -128,
                                'provider': 'fake_provider',
                                'volume_type_id': 'volume_type'}}
-        msg = 'Invalid input received: key_size must be non-negative'
+        msg = 'key_size must be >= 0'
         self._encryption_create_bad_body(body=body, msg=msg)
 
     def test_create_none_key_size(self):
@@ -498,7 +504,9 @@ class VolumeTypeEncryptionTest(test.TestCase):
         self.assertEqual(expected, json.loads(res.body))
         db.volume_type_destroy(context.get_admin_context(), volume_type['id'])
 
-    def test_update_item(self):
+    @mock.patch('cinder.api.openstack.wsgi.Controller.validate_integer')
+    def test_update_item(self, mock_validate_integer):
+        mock_validate_integer.return_value = 512
         volume_type = self._default_volume_type
 
         # Create Encryption Specs
@@ -530,6 +538,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
         # Confirm Encryption Specs
         self.assertEqual(512, res_dict['key_size'])
         self.assertEqual('fake_provider2', res_dict['provider'])
+        self.assertTrue(mock_validate_integer.called)
 
         db.volume_type_destroy(context.get_admin_context(), volume_type['id'])
 
@@ -567,7 +576,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
 
     def test_update_key_size_non_integer(self):
         update_body = {"encryption": {'key_size': 'abc'}}
-        msg = 'Invalid input received: key_size must be an integer'
+        msg = 'key_size must be an integer.'
         self._encryption_update_bad_body(update_body, msg)
 
     def test_update_item_invalid_body(self):
