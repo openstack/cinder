@@ -31,6 +31,7 @@ common_opts = [
                help='Storage Center System Serial Number'),
     cfg.IntOpt('dell_sc_api_port',
                default=3033,
+               min=1, max=65535,
                help='Dell API port'),
     cfg.StrOpt('dell_sc_server_folder',
                default='openstack',

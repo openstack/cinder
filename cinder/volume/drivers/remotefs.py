@@ -51,6 +51,7 @@ nas_opts = [
                secret=True),
     cfg.IntOpt('nas_ssh_port',
                default=22,
+               min=1, max=65535,
                help='SSH port to use to connect to NAS system.'),
     cfg.StrOpt('nas_private_key',
                default='',

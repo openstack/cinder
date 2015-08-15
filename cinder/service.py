@@ -64,6 +64,7 @@ service_opts = [
                help='IP address on which OpenStack Volume API listens'),
     cfg.IntOpt('osapi_volume_listen_port',
                default=8776,
+               min=1, max=65535,
                help='Port on which OpenStack Volume API listens'),
     cfg.IntOpt('osapi_volume_workers',
                help='Number of workers for OpenStack Volume API service. '

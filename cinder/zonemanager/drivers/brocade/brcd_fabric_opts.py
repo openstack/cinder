@@ -33,6 +33,7 @@ brcd_zone_opts = [
                secret=True),
     cfg.IntOpt('fc_fabric_port',
                default=22,
+               min=1, max=65535,
                help='Connecting port'),
     cfg.StrOpt('zoning_policy',
                default='initiator-target',
