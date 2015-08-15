@@ -67,7 +67,6 @@ class XIVDS8KDriver(san.SanDriver,
                     driver.ConsistencyGroupVD,
                     driver.CloneableVD,
                     driver.CloneableImageVD,
-                    driver.RetypeVD,
                     driver.TransferVD):
     """Unified IBM XIV and DS8K volume driver."""
 

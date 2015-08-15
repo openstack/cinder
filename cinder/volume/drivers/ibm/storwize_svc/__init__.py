@@ -133,7 +133,6 @@ class StorwizeSVCDriver(san.SanDriver,
                         driver.MigrateVD, driver.ReplicaVD,
                         driver.ConsistencyGroupVD,
                         driver.CloneableVD, driver.CloneableImageVD,
-                        driver.RetypeVD,
                         driver.TransferVD):
     """IBM Storwize V7000 and SVC iSCSI/FC volume driver.
 

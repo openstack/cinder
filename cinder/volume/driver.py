@@ -1087,6 +1087,9 @@ class BaseVD(object):
     def validate_connector_has_setting(connector, setting):
         pass
 
+    def retype(self, context, volume, new_type, diff, host):
+        return False, None
+
     # #######  Interface methods for DataPath (Connector) ########
     @abc.abstractmethod
     def ensure_export(self, context, volume):
@@ -1300,42 +1303,6 @@ class ExtendVD(object):
 
 
 @six.add_metaclass(abc.ABCMeta)
-class RetypeVD(object):
-    @abc.abstractmethod
-    def retype(self, context, volume, new_type, diff, host):
-        """Convert the volume to be of the new type.
-
-        Returns either:
-        A boolean indicating whether the retype occurred, or
-        A tuple (retyped, model_update) where retyped is a boolean
-        indicating if the retype occurred, and the model_update includes
-        changes for the volume db.
-        if diff['extra_specs'] includes 'replication' then:
-            if  ('True', _ ) then replication should be disabled:
-                Volume replica should be deleted
-                volume['replication_status'] should be changed to 'disabled'
-                volume['replication_extended_status'] = None
-                volume['replication_driver_data'] = None
-            if  (_, 'True') then replication should be enabled:
-                Volume replica (secondary) should be created, and replication
-                should be setup between the volume and the newly created
-                replica
-                volume['replication_status'] = 'copying'
-                volume['replication_extended_status'] = driver specific value
-                volume['replication_driver_data'] = driver specific value
-
-        :param ctxt: Context
-        :param volume: A dictionary describing the volume to migrate
-        :param new_type: A dictionary describing the volume type to convert to
-        :param diff: A dictionary with the difference between the two types
-        :param host: A dictionary describing the host to migrate to, where
-                     host['host'] is its name, and host['capabilities'] is a
-                     dictionary of its reported capabilities.
-        """
-        return False, None
-
-
-@six.add_metaclass(abc.ABCMeta)
 class TransferVD(object):
     def accept_transfer(self, context, volume, new_user, new_project):
         """Accept the transfer of a volume for a new user/project."""
@@ -1495,7 +1462,7 @@ class ReplicaVD(object):
 
 class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
                    CloneableVD, CloneableImageVD, SnapshotVD, ReplicaVD,
-                   RetypeVD, LocalVD, MigrateVD, BaseVD):
+                   LocalVD, MigrateVD, BaseVD):
     """This class will be deprecated soon.
 
     Please use the abstract classes above for new drivers.
