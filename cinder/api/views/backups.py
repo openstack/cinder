@@ -57,6 +57,7 @@ class ViewBuilder(common.ViewBuilder):
             'restore': {
                 'backup_id': restore['backup_id'],
                 'volume_id': restore['volume_id'],
+                'volume_name': restore['volume_name'],
             },
         }
 

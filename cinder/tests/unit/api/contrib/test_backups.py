@@ -908,7 +908,10 @@ class BackupsAPITestCase(test.TestCase):
     def test_restore_backup_volume_id_specified_json(self):
         backup_id = self._create_backup(status='available')
         # need to create the volume referenced below first
-        volume_id = utils.create_volume(self.context, size=5)['id']
+        volume_name = 'test1'
+        volume_id = utils.create_volume(self.context,
+                                        size=5,
+                                        display_name = volume_name)['id']
 
         body = {"restore": {"volume_id": volume_id, }}
         req = webob.Request.blank('/v2/fake/backups/%s/restore' %
@@ -922,10 +925,14 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(202, res.status_int)
         self.assertEqual(backup_id, res_dict['restore']['backup_id'])
         self.assertEqual(volume_id, res_dict['restore']['volume_id'])
+        self.assertEqual(volume_name, res_dict['restore']['volume_name'])
 
     def test_restore_backup_volume_id_specified_xml(self):
+        volume_name = 'test1'
         backup_id = self._create_backup(status='available')
-        volume_id = utils.create_volume(self.context, size=2)['id']
+        volume_id = utils.create_volume(self.context,
+                                        size=2,
+                                        display_name=volume_name)['id']
 
         req = webob.Request.blank('/v2/fake/backups/%s/restore' % backup_id)
         req.body = '<restore volume_id="%s"/>' % volume_id
@@ -1263,7 +1270,10 @@ class BackupsAPITestCase(test.TestCase):
     def test_restore_backup_to_oversized_volume(self):
         backup_id = self._create_backup(status='available', size=10)
         # need to create the volume referenced below first
-        volume_id = utils.create_volume(self.context, size=15)['id']
+        volume_name = 'test1'
+        volume_id = utils.create_volume(self.context,
+                                        size=15,
+                                        display_name = volume_name)['id']
 
         body = {"restore": {"volume_id": volume_id, }}
         req = webob.Request.blank('/v2/fake/backups/%s/restore' %
@@ -1277,16 +1287,19 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(202, res.status_int)
         self.assertEqual(backup_id, res_dict['restore']['backup_id'])
         self.assertEqual(volume_id, res_dict['restore']['volume_id'])
+        self.assertEqual(volume_name, res_dict['restore']['volume_name'])
 
         db.volume_destroy(context.get_admin_context(), volume_id)
         db.backup_destroy(context.get_admin_context(), backup_id)
 
     @mock.patch('cinder.backup.rpcapi.BackupAPI.restore_backup')
     def test_restore_backup_with_different_host(self, mock_restore_backup):
+        volume_name = 'test1'
         backup_id = self._create_backup(status='available', size=10,
                                         host='HostA@BackendB#PoolA')
         volume_id = utils.create_volume(self.context, size=10,
-                                        host='HostB@BackendB#PoolB')['id']
+                                        host='HostB@BackendB#PoolB',
+                                        display_name=volume_name)['id']
 
         body = {"restore": {"volume_id": volume_id, }}
         req = webob.Request.blank('/v2/fake/backups/%s/restore' %
@@ -1300,6 +1313,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(202, res.status_int)
         self.assertEqual(backup_id, res_dict['restore']['backup_id'])
         self.assertEqual(volume_id, res_dict['restore']['volume_id'])
+        self.assertEqual(volume_name, res_dict['restore']['volume_name'])
         mock_restore_backup.assert_called_once_with(mock.ANY, u'HostB',
                                                     mock.ANY, volume_id)
         # Manually check if restore_backup was called with appropriate backup.
