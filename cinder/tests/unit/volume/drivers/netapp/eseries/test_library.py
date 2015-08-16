@@ -21,6 +21,7 @@ import copy
 import ddt
 
 import mock
+from oslo_utils import units
 import six
 
 from cinder import exception
@@ -244,6 +245,118 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         self.assertEqual({'test_vg1': {'netapp_disk_encryption': 'false'},
                           'test_vg2': {'netapp_disk_encryption': 'true'}},
                          ssc_stats)
+
+    @ddt.data(True, False)
+    def test_get_volume_stats(self, refresh):
+        fake_stats = {'key': 'val'}
+
+        def populate_stats():
+            self.library._stats = fake_stats
+
+        self.library._update_volume_stats = mock.Mock(
+            side_effect=populate_stats)
+        self.library._update_ssc_info = mock.Mock()
+        self.library._ssc_stats = {self.library.THIN_UQ_SPEC: True}
+
+        actual = self.library.get_volume_stats(refresh = refresh)
+
+        if(refresh):
+            self.library._update_volume_stats.assert_called_once_with()
+            self.assertEqual(fake_stats, actual)
+        else:
+            self.assertEqual(0, self.library._update_volume_stats.call_count)
+        self.assertEqual(0, self.library._update_ssc_info.call_count)
+
+    def test_get_volume_stats_no_ssc(self):
+        """Validate that SSC data is collected if not yet populated"""
+        fake_stats = {'key': 'val'}
+
+        def populate_stats():
+            self.library._stats = fake_stats
+
+        self.library._update_volume_stats = mock.Mock(
+            side_effect=populate_stats)
+        self.library._update_ssc_info = mock.Mock()
+        self.library._ssc_stats = None
+
+        actual = self.library.get_volume_stats(refresh = True)
+
+        self.library._update_volume_stats.assert_called_once_with()
+        self.library._update_ssc_info.assert_called_once_with()
+        self.assertEqual(fake_stats, actual)
+
+    def test_update_volume_stats_provisioning(self):
+        """Validate pool capacity calculations"""
+        fake_pool = copy.deepcopy(eseries_fake.STORAGE_POOL)
+        self.library._get_storage_pools = mock.Mock(return_value=[fake_pool])
+        self.mock_object(self.library, '_ssc_stats', new_attr={fake_pool[
+            "volumeGroupRef"]: {self.library.THIN_UQ_SPEC: True}})
+        self.library.configuration = mock.Mock()
+        reserved_pct = 5
+        over_subscription_ratio = 1.0
+        self.library.configuration.max_over_subscription_ratio = (
+            over_subscription_ratio)
+        self.library.configuration.reserved_percentage = reserved_pct
+        total_gb = int(fake_pool['totalRaidedSpace']) / units.Gi
+        used_gb = int(fake_pool['usedSpace']) / units.Gi
+        free_gb = total_gb - used_gb
+
+        self.library._update_volume_stats()
+
+        self.assertEqual(1, len(self.library._stats['pools']))
+        pool_stats = self.library._stats['pools'][0]
+        self.assertEqual(fake_pool['label'], pool_stats.get('pool_name'))
+        self.assertEqual(reserved_pct, pool_stats['reserved_percentage'])
+        self.assertEqual(over_subscription_ratio,
+                         pool_stats['max_oversubscription_ratio'])
+        self.assertEqual(total_gb, pool_stats.get('total_capacity_gb'))
+        self.assertEqual(used_gb, pool_stats.get('provisioned_capacity_gb'))
+        self.assertEqual(free_gb, pool_stats.get('free_capacity_gb'))
+
+    @ddt.data(False, True)
+    def test_update_volume_stats_thin_provisioning(self, thin_provisioning):
+        """Validate that thin provisioning support is correctly reported"""
+        fake_pool = copy.deepcopy(eseries_fake.STORAGE_POOL)
+        self.library._get_storage_pools = mock.Mock(return_value=[fake_pool])
+        self.mock_object(self.library, '_ssc_stats', new_attr={fake_pool[
+            "volumeGroupRef"]: {self.library.THIN_UQ_SPEC: thin_provisioning}})
+
+        self.library._update_volume_stats()
+
+        self.assertEqual(1, len(self.library._stats['pools']))
+        pool_stats = self.library._stats['pools'][0]
+        self.assertEqual(thin_provisioning, pool_stats.get(
+            'thin_provisioning_support'))
+        # Should always be True
+        self.assertTrue(pool_stats.get('thick_provisioning_support'))
+
+    def test_update_volume_stats_ssc(self):
+        """Ensure that the SSC data is correctly reported in the pool stats"""
+        ssc = {self.library.THIN_UQ_SPEC: True, 'key': 'val'}
+        fake_pool = copy.deepcopy(eseries_fake.STORAGE_POOL)
+        self.library._get_storage_pools = mock.Mock(return_value=[fake_pool])
+        self.mock_object(self.library, '_ssc_stats', new_attr={fake_pool[
+            "volumeGroupRef"]: ssc})
+
+        self.library._update_volume_stats()
+
+        self.assertEqual(1, len(self.library._stats['pools']))
+        pool_stats = self.library._stats['pools'][0]
+        for key in ssc:
+            self.assertIn(key, pool_stats)
+            self.assertEqual(ssc[key], pool_stats[key])
+
+    def test_update_volume_stats_no_ssc(self):
+        """Ensure that that pool stats are correctly reported without SSC"""
+        fake_pool = copy.deepcopy(eseries_fake.STORAGE_POOL)
+        self.library._get_storage_pools = mock.Mock(return_value=[fake_pool])
+        self.library._update_volume_stats()
+
+        self.assertEqual(1, len(self.library._stats['pools']))
+        pool_stats = self.library._stats['pools'][0]
+        self.assertFalse(pool_stats.get('thin_provisioning_support'))
+        # Should always be True
+        self.assertTrue(pool_stats.get('thick_provisioning_support'))
 
     def test_terminate_connection_iscsi_no_hosts(self):
         connector = {'initiator': eseries_fake.INITIATOR_NAME}

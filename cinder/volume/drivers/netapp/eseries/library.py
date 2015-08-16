@@ -2,6 +2,7 @@
 # Copyright (c) 2015 Rushil Chugh
 # Copyright (c) 2015 Navneet Singh
 # Copyright (c) 2015 Yogesh Kshirsagar
+# Copyright (c) 2015 Tom Barron
 # Copyright (c) 2015 Michael Price
 #  All Rights Reserved.
 #
@@ -903,9 +904,13 @@ class NetAppESeriesLibrary(object):
             cinder_pool = {}
             cinder_pool["pool_name"] = storage_pool.get("label")
             cinder_pool["QoS_support"] = False
-            cinder_pool["reserved_percentage"] = 0
+            cinder_pool["reserved_percentage"] = (
+                self.configuration.reserved_percentage)
+            cinder_pool["max_oversubscription_ratio"] = (
+                self.configuration.max_over_subscription_ratio)
             tot_bytes = int(storage_pool.get("totalRaidedSpace", 0))
             used_bytes = int(storage_pool.get("usedSpace", 0))
+            cinder_pool["provisioned_capacity_gb"] = used_bytes / units.Gi
             cinder_pool["free_capacity_gb"] = ((tot_bytes - used_bytes) /
                                                units.Gi)
             cinder_pool["total_capacity_gb"] = tot_bytes / units.Gi
@@ -914,7 +919,14 @@ class NetAppESeriesLibrary(object):
                 storage_pool["volumeGroupRef"])
 
             if pool_ssc_stats:
+                thin = pool_ssc_stats.get(self.THIN_UQ_SPEC) or False
                 cinder_pool.update(pool_ssc_stats)
+            else:
+                thin = False
+            cinder_pool["thin_provisioning_support"] = thin
+            # All E-Series pools support thick provisioning
+            cinder_pool["thick_provisioning_support"] = True
+
             data["pools"].append(cinder_pool)
 
         self._stats = data
