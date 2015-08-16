@@ -94,9 +94,6 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
     def name(self):
         return CONF.volume_name_template % self.name_id
 
-    def __init__(self, *args, **kwargs):
-        super(Volume, self).__init__(*args, **kwargs)
-
     def obj_make_compatible(self, primitive, target_version):
         """Make an object representation compatible with a target version."""
         target_version = utils.convert_version_to_tuple(target_version)
