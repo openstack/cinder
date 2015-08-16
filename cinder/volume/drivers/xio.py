@@ -55,6 +55,7 @@ LOG = logging.getLogger(__name__)
 OPERATIONAL_STATUS = 'OPERATIONAL'
 PREPARED_STATUS = 'PREPARED'
 INVALID_STATUS = 'VALID'
+NOTFOUND_STATUS = 'NOT FOUND'
 
 
 # Raise exception for X-IO driver
@@ -64,13 +65,14 @@ def RaiseXIODriverException():
 
 class XIOISEDriver(object):
 
-    VERSION = '1.1.2'
+    VERSION = '1.1.3'
 
     # Version   Changes
     # 1.0.0     Base driver
     # 1.1.0     QoS, affinity, retype and thin support
     # 1.1.1     Fix retry loop (Bug 1429283)
     # 1.1.2     Fix host object deletion (Bug 1433450).
+    # 1.1.3     Wait for volume/snapshot to be deleted.
 
     def __init__(self, *args, **kwargs):
         super(XIOISEDriver, self).__init__()
@@ -573,7 +575,7 @@ class XIOISEDriver(object):
         """Return status of ISE volume"""
         vol_info = {}
         vol_info['value'] = ''
-        vol_info['string'] = ''
+        vol_info['string'] = NOTFOUND_STATUS
         vol_info['details'] = ''
         vol_info['location'] = ''
         vol_info['size'] = ''
@@ -1186,14 +1188,13 @@ class XIOISEDriver(object):
 
     def _delete_volume(self, volume):
         """Delete specified volume"""
-        LOG.debug("X-IO delete_volume called.")
         # First unpresent volume from all hosts.
         self._alloc_location(volume, '', 1)
         # Get volume status. Location string for volume comes back
         # in response. Used for DELETE call below.
         vol_info = self._get_volume_info(volume['name'])
         if vol_info['location'] == '':
-            LOG.warning(_LW("Delete volume: %s not found!"), volume['name'])
+            LOG.warning(_LW("%s not found!"), volume['name'])
             return
         # Make DELETE call.
         args = {}
@@ -1203,8 +1204,25 @@ class XIOISEDriver(object):
         args['status'] = 204
         retries = self.configuration.ise_completion_retries
         resp = self._wait_for_completion(self._help_call_method, args, retries)
-        if resp['status'] == 204:
-            LOG.info(_LI("Volume %s deleted."), volume['name'])
+        if resp['status'] != 204:
+            LOG.warning(_LW("DELETE call failed for %s!"), volume['name'])
+            return
+        # DELETE call successful, now wait for completion.
+        # We do that by waiting for the REST call to return Volume Not Found.
+        args['method'] = ''
+        args['url'] = ''
+        args['name'] = volume['name']
+        args['status_string'] = NOTFOUND_STATUS
+        retries = self.configuration.ise_completion_retries
+        vol_info = self._wait_for_completion(self._help_wait_for_status,
+                                             args, retries)
+        if NOTFOUND_STATUS in vol_info['string']:
+            # Volume no longer present on the backend.
+            LOG.info(_LI("Successfully deleted %s."), volume['name'])
+            return
+        # If we come here it means the volume is still present
+        # on the backend.
+        LOG.error(_LE("Timed out deleting %s!"), volume['name'])
         return
 
     def delete_volume(self, volume):
