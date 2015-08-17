@@ -3458,8 +3458,10 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
             stats = self.driver.get_volume_stats(True)
             const = 0.0009765625
             self.assertEqual('FC', stats['storage_protocol'])
-            self.assertEqual(0, stats['total_capacity_gb'])
-            self.assertEqual(0, stats['free_capacity_gb'])
+            self.assertTrue(stats['pools'][0]['thin_provisioning_support'])
+            self.assertTrue(stats['pools'][0]['thick_provisioning_support'])
+            self.assertEqual(86.0,
+                             stats['pools'][0]['provisioned_capacity_gb'])
             self.assertEqual(24.0, stats['pools'][0]['total_capacity_gb'])
             self.assertEqual(3.0, stats['pools'][0]['free_capacity_gb'])
             self.assertEqual(87.5, stats['pools'][0]['capacity_utilization'])
@@ -3496,8 +3498,10 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                 self.standard_logout)
             stats = self.driver.get_volume_stats(True)
             self.assertEqual('FC', stats['storage_protocol'])
-            self.assertEqual(0, stats['total_capacity_gb'])
-            self.assertEqual(0, stats['free_capacity_gb'])
+            self.assertTrue(stats['pools'][0]['thin_provisioning_support'])
+            self.assertTrue(stats['pools'][0]['thick_provisioning_support'])
+            self.assertEqual(86.0,
+                             stats['pools'][0]['provisioned_capacity_gb'])
             self.assertEqual(24.0, stats['pools'][0]['total_capacity_gb'])
             self.assertEqual(3.0, stats['pools'][0]['free_capacity_gb'])
             self.assertEqual(87.5, stats['pools'][0]['capacity_utilization'])
@@ -3525,16 +3529,22 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 
             stats = self.driver.get_volume_stats(True)
             self.assertEqual('FC', stats['storage_protocol'])
+            self.assertTrue(stats['pools'][0]['thin_provisioning_support'])
+            self.assertTrue(stats['pools'][0]['thick_provisioning_support'])
             total_capacity_gb = 8192 * const
-            self.assertEqual(0, stats['total_capacity_gb'])
             self.assertEqual(total_capacity_gb,
                              stats['pools'][0]['total_capacity_gb'])
             free_capacity_gb = int(
                 (8192 - (self.cpgs[0]['UsrUsage']['usedMiB'] +
                          self.cpgs[0]['SDUsage']['usedMiB'])) * const)
-            self.assertEqual(0, stats['free_capacity_gb'])
             self.assertEqual(free_capacity_gb,
                              stats['pools'][0]['free_capacity_gb'])
+            provisioned_capacity_gb = int(
+                (self.cpgs[0]['UsrUsage']['totalMiB'] +
+                 self.cpgs[0]['SAUsage']['totalMiB'] +
+                 self.cpgs[0]['SDUsage']['totalMiB']) * const)
+            self.assertEqual(provisioned_capacity_gb,
+                             stats['pools'][0]['provisioned_capacity_gb'])
             cap_util = (float(total_capacity_gb - free_capacity_gb) /
                         float(total_capacity_gb)) * 100
             self.assertEqual(cap_util,
@@ -3588,8 +3598,6 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 
             stats = self.driver.get_volume_stats(True)
             self.assertEqual('FC', stats['storage_protocol'])
-            self.assertEqual(0, stats['total_capacity_gb'])
-            self.assertEqual(0, stats['free_capacity_gb'])
             self.assertEqual(24.0, stats['pools'][0]['total_capacity_gb'])
             self.assertEqual(3.0, stats['pools'][0]['free_capacity_gb'])
             self.assertEqual(87.5, stats['pools'][0]['capacity_utilization'])
@@ -3645,8 +3653,6 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 
             stats = self.driver.get_volume_stats(True)
             self.assertEqual('FC', stats['storage_protocol'])
-            self.assertEqual(0, stats['total_capacity_gb'])
-            self.assertEqual(0, stats['free_capacity_gb'])
             self.assertEqual(24.0, stats['pools'][0]['total_capacity_gb'])
             self.assertEqual(3.0, stats['pools'][0]['free_capacity_gb'])
             self.assertEqual(87.5, stats['pools'][0]['capacity_utilization'])
@@ -4192,10 +4198,12 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
             stats = self.driver.get_volume_stats(True)
             const = 0.0009765625
             self.assertEqual('iSCSI', stats['storage_protocol'])
-            self.assertEqual(0, stats['total_capacity_gb'])
-            self.assertEqual(0, stats['free_capacity_gb'])
+            self.assertTrue(stats['pools'][0]['thin_provisioning_support'])
+            self.assertTrue(stats['pools'][0]['thick_provisioning_support'])
             self.assertEqual(24.0, stats['pools'][0]['total_capacity_gb'])
             self.assertEqual(3.0, stats['pools'][0]['free_capacity_gb'])
+            self.assertEqual(86.0,
+                             stats['pools'][0]['provisioned_capacity_gb'])
             self.assertEqual(87.5, stats['pools'][0]['capacity_utilization'])
             self.assertEqual(3, stats['pools'][0]['total_volumes'])
             self.assertEqual(GOODNESS_FUNCTION,
@@ -4235,20 +4243,26 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
             stats = self.driver.get_volume_stats(True)
             self.assertEqual('iSCSI', stats['storage_protocol'])
+            self.assertTrue(stats['pools'][0]['thin_provisioning_support'])
+            self.assertTrue(stats['pools'][0]['thick_provisioning_support'])
             total_capacity_gb = 8192 * const
-            self.assertEqual(0, stats['total_capacity_gb'])
             self.assertEqual(total_capacity_gb,
                              stats['pools'][0]['total_capacity_gb'])
             free_capacity_gb = int(
                 (8192 - (self.cpgs[0]['UsrUsage']['usedMiB'] +
                          self.cpgs[0]['SDUsage']['usedMiB'])) * const)
-            self.assertEqual(0, stats['free_capacity_gb'])
             self.assertEqual(free_capacity_gb,
                              stats['pools'][0]['free_capacity_gb'])
             cap_util = (float(total_capacity_gb - free_capacity_gb) /
                         float(total_capacity_gb)) * 100
             self.assertEqual(cap_util,
                              stats['pools'][0]['capacity_utilization'])
+            provisioned_capacity_gb = int(
+                (self.cpgs[0]['UsrUsage']['totalMiB'] +
+                 self.cpgs[0]['SAUsage']['totalMiB'] +
+                 self.cpgs[0]['SDUsage']['totalMiB']) * const)
+            self.assertEqual(provisioned_capacity_gb,
+                             stats['pools'][0]['provisioned_capacity_gb'])
             self.assertEqual(3, stats['pools'][0]['total_volumes'])
             self.assertEqual(GOODNESS_FUNCTION,
                              stats['pools'][0]['goodness_function'])
@@ -4296,8 +4310,6 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
             stats = self.driver.get_volume_stats(True)
             self.assertEqual('iSCSI', stats['storage_protocol'])
-            self.assertEqual(0, stats['total_capacity_gb'])
-            self.assertEqual(0, stats['free_capacity_gb'])
             self.assertEqual(24.0, stats['pools'][0]['total_capacity_gb'])
             self.assertEqual(3.0, stats['pools'][0]['free_capacity_gb'])
             self.assertEqual(87.5, stats['pools'][0]['capacity_utilization'])
@@ -4353,8 +4365,6 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
             stats = self.driver.get_volume_stats(True)
             self.assertEqual('iSCSI', stats['storage_protocol'])
-            self.assertEqual(0, stats['total_capacity_gb'])
-            self.assertEqual(0, stats['free_capacity_gb'])
             self.assertEqual(24.0, stats['pools'][0]['total_capacity_gb'])
             self.assertEqual(3.0, stats['pools'][0]['free_capacity_gb'])
             self.assertEqual(87.5, stats['pools'][0]['capacity_utilization'])
