@@ -1022,10 +1022,11 @@ class ValidBodyTest(test.TestCase):
                           body)
 
     def test_validate_name_and_description_with_name_zero_length(self):
+        # NOTE(jdg): We allow zero length names currently, particularly
+        # from Nova, changes to this require an API version bump
         body = {'name': ""}
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.validate_name_and_description,
-                          body)
+        self.controller.validate_name_and_description(body)
+        self.assertEqual('', body['name'])
 
     def test_validate_name_and_description_with_desc_zero_length(self):
         body = {'description': ""}

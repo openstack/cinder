@@ -1228,7 +1228,7 @@ class Controller(object):
                 body['name'] = name.strip()
             try:
                 utils.check_string_length(body['name'], 'Name',
-                                          min_length=1, max_length=255)
+                                          min_length=0, max_length=255)
             except exception.InvalidInput as error:
                 raise webob.exc.HTTPBadRequest(explanation=error.msg)
 
