@@ -26,6 +26,10 @@ from cinder.volume.drivers.zfssa import webdavclient
 LOG = log.getLogger(__name__)
 
 
+def factory_restclient(url, **kwargs):
+    return restclient.RestClientURL(url, **kwargs)
+
+
 class ZFSSAApi(object):
     """ZFSSA API proxy class"""
 
@@ -60,7 +64,7 @@ class ZFSSAApi(object):
     def set_host(self, host, timeout=None):
         self.host = host
         self.url = "https://" + self.host + ":215"
-        self.rclient = restclient.RestClientURL(self.url, timeout=timeout)
+        self.rclient = factory_restclient(self.url, timeout=timeout)
 
     def login(self, auth_str):
         """Login to the appliance"""
