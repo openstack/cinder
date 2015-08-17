@@ -737,6 +737,8 @@ class TestZFSSANFSDriver(test.TestCase):
 
     def _create_fake_config(self):
         self.configuration = mock.Mock(spec=conf.Configuration)
+        self.configuration.reserved_percentage = 0
+        self.configuration.max_over_subscription_ratio = 20.0
         self.configuration.san_ip = '1.1.1.1'
         self.configuration.san_login = 'user'
         self.configuration.san_password = 'passwd'

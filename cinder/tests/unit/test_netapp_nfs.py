@@ -85,9 +85,13 @@ FAKE_VSERVER = 'fake_vserver'
 def create_configuration():
     configuration = mox_lib.MockObject(conf.Configuration)
     configuration.append_config_values(mox_lib.IgnoreArg())
+    configuration.max_over_subscription_ratio = 20.0
+    configuration.reserved_percentage = 0
     configuration.nfs_mount_point_base = '/mnt/test'
     configuration.nfs_mount_options = None
     configuration.nas_mount_options = None
+    configuration.nfs_used_ratio = .95
+    configuration.nfs_oversub_ratio = 1.0
     configuration.netapp_server_hostname = CONNECTION_INFO['hostname']
     configuration.netapp_transport_type = CONNECTION_INFO['transport_type']
     configuration.netapp_server_port = CONNECTION_INFO['port']

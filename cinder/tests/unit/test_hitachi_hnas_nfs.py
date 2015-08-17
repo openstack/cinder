@@ -182,6 +182,8 @@ class HDSNFSDriverTest(test.TestCase):
         self.shares_file.flush()
 
         self.configuration = mock.Mock(spec=conf.Configuration)
+        self.configuration.max_over_subscription_ratio = 20.0
+        self.configuration.reserved_percentage = 0
         self.configuration.hds_hnas_nfs_config_file = self.config_file.name
         self.configuration.nfs_shares_config = self.shares_file.name
         self.configuration.nfs_mount_point_base = '/opt/stack/cinder/mnt'
@@ -189,6 +191,8 @@ class HDSNFSDriverTest(test.TestCase):
         self.configuration.nas_ip = None
         self.configuration.nas_share_path = None
         self.configuration.nas_mount_options = None
+        self.configuration.nfs_used_ratio = .95
+        self.configuration.nfs_oversub_ratio = 1.0
 
         self.driver = nfs.HDSNFSDriver(configuration=self.configuration)
         self.driver.do_setup("")

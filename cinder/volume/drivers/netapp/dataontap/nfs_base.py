@@ -752,28 +752,16 @@ class NetAppNfsDriver(driver.ManageableVD,
     def _get_share_capacity_info(self, nfs_share):
         """Returns the share capacity metrics needed by the scheduler."""
 
-        used_ratio = self.configuration.nfs_used_ratio
-        oversub_ratio = self.configuration.nfs_oversub_ratio
-
-        # The scheduler's capacity filter will reduce the amount of
-        # free space that we report to it by the reserved percentage.
-        reserved_ratio = 1 - used_ratio
-        reserved_percentage = round(100 * reserved_ratio)
-
-        total_size, total_available = self._get_capacity_info(nfs_share)
-
-        apparent_size = total_size * oversub_ratio
-        apparent_size_gb = na_utils.round_down(
-            apparent_size / units.Gi, '0.01')
-
-        apparent_free_size = total_available * oversub_ratio
-        apparent_free_gb = na_utils.round_down(
-            float(apparent_free_size) / units.Gi, '0.01')
-
         capacity = dict()
-        capacity['reserved_percentage'] = reserved_percentage
-        capacity['total_capacity_gb'] = apparent_size_gb
-        capacity['free_capacity_gb'] = apparent_free_gb
+        capacity['reserved_percentage'] = self.reserved_percentage
+        capacity['max_over_subscription_ratio'] = self.over_subscription_ratio
+        total_size, total_available = self._get_capacity_info(nfs_share)
+        capacity['total_capacity_gb'] = na_utils.round_down(
+            total_size / units.Gi, '0.01')
+        capacity['free_capacity_gb'] = na_utils.round_down(
+            total_available / units.Gi, '0.01')
+        capacity['provisioned_capacity_gb'] = (round(
+            capacity['total_capacity_gb'] - capacity['free_capacity_gb'], 2))
 
         return capacity
 

@@ -56,6 +56,7 @@ class TintriDriverTestCase(test.TestCase):
         configuration.nfs_mount_point_base = '/mnt/test'
         configuration.nfs_mount_options = None
         configuration.nas_mount_options = None
+        configuration.nfs_used_ratio = 0.95
         return configuration
 
     def fake_stubs(self):

@@ -16,6 +16,7 @@
 Mock unit tests for the NetApp cmode nfs storage driver
 """
 
+import ddt
 import mock
 from os_brick.remotefs import remotefs as remotefs_brick
 from oslo_service import loopingcall
@@ -37,6 +38,7 @@ from cinder.volume.drivers import nfs
 from cinder.volume import utils as volume_utils
 
 
+@ddt.ddt
 class NetAppCmodeNfsDriverTestCase(test.TestCase):
     def setUp(self):
         super(NetAppCmodeNfsDriverTestCase, self).setUp()
@@ -73,32 +75,90 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         self.assertTrue(mock_check_flags.called)
         self.assertTrue(mock_super_do_setup.called)
 
-    def test_get_pool_stats(self):
+    @ddt.data({'thin': True, 'nfs_sparsed_volumes': True},
+              {'thin': True, 'nfs_sparsed_volumes': False},
+              {'thin': False, 'nfs_sparsed_volumes': True},
+              {'thin': False, 'nfs_sparsed_volumes': False})
+    @ddt.unpack
+    def test_get_pool_stats(self, thin, nfs_sparsed_volumes):
+
+        class test_volume(object):
+            pass
+
+        test_volume = test_volume()
+        test_volume.id = {'vserver': 'openstack', 'name': 'vola'}
+        test_volume.aggr = {
+            'disk_type': 'SSD',
+            'ha_policy': 'cfo',
+            'junction': '/vola',
+            'name': 'aggr1',
+            'raid_type': 'raiddp',
+        }
+        test_volume.export = {'path': fake.NFS_SHARE}
+        test_volume.sis = {'dedup': False, 'compression': False}
+        test_volume.state = {
+            'status': 'online',
+            'vserver_root': False,
+            'junction_active': True,
+        }
+        test_volume.qos = {'qos_policy_group': None}
+
+        ssc_map = {
+            'mirrored': {},
+            'dedup': {},
+            'compression': {},
+            'thin': {test_volume if thin else None},
+            'all': [test_volume],
+        }
+        self.driver.ssc_vols = ssc_map
+
+        self.driver.configuration.nfs_sparsed_volumes = nfs_sparsed_volumes
+
+        netapp_thin = 'true' if thin else 'false'
+        netapp_thick = 'false' if thin else 'true'
+
+        thick = not thin and not nfs_sparsed_volumes
 
         total_capacity_gb = na_utils.round_down(
             fake.TOTAL_BYTES / units.Gi, '0.01')
         free_capacity_gb = na_utils.round_down(
             fake.AVAILABLE_BYTES / units.Gi, '0.01')
-        capacity = dict(
-            reserved_percentage = fake.RESERVED_PERCENTAGE,
-            total_capacity_gb = total_capacity_gb,
-            free_capacity_gb = free_capacity_gb,
-        )
-
-        mock_get_capacity = self.mock_object(
-            self.driver, '_get_share_capacity_info')
-        mock_get_capacity.return_value = capacity
-
-        mock_get_vol_for_share = self.mock_object(
-            self.driver, '_get_vol_for_share')
-        mock_get_vol_for_share.return_value = None
+        provisioned_capacity_gb = total_capacity_gb - free_capacity_gb
+        capacity = {
+            'reserved_percentage': fake.RESERVED_PERCENTAGE,
+            'max_over_subscription_ratio': fake.MAX_OVER_SUBSCRIPTION_RATIO,
+            'total_capacity_gb': total_capacity_gb,
+            'free_capacity_gb': free_capacity_gb,
+            'provisioned_capacity_gb': provisioned_capacity_gb,
+        }
+        self.mock_object(self.driver,
+                         '_get_share_capacity_info',
+                         mock.Mock(return_value=capacity))
 
         result = self.driver._get_pool_stats()
 
-        self.assertEqual(fake.RESERVED_PERCENTAGE,
-                         result[0]['reserved_percentage'])
-        self.assertEqual(total_capacity_gb, result[0]['total_capacity_gb'])
-        self.assertEqual(free_capacity_gb, result[0]['free_capacity_gb'])
+        expected = [{'pool_name': '192.168.99.24:/fake/export/path',
+                     'netapp_unmirrored': 'true',
+                     'QoS_support': True,
+                     'thick_provisioning_support': thick,
+                     'netapp_thick_provisioned': netapp_thick,
+                     'netapp_nocompression': 'true',
+                     'thin_provisioning_support': not thick,
+                     'free_capacity_gb': 12.0,
+                     'netapp_thin_provisioned': netapp_thin,
+                     'total_capacity_gb': 4468.0,
+                     'netapp_compression': 'false',
+                     'netapp_mirrored': 'false',
+                     'netapp_dedup': 'false',
+                     'reserved_percentage': 7,
+                     'netapp_raid_type': 'raiddp',
+                     'netapp_disk_type': 'SSD',
+                     'netapp_nodedup': 'true',
+                     'reserved_percentage': 7,
+                     'max_over_subscription_ratio': 19.0,
+                     'provisioned_capacity_gb': 4456.0}]
+
+        self.assertEqual(expected, result)
 
     def test_check_for_setup_error(self):
         super_check_for_setup_error = self.mock_object(

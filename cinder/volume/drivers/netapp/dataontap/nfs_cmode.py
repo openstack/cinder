@@ -197,10 +197,16 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
                 pool['netapp_nocompression'] = six.text_type(
                     not compression).lower()
 
-                thin = vol in self.ssc_vols['thin']
-                pool['netapp_thin_provisioned'] = six.text_type(thin).lower()
+                flexvol_thin = vol in self.ssc_vols['thin']
+                pool['netapp_thin_provisioned'] = six.text_type(
+                    flexvol_thin).lower()
                 pool['netapp_thick_provisioned'] = six.text_type(
-                    not thin).lower()
+                    not flexvol_thin).lower()
+
+                thick = (not flexvol_thin and
+                         not self.configuration.nfs_sparsed_volumes)
+                pool['thick_provisioning_support'] = thick
+                pool['thin_provisioning_support'] = not thick
 
             pools.append(pool)
 

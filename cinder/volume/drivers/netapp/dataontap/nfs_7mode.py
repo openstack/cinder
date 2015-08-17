@@ -118,6 +118,10 @@ class NetApp7modeNfsDriver(nfs_base.NetAppNfsDriver):
             pool['QoS_support'] = False
             pool.update(capacity)
 
+            thick = not self.configuration.nfs_sparsed_volumes
+            pool['thick_provisioning_support'] = thick
+            pool['thin_provisioning_support'] = not thick
+
             pools.append(pool)
 
         return pools

@@ -37,6 +37,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
     def setUp(self):
         super(NetAppNfsDriverTestCase, self).setUp()
         configuration = mock.Mock()
+        configuration.reserved_percentage = 0
         configuration.nfs_mount_point_base = '/mnt/test'
         configuration.nfs_used_ratio = 0.89
         configuration.nfs_oversub_ratio = 3.0
@@ -62,14 +63,10 @@ class NetAppNfsDriverTestCase(test.TestCase):
     def test_get_share_capacity_info(self):
         mock_get_capacity = self.mock_object(self.driver, '_get_capacity_info')
         mock_get_capacity.return_value = fake.CAPACITY_VALUES
-        expected_total_capacity_gb = (na_utils.round_down(
-            (fake.TOTAL_BYTES *
-             self.driver.configuration.nfs_oversub_ratio) /
-            units.Gi, '0.01'))
+        expected_total_capacity_gb = na_utils.round_down(
+            fake.TOTAL_BYTES / units.Gi, '0.01')
         expected_free_capacity_gb = (na_utils.round_down(
-            (fake.AVAILABLE_BYTES *
-             self.driver.configuration.nfs_oversub_ratio) /
-            units.Gi, '0.01'))
+            fake.AVAILABLE_BYTES / units.Gi, '0.01'))
         expected_reserved_percentage = round(
             100 * (1 - self.driver.configuration.nfs_used_ratio))
 
@@ -80,7 +77,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
         self.assertEqual(expected_free_capacity_gb,
                          result['free_capacity_gb'])
         self.assertEqual(expected_reserved_percentage,
-                         result['reserved_percentage'])
+                         round(result['reserved_percentage']))
 
     def test_get_capacity_info_ipv4_share(self):
         expected = fake.CAPACITY_VALUES
