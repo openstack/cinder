@@ -1811,6 +1811,9 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
 class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
     """Manage volumes on VMware VC server."""
 
+    # Minimum supported vCenter version.
+    MIN_SUPPORTED_VC_VERSION = dist_version.LooseVersion('5.1')
+
     # PBM is enabled only for VC versions 5.5 and above
     PBM_ENABLED_VC_VERSION = dist_version.LooseVersion('5.5')
 
@@ -1866,13 +1869,26 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
                               version_str)
         return version
 
+    def _validate_vcenter_version(self, vc_version):
+        if vc_version < self.MIN_SUPPORTED_VC_VERSION:
+            # TODO(vbala): enforce vCenter version in M release.
+            LOG.warning(
+                _LW('Running Cinder with a VMware vCenter version less than '
+                    '%(min_version)s is deprecated. The minimum required '
+                    'version of vCenter server will be raised to '
+                    '%(min_version)s in the 8.0.0 release.'),
+                {'min_version': self.MIN_SUPPORTED_VC_VERSION})
+
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
         super(VMwareVcVmdkDriver, self).do_setup(context)
         # VC specific setup is done here
 
-        # Enable pbm only if VC version is greater than 5.5
+        # Validate vCenter version.
         vc_version = self._get_vc_version()
+        self._validate_vcenter_version(vc_version)
+
+        # Enable pbm only if vCenter version is 5.5+.
         if vc_version and vc_version >= self.PBM_ENABLED_VC_VERSION:
             self.pbm_wsdl = pbm.get_pbm_wsdl_location(
                 six.text_type(vc_version))
