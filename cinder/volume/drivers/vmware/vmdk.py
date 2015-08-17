@@ -92,9 +92,11 @@ vmdk_opts = [
                  help='The interval (in seconds) for polling remote tasks '
                       'invoked on VMware ESX/VC server.'),
     cfg.StrOpt('vmware_volume_folder',
-               default='cinder-volumes',
-               help='Name for the folder in the VC datacenter that will '
-                    'contain cinder volumes.'),
+               default='Volumes',
+               help='Name of the vCenter inventory folder that will '
+                    'contain Cinder volumes. This folder will be created '
+                    'under "OpenStack/<project_folder>", where project_folder '
+                    'is of format "Project (<volume_project_id>)".'),
     cfg.IntOpt('vmware_image_transfer_timeout_secs',
                default=7200,
                help='Timeout in seconds for VMDK volume transfer between '
@@ -534,7 +536,7 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
 
         (host_ref, resource_pool, summary) = self._select_datastore(req, host)
         dc = self.volumeops.get_dc(resource_pool)
-        folder = self._get_volume_group_folder(dc)
+        folder = self._get_volume_group_folder(dc, volume['project_id'])
 
         return (host_ref, resource_pool, folder, summary)
 
@@ -1461,7 +1463,8 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                     backing, new_datastore, rp, host, new_disk_type)
 
                 dc = self.volumeops.get_dc(rp)
-                folder = self._get_volume_group_folder(dc)
+                folder = self._get_volume_group_folder(dc,
+                                                       volume['project_id'])
                 self.volumeops.move_backing_to_folder(backing, folder)
             elif need_disk_type_conversion:
                 # Same datastore, but clone is needed for disk type conversion.
@@ -1917,19 +1920,25 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
                      "%(ip)s."), {'driver': self.__class__.__name__,
                                   'ip': self.configuration.vmware_host_ip})
 
-    def _get_volume_group_folder(self, datacenter):
-        """Get volume group folder.
+    def _get_volume_group_folder(self, datacenter, project_id):
+        """Get inventory folder for organizing volume backings.
 
-        Creates a folder under the vmFolder of the input datacenter with the
-        volume group name if it does not exists.
+        The inventory folder for organizing volume backings has the following
+        hierarchy:
+               <Datacenter_vmFolder>/OpenStack/Project (<project_id>)/
+               <volume_folder>
+        where volume_folder is the vmdk driver config option
+        "vmware_volume_folder".
 
         :param datacenter: Reference to the datacenter
-        :return: Reference to the volume folder
+        :param project_id: OpenStack project ID
+        :return: Reference to the inventory folder
         """
-        vm_folder = super(VMwareVcVmdkDriver,
-                          self)._get_volume_group_folder(datacenter)
-        volume_folder = self.configuration.vmware_volume_folder
-        return self.volumeops.create_folder(vm_folder, volume_folder)
+        volume_folder_name = self.configuration.vmware_volume_folder
+        project_folder_name = "Project (%s)" % project_id
+        folder_names = ['OpenStack', project_folder_name, volume_folder_name]
+        return self.volumeops.create_vm_inventory_folder(datacenter,
+                                                         folder_names)
 
     def _relocate_backing(self, volume, backing, host):
         """Relocate volume backing to a datastore accessible to the given host.
@@ -1968,7 +1977,7 @@ class VMwareVcVmdkDriver(VMwareEsxVmdkDriver):
         # Select datastore satisfying the requirements.
         (host, resource_pool, summary) = self._select_datastore(req, host)
         dc = self.volumeops.get_dc(resource_pool)
-        folder = self._get_volume_group_folder(dc)
+        folder = self._get_volume_group_folder(dc, volume['project_id'])
 
         self.volumeops.relocate_backing(backing, summary.datastore,
                                         resource_pool, host)

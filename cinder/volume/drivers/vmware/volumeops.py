@@ -273,6 +273,7 @@ class VMwareVolumeOps(object):
     def __init__(self, session, max_objects):
         self._session = session
         self._max_objects = max_objects
+        self._folder_cache = {}
 
     def get_backing(self, name):
         """Get the backing based on name.
@@ -567,13 +568,45 @@ class VMwareVolumeOps(object):
                                                       child_folder_name)
         return child_folder
 
+    def create_vm_inventory_folder(self, datacenter, path_comp):
+        """Create and return a VM inventory folder.
+
+        This method caches references to inventory folders returned.
+
+        :param datacenter: Reference to datacenter
+        :param path_comp: Path components as a list
+        """
+        LOG.debug("Creating inventory folder: %(path_comp)s under VM folder "
+                  "of datacenter: %(datacenter)s.",
+                  {'path_comp': path_comp,
+                   'datacenter': datacenter})
+        path = "/" + datacenter.value
+        parent = self._folder_cache.get(path)
+        if not parent:
+            parent = self.get_vmfolder(datacenter)
+            self._folder_cache[path] = parent
+
+        folder = None
+        for folder_name in path_comp:
+            path = "/".join([path, folder_name])
+            folder = self._folder_cache.get(path)
+            if not folder:
+                folder = self.create_folder(parent, folder_name)
+                self._folder_cache[path] = folder
+            parent = folder
+
+        LOG.debug("Inventory folder for path: %(path)s is %(folder)s.",
+                  {'path': path,
+                   'folder': folder})
+        return folder
+
     def extend_virtual_disk(self, requested_size_in_gb, name, dc_ref,
                             eager_zero=False):
         """Extend the virtual disk to the requested size.
 
         :param requested_size_in_gb: Size of the volume in GB
         :param name: Name of the backing
-        :param dc_ref: Reference datacenter
+        :param dc_ref: Reference to datacenter
         :param eager_zero: Boolean determining if the free space
         is zeroed out
         """

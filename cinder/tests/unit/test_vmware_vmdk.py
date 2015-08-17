@@ -1227,7 +1227,8 @@ class VMwareEsxVmdkDriverTestCase(test.TestCase):
         # Test with in-use volume.
         vol = {'size': 1, 'status': 'retyping', 'name': 'vol-1',
                'id': 'd11a82de-ddaa-448d-b50a-a255a7e61a1e',
-               'volume_type_id': 'def'}
+               'volume_type_id': 'def',
+               'project_id': '63c19a12292549818c09946a5e59ddaf'}
         vol['volume_attachment'] = [mock.sentinel.volume_attachment]
         self.assertFalse(self._driver.retype(context, vol, new_type, diff,
                                              host))
@@ -1895,8 +1896,10 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         get_volume_group_folder.return_value = folder
 
         host = mock.sentinel.host
+        project_id = '63c19a12292549818c09946a5e59ddaf'
         vol = {'id': 'c1037b23-c5e9-4446-815f-3e097cbf5bb0', 'size': 1,
-               'name': 'vol-c1037b23-c5e9-4446-815f-3e097cbf5bb0'}
+               'name': 'vol-c1037b23-c5e9-4446-815f-3e097cbf5bb0',
+               'project_id': project_id}
         ret = self._driver._select_ds_for_volume(vol, host)
 
         self.assertEqual((host_ref, rp, folder, summary), ret)
@@ -1904,7 +1907,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
                    hub.DatastoreSelector.PROFILE_NAME: profile}
         ds_sel.select_datastore.assert_called_once_with(exp_req, hosts=[host])
         vops.get_dc.assert_called_once_with(rp)
-        get_volume_group_folder.assert_called_once_with(dc)
+        get_volume_group_folder.assert_called_once_with(dc, project_id)
 
     @mock.patch.object(VMDK_DRIVER, '_get_storage_profile')
     @mock.patch.object(VMDK_DRIVER, 'ds_sel')
@@ -1926,8 +1929,10 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         folder = mock.sentinel.folder
         get_volume_group_folder.return_value = folder
 
+        project_id = '63c19a12292549818c09946a5e59ddaf'
         vol = {'id': 'c1037b23-c5e9-4446-815f-3e097cbf5bb0', 'size': 1,
-               'name': 'vol-c1037b23-c5e9-4446-815f-3e097cbf5bb0'}
+               'name': 'vol-c1037b23-c5e9-4446-815f-3e097cbf5bb0',
+               'project_id': project_id}
         ret = self._driver._select_ds_for_volume(vol)
 
         self.assertEqual((host_ref, rp, folder, summary), ret)
@@ -1935,7 +1940,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
                    hub.DatastoreSelector.PROFILE_NAME: profile}
         ds_sel.select_datastore.assert_called_once_with(exp_req, hosts=None)
         vops.get_dc.assert_called_once_with(rp)
-        get_volume_group_folder.assert_called_once_with(dc)
+        get_volume_group_folder.assert_called_once_with(dc, project_id)
 
     @mock.patch.object(VMDK_DRIVER, '_get_storage_profile')
     @mock.patch.object(VMDK_DRIVER, 'ds_sel')
@@ -2034,22 +2039,19 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         self.assertEqual(volume['id'],
                          conn_info['data']['volume_id'])
 
-    def test_get_volume_group_folder(self):
-        """Test _get_volume_group_folder."""
-        m = self.mox
-        m.StubOutWithMock(self._driver.__class__, 'volumeops')
-        self._driver.volumeops = self._volumeops
-        datacenter = FakeMor('Datacenter', 'my_dc')
-        m.StubOutWithMock(self._volumeops, 'get_vmfolder')
-        self._volumeops.get_vmfolder(datacenter)
-        m.StubOutWithMock(self._volumeops, 'create_folder')
-        self._volumeops.create_folder(mox.IgnoreArg(),
-                                      self._config.vmware_volume_folder)
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    def test_get_volume_group_folder(self, vops):
+        folder = mock.sentinel.folder
+        vops.create_vm_inventory_folder.return_value = folder
 
-        m.ReplayAll()
-        self._driver._get_volume_group_folder(datacenter)
-        m.UnsetStubs()
-        m.VerifyAll()
+        datacenter = mock.sentinel.dc
+        project_id = '63c19a12292549818c09946a5e59ddaf'
+        self.assertEqual(folder,
+                         self._driver._get_volume_group_folder(datacenter,
+                                                               project_id))
+        project_folder_name = 'Project (%s)' % project_id
+        vops.create_vm_inventory_folder.assert_called_once_with(
+            datacenter, ['OpenStack', project_folder_name, self.VOLUME_FOLDER])
 
     @mock.patch.object(VMDK_DRIVER, '_extend_vmdk_virtual_disk')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
@@ -2809,7 +2811,8 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
     @mock.patch.object(VMDK_DRIVER, 'ds_sel')
     def test_relocate_backing(
             self, ds_sel, get_volume_group_folder, vops):
-        volume = {'name': 'vol-1', 'size': 1}
+        volume = {'name': 'vol-1', 'size': 1,
+                  'project_id': '63c19a12292549818c09946a5e59ddaf'}
 
         vops.is_datastore_accessible.return_value = False
         ds_sel.is_datastore_compliant.return_value = True
