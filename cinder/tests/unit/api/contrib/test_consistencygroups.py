@@ -622,8 +622,6 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
-        self.assertEqual('Name has a minimum character requirement of 1.',
-                         res_dict['badRequest']['message'])
 
         db.consistencygroup_destroy(ctxt.elevated(), consistencygroup_id)
 
