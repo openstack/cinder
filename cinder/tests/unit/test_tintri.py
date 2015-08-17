@@ -81,7 +81,7 @@ class TintriDriverTestCase(test.TestCase):
     def fake_logout(self):
         pass
 
-    def fake_get_snapshot(self, volume_name):
+    def fake_get_snapshot(self, volume_id):
         return 'snapshot-id'
 
     def fake_move_cloned_volume(self, clone_name, volume_id, share=None):
@@ -102,12 +102,17 @@ class TintriDriverTestCase(test.TestCase):
     def fake_is_file_size_equal(self, path, size):
         return True
 
-    @mock.patch.object(TClient, 'create_snapshot', mock.Mock())
+    @mock.patch.object(TClient, 'create_snapshot',
+                       mock.Mock(return_value='12345'))
     def test_create_snapshot(self):
         snapshot = fake_snapshot.fake_snapshot_obj(self.context)
         volume = fake_volume.fake_volume_obj(self.context)
+        provider_id = '12345'
         snapshot.volume = volume
-        self._driver.create_snapshot(snapshot)
+        with mock.patch('cinder.objects.snapshot.Snapshot.save'):
+            self.assertEqual({'provider_id': '12345'},
+                             self._driver.create_snapshot(snapshot))
+            self.assertEqual(provider_id, snapshot.provider_id)
 
     @mock.patch.object(TClient, 'create_snapshot', mock.Mock(
                        side_effect=exception.VolumeDriverException))
@@ -121,12 +126,14 @@ class TintriDriverTestCase(test.TestCase):
     @mock.patch.object(TClient, 'delete_snapshot', mock.Mock())
     def test_delete_snapshot(self):
         snapshot = fake_snapshot.fake_snapshot_obj(self.context)
-        self._driver.delete_snapshot(snapshot)
+        snapshot.provider_id = 'snapshot-id'
+        self.assertIsNone(self._driver.delete_snapshot(snapshot))
 
     @mock.patch.object(TClient, 'delete_snapshot', mock.Mock(
                        side_effect=exception.VolumeDriverException))
     def test_delete_snapshot_failure(self):
         snapshot = fake_snapshot.fake_snapshot_obj(self.context)
+        snapshot.provider_id = 'snapshot-id'
         self.assertRaises(exception.VolumeDriverException,
                           self._driver.delete_snapshot, snapshot)
 
