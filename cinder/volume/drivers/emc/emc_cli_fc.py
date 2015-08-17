@@ -269,9 +269,11 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
                                                          cgsnapshot,
                                                          snapshots)
 
-    def update_migrated_volume(self, context, volume, new_volume):
+    def update_migrated_volume(self, context, volume, new_volume,
+                               original_volume_status=None):
         """Returns model update for migrated volume."""
-        return self.cli.update_migrated_volume(context, volume, new_volume)
+        return self.cli.update_migrated_volume(context, volume, new_volume,
+                                               original_volume_status)
 
     def create_export_snapshot(self, context, snapshot, connector):
         """Creates a snapshot mount point for snapshot."""

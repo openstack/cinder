@@ -2265,7 +2265,8 @@ class EMCVnxCliBase(object):
                         'metadata': volume_metadata}
         return moved, model_update
 
-    def update_migrated_volume(self, context, volume, new_volume):
+    def update_migrated_volume(self, context, volume, new_volume,
+                               original_volume_status):
         lun_type = self._extract_provider_location_for_lun(
             new_volume['provider_location'], 'type')
         volume_metadata = self._get_volume_metadata(volume)
