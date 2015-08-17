@@ -198,18 +198,22 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary):
             pool = dict()
             pool['pool_name'] = vol.id['name']
             pool['QoS_support'] = True
-            pool['reserved_percentage'] = 0
+            pool['reserved_percentage'] = (
+                self.reserved_percentage)
+            pool['max_over_subscription_ratio'] = (
+                self.max_over_subscription_ratio)
 
-            # convert sizes to GB and de-rate by NetApp multiplier
+            # convert sizes to GB
             total = float(vol.space['size_total_bytes'])
-            total /= self.configuration.netapp_size_multiplier
             total /= units.Gi
             pool['total_capacity_gb'] = na_utils.round_down(total, '0.01')
 
             free = float(vol.space['size_avl_bytes'])
-            free /= self.configuration.netapp_size_multiplier
             free /= units.Gi
             pool['free_capacity_gb'] = na_utils.round_down(free, '0.01')
+
+            pool['provisioned_capacity_gb'] = (round(
+                pool['total_capacity_gb'] - pool['free_capacity_gb'], 2))
 
             pool['netapp_raid_type'] = vol.aggr['raid_type']
             pool['netapp_disk_type'] = vol.aggr['disk_type']
@@ -230,6 +234,11 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary):
             thin = vol in self.ssc_vols['thin']
             pool['netapp_thin_provisioned'] = six.text_type(thin).lower()
             pool['netapp_thick_provisioned'] = six.text_type(not thin).lower()
+            thick = (not thin and
+                     self.configuration.netapp_lun_space_reservation
+                     == 'enabled')
+            pool['thick_provisioned_support'] = thick
+            pool['thin_provisioned_support'] = not thick
 
             pools.append(pool)
 

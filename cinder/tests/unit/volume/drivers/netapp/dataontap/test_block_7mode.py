@@ -18,6 +18,7 @@ Mock unit tests for the NetApp block storage 7-mode library
 """
 
 
+import ddt
 from lxml import etree
 import mock
 
@@ -25,6 +26,8 @@ from cinder import exception
 from cinder import test
 from cinder.tests.unit.volume.drivers.netapp.dataontap.client import (
     fake_api as netapp_api)
+import cinder.tests.unit.volume.drivers.netapp.dataontap.client.fakes \
+    as client_fakes
 import cinder.tests.unit.volume.drivers.netapp.dataontap.fakes as fake
 import cinder.tests.unit.volume.drivers.netapp.fakes as na_fakes
 from cinder.volume.drivers.netapp.dataontap import block_7mode
@@ -33,6 +36,7 @@ from cinder.volume.drivers.netapp.dataontap.client import client_base
 from cinder.volume.drivers.netapp import utils as na_utils
 
 
+@ddt.ddt
 class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
     """Test case for NetApp's 7-Mode iSCSI library."""
 
@@ -454,3 +458,44 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
         self.assertEqual(1, self.library._add_lun_to_table.call_count)
         self.zapi_client.move_lun.assert_called_once_with(
             '/vol/vol1/name', '/vol/vol1/volume')
+
+    def test_get_pool_stats_no_volumes(self):
+
+        self.library.vols = []
+
+        result = self.library._get_pool_stats()
+
+        self.assertListEqual([], result)
+
+    @ddt.data({'netapp_lun_space_reservation': 'enabled'},
+              {'netapp_lun_space_reservation': 'disabled'})
+    @ddt.unpack
+    def test_get_pool_stats(self, netapp_lun_space_reservation):
+
+        self.library.volume_list = ['vol0', 'vol1', 'vol2']
+        self.library.root_volume_name = 'vol0'
+        self.library.reserved_percentage = 5
+        self.library.max_over_subscription_ratio = 10.0
+        self.library.configuration.netapp_lun_space_reservation = (
+            netapp_lun_space_reservation)
+        self.library.vols = netapp_api.NaElement(
+            client_fakes.VOLUME_LIST_INFO_RESPONSE).get_child_by_name(
+            'volumes').get_children()
+
+        thick = netapp_lun_space_reservation == 'enabled'
+
+        result = self.library._get_pool_stats()
+
+        expected = [{
+            'pool_name': 'vol1',
+            'QoS_support': False,
+            'thin_provisioned_support': not thick,
+            'thick_provisioned_support': thick,
+            'provisioned_capacity_gb': 2.94,
+            'free_capacity_gb': 1339.27,
+            'total_capacity_gb': 1342.21,
+            'reserved_percentage': 5,
+            'max_over_subscription_ratio': 10.0
+        }]
+
+        self.assertEqual(expected, result)

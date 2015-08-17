@@ -27,6 +27,7 @@ import sys
 import uuid
 
 from oslo_log import log as logging
+from oslo_log import versionutils
 from oslo_utils import excutils
 from oslo_utils import importutils
 from oslo_utils import units
@@ -109,6 +110,31 @@ class NetAppBlockStorageLibrary(object):
         self.configuration.append_config_values(
             na_opts.netapp_provisioning_opts)
         self.configuration.append_config_values(na_opts.netapp_san_opts)
+        self.max_over_subscription_ratio = (
+            self.configuration.max_over_subscription_ratio)
+        self.reserved_percentage = self._get_reserved_percentage()
+
+    def _get_reserved_percentage(self):
+        # If the legacy config option if it is set to the default
+        # value, use the more general configuration option.
+        if self.configuration.netapp_size_multiplier == (
+                na_opts.NETAPP_SIZE_MULTIPLIER_DEFAULT):
+            return self.configuration.reserved_percentage
+
+        # If the legacy config option has a non-default value,
+        # honor it for one release.  Note that the "size multiplier"
+        # actually acted as a divisor in the code and didn't apply
+        # to the file size (as the help message for this option suggest),
+        # but rather to total and free size for the pool.
+        divisor = self.configuration.netapp_size_multiplier
+        reserved_ratio = round(1 - (1 / divisor), 2)
+        reserved_percentage = 100 * int(reserved_ratio)
+        msg = _LW('The "netapp_size_multiplier" configuration option is '
+                  'deprecated and will be removed in the Mitaka release. '
+                  'Please set "reserved_percentage = %d" instead.') % (
+                      reserved_percentage)
+        versionutils.report_deprecated_feature(LOG, msg)
+        return reserved_percentage
 
     def do_setup(self, context):
         na_utils.check_flags(self.REQUIRED_FLAGS, self.configuration)
