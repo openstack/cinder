@@ -185,8 +185,16 @@ class VolumeAdminController(AdminController):
             volume = self._get(context, id)
         except exception.VolumeNotFound as e:
             raise exc.HTTPNotFound(explanation=e.msg)
-        self.volume_api.terminate_connection(context, volume,
-                                             {}, force=True)
+        try:
+            connector = body['os-force_detach'].get('connector', None)
+        except KeyError:
+            raise webob.exc.HTTPBadRequest(
+                explanation=_("Must specify 'connector'."))
+        try:
+            self.volume_api.terminate_connection(context, volume, connector)
+        except exception.VolumeBackendAPIException as error:
+            msg = _("Unable to terminate volume connection from backend.")
+            raise webob.exc.HTTPInternalServerError(explanation=msg)
 
         attachment_id = body['os-force_detach'].get('attachment_id', None)
 

@@ -453,7 +453,8 @@ class AdminActionsTest(test.TestCase):
         req.headers['content-type'] = 'application/json'
         # request status of 'error'
         req.body = jsonutils.dumps({'os-force_detach':
-                                    {'attachment_id': attachment['id']}})
+                                   {'attachment_id': attachment['id'],
+                                    'connector': connector}})
         # attach admin context to request
         req.environ['cinder.context'] = ctx
         # make request
@@ -510,7 +511,8 @@ class AdminActionsTest(test.TestCase):
         req.headers['content-type'] = 'application/json'
         # request status of 'error'
         req.body = jsonutils.dumps({'os-force_detach':
-                                    {'attachment_id': attachment['id']}})
+                                    {'attachment_id': attachment['id'],
+                                     'connector': connector}})
         # attach admin context to request
         req.environ['cinder.context'] = ctx
         # make request
@@ -575,6 +577,44 @@ class AdminActionsTest(test.TestCase):
             # make request
             resp = req.get_response(app())
             self.assertEqual(400, resp.status_int)
+
+        # test for KeyError when missing connector
+        volume_remote_error = (
+            messaging.RemoteError(exc_type='KeyError'))
+        with mock.patch.object(volume_api.API, 'detach',
+                               side_effect=volume_remote_error):
+            req = webob.Request.blank('/v2/fake/volumes/%s/action' %
+                                      volume['id'])
+            req.method = 'POST'
+            req.headers['content-type'] = 'application/json'
+            req.body = jsonutils.dumps({'os-force_detach':
+                                        {'attachment_id': 'fake'}})
+            # attach admin context to request
+            req.environ['cinder.context'] = ctx
+            # make request
+            self.assertRaises(messaging.RemoteError,
+                              req.get_response,
+                              app())
+
+        # test for VolumeBackendAPIException
+        volume_remote_error = (
+            messaging.RemoteError(exc_type='VolumeBackendAPIException'))
+        with mock.patch.object(volume_api.API, 'detach',
+                               side_effect=volume_remote_error):
+            req = webob.Request.blank('/v2/fake/volumes/%s/action' %
+                                      volume['id'])
+            req.method = 'POST'
+            req.headers['content-type'] = 'application/json'
+            req.body = jsonutils.dumps({'os-force_detach':
+                                       {'attachment_id': 'fake',
+                                        'connector': connector}})
+
+            # attach admin context to request
+            req.environ['cinder.context'] = ctx
+            # make request
+            self.assertRaises(messaging.RemoteError,
+                              req.get_response,
+                              app())
         # cleanup
         svc.stop()
 
@@ -618,7 +658,8 @@ class AdminActionsTest(test.TestCase):
             req.method = 'POST'
             req.headers['content-type'] = 'application/json'
             req.body = jsonutils.dumps({'os-force_detach':
-                                        {'attachment_id': 'fake'}})
+                                       {'attachment_id': 'fake',
+                                        'connector': connector}})
             # attach admin context to request
             req.environ['cinder.context'] = ctx
             # make request
