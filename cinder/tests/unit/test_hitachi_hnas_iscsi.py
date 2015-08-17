@@ -82,7 +82,8 @@ HNAS_WRONG_CONF2 = """<?xml version="1.0" encoding="UTF-8" ?>
 # The following information is passed on to tests, when creating a volume
 _VOLUME = {'name': 'testvol', 'volume_id': '1234567890', 'size': 128,
            'volume_type': 'silver', 'volume_type_id': '1',
-           'provider_location': None, 'id': 'abcdefg',
+           'provider_location': '83-68-96-AA-DA-5D.volume-2dfe280e-470a-4182'
+                                '-afb8-1755025c35b8', 'id': 'abcdefg',
            'host': 'host1@hnas-iscsi-backend#silver'}
 
 
@@ -257,6 +258,16 @@ class SimulatedHnasBackend(object):
         self.out = """wGkJhTpXaaYJ5Rv"""
         return self.out
 
+    def get_evs(self, cmd, ip0, user, pw, fsid):
+        return '1'
+
+    def check_lu(self, cmd, ip0, user, pw, volume_name, hdp):
+        return True, 1, {'alias': 'cinder-default', 'secret': 'mysecret',
+                         'iqn': 'iqn.1993-08.org.debian:01:11f90746eb2'}
+
+    def check_target(self, cmd, ip0, user, pw, hdp, target_alias):
+        return False, None
+
 
 class HNASiSCSIDriverTest(test.TestCase):
     """Test HNAS iSCSI volume driver."""
@@ -423,3 +434,31 @@ class HNASiSCSIDriverTest(test.TestCase):
     def test_get_pool(self, m_ext_spec):
         label = self.driver.get_pool(_VOLUME)
         self.assertEqual('silver', label)
+
+    @mock.patch.object(time, 'sleep')
+    @mock.patch.object(iscsi.HDSISCSIDriver, '_update_vol_location')
+    def test_get_service_target(self, m_update_vol_location, m_sleep):
+
+        vol = _VOLUME.copy()
+        self.backend.check_lu = mock.MagicMock()
+        self.backend.check_target = mock.MagicMock()
+
+        # Test the case where volume is not already mapped - CHAP enabled
+        self.backend.check_lu.return_value = (False, 0, None)
+        self.backend.check_target.return_value = (False, None)
+        ret = self.driver._get_service_target(vol)
+        iscsi_ip, iscsi_port, ctl, svc_port, hdp, alias, secret = ret
+        self.assertEqual('evs1-tgt0', alias)
+
+        # Test the case where volume is not already mapped - CHAP disabled
+        self.driver.config['chap_enabled'] = 'False'
+        ret = self.driver._get_service_target(vol)
+        iscsi_ip, iscsi_port, ctl, svc_port, hdp, alias, secret = ret
+        self.assertEqual('evs1-tgt0', alias)
+
+        # Test the case where all targets are full
+        fake_tgt = {'alias': 'fake', 'luns': range(0, 32)}
+        self.backend.check_lu.return_value = (False, 0, None)
+        self.backend.check_target.return_value = (True, fake_tgt)
+        self.assertRaises(exception.NoMoreTargets,
+                          self.driver._get_service_target, vol)
