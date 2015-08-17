@@ -61,6 +61,7 @@ global_opts = [
                help='Default glance host name or IP'),
     cfg.IntOpt('glance_port',
                default=9292,
+               min=1, max=65535,
                help='Default glance port'),
     cfg.ListOpt('glance_api_servers',
                 default=['$glance_host:$glance_port'],

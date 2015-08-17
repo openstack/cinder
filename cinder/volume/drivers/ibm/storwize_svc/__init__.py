@@ -63,10 +63,12 @@ storwize_svc_opts = [
                help='Storage system storage pool for volumes'),
     cfg.IntOpt('storwize_svc_vol_rsize',
                default=2,
+               min=-1, max=100,
                help='Storage system space-efficiency parameter for volumes '
                     '(percentage)'),
     cfg.IntOpt('storwize_svc_vol_warning',
                default=0,
+               min=-1, max=100,
                help='Storage system threshold for volume capacity warnings '
                     '(percentage)'),
     cfg.BoolOpt('storwize_svc_vol_autoexpand',
@@ -88,8 +90,9 @@ storwize_svc_opts = [
                help='The I/O group in which to allocate volumes'),
     cfg.IntOpt('storwize_svc_flashcopy_timeout',
                default=120,
+               min=1, max=600,
                help='Maximum number of seconds to wait for FlashCopy to be '
-                    'prepared. Maximum value is 600 seconds (10 minutes)'),
+                    'prepared.'),
     cfg.StrOpt('storwize_svc_connection_protocol',
                default='iSCSI',
                help='Connection protocol (iSCSI/FC)'),
@@ -288,15 +291,6 @@ class StorwizeSVCDriver(san.SanDriver,
                 reason=_('Password or SSH private key is required for '
                          'authentication: set either san_password or '
                          'san_private_key option.'))
-
-        # Check that flashcopy_timeout is not more than 10 minutes
-        flashcopy_timeout = self.configuration.storwize_svc_flashcopy_timeout
-        if not (flashcopy_timeout > 0 and flashcopy_timeout <= 600):
-            raise exception.InvalidInput(
-                reason=_('Illegal value %d specified for '
-                         'storwize_svc_flashcopy_timeout: '
-                         'valid values are between 0 and 600.')
-                % flashcopy_timeout)
 
         opts = self._helpers.build_default_opts(self.configuration)
         self._helpers.check_vdisk_opts(self._state, opts)

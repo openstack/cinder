@@ -23,6 +23,7 @@ DPL_OPTS = [
                help='DPL pool uuid in which DPL volumes are stored.'),
     cfg.IntOpt('dpl_port',
                default=8357,
+               min=1, max=65535,
                help='DPL port number.'),
 ]
 

@@ -70,6 +70,7 @@ sf_opts = [
 
     cfg.IntOpt('sf_api_port',
                default=443,
+               min=1, max=65535,
                help='SolidFire API port. Useful if the device api is behind '
                     'a proxy on a different port.')]
 

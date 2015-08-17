@@ -1787,22 +1787,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                           self.driver.check_for_setup_error)
         self._reset_flags()
 
-        self._set_flag('storwize_svc_vol_rsize', 101)
-        self.assertRaises(exception.InvalidInput,
-                          self.driver.check_for_setup_error)
-        self._reset_flags()
-
-        self._set_flag('storwize_svc_vol_warning', 101)
-        self.assertRaises(exception.InvalidInput,
-                          self.driver.check_for_setup_error)
-        self._reset_flags()
-
         self._set_flag('storwize_svc_vol_grainsize', 42)
-        self.assertRaises(exception.InvalidInput,
-                          self.driver.check_for_setup_error)
-        self._reset_flags()
-
-        self._set_flag('storwize_svc_flashcopy_timeout', 601)
         self.assertRaises(exception.InvalidInput,
                           self.driver.check_for_setup_error)
         self._reset_flags()
