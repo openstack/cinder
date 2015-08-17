@@ -24,7 +24,12 @@ from cinder.volume.drivers.netapp.dataontap import block_7mode
 LOG = logging.getLogger(__name__)
 
 
-class NetApp7modeISCSIDriver(driver.ISCSIDriver):
+class NetApp7modeISCSIDriver(driver.BaseVD,
+                             driver.ManageableVD,
+                             driver.ExtendVD,
+                             driver.CloneableVD,
+                             driver.TransferVD,
+                             driver.SnapshotVD):
     """NetApp 7-mode iSCSI volume driver."""
 
     DRIVER_NAME = 'NetApp_iSCSI_7mode_direct'

@@ -25,7 +25,12 @@ from cinder.zonemanager import utils as fczm_utils
 LOG = logging.getLogger(__name__)
 
 
-class NetApp7modeFibreChannelDriver(driver.FibreChannelDriver):
+class NetApp7modeFibreChannelDriver(driver.BaseVD,
+                                    driver.ManageableVD,
+                                    driver.ExtendVD,
+                                    driver.CloneableVD,
+                                    driver.TransferVD,
+                                    driver.SnapshotVD):
     """NetApp 7-mode FibreChannel volume driver."""
 
     DRIVER_NAME = 'NetApp_FibreChannel_7mode_direct'
