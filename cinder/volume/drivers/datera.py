@@ -23,10 +23,13 @@ from oslo_utils import units
 import requests
 import six
 
+from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder import utils
 from cinder.volume.drivers.san import san
+from cinder.volume import qos_specs
+from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
 
@@ -133,11 +136,26 @@ class DateraDriver(san.SanISCSIDriver):
                                                   _('Resource not ready.'))
 
     def _create_resource(self, resource, resource_type, body):
-        result = self._issue_api_request(resource_type, 'post', body=body)
+        type_id = resource.get('volume_type_id', None)
+        if resource_type == 'volumes':
+            if type_id is not None:
+                policies = self._get_policies_by_volume_type(type_id)
+                if policies:
+                    body.update(policies)
 
-        if result['status'] == 'available':
-            return
-        self._wait_for_resource(resource['id'], resource_type)
+        result = None
+        try:
+            result = self._issue_api_request(resource_type, 'post', body=body)
+        except exception.Invalid:
+            if resource_type == 'volumes' and type_id:
+                LOG.error(_LE("Creation request failed. Please verify the "
+                              "extra-specs set for your volume types are "
+                              "entered correctly."))
+            raise
+        else:
+            if result['status'] == 'available':
+                return
+            self._wait_for_resource(resource['id'], resource_type)
 
     def create_volume(self, volume):
         """Create a logical volume."""
@@ -299,6 +317,30 @@ class DateraDriver(san.SanISCSIDriver):
                               'cinder.conf and start the cinder-volume'
                               'service again.'))
 
+    def _get_policies_by_volume_type(self, type_id):
+        """Get extra_specs and qos_specs of a volume_type.
+
+        This fetches the scoped keys from the volume type. Anything set from
+         qos_specs will override key/values set from extra_specs.
+        """
+        ctxt = context.get_admin_context()
+        volume_type = volume_types.get_volume_type(ctxt, type_id)
+        specs = volume_type.get('extra_specs')
+
+        policies = {}
+        for key, value in specs.items():
+            if ':' in key:
+                fields = key.split(':')
+                key = fields[1]
+                policies[key] = value
+
+        qos_specs_id = volume_type.get('qos_specs_id')
+        if qos_specs_id is not None:
+            qos_kvs = qos_specs.get_qos_specs(ctxt, qos_specs_id)['specs']
+            if qos_kvs:
+                policies.update(qos_kvs)
+        return policies
+
     @_authenticated
     def _issue_api_request(self, resource_type, method='get', resource=None,
                            body=None, action=None, sensitive=False):
@@ -372,6 +414,12 @@ class DateraDriver(san.SanISCSIDriver):
                 raise exception.NotFound(data['message'])
             elif response.status_code in [403, 401]:
                 raise exception.NotAuthorized()
+            elif response.status_code == 400 and 'invalidArgs' in data:
+                msg = _('Bad request sent to Datera cluster:'
+                        'Invalid args: %(args)s | %(message)s') % {
+                            'args': data['invalidArgs']['invalidAttrs'],
+                            'message': data['message']}
+                raise exception.Invalid(msg)
             else:
                 msg = _('Request to Datera cluster returned bad status:'
                         ' %(status)s | %(reason)s') % {
