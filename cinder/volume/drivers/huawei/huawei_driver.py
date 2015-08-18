@@ -22,7 +22,7 @@ from oslo_utils import excutils
 from oslo_utils import units
 
 from cinder import exception
-from cinder.i18n import _, _LI, _LW
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers.huawei import constants
@@ -30,6 +30,7 @@ from cinder.volume.drivers.huawei import huawei_utils
 from cinder.volume.drivers.huawei import rest_client
 from cinder.volume.drivers.huawei import smartx
 from cinder.volume import utils as volume_utils
+from cinder.volume import volume_types
 from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)
@@ -44,7 +45,7 @@ CONF = cfg.CONF
 CONF.register_opts(huawei_opt)
 
 
-class HuaweiBaseDriver(driver.VolumeDriver):
+class HuaweiBaseDriver(driver.MigrateVD, driver.BaseVD):
 
     def __init__(self, *args, **kwargs):
         super(HuaweiBaseDriver, self).__init__(*args, **kwargs)
@@ -104,14 +105,22 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         # Create LUN on the array.
         lun_info = self.restclient.create_volume(lun_param)
         lun_id = lun_info['ID']
-        qos = huawei_utils.get_volume_qos(volume)
-        if qos:
-            smart_qos = smartx.SmartQos(self.restclient)
-            smart_qos.create_qos(qos, lun_id)
-        smartpartition = smartx.SmartPartition(self.restclient)
-        smartpartition.add(opts, lun_id)
-        smartcache = smartx.SmartCache(self.restclient)
-        smartcache.add(opts, lun_id)
+
+        try:
+            qos = huawei_utils.get_volume_qos(volume)
+            if qos:
+                smart_qos = smartx.SmartQos(self.restclient)
+                smart_qos.create_qos(qos, lun_id)
+            smartpartition = smartx.SmartPartition(self.restclient)
+            smartpartition.add(opts, lun_id)
+
+            smartcache = smartx.SmartCache(self.restclient)
+            smartcache.add(opts, lun_id)
+        except Exception as err:
+            if lun_id:
+                self._delete_lun_with_check(lun_id)
+            raise exception.InvalidInput(
+                reason=_('Create volume error. Because %s.') % err)
 
         return {'provider_location': lun_info['ID'],
                 'ID': lun_id,
@@ -154,6 +163,231 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                                                 lun_list,
                                                 qos_id)
 
+    def _delete_lun_with_check(self, dst_id):
+        LOG.info(_LI("Try to delete lun %s if it exists."), dst_id)
+        if self.restclient.check_lun_exist(dst_id):
+            qos_id = self.restclient.get_qosid_by_lunid(dst_id)
+            if qos_id:
+                qos = smartx.SmartQos(self.restclient)
+                qos.delete_qos(qos_id)
+            self.restclient.delete_lun(dst_id)
+
+    def _is_lun_migration_complete(self, src_id, dst_id):
+        result = self.restclient.get_lun_migration_task()
+        found_migration_task = False
+        if 'data' in result:
+            for item in result['data']:
+                if (src_id == item['PARENTID']
+                        and dst_id == item['TARGETLUNID']):
+                    found_migration_task = True
+                    if constants.MIGRATION_COMPLETE == item['RUNNINGSTATUS']:
+                        return True
+                    if constants.MIGRATION_FAULT == item['RUNNINGSTATUS']:
+                        err_msg = (_('Lun migration error.'))
+                        LOG.error(err_msg)
+                        raise exception.VolumeBackendAPIException(data=err_msg)
+        if not found_migration_task:
+            err_msg = (_("Cannot find migration task."))
+            LOG.error(err_msg)
+            raise exception.VolumeBackendAPIException(data=err_msg)
+
+        return False
+
+    def _is_lun_migration_exist(self, src_id, dst_id):
+        try:
+            result = self.restclient.get_lun_migration_task()
+        except Exception:
+            LOG.error(_LE("Get LUN migration error."))
+            return False
+        if 'data' in result:
+            for item in result['data']:
+                if (src_id == item['PARENTID']
+                        and dst_id == item['TARGETLUNID']):
+                    return True
+        return False
+
+    def _migrate_lun(self, src_id, dst_id):
+        try:
+            self.restclient.create_lun_migration(src_id, dst_id)
+
+            def _is_lun_migration_complete():
+                return self._is_lun_migration_complete(src_id, dst_id)
+
+            wait_interval = constants.MIGRATION_WAIT_INTERVAL
+            huawei_utils.wait_for_condition(self.xml_file_path,
+                                            _is_lun_migration_complete,
+                                            wait_interval)
+        # Clean up if migration failed.
+        except Exception as ex:
+            raise exception.VolumeBackendAPIException(data=ex)
+        finally:
+            if self._is_lun_migration_exist(src_id, dst_id):
+                self.restclient.delete_lun_migration(src_id, dst_id)
+            self._delete_lun_with_check(dst_id)
+
+        LOG.debug("Migrate lun %s successfully.", src_id)
+        return True
+
+    def _wait_volume_ready(self, lun_id):
+        event_type = 'LUNReadyWaitInterval'
+        wait_interval = huawei_utils.get_wait_interval(self.xml_file_path,
+                                                       event_type)
+
+        def _volume_ready():
+            result = self.restclient.get_lun_info(lun_id)
+            if (result['HEALTHSTATUS'] == constants.STATUS_HEALTH
+               and result['RUNNINGSTATUS'] == constants.STATUS_VOLUME_READY):
+                return True
+            return False
+
+        huawei_utils.wait_for_condition(self.xml_file_path,
+                                        _volume_ready,
+                                        wait_interval,
+                                        wait_interval * 10)
+
+    def _get_original_status(self, volume):
+        if not volume['volume_attachment']:
+            return 'available'
+        else:
+            return 'in-use'
+
+    def update_migrated_volume(self, ctxt, volume, new_volume,
+                               original_volume_status):
+        original_name = huawei_utils.encode_name(volume['id'])
+        current_name = huawei_utils.encode_name(new_volume['id'])
+
+        lun_id = self.restclient.get_volume_by_name(current_name)
+        try:
+            self.restclient.rename_lun(lun_id, original_name)
+        except exception.VolumeBackendAPIException:
+            LOG.error(_LE('Unable to rename lun %s on array.'), current_name)
+            return {'_name_id': new_volume['_name_id'] or new_volume['id']}
+
+        LOG.debug("Rename lun from %(current_name)s to %(original_name)s "
+                  "successfully.",
+                  {'current_name': current_name,
+                   'original_name': original_name})
+
+        model_update = {'_name_id': None}
+
+        return model_update
+
+    def migrate_volume(self, ctxt, volume, host, new_type=None):
+        """Migrate a volume within the same array."""
+        return self._migrate_volume(volume, host, new_type)
+
+    def _check_migration_valid(self, host, volume):
+        if 'pool_name' not in host['capabilities']:
+            return False
+
+        target_device = host['capabilities']['location_info']
+
+        # Source and destination should be on same array.
+        if target_device != self.restclient.device_id:
+            return False
+
+        # Same protocol should be used if volume is in-use.
+        protocol = huawei_utils.get_protocol(self.xml_file_path)
+        if (host['capabilities']['storage_protocol'] != protocol
+                and self._get_original_status(volume) == 'in-use'):
+            return False
+
+        pool_name = host['capabilities']['pool_name']
+        if len(pool_name) == 0:
+            return False
+
+        return True
+
+    def _migrate_volume(self, volume, host, new_type=None):
+        if not self._check_migration_valid(host, volume):
+            return (False, None)
+
+        type_id = volume['volume_type_id']
+
+        volume_type = None
+        if type_id:
+            volume_type = volume_types.get_volume_type(None, type_id)
+
+        pool_name = host['capabilities']['pool_name']
+        pools = self.restclient.find_all_pools()
+        pool_info = self.restclient.find_pool_info(pool_name, pools)
+        src_volume_name = huawei_utils.encode_name(volume['id'])
+        dst_volume_name = six.text_type(hash(src_volume_name))
+        src_id = volume.get('provider_location', None)
+
+        src_lun_params = self.restclient.get_lun_info(src_id)
+
+        opts = None
+        qos = None
+        if new_type:
+            # If new type exists, use new type.
+            opts = huawei_utils._get_extra_spec_value(
+                new_type['extra_specs'])
+            opts = smartx.SmartX().get_smartx_specs_opts(opts)
+            if 'LUNType' not in opts:
+                opts['LUNType'] = huawei_utils.find_luntype_in_xml(
+                    self.xml_file_path)
+
+            qos = huawei_utils.get_qos_by_volume_type(new_type)
+        elif volume_type:
+            qos = huawei_utils.get_qos_by_volume_type(volume_type)
+
+        if not opts:
+            opts = huawei_utils.get_volume_params(volume)
+            opts = smartx.SmartX().get_smartx_specs_opts(opts)
+
+        lun_info = self._create_lun_with_extra_feature(pool_info,
+                                                       dst_volume_name,
+                                                       src_lun_params,
+                                                       opts)
+        lun_id = lun_info['ID']
+
+        if qos:
+            LOG.info(_LI('QoS: %s.'), qos)
+            SmartQos = smartx.SmartQos(self.restclient)
+            SmartQos.create_qos(qos, lun_id)
+        if opts:
+            smartpartition = smartx.SmartPartition(self.restclient)
+            smartpartition.add(opts, lun_id)
+            smartcache = smartx.SmartCache(self.restclient)
+            smartcache.add(opts, lun_id)
+
+        dst_id = lun_info['ID']
+        self._wait_volume_ready(dst_id)
+        moved = self._migrate_lun(src_id, dst_id)
+
+        return moved, {}
+
+    def _create_lun_with_extra_feature(self, pool_info,
+                                       lun_name,
+                                       lun_params,
+                                       spec_opts):
+        LOG.info(_LI('Create a new lun %s for migration.'), lun_name)
+
+        # Prepare lun parameters.
+        lunparam = {"TYPE": '11',
+                    "NAME": lun_name,
+                    "PARENTTYPE": '216',
+                    "PARENTID": pool_info['ID'],
+                    "ALLOCTYPE": lun_params['ALLOCTYPE'],
+                    "CAPACITY": lun_params['CAPACITY'],
+                    "WRITEPOLICY": lun_params['WRITEPOLICY'],
+                    "MIRRORPOLICY": lun_params['MIRRORPOLICY'],
+                    "PREFETCHPOLICY": lun_params['PREFETCHPOLICY'],
+                    "PREFETCHVALUE": lun_params['PREFETCHVALUE'],
+                    "DATATRANSFERPOLICY": '0',
+                    "READCACHEPOLICY": lun_params['READCACHEPOLICY'],
+                    "WRITECACHEPOLICY": lun_params['WRITECACHEPOLICY'],
+                    "OWNINGCONTROLLER": lun_params['OWNINGCONTROLLER'],
+                    }
+        if 'LUNType' in spec_opts:
+            lunparam['ALLOCTYPE'] = spec_opts['LUNType']
+        if spec_opts['policy']:
+            lunparam['DATATRANSFERPOLICY'] = spec_opts['policy']
+
+        lun_info = self.restclient.create_volume(lunparam)
+        return lun_info
+
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create a volume from a snapshot.
 
@@ -193,9 +427,9 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         def _volume_ready():
             result = self.restclient.get_lun_info(tgt_lun_id)
 
-            if result['HEALTHSTATUS'] == constants.STATUS_HEALTH:
-                if result['RUNNINGSTATUS'] == constants.STATUS_VOLUME_READY:
-                    return True
+            if (result['HEALTHSTATUS'] == constants.STATUS_HEALTH
+               and result['RUNNINGSTATUS'] == constants.STATUS_VOLUME_READY):
+                return True
             return False
 
         huawei_utils.wait_for_condition(self.xml_file_path,
@@ -206,13 +440,15 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         self._copy_volume(volume, luncopy_name,
                           snapshot_id, tgt_lun_id)
 
-        return {'provider_location': lun_info['ID'],
+        return {'ID': lun_info['ID'],
                 'lun_info': lun_info}
 
     def create_cloned_volume(self, volume, src_vref):
         """Clone a new volume from an existing volume."""
         # Form the snapshot structure.
-        snapshot = {'id': uuid.uuid4().__str__(), 'volume_id': src_vref['id']}
+        snapshot = {'id': uuid.uuid4().__str__(),
+                    'volume_id': src_vref['id'],
+                    'volume': src_vref}
 
         # Create snapshot.
         self.create_snapshot(snapshot)
@@ -563,9 +799,6 @@ class HuaweiBaseDriver(driver.VolumeDriver):
 
         return info
 
-    def migrate_volume(self, context, volume, host):
-        return (False, None)
-
     def create_export(self, context, volume, connector):
         """Export a volume."""
         pass
@@ -633,6 +866,7 @@ class Huawei18000ISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
                 Multiple pools support
                 ISCSI multipath support
                 SmartX support
+                Volume migration support
     """
 
     VERSION = "1.1.1"
@@ -670,6 +904,7 @@ class Huawei18000FCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
         1.1.1 - Code refactor
                 Multiple pools support
                 SmartX support
+                Volume migration support
     """
 
     VERSION = "1.1.1"
@@ -684,7 +919,7 @@ class Huawei18000FCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
         data['volume_backend_name'] = backend_name or self.__class__.__name__
         data['storage_protocol'] = 'FC'
         data['driver_version'] = self.VERSION
-        data['verdor_name'] = 'Huawei'
+        data['vendor_name'] = 'Huawei'
         return data
 
     @fczm_utils.AddFCZone

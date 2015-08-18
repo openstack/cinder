@@ -108,6 +108,18 @@ def _get_opts_from_specs(opts_capability, opts_value, specs):
         if key:
             key = key.lower()
 
+        if ((not scope or scope == 'capabilities') and
+           key in opts_capability):
+            words = value.split()
+
+            if not (words and len(words) == 2 and words[0] == '<is>'):
+                LOG.error(_LE("Capabilities value must be specified as "
+                              "'<is> True' or '<is> true'."))
+            else:
+                del words[0]
+                value = words[0]
+                opts[key] = value.lower()
+
         if (scope in opts_capability) and (key in opts_value):
             if (scope in opts_associate) and (opts_associate[scope] == key):
                 opts[key] = value
@@ -126,7 +138,6 @@ def _get_smartx_specs_params(lunsetinfo, smartx_opts):
 
 
 def get_lun_params(xml_file_path, smartx_opts):
-    lunsetinfo = {}
     lunsetinfo = get_lun_conf_params(xml_file_path)
     lunsetinfo = _get_smartx_specs_params(lunsetinfo, smartx_opts)
     return lunsetinfo
@@ -262,16 +273,18 @@ def get_lun_conf_params(xml_file_path):
             lunsetinfo['LUNType'] = luntype.strip()
             if luntype.strip() == 'Thick':
                 lunsetinfo['LUNType'] = 0
-            if luntype.strip() == 'Thin':
+            elif luntype.strip() == 'Thin':
                 lunsetinfo['LUNType'] = 1
 
-        elif luntype is not '' and luntype is not None:
+        else:
             err_msg = (_(
-                'Config file is wrong. LUNType must be "Thin"'
-                ' or "Thick". LUNType: %(fetchtype)s.')
+                "LUNType config is wrong. LUNType must be 'Thin'"
+                " or 'Thick'. LUNType: %(fetchtype)s.")
                 % {'fetchtype': luntype})
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
+    else:
+        lunsetinfo['LUNType'] = 0
 
     stripunitsize = root.findtext('LUN/StripUnitSize')
     if stripunitsize is not None:
@@ -308,6 +321,27 @@ def get_lun_conf_params(xml_file_path):
             'PrefetchType: Intelligent.'))
 
     return lunsetinfo
+
+
+def find_luntype_in_xml(xml_file_path):
+    root = parse_xml_file(xml_file_path)
+    luntype = root.findtext('LUN/LUNType')
+    if luntype:
+        if luntype.strip() in ['Thick', 'Thin']:
+            if luntype.strip() == 'Thick':
+                luntype = 0
+            elif luntype.strip() == 'Thin':
+                luntype = 1
+        else:
+            err_msg = (_(
+                "LUNType config is wrong. LUNType must be 'Thin'"
+                " or 'Thick'. LUNType: %(fetchtype)s.")
+                % {'fetchtype': luntype})
+            LOG.error(err_msg)
+            raise exception.VolumeBackendAPIException(data=err_msg)
+    else:
+        luntype = 0
+    return luntype
 
 
 def encode_name(name):
@@ -421,8 +455,8 @@ def get_iscsi_conf(xml_file_path):
     """Get iSCSI info from config file."""
     iscsiinfo = {}
     root = parse_xml_file(xml_file_path)
-    TargetIP = root.findtext('iSCSI/DefaultTargetIP').strip()
-    iscsiinfo['DefaultTargetIP'] = TargetIP
+    target_ip = root.findtext('iSCSI/DefaultTargetIP').strip()
+    iscsiinfo['DefaultTargetIP'] = target_ip
     initiator_list = []
 
     for dic in root.findall('iSCSI/Initiator'):
@@ -481,3 +515,15 @@ def get_volume_size(volume):
         volume_size = int(volume['size']) * units.Gi / 512
 
     return volume_size
+
+
+def get_protocol(xml_file_path):
+    """Get protocol from huawei conf file."""
+    root = parse_xml_file(xml_file_path)
+    protocol = root.findtext('Storage/Protocol')
+    if not protocol:
+        err_msg = (_('Get protocol from huawei conf file error.'))
+        LOG.error(err_msg)
+        raise exception.InvalidInput(reason=err_msg)
+
+    return protocol
