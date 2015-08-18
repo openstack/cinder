@@ -200,39 +200,21 @@ class BackupManager(manager.SchedulerDependentManager):
         for volume in volumes:
             volume_host = volume_utils.extract_host(volume['host'], 'backend')
             backend = self._get_volume_backend(host=volume_host)
-            attachments = volume['volume_attachment']
-            if attachments:
-                if (volume['status'] == 'backing-up' and
-                        volume['previous_status'] == 'available'):
-                    LOG.info(_LI('Resetting volume %(vol_id)s to previous '
-                                 'status %(status)s (was backing-up).'),
-                             {'vol_id': volume['id'],
-                              'status': volume['previous_status']})
-                    mgr = self._get_manager(backend)
-                    for attachment in attachments:
-                        if (attachment['attached_host'] == self.host and
-                           attachment['instance_uuid'] is None):
-                            mgr.detach_volume(ctxt, volume['id'],
-                                              attachment['id'])
-                elif (volume['status'] == 'backing-up' and
-                        volume['previous_status'] == 'in-use'):
-                    LOG.info(_LI('Resetting volume %(vol_id)s to previous '
-                                 'status %(status)s (was backing-up).'),
-                             {'vol_id': volume['id'],
-                              'status': volume['previous_status']})
-                    self.db.volume_update(ctxt, volume['id'],
-                                          volume['previous_status'])
-                elif volume['status'] == 'restoring-backup':
-                    LOG.info(_LI('setting volume %s to error_restoring '
-                                 '(was restoring-backup).'), volume['id'])
-                    mgr = self._get_manager(backend)
-                    for attachment in attachments:
-                        if (attachment['attached_host'] == self.host and
-                           attachment['instance_uuid'] is None):
-                            mgr.detach_volume(ctxt, volume['id'],
-                                              attachment['id'])
-                    self.db.volume_update(ctxt, volume['id'],
-                                          {'status': 'error_restoring'})
+            mgr = self._get_manager(backend)
+            if volume['status'] == 'backing-up':
+                self._detach_all_attachments(ctxt, mgr, volume)
+                LOG.info(_LI('Resetting volume %(vol_id)s to previous '
+                             'status %(status)s (was backing-up).'),
+                         {'vol_id': volume['id'],
+                          'status': volume['previous_status']})
+                self.db.volume_update(ctxt, volume['id'],
+                                      {'status': volume['previous_status']})
+            elif volume['status'] == 'restoring-backup':
+                self._detach_all_attachments(ctxt, mgr, volume)
+                LOG.info(_LI('setting volume %s to error_restoring '
+                             '(was restoring-backup).'), volume['id'])
+                self.db.volume_update(ctxt, volume['id'],
+                                      {'status': 'error_restoring'})
 
         # TODO(smulcahy) implement full resume of backup and restore
         # operations on restart (rather than simply resetting)
@@ -254,6 +236,14 @@ class BackupManager(manager.SchedulerDependentManager):
                 self.delete_backup(ctxt, backup)
 
         self._cleanup_temp_volumes_snapshots(backups)
+
+    def _detach_all_attachments(self, ctxt, mgr, volume):
+        attachments = volume['volume_attachment'] or []
+        for attachment in attachments:
+            if (attachment['attached_host'] == self.host and
+                    attachment['instance_uuid'] is None):
+                        mgr.detach_volume(ctxt, volume['id'],
+                                          attachment['id'])
 
     def _cleanup_temp_volumes_snapshots(self, backups):
         # NOTE(xyang): If the service crashes or gets restarted during the
