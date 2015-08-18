@@ -289,8 +289,7 @@ class PureBaseVolumeDriverTestCase(PureDriverTestCase):
     @mock.patch(BASE_DRIVER_OBJ + "._add_volume_to_consistency_group",
                 autospec=True)
     @mock.patch(BASE_DRIVER_OBJ + "._extend_if_needed", autospec=True)
-    @mock.patch(BASE_DRIVER_OBJ + "._get_pgroup_vol_snap_name",
-                spec=pure.PureBaseVolumeDriver._get_pgroup_vol_snap_name)
+    @mock.patch(BASE_DRIVER_OBJ + "._get_pgroup_snap_name_from_snapshot")
     def test_create_volume_from_cgsnapshot(self, mock_get_snap_name,
                                            mock_extend_if_needed,
                                            mock_add_to_cgroup):
@@ -637,7 +636,8 @@ class PureBaseVolumeDriverTestCase(PureDriverTestCase):
                             "vol": volume_name,
                         }
 
-        actual_name = self.driver._get_pgroup_vol_snap_name(mock_snap)
+        actual_name = self.driver._get_pgroup_snap_name_from_snapshot(
+            mock_snap)
 
         self.assertEqual(expected_name, actual_name)
 
@@ -657,8 +657,8 @@ class PureBaseVolumeDriverTestCase(PureDriverTestCase):
 
     @mock.patch(BASE_DRIVER_OBJ + ".create_volume_from_snapshot")
     @mock.patch(BASE_DRIVER_OBJ + ".create_consistencygroup")
-    def test_create_consistencygroup_from_src(self, mock_create_cg,
-                                              mock_create_vol):
+    def test_create_consistencygroup_from_cgsnapshot(self, mock_create_cg,
+                                                     mock_create_vol):
         mock_context = mock.Mock()
         mock_group = mock.Mock()
         mock_cgsnapshot = mock.Mock()
@@ -691,13 +691,52 @@ class PureBaseVolumeDriverTestCase(PureDriverTestCase):
             source_vols=None
         )
 
-    def test_create_consistencygroup_from_src_no_snap(self):
-        # Expect an error when no cgsnapshot or snapshots are provided
-        self.assertRaises(exception.InvalidInput,
-                          self.driver.create_consistencygroup_from_src,
-                          mock.Mock(),  # context
-                          mock.Mock(),  # group
-                          [mock.Mock()])  # volumes
+    @mock.patch(BASE_DRIVER_OBJ + ".create_consistencygroup")
+    def test_create_consistencygroup_from_cg(self, mock_create_cg):
+        num_volumes = 5
+        mock_context = mock.MagicMock()
+        mock_group = mock.MagicMock()
+        mock_source_cg = mock.MagicMock()
+        mock_volumes = [mock.MagicMock() for i in range(num_volumes)]
+        mock_source_vols = [mock.MagicMock() for i in range(num_volumes)]
+        self.driver.create_consistencygroup_from_src(
+            mock_context,
+            mock_group,
+            mock_volumes,
+            source_cg=mock_source_cg,
+            source_vols=mock_source_vols
+        )
+        mock_create_cg.assert_called_with(mock_context, mock_group)
+        self.assertTrue(self.array.create_pgroup_snapshot.called)
+        self.assertEqual(num_volumes, self.array.copy_volume.call_count)
+        self.assertEqual(num_volumes, self.array.set_pgroup.call_count)
+        self.assertTrue(self.array.destroy_pgroup.called)
+
+    @mock.patch(BASE_DRIVER_OBJ + ".create_consistencygroup")
+    def test_create_consistencygroup_from_cg_with_error(self, mock_create_cg):
+        num_volumes = 5
+        mock_context = mock.MagicMock()
+        mock_group = mock.MagicMock()
+        mock_source_cg = mock.MagicMock()
+        mock_volumes = [mock.MagicMock() for i in range(num_volumes)]
+        mock_source_vols = [mock.MagicMock() for i in range(num_volumes)]
+
+        self.array.copy_volume.side_effect = FakePureStorageHTTPError()
+
+        self.assertRaises(
+            FakePureStorageHTTPError,
+            self.driver.create_consistencygroup_from_src,
+            mock_context,
+            mock_group,
+            mock_volumes,
+            source_cg=mock_source_cg,
+            source_vols=mock_source_vols
+        )
+        mock_create_cg.assert_called_with(mock_context, mock_group)
+        self.assertTrue(self.array.create_pgroup_snapshot.called)
+        # Make sure that the temp snapshot is cleaned up even when copying
+        # the volume fails!
+        self.assertTrue(self.array.destroy_pgroup.called)
 
     @mock.patch(BASE_DRIVER_OBJ + ".delete_volume", autospec=True)
     def test_delete_consistencygroup(self, mock_delete_volume):

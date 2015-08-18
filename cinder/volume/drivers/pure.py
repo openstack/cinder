@@ -129,7 +129,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         """Creates a volume from a snapshot."""
         vol_name = self._get_vol_name(volume)
         if snapshot['cgsnapshot_id']:
-            snap_name = self._get_pgroup_vol_snap_name(snapshot)
+            snap_name = self._get_pgroup_snap_name_from_snapshot(snapshot)
         else:
             snap_name = self._get_snap_name(snapshot)
 
@@ -335,19 +335,57 @@ class PureBaseVolumeDriver(san.SanDriver):
         model_update = {'status': 'available'}
         return model_update
 
+    def _create_cg_from_cgsnap(self, volumes, snapshots):
+        """Creates a new consistency group from a cgsnapshot.
+
+        The new volumes will be consistent with the snapshot.
+        """
+        for volume, snapshot in zip(volumes, snapshots):
+            self.create_volume_from_snapshot(volume, snapshot)
+
+    def _create_cg_from_cg(self, group, source_group, volumes, source_vols):
+        """Creates a new consistency group from an existing cg.
+
+        The new volumes will be in a consistent state, but this requires
+        taking a new temporary group snapshot and cloning from that.
+        """
+        pgroup_name = self._get_pgroup_name_from_id(source_group.id)
+        tmp_suffix = '%s-tmp' % uuid.uuid4()
+        tmp_pgsnap_name = '%(pgroup_name)s.%(pgsnap_suffix)s' % {
+            'pgroup_name': pgroup_name,
+            'pgsnap_suffix': tmp_suffix,
+        }
+        LOG.debug('Creating temporary Protection Group snapshot %(snap_name)s '
+                  'while cloning Consistency Group %(source_group)s.',
+                  {'snap_name': tmp_pgsnap_name,
+                   'source_group': source_group.id})
+        self._array.create_pgroup_snapshot(pgroup_name, suffix=tmp_suffix)
+        try:
+            for source_vol, cloned_vol in zip(source_vols, volumes):
+                source_snap_name = self._get_pgroup_vol_snap_name(
+                    pgroup_name,
+                    tmp_suffix,
+                    self._get_vol_name(source_vol)
+                )
+                cloned_vol_name = self._get_vol_name(cloned_vol)
+                self._array.copy_volume(source_snap_name, cloned_vol_name)
+                self._add_volume_to_consistency_group(
+                    group.id,
+                    cloned_vol_name
+                )
+        finally:
+            self._delete_pgsnapshot(tmp_pgsnap_name)
+
     @log_debug_trace
     def create_consistencygroup_from_src(self, context, group, volumes,
                                          cgsnapshot=None, snapshots=None,
                                          source_cg=None, source_vols=None):
-
+        self.create_consistencygroup(context, group)
         if cgsnapshot and snapshots:
-            self.create_consistencygroup(context, group)
-            for volume, snapshot in zip(volumes, snapshots):
-                self.create_volume_from_snapshot(volume, snapshot)
-        else:
-            msg = _("create_consistencygroup_from_src only supports a"
-                    " cgsnapshot source, other sources cannot be used.")
-            raise exception.InvalidInput(reason=msg)
+            self._create_cg_from_cgsnap(volumes,
+                                        snapshots)
+        elif source_cg:
+            self._create_cg_from_cg(group, source_cg, volumes, source_vols)
 
         return None, None
 
@@ -417,12 +455,7 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         return model_update, snapshots
 
-    @log_debug_trace
-    def delete_cgsnapshot(self, context, cgsnapshot):
-        """Deletes a cgsnapshot."""
-
-        pgsnap_name = self._get_pgroup_snap_name(cgsnapshot)
-
+    def _delete_pgsnapshot(self, pgsnap_name):
         try:
             # FlashArray.destroy_pgroup is also used for deleting
             # pgroup snapshots. The underlying REST API is identical.
@@ -437,6 +470,13 @@ class PureBaseVolumeDriver(san.SanDriver):
                     ctxt.reraise = False
                     LOG.warning(_LW("Unable to delete Protection Group "
                                     "Snapshot: %s"), err.text)
+
+    @log_debug_trace
+    def delete_cgsnapshot(self, context, cgsnapshot):
+        """Deletes a cgsnapshot."""
+
+        pgsnap_name = self._get_pgroup_snap_name(cgsnapshot)
+        self._delete_pgsnapshot(pgsnap_name)
 
         snapshots = objects.SnapshotList.get_all_for_cgsnapshot(
             context, cgsnapshot.id)
@@ -563,12 +603,19 @@ class PureBaseVolumeDriver(san.SanDriver):
         return "%s.%s" % (cls._get_pgroup_name_from_id(cg_id),
                           cls._get_pgroup_snap_suffix(cgsnapshot))
 
-    @classmethod
-    def _get_pgroup_vol_snap_name(cls, snapshot):
+    @staticmethod
+    def _get_pgroup_vol_snap_name(pg_name, pgsnap_suffix, volume_name):
+        return "%(pgroup_name)s.%(pgsnap_suffix)s.%(volume_name)s" % {
+            'pgroup_name': pg_name,
+            'pgsnap_suffix': pgsnap_suffix,
+            'volume_name': volume_name,
+        }
+
+    def _get_pgroup_snap_name_from_snapshot(self, snapshot):
         """Return the name of the snapshot that Purity will use."""
         cg_id = snapshot.cgsnapshot.consistencygroup_id
-        cg_name = cls._get_pgroup_name_from_id(cg_id)
-        cgsnapshot_id = cls._get_pgroup_snap_suffix(snapshot.cgsnapshot)
+        cg_name = self._get_pgroup_name_from_id(cg_id)
+        cgsnapshot_id = self._get_pgroup_snap_suffix(snapshot.cgsnapshot)
         volume_name = snapshot.volume_name
         return "%s.%s.%s-cinder" % (cg_name, cgsnapshot_id, volume_name)
 
