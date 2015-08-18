@@ -3487,7 +3487,8 @@ class StorwizeSVCDriverTestCase(test.TestCase):
 
     def test_storwize_consistency_group_snapshot(self):
         cg_type = self._create_consistency_group_volume_type()
-
+        self.ctxt.user_id = 'fake_user_id'
+        self.ctxt.project_id = 'fake_project_id'
         cg = self._create_consistencygroup_in_db(volume_type_id=cg_type['id'])
 
         model_update = self.driver.create_consistencygroup(self.ctxt, cg)

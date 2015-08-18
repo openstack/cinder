@@ -20,6 +20,7 @@ from oslo_utils import timeutils
 
 from cinder import context
 from cinder import db
+from cinder import objects
 
 
 def get_test_admin_context():
@@ -112,21 +113,24 @@ def create_consistencygroup(ctxt,
                             source_cgid=None,
                             **kwargs):
     """Create a consistencygroup object in the DB."""
-    cg = {}
-    cg['host'] = host
-    cg['user_id'] = ctxt.user_id or 'fake_user_id'
-    cg['project_id'] = ctxt.project_id or 'fake_project_id'
-    cg['status'] = status
-    cg['name'] = name
-    cg['description'] = description
-    cg['availability_zone'] = availability_zone
+
+    cg = objects.ConsistencyGroup(ctxt)
+    cg.host = host
+    cg.user_id = ctxt.user_id or 'fake_user_id'
+    cg.project_id = ctxt.project_id or 'fake_project_id'
+    cg.status = status
+    cg.name = name
+    cg.description = description
+    cg.availability_zone = availability_zone
+
     if volume_type_id:
-        cg['volume_type_id'] = volume_type_id
-    cg['cgsnapshot_id'] = cgsnapshot_id
-    cg['source_cgid'] = source_cgid
+        cg.volume_type_id = volume_type_id
+    cg.cgsnapshot_id = cgsnapshot_id
+    cg.source_cgid = source_cgid
     for key in kwargs:
-        cg[key] = kwargs[key]
-    return db.consistencygroup_create(ctxt, cg)
+        setattr(cg, key, kwargs[key])
+    cg.create()
+    return cg
 
 
 def create_cgsnapshot(ctxt,
