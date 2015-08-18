@@ -40,10 +40,6 @@ def stub_volume_type_encryption():
     return values
 
 
-def volume_type_encryption_get(context, volume_type_id):
-    pass
-
-
 class VolumeTypeEncryptionTest(test.TestCase):
 
     _default_volume_type = {
