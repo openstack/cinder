@@ -26,6 +26,7 @@ import time
 import mock
 from oslo_config import cfg
 from oslo_i18n import fixture as i18n_fixture
+import six
 from six.moves import urllib
 import testtools
 import webob
@@ -110,7 +111,7 @@ class TestWSGIServer(test.TestCase):
     """WSGI server tests."""
     def _ipv6_configured():
         try:
-            with file('/proc/net/if_inet6') as f:
+            with open('/proc/net/if_inet6') as f:
                 return len(f.read()) > 0
         except IOError:
             return False
@@ -151,7 +152,7 @@ class TestWSGIServer(test.TestCase):
             mock_waitall.assert_called_once_with()
 
     def test_app(self):
-        greetings = 'Hello, World!!!'
+        greetings = b'Hello, World!!!'
 
         def hello_world(env, start_response):
             if env['PATH_INFO'] != '/':
@@ -171,7 +172,7 @@ class TestWSGIServer(test.TestCase):
 
     def test_client_socket_timeout(self):
         CONF.set_default("client_socket_timeout", 0.1)
-        greetings = 'Hello, World!!!'
+        greetings = b'Hello, World!!!'
 
         def hello_world(env, start_response):
             start_response('200 OK', [('Content-Type', 'text/plain')])
@@ -184,7 +185,7 @@ class TestWSGIServer(test.TestCase):
         s = socket.socket()
         s.connect(("127.0.0.1", server.port))
 
-        fd = s.makefile('rw')
+        fd = s.makefile('rwb')
         fd.write(b'GET / HTTP/1.1\r\nHost: localhost\r\n\r\n')
         fd.flush()
 
@@ -195,7 +196,7 @@ class TestWSGIServer(test.TestCase):
         s2.connect(("127.0.0.1", server.port))
         time.sleep(0.2)
 
-        fd = s2.makefile('rw')
+        fd = s2.makefile('rwb')
         fd.write(b'GET / HTTP/1.1\r\nHost: localhost\r\n\r\n')
         fd.flush()
 
@@ -290,10 +291,10 @@ class ExceptionTest(test.TestCase):
 
         api = self._wsgi_app(fail)
         resp = webob.Request.blank('/').get_response(api)
-        self.assertIn('{"computeFault', resp.body)
-        expected = ('ExceptionWithSafety: some explanation' if expose else
-                    'The server has either erred or is incapable '
-                    'of performing the requested operation.')
+        self.assertIn(b'{"computeFault', resp.body)
+        expected = (b'ExceptionWithSafety: some explanation' if expose else
+                    b'The server has either erred or is incapable '
+                    b'of performing the requested operation.')
         self.assertIn(expected, resp.body)
         self.assertEqual(500, resp.status_int, resp.body)
 
@@ -310,7 +311,9 @@ class ExceptionTest(test.TestCase):
 
         api = self._wsgi_app(fail)
         resp = webob.Request.blank('/').get_response(api)
-        self.assertIn(msg, resp.body)
+        msg_body = (msg.encode('utf-8') if isinstance(msg, six.text_type)
+                    else msg)
+        self.assertIn(msg_body, resp.body)
         self.assertEqual(exception_type.code, resp.status_int, resp.body)
 
         if hasattr(exception_type, 'headers'):
@@ -370,7 +373,9 @@ class ExceptionTest(test.TestCase):
         api = self._wsgi_app(fail)
         resp = webob.Request.blank('/').get_response(api)
         self.assertEqual(404, resp.status_int)
-        self.assertIn(msg, resp.body)
+        msg_body = (msg.encode('utf-8') if isinstance(msg, six.text_type)
+                    else msg)
+        self.assertIn(msg_body, resp.body)
 
         # Test response with localization
         def mock_translate(msgid, locale):
@@ -381,4 +386,8 @@ class ExceptionTest(test.TestCase):
         api = self._wsgi_app(fail)
         resp = webob.Request.blank('/').get_response(api)
         self.assertEqual(404, resp.status_int)
-        self.assertIn(msg_translation, resp.body)
+        if isinstance(msg_translation, six.text_type):
+            msg_body = msg_translation.encode('utf-8')
+        else:
+            msg_body = msg_translation
+        self.assertIn(msg_body, resp.body)
