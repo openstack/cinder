@@ -46,7 +46,6 @@ def stub_volume(id, **kwargs):
         'status': DEFAULT_VOL_STATUS,
         'migration_status': None,
         'attach_status': 'attached',
-        'bootable': 'false',
         'name': 'vol name',
         'display_name': DEFAULT_VOL_NAME,
         'display_description': DEFAULT_VOL_DESCRIPTION,

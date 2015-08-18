@@ -84,7 +84,6 @@ class VolumeApiTest(test.TestCase):
                                'display_description': 'Volume Test Desc',
                                'availability_zone': 'zone1:host1',
                                'display_name': 'Volume Test Name',
-                               'encrypted': False,
                                'attachments': [],
                                'multiattach': 'false',
                                'bootable': 'false',
@@ -973,7 +972,6 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
         request = self.deserializer.deserialize(self_request)
         expected = {
             "volume": {
-                "display_name": "Volume-xml",
                 "size": "1",
                 "display_name": "Volume-xml",
                 "display_description": "description",

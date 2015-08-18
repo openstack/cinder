@@ -411,12 +411,11 @@ class EMCVMAXCommonData(object):
                           'volume_type_id': 'sourceid',
                           'display_name': 'sourceVolume',
                           'name': 'sourceVolume',
-                          'id': 'sourceVolume',
                           'device_id': '1',
                           'volume_name': 'vmax-154326',
                           'provider_auth': None,
-                          'project_id':
-                          'project', 'id': '2',
+                          'project_id': 'project',
+                          'id': '2',
                           'host': fake_host,
                           'provider_location':
                           six.text_type(provider_location),
@@ -426,12 +425,11 @@ class EMCVMAXCommonData(object):
                              'volume_type_id': 'sourceid',
                              'display_name': 'sourceVolume',
                              'name': 'sourceVolume',
-                             'id': 'sourceVolume',
                              'device_id': '1',
                              'volume_name': 'vmax-154326',
                              'provider_auth': None,
-                             'project_id':
-                             'project', 'id': '2',
+                             'project_id': 'project',
+                             'id': '2',
                              'host': fake_host_v3,
                              'provider_location':
                              six.text_type(provider_location),
