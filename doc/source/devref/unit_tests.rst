@@ -1,21 +1,48 @@
 Unit Tests
 ==========
 
-Cinder contains a suite of unit tests, in the cinder/tests directory.
+Cinder contains a suite of unit tests, in the cinder/tests/unit directory.
 
 Any proposed code change will be automatically rejected by the OpenStack
 Jenkins server [#f1]_ if the change causes unit test failures.
 
 Running the tests
 -----------------
-Run the unit tests by doing::
+There are a number of ways to run unit tests currently, and there's a combination
+of frameworks used depending on what commands you use.  The preferred method
+is to use tox, which calls ostestr via the tox.ini file.  To run all tests simply run::
+    tox
+
+This will create a virtual environment, load all the packages from test-requirements.txt
+and run all unit tests as well as run flake8 and hacking checks against the code.
+
+Note that you can inspect the tox.ini file to get more details on the available options
+and what the test run does by default.
+
+Running a subset of tests using tox
+-----------------------------------
+One common activity is to just run a single test, you can do this with tox simply by
+specifying to just run py27 or py34 tests against a single test::
+    tox -epy27 -- -n cinder.tests.unit.test_volume:AvailabilityZoneTestCase.test_list_availability_zones_cached
+
+Or all file in the test_volume.py file::
+    tox -epy27 -- -n cinder.tests.unit.test_volume
+
+For more information on these options and how to run tests, please see the ostestr
+documentation _a link: http://docs.openstack.org/developer/os-testr/
+
+Run tests wrapper script
+------------------------
+
+In addition you can also use the wrapper script run_tests.sh by simply executing::
 
     ./run_tests.sh
 
-This script is a wrapper around the `nose`_ testrunner and the `pep8`_ checker.
+This script is a wrapper around the `testr`_ testrunner and the `flake8`_ checker. Note that
+there has been talk around deprecating this wrapper and this method of testing, it's currently
+available still but it may be good to get used to using tox or even ostestr directly.
 
-.. _nose: http://code.google.com/p/python-nose/
-.. _pep8: https://github.com/jcrocholl/pep8
+Documenation is left in place for those that still use it.
 
 Flags
 -----
@@ -43,8 +70,8 @@ This will show the following help information::
       -h, --help               Print this usage message
       --hide-elapsed           Don't print the elapsed time for each test along with slow test list
 
-Because ``run_tests.sh`` is a wrapper around nose, it also accepts the same
-flags as nosetests. See the `nose options documentation`_ for details about
+Because ``run_tests.sh`` is a wrapper around testr, it also accepts the same
+flags as testr. See the `testr documentation`_ for details about
 these additional flags.
 
 .. _nose options documentation: http://readthedocs.org/docs/nose/en/latest/usage.html#options
@@ -152,8 +179,3 @@ a shared folder.
 
 .. [#f2] See :doc:`development.environment` for more details about the use of
    virtualenv.
-
-.. [#f3] There is an effort underway to use a fake DB implementation for the
-   unit tests. See https://lists.launchpad.net/openstack/msg05604.html
-
-.. [#f4] See Vish's comment in this bug report: https://bugs.launchpad.net/cinder/+bug/882933
