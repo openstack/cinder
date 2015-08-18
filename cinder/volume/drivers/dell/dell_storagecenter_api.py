@@ -195,8 +195,9 @@ class StorageCenterApi(object):
         2.1.0 - Added support for ManageableVD.
         2.2.0 - Added API 2.2 support.
         2.3.0 - Added Legacy Port Mode Support
+        2.3.1 - Updated error handling.
     """
-    APIVERSION = '2.3.0'
+    APIVERSION = '2.3.1'
 
     def __init__(self, host, port, user, password, verify):
         """This creates a connection to Dell Enterprise Manager.
