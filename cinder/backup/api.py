@@ -24,6 +24,7 @@ from eventlet import greenthread
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
+from oslo_utils import strutils
 
 from cinder.backup import rpcapi as backup_rpcapi
 from cinder import context
@@ -103,9 +104,12 @@ class API(base.Base):
 
         search_opts = search_opts or {}
 
-        if (context.is_admin and 'all_tenants' in search_opts):
-            # Need to remove all_tenants to pass the filtering below.
-            search_opts.pop('all_tenants', None)
+        all_tenants = search_opts.pop('all_tenants', '0')
+        if not utils.is_valid_boolstr(all_tenants):
+            msg = _("all_tenants must be a boolean, got '%s'.") % all_tenants
+            raise exception.InvalidParameterValue(err=msg)
+
+        if context.is_admin and strutils.bool_from_string(all_tenants):
             backups = objects.BackupList.get_all(context, filters=search_opts)
         else:
             backups = objects.BackupList.get_all_by_project(
