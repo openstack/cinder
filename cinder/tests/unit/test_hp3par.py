@@ -94,6 +94,10 @@ class HP3PARBaseDriver(object):
     SNAPSHOT_NAME = 'snapshot-2f823bdc-e36e-4dc8-bd15-de1c7a28ff31'
     VOLUME_3PAR_NAME = 'osv-0DM4qZEVSKON-DXN-NwVpw'
     SNAPSHOT_3PAR_NAME = 'oss-L4I73ONuTci9Fd4ceij-MQ'
+    CONSIS_GROUP_ID = '6044fedf-c889-4752-900f-2039d247a5df'
+    CONSIS_GROUP_NAME = 'vvs-YET.38iJR1KQDyA50kel3w'
+    CGSNAPSHOT_ID = 'e91c5ed5-daee-4e84-8724-1c9e31e7a1f2'
+    CGSNAPSHOT_BASE_NAME = 'oss-6Rxe1druToSHJByeMeeh8g'
     # fake host on the 3par
     FAKE_HOST = 'fakehost'
     FAKE_CINDER_HOST = 'fakehost@foo#' + HP3PAR_CPG
@@ -263,6 +267,11 @@ class HP3PARBaseDriver(object):
          'numTDVVs': 1,
          'state': 1,
          'uuid': '29c214aa-62b9-41c8-b198-543f6cf24edf'}]
+
+    cgsnapshot = {'consistencygroup_id': CONSIS_GROUP_ID,
+                  'description': 'cgsnapshot',
+                  'id': CGSNAPSHOT_ID,
+                  'readOnly': False}
 
     TASK_DONE = 1
     TASK_ACTIVE = 2
@@ -2946,6 +2955,505 @@ class HP3PARBaseDriver(object):
         common = hpcommon.HP3PARCommon(None)
         safe_host = common._safe_hostname(long_hostname)
         self.assertEqual(fixed_hostname, safe_host)
+
+    @mock.patch('hp3parclient.version', "3.2.2")
+    def test_create_consistency_group(self):
+        class fake_consitencygroup_object(object):
+            volume_type_id = '49fa96b5-828e-4653-b622-873a1b7e6f1c'
+            name = 'cg_name'
+            cgsnapshot_id = None
+            host = self.FAKE_CINDER_HOST
+            id = self.CONSIS_GROUP_ID
+            description = 'consistency group'
+
+        mock_client = self.setup_driver()
+
+        comment = (
+            "{'display_name': 'cg_name',"
+            " 'consistency_group_id':"
+            " '" + self.CONSIS_GROUP_ID + "',"
+            " 'description': 'consistency group'}")
+
+        with mock.patch.object(hpcommon.HP3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            mock_client.getCPG.return_value = {'domain': None}
+            # create a consistency group
+            group = fake_consitencygroup_object()
+            self.driver.create_consistencygroup(context.get_admin_context(),
+                                                group)
+
+            expected = [
+                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.createVolumeSet(
+                    self.CONSIS_GROUP_NAME,
+                    domain=None,
+                    comment=comment)]
+
+            mock_client.assert_has_calls(
+                [mock.call.getWsApiVersion()] +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
+    @mock.patch('hp3parclient.version', "3.2.2")
+    def test_create_consistency_group_from_src(self):
+        class fake_consitencygroup_object(object):
+            volume_type_id = '49fa96b5-828e-4653-b622-873a1b7e6f1c'
+            name = 'cg_name'
+            cgsnapshot_id = None
+            host = self.FAKE_CINDER_HOST
+            id = self.CONSIS_GROUP_ID
+            description = 'consistency group'
+
+        mock_client = self.setup_driver()
+        volume = self.volume
+
+        cgsnap_optional = (
+            {'comment': '{"consistency_group_id":'
+             ' "6044fedf-c889-4752-900f-2039d247a5df",'
+             ' "description": "cgsnapshot",'
+             ' "cgsnapshot_id": "e91c5ed5-daee-4e84-8724-1c9e31e7a1f2"}',
+             'readOnly': False})
+
+        cg_comment = (
+            "{'display_name': 'cg_name',"
+            " 'consistency_group_id':"
+            " '" + self.CONSIS_GROUP_ID + "',"
+            " 'description': 'consistency group'}")
+
+        with mock.patch.object(hpcommon.HP3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            mock_client.getCPG.return_value = {'domain': None}
+
+            # create a consistency group
+            group = fake_consitencygroup_object()
+            self.driver.create_consistencygroup(context.get_admin_context(),
+                                                group)
+
+            expected = [
+                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.createVolumeSet(
+                    self.CONSIS_GROUP_NAME,
+                    domain=None,
+                    comment=cg_comment)]
+
+            mock_client.assert_has_calls(
+                [mock.call.getWsApiVersion()] +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+            mock_client.reset_mock()
+
+            # add a volume to the consistency group
+            self.driver.update_consistencygroup(context.get_admin_context(),
+                                                group,
+                                                add_volumes=[volume],
+                                                remove_volumes=[])
+
+            expected = [
+                mock.call.addVolumeToVolumeSet(
+                    self.CONSIS_GROUP_NAME,
+                    self.VOLUME_NAME_3PAR)]
+
+            mock_client.assert_has_calls(
+                [mock.call.getWsApiVersion()] +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+            mock_client.reset_mock()
+
+            # create a snapshot of the consistency group
+            self.driver.create_cgsnapshot(context.get_admin_context(),
+                                          self.cgsnapshot)
+
+            expected = [
+                mock.call.createSnapshotOfVolumeSet(
+                    self.CGSNAPSHOT_BASE_NAME + "-@count@",
+                    self.CONSIS_GROUP_NAME,
+                    optional=cgsnap_optional)]
+
+            # create a consistency group from the cgsnapshot
+            self.driver.create_consistencygroup_from_src(
+                context.get_admin_context(), group,
+                [volume], cgsnapshot=self.cgsnapshot,
+                snapshots=[self.snapshot])
+
+            mock_client.assert_has_calls(
+                [mock.call.getWsApiVersion()] +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
+    @mock.patch('hp3parclient.version', "3.2.2")
+    def test_delete_consistency_group(self):
+        class fake_consitencygroup_object(object):
+            volume_type_id = '49fa96b5-828e-4653-b622-873a1b7e6f1c'
+            name = 'cg_name'
+            cgsnapshot_id = None
+            host = self.FAKE_CINDER_HOST
+            id = self.CONSIS_GROUP_ID
+            description = 'consistency group'
+
+        mock_client = self.setup_driver()
+
+        comment = (
+            "{'display_name': 'cg_name',"
+            " 'consistency_group_id':"
+            " '" + self.CONSIS_GROUP_ID + "',"
+            " 'description': 'consistency group'}")
+
+        with mock.patch.object(hpcommon.HP3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            mock_client.getCPG.return_value = {'domain': None}
+
+            # create a consistency group
+            group = fake_consitencygroup_object()
+            self.driver.create_consistencygroup(context.get_admin_context(),
+                                                group)
+
+            expected = [
+                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.createVolumeSet(
+                    self.CONSIS_GROUP_NAME,
+                    domain=None,
+                    comment=comment)]
+
+            mock_client.assert_has_calls(
+                [mock.call.getWsApiVersion()] +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+            mock_client.reset_mock()
+
+            # remove the consistency group
+            group.status = 'deleting'
+            self.driver.delete_consistencygroup(context.get_admin_context(),
+                                                group)
+
+            expected = [
+                mock.call.deleteVolumeSet(
+                    self.CONSIS_GROUP_NAME)]
+
+            mock_client.assert_has_calls(
+                [mock.call.getWsApiVersion()] +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
+    @mock.patch('hp3parclient.version', "3.2.2")
+    def test_update_consistency_group_add_vol(self):
+        class fake_consitencygroup_object(object):
+            volume_type_id = '49fa96b5-828e-4653-b622-873a1b7e6f1c'
+            name = 'cg_name'
+            cgsnapshot_id = None
+            host = self.FAKE_CINDER_HOST
+            id = self.CONSIS_GROUP_ID
+            description = 'consistency group'
+
+        mock_client = self.setup_driver()
+        volume = self.volume
+
+        comment = (
+            "{'display_name': 'cg_name',"
+            " 'consistency_group_id':"
+            " '" + self.CONSIS_GROUP_ID + "',"
+            " 'description': 'consistency group'}")
+
+        with mock.patch.object(hpcommon.HP3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            mock_client.getCPG.return_value = {'domain': None}
+
+            # create a consistency group
+            group = fake_consitencygroup_object()
+            self.driver.create_consistencygroup(context.get_admin_context(),
+                                                group)
+
+            expected = [
+                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.createVolumeSet(
+                    self.CONSIS_GROUP_NAME,
+                    domain=None,
+                    comment=comment)]
+
+            mock_client.assert_has_calls(
+                [mock.call.getWsApiVersion()] +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+            mock_client.reset_mock()
+
+            # add a volume to the consistency group
+            self.driver.update_consistencygroup(context.get_admin_context(),
+                                                group,
+                                                add_volumes=[volume],
+                                                remove_volumes=[])
+
+            expected = [
+                mock.call.addVolumeToVolumeSet(
+                    self.CONSIS_GROUP_NAME,
+                    self.VOLUME_NAME_3PAR)]
+
+            mock_client.assert_has_calls(
+                [mock.call.getWsApiVersion()] +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
+    @mock.patch('hp3parclient.version', "3.2.2")
+    def test_update_consistency_group_remove_vol(self):
+        class fake_consitencygroup_object(object):
+            volume_type_id = '49fa96b5-828e-4653-b622-873a1b7e6f1c'
+            name = 'cg_name'
+            cgsnapshot_id = None
+            host = self.FAKE_CINDER_HOST
+            id = self.CONSIS_GROUP_ID
+            description = 'consistency group'
+
+        mock_client = self.setup_driver()
+        volume = self.volume
+
+        comment = (
+            "{'display_name': 'cg_name',"
+            " 'consistency_group_id':"
+            " '" + self.CONSIS_GROUP_ID + "',"
+            " 'description': 'consistency group'}")
+
+        with mock.patch.object(hpcommon.HP3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            mock_client.getCPG.return_value = {'domain': None}
+
+            # create a consistency group
+            group = fake_consitencygroup_object()
+            self.driver.create_consistencygroup(context.get_admin_context(),
+                                                group)
+
+            expected = [
+                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.createVolumeSet(
+                    self.CONSIS_GROUP_NAME,
+                    domain=None,
+                    comment=comment)]
+
+            mock_client.assert_has_calls(
+                [mock.call.getWsApiVersion()] +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+            mock_client.reset_mock()
+
+            # add a volume to the consistency group
+            self.driver.update_consistencygroup(context.get_admin_context(),
+                                                group,
+                                                add_volumes=[volume],
+                                                remove_volumes=[])
+
+            expected = [
+                mock.call.addVolumeToVolumeSet(
+                    self.CONSIS_GROUP_NAME,
+                    self.VOLUME_NAME_3PAR)]
+
+            mock_client.assert_has_calls(
+                [mock.call.getWsApiVersion()] +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+            mock_client.reset_mock()
+
+            # remove the volume from the consistency group
+            self.driver.update_consistencygroup(context.get_admin_context(),
+                                                group,
+                                                add_volumes=[],
+                                                remove_volumes=[volume])
+
+            expected = [
+                mock.call.removeVolumeFromVolumeSet(
+                    self.CONSIS_GROUP_NAME,
+                    self.VOLUME_NAME_3PAR)]
+
+            mock_client.assert_has_calls(
+                [mock.call.getWsApiVersion()] +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
+    @mock.patch('hp3parclient.version', "3.2.2")
+    def test_create_cgsnapshot(self):
+        class fake_consitencygroup_object(object):
+            volume_type_id = '49fa96b5-828e-4653-b622-873a1b7e6f1c'
+            name = 'cg_name'
+            cgsnapshot_id = None
+            host = self.FAKE_CINDER_HOST
+            id = self.CONSIS_GROUP_ID
+            description = 'consistency group'
+
+        mock_client = self.setup_driver()
+        volume = self.volume
+
+        cg_comment = (
+            "{'display_name': 'cg_name',"
+            " 'consistency_group_id':"
+            " '" + self.CONSIS_GROUP_ID + "',"
+            " 'description': 'consistency group'}")
+
+        cgsnap_optional = (
+            {'comment': '{"consistency_group_id":'
+             ' "6044fedf-c889-4752-900f-2039d247a5df",'
+             ' "description": "cgsnapshot",'
+             ' "cgsnapshot_id": "e91c5ed5-daee-4e84-8724-1c9e31e7a1f2"}',
+             'readOnly': False})
+
+        with mock.patch.object(hpcommon.HP3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            mock_client.getCPG.return_value = {'domain': None}
+
+            # create a consistency group
+            group = fake_consitencygroup_object()
+            self.driver.create_consistencygroup(context.get_admin_context(),
+                                                group)
+
+            expected = [
+                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.createVolumeSet(
+                    self.CONSIS_GROUP_NAME,
+                    domain=None,
+                    comment=cg_comment)]
+
+            mock_client.assert_has_calls(
+                [mock.call.getWsApiVersion()] +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+            mock_client.reset_mock()
+
+            # add a volume to the consistency group
+            self.driver.update_consistencygroup(context.get_admin_context(),
+                                                group,
+                                                add_volumes=[volume],
+                                                remove_volumes=[])
+
+            expected = [
+                mock.call.addVolumeToVolumeSet(
+                    self.CONSIS_GROUP_NAME,
+                    self.VOLUME_NAME_3PAR)]
+
+            mock_client.assert_has_calls(
+                [mock.call.getWsApiVersion()] +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+            mock_client.reset_mock()
+
+            # create a snapshot of the consistency group
+            self.driver.create_cgsnapshot(context.get_admin_context(),
+                                          self.cgsnapshot)
+
+            expected = [
+                mock.call.createSnapshotOfVolumeSet(
+                    self.CGSNAPSHOT_BASE_NAME + "-@count@",
+                    self.CONSIS_GROUP_NAME,
+                    optional=cgsnap_optional)]
+
+            mock_client.assert_has_calls(
+                [mock.call.getWsApiVersion()] +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
+    @mock.patch('hp3parclient.version', "3.2.2")
+    def test_delete_cgsnapshot(self):
+        class fake_consitencygroup_object(object):
+            volume_type_id = '49fa96b5-828e-4653-b622-873a1b7e6f1c'
+            name = 'cg_name'
+            cgsnapshot_id = None
+            host = self.FAKE_CINDER_HOST
+            id = self.CONSIS_GROUP_ID
+            description = 'consistency group'
+
+        mock_client = self.setup_driver()
+        volume = self.volume
+        cgsnapshot = self.cgsnapshot
+
+        cg_comment = (
+            "{'display_name': 'cg_name',"
+            " 'consistency_group_id':"
+            " '" + self.CONSIS_GROUP_ID + "',"
+            " 'description': 'consistency group'}")
+
+        cgsnap_optional = (
+            {'comment': '{"consistency_group_id":'
+             ' "6044fedf-c889-4752-900f-2039d247a5df",'
+             ' "description": "cgsnapshot",'
+             ' "cgsnapshot_id": "e91c5ed5-daee-4e84-8724-1c9e31e7a1f2"}',
+             'readOnly': False})
+
+        with mock.patch.object(hpcommon.HP3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            mock_client.getCPG.return_value = {'domain': None}
+
+            # create a consistency group
+            group = fake_consitencygroup_object()
+            self.driver.create_consistencygroup(context.get_admin_context(),
+                                                group)
+
+            expected = [
+                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.createVolumeSet(
+                    self.CONSIS_GROUP_NAME,
+                    domain=None,
+                    comment=cg_comment)]
+
+            mock_client.assert_has_calls(
+                [mock.call.getWsApiVersion()] +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+            mock_client.reset_mock()
+
+            # add a volume to the consistency group
+            self.driver.update_consistencygroup(context.get_admin_context(),
+                                                group,
+                                                add_volumes=[volume],
+                                                remove_volumes=[])
+
+            expected = [
+                mock.call.addVolumeToVolumeSet(
+                    self.CONSIS_GROUP_NAME,
+                    self.VOLUME_NAME_3PAR)]
+
+            mock_client.assert_has_calls(
+                [mock.call.getWsApiVersion()] +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+            mock_client.reset_mock()
+
+            # create a snapshot of the consistency group
+            self.driver.create_cgsnapshot(context.get_admin_context(),
+                                          cgsnapshot)
+
+            expected = [
+                mock.call.createSnapshotOfVolumeSet(
+                    self.CGSNAPSHOT_BASE_NAME + "-@count@",
+                    self.CONSIS_GROUP_NAME,
+                    optional=cgsnap_optional)]
+
+            # delete the snapshot of the consistency group
+            cgsnapshot['status'] = 'deleting'
+            self.driver.delete_cgsnapshot(context.get_admin_context(),
+                                          cgsnapshot)
+
+            mock_client.assert_has_calls(
+                [mock.call.getWsApiVersion()] +
+                self.standard_login +
+                expected +
+                self.standard_logout)
 
 
 class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):

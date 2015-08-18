@@ -80,10 +80,11 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         2.0.16 - Added encrypted property to initialize_connection #1439917
         2.0.17 - Improved VLUN creation and deletion logic. #1469816
         2.0.18 - Changed initialize_connection to use getHostVLUNs. #1475064
+        2.0.19 - Adds consistency group support
 
     """
 
-    VERSION = "2.0.18"
+    VERSION = "2.0.19"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARFCDriver, self).__init__(*args, **kwargs)
@@ -424,6 +425,54 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         common = self._login()
         try:
             common.extend_volume(volume, new_size)
+        finally:
+            self._logout(common)
+
+    def create_consistencygroup(self, context, group):
+        common = self._login()
+        try:
+            return common.create_consistencygroup(context, group)
+        finally:
+            self._logout(common)
+
+    def create_consistencygroup_from_src(self, context, group, volumes,
+                                         cgsnapshot=None, snapshots=None,
+                                         source_cg=None, source_vols=None):
+        common = self._login()
+        try:
+            return common.create_consistencygroup_from_src(
+                context, group, volumes, cgsnapshot, snapshots, source_cg,
+                source_vols)
+        finally:
+            self._logout(common)
+
+    def delete_consistencygroup(self, context, group):
+        common = self._login()
+        try:
+            return common.delete_consistencygroup(context, group)
+        finally:
+            self._logout(common)
+
+    def update_consistencygroup(self, context, group,
+                                add_volumes=None, remove_volumes=None):
+        common = self._login()
+        try:
+            return common.update_consistencygroup(context, group, add_volumes,
+                                                  remove_volumes)
+        finally:
+            self._logout(common)
+
+    def create_cgsnapshot(self, context, cgsnapshot):
+        common = self._login()
+        try:
+            return common.create_cgsnapshot(context, cgsnapshot)
+        finally:
+            self._logout(common)
+
+    def delete_cgsnapshot(self, context, cgsnapshot):
+        common = self._login()
+        try:
+            return common.delete_cgsnapshot(context, cgsnapshot)
         finally:
             self._logout(common)
 

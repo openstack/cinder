@@ -61,6 +61,7 @@ from cinder import context
 from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _, _LE, _LI, _LW
+from cinder import objects
 from cinder.volume import qos_specs
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
@@ -72,6 +73,7 @@ LOG = logging.getLogger(__name__)
 
 MIN_CLIENT_VERSION = '3.1.2'
 GETCPGSTATDATA_VERSION = '3.2.2'
+MIN_CG_CLIENT_VERSION = '3.2.2'
 DEDUP_API_VERSION = 30201120
 FLASH_CACHE_API_VERSION = 30201200
 SRSTATLD_API_VERSION = 30201200
@@ -198,10 +200,11 @@ class HP3PARCommon(object):
         2.0.48 - Adding changes to support 3PAR iSCSI multipath.
         2.0.49 - Added client CPG stats to driver volume stats. bug #1482741
         2.0.50 - Add over subscription support
+        2.0.51 - Adds consistency group support
 
     """
 
-    VERSION = "2.0.50"
+    VERSION = "2.0.51"
 
     stats = {}
 
@@ -242,6 +245,7 @@ class HP3PARCommon(object):
         self.config = config
         self.client = None
         self.uuid = uuid.uuid4()
+        self.db = importutils.import_module('cinder.db')
 
     def get_version(self):
         return self.VERSION
@@ -372,6 +376,167 @@ class HP3PARCommon(object):
                    'diff': growth_size})
         growth_size_mib = growth_size * units.Ki
         self._extend_volume(volume, volume_name, growth_size_mib)
+
+    def create_consistencygroup(self, context, group):
+        """Creates a consistencygroup."""
+
+        pool = volume_utils.extract_host(group.host, level='pool')
+        domain = self.get_domain(pool)
+        cg_name = self._get_3par_vvs_name(group.id)
+
+        extra = {'consistency_group_id': group.id}
+        extra['description'] = group.description
+        extra['display_name'] = group.name
+        if group.cgsnapshot_id:
+            extra['cgsnapshot_id'] = group.cgsnapshot_id
+
+        self.client.createVolumeSet(cg_name, domain=domain,
+                                    comment=six.text_type(extra))
+
+        model_update = {'status': 'available'}
+        return model_update
+
+    def create_consistencygroup_from_src(self, context, group, volumes,
+                                         cgsnapshot=None, snapshots=None,
+                                         source_cg=None, source_vols=None):
+
+        if cgsnapshot and snapshots:
+            self.create_consistencygroup(context, group)
+            vvs_name = self._get_3par_vvs_name(group.id)
+            cgsnap_name = self._get_3par_snap_name(cgsnapshot['id'])
+            for i, (volume, snapshot) in enumerate(zip(volumes, snapshots)):
+                snap_name = cgsnap_name + "-" + six.text_type(i)
+                volume_name = self._get_3par_vol_name(volume['id'])
+                type_info = self.get_volume_settings_from_type(volume)
+                cpg = type_info['cpg']
+                optional = {'online': True, 'snapCPG': cpg}
+                self.client.copyVolume(snap_name, volume_name, cpg, optional)
+                self.client.addVolumeToVolumeSet(vvs_name, volume_name)
+        else:
+            msg = _("create_consistencygroup_from_src only supports a"
+                    " cgsnapshot source, other sources cannot be used.")
+            raise exception.InvalidInput(reason=msg)
+
+        return None, None
+
+    def delete_consistencygroup(self, context, group):
+        """Deletes a consistency group."""
+
+        try:
+            cg_name = self._get_3par_vvs_name(group.id)
+            self.client.deleteVolumeSet(cg_name)
+        except hpexceptions.HTTPNotFound:
+            err = (_LW("Virtual Volume Set '%s' doesn't exist on array.") %
+                   cg_name)
+            LOG.warning(err)
+        except hpexceptions.HTTPConflict as e:
+            err = (_LE("Conflict detected in Virtual Volume Set"
+                       " %(volume_set): %(error)"),
+                   {"volume_set": cg_name,
+                    "error": e})
+            LOG.error(err)
+
+        volumes = self.db.volume_get_all_by_group(context, group.id)
+        for volume in volumes:
+            self.delete_volume(volume)
+            volume.status = 'deleted'
+
+        model_update = {'status': group.status}
+
+        return model_update, volumes
+
+    def update_consistencygroup(self, context, group,
+                                add_volumes=None, remove_volumes=None):
+
+        volume_set_name = self._get_3par_vvs_name(group.id)
+
+        for volume in add_volumes:
+            volume_name = self._get_3par_vol_name(volume['id'])
+            try:
+                self.client.addVolumeToVolumeSet(volume_set_name, volume_name)
+            except hpexceptions.HTTPNotFound:
+                msg = (_LE('Virtual Volume Set %s does not exist.') %
+                       volume_set_name)
+                LOG.error(msg)
+                raise exception.InvalidInput(reason=msg)
+
+        for volume in remove_volumes:
+            volume_name = self._get_3par_vol_name(volume['id'])
+            try:
+                self.client.removeVolumeFromVolumeSet(
+                    volume_set_name, volume_name)
+            except hpexceptions.HTTPNotFound:
+                msg = (_LE('Virtual Volume Set %s does not exist.') %
+                       volume_set_name)
+                LOG.error(msg)
+                raise exception.InvalidInput(reason=msg)
+
+        return None, None, None
+
+    def create_cgsnapshot(self, context, cgsnapshot):
+        """Creates a cgsnapshot."""
+
+        cg_id = cgsnapshot['consistencygroup_id']
+        snap_shot_name = self._get_3par_snap_name(cgsnapshot['id']) + (
+            "-@count@")
+        copy_of_name = self._get_3par_vvs_name(cg_id)
+
+        extra = {'cgsnapshot_id': cgsnapshot['id']}
+        extra['consistency_group_id'] = cg_id
+        extra['description'] = cgsnapshot['description']
+
+        optional = {'comment': json.dumps(extra),
+                    'readOnly': False}
+        if self.config.hp3par_snapshot_expiration:
+            optional['expirationHours'] = (
+                int(self.config.hp3par_snapshot_expiration))
+
+        if self.config.hp3par_snapshot_retention:
+            optional['retentionHours'] = (
+                int(self.config.hp3par_snapshot_retention))
+
+        self.client.createSnapshotOfVolumeSet(snap_shot_name, copy_of_name,
+                                              optional=optional)
+
+        snapshots = objects.SnapshotList().get_all_for_cgsnapshot(
+            context, cgsnapshot['id'])
+
+        for snapshot in snapshots:
+            snapshot.status = 'available'
+
+        model_update = {'status': 'available'}
+
+        return model_update, snapshots
+
+    def delete_cgsnapshot(self, context, cgsnapshot):
+        """Deletes a cgsnapshot."""
+
+        cgsnap_name = self._get_3par_snap_name(cgsnapshot['id'])
+
+        snapshots = objects.SnapshotList().get_all_for_cgsnapshot(
+            context, cgsnapshot['id'])
+
+        for i, snapshot in enumerate(snapshots):
+            try:
+                snap_name = cgsnap_name + "-" + six.text_type(i)
+                self.client.deleteVolume(snap_name)
+            except hpexceptions.HTTPForbidden as ex:
+                LOG.error(_LE("Exception: %s."), ex)
+                raise exception.NotAuthorized()
+            except hpexceptions.HTTPNotFound as ex:
+                # We'll let this act as if it worked
+                # it helps clean up the cinder entries.
+                LOG.warning(_LW("Delete Snapshot id not found. Removing from "
+                                "cinder: %(id)s Ex: %(msg)s"),
+                            {'id': snapshot['id'], 'msg': ex})
+            except hpexceptions.HTTPConflict as ex:
+                LOG.error(_LE("Exception: %s."), ex)
+                raise exception.SnapshotIsBusy(snapshot_name=snapshot['id'])
+            snapshot['status'] = 'deleted'
+
+        model_update = {'status': cgsnapshot['status']}
+
+        return model_update, snapshots
 
     def manage_existing(self, volume, existing_ref):
         """Manage an existing 3PAR volume.
@@ -817,6 +982,9 @@ class HP3PARCommon(object):
                     'multiattach': True,
                     }
 
+            if hp3parclient.version >= MIN_CG_CLIENT_VERSION:
+                pool['consistencygroup_support'] = True
+
             pools.append(pool)
 
         self.stats = {'driver_version': '1.0',
@@ -1191,7 +1359,6 @@ class HP3PARCommon(object):
 
             cpg = pool
             self.validate_cpg(cpg)
-
         # Look to see if the snap_cpg was specified in volume type
         # extra spec, if not use hp3par_cpg_snap from config as the
         # default.
@@ -1291,6 +1458,10 @@ class HP3PARCommon(object):
             tpvv = type_info['tpvv']
             tdvv = type_info['tdvv']
             flash_cache = self.get_flash_cache_policy(type_info['hp3par_keys'])
+
+            cg_id = volume.get('consistencygroup_id', None)
+            if cg_id:
+                vvs_name = self._get_3par_vvs_name(cg_id)
 
             type_id = volume.get('volume_type_id', None)
             if type_id is not None:
@@ -1494,7 +1665,8 @@ class HP3PARCommon(object):
             LOG.error(_LE("Exception: %s"), ex)
             raise exception.CinderException(ex)
 
-    def create_volume_from_snapshot(self, volume, snapshot):
+    def create_volume_from_snapshot(self, volume, snapshot, snap_name=None,
+                                    vvs_name=None):
         """Creates a volume from a snapshot.
 
         """
@@ -1510,7 +1682,8 @@ class HP3PARCommon(object):
             raise exception.InvalidInput(reason=err)
 
         try:
-            snap_name = self._get_3par_snap_name(snapshot['id'])
+            if not snap_name:
+                snap_name = self._get_3par_snap_name(snapshot['id'])
             volume_name = self._get_3par_vol_name(volume['id'])
 
             extra = {'volume_id': volume['id'],
@@ -1518,8 +1691,10 @@ class HP3PARCommon(object):
 
             type_id = volume.get('volume_type_id', None)
 
-            hp3par_keys, qos, _volume_type, vvs_name = self.get_type_info(
+            hp3par_keys, qos, _volume_type, vvs = self.get_type_info(
                 type_id)
+            if vvs:
+                vvs_name = vvs
 
             name = volume.get('display_name', None)
             if name:
