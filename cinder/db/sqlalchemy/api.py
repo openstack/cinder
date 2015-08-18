@@ -3049,7 +3049,7 @@ def volume_type_encryption_volume_get(context, volume_type_id, session=None):
 
 @require_context
 def volume_encryption_metadata_get(context, volume_id, session=None):
-    """Return the encryption key id for a given volume."""
+    """Return the encryption metadata for a given volume."""
 
     volume_ref = _volume_get(context, volume_id)
     encryption_ref = volume_type_encryption_get(context,
