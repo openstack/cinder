@@ -788,11 +788,11 @@ class QuobyteDriverTestCase(test.TestCase):
         drv.get_active_image_from_info.assert_called_once_with(volume)
         image_utils.qemu_img_info.assert_called_once_with(vol_path)
 
-        self.assertEqual(conn_info['data']['format'], 'raw')
-        self.assertEqual(conn_info['driver_volume_type'], 'quobyte')
-        self.assertEqual(conn_info['data']['name'], volume['name'])
-        self.assertEqual(conn_info['mount_point_base'],
-                         self.TEST_MNT_POINT_BASE)
+        self.assertEqual('raw', conn_info['data']['format'])
+        self.assertEqual('quobyte', conn_info['driver_volume_type'])
+        self.assertEqual(volume['name'], conn_info['data']['name'])
+        self.assertEqual(self.TEST_MNT_POINT_BASE,
+                         conn_info['mount_point_base'])
 
     def test_copy_volume_to_image_raw_image(self):
         drv = self._driver
