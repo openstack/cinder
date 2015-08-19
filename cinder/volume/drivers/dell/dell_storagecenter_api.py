@@ -1951,7 +1951,7 @@ class StorageCenterApi(object):
             if (self._update_volume_profiles(self.find_volume(vol['id']),
                                              addid=None,
                                              removeid=profileid)):
-                LOG.info(_LI('Removed %s from cg.'), vol['id']),
+                LOG.info(_LI('Removed %s from cg.'), vol['id'])
             else:
                 LOG.error(_LE('Failed to remove %s from cg.'), vol['id'])
                 return False
