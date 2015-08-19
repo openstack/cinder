@@ -14,6 +14,7 @@
 #    under the License.
 import copy
 import requests
+import six
 
 from cinder import test
 from cinder.tests.unit.volume.drivers.emc.scaleio import mocks
@@ -78,6 +79,8 @@ class TestScaleIODriver(test.TestCase):
         }, 500
     )
 
+    VOLUME_NOT_FOUND_ERROR = 78
+
     HTTPS_MOCK_RESPONSES = {}
     __COMMON_HTTPS_MOCK_RESPONSES = {
         RESPONSE_MODE.Valid: {
@@ -94,6 +97,12 @@ class TestScaleIODriver(test.TestCase):
     }
     __https_response_mode = RESPONSE_MODE.Valid
     log = None
+
+    STORAGE_POOL_ID = six.text_type('1')
+    STORAGE_POOL_NAME = 'SP1'
+
+    PROT_DOMAIN_ID = six.text_type('1')
+    PROT_DOMAIN_NAME = 'PD1'
 
     def setUp(self):
         """Setup a test case environment.

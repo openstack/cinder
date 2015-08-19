@@ -14,8 +14,6 @@
 #    under the License.
 import urllib
 
-import six
-
 from cinder import context
 from cinder import exception
 from cinder.tests.unit.fake_snapshot import fake_snapshot_obj
@@ -25,13 +23,6 @@ from cinder.tests.unit.volume.drivers.emc.scaleio import mocks
 
 class TestDeleteSnapShot(scaleio.TestScaleIODriver):
     """Test cases for ``ScaleIODriver.delete_snapshot()``"""
-    STORAGE_POOL_ID = six.text_type('1')
-    STORAGE_POOL_NAME = 'SP1'
-
-    PROT_DOMAIN_ID = six.text_type('1')
-    PROT_DOMAIN_NAME = 'PD1'
-    VOLUME_NOT_FOUND_ERROR = 3
-
     def setUp(self):
         """Setup a test case environment.
 
@@ -41,10 +32,11 @@ class TestDeleteSnapShot(scaleio.TestScaleIODriver):
         super(TestDeleteSnapShot, self).setUp()
         ctx = context.RequestContext('fake', 'fake', auth_token=True)
 
-        self.snapshot = fake_snapshot_obj(ctx)
+        self.snapshot = fake_snapshot_obj(
+            ctx, **{'provider_id': 'snap_1'})
         self.snapshot_name_2x_enc = urllib.quote(
             urllib.quote(
-                self.driver.id_to_base64(self.snapshot.id)
+                self.driver._id_to_base64(self.snapshot.id)
             )
         )
 
@@ -53,15 +45,18 @@ class TestDeleteSnapShot(scaleio.TestScaleIODriver):
                 'types/Volume/instances/getByName::' +
                 self.snapshot_name_2x_enc: self.snapshot.id,
                 'instances/Volume::{}/action/removeMappedSdc'.format(
-                    self.snapshot.id
+                    self.snapshot.provider_id
                 ): self.snapshot.id,
                 'instances/Volume::{}/action/removeVolume'.format(
-                    self.snapshot.id
+                    self.snapshot.provider_id
                 ): self.snapshot.id,
             },
             self.RESPONSE_MODE.BadStatus: {
                 'types/Volume/instances/getByName::' +
                 self.snapshot_name_2x_enc: self.BAD_STATUS_RESPONSE,
+                'instances/Volume::{}/action/removeVolume'.format(
+                    self.snapshot.provider_id
+                ): self.BAD_STATUS_RESPONSE,
             },
             self.RESPONSE_MODE.Invalid: {
                 'types/Volume/instances/getByName::' +
@@ -71,6 +66,13 @@ class TestDeleteSnapShot(scaleio.TestScaleIODriver):
                         'message': 'Test Delete Invalid Snapshot',
                     }, 400
                 ),
+                'instances/Volume::{}/action/removeVolume'.format(
+                    self.snapshot.provider_id): mocks.MockHTTPSResponse(
+                    {
+                        'errorCode': self.VOLUME_NOT_FOUND_ERROR,
+                        'message': 'Test Delete Invalid Snapshot',
+                    }, 400,
+                )
             },
         }
 

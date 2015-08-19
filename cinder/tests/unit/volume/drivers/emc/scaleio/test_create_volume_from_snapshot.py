@@ -12,25 +12,19 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import json
 import urllib
-
-import six
 
 from cinder import context
 from cinder import exception
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit.volume.drivers.emc import scaleio
+from cinder.tests.unit.volume.drivers.emc.scaleio import mocks
 
 
 class TestCreateVolumeFromSnapShot(scaleio.TestScaleIODriver):
     """Test cases for ``ScaleIODriver.create_volume_from_snapshot()``"""
-    STORAGE_POOL_ID = six.text_type('1')
-    STORAGE_POOL_NAME = 'SP1'
-
-    PROT_DOMAIN_ID = six.text_type('1')
-    PROT_DOMAIN_NAME = 'PD1'
-
     def setUp(self):
         """Setup a test case environment.
 
@@ -42,27 +36,41 @@ class TestCreateVolumeFromSnapShot(scaleio.TestScaleIODriver):
 
         self.snapshot = fake_snapshot.fake_snapshot_obj(ctx)
         self.snapshot_name_2x_enc = urllib.quote(
-            urllib.quote(self.driver.id_to_base64(self.snapshot.id))
+            urllib.quote(self.driver._id_to_base64(self.snapshot.id))
         )
         self.volume = fake_volume.fake_volume_obj(ctx)
         self.volume_name_2x_enc = urllib.quote(
-            urllib.quote(self.driver.id_to_base64(self.volume.id))
+            urllib.quote(self.driver._id_to_base64(self.volume.id))
+        )
+
+        self.snapshot_reply = json.dumps(
+            {
+                'volumeIdList': [self.volume.id],
+                'snapshotGroupId': 'snap_group'
+            }
         )
 
         self.HTTPS_MOCK_RESPONSES = {
             self.RESPONSE_MODE.Valid: {
                 'types/Volume/instances/getByName::' +
                 self.snapshot_name_2x_enc: self.snapshot.id,
-                'instances/System/action/snapshotVolumes': self.volume.id,
+                'instances/System/action/snapshotVolumes':
+                    self.snapshot_reply,
             },
             self.RESPONSE_MODE.BadStatus: {
-                'instances/System/action/snapshotVolumes::':
+                'instances/System/action/snapshotVolumes':
                     self.BAD_STATUS_RESPONSE,
                 'types/Volume/instances/getByName::' +
                 self.snapshot_name_2x_enc: self.BAD_STATUS_RESPONSE,
-                self.snapshot_name_2x_enc: self.BAD_STATUS_RESPONSE,
             },
             self.RESPONSE_MODE.Invalid: {
+                'instances/System/action/snapshotVolumes':
+                    mocks.MockHTTPSResponse(
+                        {
+                            'errorCode': self.VOLUME_NOT_FOUND_ERROR,
+                            'message': 'BadStatus Volume Test',
+                        }, 400
+                    ),
                 'types/Volume/instances/getByName::' +
                 self.snapshot_name_2x_enc: None,
             },

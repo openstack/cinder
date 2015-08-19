@@ -14,8 +14,6 @@
 #    under the License.
 import urllib
 
-import six
-
 from cinder import context
 from cinder import exception
 from cinder.tests.unit import fake_volume
@@ -25,12 +23,6 @@ from cinder.tests.unit.volume.drivers.emc.scaleio import mocks
 
 class TestDeleteVolume(scaleio.TestScaleIODriver):
     """Test cases for ``ScaleIODriver.delete_volume()``"""
-    STORAGE_POOL_ID = six.text_type('1')
-    STORAGE_POOL_NAME = 'SP1'
-
-    PROT_DOMAIN_ID = six.text_type('1')
-    PROT_DOMAIN_NAME = 'PD1'
-
     def setUp(self):
         """Setup a test case environment.
 
@@ -39,9 +31,11 @@ class TestDeleteVolume(scaleio.TestScaleIODriver):
         super(TestDeleteVolume, self).setUp()
         ctx = context.RequestContext('fake', 'fake', auth_token=True)
 
-        self.volume = fake_volume.fake_volume_obj(ctx)
+        self.volume = fake_volume.fake_volume_obj(
+            ctx, **{'provider_id': 'pid_1'})
+
         self.volume_name_2x_enc = urllib.quote(
-            urllib.quote(self.driver.id_to_base64(self.volume.id))
+            urllib.quote(self.driver._id_to_base64(self.volume.id))
         )
 
         self.HTTPS_MOCK_RESPONSES = {
@@ -49,14 +43,22 @@ class TestDeleteVolume(scaleio.TestScaleIODriver):
                 'types/Volume/instances/getByName::' +
                 self.volume_name_2x_enc: self.volume.id,
                 'instances/Volume::{}/action/removeMappedSdc'.format(
-                    self.volume.id): self.volume.id,
+                    self.volume.provider_id): self.volume.provider_id,
                 'instances/Volume::{}/action/removeVolume'.format(
-                    self.volume.id
-                ): self.volume.id,
+                    self.volume.provider_id
+                ): self.volume.provider_id,
             },
             self.RESPONSE_MODE.BadStatus: {
                 'types/Volume/instances/getByName::' +
                 self.volume_name_2x_enc: mocks.MockHTTPSResponse(
+                    {
+                        'errorCode': 401,
+                        'message': 'BadStatus Volume Test',
+                    }, 401
+                ),
+                'instances/Volume::{}/action/removeVolume'.format(
+                    self.volume.provider_id
+                ): mocks.MockHTTPSResponse(
                     {
                         'errorCode': 401,
                         'message': 'BadStatus Volume Test',
