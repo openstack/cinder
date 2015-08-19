@@ -841,6 +841,14 @@ FAKE_ERROR_INFO_RESPONSE = """
 }
 """
 
+FAKE_ERROR_CONNECT_RESPONSE = """
+{
+    "error":{
+        "code":-403
+    }
+}
+"""
+
 FAKE_ERROR_LUN_INFO_RESPONSE = """
 {
     "error":{
@@ -953,287 +961,297 @@ FAKE_GET_FC_PORT_RESPONSE = """
 MAP_COMMAND_TO_FAKE_RESPONSE = {}
 MAP_COMMAND_TO_FAKE_RESPONSE['/xx/sessions'] = (
     FAKE_GET_LOGIN_STORAGE_RESPONSE)
-MAP_COMMAND_TO_FAKE_RESPONSE['sessions'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/sessions'] = (
     FAKE_LOGIN_OUT_STORAGE_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['LUN_MIGRATION/POST'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/LUN_MIGRATION/POST'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['LUN_MIGRATION?range=[0-100]/GET'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/LUN_MIGRATION?range=[0-100]/GET'] = (
     FAKE_GET_LUN_MIGRATION_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['LUN_MIGRATION/11/DELETE'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/LUN_MIGRATION/11/DELETE'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
 # mock storage info map
-MAP_COMMAND_TO_FAKE_RESPONSE['storagepool'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/storagepool'] = (
     FAKE_STORAGE_POOL_RESPONSE)
 
 # mock lun info map
-MAP_COMMAND_TO_FAKE_RESPONSE['lun'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/lun'] = (
     FAKE_LUN_INFO_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['lun/11/GET'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/lun/11/GET'] = (
     FAKE_LUN_DELETE_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['lun/1/GET'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/lun/1/GET'] = (
     FAKE_LUN_DELETE_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['lun/11/DELETE'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/lun/11/DELETE'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['lun/1/DELETE'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/lun/1/DELETE'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['lun/1/PUT'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/lun/1/PUT'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['lun/11/PUT'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/lun/11/PUT'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['lun?range=[0-65535]/GET'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/lun?range=[0-65535]/GET'] = (
     FAKE_QUERY_ALL_LUN_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['lun/associate?TYPE=11&ASSOCIATEOBJTYPE=256'
+MAP_COMMAND_TO_FAKE_RESPONSE['/lun/associate?TYPE=11&ASSOCIATEOBJTYPE=256'
                              '&ASSOCIATEOBJID=11/GET'] = (
     FAKE_LUN_ASSOCIATE_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['lun/associate?TYPE=11&ASSOCIATEOBJTYPE=256'
+MAP_COMMAND_TO_FAKE_RESPONSE['/lun/associate?TYPE=11&ASSOCIATEOBJTYPE=256'
                              '&ASSOCIATEOBJID=12/GET'] = (
     FAKE_LUN_ASSOCIATE_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['lun/associate?ID=1&TYPE=11&ASSOCIATEOBJTYPE=21'
+MAP_COMMAND_TO_FAKE_RESPONSE['/lun/associate?ID=1&TYPE=11&ASSOCIATEOBJTYPE=21'
                              '&ASSOCIATEOBJID=0/GET'] = (
     FAKE_LUN_ASSOCIATE_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['lun/associate?TYPE=11&ASSOCIATEOBJTYPE=21'
+MAP_COMMAND_TO_FAKE_RESPONSE['/lun/associate?TYPE=11&ASSOCIATEOBJTYPE=21'
                              '&ASSOCIATEOBJID=1/GET'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['lun/associate/cachepartition?ID=1'
+MAP_COMMAND_TO_FAKE_RESPONSE['/lun/associate/cachepartition?ID=1'
                              '&ASSOCIATEOBJTYPE=11&ASSOCIATEOBJID=11'
                              '/DELETE'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['lungroup?range=[0-8191]/GET'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/lungroup?range=[0-8191]/GET'] = (
     FAKE_QUERY_LUN_GROUP_INFO_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['lungroup'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/lungroup'] = (
     FAKE_QUERY_LUN_GROUP_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['lungroup/associate'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/lungroup/associate'] = (
     FAKE_QUERY_LUN_GROUP_ASSOCIAT_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['LUNGroup/11/DELETE'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/LUNGroup/11/DELETE'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['lungroup/associate?ID=11&ASSOCIATEOBJTYPE=11'
+MAP_COMMAND_TO_FAKE_RESPONSE['/lungroup/associate?ID=11&ASSOCIATEOBJTYPE=11'
                              '&ASSOCIATEOBJID=1/DELETE'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['lungroup/associate?TYPE=256&ASSOCIATEOBJTYPE=11'
+MAP_COMMAND_TO_FAKE_RESPONSE['/lungroup/associate?TYPE=256&ASSOCIATEOBJTYPE=11'
                              '&ASSOCIATEOBJID=11/GET'] = (
     FAKE_LUN_ASSOCIATE_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['lungroup/associate?TYPE=256&ASSOCIATEOBJTYPE=11'
+MAP_COMMAND_TO_FAKE_RESPONSE['/lungroup/associate?TYPE=256&ASSOCIATEOBJTYPE=11'
                              '&ASSOCIATEOBJID=1/GET'] = (
     FAKE_LUN_ASSOCIATE_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['lungroup/associate?ID=11&ASSOCIATEOBJTYPE=11'
+MAP_COMMAND_TO_FAKE_RESPONSE['/lungroup/associate?ID=11&ASSOCIATEOBJTYPE=11'
                              '&ASSOCIATEOBJID=11/DELETE'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['lun/count?TYPE=11&ASSOCIATEOBJTYPE=256'
+MAP_COMMAND_TO_FAKE_RESPONSE['/lun/count?TYPE=11&ASSOCIATEOBJTYPE=256'
                              '&ASSOCIATEOBJID=11/GET'] = (
     FAKE_LUN_COUNT_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['lun/expand/PUT'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/lun/expand/PUT'] = (
     FAKE_LUN_INFO_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['lungroup/associate?ID=12&ASSOCIATEOBJTYPE=11'
+MAP_COMMAND_TO_FAKE_RESPONSE['/lungroup/associate?ID=12&ASSOCIATEOBJTYPE=11'
                              '&ASSOCIATEOBJID=12/DELETE'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 # mock snapshot info map
-MAP_COMMAND_TO_FAKE_RESPONSE['snapshot'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/snapshot'] = (
     FAKE_CREATE_SNAPSHOT_INFO_RESPONSE)
 
 # mock snapshot info map
-MAP_COMMAND_TO_FAKE_RESPONSE['snapshot/11/GET'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/snapshot/11/GET'] = (
     FAKE_GET_SNAPSHOT_INFO_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['snapshot/activate'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/snapshot/activate'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['snapshot/stop/PUT'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/snapshot/stop/PUT'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['snapshot/11/DELETE'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/snapshot/11/DELETE'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['snapshot?range=[0-32767]/GET'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/snapshot?range=[0-32767]/GET'] = (
     FAKE_SNAPSHOT_LIST_INFO_RESPONSE)
 
 # mock QoS info map
-MAP_COMMAND_TO_FAKE_RESPONSE['ioclass/11/GET'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/ioclass/11/GET'] = (
     FAKE_LUN_DELETE_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['ioclass/11/DELETE'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/ioclass/11/DELETE'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['ioclass/active/11/PUT'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/ioclass/active/11/PUT'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['ioclass/'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/ioclass/'] = (
     FAKE_QOS_INFO_RESPONSE)
 
 # mock iscsi info map
-MAP_COMMAND_TO_FAKE_RESPONSE['iscsi_tgt_port/GET'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/iscsi_tgt_port/GET'] = (
     FAKE_GET_ISCSI_INFO_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['eth_port/GET'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/eth_port/GET'] = (
     FAKE_GET_ETH_INFO_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['eth_port/associate?TYPE=213&ASSOCIATEOBJTYPE'
+MAP_COMMAND_TO_FAKE_RESPONSE['/eth_port/associate?TYPE=213&ASSOCIATEOBJTYPE'
                              '=257&ASSOCIATEOBJID=11/GET'] = (
     FAKE_GET_ETH_ASSOCIATE_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['iscsidevicename'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/iscsidevicename'] = (
     FAKE_GET_ISCSI_DEVICE_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['iscsi_initiator?range=[0-256]/GET'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/iscsi_initiator?range=[0-256]/GET'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['iscsi_initiator/'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/iscsi_initiator'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['iscsi_initiator/POST'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/iscsi_initiator/POST'] = (
     FAKE_ISCSI_INITIATOR_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['iscsi_initiator/PUT'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/iscsi_initiator/PUT'] = (
     FAKE_ISCSI_INITIATOR_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['iscsi_initiator/remove_iscsi_from_host/PUT'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/iscsi_initiator/remove_iscsi_from_host/PUT'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['iscsi_initiator/'
+MAP_COMMAND_TO_FAKE_RESPONSE['/iscsi_initiator/'
                              'iqn.1993-08.debian:01:ec2bff7ac3a3/PUT'] = (
     FAKE_ISCSI_INITIATOR_RESPONSE)
 # mock host info map
-MAP_COMMAND_TO_FAKE_RESPONSE['host?range=[0-65535]/GET'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/host?range=[0-65535]/GET'] = (
     FAKE_GET_ALL_HOST_INFO_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['host/1/DELETE'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/host/1/DELETE'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['host'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/host'] = (
     FAKE_CREATE_HOST_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['hostgroup?range=[0-8191]/GET'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/hostgroup?range=[0-8191]/GET'] = (
     FAKE_GET_ALL_HOST_GROUP_INFO_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['hostgroup'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/hostgroup'] = (
     FAKE_GET_HOST_GROUP_INFO_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['host/associate?TYPE=14&ID=0'
+MAP_COMMAND_TO_FAKE_RESPONSE['/host/associate?TYPE=14&ID=0'
                              '&ASSOCIATEOBJTYPE=21&ASSOCIATEOBJID=1'
                              '/DELETE'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['host/associate?TYPE=14&ID=0'
+MAP_COMMAND_TO_FAKE_RESPONSE['/host/associate?TYPE=14&ID=0'
                              '&ASSOCIATEOBJID=0/GET'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['host/associate?TYPE=21&'
+MAP_COMMAND_TO_FAKE_RESPONSE['/host/associate?TYPE=21&'
                              'ASSOCIATEOBJTYPE=14&ASSOCIATEOBJID=0/GET'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['hostgroup/0/DELETE'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/hostgroup/0/DELETE'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['hostgroup/associate'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/host/associate?TYPE=21&'
+                             'ASSOCIATEOBJTYPE=14&ASSOCIATEOBJID=0/GET'] = (
+    FAKE_COMMON_SUCCESS_RESPONSE)
+
+
+MAP_COMMAND_TO_FAKE_RESPONSE['/hostgroup/associate'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
 # mock copy info map
-MAP_COMMAND_TO_FAKE_RESPONSE['luncopy'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/luncopy'] = (
     FAKE_GET_LUN_COPY_INFO_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['LUNCOPY?range=[0-1023]/GET'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/LUNCOPY?range=[0-1023]/GET'] = (
     FAKE_GET_LUN_COPY_LIST_INFO_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['LUNCOPY/start/PUT'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/LUNCOPY/start/PUT'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['LUNCOPY/0/DELETE'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/LUNCOPY/0/DELETE'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
 # mock mapping view info map
-MAP_COMMAND_TO_FAKE_RESPONSE['mappingview?range=[0-8191]/GET'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/mappingview?range=[0-8191]/GET'] = (
     FAKE_GET_MAPPING_VIEW_INFO_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['mappingview'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/mappingview'] = (
     FAKE_GET_MAPPING_VIEW_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['MAPPINGVIEW/1/GET'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/MAPPINGVIEW/1/GET'] = (
     FAKE_GET_SPEC_MAPPING_VIEW_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['mappingview/1/DELETE'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/mappingview/1/DELETE'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['mappingview/associate/lungroup?TYPE=256&'
+MAP_COMMAND_TO_FAKE_RESPONSE['/mappingview/associate/lungroup?TYPE=256&'
                              'ASSOCIATEOBJTYPE=245&ASSOCIATEOBJID=1/GET'] = (
     FAKE_GET_MAPPING_VIEW_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['mappingview/associate?TYPE=245&'
+MAP_COMMAND_TO_FAKE_RESPONSE['/mappingview/associate?TYPE=245&'
                              'ASSOCIATEOBJTYPE=14&ASSOCIATEOBJID=0/GET'] = (
     FAKE_GET_MAPPING_VIEW_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['mappingview/associate?TYPE=245&'
+MAP_COMMAND_TO_FAKE_RESPONSE['/mappingview/associate?TYPE=245&'
                              'ASSOCIATEOBJTYPE=256&ASSOCIATEOBJID=11/GET'] = (
     FAKE_GET_MAPPING_VIEW_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['mappingview/associate?TYPE=245&'
+MAP_COMMAND_TO_FAKE_RESPONSE['/mappingview/associate?TYPE=245&'
                              'ASSOCIATEOBJTYPE=257&ASSOCIATEOBJID=11/GET'] = (
     FAKE_GET_MAPPING_VIEW_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['portgroup/associate?ASSOCIATEOBJTYPE=245&'
+MAP_COMMAND_TO_FAKE_RESPONSE['/portgroup/associate?ASSOCIATEOBJTYPE=245&'
                              'ASSOCIATEOBJID=1&range=[0-8191]/GET'] = (
     FAKE_GET_MAPPING_VIEW_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['MAPPINGVIEW/CREATE_ASSOCIATE/PUT'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/MAPPINGVIEW/CREATE_ASSOCIATE/PUT'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
 # mock FC info map
-MAP_COMMAND_TO_FAKE_RESPONSE['fc_initiator?ISFREE=true&'
+MAP_COMMAND_TO_FAKE_RESPONSE['/fc_initiator?ISFREE=true&'
                              'range=[0-8191]/GET'] = (
     FAKE_FC_INFO_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['fc_initiator/10000090fa0d6754/GET'] = (
-    FAKE_FC_INFO_RESPONSE)
-
-MAP_COMMAND_TO_FAKE_RESPONSE['fc_initiator/10000090fa0d6754/PUT'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/MAPPINGVIEW/CREATE_ASSOCIATE/PUT'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['host_link?INITIATOR_TYPE=223'
+# mock FC info map
+MAP_COMMAND_TO_FAKE_RESPONSE['/fc_initiator?ISFREE=true&'
+                             'range=[0-8191]/GET'] = (
+    FAKE_FC_INFO_RESPONSE)
+
+MAP_COMMAND_TO_FAKE_RESPONSE['/fc_initiator/10000090fa0d6754/PUT'] = (
+    FAKE_COMMON_SUCCESS_RESPONSE)
+
+MAP_COMMAND_TO_FAKE_RESPONSE['/host_link?INITIATOR_TYPE=223'
                              '&INITIATOR_PORT_WWN=10000090fa0d6754/GET'] = (
     FAKE_HOST_LINK_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['portgroup?range=[0-8191]&TYPE=257/GET'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/portgroup?range=[0-8191]&TYPE=257/GET'] = (
     FAKE_PORT_GROUP_RESPONSE)
 
 # mock system info map
-MAP_COMMAND_TO_FAKE_RESPONSE['system/'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/system/'] = (
     FAKE_SYSTEM_VERSION_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['fc_initiator?range=[0-256]/GET'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/fc_initiator?range=[0-256]/GET'] = (
     FAKE_GET_FC_INI_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['fc_port/GET'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/fc_port/GET'] = (
     FAKE_GET_FC_PORT_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['fc_initiator/GET'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/fc_initiator/GET'] = (
     FAKE_GET_FC_PORT_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['fc_initiator?range=[0-100]/GET'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/fc_initiator?range=[0-100]/GET'] = (
     FAKE_GET_FC_PORT_RESPONSE)
 
 
@@ -1249,6 +1267,7 @@ class Fake18000Client(rest_client.RestClient):
         self.terminateFlag = False
         self.device_id = None
         self.test_fail = False
+        self.test_multi_url_flag = False
         self.checkFlag = False
         self.remove_chap_flag = False
         self.cache_not_exist = False
@@ -1296,7 +1315,7 @@ class Fake18000Client(rest_client.RestClient):
     def add_lun_to_cache(self, lunid, cache_id):
         pass
 
-    def call(self, url=False, data=None, method=None):
+    def do_call(self, url=False, data=None, method=None, calltimeout=4):
         url = url.replace('http://100.115.10.69:8082/deviceManager/rest', '')
         command = url.replace('/210235G7J20000000000/', '')
         data = None
@@ -1313,6 +1332,10 @@ class Fake18000Client(rest_client.RestClient):
                         data = FAKE_ERROR_LUN_INFO_RESPONSE
 
                     self.test_fail = False
+
+        if self.test_multi_url_flag:
+            data = FAKE_ERROR_CONNECT_RESPONSE
+            self.test_multi_url_flag = False
 
         return json.loads(data)
 
@@ -2056,6 +2079,12 @@ class Huawei18000FCDriverTestCase(test.TestCase):
             ports_in_fabric, total_port_contr_map)
         expected_filtered_ports = ['1', '3', '2', '5', '6']
         self.assertEqual(expected_filtered_ports, filtered_ports)
+
+    def test_multi_resturls_success(self):
+        self.driver.restclient.login()
+        self.driver.restclient.test_multi_url_flag = True
+        lun_info = self.driver.create_volume(test_volume)
+        self.assertEqual('1', lun_info['provider_location'])
 
     def create_fake_conf_file(self):
         """Create a fake Config file

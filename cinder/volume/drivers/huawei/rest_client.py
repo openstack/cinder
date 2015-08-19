@@ -24,6 +24,7 @@ from six.moves import urllib
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
+from cinder import utils
 from cinder.volume.drivers.huawei import constants
 from cinder.volume.drivers.huawei import huawei_utils
 
@@ -36,26 +37,33 @@ class RestClient(object):
     def __init__(self, configuration):
         self.configuration = configuration
         self.xml_file_path = configuration.cinder_huawei_conf_file
+        self.productversion = None
+
+    def init_http_head(self):
         self.cookie = http_cookiejar.CookieJar()
         self.url = None
-        self.productversion = None
-        self.headers = {"Connection": "keep-alive",
-                        "Content-Type": "application/json"}
+        self.device_id = None
+        self.headers = {
+            "Connection": "keep-alive",
+            "Content-Type": "application/json",
+        }
 
-    def call(self, url=False, data=None, method=None):
+    def do_call(self, url=None, data=None, method=None,
+                calltimeout=constants.SOCKET_TIMEOUT):
         """Send requests to 18000 server.
 
         Send HTTPS call, get response in JSON.
         Convert response into Python Object and return it.
         """
-
+        if self.url:
+            url = self.url + url
         handler = urllib.request.HTTPCookieProcessor(self.cookie)
         opener = urllib.request.build_opener(handler)
         urllib.request.install_opener(opener)
         res_json = None
 
         try:
-            socket.setdefaulttimeout(constants.SOCKET_TIME_OUT)
+            socket.setdefaulttimeout(calltimeout)
             req = urllib.request.Request(url, data, self.headers)
             if method:
                 req.get_method = lambda: method
@@ -91,30 +99,57 @@ class RestClient(object):
         login_info = huawei_utils.get_login_info(self.xml_file_path)
         urlstr = login_info['RestURL']
         url_list = urlstr.split(";")
+        device_id = None
         for item_url in url_list:
             url = item_url + "xx/sessions"
             data = json.dumps({"username": login_info['UserName'],
                                "password": login_info['UserPassword'],
                                "scope": "0"})
-            result = self.call(url, data)
+            self.init_http_head()
+            result = self.do_call(url, data,
+                                  calltimeout=constants.LOGIN_SOCKET_TIMEOUT)
 
-            if result['error']['code'] == constants.ERROR_CONNECT_TO_SERVER:
+            if (result['error']['code'] != 0) or ("data" not in result):
+                LOG.error(_LE("Login error, reason is: %s."), result)
                 continue
 
-            if (result['error']['code'] != 0) or ('data' not in result):
-                msg = (_("Login error, reason is: %s.") % result)
-                LOG.error(msg)
-                raise exception.VolumeBackendAPIException(data=msg)
-
+            LOG.debug('Login success: %(url)s', {'url': item_url})
             device_id = result['data']['deviceid']
             self.device_id = device_id
             self.url = item_url + device_id
             self.headers['iBaseToken'] = result['data']['iBaseToken']
-            return device_id
+            break
 
-        msg = _("Login error: Can't connect to server.")
-        LOG.error(msg)
-        raise exception.VolumeBackendAPIException(data=msg)
+        if device_id is None:
+            msg = _("Failed to login with all rest URLs.")
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        return device_id
+
+    @utils.synchronized('huawei_cinder_call', external=True)
+    def call(self, url, data=None, method=None):
+        """Send requests to server.
+
+        If fail, try another RestURL.
+        """
+        device_id = None
+        old_url = self.url
+        result = self.do_call(url, data, method)
+        error_code = result['error']['code']
+        if (error_code == constants.ERROR_CONNECT_TO_SERVER
+                or error_code == constants.ERROR_UNAUTHORIZED_TO_SERVER):
+            LOG.error(_LE("Can't open the recent url, relogin."))
+            device_id = self.login()
+
+        if device_id is not None:
+            LOG.debug('Replace URL: \n'
+                      'Old URL: %(old_url)s\n,'
+                      'New URL: %(new_url)s\n.',
+                      {'old_url': old_url,
+                       'new_url': self.url})
+            result = self.do_call(url, data, method)
+        return result
 
     def _assert_rest_result(self, result, err_str):
         if result['error']['code'] != 0:
@@ -130,7 +165,7 @@ class RestClient(object):
             raise exception.VolumeBackendAPIException(data=err_msg)
 
     def create_volume(self, lun_param):
-        url = self.url + "/lun"
+        url = "/lun"
         data = json.dumps(lun_param)
         result = self.call(url, data)
 
@@ -141,7 +176,7 @@ class RestClient(object):
         return result['data']
 
     def check_lun_exist(self, lun_id):
-        url = self.url + "/lun/" + lun_id
+        url = "/lun/" + lun_id
         data = json.dumps({"TYPE": "11",
                            "ID": lun_id})
         result = self.call(url, data, "GET")
@@ -156,14 +191,14 @@ class RestClient(object):
         if lun_group_ids and len(lun_group_ids) == 1:
             self.remove_lun_from_lungroup(lun_group_ids[0], lun_id)
 
-        url = self.url + "/lun/" + lun_id
+        url = "/lun/" + lun_id
         data = json.dumps({"TYPE": "11",
                            "ID": lun_id})
         result = self.call(url, data, "DELETE")
         self._assert_rest_result(result, _('Delete lun error.'))
 
     def find_all_pools(self):
-        url = self.url + "/storagepool"
+        url = "/storagepool"
         result = self.call(url, None)
         msg = _('Query resource pool error.')
         self._assert_rest_result(result, msg)
@@ -195,14 +230,14 @@ class RestClient(object):
                     return item['ID']
 
     def get_volume_by_name(self, name):
-        url = self.url + "/lun?range=[0-65535]"
+        url = "/lun?range=[0-65535]"
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Get volume by name error.'))
 
         return self._get_id_from_result(result, name, 'NAME')
 
     def activate_snapshot(self, snapshot_id):
-        activate_url = self.url + "/snapshot/activate"
+        activate_url = "/snapshot/activate"
         data = json.dumps({"SNAPSHOTLIST": [snapshot_id]})
         result = self.call(activate_url, data)
         self._assert_rest_result(result, _('Activate snapshot error.'))
@@ -225,7 +260,7 @@ class RestClient(object):
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-        url = self.url + "/snapshot"
+        url = "/snapshot"
         data = json.dumps({"TYPE": "27",
                            "NAME": snapshot_name,
                            "PARENTTYPE": "11",
@@ -240,7 +275,7 @@ class RestClient(object):
         return result['data']
 
     def check_snapshot_exist(self, snapshot_id):
-        url = self.url + "/snapshot/%s" % snapshot_id
+        url = "/snapshot/%s" % snapshot_id
         data = json.dumps({"TYPE": "27",
                            "ID": snapshot_id})
         result = self.call(url, data, "GET")
@@ -251,19 +286,19 @@ class RestClient(object):
         return True
 
     def stop_snapshot(self, snapshot_id):
-        url = self.url + "/snapshot/stop"
+        url = "/snapshot/stop"
         stopdata = json.dumps({"ID": snapshot_id})
         result = self.call(url, stopdata, "PUT")
         self._assert_rest_result(result, _('Stop snapshot error.'))
 
     def delete_snapshot(self, snapshotid):
-        url = self.url + "/snapshot/%s" % snapshotid
+        url = "/snapshot/%s" % snapshotid
         data = json.dumps({"TYPE": "27", "ID": snapshotid})
         result = self.call(url, data, "DELETE")
         self._assert_rest_result(result, _('Delete snapshot error.'))
 
     def get_snapshotid_by_name(self, name):
-        url = self.url + "/snapshot?range=[0-32767]"
+        url = "/snapshot?range=[0-32767]"
         data = json.dumps({"TYPE": "27"})
         result = self.call(url, data, "GET")
         self._assert_rest_result(result, _('Get snapshot id error.'))
@@ -272,7 +307,7 @@ class RestClient(object):
 
     def create_luncopy(self, luncopyname, srclunid, tgtlunid):
         """Create a luncopy."""
-        url = self.url + "/luncopy"
+        url = "/luncopy"
         data = json.dumps({"TYPE": 219,
                            "NAME": luncopyname,
                            "DESCRIPTION": luncopyname,
@@ -306,7 +341,7 @@ class RestClient(object):
 
     def find_tgt_port_group(self, tgt_port_group):
         """Find target portgroup id by target port group name."""
-        url = self.url + "/portgroup?range=[0-8191]&TYPE=257"
+        url = "/portgroup?range=[0-8191]&TYPE=257"
         result = self.call(url, None, "GET")
 
         msg = _('Find portgroup error.')
@@ -317,7 +352,7 @@ class RestClient(object):
         return self._get_id_from_result(result, tgt_port_group, 'NAME')
 
     def _associate_portgroup_to_view(self, view_id, portgroup_id):
-        url = self.url + "/MAPPINGVIEW/CREATE_ASSOCIATE"
+        url = "/MAPPINGVIEW/CREATE_ASSOCIATE"
         data = json.dumps({"ASSOCIATEOBJTYPE": "257",
                            "ASSOCIATEOBJID": portgroup_id,
                            "TYPE": "245",
@@ -329,7 +364,7 @@ class RestClient(object):
     def _portgroup_associated(self, view_id, portgroup_id):
         url_subfix = ("/mappingview/associate?TYPE=245&"
                       "ASSOCIATEOBJTYPE=257&ASSOCIATEOBJID=%s" % portgroup_id)
-        url = self.url + url_subfix
+        url = url_subfix
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Check portgroup associate error.'))
 
@@ -401,7 +436,7 @@ class RestClient(object):
                                               host_id)
 
     def _get_iscsi_tgt_port(self):
-        url = self.url + "/iscsidevicename"
+        url = "/iscsidevicename"
         result = self.call(url, None)
 
         msg = _('Get iSCSI target port error.')
@@ -412,7 +447,7 @@ class RestClient(object):
 
     def find_hostgroup(self, groupname):
         """Get the given hostgroup id."""
-        url = self.url + "/hostgroup?range=[0-8191]"
+        url = "/hostgroup?range=[0-8191]"
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Get hostgroup information error.'))
 
@@ -420,7 +455,7 @@ class RestClient(object):
 
     def _find_lungroup(self, lungroup_name):
         """Get the given hostgroup id."""
-        url = self.url + "/lungroup?range=[0-8191]"
+        url = "/lungroup?range=[0-8191]"
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Get lungroup information error.'))
 
@@ -464,7 +499,7 @@ class RestClient(object):
         return hostgroup_id
 
     def _create_hostgroup(self, hostgroup_name):
-        url = self.url + "/hostgroup"
+        url = "/hostgroup"
         data = json.dumps({"TYPE": "14", "NAME": hostgroup_name})
         result = self.call(url, data)
 
@@ -475,7 +510,7 @@ class RestClient(object):
         return result['data']['ID']
 
     def _create_lungroup(self, lungroup_name):
-        url = self.url + "/lungroup"
+        url = "/lungroup"
         data = json.dumps({"DESCRIPTION": lungroup_name,
                            "APPTYPE": '0',
                            "GROUPTYPE": '0',
@@ -489,14 +524,14 @@ class RestClient(object):
         return result['data']['ID']
 
     def delete_lungroup(self, lungroup_id):
-        url = self.url + "/LUNGroup/" + lungroup_id
+        url = "/LUNGroup/" + lungroup_id
         result = self.call(url, None, "DELETE")
         self._assert_rest_result(result, _('Delete lungroup error.'))
 
     def lungroup_associated(self, view_id, lungroup_id):
         url_subfix = ("/mappingview/associate?TYPE=245&"
                       "ASSOCIATEOBJTYPE=256&ASSOCIATEOBJID=%s" % lungroup_id)
-        url = self.url + url_subfix
+        url = url_subfix
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Check lungroup associate error.'))
 
@@ -509,7 +544,7 @@ class RestClient(object):
     def hostgroup_associated(self, view_id, hostgroup_id):
         url_subfix = ("/mappingview/associate?TYPE=245&"
                       "ASSOCIATEOBJTYPE=14&ASSOCIATEOBJID=%s" % hostgroup_id)
-        url = self.url + url_subfix
+        url = url_subfix
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Check hostgroup associate error.'))
 
@@ -520,8 +555,8 @@ class RestClient(object):
         return False
 
     def find_host_lun_id(self, host_id, lun_id):
-        url = self.url + ("/lun/associate?TYPE=11&ASSOCIATEOBJTYPE=21"
-                          "&ASSOCIATEOBJID=%s" % (host_id))
+        url = ("/lun/associate?TYPE=11&ASSOCIATEOBJTYPE=21"
+               "&ASSOCIATEOBJID=%s" % (host_id))
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Find host lun id error.'))
 
@@ -541,7 +576,7 @@ class RestClient(object):
 
     def find_host(self, host_name):
         """Get the given host ID."""
-        url = self.url + "/host?range=[0-65535]"
+        url = "/host?range=[0-65535]"
         data = json.dumps({"TYPE": "21"})
         result = self.call(url, data, "GET")
         self._assert_rest_result(result, _('Find host in hostgroup error.'))
@@ -586,7 +621,7 @@ class RestClient(object):
 
     def _add_host(self, hostname, host_name_before_hash):
         """Add a new host."""
-        url = self.url + "/host"
+        url = "/host"
         data = json.dumps({"TYPE": "21",
                            "NAME": hostname,
                            "OPERATIONSYSTEM": "0",
@@ -602,7 +637,7 @@ class RestClient(object):
         url_subfix = ("/host/associate?TYPE=21&"
                       "ASSOCIATEOBJTYPE=14&ASSOCIATEOBJID=%s" % hostgroup_id)
 
-        url = self.url + url_subfix
+        url = url_subfix
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Check hostgroup associate error.'))
 
@@ -618,7 +653,7 @@ class RestClient(object):
         url_subfix = ("/lun/associate?TYPE=11&"
                       "ASSOCIATEOBJTYPE=256&ASSOCIATEOBJID=%s" % lungroup_id)
 
-        url = self.url + url_subfix
+        url = url_subfix
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Check lungroup associate error.'))
 
@@ -628,7 +663,7 @@ class RestClient(object):
         return False
 
     def _associate_host_to_hostgroup(self, hostgroup_id, host_id):
-        url = self.url + "/hostgroup/associate"
+        url = "/hostgroup/associate"
         data = json.dumps({"TYPE": "14",
                            "ID": hostgroup_id,
                            "ASSOCIATEOBJTYPE": "21",
@@ -640,7 +675,7 @@ class RestClient(object):
 
     def associate_lun_to_lungroup(self, lungroup_id, lun_id):
         """Associate lun to lungroup."""
-        url = self.url + "/lungroup/associate"
+        url = "/lungroup/associate"
         data = json.dumps({"ID": lungroup_id,
                            "ASSOCIATEOBJTYPE": "11",
                            "ASSOCIATEOBJID": lun_id})
@@ -649,9 +684,8 @@ class RestClient(object):
 
     def remove_lun_from_lungroup(self, lungroup_id, lun_id):
         """Remove lun from lungroup."""
-        url = self.url + ("/lungroup/associate?ID=%s"
-                          "&ASSOCIATEOBJTYPE=11&ASSOCIATEOBJID=%s"
-                          % (lungroup_id, lun_id))
+        url = ("/lungroup/associate?ID=%s&ASSOCIATEOBJTYPE=11"
+               "&ASSOCIATEOBJID=%s" % (lungroup_id, lun_id))
 
         result = self.call(url, None, 'DELETE')
         self._assert_rest_result(
@@ -659,7 +693,7 @@ class RestClient(object):
 
     def _initiator_is_added_to_array(self, ininame):
         """Check whether the initiator is already added on the array."""
-        url = self.url + "/iscsi_initiator?range=[0-256]"
+        url = "/iscsi_initiator?range=[0-256]"
         result = self.call(url, None, "GET")
         self._assert_rest_result(result,
                                  _('Check initiator added to array error.'))
@@ -672,7 +706,7 @@ class RestClient(object):
 
     def is_initiator_associated_to_host(self, ininame):
         """Check whether the initiator is associated to the host."""
-        url = self.url + "/iscsi_initiator?range=[0-256]"
+        url = "/iscsi_initiator?range=[0-256]"
         result = self.call(url, None, "GET")
         self._assert_rest_result(
             result, _('Check initiator associated to host error.'))
@@ -685,7 +719,7 @@ class RestClient(object):
 
     def _add_initiator_to_array(self, initiator_name):
         """Add a new initiator to storage device."""
-        url = self.url + "/iscsi_initiator/"
+        url = "/iscsi_initiator"
         data = json.dumps({"TYPE": "222",
                            "ID": initiator_name,
                            "USECHAP": "false"})
@@ -694,7 +728,7 @@ class RestClient(object):
                                  _('Add initiator to array error.'))
 
     def _add_initiator_to_host(self, initiator_name, host_id):
-        url = self.url + "/iscsi_initiator/" + initiator_name
+        url = "/iscsi_initiator/" + initiator_name
         data = json.dumps({"TYPE": "222",
                            "ID": initiator_name,
                            "USECHAP": "false",
@@ -757,7 +791,7 @@ class RestClient(object):
         """Use CHAP when adding initiator to host."""
         (chap_username, chap_password) = chapinfo.split(";")
 
-        url = self.url + "/iscsi_initiator/" + initiator_name
+        url = "/iscsi_initiator/" + initiator_name
         data = json.dumps({"TYPE": "222",
                            "USECHAP": "true",
                            "CHAPNAME": chap_username,
@@ -772,7 +806,7 @@ class RestClient(object):
 
     def _use_alua(self, initiator_name, multipath_type):
         """Use ALUA when adding initiator to host."""
-        url = self.url + "/iscsi_initiator"
+        url = "/iscsi_initiator"
         data = json.dumps({"ID": initiator_name,
                            "MULTIPATHTYPE": multipath_type})
         result = self.call(url, data, "PUT")
@@ -782,7 +816,7 @@ class RestClient(object):
 
     def remove_chap(self, initiator_name):
         """Remove CHAP when terminate connection."""
-        url = self.url + "/iscsi_initiator"
+        url = "/iscsi_initiator"
         data = json.dumps({"USECHAP": "false",
                            "MULTIPATHTYPE": "0",
                            "ID": initiator_name})
@@ -792,7 +826,7 @@ class RestClient(object):
 
     def find_mapping_view(self, name):
         """Find mapping view."""
-        url = self.url + "/mappingview?range=[0-8191]"
+        url = "/mappingview?range=[0-8191]"
         data = json.dumps({"TYPE": "245"})
         result = self.call(url, data, "GET")
 
@@ -802,7 +836,7 @@ class RestClient(object):
         return self._get_id_from_result(result, name, 'NAME')
 
     def _add_mapping_view(self, name):
-        url = self.url + "/mappingview"
+        url = "/mappingview"
         data = json.dumps({"NAME": name, "TYPE": "245"})
         result = self.call(url, data)
         self._assert_rest_result(result, _('Add mapping view error.'))
@@ -810,7 +844,7 @@ class RestClient(object):
         return result['data']['ID']
 
     def _associate_hostgroup_to_view(self, view_id, hostgroup_id):
-        url = self.url + "/MAPPINGVIEW/CREATE_ASSOCIATE"
+        url = "/MAPPINGVIEW/CREATE_ASSOCIATE"
         data = json.dumps({"ASSOCIATEOBJTYPE": "14",
                            "ASSOCIATEOBJID": hostgroup_id,
                            "TYPE": "245",
@@ -820,7 +854,7 @@ class RestClient(object):
                                  'error.'))
 
     def _associate_lungroup_to_view(self, view_id, lungroup_id):
-        url = self.url + "/MAPPINGVIEW/CREATE_ASSOCIATE"
+        url = "/MAPPINGVIEW/CREATE_ASSOCIATE"
         data = json.dumps({"ASSOCIATEOBJTYPE": "256",
                            "ASSOCIATEOBJID": lungroup_id,
                            "TYPE": "245",
@@ -831,7 +865,7 @@ class RestClient(object):
 
     def delete_lungroup_mapping_view(self, view_id, lungroup_id):
         """Remove lungroup associate from the mapping view."""
-        url = self.url + "/mappingview/REMOVE_ASSOCIATE"
+        url = "/mappingview/REMOVE_ASSOCIATE"
         data = json.dumps({"ASSOCIATEOBJTYPE": "256",
                            "ASSOCIATEOBJID": lungroup_id,
                            "TYPE": "245",
@@ -842,7 +876,7 @@ class RestClient(object):
 
     def delete_hostgoup_mapping_view(self, view_id, hostgroup_id):
         """Remove hostgroup associate from the mapping view."""
-        url = self.url + "/mappingview/REMOVE_ASSOCIATE"
+        url = "/mappingview/REMOVE_ASSOCIATE"
         data = json.dumps({"ASSOCIATEOBJTYPE": "14",
                            "ASSOCIATEOBJID": hostgroup_id,
                            "TYPE": "245",
@@ -853,7 +887,7 @@ class RestClient(object):
 
     def delete_portgroup_mapping_view(self, view_id, portgroup_id):
         """Remove portgroup associate from the mapping view."""
-        url = self.url + "/mappingview/REMOVE_ASSOCIATE"
+        url = "/mappingview/REMOVE_ASSOCIATE"
         data = json.dumps({"ASSOCIATEOBJTYPE": "257",
                            "ASSOCIATEOBJID": portgroup_id,
                            "TYPE": "245",
@@ -864,7 +898,7 @@ class RestClient(object):
 
     def delete_mapping_view(self, view_id):
         """Remove mapping view from the storage."""
-        url = self.url + "/mappingview/" + view_id
+        url = "/mappingview/" + view_id
         result = self.call(url, None, "DELETE")
         self._assert_rest_result(result, _('Delete mapping view error.'))
 
@@ -872,7 +906,7 @@ class RestClient(object):
         """Check if there are still other luns associated to the lungroup."""
         url_subfix = ("/lun/count?TYPE=11&ASSOCIATEOBJTYPE=256&"
                       "ASSOCIATEOBJID=%s" % lungroup_id)
-        url = self.url + url_subfix
+        url = url_subfix
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Find lun number error.'))
         lunnum = -1
@@ -884,7 +918,7 @@ class RestClient(object):
         """Check whether the port group is associated to the mapping view."""
         url_subfix = ("/portgroup/associate?ASSOCIATEOBJTYPE=245&"
                       "ASSOCIATEOBJID=%s&range=[0-8191]" % view_id)
-        url = self.url + url_subfix
+        url = url_subfix
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Find portgroup from mapping view '
                                  'error.'))
@@ -897,7 +931,7 @@ class RestClient(object):
         """Get lungroup from the given map"""
         url_subfix = ("/mappingview/associate/lungroup?TYPE=256&"
                       "ASSOCIATEOBJTYPE=245&ASSOCIATEOBJID=%s" % view_id)
-        url = self.url + url_subfix
+        url = url_subfix
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Find lun group from mapping view '
                                  'error.'))
@@ -911,7 +945,7 @@ class RestClient(object):
 
     def start_luncopy(self, luncopy_id):
         """Start a LUNcopy."""
-        url = self.url + "/LUNCOPY/start"
+        url = "/LUNCOPY/start"
         data = json.dumps({"TYPE": "219", "ID": luncopy_id})
         result = self.call(url, data, "PUT")
         self._assert_rest_result(result, _('Start LUNcopy error.'))
@@ -932,7 +966,7 @@ class RestClient(object):
 
     def get_luncopy_info(self, luncopy_id):
         """Get LUNcopy information."""
-        url = self.url + "/LUNCOPY?range=[0-1023]"
+        url = "/LUNCOPY?range=[0-1023]"
         data = json.dumps({"TYPE": "219", })
         result = self.call(url, data, "GET")
         self._assert_rest_result(result, _('Get LUNcopy information error.'))
@@ -950,7 +984,7 @@ class RestClient(object):
 
     def delete_luncopy(self, luncopy_id):
         """Delete a LUNcopy."""
-        url = self.url + "/LUNCOPY/%s" % luncopy_id
+        url = "/LUNCOPY/%s" % luncopy_id
         result = self.call(url, None, "DELETE")
         self._assert_rest_result(result, _('Delete LUNcopy error.'))
 
@@ -974,7 +1008,7 @@ class RestClient(object):
 
         If no new ports connected, return an empty list.
         """
-        url = self.url + "/fc_initiator?ISFREE=true&range=[0-8191]"
+        url = "/fc_initiator?ISFREE=true&range=[0-8191]"
         result = self.call(url, None, "GET")
 
         msg = _('Get connected free FC wwn error.')
@@ -989,7 +1023,7 @@ class RestClient(object):
 
     def add_fc_port_to_host(self, host_id, wwn):
         """Add a FC port to the host."""
-        url = self.url + "/fc_initiator/" + wwn
+        url = "/fc_initiator/" + wwn
         data = json.dumps({"TYPE": "223",
                            "ID": wwn,
                            "PARENTTYPE": 21,
@@ -999,7 +1033,7 @@ class RestClient(object):
 
     def _get_iscsi_port_info(self, ip):
         """Get iscsi port info in order to build the iscsi target iqn."""
-        url = self.url + "/eth_port"
+        url = "/eth_port"
         result = self.call(url, None, "GET")
 
         msg = _('Get iSCSI port information error.')
@@ -1047,8 +1081,7 @@ class RestClient(object):
             return iqn
 
     def get_fc_target_wwpns(self, wwn):
-        url = (self.url +
-               "/host_link?INITIATOR_TYPE=223&INITIATOR_PORT_WWN=" + wwn)
+        url = ("/host_link?INITIATOR_TYPE=223&INITIATOR_PORT_WWN=" + wwn)
         result = self.call(url, None, "GET")
 
         msg = _('Get FC target wwpn error.')
@@ -1098,7 +1131,7 @@ class RestClient(object):
         return data
 
     def _find_qos_policy_info(self, policy_name):
-        url = self.url + "/ioclass"
+        url = "/ioclass"
         result = self.call(url, None, "GET")
 
         msg = _('Get QoS policy error.')
@@ -1117,7 +1150,7 @@ class RestClient(object):
         return qos_info
 
     def _update_qos_policy_lunlist(self, lun_list, policy_id):
-        url = self.url + "/ioclass/" + policy_id
+        url = "/ioclass/" + policy_id
         data = json.dumps({"TYPE": "230",
                            "ID": policy_id,
                            "LUNLIST": lun_list})
@@ -1126,8 +1159,8 @@ class RestClient(object):
 
     def _get_tgt_ip_from_portgroup(self, portgroup_id):
         target_ips = []
-        url = self.url + ("/eth_port/associate?TYPE=213&ASSOCIATEOBJTYPE=257"
-                          "&ASSOCIATEOBJID=%s" % portgroup_id)
+        url = ("/eth_port/associate?TYPE=213&ASSOCIATEOBJTYPE=257"
+               "&ASSOCIATEOBJID=%s" % portgroup_id)
         result = self.call(url, None, "GET")
 
         msg = _('Get target IP error.')
@@ -1190,7 +1223,7 @@ class RestClient(object):
         return (target_iqns, target_ips, portgroup_id)
 
     def _get_tgt_iqn_from_rest(self, target_ip):
-        url = self.url + "/iscsi_tgt_port"
+        url = "/iscsi_tgt_port"
         result = self.call(url, None, "GET")
 
         target_iqn = None
@@ -1233,7 +1266,7 @@ class RestClient(object):
                      }
         mergedata.update(qos)
         data = json.dumps(mergedata)
-        url = self.url + "/ioclass/"
+        url = "/ioclass/"
 
         result = self.call(url, data)
         self._assert_rest_result(result, _('Create QoS policy error.'))
@@ -1242,7 +1275,7 @@ class RestClient(object):
 
     def delete_qos_policy(self, qos_id):
         """Delete a QoS policy."""
-        url = self.url + "/ioclass/" + qos_id
+        url = "/ioclass/" + qos_id
         data = json.dumps({"TYPE": "230",
                            "ID": qos_id})
 
@@ -1255,7 +1288,7 @@ class RestClient(object):
         enablestatus: true (activate)
         enbalestatus: false (deactivate)
         """
-        url = self.url + "/ioclass/active/" + qos_id
+        url = "/ioclass/active/" + qos_id
         data = json.dumps({"TYPE": 230,
                            "ID": qos_id,
                            "ENABLESTATUS": enablestatus})
@@ -1265,7 +1298,7 @@ class RestClient(object):
 
     def get_qos_info(self, qos_id):
         """Get QoS information."""
-        url = self.url + "/ioclass/" + qos_id
+        url = "/ioclass/" + qos_id
         data = json.dumps({"TYPE": "230",
                            "ID": qos_id})
         result = self.call(url, data, "GET")
@@ -1288,7 +1321,7 @@ class RestClient(object):
     def remove_lun_from_qos(self, lun_id, lun_list, qos_id):
         """Remove lun from QoS."""
         lun_list = [i for i in lun_list if i != lun_id]
-        url = self.url + "/ioclass/" + qos_id
+        url = "/ioclass/" + qos_id
         data = json.dumps({"LUNLIST": lun_list,
                            "TYPE": 230,
                            "ID": qos_id})
@@ -1300,7 +1333,7 @@ class RestClient(object):
 
     def change_lun_priority(self, lun_id):
         """Change lun priority to high."""
-        url = self.url + "/lun/" + lun_id
+        url = "/lun/" + lun_id
         data = json.dumps({"TYPE": "11",
                            "ID": lun_id,
                            "IOPRIORITY": "3"})
@@ -1310,7 +1343,7 @@ class RestClient(object):
 
     def change_lun_smarttier(self, lunid, smarttier_policy):
         """Change lun smarttier policy."""
-        url = self.url + "/lun/" + lunid
+        url = "/lun/" + lunid
         data = json.dumps({"TYPE": "11",
                            "ID": lunid,
                            "DATATRANSFERPOLICY": smarttier_policy})
@@ -1321,7 +1354,7 @@ class RestClient(object):
 
     def get_qosid_by_lunid(self, lun_id):
         """Get QoS id by lun id."""
-        url = self.url + "/lun/" + lun_id
+        url = "/lun/" + lun_id
         data = json.dumps({"TYPE": "11",
                            "ID": lun_id})
 
@@ -1331,10 +1364,9 @@ class RestClient(object):
         return result['data']['IOCLASSID']
 
     def get_lungroupids_by_lunid(self, lun_id):
-        """Get lungroup ids by lun id."""
-
-        url = self.url + ("/lungroup/associate?TYPE=256"
-                          "&ASSOCIATEOBJTYPE=11&ASSOCIATEOBJID=%s" % lun_id)
+        """Get lungroup id by lun id."""
+        url = ("/lungroup/associate?TYPE=256"
+               "&ASSOCIATEOBJTYPE=11&ASSOCIATEOBJID=%s" % lun_id)
 
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Get lungroup id by lun id error.'))
@@ -1347,7 +1379,7 @@ class RestClient(object):
         return lungroup_ids
 
     def get_lun_info(self, lun_id):
-        url = self.url + "/lun/" + lun_id
+        url = "/lun/" + lun_id
         data = json.dumps({"TYPE": "11",
                            "ID": lun_id})
         result = self.call(url, data, "GET")
@@ -1359,7 +1391,7 @@ class RestClient(object):
         return result['data']
 
     def extend_volume(self, lun_id, new_volume_size):
-        url = self.url + "/lun/expand"
+        url = "/lun/expand"
         data = json.dumps({"TYPE": 11, "ID": lun_id,
                            "CAPACITY": new_volume_size})
         result = self.call(url, data, 'PUT')
@@ -1371,7 +1403,7 @@ class RestClient(object):
         return result['data']
 
     def create_lun_migration(self, src_id, dst_id, speed=2):
-        url = self.url + "/LUN_MIGRATION"
+        url = "/LUN_MIGRATION"
         data = json.dumps({"TYPE": '253',
                            "PARENTID": src_id,
                            "TARGETLUNID": dst_id,
@@ -1384,20 +1416,20 @@ class RestClient(object):
         self._assert_data_in_result(result, msg)
 
     def get_lun_migration_task(self):
-        url = self.url + '/LUN_MIGRATION?range=[0-100]'
+        url = '/LUN_MIGRATION?range=[0-100]'
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Get lun migration task error.'))
         return result
 
     def delete_lun_migration(self, src_id, dst_id):
-        url = self.url + '/LUN_MIGRATION/' + src_id
+        url = '/LUN_MIGRATION/' + src_id
         result = self.call(url, None, "DELETE")
         msg = _('Delete lun migration error.')
         self._assert_rest_result(result, msg)
         self._assert_data_in_result(result, msg)
 
     def get_partition_id_by_name(self, name):
-        url = self.url + "/cachepartition"
+        url = "/cachepartition"
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Get partition by name error.'))
 
@@ -1408,7 +1440,7 @@ class RestClient(object):
 
     def get_partition_info_by_id(self, partition_id):
 
-        url = self.url + '/cachepartition/' + partition_id
+        url = '/cachepartition/' + partition_id
         data = json.dumps({"TYPE": '268',
                            "ID": partition_id})
 
@@ -1419,7 +1451,7 @@ class RestClient(object):
         return result['data']
 
     def add_lun_to_partition(self, lun_id, partition_id):
-        url = self.url + "/lun/associate/cachepartition"
+        url = "/lun/associate/cachepartition"
         data = json.dumps({"ID": partition_id,
                            "ASSOCIATEOBJTYPE": 11,
                            "ASSOCIATEOBJID": lun_id, })
@@ -1427,14 +1459,14 @@ class RestClient(object):
         self._assert_rest_result(result, _('Add lun to partition error.'))
 
     def remove_lun_from_partition(self, lun_id, partition_id):
-        url = (self.url + '/lun/associate/cachepartition?ID=' + partition_id
+        url = ('/lun/associate/cachepartition?ID=' + partition_id
                + '&ASSOCIATEOBJTYPE=11&ASSOCIATEOBJID=' + lun_id)
 
         result = self.call(url, None, "DELETE")
         self._assert_rest_result(result, _('Remove lun from partition error.'))
 
     def get_cache_id_by_name(self, name):
-        url = self.url + "/SMARTCACHEPARTITION"
+        url = "/SMARTCACHEPARTITION"
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Get cache by name error.'))
 
@@ -1444,7 +1476,7 @@ class RestClient(object):
                     return item['ID']
 
     def get_cache_info_by_id(self, cacheid):
-        url = self.url + "/SMARTCACHEPARTITION/" + cacheid
+        url = "/SMARTCACHEPARTITION/" + cacheid
         data = json.dumps({"TYPE": "273",
                            "ID": cacheid})
 
@@ -1455,7 +1487,7 @@ class RestClient(object):
         return result['data']
 
     def remove_lun_from_cache(self, lun_id, cache_id):
-        url = self.url + "/SMARTCACHEPARTITION/REMOVE_ASSOCIATE"
+        url = "/SMARTCACHEPARTITION/REMOVE_ASSOCIATE"
         data = json.dumps({"ID": cache_id,
                            "ASSOCIATEOBJTYPE": 11,
                            "ASSOCIATEOBJID": lun_id,
@@ -1468,7 +1500,7 @@ class RestClient(object):
         """"Find available QoS on the array."""
         qos_id = None
         lun_list = []
-        url = self.url + "/ioclass?range=[0-100]"
+        url = "/ioclass?range=[0-100]"
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Get QoS information error.'))
 
@@ -1490,7 +1522,7 @@ class RestClient(object):
 
     def add_lun_to_qos(self, qos_id, lun_id, lun_list):
         """Add lun to QoS."""
-        url = self.url + "/ioclass/" + qos_id
+        url = "/ioclass/" + qos_id
         new_lun_list = []
         lun_list_string = lun_list[1:-1]
         for lun_string in lun_list_string.split(","):
@@ -1509,7 +1541,7 @@ class RestClient(object):
         self._assert_data_in_result(result, msg)
 
     def add_lun_to_cache(self, lun_id, cache_id):
-        url = self.url + "/SMARTCACHEPARTITION/CREATE_ASSOCIATE"
+        url = "/SMARTCACHEPARTITION/CREATE_ASSOCIATE"
         data = json.dumps({"ID": cache_id,
                            "ASSOCIATEOBJTYPE": 11,
                            "ASSOCIATEOBJID": lun_id,
@@ -1519,38 +1551,38 @@ class RestClient(object):
         self._assert_rest_result(result, _('Add lun to cache error.'))
 
     def find_array_version(self):
-        url = self.url + "/system/"
+        url = "/system/"
         result = self.call(url, None)
         self._assert_rest_result(result, _('Find array version error.'))
         return result['data']['PRODUCTVERSION']
 
     def remove_host(self, host_id):
-        url = self.url + "/host/%s" % host_id
+        url = "/host/%s" % host_id
         result = self.call(url, None, "DELETE")
         self._assert_rest_result(result, _('Remove host from array error.'))
 
     def delete_hostgroup(self, hostgroup_id):
-        url = self.url + "/hostgroup/%s" % hostgroup_id
+        url = "/hostgroup/%s" % hostgroup_id
         result = self.call(url, None, "DELETE")
         self._assert_rest_result(result, _('Delete hostgroup error.'))
 
     def remove_host_from_hostgroup(self, hostgroup_id, host_id):
         url_subfix001 = "/host/associate?TYPE=14&ID=%s" % hostgroup_id
         url_subfix002 = "&ASSOCIATEOBJTYPE=21&ASSOCIATEOBJID=%s" % host_id
-        url = self.url + url_subfix001 + url_subfix002
+        url = url_subfix001 + url_subfix002
         result = self.call(url, None, "DELETE")
         self._assert_rest_result(result,
                                  _('Remove host from hostgroup error.'))
 
     def remove_iscsi_from_host(self, initiator):
-        url = self.url + "/iscsi_initiator/remove_iscsi_from_host"
+        url = "/iscsi_initiator/remove_iscsi_from_host"
         data = json.dumps({"TYPE": '222',
                            "ID": initiator})
         result = self.call(url, data, "PUT")
         self._assert_rest_result(result, _('Remove iscsi from host error.'))
 
     def get_host_online_fc_initiators(self, host_id):
-        url = self.url + "/fc_initiator"
+        url = "/fc_initiator"
         data = json.dumps({'PARENTTYPE': 21,
                            'PARENTID': host_id})
         result = self.call(url, data, "GET")
@@ -1565,7 +1597,7 @@ class RestClient(object):
         return initiators
 
     def get_host_fc_initiators(self, host_id):
-        url = self.url + "/fc_initiator"
+        url = "/fc_initiator"
         data = json.dumps({'PARENTTYPE': 21,
                            'PARENTID': host_id})
         result = self.call(url, data, "GET")
@@ -1579,7 +1611,7 @@ class RestClient(object):
         return initiators
 
     def get_host_iscsi_initiators(self, host_id):
-        url = self.url + "/iscsi_initiator"
+        url = "/iscsi_initiator"
         data = json.dumps({'PARENTTYPE': 21,
                            'PARENTID': host_id})
         result = self.call(url, data, "GET")
@@ -1593,7 +1625,7 @@ class RestClient(object):
         return initiators
 
     def rename_lun(self, lun_id, new_name):
-        url = self.url + "/lun/" + lun_id
+        url = "/lun/" + lun_id
         data = json.dumps({"NAME": new_name})
         result = self.call(url, data, "PUT")
         msg = _('Rename lun on array error.')
@@ -1602,7 +1634,7 @@ class RestClient(object):
 
     def is_fc_initiator_associated_to_host(self, ininame):
         """Check whether the initiator is associated to the host."""
-        url = self.url + '/fc_initiator?range=[0-256]'
+        url = '/fc_initiator?range=[0-256]'
         result = self.call(url, None, "GET")
         self._assert_rest_result(result,
                                  'Check initiator associated to host error.')
@@ -1614,14 +1646,14 @@ class RestClient(object):
         return False
 
     def remove_fc_from_host(self, initiator):
-        url = self.url + '/fc_initiator/remove_fc_from_host'
+        url = '/fc_initiator/remove_fc_from_host'
         data = json.dumps({"TYPE": '223',
                            "ID": initiator})
         result = self.call(url, data, "PUT")
         self._assert_rest_result(result, _('Remove fc from host error.'))
 
     def check_fc_initiators_exist_in_host(self, host_id):
-        url = self.url + '/fc_initiator?range=[0-256]'
+        url = '/fc_initiator?range=[0-256]'
         data = json.dumps({"PARENTID": host_id})
         result = self.call(url, data, "GET")
         self._assert_rest_result(result, _('Get host initiators info failed.'))
@@ -1632,7 +1664,7 @@ class RestClient(object):
 
     def _fc_initiator_is_added_to_array(self, ininame):
         """Check whether the fc initiator is already added on the array."""
-        url = self.url + '/fc_initiator/' + ininame
+        url = '/fc_initiator/' + ininame
         data = json.dumps({"TYPE": '223',
                            "ID": ininame})
         result = self.call(url, data, "GET")
@@ -1644,7 +1676,7 @@ class RestClient(object):
 
     def _add_fc_initiator_to_array(self, ininame):
         """Add a fc initiator to storage device."""
-        url = self.url + '/fc_initiator/'
+        url = '/fc_initiator/'
         data = json.dumps({"TYPE": '223',
                            "ID": ininame})
         result = self.call(url, data)
@@ -1658,7 +1690,7 @@ class RestClient(object):
         self.add_fc_port_to_host(host_id, initiator_name)
 
     def get_fc_ports_on_array(self):
-        url = self.url + '/fc_port'
+        url = '/fc_port'
         result = self.call(url, None, "GET")
         msg = _('Get FC ports from array error.')
         self._assert_rest_result(result, msg)
