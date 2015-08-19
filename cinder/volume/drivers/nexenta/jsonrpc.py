@@ -48,7 +48,7 @@ def retry(exc_tuple, tries=5, delay=1, backoff=2):
                     _delay *= backoff
                     LOG.debug(_('Retrying %s, (%s attempts remaining)...'),
                               (args, _tries))
-            msg = (_('Retry count exceeded for command: %s'), args)
+            msg = (_('Retry count exceeded for command: %s'), (args,))
             LOG.error(msg)
             raise NexentaJSONException(msg)
         return func_retry
