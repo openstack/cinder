@@ -682,6 +682,15 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         mock_conf.hplefthand_clustername = "CloudCluster1"
         mock_conf.goodness_function = GOODNESS_FUNCTION
         mock_conf.filter_function = FILTER_FUNCTION
+        mock_conf.reserved_percentage = 25
+
+        def safe_get(attr):
+            try:
+                return mock_conf.__getattribute__(attr)
+            except AttributeError:
+                return None
+        mock_conf.safe_get = safe_get
+
         return mock_conf
 
     @mock.patch('hplefthandclient.client.HPLeftHandClient', spec=True)
@@ -2056,6 +2065,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             self.assertEqual(True, stats['thin_provisioning_support'])
             self.assertEqual(True, stats['thick_provisioning_support'])
             self.assertEqual(1, int(stats['provisioned_capacity_gb']))
+            self.assertEqual(25, int(stats['reserved_percentage']))
 
             cap_util = (
                 float(units.Gi * 500 - units.Gi * 250) / float(units.Gi * 500)

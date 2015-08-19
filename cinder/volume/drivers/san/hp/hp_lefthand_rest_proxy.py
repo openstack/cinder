@@ -298,7 +298,8 @@ class HPLeftHandRESTProxy(driver.ISCSIDriver):
         data = {}
         backend_name = self.configuration.safe_get('volume_backend_name')
         data['volume_backend_name'] = backend_name or self.__class__.__name__
-        data['reserved_percentage'] = 0
+        data['reserved_percentage'] = (
+            self.configuration.safe_get('reserved_percentage'))
         data['storage_protocol'] = 'iSCSI'
         data['vendor_name'] = 'Hewlett-Packard'
         data['location_info'] = (self.DRIVER_LOCATION % {
