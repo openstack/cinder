@@ -32,16 +32,11 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import units
 from oslo_utils import uuidutils
-try:
-    import oslo_vmware
-except ImportError:
-    oslo_vmware = None
-else:
-    from oslo_vmware import api
-    from oslo_vmware import exceptions
-    from oslo_vmware import image_transfer
-    from oslo_vmware import pbm
-    from oslo_vmware import vim_util
+from oslo_vmware import api
+from oslo_vmware import exceptions
+from oslo_vmware import image_transfer
+from oslo_vmware import pbm
+from oslo_vmware import vim_util
 import six
 
 from cinder import exception
@@ -277,11 +272,6 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
 
         :param context: Context information
         """
-
-        if oslo_vmware is None:
-            msg = _("Missing 'oslo_vmware' python module, ensure the library"
-                    " is installed and available.")
-            raise exception.VolumeDriverException(message=msg)
 
         # Throw error if required parameters are not set.
         required_params = ['vmware_host_ip',
