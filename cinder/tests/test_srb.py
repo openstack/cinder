@@ -596,7 +596,8 @@ class SRBDriverTestCase(test.TestCase):
 
     def _fake_lvchange(self):
         def check(cmd_string):
-            return 'lvchange, -a, y, --yes' in cmd_string
+            return 'lvchange, -a, y, --yes' in cmd_string or \
+                   'lvchange, -a, n' in cmd_string
 
         def act(_):
             pass
