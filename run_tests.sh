@@ -184,6 +184,7 @@ function run_pep8 {
   echo "Running flake8 ..."
   warn_on_flake8_without_venv
   bash -c "${wrapper} flake8"
+  ${wrapper} bash tools/config/check_uptodate.sh --checkonly
 }
 
 
