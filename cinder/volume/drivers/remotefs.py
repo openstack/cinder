@@ -100,6 +100,7 @@ volume_opts = [
 
 CONF = cfg.CONF
 CONF.register_opts(nas_opts)
+CONF.register_opts(volume_opts)
 
 
 def locked_volume_id_operation(f, external=False):
