@@ -585,7 +585,7 @@ class SolidFireDriver(san.SanISCSIDriver):
 
         sf_account = self._issue_api_request(
             'GetAccountByID',
-            {'accountID': self.template_account_id})
+            {'accountID': self.template_account_id})['result']['account']
 
         template_vol = self._do_volume_create(sf_account, params)
         tvol = {}
