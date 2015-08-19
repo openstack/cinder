@@ -103,6 +103,20 @@ class SimulatedHnasBackend(object):
         # iSCSI connections
         self.connections = []
 
+    def rename_existing_lu(self, cmd, ip0, user, pw, fslabel,
+                           vol_name, vol_ref_name):
+        return 'Logical unit modified successfully.'
+
+    def get_existing_lu_info(self, cmd, ip0, user, pw, fslabel, lun):
+        out = "Name   : volume-test                \n\
+               Comment:                            \n\
+               Path   : /.cinder/volume-test.iscsi \n\
+               Size   : 20 GB                      \n\
+               File System : manage_iscsi_test     \n\
+               File System Mounted : Yes           \n\
+               Logical Unit Mounted: Yes"
+        return out
+
     def deleteVolume(self, name):
         volume = self.getVolume(name)
         if volume:
@@ -462,3 +476,60 @@ class HNASiSCSIDriverTest(test.TestCase):
         self.backend.check_target.return_value = (True, fake_tgt)
         self.assertRaises(exception.NoMoreTargets,
                           self.driver._get_service_target, vol)
+
+    @mock.patch.object(iscsi.HDSISCSIDriver, '_get_service')
+    def test_unmanage(self, get_service):
+        get_service.return_value = ('fs2')
+
+        self.driver.unmanage(_VOLUME)
+        get_service.assert_called_once_with(_VOLUME)
+
+    def test_manage_existing_get_size(self):
+        vol = _VOLUME.copy()
+        existing_vol_ref = {'source-name': 'manage_iscsi_test/volume-test'}
+
+        out = self.driver.manage_existing_get_size(vol, existing_vol_ref)
+        self.assertEqual(20, out)
+
+    def test_manage_existing_get_size_error(self):
+        vol = _VOLUME.copy()
+        existing_vol_ref = {'source-name': 'invalid_FS/vol-not-found'}
+
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size, vol,
+                          existing_vol_ref)
+
+    def test_manage_existing_get_size_without_source_name(self):
+        vol = _VOLUME.copy()
+        existing_vol_ref = {
+            'source-id': 'bcc48c61-9691-4e5f-897c-793686093190'}
+
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size, vol,
+                          existing_vol_ref)
+
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    def test_manage_existing(self, m_get_extra_specs):
+        vol = _VOLUME.copy()
+        existing_vol_ref = {'source-name': 'fs2/volume-test'}
+        version = {'provider_location': '18-48-A5-A1-80-13.testvol'}
+
+        m_get_extra_specs.return_value = {'key': 'type',
+                                          'service_label': 'silver'}
+
+        out = self.driver.manage_existing(vol, existing_vol_ref)
+
+        m_get_extra_specs.assert_called_once_with('1')
+        self.assertEqual(version, out)
+
+    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
+    def test_manage_existing_invalid_pool(self, m_get_extra_specs):
+        vol = _VOLUME.copy()
+        existing_vol_ref = {'source-name': 'fs2/volume-test'}
+
+        m_get_extra_specs.return_value = {'key': 'type',
+                                          'service_label': 'gold'}
+
+        self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
+                          self.driver.manage_existing, vol, existing_vol_ref)
+        m_get_extra_specs.assert_called_once_with('1')

@@ -36,8 +36,7 @@ from cinder.volume.drivers.hitachi import hnas_backend
 from cinder.volume import utils
 from cinder.volume import volume_types
 
-
-HDS_HNAS_ISCSI_VERSION = '3.3.0'
+HDS_HNAS_ISCSI_VERSION = '4.0.0'
 
 LOG = logging.getLogger(__name__)
 
@@ -164,6 +163,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
     Version 3.2.0: Added pool aware scheduling
                    Fixed concurrency errors
     Version 3.3.0: Fixed iSCSI target limitation error
+    Version 4.0.0: Added manage/unmanage features
     """
 
     def __init__(self, *args, **kwargs):
@@ -832,3 +832,150 @@ class HDSISCSIDriver(driver.ISCSIDriver):
                 else:
                     pass
                 return metadata['service_label']
+
+    def _check_pool_and_fs(self, volume, fs_label):
+        """Validation of the pool and filesystem.
+
+        Checks if the file system for the volume-type chosen matches the
+        one passed in the volume reference. Also, checks if the pool
+        for the volume type matches the pool for the host passed.
+
+        :param volume: Reference to the volume.
+        :param fs_label: Label of the file system.
+        """
+        pool_from_vol_type = self.get_pool(volume)
+
+        pool_from_host = utils.extract_host(volume['host'], level='pool')
+
+        if self.config['services'][pool_from_vol_type]['hdp'] != fs_label:
+            msg = (_("Failed to manage existing volume because the pool of "
+                     "the volume type chosen does not match the file system "
+                     "passed in the volume reference."),
+                   {'File System passed': fs_label,
+                    'File System for volume type':
+                        self.config['services'][pool_from_vol_type]['hdp']})
+            raise exception.ManageExistingVolumeTypeMismatch(reason=msg)
+
+        if pool_from_host != pool_from_vol_type:
+            msg = (_("Failed to manage existing volume because the pool of "
+                     "the volume type chosen does not match the pool of "
+                     "the host."),
+                   {'Pool of the volume type': pool_from_vol_type,
+                    'Pool of the host': pool_from_host})
+            raise exception.ManageExistingVolumeTypeMismatch(reason=msg)
+
+    def _get_info_from_vol_ref(self, vol_ref):
+        """Gets information from the volume reference.
+
+        Returns the information (File system and volume name) taken from
+        the volume reference.
+
+        :param vol_ref: existing volume to take under management
+        """
+        vol_info = vol_ref.split('/')
+
+        fs_label = vol_info[0]
+        vol_name = vol_info[1]
+
+        return fs_label, vol_name
+
+    def manage_existing_get_size(self, volume, existing_vol_ref):
+        """Gets the size to manage_existing.
+
+        Returns the size of volume to be managed by manage_existing.
+
+        :param volume:           cinder volume to manage
+        :param existing_vol_ref: existing volume to take under management
+        """
+        # Check that the reference is valid.
+        if 'source-name' not in existing_vol_ref:
+            reason = _('Reference must contain source-name element.')
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_vol_ref, reason=reason)
+
+        ref_name = existing_vol_ref['source-name']
+        fs_label, vol_name = self._get_info_from_vol_ref(ref_name)
+
+        LOG.debug("File System: %(fs_label)s "
+                  "Volume name: %(vol_name)s.",
+                  {'fs_label': fs_label, 'vol_name': vol_name})
+
+        lu_info = self.bend.get_existing_lu_info(self.config['hnas_cmd'],
+                                                 self.config['mgmt_ip0'],
+                                                 self.config['username'],
+                                                 self.config['password'],
+                                                 fs_label, vol_name)
+
+        if fs_label in lu_info:
+            aux = lu_info.split('\n')[3]
+            size = aux.split(':')[1]
+            size_unit = size.split(' ')[2]
+
+            if size_unit == 'TB':
+                return int(size.split(' ')[1]) * units.k
+            else:
+                return int(size.split(' ')[1])
+        else:
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_vol_ref,
+                reason=_('Volume not found on configured storage backend.'))
+
+    def manage_existing(self, volume, existing_vol_ref):
+        """Manages an existing volume.
+
+        The specified Cinder volume is to be taken into Cinder management.
+        The driver will verify its existence and then rename it to the
+        new Cinder volume name. It is expected that the existing volume
+        reference is a File System and some volume_name;
+        e.g., openstack/vol_to_manage
+
+        :param volume:           cinder volume to manage
+        :param existing_vol_ref: driver-specific information used to identify a
+                                 volume
+        """
+        ref_name = existing_vol_ref['source-name']
+        fs_label, vol_name = self._get_info_from_vol_ref(ref_name)
+
+        LOG.debug("Asked to manage ISCSI volume %(vol)s, with vol "
+                  "ref %(ref)s.", {'vol': volume['id'],
+                                   'ref': existing_vol_ref['source-name']})
+
+        self._check_pool_and_fs(volume, fs_label)
+
+        self.bend.rename_existing_lu(self.config['hnas_cmd'],
+                                     self.config['mgmt_ip0'],
+                                     self.config['username'],
+                                     self.config['password'], fs_label,
+                                     volume['name'], vol_name)
+
+        LOG.info(_LI("Set newly managed Cinder volume name to %(name)s."),
+                 {'name': volume['name']})
+
+        lun = self.arid + '.' + volume['name']
+
+        return {'provider_location': lun}
+
+    def unmanage(self, volume):
+        """Unmanages a volume from cinder.
+
+        Removes the specified volume from Cinder management.
+        Does not delete the underlying backend storage object. A log entry
+        will be made to notify the Admin that the volume is no longer being
+        managed.
+
+        :param volume: cinder volume to unmanage
+        """
+        svc = self._get_service(volume)
+
+        new_name = 'unmanage-' + volume['name']
+        vol_path = svc + '/' + volume['name']
+
+        self.bend.rename_existing_lu(self.config['hnas_cmd'],
+                                     self.config['mgmt_ip0'],
+                                     self.config['username'],
+                                     self.config['password'], svc, new_name,
+                                     volume['name'])
+
+        LOG.info(_LI("Cinder ISCSI volume with current path %(path)s is "
+                     "no longer being managed. The new name is %(unm)s."),
+                 {'path': vol_path, 'unm': new_name})

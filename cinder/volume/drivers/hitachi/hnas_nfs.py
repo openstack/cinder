@@ -17,7 +17,10 @@
 Volume driver for HDS HNAS NFS storage.
 """
 
+import math
 import os
+import six
+import socket
 import time
 from xml.etree import ElementTree as ETree
 
@@ -30,13 +33,14 @@ from oslo_utils import units
 from cinder import exception
 from cinder.i18n import _, _LE, _LI
 from cinder.image import image_utils
+from cinder import utils as cutils
 from cinder.volume.drivers.hitachi import hnas_backend
 from cinder.volume.drivers import nfs
 from cinder.volume import utils
 from cinder.volume import volume_types
 
 
-HDS_HNAS_NFS_VERSION = '3.0.1'
+HDS_HNAS_NFS_VERSION = '4.0.0'
 
 LOG = logging.getLogger(__name__)
 
@@ -150,8 +154,9 @@ class HDSNFSDriver(nfs.NfsDriver):
     Executes commands relating to Volumes.
 
     Version 1.0.0: Initial driver version
-    Version 2.2.0:  Added support to SSH authentication
-
+    Version 2.2.0: Added support to SSH authentication
+    Version 3.0.0: Added pool aware scheduling
+    Version 4.0.0: Added manage/unmanage features
     """
 
     def __init__(self, *args, **kwargs):
@@ -576,3 +581,215 @@ class HDSNFSDriver(nfs.NfsDriver):
         self._do_create_volume(volume)
 
         return {'provider_location': volume['provider_location']}
+
+    def _convert_vol_ref_share_name_to_share_ip(self, vol_ref):
+        """Converts the share point name to an IP address.
+
+        The volume reference may have a DNS name portion in the share name.
+        Convert that to an IP address and then restore the entire path.
+
+        :param vol_ref:  driver-specific information used to identify a volume
+        :return:         a volume reference where share is in IP format
+        """
+
+        # First strip out share and convert to IP format.
+        share_split = vol_ref.split(':')
+
+        try:
+            vol_ref_share_ip = cutils.resolve_hostname(share_split[0])
+        except socket.gaierror as e:
+            LOG.error(_LE('Invalid hostname %(host)s'),
+                      {'host': share_split[0]})
+            LOG.debug('error: %s', e.strerror)
+            raise
+
+        # Now place back into volume reference.
+        vol_ref_share = vol_ref_share_ip + ':' + share_split[1]
+
+        return vol_ref_share
+
+    def _get_share_mount_and_vol_from_vol_ref(self, vol_ref):
+        """Get the NFS share, the NFS mount, and the volume from reference.
+
+        Determine the NFS share point, the NFS mount point, and the volume
+        (with possible path) from the given volume reference. Raise exception
+        if unsuccessful.
+
+        :param vol_ref: driver-specific information used to identify a volume
+        :return:        NFS Share, NFS mount, volume path or raise error
+        """
+        # Check that the reference is valid.
+        if 'source-name' not in vol_ref:
+            reason = _('Reference must contain source-name element.')
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=vol_ref, reason=reason)
+        vol_ref_name = vol_ref['source-name']
+
+        self._ensure_shares_mounted()
+
+        # If a share was declared as '1.2.3.4:/a/b/c' in the nfs_shares_config
+        # file, but the admin tries to manage the file located at
+        # 'my.hostname.com:/a/b/c/d.vol', this might cause a lookup miss below
+        # when searching self._mounted_shares to see if we have an existing
+        # mount that would work to access the volume-to-be-managed (a string
+        # comparison is done instead of IP comparison).
+        vol_ref_share = self._convert_vol_ref_share_name_to_share_ip(
+            vol_ref_name)
+        for nfs_share in self._mounted_shares:
+            cfg_share = self._convert_vol_ref_share_name_to_share_ip(nfs_share)
+            (orig_share, work_share,
+             file_path) = vol_ref_share.partition(cfg_share)
+            if work_share == cfg_share:
+                file_path = file_path[1:]  # strip off leading path divider
+                LOG.debug("Found possible share %s; checking mount.",
+                          work_share)
+                nfs_mount = self._get_mount_point_for_share(nfs_share)
+                vol_full_path = os.path.join(nfs_mount, file_path)
+                if os.path.isfile(vol_full_path):
+                    LOG.debug("Found share %(share)s and vol %(path)s on "
+                              "mount %(mnt)s.",
+                              {'share': nfs_share, 'path': file_path,
+                               'mnt': nfs_mount})
+                    return nfs_share, nfs_mount, file_path
+            else:
+                LOG.debug("vol_ref %(ref)s not on share %(share)s.",
+                          {'ref': vol_ref_share, 'share': nfs_share})
+
+        raise exception.ManageExistingInvalidReference(
+            existing_ref=vol_ref,
+            reason=_('Volume not found on configured storage backend.'))
+
+    def manage_existing(self, volume, existing_vol_ref):
+        """Manages an existing volume.
+
+        The specified Cinder volume is to be taken into Cinder management.
+        The driver will verify its existence and then rename it to the
+        new Cinder volume name. It is expected that the existing volume
+        reference is an NFS share point and some [/path]/volume;
+        e.g., 10.10.32.1:/openstack/vol_to_manage
+           or 10.10.32.1:/openstack/some_directory/vol_to_manage
+
+        :param volume:           cinder volume to manage
+        :param existing_vol_ref: driver-specific information used to identify a
+                                 volume
+        """
+
+        # Attempt to find NFS share, NFS mount, and volume path from vol_ref.
+        (nfs_share, nfs_mount, vol_path
+         ) = self._get_share_mount_and_vol_from_vol_ref(existing_vol_ref)
+
+        LOG.debug("Asked to manage NFS volume %(vol)s, with vol ref %(ref)s.",
+                  {'vol': volume['id'],
+                   'ref': existing_vol_ref['source-name']})
+        self._check_pool_and_share(volume, nfs_share)
+        if vol_path == volume['name']:
+            LOG.debug("New Cinder volume %s name matches reference name: "
+                      "no need to rename.", volume['name'])
+        else:
+            src_vol = os.path.join(nfs_mount, vol_path)
+            dst_vol = os.path.join(nfs_mount, volume['name'])
+            try:
+                self._execute("mv", src_vol, dst_vol, run_as_root=False,
+                              check_exit_code=True)
+                LOG.debug("Setting newly managed Cinder volume name to %s.",
+                          volume['name'])
+                self._set_rw_permissions_for_all(dst_vol)
+            except (OSError, processutils.ProcessExecutionError) as err:
+                exception_msg = (_("Failed to manage existing volume "
+                                   "%(name)s, because rename operation "
+                                   "failed: Error msg: %(msg)s."),
+                                 {'name': existing_vol_ref['source-name'],
+                                  'msg': six.text_type(err)})
+                raise exception.VolumeBackendAPIException(data=exception_msg)
+        return {'provider_location': nfs_share}
+
+    def _check_pool_and_share(self, volume, nfs_share):
+        """Validates the pool and the NFS share.
+
+        Checks if the NFS share for the volume-type chosen matches the
+        one passed in the volume reference. Also, checks if the pool
+        for the volume type matches the pool for the host passed.
+
+        :param volume:    cinder volume reference
+        :param nfs_share: NFS share passed to manage
+        """
+        pool_from_vol_type = self.get_pool(volume)
+
+        pool_from_host = utils.extract_host(volume['host'], level='pool')
+
+        if self.config['services'][pool_from_vol_type]['hdp'] != nfs_share:
+            msg = (_("Failed to manage existing volume because the pool of "
+                   "the volume type chosen does not match the NFS share "
+                     "passed in the volume reference."),
+                   {'Share passed': nfs_share,
+                    'Share for volume type':
+                    self.config['services'][pool_from_vol_type]['hdp']})
+            raise exception.ManageExistingVolumeTypeMismatch(reason=msg)
+
+        if pool_from_host != pool_from_vol_type:
+            msg = (_("Failed to manage existing volume because the pool of "
+                     "the volume type chosen does not match the pool of "
+                     "the host."),
+                   {'Pool of the volume type': pool_from_vol_type,
+                   'Pool of the host': pool_from_host})
+            raise exception.ManageExistingVolumeTypeMismatch(reason=msg)
+
+    def manage_existing_get_size(self, volume, existing_vol_ref):
+        """Returns the size of volume to be managed by manage_existing.
+
+        When calculating the size, round up to the next GB.
+
+        :param volume:           cinder volume to manage
+        :param existing_vol_ref: existing volume to take under management
+        """
+
+        # Attempt to find NFS share, NFS mount, and volume path from vol_ref.
+        (nfs_share, nfs_mount, vol_path
+         ) = self._get_share_mount_and_vol_from_vol_ref(existing_vol_ref)
+
+        try:
+            LOG.debug("Asked to get size of NFS vol_ref %s.",
+                      existing_vol_ref['source-name'])
+
+            file_path = os.path.join(nfs_mount, vol_path)
+            file_size = float(cutils.get_file_size(file_path)) / units.Gi
+            vol_size = int(math.ceil(file_size))
+        except (OSError, ValueError):
+            exception_message = (_("Failed to manage existing volume "
+                                   "%(name)s, because of error in getting "
+                                   "volume size."),
+                                 {'name': existing_vol_ref['source-name']})
+            raise exception.VolumeBackendAPIException(data=exception_message)
+
+        LOG.debug("Reporting size of NFS volume ref %(ref)s as %(size)d GB.",
+                  {'ref': existing_vol_ref['source-name'], 'size': vol_size})
+
+        return vol_size
+
+    def unmanage(self, volume):
+        """Removes the specified volume from Cinder management.
+
+        It does not delete the underlying backend storage object. A log entry
+        will be made to notify the Admin that the volume is no longer being
+        managed.
+
+        :param volume: cinder volume to unmanage
+        """
+        vol_str = CONF.volume_name_template % volume['id']
+        path = self._get_mount_point_for_share(volume['provider_location'])
+
+        new_str = "unmanage-" + vol_str
+
+        vol_path = os.path.join(path, vol_str)
+        new_path = os.path.join(path, new_str)
+
+        try:
+            self._execute("mv", vol_path, new_path,
+                          run_as_root=False, check_exit_code=True)
+
+            LOG.info(_LI("Cinder NFS volume with current path %(cr)s is "
+                         "no longer being managed."), {'cr': new_path})
+
+        except (OSError, ValueError):
+            LOG.error(_LE("The NFS Volume %(cr)s does not exist."),
+                      {'cr': new_path})
