@@ -164,30 +164,27 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.library.zapi_client = mock.Mock()
         self.library.zapi_client.get_lun_by_args.return_value = [
             mock.Mock(spec=netapp_api.NaElement)]
-        lun = netapp_api.NaElement.create_node_with_children(
-            'lun-info',
-            **{'alignment': 'indeterminate',
-               'block-size': '512',
-               'comment': '',
-               'creation-timestamp': '1354536362',
-               'is-space-alloc-enabled': 'false',
-               'is-space-reservation-enabled': 'true',
-               'mapped': 'false',
-               'multiprotocol-type': 'linux',
-               'online': 'true',
-               'path': '/vol/fakeLUN/lun1',
-               'prefix-size': '0',
-               'qtree': '',
-               'read-only': 'false',
-               'serial-number': '2FfGI$APyN68',
-               'share-state': 'none',
-               'size': '20971520',
-               'size-used': '0',
-               'staging': 'false',
-               'suffix-size': '0',
-               'uuid': 'cec1f3d7-3d41-11e2-9cf4-123478563412',
-               'volume': 'fakeLUN',
-               'vserver': 'fake_vserver'})
+        lun = fake.FAKE_LUN
+        self.library._get_lun_by_args = mock.Mock(return_value=[lun])
+        self.library._add_lun_to_table = mock.Mock()
+        self.library._update_stale_vols = mock.Mock()
+
+        self.library._clone_lun('fakeLUN', 'newFakeLUN', 'false')
+
+        self.library.zapi_client.clone_lun.assert_called_once_with(
+            'fakeLUN', 'fakeLUN', 'newFakeLUN', 'false', block_count=0,
+            dest_block=0, src_block=0, qos_policy_group_name=None)
+
+    def test_clone_lun_no_space_reservation(self):
+        """Test for when space_reservation is not passed."""
+
+        self.library._get_lun_attr = mock.Mock(return_value={'Volume':
+                                                             'fakeLUN'})
+        self.library.zapi_client = mock.Mock()
+        self.library.lun_space_reservation = 'false'
+        self.library.zapi_client.get_lun_by_args.return_value = [
+            mock.Mock(spec=netapp_api.NaElement)]
+        lun = fake.FAKE_LUN
         self.library._get_lun_by_args = mock.Mock(return_value=[lun])
         self.library._add_lun_to_table = mock.Mock()
         self.library._update_stale_vols = mock.Mock()
@@ -195,7 +192,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.library._clone_lun('fakeLUN', 'newFakeLUN')
 
         self.library.zapi_client.clone_lun.assert_called_once_with(
-            'fakeLUN', 'fakeLUN', 'newFakeLUN', 'true', block_count=0,
+            'fakeLUN', 'fakeLUN', 'newFakeLUN', 'false', block_count=0,
             dest_block=0, src_block=0, qos_policy_group_name=None)
 
     def test_get_fc_target_wwpns(self):

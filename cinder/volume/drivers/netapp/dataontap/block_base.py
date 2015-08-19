@@ -94,6 +94,7 @@ class NetAppBlockStorageLibrary(object):
         self.lun_table = {}
         self.lun_ostype = None
         self.host_type = None
+        self.lun_space_reservation = 'true'
         self.lookup_service = fczm_utils.create_lookup_service()
         self.app_version = kwargs.get("app_version", "unknown")
 
@@ -111,6 +112,10 @@ class NetAppBlockStorageLibrary(object):
                            or self.DEFAULT_LUN_OS)
         self.host_type = (self.configuration.netapp_host_type
                           or self.DEFAULT_HOST_TYPE)
+        if self.configuration.netapp_lun_space_reservation == 'enabled':
+            self.lun_space_reservation = 'true'
+        else:
+            self.lun_space_reservation = 'false'
 
     def check_for_setup_error(self):
         """Check that the driver is working and can communicate.
@@ -160,7 +165,7 @@ class NetAppBlockStorageLibrary(object):
         size = int(volume['size']) * units.Gi
 
         metadata = {'OsType': self.lun_ostype,
-                    'SpaceReserved': 'true',
+                    'SpaceReserved': self.lun_space_reservation,
                     'Path': '/vol/%s/%s' % (pool_name, lun_name)}
 
         qos_policy_group_info = self._setup_qos_for_volume(volume, extra_specs)
@@ -268,7 +273,7 @@ class NetAppBlockStorageLibrary(object):
 
         try:
             self._clone_lun(source_name, destination_name,
-                            space_reserved='true',
+                            space_reserved=self.lun_space_reservation,
                             qos_policy_group_name=qos_policy_group_name)
 
             if destination_size != source_size:
