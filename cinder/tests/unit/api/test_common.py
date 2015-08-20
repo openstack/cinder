@@ -290,7 +290,7 @@ class SortParamUtilsTest(test.TestCase):
         common.get_sort_params(params)
         self.assertEqual({}, params)
 
-        params = {'sort_dir': 'key1', 'sort_dir': 'dir1'}
+        params = {'sort_key': 'key1', 'sort_dir': 'dir1'}
         common.get_sort_params(params)
         self.assertEqual({}, params)
 

@@ -125,7 +125,6 @@ class XIVDS8KFakeProxyDriver(object):
 
         return {'driver_volume_type': 'iscsi',
                 'data': {'target_discovered': True,
-                         'target_discovered': True,
                          'target_portal': self.xiv_ds8k_portal,
                          'target_iqn': self.xiv_ds8k_iqn,
                          'target_lun': lun_id,

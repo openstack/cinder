@@ -1575,7 +1575,6 @@ class TestVolumeCreateRequestXMLDeserializer(test.TestCase):
         request = self.deserializer.deserialize(self_request)
         expected = {
             "volume": {
-                "name": "Volume-xml",
                 "size": "1",
                 "name": "Volume-xml",
                 "description": "description",

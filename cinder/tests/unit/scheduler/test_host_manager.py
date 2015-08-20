@@ -441,7 +441,6 @@ class HostStateTestCase(test.TestCase):
                  'reserved_percentage': 0,
                  'dying_disks': 200,
                  'super_hero_1': 'superman',
-                 'super_hero_2': ' ',
                  'super_hero_2': 'Hulk',
                  }
             ],

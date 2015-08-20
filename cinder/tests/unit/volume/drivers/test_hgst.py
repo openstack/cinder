@@ -466,7 +466,7 @@ class HGSTTestCase(test.TestCase):
     def test_create_snapshot(self, mock_ghn):
         """Test creating a snapshot, ensure full data of original copied."""
         # Now snapshot the volume and check commands
-        snapshot = {'volume_name': 'volume10', 'volume_size': 10,
+        snapshot = {'volume_name': 'volume10',
                     'volume_id': 'xxx', 'display_name': 'snap10',
                     'name': '123abc', 'volume_size': 10, 'id': '123abc',
                     'volume': {'provider_id': 'space10'}}
