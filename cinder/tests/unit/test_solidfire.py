@@ -50,6 +50,7 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.configuration.sf_template_account_name = 'openstack-vtemplate'
         self.configuration.sf_allow_template_caching = False
         self.configuration.sf_svip = None
+        self.configuration.sf_enable_volume_mapping = True
 
         super(SolidFireVolumeTestCase, self).setUp()
         self.stubs.Set(solidfire.SolidFireDriver,
@@ -1013,3 +1014,35 @@ class SolidFireVolumeTestCase(test.TestCase):
             self.configuration.sf_svip = configured_svip
             v = sfv._get_model_info(sfaccount, 1)
             self.assertEqual('%s  0' % configured_svip, v['provider_location'])
+
+    def test_init_volume_mappings(self):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+
+        vid_1 = 'c9125d6d-22ff-4cc3-974d-d4e350df9c91'
+        vid_2 = '79883868-6933-47a1-a362-edfbf8d55a18'
+        project_1 = 'e6fb073c-11f0-4f4c-897c-90e7c7c4bcf8'
+        project_2 = '4ff32607-305c-4a6b-a51a-0dd33124eecf'
+
+        vrefs = [{'id': vid_1,
+                  'project_id': project_1,
+                  'provider_id': None},
+                 {'id': vid_2,
+                  'project_id': project_2,
+                  'provider_id': 22}]
+
+        sf_vols = [{'volumeID': 99,
+                    'name': 'UUID-' + vid_1,
+                    'accountID': 100},
+                   {'volumeID': 22,
+                    'name': 'UUID-' + vid_2,
+                    'accountID': 200}]
+
+        def _fake_issue_api_req(method, params, version=0):
+            if 'ListActiveVolumes' in method:
+                return {'result': {'volumes': sf_vols}}
+
+        with mock.patch.object(
+                sfv, '_issue_api_request', side_effect=_fake_issue_api_req):
+            updates = sfv._init_volume_mappings(vrefs)
+            self.assertEqual(99, updates[0]['provider_id'])
+            self.assertEqual(1, len(updates))

@@ -74,6 +74,12 @@ sf_opts = [
                     'This is required or deployments that have implemented '
                     'the use of VLANs for iSCSI networks in their cloud.'),
 
+    cfg.BoolOpt('sf_enable_volume_mapping',
+                default=True,
+                help='Create an internal mapping of volume IDs and account.  '
+                     'Optimizes lookups and performance at the expense of '
+                     'memory, very large deployments may want to consider '
+                     'setting to False.'),
 
     cfg.IntOpt('sf_api_port',
                default=443,
@@ -161,6 +167,8 @@ class SolidFireDriver(san.SanISCSIDriver):
         self._endpoint = self._build_endpoint_info()
         self.template_account_id = None
         self.max_volumes_per_account = 1990
+        self.volume_map = {}
+
         try:
             self._update_cluster_status()
         except exception.SolidFireAPIException:
@@ -173,6 +181,31 @@ class SolidFireDriver(san.SanISCSIDriver):
                 'cinder.volume.drivers.solidfire.SolidFireISCSI',
                 solidfire_driver=self,
                 configuration=self.configuration))
+
+    def _init_volume_mappings(self, vrefs):
+        updates = []
+        sf_vols = self._issue_api_request('ListActiveVolumes',
+                                          {})['result']['volumes']
+        self.volume_map = {}
+        for v in vrefs:
+            seek_name = 'UUID-%s' % v['id']
+            sfvol = next(
+                (sv for sv in sf_vols if sv['name'] == seek_name), None)
+            if sfvol:
+                if self.configuration.sf_enable_volume_mapping:
+                    self.volume_map[v['id']] = (
+                        {'sf_id': sfvol['volumeID'],
+                         'sf_account': sfvol['accountID'],
+                         'cinder_account': v['project_id']})
+
+                if v.get('provider_id', 'nil') != sfvol['volumeID']:
+                    v['provider_id'] == sfvol['volumeID']
+                    updates.append({'id': v['id'],
+                                    'provider_id': sfvol['volumeID']})
+        return updates
+
+    def update_provider_info(self, vrefs):
+        return self._init_volume_mappings(vrefs)
 
     def _create_template_account(self, account_name):
         # We raise an API exception if the account doesn't exist
