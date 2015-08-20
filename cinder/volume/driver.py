@@ -294,6 +294,7 @@ class BaseVD(object):
             utils.setup_tracing(self.configuration.safe_get('trace_flags'))
         self.set_execute(execute)
         self._stats = {}
+        self._throttle = None
 
         self.pools = []
 
@@ -1543,7 +1544,7 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
     def remove_export_snapshot(self, context, snapshot):
         raise NotImplementedError()
 
-    def initialize_connection(self, volume, connector):
+    def initialize_connection(self, volume, connector, **kwargs):
         raise NotImplementedError()
 
     def initialize_connection_snapshot(self, snapshot, connector, **kwargs):
