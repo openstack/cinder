@@ -32,8 +32,8 @@ Programming HowTos and Tutorials
     drivers
     gmr
     replication
+    migration
     api.apache
-
 
 Background Concepts for Cinder
 ------------------------------
@@ -74,7 +74,6 @@ Module Reference
    scheduler
    fakes
    cinder
-
 
 Indices and tables
 ------------------
