@@ -211,11 +211,7 @@ def remove_volume_type_access(context, volume_type_id, project_id):
 
 
 def is_encrypted(context, volume_type_id):
-    if volume_type_id is None:
-        return False
-
-    encryption = db.volume_type_encryption_get(context, volume_type_id)
-    return encryption is not None
+    return get_volume_type_encryption(context, volume_type_id) is not None
 
 
 def get_volume_type_encryption(context, volume_type_id):
