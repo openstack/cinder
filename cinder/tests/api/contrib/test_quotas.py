@@ -30,12 +30,13 @@ from cinder import test
 
 def make_body(root=True, gigabytes=1000, snapshots=10,
               volumes=10, backups=10, backup_gigabytes=1000,
-              tenant_id='foo'):
+              tenant_id='foo', per_volume_gigabytes=-1):
     resources = {'gigabytes': gigabytes,
                  'snapshots': snapshots,
                  'volumes': volumes,
                  'backups': backups,
-                 'backup_gigabytes': backup_gigabytes}
+                 'backup_gigabytes': backup_gigabytes,
+                 'per_volume_gigabytes': per_volume_gigabytes, }
     # need to consider preexisting volume types as well
     volume_types = db.volume_type_get_all(context.get_admin_context())
     for volume_type in volume_types:
