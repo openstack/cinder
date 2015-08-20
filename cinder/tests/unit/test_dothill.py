@@ -558,20 +558,18 @@ class TestDotHillFC(test.TestCase):
 
     @mock.patch.object(dothill_common.DotHillCommon, 'create_volume')
     def test_create_volume(self, mock_create):
-        self._test_with_mock(mock_create, 'create_volume', [None],
-                             {'metadata': None})
+        self._test_with_mock(mock_create, 'create_volume', [None])
 
     @mock.patch.object(dothill_common.DotHillCommon,
                        'create_cloned_volume')
     def test_create_cloned_volume(self, mock_create):
-        self._test_with_mock(mock_create, 'create_cloned_volume', [None, None],
-                             {'metadata': None})
+        self._test_with_mock(mock_create, 'create_cloned_volume', [None, None])
 
     @mock.patch.object(dothill_common.DotHillCommon,
                        'create_volume_from_snapshot')
     def test_create_volume_from_snapshot(self, mock_create):
         self._test_with_mock(mock_create, 'create_volume_from_snapshot',
-                             [None, None], None)
+                             [None, None])
 
     @mock.patch.object(dothill_common.DotHillCommon, 'delete_volume')
     def test_delete_volume(self, mock_delete):

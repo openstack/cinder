@@ -160,11 +160,10 @@ class DotHillCommon(object):
                    'id': volume_name,
                    'size': volume_size, })
         try:
-            metadata = self.client.create_volume(volume_name,
-                                                 volume_size,
-                                                 self.backend_name,
-                                                 self.backend_type)
-            return metadata
+            self.client.create_volume(volume_name,
+                                      volume_size,
+                                      self.backend_name,
+                                      self.backend_type)
         except exception.DotHillRequestError as ex:
             LOG.exception(_LE("Creation of volume %s failed."), volume['id'])
             raise exception.Invalid(ex)
@@ -216,7 +215,6 @@ class DotHillCommon(object):
         self.client_login()
         try:
             self.client.copy_volume(orig_name, dest_name, 0, self.backend_name)
-            return None
         except exception.DotHillRequestError as ex:
             LOG.exception(_LE("Cloning of volume %s failed."),
                           volume['source_volid'])
@@ -241,7 +239,6 @@ class DotHillCommon(object):
         self.client_login()
         try:
             self.client.copy_volume(orig_name, dest_name, 0, self.backend_name)
-            return None
         except exception.DotHillRequestError as ex:
             LOG.exception(_LE("Create volume failed from snapshot: %s"),
                           snapshot['id'])
