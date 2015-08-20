@@ -27,6 +27,7 @@ import inspect
 import logging as py_logging
 import os
 import pyclbr
+import random
 import re
 import shutil
 import socket
@@ -769,16 +770,25 @@ def is_blk_device(dev):
         return False
 
 
-def retry(exceptions, interval=1, retries=3, backoff_rate=2):
+def retry(exceptions, interval=1, retries=3, backoff_rate=2,
+          wait_random=False):
 
     def _retry_on_exception(e):
         return isinstance(e, exceptions)
 
     def _backoff_sleep(previous_attempt_number, delay_since_first_attempt_ms):
         exp = backoff_rate ** previous_attempt_number
-        wait_for = max(0, interval * exp)
-        LOG.debug("Sleeping for %s seconds", wait_for)
-        return wait_for * 1000.0
+        wait_for = interval * exp
+
+        if wait_random:
+            random.seed()
+            wait_val = random.randrange(interval * 1000.0, wait_for * 1000.0)
+        else:
+            wait_val = wait_for * 1000.0
+
+        LOG.debug("Sleeping for %s seconds", (wait_val / 1000.0))
+
+        return wait_val
 
     def _print_stop(previous_attempt_number, delay_since_first_attempt_ms):
         delay_since_first_attempt = delay_since_first_attempt_ms / 1000.0
