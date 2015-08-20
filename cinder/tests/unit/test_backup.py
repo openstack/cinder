@@ -270,6 +270,15 @@ class BackupTestCase(BaseBackupTest):
         mock_add_threadpool.assert_has_calls(calls, any_order=True)
         self.assertEqual(2, mock_add_threadpool.call_count)
 
+    def test_is_working(self):
+        self.assertTrue(self.backup_mgr.is_working())
+
+        vmanager_mock = mock.Mock()
+        vmanager_mock.is_working.side_effect = [True, False, True]
+        vms = {'a': vmanager_mock, 'b': vmanager_mock, 'c': vmanager_mock}
+        with mock.patch.dict(self.backup_mgr.volume_managers, vms, True):
+            self.assertFalse(self.backup_mgr.is_working())
+
     def test_init_host_handles_exception(self):
         """Test that exception in cleanup is handled."""
 
