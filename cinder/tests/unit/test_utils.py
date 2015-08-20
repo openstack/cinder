@@ -510,6 +510,15 @@ class GenericUtilsTestCase(test.TestCase):
         self.assertEqual('sudo cinder-rootwrap /path/to/conf',
                          utils.get_root_helper())
 
+    def test_list_of_dicts_to_dict(self):
+        a = {'id': '1', 'color': 'orange'}
+        b = {'id': '2', 'color': 'blue'}
+        c = {'id': '3', 'color': 'green'}
+        lst = [a, b, c]
+
+        resp = utils.list_of_dicts_to_dict(lst, 'id')
+        self.assertEqual(c['id'], resp['3']['id'])
+
 
 class TemporaryChownTestCase(test.TestCase):
     @mock.patch('os.stat')

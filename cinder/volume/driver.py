@@ -1179,6 +1179,14 @@ class BaseVD(object):
         """
         return None
 
+    def update_provider_info(self, volid_list):
+        """Get provider info updates from driver.
+
+        :param volid_list: List of Cinder vol id's to check for updates
+        :return: dict of update {'id': uuid, provider_id: <provider-id>}
+        """
+        return None
+
 
 @six.add_metaclass(abc.ABCMeta)
 class LocalVD(object):

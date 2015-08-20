@@ -295,6 +295,25 @@ class VolumeManager(manager.SchedulerDependentManager):
             LOG.info(_LI("Determined volume DB was not empty at startup."))
             return False
 
+    def _sync_provider_info(self, ctxt, volumes):
+        # NOTE(jdg): For now this just updates provider_id, we can add more
+        # add more items to the update if theyr'e releveant but we need
+        # to be safe in what we allow and add a list of allowed keys
+        # things that make sense are provider_*, replication_status etc
+
+        updates = self.driver.update_provider_info([v['id'] for v in volumes])
+        host_vols = utils.list_of_dicts_to_dict(volumes, 'id')
+
+        for u in updates or []:
+            update = {}
+            # NOTE(JDG): Make sure returned item is in this hosts volumes
+            if host_vols.get(u['id'], None):
+                update['provider_id'] = u['provider_id']
+            if update:
+                self.db.volume_update(ctxt,
+                                      u['id'],
+                                      update)
+
     def init_host(self):
         """Perform any required initialization."""
 
@@ -315,6 +334,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             return
 
         volumes = self.db.volume_get_all_by_host(ctxt, self.host)
+        self._sync_provider_info(ctxt, volumes)
         # FIXME volume count for exporting is wrong
 
         try:
