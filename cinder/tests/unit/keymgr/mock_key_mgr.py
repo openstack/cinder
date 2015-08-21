@@ -27,6 +27,7 @@ this class.
 """
 
 import array
+import binascii
 import uuid
 
 from cinder import exception
@@ -54,14 +55,14 @@ class MockKeyManager(key_mgr.KeyManager):
     def _generate_hex_key(self, **kwargs):
         key_length = kwargs.get('key_length', 256)
         # hex digit => 4 bits
-        hex_encoded = utils.generate_password(length=key_length / 4,
+        hex_encoded = utils.generate_password(length=key_length // 4,
                                               symbolgroups='0123456789ABCDEF')
         return hex_encoded
 
     def _generate_key(self, **kwargs):
         _hex = self._generate_hex_key(**kwargs)
-        return key.SymmetricKey('AES',
-                                array.array('B', _hex.decode('hex')).tolist())
+        key_bytes = array.array('B', binascii.unhexlify(_hex)).tolist()
+        return key.SymmetricKey('AES', key_bytes)
 
     def create_key(self, ctxt, **kwargs):
         """Creates a key.

@@ -207,7 +207,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
 
         # Check image size is not larger than volume size.
         image_size = utils.as_int(image_meta['size'], quiet=False)
-        image_size_in_gb = (image_size + GB - 1) / GB
+        image_size_in_gb = (image_size + GB - 1) // GB
         if image_size_in_gb > size:
             msg = _('Size of specified image %(image_size)sGB'
                     ' is larger than volume size %(volume_size)sGB.')
