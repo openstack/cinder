@@ -1592,57 +1592,60 @@ class CommandLineHelper(object):
     def find_available_iscsi_targets(self, hostname,
                                      preferred_sp,
                                      registered_spport_set,
-                                     all_iscsi_targets,
-                                     multipath=False):
+                                     all_iscsi_targets):
+        """Finds available iscsi targets for a host.
+
+        When the iscsi_initiator_map is configured, the driver will find
+        an accessible portal and put it as the first portal in the portal
+        list to ensure the accessible portal will be used when multipath
+        is not used. All the registered portals will be returned for Nova
+        to clean up all the unused devices related to this LUN created by
+        logging into these portals during attaching other LUNs on VNX.
+        """
+
         if self.iscsi_initiator_map and hostname in self.iscsi_initiator_map:
             iscsi_initiator_ips = list(self.iscsi_initiator_map[hostname])
             random.shuffle(iscsi_initiator_ips)
         else:
             iscsi_initiator_ips = None
+
         # Check the targets on the owner first
         if preferred_sp == 'A':
             target_sps = ('A', 'B')
         else:
             target_sps = ('B', 'A')
 
-        if multipath:
-            target_portals = []
-            for target_sp in target_sps:
-                sp_portals = all_iscsi_targets[target_sp]
-                for portal in sp_portals:
-                    spport = (portal['SP'], portal['Port ID'])
-                    if spport not in registered_spport_set:
-                        LOG.debug("Skip SP Port %(port)s since "
-                                  "no path from %(host)s is through it",
-                                  {'port': spport,
-                                   'host': hostname})
-                        continue
-                    target_portals.append(portal)
-            return target_portals
-
+        target_portals = []
         for target_sp in target_sps:
-            target_portals = list(all_iscsi_targets[target_sp])
-            random.shuffle(target_portals)
-            for target_portal in target_portals:
-                spport = (target_portal['SP'], target_portal['Port ID'])
+            sp_portals = all_iscsi_targets[target_sp]
+            random.shuffle(sp_portals)
+            for portal in sp_portals:
+                spport = (portal['SP'], portal['Port ID'])
                 if spport not in registered_spport_set:
-                    LOG.debug("Skip SP Port %(port)s since "
-                              "no path from %(host)s is through it",
-                              {'port': spport,
-                               'host': hostname})
+                    LOG.debug(
+                        "Skip SP Port %(port)s since "
+                        "no path from %(host)s is through it.",
+                        {'port': spport,
+                         'host': hostname})
                     continue
-                if iscsi_initiator_ips is not None:
-                    for initiator_ip in iscsi_initiator_ips:
-                        if self.ping_node(target_portal, initiator_ip):
-                            return [target_portal]
-                else:
-                    LOG.debug("No iSCSI IP address of %(hostname)s is known. "
-                              "Return a random target portal %(portal)s.",
-                              {'hostname': hostname,
-                               'portal': target_portal})
-                    return [target_portal]
+                target_portals.append(portal)
 
-        return None
+        main_portal_index = None
+        if iscsi_initiator_ips:
+            for i, portal in enumerate(target_portals):
+                for initiator_ip in iscsi_initiator_ips:
+                    if self.ping_node(portal, initiator_ip):
+                        main_portal_index = i
+                        break
+                else:
+                    # Else for the for loop. If there is no main portal found,
+                    # continue to try next initiator IP.
+                    continue
+                break
+
+        if main_portal_index is not None:
+            target_portals.insert(0, target_portals.pop(main_portal_index))
+        return target_portals
 
     def _is_sp_unavailable_error(self, out):
         error_pattern = '(^Error.*Message.*End of data stream.*)|'\
@@ -3176,7 +3179,6 @@ class EMCVnxCliBase(object):
 
     def vnx_get_iscsi_properties(self, volume, connector, hlu, sg_raw_output):
         storage_group = connector['host']
-        multipath = connector.get('multipath', False)
         owner_sp = self.get_lun_owner(volume)
         registered_spports = self._client.get_registered_spport_set(
             connector['initiator'],
@@ -3185,40 +3187,31 @@ class EMCVnxCliBase(object):
         targets = self._client.find_available_iscsi_targets(
             storage_group, owner_sp,
             registered_spports,
-            self.iscsi_targets,
-            multipath)
-
-        properties = {}
-
-        if not multipath:
-            properties = {'target_discovered': False,
-                          'target_iqn': 'unknown',
-                          'target_portal': 'unknown',
-                          'target_lun': 'unknown',
-                          'volume_id': volume['id']}
-            if targets:
-                properties['target_discovered'] = True
-                properties['target_iqn'] = targets[0]['Port WWN']
-                properties['target_portal'] = \
-                    "%s:3260" % targets[0]['IP Address']
-                properties['target_lun'] = hlu
+            self.iscsi_targets)
+        properties = {'target_discovered': False,
+                      'target_iqn': 'unknown',
+                      'target_iqns': None,
+                      'target_portal': 'unknown',
+                      'target_portals': None,
+                      'target_lun': 'unknown',
+                      'target_luns': None,
+                      'volume_id': volume['id']}
+        if targets:
+            properties['target_discovered'] = True
+            properties['target_iqns'] = [t['Port WWN'] for t in targets]
+            properties['target_iqn'] = properties['target_iqns'][0]
+            properties['target_portals'] = [
+                "%s:3260" % t['IP Address'] for t in targets]
+            properties['target_portal'] = properties['target_portals'][0]
+            properties['target_luns'] = [hlu] * len(targets)
+            properties['target_lun'] = hlu
         else:
-            properties = {'target_discovered': False,
-                          'target_iqns': None,
-                          'target_portals': None,
-                          'target_luns': None,
-                          'volume_id': volume['id']}
-            if targets:
-                properties['target_discovered'] = True
-                properties['target_iqns'] = [t['Port WWN'] for t in targets]
-                properties['target_portals'] = [
-                    "%s:3260" % t['IP Address'] for t in targets]
-                properties['target_luns'] = [hlu] * len(targets)
-
-        if not targets:
             LOG.error(_LE('Failed to find available iSCSI targets for %s.'),
                       storage_group)
 
+        LOG.debug('The iSCSI properties for %(host)s is %(properties)s.',
+                  {'host': storage_group,
+                   'properties': properties})
         return properties
 
     def vnx_get_fc_properties(self, connector, device_number):
