@@ -23,7 +23,9 @@
 import json
 import urllib2
 
-from cinder.volume.drivers import nexenta
+from cinder.i18n import _, _LE, _LI
+
+#from oslo_log import log as logging
 
 try:
     from oslo_log import log as logging
@@ -34,13 +36,6 @@ except:
         from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
-
-# placeholder text formatting handler
-def __(text):
-    return text
-
-class NexentaJSONException(nexenta.NexentaException):
-    pass
 
 
 class NexentaEdgeJSONProxy(object):
@@ -65,7 +60,7 @@ class NexentaEdgeJSONProxy(object):
         if not self.method:
             method = name
         else:
-            raise Exception("Wrong resource call syntax")
+            raise Exception(_("Wrong resource call syntax"))
         return NexentaEdgeJSONProxy(
             self.protocol, self.host, self.port, self.path,
             self.user, self.password, self.auto, method)
@@ -88,7 +83,7 @@ class NexentaEdgeJSONProxy(object):
             'Authorization': 'Basic %s' % auth
         }
 
-        LOG.debug(__('Sending JSON data: %s') % self.url)
+        LOG.debug('Sending JSON data: %s', self.url)
 
         try:
             request = urllib2.Request(self.url, data, headers)
@@ -106,10 +101,10 @@ class NexentaEdgeJSONProxy(object):
             # Handle 'auto' switch mode.. from HTTP to HTTPS
             if response_obj.info().status == 'EOF in headers':
                 if not self.auto or self.protocol != 'http':
-                    LOG.error(__('No headers in server response'))
-                    raise NexentaJSONException(__('Bad response from server'))
+                    LOG.error(_LE('No headers in server response'))
+                    raise Exception(_('Bad response from server'))
                 LOG.info(
-                    __('Auto switching to HTTPS connection to %s') % self.url)
+                    _LI('Auto switching to HTTPS connection to %s'), self.url)
                 self.protocol = 'https'
                 request = urllib2.Request(self.url, data, headers)
                 if self.method == 'get':
@@ -128,13 +123,13 @@ class NexentaEdgeJSONProxy(object):
             response_data = e.read()
             rsp = json.loads(response_data)
         except urllib2.URLError as e:
-            rsp = {'code': str(e.reason), 'message': str(e)}
+            rsp = {'code': e.reason, 'message': e}
         except Exception as e:
             rsp = {'code': 'UNKNOWN_ERROR',
-                   "message": __('Error: %s') % str(e)}
+                   "message": _LE('Error: %s') % e}
 
-        LOG.debug(__('Got response: %s') % rsp)
+        LOG.info(_LI('Got response: %s') % rsp)
 
         if 'code' in rsp:
-            raise NexentaJSONException(rsp['message'])
+            raise Exception(rsp['message'])
         return rsp['response']
