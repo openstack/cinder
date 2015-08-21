@@ -21,20 +21,28 @@ from cinder.volume.drivers.lenovo import lenovo_client
 
 common_opt = [
     cfg.StrOpt('lenovo_backend_name',
-               default='OpenStack',
-               help="VDisk or Pool name to use for volume creation."),
+               default='A',
+               help="Pool or Vdisk name to use for volume creation."),
     cfg.StrOpt('lenovo_backend_type',
-               choices=['linear', 'realstor'],
-               help="linear (for VDisk) or realstor (for Pool)."),
-    cfg.StrOpt('lenovo_wbi_protocol',
+               choices=['linear', 'virtual'],
+               default='virtual',
+               help="linear (for VDisk) or virtual (for Pool)."),
+    cfg.StrOpt('lenovo_api_protocol',
                choices=['http', 'https'],
-               help="Lenovo web interface protocol."),
+               default='https',
+               help="Lenovo api interface protocol."),
+    cfg.BoolOpt('lenovo_verify_certificate',
+                default=False,
+                help="Whether to verify Lenovo array SSL certificate."),
+    cfg.StrOpt('lenovo_verify_certificate_path',
+               default=None,
+               help="Lenovo array SSL certificate path.")
 ]
 
 iscsi_opt = [
     cfg.ListOpt('lenovo_iscsi_ips',
                 default=[],
-                help="List of comma separated target iSCSI IP addresses."),
+                help="List of comma-separated target iSCSI IP addresses."),
 ]
 
 CONF = cfg.CONF
@@ -50,8 +58,13 @@ class LenovoCommon(dothill_common.DotHillCommon):
         self.vendor_name = "Lenovo"
         self.backend_name = self.config.lenovo_backend_name
         self.backend_type = self.config.lenovo_backend_type
-        self.wbi_protocol = self.config.lenovo_wbi_protocol
+        self.api_protocol = self.config.lenovo_api_protocol
+        ssl_verify = False
+        if (self.api_protocol == 'https' and
+           self.config.lenovo_verify_certificate):
+            ssl_verify = self.config.lenovo_verify_certificate_path or True
         self.client = lenovo_client.LenovoClient(self.config.san_ip,
                                                  self.config.san_login,
                                                  self.config.san_password,
-                                                 self.wbi_protocol)
+                                                 self.api_protocol,
+                                                 ssl_verify)

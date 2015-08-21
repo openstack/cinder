@@ -21,20 +21,29 @@ from cinder.volume.drivers.san.hp import hpmsa_client
 
 common_opt = [
     cfg.StrOpt('hpmsa_backend_name',
-               default='OpenStack',
-               help="VDisk or Pool name to use for volume creation."),
+               default='A',
+               help="Pool or Vdisk name to use for volume creation."),
     cfg.StrOpt('hpmsa_backend_type',
-               choices=['linear', 'realstor'],
-               help="linear (for VDisk) or realstor (for Pool)."),
-    cfg.StrOpt('hpmsa_wbi_protocol',
+               choices=['linear', 'virtual'],
+               default='virtual',
+               help="linear (for Vdisk) or virtual (for Pool)."),
+    cfg.StrOpt('hpmsa_api_protocol',
                choices=['http', 'https'],
-               help="HPMSA web interface protocol."),
+               default='https',
+               help="HPMSA API interface protocol."),
+    cfg.BoolOpt('hpmsa_verify_certificate',
+                default=False,
+                help="Whether to verify HPMSA array SSL certificate."),
+    cfg.StrOpt('hpmsa_verify_certificate_path',
+               default=None,
+               help="HPMSA array SSL certificate path."),
+
 ]
 
 iscsi_opt = [
     cfg.ListOpt('hpmsa_iscsi_ips',
                 default=[],
-                help="List of comma separated target iSCSI IP addresses."),
+                help="List of comma-separated target iSCSI IP addresses."),
 ]
 
 CONF = cfg.CONF
@@ -50,7 +59,14 @@ class HPMSACommon(dothill_common.DotHillCommon):
         self.vendor_name = "HPMSA"
         self.backend_name = self.config.hpmsa_backend_name
         self.backend_type = self.config.hpmsa_backend_type
+        self.api_protocol = self.config.hpmsa_api_protocol
+        ssl_verify = False
+        if (self.api_protocol == 'https' and
+           self.config.hpmsa_verify_certificate):
+            ssl_verify = self.config.hpmsa_verify_certificate_path or True
+
         self.client = hpmsa_client.HPMSAClient(self.config.san_ip,
                                                self.config.san_login,
                                                self.config.san_password,
-                                               self.config.hpmsa_wbi_protocol)
+                                               self.api_protocol,
+                                               ssl_verify)

@@ -19,5 +19,6 @@ from cinder.volume.drivers.dothill import dothill_client
 
 class LenovoClient(dothill_client.DotHillClient):
 
-    def __init__(self, host, login, password, protocol):
-        super(LenovoClient, self).__init__(host, login, password, protocol)
+    def __init__(self, host, login, password, protocol, ssl_verify):
+        super(LenovoClient, self).__init__(host, login, password, protocol,
+                                           ssl_verify)
