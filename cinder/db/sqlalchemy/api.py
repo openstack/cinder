@@ -39,10 +39,11 @@ import osprofiler.sqlalchemy
 import six
 import sqlalchemy
 from sqlalchemy import MetaData
-from sqlalchemy import or_, case
+from sqlalchemy import or_, and_, case
 from sqlalchemy.orm import joinedload, joinedload_all
 from sqlalchemy.orm import RelationshipProperty
 from sqlalchemy.schema import Table
+from sqlalchemy import sql
 from sqlalchemy.sql.expression import desc
 from sqlalchemy.sql.expression import literal_column
 from sqlalchemy.sql.expression import true
@@ -1829,6 +1830,13 @@ def volume_update_status_based_on_attachment(context, volume_id):
         return volume_ref
 
 
+def volume_has_attachments_filter():
+    return sql.exists().where(
+        and_(models.Volume.id == models.VolumeAttachment.volume_id,
+             models.VolumeAttachment.attach_status != 'detached',
+             ~models.VolumeAttachment.deleted))
+
+
 ####################
 
 
@@ -1863,7 +1871,7 @@ def _volume_x_metadata_get_item(context, volume_id, key, model, notfound_exec,
 
 
 def _volume_x_metadata_update(context, volume_id, metadata, delete, model,
-                              session=None):
+                              session=None, add=True, update=True):
     session = session or get_session()
     metadata = metadata.copy()
 
@@ -1887,7 +1895,7 @@ def _volume_x_metadata_update(context, volume_id, metadata, delete, model,
         for row in db_meta:
             if row.key in metadata:
                 value = metadata.pop(row.key)
-                if row.value != value:
+                if row.value != value and update:
                     # ORM objects will not be saved until we do the bulk save
                     row.value = value
                     save.append(row)
@@ -1895,8 +1903,9 @@ def _volume_x_metadata_update(context, volume_id, metadata, delete, model,
             skip.append(row)
 
         # We also want to save non-existent metadata
-        save.extend(model(key=key, value=value, volume_id=volume_id)
-                    for key, value in metadata.items())
+        if add:
+            save.extend(model(key=key, value=value, volume_id=volume_id)
+                        for key, value in metadata.items())
         # Do a bulk save
         if save:
             session.bulk_save_objects(save, update_changed_only=True)
@@ -2016,10 +2025,10 @@ def _volume_admin_metadata_get(context, volume_id, session=None):
 @require_admin_context
 @require_volume_exists
 def _volume_admin_metadata_update(context, volume_id, metadata, delete,
-                                  session=None):
+                                  session=None, add=True, update=True):
     return _volume_x_metadata_update(context, volume_id, metadata, delete,
                                      models.VolumeAdminMetadata,
-                                     session=session)
+                                     session=session, add=add, update=update)
 
 
 @require_admin_context
@@ -2042,8 +2051,10 @@ def volume_admin_metadata_delete(context, volume_id, key):
 @require_admin_context
 @require_volume_exists
 @_retry_on_deadlock
-def volume_admin_metadata_update(context, volume_id, metadata, delete):
-    return _volume_admin_metadata_update(context, volume_id, metadata, delete)
+def volume_admin_metadata_update(context, volume_id, metadata, delete,
+                                 add=True, update=True):
+    return _volume_admin_metadata_update(context, volume_id, metadata, delete,
+                                         add=add, update=update)
 
 
 ###################

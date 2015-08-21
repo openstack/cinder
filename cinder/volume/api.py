@@ -30,6 +30,7 @@ import six
 
 from cinder.api import common
 from cinder import context
+from cinder import db
 from cinder.db import base
 from cinder import exception
 from cinder import flow_utils
@@ -142,6 +143,8 @@ def valid_replication_volume(func):
 class API(base.Base):
     """API for interacting with the volume manager."""
 
+    AVAILABLE_MIGRATION_STATUS = (None, 'deleting', 'error', 'success')
+
     def __init__(self, db_driver=None, image_service=None):
         self.image_service = (image_service or
                               glance.get_default_image_service())
@@ -221,8 +224,8 @@ class API(base.Base):
         # fails to delete after a migration.
         # All of the statuses above means the volume is not in the process
         # of a migration.
-        return volume['migration_status'] not in (None, 'deleting',
-                                                  'error', 'success')
+        return (volume['migration_status'] not in
+                self.AVAILABLE_MIGRATION_STATUS)
 
     def create(self, context, size, name, description, snapshot=None,
                image_id=None, volume_type=None, metadata=None,
@@ -574,68 +577,57 @@ class API(base.Base):
 
     @wrap_check_policy
     def reserve_volume(self, context, volume):
-        # NOTE(jdg): check for Race condition bug 1096983
-        # explicitly get updated ref and check
-        volume = self.db.volume_get(context, volume['id'])
-        if volume['status'] == 'available':
-            self.update(context, volume, {"status": "attaching"})
-        elif volume['status'] == 'in-use':
-            if volume['multiattach']:
-                self.update(context, volume, {"status": "attaching"})
-            else:
-                msg = _("Volume must be multiattachable to reserve again.")
-                LOG.error(msg)
-                raise exception.InvalidVolume(reason=msg)
-        else:
-            msg = _("Volume status must be available to reserve.")
+        expected = {'multiattach': volume.multiattach,
+                    'status': (('available', 'in-use') if volume.multiattach
+                               else 'available')}
+
+        result = volume.conditional_update({'status': 'attaching'}, expected)
+
+        if not result:
+            expected_status = utils.build_or_str(expected['status'])
+            msg = _('Volume status must be %s to reserve.') % expected_status
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
+
         LOG.info(_LI("Reserve volume completed successfully."),
                  resource=volume)
 
     @wrap_check_policy
     def unreserve_volume(self, context, volume):
-        volume = self.db.volume_get(context, volume['id'])
-        if volume['status'] == 'attaching':
-            attaches = self.db.volume_attachment_get_used_by_volume_id(
-                context, volume['id'])
-            if attaches:
-                self.update(context, volume, {"status": "in-use"})
-            else:
-                self.update(context, volume, {"status": "available"})
+        expected = {'status': 'attaching'}
+        # Status change depends on whether it has attachments (in-use) or not
+        # (available)
+        value = {'status': db.Case([(db.volume_has_attachments_filter(),
+                                     'in-use')],
+                                   else_='available')}
+        volume.conditional_update(value, expected)
         LOG.info(_LI("Unreserve volume completed successfully."),
                  resource=volume)
 
     @wrap_check_policy
     def begin_detaching(self, context, volume):
-        # NOTE(vbala): The volume status might be 'detaching' already due to
-        # a previous begin_detaching call. Get updated volume status so that
-        # we fail such cases.
-        volume = self.db.volume_get(context, volume['id'])
-        # If we are in the middle of a volume migration, we don't want the user
-        # to see that the volume is 'detaching'. Having 'migration_status' set
-        # will have the same effect internally.
-        if self._is_volume_migrating(volume):
-            return
+        # If we are in the middle of a volume migration, we don't want the
+        # user to see that the volume is 'detaching'. Having
+        # 'migration_status' set will have the same effect internally.
+        expected = {'status': 'in-use',
+                    'attach_status': 'attached',
+                    'migration_status': self.AVAILABLE_MIGRATION_STATUS}
 
-        if (volume['status'] != 'in-use' or
-                volume['attach_status'] != 'attached'):
-            msg = (_("Unable to detach volume. Volume status must be 'in-use' "
-                     "and attach_status must be 'attached' to detach. "
-                     "Currently: status: '%(status)s', "
-                     "attach_status: '%(attach_status)s.'") %
-                   {'status': volume['status'],
-                    'attach_status': volume['attach_status']})
+        result = volume.conditional_update({'status': 'detaching'}, expected)
+
+        if not (result or self._is_volume_migrating(volume)):
+            msg = _("Unable to detach volume. Volume status must be 'in-use' "
+                    "and attach_status must be 'attached' to detach.")
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
-        self.update(context, volume, {"status": "detaching"})
+
         LOG.info(_LI("Begin detaching volume completed successfully."),
                  resource=volume)
 
     @wrap_check_policy
     def roll_detaching(self, context, volume):
-        if volume['status'] == "detaching":
-            self.update(context, volume, {"status": "in-use"})
+        volume.conditional_update({'status': 'in-use'},
+                                  {'status': 'detaching'})
         LOG.info(_LI("Roll detaching of volume completed successfully."),
                  resource=volume)
 
@@ -647,15 +639,13 @@ class API(base.Base):
                          'because it is in maintenance.'), resource=volume)
             msg = _("The volume cannot be attached in maintenance mode.")
             raise exception.InvalidVolume(reason=msg)
-        volume_metadata = self.get_volume_admin_metadata(context.elevated(),
-                                                         volume)
-        if 'readonly' not in volume_metadata:
-            # NOTE(zhiyan): set a default value for read-only flag to metadata.
-            self.update_volume_admin_metadata(context.elevated(), volume,
-                                              {'readonly': 'False'})
-            volume_metadata['readonly'] = 'False'
 
-        if volume_metadata['readonly'] == 'True' and mode != 'ro':
+        # We add readonly metadata if it doesn't already exist
+        readonly = self.update_volume_admin_metadata(context.elevated(),
+                                                     volume,
+                                                     {'readonly': 'False'},
+                                                     update=False)['readonly']
+        if readonly == 'True' and mode != 'ro':
             raise exception.InvalidVolumeAttachMode(mode=mode,
                                                     volume_id=volume['id'])
 
@@ -1069,7 +1059,7 @@ class API(base.Base):
 
     @wrap_check_policy
     def update_volume_admin_metadata(self, context, volume, metadata,
-                                     delete=False):
+                                     delete=False, add=True, update=True):
         """Updates or creates volume administration metadata.
 
         If delete is True, metadata items that are not specified in the
@@ -1078,7 +1068,8 @@ class API(base.Base):
         """
         self._check_metadata_properties(metadata)
         db_meta = self.db.volume_admin_metadata_update(context, volume['id'],
-                                                       metadata, delete)
+                                                       metadata, delete, add,
+                                                       update)
 
         # TODO(jdg): Implement an RPC call for drivers that may use this info
 
