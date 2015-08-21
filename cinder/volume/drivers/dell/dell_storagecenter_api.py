@@ -1032,6 +1032,7 @@ class StorageCenterApi(object):
                       {'code': r.status_code,
                        'reason': r.reason})
             LOG.error(_LE('Unable to find FC initiators'))
+        LOG.debug(initiators)
         return initiators
 
     def get_volume_count(self, scserver):
@@ -1068,6 +1069,7 @@ class StorageCenterApi(object):
                           scvolume.get('name'))
         else:
             LOG.error(_LE('_find_mappings: volume is not active'))
+        LOG.debug(mappings)
         return mappings
 
     def _find_mapping_profiles(self, scvolume):
@@ -1090,6 +1092,7 @@ class StorageCenterApi(object):
                           scvolume.get('name'))
         else:
             LOG.error(_LE('_find_mappings: volume is not active'))
+        LOG.debug(mapping_profiles)
         return mapping_profiles
 
     def _find_controller_port(self, cportid):
@@ -1109,6 +1112,7 @@ class StorageCenterApi(object):
                        'reason': r.reason})
             LOG.error(_LE('Unable to find controller port: %s'),
                       cportid)
+        LOG.debug(controllerport)
         return controllerport
 
     def find_wwns(self, scvolume, scserver):
@@ -1140,24 +1144,32 @@ class StorageCenterApi(object):
                     # Look for both keys.
                     wwn = controllerport.get('wwn',
                                              controllerport.get('WWN'))
-                    if wwn is None:
-                        LOG.error(_LE('Find_wwns: Unable to find port wwn'))
-                    serverhba = mapping.get('serverHba')
-                    if wwn is not None and serverhba is not None:
-                        hbaname = serverhba.get('instanceName')
-                        if hbaname in initiators:
-                            if itmap.get(hbaname) is None:
-                                itmap[hbaname] = []
-                            itmap[hbaname].append(wwn)
-                            wwns.append(wwn)
+                    if wwn:
+                        serverhba = mapping.get('serverHba')
+                        if serverhba:
+                            hbaname = serverhba.get('instanceName')
+                            if hbaname in initiators:
+                                if itmap.get(hbaname) is None:
+                                    itmap[hbaname] = []
+                                itmap[hbaname].append(wwn)
+                                wwns.append(wwn)
 
-                            mappinglun = mapping.get('lun')
-                            if lun is None:
-                                lun = mappinglun
-                            elif lun != mappinglun:
-                                LOG.warning(_LW('Inconsistent Luns.'))
+                                mappinglun = mapping.get('lun')
+                                if lun is None:
+                                    lun = mappinglun
+                                elif lun != mappinglun:
+                                    LOG.warning(_LW('Inconsistent Luns.'))
+                            else:
+                                LOG.debug('%s not found in initiator list',
+                                          hbaname)
+                        else:
+                            LOG.debug('serverhba is None.')
+                    else:
+                        LOG.debug('Unable to find port wwn.')
+                else:
+                    LOG.debug('controllerport is None.')
         else:
-            LOG.error(_LE('Find_wwns: Volume appears unmapped'))
+            LOG.error(_LE('Volume appears unmapped'))
         LOG.debug(lun)
         LOG.debug(wwns)
         LOG.debug(itmap)
