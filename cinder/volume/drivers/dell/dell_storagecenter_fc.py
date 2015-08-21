@@ -42,9 +42,11 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
                 driver.
         2.1.0 - Added support for ManageableVD.
         2.2.0 - Driver retype support for switching volume's Storage Profile
+        2.3.0 - Added Legacy Port Mode Support
+        2.3.1 - Updated error handling.
     """
 
-    VERSION = '2.2.0'
+    VERSION = '2.3.1'
 
     def __init__(self, *args, **kwargs):
         super(DellStorageCenterFCDriver, self).__init__(*args, **kwargs)

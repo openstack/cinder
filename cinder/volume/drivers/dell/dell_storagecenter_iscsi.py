@@ -39,10 +39,13 @@ class DellStorageCenterISCSIDriver(dell_storagecenter_common.DellCommonDriver,
         2.0.0 - Switched to inheriting functional objects rather than volume
                 driver.
         2.1.0 - Added support for ManageableVD.
-        2.2.0 - Driver retype support for switching volume's Storage Profile
+        2.2.0 - Driver retype support for switching volume's Storage Profile.
+                Added API 2.2 support.
+        2.3.0 - Added Legacy Port Mode Support
+        2.3.1 - Updated error handling.
     """
 
-    VERSION = '2.2.0'
+    VERSION = '2.3.1'
 
     def __init__(self, *args, **kwargs):
         super(DellStorageCenterISCSIDriver, self).__init__(*args, **kwargs)
@@ -122,11 +125,13 @@ class DellStorageCenterISCSIDriver(dell_storagecenter_common.DellCommonDriver,
                         # Return our iscsi properties.
                         return {'driver_volume_type': 'iscsi',
                                 'data': iscsiprops}
-            except Exception:
-                error = (_('Failed to initialize connection '
-                           '%(initiator)s %(vol)s') %
-                         {'initiator': initiator_name,
-                          'vol': volume_name})
+            # Re-raise any backend exception.
+            except exception.VolumeBackendAPIException:
+                with excutils.save_and_reraise_exception():
+                    LOG.error(_LE('Failed to initialize connection'))
+            # If there is a data structure issue then detail the exception
+            # and bail with a Backend Exception.
+            except Exception as error:
                 LOG.error(error)
                 raise exception.VolumeBackendAPIException(error)
 
