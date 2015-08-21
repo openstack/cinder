@@ -937,7 +937,12 @@ class DBAPIVolumeTestCase(BaseTest):
                                   'metadata': {'m1': 'v1'}})
         volume = db.volume_get(self.ctxt, volume['id'])
         self.assertEqual('h2', volume['host'])
-        self.assertEqual(dict(ref_a), dict(volume))
+        expected = dict(ref_a)
+        expected['volume_metadata'] = list(map(dict,
+                                               expected['volume_metadata']))
+        result = dict(volume)
+        result['volume_metadata'] = list(map(dict, result['volume_metadata']))
+        self.assertEqual(expected, result)
 
     def test_volume_update_nonexistent(self):
         self.assertRaises(exception.VolumeNotFound, db.volume_update,
