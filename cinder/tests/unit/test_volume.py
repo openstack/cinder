@@ -39,7 +39,6 @@ from stevedore import extension
 from taskflow.engines.action_engine import engine
 
 from cinder.api import common
-from cinder.backup import driver as backup_driver
 from cinder.brick.local_dev import lvm as brick_lvm
 from cinder.compute import nova
 from cinder import context
@@ -48,7 +47,6 @@ from cinder import exception
 from cinder.image import image_utils
 from cinder import keymgr
 from cinder import objects
-from cinder.openstack.common import fileutils
 import cinder.policy
 from cinder import quota
 from cinder import test
@@ -5644,7 +5642,7 @@ class GenericVolumeDriverTestCase(DriverTestCase):
     driver_name = "cinder.tests.unit.fake_driver.LoggingVolumeDriver"
 
     @mock.patch.object(utils, 'temporary_chown')
-    @mock.patch.object(fileutils, 'file_open')
+    @mock.patch('six.moves.builtins.open')
     @mock.patch.object(os_brick.initiator.connector,
                        'get_connector_properties')
     @mock.patch.object(db, 'volume_get')
@@ -5681,7 +5679,7 @@ class GenericVolumeDriverTestCase(DriverTestCase):
         mock_volume_get.assert_called_with(self.context, vol['id'])
 
     @mock.patch.object(utils, 'temporary_chown')
-    @mock.patch.object(fileutils, 'file_open')
+    @mock.patch('six.moves.builtins.open')
     @mock.patch.object(os_brick.initiator.connector,
                        'get_connector_properties')
     @mock.patch.object(db, 'volume_get')
@@ -5729,7 +5727,7 @@ class GenericVolumeDriverTestCase(DriverTestCase):
                        'backup_use_temp_snapshot',
                        return_value=True)
     @mock.patch.object(utils, 'temporary_chown')
-    @mock.patch.object(fileutils, 'file_open')
+    @mock.patch('six.moves.builtins.open')
     @mock.patch.object(os_brick.initiator.connector.LocalConnector,
                        'connect_volume')
     @mock.patch.object(os_brick.initiator.connector.LocalConnector,
@@ -5792,39 +5790,64 @@ class GenericVolumeDriverTestCase(DriverTestCase):
         self.assertTrue(self.volume.driver.remove_export_snapshot.called)
         self.assertTrue(self.volume.driver.delete_snapshot.called)
 
-    def test_restore_backup(self):
+    @mock.patch.object(utils, 'temporary_chown')
+    @mock.patch.object(os_brick.initiator.connector,
+                       'get_connector_properties')
+    @mock.patch('six.moves.builtins.open')
+    def test_restore_backup(self,
+                            mock_open,
+                            mock_get_connector_properties,
+                            mock_temporary_chown):
+        dev_null = '/dev/null'
         vol = tests_utils.create_volume(self.context)
-        backup = {'volume_id': vol['id'],
-                  'id': 'backup-for-%s' % vol['id']}
+        backup = {'volume_id': vol['id'], 'id': 'backup-for-%s' % vol['id']}
         properties = {}
-        attach_info = {'device': {'path': '/dev/null'}}
+        attach_info = {'device': {'path': dev_null}}
         root_helper = 'sudo cinder-rootwrap /etc/cinder/rootwrap.conf'
-        backup_service = self.mox.CreateMock(backup_driver.BackupDriver)
-        self.mox.StubOutWithMock(os_brick.initiator.connector,
-                                 'get_connector_properties')
-        self.mox.StubOutWithMock(self.volume.driver, '_attach_volume')
-        self.mox.StubOutWithMock(os, 'getuid')
-        self.mox.StubOutWithMock(utils, 'execute')
-        self.mox.StubOutWithMock(fileutils, 'file_open')
-        self.mox.StubOutWithMock(self.volume.driver, '_detach_volume')
-        self.mox.StubOutWithMock(self.volume.driver, 'terminate_connection')
 
-        os_brick.initiator.connector.\
-            get_connector_properties(root_helper, CONF.my_ip, False, False).\
-            AndReturn(properties)
-        self.volume.driver._attach_volume(self.context, vol, properties).\
-            AndReturn((attach_info, vol))
-        os.getuid()
-        utils.execute('chown', None, '/dev/null', run_as_root=True)
-        f = fileutils.file_open('/dev/null', 'wb').AndReturn(file('/dev/null'))
-        backup_service.restore(backup, vol['id'], f)
-        utils.execute('chown', 0, '/dev/null', run_as_root=True)
-        self.volume.driver._detach_volume(self.context, attach_info, vol,
-                                          properties)
-        self.mox.ReplayAll()
-        self.volume.driver.restore_backup(self.context, backup, vol,
-                                          backup_service)
-        self.mox.UnsetStubs()
+        volume_file = mock.MagicMock()
+        mock_open.return_value.__enter__.return_value = volume_file
+        mock_get_connector_properties.return_value = properties
+
+        self.volume.driver._attach_volume = mock.MagicMock()
+        self.volume.driver._attach_volume.return_value = attach_info, vol
+        self.volume.driver._detach_volume = mock.MagicMock()
+        self.volume.driver.terminate_connection = mock.MagicMock()
+        self.volume.driver.secure_file_operations_enabled = mock.MagicMock()
+        self.volume.driver.secure_file_operations_enabled.side_effect = (False,
+                                                                         True)
+        backup_service = mock.MagicMock()
+
+        for i in (1, 2):
+            self.volume.driver.restore_backup(self.context, backup, vol,
+                                              backup_service)
+
+            mock_get_connector_properties.assert_called_with(root_helper,
+                                                             CONF.my_ip,
+                                                             False, False)
+            self.volume.driver._attach_volume.assert_called_with(
+                self.context, vol, properties)
+            self.assertEqual(i, self.volume.driver._attach_volume.call_count)
+
+            self.volume.driver._detach_volume.assert_called_with(
+                self.context, attach_info, vol, properties)
+            self.assertEqual(i, self.volume.driver._detach_volume.call_count)
+
+            self.volume.driver.secure_file_operations_enabled.\
+                assert_called_with()
+            self.assertEqual(
+                i,
+                self.volume.driver.secure_file_operations_enabled.call_count
+            )
+
+            mock_temporary_chown.assert_called_once_with(dev_null)
+
+            mock_open.assert_called_with(dev_null, 'wb')
+            self.assertEqual(i, mock_open.call_count)
+
+            backup_service.restore.assert_called_with(backup, vol['id'],
+                                                      volume_file)
+            self.assertEqual(i, backup_service.restore.call_count)
 
 
 class LVMISCSIVolumeDriverTestCase(DriverTestCase):
@@ -6243,7 +6266,7 @@ class LVMVolumeDriverTestCase(DriverTestCase):
         lvm_driver.check_for_setup_error()
 
     @mock.patch.object(utils, 'temporary_chown')
-    @mock.patch.object(fileutils, 'file_open')
+    @mock.patch('six.moves.builtins.open')
     @mock.patch.object(os_brick.initiator.connector,
                        'get_connector_properties')
     @mock.patch.object(db, 'volume_get')
@@ -6316,7 +6339,7 @@ class LVMVolumeDriverTestCase(DriverTestCase):
                              update)
 
     @mock.patch.object(utils, 'temporary_chown')
-    @mock.patch.object(fileutils, 'file_open')
+    @mock.patch('six.moves.builtins.open')
     @mock.patch.object(os_brick.initiator.connector,
                        'get_connector_properties')
     @mock.patch.object(db, 'volume_get')

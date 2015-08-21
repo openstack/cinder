@@ -627,7 +627,7 @@ class GlusterFsDriverTestCase(test.TestCase):
                 assert_called_once_with(snap_ref, volume_ref, volume['size'])
             self.assertTrue(mock_delete_snapshot.called)
 
-    @mock.patch('cinder.openstack.common.fileutils.delete_if_exists')
+    @mock.patch('oslo_utils.fileutils.delete_if_exists')
     def test_delete_volume(self, mock_delete_if_exists):
         volume = self._simple_volume()
         volume_filename = 'volume-%s' % self.VOLUME_UUID

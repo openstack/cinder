@@ -15,9 +15,9 @@ import shutil
 import tempfile
 
 import mock
+from oslo_utils import fileutils
 from oslo_utils import timeutils
 
-from cinder.openstack.common import fileutils
 from cinder import test
 from cinder.volume import configuration as conf
 

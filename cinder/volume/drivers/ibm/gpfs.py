@@ -31,7 +31,6 @@ from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI
 from cinder.image import image_utils
-from cinder.openstack.common import fileutils
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers import nfs
@@ -955,7 +954,7 @@ class GPFSDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
 
     def _do_backup(self, backup_path, backup, backup_service):
         with utils.temporary_chown(backup_path):
-            with fileutils.file_open(backup_path) as backup_file:
+            with open(backup_path) as backup_file:
                 backup_service.backup(backup, backup_file)
 
     def backup_volume(self, context, backup, backup_service):
@@ -981,7 +980,7 @@ class GPFSDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
 
         volume_path = self.local_path(volume)
         with utils.temporary_chown(volume_path):
-            with fileutils.file_open(volume_path, 'wb') as volume_file:
+            with open(volume_path, 'wb') as volume_file:
                 backup_service.restore(backup, volume['id'], volume_file)
 
     def _migrate_volume(self, volume, host):

@@ -22,13 +22,13 @@ import os
 from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import fileutils
 from oslo_utils import units
 from six.moves import urllib
 
 from cinder import exception
 from cinder.i18n import _, _LI
 from cinder.image import image_utils
-from cinder.openstack.common import fileutils
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume import utils as volume_utils
@@ -308,7 +308,7 @@ class ScalityDriver(driver.VolumeDriver):
             raise exception.InvalidVolume(msg)
 
         with utils.temporary_chown(volume_local_path):
-            with fileutils.file_open(volume_local_path) as volume_file:
+            with open(volume_local_path) as volume_file:
                 backup_service.backup(backup, volume_file)
 
     def restore_backup(self, context, backup, volume, backup_service):
@@ -317,5 +317,5 @@ class ScalityDriver(driver.VolumeDriver):
                  {'backup': backup['id'], 'volume': volume['name']})
         volume_local_path = self.local_path(volume)
         with utils.temporary_chown(volume_local_path):
-            with fileutils.file_open(volume_local_path, 'wb') as volume_file:
+            with open(volume_local_path, 'wb') as volume_file:
                 backup_service.restore(backup, volume['id'], volume_file)

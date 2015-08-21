@@ -28,7 +28,6 @@ from oslo_utils import units
 from cinder import exception
 from cinder.i18n import _, _LE
 from cinder.image import image_utils
-from cinder.openstack.common import fileutils
 from cinder.volume import driver
 
 
@@ -198,7 +197,7 @@ class SheepdogDriver(driver.VolumeDriver):
                    tmp)
             self._try_execute(*cmd)
 
-            with fileutils.file_open(tmp, 'rb') as image_file:
+            with open(tmp, 'rb') as image_file:
                 image_service.update(context, image_id, {}, image_file)
 
     def create_snapshot(self, snapshot):
