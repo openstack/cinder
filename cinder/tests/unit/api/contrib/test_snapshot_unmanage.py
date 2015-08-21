@@ -84,21 +84,23 @@ class SnapshotUnmanageTest(test.TestCase):
         res = req.get_response(app())
         return res
 
+    @mock.patch('cinder.db.conditional_update', return_value=1)
     @mock.patch('cinder.db.snapshot_update')
-    @mock.patch('cinder.objects.volume.Volume.get_by_id')
-    @mock.patch('cinder.db.volume_get')
+    @mock.patch('cinder.objects.Volume.get_by_id')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.delete_snapshot')
-    def test_unmanage_snapshot_ok(self, mock_rpcapi, mock_db,
-                                  mock_volume_get_by_id, mock_db_update):
+    def test_unmanage_snapshot_ok(self, mock_rpcapi, mock_volume_get_by_id,
+                                  mock_db_update, mock_conditional_update):
         """Return success for valid and unattached volume."""
         ctxt = context.RequestContext('admin', 'fake', True)
         volume = fake_volume.fake_volume_obj(ctxt, id='fake_volume_id')
         mock_volume_get_by_id.return_value = volume
         res = self._get_resp(snapshot_id)
 
-        self.assertEqual(1, mock_db.call_count)
-        self.assertEqual(2, len(mock_db.call_args[0]), mock_db.call_args)
-        self.assertEqual('fake_volume_id', mock_db.call_args[0][1])
+        self.assertEqual(1, mock_volume_get_by_id.call_count)
+        self.assertEqual(2, len(mock_volume_get_by_id.call_args[0]),
+                         mock_volume_get_by_id.call_args)
+        self.assertEqual('fake_volume_id',
+                         mock_volume_get_by_id.call_args[0][1])
 
         self.assertEqual(1, mock_rpcapi.call_count)
         self.assertEqual(3, len(mock_rpcapi.call_args[0]))

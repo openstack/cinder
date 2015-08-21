@@ -1289,10 +1289,10 @@ class VolumeApiTest(test.TestCase):
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
 
         req = fakes.HTTPRequest.blank('/v2/volumes/1')
-        exp = self.assertRaises(webob.exc.HTTPBadRequest,
+        exp = self.assertRaises(exception.VolumeAttached,
                                 self.controller.delete,
                                 req, 1)
-        expect_msg = "Volume cannot be deleted while in attached state"
+        expect_msg = "Volume 1 is still attached, detach volume first."
         self.assertEqual(expect_msg, six.text_type(exp))
 
     def test_volume_delete_no_volume(self):
