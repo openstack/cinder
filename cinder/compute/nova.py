@@ -20,9 +20,9 @@ Handles all requests to Nova.
 from novaclient import exceptions as nova_exceptions
 from novaclient import extension
 from novaclient import service_catalog
-from novaclient.v1_1 import client as nova_client
-from novaclient.v1_1.contrib import assisted_volume_snapshots
-from novaclient.v1_1.contrib import list_extensions
+from novaclient.v2 import client as nova_client
+from novaclient.v2.contrib import assisted_volume_snapshots
+from novaclient.v2.contrib import list_extensions
 from oslo_config import cfg
 from oslo_log import log as logging
 from requests import exceptions as request_exceptions
@@ -180,6 +180,7 @@ class API(base.Base):
     def create_volume_snapshot(self, context, volume_id, create_info):
         nova = novaclient(context, admin_endpoint=True, privileged_user=True)
 
+        # pylint: disable-msg=E1101
         nova.assisted_volume_snapshots.create(
             volume_id,
             create_info=create_info)
@@ -187,6 +188,7 @@ class API(base.Base):
     def delete_volume_snapshot(self, context, snapshot_id, delete_info):
         nova = novaclient(context, admin_endpoint=True, privileged_user=True)
 
+        # pylint: disable-msg=E1101
         nova.assisted_volume_snapshots.delete(
             snapshot_id,
             delete_info=delete_info)
