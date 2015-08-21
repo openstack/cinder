@@ -107,11 +107,10 @@ def locked_volume_id_operation(f, external=False):
     """Lock decorator for volume operations.
 
        Takes a named lock prior to executing the operation. The lock is named
-       with the id of the volume. This lock can then be used
-       by other operations to avoid operation conflicts on shared volumes.
+       with the id of the volume. This lock can be used by driver methods
+       to prevent conflicts with other operations modifying the same volume.
 
-       May be applied to methods of signature:
-          method(<self>, volume, *, **)
+       May be applied to methods that take a 'volume' or 'snapshot' argument.
     """
 
     def lvo_inner1(inst, *args, **kwargs):
