@@ -25,6 +25,7 @@ import os
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
+import six
 
 from cinder.db import base
 from cinder import exception
@@ -98,9 +99,15 @@ class API(base.Base):
 
     def _get_crypt_hash(self, salt, auth_key):
         """Generate a random hash based on the salt and the auth key."""
-        return hmac.new(str(salt),
-                        str(auth_key),
-                        hashlib.sha1).hexdigest()
+        if not isinstance(salt, (six.binary_type, six.text_type)):
+            salt = str(salt)
+        if isinstance(salt, six.text_type):
+            salt = salt.encode('utf-8')
+        if not isinstance(auth_key, (six.binary_type, six.text_type)):
+            auth_key = str(auth_key)
+        if isinstance(auth_key, six.text_type):
+            auth_key = auth_key.encode('utf-8')
+        return hmac.new(salt, auth_key, hashlib.sha1).hexdigest()
 
     def create(self, context, volume_id, display_name):
         """Creates an entry in the transfers table."""
