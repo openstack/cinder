@@ -101,8 +101,15 @@ class CapacityFilter(filters.BaseHostFilter):
                      "host": host_state.host})
                 return False
             else:
-                free_virtual = free * host_state.max_over_subscription_ratio
-                return free_virtual >= volume_size
+                # Thin provisioning is enabled and projected over-subscription
+                # ratio does not exceed max_over_subscription_ratio. The host
+                # passes if "adjusted" free virtual capacity is enough to
+                # accommodate the volume. Adjusted free virtual capacity is
+                # the currently available free capacity (taking into account
+                # of reserved space) which we can over-subscribe.
+                adjusted_free_virtual = (
+                    free * host_state.max_over_subscription_ratio)
+                return adjusted_free_virtual >= volume_size
 
         if free < volume_size:
             LOG.warning(_LW("Insufficient free space for volume creation "
