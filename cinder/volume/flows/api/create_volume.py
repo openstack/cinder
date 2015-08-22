@@ -93,7 +93,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         if resource:
             for prop, allowed_states in zip(props, allowed_vals):
                 if resource[prop] not in allowed_states:
-                    msg = _("Originating %(res)s %(prop)s must be one of"
+                    msg = _("Originating %(res)s %(prop)s must be one of "
                             "'%(vals)s' values")
                     msg = msg % {'res': resource_name,
                                  'prop': prop,
