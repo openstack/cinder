@@ -3149,6 +3149,45 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
             conn, volumeInstance, originalName)
         self.assertEqual(originalName, volumeInstance['ElementName'])
 
+    def test_get_volume_model_updates(self):
+        utils = self.driver.common.utils
+        status = 'status-string'
+        volumes = utils.get_volume_model_updates(
+            None, self.driver.db, self.data.test_CG['id'],
+            status)
+        self.assertEqual(status, volumes[0]['status'])
+
+    @mock.patch.object(
+        emc_vmax_utils.EMCVMAXUtils,
+        'find_group_sync_rg_by_target',
+        return_value="")
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_find_consistency_group',
+        return_value=(None, EMCVMAXCommonData.test_CG))
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_get_pool_and_storage_system',
+        return_value=(None, EMCVMAXCommonData.storage_system))
+    @mock.patch.object(
+        volume_types,
+        'get_volume_type_extra_specs',
+        return_value={'volume_backend_name': 'ISCSINoFAST'})
+    def test_create_consistencygroup_from_src(
+            self, _mock_volume_type, _mock_storage, _mock_cg, _mock_rg):
+        volumes = []
+        volumes.append(self.data.test_source_volume)
+        snapshots = []
+        self.data.test_snapshot['volume_size'] = "10"
+        snapshots.append(self.data.test_snapshot)
+        model_update, volumes_model_update = (
+            self.driver.create_consistencygroup_from_src(
+                self.data.test_ctxt, self.data.test_CG, volumes,
+                self.data.test_CG_snapshot, snapshots))
+        self.assertEqual({'status': 'available'}, model_update)
+        self.assertEqual([{'status': 'available', 'id': '2'}],
+                         volumes_model_update)
+
     def _cleanup(self):
         if self.config_file_path:
             bExists = os.path.exists(self.config_file_path)

@@ -64,6 +64,8 @@ WORKLOAD = 'storagetype:workload'
 INTERVAL = 'storagetype:interval'
 RETRIES = 'storagetype:retries'
 ISV3 = 'isV3'
+TRUNCATE_5 = 5
+TRUNCATE_8 = 8
 
 emc_opts = [
     cfg.StrOpt('cinder_emc_config_file',
@@ -2523,8 +2525,8 @@ class EMCVMAXCommon(object):
                 targetVolumeInstance = self.utils.find_volume_instance(
                     self.conn, volumeDict, targetVolumeName)
                 LOG.debug("Create target volume for member volume "
-                          "source volume: %(memberVol)s "
-                          "target volume %(targetVol)s.",
+                          "Source volume: %(memberVol)s "
+                          "Target volume %(targetVol)s.",
                           {'memberVol': memberInstanceName,
                            'targetVol': targetVolumeInstance.path})
                 self.provision.add_volume_to_cg(self.conn,
@@ -3742,7 +3744,7 @@ class EMCVMAXCommon(object):
         # 8 - Detach operation.
         # 9 - Dissolve operation.
         if isSnapshot:
-            # Operation 7: dissolve for snapVx.
+            # Operation 9: dissolve for snapVx.
             operation = self.utils.get_num(9, '16')
         else:
             # Operation 8: detach for clone.
@@ -4132,3 +4134,141 @@ class EMCVMAXCommon(object):
             else:
                 volumeInstanceNames.append(volumeInstance.path)
         return volumeInstanceNames
+
+    def create_consistencygroup_from_src(self, context, group, volumes,
+                                         cgsnapshot, snapshots, db):
+        """Creates the consistency group from source.
+
+        Currently the source can only be a cgsnapshot.
+
+        :param context: the context
+        :param group: the consistency group object to be created
+        :param volumes: volumes in the consistency group
+        :param cgsnapshot: the source consistency group snapshot
+        :param snapshots: snapshots of the source volumes
+        :param db: database
+        :returns: model_update, volumes_model_update
+                  model_update is a dictionary of cg status
+                  volumes_model_update is a list of dictionaries of volume
+                  update
+        """
+        LOG.debug("Enter EMCVMAXCommon::create_consistencygroup_from_src. "
+                  "Group to be created: %(cgId)s, "
+                  "Source snapshot: %(cgSnapshot)s.",
+                  {'cgId': group['id'],
+                   'cgSnapshot': cgsnapshot['consistencygroup_id']})
+
+        volumeTypeId = group['volume_type_id'].replace(",", "")
+        extraSpecs = self._initial_setup(None, volumeTypeId)
+
+        self.create_consistencygroup(context, group)
+        targetCgName = self.utils.truncate_string(group['id'], TRUNCATE_8)
+
+        if not snapshots:
+            exceptionMessage = (_("No source snapshots provided to create "
+                                  "consistency group %s.") % targetCgName)
+            raise exception.VolumeBackendAPIException(
+                data=exceptionMessage)
+
+        modelUpdate = {'status': 'available'}
+
+        _poolInstanceName, storageSystem = (
+            self._get_pool_and_storage_system(extraSpecs))
+        try:
+            replicationService = self.utils.find_replication_service(
+                self.conn, storageSystem)
+            if replicationService is None:
+                exceptionMessage = (_(
+                    "Cannot find replication service on system %s.") %
+                    storageSystem)
+                raise exception.VolumeBackendAPIException(
+                    data=exceptionMessage)
+            targetCgInstanceName = self._find_consistency_group(
+                replicationService, targetCgName)
+            LOG.debug("Create CG %(targetCg)s from snapshot.",
+                      {'targetCg': targetCgInstanceName})
+
+            for volume, snapshot in zip(volumes, snapshots):
+                volumeSizeInbits = int(self.utils.convert_gb_to_bits(
+                    snapshot['volume_size']))
+                targetVolumeName = 'targetVol'
+                volume = {'size': int(self.utils.convert_bits_to_gbs(
+                    volumeSizeInbits))}
+                if extraSpecs[ISV3]:
+                    _rc, volumeDict, _storageSystemName = (
+                        self._create_v3_volume(
+                            volume, targetVolumeName, volumeSizeInbits,
+                            extraSpecs))
+                else:
+                    _rc, volumeDict, _storageSystemName = (
+                        self._create_composite_volume(
+                            volume, targetVolumeName, volumeSizeInbits,
+                            extraSpecs))
+                targetVolumeInstance = self.utils.find_volume_instance(
+                    self.conn, volumeDict, targetVolumeName)
+                LOG.debug("Create target volume for member snapshot. "
+                          "Source snapshot: %(snapshot)s, "
+                          "Target volume: %(targetVol)s.",
+                          {'snapshot': snapshot['id'],
+                           'targetVol': targetVolumeInstance.path})
+
+                self.provision.add_volume_to_cg(self.conn,
+                                                replicationService,
+                                                targetCgInstanceName,
+                                                targetVolumeInstance.path,
+                                                targetCgName,
+                                                targetVolumeName,
+                                                extraSpecs)
+
+            sourceCgName = self.utils.truncate_string(cgsnapshot['id'],
+                                                      TRUNCATE_8)
+            sourceCgInstanceName = self._find_consistency_group(
+                replicationService, sourceCgName)
+            if sourceCgInstanceName is None:
+                exceptionMessage = (_("Cannot find source CG instance. "
+                                      "consistencygroup_id: %s.") %
+                                    cgsnapshot['consistencygroup_id'])
+                raise exception.VolumeBackendAPIException(
+                    data=exceptionMessage)
+            relationName = self.utils.truncate_string(group['id'], TRUNCATE_5)
+            if extraSpecs[ISV3]:
+                self.provisionv3.create_group_replica(
+                    self.conn, replicationService, sourceCgInstanceName,
+                    targetCgInstanceName, relationName, extraSpecs)
+            else:
+                self.provision.create_group_replica(
+                    self.conn, replicationService, sourceCgInstanceName,
+                    targetCgInstanceName, relationName, extraSpecs)
+            # Break the replica group relationship.
+            rgSyncInstanceName = self.utils.find_group_sync_rg_by_target(
+                self.conn, storageSystem, targetCgInstanceName, extraSpecs,
+                True)
+
+            if rgSyncInstanceName is not None:
+                if extraSpecs[ISV3]:
+                    # Operation 9: dissolve for snapVx
+                    operation = self.utils.get_num(9, '16')
+                    self.provisionv3.break_replication_relationship(
+                        self.conn, replicationService, rgSyncInstanceName,
+                        operation, extraSpecs)
+                else:
+                    self.provision.delete_clone_relationship(
+                        self.conn, replicationService,
+                        rgSyncInstanceName, extraSpecs)
+        except Exception as ex:
+            modelUpdate['status'] = 'error'
+            cgSnapshotId = cgsnapshot['consistencygroup_id']
+            volumes_model_update = self.utils.get_volume_model_updates(
+                context, db, group['id'], modelUpdate['status'])
+            LOG.error(_LE("Exception: %(ex)s."), {'ex': ex})
+            exceptionMessage = (_("Failed to create CG %(cgName)s "
+                                  "from snapshot %(cgSnapshot)s.")
+                                % {'cgName': targetCgName,
+                                   'cgSnapshot': cgSnapshotId})
+            LOG.error(exceptionMessage)
+            return modelUpdate, volumes_model_update
+
+        volumes_model_update = self.utils.get_volume_model_updates(
+            context, db, group['id'], modelUpdate['status'])
+
+        return modelUpdate, volumes_model_update
