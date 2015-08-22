@@ -24,6 +24,7 @@ from cinder.db.sqlalchemy import api as sqlalchemy_api
 from cinder import exception
 from cinder.i18n import _
 from cinder import quota
+from cinder import utils
 
 
 QUOTAS = quota.QUOTAS
@@ -55,6 +56,15 @@ class QuotaSetsController(wsgi.Controller):
         quota_set['id'] = str(project_id)
 
         return dict(quota_set=quota_set)
+
+    def _validate_existing_resource(self, key, value, quota_values):
+        if key == 'per_volume_gigabytes':
+            return
+        v = quota_values.get(key, {})
+        if value < (v.get('in_use', 0) + v.get('reserved', 0)):
+            msg = _("Quota %s limit must be equal or greater than existing "
+                    "resources.") % key
+            raise webob.exc.HTTPBadRequest(explanation=msg)
 
     def _get_quotas(self, context, id, usages=False, parent_project_id=None):
         values = QUOTAS.get_project_quotas(context, id, usages=usages,
@@ -93,6 +103,14 @@ class QuotaSetsController(wsgi.Controller):
         project_id = id
         self.assert_valid_body(body, 'quota_set')
 
+        # Get the optional argument 'skip_validation' from body,
+        # if skip_validation is False, then validate existing resource.
+        skip_flag = body.get('skip_validation', True)
+        if not utils.is_valid_boolstr(skip_flag):
+            msg = _("Invalid value '%s' for skip_validation.") % skip_flag
+            raise exception.InvalidParameterValue(err=msg)
+        skip_flag = strutils.bool_from_string(skip_flag)
+
         bad_keys = []
 
         # NOTE(ankit): Pass #1 - In this loop for body['quota_set'].items(),
@@ -108,7 +126,10 @@ class QuotaSetsController(wsgi.Controller):
 
         # NOTE(ankit): Pass #2 - In this loop for body['quota_set'].keys(),
         # we validate the quota limits to ensure that we can bail out if
-        # any of the items in the set is bad.
+        # any of the items in the set is bad. Meanwhile we validate value
+        # to ensure that the value can't be lower than number of existing
+        # resources.
+        quota_values = QUOTAS.get_project_quotas(context, project_id)
         valid_quotas = {}
         for key in body['quota_set'].keys():
             if key in NON_QUOTA_KEYS:
@@ -117,6 +138,9 @@ class QuotaSetsController(wsgi.Controller):
             valid_quotas[key] = self.validate_integer(
                 body['quota_set'][key], key, min_value=-1,
                 max_value=db.MAX_INT)
+
+            if not skip_flag:
+                self._validate_existing_resource(key, value, quota_values)
 
         # NOTE(ankit): Pass #3 - At this point we know that all the keys and
         # values are valid and we can iterate and update them all in one shot
