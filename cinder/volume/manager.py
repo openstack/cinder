@@ -301,7 +301,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         # to be safe in what we allow and add a list of allowed keys
         # things that make sense are provider_*, replication_status etc
 
-        updates = self.driver.update_provider_info([v['id'] for v in volumes])
+        updates = self.driver.update_provider_info(volumes)
         host_vols = utils.list_of_dicts_to_dict(volumes, 'id')
 
         for u in updates or []:

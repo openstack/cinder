@@ -1179,10 +1179,10 @@ class BaseVD(object):
         """
         return None
 
-    def update_provider_info(self, volid_list):
+    def update_provider_info(self, volumes):
         """Get provider info updates from driver.
 
-        :param volid_list: List of Cinder vol id's to check for updates
+        :param volumes: List of Cinder volumes to check for updates
         :return: dict of update {'id': uuid, provider_id: <provider-id>}
         """
         return None
