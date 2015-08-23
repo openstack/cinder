@@ -286,6 +286,20 @@ class PureBaseVolumeDriverTestCase(PureDriverTestCase):
             self.driver.create_volume_from_snapshot, VOLUME, SNAPSHOT)
         SNAPSHOT["volume_size"] = 2  # reset size
 
+    @mock.patch(BASE_DRIVER_OBJ + "._get_snap_name")
+    def test_create_volume_from_snapshot_cant_get_name(self, mock_get_name):
+        mock_get_name.return_value = None
+        self.assertRaises(exception.PureDriverException,
+                          self.driver.create_volume_from_snapshot,
+                          VOLUME, SNAPSHOT)
+
+    @mock.patch(BASE_DRIVER_OBJ + "._get_pgroup_snap_name_from_snapshot")
+    def test_create_volume_from_cgsnapshot_cant_get_name(self, mock_get_name):
+        mock_get_name.return_value = None
+        self.assertRaises(exception.PureDriverException,
+                          self.driver.create_volume_from_snapshot,
+                          VOLUME, SNAPSHOT_WITH_CGROUP)
+
     @mock.patch(BASE_DRIVER_OBJ + "._add_volume_to_consistency_group",
                 autospec=True)
     @mock.patch(BASE_DRIVER_OBJ + "._extend_if_needed", autospec=True)
@@ -618,28 +632,39 @@ class PureBaseVolumeDriverTestCase(PureDriverTestCase):
 
         self.assertEqual(expected_name, actual_name)
 
-    def test_get_pgroup_vol_snap_name(self):
-        cg_id = "4a2f7e3a-312a-40c5-96a8-536b8a0fe074"
-        cgsnap_id = "4a2f7e3a-312a-40c5-96a8-536b8a0fe075"
-        volume_name = "volume-4a2f7e3a-312a-40c5-96a8-536b8a0fe075"
+    def test_get_pgroup_snap_name_from_snapshot(self):
+        cgsnapshot_id = 'b919b266-23b4-4b83-9a92-e66031b9a921'
+        volume_id = 'a3b8b294-8494-4a72-bec7-9aadec561332'
+        pgsnap_name_base = ('consisgroup-0cfc0e4e-5029-4839-af20-184fbc42a9ed'
+                            '-cinder.cgsnapshot-%s-cinder.volume-%s-cinder')
+        pgsnap_name = pgsnap_name_base % (cgsnapshot_id, volume_id)
+
+        target_pgsnap_dict = {
+            'source': 'volume-a3b8b294-8494-4a72-bec7-9aadec561332-cinder',
+            'serial': '590474D16E6708FD00015075',
+            'size': 1073741824,
+            'name': pgsnap_name,
+            'created': '2015-08-11T22:25:43Z'
+        }
+
+        # Simulate another pgroup snapshot for another volume in the same group
+        other_volume_id = '73f6af5e-43cd-4c61-8f57-21f312e4523d'
+        other_pgsnap_dict = target_pgsnap_dict.copy()
+        other_pgsnap_dict['name'] = pgsnap_name_base % (cgsnapshot_id,
+                                                        other_volume_id)
+
+        snap_list = [other_pgsnap_dict, target_pgsnap_dict]
+
+        self.array.list_volumes.return_value = snap_list
 
         mock_snap = mock.Mock()
-        mock_snap.cgsnapshot = mock.Mock()
-        mock_snap.cgsnapshot.consistencygroup_id = cg_id
-        mock_snap.cgsnapshot.id = cgsnap_id
-        mock_snap.volume_name = volume_name
-
-        expected_name = "consisgroup-%(cg)s-cinder.cgsnapshot-%(snap)s-cinder"\
-                        ".%(vol)s-cinder" % {
-                            "cg": cg_id,
-                            "snap": cgsnap_id,
-                            "vol": volume_name,
-                        }
+        mock_snap.cgsnapshot_id = cgsnapshot_id
+        mock_snap.volume_id = volume_id
 
         actual_name = self.driver._get_pgroup_snap_name_from_snapshot(
-            mock_snap)
-
-        self.assertEqual(expected_name, actual_name)
+            mock_snap
+        )
+        self.assertEqual(pgsnap_name, actual_name)
 
     def test_create_consistencygroup(self):
         mock_cgroup = mock.Mock()

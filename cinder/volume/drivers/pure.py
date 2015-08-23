@@ -133,6 +133,11 @@ class PureBaseVolumeDriver(san.SanDriver):
         else:
             snap_name = self._get_snap_name(snapshot)
 
+        if not snap_name:
+            msg = _('Unable to determine snapshot name in Purity for snapshot '
+                    '%(id)s.') % {'id': snapshot['id']}
+            raise exception.PureDriverException(reason=msg)
+
         self._array.copy_volume(snap_name, vol_name)
         self._extend_if_needed(vol_name, snapshot["volume_size"],
                                volume["size"])
@@ -613,11 +618,13 @@ class PureBaseVolumeDriver(san.SanDriver):
 
     def _get_pgroup_snap_name_from_snapshot(self, snapshot):
         """Return the name of the snapshot that Purity will use."""
-        cg_id = snapshot.cgsnapshot.consistencygroup_id
-        cg_name = self._get_pgroup_name_from_id(cg_id)
-        cgsnapshot_id = self._get_pgroup_snap_suffix(snapshot.cgsnapshot)
-        volume_name = snapshot.volume_name
-        return "%s.%s.%s-cinder" % (cg_name, cgsnapshot_id, volume_name)
+        pg_snaps = self._array.list_volumes(snap=True, pgroup=True)
+        for pg_snap in pg_snaps:
+            pg_snap_name = pg_snap['name']
+            if (snapshot.cgsnapshot_id in pg_snap_name and
+                    snapshot.volume_id in pg_snap_name):
+                return pg_snap_name
+        return None
 
     @staticmethod
     def _generate_purity_host_name(name):
