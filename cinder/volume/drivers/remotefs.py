@@ -558,8 +558,8 @@ class RemoteFSDriver(driver.LocalVD, driver.TransferVD, driver.BaseVD):
         NAS file operations. This base method will set the NAS security
         options to false.
         """
-        doc_html = "http://docs.openstack.org/admin-guide-cloud/content" \
-                   "/nfs_backend.html"
+        doc_html = "http://docs.openstack.org/admin-guide-cloud" \
+                   "/blockstorage_nfs_backend.html"
         self.configuration.nas_secure_file_operations = 'false'
         LOG.warning(_LW("The NAS file operations will be run as root: "
                         "allowing root level access at the storage backend. "
