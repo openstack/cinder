@@ -671,6 +671,31 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         consistencygroup.destroy()
 
+    def test_update_consistencygroup_add_volume_already_in_cg(self):
+        consistencygroup = self._create_consistencygroup(ctxt=self.ctxt,
+                                                         status='available')
+        add_volume_id = utils.create_volume(
+            self.ctxt,
+            consistencygroup_id='some_other_cg')['id']
+        req = webob.Request.blank('/v2/fake/consistencygroups/%s/update' %
+                                  consistencygroup.id)
+        req.method = 'PUT'
+        req.headers['Content-Type'] = 'application/json'
+        add_volumes = add_volume_id
+        body = {"consistencygroup": {"name": "cg1",
+                                     "description": "",
+                                     "add_volumes": add_volumes,
+                                     "remove_volumes": None, }}
+        req.body = json.dumps(body)
+        res = req.get_response(fakes.wsgi_app())
+        res_dict = json.loads(res.body)
+
+        self.assertEqual(400, res.status_int)
+        self.assertEqual(400, res_dict['badRequest']['code'])
+        self.assertIsNotNone(res_dict['badRequest']['message'])
+
+        consistencygroup.destroy()
+
     def test_update_consistencygroup_invalid_state(self):
         wrong_status = 'wrong_status'
         consistencygroup = self._create_consistencygroup(status=wrong_status,
