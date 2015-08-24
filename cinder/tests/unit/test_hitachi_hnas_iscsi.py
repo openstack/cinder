@@ -533,3 +533,24 @@ class HNASiSCSIDriverTest(test.TestCase):
         self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
                           self.driver.manage_existing, vol, existing_vol_ref)
         m_get_extra_specs.assert_called_once_with('1')
+
+    def test_manage_existing_invalid_volume_name(self):
+        vol = _VOLUME.copy()
+        existing_vol_ref = {'source-name': 'fs2/t/est_volume'}
+
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing, vol, existing_vol_ref)
+
+    def test_manage_existing_without_volume_name(self):
+        vol = _VOLUME.copy()
+        existing_vol_ref = {'source-name': 'fs2/'}
+
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing, vol, existing_vol_ref)
+
+    def test_manage_existing_with_FS_and_spaces(self):
+        vol = _VOLUME.copy()
+        existing_vol_ref = {'source-name': 'fs2/  '}
+
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing, vol, existing_vol_ref)

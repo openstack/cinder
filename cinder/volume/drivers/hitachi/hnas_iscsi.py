@@ -874,12 +874,19 @@ class HDSISCSIDriver(driver.ISCSIDriver):
 
         :param vol_ref: existing volume to take under management
         """
-        vol_info = vol_ref.split('/')
+        vol_info = vol_ref.strip().split('/')
 
-        fs_label = vol_info[0]
-        vol_name = vol_info[1]
+        if len(vol_info) == 2 and '' not in vol_info:
+            fs_label = vol_info[0]
+            vol_name = vol_info[1]
 
-        return fs_label, vol_name
+            return fs_label, vol_name
+        else:
+            msg = (_("The reference to the volume in the backend should have "
+                     "the format file_system/volume_name (volume_name cannot "
+                     "contain '/')"))
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=vol_ref, reason=msg)
 
     def manage_existing_get_size(self, volume, existing_vol_ref):
         """Gets the size to manage_existing.
@@ -902,6 +909,8 @@ class HDSISCSIDriver(driver.ISCSIDriver):
                   "Volume name: %(vol_name)s.",
                   {'fs_label': fs_label, 'vol_name': vol_name})
 
+        vol_name = "'{}'".format(vol_name)
+
         lu_info = self.bend.get_existing_lu_info(self.config['hnas_cmd'],
                                                  self.config['mgmt_ip0'],
                                                  self.config['username'],
@@ -920,7 +929,9 @@ class HDSISCSIDriver(driver.ISCSIDriver):
         else:
             raise exception.ManageExistingInvalidReference(
                 existing_ref=existing_vol_ref,
-                reason=_('Volume not found on configured storage backend.'))
+                reason=_('Volume not found on configured storage backend. '
+                         'If your volume name contains "/", please rename it '
+                         'and try to manage again.'))
 
     def manage_existing(self, volume, existing_vol_ref):
         """Manages an existing volume.
@@ -943,6 +954,8 @@ class HDSISCSIDriver(driver.ISCSIDriver):
                                    'ref': existing_vol_ref['source-name']})
 
         self._check_pool_and_fs(volume, fs_label)
+
+        vol_name = "'{}'".format(vol_name)
 
         self.bend.rename_existing_lu(self.config['hnas_cmd'],
                                      self.config['mgmt_ip0'],
