@@ -23,6 +23,7 @@ from cinder.api.v1 import volume_metadata
 from cinder.api.v1 import volumes
 import cinder.db
 from cinder import exception as exc
+from cinder import objects
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v1 import stubs
@@ -211,7 +212,7 @@ class volumeMetaDataTest(test.TestCase):
     @mock.patch.object(cinder.db, 'volume_metadata_delete')
     @mock.patch.object(cinder.db, 'volume_metadata_get')
     def test_delete(self, metadata_get, metadata_delete):
-        fake_volume = {'id': fake.VOLUME_ID, 'status': 'available'}
+        fake_volume = objects.Volume(id=fake.VOLUME_ID, status='available')
         fake_context = mock.Mock()
         metadata_get.side_effect = return_volume_metadata
         metadata_delete.side_effect = delete_volume_metadata

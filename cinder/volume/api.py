@@ -973,13 +973,12 @@ class API(base.Base):
     def delete_volume_metadata(self, context, volume,
                                key, meta_type=common.METADATA_TYPES.user):
         """Delete the given metadata item from a volume."""
-        if volume['status'] == 'maintenance':
-            LOG.info(_LI('Unable to delete the volume metadata, '
-                         'because it is in maintenance.'), resource=volume)
-            msg = _("The volume metadata cannot be deleted when the volume "
-                    "is in maintenance mode.")
+        if volume.status in ('maintenance', 'uploading'):
+            msg = _('Deleting volume metadata is not allowed for volumes in '
+                    '%s status.') % volume.status
+            LOG.info(msg, resource=volume)
             raise exception.InvalidVolume(reason=msg)
-        self.db.volume_metadata_delete(context, volume['id'], key, meta_type)
+        self.db.volume_metadata_delete(context, volume.id, key, meta_type)
         LOG.info(_LI("Delete volume metadata completed successfully."),
                  resource=volume)
 
@@ -1011,11 +1010,10 @@ class API(base.Base):
         `metadata` argument will be deleted.
 
         """
-        if volume['status'] == 'maintenance':
-            LOG.info(_LI('Unable to update the metadata for volume, '
-                         'because it is in maintenance.'), resource=volume)
-            msg = _("The volume metadata cannot be updated when the volume "
-                    "is in maintenance mode.")
+        if volume['status'] in ('maintenance', 'uploading'):
+            msg = _('Updating volume metadata is not allowed for volumes in '
+                    '%s status.') % volume['status']
+            LOG.info(msg, resource=volume)
             raise exception.InvalidVolume(reason=msg)
         self._check_metadata_properties(metadata)
         db_meta = self.db.volume_metadata_update(context, volume['id'],
@@ -1132,51 +1130,57 @@ class API(base.Base):
                                                      meta_entry['value']})
         return results
 
-    def _check_volume_availability(self, volume, force):
-        """Check if the volume can be used."""
-        if volume['status'] not in ['available', 'in-use']:
-            msg = _('Volume %(vol_id)s status must be '
-                    'available or in-use, but current status is: '
-                    '%(vol_status)s.') % {'vol_id': volume['id'],
-                                          'vol_status': volume['status']}
-            raise exception.InvalidVolume(reason=msg)
-        if not force and 'in-use' == volume['status']:
-            msg = _('Volume status is in-use.')
-            raise exception.InvalidVolume(reason=msg)
-
     @wrap_check_policy
     def copy_volume_to_image(self, context, volume, metadata, force):
         """Create a new image from the specified volume."""
-
         if not CONF.enable_force_upload and force:
             LOG.info(_LI("Force upload to image is disabled, "
                          "Force option will be ignored."),
                      resource={'type': 'volume', 'id': volume['id']})
             force = False
 
-        self._check_volume_availability(volume, force)
-        glance_core_properties = CONF.glance_core_properties
-        if glance_core_properties:
-            try:
-                volume_image_metadata = self.get_volume_image_metadata(context,
-                                                                       volume)
-                custom_property_set = (set(volume_image_metadata).difference
-                                       (set(glance_core_properties)))
-                if custom_property_set:
-                    properties = {custom_property:
-                                  volume_image_metadata[custom_property]
-                                  for custom_property in custom_property_set}
-                    metadata.update(dict(properties=properties))
-            except exception.GlanceMetadataNotFound:
-                # If volume is not created from image, No glance metadata
-                # would be available for that volume in
-                # volume glance metadata table
+        # Build required conditions for conditional update
+        expected = {'status': ('available', 'in-use') if force
+                    else 'available'}
+        values = {'status': 'uploading',
+                  'previous_status': volume.model.status}
 
-                pass
+        result = volume.conditional_update(values, expected)
+        if not result:
+            msg = (_('Volume %(vol_id)s status must be %(statuses)s') %
+                   {'vol_id': volume.id,
+                    'statuses': utils.build_or_str(expected['status'])})
+            raise exception.InvalidVolume(reason=msg)
 
-        recv_metadata = self.image_service.create(
-            context, self.image_service._translate_to_glance(metadata))
-        self.update(context, volume, {'status': 'uploading'})
+        try:
+            glance_core_props = CONF.glance_core_properties
+            if glance_core_props:
+                try:
+                    vol_img_metadata = self.get_volume_image_metadata(
+                        context, volume)
+                    custom_property_set = (
+                        set(vol_img_metadata).difference(glance_core_props))
+                    if custom_property_set:
+                        metadata['properties'] = {
+                            custom_prop: vol_img_metadata[custom_prop]
+                            for custom_prop in custom_property_set}
+                except exception.GlanceMetadataNotFound:
+                    # If volume is not created from image, No glance metadata
+                    # would be available for that volume in
+                    # volume glance metadata table
+                    pass
+
+            recv_metadata = self.image_service.create(
+                context, self.image_service._translate_to_glance(metadata))
+        except Exception:
+            # NOTE(geguileo): To mimic behavior before conditional_update we
+            # will rollback status if image create fails
+            with excutils.save_and_reraise_exception():
+                volume.conditional_update(
+                    {'status': volume.model.previous_status,
+                     'previous_status': None},
+                    {'status': 'uploading'})
+
         self.volume_rpcapi.copy_volume_to_image(context,
                                                 volume,
                                                 recv_metadata)
@@ -1203,12 +1207,16 @@ class API(base.Base):
 
     @wrap_check_policy
     def extend(self, context, volume, new_size):
-        if volume.status != 'available':
-            msg = _('Volume %(vol_id)s status must be available '
-                    'to extend, but current status is: '
-                    '%(vol_status)s.') % {'vol_id': volume.id,
-                                          'vol_status': volume.status}
-            raise exception.InvalidVolume(reason=msg)
+        value = {'status': 'extending'}
+        expected = {'status': 'available'}
+
+        def _roll_back_status():
+            msg = _LE('Could not return volume %s to available.')
+            try:
+                if not volume.conditional_update(expected, value):
+                    LOG.error(msg, volume.id)
+            except Exception:
+                LOG.exception(msg, volume.id)
 
         size_increase = (int(new_size)) - volume.size
         if size_increase <= 0:
@@ -1218,16 +1226,30 @@ class API(base.Base):
                                                     'size': volume.size})
             raise exception.InvalidInput(reason=msg)
 
+        result = volume.conditional_update(value, expected)
+        if not result:
+            msg = _('Volume %(vol_id)s status must be available to extend.')
+            raise exception.InvalidVolume(reason=msg)
+
+        rollback = True
         try:
             values = {'per_volume_gigabytes': new_size}
             QUOTAS.limit_check(context, project_id=context.project_id,
                                **values)
+            rollback = False
         except exception.OverQuota as e:
             quotas = e.kwargs['quotas']
             raise exception.VolumeSizeExceedsLimit(
                 size=new_size, limit=quotas['per_volume_gigabytes'])
+        finally:
+            # NOTE(geguileo): To mimic behavior before conditional_update we
+            # will rollback status on quota reservation failure regardless of
+            # the exception that caused the failure.
+            if rollback:
+                _roll_back_status()
 
         try:
+            reservations = None
             reserve_opts = {'gigabytes': size_increase}
             QUOTAS.add_volume_type_opts(context, reserve_opts,
                                         volume.volume_type_id)
@@ -1235,25 +1257,26 @@ class API(base.Base):
                                           project_id=volume.project_id,
                                           **reserve_opts)
         except exception.OverQuota as exc:
-            usages = exc.kwargs['usages']
-            quotas = exc.kwargs['quotas']
+            gigabytes = exc.kwargs['usages']['gigabytes']
+            gb_quotas = exc.kwargs['quotas']['gigabytes']
 
-            def _consumed(name):
-                return (usages[name]['reserved'] + usages[name]['in_use'])
-
+            consumed = gigabytes['reserved'] + gigabytes['in_use']
             msg = _LE("Quota exceeded for %(s_pid)s, tried to extend volume "
                       "by %(s_size)sG, (%(d_consumed)dG of %(d_quota)dG "
                       "already consumed).")
             LOG.error(msg, {'s_pid': context.project_id,
                             's_size': size_increase,
-                            'd_consumed': _consumed('gigabytes'),
-                            'd_quota': quotas['gigabytes']})
+                            'd_consumed': consumed,
+                            'd_quota': gb_quotas})
             raise exception.VolumeSizeExceedsAvailableQuota(
-                requested=size_increase,
-                consumed=_consumed('gigabytes'),
-                quota=quotas['gigabytes'])
+                requested=size_increase, consumed=consumed, quota=gb_quotas)
+        finally:
+            # NOTE(geguileo): To mimic behavior before conditional_update we
+            # will rollback status on quota reservation failure regardless of
+            # the exception that caused the failure.
+            if reservations is None:
+                _roll_back_status()
 
-        self.update(context, volume, {'status': 'extending'})
         self.volume_rpcapi.extend_volume(context, volume, new_size,
                                          reservations)
         LOG.info(_LI("Extend volume request issued successfully."),

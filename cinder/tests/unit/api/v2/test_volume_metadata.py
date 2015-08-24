@@ -25,6 +25,7 @@ from cinder.api.v2 import volume_metadata
 from cinder.api.v2 import volumes
 from cinder import db
 from cinder import exception
+from cinder import objects
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v2 import stubs
@@ -205,7 +206,7 @@ class volumeMetaDataTest(test.TestCase):
     @mock.patch.object(db, 'volume_metadata_delete')
     @mock.patch.object(db, 'volume_metadata_get')
     def test_delete(self, metadata_get, metadata_delete):
-        fake_volume = {'id': self.req_id, 'status': 'available'}
+        fake_volume = objects.Volume(id=self.req_id, status='available')
         fake_context = mock.Mock()
         metadata_get.side_effect = return_volume_metadata
         metadata_delete.side_effect = delete_volume_metadata
@@ -223,7 +224,7 @@ class volumeMetaDataTest(test.TestCase):
     @mock.patch.object(db, 'volume_metadata_delete')
     @mock.patch.object(db, 'volume_metadata_get')
     def test_delete_volume_maintenance(self, metadata_get, metadata_delete):
-        fake_volume = {'id': self.req_id, 'status': 'maintenance'}
+        fake_volume = objects.Volume(id=self.req_id, status='maintenance')
         fake_context = mock.Mock()
         metadata_get.side_effect = return_volume_metadata
         metadata_delete.side_effect = delete_volume_metadata
@@ -242,7 +243,7 @@ class volumeMetaDataTest(test.TestCase):
     @mock.patch.object(db, 'volume_metadata_delete')
     @mock.patch.object(db, 'volume_metadata_get')
     def test_delete_nonexistent_volume(self, metadata_get, metadata_delete):
-        fake_volume = {'id': self.req_id, 'status': 'available'}
+        fake_volume = objects.Volume(id=self.req_id, status='available')
         fake_context = mock.Mock()
         metadata_get.side_effect = return_volume_metadata
         metadata_delete.side_effect = return_volume_nonexistent
