@@ -23,6 +23,8 @@ from oslo_utils import importutils
 from oslo_utils import units
 import six
 
+from cinder.backup import driver as backup_driver
+from cinder import db
 from cinder import exception
 from cinder.image import image_utils
 from cinder import test
@@ -57,6 +59,105 @@ Epoch Time           Version
 class FakeImageService(object):
     def download(self, context, image_id, path):
         pass
+
+
+class SheepdogIOWrapperTestCase(test.TestCase):
+    def setUp(self):
+        super(SheepdogIOWrapperTestCase, self).setUp()
+        self.volume = {'name': 'volume-2f9b2ff5-987b-4412-a91c-23caaf0d5aff'}
+        self.snapshot_name = 'snapshot-bf452d80-068a-43d7-ba9f-196cf47bd0be'
+
+        self.vdi_wrapper = sheepdog.SheepdogIOWrapper(
+            self.volume)
+        self.snapshot_wrapper = sheepdog.SheepdogIOWrapper(
+            self.volume, self.snapshot_name)
+
+        self.execute = mock.MagicMock()
+        self.mock_object(processutils, 'execute', self.execute)
+
+    def test_init(self):
+        self.assertEqual(self.volume['name'], self.vdi_wrapper._vdiname)
+        self.assertIsNone(self.vdi_wrapper._snapshot_name)
+        self.assertEqual(0, self.vdi_wrapper._offset)
+
+        self.assertEqual(self.snapshot_name,
+                         self.snapshot_wrapper._snapshot_name)
+
+    def test_execute(self):
+        cmd = ('cmd1', 'arg1')
+        data = 'data1'
+
+        self.vdi_wrapper._execute(cmd, data)
+
+        self.execute.assert_called_once_with(*cmd, process_input=data)
+
+    def test_execute_error(self):
+        cmd = ('cmd1', 'arg1')
+        data = 'data1'
+        self.mock_object(processutils, 'execute',
+                         mock.MagicMock(side_effect=OSError))
+
+        args = (cmd, data)
+        self.assertRaises(exception.VolumeDriverException,
+                          self.vdi_wrapper._execute,
+                          *args)
+
+    def test_read_vdi(self):
+        self.vdi_wrapper.read()
+        self.execute.assert_called_once_with(
+            'dog', 'vdi', 'read', self.volume['name'], 0, process_input=None)
+
+    def test_read_vdi_invalid(self):
+        self.vdi_wrapper._valid = False
+        self.assertRaises(exception.VolumeDriverException,
+                          self.vdi_wrapper.read)
+
+    def test_write_vdi(self):
+        data = 'data1'
+
+        self.vdi_wrapper.write(data)
+
+        self.execute.assert_called_once_with(
+            'dog', 'vdi', 'write',
+            self.volume['name'], 0, len(data),
+            process_input=data)
+        self.assertEqual(len(data), self.vdi_wrapper.tell())
+
+    def test_write_vdi_invalid(self):
+        self.vdi_wrapper._valid = False
+        self.assertRaises(exception.VolumeDriverException,
+                          self.vdi_wrapper.write, 'dummy_data')
+
+    def test_read_snapshot(self):
+        self.snapshot_wrapper.read()
+        self.execute.assert_called_once_with(
+            'dog', 'vdi', 'read', '-s', self.snapshot_name,
+            self.volume['name'], 0,
+            process_input=None)
+
+    def test_seek(self):
+        self.vdi_wrapper.seek(12345)
+        self.assertEqual(12345, self.vdi_wrapper.tell())
+
+        self.vdi_wrapper.seek(-2345, whence=1)
+        self.assertEqual(10000, self.vdi_wrapper.tell())
+
+        # This results in negative offset.
+        self.assertRaises(IOError, self.vdi_wrapper.seek, -20000, whence=1)
+
+    def test_seek_invalid(self):
+        seek_num = 12345
+        self.vdi_wrapper._valid = False
+        self.assertRaises(exception.VolumeDriverException,
+                          self.vdi_wrapper.seek, seek_num)
+
+    def test_flush(self):
+        # flush does nothing.
+        self.vdi_wrapper.flush()
+        self.assertFalse(self.execute.called)
+
+    def test_fileno(self):
+        self.assertRaises(IOError, self.vdi_wrapper.fileno)
 
 
 class SheepdogTestCase(test.TestCase):
@@ -336,3 +437,103 @@ class SheepdogTestCase(test.TestCase):
                     "sheepdog:%s" % fake_vol['name'],
                     "%sG" % fake_vol['size']]
             mock_exe.assert_called_once_with(*args)
+
+    @mock.patch.object(db, 'volume_get')
+    @mock.patch.object(sheepdog.SheepdogDriver, '_try_execute')
+    @mock.patch.object(sheepdog.SheepdogDriver, 'create_snapshot')
+    @mock.patch.object(backup_driver, 'BackupDriver')
+    @mock.patch.object(sheepdog.SheepdogDriver, 'delete_snapshot')
+    def test_backup_volume_success(self, fake_delete_snapshot,
+                                   fake_backup_service, fake_create_snapshot,
+                                   fake_execute, fake_volume_get):
+        fake_context = {}
+        fake_backup = {'volume_id': '2926efe0-24ab-45b7-95e1-ff66e0646a33'}
+        fake_volume = {'id': '2926efe0-24ab-45b7-95e1-ff66e0646a33',
+                       'name': 'volume-2926efe0-24ab-45b7-95e1-ff66e0646a33'}
+        fake_volume_get.return_value = fake_volume
+        self.driver.backup_volume(fake_context,
+                                  fake_backup,
+                                  fake_backup_service)
+
+        self.assertEqual(1, fake_create_snapshot.call_count)
+        self.assertEqual(2, fake_delete_snapshot.call_count)
+        self.assertEqual(fake_create_snapshot.call_args,
+                         fake_delete_snapshot.call_args)
+
+        call_args, call_kwargs = fake_backup_service.backup.call_args
+        call_backup, call_sheepdog_fd = call_args
+        self.assertEqual(fake_backup, call_backup)
+        self.assertIsInstance(call_sheepdog_fd, sheepdog.SheepdogIOWrapper)
+
+    @mock.patch.object(db, 'volume_get')
+    @mock.patch.object(sheepdog.SheepdogDriver, '_try_execute')
+    @mock.patch.object(sheepdog.SheepdogDriver, 'create_snapshot')
+    @mock.patch.object(backup_driver, 'BackupDriver')
+    @mock.patch.object(sheepdog.SheepdogDriver, 'delete_snapshot')
+    def test_backup_volume_fail_to_create_snap(self, fake_delete_snapshot,
+                                               fake_backup_service,
+                                               fake_create_snapshot,
+                                               fake_execute, fake_volume_get):
+        fake_context = {}
+        fake_backup = {'volume_id': '2926efe0-24ab-45b7-95e1-ff66e0646a33'}
+        fake_volume = {'id': '2926efe0-24ab-45b7-95e1-ff66e0646a33',
+                       'name': 'volume-2926efe0-24ab-45b7-95e1-ff66e0646a33'}
+        fake_volume_get.return_value = fake_volume
+        fake_create_snapshot.side_effect = processutils.ProcessExecutionError(
+            cmd='dummy', exit_code=1, stdout='dummy', stderr='dummy')
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.backup_volume,
+                          fake_context,
+                          fake_backup,
+                          fake_backup_service)
+        self.assertEqual(1, fake_create_snapshot.call_count)
+        self.assertEqual(1, fake_delete_snapshot.call_count)
+        self.assertEqual(fake_create_snapshot.call_args,
+                         fake_delete_snapshot.call_args)
+
+    @mock.patch.object(db, 'volume_get')
+    @mock.patch.object(sheepdog.SheepdogDriver, '_try_execute')
+    @mock.patch.object(sheepdog.SheepdogDriver, 'create_snapshot')
+    @mock.patch.object(backup_driver, 'BackupDriver')
+    @mock.patch.object(sheepdog.SheepdogDriver, 'delete_snapshot')
+    def test_backup_volume_fail_to_backup_vol(self, fake_delete_snapshot,
+                                              fake_backup_service,
+                                              fake_create_snapshot,
+                                              fake_execute, fake_volume_get):
+        fake_context = {}
+        fake_backup = {'volume_id': '2926efe0-24ab-45b7-95e1-ff66e0646a33'}
+        fake_volume = {'id': '2926efe0-24ab-45b7-95e1-ff66e0646a33',
+                       'name': 'volume-2926efe0-24ab-45b7-95e1-ff66e0646a33'}
+        fake_volume_get.return_value = fake_volume
+
+        class BackupError(Exception):
+            pass
+
+        fake_backup_service.backup.side_effect = BackupError()
+
+        self.assertRaises(BackupError,
+                          self.driver.backup_volume,
+                          fake_context,
+                          fake_backup,
+                          fake_backup_service)
+        self.assertEqual(1, fake_create_snapshot.call_count)
+        self.assertEqual(2, fake_delete_snapshot.call_count)
+        self.assertEqual(fake_create_snapshot.call_args,
+                         fake_delete_snapshot.call_args)
+
+    @mock.patch.object(backup_driver, 'BackupDriver')
+    def test_restore_backup(self, fake_backup_service):
+        fake_context = {}
+        fake_backup = {}
+        fake_volume = {'id': '2926efe0-24ab-45b7-95e1-ff66e0646a33',
+                       'name': 'volume-2926efe0-24ab-45b7-95e1-ff66e0646a33'}
+
+        self.driver.restore_backup(
+            fake_context, fake_backup, fake_volume, fake_backup_service)
+
+        call_args, call_kwargs = fake_backup_service.restore.call_args
+        call_backup, call_volume_id, call_sheepdog_fd = call_args
+        self.assertEqual(fake_backup, call_backup)
+        self.assertEqual(fake_volume['id'], call_volume_id)
+        self.assertIsInstance(call_sheepdog_fd, sheepdog.SheepdogIOWrapper)
