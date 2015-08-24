@@ -41,13 +41,15 @@ class BackupAPI(object):
     """
 
     BASE_RPC_API_VERSION = '1.0'
+    RPC_API_VERSION = '1.1'
 
     def __init__(self):
         super(BackupAPI, self).__init__()
         target = messaging.Target(topic=CONF.backup_topic,
                                   version=self.BASE_RPC_API_VERSION)
         serializer = objects_base.CinderObjectSerializer()
-        self.client = rpc.get_client(target, '1.1', serializer=serializer)
+        self.client = rpc.get_client(target, self.RPC_API_VERSION,
+                                     serializer=serializer)
 
     def create_backup(self, ctxt, backup):
         LOG.debug("create_backup in rpcapi backup_id %s", backup.id)

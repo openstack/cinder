@@ -865,6 +865,24 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         snapshots = db_utils.get_table(engine, 'snapshots')
         self.assertNotIn('provider_auth', snapshots.c)
 
+    def _check_053(self, engine, data):
+        services = db_utils.get_table(engine, 'services')
+        self.assertIsInstance(services.c.rpc_current_version.type,
+                              sqlalchemy.types.VARCHAR)
+        self.assertIsInstance(services.c.rpc_available_version.type,
+                              sqlalchemy.types.VARCHAR)
+        self.assertIsInstance(services.c.object_current_version.type,
+                              sqlalchemy.types.VARCHAR)
+        self.assertIsInstance(services.c.object_available_version.type,
+                              sqlalchemy.types.VARCHAR)
+
+    def _post_downgrade_053(self, engine):
+        services = db_utils.get_table(engine, 'services')
+        self.assertNotIn('rpc_current_version', services.c)
+        self.assertNotIn('rpc_available_version', services.c)
+        self.assertNotIn('object_current_version', services.c)
+        self.assertNotIn('object_available_version', services.c)
+
     def test_walk_versions(self):
         self.walk_versions(True, False)
 

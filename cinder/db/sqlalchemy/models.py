@@ -69,6 +69,14 @@ class Service(BASE, CinderBase):
     # periodic updates
     modified_at = Column(DateTime)
 
+    # Version columns to support rolling upgrade.
+    # Current version is what the service is running now (i.e. minimum).
+    # Available version is what the service can support (i.e. max).
+    rpc_current_version = Column(String(36))
+    rpc_available_version = Column(String(36))
+    object_current_version = Column(String(36))
+    object_available_version = Column(String(36))
+
 
 class ConsistencyGroup(BASE, CinderBase):
     """Represents a consistencygroup."""
