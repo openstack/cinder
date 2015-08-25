@@ -74,7 +74,7 @@ class VolumeTenantAttributeTest(test.TestCase):
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
         vol = json.loads(res.body)['volume']
-        self.assertEqual(vol['os-vol-tenant-attr:tenant_id'], PROJECT_ID)
+        self.assertEqual(PROJECT_ID, vol['os-vol-tenant-attr:tenant_id'])
 
     def test_get_volume_unallowed(self):
         ctx = context.RequestContext('non-admin', 'fake', False)
@@ -92,7 +92,7 @@ class VolumeTenantAttributeTest(test.TestCase):
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
         vol = json.loads(res.body)['volumes']
-        self.assertEqual(vol[0]['os-vol-tenant-attr:tenant_id'], PROJECT_ID)
+        self.assertEqual(PROJECT_ID, vol[0]['os-vol-tenant-attr:tenant_id'])
 
     def test_list_detail_volumes_unallowed(self):
         ctx = context.RequestContext('non-admin', 'fake', False)
@@ -122,7 +122,7 @@ class VolumeTenantAttributeTest(test.TestCase):
         vol = etree.XML(res.body)
         tenant_key = ('{http://docs.openstack.org/volume/ext/'
                       'volume_tenant_attribute/api/v2}tenant_id')
-        self.assertEqual(vol.get(tenant_key), PROJECT_ID)
+        self.assertEqual(PROJECT_ID, vol.get(tenant_key))
 
     def test_list_volumes_detail_xml(self):
         ctx = context.RequestContext('admin', 'fake', True)
@@ -134,4 +134,4 @@ class VolumeTenantAttributeTest(test.TestCase):
         vol = list(etree.XML(res.body))[0]
         tenant_key = ('{http://docs.openstack.org/volume/ext/'
                       'volume_tenant_attribute/api/v2}tenant_id')
-        self.assertEqual(vol.get(tenant_key), PROJECT_ID)
+        self.assertEqual(PROJECT_ID, vol.get(tenant_key))

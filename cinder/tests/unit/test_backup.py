@@ -556,7 +556,7 @@ class BackupTestCase(BaseBackupTest):
         b2 = self._create_backup_db_entry(project_id='project1')
         backups = db.backup_get_all_by_project(self.ctxt, 'project1')
         self.assertEqual(1, len(backups))
-        self.assertEqual(backups[0].id, b2.id)
+        self.assertEqual(b2.id, backups[0].id)
 
     def test_backup_get_all_by_project_with_deleted(self):
         """Test deleted backups.
@@ -573,7 +573,7 @@ class BackupTestCase(BaseBackupTest):
 
         backups = db.backup_get_all_by_project(self.ctxt, 'fake')
         self.assertEqual(1, len(backups))
-        self.assertEqual(backups[0].id, backup_keep.id)
+        self.assertEqual(backup_keep.id, backups[0].id)
 
         ctxt_read_deleted = context.get_admin_context('yes')
         backups = db.backup_get_all_by_project(ctxt_read_deleted, 'fake')
@@ -594,7 +594,7 @@ class BackupTestCase(BaseBackupTest):
 
         backups = db.backup_get_all_by_host(self.ctxt, 'testhost')
         self.assertEqual(1, len(backups))
-        self.assertEqual(backups[0].id, backup_keep.id)
+        self.assertEqual(backup_keep.id, backups[0].id)
 
         ctxt_read_deleted = context.get_admin_context('yes')
         backups = db.backup_get_all_by_host(ctxt_read_deleted, 'testhost')

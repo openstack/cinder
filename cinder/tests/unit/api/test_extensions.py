@@ -83,8 +83,7 @@ class ExtensionControllerTest(ExtensionTestCase):
             request = webob.Request.blank(url)
             response = request.get_response(app)
             output = jsonutils.loads(response.body)
-            self.assertEqual(output['extension']['alias'],
-                             ext['alias'])
+            self.assertEqual(ext['alias'], output['extension']['alias'])
 
     def test_get_extension_json(self):
         app = router.APIRouter()
@@ -115,7 +114,7 @@ class ExtensionControllerTest(ExtensionTestCase):
         self.assertEqual(200, response.status_int)
 
         root = etree.XML(response.body)
-        self.assertEqual(root.tag.split('extensions')[0], NS)
+        self.assertEqual(NS, root.tag.split('extensions')[0])
 
         # Make sure we have all the extensions, extras extensions being OK.
         exts = root.findall('{0}extension'.format(NS))
@@ -143,7 +142,7 @@ class ExtensionControllerTest(ExtensionTestCase):
         xml = response.body
 
         root = etree.XML(xml)
-        self.assertEqual(root.tag.split('extension')[0], NS)
+        self.assertEqual(NS, root.tag.split('extension')[0])
         self.assertEqual('FOXNSOX', root.get('alias'))
         self.assertEqual('Fox In Socks', root.get('name'))
         self.assertEqual(

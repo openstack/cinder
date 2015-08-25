@@ -72,7 +72,7 @@ class LimiterTest(test.TestCase):
         self.assertEqual([], common.limited(self.small, req))
         self.assertEqual([], common.limited(self.medium, req))
         self.assertEqual(
-            common.limited(self.large, req), self.large[1001:2001])
+            self.large[1001:2001], common.limited(self.large, req))
 
     def test_limiter_offset_blank(self):
         """Test offset key works with a blank offset."""
