@@ -1158,7 +1158,7 @@ class GPFSDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
         model_update = {'status': 'available'}
         return model_update
 
-    def delete_consistencygroup(self, context, group):
+    def delete_consistencygroup(self, context, group, volumes):
         """Delete consistency group of GPFS volumes."""
         cgname = "consisgroup-%s" % group['id']
         fsdev = self._gpfs_device
@@ -1194,7 +1194,7 @@ class GPFSDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
 
         return model_update, volumes
 
-    def create_cgsnapshot(self, context, cgsnapshot):
+    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Create snapshot of a consistency group of GPFS volumes."""
         snapshots = self.db.snapshot_get_all_for_cgsnapshot(
             context, cgsnapshot['id'])
@@ -1207,7 +1207,7 @@ class GPFSDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
 
         return model_update, snapshots
 
-    def delete_cgsnapshot(self, context, cgsnapshot):
+    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Delete snapshot of a consistency group of GPFS volumes."""
         snapshots = self.db.snapshot_get_all_for_cgsnapshot(
             context, cgsnapshot['id'])

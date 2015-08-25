@@ -691,7 +691,7 @@ class TestProphetStorDPLDriver(test.TestCase):
         self.DPL_MOCK.delete_vdev.return_value = DATA_OUTPUT
         self.DPL_MOCK.delete_cg.return_value = DATA_OUTPUT
         model_update, volumes = self.dpldriver.delete_consistencygroup(
-            self.context, DATA_IN_GROUP)
+            self.context, DATA_IN_GROUP, [])
         self.DPL_MOCK.delete_vg.assert_called_once_with(
             self._conver_uuid2hex(DATA_IN_GROUP['id']))
         self.DPL_MOCK.delete_vdev.assert_called_once_with(
@@ -748,7 +748,7 @@ class TestProphetStorDPLDriver(test.TestCase):
         get_all_for_cgsnapshot.return_value = [snapshot_obj]
         self.DPL_MOCK.create_vdev_snapshot.return_value = DATA_OUTPUT
         model_update, snapshots = self.dpldriver.create_cgsnapshot(
-            self.context, snapshot_obj)
+            self.context, snapshot_obj, [])
         self.assertDictMatch({'status': 'available'}, model_update)
 
     @mock.patch('cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
@@ -759,7 +759,7 @@ class TestProphetStorDPLDriver(test.TestCase):
         get_all_for_cgsnapshot.return_value = [snapshot_obj]
         self.DPL_MOCK.delete_cgsnapshot.return_value = DATA_OUTPUT
         model_update, snapshots = self.dpldriver.delete_cgsnapshot(
-            self.context, DATA_IN_CG_SNAPSHOT)
+            self.context, DATA_IN_CG_SNAPSHOT, [])
         self.DPL_MOCK.delete_vdev_snapshot.assert_called_once_with(
             self._conver_uuid2hex(DATA_IN_CG_SNAPSHOT['consistencygroup_id']),
             self._conver_uuid2hex(DATA_IN_CG_SNAPSHOT['id']),

@@ -3695,7 +3695,8 @@ Time Remaining:  0 second(s)
         self.driver.db.volume_get_all_by_group.return_value =\
             self.testData.CONSISTENCY_GROUP_VOLUMES()
         self.driver.delete_consistencygroup(None,
-                                            self.testData.test_cg)
+                                            self.testData.test_cg,
+                                            [])
         expect_cmd = [
             mock.call(
                 *self.testData.DELETE_CONSISTENCYGROUP_CMD(
@@ -3716,7 +3717,7 @@ Time Remaining:  0 second(s)
             self.testData.SNAPS_IN_SNAP_GROUP())
         snapshot_obj.consistencygroup_id = cg_name
         get_all_for_cgsnapshot.return_value = [snapshot_obj]
-        self.driver.create_cgsnapshot(None, self.testData.test_cgsnapshot)
+        self.driver.create_cgsnapshot(None, self.testData.test_cgsnapshot, [])
         expect_cmd = [
             mock.call(
                 *self.testData.CREATE_CG_SNAPSHOT(
@@ -3736,7 +3737,8 @@ Time Remaining:  0 second(s)
         snapshot_obj.consistencygroup_id = cg_name
         get_all_for_cgsnapshot.return_value = [snapshot_obj]
         self.driver.delete_cgsnapshot(None,
-                                      self.testData.test_cgsnapshot)
+                                      self.testData.test_cgsnapshot,
+                                      [])
         expect_cmd = [
             mock.call(
                 *self.testData.DELETE_CG_SNAPSHOT(

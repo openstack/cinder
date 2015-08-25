@@ -2297,7 +2297,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         context = context.elevated()
 
         status = 'available'
-        model_update = False
+        model_update = None
 
         self._notify_about_consistencygroup_usage(
             context, group, "create.start")
@@ -2310,8 +2310,15 @@ class VolumeManager(manager.SchedulerDependentManager):
                                                                group)
 
             if model_update:
-                group.update(model_update)
-                group.save()
+                if model_update['status'] == 'error':
+                    msg = (_('Create consistency group failed.'))
+                    LOG.error(msg,
+                              resource={'type': 'consistency_group',
+                                        'id': group.id})
+                    raise exception.VolumeDriverException(message=msg)
+                else:
+                    group.update(model_update)
+                    group.save()
         except Exception:
             with excutils.save_and_reraise_exception():
                 group.status = 'error'
@@ -2602,14 +2609,16 @@ class VolumeManager(manager.SchedulerDependentManager):
         self._notify_about_consistencygroup_usage(
             context, group, "delete.start")
 
+        volumes_model_update = None
+        model_update = None
         try:
             utils.require_driver_initialized(self.driver)
 
-            model_update, volumes = self.driver.delete_consistencygroup(
-                context, group)
+            model_update, volumes_model_update = (
+                self.driver.delete_consistencygroup(context, group, volumes))
 
-            if volumes:
-                for volume in volumes:
+            if volumes_model_update:
+                for volume in volumes_model_update:
                     update = {'status': volume['status']}
                     self.db.volume_update(context, volume['id'],
                                           update)
@@ -2633,8 +2642,14 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                group.status = 'error_deleting'
+                group.status = 'error'
                 group.save()
+                # Update volume status to 'error' if driver returns
+                # None for volumes_model_update.
+                if not volumes_model_update:
+                    for vol in volumes:
+                        self.db.volume_update(
+                            context, vol['id'], {'status': 'error'})
 
         # Get reservations for group
         try:
@@ -2843,6 +2858,8 @@ class VolumeManager(manager.SchedulerDependentManager):
         self._notify_about_cgsnapshot_usage(
             context, cgsnapshot, "create.start")
 
+        snapshots_model_update = None
+        model_update = None
         try:
             utils.require_driver_initialized(self.driver)
 
@@ -2855,23 +2872,26 @@ class VolumeManager(manager.SchedulerDependentManager):
             for snapshot in snapshots:
                 snapshot.context = caller_context
 
-            model_update, snapshots = \
-                self.driver.create_cgsnapshot(context, cgsnapshot)
+            model_update, snapshots_model_update = (
+                self.driver.create_cgsnapshot(context, cgsnapshot,
+                                              snapshots))
 
-            if snapshots:
-                for snapshot in snapshots:
+            if snapshots_model_update:
+                for snap_model in snapshots_model_update:
                     # Update db if status is error
-                    if snapshot['status'] == 'error':
-                        update = {'status': snapshot['status']}
+                    if snap_model['status'] == 'error':
+                        # NOTE(xyang): snapshots is a list of snapshot objects.
+                        # snapshots_model_update should be a list of dicts.
+                        snap = next((item for item in snapshots if
+                                     item.id == snap_model['id']), None)
+                        if snap:
+                            snap.status = snap_model['status']
+                            snap.save()
 
-                        # TODO(thangp): Switch over to use snapshot.update()
-                        # after cgsnapshot-objects bugs are fixed
-                        self.db.snapshot_update(context, snapshot['id'],
-                                                update)
-                        # If status for one snapshot is error, make sure
-                        # the status for the cgsnapshot is also error
-                        if model_update['status'] != 'error':
-                            model_update['status'] = snapshot['status']
+                    if (snap_model['status'] in ['error_deleting', 'error'] and
+                            model_update['status'] not in
+                            ['error_deleting', 'error']):
+                        model_update['status'] = snap_model['status']
 
             if model_update:
                 if model_update['status'] == 'error':
@@ -2880,10 +2900,16 @@ class VolumeManager(manager.SchedulerDependentManager):
                     LOG.error(msg)
                     raise exception.VolumeDriverException(message=msg)
 
-        except Exception:
+        except exception.CinderException:
             with excutils.save_and_reraise_exception():
                 cgsnapshot.status = 'error'
                 cgsnapshot.save()
+                # Update snapshot status to 'error' if driver returns
+                # None for snapshots_model_update.
+                if not snapshots_model_update:
+                    for snapshot in snapshots:
+                        snapshot.status = 'error'
+                        snapshot.save()
 
         for snapshot in snapshots:
             volume_id = snapshot['volume_id']
@@ -2934,6 +2960,8 @@ class VolumeManager(manager.SchedulerDependentManager):
         self._notify_about_cgsnapshot_usage(
             context, cgsnapshot, "delete.start")
 
+        snapshots_model_update = None
+        model_update = None
         try:
             utils.require_driver_initialized(self.driver)
 
@@ -2944,23 +2972,26 @@ class VolumeManager(manager.SchedulerDependentManager):
             # but it is not a requirement for all drivers.
             cgsnapshot.context = caller_context
             for snapshot in snapshots:
-                snapshot['context'] = caller_context
+                snapshot.context = caller_context
 
-            model_update, snapshots = \
-                self.driver.delete_cgsnapshot(context, cgsnapshot)
+            model_update, snapshots_model_update = (
+                self.driver.delete_cgsnapshot(context, cgsnapshot,
+                                              snapshots))
 
-            if snapshots:
-                for snapshot in snapshots:
-                    update = {'status': snapshot['status']}
+            if snapshots_model_update:
+                for snap_model in snapshots_model_update:
+                    # NOTE(xyang): snapshots is a list of snapshot objects.
+                    # snapshots_model_update should be a list of dicts.
+                    snap = next((item for item in snapshots if
+                                 item.id == snap_model['id']), None)
+                    if snap:
+                        snap.status = snap_model['status']
+                        snap.save()
 
-                    # TODO(thangp): Switch over to use snapshot.update()
-                    # after cgsnapshot-objects bugs are fixed
-                    self.db.snapshot_update(context, snapshot['id'],
-                                            update)
-                    if snapshot['status'] in ['error_deleting', 'error'] and \
-                            model_update['status'] not in \
-                            ['error_deleting', 'error']:
-                        model_update['status'] = snapshot['status']
+                    if (snap_model['status'] in ['error_deleting', 'error'] and
+                            model_update['status'] not in
+                            ['error_deleting', 'error']):
+                        model_update['status'] = snap_model['status']
 
             if model_update:
                 if model_update['status'] in ['error_deleting', 'error']:
@@ -2972,10 +3003,16 @@ class VolumeManager(manager.SchedulerDependentManager):
                     cgsnapshot.update(model_update)
                     cgsnapshot.save()
 
-        except Exception:
+        except exception.CinderException:
             with excutils.save_and_reraise_exception():
-                cgsnapshot.status = 'error_deleting'
+                cgsnapshot.status = 'error'
                 cgsnapshot.save()
+                # Update snapshot status to 'error' if driver returns
+                # None for snapshots_model_update.
+                if not snapshots_model_update:
+                    for snapshot in snapshots:
+                        snapshot.status = 'error'
+                        snapshot.save()
 
         for snapshot in snapshots:
             # Get reservations
@@ -3002,7 +3039,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             self.db.volume_glance_metadata_delete_by_snapshot(context,
                                                               snapshot['id'])
 
-            # TODO(thangp): Switch over to use snapshot.delete()
+            # TODO(thangp): Switch over to use snapshot.destroy()
             # after cgsnapshot-objects bugs are fixed
             self.db.snapshot_destroy(context, snapshot['id'])
 

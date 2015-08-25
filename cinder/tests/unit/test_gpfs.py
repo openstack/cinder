@@ -1672,7 +1672,7 @@ class GPFSDriverTestCase(test.TestCase):
         self.driver.db.volume_get_all_by_group = mock.Mock()
         self.driver.db.volume_get_all_by_group.return_value = volumes
 
-        self.driver.delete_consistencygroup(ctxt, group)
+        self.driver.delete_consistencygroup(ctxt, group, [])
         fsdev = self.driver._gpfs_device
         cgname = "consisgroup-%s" % group['id']
         cmd = ['mmunlinkfileset', fsdev, cgname, '-f']
@@ -1692,7 +1692,7 @@ class GPFSDriverTestCase(test.TestCase):
         mock_exec.side_effect = (
             processutils.ProcessExecutionError(stdout='test', stderr='test'))
         self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.delete_consistencygroup, ctxt, group)
+                          self.driver.delete_consistencygroup, ctxt, group, [])
 
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.create_snapshot')
     def test_create_cgsnapshot(self, mock_create_snap):
@@ -1703,7 +1703,8 @@ class GPFSDriverTestCase(test.TestCase):
         snapshot1 = self._fake_snapshot()
         snapshots = [snapshot1]
         self.driver.db.snapshot_get_all_for_cgsnapshot.return_value = snapshots
-        model_update, snapshots = self.driver.create_cgsnapshot(ctxt, cgsnap)
+        model_update, snapshots = self.driver.create_cgsnapshot(ctxt, cgsnap,
+                                                                [])
         self.driver.create_snapshot.assert_called_once_with(snapshot1)
         self.assertEqual({'status': cgsnap['status']}, model_update)
         self.assertEqual('available', snapshot1['status'])
@@ -1718,7 +1719,8 @@ class GPFSDriverTestCase(test.TestCase):
         self.driver.db.snapshot_get_all_for_cgsnapshot = mock.Mock()
         snapshots = []
         self.driver.db.snapshot_get_all_for_cgsnapshot.return_value = snapshots
-        model_update, snapshots = self.driver.create_cgsnapshot(ctxt, cgsnap)
+        model_update, snapshots = self.driver.create_cgsnapshot(ctxt, cgsnap,
+                                                                [])
         self.assertFalse(self.driver.create_snapshot.called)
         self.assertEqual({'status': cgsnap['status']}, model_update)
         self.driver.db.snapshot_get_all_for_cgsnapshot.\
@@ -1733,7 +1735,8 @@ class GPFSDriverTestCase(test.TestCase):
         snapshot1 = self._fake_snapshot()
         snapshots = [snapshot1]
         self.driver.db.snapshot_get_all_for_cgsnapshot.return_value = snapshots
-        model_update, snapshots = self.driver.delete_cgsnapshot(ctxt, cgsnap)
+        model_update, snapshots = self.driver.delete_cgsnapshot(ctxt, cgsnap,
+                                                                [])
         self.driver.delete_snapshot.assert_called_once_with(snapshot1)
         self.assertEqual({'status': cgsnap['status']}, model_update)
         self.assertEqual('deleted', snapshot1['status'])
@@ -1748,7 +1751,8 @@ class GPFSDriverTestCase(test.TestCase):
         self.driver.db.snapshot_get_all_for_cgsnapshot = mock.Mock()
         snapshots = []
         self.driver.db.snapshot_get_all_for_cgsnapshot.return_value = snapshots
-        model_update, snapshots = self.driver.delete_cgsnapshot(ctxt, cgsnap)
+        model_update, snapshots = self.driver.delete_cgsnapshot(ctxt, cgsnap,
+                                                                [])
         self.assertFalse(self.driver.delete_snapshot.called)
         self.assertEqual({'status': cgsnap['status']}, model_update)
         self.driver.db.snapshot_get_all_for_cgsnapshot.\

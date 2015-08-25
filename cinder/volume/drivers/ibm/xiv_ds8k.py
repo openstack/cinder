@@ -247,17 +247,17 @@ class XIVDS8KDriver(san.SanDriver,
 
         return self.xiv_ds8k_proxy.create_consistencygroup(context, group)
 
-    def delete_consistencygroup(self, context, group):
+    def delete_consistencygroup(self, context, group, volumes):
         """Deletes a consistency group."""
 
         return self.xiv_ds8k_proxy.delete_consistencygroup(context, group)
 
-    def create_cgsnapshot(self, context, cgsnapshot):
+    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Creates a consistency group snapshot."""
 
         return self.xiv_ds8k_proxy.create_cgsnapshot(context, cgsnapshot)
 
-    def delete_cgsnapshot(self, context, cgsnapshot):
+    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Deletes a consistency group snapshot."""
 
         return self.xiv_ds8k_proxy.delete_cgsnapshot(context, cgsnapshot)

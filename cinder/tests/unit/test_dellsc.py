@@ -1281,7 +1281,8 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         group = {'id': 'fc8f2fec-fab2-4e34-9148-c094c913b9a3',
                  'status': 'deleted'}
         model_update, volumes = self.driver.delete_consistencygroup(context,
-                                                                    group)
+                                                                    group,
+                                                                    [])
         mock_find_replay_profile.assert_called_once_with(group['id'])
         mock_delete_replay_profile.assert_called_once_with(self.SCRPLAYPROFILE)
         mock_delete_volume.assert_called_once_with(mock_volume)
@@ -1310,7 +1311,8 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         group = {'id': 'fc8f2fec-fab2-4e34-9148-c094c913b9a3',
                  'status': 'deleted'}
         model_update, volumes = self.driver.delete_consistencygroup(context,
-                                                                    group)
+                                                                    group,
+                                                                    [])
         mock_find_replay_profile.assert_called_once_with(group['id'])
         self.assertFalse(mock_delete_replay_profile.called)
         mock_delete_volume.assert_called_once_with(mock_volume)
@@ -1413,7 +1415,8 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         context = {}
         cggrp = {'consistencygroup_id': 'fc8f2fec-fab2-4e34-9148-c094c913b9a3',
                  'id': '100'}
-        model_update, snapshots = self.driver.create_cgsnapshot(context, cggrp)
+        model_update, snapshots = self.driver.create_cgsnapshot(context, cggrp,
+                                                                [])
         mock_find_replay_profile.assert_called_once_with(
             cggrp['consistencygroup_id'])
         mock_snap_cg_replay.assert_called_once_with(self.SCRPLAYPROFILE,
@@ -1436,7 +1439,8 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_cgsnapshot,
                           context,
-                          cggrp)
+                          cggrp,
+                          [])
         mock_find_replay_profile.assert_called_once_with(
             cggrp['consistencygroup_id'])
 
@@ -1458,7 +1462,8 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_cgsnapshot,
                           context,
-                          cggrp)
+                          cggrp,
+                          [])
         mock_find_replay_profile.assert_called_once_with(
             cggrp['consistencygroup_id'])
         mock_snap_cg_replay.assert_called_once_with(self.SCRPLAYPROFILE,
@@ -1488,7 +1493,8 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                   'id': '100',
                   'status': 'deleted'}
         model_update, snapshots = self.driver.delete_cgsnapshot(context,
-                                                                cgsnap)
+                                                                cgsnap,
+                                                                [])
         mock_find_replay_profile.assert_called_once_with(
             cgsnap['consistencygroup_id'])
         mock_delete_cg_replay.assert_called_once_with(self.SCRPLAYPROFILE,
@@ -1518,7 +1524,8 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                   'id': '100',
                   'status': 'deleted'}
         model_update, snapshots = self.driver.delete_cgsnapshot(context,
-                                                                cgsnap)
+                                                                cgsnap,
+                                                                [])
         mock_find_replay_profile.assert_called_once_with(
             cgsnap['consistencygroup_id'])
 
@@ -1546,7 +1553,8 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.delete_cgsnapshot,
                           context,
-                          cgsnap)
+                          cgsnap,
+                          [])
         mock_find_replay_profile.assert_called_once_with(
             cgsnap['consistencygroup_id'])
         mock_delete_cg_replay.assert_called_once_with(self.SCRPLAYPROFILE,

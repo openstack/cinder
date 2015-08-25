@@ -1053,7 +1053,7 @@ class StorwizeSVCDriver(san.SanDriver,
         model_update = {'status': 'available'}
         return model_update
 
-    def delete_consistencygroup(self, context, group):
+    def delete_consistencygroup(self, context, group, volumes):
         """Deletes a consistency group.
 
         IBM Storwize will delete the volumes of the CG.
@@ -1076,7 +1076,7 @@ class StorwizeSVCDriver(san.SanDriver,
                           {'vol': volume['name'], 'exception': err})
         return model_update, volumes
 
-    def create_cgsnapshot(self, ctxt, cgsnapshot):
+    def create_cgsnapshot(self, ctxt, cgsnapshot, snapshots):
         """Creates a cgsnapshot."""
         # Use cgsnapshot id as cg name
         cg_name = 'cg_snap-' + cgsnapshot['id']
@@ -1096,7 +1096,7 @@ class StorwizeSVCDriver(san.SanDriver,
 
         return model_update, snapshots_model
 
-    def delete_cgsnapshot(self, context, cgsnapshot):
+    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Deletes a cgsnapshot."""
         cgsnapshot_id = cgsnapshot['id']
         cg_name = 'cg_snap-' + cgsnapshot_id

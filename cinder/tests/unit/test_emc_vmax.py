@@ -3124,7 +3124,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
             self, _mock_volume_type, _mock_storage_system,
             _mock_db_volumes, _mock_members):
         self.driver.delete_consistencygroup(
-            self.data.test_ctxt, self.data.test_CG)
+            self.data.test_ctxt, self.data.test_CG, [])
 
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
@@ -3137,7 +3137,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
     def test_delete_CG_with_volumes_no_fast_success(
             self, _mock_volume_type, _mock_storage_system):
         self.driver.delete_consistencygroup(
-            self.data.test_ctxt, self.data.test_CG)
+            self.data.test_ctxt, self.data.test_CG, [])
 
     @mock.patch.object(
         emc_vmax_utils.EMCVMAXUtils,
@@ -3163,7 +3163,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
             self, _mock_volume_type, _mock_storage, _mock_cg, _mock_members,
             _mock_rg):
         self.driver.create_cgsnapshot(
-            self.data.test_ctxt, self.data.test_CG_snapshot)
+            self.data.test_ctxt, self.data.test_CG_snapshot, [])
 
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
@@ -3176,7 +3176,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
     def test_delete_snapshot_for_CG_no_fast_success(
             self, _mock_volume_type, _mock_storage):
         self.driver.delete_cgsnapshot(
-            self.data.test_ctxt, self.data.test_CG_snapshot)
+            self.data.test_ctxt, self.data.test_CG_snapshot, [])
 
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
@@ -3991,7 +3991,7 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
             self, _mock_volume_type, _mock_storage_system,
             _mock_db_volumes, _mock_members):
         self.driver.delete_consistencygroup(
-            self.data.test_ctxt, self.data.test_CG)
+            self.data.test_ctxt, self.data.test_CG, [])
 
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
@@ -4004,7 +4004,7 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
     def test_delete_CG_with_volumes_fast_success(
             self, _mock_volume_type, _mock_storage_system):
         self.driver.delete_consistencygroup(
-            self.data.test_ctxt, self.data.test_CG)
+            self.data.test_ctxt, self.data.test_CG, [])
 
     @mock.patch.object(
         emc_vmax_utils.EMCVMAXUtils,
@@ -4030,7 +4030,7 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
             self, _mock_volume_type, _mock_storage, _mock_cg, _mock_members,
             _mock_rg):
         self.driver.create_cgsnapshot(
-            self.data.test_ctxt, self.data.test_CG_snapshot)
+            self.data.test_ctxt, self.data.test_CG_snapshot, [])
 
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
@@ -4043,7 +4043,7 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
     def test_delete_snapshot_for_CG_no_fast_success(
             self, _mock_volume_type, _mock_storage):
         self.driver.delete_cgsnapshot(
-            self.data.test_ctxt, self.data.test_CG_snapshot)
+            self.data.test_ctxt, self.data.test_CG_snapshot, [])
 
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
@@ -4464,7 +4464,7 @@ class EMCVMAXFCDriverNoFastTestCase(test.TestCase):
             self, _mock_volume_type, _mock_storage_system,
             _mock_db_volumes, _mock_members):
         self.driver.delete_consistencygroup(
-            self.data.test_ctxt, self.data.test_CG)
+            self.data.test_ctxt, self.data.test_CG, [])
 
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
@@ -4477,7 +4477,7 @@ class EMCVMAXFCDriverNoFastTestCase(test.TestCase):
     def test_delete_CG_with_volumes_no_fast_success(
             self, _mock_volume_type, _mock_storage_system):
         self.driver.delete_consistencygroup(
-            self.data.test_ctxt, self.data.test_CG)
+            self.data.test_ctxt, self.data.test_CG, [])
 
     @mock.patch.object(
         emc_vmax_utils.EMCVMAXUtils,
@@ -4503,7 +4503,7 @@ class EMCVMAXFCDriverNoFastTestCase(test.TestCase):
             self, _mock_volume_type, _mock_storage, _mock_cg, _mock_members,
             _mock_rg):
         self.driver.create_cgsnapshot(
-            self.data.test_ctxt, self.data.test_CG_snapshot)
+            self.data.test_ctxt, self.data.test_CG_snapshot, [])
 
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
@@ -4516,7 +4516,7 @@ class EMCVMAXFCDriverNoFastTestCase(test.TestCase):
     def test_delete_snapshot_for_CG_no_fast_success(
             self, _mock_volume_type, _mock_storage):
         self.driver.delete_cgsnapshot(
-            self.data.test_ctxt, self.data.test_CG_snapshot)
+            self.data.test_ctxt, self.data.test_CG_snapshot, [])
 
     def test_manage_existing_get_size(self):
         volume = {}
@@ -5215,7 +5215,7 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
             self, _mock_volume_type, _mock_storage_system,
             _mock_db_volumes, _mock_members):
         self.driver.delete_consistencygroup(
-            self.data.test_ctxt, self.data.test_CG)
+            self.data.test_ctxt, self.data.test_CG, [])
 
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
@@ -5228,7 +5228,7 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
     def test_delete_CG_with_volumes_fast_success(
             self, _mock_volume_type, _mock_storage_system):
         self.driver.delete_consistencygroup(
-            self.data.test_ctxt, self.data.test_CG)
+            self.data.test_ctxt, self.data.test_CG, [])
 
     @mock.patch.object(
         emc_vmax_utils.EMCVMAXUtils,
@@ -5254,7 +5254,7 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
             self, _mock_volume_type, _mock_storage, _mock_cg, _mock_members,
             _mock_rg):
         self.driver.create_cgsnapshot(
-            self.data.test_ctxt, self.data.test_CG_snapshot)
+            self.data.test_ctxt, self.data.test_CG_snapshot, [])
 
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
@@ -5267,7 +5267,7 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
     def test_delete_snapshot_for_CG_no_fast_success(
             self, _mock_volume_type, _mock_storage):
         self.driver.delete_cgsnapshot(
-            self.data.test_ctxt, self.data.test_CG_snapshot)
+            self.data.test_ctxt, self.data.test_CG_snapshot, [])
 
     # Bug 1385450
     def test_create_clone_without_license(self):
@@ -5621,7 +5621,7 @@ class EMCV3DriverTestCase(test.TestCase):
             self, _mock_volume_type, _mock_storage_system,
             _mock_db_volumes, _mock_members):
         self.driver.delete_consistencygroup(
-            self.data.test_ctxt, self.data.test_CG)
+            self.data.test_ctxt, self.data.test_CG, [])
 
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
@@ -5634,7 +5634,7 @@ class EMCV3DriverTestCase(test.TestCase):
     def test_delete_CG_with_volumes_v3_success(
             self, _mock_volume_type, _mock_storage_system):
         self.driver.delete_consistencygroup(
-            self.data.test_ctxt, self.data.test_CG)
+            self.data.test_ctxt, self.data.test_CG, [])
 
     @mock.patch.object(
         volume_types,
@@ -5713,7 +5713,7 @@ class EMCV3DriverTestCase(test.TestCase):
         provisionv3 = self.driver.common.provisionv3
         provisionv3.create_group_replica = mock.Mock(return_value=(0, None))
         self.driver.create_cgsnapshot(
-            self.data.test_ctxt, self.data.test_CG_snapshot)
+            self.data.test_ctxt, self.data.test_CG_snapshot, [])
         repServ = self.conn.EnumerateInstanceNames("EMC_ReplicationService")[0]
         provisionv3.create_group_replica.assert_called_once_with(
             self.conn, repServ,
@@ -5732,7 +5732,7 @@ class EMCV3DriverTestCase(test.TestCase):
     def test_delete_cgsnapshot_v3_success(
             self, _mock_volume_type, _mock_storage):
         self.driver.delete_cgsnapshot(
-            self.data.test_ctxt, self.data.test_CG_snapshot)
+            self.data.test_ctxt, self.data.test_CG_snapshot, [])
 
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
@@ -6206,7 +6206,7 @@ class EMCV2MultiPoolDriverTestCase(test.TestCase):
             self, _mock_volume_type, _mock_storage_system,
             _mock_db_volumes, _mock_members):
         self.driver.delete_consistencygroup(
-            self.data.test_ctxt, self.data.test_CG)
+            self.data.test_ctxt, self.data.test_CG, [])
 
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
@@ -6219,7 +6219,7 @@ class EMCV2MultiPoolDriverTestCase(test.TestCase):
     def test_delete_CG_with_volumes_multi_pool_success(
             self, _mock_volume_type, _mock_storage_system):
         self.driver.delete_consistencygroup(
-            self.data.test_ctxt, self.data.test_CG)
+            self.data.test_ctxt, self.data.test_CG, [])
 
     def _cleanup(self):
         bExists = os.path.exists(self.config_file_path)
@@ -6511,7 +6511,7 @@ class EMCV3MultiSloDriverTestCase(test.TestCase):
             self, _mock_volume_type, _mock_storage_system,
             _mock_db_volumes, _mock_members):
         self.driver.delete_consistencygroup(
-            self.data.test_ctxt, self.data.test_CG)
+            self.data.test_ctxt, self.data.test_CG, [])
 
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
@@ -6524,7 +6524,7 @@ class EMCV3MultiSloDriverTestCase(test.TestCase):
     def test_delete_CG_with_volumes_multi_slo_success(
             self, _mock_volume_type, _mock_storage_system):
         self.driver.delete_consistencygroup(
-            self.data.test_ctxt, self.data.test_CG)
+            self.data.test_ctxt, self.data.test_CG, [])
 
     def _cleanup(self):
         bExists = os.path.exists(self.config_file_path)
@@ -6804,7 +6804,8 @@ class EMCV2MultiPoolDriverMultipleEcomsTestCase(test.TestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.delete_consistencygroup,
                           self.data.test_ctxt,
-                          self.data.test_CG)
+                          self.data.test_CG,
+                          [])
 
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,

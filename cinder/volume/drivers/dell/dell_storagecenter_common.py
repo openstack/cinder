@@ -430,7 +430,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         raise exception.VolumeBackendAPIException(
             _('Unable to create consistency group %s') % gid)
 
-    def delete_consistencygroup(self, context, group):
+    def delete_consistencygroup(self, context, group, volumes):
         """Delete the Dell SC profile associated with this consistency group.
 
         :param context: the context of the caller.
@@ -497,7 +497,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         raise exception.VolumeBackendAPIException(
             _('Unable to update consistency group %s') % gid)
 
-    def create_cgsnapshot(self, context, cgsnapshot):
+    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Takes a snapshot of the consistency group.
 
         :param context: the context of the caller.
@@ -530,7 +530,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         raise exception.VolumeBackendAPIException(
             _('Unable to snap Consistency Group %s') % cgid)
 
-    def delete_cgsnapshot(self, context, cgsnapshot):
+    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Deletes a cgsnapshot.
 
         If profile isn't found return success.  If failed to delete the
