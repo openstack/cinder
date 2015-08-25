@@ -87,6 +87,8 @@ class SRBLvmTestCase(test_brick_lvm.BrickLvmTestCase):
         with mock.patch.object(self.vg, '_execute') as executor:
             self.vg.pv_resize('fake-pv', '50G')
             executor.assert_called_once_with(
+                'env',
+                'LC_ALL=C',
                 'pvresize',
                 '--setphysicalvolumesize',
                 '50G', 'fake-pv',
@@ -116,7 +118,7 @@ class SRBLvmTestCase(test_brick_lvm.BrickLvmTestCase):
             executor = mock.MagicMock()
             self.thin_vg._execute = executor
             self.thin_vg.extend_thin_pool()
-            executor.assert_called_once_with('lvextend',
+            executor.assert_called_once_with('env', 'LC_ALL=C', 'lvextend',
                                              '-L', '9.5g',
                                              'fake-vg/fake-vg-pool',
                                              root_helper=self.vg._root_helper,
@@ -532,14 +534,14 @@ class SRBDriverTestCase(test.TestCase):
             return 'lvcreate, -T, -L, ' in cmd_string
 
         def act(cmd):
-            vgname = cmd[4].split('/')[0]
-            lvname = cmd[4].split('/')[1]
-            if cmd[3][-1] == 'g':
-                lv_size = int(float(cmd[3][0:-1]) * units.Gi)
-            elif cmd[3][-1] == 'B':
-                lv_size = int(cmd[3][0:-1])
+            vgname = cmd[6].split('/')[0]
+            lvname = cmd[6].split('/')[1]
+            if cmd[5][-1] == 'g':
+                lv_size = int(float(cmd[5][0:-1]) * units.Gi)
+            elif cmd[5][-1] == 'B':
+                lv_size = int(cmd[5][0:-1])
             else:
-                lv_size = int(cmd[3])
+                lv_size = int(cmd[5])
             self._volumes[vgname]['vgs'][vgname]['lvs'][lvname] = lv_size
 
         return check, act
@@ -551,19 +553,19 @@ class SRBDriverTestCase(test.TestCase):
         def act(cmd):
             cmd_string = ', '.join(cmd)
 
-            vgname = cmd[6].split('/')[0]
-            poolname = cmd[6].split('/')[1]
-            lvname = cmd[5]
+            vgname = cmd[8].split('/')[0]
+            poolname = cmd[8].split('/')[1]
+            lvname = cmd[7]
             if poolname not in self._volumes[vgname]['vgs'][vgname]['lvs']:
                 raise AssertionError('thin-lv creation attempted before '
                                      'thin-pool creation: %s'
                                      % cmd_string)
-            if cmd[3][-1] == 'g':
-                lv_size = int(float(cmd[3][0:-1]) * units.Gi)
-            elif cmd[3][-1] == 'B':
-                lv_size = int(cmd[3][0:-1])
+            if cmd[5][-1] == 'g':
+                lv_size = int(float(cmd[5][0:-1]) * units.Gi)
+            elif cmd[5][-1] == 'B':
+                lv_size = int(cmd[5][0:-1])
             else:
-                lv_size = int(cmd[3])
+                lv_size = int(cmd[5])
             self._volumes[vgname]['vgs'][vgname]['lvs'][lvname] = lv_size
 
         return check, act
@@ -575,9 +577,9 @@ class SRBDriverTestCase(test.TestCase):
         def act(cmd):
             cmd_string = ', '.join(cmd)
 
-            vgname = cmd[4].split('/')[0]
-            lvname = cmd[4].split('/')[1]
-            snapname = cmd[2]
+            vgname = cmd[6].split('/')[0]
+            lvname = cmd[6].split('/')[1]
+            snapname = cmd[4]
             if lvname not in self._volumes[vgname]['vgs'][vgname]['lvs']:
                 raise AssertionError('snap creation attempted on non-existent '
                                      'thin-lv: %s' % cmd_string)
@@ -648,14 +650,14 @@ class SRBDriverTestCase(test.TestCase):
 
         def act(cmd):
             cmd_string = ', '.join(cmd)
-            vgname = cmd[3].split('/')[0]
-            lvname = cmd[3].split('/')[1]
-            if cmd[2][-1] == 'g':
-                size = int(float(cmd[2][0:-1]) * units.Gi)
-            elif cmd[2][-1] == 'B':
-                size = int(cmd[2][0:-1])
+            vgname = cmd[5].split('/')[0]
+            lvname = cmd[5].split('/')[1]
+            if cmd[4][-1] == 'g':
+                size = int(float(cmd[4][0:-1]) * units.Gi)
+            elif cmd[4][-1] == 'B':
+                size = int(cmd[4][0:-1])
             else:
-                size = int(cmd[2])
+                size = int(cmd[4])
             if vgname not in self._volumes:
                 raise AssertionError('Cannot extend inexistant volume'
                                      ': %s' % cmd_string)
