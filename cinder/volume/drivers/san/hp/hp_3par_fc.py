@@ -38,7 +38,7 @@ from oslo_log import log as logging
 
 from cinder import exception
 from cinder.i18n import _, _LI
-import cinder.volume.driver
+from cinder.volume import driver
 from cinder.volume.drivers.san.hp import hp_3par_common as hpcommon
 from cinder.volume.drivers.san import san
 from cinder.zonemanager import utils as fczm_utils
@@ -46,7 +46,14 @@ from cinder.zonemanager import utils as fczm_utils
 LOG = logging.getLogger(__name__)
 
 
-class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
+class HP3PARFCDriver(driver.TransferVD,
+                     driver.ManageableVD,
+                     driver.ExtendVD,
+                     driver.CloneableVD,
+                     driver.SnapshotVD,
+                     driver.MigrateVD,
+                     driver.ConsistencyGroupVD,
+                     driver.BaseVD):
     """OpenStack Fibre Channel driver to enable 3PAR storage array.
 
     Version history:
@@ -81,10 +88,11 @@ class HP3PARFCDriver(cinder.volume.driver.FibreChannelDriver):
         2.0.17 - Improved VLUN creation and deletion logic. #1469816
         2.0.18 - Changed initialize_connection to use getHostVLUNs. #1475064
         2.0.19 - Adds consistency group support
+        2.0.20 - Update driver to use ABC metaclasses
 
     """
 
-    VERSION = "2.0.19"
+    VERSION = "2.0.20"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARFCDriver, self).__init__(*args, **kwargs)

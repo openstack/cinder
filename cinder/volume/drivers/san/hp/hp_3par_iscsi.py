@@ -40,7 +40,7 @@ import six
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LW
-import cinder.volume.driver
+from cinder.volume import driver
 from cinder.volume.drivers.san.hp import hp_3par_common as hpcommon
 from cinder.volume.drivers.san import san
 from cinder.volume import utils as volume_utils
@@ -51,7 +51,14 @@ CHAP_USER_KEY = "HPQ-cinder-CHAP-name"
 CHAP_PASS_KEY = "HPQ-cinder-CHAP-secret"
 
 
-class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
+class HP3PARISCSIDriver(driver.TransferVD,
+                        driver.ManageableVD,
+                        driver.ExtendVD,
+                        driver.CloneableVD,
+                        driver.SnapshotVD,
+                        driver.MigrateVD,
+                        driver.ConsistencyGroupVD,
+                        driver.BaseVD):
     """OpenStack iSCSI driver to enable 3PAR storage array.
 
     Version history:
@@ -91,10 +98,11 @@ class HP3PARISCSIDriver(cinder.volume.driver.ISCSIDriver):
         2.0.19 - Changed initialize_connection to use getHostVLUNs. #1475064
         2.0.20 - Adding changes to support 3PAR iSCSI multipath.
         2.0.21 - Adds consistency group support
+        2.0.22 - Update driver to use ABC metaclasses
 
     """
 
-    VERSION = "2.0.21"
+    VERSION = "2.0.22"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARISCSIDriver, self).__init__(*args, **kwargs)
