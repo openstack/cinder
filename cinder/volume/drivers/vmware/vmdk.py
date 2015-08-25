@@ -813,6 +813,8 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
 
         timeout = self.configuration.vmware_image_transfer_timeout_secs
         host_ip = self.configuration.vmware_host_ip
+        ca_file = self.configuration.vmware_ca_file
+        insecure = self.configuration.vmware_insecure
         cookies = self.session.vim.client.options.transport.cookiejar
         dc_name = self.volumeops.get_entity_name(dc_ref)
 
@@ -820,6 +822,13 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                   {'image_id': image_id,
                    'path': upload_file_path})
         # TODO(vbala): add config option to override non-default port
+
+        # ca_file is used for verifying vCenter certificate if it is set.
+        # If ca_file is unset and insecure is False, the default CA truststore
+        # is used for verification. We should pass cacerts=True in this
+        # case. If ca_file is unset and insecure is True, there is no
+        # certificate verification, and we should pass cacerts=False.
+        cacerts = ca_file if ca_file else not insecure
         image_transfer.download_flat_image(context,
                                            timeout,
                                            image_service,
@@ -830,7 +839,8 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
                                            data_center_name=dc_name,
                                            datastore_name=ds_name,
                                            cookies=cookies,
-                                           file_path=upload_file_path)
+                                           file_path=upload_file_path,
+                                           cacerts=cacerts)
         LOG.debug("Image: %(image_id)s copied to %(path)s.",
                   {'image_id': image_id,
                    'path': upload_file_path})

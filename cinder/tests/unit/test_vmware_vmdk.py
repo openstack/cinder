@@ -2389,6 +2389,51 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
             generate_uuid,
             extend_disk)
 
+    def _test_copy_image(self, download_flat_image, session, vops,
+                         expected_cacerts=False):
+
+        dc_name = mock.sentinel.dc_name
+        vops.get_entity_name.return_value = dc_name
+
+        context = mock.sentinel.context
+        dc_ref = mock.sentinel.dc_ref
+        image_service = mock.sentinel.image_service
+        image_id = mock.sentinel.image_id
+        image_size_in_bytes = 102400
+        ds_name = mock.sentinel.ds_name
+        upload_file_path = mock.sentinel.upload_file_path
+        self._driver._copy_image(
+            context, dc_ref, image_service, image_id, image_size_in_bytes,
+            ds_name, upload_file_path)
+
+        vops.get_entity_name.assert_called_once_with(dc_ref)
+        cookies = session.vim.client.options.transport.cookiejar
+        download_flat_image.assert_called_once_with(
+            context, self.IMG_TX_TIMEOUT, image_service, image_id,
+            image_size=image_size_in_bytes, host=self.IP, port=self.PORT,
+            data_center_name=dc_name, datastore_name=ds_name, cookies=cookies,
+            file_path=upload_file_path, cacerts=expected_cacerts)
+
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, 'session')
+    @mock.patch('oslo_vmware.image_transfer.download_flat_image')
+    def test_copy_image(self, download_flat_image, session, vops):
+        # Default value of vmware_ca_file is not None; it should be passed
+        # to download_flat_image as cacerts.
+        self._test_copy_image(download_flat_image, session, vops,
+                              expected_cacerts=self._config.vmware_ca_file)
+
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, 'session')
+    @mock.patch('oslo_vmware.image_transfer.download_flat_image')
+    def test_copy_image_insecure(self, download_flat_image, session, vops):
+        # Set config options to allow insecure connections.
+        self._config.vmware_ca_file = None
+        self._config.vmware_insecure = True
+        # Since vmware_ca_file is unset and vmware_insecure is True,
+        # dowload_flat_image should be called with cacerts=False.
+        self._test_copy_image(download_flat_image, session, vops)
+
     @mock.patch.object(VMDK_DRIVER, '_copy_temp_virtual_disk')
     @mock.patch.object(VMDK_DRIVER, '_get_temp_image_folder')
     @mock.patch(
