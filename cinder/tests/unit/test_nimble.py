@@ -467,14 +467,15 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
     def test_get_volume_stats(self):
         self.mock_client_service.service.getGroupConfig.return_value = \
             FAKE_POSITIVE_GROUP_CONFIG_RESPONSE
-        expected_res = {'driver_version': '1.1.2',
-                        'total_capacity_gb': 7466.30419921875,
-                        'QoS_support': False,
-                        'reserved_percentage': 0,
+        expected_res = {'driver_version': '1.1.3',
                         'vendor_name': 'Nimble',
                         'volume_backend_name': 'NIMBLE',
                         'storage_protocol': 'iSCSI',
-                        'free_capacity_gb': 7463.567649364471}
+                        'pools': [{'pool_name': 'NIMBLE',
+                                   'total_capacity_gb': 7466.30419921875,
+                                   'free_capacity_gb': 7463.567649364471,
+                                   'reserved_percentage': 0,
+                                   'QoS_support': False}]}
         self.assertEqual(
             expected_res,
             self.driver.get_volume_stats(refresh=True))

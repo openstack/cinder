@@ -37,7 +37,7 @@ from cinder.volume.drivers.san import san
 from cinder.volume import volume_types
 
 
-DRIVER_VERSION = '1.1.2'
+DRIVER_VERSION = '1.1.3'
 AES_256_XTS_CIPHER = 2
 DEFAULT_CIPHER = 3
 EXTRA_SPEC_ENCRYPTION = 'nimble:encryption'
@@ -86,6 +86,7 @@ class NimbleISCSIDriver(san.SanISCSIDriver):
         1.1.0 - Added Extra Spec Capability
         1.1.1 - Updated VERSION to Nimble driver version
         1.1.2 - Update snap-quota to unlimited
+        1.1.3 - Correct capacity reporting
     """
 
     VERSION = DRIVER_VERSION
@@ -281,11 +282,16 @@ class NimbleISCSIDriver(san.SanISCSIDriver):
             self.group_stats = {'volume_backend_name': backend_name,
                                 'vendor_name': 'Nimble',
                                 'driver_version': DRIVER_VERSION,
-                                'storage_protocol': 'iSCSI',
-                                'total_capacity_gb': total_capacity,
-                                'free_capacity_gb': free_space,
-                                'reserved_percentage': 0,
-                                'QoS_support': False}
+                                'storage_protocol': 'iSCSI'}
+            # Just use a single pool for now, FIXME to support multiple
+            # pools
+            single_pool = dict(
+                pool_name=backend_name,
+                total_capacity_gb=total_capacity,
+                free_capacity_gb=free_space,
+                reserved_percentage=0,
+                QoS_support=False)
+            self.group_stats['pools'] = [single_pool]
         return self.group_stats
 
     def extend_volume(self, volume, new_size):
