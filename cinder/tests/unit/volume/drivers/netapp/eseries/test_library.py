@@ -1051,6 +1051,67 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         # Ensure the volume we created is not cleaned up
         self.assertEqual(0, self.library._client.delete_volume.call_count)
 
+    def test_extend_volume(self):
+        fake_volume = copy.deepcopy(get_fake_volume())
+        volume = copy.deepcopy(eseries_fake.VOLUME)
+        new_capacity = 10
+        volume['objectType'] = 'volume'
+        self.library.create_cloned_volume = mock.Mock()
+        self.library._get_volume = mock.Mock(return_value=volume)
+        self.library._client.update_volume = mock.Mock()
+
+        self.library.extend_volume(fake_volume, new_capacity)
+
+        self.library.create_cloned_volume.assert_called_with(mock.ANY,
+                                                             fake_volume)
+
+    def test_extend_volume_thin(self):
+        fake_volume = copy.deepcopy(get_fake_volume())
+        volume = copy.deepcopy(eseries_fake.VOLUME)
+        new_capacity = 10
+        volume['objectType'] = 'thinVolume'
+        self.library._client.expand_volume = mock.Mock(return_value=volume)
+        self.library._get_volume = mock.Mock(return_value=volume)
+
+        self.library.extend_volume(fake_volume, new_capacity)
+
+        self.library._client.expand_volume.assert_called_with(volume['id'],
+                                                              new_capacity)
+
+    def test_extend_volume_stage_2_failure(self):
+        fake_volume = copy.deepcopy(get_fake_volume())
+        volume = copy.deepcopy(eseries_fake.VOLUME)
+        new_capacity = 10
+        volume['objectType'] = 'volume'
+        self.library.create_cloned_volume = mock.Mock()
+        self.library._client.delete_volume = mock.Mock()
+        # Create results for multiple calls to _get_volume and _update_volume
+        get_volume_results = [volume, {'id': 'newId', 'label': 'newVolume'}]
+        self.library._get_volume = mock.Mock(side_effect=get_volume_results)
+        update_volume_results = [volume, exception.NetAppDriverException,
+                                 volume]
+        self.library._client.update_volume = mock.Mock(
+            side_effect=update_volume_results)
+
+        self.assertRaises(exception.NetAppDriverException,
+                          self.library.extend_volume, fake_volume,
+                          new_capacity)
+        self.assertTrue(self.library._client.delete_volume.called)
+
+    def test_extend_volume_stage_1_failure(self):
+        fake_volume = copy.deepcopy(get_fake_volume())
+        volume = copy.deepcopy(eseries_fake.VOLUME)
+        new_capacity = 10
+        volume['objectType'] = 'volume'
+        self.library.create_cloned_volume = mock.Mock()
+        self.library._get_volume = mock.Mock(return_value=volume)
+        self.library._client.update_volume = mock.Mock(
+            side_effect=exception.NetAppDriverException)
+
+        self.assertRaises(exception.NetAppDriverException,
+                          self.library.extend_volume, fake_volume,
+                          new_capacity)
+
     def test_delete_non_existing_volume(self):
         volume2 = get_fake_volume()
         # Change to a nonexistent id.
