@@ -16,7 +16,6 @@
 """Base class for all backup drivers."""
 
 import abc
-import base64
 
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -351,30 +350,37 @@ class BackupDriver(base.Base):
         return
 
     def export_record(self, backup):
-        """Export backup record.
+        """Export driver specific backup record information.
 
-        Default backup driver implementation.
-        Serialize the backup record describing the backup into a string.
+        If backup backend needs additional driver specific information to
+        import backup record back into the system it must overwrite this method
+        and return it here as a dictionary so it can be serialized into a
+        string.
 
-        :param backup: backup entry to export
-        :returns backup_url - a string describing the backup record
+        Default backup driver implementation has no extra information.
+
+        :param backup: backup object to export
+        :returns driver_info - dictionary with extra information
         """
-        retval = jsonutils.dumps(backup)
-        if six.PY3:
-            retval = retval.encode('utf-8')
-        return base64.encodestring(retval)
+        return {}
 
-    def import_record(self, backup_url):
-        """Import and verify backup record.
+    def import_record(self, backup, driver_info):
+        """Import driver specific backup record information.
 
-        Default backup driver implementation.
-        De-serialize the backup record into a dictionary, so we can
-        update the database.
+        If backup backend needs additional driver specific information to
+        import backup record back into the system it must overwrite this method
+        since it will be called with the extra information that was provided by
+        export_record when exporting the backup.
 
-        :param backup_url: driver specific backup record string
-        :returns dictionary object with database updates
+        Default backup driver implementation does nothing since it didn't
+        export any specific data in export_record.
+
+        :param backup: backup object to export
+        :param driver_info: dictionary with driver specific backup record
+                            information
+        :returns nothing
         """
-        return jsonutils.loads(base64.decodestring(backup_url))
+        return
 
 
 @six.add_metaclass(abc.ABCMeta)

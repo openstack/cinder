@@ -12,12 +12,18 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import base64
+import binascii
+
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_serialization import jsonutils
 from oslo_versionedobjects import fields
+import six
 
 from cinder import db
 from cinder import exception
+from cinder.i18n import _
 from cinder import objects
 from cinder.objects import base
 from cinder import utils
@@ -111,6 +117,29 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
     def destroy(self):
         with self.obj_as_admin():
             db.backup_destroy(self._context, self.id)
+
+    @staticmethod
+    def decode_record(backup_url):
+        """Deserialize backup metadata from string into a dictionary.
+
+        :raises: InvalidInput
+        """
+        try:
+            return jsonutils.loads(base64.decodestring(backup_url))
+        except binascii.Error:
+            msg = _("Can't decode backup record.")
+        except ValueError:
+            msg = _("Can't parse backup record.")
+        raise exception.InvalidInput(reason=msg)
+
+    @base.remotable
+    def encode_record(self, **kwargs):
+        """Serialize backup object, with optional extra info, into a string."""
+        kwargs.update(self)
+        retval = jsonutils.dumps(kwargs)
+        if six.PY3:
+            retval = retval.encode('utf-8')
+        return base64.encodestring(retval)
 
 
 @base.CinderObjectRegistry.register

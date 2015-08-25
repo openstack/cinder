@@ -573,7 +573,8 @@ class BackupManager(manager.SchedulerDependentManager):
         try:
             utils.require_driver_initialized(self.driver)
             backup_service = self.service.get_backup_driver(context)
-            backup_url = backup_service.export_record(backup)
+            driver_info = backup_service.export_record(backup)
+            backup_url = backup.encode_record(driver_info=driver_info)
             backup_record['backup_url'] = backup_url
         except Exception as err:
             msg = six.text_type(err)
@@ -622,9 +623,14 @@ class BackupManager(manager.SchedulerDependentManager):
         else:
             # Yes...
             try:
+                # Deserialize backup record information
+                backup_options = backup.decode_record(backup_url)
+
+                # Extract driver specific info and pass it to the driver
+                driver_options = backup_options.pop('driver_info', {})
                 utils.require_driver_initialized(self.driver)
                 backup_service = self.service.get_backup_driver(context)
-                backup_options = backup_service.import_record(backup_url)
+                backup_service.import_record(backup, driver_options)
             except Exception as err:
                 msg = six.text_type(err)
                 self._update_backup_error(backup, context, msg)
