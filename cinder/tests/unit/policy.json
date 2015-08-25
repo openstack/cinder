@@ -34,7 +34,10 @@
     "volume:update_readonly_flag": "",
     "volume:retype": "",
     "volume:copy_volume_to_image": "",
-
+    "volume:enable_replication": "rule:admin_api",
+    "volume:disable_replication": "rule:admin_api",
+    "volume:failover_replication": "rule:admin_api",
+    "volume:list_replication_targets": "rule:admin_api",
     "volume_extension:volume_admin_actions:reset_status": "rule:admin_api",
     "volume_extension:snapshot_admin_actions:reset_status": "rule:admin_api",
     "volume_extension:backup_admin_actions:reset_status": "rule:admin_api",

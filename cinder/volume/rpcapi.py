@@ -72,6 +72,7 @@ class VolumeAPI(object):
         1.26 - Adds support for sending objects over RPC in
                create_consistencygroup(), create_consistencygroup_from_src(),
                update_consistencygroup() and delete_consistencygroup().
+        1.27 - Adds support for replication V2
     """
 
     BASE_RPC_API_VERSION = '1.0'
@@ -81,7 +82,7 @@ class VolumeAPI(object):
         target = messaging.Target(topic=CONF.volume_topic,
                                   version=self.BASE_RPC_API_VERSION)
         serializer = objects_base.CinderObjectSerializer()
-        self.client = rpc.get_client(target, '1.26', serializer=serializer)
+        self.client = rpc.get_client(target, '1.27', serializer=serializer)
 
     def create_consistencygroup(self, ctxt, group, host):
         new_host = utils.extract_host(host)
@@ -260,3 +261,29 @@ class VolumeAPI(object):
                    volume=volume,
                    new_volume=new_volume,
                    volume_status=original_volume_status)
+
+    def enable_replication(self, ctxt, volume):
+        new_host = utils.extract_host(volume['host'])
+        cctxt = self.client.prepare(server=new_host, version='1.27')
+        cctxt.cast(ctxt, 'enable_replication', volume=volume)
+
+    def disable_replication(self, ctxt, volume):
+        new_host = utils.extract_host(volume['host'])
+        cctxt = self.client.prepare(server=new_host, version='1.27')
+        cctxt.cast(ctxt, 'disable_replication',
+                   volume=volume)
+
+    def failover_replication(self,
+                             ctxt,
+                             volume,
+                             secondary=None):
+        new_host = utils.extract_host(volume['host'])
+        cctxt = self.client.prepare(server=new_host, version='1.27')
+        cctxt.cast(ctxt, 'failover_replication',
+                   volume=volume,
+                   secondary=secondary)
+
+    def list_replication_targets(self, ctxt, volume):
+        new_host = utils.extract_host(volume['host'])
+        cctxt = self.client.prepare(server=new_host, version='1.27')
+        return cctxt.call(ctxt, 'list_replication_targets', volume=volume)

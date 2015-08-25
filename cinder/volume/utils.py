@@ -15,6 +15,7 @@
 """Volume-related Utilities and helpers."""
 
 
+import ast
 import math
 import re
 import uuid
@@ -569,3 +570,27 @@ def check_already_managed_volume(db, vol_name):
     except (exception.VolumeNotFound, ValueError):
         return False
     return False
+
+
+def convert_config_string_to_dict(config_string):
+    """Convert config file replication string to a dict.
+
+    The only supported form is as follows:
+    "{'key-1'='val-1' 'key-2'='val-2'...}"
+
+    :param config_string: Properly formatted string to convert to dict.
+    :response: dict of string values
+    """
+
+    resultant_dict = {}
+
+    try:
+        st = config_string.replace("=", ":")
+        st = st.replace(" ", ", ")
+        resultant_dict = ast.literal_eval(st)
+    except Exception:
+        LOG.warning(_LW("Error encountered translating config_string: "
+                        "%(config_string)s to dict"),
+                    {'config_string': config_string})
+
+    return resultant_dict

@@ -64,6 +64,11 @@
     "volume_extension:replication:promote": "rule:admin_api",
     "volume_extension:replication:reenable": "rule:admin_api",
 
+    "volume:enable_replication": "rule:admin_api",
+    "volume:disable_replication": "rule:admin_api",
+    "volume:failover_replication": "rule:admin_api",
+    "volume:list_replication_targets": "rule:admin_api",
+
     "backup:create" : "",
     "backup:delete": "",
     "backup:get": "",
