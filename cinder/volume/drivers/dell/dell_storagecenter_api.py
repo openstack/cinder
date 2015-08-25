@@ -555,6 +555,8 @@ class StorageCenterApi(object):
                     # Map to actually create the volume
                     self.map_volume(scvolume,
                                     scserver)
+                    # We have changed the volume so grab a new copy of it.
+                    scvolume = self.find_volume(scvolume.get('name'))
                     self.unmap_volume(scvolume,
                                       scserver)
                     return
@@ -1079,19 +1081,14 @@ class StorageCenterApi(object):
         :returns: A list of Dell mapping profile objects.
         """
         mapping_profiles = []
-        if scvolume.get('active', False):
-            r = self.client.get('StorageCenter/ScVolume/%s/MappingProfileList'
-                                % self._get_id(scvolume))
-            if r.status_code == 200:
-                mapping_profiles = self._get_json(r)
-            else:
-                LOG.debug('MappingProfileList error: %(code)d %(reason)s',
-                          {'code': r.status_code,
-                           'reason': r.reason})
-                LOG.error(_LE('Unable to find volume mapping profiles: %s'),
-                          scvolume.get('name'))
+        r = self.client.get('StorageCenter/ScVolume/%s/MappingProfileList'
+                            % self._get_id(scvolume))
+        if r.status_code == 200:
+            mapping_profiles = self._get_json(r)
         else:
-            LOG.error(_LE('_find_mappings: volume is not active'))
+            LOG.debug('MappingProfileList error: %(code)d %(reason)s',
+                      {'code': r.status_code,
+                       'reason': r.reason})
         LOG.debug(mapping_profiles)
         return mapping_profiles
 
