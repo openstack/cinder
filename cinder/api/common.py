@@ -69,7 +69,7 @@ def validate_key_names(key_names_list):
     return True
 
 
-def get_pagination_params(params, max_limit=CONF.osapi_max_limit):
+def get_pagination_params(params, max_limit=None):
     """Return marker, limit, offset tuple from request.
 
     :param params: `wsgi.Request`'s GET dictionary, possibly containing
@@ -85,18 +85,20 @@ def get_pagination_params(params, max_limit=CONF.osapi_max_limit):
     :max_limit: Max value 'limit' return value can take
     :returns: Tuple (marker, limit, offset)
     """
+    max_limit = max_limit or CONF.osapi_max_limit
     limit = _get_limit_param(params, max_limit)
     marker = _get_marker_param(params)
     offset = _get_offset_param(params)
     return marker, limit, offset
 
 
-def _get_limit_param(params, max_limit=CONF.osapi_max_limit):
+def _get_limit_param(params, max_limit=None):
     """Extract integer limit from request's dictionary or fail.
 
    Defaults to max_limit if not present and returns max_limit if present
    'limit' is greater than max_limit.
     """
+    max_limit = max_limit or CONF.osapi_max_limit
     try:
         limit = int(params.pop('limit', max_limit))
     except ValueError:
@@ -129,7 +131,7 @@ def _get_offset_param(params):
     return offset
 
 
-def limited(items, request, max_limit=CONF.osapi_max_limit):
+def limited(items, request, max_limit=None):
     """Return a slice of items according to requested offset and limit.
 
     :param items: A sliceable entity
@@ -141,14 +143,16 @@ def limited(items, request, max_limit=CONF.osapi_max_limit):
                     will cause exc.HTTPBadRequest() exceptions to be raised.
     :kwarg max_limit: The maximum number of items to return from 'items'
     """
+    max_limit = max_limit or CONF.osapi_max_limit
     marker, limit, offset = get_pagination_params(request.GET.copy(),
                                                   max_limit)
     range_end = offset + (limit or max_limit)
     return items[offset:range_end]
 
 
-def limited_by_marker(items, request, max_limit=CONF.osapi_max_limit):
+def limited_by_marker(items, request, max_limit=None):
     """Return a slice of items according to the requested marker and limit."""
+    max_limit = max_limit or CONF.osapi_max_limit
     marker, limit, __ = get_pagination_params(request.GET.copy(), max_limit)
 
     start_index = 0
