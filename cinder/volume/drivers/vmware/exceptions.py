@@ -44,14 +44,14 @@ class ProfileNotFoundException(exceptions.VMwareDriverException):
 
 class NoValidDatastoreException(exceptions.VMwareDriverException):
     """Thrown when there are no valid datastores."""
-    message = _("There are no valid datastores.")
+    msg_fmt = _("There are no valid datastores.")
 
 
 class ClusterNotFoundException(exceptions.VMwareDriverException):
     """Thrown when the given cluster cannot be found."""
-    message = _("Compute cluster: %(cluster)s not found.")
+    msg_fmt = _("Compute cluster: %(cluster)s not found.")
 
 
 class NoValidHostException(exceptions.VMwareDriverException):
     """Thrown when there are no valid ESX hosts."""
-    message = _("There are no valid ESX hosts.")
+    msg_fmt = _("There are no valid ESX hosts.")
