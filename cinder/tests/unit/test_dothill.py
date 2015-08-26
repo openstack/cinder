@@ -51,7 +51,7 @@ response_stats_linear = '''<RESPONSE><OBJECT basetype="virtual-disks">
                     <PROPERTY name="size-numeric">3863830528</PROPERTY>
                     <PROPERTY name="freespace-numeric">3863830528</PROPERTY>
                     </OBJECT></RESPONSE>'''
-response_stats_realstor = '''<RESPONSE><OBJECT basetype="pools">
+response_stats_virtual = '''<RESPONSE><OBJECT basetype="pools">
                 <PROPERTY name="total-size-numeric">3863830528</PROPERTY>
                 <PROPERTY name="total-avail-numeric">3863830528</PROPERTY>
                 </OBJECT></RESPONSE>'''
@@ -87,7 +87,7 @@ response_ports = '''<RESPONSE>
                  </RESPONSE>'''
 
 response_ports_linear = response_ports % {'ip': 'primary-ip-address'}
-response_ports_realstor = response_ports % {'ip': 'ip-address'}
+response_ports_virtual = response_ports % {'ip': 'ip-address'}
 
 
 invalid_xml = '''<RESPONSE></RESPONSE>'''
@@ -146,8 +146,9 @@ class TestDotHillClient(test.TestCase):
         self.passwd = '!manage'
         self.ip = '10.0.0.1'
         self.protocol = 'http'
+        self.ssl_verify = False
         self.client = dothill.DotHillClient(self.ip, self.login, self.passwd,
-                                            self.protocol)
+                                            self.protocol, self.ssl_verify)
 
     @mock.patch('requests.get')
     def test_login(self, mock_requests_get):
@@ -219,13 +220,13 @@ class TestDotHillClient(test.TestCase):
         stats = {'free_capacity_gb': 1979,
                  'total_capacity_gb': 1979}
         linear = etree.XML(response_stats_linear)
-        realstor = etree.XML(response_stats_realstor)
-        mock_request.side_effect = [linear, realstor]
+        virtual = etree.XML(response_stats_virtual)
+        mock_request.side_effect = [linear, virtual]
 
         self.assertEqual(stats, self.client.backend_stats('OpenStack',
                                                           'linear'))
-        self.assertEqual(stats, self.client.backend_stats('OpenStack',
-                                                          'realstor'))
+        self.assertEqual(stats, self.client.backend_stats('A',
+                                                          'virtual'))
 
     @mock.patch.object(dothill.DotHillClient, '_request')
     def test_get_lun(self, mock_request):
@@ -266,10 +267,10 @@ class TestDotHillClient(test.TestCase):
     def test_get_iscsi_portals(self, mock_request):
         portals = {'10.0.0.12': 'Up', '10.0.0.11': 'Up'}
         mock_request.side_effect = [etree.XML(response_ports_linear),
-                                    etree.XML(response_ports_realstor)]
-        ret = self.client.get_active_iscsi_target_portals('linear')
+                                    etree.XML(response_ports_virtual)]
+        ret = self.client.get_active_iscsi_target_portals()
         self.assertEqual(portals, ret)
-        ret = self.client.get_active_iscsi_target_portals('realstor')
+        ret = self.client.get_active_iscsi_target_portals()
         self.assertEqual(portals, ret)
 
 
@@ -279,7 +280,7 @@ class FakeConfiguration1(object):
     san_ip = '10.0.0.1'
     san_login = 'manage'
     san_password = '!manage'
-    dothill_wbi_protocol = 'http'
+    dothill_api_protocol = 'http'
 
     def safe_get(self, key):
         return 'fakevalue'

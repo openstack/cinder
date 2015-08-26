@@ -39,7 +39,7 @@ class DotHillISCSIDriver(cinder.volume.driver.ISCSIDriver):
                  modifications:
                      - added iSCSI support
                      - added CHAP support in iSCSI
-                     - added support for v3 API(realstor feature)
+                     - added support for v3 API(virtual pool feature)
                      - added support for retype volume
                      - added support for manage/unmanage volume
                      - added https support

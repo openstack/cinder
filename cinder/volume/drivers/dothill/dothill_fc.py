@@ -33,7 +33,7 @@ class DotHillFCDriver(cinder.volume.driver.FibreChannelDriver):
                      cinder/volume/drivers/san/hp"
         1.0    - Version developed for DotHill arrays with the following
                  modifications:
-                     - added support for v3 API(realstor feature)
+                     - added support for v3 API(virtual pool feature)
                      - added support for retype volume
                      - added support for manage/unmanage volume
                      - added initiator target mapping in FC zoning

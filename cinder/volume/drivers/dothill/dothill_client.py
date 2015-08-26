@@ -30,11 +30,12 @@ LOG = logging.getLogger(__name__)
 
 
 class DotHillClient(object):
-    def __init__(self, host, login, password, protocol):
+    def __init__(self, host, login, password, protocol, ssl_verify):
         self._login = login
         self._password = password
         self._base_url = "%s://%s/api" % (protocol, host)
         self._session_key = None
+        self.ssl_verify = ssl_verify
 
     def _get_auth_token(self, xml):
         """Parse an XML authentication reply to extract the session key."""
@@ -53,7 +54,7 @@ class DotHillClient(object):
 
         url = self._base_url + "/login/" + digest
         try:
-            xml = requests.get(url)
+            xml = requests.get(url, verify=self.ssl_verify)
         except requests.exceptions.RequestException:
             raise exception.DotHillConnectionError
 
@@ -96,7 +97,7 @@ class DotHillClient(object):
         url = self._build_request_url(path, *args, **kargs)
         headers = {'dataType': 'api', 'sessionKey': self._session_key}
         try:
-            xml = requests.get(url, headers=headers)
+            xml = requests.get(url, headers=headers, verify=self.ssl_verify)
             tree = etree.XML(xml.text.encode('utf8'))
         except Exception:
             raise exception.DotHillConnectionError
@@ -109,7 +110,7 @@ class DotHillClient(object):
     def logout(self):
         url = self._base_url + '/exit'
         try:
-            requests.get(url)
+            requests.get(url, verify=self.ssl_verify)
             return True
         except Exception:
             return False
@@ -275,10 +276,10 @@ class DotHillClient(object):
         return host_status
 
     def _safe_hostname(self, hostname):
-        """DotHill hostname restrictions.
+        """Modify an initiator name to match firmware requirements.
 
-           A host name cannot include " , \ in linear and " , < > \ in realstor
-           and can have a max of 15 bytes in linear and 32 bytes in realstor.
+           Initiator name cannot include certain characters and cannot exceed
+           15 bytes in 'T' firmware (32 bytes in 'G' firmware).
         """
         for ch in [',', '"', '\\', '<', '>']:
             if ch in hostname:
@@ -288,16 +289,14 @@ class DotHillClient(object):
             index = 15
         return hostname[:index]
 
-    def get_active_iscsi_target_portals(self, backend_type):
+    def get_active_iscsi_target_portals(self):
         # This function returns {'ip': status,}
         portals = {}
-        prop = ""
+        prop = 'ip-address'
         tree = self._request("/show/ports")
-        if backend_type == "linear":
-            prop = "primary-ip-address"
-        else:
-            prop = "ip-address"
-
+        for el in tree.xpath("//PROPERTY[@name='primary-ip-address']"):
+            prop = 'primary-ip-address'
+            break
         iscsi_ips = [ip.text for ip in tree.xpath(
                      "//PROPERTY[@name='%s']" % prop)]
         if not iscsi_ips:
