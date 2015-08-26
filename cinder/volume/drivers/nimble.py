@@ -32,12 +32,13 @@ from six.moves import urllib
 from suds import client
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LI
+from cinder.i18n import _, _LE, _LI, _LW
+from cinder.objects import volume
 from cinder.volume.drivers.san import san
 from cinder.volume import volume_types
 
 
-DRIVER_VERSION = '1.1.3'
+DRIVER_VERSION = '2.0.0'
 AES_256_XTS_CIPHER = 2
 DEFAULT_CIPHER = 3
 EXTRA_SPEC_ENCRYPTION = 'nimble:encryption'
@@ -46,6 +47,10 @@ DEFAULT_PERF_POLICY_SETTING = 'default'
 DEFAULT_ENCRYPTION_SETTING = 'no'
 DEFAULT_SNAP_QUOTA = sys.maxsize
 VOL_EDIT_MASK = 4 + 16 + 32 + 64 + 256 + 512
+MANAGE_EDIT_MASK = 1 + 262144
+UNMANAGE_EDIT_MASK = 262144
+AGENT_TYPE_OPENSTACK = 5
+AGENT_TYPE_NONE = 1
 SOAP_PORT = 5391
 SM_ACL_APPLY_TO_BOTH = 3
 SM_ACL_CHAP_USER_ANY = '*'
@@ -83,10 +88,11 @@ class NimbleISCSIDriver(san.SanISCSIDriver):
 
     Version history:
         1.0 - Initial driver
-        1.1.0 - Added Extra Spec Capability
         1.1.1 - Updated VERSION to Nimble driver version
         1.1.2 - Update snap-quota to unlimited
-        1.1.3 - Correct capacity reporting
+        2.0.0 - Added Extra Spec Capability
+                Correct capacity reporting
+                Added Manage/Unmanage volume support
     """
 
     VERSION = DRIVER_VERSION
@@ -142,6 +148,23 @@ class NimbleISCSIDriver(san.SanISCSIDriver):
         else:
             raise NimbleDriverException(_('No suitable discovery ip found'))
 
+    def _update_existing_vols_agent_type(self, context):
+        LOG.debug("Updating existing volumes to have "
+                  "agent_type = 'OPENSTACK'")
+        backend_name = self.configuration.safe_get('volume_backend_name')
+        all_vols = volume.VolumeList.get_all(
+            context, None, None, None, None, {'status': 'available'})
+        for vol in all_vols:
+            if backend_name in vol.host:
+                try:
+                    self.APIExecutor.edit_vol(
+                        vol.name,
+                        UNMANAGE_EDIT_MASK,
+                        {'agent-type': AGENT_TYPE_OPENSTACK})
+                except NimbleAPIException:
+                    LOG.warning(_LW('Error updating agent-type for '
+                                    'volume %s.'), vol.name)
+
     def do_setup(self, context):
         """Setup the Nimble Cinder volume driver."""
         self._check_config()
@@ -156,6 +179,7 @@ class NimbleISCSIDriver(san.SanISCSIDriver):
                           'Check san_ip, username, password'
                           ' and make sure the array version is compatible'))
             raise
+        self._update_existing_vols_agent_type(context)
 
     def _get_provider_location(self, volume_name):
         """Get volume iqn for initiator access."""
@@ -311,6 +335,99 @@ class NimbleISCSIDriver(san.SanISCSIDriver):
              'warn-level': int(vol_size * WARN_LEVEL),
              'quota': vol_size,
              'snap-quota': DEFAULT_SNAP_QUOTA})
+
+    def _get_existing_volume_ref_name(self, existing_ref):
+        """Returns the volume name of an existing ref"""
+
+        vol_name = None
+        if 'source-name' in existing_ref:
+            vol_name = existing_ref['source-name']
+        else:
+            reason = _("Reference must contain source-name.")
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref,
+                reason=reason)
+
+        return vol_name
+
+    def manage_existing(self, volume, external_ref):
+        """Manage an existing nimble volume (import to cinder)"""
+
+        # Get the volume name from the external reference
+        target_vol_name = self._get_existing_volume_ref_name(external_ref)
+        LOG.debug('Entering manage_existing. '
+                  'Target_volume_name = %s', target_vol_name)
+
+        # Get vol info from the volume name obtained from the reference
+        vol_info = self.APIExecutor.get_vol_info(target_vol_name)
+
+        # Check if volume is already managed by Openstack
+        if vol_info['agent-type'] == AGENT_TYPE_OPENSTACK:
+            msg = (_('Volume %s is already managed by Openstack.')
+                   % target_vol_name)
+            raise exception.ManageExistingAlreadyManaged(
+                volume_ref=volume['id'])
+
+        # If agent-type is not None then raise exception
+        if vol_info['agent-type'] != AGENT_TYPE_NONE:
+            msg = (_('Volume should have agent-type set as None.'))
+            raise exception.InvalidVolume(reason=msg)
+
+        new_vol_name = volume['name']
+
+        if vol_info['online']:
+            msg = (_('Volume %s is online. Set volume to offline for '
+                     'managing using Openstack.') % target_vol_name)
+            raise exception.InvalidVolume(reason=msg)
+
+        # edit the volume
+        self.APIExecutor.edit_vol(target_vol_name,
+                                  MANAGE_EDIT_MASK,
+                                  {'name': new_vol_name,
+                                   'agent-type': AGENT_TYPE_OPENSTACK})
+
+        # make the volume online after rename
+        self.APIExecutor.online_vol(new_vol_name, True, ignore_list=[
+            'SM-enoent'])
+
+        return self._get_model_info(new_vol_name)
+
+    def manage_existing_get_size(self, volume, external_ref):
+        """Return size of an existing volume"""
+
+        LOG.debug('Volume name : %(name)s  External ref : %(ref)s',
+                  {'name': volume['name'], 'ref': external_ref})
+
+        target_vol_name = self._get_existing_volume_ref_name(external_ref)
+
+        # get vol info
+        vol_info = self.APIExecutor.get_vol_info(target_vol_name)
+
+        LOG.debug('Volume size : %(size)s  Volume-name : %(name)s',
+                  {'size': vol_info['size'], 'name': vol_info['name']})
+
+        return int(vol_info['size'] / units.Gi)
+
+    def unmanage(self, volume):
+        """Removes the specified volume from Cinder management."""
+
+        vol_name = volume['name']
+        LOG.info(_LI("Entering unmanage_volume volume = %s"), vol_name)
+
+        # check agent type
+        vol_info = self.APIExecutor.get_vol_info(vol_name)
+        if vol_info['agent-type'] != AGENT_TYPE_OPENSTACK:
+            msg = (_('Only volumes managed by Openstack can be unmanaged.'))
+            raise exception.InvalidVolume(reason=msg)
+
+        # update the agent-type to None
+        self.APIExecutor.edit_vol(vol_name,
+                                  UNMANAGE_EDIT_MASK,
+                                  {'agent-type': AGENT_TYPE_NONE})
+
+        # offline the volume
+        self.APIExecutor.online_vol(vol_name, False, ignore_list=[
+            'SM-enoent'])
 
     def _create_igroup_for_initiator(self, initiator_name):
         """Creates igroup for an initiator and returns the igroup name."""
@@ -527,7 +644,8 @@ class NimbleAPIExecutor(object):
                   ' reserve=%(reserve)s in pool=%(pool)s'
                   ' description=%(description)s with Extra Specs'
                   ' perfpol-name=%(perfpol-name)s'
-                  ' encryption=%(encryption)s cipher=%(cipher)s',
+                  ' encryption=%(encryption)s cipher=%(cipher)s'
+                  ' agent-type=%(agent-type)s',
                   {'vol': volume['name'],
                    'size': volume_size,
                    'reserve': reserve,
@@ -535,7 +653,8 @@ class NimbleAPIExecutor(object):
                    'description': description,
                    'perfpol-name': perf_policy_name,
                    'encryption': encrypt,
-                   'cipher': cipher})
+                   'cipher': cipher,
+                   'agent-type': AGENT_TYPE_OPENSTACK})
 
         return self.client.service.createVol(
             request={'sid': self.sid,
@@ -548,6 +667,7 @@ class NimbleAPIExecutor(object):
                               'snap-quota': DEFAULT_SNAP_QUOTA,
                               'online': True,
                               'pool-name': pool_name,
+                              'agent-type': AGENT_TYPE_OPENSTACK,
                               'perfpol-name': perf_policy_name,
                               'encryptionAttr': {'cipher': cipher}}})
 
@@ -695,12 +815,13 @@ class NimbleAPIExecutor(object):
         reserve_size = snap_size * units.Gi if reserve else 0
         LOG.info(_LI('Cloning volume from snapshot volume=%(vol)s '
                      'snapshot=%(snap)s clone=%(clone)s snap_size=%(size)s'
-                     'reserve=%(reserve)s'),
+                     'reserve=%(reserve)s' 'agent-type=%(agent-type)s'),
                  {'vol': volume_name,
                   'snap': snap_name,
                   'clone': clone_name,
                   'size': snap_size,
-                  'reserve': reserve})
+                  'reserve': reserve,
+                  'agent-type': AGENT_TYPE_OPENSTACK})
         clone_size = snap_size * units.Gi
         return self.client.service.cloneVol(
             request={'sid': self.sid,
@@ -711,7 +832,8 @@ class NimbleAPIExecutor(object):
                               'warn-level': int(clone_size * WARN_LEVEL),
                               'quota': clone_size,
                               'snap-quota': DEFAULT_SNAP_QUOTA,
-                              'online': True},
+                              'online': True,
+                              'agent-type': AGENT_TYPE_OPENSTACK},
                      'snap-name': snap_name})
 
     @_connection_checker
