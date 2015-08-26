@@ -200,6 +200,7 @@ class GlanceImageService(object):
     def __init__(self, client=None):
         self._client = client or GlanceClientWrapper()
         self._image_schema = None
+        self.temp_images = None
 
     def detail(self, context, **kwargs):
         """Calls out to Glance for a list of detailed image information."""
