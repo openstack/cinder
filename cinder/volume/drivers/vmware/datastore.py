@@ -131,7 +131,8 @@ class DatastoreSelector(object):
                 break
 
             for host in hosts:
-                all_hosts.append(host.obj)
+                if self._vops.is_host_usable(host.obj):
+                    all_hosts.append(host.obj)
             retrieve_result = self._vops.continue_retrieval(
                 retrieve_result)
         return all_hosts

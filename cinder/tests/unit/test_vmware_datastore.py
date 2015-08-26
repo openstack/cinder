@@ -432,3 +432,22 @@ class DatastoreTest(test.TestCase):
         get_profile_id_by_name.assert_called_once_with(self._session,
                                                        profile_name)
         filter_by_profile.assert_called_once_with([datastore], profile_id)
+
+    def test_get_all_hosts(self):
+        host_1 = self._create_host('host-1')
+        host_2 = self._create_host('host-2')
+        hosts = mock.Mock(objects=[mock.Mock(obj=host_1),
+                                   mock.Mock(obj=host_2)])
+
+        self._vops.get_hosts.return_value = hosts
+        self._vops.continue_retrieval.return_value = None
+        # host_1 is usable and host_2 is not usable
+        self._vops.is_host_usable.side_effect = [True, False]
+
+        ret = self._ds_sel._get_all_hosts()
+
+        self.assertEqual([host_1], ret)
+        self._vops.get_hosts.assert_called_once_with()
+        self._vops.continue_retrieval.assert_called_once_with(hosts)
+        exp_calls = [mock.call(host_1), mock.call(host_2)]
+        self.assertEqual(exp_calls, self._vops.is_host_usable.call_args_list)

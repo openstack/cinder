@@ -2658,8 +2658,26 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         delete_if_exists.assert_called_once_with(tmp)
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    def test_get_hosts(self, vops):
+        host_1 = mock.sentinel.host_1
+        host_2 = mock.sentinel.host_2
+        host_3 = mock.sentinel.host_3
+        vops.get_cluster_hosts.side_effect = [[host_1, host_2], [host_3]]
+        # host_1 and host_3 are usable, host_2 is not usable
+        vops.is_host_usable.side_effect = [True, False, True]
+
+        cls_1 = mock.sentinel.cls_1
+        cls_2 = mock.sentinel.cls_2
+        self.assertEqual([host_1, host_3],
+                         self._driver._get_hosts([cls_1, cls_2]))
+        exp_calls = [mock.call(cls_1), mock.call(cls_2)]
+        self.assertEqual(exp_calls, vops.get_cluster_hosts.call_args_list)
+        exp_calls = [mock.call(host_1), mock.call(host_2), mock.call(host_3)]
+        self.assertEqual(exp_calls, vops.is_host_usable.call_args_list)
+
+    @mock.patch.object(VMDK_DRIVER, '_get_hosts')
     @mock.patch.object(VMDK_DRIVER, 'ds_sel')
-    def test_select_datastore(self, ds_sel, vops):
+    def test_select_datastore(self, ds_sel, get_hosts):
         cls_1 = mock.sentinel.cls_1
         cls_2 = mock.sentinel.cls_2
         self._driver._clusters = [cls_1, cls_2]
@@ -2667,23 +2685,20 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         host_1 = mock.sentinel.host_1
         host_2 = mock.sentinel.host_2
         host_3 = mock.sentinel.host_3
-        vops.get_cluster_hosts.side_effect = [[host_1, host_2], [host_3]]
+        get_hosts.return_value = [host_1, host_2, host_3]
 
         best_candidate = mock.sentinel.best_candidate
         ds_sel.select_datastore.return_value = best_candidate
 
         req = mock.sentinel.req
         self.assertEqual(best_candidate, self._driver._select_datastore(req))
-
-        exp_calls = [mock.call(cls_1), mock.call(cls_2)]
-        self.assertEqual(exp_calls, vops.get_cluster_hosts.call_args_list)
-
+        get_hosts.assert_called_once_with(self._driver._clusters)
         ds_sel.select_datastore.assert_called_once_with(
             req, hosts=[host_1, host_2, host_3])
 
-    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, '_get_hosts')
     @mock.patch.object(VMDK_DRIVER, 'ds_sel')
-    def test_select_datastore_with_no_best_candidate(self, ds_sel, vops):
+    def test_select_datastore_with_no_best_candidate(self, ds_sel, get_hosts):
         cls_1 = mock.sentinel.cls_1
         cls_2 = mock.sentinel.cls_2
         self._driver._clusters = [cls_1, cls_2]
@@ -2691,7 +2706,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         host_1 = mock.sentinel.host_1
         host_2 = mock.sentinel.host_2
         host_3 = mock.sentinel.host_3
-        vops.get_cluster_hosts.side_effect = [[host_1, host_2], [host_3]]
+        get_hosts.return_value = [host_1, host_2, host_3]
 
         ds_sel.select_datastore.return_value = ()
 
@@ -2699,35 +2714,26 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
         self.assertRaises(vmdk_exceptions.NoValidDatastoreException,
                           self._driver._select_datastore,
                           req)
-
-        exp_calls = [mock.call(cls_1), mock.call(cls_2)]
-        self.assertEqual(exp_calls, vops.get_cluster_hosts.call_args_list)
-
+        get_hosts.assert_called_once_with(self._driver._clusters)
         ds_sel.select_datastore.assert_called_once_with(
             req, hosts=[host_1, host_2, host_3])
 
-    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, '_get_hosts')
     @mock.patch.object(VMDK_DRIVER, 'ds_sel')
-    def test_select_datastore_with_single_host(self, ds_sel, vops):
-        cls_1 = mock.sentinel.cls_1
-        cls_2 = mock.sentinel.cls_2
-        self._driver._clusters = [cls_1, cls_2]
-
-        host_1 = mock.sentinel.host_1
-
+    def test_select_datastore_with_single_host(self, ds_sel, get_hosts):
         best_candidate = mock.sentinel.best_candidate
         ds_sel.select_datastore.return_value = best_candidate
 
         req = mock.sentinel.req
+        host_1 = mock.sentinel.host_1
         self.assertEqual(best_candidate,
                          self._driver._select_datastore(req, host_1))
-
         ds_sel.select_datastore.assert_called_once_with(req, hosts=[host_1])
-        self.assertFalse(vops.get_cluster_hosts.called)
+        self.assertFalse(get_hosts.called)
 
-    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, '_get_hosts')
     @mock.patch.object(VMDK_DRIVER, 'ds_sel')
-    def test_select_datastore_with_empty_clusters(self, ds_sel, vops):
+    def test_select_datastore_with_empty_clusters(self, ds_sel, get_hosts):
         self._driver._clusters = None
 
         best_candidate = mock.sentinel.best_candidate
@@ -2735,26 +2741,22 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
 
         req = mock.sentinel.req
         self.assertEqual(best_candidate, self._driver._select_datastore(req))
-
         ds_sel.select_datastore.assert_called_once_with(req, hosts=None)
-        self.assertFalse(vops.get_cluster_hosts.called)
+        self.assertFalse(get_hosts.called)
 
-    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, '_get_hosts')
     @mock.patch.object(VMDK_DRIVER, 'ds_sel')
-    def test_select_datastore_with_no_valid_host(self, ds_sel, vops):
+    def test_select_datastore_with_no_valid_host(self, ds_sel, get_hosts):
         cls_1 = mock.sentinel.cls_1
         cls_2 = mock.sentinel.cls_2
         self._driver._clusters = [cls_1, cls_2]
 
-        vops.get_cluster_hosts.side_effect = [[], []]
+        get_hosts.return_value = []
 
         req = mock.sentinel.req
         self.assertRaises(vmdk_exceptions.NoValidHostException,
                           self._driver._select_datastore, req)
-
-        exp_calls = [mock.call(cls_1), mock.call(cls_2)]
-        self.assertEqual(exp_calls, vops.get_cluster_hosts.call_args_list)
-
+        get_hosts.assert_called_once_with(self._driver._clusters)
         self.assertFalse(ds_sel.called)
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
