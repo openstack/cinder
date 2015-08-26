@@ -22,6 +22,7 @@ from oslo_config import cfg
 from oslo_utils import importutils
 from oslo_utils import timeutils
 
+from cinder.backup import api
 from cinder.backup import manager
 from cinder import context
 from cinder import db
@@ -890,3 +891,42 @@ class BackupTestCaseWithVerify(BaseBackupTest):
         self.backup_mgr.reset_status(self.ctxt, backup, 'error')
         backup = db.backup_get(self.ctxt, backup['id'])
         self.assertEqual('error', backup['status'])
+
+
+class BackupAPITestCase(BaseBackupTest):
+    def setUp(self):
+        super(BackupAPITestCase, self).setUp()
+        self.api = api.API()
+
+    def test_get_all_wrong_all_tenants_value(self):
+        self.assertRaises(exception.InvalidParameterValue,
+                          self.api.get_all, self.ctxt, {'all_tenants': 'bad'})
+
+    @mock.patch.object(objects, 'BackupList')
+    def test_get_all_no_all_tenants_value(self, mock_backuplist):
+        result = self.api.get_all(self.ctxt, {'key': 'value'})
+        self.assertFalse(mock_backuplist.get_all.called)
+        self.assertEqual(mock_backuplist.get_all_by_project.return_value,
+                         result)
+        mock_backuplist.get_all_by_project.assert_called_once_with(
+            self.ctxt, self.ctxt.project_id, filters={'key': 'value'})
+
+    @mock.patch.object(objects, 'BackupList')
+    def test_get_all_false_value_all_tenants(self, mock_backuplist):
+        result = self.api.get_all(self.ctxt, {'all_tenants': '0',
+                                              'key': 'value'})
+        self.assertFalse(mock_backuplist.get_all.called)
+        self.assertEqual(mock_backuplist.get_all_by_project.return_value,
+                         result)
+        mock_backuplist.get_all_by_project.assert_called_once_with(
+            self.ctxt, self.ctxt.project_id, filters={'key': 'value'})
+
+    @mock.patch.object(objects, 'BackupList')
+    def test_get_all_true_value_all_tenants(self, mock_backuplist):
+        result = self.api.get_all(self.ctxt, {'all_tenants': 'true',
+                                              'key': 'value'})
+        self.assertFalse(mock_backuplist.get_all_by_project.called)
+        self.assertEqual(mock_backuplist.get_all.return_value,
+                         result)
+        mock_backuplist.get_all.assert_called_once_with(
+            self.ctxt, filters={'key': 'value'})
