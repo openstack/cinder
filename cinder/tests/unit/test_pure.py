@@ -106,10 +106,9 @@ TARGET_WWN = "21000024ff59fe94"
 TARGET_PORT = "3260"
 INITIATOR_TARGET_MAP =\
     {
-        '5001500150015081': ['21000024ff59fe93',
-                             '21000024ff59fe92',
-                             '21000024ff59fe91',
-                             '21000024ff59fe94'],
+        # _build_initiator_target_map() calls list(set()) on the list,
+        # we must also call list(set()) to get the exact same order
+        '5001500150015081': list(set(FC_WWNS)),
     }
 DEVICE_MAPPING =\
     {
