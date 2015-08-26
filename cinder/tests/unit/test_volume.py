@@ -5616,7 +5616,10 @@ class DriverTestCase(test.TestCase):
         def _fake_execute(_command, *_args, **_kwargs):
             """Fake _execute."""
             return self.output, None
-        self.volume.driver.set_execute(_fake_execute)
+        exec_patcher = mock.patch.object(self.volume.driver, '_execute',
+                                         _fake_execute)
+        exec_patcher.start()
+        self.addCleanup(exec_patcher.stop)
         self.volume.driver.set_initialized()
         self.addCleanup(self._cleanup)
 

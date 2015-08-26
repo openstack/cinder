@@ -56,52 +56,51 @@ class SRBLvmTestCase(test_brick_lvm.BrickLvmTestCase):
             raise AssertionError('unexpected command called: %s' % cmd_string)
 
     def test_activate_vg(self):
-        executor = mock.MagicMock()
-        self.vg.set_execute(executor)
-        self.vg.activate_vg()
-        executor.assert_called_once_with('vgchange', '-ay',
-                                         self.configuration.volume_group_name,
-                                         root_helper=self.vg._root_helper,
-                                         run_as_root=True)
+        with mock.patch.object(self.vg, '_execute') as executor:
+            self.vg.activate_vg()
+            executor.assert_called_once_with(
+                'vgchange', '-ay',
+                self.configuration.volume_group_name,
+                root_helper=self.vg._root_helper,
+                run_as_root=True)
 
     def test_deactivate_vg(self):
-        executor = mock.MagicMock()
-        self.vg.set_execute(executor)
-        self.vg.deactivate_vg()
-        executor.assert_called_once_with('vgchange', '-an',
-                                         self.configuration.volume_group_name,
-                                         root_helper=self.vg._root_helper,
-                                         run_as_root=True)
+        with mock.patch.object(self.vg, '_execute') as executor:
+            self.vg.deactivate_vg()
+            executor.assert_called_once_with(
+                'vgchange', '-an',
+                self.configuration.volume_group_name,
+                root_helper=self.vg._root_helper,
+                run_as_root=True)
 
     def test_destroy_vg(self):
-        executor = mock.MagicMock()
-        self.vg.set_execute(executor)
-        self.vg.destroy_vg()
-        executor.assert_called_once_with('vgremove', '-f',
-                                         self.configuration.volume_group_name,
-                                         root_helper=self.vg._root_helper,
-                                         run_as_root=True)
+        with mock.patch.object(self.vg, '_execute') as executor:
+            self.vg.destroy_vg()
+            executor.assert_called_once_with(
+                'vgremove', '-f',
+                self.configuration.volume_group_name,
+                root_helper=self.vg._root_helper,
+                run_as_root=True)
 
     def test_pv_resize(self):
-        executor = mock.MagicMock()
-        self.vg.set_execute(executor)
-        self.vg.pv_resize('fake-pv', '50G')
-        executor.assert_called_once_with('pvresize',
-                                         '--setphysicalvolumesize',
-                                         '50G', 'fake-pv',
-                                         root_helper=self.vg._root_helper,
-                                         run_as_root=True)
+        with mock.patch.object(self.vg, '_execute') as executor:
+            self.vg.pv_resize('fake-pv', '50G')
+            executor.assert_called_once_with(
+                'pvresize',
+                '--setphysicalvolumesize',
+                '50G', 'fake-pv',
+                root_helper=self.vg._root_helper,
+                run_as_root=True)
 
     def test_extend_thin_pool_nothin(self):
-        executor =\
-            mock.MagicMock(side_effect=Exception('Unexpected call to execute'))
-        self.vg.set_execute(executor)
-        thin_calc =\
-            mock.MagicMock(
-                side_effect=
-                Exception('Unexpected call to _calculate_thin_pool_size'))
-        self.vg._calculate_thin_pool_size = thin_calc
-        self.vg.extend_thin_pool()
+        with mock.patch.object(self.vg, '_execute') as executor:
+            executor.side_effect = AssertionError
+            thin_calc =\
+                mock.MagicMock(
+                    side_effect=
+                    Exception('Unexpected call to _calculate_thin_pool_size'))
+            self.vg._calculate_thin_pool_size = thin_calc
+            self.vg.extend_thin_pool()
 
     def test_extend_thin_pool_thin(self):
         self.stubs.Set(processutils, 'execute', self.fake_execute)
@@ -737,7 +736,11 @@ class SRBDriverTestCase(test.TestCase):
         self._driver = srb.SRBDriver(configuration=self.configuration)
         # Stub processutils.execute for static methods
         self.stubs.Set(processutils, 'execute', self._fake_execute)
-        self._driver.set_execute(self._fake_execute)
+        exec_patcher = mock.patch.object(self._driver,
+                                         '_execute',
+                                         self._fake_execute)
+        exec_patcher.start()
+        self.addCleanup(exec_patcher.stop)
         self._configure_driver()
 
     def test_setup(self):

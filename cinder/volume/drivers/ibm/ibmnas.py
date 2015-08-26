@@ -90,11 +90,9 @@ class IBMNAS_NFSDriver(nfs.NfsDriver, san.SanDriver):
         self.configuration.san_ssh_port = self.configuration.nas_ssh_port
         self.configuration.ibmnas_platform_type = \
             self.configuration.ibmnas_platform_type.lower()
+        self._execute = execute
         LOG.info(_LI('Initialized driver for IBMNAS Platform: %s.'),
                  self.configuration.ibmnas_platform_type)
-
-    def set_execute(self, execute):
-        self._execute = utils.execute
 
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""

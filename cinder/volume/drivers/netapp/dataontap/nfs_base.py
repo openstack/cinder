@@ -75,9 +75,6 @@ class NetAppNfsDriver(driver.ManageableVD,
         self.configuration.append_config_values(na_opts.netapp_img_cache_opts)
         self.configuration.append_config_values(na_opts.netapp_nfs_extra_opts)
 
-    def set_execute(self, execute):
-        self._execute = execute
-
     def do_setup(self, context):
         super(NetAppNfsDriver, self).do_setup(context)
         self._context = context

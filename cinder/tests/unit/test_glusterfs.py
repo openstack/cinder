@@ -119,19 +119,6 @@ class GlusterFsDriverTestCase(test.TestCase):
         if not caught:
             self.fail('Expected raised exception but nothing caught.')
 
-    def test_set_execute(self):
-        drv = self._driver
-
-        rfsclient = os_brick.remotefs.remotefs.RemoteFsClient
-
-        with mock.patch.object(rfsclient, 'set_execute') as mock_set_execute:
-            def my_execute(*a, **k):
-                pass
-
-            drv.set_execute(my_execute)
-
-            mock_set_execute.assert_called_once_with(my_execute)
-
     def test_local_path(self):
         """local_path common use case."""
         self.override_config("glusterfs_mount_point_base",
