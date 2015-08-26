@@ -19,6 +19,7 @@ import mock
 from oslo_utils import units
 import six
 
+from cinder import context
 from cinder import exception
 from cinder import test
 from cinder.tests.unit import fake_utils
@@ -104,6 +105,171 @@ class TestZFSSAISCSIDriver(test.TestCase):
         self.configuration.zfssa_rest_timeout = 60
         self.configuration.volume_backend_name = 'fake_zfssa'
         self.configuration.safe_get = self.fake_safe_get
+        self.configuration.zfssa_replication_ip = '1.1.1.1'
+
+    def _util_migrate_volume_exceptions(self):
+        self.drv.zfssa.get_lun.return_value = (
+            {'targetgroup': 'test-target-grp1'})
+        self.drv.zfssa.get_asn.return_value = (
+            '9a2b5a0f-e3af-6d14-9578-8825f229dc89')
+        self.drv.tgt_zfssa.get_asn.return_value = (
+            '9a2b5a0f-e3af-6d14-9578-8825f229dc89')
+        targets = {'targets': [{'hostname': '2.2.2.2',
+                                'address': '2.2.2.2:216',
+                                'label': '2.2.2.2',
+                                'asn':
+                                '9a2b5a0f-e3af-6d14-9578-8825f229dc89'}]}
+
+        self.drv.zfssa.get_replication_targets.return_value = targets
+        self.drv.zfssa.edit_inherit_replication_flag.return_value = {}
+        self.drv.zfssa.create_replication_action.return_value = 'action-123'
+        self.drv.zfssa.send_repl_update.return_value = True
+
+    def test_migrate_volume(self):
+        self._util_migrate_volume_exceptions()
+
+        volume = self.test_vol
+        volume.update({'host': 'fake_host',
+                       'status': 'available',
+                       'name': 'vol-1',
+                       'source_volid': self.test_vol['id']})
+
+        loc_info = '2.2.2.2:fake_auth:pool2:project2:test-target-grp1:2.2.2.2'
+
+        host = {'host': 'stack@zfssa_iscsi#fake_zfssa',
+                'capabilities': {'vendor_name': 'Oracle',
+                                 'storage_protocol': 'iSCSI',
+                                 'location_info': loc_info}}
+        ctxt = context.get_admin_context()
+
+        # Test the normal case
+        result = self.drv.migrate_volume(ctxt, volume, host)
+        self.assertEqual((True, None), result)
+
+        # Test when volume status is not available
+        volume['status'] = 'in-use'
+        result = self.drv.migrate_volume(ctxt, volume, host)
+        self.assertEqual((False, None), result)
+        volume['status'] = 'available'
+
+        # Test when vendor is not Oracle
+        host['capabilities']['vendor_name'] = 'elcarO'
+        result = self.drv.migrate_volume(ctxt, volume, host)
+        self.assertEqual((False, None), result)
+        host['capabilities']['vendor_name'] = 'Oracle'
+
+        # Test when storage protocol is not iSCSI
+        host['capabilities']['storage_protocol'] = 'not_iSCSI'
+        result = self.drv.migrate_volume(ctxt, volume, host)
+        self.assertEqual((False, None), result)
+        host['capabilities']['storage_protocol'] = 'iSCSI'
+
+        # Test when location_info is incorrect
+        host['capabilities']['location_info'] = ''
+        self.assertEqual((False, None), result)
+        host['capabilities']['location_info'] = loc_info
+
+        # Test if replication ip and replication target's address dont match
+        invalid_loc_info = (
+            '2.2.2.2:fake_auth:pool2:project2:test-target-grp1:9.9.9.9')
+        host['capabilities']['location_info'] = invalid_loc_info
+        result = self.drv.migrate_volume(ctxt, volume, host)
+        self.assertEqual((False, None), result)
+        host['capabilities']['location_info'] = loc_info
+
+        # Test if no targets are returned
+        self.drv.zfssa.get_replication_targets.return_value = {'targets': []}
+        result = self.drv.migrate_volume(ctxt, volume, host)
+        self.assertEqual((False, None), result)
+
+    def test_migrate_volume_uninherit_exception(self):
+        self._util_migrate_volume_exceptions()
+
+        volume = self.test_vol
+        volume.update({'host': 'fake_host',
+                       'status': 'available',
+                       'name': 'vol-1',
+                       'source_volid': self.test_vol['id']})
+
+        loc_info = '2.2.2.2:fake_auth:pool2:project2:test-target-grp1:2.2.2.2'
+
+        host = {'host': 'stack@zfssa_iscsi#fake_zfssa',
+                'capabilities': {'vendor_name': 'Oracle',
+                                 'storage_protocol': 'iSCSI',
+                                 'location_info': loc_info}}
+        ctxt = context.get_admin_context()
+
+        self.drv.zfssa.edit_inherit_replication_flag.side_effect = (
+            exception.VolumeBackendAPIException(data='uniherit ex'))
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.drv.migrate_volume, ctxt, volume, host)
+
+    def test_migrate_volume_create_action_exception(self):
+        self._util_migrate_volume_exceptions()
+
+        volume = self.test_vol
+        volume.update({'host': 'fake_host',
+                       'status': 'available',
+                       'name': 'vol-1',
+                       'source_volid': self.test_vol['id']})
+
+        loc_info = '2.2.2.2:fake_auth:pool2:project2:test-target-grp1:2.2.2.2'
+
+        host = {'host': 'stack@zfssa_iscsi#fake_zfssa',
+                'capabilities': {'vendor_name': 'Oracle',
+                                 'storage_protocol': 'iSCSI',
+                                 'location_info': loc_info}}
+        ctxt = context.get_admin_context()
+
+        self.drv.zfssa.create_replication_action.side_effect = (
+            exception.VolumeBackendAPIException(data=
+                                                'failed to create action'))
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.drv.migrate_volume, ctxt, volume, host)
+
+    def test_migrate_volume_send_update_exception(self):
+        self._util_migrate_volume_exceptions()
+
+        volume = self.test_vol
+        volume.update({'host': 'fake_host',
+                       'status': 'available',
+                       'name': 'vol-1',
+                       'source_volid': self.test_vol['id']})
+
+        loc_info = '2.2.2.2:fake_auth:pool2:project2:test-target-grp1:2.2.2.2'
+
+        host = {'host': 'stack@zfssa_iscsi#fake_zfssa',
+                'capabilities': {'vendor_name': 'Oracle',
+                                 'storage_protocol': 'iSCSI',
+                                 'location_info': loc_info}}
+        ctxt = context.get_admin_context()
+
+        self.drv.zfssa.send_repl_update.side_effect = (
+            exception.VolumeBackendAPIException(data='failed to send update'))
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.drv.migrate_volume, ctxt, volume, host)
+
+    def test_migrate_volume_sever_repl_exception(self):
+        self._util_migrate_volume_exceptions()
+
+        volume = self.test_vol
+        volume.update({'host': 'fake_host',
+                       'status': 'available',
+                       'name': 'vol-1',
+                       'source_volid': self.test_vol['id']})
+
+        loc_info = '2.2.2.2:fake_auth:pool2:project2:test-target-grp1:2.2.2.2'
+
+        host = {'host': 'stack@zfssa_iscsi#fake_zfssa',
+                'capabilities': {'vendor_name': 'Oracle',
+                                 'storage_protocol': 'iSCSI',
+                                 'location_info': loc_info}}
+        ctxt = context.get_admin_context()
+        self.drv.tgt_zfssa.sever_replication.side_effect = (
+            exception.VolumeBackendAPIException(data=
+                                                'failed to sever replication'))
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.drv.migrate_volume, ctxt, volume, host)
 
     def test_create_delete_volume(self):
         self.drv.zfssa.get_lun.return_value = {'guid':
@@ -249,7 +415,8 @@ class TestZFSSANFSDriver(test.TestCase):
 
     test_vol = {
         'name': 'test-vol',
-        'size': 1
+        'size': 1,
+        'id': '1'
     }
 
     test_snap = {
@@ -291,6 +458,66 @@ class TestZFSSANFSDriver(test.TestCase):
         self.configuration.zfssa_rest_timeout = '30'
         self.configuration.nfs_oversub_ratio = 1
         self.configuration.nfs_used_ratio = 1
+
+    def test_migrate_volume(self):
+        self.drv.zfssa.get_asn.return_value = (
+            '9a2b5a0f-e3af-6d14-9578-8825f229dc89')
+        volume = self.test_vol
+        volume.update({'host': 'fake_host',
+                       'status': 'available',
+                       'name': 'vol-1',
+                       'source_volid': self.test_vol['id']})
+
+        loc_info = '9a2b5a0f-e3af-6d14-9578-8825f229dc89:nfs_share'
+
+        host = {'host': 'stack@zfssa_nfs#fake_zfssa',
+                'capabilities': {'vendor_name': 'Oracle',
+                                 'storage_protocol': 'nfs',
+                                 'location_info': loc_info}}
+        ctxt = context.get_admin_context()
+
+        # Test Normal case
+        result = self.drv.migrate_volume(ctxt, volume, host)
+        self.assertEqual((True, None), result)
+
+        # Test when volume status is not available
+        volume['status'] = 'in-use'
+        result = self.drv.migrate_volume(ctxt, volume, host)
+        self.assertEqual((False, None), result)
+        volume['status'] = 'available'
+
+        # Test when Vendor is not Oracle
+        host['capabilities']['vendor_name'] = 'elcarO'
+        result = self.drv.migrate_volume(ctxt, volume, host)
+        self.assertEqual((False, None), result)
+        host['capabilities']['vendor_name'] = 'Oracle'
+
+        # Test when storage protocol is not iSCSI
+        host['capabilities']['storage_protocol'] = 'not_nfs'
+        result = self.drv.migrate_volume(ctxt, volume, host)
+        self.assertEqual((False, None), result)
+        host['capabilities']['storage_protocol'] = 'nfs'
+
+        # Test for exceptions
+        host['capabilities']['location_info'] = ''
+        result = self.drv.migrate_volume(ctxt, volume, host)
+        self.assertEqual((False, None), result)
+        host['capabilities']['location_info'] = loc_info
+
+        # Test case when source and target asn dont match
+        invalid_loc_info = (
+            'fake_asn*https://2.2.2.2:/shares/export/nfs_share*nfs_share')
+        host['capabilities']['location_info'] = invalid_loc_info
+        result = self.drv.migrate_volume(ctxt, volume, host)
+        self.assertEqual((False, None), result)
+
+        # Test case when source and target shares names are different
+        invalid_loc_info = (
+            '9a2b5a0f-e3af-6d14-9578-8825f229dc89*' +
+            'https://tgt:/shares/export/nfs_share*nfs_share_1')
+        host['capabilities']['location_info'] = invalid_loc_info
+        result = self.drv.migrate_volume(ctxt, volume, host)
+        self.assertEqual((False, None), result)
 
     def test_create_delete_snapshot(self):
         lcfg = self.configuration

@@ -1,4 +1,4 @@
-# Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -17,6 +17,7 @@ ZFS Storage Appliance Proxy
 import json
 
 from oslo_log import log
+from oslo_service import loopingcall
 
 from cinder import exception
 from cinder.i18n import _, _LE
@@ -70,6 +71,286 @@ class ZFSSAApi(object):
         """Login to the appliance"""
         if self.rclient and not self.rclient.islogin():
             self.rclient.login(auth_str)
+
+    def logout(self):
+        self.rclient.logout()
+
+    def verify_service(self, service, status='online'):
+        """Checks whether a service is online or not"""
+        svc = '/api/service/v1/services/' + service
+        ret = self.rclient.get(svc)
+
+        if ret.status != restclient.Status.OK:
+            exception_msg = (_('Error Verifying '
+                               'Service: %(service)s '
+                               'Return code: %(ret.status)d '
+                               'Message: %(ret.data)s.')
+                             % {'service': service,
+                                'ret.status': ret.status,
+                                'ret.data': ret.data})
+
+            LOG.error(exception_msg)
+            raise exception.VolumeBackendAPIException(data=exception_msg)
+
+        data = json.loads(ret.data)['service']
+
+        if data['<status>'] != status:
+            exception_msg = (_('%(service)s Service is not %(status)s '
+                               'on storage appliance: %(host)s')
+                             % {'service': service,
+                                'status': status,
+                                'host': self.host})
+            LOG.error(exception_msg)
+            raise exception.VolumeBackendAPIException(data=exception_msg)
+
+    def get_asn(self):
+        """Returns appliance asn."""
+        svc = '/api/system/v1/version'
+        ret = self.rclient.get(svc)
+        if ret.status != restclient.Status.OK:
+            exception_msg = (_('Error getting appliance version details. '
+                               'Return code: %(ret.status)d '
+                               'Message: %(ret.data)s .')
+                             % {'ret.status': ret.status,
+                                'ret.data': ret.data})
+            LOG.error(exception_msg)
+            raise exception.VolumeBackendAPIException(data=exception_msg)
+
+        val = json.loads(ret.data)
+        return val['version']['asn']
+
+    def get_replication_targets(self):
+        """Returns all replication targets configured on the appliance."""
+        svc = '/api/storage/v1/replication/targets'
+        ret = self.rclient.get(svc)
+        if ret.status != restclient.Status.OK:
+            exception_msg = (_('Error getting replication target details. '
+                               'Return code: %(ret.status)d '
+                               'Message: %(ret.data)s .')
+                             % {'ret.status': ret.status,
+                                'ret.data': ret.data})
+            LOG.error(exception_msg)
+            raise exception.VolumeBackendAPIException(data=exception_msg)
+
+        val = json.loads(ret.data)
+        return val
+
+    def edit_inherit_replication_flag(self, pool, project, volume, set=True):
+        """Edit the inherit replication flag for volume."""
+        svc = ('/api/storage/v1/pools/%(pool)s/projects/%(project)s'
+               '/filesystems/%(volume)s/replication'
+               % {'pool': pool,
+                  'project': project,
+                  'volume': volume})
+        arg = {'inherited': set}
+        ret = self.rclient.put(svc, arg)
+
+        if ret.status != restclient.Status.ACCEPTED:
+            exception_msg = (_('Error setting replication inheritance '
+                               'to %(set)s '
+                               'for volume: %(vol)s '
+                               'project %(project)s '
+                               'Return code: %(ret.status)d '
+                               'Message: %(ret.data)s .')
+                             % {'set': set,
+                                'project': project,
+                                'vol': volume,
+                                'ret.status': ret.status,
+                                'ret.data': ret.data})
+            LOG.error(exception_msg)
+            raise exception.VolumeBackendAPIException(data=exception_msg)
+
+    def create_replication_action(self, host_pool, host_project, tgt_name,
+                                  tgt_pool, volume):
+        """Create a replication action."""
+        arg = {'pool': host_pool,
+               'project': host_project,
+               'target_pool': tgt_pool,
+               'target': tgt_name}
+
+        if volume is not None:
+            arg.update({'share': volume})
+
+        svc = '/api/storage/v1/replication/actions'
+        ret = self.rclient.post(svc, arg)
+        if ret.status != restclient.Status.CREATED:
+            exception_msg = (_('Error Creating replication action on: '
+                               'pool: %(pool)s '
+                               'Project: %(proj)s '
+                               'volume: %(vol)s '
+                               'for target: %(tgt)s and pool: %(tgt_pool)s'
+                               'Return code: %(ret.status)d '
+                               'Message: %(ret.data)s .')
+                             % {'pool': host_pool,
+                                'proj': host_project,
+                                'vol': volume,
+                                'tgt': tgt_name,
+                                'tgt_pool': tgt_pool,
+                                'ret.status': ret.status,
+                                'ret.data': ret.data})
+            LOG.error(exception_msg)
+            raise exception.VolumeBackendAPIException(data=exception_msg)
+
+        val = json.loads(ret.data)
+        return val['action']['id']
+
+    def delete_replication_action(self, action_id):
+        """Delete a replication action."""
+        svc = '/api/storage/v1/replication/actions/%s' % action_id
+        ret = self.rclient.delete(svc)
+        if ret.status != restclient.Status.NO_CONTENT:
+            exception_msg = (_('Error Deleting '
+                               'replication action: %(id)s '
+                               'Return code: %(ret.status)d '
+                               'Message: %(ret.data)s.')
+                             % {'id': action_id,
+                                'ret.status': ret.status,
+                                'ret.data': ret.data})
+            LOG.error(exception_msg)
+            raise exception.VolumeBackendAPIException(data=exception_msg)
+
+    def send_repl_update(self, action_id):
+        """Send replication update
+
+           Send replication update to the target appliance and then wait for
+           it to complete.
+        """
+
+        svc = '/api/storage/v1/replication/actions/%s/sendupdate' % action_id
+        ret = self.rclient.put(svc)
+        if ret.status != restclient.Status.ACCEPTED:
+            exception_msg = (_('Error sending replication update '
+                               'for action id: %(id)s . '
+                               'Return code: %(ret.status)d '
+                               'Message: %(ret.data)s .')
+                             % {'id': action_id,
+                                'ret.status': ret.status,
+                                'ret.data': ret.data})
+            LOG.error(exception_msg)
+            raise exception.VolumeBackendAPIException(data=exception_msg)
+
+        def _loop_func():
+            svc = '/api/storage/v1/replication/actions/%s' % action_id
+            ret = self.rclient.get(svc)
+            if ret.status != restclient.Status.OK:
+                exception_msg = (_('Error getting replication action: %(id)s. '
+                                   'Return code: %(ret.status)d '
+                                   'Message: %(ret.data)s .')
+                                 % {'id': action_id,
+                                    'ret.status': ret.status,
+                                    'ret.data': ret.data})
+                LOG.error(exception_msg)
+                raise exception.VolumeBackendAPIException(data=exception_msg)
+
+            val = json.loads(ret.data)
+            if val['action']['last_result'] == 'success':
+                raise loopingcall.LoopingCallDone()
+            elif (val['action']['last_result'] == '<unknown>' and
+                    val['action']['state'] == 'sending'):
+                pass
+            else:
+                exception_msg = (_('Error sending replication update. '
+                                   'Returned error: %(err)s. '
+                                   'Action: %(id)s.')
+                                 % {'err': val['action']['last_result'],
+                                    'id': action_id})
+                LOG.error(exception_msg)
+                raise exception.VolumeBackendAPIException(data=exception_msg)
+
+        timer = loopingcall.FixedIntervalLoopingCall(_loop_func)
+        timer.start(interval=5).wait()
+
+    def get_replication_source(self, asn):
+        """Return the replication source json which has a matching asn."""
+        svc = "/api/storage/v1/replication/sources"
+        ret = self.rclient.get(svc)
+        if ret.status != restclient.Status.OK:
+            exception_msg = (_('Error getting replication source details. '
+                               'Return code: %(ret.status)d '
+                               'Message: %(ret.data)s .')
+                             % {'ret.status': ret.status,
+                                'ret.data': ret.data})
+            LOG.error(exception_msg)
+            raise exception.VolumeBackendAPIException(data=exception_msg)
+
+        val = json.loads(ret.data)
+
+        for source in val['sources']:
+            if source['asn'] == asn:
+                return source
+        return None
+
+    def sever_replication(self, package, src_name, project=None):
+        """Sever Replication at the destination.
+
+           This method will sever the package and move the volume to a project,
+           if project name is not passed in then the package name is selected
+           as the project name
+        """
+
+        svc = ('/api/storage/v1/replication/sources/%(src)s/packages/%(pkg)s'
+               '/sever' % {'src': src_name, 'pkg': package})
+
+        if not project:
+            project = package
+
+        arg = {'projname': project}
+        ret = self.rclient.put(svc, arg)
+
+        if ret.status != restclient.Status.ACCEPTED:
+            exception_msg = (_('Error severing the package: %(package)s '
+                               'from source: %(src)s '
+                               'Return code: %(ret.status)d '
+                               'Message: %(ret.data)s .')
+                             % {'package': package,
+                                'src': src_name,
+                                'ret.status': ret.status,
+                                'ret.data': ret.data})
+            LOG.error(exception_msg)
+            raise exception.VolumeBackendAPIException(data=exception_msg)
+
+    def move_volume(self, pool, project, volume, tgt_project):
+        """Move a LUN from one project to another within the same pool."""
+        svc = ('/api/storage/v1/pools/%(pool)s/projects/%(project)s'
+               '/filesystems/%(volume)s' % {'pool': pool,
+                                            'project': project,
+                                            'volume': volume})
+
+        arg = {'project': tgt_project}
+
+        ret = self.rclient.put(svc, arg)
+        if ret.status != restclient.Status.ACCEPTED:
+            exception_msg = (_('Error moving volume: %(vol)s '
+                               'from source project: %(src)s '
+                               'to target project: %(tgt)s '
+                               'Return code: %(ret.status)d '
+                               'Message: %(ret.data)s .')
+                             % {'vol': volume,
+                                'src': project,
+                                'tgt': tgt_project,
+                                'ret.status': ret.status,
+                                'ret.data': ret.data})
+            LOG.error(exception_msg)
+            raise exception.VolumeBackendAPIException(data=exception_msg)
+
+    def delete_project(self, pool, project):
+        """Delete a project."""
+        svc = ('/api/storage/v1/pools/%(pool)s/projects/%(project)s' %
+               {'pool': pool,
+                'project': project})
+        ret = self.rclient.delete(svc)
+        if ret.status != restclient.Status.NO_CONTENT:
+            exception_msg = (_('Error Deleting '
+                               'project: %(project)s '
+                               'on pool: %(pool)s '
+                               'Return code: %(ret.status)d '
+                               'Message: %(ret.data)s.')
+                             % {'project': project,
+                                'pool': pool,
+                                'ret.status': ret.status,
+                                'ret.data': ret.data})
+            LOG.error(exception_msg)
+            raise exception.VolumeBackendAPIException(data=exception_msg)
 
     def get_pool_stats(self, pool):
         """Get pool stats.
@@ -448,7 +729,8 @@ class ZFSSAApi(object):
             'number': val['lun']['assignednumber'],
             'initiatorgroup': val['lun']['initiatorgroup'],
             'size': val['lun']['volsize'],
-            'nodestroy': val['lun']['nodestroy']
+            'nodestroy': val['lun']['nodestroy'],
+            'targetgroup': val['lun']['targetgroup']
         }
         if 'origin' in val['lun']:
             ret.update({'origin': val['lun']['origin']})
@@ -779,34 +1061,6 @@ class ZFSSANfsApi(ZFSSAApi):
     def disable_service(self, service):
         self._change_service_state(service, state='disable')
         self.verify_service(service, status='offline')
-
-    def verify_service(self, service, status='online'):
-        """Checks whether a service is online or not"""
-        svc = self.services_path + service
-        ret = self.rclient.get(svc)
-
-        if ret.status != restclient.Status.OK:
-            exception_msg = (_('Error Verifying '
-                               'Service: %(service)s '
-                               'Return code: %(ret.status)d '
-                               'Message: %(ret.data)s.')
-                             % {'service': service,
-                                'ret.status': ret.status,
-                                'ret.data': ret.data})
-
-            LOG.error(exception_msg)
-            raise exception.VolumeBackendAPIException(data=exception_msg)
-
-        data = json.loads(ret.data)['service']
-
-        if data['<status>'] != status:
-            exception_msg = (_('%(service)s Service is not %(status)s '
-                               'on storage appliance: %(host)s')
-                             % {'service': service,
-                                'status': status,
-                                'host': self.host})
-            LOG.error(exception_msg)
-            raise exception.VolumeBackendAPIException(data=exception_msg)
 
     def modify_service(self, service, edit_args=None):
         """Edit service properties"""
