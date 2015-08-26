@@ -167,7 +167,8 @@ class TestSnapshotList(test_objects.BaseObjectsTestCase):
             self.context, search_opts)
         self.assertEqual(1, len(snapshots))
         TestSnapshot._compare(self, fake_snapshot_obj, snapshots[0])
-        snapshot_get_all.assert_called_once_with(self.context, search_opts)
+        snapshot_get_all.assert_called_once_with(self.context, search_opts,
+                                                 None, None, None, None, None)
 
     @mock.patch('cinder.objects.Volume.get_by_id')
     @mock.patch('cinder.db.snapshot_get_by_host',
@@ -195,7 +196,8 @@ class TestSnapshotList(test_objects.BaseObjectsTestCase):
         TestSnapshot._compare(self, fake_snapshot_obj, snapshots[0])
         get_all_by_project.assert_called_once_with(self.context,
                                                    self.project_id,
-                                                   search_opts)
+                                                   search_opts, None, None,
+                                                   None, None, None)
 
     @mock.patch('cinder.objects.volume.Volume.get_by_id')
     @mock.patch('cinder.db.snapshot_get_all_for_volume',
@@ -270,4 +272,5 @@ class TestSnapshotList(test_objects.BaseObjectsTestCase):
         snapshot_obj = copy.deepcopy(fake_snapshot_obj)
         snapshot_obj['metadata'] = {'fake_key': 'fake_value'}
         TestSnapshot._compare(self, snapshot_obj, snapshots[0])
-        snapshot_get_all.assert_called_once_with(self.context, search_opts)
+        snapshot_get_all.assert_called_once_with(self.context, search_opts,
+                                                 None, None, None, None, None)

@@ -114,8 +114,8 @@ class SnapshotsController(wsgi.Controller):
 
         # Pop out non search_opts and create local variables
         search_opts = req.GET.copy()
-        search_opts.pop('limit', None)
-        search_opts.pop('offset', None)
+        sort_keys, sort_dirs = common.get_sort_params(search_opts)
+        marker, limit, offset = common.get_pagination_params(search_opts)
 
         # Filter out invalid options
         allowed_search_options = ('status', 'volume_id', 'name')
@@ -128,18 +128,19 @@ class SnapshotsController(wsgi.Controller):
             del search_opts['name']
 
         snapshots = self.volume_api.get_all_snapshots(context,
-                                                      search_opts=search_opts)
+                                                      search_opts=search_opts,
+                                                      marker=marker,
+                                                      limit=limit,
+                                                      sort_keys=sort_keys,
+                                                      sort_dirs=sort_dirs,
+                                                      offset=offset)
 
-        limited_list = common.limited(snapshots.objects, req)
-        req.cache_db_snapshots(limited_list)
-        snapshot_count = len(snapshots)
+        req.cache_db_snapshots(snapshots.objects)
 
         if is_detail:
-            snapshots = self._view_builder.detail_list(req, limited_list,
-                                                       snapshot_count)
+            snapshots = self._view_builder.detail_list(req, snapshots.objects)
         else:
-            snapshots = self._view_builder.summary_list(req, limited_list,
-                                                        snapshot_count)
+            snapshots = self._view_builder.summary_list(req, snapshots.objects)
         return snapshots
 
     @wsgi.response(202)

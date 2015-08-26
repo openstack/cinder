@@ -215,8 +215,10 @@ class SnapshotList(base.ObjectListBase, base.CinderObject):
     }
 
     @base.remotable_classmethod
-    def get_all(cls, context, search_opts):
-        snapshots = db.snapshot_get_all(context, search_opts)
+    def get_all(cls, context, search_opts, marker=None, limit=None,
+                sort_keys=None, sort_dirs=None, offset=None):
+        snapshots = db.snapshot_get_all(context, search_opts, marker, limit,
+                                        sort_keys, sort_dirs, offset)
         return base.obj_make_list(context, cls(), objects.Snapshot,
                                   snapshots,
                                   expected_attrs=['metadata'])
@@ -228,9 +230,12 @@ class SnapshotList(base.ObjectListBase, base.CinderObject):
                                   snapshots, expected_attrs=['metadata'])
 
     @base.remotable_classmethod
-    def get_all_by_project(cls, context, project_id, search_opts):
-        snapshots = db.snapshot_get_all_by_project(context, project_id,
-                                                   search_opts)
+    def get_all_by_project(cls, context, project_id, search_opts, marker=None,
+                           limit=None, sort_keys=None, sort_dirs=None,
+                           offset=None):
+        snapshots = db.snapshot_get_all_by_project(
+            context, project_id, search_opts, marker, limit, sort_keys,
+            sort_dirs, offset)
         return base.obj_make_list(context, cls(context), objects.Snapshot,
                                   snapshots, expected_attrs=['metadata'])
 

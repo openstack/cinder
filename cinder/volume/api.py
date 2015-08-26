@@ -508,19 +508,23 @@ class API(base.Base):
         LOG.info(_LI("Volume retrieved successfully."), resource=vref)
         return dict(vref)
 
-    def get_all_snapshots(self, context, search_opts=None):
+    def get_all_snapshots(self, context, search_opts=None, marker=None,
+                          limit=None, sort_keys=None, sort_dirs=None,
+                          offset=None):
         check_policy(context, 'get_all_snapshots')
 
         search_opts = search_opts or {}
 
-        if (context.is_admin and 'all_tenants' in search_opts):
+        if context.is_admin and 'all_tenants' in search_opts:
             # Need to remove all_tenants to pass the filtering below.
             del search_opts['all_tenants']
-            snapshots = objects.SnapshotList.get_all(context,
-                                                     search_opts)
+            snapshots = objects.SnapshotList.get_all(
+                context, search_opts, marker, limit, sort_keys, sort_dirs,
+                offset)
         else:
             snapshots = objects.SnapshotList.get_all_by_project(
-                context, context.project_id, search_opts)
+                context, context.project_id, search_opts, marker, limit,
+                sort_keys, sort_dirs, offset)
 
         LOG.info(_LI("Get all snaphsots completed successfully."))
         return snapshots
