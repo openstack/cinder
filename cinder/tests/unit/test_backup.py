@@ -935,3 +935,14 @@ class BackupAPITestCase(BaseBackupTest):
                          result)
         mock_backuplist.get_all.assert_called_once_with(
             self.ctxt, filters={'key': 'value'})
+
+    @mock.patch.object(objects, 'BackupList')
+    def test_get_all_true_value_all_tenants_non_admin(self, mock_backuplist):
+        ctxt = context.RequestContext('fake', 'fake')
+        result = self.api.get_all(ctxt, {'all_tenants': '1',
+                                         'key': 'value'})
+        self.assertFalse(mock_backuplist.get_all.called)
+        self.assertEqual(mock_backuplist.get_all_by_project.return_value,
+                         result)
+        mock_backuplist.get_all_by_project.assert_called_once_with(
+            ctxt, ctxt.project_id, filters={'key': 'value'})
