@@ -65,6 +65,7 @@ from cinder import utils
 from cinder.volume import configuration as config
 from cinder.volume.flows.manager import create_volume
 from cinder.volume.flows.manager import manage_existing
+from cinder.volume.flows.manager import manage_existing_snapshot
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import utils as vol_utils
 from cinder.volume import volume_types
@@ -189,7 +190,7 @@ def locked_snapshot_operation(f):
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '1.27'
+    RPC_API_VERSION = '1.28'
 
     target = messaging.Target(version=RPC_API_VERSION)
 
@@ -722,7 +723,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         return snapshot.id
 
     @locked_snapshot_operation
-    def delete_snapshot(self, context, snapshot):
+    def delete_snapshot(self, context, snapshot, unmanage_only=False):
         """Deletes and unexports snapshot."""
         context = context.elevated()
         snapshot._context = context
@@ -742,7 +743,10 @@ class VolumeManager(manager.SchedulerDependentManager):
             snapshot.context = context
             snapshot.save()
 
-            self.driver.delete_snapshot(snapshot)
+            if unmanage_only:
+                self.driver.unmanage_snapshot(snapshot)
+            else:
+                self.driver.delete_snapshot(snapshot)
         except exception.SnapshotIsBusy:
             LOG.error(_LE("Delete snapshot failed, due to snapshot busy."),
                       resource=snapshot)
@@ -3040,3 +3044,25 @@ class VolumeManager(manager.SchedulerDependentManager):
             raise exception.VolumeBackendAPIException(data=err_msg)
 
         return replication_targets
+
+    def manage_existing_snapshot(self, ctxt, snapshot, ref=None):
+        LOG.debug('manage_existing_snapshot: managing %s.', ref)
+        try:
+            flow_engine = manage_existing_snapshot.get_flow(
+                ctxt,
+                self.db,
+                self.driver,
+                self.host,
+                snapshot.id,
+                ref)
+        except Exception:
+            msg = _LE("Failed to create manage_existing flow: "
+                      "%(object_type)s %(object_id)s.")
+            LOG.exception(msg, {'object_type': 'snapshot',
+                                'object_id': snapshot.id})
+            raise exception.CinderException(
+                _("Failed to create manage existing flow."))
+
+        with flow_utils.DynamicLogListener(flow_engine, logger=LOG):
+            flow_engine.run()
+        return snapshot.id

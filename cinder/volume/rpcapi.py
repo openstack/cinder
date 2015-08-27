@@ -73,6 +73,7 @@ class VolumeAPI(object):
                create_consistencygroup(), create_consistencygroup_from_src(),
                update_consistencygroup() and delete_consistencygroup().
         1.27 - Adds support for replication V2
+        1.28 - Adds manage_existing_snapshot
     """
 
     BASE_RPC_API_VERSION = '1.0'
@@ -82,7 +83,7 @@ class VolumeAPI(object):
         target = messaging.Target(topic=CONF.volume_topic,
                                   version=self.BASE_RPC_API_VERSION)
         serializer = objects_base.CinderObjectSerializer()
-        self.client = rpc.get_client(target, '1.27', serializer=serializer)
+        self.client = rpc.get_client(target, '1.28', serializer=serializer)
 
     def create_consistencygroup(self, ctxt, group, host):
         new_host = utils.extract_host(host)
@@ -152,10 +153,11 @@ class VolumeAPI(object):
         cctxt.cast(ctxt, 'create_snapshot', volume_id=volume['id'],
                    snapshot=snapshot)
 
-    def delete_snapshot(self, ctxt, snapshot, host):
+    def delete_snapshot(self, ctxt, snapshot, host, unmanage_only=False):
         new_host = utils.extract_host(host)
         cctxt = self.client.prepare(server=new_host)
-        cctxt.cast(ctxt, 'delete_snapshot', snapshot=snapshot)
+        cctxt.cast(ctxt, 'delete_snapshot', snapshot=snapshot,
+                   unmanage_only=unmanage_only)
 
     def attach_volume(self, ctxt, volume, instance_uuid, host_name,
                       mountpoint, mode):
@@ -287,3 +289,9 @@ class VolumeAPI(object):
         new_host = utils.extract_host(volume['host'])
         cctxt = self.client.prepare(server=new_host, version='1.27')
         return cctxt.call(ctxt, 'list_replication_targets', volume=volume)
+
+    def manage_existing_snapshot(self, ctxt, snapshot, ref, host):
+        cctxt = self.client.prepare(server=host, version='1.28')
+        cctxt.cast(ctxt, 'manage_existing_snapshot',
+                   snapshot=snapshot,
+                   ref=ref)

@@ -25,6 +25,7 @@ from cinder import db
 from cinder import objects
 from cinder import test
 from cinder.tests.unit import fake_snapshot
+from cinder.tests.unit import fake_volume
 from cinder.tests.unit import utils as tests_utils
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import utils
@@ -150,6 +151,8 @@ class VolumeRpcAPITestCase(test.TestCase):
             host = kwargs['host']
         elif 'group' in kwargs:
             host = kwargs['group']['host']
+        elif 'volume' not in kwargs and 'snapshot' in kwargs:
+            host = 'fake_host'
         else:
             host = kwargs['volume']['host']
 
@@ -231,7 +234,15 @@ class VolumeRpcAPITestCase(test.TestCase):
         self._test_volume_api('delete_snapshot',
                               rpc_method='cast',
                               snapshot=self.fake_snapshot_obj,
-                              host='fake_host')
+                              host='fake_host',
+                              unmanage_only=False)
+
+    def test_delete_snapshot_with_unmanage_only(self):
+        self._test_volume_api('delete_snapshot',
+                              rpc_method='cast',
+                              snapshot=self.fake_snapshot_obj,
+                              host='fake_host',
+                              unmanage_only=True)
 
     def test_attach_volume_to_instance(self):
         self._test_volume_api('attach_volume',
@@ -342,6 +353,27 @@ class VolumeRpcAPITestCase(test.TestCase):
                               volume=self.fake_volume,
                               ref={'lv_name': 'foo'},
                               version='1.15')
+
+    def test_manage_existing_snapshot(self):
+        volume_update = {'host': 'fake_host'}
+        snpshot = {
+            'id': 1,
+            'volume_id': 'fake_id',
+            'status': "creating",
+            'progress': '0%',
+            'volume_size': 0,
+            'display_name': 'fake_name',
+            'display_description': 'fake_description',
+            'volume': fake_volume.fake_db_volume(**volume_update),
+            'expected_attrs': ['volume'], }
+        my_fake_snapshot_obj = fake_snapshot.fake_snapshot_obj(self.context,
+                                                               **snpshot)
+        self._test_volume_api('manage_existing_snapshot',
+                              rpc_method='cast',
+                              snapshot=my_fake_snapshot_obj,
+                              ref='foo',
+                              host='fake_host',
+                              version='1.28')
 
     def test_promote_replica(self):
         self._test_volume_api('promote_replica',

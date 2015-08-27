@@ -1595,6 +1595,56 @@ class ReplicaV2VD(object):
 
 
 @six.add_metaclass(abc.ABCMeta)
+class ManageableSnapshotsVD(object):
+    # NOTE: Can't use abstractmethod before all drivers implement it
+    def manage_existing_snapshot(self, snapshot, existing_ref):
+        """Brings an existing backend storage object under Cinder management.
+
+        existing_ref is passed straight through from the API request's
+        manage_existing_ref value, and it is up to the driver how this should
+        be interpreted.  It should be sufficient to identify a storage object
+        that the driver should somehow associate with the newly-created cinder
+        snapshot structure.
+
+        There are two ways to do this:
+
+        1. Rename the backend storage object so that it matches the
+           snapshot['name'] which is how drivers traditionally map between a
+           cinder snapshot and the associated backend storage object.
+
+        2. Place some metadata on the snapshot, or somewhere in the backend,
+           that allows other driver requests (e.g. delete) to locate the
+           backend storage object when required.
+
+        If the existing_ref doesn't make sense, or doesn't refer to an existing
+        backend storage object, raise a ManageExistingInvalidReference
+        exception.
+        """
+        return
+
+    # NOTE: Can't use abstractmethod before all drivers implement it
+    def manage_existing_snapshot_get_size(self, snapshot, existing_ref):
+        """Return size of snapshot to be managed by manage_existing.
+
+        When calculating the size, round up to the next GB.
+        """
+        return
+
+    # NOTE: Can't use abstractmethod before all drivers implement it
+    def unmanage_snapshot(self, snapshot):
+        """Removes the specified snapshot from Cinder management.
+
+        Does not delete the underlying backend storage object.
+
+        For most drivers, this will not need to do anything. However, some
+        drivers might use this call as an opportunity to clean up any
+        Cinder-specific configuration that they have associated with the
+        backend storage object.
+        """
+        pass
+
+
+@six.add_metaclass(abc.ABCMeta)
 class ReplicaVD(object):
     @abc.abstractmethod
     def reenable_replication(self, context, volume):
@@ -1681,8 +1731,8 @@ class ReplicaVD(object):
 
 
 class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
-                   CloneableVD, CloneableImageVD, SnapshotVD, ReplicaVD,
-                   LocalVD, MigrateVD, BaseVD):
+                   CloneableVD, CloneableImageVD, ManageableSnapshotsVD,
+                   SnapshotVD, ReplicaVD, LocalVD, MigrateVD, BaseVD):
     """This class will be deprecated soon.
 
     Please use the abstract classes above for new drivers.
@@ -1732,6 +1782,17 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
     def unmanage(self, volume):
         msg = _("Unmanage volume not implemented.")
         raise NotImplementedError(msg)
+
+    def manage_existing_snapshot(self, snapshot, existing_ref):
+        msg = _("Manage existing snapshot not implemented.")
+        raise NotImplementedError(msg)
+
+    def manage_existing_snapshot_get_size(self, snapshot, existing_ref):
+        msg = _("Manage existing snapshot not implemented.")
+        raise NotImplementedError(msg)
+
+    def unmanage_snapshot(self, snapshot):
+        """Unmanage the specified snapshot from Cinder management."""
 
     def retype(self, context, volume, new_type, diff, host):
         return False, None
