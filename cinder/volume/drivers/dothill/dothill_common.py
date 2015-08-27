@@ -88,11 +88,8 @@ class DotHillCommon(object):
     def do_setup(self, context):
         self.client_login()
         self._validate_backend()
-        if (self.backend_type == "linear" or
-            (self.backend_type == "virtual" and
-             self.backend_name not in ['A', 'B'])):
-                self._get_owner_info(self.backend_name)
-                self._get_serial_number()
+        self._get_owner_info()
+        self._get_serial_number()
         self.client_logout()
 
     def client_login(self):
@@ -115,8 +112,9 @@ class DotHillCommon(object):
     def _get_serial_number(self):
         self.serialNumber = self.client.get_serial_number()
 
-    def _get_owner_info(self, backend_name):
-        self.owner = self.client.get_owner_info(backend_name)
+    def _get_owner_info(self):
+        self.owner = self.client.get_owner_info(self.backend_name,
+                                                self.backend_type)
 
     def _validate_backend(self):
         if not self.client.backend_exists(self.backend_name,
@@ -208,11 +206,6 @@ class DotHillCommon(object):
             raise exception.VolumeAttached(volume_id=volume['id'])
 
     def create_cloned_volume(self, volume, src_vref):
-        if self.backend_type == "virtual" and self.backend_name in ["A", "B"]:
-            msg = _("Create volume from volume(clone) does not have support "
-                    "for virtual pool A and B.")
-            LOG.error(msg)
-            raise exception.InvalidInput(reason=msg)
         self.get_volume_stats(True)
         self._assert_enough_space_for_copy(volume['size'])
         self._assert_source_detached(src_vref)
@@ -228,7 +221,8 @@ class DotHillCommon(object):
 
         self.client_login()
         try:
-            self.client.copy_volume(orig_name, dest_name, 0, self.backend_name)
+            self.client.copy_volume(orig_name, dest_name,
+                                    self.backend_name, self.backend_type)
         except exception.DotHillRequestError as ex:
             LOG.exception(_LE("Cloning of volume %s failed."),
                           volume['source_volid'])
@@ -237,11 +231,6 @@ class DotHillCommon(object):
             self.client_logout()
 
     def create_volume_from_snapshot(self, volume, snapshot):
-        if self.backend_type == "virtual" and self.backend_name in ["A", "B"]:
-            msg = _('Create volume from snapshot does not have support '
-                    'for virtual pool A and B.')
-            LOG.error(msg)
-            raise exception.InvalidInput(reason=msg)
         self.get_volume_stats(True)
         self._assert_enough_space_for_copy(volume['size'])
         LOG.debug("Creating Volume from snapshot %(source_id)s to "
@@ -252,7 +241,8 @@ class DotHillCommon(object):
         dest_name = self._get_vol_name(volume['id'])
         self.client_login()
         try:
-            self.client.copy_volume(orig_name, dest_name, 0, self.backend_name)
+            self.client.copy_volume(orig_name, dest_name,
+                                    self.backend_name, self.backend_type)
         except exception.DotHillRequestError as ex:
             LOG.exception(_LE("Create volume failed from snapshot: %s"),
                           snapshot['id'])
@@ -303,14 +293,11 @@ class DotHillCommon(object):
             backend_stats = self.client.backend_stats(self.backend_name,
                                                       self.backend_type)
             pool.update(backend_stats)
-            if (self.backend_type == "linear" or
-                (self.backend_type == "virtual" and
-                 self.backend_name not in ['A', 'B'])):
-                pool['location_info'] = ('%s:%s:%s:%s' %
-                                         (src_type,
-                                          self.serialNumber,
-                                          self.backend_name,
-                                          self.owner))
+            pool['location_info'] = ('%s:%s:%s:%s' %
+                                     (src_type,
+                                      self.serialNumber,
+                                      self.backend_name,
+                                      self.owner))
             pool['pool_name'] = self.backend_name
         except exception.DotHillRequestError:
             err = (_("Unable to get stats for backend_name: %s") %
@@ -489,7 +476,8 @@ class DotHillCommon(object):
 
         self.client_login()
         try:
-            self.client.copy_volume(source_name, dest_name, 1, dest_back_name)
+            self.client.copy_volume(source_name, dest_name,
+                                    dest_back_name, self.backend_type)
             self.client.delete_volume(source_name)
             self.client.modify_volume_name(dest_name, source_name)
             return (True, None)
