@@ -13,7 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
+from cinder.tests.unit.volume.drivers.netapp.dataontap.client import (
+    fake_api as netapp_api)
 
 VOLUME_ID = 'f10d1a84-9b7b-427e-8fec-63c48b509a56'
 LUN_ID = 'ee6b4cc7-477b-4016-aa0c-7127b4e3af86'

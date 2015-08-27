@@ -22,13 +22,26 @@ from six.moves import http_client
 
 from cinder import exception
 from cinder import test
+from cinder.tests.unit.volume.drivers.netapp.dataontap.client import (
+    fake_api as netapp_api)
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.netapp import common
+from cinder.volume.drivers.netapp.dataontap.client import client_7mode
 from cinder.volume.drivers.netapp.dataontap.client import client_base
 from cinder.volume.drivers.netapp.dataontap.client import client_cmode
 from cinder.volume.drivers.netapp.dataontap import ssc_cmode
 from cinder.volume.drivers.netapp import options
 from cinder.volume.drivers.netapp import utils
+
+
+FAKE_CONNECTION_HTTP = {
+    'transport_type': 'http',
+    'username': 'admin',
+    'password': 'pass',
+    'hostname': '127.0.0.1',
+    'port': None,
+    'vserver': 'openstack',
+}
 
 
 def create_configuration():
@@ -543,6 +556,11 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
             ssc_cmode, 'refresh_cluster_ssc',
             lambda a, b, c, synchronous: None)
         self.mock_object(utils, 'OpenStackInfo')
+
+        # Inject fake netapp_lib module classes.
+        netapp_api.mock_netapp_lib([common, client_cmode, client_base])
+        self.mock_object(common.na_utils, 'check_netapp_lib')
+
         configuration = self._set_config(create_configuration())
         driver = common.NetAppDriver(configuration=configuration)
         self.stubs.Set(http_client, 'HTTPConnection',
@@ -571,10 +589,9 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
         self.mock_object(utils, 'OpenStackInfo')
         configuration = self._set_config(create_configuration())
         driver = common.NetAppDriver(configuration=configuration)
+        mock_client = self.mock_object(client_cmode, 'Client')
         driver.do_setup(context='')
-        na_server = driver.library.zapi_client.get_connection()
-        self.assertEqual('80', na_server.get_port())
-        self.assertEqual('http', na_server.get_transport_type())
+        mock_client.assert_called_with(**FAKE_CONNECTION_HTTP)
 
     @mock.patch.object(client_base.Client, 'get_ontapi_version',
                        mock.Mock(return_value=(1, 20)))
@@ -583,10 +600,9 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
         configuration = self._set_config(create_configuration())
         configuration.netapp_transport_type = 'http'
         driver = common.NetAppDriver(configuration=configuration)
+        mock_client = self.mock_object(client_cmode, 'Client')
         driver.do_setup(context='')
-        na_server = driver.library.zapi_client.get_connection()
-        self.assertEqual('80', na_server.get_port())
-        self.assertEqual('http', na_server.get_transport_type())
+        mock_client.assert_called_with(**FAKE_CONNECTION_HTTP)
 
     @mock.patch.object(client_base.Client, 'get_ontapi_version',
                        mock.Mock(return_value=(1, 20)))
@@ -596,10 +612,11 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
         configuration.netapp_transport_type = 'https'
         driver = common.NetAppDriver(configuration=configuration)
         driver.library._get_root_volume_name = mock.Mock()
+        mock_client = self.mock_object(client_cmode, 'Client')
         driver.do_setup(context='')
-        na_server = driver.library.zapi_client.get_connection()
-        self.assertEqual('443', na_server.get_port())
-        self.assertEqual('https', na_server.get_transport_type())
+        FAKE_CONNECTION_HTTPS = dict(FAKE_CONNECTION_HTTP,
+                                     transport_type='https')
+        mock_client.assert_called_with(**FAKE_CONNECTION_HTTPS)
 
     @mock.patch.object(client_base.Client, 'get_ontapi_version',
                        mock.Mock(return_value=(1, 20)))
@@ -608,10 +625,10 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
         configuration = self._set_config(create_configuration())
         configuration.netapp_server_port = 81
         driver = common.NetAppDriver(configuration=configuration)
+        mock_client = self.mock_object(client_cmode, 'Client')
         driver.do_setup(context='')
-        na_server = driver.library.zapi_client.get_connection()
-        self.assertEqual('81', na_server.get_port())
-        self.assertEqual('http', na_server.get_transport_type())
+        FAKE_CONNECTION_HTTP_PORT = dict(FAKE_CONNECTION_HTTP, port=81)
+        mock_client.assert_called_with(**FAKE_CONNECTION_HTTP_PORT)
 
     @mock.patch.object(client_base.Client, 'get_ontapi_version',
                        mock.Mock(return_value=(1, 20)))
@@ -622,10 +639,11 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
         configuration.netapp_server_port = 446
         driver = common.NetAppDriver(configuration=configuration)
         driver.library._get_root_volume_name = mock.Mock()
+        mock_client = self.mock_object(client_cmode, 'Client')
         driver.do_setup(context='')
-        na_server = driver.library.zapi_client.get_connection()
-        self.assertEqual('446', na_server.get_port())
-        self.assertEqual('https', na_server.get_transport_type())
+        FAKE_CONNECTION_HTTPS_PORT = dict(FAKE_CONNECTION_HTTP, port=446,
+                                          transport_type='https')
+        mock_client.assert_called_with(**FAKE_CONNECTION_HTTPS_PORT)
 
     def test_create_destroy(self):
         self.driver.create_volume(self.volume)
@@ -633,12 +651,27 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
 
     def test_create_vol_snapshot_destroy(self):
         self.driver.create_volume(self.volume)
+        self.mock_object(client_7mode.Client, '_check_clone_status')
+        self.mock_object(self.driver.library, '_clone_lun')
         self.driver.create_snapshot(self.snapshot)
         self.driver.create_volume_from_snapshot(self.volume_sec, self.snapshot)
         self.driver.delete_snapshot(self.snapshot)
         self.driver.delete_volume(self.volume)
 
     def test_map_unmap(self):
+        self.mock_object(client_cmode.Client, 'get_igroup_by_initiators')
+        self.mock_object(client_cmode.Client, 'get_iscsi_target_details')
+        self.mock_object(client_cmode.Client, 'get_iscsi_service_details')
+        self.mock_object(self.driver.library, '_get_or_create_igroup')
+        self.mock_object(self.driver.library, '_map_lun')
+        self.mock_object(self.driver.library, '_unmap_lun')
+        FAKE_PREFERRED_TARGET = {'address': 'http://host:8080', 'port': 80}
+        FAKE_CONN_PROPERTIES = {'driver_volume_type': 'iscsi', 'data': 'test'}
+        self.mock_object(self.driver.library,
+                         '_get_preferred_target_from_list',
+                         mock.Mock(return_value=FAKE_PREFERRED_TARGET))
+        self.mock_object(common.na_utils, 'get_iscsi_connection_properties',
+                         mock.Mock(return_value=FAKE_CONN_PROPERTIES))
         self.mock_object(client_cmode.Client,
                          'get_operational_network_interface_addresses',
                          mock.Mock(return_value=[]))
@@ -658,14 +691,29 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
 
     def test_cloned_volume_destroy(self):
         self.driver.create_volume(self.volume)
+        self.mock_object(self.driver.library, '_clone_lun')
         self.driver.create_cloned_volume(self.snapshot, self.volume)
         self.driver.delete_volume(self.snapshot)
         self.driver.delete_volume(self.volume)
 
     def test_map_by_creating_igroup(self):
+        FAKE_IGROUP_INFO = {'initiator-group-name': 'debian',
+                            'initiator-group-os-type': 'linux',
+                            'initiator-group-type': 'igroup'}
+        FAKE_PREFERRED_TARGET = {'address': 'http://host:8080', 'port': 80}
+        FAKE_CONN_PROPERTIES = {'driver_volume_type': 'iscsi', 'data': 'test'}
+        self.mock_object(client_cmode.Client, 'get_igroup_by_initiators',
+                         mock.Mock(return_value=[FAKE_IGROUP_INFO]))
         self.mock_object(client_cmode.Client,
                          'get_operational_network_interface_addresses',
                          mock.Mock(return_value=[]))
+        self.mock_object(client_cmode.Client, 'get_iscsi_target_details')
+        self.mock_object(client_cmode.Client, 'get_iscsi_service_details')
+        self.mock_object(self.driver.library,
+                         '_get_preferred_target_from_list',
+                         mock.Mock(return_value=FAKE_PREFERRED_TARGET))
+        self.mock_object(common.na_utils, 'get_iscsi_connection_properties',
+                         mock.Mock(return_value=FAKE_CONN_PROPERTIES))
         self.driver.create_volume(self.volume)
         updates = self.driver.create_export(None, self.volume, {})
         self.assertTrue(updates['provider_location'])
@@ -680,11 +728,15 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
 
     def test_vol_stats(self):
         self.mock_object(client_base.Client, 'provide_ems')
-        stats = self.driver.get_volume_stats(refresh=True)
-        self.assertEqual('NetApp', stats['vendor_name'])
+        mock_update_vol_stats = self.mock_object(self.driver.library,
+                                                 '_update_volume_stats')
+        self.driver.get_volume_stats(refresh=True)
+        self.assertEqual(mock_update_vol_stats.call_count, 1)
 
     def test_create_vol_snapshot_diff_size_resize(self):
         self.driver.create_volume(self.volume)
+        self.mock_object(self.driver.library, '_clone_source_to_destination')
+        self.mock_object(self.driver.library, '_clone_lun')
         self.driver.create_snapshot(self.snapshot)
         self.driver.create_volume_from_snapshot(
             self.volume_clone, self.snapshot)
@@ -693,6 +745,8 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
 
     def test_create_vol_snapshot_diff_size_subclone(self):
         self.driver.create_volume(self.volume)
+        self.mock_object(self.driver.library, '_clone_lun')
+        self.mock_object(self.driver.library, '_clone_source_to_destination')
         self.driver.create_snapshot(self.snapshot)
         self.driver.create_volume_from_snapshot(
             self.volume_clone_large, self.snapshot)
@@ -704,10 +758,16 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
         self.driver.extend_volume(self.volume, self.volume['size'])
 
     def test_extend_vol_direct_resize(self):
+        self.mock_object(self.driver.library.zapi_client,
+                         'get_lun_geometry', mock.Mock(return_value=None))
+        self.mock_object(self.driver.library, '_do_sub_clone_resize')
         self.driver.create_volume(self.volume)
         self.driver.extend_volume(self.volume, 3)
 
     def test_extend_vol_sub_lun_clone(self):
+        self.mock_object(self.driver.library.zapi_client,
+                         'get_lun_geometry', mock.Mock(return_value=None))
+        self.mock_object(self.driver.library, '_do_sub_clone_resize')
         self.driver.create_volume(self.volume)
         self.driver.extend_volume(self.volume, 4)
 
@@ -717,6 +777,10 @@ class NetAppDriverNegativeTestCase(test.TestCase):
 
     def setUp(self):
         super(NetAppDriverNegativeTestCase, self).setUp()
+
+        # Inject fake netapp_lib module classes.
+        netapp_api.mock_netapp_lib([common])
+        self.mock_object(common.na_utils, 'check_netapp_lib')
 
     def test_incorrect_family(self):
         self.mock_object(utils, 'OpenStackInfo')
@@ -1157,18 +1221,40 @@ class FakeDirect7modeHTTPConnection(object):
         return self.sock.result
 
 
-class NetAppDirect7modeISCSIDriverTestCase_NV(
-        NetAppDirectCmodeISCSIDriverTestCase):
+class NetAppDirect7modeISCSIDriverTestCase_NV(test.TestCase):
     """Test case for NetAppISCSIDriver without vfiler"""
+    volume = {
+        'name': 'lun1',
+        'size': 2,
+        'volume_name': 'lun1',
+        'os_type': 'linux',
+        'provider_location': 'lun1',
+        'id': 'lun1',
+        'provider_auth': None,
+        'project_id': 'project',
+        'display_name': None,
+        'display_description': 'lun1',
+        'volume_type_id': None,
+        'host': 'hostname@backend#vol1',
+    }
+
     def setUp(self):
         super(NetAppDirect7modeISCSIDriverTestCase_NV, self).setUp()
+        self._custom_setup()
 
     def _custom_setup(self):
         self.mock_object(utils, 'OpenStackInfo')
+
+        # Inject fake netapp_lib module classes.
+        netapp_api.mock_netapp_lib([common, client_base, client_7mode])
+        self.mock_object(common.na_utils, 'check_netapp_lib')
+
         configuration = self._set_config(create_configuration())
         driver = common.NetAppDriver(configuration=configuration)
         self.stubs.Set(http_client, 'HTTPConnection',
                        FakeDirect7modeHTTPConnection)
+        self.mock_object(driver.library, '_get_root_volume_name', mock.Mock(
+            return_value='root'))
         driver.do_setup(context='')
         driver.root_volume_name = 'root'
         self.driver = driver
@@ -1197,14 +1283,14 @@ class NetAppDirect7modeISCSIDriverTestCase_NV(
 
     def test_check_for_setup_error_version(self):
         drv = self.driver
-        drv.zapi_client = mock.Mock()
-        drv.zapi_client.get_ontapi_version.return_value = None
-
+        self.mock_object(client_base.Client, 'get_ontapi_version',
+                         mock.Mock(return_value=None))
         # check exception raises when version not found
         self.assertRaises(exception.VolumeBackendAPIException,
                           drv.check_for_setup_error)
 
-        drv.zapi_client.get_ontapi_version.return_value = (1, 8)
+        self.mock_object(client_base.Client, 'get_ontapi_version',
+                         mock.Mock(return_value=(1, 8)))
 
         # check exception raises when not supported version
         self.assertRaises(exception.VolumeBackendAPIException,
@@ -1219,10 +1305,17 @@ class NetAppDirect7modeISCSIDriverTestCase_WV(
 
     def _custom_setup(self):
         self.mock_object(utils, 'OpenStackInfo')
+
+        # Inject fake netapp_lib module classes.
+        netapp_api.mock_netapp_lib([common, client_base, client_7mode])
+        self.mock_object(common.na_utils, 'check_netapp_lib')
+
         configuration = self._set_config(create_configuration())
         driver = common.NetAppDriver(configuration=configuration)
         self.stubs.Set(http_client, 'HTTPConnection',
                        FakeDirect7modeHTTPConnection)
+        self.mock_object(driver.library, '_get_root_volume_name',
+                         mock.Mock(return_value='root'))
         driver.do_setup(context='')
         self.driver = driver
         self.driver.root_volume_name = 'root'

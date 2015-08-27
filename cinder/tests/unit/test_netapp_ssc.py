@@ -16,6 +16,7 @@
 
 import copy
 from lxml import etree
+import mock
 from mox3 import mox
 import six
 from six.moves import BaseHTTPServer
@@ -23,7 +24,8 @@ from six.moves import http_client
 
 from cinder import exception
 from cinder import test
-from cinder.volume.drivers.netapp.dataontap.client import api
+from cinder.tests.unit.volume.drivers.netapp.dataontap.client import (
+    fake_api as netapp_api)
 from cinder.volume.drivers.netapp.dataontap import ssc_cmode
 
 
@@ -371,12 +373,13 @@ class SscUtilsTestCase(test.TestCase):
 
     def setUp(self):
         super(SscUtilsTestCase, self).setUp()
+        netapp_api.mock_netapp_lib([ssc_cmode])
         self.stubs.Set(http_client, 'HTTPConnection',
                        FakeDirectCmodeHTTPConnection)
 
     def test_cl_vols_ssc_all(self):
         """Test cluster ssc for all vols."""
-        na_server = api.NaServer('127.0.0.1')
+        na_server = netapp_api.NaServer('127.0.0.1')
         vserver = 'openstack'
         test_vols = set([copy.deepcopy(self.vol1),
                          copy.deepcopy(self.vol2), copy.deepcopy(self.vol3)])
@@ -427,7 +430,7 @@ class SscUtilsTestCase(test.TestCase):
 
     def test_cl_vols_ssc_single(self):
         """Test cluster ssc for single vol."""
-        na_server = api.NaServer('127.0.0.1')
+        na_server = netapp_api.NaServer('127.0.0.1')
         vserver = 'openstack'
         test_vols = set([copy.deepcopy(self.vol1)])
         sis = {'vola': {'dedup': False, 'compression': False}}
@@ -463,7 +466,7 @@ class SscUtilsTestCase(test.TestCase):
 
     def test_get_cluster_ssc(self):
         """Test get cluster ssc map."""
-        na_server = api.NaServer('127.0.0.1')
+        na_server = netapp_api.NaServer('127.0.0.1')
         vserver = 'openstack'
         test_vols = set(
             [self.vol1, self.vol2, self.vol3, self.vol4, self.vol5])
@@ -546,8 +549,119 @@ class SscUtilsTestCase(test.TestCase):
         self.assertEqual(expected, result)
 
     def test_query_cl_vols_for_ssc(self):
-        na_server = api.NaServer('127.0.0.1')
-        na_server.set_api_version(1, 15)
+        na_server = netapp_api.NaServer('127.0.0.1')
+        body = etree.XML("""<results status="passed"><attributes-list>
+                <volume-attributes>
+                <volume-id-attributes>
+                    <name>iscsi</name>
+                    <owning-vserver-name>Openstack</owning-vserver-name>
+                    <containing-aggregate-name>aggr0
+                    </containing-aggregate-name>
+                    <junction-path>/iscsi</junction-path>
+                    <type>rw</type>
+                </volume-id-attributes>
+                <volume-space-attributes>
+                    <size-available>214748364</size-available>
+                    <size-total>224748364</size-total>
+                    <space-guarantee-enabled>enabled</space-guarantee-enabled>
+                    <space-guarantee>file</space-guarantee>
+                </volume-space-attributes>
+                <volume-state-attributes>
+                    <is-cluster-volume>true
+                    </is-cluster-volume>
+                    <is-vserver-root>false</is-vserver-root>
+                    <state>online</state>
+                    <is-inconsistent>false</is-inconsistent>
+                    <is-invalid>false</is-invalid>
+                    <is-junction-active>true</is-junction-active>
+                </volume-state-attributes>
+                </volume-attributes>
+                <volume-attributes>
+                <volume-id-attributes>
+                    <name>nfsvol</name>
+                    <owning-vserver-name>Openstack
+                    </owning-vserver-name>
+                    <containing-aggregate-name>aggr0
+                    </containing-aggregate-name>
+                    <junction-path>/nfs</junction-path>
+                    <type>rw</type>
+                </volume-id-attributes>
+                <volume-space-attributes>
+                    <size-available>14748364</size-available>
+                    <size-total>24748364</size-total>
+                    <space-guarantee-enabled>enabled
+                    </space-guarantee-enabled>
+                    <space-guarantee>volume</space-guarantee>
+                </volume-space-attributes>
+                <volume-state-attributes>
+                    <is-cluster-volume>true
+                    </is-cluster-volume>
+                    <is-vserver-root>false</is-vserver-root>
+                    <state>online</state>
+                    <is-inconsistent>false</is-inconsistent>
+                    <is-invalid>false</is-invalid>
+                    <is-junction-active>true</is-junction-active>
+                </volume-state-attributes>
+                </volume-attributes>
+                <volume-attributes>
+                <volume-id-attributes>
+                    <name>nfsvol2</name>
+                    <owning-vserver-name>Openstack
+                    </owning-vserver-name>
+                    <containing-aggregate-name>aggr0
+                    </containing-aggregate-name>
+                    <junction-path>/nfs2</junction-path>
+                    <type>rw</type>
+                </volume-id-attributes>
+                <volume-space-attributes>
+                    <size-available>14748364</size-available>
+                    <size-total>24748364</size-total>
+                    <space-guarantee-enabled>enabled
+                    </space-guarantee-enabled>
+                    <space-guarantee>volume</space-guarantee>
+                </volume-space-attributes>
+                <volume-state-attributes>
+                    <is-cluster-volume>true
+                    </is-cluster-volume>
+                    <is-vserver-root>false</is-vserver-root>
+                    <state>online</state>
+                    <is-inconsistent>true</is-inconsistent>
+                    <is-invalid>true</is-invalid>
+                    <is-junction-active>true</is-junction-active>
+                </volume-state-attributes>
+                </volume-attributes>
+                <volume-attributes>
+                <volume-id-attributes>
+                    <name>nfsvol3</name>
+                    <owning-vserver-name>Openstack
+                    </owning-vserver-name>
+                    <containing-aggregate-name>aggr0
+                    </containing-aggregate-name>
+                    <junction-path>/nfs3</junction-path>
+                    <type>rw</type>
+                </volume-id-attributes>
+                <volume-space-attributes>
+                    <space-guarantee-enabled>enabled
+                    </space-guarantee-enabled>
+                    <space-guarantee>volume
+                    </space-guarantee>
+                </volume-space-attributes>
+                <volume-state-attributes>
+                    <is-cluster-volume>true
+                    </is-cluster-volume>
+                    <is-vserver-root>false</is-vserver-root>
+                    <state>online</state>
+                    <is-inconsistent>false</is-inconsistent>
+                    <is-invalid>false</is-invalid>
+                    <is-junction-active>true</is-junction-active>
+                </volume-state-attributes>
+                </volume-attributes>
+                </attributes-list>
+                <num-records>4</num-records></results>""")
+
+        self.mock_object(ssc_cmode.netapp_api, 'invoke_api', mock.Mock(
+            return_value=[netapp_api.NaElement(body)]))
+
         vols = ssc_cmode.query_cluster_vols_for_ssc(na_server, 'Openstack')
         self.assertEqual(2, len(vols))
         for vol in vols:
@@ -557,7 +671,23 @@ class SscUtilsTestCase(test.TestCase):
                 raise exception.InvalidVolume('Invalid volume returned.')
 
     def test_query_aggr_options(self):
-        na_server = api.NaServer('127.0.0.1')
+        na_server = netapp_api.NaServer('127.0.0.1')
+        body = etree.XML("""<results status="passed">
+        <options>
+        <aggr-option-info>
+        <name>ha_policy</name>
+        <value>cfo</value>
+        </aggr-option-info>
+        <aggr-option-info>
+        <name>raidtype</name>
+        <value>raid_dp</value>
+        </aggr-option-info>
+        </options>
+        </results>""")
+
+        self.mock_object(ssc_cmode.netapp_api, 'invoke_api', mock.Mock(
+            return_value=[netapp_api.NaElement(body)]))
+
         aggr_attribs = ssc_cmode.query_aggr_options(na_server, 'aggr0')
         if aggr_attribs:
             self.assertEqual('cfo', aggr_attribs['ha_policy'])
@@ -566,6 +696,19 @@ class SscUtilsTestCase(test.TestCase):
             raise exception.InvalidParameterValue("Incorrect aggr options")
 
     def test_query_aggr_storage_disk(self):
-        na_server = api.NaServer('127.0.0.1')
+        na_server = netapp_api.NaServer('127.0.0.1')
+        body = etree.XML("""<results status="passed">
+        <attributes-list>
+        <storage-disk-info>
+        <disk-raid-info>
+        <effective-disk-type>SATA</effective-disk-type>
+        </disk-raid-info>
+        </storage-disk-info>
+        </attributes-list>
+        </results>""")
+
+        self.mock_object(ssc_cmode.netapp_api, 'invoke_api',
+                         mock.Mock(return_value=[netapp_api.NaElement(body)]))
+
         eff_disk_type = ssc_cmode.query_aggr_storage_disk(na_server, 'aggr0')
         self.assertEqual('SATA', eff_disk_type)

@@ -22,12 +22,11 @@ import six
 
 from cinder import exception
 from cinder import test
-
+from cinder.tests.unit.volume.drivers.netapp.dataontap.client import (
+    fake_api as netapp_api)
 from cinder.tests.unit.volume.drivers.netapp.dataontap.client import (
     fakes as fake_client)
 from cinder.tests.unit.volume.drivers.netapp.dataontap import fakes as fake
-from cinder.volume.drivers.netapp.dataontap.client import (
-    api as netapp_api)
 from cinder.volume.drivers.netapp.dataontap.client import client_cmode
 from cinder.volume.drivers.netapp import utils as netapp_utils
 
@@ -44,6 +43,9 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
     def setUp(self):
         super(NetAppCmodeClientTestCase, self).setUp()
+
+        # Inject fake netapp_lib module classes.
+        netapp_api.mock_netapp_lib([client_cmode])
 
         with mock.patch.object(client_cmode.Client,
                                'get_ontapi_version',

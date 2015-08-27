@@ -28,6 +28,7 @@ import socket
 
 from oslo_concurrency import processutils as putils
 from oslo_log import log as logging
+from oslo_utils import importutils
 import six
 
 from cinder import context
@@ -72,6 +73,14 @@ def check_flags(required_flags, configuration):
         if not getattr(configuration, flag, None):
             msg = _('Configuration value %s is not set.') % flag
             raise exception.InvalidInput(reason=msg)
+
+
+def check_netapp_lib():
+    if not importutils.try_import('netapp_lib'):
+        msg = ('You have not installed the NetApp API Library for OpenStack. '
+               'Please install it using "sudo pip install netapp-lib" and '
+               'restart this service!')
+        raise exception.NetAppDriverException(msg)
 
 
 def to_bool(val):

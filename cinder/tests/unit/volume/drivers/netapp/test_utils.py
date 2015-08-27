@@ -22,6 +22,7 @@ import platform
 
 import mock
 from oslo_concurrency import processutils as putils
+from oslo_utils import importutils
 
 from cinder import context
 from cinder import exception
@@ -61,6 +62,21 @@ class NetAppDriverUtilsTestCase(test.TestCase):
 
         setattr(configuration, 'flag2', 'value2')
         self.assertIsNone(na_utils.check_flags(required_flags, configuration))
+
+    def test_check_netapp_lib(self):
+        mock_try_import = self.mock_object(importutils, 'try_import')
+
+        na_utils.check_netapp_lib()
+
+        mock_try_import.assert_called_once_with('netapp_lib')
+
+    def test_check_netapp_lib_not_found(self):
+        self.mock_object(importutils,
+                         'try_import',
+                         mock.Mock(return_value=None))
+
+        self.assertRaises(exception.NetAppDriverException,
+                          na_utils.check_netapp_lib)
 
     def test_to_bool(self):
         self.assertTrue(na_utils.to_bool(True))

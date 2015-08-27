@@ -25,76 +25,34 @@ import json
 import uuid
 
 from oslo_log import log as logging
-import requests
+from oslo_utils import importutils
 import six
 from six.moves import urllib
 
 from cinder import exception
-from cinder.i18n import _, _LE
+from cinder.i18n import _
 import cinder.utils as cinder_utils
 from cinder.volume.drivers.netapp.eseries import utils
+
+netapp_lib = importutils.try_import('netapp_lib')
+if netapp_lib:
+    from netapp_lib.api.rest import rest as netapp_restclient
 
 
 LOG = logging.getLogger(__name__)
 
 
-class WebserviceClient(object):
-    """Base client for e-series web services."""
-
-    def __init__(self, scheme, host, port, service_path, username,
-                 password, **kwargs):
-        self._validate_params(scheme, host, port)
-        self._create_endpoint(scheme, host, port, service_path)
-        self._username = username
-        self._password = password
-        self._init_connection()
-
-    def _validate_params(self, scheme, host, port):
-        """Does some basic validation for web service params."""
-        if host is None or port is None or scheme is None:
-            msg = _("One of the required inputs from host, port"
-                    " or scheme not found.")
-            raise exception.InvalidInput(reason=msg)
-        if scheme not in ('http', 'https'):
-            raise exception.InvalidInput(reason=_("Invalid transport type."))
-
-    def _create_endpoint(self, scheme, host, port, service_path):
-        """Creates end point url for the service."""
-        netloc = '%s:%s' % (host, port)
-        self._endpoint = urllib.parse.urlunparse((scheme, netloc, service_path,
-                                                 None, None, None))
-
-    def _init_connection(self):
-        """Do client specific set up for session and connection pooling."""
-        self.conn = requests.Session()
-        if self._username and self._password:
-            self.conn.auth = (self._username, self._password)
-
-    def invoke_service(self, method='GET', url=None, params=None, data=None,
-                       headers=None, timeout=None, verify=False):
-        url = url or self._endpoint
-        try:
-            response = self.conn.request(method, url, params, data,
-                                         headers=headers, timeout=timeout,
-                                         verify=verify)
-        # Catching error conditions other than the perceived ones.
-        # Helps propagating only known exceptions back to the caller.
-        except Exception as e:
-            LOG.exception(_LE("Unexpected error while invoking web service."
-                              " Error - %s."), e)
-            raise exception.NetAppDriverException(
-                _("Invoking web service failed."))
-        return response
-
-
-class RestClient(WebserviceClient):
+class RestClient(object):
     """REST client specific to e-series storage service."""
 
     def __init__(self, scheme, host, port, service_path, username,
                  password, **kwargs):
-        super(RestClient, self).__init__(scheme, host, port, service_path,
-                                         username, password, **kwargs)
+
         kwargs = kwargs or {}
+        self.client = netapp_restclient.WebserviceClient(scheme, host, port,
+                                                         service_path,
+                                                         username, password,
+                                                         **kwargs)
         self._system_id = kwargs.get('system_id')
         self._content_type = kwargs.get('content_type') or 'json'
 
@@ -114,9 +72,9 @@ class RestClient(WebserviceClient):
                 raise exception.NotFound(_('Storage system id not set.'))
             kwargs['system-id'] = self._system_id
         path = path.format(**kwargs)
-        if not self._endpoint.endswith('/'):
-            self._endpoint = '%s/' % self._endpoint
-        return urllib.parse.urljoin(self._endpoint, path.lstrip('/'))
+        if not self.client._endpoint.endswith('/'):
+            self.client._endpoint = '%s/' % self.client._endpoint
+        return urllib.parse.urljoin(self.client._endpoint, path.lstrip('/'))
 
     def _invoke(self, method, path, data=None, use_system=True,
                 timeout=None, verify=False, **kwargs):
@@ -128,9 +86,9 @@ class RestClient(WebserviceClient):
             if cinder_utils.TRACE_API:
                 self._log_http_request(method, url, headers, data)
             data = json.dumps(data) if data else None
-            res = self.invoke_service(method, url, data=data,
-                                      headers=headers,
-                                      timeout=timeout, verify=verify)
+            res = self.client.invoke_service(method, url, data=data,
+                                             headers=headers,
+                                             timeout=timeout, verify=verify)
             res_dict = res.json() if res.text else None
 
             if cinder_utils.TRACE_API:

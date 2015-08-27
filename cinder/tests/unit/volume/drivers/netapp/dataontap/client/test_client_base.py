@@ -20,8 +20,9 @@ import mock
 import six
 
 from cinder import test
+from cinder.tests.unit.volume.drivers.netapp.dataontap.client import (
+    fake_api as netapp_api)
 import cinder.tests.unit.volume.drivers.netapp.dataontap.fakes as fake
-from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_base
 
 
@@ -36,6 +37,11 @@ class NetAppBaseClientTestCase(test.TestCase):
 
     def setUp(self):
         super(NetAppBaseClientTestCase, self).setUp()
+
+        # Inject fake netapp_lib module classes.
+        netapp_api.mock_netapp_lib([client_base])
+
+        self.mock_object(client_base, 'LOG')
         self.client = client_base.Client(**CONNECTION_INFO)
         self.client.connection = mock.MagicMock()
         self.connection = self.client.connection
@@ -128,6 +134,7 @@ class NetAppBaseClientTestCase(test.TestCase):
     def test_create_lun_raises_on_failure(self):
         self.connection.invoke_successfully = mock.Mock(
             side_effect=netapp_api.NaApiError)
+
         self.assertRaises(netapp_api.NaApiError,
                           self.client.create_lun,
                           self.fake_volume,

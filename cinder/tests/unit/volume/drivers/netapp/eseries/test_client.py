@@ -32,9 +32,16 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
         self.mock_log = mock.Mock()
         self.mock_object(client, 'LOG', self.mock_log)
         self.fake_password = 'mysecret'
+
+        # Inject fake netapp_lib module classes.
+        eseries_fake.mock_netapp_lib([client])
+
         self.my_client = client.RestClient('http', 'host', '80', '/test',
                                            'user', self.fake_password,
                                            system_id='fake_sys_id')
+        self.my_client.client._endpoint = eseries_fake.FAKE_ENDPOINT_HTTP
+        self.mock_object(self.my_client, '_eval_response')
+
         fake_response = mock.Mock()
         fake_response.status_code = 200
         self.my_client.invoke_service = mock.Mock(return_value=fake_response)
