@@ -699,10 +699,14 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
             finally:
                 rbd_image.close()
 
+            @utils.retry(self.rbd.ImageBusy, retries=3)
+            def _try_remove_volume(client, volume_name):
+                self.RBDProxy().remove(client.ioctx, volume_name)
+
             if clone_snap is None:
                 LOG.debug("deleting rbd volume %s", volume_name)
                 try:
-                    self.RBDProxy().remove(client.ioctx, volume_name)
+                    _try_remove_volume(client, volume_name)
                 except self.rbd.ImageBusy:
                     msg = (_("ImageBusy error raised while deleting rbd "
                              "volume. This may have been caused by a "
