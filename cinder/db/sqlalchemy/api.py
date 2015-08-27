@@ -459,21 +459,31 @@ def _metadata_refs(metadata_dict, meta_class):
     return metadata_refs
 
 
-def _dict_with_extra_specs(inst_type_query):
+def _dict_with_extra_specs_if_authorized(context, inst_type_query):
     """Convert type query result to dict with extra_spec and rate_limit.
 
     Takes a volume type query returned by sqlalchemy and returns it
     as a dictionary, converting the extra_specs entry from a list
-    of dicts:
+    of dicts.  NOTE the contents of extra-specs are admin readable
+    only.  If the context passed in for this request is not admin
+    then we will return an empty extra-specs dict rather than
+    providing the admin only details.
+
+    Example response with admin context:
 
     'extra_specs' : [{'key': 'k1', 'value': 'v1', ...}, ...]
     to a single dict:
     'extra_specs' : {'k1': 'v1'}
+
     """
+
     inst_type_dict = dict(inst_type_query)
-    extra_specs = {x['key']: x['value']
-                   for x in inst_type_query['extra_specs']}
-    inst_type_dict['extra_specs'] = extra_specs
+    if not is_admin_context(context):
+        del(inst_type_dict['extra_specs'])
+    else:
+        extra_specs = {x['key']: x['value']
+                       for x in inst_type_query['extra_specs']}
+        inst_type_dict['extra_specs'] = extra_specs
     return inst_type_dict
 
 
@@ -2447,7 +2457,8 @@ def volume_type_get_all(context, inactive=False, filters=None):
 
     result = {}
     for row in rows:
-        result[row['name']] = _dict_with_extra_specs(row)
+        result[row['name']] = _dict_with_extra_specs_if_authorized(context,
+                                                                   row)
 
     return result
 
@@ -2480,7 +2491,7 @@ def _volume_type_get(context, id, session=None, inactive=False,
     if not result:
         raise exception.VolumeTypeNotFound(volume_type_id=id)
 
-    vtype = _dict_with_extra_specs(result)
+    vtype = _dict_with_extra_specs_if_authorized(context, result)
 
     if 'projects' in expected_fields:
         vtype['projects'] = [p['project_id'] for p in result['projects']]
@@ -2525,7 +2536,7 @@ def _volume_type_get_by_name(context, name, session=None):
     if not result:
         raise exception.VolumeTypeNotFoundByName(volume_type_name=name)
 
-    return _dict_with_extra_specs(result)
+    return _dict_with_extra_specs_if_authorized(context, result)
 
 
 @require_context

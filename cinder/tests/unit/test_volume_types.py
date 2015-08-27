@@ -404,3 +404,19 @@ class VolumeTypeTestCase(test.TestCase):
         volume_type_id = volume_type.get('id')
         self.assertFalse(volume_types.is_public_volume_type(self.ctxt,
                                                             volume_type_id))
+
+    def test_ensure_no_extra_specs_for_non_admin(self):
+        # non-admin users shouldn't get extra-specs back in type-get/list etc
+        ctxt = context.RequestContext('average-joe',
+                                      'd802f078-0af1-4e6b-8c02-7fac8d4339aa',
+                                      auth_token='token',
+                                      is_admin=False)
+        volume_types.create(self.ctxt, "type-test", is_public=False)
+        vtype = volume_types.get_volume_type_by_name(ctxt, 'type-test')
+        self.assertIsNone(vtype.get('extra_specs', None))
+
+    def test_ensure_extra_specs_for_admin(self):
+        # admin users should get extra-specs back in type-get/list etc
+        volume_types.create(self.ctxt, "type-test", is_public=False)
+        vtype = volume_types.get_volume_type_by_name(self.ctxt, 'type-test')
+        self.assertIsNotNone(vtype.get('extra_specs', None))
