@@ -13,8 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_utils import strutils
 import webob
+
+from keystoneclient import exceptions
+from keystoneclient.v3 import client
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
@@ -26,7 +28,11 @@ from cinder.i18n import _
 from cinder import quota
 from cinder import utils
 
+from oslo_config import cfg
+from oslo_utils import strutils
 
+
+CONF = cfg.CONF
 QUOTAS = quota.QUOTAS
 NON_QUOTA_KEYS = ['tenant_id', 'id']
 
@@ -74,6 +80,23 @@ class QuotaSetsController(wsgi.Controller):
             return values
         else:
             return {k: v['limit'] for k, v in values.items()}
+
+    def _get_project(self, context, id, subtree_as_ids=False):
+        """A Helper method to get the project hierarchy.
+
+        Along with Hierachical Multitenancy, projects can be hierarchically
+        organized. Therefore, we need to know the project hierarchy, if any, in
+        order to do quota operations properly.
+        """
+        try:
+            keystone = client.Client(auth_url=CONF.keymgr.encryption_auth_url,
+                                     token=context.auth_token,
+                                     project_id=context.project_id)
+            project = keystone.projects.get(id, subtree_as_ids=subtree_as_ids)
+        except exceptions.NotFound:
+            msg = (_("Tenant ID: %s does not exist.") % id)
+            raise webob.exc.HTTPNotFound(explanation=msg)
+        return project
 
     @wsgi.serializers(xml=QuotaTemplate)
     def show(self, req, id):
@@ -159,10 +182,9 @@ class QuotaSetsController(wsgi.Controller):
     def defaults(self, req, id):
         context = req.environ['cinder.context']
         authorize_show(context)
-        return self._format_quota_set(id,
-                                      QUOTAS.get_defaults(context,
-                                                          parent_project_id=
-                                                          None))
+        project = self._get_project(context, context.project_id)
+        return self._format_quota_set(id, QUOTAS.get_defaults(
+            context, parent_project_id=project.parent_id))
 
     @wsgi.serializers(xml=QuotaTemplate)
     def delete(self, req, id):

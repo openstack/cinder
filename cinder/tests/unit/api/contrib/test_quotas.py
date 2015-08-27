@@ -22,14 +22,20 @@ Tests for cinder.api.contrib.quotas.py
 import mock
 
 from lxml import etree
-import webob.exc
 
+import uuid
+import webob.exc
 
 from cinder.api.contrib import quotas
 from cinder import context
 from cinder import db
 from cinder import test
 from cinder.tests.unit import test_db_api
+
+from oslo_config import cfg
+
+
+CONF = cfg.CONF
 
 
 def make_body(root=True, gigabytes=1000, snapshots=10,
@@ -57,7 +63,23 @@ def make_body(root=True, gigabytes=1000, snapshots=10,
     return result
 
 
+def make_subproject_body(root=True, gigabytes=0, snapshots=0,
+                         volumes=0, backups=0, backup_gigabytes=0,
+                         tenant_id='foo', per_volume_gigabytes=0):
+    return make_body(root=root, gigabytes=gigabytes, snapshots=snapshots,
+                     volumes=volumes, backups=backups,
+                     backup_gigabytes=backup_gigabytes, tenant_id=tenant_id,
+                     per_volume_gigabytes=per_volume_gigabytes)
+
+
 class QuotaSetsControllerTest(test.TestCase):
+
+    class FakeProject(object):
+
+        def __init__(self, id='foo', parent_id=None):
+            self.id = id
+            self.parent_id = parent_id
+            self.subtree = None
 
     def setUp(self):
         super(QuotaSetsControllerTest, self).setUp()
@@ -66,16 +88,80 @@ class QuotaSetsControllerTest(test.TestCase):
         self.req = self.mox.CreateMockAnything()
         self.req.environ = {'cinder.context': context.get_admin_context()}
         self.req.environ['cinder.context'].is_admin = True
+        self.req.environ['cinder.context'].auth_token = uuid.uuid4().hex
+
+        self._create_project_hierarchy()
+        self.auth_url = CONF.keymgr.encryption_auth_url
+
+    def _create_project_hierarchy(self):
+        """Sets an environment used for nested quotas tests.
+
+        Create a project hierarchy such as follows:
+        +-----------+
+        |           |
+        |     A     |
+        |    / \    |
+        |   B   C   |
+        |  /        |
+        | D         |
+        +-----------+
+        """
+        self.A = self.FakeProject(id=uuid.uuid4().hex, parent_id=None)
+        self.B = self.FakeProject(id=uuid.uuid4().hex, parent_id=self.A.id)
+        self.C = self.FakeProject(id=uuid.uuid4().hex, parent_id=self.A.id)
+        self.D = self.FakeProject(id=uuid.uuid4().hex, parent_id=self.B.id)
+
+        # update projects subtrees
+        self.B.subtree = {self.D.id: self.D.subtree}
+        self.A.subtree = {self.B.id: self.B.subtree, self.C.id: self.C.subtree}
+
+        # project_by_id attribute is used to recover a project based on its id.
+        self.project_by_id = {self.A.id: self.A, self.B.id: self.B,
+                              self.C.id: self.C, self.D.id: self.D}
+
+    def _get_project(self, context, id, subtree_as_ids=False):
+        return self.project_by_id.get(id, self.FakeProject())
+
+    @mock.patch('keystoneclient.v3.client.Client')
+    def test_keystone_client_instantiation(self, ksclient_class):
+        context = self.req.environ['cinder.context']
+        self.controller._get_project(context, context.project_id)
+        ksclient_class.assert_called_once_with(auth_url=self.auth_url,
+                                               token=context.auth_token,
+                                               project_id=context.project_id)
+
+    @mock.patch('keystoneclient.v3.client.Client')
+    def test_get_project(self, ksclient_class):
+        context = self.req.environ['cinder.context']
+        keystoneclient = ksclient_class.return_value
+        self.controller._get_project(context, context.project_id)
+        keystoneclient.projects.get.assert_called_once_with(
+            context.project_id, subtree_as_ids=False)
 
     def test_defaults(self):
+        self.controller._get_project = mock.Mock()
+        self.controller._get_project.side_effect = self._get_project
         result = self.controller.defaults(self.req, 'foo')
         self.assertDictMatch(result, make_body())
 
+    def test_subproject_defaults(self):
+        self.controller._get_project = mock.Mock()
+        self.controller._get_project.side_effect = self._get_project
+        context = self.req.environ['cinder.context']
+        context.project_id = self.B.id
+        result = self.controller.defaults(self.req, self.B.id)
+        expected = make_subproject_body(tenant_id=self.B.id)
+        self.assertDictMatch(result, expected)
+
     def test_show(self):
+        self.controller._get_project = mock.Mock()
+        self.controller._get_project.side_effect = self._get_project
         result = self.controller.show(self.req, 'foo')
         self.assertDictMatch(result, make_body())
 
     def test_show_not_authorized(self):
+        self.controller._get_project = mock.Mock()
+        self.controller._get_project.side_effect = self._get_project
         self.req.environ['cinder.context'].is_admin = False
         self.req.environ['cinder.context'].user_id = 'bad_user'
         self.req.environ['cinder.context'].project_id = 'bad_project'
@@ -83,6 +169,8 @@ class QuotaSetsControllerTest(test.TestCase):
                           self.req, 'foo')
 
     def test_update(self):
+        self.controller._get_project = mock.Mock()
+        self.controller._get_project.side_effect = self._get_project
         body = make_body(gigabytes=2000, snapshots=15,
                          volumes=5, backups=5, tenant_id=None)
         result = self.controller.update(self.req, 'foo', body)
@@ -112,16 +200,22 @@ class QuotaSetsControllerTest(test.TestCase):
                           self.req, 'foo', body)
 
     def test_update_invalid_value_key_value(self):
+        self.controller._get_project = mock.Mock()
+        self.controller._get_project.side_effect = self._get_project
         body = {'quota_set': {'gigabytes': "should_be_int"}}
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
                           self.req, 'foo', body)
 
     def test_update_invalid_type_key_value(self):
+        self.controller._get_project = mock.Mock()
+        self.controller._get_project.side_effect = self._get_project
         body = {'quota_set': {'gigabytes': None}}
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
                           self.req, 'foo', body)
 
     def test_update_multi_value_with_bad_data(self):
+        self.controller._get_project = mock.Mock()
+        self.controller._get_project.side_effect = self._get_project
         orig_quota = self.controller.show(self.req, 'foo')
         body = make_body(gigabytes=2000, snapshots=15, volumes="should_be_int",
                          backups=5, tenant_id=None)
@@ -132,6 +226,8 @@ class QuotaSetsControllerTest(test.TestCase):
         self.assertDictMatch(orig_quota, new_quota)
 
     def test_update_bad_quota_limit(self):
+        self.controller._get_project = mock.Mock()
+        self.controller._get_project.side_effect = self._get_project
         body = {'quota_set': {'gigabytes': -1000}}
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
                           self.req, 'foo', body)
@@ -140,6 +236,8 @@ class QuotaSetsControllerTest(test.TestCase):
                           self.req, 'foo', body)
 
     def test_update_no_admin(self):
+        self.controller._get_project = mock.Mock()
+        self.controller._get_project.side_effect = self._get_project
         self.req.environ['cinder.context'].is_admin = False
         self.req.environ['cinder.context'].project_id = 'foo'
         self.req.environ['cinder.context'].user_id = 'foo_user'
@@ -195,6 +293,8 @@ class QuotaSetsControllerTest(test.TestCase):
                          result['quota_set']['volumes'])
 
     def test_delete(self):
+        self.controller._get_project = mock.Mock()
+        self.controller._get_project.side_effect = self._get_project
         result_show = self.controller.show(self.req, 'foo')
         self.assertDictMatch(result_show, make_body())
 
@@ -210,9 +310,11 @@ class QuotaSetsControllerTest(test.TestCase):
         self.assertDictMatch(result_show, result_show_after)
 
     def test_delete_no_admin(self):
+        self.controller._get_project = mock.Mock()
+        self.controller._get_project.side_effect = self._get_project
         self.req.environ['cinder.context'].is_admin = False
         self.assertRaises(webob.exc.HTTPForbidden, self.controller.delete,
-                          self.req, 'test')
+                          self.req, 'foo')
 
 
 class QuotaSerializerTest(test.TestCase):
