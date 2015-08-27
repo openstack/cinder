@@ -1078,3 +1078,14 @@ def image_volume_cache_get_by_volume_id(context, volume_id):
 def image_volume_cache_get_all_for_host(context, host):
     """Query for all image volume cache entry for a host."""
     return IMPL.image_volume_cache_get_all_for_host(context, host)
+
+
+###################
+
+
+def get_model_for_versioned_object(versioned_object):
+    return IMPL.get_model_for_versioned_object(versioned_object)
+
+
+def get_by_id(context, model, id, *args, **kwargs):
+    return IMPL.get_by_id(context, model, id, *args, **kwargs)

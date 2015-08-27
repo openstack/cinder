@@ -67,11 +67,6 @@ class Service(base.CinderPersistentObject, base.CinderObject,
         return service
 
     @base.remotable_classmethod
-    def get_by_id(cls, context, id):
-        db_service = db.service_get(context, id)
-        return cls._from_db_object(context, cls(context), db_service)
-
-    @base.remotable_classmethod
     def get_by_host_and_topic(cls, context, host, topic):
         db_service = db.service_get_by_host_and_topic(context, host, topic)
         return cls._from_db_object(context, cls(context), db_service)

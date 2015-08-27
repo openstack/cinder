@@ -21,6 +21,7 @@
 
 import datetime as dt
 import functools
+import re
 import sys
 import threading
 import time
@@ -2595,6 +2596,12 @@ def volume_type_get(context, id, inactive=False, expected_fields=None):
                             expected_fields=expected_fields)
 
 
+def _volume_type_get_full(context, id):
+    """Return dict for a specific volume_type with extra_specs and projects."""
+    return _volume_type_get(context, id, session=None, inactive=False,
+                            expected_fields=('extra_specs', 'projects'))
+
+
 @require_context
 def _volume_type_ref_get(context, id, session=None, inactive=False):
     read_deleted = "yes" if inactive else "no"
@@ -4126,3 +4133,52 @@ def image_volume_cache_get_all_for_host(context, host):
             filter_by(host=host).\
             order_by(desc(models.ImageVolumeCacheEntry.last_used)).\
             all()
+
+
+###############################
+
+
+def get_model_for_versioned_object(versioned_object):
+    # Exceptions to model mapping, in general Versioned Objects have the same
+    # name as their ORM models counterparts, but there are some that diverge
+    VO_TO_MODEL_EXCEPTIONS = {
+        'BackupImport': models.Backup,
+        'VolumeType': models.VolumeTypes,
+        'CGSnapshot': models.Cgsnapshot,
+    }
+
+    model_name = versioned_object.obj_name()
+    return (VO_TO_MODEL_EXCEPTIONS.get(model_name) or
+            getattr(models, model_name))
+
+
+def _get_get_method(model):
+    # Exceptions to model to get methods, in general method names are a simple
+    # conversion changing ORM name from camel case to snake format and adding
+    # _get to the string
+    GET_EXCEPTIONS = {
+        models.ConsistencyGroup: consistencygroup_get,
+        models.VolumeTypes: _volume_type_get_full,
+    }
+
+    if model in GET_EXCEPTIONS:
+        return GET_EXCEPTIONS[model]
+
+    # General conversion
+    # Convert camel cased model name to snake format
+    s = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', model.__name__)
+    # Get method must be snake formatted model name concatenated with _get
+    method_name = re.sub('([a-z0-9])([A-Z])', r'\1_\2', s).lower() + '_get'
+    return globals().get(method_name)
+
+
+_GET_METHODS = {}
+
+
+@require_context
+def get_by_id(context, model, id, *args, **kwargs):
+    # Add get method to cache dictionary if it's not already there
+    if not _GET_METHODS.get(model):
+        _GET_METHODS[model] = _get_get_method(model)
+
+    return _GET_METHODS[model](context, id, *args, **kwargs)

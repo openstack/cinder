@@ -37,6 +37,8 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
     #              volume_type
     VERSION = '1.1'
 
+    DEFAULT_EXPECTED_ATTR = ('admin_metadata', 'metadata')
+
     fields = {
         'id': fields.UUIDField(),
         '_name_id': fields.UUIDField(nullable=True),
@@ -181,13 +183,6 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
         volume._context = context
         volume.obj_reset_changes()
         return volume
-
-    @base.remotable_classmethod
-    def get_by_id(cls, context, id):
-        db_volume = db.volume_get(context, id)
-        expected_attrs = ['admin_metadata', 'metadata']
-        return cls._from_db_object(context, cls(context), db_volume,
-                                   expected_attrs=expected_attrs)
 
     @base.remotable
     def create(self):

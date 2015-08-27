@@ -35,19 +35,16 @@ fake_consistencygroup = {
 
 class TestConsistencyGroup(test_objects.BaseObjectsTestCase):
 
-    @mock.patch('cinder.db.consistencygroup_get',
+    @mock.patch('cinder.db.sqlalchemy.api.consistencygroup_get',
                 return_value=fake_consistencygroup)
     def test_get_by_id(self, consistencygroup_get):
         consistencygroup = objects.ConsistencyGroup.get_by_id(self.context, 1)
         self._compare(self, fake_consistencygroup, consistencygroup)
+        consistencygroup_get.assert_called_once_with(self.context, 1)
 
     @mock.patch('cinder.db.sqlalchemy.api.model_query')
     def test_get_by_id_no_existing_id(self, model_query):
-        query = mock.Mock()
-        filter_by = mock.Mock()
-        filter_by.first.return_value = None
-        query.filter_by.return_value = filter_by
-        model_query.return_value = query
+        model_query().filter_by().first.return_value = None
         self.assertRaises(exception.ConsistencyGroupNotFound,
                           objects.ConsistencyGroup.get_by_id, self.context,
                           123)

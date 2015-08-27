@@ -49,12 +49,6 @@ class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
         consistencygroup.obj_reset_changes()
         return consistencygroup
 
-    @base.remotable_classmethod
-    def get_by_id(cls, context, id):
-        db_consistencygroup = db.consistencygroup_get(context, id)
-        return cls._from_db_object(context, cls(context),
-                                   db_consistencygroup)
-
     @base.remotable
     def create(self):
         if self.obj_attr_is_set('id'):

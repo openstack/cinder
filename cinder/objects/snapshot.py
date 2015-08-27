@@ -36,6 +36,8 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
     # Version 1.0: Initial version
     VERSION = '1.0'
 
+    DEFAULT_EXPECTED_ATTR = ('metadata',)
+
     fields = {
         'id': fields.UUIDField(),
 
@@ -132,12 +134,6 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
         snapshot._context = context
         snapshot.obj_reset_changes()
         return snapshot
-
-    @base.remotable_classmethod
-    def get_by_id(cls, context, id):
-        db_snapshot = db.snapshot_get(context, id)
-        return cls._from_db_object(context, cls(context), db_snapshot,
-                                   expected_attrs=['metadata'])
 
     @base.remotable
     def create(self):

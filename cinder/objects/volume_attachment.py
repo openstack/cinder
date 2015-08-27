@@ -57,11 +57,6 @@ class VolumeAttachment(base.CinderPersistentObject, base.CinderObject,
         attachment.obj_reset_changes()
         return attachment
 
-    @base.remotable_classmethod
-    def get_by_id(cls, context, id):
-        db_attach = db.volume_attachment_get(context, id)
-        return cls._from_db_object(context, cls(context), db_attach)
-
     @base.remotable
     def save(self):
         updates = self.cinder_obj_get_changes()

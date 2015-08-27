@@ -22,16 +22,30 @@ from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v2 import stubs
 
 
+def stub_snapshot_get(context, snapshot_id):
+    snapshot = stubs.stub_snapshot(snapshot_id)
+    if snapshot_id == 3:
+        snapshot['status'] = 'error'
+    elif snapshot_id == 1:
+        snapshot['status'] = 'creating'
+    elif snapshot_id == 7:
+        snapshot['status'] = 'available'
+    else:
+        snapshot['status'] = 'creating'
+
+    return snapshot
+
+
 class SnapshotActionsTest(test.TestCase):
 
     def setUp(self):
         super(SnapshotActionsTest, self).setUp()
 
+    @mock.patch('cinder.db.snapshot_update', autospec=True)
+    @mock.patch('cinder.db.sqlalchemy.api._snapshot_get',
+                side_effect=stub_snapshot_get)
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
-    def test_update_snapshot_status(self, metadata_get):
-        self.stubs.Set(db, 'snapshot_get', stub_snapshot_get)
-        self.stubs.Set(db, 'snapshot_update', stub_snapshot_update)
-
+    def test_update_snapshot_status(self, metadata_get, *args):
         body = {'os-update_snapshot_status': {'status': 'available'}}
         req = webob.Request.blank('/v2/fake/snapshots/1/action')
         req.method = "POST"
@@ -41,9 +55,10 @@ class SnapshotActionsTest(test.TestCase):
         res = req.get_response(fakes.wsgi_app())
         self.assertEqual(202, res.status_int)
 
+    @mock.patch('cinder.db.sqlalchemy.api._snapshot_get',
+                side_effect=stub_snapshot_get)
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
-    def test_update_snapshot_status_invalid_status(self, metadata_get):
-        self.stubs.Set(db, 'snapshot_get', stub_snapshot_get)
+    def test_update_snapshot_status_invalid_status(self, metadata_get, *args):
         body = {'os-update_snapshot_status': {'status': 'in-use'}}
         req = webob.Request.blank('/v2/fake/snapshots/1/action')
         req.method = "POST"
@@ -63,21 +78,3 @@ class SnapshotActionsTest(test.TestCase):
 
         res = req.get_response(fakes.wsgi_app())
         self.assertEqual(400, res.status_int)
-
-
-def stub_snapshot_get(context, snapshot_id):
-    snapshot = stubs.stub_snapshot(snapshot_id)
-    if snapshot_id == 3:
-        snapshot['status'] = 'error'
-    elif snapshot_id == 1:
-        snapshot['status'] = 'creating'
-    elif snapshot_id == 7:
-        snapshot['status'] = 'available'
-    else:
-        snapshot['status'] = 'creating'
-
-    return snapshot
-
-
-def stub_snapshot_update(self, context, id, **kwargs):
-    pass

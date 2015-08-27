@@ -101,12 +101,6 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
         backup.obj_reset_changes()
         return backup
 
-    @base.remotable_classmethod
-    def get_by_id(cls, context, id, read_deleted=None, project_only=None):
-        db_backup = db.backup_get(context, id, read_deleted=read_deleted,
-                                  project_only=project_only)
-        return cls._from_db_object(context, cls(context), db_backup)
-
     @base.remotable
     def create(self):
         if self.obj_attr_is_set('id'):

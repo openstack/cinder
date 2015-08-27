@@ -21,7 +21,7 @@ from cinder.tests.unit import objects as test_objects
 
 class TestService(test_objects.BaseObjectsTestCase):
 
-    @mock.patch('cinder.db.service_get')
+    @mock.patch('cinder.db.sqlalchemy.api.service_get')
     def test_get_by_id(self, service_get):
         db_service = fake_service.fake_db_service()
         service_get.return_value = db_service
