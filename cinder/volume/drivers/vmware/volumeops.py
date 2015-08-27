@@ -1514,7 +1514,7 @@ class VMwareVolumeOps(object):
         while retrieve_result:
             if retrieve_result.objects:
                 for cluster in retrieve_result.objects:
-                    name = urllib.unquote(cluster.propSet[0].val)
+                    name = urllib.parse.unquote(cluster.propSet[0].val)
                     clusters[name] = cluster.obj
             retrieve_result = self.continue_retrieval(retrieve_result)
         return clusters

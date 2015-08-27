@@ -1740,6 +1740,26 @@ class VolumeOpsTestCase(test.TestCase):
                                                         cluster,
                                                         'host')
 
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                'continue_retrieval', return_value=None)
+    def test_get_all_clusters(self, continue_retrieval):
+        prop_1 = mock.Mock(val='test_cluster_1')
+        cls_1 = mock.Mock(propSet=[prop_1], obj=mock.sentinel.mor_1)
+        prop_2 = mock.Mock(val='/test_cluster_2')
+        cls_2 = mock.Mock(propSet=[prop_2], obj=mock.sentinel.mor_2)
+
+        retrieve_result = mock.Mock(objects=[cls_1, cls_2])
+        self.session.invoke_api.return_value = retrieve_result
+
+        ret = self.vops._get_all_clusters()
+        exp = {'test_cluster_1': mock.sentinel.mor_1,
+               '/test_cluster_2': mock.sentinel.mor_2}
+        self.assertEqual(exp, ret)
+        self.session.invoke_api.assert_called_once_with(
+            vim_util, 'get_objects', self.session.vim,
+            'ClusterComputeResource', self.MAX_OBJECTS)
+        continue_retrieval.assert_called_once_with(retrieve_result)
+
 
 class VirtualDiskPathTest(test.TestCase):
     """Unit tests for VirtualDiskPath."""
