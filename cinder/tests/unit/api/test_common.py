@@ -178,10 +178,12 @@ class PaginationParamsTest(test.TestCase):
             webob.exc.HTTPBadRequest, common.get_pagination_params,
             req.GET.copy())
 
-    def test_no_params(self):
+    @mock.patch.object(common, 'CONF')
+    def test_no_params(self, mock_cfg):
         """Test no params."""
+        mock_cfg.osapi_max_limit = 100
         req = webob.Request.blank('/')
-        expected = (None, CONF.osapi_max_limit, 0)
+        expected = (None, 100, 0)
         self.assertEqual(expected,
                          common.get_pagination_params(req.GET.copy()))
 
