@@ -23,7 +23,7 @@ from cinder.api.openstack import wsgi
 from cinder import exception
 from cinder.i18n import _, _LE, _LI
 from cinder import utils
-from cinder import wsgi as base_wsgi
+from cinder.wsgi import common as base_wsgi
 
 
 LOG = logging.getLogger(__name__)

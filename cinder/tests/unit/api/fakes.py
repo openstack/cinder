@@ -29,7 +29,7 @@ from cinder.api.v2 import limits
 from cinder.api.v2 import router
 from cinder.api import versions
 from cinder import context
-from cinder import wsgi
+from cinder.wsgi import common as wsgi
 
 
 FAKE_UUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'

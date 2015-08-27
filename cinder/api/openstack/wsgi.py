@@ -31,7 +31,7 @@ from cinder import exception
 from cinder import i18n
 from cinder.i18n import _, _LE, _LI
 from cinder import utils
-from cinder import wsgi
+from cinder.wsgi import common as wsgi
 
 
 XML_NS_V1 = 'http://docs.openstack.org/api/openstack-block-storage/1.0/content'

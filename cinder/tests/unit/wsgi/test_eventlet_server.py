@@ -34,12 +34,13 @@ import webob.dec
 from cinder import exception
 from cinder.i18n import _
 from cinder import test
-import cinder.wsgi
+from cinder.wsgi import common as wsgi_common
+from cinder.wsgi import eventlet_server as wsgi
 
 CONF = cfg.CONF
 
 TEST_VAR_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__),
-                               'var'))
+                               '../var'))
 
 
 def open_no_proxy(*args, **kwargs):
@@ -67,8 +68,8 @@ class TestLoaderNothingExists(test.TestCase):
 
     def test_config_not_found(self):
         self.assertRaises(
-            cinder.exception.ConfigNotFound,
-            cinder.wsgi.Loader,
+            exception.ConfigNotFound,
+            wsgi_common.Loader,
         )
 
 
@@ -87,7 +88,7 @@ document_root = /tmp
         self.config.write(self._paste_config.lstrip())
         self.config.seek(0)
         self.config.flush()
-        self.loader = cinder.wsgi.Loader(self.config.name)
+        self.loader = wsgi_common.Loader(self.config.name)
         self.addCleanup(self.config.close)
 
     def test_config_found(self):
@@ -95,7 +96,7 @@ document_root = /tmp
 
     def test_app_not_found(self):
         self.assertRaises(
-            cinder.exception.PasteAppNotFound,
+            exception.PasteAppNotFound,
             self.loader.load_app,
             "non-existent app",
         )
@@ -115,12 +116,12 @@ class TestWSGIServer(test.TestCase):
             return False
 
     def test_no_app(self):
-        server = cinder.wsgi.Server("test_app", None,
-                                    host="127.0.0.1", port=0)
+        server = wsgi.Server("test_app", None,
+                             host="127.0.0.1", port=0)
         self.assertEqual("test_app", server.name)
 
     def test_start_random_port(self):
-        server = cinder.wsgi.Server("test_random_port", None, host="127.0.0.1")
+        server = wsgi.Server("test_random_port", None, host="127.0.0.1")
         server.start()
         self.assertNotEqual(0, server.port)
         server.stop()
@@ -129,9 +130,9 @@ class TestWSGIServer(test.TestCase):
     @testtools.skipIf(not _ipv6_configured(),
                       "Test requires an IPV6 configured interface")
     def test_start_random_port_with_ipv6(self):
-        server = cinder.wsgi.Server("test_random_port",
-                                    None,
-                                    host="::1")
+        server = wsgi.Server("test_random_port",
+                             None,
+                             host="::1")
         server.start()
         self.assertEqual("::1", server.host)
         self.assertNotEqual(0, server.port)
@@ -140,8 +141,8 @@ class TestWSGIServer(test.TestCase):
 
     def test_server_pool_waitall(self):
         # test pools waitall method gets called while stopping server
-        server = cinder.wsgi.Server("test_server", None,
-                                    host="127.0.0.1")
+        server = wsgi.Server("test_server", None,
+                             host="127.0.0.1")
         server.start()
         with mock.patch.object(server._pool,
                                'waitall') as mock_waitall:
@@ -160,8 +161,8 @@ class TestWSGIServer(test.TestCase):
             start_response('200 OK', [('Content-Type', 'text/plain')])
             return [greetings]
 
-        server = cinder.wsgi.Server("test_app", hello_world,
-                                    host="127.0.0.1", port=0)
+        server = wsgi.Server("test_app", hello_world,
+                             host="127.0.0.1", port=0)
         server.start()
 
         response = open_no_proxy('http://127.0.0.1:%d/' % server.port)
@@ -176,8 +177,8 @@ class TestWSGIServer(test.TestCase):
             start_response('200 OK', [('Content-Type', 'text/plain')])
             return [greetings]
 
-        server = cinder.wsgi.Server("test_app", hello_world,
-                                    host="127.0.0.1", port=0)
+        server = wsgi.Server("test_app", hello_world,
+                             host="127.0.0.1", port=0)
         server.start()
 
         s = socket.socket()
@@ -215,8 +216,8 @@ class TestWSGIServer(test.TestCase):
         def hello_world(req):
             return greetings
 
-        server = cinder.wsgi.Server("test_app", hello_world,
-                                    host="127.0.0.1", port=0)
+        server = wsgi.Server("test_app", hello_world,
+                             host="127.0.0.1", port=0)
 
         server.start()
 
@@ -239,10 +240,10 @@ class TestWSGIServer(test.TestCase):
         def hello_world(req):
             return greetings
 
-        server = cinder.wsgi.Server("test_app",
-                                    hello_world,
-                                    host="::1",
-                                    port=0)
+        server = wsgi.Server("test_app",
+                             hello_world,
+                             host="::1",
+                             port=0)
         server.start()
 
         response = open_no_proxy('https://[::1]:%d/' % server.port)
@@ -251,7 +252,7 @@ class TestWSGIServer(test.TestCase):
         server.stop()
 
     def test_reset_pool_size_to_default(self):
-        server = cinder.wsgi.Server("test_resize", None, host="127.0.0.1")
+        server = wsgi.Server("test_resize", None, host="127.0.0.1")
         server.start()
 
         # Stopping the server, which in turn sets pool size to 0

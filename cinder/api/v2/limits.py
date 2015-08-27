@@ -34,7 +34,7 @@ from cinder.api.views import limits as limits_views
 from cinder.api import xmlutil
 from cinder.i18n import _
 from cinder import quota
-from cinder import wsgi as base_wsgi
+from cinder.wsgi import common as base_wsgi
 
 QUOTAS = quota.QUOTAS
 LIMITS_PREFIX = "limits."

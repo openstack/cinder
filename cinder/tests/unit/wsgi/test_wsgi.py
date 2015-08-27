@@ -27,7 +27,7 @@ from cinder import test
 import routes
 import webob
 
-from cinder import wsgi
+from cinder.wsgi import common as wsgi
 
 
 class Test(test.TestCase):
