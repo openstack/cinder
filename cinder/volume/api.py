@@ -192,6 +192,8 @@ class API(base.Base):
                source_replica=None, consistencygroup=None,
                cgsnapshot=None, multiattach=False, source_cg=None):
 
+        check_policy(context, 'create')
+
         # NOTE(jdg): we can have a create without size if we're
         # doing a create from snap or volume.  Currently
         # the taskflow api will handle this and pull in the
