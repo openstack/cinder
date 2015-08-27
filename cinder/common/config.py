@@ -140,6 +140,12 @@ global_opts = [
                help='Default availability zone for new volumes. If not set, '
                     'the storage_availability_zone option value is used as '
                     'the default for new volumes.'),
+    cfg.BoolOpt('allow_availability_zone_fallback',
+                default=False,
+                help='If the requested Cinder availability zone is '
+                     'unavailable, fall back to the value of '
+                     'default_availability_zone, then '
+                     'storage_availability_zone, instead of failing.'),
     cfg.StrOpt('default_volume_type',
                default=None,
                help='Default volume type to use'),
