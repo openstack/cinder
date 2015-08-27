@@ -70,9 +70,11 @@ def enforce(context, action, target):
                              action=action)
 
 
-def check_is_admin(roles):
-    """Whether or not roles contains 'admin' role according to policy setting.
+def check_is_admin(roles, context=None):
+    """Whether or not user is admin according to policy setting.
 
+       Can use roles or user_id from context to determine if user is admin.
+       In a multi-domain configuration, roles alone may not be sufficient.
     """
     init()
 
@@ -81,6 +83,11 @@ def check_is_admin(roles):
     # attempts to apply.  Since our credentials dict does not include a
     # project_id, this target can never match as a generic rule.
     target = {'project_id': ''}
-    credentials = {'roles': roles}
+    if context is None:
+        credentials = {'roles': roles}
+    else:
+        credentials = {'roles': context.roles,
+                       'user_id': context.user_id
+                       }
 
     return _ENFORCER.enforce('context_is_admin', target, credentials)
