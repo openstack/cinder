@@ -207,12 +207,12 @@ class StorwizeSVCDriver(san.SanDriver,
             raise exception.InvalidInput(reason=msg)
 
         # Check if compression is supported
-        self._state['compression_enabled'] = \
-            self._helpers.compression_enabled()
+        self._state['compression_enabled'] = (self._helpers.
+                                              compression_enabled())
 
         # Get the available I/O groups
-        self._state['available_iogrps'] = \
-            self._helpers.get_available_io_groups()
+        self._state['available_iogrps'] = (self._helpers.
+                                           get_available_io_groups())
 
         # Get the iSCSI and FC names of the Storwize/SVC nodes
         self._state['storage_nodes'] = self._helpers.get_node_info()
@@ -461,8 +461,8 @@ class StorwizeSVCDriver(san.SanDriver,
                 if len(conn_wwpns) == 0:
                     # TODO(xqli): Remove storwize_svc_npiv_compatibility_mode
                     # in M release.
-                    npiv_compat = self.configuration.\
-                        storwize_svc_npiv_compatibility_mode
+                    npiv_compat = (self.configuration.
+                                   storwize_svc_npiv_compatibility_mode)
                     if not npiv_compat:
                         msg = (_('Could not get FC connection information for '
                                  'the host-volume connection. Is the host '
