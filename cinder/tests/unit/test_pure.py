@@ -396,9 +396,10 @@ class PureBaseVolumeDriverTestCase(PureDriverTestCase):
         self.driver.delete_volume(VOLUME)
         expected = [mock.call.destroy_volume(vol_name)]
         self.array.assert_has_calls(expected)
-        self.array.destroy_volume.side_effect = \
-            self.purestorage_module.PureHTTPError(code=400, text="reason")
-        self.driver.delete_snapshot(SNAPSHOT)
+        self.array.destroy_volume.side_effect = (
+            self.purestorage_module.PureHTTPError(code=400, text="does not "
+                                                                 "exist"))
+        self.driver.delete_volume(VOLUME)
         self.array.destroy_volume.side_effect = None
         self.assert_error_propagates([self.array.destroy_volume],
                                      self.driver.delete_volume, VOLUME)
@@ -441,8 +442,9 @@ class PureBaseVolumeDriverTestCase(PureDriverTestCase):
         self.driver.delete_snapshot(SNAPSHOT)
         expected = [mock.call.destroy_volume(snap_name)]
         self.array.assert_has_calls(expected)
-        self.array.destroy_volume.side_effect = \
-            self.purestorage_module.PureHTTPError(code=400, text="reason")
+        self.array.destroy_volume.side_effect = (
+            self.purestorage_module.PureHTTPError(code=400, text="does not "
+                                                                 "exist"))
         self.driver.delete_snapshot(SNAPSHOT)
         self.array.destroy_volume.side_effect = None
         self.assert_error_propagates([self.array.destroy_volume],
