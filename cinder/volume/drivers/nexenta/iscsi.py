@@ -24,6 +24,7 @@
 
 from oslo_log import log as logging
 
+from cinder import contextd
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.volume import driver
@@ -422,12 +423,19 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             if "does not exist" in exc.args[0]:
                 LOG.info(_LI('Snapshot %s does not exist, it seems it was '
                              'already deleted.'), snapshot_name)
-                return
             if "snapshot has dependent clones" in exc.args[0]:
                 LOG.info(_LI('Snapshot %s has dependent clones, will be '
                              'deleted later.'), snapshot_name)
-                return
-            raise
+            else:
+                raise
+        ctxt = context.get_admin_context()
+        try:
+            self.db.volume_get(ctxt, snapshot['volume_name'])
+        except exception.VolumeNotFound:
+            LOG.info(_LI('Origin volume %s appears to be removed, try to '
+                         'remove it from backend if it is there.'))
+            if self.nms.volume.object_exists(volume_name):
+                self.nms.zvol.destroy(volume_name, '')
 
     def local_path(self, volume):
         """Return local path to existing local volume.
