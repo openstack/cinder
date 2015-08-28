@@ -24,7 +24,7 @@
 
 from oslo_log import log as logging
 
-from cinder import contextd
+from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.volume import driver
