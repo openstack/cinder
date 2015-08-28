@@ -66,14 +66,24 @@ class DotHillClient(object):
     def _assert_response_ok(self, tree):
         """Parses the XML returned by the device to check the return code.
 
-        Raises a DotHillRequestError error if the return code is not 0.
+        Raises a DotHillRequestError error if the return code is not 0
+        or if the return code is None.
         """
+        # Get the return code for the operation, raising an exception
+        # if it is not present.
         return_code = tree.findtext(".//PROPERTY[@name='return-code']")
-        if return_code and return_code != '0':
-            raise exception.DotHillRequestError(
-                message=tree.findtext(".//PROPERTY[@name='response']"))
-        elif not return_code:
+        if not return_code:
             raise exception.DotHillRequestError(message="No status found")
+
+        # If no error occurred, just return.
+        if return_code == '0':
+            return
+
+        # Format a message for the status code.
+        msg = "%s (%s)" % (tree.findtext(".//PROPERTY[@name='response']"),
+                           return_code)
+
+        raise exception.DotHillRequestError(message=msg)
 
     def _build_request_url(self, path, *args, **kargs):
         url = self._base_url + path
@@ -95,6 +105,7 @@ class DotHillClient(object):
         """
 
         url = self._build_request_url(path, *args, **kargs)
+        LOG.debug("DotHill Request URL: %s", url)
         headers = {'dataType': 'api', 'sessionKey': self._session_key}
         try:
             xml = requests.get(url, headers=headers, verify=self.ssl_verify)
@@ -233,16 +244,16 @@ class DotHillClient(object):
         return [port['target-id'] for port in self.get_active_target_ports()
                 if port['port-type'] == "iSCSI"]
 
-    def copy_volume(self, src_name, dest_name, same_bknd, dest_bknd_name):
+    def linear_copy_volume(self, src_name, dest_name, dest_bknd_name):
+        """Copy a linear volume."""
+
         self._request("/volumecopy",
                       dest_name,
                       dest_vdisk=dest_bknd_name,
                       source_volume=src_name,
                       prompt='yes')
 
-        if same_bknd == 0:
-            return
-
+        # The copy has started; now monitor until the operation completes.
         count = 0
         while True:
             tree = self._request("/show/volumecopy-status")
@@ -266,6 +277,47 @@ class DotHillClient(object):
                 count += 1
 
         time.sleep(5)
+
+    def copy_volume(self, src_name, dest_name, dest_bknd_name,
+                    backend_type='virtual'):
+        """Copy a linear or virtual volume."""
+
+        if backend_type == 'linear':
+            return self.linear_copy_volume(src_name, dest_name, dest_bknd_name)
+        # Copy a virtual volume to another in the same pool.
+        self._request("/copy/volume", src_name, name=dest_name)
+        LOG.debug("Volume copy of source_volume: %(src_name)s to "
+                  "destination_volume: %(dest_name)s started.",
+                  {'src_name': src_name, 'dest_name': dest_name, })
+
+        # Loop until this volume copy is no longer in progress.
+        while self.volume_copy_in_progress(src_name):
+            time.sleep(5)
+
+        # Once the copy operation is finished, check to ensure that
+        # the volume was not deleted because of a subsequent error. An
+        # exception will be raised if the named volume is not present.
+        self._request("/show/volumes", dest_name)
+        LOG.debug("Volume copy of source_volume: %(src_name)s to "
+                  "destination_volume: %(dest_name)s completed.",
+                  {'src_name': src_name, 'dest_name': dest_name, })
+
+    def volume_copy_in_progress(self, src_name):
+        """Check if a volume copy is in progress for the named volume."""
+
+        # 'show volume-copies' always succeeds, even if none in progress.
+        tree = self._request("/show/volume-copies")
+
+        # Find 0 or 1 job(s) with source volume we're interested in
+        q = "OBJECT[PROPERTY[@name='source-volume']/text()='%s']" % src_name
+        joblist = tree.xpath(q)
+        if len(joblist) == 0:
+            return False
+        LOG.debug("Volume copy of volume: %(src_name)s is "
+                  "%(pc)s percent completed.",
+                  {'src_name': src_name,
+                   'pc': joblist[0].findtext("PROPERTY[@name='progress']"), })
+        return True
 
     def _check_host(self, host):
         host_status = -1
@@ -325,8 +377,12 @@ class DotHillClient(object):
         tree = self._request("/show/system")
         return tree.findtext(".//PROPERTY[@name='midplane-serial-number']")
 
-    def get_owner_info(self, backend_name):
-        tree = self._request("/show/vdisks", backend_name)
+    def get_owner_info(self, backend_name, backend_type):
+        if backend_type == 'linear':
+            tree = self._request("/show/vdisks", backend_name)
+        else:
+            tree = self._request("/show/pools", backend_name)
+
         return tree.findtext(".//PROPERTY[@name='owner']")
 
     def modify_volume_name(self, old_name, new_name):

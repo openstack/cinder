@@ -315,7 +315,8 @@ class TestFCDotHillCommon(test.TestCase):
         self.assertEqual(None, self.common.do_setup(None))
         mock_backend_exists.assert_called_with(self.common.backend_name,
                                                self.common.backend_type)
-        mock_owner_info.assert_called_with(self.common.backend_name)
+        mock_owner_info.assert_called_with(self.common.backend_name,
+                                           self.common.backend_type)
 
     def test_vol_name(self):
         self.assertEqual(encoded_volid, self.common._get_vol_name(vol_id))
@@ -413,7 +414,8 @@ class TestFCDotHillCommon(test.TestCase):
 
         mock_copy.assert_called_with(encoded_volid,
                                      'vqqqqqqqqqqqqqqqqqqq',
-                                     0, self.common.backend_name)
+                                     self.common.backend_name,
+                                     self.common.backend_type)
 
     @mock.patch.object(dothill.DotHillClient, 'copy_volume')
     @mock.patch.object(dothill.DotHillClient, 'backend_stats')
@@ -434,7 +436,8 @@ class TestFCDotHillCommon(test.TestCase):
         self.assertEqual(None, ret)
         mock_copy.assert_called_with('sqqqqqqqqqqqqqqqqqqq',
                                      'vqqqqqqqqqqqqqqqqqqq',
-                                     0, self.common.backend_name)
+                                     self.common.backend_name,
+                                     self.common.backend_type)
 
     @mock.patch.object(dothill.DotHillClient, 'extend_volume')
     def test_extend_volume(self, mock_extend):
