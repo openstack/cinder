@@ -662,6 +662,14 @@ class TestHPLeftHandCLIQISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
 
 class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
 
+    CONSIS_GROUP_ID = '3470cc4c-63b3-4c7a-8120-8a0693b45838'
+    CGSNAPSHOT_ID = '5351d914-6c90-43e7-9a8e-7e84610927da'
+
+    cgsnapshot = {'consistencygroup_id': CONSIS_GROUP_ID,
+                  'description': 'cgsnapshot',
+                  'id': CGSNAPSHOT_ID,
+                  'readOnly': False}
+
     driver_startup_call_stack = [
         mock.call.login('foo1', 'bar2'),
         mock.call.getClusterByName('CloudCluster1'),
@@ -704,8 +712,9 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         _mock_client.return_value.getCluster.return_value = {
             'spaceTotal': units.Gi * 500,
             'spaceAvailable': units.Gi * 250}
+        db = mock.Mock()
         self.driver = hp_lefthand_iscsi.HPLeftHandISCSIDriver(
-            configuration=config)
+            configuration=config, db=db)
         self.driver.do_setup(None)
         self.cluster_name = config.hplefthand_clustername
         return _mock_client.return_value
@@ -2082,3 +2091,228 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
                 mock.call.logout()]
 
             mock_client.assert_has_calls(expected)
+
+    @mock.patch('hplefthandclient.version', "1.0.6")
+    def test_create_consistencygroup(self):
+        class fake_consitencygroup_object(object):
+            volume_type_id = '371c64d5-b92a-488c-bc14-1e63cef40e08'
+            name = 'cg_name'
+            cgsnapshot_id = None
+            id = self.CONSIS_GROUP_ID
+            description = 'consistency group'
+
+        ctxt = context.get_admin_context()
+        # set up driver with default config
+        mock_client = self.setup_driver()
+
+        with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
+                               '_create_client') as mock_do_setup:
+            mock_do_setup.return_value = mock_client
+
+            # create a consistency group
+            group = fake_consitencygroup_object()
+            cg = self.driver.create_consistencygroup(ctxt, group)
+
+            self.assertEqual('available', cg['status'])
+
+    @mock.patch('hplefthandclient.version', "1.0.6")
+    def test_delete_consistencygroup(self):
+        class fake_consitencygroup_object(object):
+            volume_type_id = '371c64d5-b92a-488c-bc14-1e63cef40e08'
+            name = 'cg_name'
+            cgsnapshot_id = None
+            id = self.CONSIS_GROUP_ID
+            description = 'consistency group'
+
+        ctxt = context.get_admin_context()
+        # set up driver with default config
+        mock_client = self.setup_driver()
+
+        mock_volume = mock.MagicMock()
+        expected_volumes = [mock_volume]
+        self.driver.db.volume_get_all_by_group.return_value = expected_volumes
+
+        with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
+                               '_create_client') as mock_do_setup:
+            mock_do_setup.return_value = mock_client
+
+            # create a consistency group
+            group = fake_consitencygroup_object()
+            cg = self.driver.create_consistencygroup(ctxt, group)
+            self.assertEqual('available', cg['status'])
+
+            # delete the consistency group
+            group.status = 'deleting'
+            cg, vols = self.driver.delete_consistencygroup(ctxt, group)
+            self.assertEqual('deleting', cg['status'])
+
+    @mock.patch('hplefthandclient.version', "1.0.6")
+    def test_update_consistencygroup_add_vol_delete_cg(self):
+        class fake_consitencygroup_object(object):
+            volume_type_id = '371c64d5-b92a-488c-bc14-1e63cef40e08'
+            name = 'cg_name'
+            cgsnapshot_id = None
+            id = self.CONSIS_GROUP_ID
+            description = 'consistency group'
+
+        ctxt = context.get_admin_context()
+
+        # set up driver with default config
+        mock_client = self.setup_driver()
+
+        mock_volume = mock.MagicMock()
+        expected_volumes = [mock_volume]
+        self.driver.db.volume_get_all_by_group.return_value = expected_volumes
+
+        mock_client.getVolumes.return_value = {'total': 1, 'members': []}
+
+        # mock return value of createVolume
+        mock_client.createVolume.return_value = {
+            'iscsiIqn': self.connector['initiator']}
+
+        with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
+                               '_create_client') as mock_do_setup:
+            mock_do_setup.return_value = mock_client
+
+            # create a consistency group
+            group = fake_consitencygroup_object()
+            cg = self.driver.create_consistencygroup(ctxt, group)
+            self.assertEqual('available', cg['status'])
+
+            # add volume to consistency group
+            cg = self.driver.update_consistencygroup(
+                ctxt, group, add_volumes=[self.volume], remove_volumes=None)
+
+            # delete the consistency group
+            group.status = 'deleting'
+            cg, vols = self.driver.delete_consistencygroup(ctxt, group)
+            self.assertEqual('deleting', cg['status'])
+
+    @mock.patch('hplefthandclient.version', "1.0.6")
+    def test_update_consistencygroup_remove_vol_delete_cg(self):
+        class fake_consitencygroup_object(object):
+            volume_type_id = '371c64d5-b92a-488c-bc14-1e63cef40e08'
+            name = 'cg_name'
+            cgsnapshot_id = None
+            id = self.CONSIS_GROUP_ID
+            description = 'consistency group'
+
+        ctxt = context.get_admin_context()
+
+        # set up driver with default config
+        mock_client = self.setup_driver()
+
+        mock_volume = mock.MagicMock()
+        expected_volumes = [mock_volume]
+        self.driver.db.volume_get_all_by_group.return_value = expected_volumes
+
+        mock_client.getVolumes.return_value = {'total': 1, 'members': []}
+
+        # mock return value of createVolume
+        mock_client.createVolume.return_value = {
+            'iscsiIqn': self.connector['initiator']}
+
+        with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
+                               '_create_client') as mock_do_setup:
+            mock_do_setup.return_value = mock_client
+
+            # create a consistency group
+            group = fake_consitencygroup_object()
+            cg = self.driver.create_consistencygroup(ctxt, group)
+            self.assertEqual('available', cg['status'])
+
+            # add volume to consistency group
+            cg = self.driver.update_consistencygroup(
+                ctxt, group, add_volumes=[self.volume], remove_volumes=None)
+
+            # remove volume from consistency group
+            cg = self.driver.update_consistencygroup(
+                ctxt, group, add_volumes=None, remove_volumes=[self.volume])
+
+            # delete the consistency group
+            group.status = 'deleting'
+            cg, vols = self.driver.delete_consistencygroup(ctxt, group)
+            self.assertEqual('deleting', cg['status'])
+
+    @mock.patch('cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
+    @mock.patch('hplefthandclient.version', "1.0.6")
+    def test_create_cgsnapshot(self, mock_snap_list):
+        class fake_consitencygroup_object(object):
+            volume_type_id = '371c64d5-b92a-488c-bc14-1e63cef40e08'
+            name = 'cg_name'
+            cgsnapshot_id = None
+            id = self.CONSIS_GROUP_ID
+            description = 'consistency group'
+
+        ctxt = context.get_admin_context()
+
+        # set up driver with default config
+        mock_client = self.setup_driver()
+
+        mock_client.getVolumes.return_value = {'total': 1, 'members': []}
+        mock_client.getVolumeByName.return_value = {'id': self.volume_id}
+
+        mock_snap = mock.MagicMock()
+        mock_snap.volumeName = self.volume_name
+        expected_snaps = [mock_snap]
+        mock_snap_list.return_value = expected_snaps
+
+        with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
+                               '_create_client') as mock_do_setup:
+            mock_do_setup.return_value = mock_client
+
+            # create a consistency group
+            group = fake_consitencygroup_object()
+            cg = self.driver.create_consistencygroup(ctxt, group)
+            self.assertEqual('available', cg['status'])
+
+            # create volume and add it to the consistency group
+            self.driver.update_consistencygroup(
+                ctxt, group, add_volumes=[self.volume], remove_volumes=None)
+
+            # create the conistency group snapshot
+            cgsnap, snaps = self.driver.create_cgsnapshot(
+                ctxt, self.cgsnapshot)
+            self.assertEqual('available', cgsnap['status'])
+
+    @mock.patch('cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
+    @mock.patch('hplefthandclient.version', "1.0.6")
+    def test_delete_cgsnapshot(self, mock_snap_list):
+        class fake_consitencygroup_object(object):
+            volume_type_id = '371c64d5-b92a-488c-bc14-1e63cef40e08'
+            name = 'cg_name'
+            cgsnapshot_id = None
+            id = self.CONSIS_GROUP_ID
+            description = 'consistency group'
+
+        ctxt = context.get_admin_context()
+
+        # set up driver with default config
+        mock_client = self.setup_driver()
+
+        mock_client.getVolumes.return_value = {'total': 1, 'members': []}
+        mock_client.getVolumeByName.return_value = {'id': self.volume_id}
+
+        mock_snap = mock.MagicMock()
+        mock_snap.volumeName = self.volume_name
+        expected_snaps = [mock_snap]
+        mock_snap_list.return_value = expected_snaps
+
+        with mock.patch.object(hp_lefthand_rest_proxy.HPLeftHandRESTProxy,
+                               '_create_client') as mock_do_setup:
+            mock_do_setup.return_value = mock_client
+
+            # create a consistency group
+            group = fake_consitencygroup_object()
+            cg = self.driver.create_consistencygroup(ctxt, group)
+            self.assertEqual('available', cg['status'])
+
+            # create volume and add it to the consistency group
+            self.driver.update_consistencygroup(
+                ctxt, group, add_volumes=[self.volume], remove_volumes=None)
+
+            # delete the consistency group snapshot
+            self.cgsnapshot['status'] = 'deleting'
+            cgsnap, snaps = self.driver.delete_cgsnapshot(
+                ctxt, self.cgsnapshot)
+            self.assertEqual('deleting', cgsnap['status'])

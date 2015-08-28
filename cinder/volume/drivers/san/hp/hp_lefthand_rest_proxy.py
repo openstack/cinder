@@ -24,6 +24,7 @@ from oslo_utils import units
 from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
+from cinder import objects
 from cinder.volume import driver
 from cinder.volume import utils
 from cinder.volume import volume_types
@@ -69,6 +70,7 @@ CONF = cfg.CONF
 CONF.register_opts(hplefthand_opts)
 
 MIN_API_VERSION = "1.1"
+MIN_CG_CLIENT_VERSION = "1.0.6"
 
 # map the extra spec key to the REST client option key
 extra_specs_key_map = {
@@ -106,9 +108,10 @@ class HPLeftHandRESTProxy(driver.ISCSIDriver):
         1.0.9 - Adding support for manage/unmanage.
         1.0.10 - Add stats for goodness_function and filter_function
         1.0.11 - Add over subscription support
+        1.0.12 - Adds consistency group support
     """
 
-    VERSION = "1.0.11"
+    VERSION = "1.0.12"
 
     device_stats = {}
 
@@ -121,6 +124,7 @@ class HPLeftHandRESTProxy(driver.ISCSIDriver):
         # blank is the only invalid character for cluster names
         # so we need to use it as a separator
         self.DRIVER_LOCATION = self.__class__.__name__ + ' %(cluster)s %(vip)s'
+        self.db = kwargs.get('db')
 
     def _login(self):
         client = self.do_setup(None)
@@ -248,6 +252,139 @@ class HPLeftHandRESTProxy(driver.ISCSIDriver):
         finally:
             self._logout(client)
 
+    def create_consistencygroup(self, context, group):
+        """Creates a consistencygroup."""
+        model_update = {'status': 'available'}
+        return model_update
+
+    def create_consistencygroup_from_src(self, context, group, volumes,
+                                         cgsnapshot=None, snapshots=None,
+                                         source_cg=None, source_vols=None):
+        """Creates a consistency group from a source"""
+        LOG.error(_LE("Creating a consistency group from a source is not "
+                      "currently supported."))
+        raise NotImplementedError()
+
+    def delete_consistencygroup(self, context, group):
+        """Deletes a consistency group."""
+        # TODO(aorourke): Can't eliminate the DB calls here due to CG API.
+        # Will fix in M release
+        volumes = self.db.volume_get_all_by_group(context, group.id)
+        for volume in volumes:
+            self.delete_volume(volume)
+            volume.status = 'deleted'
+
+        model_update = {'status': group.status}
+
+        return model_update, volumes
+
+    def update_consistencygroup(self, context, group,
+                                add_volumes=None, remove_volumes=None):
+        """Updates a consistency group.
+
+        Because the backend has no concept of volume grouping, cinder will
+        maintain all volume/consistency group relationships. Because of this
+        functionality, there is no need to make any client calls; instead
+        simply returning out of this function allows cinder to properly
+        add/remove volumes from the consistency group.
+        """
+        return None, None, None
+
+    def create_cgsnapshot(self, context, cgsnapshot):
+        """Creates a consistency group snapshot."""
+        client = self._login()
+        try:
+            # TODO(aorourke): Can't eliminate the DB calls here due to CG API.
+            # Will fix in M release
+            snapshots = objects.SnapshotList().get_all_for_cgsnapshot(
+                context, cgsnapshot['id'])
+
+            snap_set = []
+            snapshot_base_name = "snapshot-" + cgsnapshot['id']
+            for i, snapshot in enumerate(snapshots):
+                volume = snapshot.volume
+                volume_name = volume['name']
+                try:
+                    volume_info = client.getVolumeByName(volume_name)
+                except Exception as ex:
+                    error = six.text_type(ex)
+                    LOG.error(_LE("Could not find volume with name %(name)s. "
+                                  "Error: %(error)s"),
+                              {'name': volume_name,
+                               'error': error})
+                    raise exception.VolumeBackendAPIException(data=error)
+
+                volume_id = volume_info['id']
+                snapshot_name = snapshot_base_name + "-" + six.text_type(i)
+                snap_set_member = {'volumeName': volume_name,
+                                   'volumeId': volume_id,
+                                   'snapshotName': snapshot_name}
+                snap_set.append(snap_set_member)
+                snapshot.status = 'available'
+
+            source_volume_id = snap_set[0]['volumeId']
+            optional = {'inheritAccess': True}
+            description = cgsnapshot.get('description', None)
+            if description:
+                optional['description'] = description
+
+            try:
+                client.createSnapshotSet(source_volume_id, snap_set, optional)
+            except Exception as ex:
+                error = six.text_type(ex)
+                LOG.error(_LE("Could not create snapshot set. Error: '%s'"),
+                          error)
+                raise exception.VolumeBackendAPIException(
+                    data=error)
+
+        except Exception as ex:
+            raise exception.VolumeBackendAPIException(data=six.text_type(ex))
+        finally:
+            self._logout(client)
+
+        model_update = {'status': 'available'}
+
+        return model_update, snapshots
+
+    def delete_cgsnapshot(self, context, cgsnapshot):
+        """Deletes a consistency group snapshot."""
+
+        client = self._login()
+        try:
+            snap_name_base = "snapshot-" + cgsnapshot['id']
+
+            # TODO(aorourke): Can't eliminate the DB calls here due to CG API.
+            # Will fix in M release
+            snapshots = objects.SnapshotList().get_all_for_cgsnapshot(
+                context, cgsnapshot['id'])
+
+            for i, snapshot in enumerate(snapshots):
+                try:
+                    snap_name = snap_name_base + "-" + six.text_type(i)
+                    snap_info = client.getSnapshotByName(snap_name)
+                    client.deleteSnapshot(snap_info['id'])
+                except hpexceptions.HTTPNotFound:
+                    LOG.error(_LE("Snapshot did not exist. It will not be "
+                              "deleted."))
+                except hpexceptions.HTTPServerError as ex:
+                    in_use_msg = ('cannot be deleted because it is a clone '
+                                  'point')
+                    if in_use_msg in ex.get_description():
+                        raise exception.SnapshotIsBusy(snapshot_name=snap_name)
+
+                    raise exception.VolumeBackendAPIException(
+                        data=six.text_type(ex))
+
+        except Exception as ex:
+            raise exception.VolumeBackendAPIException(
+                data=six.text_type(ex))
+        finally:
+            self._logout(client)
+
+        model_update = {'status': cgsnapshot['status']}
+
+        return model_update, snapshots
+
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
         client = self._login()
@@ -340,6 +477,8 @@ class HPLeftHandRESTProxy(driver.ISCSIDriver):
         data['total_volumes'] = total_volumes
         data['filter_function'] = self.get_filter_function()
         data['goodness_function'] = self.get_goodness_function()
+        if hplefthandclient.version >= MIN_CG_CLIENT_VERSION:
+            data['consistencygroup_support'] = True
 
         self.device_stats = data
 
