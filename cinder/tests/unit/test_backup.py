@@ -893,6 +893,7 @@ class BackupTestCaseWithVerify(BaseBackupTest):
         self.assertEqual('error', backup['status'])
 
 
+@ddt.ddt
 class BackupAPITestCase(BaseBackupTest):
     def setUp(self):
         super(BackupAPITestCase, self).setUp()
@@ -912,8 +913,10 @@ class BackupAPITestCase(BaseBackupTest):
             self.ctxt, self.ctxt.project_id, filters={'key': 'value'})
 
     @mock.patch.object(objects, 'BackupList')
-    def test_get_all_false_value_all_tenants(self, mock_backuplist):
-        result = self.api.get_all(self.ctxt, {'all_tenants': '0',
+    @ddt.data(False, 'false', '0', 0, 'no')
+    def test_get_all_false_value_all_tenants(
+            self, false_value, mock_backuplist):
+        result = self.api.get_all(self.ctxt, {'all_tenants': false_value,
                                               'key': 'value'})
         self.assertFalse(mock_backuplist.get_all.called)
         self.assertEqual(mock_backuplist.get_all_by_project.return_value,
@@ -922,8 +925,10 @@ class BackupAPITestCase(BaseBackupTest):
             self.ctxt, self.ctxt.project_id, filters={'key': 'value'})
 
     @mock.patch.object(objects, 'BackupList')
-    def test_get_all_true_value_all_tenants(self, mock_backuplist):
-        result = self.api.get_all(self.ctxt, {'all_tenants': 'true',
+    @ddt.data(True, 'true', '1', 1, 'yes')
+    def test_get_all_true_value_all_tenants(
+            self, true_value, mock_backuplist):
+        result = self.api.get_all(self.ctxt, {'all_tenants': true_value,
                                               'key': 'value'})
         self.assertFalse(mock_backuplist.get_all_by_project.called)
         self.assertEqual(mock_backuplist.get_all.return_value,
