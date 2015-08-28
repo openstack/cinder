@@ -13,7 +13,9 @@
 #    under the License.
 """Unit tests for Oracle's ZFSSA Cinder volume driver."""
 
+from datetime import date
 import json
+import math
 
 import mock
 from oslo_utils import units
@@ -24,6 +26,8 @@ from cinder import exception
 from cinder import test
 from cinder.tests.unit import fake_utils
 from cinder.volume import configuration as conf
+from cinder.volume import driver
+from cinder.volume.drivers import remotefs
 from cinder.volume.drivers.zfssa import restclient as client
 from cinder.volume.drivers.zfssa import webdavclient
 from cinder.volume.drivers.zfssa import zfssaiscsi as iscsi
@@ -33,6 +37,48 @@ from cinder.volume.drivers.zfssa import zfssarest as rest
 
 nfs_logbias = 'latency'
 nfs_compression = 'off'
+zfssa_cache_dir = 'os-cinder-cache'
+
+no_virtsize_img = {
+    'id': 'no_virtsize_img_id1234',
+    'size': 654321,
+    'updated_at': date(2015, 1, 1),
+}
+
+small_img = {
+    'id': 'small_id1234',
+    'size': 654321,
+    'properties': {'virtual_size': 2361393152},
+    'updated_at': date(2015, 1, 1),
+}
+
+large_img = {
+    'id': 'large_id5678',
+    'size': 50000000,
+    'properties': {'virtual_size': 11806965760},
+    'updated_at': date(2015, 2, 2),
+}
+
+fakespecs = {
+    'prop1': 'prop1_val',
+    'prop2': 'prop2_val',
+}
+
+small_img_props = {
+    'size': 3,
+}
+
+img_props_nfs = {
+    'image_id': small_img['id'],
+    'updated_at': small_img['updated_at'].isoformat(),
+    'size': 3,
+    'name': '%(dir)s/os-cache-vol-%(name)s' % ({'dir': zfssa_cache_dir,
+                                                'name': small_img['id']})
+}
+
+fakecontext = 'fakecontext'
+img_service = 'fakeimgservice'
+img_location = 'fakeimglocation'
 
 
 class FakeResponse(object):
@@ -50,9 +96,17 @@ class TestZFSSAISCSIDriver(test.TestCase):
 
     test_vol = {
         'name': 'cindervol',
-        'size': 1,
+        'size': 3,
         'id': 1,
         'provider_location': 'fake_location 1 2',
+        'provider_auth': 'fake_auth user pass',
+    }
+
+    test_vol2 = {
+        'name': 'cindervol2',
+        'size': 5,
+        'id': 2,
+        'provider_location': 'fake_location 3 4',
         'provider_auth': 'fake_auth user pass',
     }
 
@@ -104,6 +158,8 @@ class TestZFSSAISCSIDriver(test.TestCase):
         self.configuration.zfssa_target_interfaces = 'e1000g0'
         self.configuration.zfssa_rest_timeout = 60
         self.configuration.volume_backend_name = 'fake_zfssa'
+        self.configuration.zfssa_enable_local_cache = True
+        self.configuration.zfssa_cache_project = zfssa_cache_dir
         self.configuration.safe_get = self.fake_safe_get
         self.configuration.zfssa_replication_ip = '1.1.1.1'
 
@@ -296,8 +352,50 @@ class TestZFSSAISCSIDriver(test.TestCase):
             project=lcfg.zfssa_project,
             lun=self.test_vol['name'])
 
+    @mock.patch.object(iscsi.ZFSSAISCSIDriver, '_check_origin')
+    def test_delete_cache_volume(self, _check_origin):
+        lcfg = self.configuration
+        lun2del = {
+            'guid': '00000000000000000000000000000',
+            'number': 0,
+            'initiatorgroup': 'default',
+            'size': 1,
+            'nodestroy': False,
+            'origin': {
+                'project': lcfg.zfssa_cache_project,
+                'snapshot': 'image-%s' % small_img['id'],
+                'share': 'os-cache-vol-%s' % small_img['id'],
+            }
+        }
+        self.drv.zfssa.get_lun.return_value = lun2del
+        self.drv.delete_volume(self.test_vol)
+        self.drv._check_origin.assert_called_once_with(lun2del,
+                                                       self.test_vol['name'])
+
+    def test_check_origin(self):
+        lcfg = self.configuration
+        lun2del = {
+            'guid': '00000000000000000000000000000',
+            'number': 0,
+            'initiatorgroup': 'default',
+            'size': 1,
+            'nodestroy': False,
+            'origin': {
+                'project': lcfg.zfssa_cache_project,
+                'snapshot': 'image-%s' % small_img['id'],
+                'share': 'os-cache-vol-%s' % small_img['id'],
+            }
+        }
+        cache = lun2del['origin']
+        self.drv.zfssa.num_clones.return_value = 0
+        self.drv._check_origin(lun2del, 'volname')
+        self.drv.zfssa.delete_lun.assert_called_once_with(
+            lcfg.zfssa_pool,
+            lcfg.zfssa_cache_project,
+            cache['share'])
+
     def test_create_delete_snapshot(self):
-        self.drv.zfssa.has_clones.return_value = False
+        self.drv.zfssa.num_clones.return_value = 0
         lcfg = self.configuration
         self.drv.create_snapshot(self.test_snap)
         self.drv.zfssa.create_snapshot.assert_called_once_with(
@@ -332,6 +430,7 @@ class TestZFSSAISCSIDriver(test.TestCase):
             lcfg.zfssa_project,
             self.test_snap['volume_name'],
             self.test_snap['name'],
+            lcfg.zfssa_project,
             self.test_vol_snap['name'])
 
     @mock.patch.object(iscsi.ZFSSAISCSIDriver, '_get_provider_info')
@@ -410,13 +509,207 @@ class TestZFSSAISCSIDriver(test.TestCase):
             val = None
         return val
 
+    @mock.patch.object(iscsi.ZFSSAISCSIDriver, '_verify_cache_volume')
+    def test_clone_image_negative(self, _verify_cache_volume):
+        # Disabling local cache feature:
+        self.configuration.zfssa_enable_local_cache = False
+
+        self.assertEqual((None, False),
+                         self.drv.clone_image(fakecontext, self.test_vol,
+                                              img_location,
+                                              small_img,
+                                              img_service))
+
+        self.configuration.zfssa_enable_local_cache = True
+        # Creating a volume smaller than image:
+        self.assertEqual((None, False),
+                         self.drv.clone_image(fakecontext, self.test_vol,
+                                              img_location,
+                                              large_img,
+                                              img_service))
+
+        # The image does not have virtual_size property:
+        self.assertEqual((None, False),
+                         self.drv.clone_image(fakecontext, self.test_vol,
+                                              img_location,
+                                              no_virtsize_img,
+                                              img_service))
+
+        # Exception raised in _verify_cache_image
+        self.drv._verify_cache_volume.side_effect = (
+            exception.VolumeBackendAPIException('fakeerror'))
+        self.assertEqual((None, False),
+                         self.drv.clone_image(fakecontext, self.test_vol,
+                                              img_location,
+                                              small_img,
+                                              img_service))
+
+    @mock.patch.object(iscsi.ZFSSAISCSIDriver, '_get_voltype_specs')
+    @mock.patch.object(iscsi.ZFSSAISCSIDriver, '_verify_cache_volume')
+    @mock.patch.object(iscsi.ZFSSAISCSIDriver, 'extend_volume')
+    def test_clone_image(self, _extend_vol, _verify_cache, _get_specs):
+        lcfg = self.configuration
+        cache_vol = 'os-cache-vol-%s' % small_img['id']
+        cache_snap = 'image-%s' % small_img['id']
+        self.drv._get_voltype_specs.return_value = fakespecs.copy()
+        self.drv._verify_cache_volume.return_value = cache_vol, cache_snap
+        model, cloned = self.drv.clone_image(fakecontext, self.test_vol2,
+                                             img_location,
+                                             small_img,
+                                             img_service)
+        self.drv._verify_cache_volume.assert_called_once_with(fakecontext,
+                                                              small_img,
+                                                              img_service,
+                                                              fakespecs,
+                                                              small_img_props)
+        self.drv.zfssa.clone_snapshot.assert_called_once_with(
+            lcfg.zfssa_pool,
+            lcfg.zfssa_cache_project,
+            cache_vol,
+            cache_snap,
+            lcfg.zfssa_project,
+            self.test_vol2['name'])
+
+        self.drv.extend_volume.assert_called_once_with(self.test_vol2,
+                                                       self.test_vol2['size'])
+
+    @mock.patch.object(iscsi.ZFSSAISCSIDriver, '_create_cache_volume')
+    def test_verify_cache_vol_no_cache_vol(self, _create_cache_vol):
+        vol_name = 'os-cache-vol-%s' % small_img['id']
+        self.drv.zfssa.get_lun.side_effect = exception.VolumeNotFound(
+            volume_id=vol_name)
+        self.drv._verify_cache_volume(fakecontext, small_img,
+                                      img_service, fakespecs, small_img_props)
+        self.drv._create_cache_volume.assert_called_once_with(fakecontext,
+                                                              small_img,
+                                                              img_service,
+                                                              fakespecs,
+                                                              small_img_props)
+
+    def test_verify_cache_vol_no_cache_snap(self):
+        snap_name = 'image-%s' % small_img['id']
+        self.drv.zfssa.get_lun_snapshot.side_effect = (
+            exception.SnapshotNotFound(snapshot_id=snap_name))
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.drv._verify_cache_volume,
+                          fakecontext,
+                          small_img,
+                          img_service,
+                          fakespecs,
+                          small_img_props)
+
+    def test_verify_cache_vol_stale_vol(self):
+        self.drv.zfssa.get_lun_snapshot.return_value = {'numclones': 5}
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.drv._verify_cache_volume,
+                          fakecontext,
+                          small_img,
+                          img_service,
+                          fakespecs,
+                          small_img_props)
+
+    @mock.patch.object(iscsi.ZFSSAISCSIDriver, '_create_cache_volume')
+    def test_verify_cache_vol_updated_vol(self, _create_cache_vol):
+        lcfg = self.configuration
+        updated_vol = {
+            'updated_at': date(3000, 12, 12),
+            'image_id': 'updated_id',
+        }
+        cachevol_name = 'os-cache-vol-%s' % small_img['id']
+        self.drv.zfssa.get_lun.return_value = updated_vol
+        self.drv.zfssa.get_lun_snapshot.return_value = {'numclones': 0}
+        self.drv._verify_cache_volume(fakecontext, small_img,
+                                      img_service, fakespecs, small_img_props)
+        self.drv.zfssa.delete_lun.assert_called_once_with(
+            lcfg.zfssa_pool,
+            lcfg.zfssa_cache_project,
+            cachevol_name)
+        self.drv._create_cache_volume.assert_called_once_with(fakecontext,
+                                                              small_img,
+                                                              img_service,
+                                                              fakespecs,
+                                                              small_img_props)
+
+    @mock.patch.object(driver.BaseVD, 'copy_image_to_volume')
+    def test_create_cache_volume(self, _copy_image):
+        lcfg = self.configuration
+        virtual_size = int(small_img['properties'].get('virtual_size'))
+        volsize = math.ceil(float(virtual_size) / units.Gi)
+        lunsize = "%sg" % six.text_type(int(volsize))
+        volname = 'os-cache-vol-%s' % small_img['id']
+        snapname = 'image-%s' % small_img['id']
+        cachevol_props = {
+            'cache_name': volname,
+            'snap_name': snapname,
+        }
+        cachevol_props.update(small_img_props)
+        cache_vol = {
+            'name': volname,
+            'id': small_img['id'],
+            'size': volsize,
+        }
+        lun_props = {
+            'custom:image_id': small_img['id'],
+            'custom:updated_at': (
+                six.text_type(small_img['updated_at'].isoformat())),
+        }
+        lun_props.update(fakespecs)
+
+        self.drv._create_cache_volume(fakecontext,
+                                      small_img,
+                                      img_service,
+                                      fakespecs,
+                                      cachevol_props)
+
+        self.drv.zfssa.create_lun.assert_called_once_with(
+            lcfg.zfssa_pool,
+            lcfg.zfssa_cache_project,
+            cache_vol['name'],
+            lunsize,
+            lcfg.zfssa_target_group,
+            lun_props)
+        _copy_image.assert_called_once_with(fakecontext,
+                                            cache_vol,
+                                            img_service,
+                                            small_img['id'])
+        self.drv.zfssa.create_snapshot.assert_called_once_with(
+            lcfg.zfssa_pool,
+            lcfg.zfssa_cache_project,
+            cache_vol['name'],
+            snapname)
+
+    def test_create_cache_vol_negative(self):
+        lcfg = self.configuration
+        volname = 'os-cache-vol-%s' % small_img['id']
+        snapname = 'image-%s' % small_img['id']
+        cachevol_props = {
+            'cache_name': volname,
+            'snap_name': snapname,
+        }
+        cachevol_props.update(small_img)
+
+        self.drv.zfssa.get_lun.side_effect = exception.VolumeNotFound(
+            volume_id=volname)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.drv._create_cache_volume,
+                          fakecontext,
+                          small_img,
+                          img_service,
+                          fakespecs,
+                          cachevol_props)
+        self.drv.zfssa.delete_lun.assert_called_once_with(
+            lcfg.zfssa_pool,
+            lcfg.zfssa_cache_project,
+            volname)
+
 
 class TestZFSSANFSDriver(test.TestCase):
 
     test_vol = {
         'name': 'test-vol',
-        'size': 1,
-        'id': '1'
+        'id': '1',
+        'size': 3,
+        'provider_location': 'fakelocation',
     }
 
     test_snap = {
@@ -458,6 +751,8 @@ class TestZFSSANFSDriver(test.TestCase):
         self.configuration.zfssa_rest_timeout = '30'
         self.configuration.nfs_oversub_ratio = 1
         self.configuration.nfs_used_ratio = 1
+        self.configuration.zfssa_enable_local_cache = True
+        self.configuration.zfssa_cache_directory = zfssa_cache_dir
 
     def test_migrate_volume(self):
         self.drv.zfssa.get_asn.return_value = (
@@ -559,6 +854,166 @@ class TestZFSSANFSDriver(test.TestCase):
 
     def tearDown(self):
         super(TestZFSSANFSDriver, self).tearDown()
+
+    @mock.patch.object(remotefs.RemoteFSDriver, 'delete_volume')
+    @mock.patch.object(zfssanfs.ZFSSANFSDriver, '_check_origin')
+    def test_delete_volume(self, _check_origin, _delete_vol):
+        self.drv.zfssa.get_volume.side_effect = self._get_volume_side_effect
+        self.drv.delete_volume(self.test_vol)
+        _delete_vol.assert_called_once_with(self.test_vol)
+        self.drv._check_origin.assert_called_once_with(img_props_nfs['name'])
+
+    def _get_volume_side_effect(self, *args, **kwargs):
+        lcfg = self.configuration
+        volname = six.text_type(args[0])
+        if volname.startswith(lcfg.zfssa_cache_directory):
+            return {'numclones': 0}
+        else:
+            return {'origin': img_props_nfs['name']}
+
+    def test_check_origin(self):
+        self.drv.zfssa.get_volume.side_effect = self._get_volume_side_effect
+        self.drv._check_origin(img_props_nfs['name'])
+        self.drv.zfssa.delete_file.assert_called_once_with(
+            img_props_nfs['name'])
+
+    @mock.patch.object(zfssanfs.ZFSSANFSDriver, '_verify_cache_volume')
+    @mock.patch.object(zfssanfs.ZFSSANFSDriver, 'create_cloned_volume')
+    def test_clone_image_negative(self, _create_clone, _verify_cache_volume):
+        # Disabling local cache feature:
+        self.configuration.zfssa_enable_local_cache = False
+        self.assertEqual((None, False),
+                         self.drv.clone_image(fakecontext, self.test_vol,
+                                              img_location,
+                                              small_img,
+                                              img_service))
+
+        self.configuration.zfssa_enable_local_cache = True
+
+        # Creating a volume smaller than image:
+        self.assertEqual((None, False),
+                         self.drv.clone_image(fakecontext, self.test_vol,
+                                              img_location,
+                                              large_img,
+                                              img_service))
+
+        # The image does not have virtual_size property:
+        self.assertEqual((None, False),
+                         self.drv.clone_image(fakecontext, self.test_vol,
+                                              img_location,
+                                              no_virtsize_img,
+                                              img_service))
+
+        # Exception raised in _verify_cache_image
+        self.drv._verify_cache_volume.side_effect = (
+            exception.VolumeBackendAPIException('fakeerror'))
+        self.assertEqual((None, False),
+                         self.drv.clone_image(fakecontext, self.test_vol,
+                                              img_location,
+                                              small_img,
+                                              img_service))
+
+    @mock.patch.object(zfssanfs.ZFSSANFSDriver, 'create_cloned_volume')
+    @mock.patch.object(zfssanfs.ZFSSANFSDriver, '_verify_cache_volume')
+    @mock.patch.object(zfssanfs.ZFSSANFSDriver, 'extend_volume')
+    def test_clone_image(self, _extend_vol, _verify_cache, _create_clone):
+        self.drv._verify_cache_volume.return_value = img_props_nfs['name']
+        prov_loc = {'provider_location': self.test_vol['provider_location']}
+        self.drv.create_cloned_volume.return_value = prov_loc
+        self.assertEqual((prov_loc, True),
+                         self.drv.clone_image(fakecontext, self.test_vol,
+                                              img_location,
+                                              small_img,
+                                              img_service))
+        self.drv._verify_cache_volume.assert_called_once_with(fakecontext,
+                                                              small_img,
+                                                              img_service,
+                                                              img_props_nfs)
+        cache_vol = {
+            'name': img_props_nfs['name'],
+            'size': 3,
+            'id': small_img['id'],
+        }
+        self.drv.create_cloned_volume.assert_called_once_with(self.test_vol,
+                                                              cache_vol)
+
+    @mock.patch.object(zfssanfs.ZFSSANFSDriver, '_create_cache_volume')
+    def test_verify_cache_vol_no_cache_vol(self, _create_cache_vol):
+        self.drv.zfssa.get_volume.side_effect = exception.VolumeNotFound(
+            volume_id=img_props_nfs['name'])
+        self.drv._verify_cache_volume(fakecontext, small_img,
+                                      img_service, img_props_nfs)
+        self.drv._create_cache_volume.assert_called_once_with(fakecontext,
+                                                              small_img,
+                                                              img_service,
+                                                              img_props_nfs)
+
+    def test_verify_cache_vol_stale_vol(self):
+        self.drv.zfssa.get_volume.return_value = {
+            'numclones': 5,
+            'updated_at': small_img['updated_at'].isoformat(),
+            'image_id': 'wrong_id',
+        }
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.drv._verify_cache_volume,
+                          fakecontext,
+                          small_img,
+                          img_service,
+                          img_props_nfs)
+
+    @mock.patch.object(zfssanfs.ZFSSANFSDriver, '_create_cache_volume')
+    @mock.patch.object(zfssanfs.ZFSSANFSDriver, 'delete_volume')
+    def test_verify_cache_vol_updated_vol(self, _del_vol, _create_cache_vol):
+        updated_vol = {
+            'updated_at': date(3000, 12, 12),
+            'image_id': 'updated_id',
+            'numclones': 0,
+        }
+        self.drv.zfssa.get_volume.return_value = updated_vol
+        self.drv._verify_cache_volume(fakecontext, small_img,
+                                      img_service, img_props_nfs)
+        cache_vol = {
+            'provider_location': mock.ANY,
+            'name': img_props_nfs['name'],
+        }
+        self.drv.delete_volume.assert_called_once_with(cache_vol)
+        self.drv._create_cache_volume.assert_called_once_with(fakecontext,
+                                                              small_img,
+                                                              img_service,
+                                                              img_props_nfs)
+
+    @mock.patch.object(remotefs.RemoteFSDriver, 'copy_image_to_volume')
+    @mock.patch.object(remotefs.RemoteFSDriver, 'create_volume')
+    def test_create_cache_volume(self, _create_vol, _copy_image):
+        virtual_size = int(small_img['properties'].get('virtual_size'))
+        volsize = math.ceil(float(virtual_size) / units.Gi)
+        cache_vol = {
+            'name': img_props_nfs['name'],
+            'size': volsize,
+            'provider_location': mock.ANY,
+        }
+        self.drv._create_cache_volume(fakecontext,
+                                      small_img,
+                                      img_service,
+                                      img_props_nfs)
+
+        _create_vol.assert_called_once_with(cache_vol)
+        _copy_image.assert_called_once_with(fakecontext,
+                                            cache_vol,
+                                            img_service,
+                                            small_img['id'])
+
+    def test_create_cache_vol_negative(self):
+        self.drv.zfssa.get_lun.side_effect = (
+            exception.VolumeBackendAPIException)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.drv._create_cache_volume,
+                          fakecontext,
+                          small_img,
+                          img_service,
+                          img_props_nfs)
+        self.drv.zfssa.delete_file.assert_called_once_with(
+            img_props_nfs['name'])
 
 
 class TestZFSSAApi(test.TestCase):
@@ -709,6 +1164,7 @@ class TestZFSSAApi(test.TestCase):
                                   self.project,
                                   self.vol,
                                   self.snap,
+                                  self.project,
                                   self.clone)
         expected_svc = '/api/storage/v1/pools/' + self.pool + '/projects/' + \
             self.project + '/luns/' + self.vol + '/snapshots/' + self.snap + \

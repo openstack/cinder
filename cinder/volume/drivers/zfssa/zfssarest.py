@@ -20,7 +20,7 @@ from oslo_log import log
 from oslo_service import loopingcall
 
 from cinder import exception
-from cinder.i18n import _, _LE
+from cinder.i18n import _, _LE, _LW
 from cinder.volume.drivers.zfssa import restclient
 from cinder.volume.drivers.zfssa import webdavclient
 
@@ -721,7 +721,7 @@ class ZFSSAApi(object):
                                 'ret.status': ret.status,
                                 'ret.data': ret.data})
             LOG.error(exception_msg)
-            raise exception.VolumeBackendAPIException(data=exception_msg)
+            raise exception.VolumeNotFound(volume_id=lun)
 
         val = json.loads(ret.data)
         ret = {
@@ -734,7 +734,40 @@ class ZFSSAApi(object):
         }
         if 'origin' in val['lun']:
             ret.update({'origin': val['lun']['origin']})
+        if 'custom:image_id' in val['lun']:
+            ret.update({'image_id': val['lun']['custom:image_id']})
+            ret.update({'updated_at': val['lun']['custom:updated_at']})
 
+        return ret
+
+    def get_lun_snapshot(self, pool, project, lun, snapshot):
+        """Return iscsi lun snapshot properties."""
+        svc = ('/api/storage/v1/pools/' + pool + '/projects/' +
+               project + '/luns/' + lun + '/snapshots/' + snapshot)
+
+        ret = self.rclient.get(svc)
+        if ret.status != restclient.Status.OK:
+            exception_msg = (_LE('Error Getting '
+                                 'Snapshot: %(snapshot)s of '
+                                 'Volume: %(lun)s in '
+                                 'Pool: %(pool)s, '
+                                 'Project: %(project)s  '
+                                 'Return code: %(ret.status)d, '
+                                 'Message: %(ret.data)s.'),
+                             {'snapshot': snapshot,
+                              'lun': lun,
+                              'pool': pool,
+                              'project': project,
+                              'ret.status': ret.status,
+                              'ret.data': ret.data})
+            LOG.error(exception_msg)
+            raise exception.SnapshotNotFound(snapshot_id=snapshot)
+
+        val = json.loads(ret.data)['snapshot']
+        ret = {
+            'name': val['name'],
+            'numclones': val['numclones'],
+        }
         return ret
 
     def set_lun_initiatorgroup(self, pool, project, lun, initiatorgroup):
@@ -768,14 +801,19 @@ class ZFSSAApi(object):
 
         ret = self.rclient.delete(svc)
         if ret.status != restclient.Status.NO_CONTENT:
-            LOG.error(_LE('Error Deleting Volume: %(lun)s to Pool: %(pool)s '
-                          'Project: %(project)s  Return code: %(ret.status)d '
-                          'Message: %(ret.data)s.'),
-                      {'lun': lun,
-                       'pool': pool,
-                       'project': project,
-                       'ret.status': ret.status,
-                       'ret.data': ret.data})
+            exception_msg = (_('Error Deleting Volume: %(lun)s from '
+                               'Pool: %(pool)s, Project: %(project)s. '
+                               'Return code: %(ret.status)d, '
+                               'Message: %(ret.data)s.'),
+                             {'lun': lun,
+                              'pool': pool,
+                              'project': project,
+                              'ret.status': ret.status,
+                              'ret.data': ret.data})
+            LOG.error(exception_msg)
+            if ret.status == restclient.Status.FORBIDDEN:
+                # This means that the lun exists but it can't be deleted:
+                raise exception.VolumeBackendAPIException(data=exception_msg)
 
     def create_snapshot(self, pool, project, lun, snapshot):
         """create snapshot."""
@@ -793,13 +831,13 @@ class ZFSSAApi(object):
                                'Pool: %(pool)s '
                                'Project: %(project)s  '
                                'Return code: %(ret.status)d '
-                               'Message: %(ret.data)s.')
-                             % {'snapshot': snapshot,
-                                'lun': lun,
-                                'pool': pool,
-                                'project': project,
-                                'ret.status': ret.status,
-                                'ret.data': ret.data})
+                               'Message: %(ret.data)s.'),
+                             {'snapshot': snapshot,
+                              'lun': lun,
+                              'pool': pool,
+                              'project': project,
+                              'ret.status': ret.status,
+                              'ret.data': ret.data})
             LOG.error(exception_msg)
             raise exception.VolumeBackendAPIException(data=exception_msg)
 
@@ -826,12 +864,12 @@ class ZFSSAApi(object):
             LOG.error(exception_msg)
             raise exception.VolumeBackendAPIException(data=exception_msg)
 
-    def clone_snapshot(self, pool, project, lun, snapshot, clone):
-        """clone snapshot."""
+    def clone_snapshot(self, pool, project, lun, snapshot, clone_proj, clone):
+        """clone 'snapshot' to a lun named 'clone' in project 'clone_proj'."""
         svc = '/api/storage/v1/pools/' + pool + '/projects/' + \
             project + '/luns/' + lun + '/snapshots/' + snapshot + '/clone'
         arg = {
-            'project': project,
+            'project': clone_proj,
             'share': clone,
             'nodestroy': True
         }
@@ -843,12 +881,14 @@ class ZFSSAApi(object):
                                'Volume: %(lun)s of '
                                'Pool: %(pool)s '
                                'Project: %(project)s  '
+                               'Clone project: %(clone_proj)s '
                                'Return code: %(ret.status)d '
                                'Message: %(ret.data)s.')
                              % {'snapshot': snapshot,
                                 'lun': lun,
                                 'pool': pool,
                                 'project': project,
+                                'clone_proj': clone_proj,
                                 'ret.status': ret.status,
                                 'ret.data': ret.data})
             LOG.error(exception_msg)
@@ -879,7 +919,7 @@ class ZFSSAApi(object):
             LOG.error(exception_msg)
             raise exception.VolumeBackendAPIException(data=exception_msg)
 
-    def has_clones(self, pool, project, lun, snapshot):
+    def num_clones(self, pool, project, lun, snapshot):
         """Checks whether snapshot has clones or not."""
         svc = '/api/storage/v1/pools/' + pool + '/projects/' + \
             project + '/luns/' + lun + '/snapshots/' + snapshot
@@ -903,7 +943,7 @@ class ZFSSAApi(object):
             raise exception.VolumeBackendAPIException(data=exception_msg)
 
         val = json.loads(ret.data)
-        return val['snapshot']['numclones'] != 0
+        return val['snapshot']['numclones']
 
     def get_initiator_initiatorgroup(self, initiator):
         """Returns the initiator group of the initiator."""
@@ -923,6 +963,40 @@ class ZFSSAApi(object):
                       "default initiator group.")
             groups.append('default')
         return groups
+
+    def create_schema(self, schema):
+        """Create a custom ZFSSA schema."""
+        base = '/api/storage/v1/schema'
+
+        svc = "%(base)s/%(prop)s" % {'base': base, 'prop': schema['property']}
+        ret = self.rclient.get(svc)
+        if ret.status == restclient.Status.OK:
+            LOG.warning(_LW('Property %s already exists.'), schema['property'])
+            return
+
+        ret = self.rclient.post(base, schema)
+        if ret.status != restclient.Status.CREATED:
+            exception_msg = (_('Error Creating '
+                               'Property: %(property)s '
+                               'Type: %(type)s '
+                               'Description: %(description)s '
+                               'Return code: %(ret.status)d '
+                               'Message: %(ret.data)s.')
+                             % {'property': schema['property'],
+                                'type': schema['type'],
+                                'description': schema['description'],
+                                'ret.status': ret.status,
+                                'ret.data': ret.data})
+            LOG.error(exception_msg)
+            raise exception.VolumeBackendAPIException(data=exception_msg)
+
+    def create_schemas(self, schemas):
+        """Create multiple custom ZFSSA schemas."""
+        ret = []
+        for schema in schemas:
+            res = self.create_schema(schema)
+            ret.append(res)
+        return ret
 
 
 class ZFSSANfsApi(ZFSSAApi):
@@ -1143,3 +1217,56 @@ class ZFSSANfsApi(ZFSSAApi):
 
         val = json.loads(ret.data)
         return val['filesystem']
+
+    def get_volume(self, volume):
+        LOG.debug('Getting volume %s.', volume)
+        try:
+            resp = self.webdavclient.request(src_file=volume,
+                                             method='PROPFIND')
+        except Exception:
+            raise exception.VolumeNotFound(volume_id=volume)
+
+        resp = resp.read()
+        numclones = self._parse_prop(resp, 'numclones')
+        result = {
+            'numclones': int(numclones) if numclones != '' else 0,
+            'updated_at': self._parse_prop(resp, 'updated_at'),
+            'image_id': self._parse_prop(resp, 'image_id'),
+            'origin': self._parse_prop(resp, 'origin'),
+        }
+        return result
+
+    def delete_file(self, filename):
+        try:
+            self.webdavclient.request(src_file=filename, method='DELETE')
+        except Exception:
+            exception_msg = (_LE('Cannot delete file %s.'), filename)
+            LOG.error(exception_msg)
+
+    def set_file_props(self, file, specs):
+        """Set custom properties to a file."""
+        for key in specs:
+            self.webdavclient.set_file_prop(file, key, specs[key])
+
+    def _parse_prop(self, response, prop):
+        """Parse a property value from the WebDAV response."""
+        propval = ""
+        for line in response.split("\n"):
+            if prop in line:
+                try:
+                    propval = line[(line.index('>') + 1):line.index('</')]
+                except Exception:
+                    pass
+        return propval
+
+    def create_directory(self, dirname):
+        try:
+            self.webdavclient.request(src_file=dirname, method='GET')
+            LOG.debug('Directory %s already exists.', dirname)
+        except Exception:
+            # The directory does not exist yet
+            try:
+                self.webdavclient.request(src_file=dirname, method='MKCOL')
+            except Exception:
+                exception_msg = (_('Cannot create directory %s.'), dirname)
+                raise exception.VolumeBackendAPIException(data=exception_msg)

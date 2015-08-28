@@ -1,4 +1,4 @@
-# Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -49,6 +49,15 @@ WebDAVErrors = {
     'Bad_Gateway': bad_gateway_err
 }
 
+propertyupdate_data = """<?xml version="1.0"?>
+    <D:propertyupdate xmlns:D="DAV:">
+    <D:set>
+        <D:prop>
+            <D:prop_name>prop_val</D:prop_name>
+        </D:prop>
+    </D:set>
+    </D:propertyupdate>"""
+
 
 class ZFSSAWebDAVClient(object):
     def __init__(self, url, auth_str, **kwargs):
@@ -68,14 +77,26 @@ class ZFSSAWebDAVClient(object):
 
         return msg
 
-    def request(self, src_file="", dst_file="", method="", maxretries=10):
+    def build_data(self, data, propname, value):
+        res = data.replace('prop_name', propname)
+        res = res.replace('prop_val', value)
+        return res
+
+    def set_file_prop(self, filename, propname, propval):
+        data = self.build_data(propertyupdate_data, propname, propval)
+        return self.request(src_file=filename, data=data, method='PROPPATCH')
+
+    def request(self, src_file="", dst_file="", method="", maxretries=10,
+                data=""):
         retry = 0
         src_url = self.https_path + "/" + src_file
         dst_url = self.https_path + "/" + dst_file
-        request = urllib.request.Request(src_url)
+        request = urllib.request.Request(url=src_url, data=data)
 
         if dst_file != "":
             request.add_header('Destination', dst_url)
+        if method == "PROPPATCH":
+            request.add_header('Translate', 'F')
 
         request.add_header("Authorization", "Basic %s" % self.auth_str)
 
