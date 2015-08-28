@@ -1,4 +1,5 @@
-# Copyright (c) 2013 Scality
+# Copyright (c) 2015 Scality
+# All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -17,20 +18,21 @@ Scality SOFS Volume Driver.
 """
 
 
+import errno
 import os
 
 from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import fileutils
-from oslo_utils import units
+import six
 from six.moves import urllib
 
 from cinder import exception
 from cinder.i18n import _, _LI
 from cinder.image import image_utils
 from cinder import utils
-from cinder.volume import driver
+from cinder.volume.drivers import remotefs as remotefs_drv
 from cinder.volume import utils as volume_utils
 
 
@@ -52,62 +54,73 @@ CONF = cfg.CONF
 CONF.register_opts(volume_opts)
 
 
-class ScalityDriver(driver.VolumeDriver):
+class ScalityDriver(remotefs_drv.RemoteFSSnapDriver):
     """Scality SOFS cinder driver.
 
     Creates sparse files on SOFS for hypervisors to use as block
     devices.
     """
 
-    VERSION = '1.0.0'
+    driver_volume_type = 'scality'
+    driver_prefix = 'scality_sofs'
+    volume_backend_name = 'Scality_SOFS'
+    VERSION = '2.0.0'
 
     def __init__(self, *args, **kwargs):
         super(ScalityDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(volume_opts)
 
-    def _check_prerequisites(self):
+        self.sofs_mount_point = self.configuration.scality_sofs_mount_point
+        self.sofs_config = self.configuration.scality_sofs_config
+        self.sofs_rel_volume_dir = self.configuration.scality_sofs_volume_dir
+        self.sofs_abs_volume_dir = os.path.join(self.sofs_mount_point,
+                                                self.sofs_rel_volume_dir)
+
+        # The following config flag is used by RemoteFSDriver._do_create_volume
+        # We want to use sparse file (ftruncated) without exposing this
+        # as a config switch to customers.
+        self.configuration.scality_sofs_sparsed_volumes = True
+
+    def check_for_setup_error(self):
         """Sanity checks before attempting to mount SOFS."""
 
         # config is mandatory
-        config = self.configuration.scality_sofs_config
-        if not config:
+        if not self.sofs_config:
             msg = _("Value required for 'scality_sofs_config'")
-            LOG.warning(msg)
+            LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
         # config can be a file path or a URL, check it
-        if urllib.parse.urlparse(config).scheme == '':
+        config = self.sofs_config
+        if urllib.parse.urlparse(self.sofs_config).scheme == '':
             # turn local path into URL
-            config = 'file://%s' % config
+            config = 'file://%s' % self.sofs_config
         try:
             urllib.request.urlopen(config, timeout=5).close()
-        except urllib.error.URLError as e:
-            msg = _("Cannot access 'scality_sofs_config': %s") % e
-            LOG.warning(msg)
+        except (urllib.error.URLError, urllib.error.HTTPError) as e:
+            msg = _("Can't access 'scality_sofs_config'"
+                    ": %s") % six.text_type(e)
+            LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
         # mount.sofs must be installed
         if not os.access('/sbin/mount.sofs', os.X_OK):
             msg = _("Cannot execute /sbin/mount.sofs")
-            LOG.warning(msg)
+            LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-    @lockutils.synchronized('mount-sofs', 'cinder-sofs', external=True)
-    def _mount_sofs(self):
-        config = self.configuration.scality_sofs_config
-        mount_path = self.configuration.scality_sofs_mount_point
+    def _load_shares_config(self, share_file=None):
+        self.shares[self.sofs_rel_volume_dir] = None
 
-        fileutils.ensure_tree(mount_path)
-        if not self._sofs_is_mounted():
-            self._execute('mount', '-t', 'sofs', config, mount_path,
-                          run_as_root=True)
-        if not self._sofs_is_mounted():
-            msg = _("Cannot mount Scality SOFS, check syslog for errors")
-            LOG.warning(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+    def _get_mount_point_for_share(self, share=None):
+        # The _qemu_img_info_base() method from the RemoteFSSnapDriver class
+        # expects files (volume) to be inside a subdir of the mount point.
+        # So we have to append a dummy subdir.
+        return self.sofs_abs_volume_dir + "/00"
 
     def _sofs_is_mounted(self):
-        mount_path = self.configuration.scality_sofs_mount_point.rstrip('/')
+        """Check if SOFS is already mounted at the expected location."""
+        mount_path = self.sofs_mount_point.rstrip('/')
         for mount in volume_utils.read_proc_mounts():
             parts = mount.split()
             if (parts[0].endswith('fuse') and
@@ -115,121 +128,44 @@ class ScalityDriver(driver.VolumeDriver):
                         return True
         return False
 
-    def _size_bytes(self, size_in_g):
-        return int(size_in_g) * units.Gi
+    @lockutils.synchronized('mount-sofs', 'cinder-sofs', external=True)
+    def _ensure_share_mounted(self, share=None):
+        """Mount SOFS if need be."""
+        fileutils.ensure_tree(self.sofs_mount_point)
 
-    def _create_file(self, path, size):
-        with open(path, "ab") as f:
-            f.truncate(size)
-        os.chmod(path, 0o666)
-
-    def _copy_file(self, src_path, dest_path):
-        self._execute('dd', 'if=%s' % src_path, 'of=%s' % dest_path,
-                      'bs=1M', 'conv=fsync,nocreat,notrunc',
-                      run_as_root=True)
-
-    def do_setup(self, context):
-        """Any initialization the volume driver does while starting."""
-        self._check_prerequisites()
-        self._mount_sofs()
-        voldir = os.path.join(self.configuration.scality_sofs_mount_point,
-                              self.configuration.scality_sofs_volume_dir)
-        fileutils.ensure_tree(voldir)
-
-    def check_for_setup_error(self):
-        """Returns an error if prerequisites aren't met."""
-        self._check_prerequisites()
-        voldir = os.path.join(self.configuration.scality_sofs_mount_point,
-                              self.configuration.scality_sofs_volume_dir)
-        if not os.path.isdir(voldir):
-            msg = _("Cannot find volume dir for Scality SOFS at '%s'") % voldir
-            LOG.warning(msg)
+        if not self._sofs_is_mounted():
+            self._execute('mount', '-t', 'sofs', self.sofs_config,
+                          self.sofs_mount_point, run_as_root=True)
+        if not self._sofs_is_mounted():
+            msg = _("Cannot mount Scality SOFS, check syslog for errors")
+            LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-    def create_volume(self, volume):
-        """Creates a logical volume.
+        fileutils.ensure_tree(self.sofs_abs_volume_dir)
 
-        Can optionally return a Dictionary of changes to the volume
-        object to be persisted.
-        """
-        self._create_file(self.local_path(volume),
-                          self._size_bytes(volume['size']))
-        volume['provider_location'] = self._sofs_path(volume)
-        return {'provider_location': volume['provider_location']}
+        # We symlink the '00' subdir to its parent dir to maintain
+        # compatibility with previous version of this driver.
+        try:
+            os.symlink(".", self._get_mount_point_for_share())
+        except OSError as exc:
+            if exc.errno == errno.EEXIST:
+                if not os.path.islink(self._get_mount_point_for_share()):
+                    raise
+            else:
+                raise
 
-    def create_volume_from_snapshot(self, volume, snapshot):
-        """Creates a volume from a snapshot."""
-        changes = self.create_volume(volume)
-        self._copy_file(self.local_path(snapshot),
-                        self.local_path(volume))
-        return changes
+    def _ensure_shares_mounted(self):
+        self._ensure_share_mounted()
+        self._mounted_shares = [self.sofs_rel_volume_dir]
 
-    def delete_volume(self, volume):
-        """Deletes a logical volume."""
-        os.remove(self.local_path(volume))
-
-    def create_snapshot(self, snapshot):
-        """Creates a snapshot."""
-        volume_path = os.path.join(self.configuration.scality_sofs_mount_point,
-                                   self.configuration.scality_sofs_volume_dir,
-                                   snapshot['volume_name'])
-        snapshot_path = self.local_path(snapshot)
-        self._create_file(snapshot_path,
-                          self._size_bytes(snapshot['volume_size']))
-        self._copy_file(volume_path, snapshot_path)
-
-    def delete_snapshot(self, snapshot):
-        """Deletes a snapshot."""
-        os.remove(self.local_path(snapshot))
-
-    def _sofs_path(self, volume):
-        return os.path.join(self.configuration.scality_sofs_volume_dir,
-                            volume['name'])
-
-    def local_path(self, volume):
-        return os.path.join(self.configuration.scality_sofs_mount_point,
-                            self._sofs_path(volume))
-
-    def ensure_export(self, context, volume):
-        """Synchronously recreates an export for a logical volume."""
-        pass
-
-    def create_export(self, context, volume, connector):
-        """Exports the volume.
-
-        Can optionally return a Dictionary of changes to the volume
-        object to be persisted.
-        """
-        pass
-
-    def remove_export(self, context, volume):
-        """Removes an export for a logical volume."""
-        pass
-
-    def initialize_connection(self, volume, connector):
-        """Allow connection to connector and return connection info."""
-        return {
-            'driver_volume_type': 'scality',
-            'data': {
-                'sofs_path': self._sofs_path(volume),
-                'export': self.configuration.scality_sofs_volume_dir,
-                'name': volume['name'],
-            }
-        }
-
-    def terminate_connection(self, volume, connector, **kwargs):
-        """Disallow connection from connector."""
-        pass
-
-    def detach_volume(self, context, volume, attachment=None):
-        """Callback for volume detached."""
-        pass
+    def _find_share(self, volume_size_for):
+        try:
+            return self._mounted_shares[0]
+        except IndexError:
+            raise exception.RemoteFSNoSharesMounted()
 
     def get_volume_stats(self, refresh=False):
-        """Return the current state of the volume service.
-
-        If 'refresh' is True, run the update first.
-        """
+        """Return the current state of the volume service."""
         stats = {
             'vendor_name': 'Scality',
             'driver_version': self.VERSION,
@@ -239,56 +175,96 @@ class ScalityDriver(driver.VolumeDriver):
             'reserved_percentage': 0,
         }
         backend_name = self.configuration.safe_get('volume_backend_name')
-        stats['volume_backend_name'] = backend_name or 'Scality_SOFS'
+        stats['volume_backend_name'] = backend_name or self.volume_backend_name
         return stats
 
-    def copy_image_to_volume(self, context, volume, image_service, image_id):
-        """Fetch the image from image_service and write it to the volume."""
-        image_utils.fetch_to_raw(context,
-                                 image_service,
-                                 image_id,
-                                 self.local_path(volume),
-                                 self.configuration.volume_dd_blocksize,
-                                 size=volume['size'])
-        self.create_volume(volume)
+    @remotefs_drv.locked_volume_id_operation
+    def initialize_connection(self, volume, connector):
+        """Allow connection to connector and return connection info."""
 
-    def copy_volume_to_image(self, context, volume, image_service, image_meta):
-        """Copy the volume to the specified image."""
-        image_utils.upload_volume(context,
-                                  image_service,
-                                  image_meta,
-                                  self.local_path(volume))
+        # Find active qcow2 file
+        active_file = self.get_active_image_from_info(volume)
+        path = '%s/%s' % (self._get_mount_point_for_share(), active_file)
+        sofs_rel_path = os.path.join(self.sofs_rel_volume_dir, "00",
+                                     volume['name'])
 
-    def clone_image(self, context, volume,
-                    image_location, image_meta,
-                    image_service):
-        """Create a volume efficiently from an existing image.
+        data = {'export': volume['provider_location'],
+                'name': active_file,
+                'sofs_path': sofs_rel_path}
 
-        image_location is a string whose format depends on the
-        image service backend in use. The driver should use it
-        to determine whether cloning is possible.
+        # Test file for raw vs. qcow2 format
+        info = self._qemu_img_info(path, volume['name'])
+        data['format'] = info.file_format
+        if data['format'] not in ['raw', 'qcow2']:
+            msg = _('%s must be a valid raw or qcow2 image.') % path
+            raise exception.InvalidVolume(msg)
 
-        image_meta is the metadata associated with the image and
-        includes properties like the image id, size, virtual-size
-        etc.
+        return {
+            'driver_volume_type': self.driver_volume_type,
+            'data': data,
+            'mount_point_base': self.sofs_mount_point
+        }
 
-        image_service is the reference of the image_service to use.
-        Note that this is needed to be passed here for drivers that
-        will want to fetch images from the image service directly.
+    def _qemu_img_info(self, path, volume_name):
+        return super(ScalityDriver, self)._qemu_img_info_base(
+            path, volume_name, self.sofs_abs_volume_dir)
 
-        Returns a dict of volume properties eg. provider_location,
-        boolean indicating whether cloning occurred
+    @remotefs_drv.locked_volume_id_operation
+    def extend_volume(self, volume, size_gb):
+        volume_path = self.local_path(volume)
+
+        info = self._qemu_img_info(volume_path, volume['name'])
+        backing_fmt = info.file_format
+
+        if backing_fmt not in ['raw', 'qcow2']:
+            msg = _('Unrecognized backing format: %s')
+            raise exception.InvalidVolume(msg % backing_fmt)
+
+        # qemu-img can resize both raw and qcow2 files
+        image_utils.resize_image(volume_path, size_gb)
+
+    def _copy_volume_from_snapshot(self, snapshot, volume, volume_size):
+        """Copy data from snapshot to destination volume.
+
+        This is done with a qemu-img convert to raw/qcow2 from the snapshot
+        qcow2.
         """
-        return None, False
 
-    def create_cloned_volume(self, volume, src_vref):
-        """Creates a clone of the specified volume."""
-        self.create_volume_from_snapshot(volume, src_vref)
+        info_path = self._local_path_volume_info(snapshot['volume'])
 
-    def extend_volume(self, volume, new_size):
-        """Extend an existing volume."""
-        self._create_file(self.local_path(volume),
-                          self._size_bytes(new_size))
+        # For BC compat' with version < 2 of this driver
+        try:
+            snap_info = self._read_info_file(info_path)
+        except IOError as exc:
+            if exc.errno != errno.ENOENT:
+                raise
+            else:
+                path_to_snap_img = self.local_path(snapshot)
+        else:
+            vol_path = self._local_volume_dir(snapshot['volume'])
+
+            forward_file = snap_info[snapshot['id']]
+            forward_path = os.path.join(vol_path, forward_file)
+
+            # Find the file which backs this file, which represents the point
+            # when this snapshot was created.
+            img_info = self._qemu_img_info(forward_path,
+                                           snapshot['volume']['name'])
+
+            path_to_snap_img = os.path.join(vol_path, img_info.backing_file)
+
+        LOG.debug("will copy from snapshot at %s", path_to_snap_img)
+
+        path_to_new_vol = self.local_path(volume)
+        out_format = 'raw'
+        image_utils.convert_image(path_to_snap_img,
+                                  path_to_new_vol,
+                                  out_format,
+                                  run_as_root=self._execute_as_root)
+
+        self._set_rw_permissions_for_all(path_to_new_vol)
+
+        image_utils.resize_image(path_to_new_vol, volume_size)
 
     def backup_volume(self, context, backup, backup_service):
         """Create a new backup from an existing volume."""
