@@ -30,7 +30,8 @@ def fake_db_backup(**updates):
         'display_description': 'fake_description',
         'service_metadata': 'fake_metadata',
         'service': 'fake_service',
-        'object_count': 5
+        'object_count': 5,
+        'num_dependent_backups': 0,
     }
 
     for name, field in objects.Backup.fields.items():

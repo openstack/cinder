@@ -540,6 +540,7 @@ class Backup(BASE, CinderBase):
     object_count = Column(Integer)
     temp_volume_id = Column(String(36))
     temp_snapshot_id = Column(String(36))
+    num_dependent_backups = Column(Integer)
 
     @validates('fail_reason')
     def validate_fail_reason(self, key, fail_reason):

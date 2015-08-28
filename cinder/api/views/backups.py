@@ -76,7 +76,9 @@ class ViewBuilder(common.ViewBuilder):
                 'description': backup.get('display_description'),
                 'fail_reason': backup.get('fail_reason'),
                 'volume_id': backup.get('volume_id'),
-                'links': self._get_links(request, backup['id'])
+                'links': self._get_links(request, backup['id']),
+                'is_incremental': backup.is_incremental,
+                'has_dependent_backups': backup.has_dependent_backups,
             }
         }
 

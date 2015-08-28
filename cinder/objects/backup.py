@@ -36,7 +36,9 @@ LOG = logging.getLogger(__name__)
 class Backup(base.CinderPersistentObject, base.CinderObject,
              base.CinderObjectDictCompat):
     # Version 1.0: Initial version
-    VERSION = '1.0'
+    # Version 1.1: Add new field num_dependent_backups and extra fields
+    #              is_incremental and has_dependent_backups.
+    VERSION = '1.1'
 
     fields = {
         'id': fields.UUIDField(),
@@ -65,13 +67,22 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
 
         'temp_volume_id': fields.StringField(nullable=True),
         'temp_snapshot_id': fields.StringField(nullable=True),
+        'num_dependent_backups': fields.IntegerField(),
     }
 
-    obj_extra_fields = ['name']
+    obj_extra_fields = ['name', 'is_incremental', 'has_dependent_backups']
 
     @property
     def name(self):
         return CONF.backup_name_template % self.id
+
+    @property
+    def is_incremental(self):
+        return bool(self.parent_id)
+
+    @property
+    def has_dependent_backups(self):
+        return bool(self.num_dependent_backups)
 
     def obj_make_compatible(self, primitive, target_version):
         """Make an object representation compatible with a target version."""
