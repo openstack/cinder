@@ -58,6 +58,7 @@ STRIPECOUNT = 'storagetype:stripecount'
 MEMBERCOUNT = 'storagetype:membercount'
 STRIPED = 'striped'
 CONCATENATED = 'concatenated'
+SMI_VERSION_8 = 800
 # V3
 SLO = 'storagetype:slo'
 WORKLOAD = 'storagetype:workload'
@@ -1316,13 +1317,25 @@ class EMCVMAXCommon(object):
 
         if isinstance(loc, six.string_types):
             name = eval(loc)
+            keys = name['keybindings']
+            systemName = keys['SystemName']
+
+            prefix1 = 'SYMMETRIX+'
+            prefix2 = 'SYMMETRIX-+-'
+            smiversion = self.utils.get_smi_version(self.conn)
+            if smiversion > SMI_VERSION_8 and prefix1 in systemName:
+                keys['SystemName'] = systemName.replace(prefix1, prefix2)
+                name['keybindings'] = keys
 
             instancename = self.utils.get_instance_name(
                 name['classname'], name['keybindings'])
-
-            # Handle the case where volume cannot be found.
-            foundVolumeinstance = self.utils.get_existing_instance(
-                self.conn, instancename)
+            # Allow for an external app to delete the volume.
+            LOG.debug("Volume instance name: %(in)s",
+                      {'in': instancename})
+            try:
+                foundVolumeinstance = self.conn.GetInstance(instancename)
+            except Exception:
+                foundVolumeinstance = None
 
         if foundVolumeinstance is None:
             LOG.debug("Volume %(volumename)s not found on the array.",
@@ -1830,7 +1843,7 @@ class EMCVMAXCommon(object):
         if 'True' in isVolumeBound:
             appendVolumeInstance = (
                 self._unbind_and_get_volume_from_storage_pool(
-                    conn, storageConfigService, assocPoolInstanceName,
+                    conn, storageConfigService,
                     appendVolumeInstance.path, 'appendVolume', extraSpecs))
 
         return appendVolumeInstance
@@ -1857,27 +1870,32 @@ class EMCVMAXCommon(object):
         return volumeInstance
 
     def _unbind_and_get_volume_from_storage_pool(
-            self, conn, storageConfigService, poolInstanceName,
+            self, conn, storageConfigService,
             volumeInstanceName, volumeName, extraSpecs):
         """Unbind a volume from a pool and return the unbound volume.
 
         :param conn: the connection information to the ecom server
         :param storageConfigService: the storage config service instance name
-        :param poolInstanceName: the pool instance name
         :param volumeInstanceName: the volume instance name
         :param volumeName: string the volumeName
         :param extraSpecs: extra specifications
         :returns: unboundVolumeInstance -- the unbound volume instance
         """
-
-        _rc, job = (
+        _rc, _job = (
             self.provision.unbind_volume_from_storage_pool(
-                conn, storageConfigService, poolInstanceName,
-                volumeInstanceName,
+                conn, storageConfigService, volumeInstanceName,
                 volumeName, extraSpecs))
-        volumeDict = self.provision.get_volume_dict_from_job(conn, job['Job'])
-        volumeInstance = self.utils.find_volume_instance(
-            self.conn, volumeDict, volumeName)
+        # Check that the volume in unbound
+        volumeInstance = conn.GetInstance(volumeInstanceName)
+        isVolumeBound = self.utils.is_volume_bound_to_pool(
+            conn, volumeInstance)
+        if 'False' not in isVolumeBound:
+            exceptionMessage = (_(
+                "Failed to unbind volume %(volume)s")
+                % {'volume': volumeInstanceName})
+            LOG.error(exceptionMessage)
+            raise exception.VolumeBackendAPIException(data=exceptionMessage)
+
         return volumeInstance
 
     def _modify_and_get_composite_volume_instance(
@@ -3411,9 +3429,9 @@ class EMCVMAXCommon(object):
         else:  # Composite volume with meta device members.
             # Check if the meta members capacity.
             metaMemberInstanceNames = (
-                self.utils.get_meta_members_of_composite_volume(
-                    self.conn, metaHeadInstanceName))
-            volumeCapacities = self.utils.get_meta_members_capacity_in_bit(
+                self.utils.get_composite_elements(
+                    self.conn, sourceInstance))
+            volumeCapacities = self.utils.get_meta_members_capacity_in_byte(
                 self.conn, metaMemberInstanceNames)
             LOG.debug("Volume capacities:  %(metasizes)s.",
                       {'metasizes': volumeCapacities})
