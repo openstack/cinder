@@ -341,10 +341,6 @@ class BaseVD(object):
         # set True by manager after successful check_for_setup
         self._initialized = False
 
-        # Copy volume data in a sparse fashion.
-        #  (overload in drivers where this is desired)
-        self._sparse_copy_volume_data = False
-
     def _is_non_recoverable(self, err, non_recoverable_list):
         for item in non_recoverable_list:
             if item in err:
@@ -784,6 +780,14 @@ class BaseVD(object):
                 self._detach_volume(context, dest_attach_info, dest_vol,
                                     properties, force=True, remote=dest_remote)
 
+        # Check the backend capabilities of migration destination host.
+        rpcapi = volume_rpcapi.VolumeAPI()
+        capabilities = rpcapi.get_capabilities(context, dest_vol['host'],
+                                               False)
+        sparse_copy_volume = bool(capabilities and
+                                  capabilities.get('sparse_copy_volume',
+                                                   False))
+
         copy_error = True
         try:
             size_in_mb = int(src_vol['size']) * 1024    # vol size is in GB
@@ -793,7 +797,7 @@ class BaseVD(object):
                 size_in_mb,
                 self.configuration.volume_dd_blocksize,
                 throttle=self._throttle,
-                sparse=self._sparse_copy_volume_data)
+                sparse=sparse_copy_volume)
             copy_error = False
         except Exception:
             with excutils.save_and_reraise_exception():

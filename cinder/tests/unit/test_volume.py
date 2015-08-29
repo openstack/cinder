@@ -6132,6 +6132,74 @@ class GenericVolumeDriverTestCase(DriverTestCase):
             volume_api.disable_replication(ctxt, volume)
             self.assertTrue(mock_disable_rep.called)
 
+    @mock.patch.object(utils, 'brick_get_connector_properties')
+    @mock.patch.object(cinder.volume.driver.VolumeDriver, '_attach_volume')
+    @mock.patch.object(cinder.volume.driver.VolumeDriver, '_detach_volume')
+    @mock.patch.object(volutils, 'copy_volume')
+    @mock.patch.object(volume_rpcapi.VolumeAPI, 'get_capabilities')
+    def test_copy_volume_data(self,
+                              mock_get_capabilities,
+                              mock_copy,
+                              mock_detach,
+                              mock_attach,
+                              mock_get_connector):
+
+        src_vol = tests_utils.create_volume(self.context, size=1,
+                                            host=CONF.host)
+        dest_vol = tests_utils.create_volume(self.context, size=1,
+                                             host=CONF.host)
+        mock_get_connector.return_value = {}
+        self.volume.driver._throttle = mock.MagicMock()
+
+        attach_expected = [
+            mock.call(self.context, dest_vol, {}, remote=False),
+            mock.call(self.context, src_vol, {}, remote=False)]
+
+        detach_expected = [
+            mock.call(self.context, {'device': {'path': 'bar'}},
+                      dest_vol, {}, force=False, remote=False),
+            mock.call(self.context, {'device': {'path': 'foo'}},
+                      src_vol, {}, force=False, remote=False)]
+
+        attach_volume_returns = [
+            ({'device': {'path': 'bar'}}, dest_vol),
+            ({'device': {'path': 'foo'}}, src_vol),
+        ]
+
+        #  Test case for sparse_copy_volume = False
+        mock_attach.side_effect = attach_volume_returns
+        mock_get_capabilities.return_value = {}
+        self.volume.driver.copy_volume_data(self.context,
+                                            src_vol,
+                                            dest_vol)
+
+        self.assertEqual(attach_expected, mock_attach.mock_calls)
+        mock_copy.assert_called_with(
+            'foo', 'bar', 1024, '1M',
+            throttle=self.volume.driver._throttle,
+            sparse=False)
+        self.assertEqual(detach_expected, mock_detach.mock_calls)
+
+        #  Test case for sparse_copy_volume = True
+        mock_attach.reset_mock()
+        mock_detach.reset_mock()
+        mock_attach.side_effect = attach_volume_returns
+        mock_get_capabilities.return_value = {'sparse_copy_volume': True}
+        self.volume.driver.copy_volume_data(self.context,
+                                            src_vol,
+                                            dest_vol)
+
+        self.assertEqual(attach_expected, mock_attach.mock_calls)
+        mock_copy.assert_called_with(
+            'foo', 'bar', 1024, '1M',
+            throttle=self.volume.driver._throttle,
+            sparse=True)
+        self.assertEqual(detach_expected, mock_detach.mock_calls)
+
+        # cleanup resource
+        db.volume_destroy(self.context, src_vol['id'])
+        db.volume_destroy(self.context, dest_vol['id'])
+
 
 class LVMISCSIVolumeDriverTestCase(DriverTestCase):
     """Test case for VolumeDriver"""
@@ -6994,6 +7062,17 @@ class ISCSITestCase(DriverTestCase):
             float('5.0'), stats['pools'][0]['provisioned_capacity_gb'])
         self.assertEqual(
             int('1'), stats['pools'][0]['total_volumes'])
+        self.assertFalse(stats['sparse_copy_volume'])
+
+        # Check value of sparse_copy_volume for thin enabled case.
+        self.configuration = conf.Configuration(None)
+        self.configuration.lvm_type = 'thin'
+        lvm_driver = lvm.LVMVolumeDriver(configuration=self.configuration,
+                                         db=db)
+        lvm_driver.vg = brick_lvm.LVM('cinder-volumes', 'sudo')
+        lvm_driver._update_volume_stats()
+        stats = lvm_driver._stats
+        self.assertTrue(stats['sparse_copy_volume'])
 
     def test_validate_connector(self):
         iscsi_driver =\

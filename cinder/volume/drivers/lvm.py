@@ -246,6 +246,9 @@ class LVMVolumeDriver(driver.VolumeDriver):
         ))
         data["pools"].append(single_pool)
 
+        # Check availability of sparse volume copy.
+        data['sparse_copy_volume'] = self.configuration.lvm_type == 'thin'
+
         self._stats = data
 
     def check_for_setup_error(self):
