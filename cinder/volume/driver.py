@@ -324,6 +324,7 @@ class BaseVD(object):
         self._stats = {}
 
         self.pools = []
+        self.capabilities = {}
 
         # We set these mappings up in the base driver so they
         # can be used by children
@@ -533,7 +534,179 @@ class BaseVD(object):
         For replication the following state should be reported:
         replication = True (None or false disables replication)
         """
-        return None
+        return
+
+    def get_prefixed_property(self, property):
+        """Return prefixed property name
+
+        :return a prefixed property name string or None
+        """
+
+        if property and self.capabilities.get('vendor_prefix'):
+            return self.capabilities.get('vendor_prefix') + ':' + property
+
+    def _set_property(self, properties, entry, title, description,
+                      type, **kwargs):
+        prop = dict(title=title, description=description, type=type)
+        allowed_keys = ('enum', 'default', 'minimum', 'maximum')
+        for key in kwargs:
+            if key in allowed_keys:
+                prop[key] = kwargs[key]
+        properties[entry] = prop
+
+    def _init_standard_capabilities(self):
+        """Create a dictionary of Cinder standard capabilities.
+
+        This method creates a dictionary of Cinder standard capabilities
+        and returns the created dictionary.
+        The keys of this dictionary don't contain prefix and separator(:).
+        """
+
+        properties = {}
+        self._set_property(
+            properties,
+            "thin_provisioning",
+            "Thin Provisioning",
+            _("Sets thin provisioning."),
+            "boolean")
+
+        self._set_property(
+            properties,
+            "compression",
+            "Compression",
+            _("Enables compression."),
+            "boolean")
+
+        self._set_property(
+            properties,
+            "qos",
+            "QoS",
+            _("Enables QoS."),
+            "boolean")
+
+        self._set_property(
+            properties,
+            "replication",
+            "Replication",
+            _("Enables replication."),
+            "boolean")
+
+        return properties
+
+    def _init_vendor_properties(self):
+        """Create a dictionary of vendor unique properties.
+
+        This method creates a dictionary of vendor unique properties
+        and returns both created dictionary and vendor name.
+        Returned vendor name is used to check for name of vendor
+        unique properties.
+
+        - Vendor name shouldn't include colon(:) because of the separator
+          and it is automatically replaced by underscore(_).
+          ex. abc:d -> abc_d
+        - Vendor prefix is equal to vendor name.
+          ex. abcd
+        - Vendor unique properties must start with vendor prefix + ':'.
+          ex. abcd:maxIOPS
+
+        Each backend driver needs to override this method to expose
+        its own properties using _set_property() like this:
+
+        self._set_property(
+            properties,
+            "vendorPrefix:specific_property",
+            "Title of property",
+            _("Description of property"),
+            "type")
+
+        : return dictionary of vendor unique properties
+        : return vendor name
+
+        Example of implementation::
+
+        properties = {}
+        self._set_property(
+            properties,
+            "abcd:compression_type",
+            "Compression type",
+            _("Specifies compression type."),
+            "string",
+            enum=["lossy", "lossless", "special"])
+
+        self._set_property(
+            properties,
+            "abcd:minIOPS",
+            "Minimum IOPS QoS",
+            _("Sets minimum IOPS if QoS is enabled."),
+            "integer",
+            minimum=10,
+            default=100)
+
+        return properties, 'abcd'
+        """
+
+        return {}, None
+
+    def init_capabilities(self):
+        """Obtain backend volume stats and capabilities list.
+
+        This stores a dictionary which is consisted of two parts.
+        First part includes static backend capabilities which are
+        obtained by get_volume_stats(). Second part is properties,
+        which includes parameters correspond to extra specs.
+        This properties part is consisted of cinder standard
+        capabilities and vendor unique properties.
+
+        Using this capabilities list, operator can manage/configure
+        backend using key/value from capabilities without specific
+        knowledge of backend.
+        """
+
+        # Set static backend capabilities from get_volume_stats()
+        stats = self.get_volume_stats(True)
+        if stats:
+            self.capabilities = stats.copy()
+
+        # Set cinder standard capabilities
+        self.capabilities['properties'] = self._init_standard_capabilities()
+
+        # Set Vendor unique properties
+        vendor_prop, vendor_name = self._init_vendor_properties()
+        if vendor_name and vendor_prop:
+            updated_vendor_prop = {}
+            old_name = None
+            # Replace colon in vendor name to underscore.
+            if ':' in vendor_name:
+                old_name = vendor_name
+                vendor_name = vendor_name.replace(':', '_')
+                LOG.warning(_LW('The colon in vendor name was replaced '
+                                'by underscore. Updated vendor name is '
+                                '%(name)s".'), {'name': vendor_name})
+
+            for key in vendor_prop:
+                # If key has colon in vendor name field, we replace it to
+                # underscore.
+                # ex. abc:d:storagetype:provisioning
+                #     -> abc_d:storagetype:provisioning
+                if old_name and key.startswith(old_name + ':'):
+                    new_key = key.replace(old_name, vendor_name, 1)
+                    updated_vendor_prop[new_key] = vendor_prop[key]
+                    continue
+                if not key.startswith(vendor_name + ':'):
+                    LOG.warning(_LW('Vendor unique property "%(property)s" '
+                                    'must start with vendor prefix with colon '
+                                    '"%(prefix)s". The property was '
+                                    'not registered on capabilities list.'),
+                                {'prefix': vendor_name + ':',
+                                 'property': key})
+                    continue
+                updated_vendor_prop[key] = vendor_prop[key]
+
+            # Update vendor unique properties to the dictionary
+            self.capabilities['vendor_prefix'] = vendor_name
+            self.capabilities['properties'].update(updated_vendor_prop)
+
+        LOG.debug("Initialized capabilities list: %s.", self.capabilities)
 
     def _update_pools_and_stats(self, data):
         """Updates data for pools and volume stats based on provided data."""

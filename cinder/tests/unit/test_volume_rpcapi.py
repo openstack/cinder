@@ -402,3 +402,10 @@ class VolumeRpcAPITestCase(test.TestCase):
                               cgsnapshot=None,
                               source_cg=self.fake_src_cg,
                               version='1.26')
+
+    def test_get_capabilities(self):
+        self._test_volume_api('get_capabilities',
+                              rpc_method='call',
+                              host='fake_host',
+                              discover=True,
+                              version='1.29')

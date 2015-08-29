@@ -74,6 +74,7 @@ class VolumeAPI(object):
                update_consistencygroup() and delete_consistencygroup().
         1.27 - Adds support for replication V2
         1.28 - Adds manage_existing_snapshot
+        1.29 - Adds get_capabilities.
     """
 
     BASE_RPC_API_VERSION = '1.0'
@@ -83,7 +84,7 @@ class VolumeAPI(object):
         target = messaging.Target(topic=CONF.volume_topic,
                                   version=self.BASE_RPC_API_VERSION)
         serializer = objects_base.CinderObjectSerializer()
-        self.client = rpc.get_client(target, '1.28', serializer=serializer)
+        self.client = rpc.get_client(target, '1.29', serializer=serializer)
 
     def create_consistencygroup(self, ctxt, group, host):
         new_host = utils.extract_host(host)
@@ -295,3 +296,8 @@ class VolumeAPI(object):
         cctxt.cast(ctxt, 'manage_existing_snapshot',
                    snapshot=snapshot,
                    ref=ref)
+
+    def get_capabilities(self, ctxt, host, discover):
+        new_host = utils.extract_host(host)
+        cctxt = self.client.prepare(server=new_host, version='1.29')
+        return cctxt.call(ctxt, 'get_capabilities', discover=discover)

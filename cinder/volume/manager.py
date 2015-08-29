@@ -190,7 +190,7 @@ def locked_snapshot_operation(f):
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '1.28'
+    RPC_API_VERSION = '1.29'
 
     target = messaging.Target(version=RPC_API_VERSION)
 
@@ -333,6 +333,9 @@ class VolumeManager(manager.SchedulerDependentManager):
             # we don't want to continue since we failed
             # to initialize the driver correctly.
             return
+
+        # Initialize backend capabilities list
+        self.driver.init_capabilities()
 
         volumes = self.db.volume_get_all_by_host(ctxt, self.host)
         self._sync_provider_info(ctxt, volumes)
@@ -3066,3 +3069,11 @@ class VolumeManager(manager.SchedulerDependentManager):
         with flow_utils.DynamicLogListener(flow_engine, logger=LOG):
             flow_engine.run()
         return snapshot.id
+
+    def get_capabilities(self, context, discover):
+        """Get capabilities of backend storage."""
+        if discover:
+            self.driver.init_capabilities()
+        capabilities = self.driver.capabilities
+        LOG.debug("Obtained capabilities list: %s.", capabilities)
+        return capabilities
