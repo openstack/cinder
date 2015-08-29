@@ -313,10 +313,10 @@ class RBDTestCase(test.TestCase):
                     self.assertFalse(
                         self.mock_rbd.Image.return_value.unprotect_snap.called)
                     self.assertEqual(
-                        1, self.mock_rbd.RBD.return_value.remove.call_count)
+                        3, self.mock_rbd.RBD.return_value.remove.call_count)
+                    self.assertEqual(3, len(RAISED_EXCEPTIONS))
                     # Make sure the exception was raised
-                    self.assertEqual(RAISED_EXCEPTIONS,
-                                     [self.mock_rbd.ImageBusy])
+                    self.assertIn(self.mock_rbd.ImageBusy, RAISED_EXCEPTIONS)
 
     @common_mocks
     def test_delete_volume_not_found(self):
