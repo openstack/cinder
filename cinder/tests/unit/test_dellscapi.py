@@ -1907,6 +1907,9 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertEqual(self.FLDR, res, 'Unexpected Folder')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_volume',
+                       return_value=VOLUME)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'unmap_volume',
                        return_value=True)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -1923,6 +1926,7 @@ class DellSCSanAPITestCase(test.TestCase):
                          mock_get_json,
                          mock_map_volume,
                          mock_unmap_volume,
+                         mock_find_volume,
                          mock_close_connection,
                          mock_open_connection,
                          mock_init):
