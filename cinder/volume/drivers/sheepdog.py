@@ -31,7 +31,7 @@ from oslo_utils import excutils
 from oslo_utils import units
 
 from cinder import exception
-from cinder.i18n import _, _LE
+from cinder.i18n import _, _LE, _LW
 from cinder.image import image_utils
 from cinder import utils
 from cinder.volume import driver
@@ -62,6 +62,8 @@ class SheepdogClient(object):
                                       'Waiting for cluster to be formatted')
     DOG_RESP_CLUSTER_WAITING = ('Cluster status: '
                                 'Waiting for other nodes to join cluster')
+    DOG_RESP_VDI_ALREADY_EXISTS = ': VDI exists already'
+    DOG_RESP_VDI_NOT_FOUND = ': No VDI found'
 
     def __init__(self, addr, port):
         self.addr = addr
@@ -95,7 +97,7 @@ class SheepdogClient(object):
             _stderr = e.kwargs['stderr']
             with excutils.save_and_reraise_exception():
                 if _stderr.startswith(self.DOG_RESP_CONNECTION_ERROR):
-                    msg = _LE('Failed to connect sheep daemon. '
+                    msg = _LE('Failed to connect to sheep daemon. '
                               'addr: %(addr)s, port: %(port)s')
                     LOG.error(msg, {'addr': self.addr, 'port': self.port})
                 else:
@@ -114,6 +116,49 @@ class SheepdogClient(object):
             reason = _('Waiting for all nodes to join cluster. '
                        'Ensure all sheep daemons are running.')
         raise exception.SheepdogError(reason=reason)
+
+    def create(self, vdiname, size):
+        try:
+            self._run_dog('vdi', 'create', vdiname, '%sG' % size)
+        except exception.SheepdogCmdError as e:
+            _stderr = e.kwargs['stderr']
+            with excutils.save_and_reraise_exception():
+                if _stderr.startswith(self.DOG_RESP_CONNECTION_ERROR):
+                    LOG.error(_LE("Failed to connect to sheep daemon. "
+                              "addr: %(addr)s, port: %(port)s"),
+                              {'addr': self.addr, 'port': self.port})
+                elif _stderr.rstrip('\\n').endswith(
+                        self.DOG_RESP_VDI_ALREADY_EXISTS):
+                    LOG.error(_LE('Volume already exists. %s'), vdiname)
+                else:
+                    LOG.error(_LE('Failed to create volume. %s'), vdiname)
+
+    def delete(self, vdiname):
+        try:
+            (_stdout, _stderr) = self._run_dog('vdi', 'delete', vdiname)
+            if _stderr.rstrip().endswith(self.DOG_RESP_VDI_NOT_FOUND):
+                LOG.warning(_LW('Volume not found. %s'), vdiname)
+            elif _stderr.startswith(self.DOG_RESP_CONNECTION_ERROR):
+                # NOTE(tishizaki)
+                # Dog command does not return error_code although
+                # dog command cannot connect to sheep process.
+                # That is a Sheepdog's bug.
+                # To avoid a Sheepdog's bug, now we need to check stderr.
+                # If Sheepdog has been fixed, this check logic is needed
+                # by old Sheepdog users.
+                reason = (_('Failed to connect to sheep daemon. '
+                          'addr: %(addr)s, port: %(port)s'),
+                          {'addr': self.addr, 'port': self.port})
+                raise exception.SheepdogError(reason=reason)
+        except exception.SheepdogCmdError as e:
+            _stderr = e.kwargs['stderr']
+            with excutils.save_and_reraise_exception():
+                if _stderr.startswith(self.DOG_RESP_CONNECTION_ERROR):
+                    LOG.error(_LE('Failed to connect to sheep daemon. '
+                              'addr: %(addr)s, port: %(port)s'),
+                              {'addr': self.addr, 'port': self.port})
+                else:
+                    LOG.error(_LE('Failed to delete volume. %s'), vdiname)
 
 
 class SheepdogIOWrapper(io.RawIOBase):
@@ -303,9 +348,7 @@ class SheepdogDriver(driver.VolumeDriver):
 
     def create_volume(self, volume):
         """Create a sheepdog volume."""
-        self._try_execute('qemu-img', 'create',
-                          "sheepdog:%s" % volume['name'],
-                          '%sG' % volume['size'])
+        self.client.create(volume.name, volume.size)
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create a sheepdog volume from a snapshot."""
@@ -317,7 +360,7 @@ class SheepdogDriver(driver.VolumeDriver):
 
     def delete_volume(self, volume):
         """Delete a logical volume."""
-        self._delete(volume)
+        self.client.delete(volume.name)
 
     def _resize(self, volume, size=None):
         if not size:
@@ -325,10 +368,6 @@ class SheepdogDriver(driver.VolumeDriver):
 
         self._try_execute('collie', 'vdi', 'resize',
                           volume['name'], size)
-
-    def _delete(self, volume):
-        self._try_execute('collie', 'vdi', 'delete',
-                          volume['name'])
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         with image_utils.temporary_file() as tmp:
@@ -338,7 +377,7 @@ class SheepdogDriver(driver.VolumeDriver):
 
             # remove the image created by import before this function.
             # see volume/drivers/manager.py:_create_volume
-            self._delete(volume)
+            self.client.delete(volume.name)
             # convert and store into sheepdog
             image_utils.convert_image(tmp, 'sheepdog:%s' % volume['name'],
                                       'raw')
