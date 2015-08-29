@@ -1671,7 +1671,8 @@ class VolumeManager(manager.SchedulerDependentManager):
                     # We want to leverage some of the same update model
                     # that we have in the targets update call
 
-                    replication_updates = self.driver.get_replication_updates()
+                    replication_updates = (
+                        self.driver.get_replication_updates(context))
                     for update in replication_updates:
                         pass
 
