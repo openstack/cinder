@@ -569,7 +569,11 @@ class VolumeManager(manager.SchedulerDependentManager):
             raise exception.InvalidVolume(
                 reason=_("volume is not local to this node"))
 
-        is_migrating = volume_ref['migration_status'] is not None
+        # The status 'deleting' is not included, because it only applies to
+        # the source volume to be deleted after a migration. No quota
+        # needs to be handled for it.
+        is_migrating = volume_ref['migration_status'] not in (None, 'error',
+                                                              'success')
         is_migrating_dest = (is_migrating and
                              volume_ref['migration_status'].startswith(
                                  'target:'))
@@ -876,9 +880,6 @@ class VolumeManager(manager.SchedulerDependentManager):
                                              host_name_sanitized,
                                              mountpoint,
                                              mode)
-            if volume['migration_status']:
-                self.db.volume_update(context, volume_id,
-                                      {'migration_status': None})
             self._notify_about_volume_usage(context, volume, "attach.end")
             LOG.info(_LI("Attach volume completed successfully."),
                      resource=volume)
@@ -1442,13 +1443,6 @@ class VolumeManager(manager.SchedulerDependentManager):
                 self._clean_temporary_volume(ctxt, volume['id'],
                                              new_volume['id'])
 
-    def _get_original_status(self, volume):
-        attachments = volume['volume_attachment']
-        if not attachments:
-            return 'available'
-        else:
-            return 'in-use'
-
     def _clean_temporary_volume(self, ctxt, volume_id, new_volume_id,
                                 clean_db_only=False):
         volume = self.db.volume_get(ctxt, volume_id)
@@ -1509,14 +1503,15 @@ class VolumeManager(manager.SchedulerDependentManager):
         new_volume = self.db.volume_get(ctxt, new_volume_id)
         rpcapi = volume_rpcapi.VolumeAPI()
 
-        orig_volume_status = self._get_original_status(volume)
+        orig_volume_status = volume['previous_status']
 
         if error:
             LOG.info(_LI("migrate_volume_completion is cleaning up an error "
                          "for volume %(vol1)s (temporary volume %(vol2)s"),
                      {'vol1': volume['id'], 'vol2': new_volume['id']})
             rpcapi.delete_volume(ctxt, new_volume)
-            updates = {'migration_status': None, 'status': orig_volume_status}
+            updates = {'migration_status': 'error',
+                       'status': orig_volume_status}
             self.db.volume_update(ctxt, volume_id, updates)
             return volume_id
 
@@ -1544,12 +1539,9 @@ class VolumeManager(manager.SchedulerDependentManager):
         # asynchronously delete the destination id
         __, updated_new = self.db.finish_volume_migration(
             ctxt, volume_id, new_volume_id)
-        if orig_volume_status == 'in-use':
-            updates = {'migration_status': 'completing',
-                       'status': orig_volume_status}
-        else:
-            updates = {'migration_status': None}
-        self.db.volume_update(ctxt, volume_id, updates)
+        updates = {'status': orig_volume_status,
+                   'previous_status': volume['status'],
+                   'migration_status': 'success'}
 
         if orig_volume_status == 'in-use':
             attachments = volume['volume_attachment']
@@ -1559,6 +1551,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                                      attachment['attached_host'],
                                      attachment['mountpoint'],
                                      'rw')
+        self.db.volume_update(ctxt, volume_id, updates)
 
         # Asynchronous deletion of the source volume in the back-end (now
         # pointed by the target volume id)
@@ -1568,6 +1561,9 @@ class VolumeManager(manager.SchedulerDependentManager):
             LOG.error(_LE('Failed to request async delete of migration source '
                           'vol %(vol)s: %(err)s'),
                       {'vol': volume_id, 'err': ex})
+        updates = {'migration_status': 'success',
+                   'status': orig_volume_status,
+                   'previous_status': volume['status']}
 
         LOG.info(_LI("Complete-Migrate volume completed successfully."),
                  resource=volume)
@@ -1591,8 +1587,8 @@ class VolumeManager(manager.SchedulerDependentManager):
         moved = False
 
         status_update = None
-        if volume_ref['status'] == 'retyping':
-            status_update = {'status': self._get_original_status(volume_ref)}
+        if volume_ref['status'] in ('retyping', 'maintenance'):
+            status_update = {'status': volume_ref['previous_status']}
 
         self.db.volume_update(ctxt, volume_ref['id'],
                               {'migration_status': 'migrating'})
@@ -1604,7 +1600,8 @@ class VolumeManager(manager.SchedulerDependentManager):
                                                                  host)
                 if moved:
                     updates = {'host': host['host'],
-                               'migration_status': None}
+                               'migration_status': 'success',
+                               'previous_status': volume_ref['status']}
                     if status_update:
                         updates.update(status_update)
                     if model_update:
@@ -1614,7 +1611,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                                                        updates)
             except Exception:
                 with excutils.save_and_reraise_exception():
-                    updates = {'migration_status': None}
+                    updates = {'migration_status': 'error'}
                     if status_update:
                         updates.update(status_update)
                     self.db.volume_update(ctxt, volume_ref['id'], updates)
@@ -1624,7 +1621,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                                              new_type_id)
             except Exception:
                 with excutils.save_and_reraise_exception():
-                    updates = {'migration_status': None}
+                    updates = {'migration_status': 'error'}
                     if status_update:
                         updates.update(status_update)
                     self.db.volume_update(ctxt, volume_ref['id'], updates)
@@ -1834,7 +1831,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         context = ctxt.elevated()
 
         volume_ref = self.db.volume_get(ctxt, volume_id)
-        status_update = {'status': self._get_original_status(volume_ref)}
+        status_update = {'status': volume_ref['previous_status']}
         if context.project_id != volume_ref['project_id']:
             project_id = volume_ref['project_id']
         else:

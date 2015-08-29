@@ -146,7 +146,14 @@ class SchedulerManager(manager.Manager):
         self._wait_for_scheduler()
 
         def _migrate_volume_set_error(self, context, ex, request_spec):
-            volume_state = {'volume_state': {'migration_status': None}}
+            volume = db.volume_get(context, request_spec['volume_id'])
+            if volume.status == 'maintenance':
+                previous_status = (
+                    volume.previous_status or 'maintenance')
+                volume_state = {'volume_state': {'migration_status': 'error',
+                                                 'status': previous_status}}
+            else:
+                volume_state = {'volume_state': {'migration_status': 'error'}}
             self._set_volume_state_and_notify('migrate_volume_to_host',
                                               volume_state,
                                               context, ex, request_spec)
@@ -183,12 +190,9 @@ class SchedulerManager(manager.Manager):
                                      volume_ref, msg, reservations):
             if reservations:
                 QUOTAS.rollback(context, reservations)
-            if (volume_ref['volume_attachment'] is None or
-               len(volume_ref['volume_attachment']) == 0):
-                orig_status = 'available'
-            else:
-                orig_status = 'in-use'
-            volume_state = {'volume_state': {'status': orig_status}}
+            previous_status = (
+                volume_ref.previous_status or volume_ref.status)
+            volume_state = {'volume_state': {'status': previous_status}}
             self._set_volume_state_and_notify('retype', volume_state,
                                               context, ex, request_spec, msg)
 

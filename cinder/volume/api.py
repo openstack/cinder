@@ -185,6 +185,17 @@ class API(base.Base):
                 safe = True
         return safe
 
+    def _is_volume_migrating(self, volume):
+        # The migration status 'none' means no migration has ever been done
+        # before. The migration status 'error' means the previous migration
+        # failed. The migration status 'success' means the previous migration
+        # succeeded. The migration status 'deleting' means the source volume
+        # fails to delete after a migration.
+        # All of the statuses above means the volume is not in the process
+        # of a migration.
+        return volume['migration_status'] not in (None, 'deleting',
+                                                  'error', 'success')
+
     def create(self, context, size, name, description, snapshot=None,
                image_id=None, volume_type=None, metadata=None,
                availability_zone=None, source_volume=None,
@@ -355,7 +366,7 @@ class API(base.Base):
                       'vol_status': volume['status']})
             raise exception.InvalidVolume(reason=msg)
 
-        if volume['migration_status'] not in (None, 'deleting'):
+        if self._is_volume_migrating(volume):
             # Volume is migrating, wait until done
             LOG.info(_LI('Unable to delete volume: %s, '
                          'volume is currently migrating.'), volume['id'])
@@ -397,6 +408,12 @@ class API(base.Base):
 
     @wrap_check_policy
     def update(self, context, volume, fields):
+        if volume['status'] == 'maintenance':
+            LOG.info(_LI("Unable to update volume, "
+                         "because it is in maintenance."), resource=volume)
+            msg = _("The volume cannot be updated during maintenance.")
+            raise exception.InvalidVolume(reason=msg)
+
         vref = self.db.volume_update(context, volume['id'], fields)
         LOG.info(_LI("Volume updated successfully."), resource=vref)
 
@@ -572,7 +589,7 @@ class API(base.Base):
         # If we are in the middle of a volume migration, we don't want the user
         # to see that the volume is 'detaching'. Having 'migration_status' set
         # will have the same effect internally.
-        if volume['migration_status']:
+        if self._is_volume_migrating(volume):
             return
 
         if (volume['status'] != 'in-use' or
@@ -599,6 +616,11 @@ class API(base.Base):
     @wrap_check_policy
     def attach(self, context, volume, instance_uuid, host_name,
                mountpoint, mode):
+        if volume['status'] == 'maintenance':
+            LOG.info(_LI('Unable to attach volume, '
+                         'because it is in maintenance.'), resource=volume)
+            msg = _("The volume cannot be attached in maintenance mode.")
+            raise exception.InvalidVolume(reason=msg)
         volume_metadata = self.get_volume_admin_metadata(context.elevated(),
                                                          volume)
         if 'readonly' not in volume_metadata:
@@ -623,6 +645,11 @@ class API(base.Base):
 
     @wrap_check_policy
     def detach(self, context, volume, attachment_id):
+        if volume['status'] == 'maintenance':
+            LOG.info(_LI('Unable to detach volume, '
+                         'because it is in maintenance.'), resource=volume)
+            msg = _("The volume cannot be detached in maintenance mode.")
+            raise exception.InvalidVolume(reason=msg)
         detach_results = self.volume_rpcapi.detach_volume(context, volume,
                                                           attachment_id)
         LOG.info(_LI("Detach volume completed successfully."),
@@ -631,6 +658,13 @@ class API(base.Base):
 
     @wrap_check_policy
     def initialize_connection(self, context, volume, connector):
+        if volume['status'] == 'maintenance':
+            LOG.info(_LI('Unable to initialize the connection for '
+                         'volume, because it is in '
+                         'maintenance.'), resource=volume)
+            msg = _("The volume connection cannot be initialized in "
+                    "maintenance mode.")
+            raise exception.InvalidVolume(reason=msg)
         init_results = self.volume_rpcapi.initialize_connection(context,
                                                                 volume,
                                                                 connector)
@@ -650,6 +684,11 @@ class API(base.Base):
 
     @wrap_check_policy
     def accept_transfer(self, context, volume, new_user, new_project):
+        if volume['status'] == 'maintenance':
+            LOG.info(_LI('Unable to accept transfer for volume, '
+                         'because it is in maintenance.'), resource=volume)
+            msg = _("The volume cannot accept transfer in maintenance mode.")
+            raise exception.InvalidVolume(reason=msg)
         results = self.volume_rpcapi.accept_transfer(context,
                                                      volume,
                                                      new_user,
@@ -675,7 +714,13 @@ class API(base.Base):
                               cgsnapshot_id):
         check_policy(context, 'create_snapshot', volume)
 
-        if volume['migration_status'] is not None:
+        if volume['status'] == 'maintenance':
+            LOG.info(_LI('Unable to create the snapshot for volume, '
+                         'because it is in maintenance.'), resource=volume)
+            msg = _("The snapshot cannot be created when the volume is in "
+                    "maintenance mode.")
+            raise exception.InvalidVolume(reason=msg)
+        if self._is_volume_migrating(volume):
             # Volume is migrating, wait until done
             msg = _("Snapshot cannot be created while volume is migrating.")
             raise exception.InvalidVolume(reason=msg)
@@ -801,7 +846,13 @@ class API(base.Base):
     def _create_snapshot_in_db_validate(self, context, volume, force):
         check_policy(context, 'create_snapshot', volume)
 
-        if volume['migration_status'] is not None:
+        if volume['status'] == 'maintenance':
+            LOG.info(_LI('Unable to create the snapshot for volume, '
+                         'because it is in maintenance.'), resource=volume)
+            msg = _("The snapshot cannot be created when the volume is in "
+                    "maintenance mode.")
+            raise exception.InvalidVolume(reason=msg)
+        if self._is_volume_migrating(volume):
             # Volume is migrating, wait until done
             msg = _("Snapshot cannot be created while volume is migrating.")
             raise exception.InvalidVolume(reason=msg)
@@ -926,6 +977,12 @@ class API(base.Base):
     def delete_volume_metadata(self, context, volume,
                                key, meta_type=common.METADATA_TYPES.user):
         """Delete the given metadata item from a volume."""
+        if volume['status'] == 'maintenance':
+            LOG.info(_LI('Unable to delete the volume metadata, '
+                         'because it is in maintenance.'), resource=volume)
+            msg = _("The volume metadata cannot be deleted when the volume "
+                    "is in maintenance mode.")
+            raise exception.InvalidVolume(reason=msg)
         self.db.volume_metadata_delete(context, volume['id'], key, meta_type)
         LOG.info(_LI("Delete volume metadata completed successfully."),
                  resource=volume)
@@ -958,6 +1015,12 @@ class API(base.Base):
         `metadata` argument will be deleted.
 
         """
+        if volume['status'] == 'maintenance':
+            LOG.info(_LI('Unable to update the metadata for volume, '
+                         'because it is in maintenance.'), resource=volume)
+            msg = _("The volume metadata cannot be updated when the volume "
+                    "is in maintenance mode.")
+            raise exception.InvalidVolume(reason=msg)
         if delete:
             _metadata = metadata
         else:
@@ -1215,10 +1278,10 @@ class API(base.Base):
                  resource=volume)
 
     @wrap_check_policy
-    def migrate_volume(self, context, volume, host, force_host_copy):
+    def migrate_volume(self, context, volume, host, force_host_copy,
+                       lock_volume):
         """Migrate the volume to the specified host."""
 
-        # We only handle "available" volumes for now
         if volume['status'] not in ['available', 'in-use']:
             msg = _('Volume %(vol_id)s status must be available or in-use, '
                     'but current status is: '
@@ -1227,8 +1290,8 @@ class API(base.Base):
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 
-        # Make sure volume is not part of a migration
-        if volume['migration_status'] is not None:
+        # Make sure volume is not part of a migration.
+        if self._is_volume_migrating(volume):
             msg = _("Volume %s is already part of an active "
                     "migration.") % volume['id']
             LOG.error(msg)
@@ -1278,7 +1341,17 @@ class API(base.Base):
             LOG.error(msg)
             raise exception.InvalidHost(reason=msg)
 
-        self.update(context, volume, {'migration_status': 'starting'})
+        # When the migration of an available volume starts, both the status
+        # and the migration status of the volume will be changed.
+        # If the admin sets lock_volume flag to True, the volume
+        # status is changed to 'maintenance', telling users
+        # that this volume is in maintenance mode, and no action is allowed
+        # on this volume, e.g. attach, detach, retype, migrate, etc.
+        updates = {'migration_status': 'starting',
+                   'previous_status': volume['status']}
+        if lock_volume and volume['status'] == 'available':
+            updates['status'] = 'maintenance'
+        self.update(context, volume, updates)
 
         # Call the scheduler to ensure that the host exists and that it can
         # accept the volume
@@ -1351,7 +1424,7 @@ class API(base.Base):
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 
-        if volume['migration_status'] is not None:
+        if self._is_volume_migrating(volume):
             msg = (_("Volume %s is already part of an active migration.")
                    % volume['id'])
             LOG.error(msg)
@@ -1427,7 +1500,8 @@ class API(base.Base):
         reservations = quota_utils.get_volume_type_reservation(context, volume,
                                                                vol_type_id)
 
-        self.update(context, volume, {'status': 'retyping'})
+        self.update(context, volume, {'status': 'retyping',
+                                      'previous_status': volume['status']})
 
         request_spec = {'volume_properties': volume,
                         'volume_id': volume['id'],
