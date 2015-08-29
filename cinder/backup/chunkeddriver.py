@@ -695,13 +695,14 @@ class ChunkedBackupDriver(driver.BackupDriver):
     def delete(self, backup):
         """Delete the given backup."""
         container = backup['container']
+        object_prefix = backup['service_metadata']
         LOG.debug('delete started, backup: %(id)s, container: %(cont)s, '
                   'prefix: %(pre)s.',
                   {'id': backup['id'],
                    'cont': container,
-                   'pre': backup['service_metadata']})
+                   'pre': object_prefix})
 
-        if container is not None:
+        if container is not None and object_prefix is not None:
             object_names = []
             try:
                 object_names = self._generate_object_names(backup)
