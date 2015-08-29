@@ -737,6 +737,21 @@ def quota_get_all_by_project(context, project_id):
     return IMPL.quota_get_all_by_project(context, project_id)
 
 
+def quota_allocated_get_all_by_project(context, project_id):
+    """Retrieve all allocated quotas associated with a given project."""
+    return IMPL.quota_allocated_get_all_by_project(context, project_id)
+
+
+def quota_allocated_update(context, project_id,
+                           resource, allocated):
+    """Update allocated quota to subprojects or raise if it does not exist.
+
+    :raises: cinder.exception.ProjectQuotaNotFound
+    """
+    return IMPL.quota_allocated_update(context, project_id,
+                                       resource, allocated)
+
+
 def quota_update(context, project_id, resource, limit):
     """Update a quota or raise if it does not exist."""
     return IMPL.quota_update(context, project_id, resource, limit)
