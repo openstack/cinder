@@ -3765,10 +3765,10 @@ def _cgsnapshot_get_all(context, project_id=None, group_id=None, filters=None):
         query = query.filter_by(**filters)
 
     if project_id:
-        query.filter_by(project_id=project_id)
+        query = query.filter_by(project_id=project_id)
 
     if group_id:
-        query.filter_by(consistencygroup_id=group_id)
+        query = query.filter_by(consistencygroup_id=group_id)
 
     return query.all()
 
