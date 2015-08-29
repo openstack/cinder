@@ -2109,6 +2109,9 @@ def snapshot_get_all(context, filters=None, marker=None, limit=None,
                       paired with corresponding item in sort_keys
     :returns: list of matching snapshots
     """
+    if filters and not is_valid_model_filters(models.Snapshot, filters):
+        return []
+
     session = get_session()
     with session.begin():
         query = _generate_paginate_query(context, session, marker, limit,
@@ -2147,6 +2150,9 @@ def snapshot_get_all_for_volume(context, volume_id):
 
 @require_context
 def snapshot_get_by_host(context, host, filters=None):
+    if filters and not is_valid_model_filters(models.Snapshot, filters):
+        return []
+
     query = model_query(context, models.Snapshot, read_deleted='no',
                         project_only=True)
     if filters:
@@ -2189,6 +2195,9 @@ def snapshot_get_all_by_project(context, project_id, filters=None, marker=None,
                       paired with corresponding item in sort_keys
     :returns: list of matching snapshots
     """
+    if filters and not is_valid_model_filters(models.Snapshot, filters):
+        return []
+
     authorize_project_context(context, project_id)
 
     # Add project_id to filters
@@ -3419,6 +3428,9 @@ def backup_get(context, backup_id):
 
 
 def _backup_get_all(context, filters=None):
+    if filters and not is_valid_model_filters(models.Backup, filters):
+        return []
+
     session = get_session()
     with session.begin():
         # Generate the query
