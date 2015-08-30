@@ -643,9 +643,9 @@ class StorwizeHelpers(object):
                   'secondary': None}
 
         resp = self.ssh.lsvdiskcopy(vdisk)
-        for copy_id, status, sync, primary, mdisk_grp in \
+        for copy_id, status, sync, primary, mdisk_grp in (
             resp.select('copy_id', 'status', 'sync',
-                        'primary', 'mdisk_grp_name'):
+                        'primary', 'mdisk_grp_name')):
             copy = {'copy_id': copy_id,
                     'status': status,
                     'sync': sync,
