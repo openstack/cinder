@@ -70,8 +70,6 @@ from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import utils as vol_utils
 from cinder.volume import volume_types
 
-from eventlet import greenpool
-
 LOG = logging.getLogger(__name__)
 
 QUOTAS = quota.QUOTAS
@@ -202,7 +200,6 @@ class VolumeManager(manager.SchedulerDependentManager):
                                             *args, **kwargs)
         self.configuration = config.Configuration(volume_manager_opts,
                                                   config_group=service_name)
-        self._tp = greenpool.GreenPool()
         self.stats = {}
 
         if not volume_driver:
@@ -235,9 +232,6 @@ class VolumeManager(manager.SchedulerDependentManager):
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE("Invalid JSON: %s"),
                           self.driver.configuration.extra_capabilities)
-
-    def _add_to_threadpool(self, func, *args, **kwargs):
-        self._tp.spawn_n(func, *args, **kwargs)
 
     def _count_allocated_capacity(self, ctxt, volume):
         pool = vol_utils.extract_host(volume['host'], 'pool')

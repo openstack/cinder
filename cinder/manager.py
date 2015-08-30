@@ -61,6 +61,8 @@ from cinder.db import base
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import version
 
+from eventlet import greenpool
+
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
@@ -140,6 +142,7 @@ class SchedulerDependentManager(Manager):
         self.last_capabilities = None
         self.service_name = service_name
         self.scheduler_rpcapi = scheduler_rpcapi.SchedulerAPI()
+        self._tp = greenpool.GreenPool()
         super(SchedulerDependentManager, self).__init__(host, db_driver)
 
     def update_service_capabilities(self, capabilities):
@@ -156,3 +159,6 @@ class SchedulerDependentManager(Manager):
                 self.service_name,
                 self.host,
                 self.last_capabilities)
+
+    def _add_to_threadpool(self, func, *args, **kwargs):
+        self._tp.spawn_n(func, *args, **kwargs)
