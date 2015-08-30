@@ -112,6 +112,7 @@ class VolumeTypesManageController(wsgi.Controller):
         vol_type = body['volume_type']
         description = vol_type.get('description')
         name = vol_type.get('name')
+        is_public = vol_type.get('is_public')
 
         # Name and description can not be both None.
         # If name specified, name can not be empty.
@@ -123,6 +124,11 @@ class VolumeTypesManageController(wsgi.Controller):
             msg = _("Specify either volume type name and/or description.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
+        if is_public is not None and not utils.is_valid_boolstr(is_public):
+            msg = _("Invalid value '%s' for is_public. Accepted values: "
+                    "True or False.") % is_public
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
         if name:
             utils.check_string_length(name, 'Type name',
                                       min_length=1, max_length=255)
@@ -132,7 +138,8 @@ class VolumeTypesManageController(wsgi.Controller):
                                       min_length=0, max_length=255)
 
         try:
-            volume_types.update(context, id, name, description)
+            volume_types.update(context, id, name, description,
+                                is_public=is_public)
             # Get the updated
             vol_type = volume_types.get_volume_type(context, id)
             req.cache_resource(vol_type, name='types')

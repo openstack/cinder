@@ -128,6 +128,7 @@ class VolumeTypesApiTest(test.TestCase):
         expected_volume_type = dict(name='new_type',
                                     extra_specs={},
                                     description=None,
+                                    is_public=None,
                                     id=42)
         self.assertDictMatch(output['volume_type'], expected_volume_type)
 
@@ -154,6 +155,7 @@ class VolumeTypesApiTest(test.TestCase):
             expected_volume_type = dict(name='new_type',
                                         extra_specs={},
                                         id=42 + i,
+                                        is_public=None,
                                         description=None)
             self.assertDictMatch(output['volume_types'][i],
                                  expected_volume_type)

@@ -36,9 +36,10 @@ def stub_volume_type(id):
                 extra_specs=specs)
 
 
-def stub_volume_type_updated(id):
+def stub_volume_type_updated(id, is_public=True):
     return dict(id=id,
                 name='vol_type_%s_%s' % (six.text_type(id), six.text_type(id)),
+                is_public=is_public,
                 description='vol_type_desc_%s_%s' % (
                     six.text_type(id), six.text_type(id)))
 
@@ -84,14 +85,6 @@ def return_volume_types_create_duplicate_type(context,
     raise exception.VolumeTypeExists(id=name)
 
 
-def return_volume_types_update(context, id, name, description):
-    pass
-
-
-def return_volume_types_update_fail(context, id, name, description):
-    raise exception.VolumeTypeUpdateFailed(id=id)
-
-
 def stub_volume_type_updated_name_only(id):
     return dict(id=id,
                 name='vol_type_%s_%s' % (six.text_type(id), six.text_type(id)),
@@ -104,11 +97,7 @@ def stub_volume_type_updated_name_after_delete(id):
                 description='vol_type_desc_%s' % six.text_type(id))
 
 
-def return_volume_types_update_exist(context, id, name, description):
-    raise exception.VolumeTypeExists(id=id, name=name)
-
-
-def return_volume_types_get_volume_type_updated(context, id):
+def return_volume_types_get_volume_type_updated(id, is_public=True):
     if id == "777":
         raise exception.VolumeTypeNotFound(volume_type_id=id)
     if id == '888':
@@ -119,7 +108,7 @@ def return_volume_types_get_volume_type_updated(context, id):
         return stub_volume_type_updated_name_after_delete(int(id))
 
     # anything else
-    return stub_volume_type_updated(int(id))
+    return stub_volume_type_updated(int(id), is_public=is_public)
 
 
 def return_volume_types_get_by_name(context, name):
@@ -273,14 +262,15 @@ class VolumeTypesManageApiTest(test.TestCase):
         body = {'volume_type': 'string'}
         self._create_volume_type_bad_body(body=body)
 
-    def test_update(self):
-        self.stubs.Set(volume_types, 'update',
-                       return_volume_types_update)
-        self.stubs.Set(volume_types, 'get_volume_type',
-                       return_volume_types_get_volume_type_updated)
+    @mock.patch('cinder.volume.volume_types.update')
+    @mock.patch('cinder.volume.volume_types.get_volume_type')
+    def test_update(self, mock_get, mock_update):
+        mock_get.return_value = return_volume_types_get_volume_type_updated(
+            '1', is_public=False)
 
         body = {"volume_type": {"name": "vol_type_1_1",
-                                "description": "vol_type_desc_1_1"}}
+                                "description": "vol_type_desc_1_1",
+                                "is_public": False}}
         req = fakes.HTTPRequest.blank('/v2/fake/types/1')
         req.method = 'PUT'
 
@@ -289,7 +279,8 @@ class VolumeTypesManageApiTest(test.TestCase):
         self.assertEqual(1, len(self.notifier.notifications))
         self._check_test_results(res_dict,
                                  {'expected_desc': 'vol_type_desc_1_1',
-                                  'expected_name': 'vol_type_1_1'})
+                                  'expected_name': 'vol_type_1_1',
+                                  'is_public': False})
 
     @mock.patch('cinder.volume.volume_types.update')
     @mock.patch('cinder.volume.volume_types.get_volume_type')
@@ -325,11 +316,11 @@ class VolumeTypesManageApiTest(test.TestCase):
         self.assertRaises(exception.InvalidInput,
                           self.controller._update, req, '1', body)
 
-    def test_update_non_exist(self):
-        self.stubs.Set(volume_types, 'update',
-                       return_volume_types_update)
-        self.stubs.Set(volume_types, 'get_volume_type',
-                       return_volume_types_get_volume_type)
+    @mock.patch('cinder.volume.volume_types.get_volume_type')
+    @mock.patch('cinder.volume.volume_types.update')
+    def test_update_non_exist(self, mock_update, mock_get_volume_type):
+        mock_get_volume_type.side_effect = exception.VolumeTypeNotFound(
+            volume_type_id=777)
 
         body = {"volume_type": {"name": "vol_type_1_1",
                                 "description": "vol_type_desc_1_1"}}
@@ -341,11 +332,11 @@ class VolumeTypesManageApiTest(test.TestCase):
                           self.controller._update, req, '777', body)
         self.assertEqual(1, len(self.notifier.notifications))
 
-    def test_update_db_fail(self):
-        self.stubs.Set(volume_types, 'update',
-                       return_volume_types_update_fail)
-        self.stubs.Set(volume_types, 'get_volume_type',
-                       return_volume_types_get_volume_type)
+    @mock.patch('cinder.volume.volume_types.get_volume_type')
+    @mock.patch('cinder.volume.volume_types.update')
+    def test_update_db_fail(self, mock_update, mock_get_volume_type):
+        mock_update.side_effect = exception.VolumeTypeUpdateFailed(id='1')
+        mock_get_volume_type.return_value = stub_volume_type(1)
 
         body = {"volume_type": {"name": "vol_type_1_1",
                                 "description": "vol_type_desc_1_1"}}
@@ -374,11 +365,11 @@ class VolumeTypesManageApiTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller._update, req, '1', body)
 
-    def test_update_only_name(self):
-        self.stubs.Set(volume_types, 'update',
-                       return_volume_types_update)
-        self.stubs.Set(volume_types, 'get_volume_type',
-                       return_volume_types_get_volume_type_updated)
+    @mock.patch('cinder.volume.volume_types.update')
+    @mock.patch('cinder.volume.volume_types.get_volume_type')
+    def test_update_only_name(self, mock_get, mock_update):
+        mock_get.return_value = return_volume_types_get_volume_type_updated(
+            '999')
 
         body = {"volume_type": {"name": "vol_type_999_999"}}
         req = fakes.HTTPRequest.blank('/v2/fake/types/999')
@@ -391,11 +382,11 @@ class VolumeTypesManageApiTest(test.TestCase):
                                  {'expected_name': 'vol_type_999_999',
                                   'expected_desc': 'vol_type_desc_999'})
 
-    def test_update_only_description(self):
-        self.stubs.Set(volume_types, 'update',
-                       return_volume_types_update)
-        self.stubs.Set(volume_types, 'get_volume_type',
-                       return_volume_types_get_volume_type_updated)
+    @mock.patch('cinder.volume.volume_types.update')
+    @mock.patch('cinder.volume.volume_types.get_volume_type')
+    def test_update_only_description(self, mock_get, mock_update):
+        mock_get.return_value = return_volume_types_get_volume_type_updated(
+            '888')
 
         body = {"volume_type": {"description": "vol_type_desc_888_888"}}
         req = fakes.HTTPRequest.blank('/v2/fake/types/888')
@@ -408,11 +399,23 @@ class VolumeTypesManageApiTest(test.TestCase):
                                  {'expected_name': 'vol_type_888',
                                   'expected_desc': 'vol_type_desc_888_888'})
 
-    def test_rename_existing_name(self):
-        self.stubs.Set(volume_types, 'update',
-                       return_volume_types_update_exist)
-        self.stubs.Set(volume_types, 'get_volume_type',
-                       return_volume_types_get_volume_type_updated)
+    def test_update_invalid_is_public(self):
+        body = {"volume_type": {"name": "test",
+                                "description": "something",
+                                "is_public": "fake"}}
+        req = fakes.HTTPRequest.blank('/v2/fake/types/1')
+        req.method = 'PUT'
+
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._update, req, '1', body)
+
+    @mock.patch('cinder.volume.volume_types.update')
+    @mock.patch('cinder.volume.volume_types.get_volume_type')
+    def test_rename_existing_name(self, mock_get, mock_update):
+        mock_update.side_effect = exception.VolumeTypeExists(
+            id="666", name="vol_type_666")
+        mock_get.return_value = return_volume_types_get_volume_type_updated(
+            '666')
         # first attempt fail
         body = {"volume_type": {"name": "vol_type_666"}}
         req = fakes.HTTPRequest.blank('/v2/fake/types/666')
@@ -434,10 +437,7 @@ class VolumeTypesManageApiTest(test.TestCase):
         self.assertEqual(1, len(self.notifier.notifications))
 
         # update again
-        self.stubs.Set(volume_types, 'update',
-                       return_volume_types_update)
-        self.stubs.Set(volume_types, 'get_volume_type',
-                       return_volume_types_get_volume_type_updated)
+        mock_update.side_effect = mock.MagicMock()
         body = {"volume_type": {"name": "vol_type_666_666"}}
         req = fakes.HTTPRequest.blank('/v2/fake/types/666')
         req.method = 'PUT'
@@ -457,3 +457,6 @@ class VolumeTypesManageApiTest(test.TestCase):
         if expected_results.get('expected_name'):
             self.assertEqual(expected_results['expected_name'],
                              results['volume_type']['name'])
+        if expected_results.get('is_public') is not None:
+            self.assertEqual(expected_results['is_public'],
+                             results['volume_type']['is_public'])

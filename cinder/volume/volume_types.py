@@ -57,7 +57,7 @@ def create(context,
     return type_ref
 
 
-def update(context, id, name, description):
+def update(context, id, name, description, is_public=None):
     """Update volume type by id."""
     if id is None:
         msg = _("id cannot be None")
@@ -66,7 +66,8 @@ def update(context, id, name, description):
         type_updated = db.volume_type_update(context,
                                              id,
                                              dict(name=name,
-                                                  description=description))
+                                                  description=description,
+                                                  is_public=is_public))
     except db_exc.DBError:
         LOG.exception(_LE('DB error:'))
         raise exception.VolumeTypeUpdateFailed(id=id)
