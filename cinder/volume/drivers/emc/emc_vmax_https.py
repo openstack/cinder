@@ -21,7 +21,10 @@ import string
 import struct
 
 from eventlet import patcher
-import OpenSSL
+try:
+    import OpenSSL
+except ImportError:
+    OpenSSL = None
 from oslo_log import log as logging
 import six
 from six.moves import http_client
@@ -30,10 +33,8 @@ from six.moves import urllib
 from cinder.i18n import _, _LI
 
 # Handle case where we are running in a monkey patched environment
-if patcher.is_monkey_patched('socket'):
+if OpenSSL and patcher.is_monkey_patched('socket'):
     from eventlet.green.OpenSSL import SSL
-else:
-    raise ImportError
 
 try:
     import pywbem
