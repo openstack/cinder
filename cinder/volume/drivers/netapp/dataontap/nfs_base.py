@@ -324,7 +324,7 @@ class NetAppNfsDriver(driver.ManageableVD,
                 dir = self._get_mount_point_for_share(share)
                 file_name = 'img-cache-%s' % image_id
                 file_path = '%s/%s' % (dir, file_name)
-                if os.path.exists(file_path):
+                if os.path.isfile(file_path):
                     LOG.debug('Found cache file for image %(image_id)s'
                               ' on share %(share)s',
                               {'image_id': image_id, 'share': share})
