@@ -220,6 +220,17 @@ def get_sort_params(params, default_key='created_at', default_dir='desc'):
     return sort_keys, sort_dirs
 
 
+def get_request_url(request):
+    url = request.application_url
+    headers = request.headers
+    forwarded = headers.get('X-Forwarded-Host')
+    if forwarded:
+        url_parts = list(urllib.parse.urlsplit(url))
+        url_parts[1] = re.split(',\s?', forwarded)[-1]
+        url = urllib.parse.urlunsplit(url_parts).rstrip('/')
+    return url
+
+
 def remove_version_from_href(href):
     """Removes the first api version from the href.
 
@@ -265,7 +276,7 @@ class ViewBuilder(object):
         """Return href string with proper limit and marker params."""
         params = request.params.copy()
         params["marker"] = identifier
-        prefix = self._update_link_prefix(request.application_url,
+        prefix = self._update_link_prefix(get_request_url(request),
                                           CONF.osapi_volume_base_URL)
         url = os.path.join(prefix,
                            request.environ["cinder.context"].project_id,
@@ -274,7 +285,7 @@ class ViewBuilder(object):
 
     def _get_href_link(self, request, identifier):
         """Return an href string pointing to this object."""
-        prefix = self._update_link_prefix(request.application_url,
+        prefix = self._update_link_prefix(get_request_url(request),
                                           CONF.osapi_volume_base_URL)
         return os.path.join(prefix,
                             request.environ["cinder.context"].project_id,
@@ -283,7 +294,7 @@ class ViewBuilder(object):
 
     def _get_bookmark_link(self, request, identifier):
         """Create a URL that refers to a specific resource."""
-        base_url = remove_version_from_href(request.application_url)
+        base_url = remove_version_from_href(get_request_url(request))
         base_url = self._update_link_prefix(base_url,
                                             CONF.osapi_volume_base_URL)
         return os.path.join(base_url,

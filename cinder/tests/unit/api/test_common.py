@@ -550,3 +550,23 @@ class LinkPrefixTest(test.TestCase):
             "http://new.prefix.com:20455/new_extra_prefix")
         self.assertEqual("http://new.prefix.com:20455/new_extra_prefix/v1",
                          result)
+
+
+class RequestUrlTest(test.TestCase):
+    def test_get_request_url_no_forward(self):
+        app_url = 'http://127.0.0.1/v2;param?key=value#frag'
+        request = type('', (), {
+            'application_url': app_url,
+            'headers': {}
+        })
+        result = common.get_request_url(request)
+        self.assertEqual(app_url, result)
+
+    def test_get_request_url_forward(self):
+        request = type('', (), {
+            'application_url': 'http://127.0.0.1/v2;param?key=value#frag',
+            'headers': {'X-Forwarded-Host': '192.168.0.243:24'}
+        })
+        result = common.get_request_url(request)
+        self.assertEqual('http://192.168.0.243:24/v2;param?key=value#frag',
+                         result)
