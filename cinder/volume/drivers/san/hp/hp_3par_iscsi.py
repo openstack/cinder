@@ -131,16 +131,16 @@ class HP3PARISCSIDriver(driver.TransferVD,
     def get_volume_stats(self, refresh=False):
         common = self._login()
         try:
-            stats = common.get_volume_stats(
+            self._stats = common.get_volume_stats(
                 refresh,
                 self.get_filter_function(),
                 self.get_goodness_function())
-            stats['storage_protocol'] = 'iSCSI'
-            stats['driver_version'] = self.VERSION
+            self._stats['storage_protocol'] = 'iSCSI'
+            self._stats['driver_version'] = self.VERSION
             backend_name = self.configuration.safe_get('volume_backend_name')
-            stats['volume_backend_name'] = (backend_name or
-                                            self.__class__.__name__)
-            return stats
+            self._stats['volume_backend_name'] = (backend_name or
+                                                  self.__class__.__name__)
+            return self._stats
         finally:
             self._logout(common)
 
