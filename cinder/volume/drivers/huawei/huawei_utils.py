@@ -108,8 +108,9 @@ def _get_opts_from_specs(opts_capability, opts_value, specs):
         if key:
             key = key.lower()
 
-        if ((not scope or scope == 'capabilities') and
-           key in opts_capability):
+        if ((not scope or scope == 'capabilities')
+                and key in opts_capability):
+
             words = value.split()
 
             if not (words and len(words) == 2 and words[0] == '<is>'):
@@ -117,8 +118,6 @@ def _get_opts_from_specs(opts_capability, opts_value, specs):
                               "capabilities:%s='<is> True' or "
                               "'<is> true'."), key)
             else:
-                # Get the second value(true/True) of the Extra specs
-                # value(<is> true/<is> True)
                 opts[key] = words[1].lower()
 
         if (scope in opts_capability) and (key in opts_value):
@@ -298,8 +297,8 @@ def get_lun_conf_params(xml_file_path):
         lunsetinfo['MirrorSwitch'] = mirrorswitch.strip()
 
     prefetch = root.find('LUN/Prefetch')
-    fetchtype = prefetch.attrib['Type']
     if prefetch is not None and prefetch.attrib['Type']:
+        fetchtype = prefetch.attrib['Type']
         if fetchtype in ['0', '1', '2', '3']:
             lunsetinfo['PrefetchType'] = fetchtype.strip()
             typevalue = prefetch.attrib['Value'].strip()
@@ -435,17 +434,17 @@ def wait_for_condition(xml_file_path, func, interval, timeout=None):
 
 def get_login_info(xml_file_path):
     """Get login IP, user name and password from config file."""
-    logininfo = {}
+    login_info = {}
     root = parse_xml_file(xml_file_path)
 
-    logininfo['RestURL'] = root.findtext('Storage/RestURL').strip()
+    login_info['RestURL'] = root.findtext('Storage/RestURL').strip()
 
     for key in ['UserName', 'UserPassword']:
         node = root.find('Storage/%s' % key)
         node_text = node.text
-        logininfo[key] = node_text
+        login_info[key] = node_text
 
-    return logininfo
+    return login_info
 
 
 def _change_file_mode(filepath):

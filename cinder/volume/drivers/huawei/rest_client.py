@@ -117,8 +117,7 @@ class RestClient(object):
         raise exception.VolumeBackendAPIException(data=msg)
 
     def _assert_rest_result(self, result, err_str):
-        error_code = result['error']['code']
-        if error_code != 0:
+        if result['error']['code'] != 0:
             msg = (_('%(err)s\nresult: %(res)s.') % {'err': err_str,
                                                      'res': result})
             LOG.error(msg)
@@ -153,9 +152,9 @@ class RestClient(object):
         return True
 
     def delete_lun(self, lun_id):
-        lun_group_id = self.get_lungroupid_by_lunid(lun_id)
-        if lun_group_id:
-            self.remove_lun_from_lungroup(lun_group_id, lun_id)
+        lun_group_ids = self.get_lungroupids_by_lunid(lun_id)
+        if lun_group_ids and len(lun_group_ids) == 1:
+            self.remove_lun_from_lungroup(lun_group_ids[0], lun_id)
 
         url = self.url + "/lun/" + lun_id
         data = json.dumps({"TYPE": "11",
@@ -297,7 +296,7 @@ class RestClient(object):
         If hostgroup doesn't exist, create one.
         """
         hostgroup_name = constants.HOSTGROUP_PREFIX + host_id
-        hostgroup_id = self._create_hostgroup_with_check(hostgroup_name)
+        hostgroup_id = self.create_hostgroup_with_check(hostgroup_name)
         is_associated = self._is_host_associate_to_hostgroup(hostgroup_id,
                                                              host_id)
         if not is_associated:
@@ -334,9 +333,10 @@ class RestClient(object):
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Check portgroup associate error.'))
 
-        if self._get_id_from_result(result, view_id, 'ID'):
-            return True
-
+        if 'data' in result:
+            for item in result['data']:
+                if view_id == item['ID']:
+                    return True
         return False
 
     def mapping_hostgroup_and_lungroup(self, volume_name, hostgroup_id,
@@ -426,12 +426,12 @@ class RestClient(object):
 
         return self._get_id_from_result(result, lungroup_name, 'NAME')
 
-    def _create_hostgroup_with_check(self, hostgroup_name):
+    def create_hostgroup_with_check(self, hostgroup_name):
         """Check if host exists on the array, or create it."""
         hostgroup_id = self.find_hostgroup(hostgroup_name)
         if hostgroup_id:
             LOG.info(_LI(
-                '_create_hostgroup_with_check. '
+                'create_hostgroup_with_check. '
                 'hostgroup name: %(name)s, '
                 'hostgroup id: %(id)s'),
                 {'name': hostgroup_name,
@@ -455,7 +455,7 @@ class RestClient(object):
                 raise exception.VolumeBackendAPIException(data=err_msg)
 
         LOG.info(_LI(
-            '_create_hostgroup_with_check. '
+            'create_hostgroup_with_check. '
             'Create hostgroup success. '
             'hostgroup name: %(name)s, '
             'hostgroup id: %(id)s'),
@@ -500,8 +500,10 @@ class RestClient(object):
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Check lungroup associate error.'))
 
-        if self._get_id_from_result(result, view_id, 'ID'):
-            return True
+        if 'data' in result:
+            for item in result['data']:
+                if view_id == item['ID']:
+                    return True
         return False
 
     def hostgroup_associated(self, view_id, hostgroup_id):
@@ -511,8 +513,10 @@ class RestClient(object):
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Check hostgroup associate error.'))
 
-        if self._get_id_from_result(result, view_id, 'ID'):
-            return True
+        if 'data' in result:
+            for item in result['data']:
+                if view_id == item['ID']:
+                    return True
         return False
 
     def find_host_lun_id(self, host_id, lun_id):
@@ -535,14 +539,14 @@ class RestClient(object):
                         raise
         return host_lun_id
 
-    def find_host(self, hostname):
+    def find_host(self, host_name):
         """Get the given host ID."""
         url = self.url + "/host?range=[0-65535]"
         data = json.dumps({"TYPE": "21"})
         result = self.call(url, data, "GET")
         self._assert_rest_result(result, _('Find host in hostgroup error.'))
 
-        return self._get_id_from_result(result, hostname, 'NAME')
+        return self._get_id_from_result(result, host_name, 'NAME')
 
     def add_host_with_check(self, host_name, host_name_before_hash):
         host_id = self.find_host(host_name)
@@ -602,8 +606,11 @@ class RestClient(object):
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Check hostgroup associate error.'))
 
-        if self._get_id_from_result(result, host_id, 'ID'):
-            return True
+        if 'data' in result:
+            for item in result['data']:
+                if host_id == item['ID']:
+                    return True
+
         return False
 
     def _is_lun_associated_to_lungroup(self, lungroup_id, lun_id):
@@ -911,13 +918,13 @@ class RestClient(object):
 
     def _get_capacity(self, pool_name, result):
         """Get free capacity and total capacity of the pool."""
-        poolinfo = self.find_pool_info(pool_name, result)
+        pool_info = self.find_pool_info(pool_name, result)
         pool_capacity = {'total_capacity': 0.0,
                          'free_capacity': 0.0}
 
-        if poolinfo:
-            total = int(poolinfo['TOTALCAPACITY']) / constants.CAPACITY_UNIT
-            free = int(poolinfo['CAPACITY']) / constants.CAPACITY_UNIT
+        if pool_info:
+            total = float(pool_info['TOTALCAPACITY']) / constants.CAPACITY_UNIT
+            free = float(pool_info['CAPACITY']) / constants.CAPACITY_UNIT
             pool_capacity['total_capacity'] = total
             pool_capacity['free_capacity'] = free
 
@@ -947,8 +954,23 @@ class RestClient(object):
         result = self.call(url, None, "DELETE")
         self._assert_rest_result(result, _('Delete LUNcopy error.'))
 
-    def get_connected_free_wwns(self):
-        """Get free connected FC port WWNs.
+    def get_init_targ_map(self, wwns):
+        init_targ_map = {}
+        tgt_port_wwns = []
+        for wwn in wwns:
+            tgtwwpns = self.get_fc_target_wwpns(wwn)
+            if not tgtwwpns:
+                continue
+
+            init_targ_map[wwn] = tgtwwpns
+            for tgtwwpn in tgtwwpns:
+                if tgtwwpn not in tgt_port_wwns:
+                    tgt_port_wwns.append(tgtwwpn)
+
+        return (tgt_port_wwns, init_targ_map)
+
+    def get_online_free_wwns(self):
+        """Get online free WWNs.
 
         If no new ports connected, return an empty list.
         """
@@ -1032,12 +1054,11 @@ class RestClient(object):
         msg = _('Get FC target wwpn error.')
         self._assert_rest_result(result, msg)
 
-        fc_wwpns = None
-        if 'data' in result:
+        fc_wwpns = []
+        if "data" in result:
             for item in result['data']:
                 if wwn == item['INITIATOR_PORT_WWN']:
-                    fc_wwpns = item['TARGET_PORT_WWN']
-                    break
+                    fc_wwpns.append(item['TARGET_PORT_WWN'])
 
         return fc_wwpns
 
@@ -1309,21 +1330,21 @@ class RestClient(object):
 
         return result['data']['IOCLASSID']
 
-    def get_lungroupid_by_lunid(self, lun_id):
-        """Get lungroup id by lun id."""
+    def get_lungroupids_by_lunid(self, lun_id):
+        """Get lungroup ids by lun id."""
+
         url = self.url + ("/lungroup/associate?TYPE=256"
                           "&ASSOCIATEOBJTYPE=11&ASSOCIATEOBJID=%s" % lun_id)
 
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Get lungroup id by lun id error.'))
 
-        lun_group_id = None
-        # Lun only in one lungroup.
+        lungroup_ids = []
         if 'data' in result:
             for item in result['data']:
-                lun_group_id = item['ID']
+                lungroup_ids.append(item['ID'])
 
-        return lun_group_id
+        return lungroup_ids
 
     def get_lun_info(self, lun_id):
         url = self.url + "/lun/" + lun_id
@@ -1382,8 +1403,6 @@ class RestClient(object):
 
         if 'data' in result:
             for item in result['data']:
-                LOG.debug('get_partition_id_by_name item %(item)s.',
-                          {'item': item})
                 if name == item['NAME']:
                     return item['ID']
 
@@ -1527,6 +1546,49 @@ class RestClient(object):
         result = self.call(url, data, "PUT")
         self._assert_rest_result(result, _('Remove iscsi from host error.'))
 
+    def get_host_online_fc_initiators(self, host_id):
+        url = self.url + "/fc_initiator"
+        data = json.dumps({'PARENTTYPE': 21,
+                           'PARENTID': host_id})
+        result = self.call(url, data, "GET")
+
+        initiators = []
+        if 'data' in result:
+            for item in result['data']:
+                if (('PARENTID' in item) and (item['PARENTID'] == host_id)
+                   and (item['RUNNINGSTATUS'] == constants.FC_INIT_ONLINE)):
+                    initiators.append(item['ID'])
+
+        return initiators
+
+    def get_host_fc_initiators(self, host_id):
+        url = self.url + "/fc_initiator"
+        data = json.dumps({'PARENTTYPE': 21,
+                           'PARENTID': host_id})
+        result = self.call(url, data, "GET")
+
+        initiators = []
+        if 'data' in result:
+            for item in result['data']:
+                if (('PARENTID' in item) and (item['PARENTID'] == host_id)):
+                    initiators.append(item['ID'])
+
+        return initiators
+
+    def get_host_iscsi_initiators(self, host_id):
+        url = self.url + "/iscsi_initiator"
+        data = json.dumps({'PARENTTYPE': 21,
+                           'PARENTID': host_id})
+        result = self.call(url, data, "GET")
+
+        initiators = []
+        if 'data' in result:
+            for item in result['data']:
+                if (('PARENTID' in item) and (item['PARENTID'] == host_id)):
+                    initiators.append(item['ID'])
+
+        return initiators
+
     def rename_lun(self, lun_id, new_name):
         url = self.url + "/lun/" + lun_id
         data = json.dumps({"NAME": new_name})
@@ -1534,3 +1596,79 @@ class RestClient(object):
         msg = _('Rename lun on array error.')
         self._assert_rest_result(result, msg)
         self._assert_data_in_result(result, msg)
+
+    def is_fc_initiator_associated_to_host(self, ininame):
+        """Check whether the initiator is associated to the host."""
+        url = self.url + '/fc_initiator?range=[0-256]'
+        result = self.call(url, None, "GET")
+        self._assert_rest_result(result,
+                                 'Check initiator associated to host error.')
+
+        if "data" in result:
+            for item in result['data']:
+                if item['ID'] == ininame and item['ISFREE'] != "true":
+                    return True
+        return False
+
+    def remove_fc_from_host(self, initiator):
+        url = self.url + '/fc_initiator/remove_fc_from_host'
+        data = json.dumps({"TYPE": '223',
+                           "ID": initiator})
+        result = self.call(url, data, "PUT")
+        self._assert_rest_result(result, _('Remove fc from host error.'))
+
+    def check_fc_initiators_exist_in_host(self, host_id):
+        url = self.url + '/fc_initiator?range=[0-256]'
+        data = json.dumps({"PARENTID": host_id})
+        result = self.call(url, data, "GET")
+        self._assert_rest_result(result, _('Get host initiators info failed.'))
+        if 'data' in result:
+            return True
+
+        return False
+
+    def _fc_initiator_is_added_to_array(self, ininame):
+        """Check whether the fc initiator is already added on the array."""
+        url = self.url + '/fc_initiator/' + ininame
+        data = json.dumps({"TYPE": '223',
+                           "ID": ininame})
+        result = self.call(url, data, "GET")
+        error_code = result['error']['code']
+        if error_code != 0:
+            return False
+
+        return True
+
+    def _add_fc_initiator_to_array(self, ininame):
+        """Add a fc initiator to storage device."""
+        url = self.url + '/fc_initiator/'
+        data = json.dumps({"TYPE": '223',
+                           "ID": ininame})
+        result = self.call(url, data)
+        self._assert_rest_result(result, _('Add fc initiator to array error.'))
+
+    def ensure_fc_initiator_added(self, initiator_name, host_id):
+        added = self._fc_initiator_is_added_to_array(initiator_name)
+        if not added:
+            self._add_fc_initiator_to_array(initiator_name)
+        # Just add, no need to check whether have been added.
+        self.add_fc_port_to_host(host_id, initiator_name)
+
+    def get_fc_ports_on_array(self):
+        url = self.url + '/fc_port'
+        result = self.call(url, None, "GET")
+        msg = _('Get FC ports from array error.')
+        self._assert_rest_result(result, msg)
+
+        return result['data']
+
+    def get_fc_ports_from_contr(self, contr):
+        port_list_from_contr = []
+        location = []
+        data = self.get_fc_ports_on_array()
+        for item in data:
+            location = item['PARENTID'].split('.')
+            if (location[0][1] == contr) and (item['RUNNINGSTATUS'] ==
+                                              constants.FC_PORT_CONNECTED):
+                port_list_from_contr.append(item['WWN'])
+        return port_list_from_contr
