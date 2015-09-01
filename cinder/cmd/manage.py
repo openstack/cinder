@@ -62,6 +62,7 @@ from oslo_config import cfg
 from oslo_db.sqlalchemy import migration
 from oslo_log import log as logging
 import oslo_messaging as messaging
+from oslo_utils import timeutils
 from oslo_utils import uuidutils
 
 from cinder import i18n
@@ -204,9 +205,9 @@ class HostCommands(object):
         """
         print(_("%(host)-25s\t%(zone)-15s") % {'host': 'host', 'zone': 'zone'})
         ctxt = context.get_admin_context()
-        services = db.service_get_all(ctxt)
+        services = objects.ServiceList.get_all(ctxt)
         if zone:
-            services = [s for s in services if s['availability_zone'] == zone]
+            services = [s for s in services if s.availability_zone == zone]
         hosts = []
         for srv in services:
             if not [h for h in hosts if h['host'] == srv['host']]:
@@ -436,7 +437,7 @@ class ServiceCommands(object):
     def list(self):
         """Show a list of all cinder services."""
         ctxt = context.get_admin_context()
-        services = db.service_get_all(ctxt)
+        services = objects.ServiceList.get_all(ctxt)
         print_format = "%-16s %-36s %-16s %-10s %-5s %-10s"
         print(print_format % (_('Binary'),
                               _('Host'),
@@ -448,11 +449,11 @@ class ServiceCommands(object):
             alive = utils.service_is_up(svc)
             art = ":-)" if alive else "XXX"
             status = 'enabled'
-            if svc['disabled']:
+            if svc.disabled:
                 status = 'disabled'
-            print(print_format % (svc['binary'], svc['host'].partition('.')[0],
-                                  svc['availability_zone'], status, art,
-                                  svc['updated_at']))
+            print(print_format % (svc.binary, svc.host.partition('.')[0],
+                                  svc.availability_zone, status, art,
+                                  timeutils.normalize_time(svc.updated_at)))
 
     @args('binary', type=str,
           help='Service to delete from the host.')

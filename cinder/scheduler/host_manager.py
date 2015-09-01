@@ -24,9 +24,9 @@ from oslo_log import log as logging
 from oslo_utils import timeutils
 
 from cinder import context as cinder_context
-from cinder import db
 from cinder import exception
 from cinder.i18n import _LI, _LW
+from cinder import objects
 from cinder.openstack.common.scheduler import filters
 from cinder.openstack.common.scheduler import weights
 from cinder import utils
@@ -458,13 +458,13 @@ class HostManager(object):
 
         # Get resource usage across the available volume nodes:
         topic = CONF.volume_topic
-        volume_services = db.service_get_all_by_topic(context,
-                                                      topic,
-                                                      disabled=False)
+        volume_services = objects.ServiceList.get_all_by_topic(context,
+                                                               topic,
+                                                               disabled=False)
         active_hosts = set()
         no_capabilities_hosts = set()
-        for service in volume_services:
-            host = service['host']
+        for service in volume_services.objects:
+            host = service.host
             if not utils.service_is_up(service):
                 LOG.warning(_LW("volume service is down. (host: %s)"), host)
                 continue

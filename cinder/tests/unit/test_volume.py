@@ -1357,7 +1357,7 @@ class VolumeTestCase(BaseVolumeTestCase):
                                'service_get_all_by_topic') as mock_get_service, \
             mock.patch.object(volume_api,
                               'list_availability_zones') as mock_get_azs:
-            mock_get_service.return_value = ['foo']
+            mock_get_service.return_value = [{'host': 'foo'}]
             mock_get_azs.return_value = {}
             volume_api.create(self.context,
                               size=1,

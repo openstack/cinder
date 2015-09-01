@@ -382,7 +382,7 @@ class TestCinderManageCmd(test.TestCase):
             host_cmds.list()
 
             get_admin_context.assert_called_once_with()
-            service_get_all.assert_called_once_with(mock.sentinel.ctxt)
+            service_get_all.assert_called_once_with(mock.sentinel.ctxt, None)
             self.assertEqual(expected_out, fake_out.getvalue())
 
     @mock.patch('cinder.db.service_get_all')
@@ -405,7 +405,7 @@ class TestCinderManageCmd(test.TestCase):
             host_cmds.list(zone='fake-az1')
 
             get_admin_context.assert_called_once_with()
-            service_get_all.assert_called_once_with(mock.sentinel.ctxt)
+            service_get_all.assert_called_once_with(mock.sentinel.ctxt, None)
             self.assertEqual(expected_out, fake_out.getvalue())
 
     @mock.patch('cinder.objects.base.CinderObjectSerializer')
@@ -653,8 +653,7 @@ class TestCinderManageCmd(test.TestCase):
 
             self.assertEqual(expected_out, fake_out.getvalue())
             get_admin_context.assert_called_with()
-            service_get_all.assert_called_with(ctxt)
-            service_is_up.assert_called_with(service)
+            service_get_all.assert_called_with(ctxt, None)
 
     def test_get_arg_string(self):
         args1 = "foobar"
