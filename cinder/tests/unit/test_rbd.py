@@ -863,6 +863,30 @@ class RBDTestCase(test.TestCase):
         self.assertTrue(self.driver.retype(context, fake_volume,
                                            fake_type, diff, host))
 
+    @common_mocks
+    def test_update_migrated_volume(self):
+        client = self.mock_client.return_value
+        client.__enter__.return_value = client
+
+        with mock.patch.object(self.driver.rbd.RBD(), 'rename') as mock_rename:
+            context = {}
+            current_volume = {'id': 'curr_id',
+                              'name': 'curr_name',
+                              'provider_location': 'curr_provider_location'}
+            original_volume = {'id': 'orig_id',
+                               'name': 'orig_name',
+                               'provider_location': 'orig_provider_location'}
+            mock_rename.return_value = 0
+            model_update = self.driver.update_migrated_volume(context,
+                                                              original_volume,
+                                                              current_volume,
+                                                              'available')
+            mock_rename.assert_called_with(client.ioctx,
+                                           'volume-%s' % current_volume['id'],
+                                           'volume-%s' % original_volume['id'])
+            self.assertEqual({'_name_id': None,
+                              'provider_location': None}, model_update)
+
     def test_rbd_volume_proxy_init(self):
         mock_driver = mock.Mock(name='driver')
         mock_driver._connect_to_rados.return_value = (None, None)

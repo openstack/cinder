@@ -266,7 +266,7 @@ class RADOSClient(object):
 
 class RBDDriver(driver.TransferVD, driver.ExtendVD,
                 driver.CloneableVD, driver.CloneableImageVD, driver.SnapshotVD,
-                driver.BaseVD):
+                driver.MigrateVD, driver.BaseVD):
     """Implements RADOS block device (RBD) volume commands."""
 
     VERSION = '1.2.0'
@@ -1057,3 +1057,40 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
                                         'size': image_size})
                 raise exception.VolumeBackendAPIException(
                     data=exception_message)
+
+    def update_migrated_volume(self, ctxt, volume, new_volume,
+                               original_volume_status):
+        """Return model update from RBD for migrated volume.
+
+        This method should rename the back-end volume name(id) on the
+        destination host back to its original name(id) on the source host.
+
+        :param ctxt: The context used to run the method update_migrated_volume
+        :param volume: The original volume that was migrated to this backend
+        :param new_volume: The migration volume object that was created on
+                           this backend as part of the migration process
+        :param original_volume_status: The status of the original volume
+        :return model_update to update DB with any needed changes
+        """
+        name_id = None
+        provider_location = None
+
+        existing_name = CONF.volume_name_template % new_volume['id']
+        wanted_name = CONF.volume_name_template % volume['id']
+        with RADOSClient(self) as client:
+            try:
+                self.RBDProxy().rename(client.ioctx,
+                                       utils.convert_str(existing_name),
+                                       utils.convert_str(wanted_name))
+            except self.rbd.ImageNotFound:
+                LOG.error(_LE('Unable to rename the logical volume '
+                              'for volume %s.'), volume['id'])
+                # If the rename fails, _name_id should be set to the new
+                # volume id and provider_location should be set to the
+                # one from the new volume as well.
+                name_id = new_volume['_name_id'] or new_volume['id']
+                provider_location = new_volume['provider_location']
+        return {'_name_id': name_id, 'provider_location': provider_location}
+
+    def migrate_volume(self, context, volume, host):
+        return (False, None)

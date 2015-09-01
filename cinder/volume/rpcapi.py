@@ -75,6 +75,7 @@ class VolumeAPI(object):
         1.27 - Adds support for replication V2
         1.28 - Adds manage_existing_snapshot
         1.29 - Adds get_capabilities.
+        1.30 - Adds remove_export
     """
 
     BASE_RPC_API_VERSION = '1.0'
@@ -84,7 +85,7 @@ class VolumeAPI(object):
         target = messaging.Target(topic=CONF.volume_topic,
                                   version=self.BASE_RPC_API_VERSION)
         serializer = objects_base.CinderObjectSerializer()
-        self.client = rpc.get_client(target, '1.29', serializer=serializer)
+        self.client = rpc.get_client(target, '1.30', serializer=serializer)
 
     def create_consistencygroup(self, ctxt, group, host):
         new_host = utils.extract_host(host)
@@ -196,6 +197,11 @@ class VolumeAPI(object):
         cctxt = self.client.prepare(server=new_host)
         return cctxt.call(ctxt, 'terminate_connection', volume_id=volume['id'],
                           connector=connector, force=force)
+
+    def remove_export(self, ctxt, volume):
+        new_host = utils.extract_host(volume['host'])
+        cctxt = self.client.prepare(server=new_host, version='1.30')
+        cctxt.cast(ctxt, 'remove_export', volume_id=volume['id'])
 
     def publish_service_capabilities(self, ctxt):
         cctxt = self.client.prepare(fanout=True, version='1.2')

@@ -47,6 +47,7 @@ from oslo_service import periodic_task
 from oslo_utils import excutils
 from oslo_utils import importutils
 from oslo_utils import timeutils
+from oslo_utils import units
 from oslo_utils import uuidutils
 from osprofiler import profiler
 import six
@@ -188,7 +189,7 @@ def locked_snapshot_operation(f):
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '1.29'
+    RPC_API_VERSION = '1.30'
 
     target = messaging.Target(version=RPC_API_VERSION)
 
@@ -1332,6 +1333,21 @@ class VolumeManager(manager.SchedulerDependentManager):
         LOG.info(_LI("Terminate volume connection completed successfully."),
                  resource=volume_ref)
 
+    def remove_export(self, context, volume_id):
+        """Removes an export for a volume."""
+
+        utils.require_driver_initialized(self.driver)
+        volume_ref = self.db.volume_get(context, volume_id)
+        try:
+            self.driver.remove_export(context, volume_ref)
+        except Exception:
+            msg = _("Remove volume export failed.")
+            LOG.exception(msg, resource=volume_ref)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        LOG.info(_LI("Remove volume export completed successfully."),
+                 resource=volume_ref)
+
     def accept_transfer(self, context, volume_id, new_user, new_project):
         # NOTE(flaper87): Verify the driver is enabled
         # before going forward. The exception will be caught
@@ -1366,6 +1382,116 @@ class VolumeManager(manager.SchedulerDependentManager):
         LOG.info(_LI("Transfer volume completed successfully."),
                  resource=volume_ref)
         return model_update
+
+    def _connect_device(self, conn):
+        use_multipath = self.configuration.use_multipath_for_image_xfer
+        device_scan_attempts = self.configuration.num_volume_device_scan_tries
+        protocol = conn['driver_volume_type']
+        connector = utils.brick_get_connector(
+            protocol,
+            use_multipath=use_multipath,
+            device_scan_attempts=device_scan_attempts,
+            conn=conn)
+        vol_handle = connector.connect_volume(conn['data'])
+
+        root_access = True
+
+        if not connector.check_valid_device(vol_handle['path'], root_access):
+            if isinstance(vol_handle['path'], six.string_types):
+                raise exception.DeviceUnavailable(
+                    path=vol_handle['path'],
+                    reason=(_("Unable to access the backend storage via the "
+                              "path %(path)s.") %
+                            {'path': vol_handle['path']}))
+            else:
+                raise exception.DeviceUnavailable(
+                    path=None,
+                    reason=(_("Unable to access the backend storage via file "
+                              "handle.")))
+
+        return {'conn': conn, 'device': vol_handle, 'connector': connector}
+
+    def _attach_volume(self, ctxt, volume, properties, remote=False):
+        status = volume['status']
+
+        if remote:
+            rpcapi = volume_rpcapi.VolumeAPI()
+            try:
+                conn = rpcapi.initialize_connection(ctxt, volume, properties)
+            except Exception:
+                with excutils.save_and_reraise_exception():
+                    LOG.error(_LE("Failed to attach volume %(vol)s."),
+                              {'vol': volume['id']})
+                    self.db.volume_update(ctxt, volume['id'],
+                                          {'status': status})
+        else:
+            conn = self.initialize_connection(ctxt, volume['id'], properties)
+
+        return self._connect_device(conn)
+
+    def _detach_volume(self, ctxt, attach_info, volume, properties,
+                       force=False, remote=False):
+        connector = attach_info['connector']
+        connector.disconnect_volume(attach_info['conn']['data'],
+                                    attach_info['device'])
+
+        if remote:
+            rpcapi = volume_rpcapi.VolumeAPI()
+            rpcapi.terminate_connection(ctxt, volume, properties, force=force)
+            rpcapi.remove_export(ctxt, volume)
+        else:
+            try:
+                self.terminate_connection(ctxt, volume['id'], properties,
+                                          force=force)
+                self.remove_export(ctxt, volume['id'])
+            except Exception as err:
+                with excutils.save_and_reraise_exception():
+                    LOG.error(_LE('Unable to terminate volume connection: '
+                                  '%(err)s.') % {'err': err})
+
+    def _copy_volume_data(self, ctxt, src_vol, dest_vol, remote=None):
+        """Copy data from src_vol to dest_vol."""
+
+        LOG.debug('copy_data_between_volumes %(src)s -> %(dest)s.',
+                  {'src': src_vol['name'], 'dest': dest_vol['name']})
+
+        properties = utils.brick_get_connector_properties()
+
+        dest_remote = remote in ['dest', 'both']
+        dest_attach_info = self._attach_volume(ctxt, dest_vol, properties,
+                                               remote=dest_remote)
+
+        try:
+            src_remote = remote in ['src', 'both']
+            src_attach_info = self._attach_volume(ctxt, src_vol, properties,
+                                                  remote=src_remote)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE("Failed to attach source volume for copy."))
+                self._detach_volume(ctxt, dest_attach_info, dest_vol,
+                                    properties, remote=dest_remote)
+
+        copy_error = True
+        try:
+            size_in_mb = int(src_vol['size']) * units.Ki    # vol size is in GB
+            vol_utils.copy_volume(src_attach_info['device']['path'],
+                                  dest_attach_info['device']['path'],
+                                  size_in_mb,
+                                  self.configuration.volume_dd_blocksize)
+            copy_error = False
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE("Failed to copy volume %(src)s to %(dest)s."),
+                          {'src': src_vol['id'], 'dest': dest_vol['id']})
+        finally:
+            try:
+                self._detach_volume(ctxt, dest_attach_info, dest_vol,
+                                    properties, force=copy_error,
+                                    remote=dest_remote)
+            finally:
+                self._detach_volume(ctxt, src_attach_info, src_vol,
+                                    properties, force=copy_error,
+                                    remote=src_remote)
 
     def _migrate_volume_generic(self, ctxt, volume, host, new_type_id):
         rpcapi = volume_rpcapi.VolumeAPI()
@@ -1421,8 +1547,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         try:
             attachments = volume['volume_attachment']
             if not attachments:
-                self.driver.copy_volume_data(ctxt, volume, new_volume,
-                                             remote='dest')
+                self._copy_volume_data(ctxt, volume, new_volume, remote='dest')
                 # The above call is synchronous so we complete the migration
                 self.migrate_volume_completion(ctxt, volume['id'],
                                                new_volume['id'],

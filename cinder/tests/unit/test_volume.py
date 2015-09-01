@@ -40,7 +40,6 @@ from taskflow.engines.action_engine import engine
 
 from cinder.api import common
 from cinder.brick.local_dev import lvm as brick_lvm
-from cinder.compute import nova
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -4243,20 +4242,21 @@ class VolumeTestCase(BaseVolumeTestCase):
             self.assertEqual('error', volume['migration_status'])
             self.assertEqual('available', volume['status'])
 
-    @mock.patch.object(nova.API, 'update_server_volume')
+    @mock.patch('cinder.compute.API')
     @mock.patch('cinder.volume.manager.VolumeManager.'
                 'migrate_volume_completion')
     @mock.patch('cinder.db.volume_get')
     def test_migrate_volume_generic(self, volume_get,
                                     migrate_volume_completion,
-                                    update_server_volume):
+                                    nova_api):
         fake_volume_id = 'fake_volume_id'
         fake_new_volume = {'status': 'available', 'id': fake_volume_id}
         host_obj = {'host': 'newhost', 'capabilities': {}}
         volume_get.return_value = fake_new_volume
+        update_server_volume = nova_api.return_value.update_server_volume
         volume = tests_utils.create_volume(self.context, size=1,
                                            host=CONF.host)
-        with mock.patch.object(self.volume.driver, 'copy_volume_data') as \
+        with mock.patch.object(self.volume, '_copy_volume_data') as \
                 mock_copy_volume:
             self.volume._migrate_volume_generic(self.context, volume,
                                                 host_obj, None)
@@ -4267,19 +4267,21 @@ class VolumeTestCase(BaseVolumeTestCase):
                                                          volume['id'],
                                                          fake_new_volume['id'],
                                                          error=False)
+            self.assertFalse(update_server_volume.called)
 
-    @mock.patch.object(nova.API, 'update_server_volume')
+    @mock.patch('cinder.compute.API')
     @mock.patch('cinder.volume.manager.VolumeManager.'
                 'migrate_volume_completion')
     @mock.patch('cinder.db.volume_get')
     def test_migrate_volume_generic_attached_volume(self, volume_get,
                                                     migrate_volume_completion,
-                                                    update_server_volume):
+                                                    nova_api):
         attached_host = 'some-host'
         fake_volume_id = 'fake_volume_id'
         fake_new_volume = {'status': 'available', 'id': fake_volume_id}
         host_obj = {'host': 'newhost', 'capabilities': {}}
         fake_uuid = fakes.get_fake_uuid()
+        update_server_volume = nova_api.return_value.update_server_volume
         volume_get.return_value = fake_new_volume
         volume = tests_utils.create_volume(self.context, size=1,
                                            host=CONF.host)
@@ -4293,12 +4295,8 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.volume._migrate_volume_generic(self.context, volume,
                                             host_obj, None)
         self.assertFalse(migrate_volume_completion.called)
-        with mock.patch.object(self.volume.driver, 'copy_volume_data') as \
-                mock_copy_volume:
-            self.volume._migrate_volume_generic(self.context, volume,
-                                                host_obj, None)
-            self.assertFalse(mock_copy_volume.called)
-            self.assertFalse(migrate_volume_completion.called)
+        update_server_volume.assert_called_with(self.context, fake_uuid,
+                                                volume['id'], fake_volume_id)
 
     @mock.patch.object(volume_rpcapi.VolumeAPI, 'update_migrated_volume')
     @mock.patch.object(volume_rpcapi.VolumeAPI, 'delete_volume')
@@ -4312,7 +4310,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         host_obj = {'host': 'newhost', 'capabilities': {}}
         with mock.patch.object(self.volume.driver, 'migrate_volume') as \
                 mock_migrate_volume,\
-                mock.patch.object(self.volume.driver, 'copy_volume_data'), \
+                mock.patch.object(self.volume, '_copy_volume_data'),\
                 mock.patch.object(self.volume.driver, 'delete_volume') as \
                 delete_volume:
             create_volume.side_effect = self._fake_create_volume
@@ -4331,7 +4329,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         with mock.patch.object(self.volume.driver, 'migrate_volume'),\
                 mock.patch.object(volume_rpcapi.VolumeAPI, 'create_volume')\
                 as mock_create_volume,\
-                mock.patch.object(self.volume.driver, 'copy_volume_data') as \
+                mock.patch.object(self.volume, '_copy_volume_data') as \
                 mock_copy_volume,\
                 mock.patch.object(volume_rpcapi.VolumeAPI, 'delete_volume'),\
                 mock.patch.object(self.volume, 'migrate_volume_completion'),\
@@ -4455,7 +4453,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         with mock.patch.object(self.volume.driver, 'migrate_volume'),\
                 mock.patch.object(volume_rpcapi.VolumeAPI, 'create_volume')\
                 as mock_create_volume,\
-                mock.patch.object(self.volume.driver, 'copy_volume_data') as \
+                mock.patch.object(self.volume, '_copy_volume_data') as \
                 mock_copy_volume,\
                 mock.patch.object(volume_rpcapi.VolumeAPI, 'delete_volume'),\
                 mock.patch.object(self.volume, 'migrate_volume_completion'),\
@@ -4489,16 +4487,21 @@ class VolumeTestCase(BaseVolumeTestCase):
         with mock.patch.object(self.volume.driver, 'migrate_volume'),\
                 mock.patch.object(volume_rpcapi.VolumeAPI, 'create_volume')\
                 as mock_create_volume,\
-                mock.patch.object(self.volume.driver, 'copy_volume_data'),\
                 mock.patch.object(volume_rpcapi.VolumeAPI, 'delete_volume'),\
                 mock.patch.object(self.volume, 'migrate_volume_completion')\
                 as mock_migrate_compl,\
-                mock.patch.object(self.volume.driver, 'create_export'):
+                mock.patch.object(self.volume.driver, 'create_export'), \
+                mock.patch.object(self.volume, '_attach_volume'), \
+                mock.patch.object(self.volume, '_detach_volume'), \
+                mock.patch.object(os_brick.initiator.connector,
+                                  'get_connector_properties') \
+                as mock_get_connector_properties:
 
             # Exception case at delete_volume
             # source_volume['migration_status'] is 'completing'
             mock_create_volume.side_effect = self._fake_create_volume
             mock_migrate_compl.side_effect = fake_migrate_volume_completion
+            mock_get_connector_properties.return_value = {}
             volume = tests_utils.create_volume(self.context, size=0,
                                                host=CONF.host)
             host_obj = {'host': 'newhost', 'capabilities': {}}

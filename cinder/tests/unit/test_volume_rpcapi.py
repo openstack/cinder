@@ -409,3 +409,9 @@ class VolumeRpcAPITestCase(test.TestCase):
                               host='fake_host',
                               discover=True,
                               version='1.29')
+
+    def test_remove_export(self):
+        self._test_volume_api('remove_export',
+                              rpc_method='cast',
+                              volume=self.fake_volume,
+                              version='1.30')
