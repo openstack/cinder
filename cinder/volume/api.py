@@ -1070,13 +1070,6 @@ class API(base.Base):
         return dict(rv)
 
     @wrap_check_policy
-    def delete_volume_admin_metadata(self, context, volume, key):
-        """Delete the given administration metadata item from a volume."""
-        self.db.volume_admin_metadata_delete(context, volume['id'], key)
-        LOG.info(_LI("Delete volume admin metadata completed successfully."),
-                 resource=volume)
-
-    @wrap_check_policy
     def update_volume_admin_metadata(self, context, volume, metadata,
                                      delete=False):
         """Updates or creates volume administration metadata.
