@@ -336,6 +336,17 @@ class HP3PARCommon(object):
                         {'srstatld_version': SRSTATLD_API_VERSION,
                          'version': self.API_VERSION})
 
+        # TODO(walter-boring) BUG: 1491088.  For the time being disable
+        # making the drivers usable if they enable the image cache
+        # The image cache feature fails on 3PAR drivers
+        # because it tries to extend a volume as it's still being cloned.
+        if self.config.image_volume_cache_enabled:
+            msg = _("3PAR drivers do not support enabling the image "
+                    "cache capability at this time.  You must disable "
+                    "the configuration setting in cinder.conf")
+            LOG.error(msg)
+            raise exception.InvalidInput(message=msg)
+
     def check_for_setup_error(self):
         self.client_login()
         try:
