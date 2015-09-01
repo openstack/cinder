@@ -1491,13 +1491,16 @@ class RestClient(object):
     def add_lun_to_qos(self, qos_id, lun_id, lun_list):
         """Add lun to QoS."""
         url = self.url + "/ioclass/" + qos_id
-        lun_list = []
-        lun_string = lun_list[1:-1]
-        for lun in lun_string.split(","):
-            str = lun[1:-1]
-            lun_list.append(str)
-        lun_list.append(lun_id)
-        data = json.dumps({"LUNLIST": lun_list,
+        new_lun_list = []
+        lun_list_string = lun_list[1:-1]
+        for lun_string in lun_list_string.split(","):
+            tmp_lun_id = lun_string[1:-1]
+            if '' != tmp_lun_id and tmp_lun_id != lun_id:
+                new_lun_list.append(tmp_lun_id)
+
+        new_lun_list.append(lun_id)
+
+        data = json.dumps({"LUNLIST": new_lun_list,
                            "TYPE": 230,
                            "ID": qos_id})
         result = self.call(url, data, "PUT")
