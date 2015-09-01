@@ -1372,7 +1372,7 @@ class HP3PARBaseDriver(object):
                       'host': volume_utils.append_host(self.FAKE_HOST,
                                                        HP3PAR_CPG2),
                       'source_volid': HP3PARBaseDriver.VOLUME_ID}
-            src_vref = {}
+            src_vref = {'id': HP3PARBaseDriver.VOLUME_ID}
             model_update = self.driver.create_cloned_volume(volume, src_vref)
             self.assertIsNone(model_update)
 
@@ -1398,23 +1398,23 @@ class HP3PARBaseDriver(object):
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
 
-            src_vref = {}
+            src_vref = {'id': HP3PARBaseDriver.CLONE_ID}
             volume = self.volume_qos.copy()
             host = "TEST_HOST"
             pool = "TEST_POOL"
             volume_host = volume_utils.append_host(host, pool)
             expected_cpg = pool
-            volume['id'] = HP3PARBaseDriver.CLONE_ID
+            volume['id'] = HP3PARBaseDriver.VOLUME_ID
             volume['host'] = volume_host
-            volume['source_volid'] = HP3PARBaseDriver.VOLUME_ID
+            volume['source_volid'] = HP3PARBaseDriver.CLONE_ID
             model_update = self.driver.create_cloned_volume(volume, src_vref)
             self.assertEqual(None, model_update)
 
             expected = [
                 mock.call.getCPG(expected_cpg),
                 mock.call.copyVolume(
-                    self.VOLUME_3PAR_NAME,
                     'osv-0DM4qZEVSKON-AAAAAAAAA',
+                    self.VOLUME_3PAR_NAME,
                     expected_cpg,
                     {'snapCPG': 'OpenStackCPGSnap', 'tpvv': True,
                      'tdvv': False, 'online': True})]

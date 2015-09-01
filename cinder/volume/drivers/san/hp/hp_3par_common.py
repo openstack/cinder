@@ -1571,7 +1571,7 @@ class HP3PARCommon(object):
 
     def create_cloned_volume(self, volume, src_vref):
         try:
-            orig_name = self._get_3par_vol_name(volume['source_volid'])
+            orig_name = self._get_3par_vol_name(src_vref['id'])
             vol_name = self._get_3par_vol_name(volume['id'])
 
             type_info = self.get_volume_settings_from_type(volume)
