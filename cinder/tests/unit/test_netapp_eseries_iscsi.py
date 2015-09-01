@@ -19,6 +19,7 @@
 import copy
 import json
 import re
+import socket
 
 import mock
 import requests
@@ -919,6 +920,9 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
         configuration = self._set_config(create_configuration())
         configuration.netapp_controller_ips = '987.65.43.21'
         driver = common.NetAppDriver(configuration=configuration)
+        self.mock_object(na_utils, 'resolve_hostname',
+                         mock.Mock(side_effect=socket.gaierror))
+
         self.assertRaises(
             exception.NoValidHost,
             driver.library._check_mode_get_or_register_storage_system)
@@ -927,6 +931,9 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
         configuration = self._set_config(create_configuration())
         configuration.netapp_controller_ips = '987.65.43.21,127.0.0.1'
         driver = common.NetAppDriver(configuration=configuration)
+        self.mock_object(na_utils, 'resolve_hostname',
+                         mock.Mock(side_effect=socket.gaierror))
+
         self.assertRaises(
             exception.NoValidHost,
             driver.library._check_mode_get_or_register_storage_system)
@@ -935,6 +942,9 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
         configuration = self._set_config(create_configuration())
         configuration.netapp_controller_ips = '127.0.0.1,987.65.43.21'
         driver = common.NetAppDriver(configuration=configuration)
+        self.mock_object(na_utils, 'resolve_hostname',
+                         mock.Mock(side_effect=socket.gaierror))
+
         self.assertRaises(
             exception.NoValidHost,
             driver.library._check_mode_get_or_register_storage_system)
@@ -943,6 +953,9 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
         configuration = self._set_config(create_configuration())
         configuration.netapp_controller_ips = '564.124.1231.1,987.65.43.21'
         driver = common.NetAppDriver(configuration=configuration)
+        self.mock_object(na_utils, 'resolve_hostname',
+                         mock.Mock(side_effect=socket.gaierror))
+
         self.assertRaises(
             exception.NoValidHost,
             driver.library._check_mode_get_or_register_storage_system)
