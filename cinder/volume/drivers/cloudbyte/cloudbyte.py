@@ -37,9 +37,10 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
     Version history:
         1.0.0 - Initial driver
         1.1.0 - Add chap support and minor bug fixes
+        1.1.1 - Add wait logic for delete volumes
     """
 
-    VERSION = '1.1.0'
+    VERSION = '1.1.1'
     volume_stats = {}
 
     def __init__(self, *args, **kwargs):
@@ -256,6 +257,53 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
 
         return tsmdetails
 
+    def _retry_volume_operation(self, operation, retries,
+                                max_retries, jobid,
+                                cb_volume):
+        """CloudByte async calls via the FixedIntervalLoopingCall."""
+
+        # Query the CloudByte storage with this jobid
+        volume_response = self._queryAsyncJobResult_request(jobid)
+        count = retries['count']
+
+        result_res = None
+        if volume_response is not None:
+            result_res = volume_response.get('queryasyncjobresultresponse')
+
+        if result_res is None:
+            msg = (_(
+                "Null response received while querying "
+                "for [%(operation)s] based job [%(job)s] "
+                "at CloudByte storage.") %
+                {'operation': operation, 'job': jobid})
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        status = result_res.get('jobstatus')
+
+        if status == 1:
+            LOG.info(_LI("CloudByte operation [%(operation)s] succeeded for "
+                         "volume [%(cb_volume)s]."),
+                     {'operation': operation, 'cb_volume': cb_volume})
+            raise loopingcall.LoopingCallDone()
+        elif count == max_retries:
+            # All attempts exhausted
+            LOG.error(_LE("CloudByte operation [%(operation)s] failed"
+                          " for volume [%(vol)s]. Exhausted all"
+                          " [%(max)s] attempts."),
+                      {'operation': operation,
+                       'vol': cb_volume,
+                       'max': max_retries})
+            raise loopingcall.LoopingCallDone(retvalue=False)
+        else:
+            count += 1
+            retries['count'] = count
+            LOG.debug("CloudByte operation [%(operation)s] for"
+                      " volume [%(vol)s]: retry [%(retry)s] of [%(max)s].",
+                      {'operation': operation,
+                       'vol': cb_volume,
+                       'retry': count,
+                       'max': max_retries})
+
     def _wait_for_volume_creation(self, volume_response, cb_volume_name):
         """Given the job wait for it to complete."""
 
@@ -269,69 +317,57 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
         jobid = vol_res.get('jobid')
 
         if jobid is None:
-            msg = _("Jobid not found in CloudByte's "
+            msg = _("Job id not found in CloudByte's "
                     "create volume [%s] response.") % cb_volume_name
             raise exception.VolumeBackendAPIException(data=msg)
-
-        def _retry_check_for_volume_creation():
-            """Called at an interval till the volume is created."""
-
-            retries = kwargs['retries']
-            max_retries = kwargs['max_retries']
-            jobid = kwargs['jobid']
-            cb_vol = kwargs['cb_vol']
-
-            # Query the CloudByte storage with this jobid
-            volume_response = self._queryAsyncJobResult_request(jobid)
-
-            result_res = None
-            if volume_response is not None:
-                result_res = volume_response.get('queryasyncjobresultresponse')
-
-            if volume_response is None or result_res is None:
-                msg = _(
-                    "Null response received while querying "
-                    "for create volume job [%s] "
-                    "at CloudByte storage.") % jobid
-                raise exception.VolumeBackendAPIException(data=msg)
-
-            status = result_res.get('jobstatus')
-
-            if status == 1:
-                LOG.info(_LI("Volume [%s] created successfully in "
-                             "CloudByte storage."), cb_vol)
-                raise loopingcall.LoopingCallDone()
-
-            elif retries == max_retries:
-                # All attempts exhausted
-                LOG.error(_LE("Error in creating volume [%(vol)s] in "
-                              "CloudByte storage. "
-                              "Exhausted all [%(max)s] attempts."),
-                          {'vol': cb_vol, 'max': retries})
-                raise loopingcall.LoopingCallDone(retvalue=False)
-
-            else:
-                retries += 1
-                kwargs['retries'] = retries
-                LOG.debug("Wait for volume [%(vol)s] creation, "
-                          "retry [%(retry)s] of [%(max)s].",
-                          {'vol': cb_vol,
-                           'retry': retries,
-                           'max': max_retries})
 
         retry_interval = (
             self.configuration.cb_confirm_volume_create_retry_interval)
 
         max_retries = (
             self.configuration.cb_confirm_volume_create_retries)
-
-        kwargs = {'retries': 0,
-                  'max_retries': max_retries,
-                  'jobid': jobid,
-                  'cb_vol': cb_volume_name}
+        retries = {'count': 0}
 
         timer = loopingcall.FixedIntervalLoopingCall(
-            _retry_check_for_volume_creation)
+            self._retry_volume_operation,
+            'Create Volume',
+            retries,
+            max_retries,
+            jobid,
+            cb_volume_name)
+        timer.start(interval=retry_interval).wait()
+
+    def _wait_for_volume_deletion(self, volume_response, cb_volume_id):
+        """Given the job wait for it to complete."""
+
+        vol_res = volume_response.get('deleteFileSystemResponse')
+
+        if vol_res is None:
+            msg = _("Null response received while deleting volume [%s] "
+                    "at CloudByte storage.") % cb_volume_id
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        jobid = vol_res.get('jobid')
+
+        if jobid is None:
+            msg = _("Job id not found in CloudByte's "
+                    "delete volume [%s] response.") % cb_volume_id
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        retry_interval = (
+            self.configuration.cb_confirm_volume_delete_retry_interval)
+
+        max_retries = (
+            self.configuration.cb_confirm_volume_delete_retries)
+        retries = {'count': 0}
+
+        timer = loopingcall.FixedIntervalLoopingCall(
+            self._retry_volume_operation,
+            'Delete Volume',
+            retries,
+            max_retries,
+            jobid,
+            cb_volume_id)
         timer.start(interval=retry_interval).wait()
 
     def _get_volume_id_from_response(self, cb_volumes, volume_name):
@@ -794,7 +830,10 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
             if cb_volume_id is not None:
 
                 params = {"id": cb_volume_id}
-                self._api_request_for_cloudbyte('deleteFileSystem', params)
+                del_res = self._api_request_for_cloudbyte('deleteFileSystem',
+                                                          params)
+
+                self._wait_for_volume_deletion(del_res, cb_volume_id)
 
                 LOG.info(
                     _LI("Successfully deleted volume [%(cb_vol)s] "

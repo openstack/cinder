@@ -351,11 +351,8 @@ FAKE_LIST_ISCSI_INITIATOR_RESPONSE = """{ "listInitiatorsResponse" : {
      }}"""
 
 # A fake delete file system response of cloudbyte's elasticenter
-FAKE_DELETE_FILE_SYSTEM_RESPONSE = """{ "deleteResponse" : {
-    "response" : [{
-        "code": "0",
-        "description": "success"
-    }]
+FAKE_DELETE_FILE_SYSTEM_RESPONSE = """{ "deleteFileSystemResponse" : {
+        "jobid": "e1fe861a-17e3-41b5-ae7c-937caac62cdf"
     }}"""
 
 # A fake create storage snapshot response of cloudbyte's elasticenter
@@ -666,6 +663,8 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
         self.driver.configuration.cb_tsm_name = 'openstack'
         self.driver.configuration.cb_account_name = 'CustomerA'
         self.driver.configuration.cb_auth_group = 'fakeauthgroup'
+        self.driver.configuration.cb_apikey = 'G4ZUB39WH7lbiZhPhL3nbd'
+        self.driver.configuration.san_ip = '172.16.51.30'
 
     def _side_effect_api_req(self, cmd, params, version='1.0'):
         """This is a side effect function.
@@ -679,6 +678,22 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
     def _side_effect_api_req_to_create_vol(self, cmd, params, version='1.0'):
         """This is a side effect function."""
         if cmd == 'createVolume':
+            return {}
+
+        return MAP_COMMAND_TO_FAKE_RESPONSE[cmd]
+
+    def _side_effect_api_req_to_delete_file_system(
+            self, cmd, params, version='1.0'):
+        """This is a side effect function."""
+        if cmd == 'deleteFileSystem':
+            return {}
+
+        return MAP_COMMAND_TO_FAKE_RESPONSE[cmd]
+
+    def _side_effect_api_req_to_query_asyncjob_response(
+            self, cmd, params, version='1.0'):
+        """This is a side effect function."""
+        if cmd == 'queryAsyncJobResult':
             return {}
 
         return MAP_COMMAND_TO_FAKE_RESPONSE[cmd]
@@ -864,8 +879,8 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
         # run the test
         self.driver.delete_volume(volume)
 
-        # assert that 2 api calls were invoked
-        self.assertEqual(2, mock_api_req.call_count)
+        # assert that 3 api calls were invoked
+        self.assertEqual(3, mock_api_req.call_count)
 
         # Test-II
 
@@ -879,6 +894,43 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
 
         # assert that no api calls were invoked
         self.assertEqual(0, mock_api_req.call_count)
+
+        # Test-III
+
+        # re-configure the dependencies
+        volume['provider_id'] = fake_volume_id
+
+        # reset & re-configure mock
+        mock_api_req.reset_mock()
+
+        # configure or re-configure the mocks
+        mock_api_req.side_effect = (
+            self._side_effect_api_req_to_delete_file_system)
+
+        # Now run the test & assert the exception
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.delete_volume,
+                          volume)
+
+        # assert that 2 api calls were invoked
+        self.assertEqual(2, mock_api_req.call_count)
+
+        # Test - IV
+
+        # reset the mocks
+        mock_api_req.reset_mock()
+
+        # configure or re-configure the mocks
+        mock_api_req.side_effect = (
+            self._side_effect_api_req_to_query_asyncjob_response)
+
+        # Now run the test & assert the exception
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.delete_volume,
+                          volume)
+
+        # assert that 3 api calls were invoked
+        self.assertEqual(3, mock_api_req.call_count)
 
     @mock.patch.object(cloudbyte.CloudByteISCSIDriver,
                        '_api_request_for_cloudbyte')
@@ -1052,13 +1104,10 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
         mock_api_req.reset_mock()
         mock_api_req.side_effect = self._side_effect_api_req
 
-        # now run the test & assert the exception
-        with testtools.ExpectedException(
-                exception.VolumeBackendAPIException,
-                "Bad or unexpected response from the storage volume "
-                "backend API: Volume \[NotExists\] not found in "
-                "CloudByte storage."):
-            self.driver.create_volume(volume)
+        # Now run the test & assert the exception
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_volume,
+                          volume)
 
         # Test - IV
 
@@ -1071,13 +1120,10 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
         # configure or re-configure the mocks
         mock_api_req.side_effect = self._side_effect_api_req_to_create_vol
 
-        # now run the test & assert the exception
-        with testtools.ExpectedException(
-                exception.VolumeBackendAPIException,
-                'Bad or unexpected response from the storage volume '
-                'backend API: Null response received while '
-                'creating volume'):
-            self.driver.create_volume(volume)
+        # Now run the test & assert the exception
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_volume,
+                          volume)
 
         # Test - V
 
@@ -1088,13 +1134,10 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
         # configure or re-configure the mocks
         mock_api_req.side_effect = self._side_effect_api_req_to_list_filesystem
 
-        # now run the test
-        with testtools.ExpectedException(
-                exception.VolumeBackendAPIException,
-                "Bad or unexpected response from the storage volume "
-                "backend API: Null response received from CloudByte's "
-                "list filesystem."):
-            self.driver.create_volume(volume)
+        # Now run the test & assert the exception
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_volume,
+                          volume)
 
         # Test - VI
 
@@ -1107,13 +1150,10 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
         mock_api_req.side_effect = (
             self._side_effect_api_req_to_list_vol_iscsi_service)
 
-        # now run the test
-        with testtools.ExpectedException(
-                exception.VolumeBackendAPIException,
-                "Bad or unexpected response from the storage volume "
-                "backend API: Null response received from CloudByte's "
-                "list volume iscsi service."):
-            self.driver.create_volume(volume)
+        # Now run the test & assert the exception
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_volume,
+                          volume)
 
         # Test - VII
 
@@ -1125,13 +1165,10 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
         mock_api_req.side_effect = (
             self._side_effect_api_req_to_list_iscsi_initiator)
 
-        # now run the test
-        with testtools.ExpectedException(
-                exception.VolumeBackendAPIException,
-                "Bad or unexpected response from the storage volume "
-                "backend API: Null response received from CloudByte's "
-                "list iscsi initiators."):
-            self.driver.create_volume(volume)
+        # Now run the test & assert the exception
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_volume,
+                          volume)
 
         # Test - VIII
 
@@ -1146,13 +1183,42 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
         mock_api_req.side_effect = (
             self._none_response_to_list_tsm)
 
-        # now run the test
-        with testtools.ExpectedException(
-                exception.VolumeBackendAPIException,
-                "Bad or unexpected response from the storage volume "
-                "backend API: TSM \[openstack\] was not found in CloudByte "
-                "storage for account \[CustomerA\]."):
-            self.driver.create_volume(volume)
+        # Now run the test & assert the exception
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_volume,
+                          volume)
+
+        # Test - IX
+
+        volume['id'] = fake_volume_id
+        volume['size'] = 22
+
+        # reconfigure the dependencies
+        # reset the mocks
+        mock_api_req.reset_mock()
+
+        # configure or re-configure the mocks
+        mock_api_req.side_effect = (
+            self._side_effect_api_req_to_create_vol)
+
+        # Now run the test & assert the exception
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_volume,
+                          volume)
+
+        # Test - X
+
+        # reset the mocks
+        mock_api_req.reset_mock()
+
+        # configure or re-configure the mocks
+        mock_api_req.side_effect = (
+            self._side_effect_api_req_to_query_asyncjob_response)
+
+        # Now run the test & assert the exception
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_volume,
+                          volume)
 
     @mock.patch.object(cloudbyte.CloudByteISCSIDriver,
                        '_api_request_for_cloudbyte')
