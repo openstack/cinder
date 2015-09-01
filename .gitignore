@@ -19,6 +19,7 @@ cinder.egg-info
 cover/*
 covhtml
 dist/*
+etc/cinder/cinder.conf.sample
 instances
 keeper
 keys
