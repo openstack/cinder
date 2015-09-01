@@ -90,7 +90,7 @@ class API(base.Base):
 
         # Don't allow backup to be deleted if there are incremental
         # backups dependent on it.
-        deltas = self.get_all(context, {'parent_id': backup.id})
+        deltas = self.get_all(context, search_opts={'parent_id': backup.id})
         if deltas and len(deltas):
             msg = _('Incremental backups exist for this backup.')
             raise exception.InvalidBackup(reason=msg)
@@ -99,7 +99,8 @@ class API(base.Base):
         backup.save()
         self.backup_rpcapi.delete_backup(context, backup)
 
-    def get_all(self, context, search_opts=None):
+    def get_all(self, context, search_opts=None, marker=None, limit=None,
+                offset=None, sort_keys=None, sort_dirs=None):
         check_policy(context, 'get_all')
 
         search_opts = search_opts or {}
@@ -110,12 +111,13 @@ class API(base.Base):
             raise exception.InvalidParameterValue(err=msg)
 
         if context.is_admin and strutils.bool_from_string(all_tenants):
-            backups = objects.BackupList.get_all(context, filters=search_opts)
+            backups = objects.BackupList.get_all(context, search_opts,
+                                                 marker, limit, offset,
+                                                 sort_keys, sort_dirs)
         else:
             backups = objects.BackupList.get_all_by_project(
-                context,
-                context.project_id,
-                filters=search_opts
+                context, context.project_id, search_opts,
+                marker, limit, offset, sort_keys, sort_dirs
             )
 
         return backups

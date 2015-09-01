@@ -853,9 +853,12 @@ def backup_get(context, backup_id):
     return IMPL.backup_get(context, backup_id)
 
 
-def backup_get_all(context, filters=None):
+def backup_get_all(context, filters=None, marker=None, limit=None,
+                   offset=None, sort_keys=None, sort_dirs=None):
     """Get all backups."""
-    return IMPL.backup_get_all(context, filters=filters)
+    return IMPL.backup_get_all(context, filters=filters, marker=marker,
+                               limit=limit, offset=offset, sort_keys=sort_keys,
+                               sort_dirs=sort_dirs)
 
 
 def backup_get_all_by_host(context, host):
@@ -868,10 +871,15 @@ def backup_create(context, values):
     return IMPL.backup_create(context, values)
 
 
-def backup_get_all_by_project(context, project_id, filters=None):
+def backup_get_all_by_project(context, project_id, filters=None, marker=None,
+                              limit=None, offset=None, sort_keys=None,
+                              sort_dirs=None):
     """Get all backups belonging to a project."""
     return IMPL.backup_get_all_by_project(context, project_id,
-                                          filters=filters)
+                                          filters=filters, marker=marker,
+                                          limit=limit, offset=offset,
+                                          sort_keys=sort_keys,
+                                          sort_dirs=sort_dirs)
 
 
 def backup_get_all_by_volume(context, volume_id, filters=None):

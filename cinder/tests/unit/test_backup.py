@@ -942,7 +942,8 @@ class BackupAPITestCase(BaseBackupTest):
         self.assertEqual(mock_backuplist.get_all_by_project.return_value,
                          result)
         mock_backuplist.get_all_by_project.assert_called_once_with(
-            self.ctxt, self.ctxt.project_id, filters={'key': 'value'})
+            self.ctxt, self.ctxt.project_id, {'key': 'value'}, None, None,
+            None, None, None)
 
     @mock.patch.object(objects, 'BackupList')
     @ddt.data(False, 'false', '0', 0, 'no')
@@ -954,7 +955,8 @@ class BackupAPITestCase(BaseBackupTest):
         self.assertEqual(mock_backuplist.get_all_by_project.return_value,
                          result)
         mock_backuplist.get_all_by_project.assert_called_once_with(
-            self.ctxt, self.ctxt.project_id, filters={'key': 'value'})
+            self.ctxt, self.ctxt.project_id, {'key': 'value'}, None, None,
+            None, None, None)
 
     @mock.patch.object(objects, 'BackupList')
     @ddt.data(True, 'true', '1', 1, 'yes')
@@ -966,7 +968,7 @@ class BackupAPITestCase(BaseBackupTest):
         self.assertEqual(mock_backuplist.get_all.return_value,
                          result)
         mock_backuplist.get_all.assert_called_once_with(
-            self.ctxt, filters={'key': 'value'})
+            self.ctxt, {'key': 'value'}, None, None, None, None, None)
 
     @mock.patch.object(objects, 'BackupList')
     def test_get_all_true_value_all_tenants_non_admin(self, mock_backuplist):
@@ -977,4 +979,5 @@ class BackupAPITestCase(BaseBackupTest):
         self.assertEqual(mock_backuplist.get_all_by_project.return_value,
                          result)
         mock_backuplist.get_all_by_project.assert_called_once_with(
-            ctxt, ctxt.project_id, filters={'key': 'value'})
+            ctxt, ctxt.project_id, {'key': 'value'}, None, None, None, None,
+            None)
