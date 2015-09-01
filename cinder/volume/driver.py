@@ -48,10 +48,6 @@ volume_opts = [
                default=0,
                min=0, max=100,
                help='The percentage of backend capacity is reserved'),
-    cfg.IntOpt('iscsi_num_targets',
-               default=None,
-               help='This option is deprecated and unused. '
-                    'It will be removed in the Liberty release.'),
     cfg.StrOpt('iscsi_target_prefix',
                default='iqn.2010-10.org.openstack:',
                help='Prefix for iSCSI volumes'),
@@ -257,10 +253,6 @@ iser_opts = [
                default=3,
                help='The maximum number of times to rescan iSER target'
                     'to find volume'),
-    cfg.IntOpt('iser_num_targets',
-               default=None,
-               help='This option is deprecated and unused. '
-                    'It will be removed in the Liberty release.'),
     cfg.StrOpt('iser_target_prefix',
                default='iqn.2010-10.org.openstack:',
                help='Prefix for iSER volumes'),
