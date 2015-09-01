@@ -579,15 +579,9 @@ class VolumeManager(manager.SchedulerDependentManager):
         1. Delete a volume(normal case)
            Delete a volume and update quotas.
 
-        2. Delete a migration source volume
-           If deleting the source volume in a migration, we want to skip
-           quotas. Also we want to skip other database updates for source
-           volume because these update will be handled at
-           migrate_volume_completion properly.
-
-        3. Delete a migration destination volume
-           If deleting the destination volume in a migration, we want to
-           skip quotas but we need database updates for the volume.
+        2. Delete a migration volume
+           If deleting the volume in a migration, we want to skip
+           quotas but we need database updates for the volume.
       """
 
         context = context.elevated()
@@ -666,15 +660,10 @@ class VolumeManager(manager.SchedulerDependentManager):
                 LOG.exception(_LE("Failed to update usages deleting volume."),
                               resource=volume_ref)
 
-        # If deleting the destination volume in a migration, we should skip
-        # database update here. In other cases, continue to update database
-        # entries.
-        if not is_migrating_dest:
+        # Delete glance metadata if it exists
+        self.db.volume_glance_metadata_delete_by_volume(context, volume_id)
 
-            # Delete glance metadata if it exists
-            self.db.volume_glance_metadata_delete_by_volume(context, volume_id)
-
-            self.db.volume_destroy(context, volume_id)
+        self.db.volume_destroy(context, volume_id)
 
         # If deleting source/destination volume in a migration, we should
         # skip quotas.
@@ -1784,9 +1773,6 @@ class VolumeManager(manager.SchedulerDependentManager):
             LOG.error(_LE('Failed to request async delete of migration source '
                           'vol %(vol)s: %(err)s'),
                       {'vol': volume_id, 'err': ex})
-        updates = {'migration_status': 'success',
-                   'status': orig_volume_status,
-                   'previous_status': volume['status']}
 
         LOG.info(_LI("Complete-Migrate volume completed successfully."),
                  resource=volume)

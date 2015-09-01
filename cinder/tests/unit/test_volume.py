@@ -4801,6 +4801,27 @@ class VolumeMigrationTestCase(VolumeTestCase):
         self.volume.driver._initialized = True
         self.volume.delete_volume(self.context, volume['id'])
 
+    def test_delete_source_volume_in_migration(self):
+        """Test deleting a source volume that is in migration."""
+        self._test_delete_volume_in_migration('migrating')
+
+    def test_delete_destination_volume_in_migration(self):
+        """Test deleting a destination volume that is in migration."""
+        self._test_delete_volume_in_migration('target:vol-id')
+
+    def _test_delete_volume_in_migration(self, migration_status):
+        """Test deleting a volume that is in migration."""
+        volume = tests_utils.create_volume(self.context, **self.volume_params)
+        volume = db.volume_update(self.context, volume['id'],
+                                  {'status': 'available',
+                                   'migration_status': migration_status})
+        self.volume.delete_volume(self.context, volume['id'])
+
+        # The volume is successfully removed during the volume delete
+        # and won't exist in the database any more.
+        self.assertRaises(exception.VolumeNotFound, db.volume_get,
+                          self.context, volume['id'])
+
 
 class ConsistencyGroupTestCase(BaseVolumeTestCase):
     def test_delete_volume_in_consistency_group(self):
