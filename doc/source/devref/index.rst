@@ -32,6 +32,7 @@ Programming HowTos and Tutorials
     drivers
     gmr
     replication
+    api.apache
 
 
 Background Concepts for Cinder
