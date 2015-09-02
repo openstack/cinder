@@ -4196,6 +4196,69 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         self.assertEqual(expected, azs)
 
+    @mock.patch.object(utils, 'brick_get_connector_properties')
+    @mock.patch.object(cinder.volume.manager.VolumeManager, '_attach_volume')
+    @mock.patch.object(cinder.volume.manager.VolumeManager, '_detach_volume')
+    @mock.patch.object(volutils, 'copy_volume')
+    @mock.patch.object(volume_rpcapi.VolumeAPI, 'get_capabilities')
+    def test_copy_volume_data(self,
+                              mock_get_capabilities,
+                              mock_copy,
+                              mock_detach,
+                              mock_attach,
+                              mock_get_connector):
+        """Test function of _copy_volume_data."""
+
+        src_vol = tests_utils.create_volume(self.context, size=1,
+                                            host=CONF.host)
+        dest_vol = tests_utils.create_volume(self.context, size=1,
+                                             host=CONF.host)
+        mock_get_connector.return_value = {}
+        self.volume.driver._throttle = mock.MagicMock()
+
+        attach_expected = [
+            mock.call(self.context, dest_vol, {}, remote=False),
+            mock.call(self.context, src_vol, {}, remote=False)]
+
+        detach_expected = [
+            mock.call(self.context, {'device': {'path': 'bar'}},
+                      dest_vol, {}, force=False, remote=False),
+            mock.call(self.context, {'device': {'path': 'foo'}},
+                      src_vol, {}, force=False, remote=False)]
+
+        attach_volume_returns = [
+            {'device': {'path': 'bar'}},
+            {'device': {'path': 'foo'}}
+        ]
+
+        #  Test case for sparse_copy_volume = False
+        mock_attach.side_effect = attach_volume_returns
+        mock_get_capabilities.return_value = {}
+        self.volume._copy_volume_data(self.context,
+                                      src_vol,
+                                      dest_vol)
+
+        self.assertEqual(attach_expected, mock_attach.mock_calls)
+        mock_copy.assert_called_with('foo', 'bar', 1024, '1M', sparse=False)
+        self.assertEqual(detach_expected, mock_detach.mock_calls)
+
+        #  Test case for sparse_copy_volume = True
+        mock_attach.reset_mock()
+        mock_detach.reset_mock()
+        mock_attach.side_effect = attach_volume_returns
+        mock_get_capabilities.return_value = {'sparse_copy_volume': True}
+        self.volume._copy_volume_data(self.context,
+                                      src_vol,
+                                      dest_vol)
+
+        self.assertEqual(attach_expected, mock_attach.mock_calls)
+        mock_copy.assert_called_with('foo', 'bar', 1024, '1M', sparse=True)
+        self.assertEqual(detach_expected, mock_detach.mock_calls)
+
+        # cleanup resource
+        db.volume_destroy(self.context, src_vol['id'])
+        db.volume_destroy(self.context, dest_vol['id'])
+
     def test_migrate_volume_driver(self):
         """Test volume migration done by driver."""
         # stub out driver and rpc functions
@@ -4491,17 +4554,25 @@ class VolumeTestCase(BaseVolumeTestCase):
                 mock.patch.object(self.volume, 'migrate_volume_completion')\
                 as mock_migrate_compl,\
                 mock.patch.object(self.volume.driver, 'create_export'), \
-                mock.patch.object(self.volume, '_attach_volume'), \
+                mock.patch.object(self.volume, '_attach_volume') \
+                as mock_attach, \
                 mock.patch.object(self.volume, '_detach_volume'), \
                 mock.patch.object(os_brick.initiator.connector,
                                   'get_connector_properties') \
-                as mock_get_connector_properties:
+                as mock_get_connector_properties, \
+                mock.patch.object(volutils, 'copy_volume') as mock_copy, \
+                mock.patch.object(volume_rpcapi.VolumeAPI,
+                                  'get_capabilities') \
+                as mock_get_capabilities:
 
             # Exception case at delete_volume
             # source_volume['migration_status'] is 'completing'
             mock_create_volume.side_effect = self._fake_create_volume
             mock_migrate_compl.side_effect = fake_migrate_volume_completion
             mock_get_connector_properties.return_value = {}
+            mock_attach.side_effect = [{'device': {'path': 'bar'}},
+                                       {'device': {'path': 'foo'}}]
+            mock_get_capabilities.return_value = {'sparse_copy_volume': True}
             volume = tests_utils.create_volume(self.context, size=0,
                                                host=CONF.host)
             host_obj = {'host': 'newhost', 'capabilities': {}}
@@ -4514,6 +4585,8 @@ class VolumeTestCase(BaseVolumeTestCase):
             volume = db.volume_get(context.get_admin_context(), volume['id'])
             self.assertEqual('error', volume['migration_status'])
             self.assertEqual('available', volume['status'])
+            mock_copy.assert_called_once_with('foo', 'bar', 0, '1M',
+                                              sparse=True)
 
     def _test_migrate_volume_completion(self, status='available',
                                         instance_uuid=None, attached_host=None,
