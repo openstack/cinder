@@ -168,7 +168,7 @@ netapp_eseries_opts = [
                      ' be a comma separated list of disk pool names to be used'
                      ' for provisioning.')),
     cfg.BoolOpt('netapp_enable_multiattach',
-                default=True,
+                default=False,
                 help='This option specifies whether the driver should allow '
                      'operations that require multiple attachments to a '
                      'volume. An example would be live migration of servers '
