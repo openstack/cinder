@@ -15,19 +15,11 @@
 from cinder import context
 from cinder import exception
 from cinder.tests.unit import fake_volume
-
 from cinder.tests.unit.volume.drivers.emc import scaleio
 
 
 class TestCreateVolume(scaleio.TestScaleIODriver):
     """Test cases for ``ScaleIODriver.create_volume()``"""
-
-    PROTECTION_DOMAIN_ID = 'test_prot_id'
-    PROTECTION_DOMAIN_NAME = 'test_prot_name'
-
-    STORAGE_POOL_ID = 'test_pool_id'
-    STORAGE_POOL_NAME = 'test_pool_name'
-
     def setUp(self):
         """Setup a test case environment.
 
@@ -42,44 +34,29 @@ class TestCreateVolume(scaleio.TestScaleIODriver):
             self.RESPONSE_MODE.Valid: {
                 'types/Volume/instances/getByName::' +
                 self.volume.name: '"{}"'.format(self.volume.id),
-                'types/Volume/instances': [
-                    {
-                        'Id': self.volume.id,
-                        'Name': self.volume.name,
-                        'volumeSizeInKb': self.volume.size,
-                        'isObfuscated': False,
-                        'creationTime': self.volume.launched_at,
-                        'mappingToAllSdcsEnabled': False,
-                        'mappingSdcInfoList': [],
-                        'mappingScsiInitiatorList': [],
-                        'ancestorVolumeId': '',
-                        'vtreeId': '',
-                        'storagePoolId': self.STORAGE_POOL_ID,
-                        'useRmcache': False,
-                    }
-                ],
+                'types/Volume/instances': {'id': self.volume.id},
                 'types/Domain/instances/getByName::' +
-                self.PROTECTION_DOMAIN_NAME:
-                    '"{}"'.format(self.PROTECTION_DOMAIN_ID),
+                self.PROT_DOMAIN_NAME:
+                    '"{}"'.format(self.PROT_DOMAIN_ID),
                 'types/Pool/instances/getByName::{},{}'.format(
-                    self.PROTECTION_DOMAIN_ID,
+                    self.PROT_DOMAIN_ID,
                     self.STORAGE_POOL_NAME
                 ): '"{}"'.format(self.STORAGE_POOL_ID),
             },
             self.RESPONSE_MODE.Invalid: {
                 'types/Domain/instances/getByName::' +
-                self.PROTECTION_DOMAIN_NAME: None,
+                self.PROT_DOMAIN_NAME: None,
                 'types/Pool/instances/getByName::{},{}'.format(
-                    self.PROTECTION_DOMAIN_ID,
+                    self.PROT_DOMAIN_ID,
                     self.STORAGE_POOL_NAME
                 ): None,
             },
             self.RESPONSE_MODE.BadStatus: {
                 'types/Volume/instances': self.BAD_STATUS_RESPONSE,
                 'types/Domain/instances/getByName::' +
-                self.PROTECTION_DOMAIN_NAME: self.BAD_STATUS_RESPONSE,
+                self.PROT_DOMAIN_NAME: self.BAD_STATUS_RESPONSE,
                 'types/Pool/instances/getByName::{},{}'.format(
-                    self.PROTECTION_DOMAIN_ID,
+                    self.PROT_DOMAIN_ID,
                     self.STORAGE_POOL_NAME
                 ): self.BAD_STATUS_RESPONSE,
             },
@@ -95,7 +72,7 @@ class TestCreateVolume(scaleio.TestScaleIODriver):
     def test_no_domain_id(self):
         """Only protection domain name provided."""
         self.driver.protection_domain_id = None
-        self.driver.protection_domain_name = self.PROTECTION_DOMAIN_NAME
+        self.driver.protection_domain_name = self.PROT_DOMAIN_NAME
         self.driver.storage_pool_name = None
         self.driver.storage_pool_id = self.STORAGE_POOL_ID
         self.test_create_volume()
@@ -114,7 +91,7 @@ class TestCreateVolume(scaleio.TestScaleIODriver):
         """Only protection domain name provided."""
         self.driver.storage_pool_id = None
         self.driver.storage_pool_name = self.STORAGE_POOL_NAME
-        self.driver.protection_domain_id = self.PROTECTION_DOMAIN_ID
+        self.driver.protection_domain_id = self.PROT_DOMAIN_ID
         self.driver.protection_domain_name = None
         self.test_create_volume()
 
