@@ -323,7 +323,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         # to be safe in what we allow and add a list of allowed keys
         # things that make sense are provider_*, replication_status etc
 
-        updates = self.driver.update_provider_info(volumes)
+        updates, snapshot_updates = self.driver.update_provider_info(volumes)
         host_vols = utils.list_of_dicts_to_dict(volumes, 'id')
 
         for u in updates or []:
@@ -335,6 +335,24 @@ class VolumeManager(manager.SchedulerDependentManager):
                 self.db.volume_update(ctxt,
                                       u['id'],
                                       update)
+
+        # NOTE(jdg): snapshots are slighty harder, because
+        # we do not have a host column and of course no get
+        # all by host, so we use a get_all and bounce our
+        # response off of it
+        if snapshot_updates:
+            cinder_snaps = self.db.snapshot_get_all(ctxt)
+            for snap in cinder_snaps:
+                # NOTE(jdg): For now we only update those that have no entry
+                if not snap.get('provider_id', None):
+                    update = (
+                        [updt for updt in snapshot_updates if updt['id'] ==
+                            snap['id']][0])
+                    if update:
+                        self.db.snapshot_update(
+                            ctxt,
+                            updt['id'],
+                            {'provider_id': updt['provider_id']})
 
     def init_host(self):
         """Perform any required initialization."""
@@ -751,6 +769,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         self._notify_about_snapshot_usage(context, snapshot, "create.end")
         LOG.info(_LI("Create snapshot completed successfully"),
                  resource=snapshot)
+        return snapshot.id
 
     @locked_snapshot_operation
     def delete_snapshot(self, context, snapshot, unmanage_only=False):
@@ -759,7 +778,8 @@ class VolumeManager(manager.SchedulerDependentManager):
         snapshot._context = context
         project_id = snapshot.project_id
 
-        self._notify_about_snapshot_usage(context, snapshot, "delete.start")
+        self._notify_about_snapshot_usage(
+            context, snapshot, "delete.start")
 
         try:
             # NOTE(flaper87): Verify the driver is enabled
@@ -797,9 +817,11 @@ class VolumeManager(manager.SchedulerDependentManager):
                     'gigabytes': -snapshot.volume_size,
                 }
             volume_ref = self.db.volume_get(context, snapshot.volume_id)
-            QUOTAS.add_volume_type_opts(context, reserve_opts,
+            QUOTAS.add_volume_type_opts(context,
+                                        reserve_opts,
                                         volume_ref.get('volume_type_id'))
-            reservations = QUOTAS.reserve(context, project_id=project_id,
+            reservations = QUOTAS.reserve(context,
+                                          project_id=project_id,
                                           **reserve_opts)
         except Exception:
             reservations = None
@@ -814,6 +836,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             QUOTAS.commit(context, reservations, project_id=project_id)
         LOG.info(_LI("Delete snapshot completed successfully"),
                  resource=snapshot)
+        return True
 
     def attach_volume(self, context, volume_id, instance_uuid, host_name,
                       mountpoint, mode):
@@ -2031,7 +2054,10 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         volume_ref = self.db.volume_get(ctxt, volume_id)
         status_update = {'status': volume_ref['previous_status']}
-        project_id = volume_ref['project_id']
+        if context.project_id != volume_ref['project_id']:
+            project_id = volume_ref['project_id']
+        else:
+            project_id = context.project_id
 
         try:
             # NOTE(flaper87): Verify the driver is enabled
@@ -2353,7 +2379,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                                      "not in a valid state. Valid states are: "
                                      "%(valid)s.") %
                                    {'group': group.id,
-                                    'snap': snap.id,
+                                    'snap': snap['id'],
                                     'valid': VALID_CREATE_CG_SRC_SNAP_STATUS})
                             raise exception.InvalidConsistencyGroup(reason=msg)
 
@@ -2469,7 +2495,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         sorted_snapshots = []
         for vol in volumes:
             found_snaps = filter(
-                lambda snap: snap.id == vol['snapshot_id'], snapshots)
+                lambda snap: snap['id'] == vol['snapshot_id'], snapshots)
             if not found_snaps:
                 LOG.error(_LE("Source snapshot cannot be found for target "
                               "volume %(volume_id)s."),

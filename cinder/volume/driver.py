@@ -1392,9 +1392,12 @@ class BaseVD(object):
         """Get provider info updates from driver.
 
         :param volumes: List of Cinder volumes to check for updates
-        :return: dict of update {'id': uuid, provider_id: <provider-id>}
+        :return: tuple (volume_updates, snapshot_updates)
+
+        where volume updates {'id': uuid, provider_id: <provider-id>}
+        and snapshot updates {'id': uuid, provider_id: <provider-id>}
         """
-        return None
+        return None, None
 
 
 @six.add_metaclass(abc.ABCMeta)
