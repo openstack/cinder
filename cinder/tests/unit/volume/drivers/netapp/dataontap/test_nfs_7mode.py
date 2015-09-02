@@ -15,6 +15,7 @@
 Unit tests for the NetApp 7mode NFS storage driver
 """
 
+import ddt
 import mock
 from os_brick.remotefs import remotefs as remotefs_brick
 from oslo_utils import units
@@ -27,6 +28,7 @@ from cinder.volume.drivers.netapp.dataontap import nfs_7mode
 from cinder.volume.drivers.netapp import utils as na_utils
 
 
+@ddt.ddt
 class NetApp7modeNfsDriverTestCase(test.TestCase):
     def setUp(self):
         super(NetApp7modeNfsDriverTestCase, self).setUp()
@@ -52,28 +54,43 @@ class NetApp7modeNfsDriverTestCase(test.TestCase):
         config.netapp_server_port = '80'
         return config
 
-    def test_get_pool_stats(self):
+    @ddt.data({'nfs_sparsed_volumes': True},
+              {'nfs_sparsed_volumes': False})
+    @ddt.unpack
+    def test_get_pool_stats(self, nfs_sparsed_volumes):
+
+        self.driver.configuration.nfs_sparsed_volumes = nfs_sparsed_volumes
+        thick = not nfs_sparsed_volumes
 
         total_capacity_gb = na_utils.round_down(
             fake.TOTAL_BYTES / units.Gi, '0.01')
         free_capacity_gb = na_utils.round_down(
             fake.AVAILABLE_BYTES / units.Gi, '0.01')
-        capacity = dict(
-            reserved_percentage = fake.RESERVED_PERCENTAGE,
-            total_capacity_gb = total_capacity_gb,
-            free_capacity_gb = free_capacity_gb,
-        )
-
-        mock_get_capacity = self.mock_object(
-            self.driver, '_get_share_capacity_info')
-        mock_get_capacity.return_value = capacity
+        provisioned_capacity_gb = total_capacity_gb - free_capacity_gb
+        capacity = {
+            'reserved_percentage': fake.RESERVED_PERCENTAGE,
+            'max_over_subscription_ratio': fake.MAX_OVER_SUBSCRIPTION_RATIO,
+            'total_capacity_gb': total_capacity_gb,
+            'free_capacity_gb': free_capacity_gb,
+            'provisioned_capacity_gb': provisioned_capacity_gb,
+        }
+        self.mock_object(self.driver,
+                         '_get_share_capacity_info',
+                         mock.Mock(return_value=capacity))
 
         result = self.driver._get_pool_stats()
 
-        self.assertEqual(fake.RESERVED_PERCENTAGE,
-                         result[0]['reserved_percentage'])
-        self.assertEqual(total_capacity_gb, result[0]['total_capacity_gb'])
-        self.assertEqual(free_capacity_gb, result[0]['free_capacity_gb'])
+        expected = [{'pool_name': '192.168.99.24:/fake/export/path',
+                     'QoS_support': False,
+                     'thick_provisioning_support': thick,
+                     'thin_provisioning_support': not thick,
+                     'free_capacity_gb': 12.0,
+                     'total_capacity_gb': 4468.0,
+                     'reserved_percentage': 7,
+                     'max_over_subscription_ratio': 19.0,
+                     'provisioned_capacity_gb': 4456.0}]
+
+        self.assertEqual(expected, result)
 
     def test_shortlist_del_eligible_files(self):
         mock_get_path_for_export = self.mock_object(
