@@ -208,7 +208,7 @@ This may be used for triggering a fail-over manually or for testing purposes.
 
 Note that ideally drivers will know how to update the volume reference properly so that Cinder is now
 pointing to the secondary.  Also, while it's not required, at this time; ideally the command would
-act as a toggle, allowing to switch back and forth betweeen primary and secondary and back to primary.
+act as a toggle, allowing to switch back and forth between primary and secondary and back to primary.
 
 **list_replication_targets**
 

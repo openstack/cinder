@@ -1672,7 +1672,7 @@ class ReplicaV2VD(object):
 
         The replication_driver_data response is vendor unique,
         data returned/used by the driver.  It is expected that
-        the reponse from the driver is in the appropriate db update
+        the response from the driver is in the appropriate db update
         format, in the form of a dict, where the vendor data is
         stored under the key 'replication_driver_data'
 
@@ -1689,10 +1689,10 @@ class ReplicaV2VD(object):
         """Disable replication on the specified volume.
 
         If the specified volume is currently replication enabled,
-        this method can be used to disable the replciation process
+        this method can be used to disable the replication process
         on the backend.
 
-        Note that we still send this call to a driver whos volume
+        Note that we still send this call to a driver whose volume
         may report replication-disabled already.  We do this as a
         safety mechanism to allow a driver to cleanup any mismatch
         in state between Cinder and itself.
@@ -1708,7 +1708,7 @@ class ReplicaV2VD(object):
 
         The replication_driver_data response is vendor unique,
         data returned/used by the driver.  It is expected that
-        the reponse from the driver is in the appropriate db update
+        the response from the driver is in the appropriate db update
         format, in the form of a dict, where the vendor data is
         stored under the key 'replication_driver_data'
 
@@ -1734,7 +1734,7 @@ class ReplicaV2VD(object):
         the replication target is a configured cinder backend, we'll
         just update the host column for the volume.
 
-        Very important point here is that in the case of a succesful
+        Very important point here is that in the case of a successful
         failover, we want to update the replication_status of the
         volume to "failed-over".  This way there's an indication that
         things worked as expected, and that it's evident that the volume
@@ -1744,7 +1744,7 @@ class ReplicaV2VD(object):
         :param context: security context
         :param volume: volume object returned by DB
         :param secondary: Specifies rep target to fail over to
-        :response: dict of udpates
+        :response: dict of updates
 
         So the response would take the form:
             {host: <properly formatted host string for db update>,
@@ -1780,7 +1780,7 @@ class ReplicaV2VD(object):
 
         Example response for replicating to an unmanaged backend:
         {'volume_id': volume['id'],
-         'targets':[{'type': 'managed',
+         'targets':[{'type': 'unmanaged',
                      'vendor-key-1': 'value-1'}...]
 
         NOTE: It's the responsibility of the driver to mask out any

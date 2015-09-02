@@ -3197,7 +3197,18 @@ class VolumeManager(manager.SchedulerDependentManager):
         except exception.CinderException:
             err_msg = (_("Enable replication for volume failed."))
             LOG.exception(err_msg, resource=volume)
+            self.db.volume_update(context,
+                                  volume['id'],
+                                  {'replication_status': 'error'})
             raise exception.VolumeBackendAPIException(data=err_msg)
+
+        except Exception:
+            msg = _('enable_replication caused exception in driver.')
+            LOG.exception(msg, resource=volume)
+            self.db.volume_update(context,
+                                  volume['id'],
+                                  {'replication_status': 'error'})
+            raise exception.VolumeBackendAPIException(data=msg)
 
         try:
             if rep_driver_data:
@@ -3246,7 +3257,19 @@ class VolumeManager(manager.SchedulerDependentManager):
         except exception.CinderException:
             err_msg = (_("Disable replication for volume failed."))
             LOG.exception(err_msg, resource=volume)
+            self.db.volume_update(context,
+                                  volume['id'],
+                                  {'replication_status': 'error'})
             raise exception.VolumeBackendAPIException(data=err_msg)
+
+        except Exception:
+            msg = _('disable_replication caused exception in driver.')
+            LOG.exception(msg, resource=volume)
+            self.db.volume_update(context,
+                                  volume['id'],
+                                  {'replication_status': 'error'})
+            raise exception.VolumeBackendAPIException(msg)
+
         try:
             if rep_driver_data:
                 volume = self.db.volume_update(context,
@@ -3255,6 +3278,9 @@ class VolumeManager(manager.SchedulerDependentManager):
         except exception.CinderException as ex:
             LOG.exception(_LE("Driver replication data update failed."),
                           resource=volume)
+            self.db.volume_update(context,
+                                  volume['id'],
+                                  {'replication_status': 'error'})
             raise exception.VolumeBackendAPIException(reason=ex)
         self.db.volume_update(context,
                               volume['id'],
@@ -3288,6 +3314,13 @@ class VolumeManager(manager.SchedulerDependentManager):
         # not being able to talk to the primary array that it's configured
         # to manage.
 
+        if volume['replication_status'] != 'enabling_secondary':
+            msg = (_("Unable to failover replication due to invalid "
+                     "replication status: %(status)s.") %
+                   {'status': volume['replication_status']})
+            LOG.error(msg, resource=volume)
+            raise exception.InvalidVolume(reason=msg)
+
         try:
             volume = self.db.volume_get(context, volume['id'])
             model_update = self.driver.replication_failover(context,
@@ -3320,6 +3353,14 @@ class VolumeManager(manager.SchedulerDependentManager):
                                   {'replication_status': 'error'})
             raise exception.VolumeBackendAPIException(data=err_msg)
 
+        except Exception:
+            msg = _('replication_failover caused exception in driver.')
+            LOG.exception(msg, resource=volume)
+            self.db.volume_update(context,
+                                  volume['id'],
+                                  {'replication_status': 'error'})
+            raise exception.VolumeBackendAPIException(msg)
+
         if model_update:
             try:
                 volume = self.db.volume_update(
@@ -3330,12 +3371,15 @@ class VolumeManager(manager.SchedulerDependentManager):
             except exception.CinderException as ex:
                 LOG.exception(_LE("Driver replication data update failed."),
                               resource=volume)
+                self.db.volume_update(context,
+                                      volume['id'],
+                                      {'replication_status': 'error'})
                 raise exception.VolumeBackendAPIException(reason=ex)
 
         # NOTE(jdg): We're setting replication status to failed-over
-        # which indicates the volume is ok, things went as epected but
+        # which indicates the volume is ok, things went as expected but
         # we're likely not replicating any longer because... well we
-        # did a fail-over.  In the case of admin brining primary
+        # did a fail-over.  In the case of admin bringing primary
         # back online he/she can use enable_replication to get this
         # state set back to enabled.
 

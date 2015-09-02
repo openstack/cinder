@@ -1611,7 +1611,7 @@ class API(base.Base):
 
     #  Replication V2 methods ##
 
-    # NOTE(jdg): It might be kinda silly to propogate the named
+    # NOTE(jdg): It might be kinda silly to propagate the named
     # args with defaults all the way down through rpc into manager
     # but for now the consistency is useful, and there may be
     # some usefulness in the future (direct calls in manager?)
@@ -1641,7 +1641,7 @@ class API(base.Base):
         # call to driver regardless of replication_status, most likely
         # this indicates an issue with the driver, but might be useful
         # cases to  consider modifying this for in the future.
-        valid_rep_status = ['disabled']
+        valid_rep_status = ['disabled', 'failed-over', 'error']
         rep_status = volume.get('replication_status', valid_rep_status[0])
 
         if rep_status not in valid_rep_status:
