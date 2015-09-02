@@ -57,6 +57,7 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
                 Manage/unmanage volume revise
                 White list target ports support
                 Snap copy support
+                Support efficient non-disruptive backup
     """
 
     def __init__(self, *args, **kwargs):
@@ -271,3 +272,26 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
     def update_migrated_volume(self, context, volume, new_volume):
         """Returns model update for migrated volume."""
         return self.cli.update_migrated_volume(context, volume, new_volume)
+
+    def create_export_snapshot(self, context, snapshot, connector):
+        """Creates a snapshot mount point for snapshot."""
+        return self.cli.create_export_snapshot(context, snapshot, connector)
+
+    def remove_export_snapshot(self, context, snapshot):
+        """Removes snapshot mount point for snapshot."""
+        return self.cli.remove_export_snapshot(context, snapshot)
+
+    def initialize_connection_snapshot(self, snapshot, connector, **kwargs):
+        """Allows connection to snapshot."""
+        return self.cli.initialize_connection_snapshot(snapshot,
+                                                       connector,
+                                                       **kwargs)
+
+    def terminate_connection_snapshot(self, snapshot, connector, **kwargs):
+        """Disallows connection to snapshot."""
+        return self.cli.terminate_connection_snapshot(snapshot,
+                                                      connector,
+                                                      **kwargs)
+
+    def backup_use_temp_snapshot(self):
+        return True
