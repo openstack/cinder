@@ -3137,18 +3137,18 @@ class VolumeManager(manager.SchedulerDependentManager):
         """
         try:
             volume = self.db.volume_get(context, volume['id'])
-            volume_updates = self.driver.replication_failover(context,
-                                                              volume,
-                                                              secondary)
+            model_update = self.driver.replication_failover(context,
+                                                            volume,
+                                                            secondary)
 
-            # volume_updates is a dict containing a report of relevant
-            # items based on the backend and how it operates or what it needs
+            # model_updates is a dict containing a report of relevant
+            # items based on the backend and how it operates or what it needs.
+            # For example:
             # {'host': 'secondary-configured-cinder-backend',
-            #  'model_update': {'update-all-the-provider-info-etc'},
+            #  'provider_location: 'foo',
             #  'replication_driver_data': 'driver-specific-stuff-for-db'}
             # Where 'host' is a valid cinder host string like
             #  'foo@bar#baz'
-            # model_update and replication_driver_data are required
 
         except exception.CinderException:
 
@@ -3167,25 +3167,12 @@ class VolumeManager(manager.SchedulerDependentManager):
                                   {'replication_status': 'error'})
             raise exception.VolumeBackendAPIException(data=err_msg)
 
-        # TODO(jdg): Come back and condense thes into a single update
-        update = {}
-        model_update = volume_updates.get('model_update', None)
-        driver_update = volume_updates.get('replication_driver_data', None)
-        host_update = volume_updates.get('host', None)
-
         if model_update:
-            update['model'] = model_update
-        if driver_update:
-            update['replication_driver_data'] = driver_update
-        if host_update:
-            update['host'] = host_update
-
-        if update:
             try:
                 volume = self.db.volume_update(
                     context,
                     volume['id'],
-                    update)
+                    model_update)
 
             except exception.CinderException as ex:
                 LOG.exception(_LE("Driver replication data update failed."),
