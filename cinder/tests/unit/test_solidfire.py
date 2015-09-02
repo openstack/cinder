@@ -191,10 +191,13 @@ class SolidFireVolumeTestCase(test.TestCase):
     def fake_issue_api_request_fails(obj, method,
                                      params, version='1.0',
                                      endpoint=None):
-        return {'error': {'code': 000,
-                          'name': 'DummyError',
-                          'message': 'This is a fake error response'},
-                'id': 1}
+        response = {'error': {'code': 000,
+                              'name': 'DummyError',
+                              'message': 'This is a fake error response'},
+                    'id': 1}
+        msg = ('Error (%s) encountered during '
+               'SolidFire API call.' % response['error']['name'])
+        raise exception.SolidFireAPIException(message=msg)
 
     def fake_set_qos_by_volume_type(self, type_id, ctxt):
         return {'minIOPS': 500,
@@ -459,8 +462,8 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.stubs.Set(solidfire.SolidFireDriver,
                        '_issue_api_request',
                        self.fake_issue_api_request_fails)
-        account = sfv._create_sfaccount('project-id')
-        self.assertIsNone(account)
+        self.assertRaises(exception.SolidFireAPIException,
+                          sfv._create_sfaccount, 'project-id')
 
     def test_get_sfaccount_by_name(self):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
@@ -475,8 +478,8 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.stubs.Set(solidfire.SolidFireDriver,
                        '_issue_api_request',
                        self.fake_issue_api_request_fails)
-        account = sfv._get_sfaccount_by_name('some-name')
-        self.assertIsNone(account)
+        self.assertRaises(exception.SolidFireAPIException,
+                          sfv._get_sfaccount_by_name, 'some-name')
 
     @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
     @mock.patch.object(solidfire.SolidFireDriver, '_create_template_account')
@@ -593,7 +596,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'created_at': timeutils.utcnow()}
 
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-        self.assertRaises(exception.SolidFireAccountNotFound,
+        self.assertRaises(exception.SolidFireAPIException,
                           sfv.extend_volume,
                           testvol, 2)
 
