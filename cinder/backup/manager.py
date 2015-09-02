@@ -661,28 +661,48 @@ class BackupManager(manager.SchedulerDependentManager):
                 self._update_backup_error(backup, context, msg)
                 raise exception.InvalidBackup(reason=msg)
 
-            required_import_options = ['display_name',
-                                       'display_description',
-                                       'container',
-                                       'size',
-                                       'service_metadata',
-                                       'service',
-                                       'object_count']
+            required_import_options = {
+                'display_name',
+                'display_description',
+                'container',
+                'size',
+                'service_metadata',
+                'service',
+                'object_count',
+                'id'
+            }
 
-            backup_update = {}
-            backup_update['status'] = 'available'
-            backup_update['service'] = self.driver_name
-            backup_update['availability_zone'] = self.az
-            backup_update['host'] = self.host
-            for entry in required_import_options:
-                if entry not in backup_options:
-                    msg = (_('Backup metadata received from driver for '
-                             'import is missing %s.'), entry)
-                    self._update_backup_error(backup, context, msg)
-                    raise exception.InvalidBackup(reason=msg)
-                backup_update[entry] = backup_options[entry]
+            # Check for missing fields in imported data
+            missing_opts = required_import_options - set(backup_options)
+            if missing_opts:
+                msg = (_('Driver successfully decoded imported backup data, '
+                         'but there are missing fields (%s).') %
+                       ', '.join(missing_opts))
+                self._update_backup_error(backup, context, msg)
+                raise exception.InvalidBackup(reason=msg)
+
+            # Confirm the ID from the record in the DB is the right one
+            backup_id = backup_options['id']
+            if backup_id != backup.id:
+                msg = (_('Trying to import backup metadata from id %(meta_id)s'
+                         ' into backup %(id)s.') %
+                       {'meta_id': backup_id, 'id': backup.id})
+                self._update_backup_error(backup, context, msg)
+                raise exception.InvalidBackup(reason=msg)
+
+            # Overwrite some fields
+            backup_options['status'] = 'available'
+            backup_options['service'] = self.driver_name
+            backup_options['availability_zone'] = self.az
+            backup_options['host'] = self.host
+
+            # Remove some values which are not actual fields and some that
+            # were set by the API node
+            for key in ('name', 'user_id', 'project_id'):
+                backup_options.pop(key, None)
+
             # Update the database
-            backup.update(backup_update)
+            backup.update(backup_options)
             backup.save()
 
             # Verify backup

@@ -19,6 +19,7 @@ from cinder import exception
 from cinder import objects
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import objects as test_objects
+from cinder.tests.unit import utils
 
 
 fake_backup = {
@@ -86,15 +87,17 @@ class TestBackup(test_objects.BaseObjectsTestCase):
         self.assertEqual('3', backup.temp_snapshot_id)
 
     def test_import_record(self):
+        utils.replace_obj_loader(self, objects.Backup)
         backup = objects.Backup(context=self.context, id=1, parent_id=None,
                                 num_dependent_backups=0)
         export_string = backup.encode_record()
         imported_backup = objects.Backup.decode_record(export_string)
 
         # Make sure we don't lose data when converting from string
-        self.assertDictEqual(dict(backup), imported_backup)
+        self.assertDictEqual(self._expected_backup(backup), imported_backup)
 
     def test_import_record_additional_info(self):
+        utils.replace_obj_loader(self, objects.Backup)
         backup = objects.Backup(context=self.context, id=1, parent_id=None,
                                 num_dependent_backups=0)
         extra_info = {'driver': {'key1': 'value1', 'key2': 'value2'}}
@@ -107,18 +110,24 @@ class TestBackup(test_objects.BaseObjectsTestCase):
 
         # Make sure we don't lose data when converting from string and that
         # extra info is still there
-        expected = dict(backup)
+        expected = self._expected_backup(backup)
         expected['extra_info'] = extra_info
         self.assertDictEqual(expected, imported_backup)
 
+    def _expected_backup(self, backup):
+        record = {name: field.to_primitive(backup, name, getattr(backup, name))
+                  for name, field in backup.fields.items()}
+        return record
+
     def test_import_record_additional_info_cant_overwrite(self):
+        utils.replace_obj_loader(self, objects.Backup)
         backup = objects.Backup(context=self.context, id=1, parent_id=None,
                                 num_dependent_backups=0)
         export_string = backup.encode_record(id='fake_id')
         imported_backup = objects.Backup.decode_record(export_string)
 
         # Make sure the extra_info can't overwrite basic data
-        self.assertDictEqual(dict(backup), imported_backup)
+        self.assertDictEqual(self._expected_backup(backup), imported_backup)
 
     def test_import_record_decoding_error(self):
         export_string = '123456'

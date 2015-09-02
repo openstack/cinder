@@ -102,8 +102,9 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
         return backup
 
     @base.remotable_classmethod
-    def get_by_id(cls, context, id):
-        db_backup = db.backup_get(context, id)
+    def get_by_id(cls, context, id, read_deleted=None, project_only=None):
+        db_backup = db.backup_get(context, id, read_deleted=read_deleted,
+                                  project_only=project_only)
         return cls._from_db_object(context, cls(context), db_backup)
 
     @base.remotable
@@ -146,7 +147,13 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
     @base.remotable
     def encode_record(self, **kwargs):
         """Serialize backup object, with optional extra info, into a string."""
-        kwargs.update(self)
+        # We don't want to export extra fields and we want to force lazy
+        # loading, so we can't use dict(self) or self.obj_to_primitive
+        record = {name: field.to_primitive(self, name, getattr(self, name))
+                  for name, field in self.fields.items()}
+        # We must update kwargs instead of record to ensure we don't overwrite
+        # "real" data from the backup
+        kwargs.update(record)
         retval = jsonutils.dumps(kwargs)
         if six.PY3:
             retval = retval.encode('utf-8')
@@ -193,3 +200,25 @@ class BackupList(base.ObjectListBase, base.CinderObject):
         backups = db.backup_get_all_by_volume(context, volume_id, filters)
         return base.obj_make_list(context, cls(context), objects.Backup,
                                   backups)
+
+
+@base.CinderObjectRegistry.register
+class BackupImport(Backup):
+    """Special object for Backup Imports.
+
+    This class should not be used for anything but Backup creation when
+    importing backups to the DB.
+
+    On creation it allows to specify the ID for the backup, since it's the
+    reference used in parent_id it is imperative that this is preserved.
+
+    Backup Import objects get promoted to standard Backups when the import is
+    completed.
+    """
+
+    @base.remotable
+    def create(self):
+        updates = self.cinder_obj_get_changes()
+
+        db_backup = db.backup_create(self._context, updates)
+        self._from_db_object(self._context, self, db_backup)

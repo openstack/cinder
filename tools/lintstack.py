@@ -71,6 +71,7 @@ objects_ignore_messages = [
     "Module 'cinder.objects' has no 'BackupList' member",
     "Module 'cinder.objects' has no 'Service' member",
     "Module 'cinder.objects' has no 'ServiceList' member",
+    "Module 'cinder.objects' has no 'BackupImport' member",
 ]
 objects_ignore_modules = ["cinder/objects/"]
 

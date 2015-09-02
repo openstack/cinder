@@ -3420,13 +3420,17 @@ def volume_glance_metadata_delete_by_snapshot(context, snapshot_id):
 
 
 @require_context
-def backup_get(context, backup_id):
+def backup_get(context, backup_id, read_deleted=None, project_only=True):
     return _backup_get(context, backup_id)
 
 
-def _backup_get(context, backup_id, session=None):
+def _backup_get(context, backup_id, session=None, read_deleted=None,
+                project_only=True):
     result = model_query(context, models.Backup, session=session,
-                         project_only=True).filter_by(id=backup_id).first()
+                         project_only=project_only,
+                         read_deleted=read_deleted).\
+        filter_by(id=backup_id).\
+        first()
 
     if not result:
         raise exception.BackupNotFound(backup_id=backup_id)

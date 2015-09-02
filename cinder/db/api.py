@@ -848,9 +848,9 @@ def reservation_expire(context):
 ###################
 
 
-def backup_get(context, backup_id):
+def backup_get(context, backup_id, read_deleted=None, project_only=True):
     """Get a backup or raise if it does not exist."""
-    return IMPL.backup_get(context, backup_id)
+    return IMPL.backup_get(context, backup_id, read_deleted, project_only)
 
 
 def backup_get_all(context, filters=None, marker=None, limit=None,
