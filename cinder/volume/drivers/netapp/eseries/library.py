@@ -90,6 +90,15 @@ class NetAppESeriesLibrary(object):
         'sas': 'SAS',
         'sata': 'SATA',
     }
+    SSC_RAID_TYPE_MAPPING = {
+        'raidDiskPool': 'DDP',
+        'raid0': 'raid0',
+        'raid1': 'raid1',
+        # RAID3 is being deprecated and is actually implemented as RAID5
+        'raid3': 'raid5',
+        'raid5': 'raid5',
+        'raid6': 'raid6',
+    }
     SSC_UPDATE_INTERVAL = 60  # seconds
     WORLDWIDENAME = 'worldWideName'
 
@@ -879,20 +888,26 @@ class NetAppESeriesLibrary(object):
         """
         LOG.info(_LI("Updating storage service catalog information for "
                      "backend '%s'"), self._backend_name)
-        self._ssc_stats = \
-            self._update_ssc_disk_encryption(self._get_storage_pools())
-        self._ssc_stats = \
-            self._update_ssc_disk_types(self._get_storage_pools())
+        relevant_pools = self._get_storage_pools()
+        self._ssc_stats = (
+            self._update_ssc_disk_encryption(relevant_pools))
+        self._ssc_stats = (
+            self._update_ssc_disk_types(relevant_pools))
+        self._ssc_stats = (
+            self._update_ssc_raid_type(relevant_pools))
 
-    def _update_ssc_disk_types(self, volume_groups):
+    def _update_ssc_disk_types(self, storage_pools):
         """Updates the given ssc dictionary with new disk type information.
 
-        :param volume_groups: The volume groups this driver cares about
+        :param storage_pools: The storage pools this driver cares about
         """
         ssc_stats = copy.deepcopy(self._ssc_stats)
         all_disks = self._client.list_drives()
+
+        pool_ids = set(pool.get("volumeGroupRef") for pool in storage_pools)
+
         relevant_disks = filter(lambda x: x.get('currentVolumeGroupRef') in
-                                volume_groups, all_disks)
+                                pool_ids, all_disks)
         for drive in relevant_disks:
             current_vol_group = drive.get('currentVolumeGroupRef')
             if current_vol_group not in ssc_stats:
@@ -907,22 +922,36 @@ class NetAppESeriesLibrary(object):
 
         return ssc_stats
 
-    def _update_ssc_disk_encryption(self, volume_groups):
+    def _update_ssc_disk_encryption(self, storage_pools):
         """Updates the given ssc dictionary with new disk encryption information.
 
-        :param volume_groups: The volume groups this driver cares about
+        :param storage_pools: The storage pools this driver cares about
         """
         ssc_stats = copy.deepcopy(self._ssc_stats)
-        all_pools = self._client.list_storage_pools()
-        relevant_pools = filter(lambda x: x.get('volumeGroupRef') in
-                                volume_groups, all_pools)
-        for pool in relevant_pools:
+        for pool in storage_pools:
             current_vol_group = pool.get('volumeGroupRef')
             if current_vol_group not in ssc_stats:
                 ssc_stats[current_vol_group] = {}
 
             ssc_stats[current_vol_group]['netapp_disk_encryption'] = 'true' \
                 if pool['securityType'] == 'enabled' else 'false'
+
+        return ssc_stats
+
+    def _update_ssc_raid_type(self, storage_pools):
+        """Updates the given ssc dictionary with new RAID type information.
+
+        :param storage_pools: The storage pools this driver cares about
+        """
+        ssc_stats = copy.deepcopy(self._ssc_stats)
+        for pool in storage_pools:
+            current_vol_group = pool.get('volumeGroupRef')
+            if current_vol_group not in ssc_stats:
+                ssc_stats[current_vol_group] = {}
+
+            raid_type = pool.get('raidLevel')
+            ssc_stats[current_vol_group]['netapp_raid_type'] = (
+                self.SSC_RAID_TYPE_MAPPING.get(raid_type, 'unknown'))
 
         return ssc_stats
 
@@ -936,8 +965,7 @@ class NetAppESeriesLibrary(object):
         storage_pools = self._client.list_storage_pools()
         for storage_pool in storage_pools:
             # Check if pool can be used
-            if (storage_pool.get('raidLevel') == 'raidDiskPool'
-                    and storage_pool['label'].lower() in conf_enabled_pools):
+            if (storage_pool['label'].lower() in conf_enabled_pools):
                 filtered_pools.append(storage_pool)
 
         return filtered_pools
