@@ -1958,10 +1958,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         volume_ref = self.db.volume_get(ctxt, volume_id)
         status_update = {'status': volume_ref['previous_status']}
-        if context.project_id != volume_ref['project_id']:
-            project_id = volume_ref['project_id']
-        else:
-            project_id = context.project_id
+        project_id = volume_ref['project_id']
 
         try:
             # NOTE(flaper87): Verify the driver is enabled
