@@ -107,7 +107,7 @@ active_zoneset_multiple_zones = {
     'zones': {
         'openstack50060b0000c26604201900051ee8e329':
         ['50:06:0b:00:00:c2:66:04', '20:19:00:05:1e:e8:e3:29'],
-        'openstack50060b0000c26602201900051ee8e327':
+        'openstack10000012345678902001009876543210':
         ['50:06:0b:00:00:c2:66:02', '20:19:00:05:1e:e8:e3:27']},
     'active_zone_config': 'OpenStack_Cfg'}
 
@@ -233,6 +233,15 @@ class TestCiscoFCZoneClientCLI(cli.CiscoFCZoneClientCLI, test.TestCase):
         switch_data = self._get_switch_info(cmd_list)
         self.assertEqual(nsshow_list, switch_data)
         run_ssh_mock.assert_called_once_with(cmd_list, True)
+
+    @mock.patch.object(cli.CiscoFCZoneClientCLI, '_ssh_execute')
+    @mock.patch.object(cli.CiscoFCZoneClientCLI, '_cfg_save')
+    def test__add_zones_with_update(self, ssh_execute_mock, cfg_save_mock):
+        self.add_zones(new_zone, False, self.fabric_vsan,
+                       active_zoneset_multiple_zones,
+                       zoning_status_basic)
+        self.assertEqual(2, ssh_execute_mock.call_count)
+        self.assertEqual(2, cfg_save_mock.call_count)
 
     def test__parse_ns_output(self):
         return_wwn_list = []
