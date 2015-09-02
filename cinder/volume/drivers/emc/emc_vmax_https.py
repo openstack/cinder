@@ -333,12 +333,12 @@ def wbem_request(url, data, creds, headers=None, debug=0, x509=None,
             msg = (_("Bad Status line returned: %(arg)s.")
                    % {'arg': arg})
             raise pywbem.cim_http.Error(msg)
-        except socket.sslerror as arg:
-            msg = (_("SSL error: %(arg)s.")
-                   % {'arg': arg})
-            raise pywbem.cim_http.Error(msg)
         except socket.error as arg:
             msg = (_("Socket error: %(arg)s.")
+                   % {'arg': arg})
+            raise pywbem.cim_http.Error(msg)
+        except socket.sslerror as arg:
+            msg = (_("SSL error: %(arg)s.")
                    % {'arg': arg})
             raise pywbem.cim_http.Error(msg)
 
