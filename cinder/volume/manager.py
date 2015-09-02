@@ -3058,6 +3058,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         :param secondary: Specifies rep target to fail over to
         """
         try:
+            volume = self.db.volume_get(context, volume['id'])
             volume_updates = self.driver.replication_failover(context,
                                                               volume,
                                                               secondary)
@@ -3153,6 +3154,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         """
 
         try:
+            volume = self.db.volume_get(context, volume['id'])
             replication_targets = self.driver.list_replication_targets(context,
                                                                        volume)
 
