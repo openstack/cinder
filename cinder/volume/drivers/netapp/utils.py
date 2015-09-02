@@ -444,12 +444,32 @@ class Features(object):
     def __init__(self):
         self.defined_features = set()
 
-    def add_feature(self, name, supported=True):
+    def add_feature(self, name, supported=True, min_version=None):
         if not isinstance(supported, bool):
             raise TypeError("Feature value must be a bool type.")
         self.defined_features.add(name)
-        setattr(self, name, supported)
+        setattr(self, name, FeatureState(supported, min_version))
 
     def __getattr__(self, name):
         # NOTE(cknight): Needed to keep pylint happy.
         raise AttributeError
+
+
+class FeatureState(object):
+
+    def __init__(self, supported=True, minimum_version=None):
+        """Represents the current state of enablement for a Feature
+
+        :param supported: True if supported, false otherwise
+        :param minimum_version: The minimum version that this feature is
+        suported at
+        """
+        self.supported = supported
+        self.minimum_version = minimum_version
+
+    def __nonzero__(self):
+        """Allow a FeatureState object to be tested for truth value
+
+        :return True if the feature is supported, otherwise False
+        """
+        return self.supported

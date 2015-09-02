@@ -722,6 +722,7 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
     def test_create_destroy(self):
         FAKE_POOLS = [{'label': 'DDP', 'volumeGroupRef': 'test'}]
         self.library._get_storage_pools = mock.Mock(return_value=FAKE_POOLS)
+        self.library._client.features = mock.Mock()
         self.mock_object(self.library._client, '_get_resource_url', mock.Mock(
             return_value=fakes.FAKE_ENDPOINT_HTTP))
         self.mock_object(self.library._client, '_eval_response')
@@ -763,7 +764,7 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
         self.driver.create_volume(self.volume)
 
         self.library._create_volume.assert_called_with(
-            'DDP', self.fake_eseries_volume_label, self.volume['size'])
+            'DDP', self.fake_eseries_volume_label, self.volume['size'], {})
 
     def test_create_volume_no_pool_provided_by_scheduler(self):
         volume = copy.deepcopy(self.volume)
