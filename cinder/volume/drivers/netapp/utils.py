@@ -437,3 +437,19 @@ class OpenStackInfo(object):
         return '%(version)s|%(release)s|%(vendor)s|%(platform)s' % {
             'version': self._version, 'release': self._release,
             'vendor': self._vendor, 'platform': self._platform}
+
+
+class Features(object):
+
+    def __init__(self):
+        self.defined_features = set()
+
+    def add_feature(self, name, supported=True):
+        if not isinstance(supported, bool):
+            raise TypeError("Feature value must be a bool type.")
+        self.defined_features.add(name)
+        setattr(self, name, supported)
+
+    def __getattr__(self, name):
+        # NOTE(cknight): Needed to keep pylint happy.
+        raise AttributeError

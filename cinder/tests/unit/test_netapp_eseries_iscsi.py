@@ -674,6 +674,7 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
         self.mock_object(requests, 'Session', FakeEseriesHTTPSession)
         self.mock_object(self.library,
                          '_check_mode_get_or_register_storage_system')
+        self.mock_object(self.driver.library, '_check_storage_system')
         self.driver.do_setup(context='context')
         self.driver.library._client._endpoint = fakes.FAKE_ENDPOINT_HTTP
 
@@ -693,12 +694,17 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
         return configuration
 
     def test_embedded_mode(self):
+        self.mock_object(self.driver.library,
+                         '_check_mode_get_or_register_storage_system')
+        self.mock_object(client.RestClient, '_init_features')
         configuration = self._set_config(create_configuration())
         configuration.netapp_controller_ips = '127.0.0.1,127.0.0.3'
+
         driver = common.NetAppDriver(configuration=configuration)
         self.mock_object(client.RestClient, 'list_storage_systems', mock.Mock(
             return_value=[fakes.STORAGE_SYSTEM]))
         driver.do_setup(context='context')
+
         self.assertEqual('1fa6efb5-f07b-4de4-9f0e-52e5f7ff5d1b',
                          driver.library._client.get_system_id())
 

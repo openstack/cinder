@@ -16,6 +16,7 @@
 
 
 import copy
+import json
 
 import mock
 
@@ -557,6 +558,43 @@ HARDWARE_INVENTORY = {
     ]
 }
 
+FAKE_RESOURCE_URL = '/devmgr/v2/devmgr/utils/about'
+FAKE_APP_VERSION = '2015.2|2015.2.dev59|vendor|Linux-3.13.0-24-generic'
+FAKE_BACKEND = 'eseriesiSCSI'
+FAKE_CINDER_HOST = 'ubuntu-1404'
+FAKE_SERIAL_NUMBERS = ['021436000943', '021436001321']
+FAKE_SERIAL_NUMBER = ['021436001321']
+FAKE_DEFAULT_SERIAL_NUMBER = ['unknown', 'unknown']
+FAKE_DEFAULT_MODEL = 'unknown'
+FAKE_ABOUT_RESPONSE = {
+    'runningAsProxy': True,
+    'version': '01.53.9010.0005',
+    'systemId': 'a89355ab-692c-4d4a-9383-e249095c3c0',
+}
+
+FAKE_CONTROLLERS = [
+    {'serialNumber': FAKE_SERIAL_NUMBERS[0], 'modelName': '2752'},
+    {'serialNumber': FAKE_SERIAL_NUMBERS[1], 'modelName': '2752'}]
+
+FAKE_SINGLE_CONTROLLER = [{'serialNumber': FAKE_SERIAL_NUMBERS[1]}]
+
+FAKE_KEY = ('openstack-%s-%s-%s' % (FAKE_CINDER_HOST, FAKE_SERIAL_NUMBERS[0],
+                                    FAKE_SERIAL_NUMBERS[1]))
+
+FAKE_ASUP_DATA = {
+    'category': 'provisioning',
+    'app-version': FAKE_APP_VERSION,
+    'event-source': 'Cinder driver NetApp_iSCSI_ESeries',
+    'event-description': 'OpenStack Cinder connected to E-Series proxy',
+    'system-version': '08.10.15.00',
+    'computer-name': FAKE_CINDER_HOST,
+    'model': FAKE_CONTROLLERS[0]['modelName'],
+    'controller2-serial': FAKE_CONTROLLERS[1]['serialNumber'],
+    'controller1-serial': FAKE_CONTROLLERS[0]['serialNumber'],
+    'operating-mode': 'proxy',
+}
+FAKE_POST_INVOKE_DATA = ('POST', '/key-values/%s' % FAKE_KEY,
+                         json.dumps(FAKE_ASUP_DATA))
 
 VOLUME_COPY_JOB = {
     "status": "complete",
@@ -761,6 +799,27 @@ class FakeEseriesClient(object):
 
     def list_hardware_inventory(self):
         return HARDWARE_INVENTORY
+
+    def get_eseries_api_info(self, verify=False):
+        return 'Proxy', '1.53.9010.0005'
+
+    def set_counter(self, key):
+        pass
+
+    def add_autosupport_data(self, *args):
+        pass
+
+    def get_serial_numbers(self):
+        pass
+
+    def get_model_name(self):
+        pass
+
+    def api_operating_mode(self):
+        pass
+
+    def get_firmware_version(self):
+        return FAKE_POST_INVOKE_DATA["system-version"]
 
     def create_volume_copy_job(self, *args, **kwargs):
         return VOLUME_COPY_JOB
