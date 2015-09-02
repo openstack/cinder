@@ -52,7 +52,7 @@ class HnasBackend(object):
 
         if self.drv_configs['ssh_enabled'] != 'True':
             # Direct connection via ssc
-            args = (cmd, '-u', user, '-p', pw, ip0) + args
+            args = (cmd, '--user', user, '--password', pw, ip0) + args
             out, err = utils.execute(*args, **kwargs)
             LOG.debug("command %(cmd)s result: out = %(out)s - err = "
                       "%(err)s", {'cmd': cmd, 'out': out, 'err': err})
