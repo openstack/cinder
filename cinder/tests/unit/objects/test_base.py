@@ -16,6 +16,7 @@ import datetime
 import uuid
 
 from iso8601 import iso8601
+from oslo_versionedobjects import fields
 
 from cinder.objects import base
 from cinder.tests.unit import objects as test_objects
@@ -75,3 +76,24 @@ class TestCinderObject(test_objects.BaseObjectsTestCase):
         self.obj.scheduled_at = now_tz
         self.assertDictEqual({'scheduled_at': now},
                              self.obj.cinder_obj_get_changes())
+
+
+class TestCinderComparableObject(test_objects.BaseObjectsTestCase):
+    def test_comparable_objects(self):
+        @base.CinderObjectRegistry.register
+        class MyComparableObj(base.CinderObject,
+                              base.CinderObjectDictCompat,
+                              base.CinderComparableObject):
+            fields = {'foo': fields.Field(fields.Integer())}
+
+        class NonVersionedObject(object):
+            pass
+
+        obj1 = MyComparableObj(foo=1)
+        obj2 = MyComparableObj(foo=1)
+        obj3 = MyComparableObj(foo=2)
+        obj4 = NonVersionedObject()
+        self.assertTrue(obj1 == obj2)
+        self.assertFalse(obj1 == obj3)
+        self.assertFalse(obj1 == obj4)
+        self.assertNotEqual(obj1, None)
