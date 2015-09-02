@@ -29,6 +29,7 @@ from cinder import db
 from cinder.db.sqlalchemy import api as sqa_api
 from cinder.db.sqlalchemy import models as sqa_models
 from cinder import exception
+from cinder import objects
 from cinder import quota
 from cinder import test
 import cinder.tests.unit.image.fake
@@ -41,6 +42,7 @@ CONF = cfg.CONF
 class QuotaIntegrationTestCase(test.TestCase):
 
     def setUp(self):
+        objects.register_all()
         super(QuotaIntegrationTestCase, self).setUp()
         self.volume_type_name = CONF.default_volume_type
         self.volume_type = db.volume_type_create(
@@ -79,14 +81,15 @@ class QuotaIntegrationTestCase(test.TestCase):
         return db.volume_create(self.context, vol)
 
     def _create_snapshot(self, volume):
-        snapshot = {}
-        snapshot['user_id'] = self.user_id
-        snapshot['project_id'] = self.project_id
-        snapshot['volume_id'] = volume['id']
-        snapshot['volume_size'] = volume['size']
-        snapshot['host'] = volume['host']
-        snapshot['status'] = 'available'
-        return db.snapshot_create(self.context, snapshot)
+        snapshot = objects.Snapshot(self.context)
+        snapshot.user_id = self.user_id or 'fake_user_id'
+        snapshot.project_id = self.project_id or 'fake_project_id'
+        snapshot.volume_id = volume['id']
+        snapshot.volume_size = volume['size']
+        snapshot.host = volume['host']
+        snapshot.status = 'available'
+        snapshot.create()
+        return snapshot
 
     def _create_backup(self, volume):
         backup = {}
@@ -156,7 +159,7 @@ class QuotaIntegrationTestCase(test.TestCase):
         self.assertRaises(exception.SnapshotLimitExceeded,
                           volume.API().create_snapshot,
                           self.context, vol_ref, '', '')
-        db.snapshot_destroy(self.context, snap_ref['id'])
+        snap_ref.destroy()
         db.volume_destroy(self.context, vol_ref['id'])
 
     def test_too_many_backups(self):
@@ -206,7 +209,7 @@ class QuotaIntegrationTestCase(test.TestCase):
         usages = db.quota_usage_get_all_by_project(self.context,
                                                    self.project_id)
         self.assertEqual(20, usages['gigabytes']['in_use'])
-        db.snapshot_destroy(self.context, snap_ref['id'])
+        snap_ref.destroy()
         db.volume_destroy(self.context, vol_ref['id'])
 
     def test_too_many_combined_backup_gigabytes(self):
@@ -244,8 +247,8 @@ class QuotaIntegrationTestCase(test.TestCase):
         self.assertEqual(20, usages['gigabytes']['in_use'])
         self.assertEqual(0, usages['gigabytes']['reserved'])
 
-        db.snapshot_destroy(self.context, snap_ref['id'])
-        db.snapshot_destroy(self.context, snap_ref2['id'])
+        snap_ref.destroy()
+        snap_ref2.destroy()
         db.volume_destroy(self.context, vol_ref['id'])
         db.volume_destroy(self.context, vol_ref2['id'])
 

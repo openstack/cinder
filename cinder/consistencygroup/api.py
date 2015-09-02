@@ -250,7 +250,7 @@ class API(base.Base):
                 kwargs['cgsnapshot'] = cgsnapshot
                 kwargs['consistencygroup'] = group
                 kwargs['snapshot'] = snapshot
-                volume_type_id = snapshot.get('volume_type_id')
+                volume_type_id = snapshot.volume_type_id
                 if volume_type_id:
                     kwargs['volume_type'] = volume_types.get_volume_type(
                         context, volume_type_id)
@@ -262,7 +262,7 @@ class API(base.Base):
                 # and removal of volume entry in the db.
                 try:
                     self.volume_api.create(context,
-                                           snapshot['volume_size'],
+                                           snapshot.volume_size,
                                            None,
                                            None,
                                            **kwargs)

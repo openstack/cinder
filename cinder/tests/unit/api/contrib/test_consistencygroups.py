@@ -42,7 +42,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
     def setUp(self):
         super(ConsistencyGroupsAPITestCase, self).setUp()
         self.cg_api = cinder.consistencygroup.API()
-        self.ctxt = context.RequestContext('fake', 'fake', auth_token=True)
+        self.ctxt = context.RequestContext('fake', 'fake', auth_token=True,
+                                           is_admin=True)
 
     def _create_consistencygroup(
             self,
@@ -489,6 +490,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         volume_type_id = '123456'
         consistencygroup = self._create_consistencygroup(status='available',
                                                          host='test_host')
+
         remove_volume_id = utils.create_volume(
             self.ctxt,
             volume_type_id=volume_type_id,
@@ -732,11 +734,11 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         cgsnapshot_id = utils.create_cgsnapshot(
             self.ctxt,
             consistencygroup_id=consistencygroup.id)['id']
-        snapshot_id = utils.create_snapshot(
+        snapshot = utils.create_snapshot(
             self.ctxt,
             volume_id,
             cgsnapshot_id=cgsnapshot_id,
-            status='available')['id']
+            status='available')
 
         test_cg_name = 'test cg'
         body = {"consistencygroup-from-src": {"name": test_cg_name,
@@ -759,7 +761,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             self.ctxt.elevated(), res_dict['consistencygroup']['id'])
 
         cg_ref.destroy()
-        db.snapshot_destroy(self.ctxt.elevated(), snapshot_id)
+        snapshot.destroy()
         db.cgsnapshot_destroy(self.ctxt.elevated(), cgsnapshot_id)
         db.volume_destroy(self.ctxt.elevated(), volume_id)
         consistencygroup.destroy()
@@ -804,11 +806,11 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         cgsnapshot_id = utils.create_cgsnapshot(
             self.ctxt,
             consistencygroup_id=consistencygroup.id)['id']
-        snapshot_id = utils.create_snapshot(
+        snapshot = utils.create_snapshot(
             self.ctxt,
             volume_id,
             cgsnapshot_id=cgsnapshot_id,
-            status='available')['id']
+            status='available')
 
         test_cg_name = 'test cg'
         body = {"consistencygroup-from-src": {"name": test_cg_name,
@@ -828,7 +830,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         self.assertEqual(400, res_dict['badRequest']['code'])
         self.assertIsNotNone(res_dict['badRequest']['message'])
 
-        db.snapshot_destroy(self.ctxt.elevated(), snapshot_id)
+        snapshot.destroy()
         db.cgsnapshot_destroy(self.ctxt.elevated(), cgsnapshot_id)
         db.volume_destroy(self.ctxt.elevated(), volume_id)
         consistencygroup.destroy()
@@ -874,11 +876,11 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         cgsnapshot_id = utils.create_cgsnapshot(
             self.ctxt,
             consistencygroup_id=consistencygroup.id)['id']
-        snapshot_id = utils.create_snapshot(
+        snapshot = utils.create_snapshot(
             self.ctxt,
             volume_id,
             cgsnapshot_id=cgsnapshot_id,
-            status='available')['id']
+            status='available')
 
         test_cg_name = 'test cg'
         body = {"consistencygroup-from-src": {"name": test_cg_name,
@@ -898,7 +900,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                 'group')
         self.assertIn(msg, res_dict['badRequest']['message'])
 
-        db.snapshot_destroy(self.ctxt.elevated(), snapshot_id)
+        snapshot.destroy()
         db.cgsnapshot_destroy(self.ctxt.elevated(), cgsnapshot_id)
         db.volume_destroy(self.ctxt.elevated(), volume_id)
         consistencygroup.destroy()
@@ -1007,11 +1009,11 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         cgsnapshot_id = utils.create_cgsnapshot(
             self.ctxt,
             consistencygroup_id=consistencygroup.id)['id']
-        snapshot_id = utils.create_snapshot(
+        snapshot = utils.create_snapshot(
             self.ctxt,
             volume_id,
             cgsnapshot_id=cgsnapshot_id,
-            status='available')['id']
+            status='available')
 
         test_cg_name = 'test cg'
         body = {"consistencygroup-from-src": {"name": test_cg_name,
@@ -1030,7 +1032,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         msg = _("Create volume failed.")
         self.assertEqual(msg, res_dict['badRequest']['message'])
 
-        db.snapshot_destroy(self.ctxt.elevated(), snapshot_id)
+        snapshot.destroy()
         db.cgsnapshot_destroy(self.ctxt.elevated(), cgsnapshot_id)
         db.volume_destroy(self.ctxt.elevated(), volume_id)
         consistencygroup.destroy()

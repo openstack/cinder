@@ -722,7 +722,6 @@ class VolumeManager(manager.SchedulerDependentManager):
         self._notify_about_snapshot_usage(context, snapshot, "create.end")
         LOG.info(_LI("Create snapshot completed successfully"),
                  resource=snapshot)
-        return snapshot.id
 
     @locked_snapshot_operation
     def delete_snapshot(self, context, snapshot, unmanage_only=False):
@@ -731,8 +730,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         snapshot._context = context
         project_id = snapshot.project_id
 
-        self._notify_about_snapshot_usage(
-            context, snapshot, "delete.start")
+        self._notify_about_snapshot_usage(context, snapshot, "delete.start")
 
         try:
             # NOTE(flaper87): Verify the driver is enabled
@@ -770,11 +768,9 @@ class VolumeManager(manager.SchedulerDependentManager):
                     'gigabytes': -snapshot.volume_size,
                 }
             volume_ref = self.db.volume_get(context, snapshot.volume_id)
-            QUOTAS.add_volume_type_opts(context,
-                                        reserve_opts,
+            QUOTAS.add_volume_type_opts(context, reserve_opts,
                                         volume_ref.get('volume_type_id'))
-            reservations = QUOTAS.reserve(context,
-                                          project_id=project_id,
+            reservations = QUOTAS.reserve(context, project_id=project_id,
                                           **reserve_opts)
         except Exception:
             reservations = None
@@ -789,7 +785,6 @@ class VolumeManager(manager.SchedulerDependentManager):
             QUOTAS.commit(context, reservations, project_id=project_id)
         LOG.info(_LI("Delete snapshot completed successfully"),
                  resource=snapshot)
-        return True
 
     def attach_volume(self, context, volume_id, instance_uuid, host_name,
                       mountpoint, mode):
@@ -2280,7 +2275,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                                      "not in a valid state. Valid states are: "
                                      "%(valid)s.") %
                                    {'group': group.id,
-                                    'snap': snap['id'],
+                                    'snap': snap.id,
                                     'valid': VALID_CREATE_CG_SRC_SNAP_STATUS})
                             raise exception.InvalidConsistencyGroup(reason=msg)
 
@@ -2396,7 +2391,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         sorted_snapshots = []
         for vol in volumes:
             found_snaps = filter(
-                lambda snap: snap['id'] == vol['snapshot_id'], snapshots)
+                lambda snap: snap.id == vol['snapshot_id'], snapshots)
             if not found_snaps:
                 LOG.error(_LE("Source snapshot cannot be found for target "
                               "volume %(volume_id)s."),
