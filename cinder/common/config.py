@@ -38,9 +38,6 @@ CONF = cfg.CONF
 logging.register_options(CONF)
 
 core_opts = [
-    cfg.StrOpt('api_paste_config',
-               default="api-paste.ini",
-               help='File name for the paste.deploy config for cinder-api'),
     cfg.StrOpt('state_path',
                default='/var/lib/cinder',
                deprecated_name='pybasedir',

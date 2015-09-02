@@ -19,11 +19,11 @@ WSGI middleware for OpenStack API controllers.
 """
 
 from oslo_log import log as logging
+from oslo_service import wsgi as base_wsgi
 import routes
 
 from cinder.api.openstack import wsgi
 from cinder.i18n import _, _LW
-from cinder.wsgi import common as base_wsgi
 
 
 LOG = logging.getLogger(__name__)

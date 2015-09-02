@@ -192,7 +192,6 @@ def list_opts():
                 cinder_volume_drivers_san_san.san_opts,
                 cinder_volume_drivers_hitachi_hnasnfs.NFS_OPTS,
                 cinder_wsgi_eventletserver.socket_opts,
-                cinder_wsgi_eventletserver.eventlet_opts,
                 cinder_sshutils.ssh_opts,
                 cinder_volume_drivers_netapp_options.netapp_proxy_opts,
                 cinder_volume_drivers_netapp_options.netapp_connection_opts,

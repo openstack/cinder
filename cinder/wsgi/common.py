@@ -14,13 +14,10 @@
 
 """Utility methods for working with WSGI servers."""
 
-import sys
-
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_service import wsgi
 from paste import deploy
-import routes.middleware
-import six
 import webob.dec
 import webob.exc
 
@@ -164,104 +161,6 @@ class Middleware(Application):
         return self.process_response(response)
 
 
-class Debug(Middleware):
-    """Helper class for debugging a WSGI application.
-
-    Can be inserted into any WSGI application chain to get information
-    about the request and response.
-
-    """
-
-    @webob.dec.wsgify(RequestClass=Request)
-    def __call__(self, req):
-        print(('*' * 40) + ' REQUEST ENVIRON')  # noqa
-        for key, value in req.environ.items():
-            print(key, '=', value)  # noqa
-        print()  # noqa
-        resp = req.get_response(self.application)
-
-        print(('*' * 40) + ' RESPONSE HEADERS')  # noqa
-        for (key, value) in resp.headers.items():
-            print(key, '=', value)  # noqa
-        print()  # noqa
-
-        resp.app_iter = self.print_generator(resp.app_iter)
-
-        return resp
-
-    @staticmethod
-    def print_generator(app_iter):
-        """Iterator that prints the contents of a wrapper string."""
-        print(('*' * 40) + ' BODY')  # noqa
-        for part in app_iter:
-            if six.PY3:
-                sys.stdout.flush()
-                sys.stdout.buffer.write(part)   # pylint: disable=E1101
-                sys.stdout.buffer.flush()       # pylint: disable=E1101
-            else:
-                sys.stdout.write(part)
-                sys.stdout.flush()
-            yield part
-        print()  # noqa
-
-
-class Router(object):
-    """WSGI middleware that maps incoming requests to WSGI apps."""
-
-    def __init__(self, mapper):
-        """Create a router for the given routes.Mapper.
-
-        Each route in `mapper` must specify a 'controller', which is a
-        WSGI app to call.  You'll probably want to specify an 'action' as
-        well and have your controller be an object that can route
-        the request to the action-specific method.
-
-        Examples:
-          mapper = routes.Mapper()
-          sc = ServerController()
-
-          # Explicit mapping of one route to a controller+action
-          mapper.connect(None, '/svrlist', controller=sc, action='list')
-
-          # Actions are all implicitly defined
-          mapper.resource('server', 'servers', controller=sc)
-
-          # Pointing to an arbitrary WSGI app.  You can specify the
-          # {path_info:.*} parameter so the target app can be handed just that
-          # section of the URL.
-          mapper.connect(None, '/v1.0/{path_info:.*}', controller=BlogApp())
-
-        """
-        self.map = mapper
-        self._router = routes.middleware.RoutesMiddleware(self._dispatch,
-                                                          self.map)
-
-    @webob.dec.wsgify(RequestClass=Request)
-    def __call__(self, req):
-        """Route the incoming request to a controller based on self.map.
-
-        If no match, return a 404.
-
-        """
-        return self._router
-
-    @staticmethod
-    @webob.dec.wsgify(RequestClass=Request)
-    def _dispatch(req):
-        """Dispatch the request to the appropriate controller.
-
-        Called by self._router after matching the incoming request to a route
-        and putting the information into req.environ.  Either returns 404
-        or the routed WSGI app's response.
-
-        """
-        match = req.environ['wsgiorg.routing_args'][1]
-        if not match:
-            return webob.exc.HTTPNotFound()
-        app = match['controller']
-        return app
-
-
 class Loader(object):
     """Used to load WSGI applications from paste configurations."""
 
@@ -272,6 +171,7 @@ class Loader(object):
         :returns: None
 
         """
+        wsgi.register_opts(CONF)  # noqa
         config_path = config_path or CONF.api_paste_config
         self.config_path = utils.find_config(config_path)
 
