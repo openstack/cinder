@@ -29,3 +29,74 @@ GET_OPERATIONAL_NETWORK_INTERFACE_ADDRESSES_RESPONSE = etree.XML("""
         </attributes-list>
     </results>
 """ % {"address1": "1.2.3.4", "address2": "99.98.97.96"})
+
+VOLUME_LIST_INFO_RESPONSE = etree.XML("""
+  <results status="passed">
+    <volumes>
+      <volume-info>
+        <name>vol0</name>
+        <block-type>64_bit</block-type>
+        <state>online</state>
+        <size-total>1441193750528</size-total>
+        <size-used>3161096192</size-used>
+        <size-available>1438032654336</size-available>
+        <percentage-used>0</percentage-used>
+        <owning-vfiler>vfiler0</owning-vfiler>
+        <containing-aggregate>aggr0</containing-aggregate>
+        <space-reserve>volume</space-reserve>
+        <space-reserve-enabled>true</space-reserve-enabled>
+        <is-inconsistent>false</is-inconsistent>
+        <is-unrecoverable>false</is-unrecoverable>
+        <is-invalid>false</is-invalid>
+      </volume-info>
+      <volume-info>
+        <name>vol1</name>
+        <block-type>64_bit</block-type>
+        <state>online</state>
+        <size-total>1441193750528</size-total>
+        <size-used>3161096192</size-used>
+        <size-available>1438032654336</size-available>
+        <percentage-used>0</percentage-used>
+        <owning-vfiler>vfiler0</owning-vfiler>
+        <containing-aggregate>aggr0</containing-aggregate>
+        <space-reserve>volume</space-reserve>
+        <space-reserve-enabled>true</space-reserve-enabled>
+        <is-inconsistent>false</is-inconsistent>
+        <is-unrecoverable>false</is-unrecoverable>
+        <is-invalid>false</is-invalid>
+      </volume-info>
+      <volume-info>
+        <name>vol2</name>
+        <block-type>64_bit</block-type>
+        <state>offline</state>
+        <size-total>1441193750528</size-total>
+        <size-used>3161096192</size-used>
+        <size-available>1438032654336</size-available>
+        <percentage-used>0</percentage-used>
+        <owning-vfiler>vfiler0</owning-vfiler>
+        <containing-aggregate>aggr0</containing-aggregate>
+        <space-reserve>volume</space-reserve>
+        <space-reserve-enabled>true</space-reserve-enabled>
+        <is-inconsistent>false</is-inconsistent>
+        <is-unrecoverable>false</is-unrecoverable>
+        <is-invalid>false</is-invalid>
+      </volume-info>
+      <volume-info>
+        <name>vol3</name>
+        <block-type>64_bit</block-type>
+        <state>online</state>
+        <size-total>1441193750528</size-total>
+        <size-used>3161096192</size-used>
+        <size-available>1438032654336</size-available>
+        <percentage-used>0</percentage-used>
+        <owning-vfiler>vfiler0</owning-vfiler>
+        <containing-aggregate>aggr0</containing-aggregate>
+        <space-reserve>volume</space-reserve>
+        <space-reserve-enabled>true</space-reserve-enabled>
+        <is-inconsistent>false</is-inconsistent>
+        <is-unrecoverable>false</is-unrecoverable>
+        <is-invalid>false</is-invalid>
+      </volume-info>
+    </volumes>
+  </results>
+""")

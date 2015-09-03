@@ -280,18 +280,27 @@ class NetAppBlockStorage7modeLibrary(block_base.NetAppBlockStorageLibrary):
             pool = dict()
             pool['pool_name'] = volume_name
             pool['QoS_support'] = False
-            pool['reserved_percentage'] = 0
+            pool['reserved_percentage'] = (
+                self.reserved_percentage)
+            pool['max_over_subscription_ratio'] = (
+                self.max_over_subscription_ratio)
 
-            # convert sizes to GB and de-rate by NetApp multiplier
+            # convert sizes to GB
             total = float(vol.get_child_content('size-total') or 0)
-            total /= self.configuration.netapp_size_multiplier
             total /= units.Gi
             pool['total_capacity_gb'] = na_utils.round_down(total, '0.01')
 
             free = float(vol.get_child_content('size-available') or 0)
-            free /= self.configuration.netapp_size_multiplier
             free /= units.Gi
             pool['free_capacity_gb'] = na_utils.round_down(free, '0.01')
+
+            pool['provisioned_capacity_gb'] = (round(
+                pool['total_capacity_gb'] - pool['free_capacity_gb'], 2))
+
+            thick = (
+                self.configuration.netapp_lun_space_reservation == 'enabled')
+            pool['thick_provisioned_support'] = thick
+            pool['thin_provisioned_support'] = not thick
 
             pools.append(pool)
 

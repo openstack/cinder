@@ -31,6 +31,7 @@ from cinder import test
 from cinder.tests.unit.volume.drivers.netapp.dataontap.client import (
     fake_api as netapp_api)
 from cinder.tests.unit.volume.drivers.netapp.dataontap import fakes as fake
+import cinder.tests.unit.volume.drivers.netapp.fakes as na_fakes
 from cinder.volume.drivers.netapp.dataontap import block_base
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume import utils as volume_utils
@@ -44,7 +45,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         # Inject fake netapp_lib module classes.
         netapp_api.mock_netapp_lib([block_base])
 
-        kwargs = {'configuration': mock.Mock()}
+        kwargs = {'configuration': self.get_config_base()}
         self.library = block_base.NetAppBlockStorageLibrary(
             'driver', 'protocol', **kwargs)
         self.library.zapi_client = mock.Mock()
@@ -53,6 +54,36 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
 
     def tearDown(self):
         super(NetAppBlockStorageLibraryTestCase, self).tearDown()
+
+    def get_config_base(self):
+        return na_fakes.create_configuration()
+
+    def test_get_reserved_percentage_default_multipler(self):
+
+        default = 1.2
+        reserved_percentage = 20.0
+        self.library.configuration.netapp_size_multiplier = default
+        self.library.configuration.reserved_percentage = reserved_percentage
+        self.mock_object(block_base, 'LOG')
+
+        result = self.library._get_reserved_percentage()
+
+        self.assertEqual(reserved_percentage, result)
+        self.assertFalse(block_base.LOG.warn.called)
+
+    def test_get_reserved_percentage(self):
+
+        multiplier = 2.0
+        self.library.configuration.netapp_size_multiplier = multiplier
+        self.mock_object(block_base, 'LOG')
+
+        result = self.library._get_reserved_percentage()
+
+        reserved_ratio = round(1 - (1 / multiplier), 2)
+        reserved_percentage = 100 * int(reserved_ratio)
+
+        self.assertEqual(reserved_percentage, result)
+        self.assertTrue(block_base.LOG.warn.called)
 
     @mock.patch.object(block_base.NetAppBlockStorageLibrary,
                        '_get_lun_attr',
