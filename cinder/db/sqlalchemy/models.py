@@ -601,6 +601,18 @@ class DriverInitiatorData(BASE, models.TimestampMixin, models.ModelBase):
     value = Column(String(255))
 
 
+class ImageVolumeCacheEntry(BASE, models.ModelBase):
+    """Represents an image volume cache entry"""
+    __tablename__ = 'image_volume_cache_entries'
+    id = Column(Integer, primary_key=True, nullable=False)
+    host = Column(String(255), index=True, nullable=False)
+    image_id = Column(String(36), index=True, nullable=False)
+    image_updated_at = Column(DateTime, nullable=False)
+    volume_id = Column(String(36), nullable=False)
+    size = Column(Integer, nullable=False)
+    last_used = Column(DateTime, default=lambda: timeutils.utcnow())
+
+
 def register_models():
     """Register Models and create metadata.
 

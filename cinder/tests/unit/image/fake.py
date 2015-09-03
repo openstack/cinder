@@ -18,6 +18,7 @@
 
 import copy
 import datetime
+import mock
 import uuid
 
 from cinder import exception
@@ -138,6 +139,7 @@ class _FakeImageService(object):
         self.create(None, image6)
         self.create(None, image7)
         self._imagedata = {}
+        self.temp_images = mock.MagicMock()
         super(_FakeImageService, self).__init__()
 
     # TODO(bcwaldon): implement optional kwargs such as limit, sort_dir

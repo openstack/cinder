@@ -14,6 +14,7 @@
 #
 
 import socket
+import sys
 import uuid
 
 from oslo_service import loopingcall
@@ -209,3 +210,26 @@ def replace_obj_loader(testcase, obj):
 
     testcase.addCleanup(setattr, obj, 'obj_load_attr', obj.obj_load_attr)
     obj.obj_load_attr = fake_obj_load_attr
+
+
+file_spec = None
+
+
+def get_file_spec():
+    """Return a Python 2 and 3 compatible version of a 'file' spec.
+
+    This is to be used anywhere that you need to do something such as
+    mock.MagicMock(spec=file) to mock out something with the file attributes.
+
+    Due to the 'file' built-in method being removed in Python 3 we need to do
+    some special handling for it.
+    """
+    global file_spec
+    # set on first use
+    if file_spec is None:
+        if sys.version_info[0] == 3:
+            import _io
+            file_spec = list(set(dir(_io.TextIOWrapper)).union(
+                set(dir(_io.BytesIO))))
+        else:
+            file_spec = file

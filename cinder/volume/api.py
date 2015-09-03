@@ -34,6 +34,7 @@ from cinder.db import base
 from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _, _LE, _LI, _LW
+from cinder.image import cache as image_cache
 from cinder.image import glance
 from cinder import keymgr
 from cinder import objects
@@ -391,6 +392,11 @@ class API(base.Base):
             msg = _("Volume still has %d dependent "
                     "snapshots.") % len(snapshots)
             raise exception.InvalidVolume(reason=msg)
+
+        cache = image_cache.ImageVolumeCache(self.db, self)
+        entry = cache.get_by_image_volume(context, volume_id)
+        if entry:
+            cache.evict(context, entry)
 
         # If the volume is encrypted, delete its encryption key from the key
         # manager. This operation makes volume deletion an irreversible process
@@ -1204,7 +1210,8 @@ class API(base.Base):
 
                 pass
 
-        recv_metadata = self.image_service.create(context, metadata)
+        recv_metadata = self.image_service.create(
+            context, self.image_service._translate_to_glance(metadata))
         self.update(context, volume, {'status': 'uploading'})
         self.volume_rpcapi.copy_volume_to_image(context,
                                                 volume,

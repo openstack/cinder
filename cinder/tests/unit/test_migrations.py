@@ -892,6 +892,38 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         backups = db_utils.get_table(engine, 'backups')
         self.assertNotIn('num_dependent_backups', backups.c)
 
+    def _check_055(self, engine, data):
+        """Test adding image_volume_cache_entries table."""
+        has_table = engine.dialect.has_table(engine.connect(),
+                                             "image_volume_cache_entries")
+        self.assertTrue(has_table)
+
+        private_data = db_utils.get_table(
+            engine,
+            'image_volume_cache_entries'
+        )
+
+        self.assertIsInstance(private_data.c.id.type,
+                              sqlalchemy.types.INTEGER)
+        self.assertIsInstance(private_data.c.host.type,
+                              sqlalchemy.types.VARCHAR)
+        self.assertIsInstance(private_data.c.image_id.type,
+                              sqlalchemy.types.VARCHAR)
+        self.assertIsInstance(private_data.c.image_updated_at.type,
+                              self.TIME_TYPE)
+        self.assertIsInstance(private_data.c.volume_id.type,
+                              sqlalchemy.types.VARCHAR)
+        self.assertIsInstance(private_data.c.size.type,
+                              sqlalchemy.types.INTEGER)
+        self.assertIsInstance(private_data.c.last_used.type,
+                              self.TIME_TYPE)
+
+    def _post_downgrade_055(self, engine):
+        """Test removing image_volume_cache_entries table."""
+        has_table = engine.dialect.has_table(engine.connect(),
+                                             "image_volume_cache_entries")
+        self.assertFalse(has_table)
+
     def test_walk_versions(self):
         self.walk_versions(True, False)
 
