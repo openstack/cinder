@@ -150,11 +150,12 @@ class StorwizeHelpers(object):
         """Add FC WWPNs to system node information."""
         for key in storage_nodes:
             node = storage_nodes[key]
-            resp = self.ssh.lsnode(node_id=node['id'])
             wwpns = set(node['WWPN'])
-            for i, s in resp.select('port_id', 'port_status'):
-                if 'active' == s:
-                    wwpns.add(i)
+            resp = self.ssh.lsportfc(node_id=node['id'])
+            for port_info in resp:
+                if (port_info['type'] == 'fc' and
+                        port_info['status'] == 'active'):
+                    wwpns.add(port_info['WWPN'])
             node['WWPN'] = list(wwpns)
             LOG.info(_LI('WWPN on node %(node)s: %(wwpn)s.'),
                      {'node': node['id'], 'wwpn': node['WWPN']})

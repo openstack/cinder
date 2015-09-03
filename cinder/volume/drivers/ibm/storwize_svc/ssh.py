@@ -361,6 +361,11 @@ class StorwizeSSH(object):
         ssh_cmd = ['svctask', 'rmvdiskaccess', '-iogrp', iogrp, vdisk]
         self.run_ssh_assert_no_output(ssh_cmd)
 
+    def lsportfc(self, node_id):
+        ssh_cmd = ['svcinfo', 'lsportfc', '-delim', '!',
+                   '-filtervalue', 'node_id=%s' % node_id]
+        return self.run_ssh_info(ssh_cmd, with_header=True)
+
 
 class CLIResponse(object):
     """Parse SVC CLI output and generate iterable."""
