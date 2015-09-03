@@ -1182,8 +1182,8 @@ class NetAppESeriesLibrary(object):
                     try:
                         self._client.delete_volume(vol['volumeRef'])
                     except exception.NetAppDriverException as e:
-                        LOG.debug("Error deleting vol with label %s: %s",
-                                  (label, e))
+                        LOG.debug("Error deleting vol with label %(label)s:"
+                                  " %(error)s.", {'label': label, 'error': e})
         finally:
             na_utils.set_safe_attr(self, 'clean_job_running', False)
 
