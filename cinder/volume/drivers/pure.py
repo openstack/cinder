@@ -62,6 +62,9 @@ ERR_MSG_PENDING_ERADICATION = "has been destroyed"
 
 CONNECT_LOCK_NAME = 'PureVolumeDriver_connect'
 
+UNMANAGED_SUFFIX = '-unmanaged'
+MANAGE_SNAP_REQUIRED_API_VERSIONS = ['1.4']
+
 
 def log_debug_trace(f):
     def wrapper(*args, **kwargs):
@@ -493,11 +496,14 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         return model_update, snapshots
 
-    def _validate_manage_existing_ref(self, existing_ref):
+    def _validate_manage_existing_ref(self, existing_ref, is_snap=False):
         """Ensure that an existing_ref is valid and return volume info
 
         If the ref is not valid throw a ManageExistingInvalidReference
         exception with an appropriate error.
+
+        Will return volume or snapshot information from the array for
+        the object specified by existing_ref.
         """
         if "name" not in existing_ref or not existing_ref["name"]:
             raise exception.ManageExistingInvalidReference(
@@ -505,12 +511,21 @@ class PureBaseVolumeDriver(san.SanDriver):
                 reason=_("manage_existing requires a 'name'"
                          " key to identify an existing volume."))
 
-        ref_vol_name = existing_ref['name']
+        if is_snap:
+            # Purity snapshot names are prefixed with the source volume name
+            ref_vol_name, ref_snap_suffix = existing_ref['name'].split('.')
+        else:
+            ref_vol_name = existing_ref['name']
 
         try:
-            volume_info = self._array.get_volume(ref_vol_name)
+            volume_info = self._array.get_volume(ref_vol_name, snap=is_snap)
             if volume_info:
-                return volume_info
+                if is_snap:
+                    for snap in volume_info:
+                        if snap['name'] == existing_ref['name']:
+                            return snap
+                else:
+                    return volume_info
         except purestorage.PureHTTPError as err:
             with excutils.save_and_reraise_exception() as ctxt:
                 if (err.code == 400 and
@@ -521,7 +536,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         # to throw a Invalid Reference exception
         raise exception.ManageExistingInvalidReference(
             existing_ref=existing_ref,
-            reason=_("Unable to find volume with name=%s") % ref_vol_name)
+            reason=_("Unable to find Purity ref with name=%s") % ref_vol_name)
 
     @log_debug_trace
     def manage_existing(self, volume, existing_ref):
@@ -546,7 +561,9 @@ class PureBaseVolumeDriver(san.SanDriver):
         new_vol_name = self._get_vol_name(volume)
         LOG.info(_LI("Renaming existing volume %(ref_name)s to %(new_name)s"),
                  {"ref_name": ref_vol_name, "new_name": new_vol_name})
-        self._array.rename_volume(ref_vol_name, new_vol_name)
+        self._rename_volume_object(ref_vol_name,
+                                   new_vol_name,
+                                   raise_not_exist=True)
         return None
 
     @log_debug_trace
@@ -557,9 +574,26 @@ class PureBaseVolumeDriver(san.SanDriver):
         """
 
         volume_info = self._validate_manage_existing_ref(existing_ref)
-        size = math.ceil(float(volume_info["size"]) / units.Gi)
+        size = int(math.ceil(float(volume_info["size"]) / units.Gi))
 
         return size
+
+    def _rename_volume_object(self, old_name, new_name, raise_not_exist=False):
+        """Rename a volume object (could be snapshot) in Purity.
+
+        This will not raise an exception if the object does not exist
+        """
+        try:
+            self._array.rename_volume(old_name, new_name)
+        except purestorage.PureHTTPError as err:
+            with excutils.save_and_reraise_exception() as ctxt:
+                if (err.code == 400 and
+                        ERR_MSG_NOT_EXIST in err.text):
+                    ctxt.reraise = raise_not_exist
+                    LOG.warning(_LW("Unable to rename %(old_name)s, error "
+                                    "message: %(error)s"),
+                                {"old_name": old_name, "error": err.text})
+        return new_name
 
     @log_debug_trace
     def unmanage(self, volume):
@@ -570,18 +604,67 @@ class PureBaseVolumeDriver(san.SanDriver):
         The volume will be renamed with "-unmanaged" as a suffix
         """
         vol_name = self._get_vol_name(volume)
-        unmanaged_vol_name = vol_name + "-unmanaged"
+        unmanaged_vol_name = vol_name + UNMANAGED_SUFFIX
         LOG.info(_LI("Renaming existing volume %(ref_name)s to %(new_name)s"),
                  {"ref_name": vol_name, "new_name": unmanaged_vol_name})
-        try:
-            self._array.rename_volume(vol_name, unmanaged_vol_name)
-        except purestorage.PureHTTPError as err:
-            with excutils.save_and_reraise_exception() as ctxt:
-                if (err.code == 400 and
-                        ERR_MSG_NOT_EXIST in err.text):
-                    ctxt.reraise = False
-                    LOG.warning(_LW("Volume unmanage was unable to rename "
-                                    "the volume, error message: %s"), err.text)
+        self._rename_volume_object(vol_name, unmanaged_vol_name)
+
+    def _verify_manage_snap_api_requirements(self):
+        api_version = self._array.get_rest_version()
+        if api_version not in MANAGE_SNAP_REQUIRED_API_VERSIONS:
+            msg = _('Unable to do manage snapshot operations with Purity REST '
+                    'API version %(api_version)s, requires '
+                    '%(required_versions)s.') % {
+                'api_version': api_version,
+                'required_versions': MANAGE_SNAP_REQUIRED_API_VERSIONS
+            }
+            raise exception.PureDriverException(reason=msg)
+
+    def manage_existing_snapshot(self, snapshot, existing_ref):
+        """Brings an existing backend storage object under Cinder management.
+
+        We expect a snapshot name in the existing_ref that matches one in
+        Purity.
+        """
+        self._verify_manage_snap_api_requirements()
+        self._validate_manage_existing_ref(existing_ref, is_snap=True)
+        ref_snap_name = existing_ref['name']
+        new_snap_name = self._get_snap_name(snapshot)
+        LOG.info(_LI("Renaming existing snapshot %(ref_name)s to "
+                     "%(new_name)s"), {"ref_name": ref_snap_name,
+                                       "new_name": new_snap_name})
+        self._rename_volume_object(ref_snap_name,
+                                   new_snap_name,
+                                   raise_not_exist=True)
+        return None
+
+    def manage_existing_snapshot_get_size(self, snapshot, existing_ref):
+        """Return size of snapshot to be managed by manage_existing.
+
+        We expect a snapshot name in the existing_ref that matches one in
+        Purity.
+        """
+        self._verify_manage_snap_api_requirements()
+        snap_info = self._validate_manage_existing_ref(existing_ref,
+                                                       is_snap=True)
+        size = int(math.ceil(float(snap_info["size"]) / units.Gi))
+        return size
+
+    def unmanage_snapshot(self, snapshot):
+        """Removes the specified snapshot from Cinder management.
+
+        Does not delete the underlying backend storage object.
+
+        We expect a snapshot name in the existing_ref that matches one in
+        Purity.
+        """
+        self._verify_manage_snap_api_requirements()
+        snap_name = self._get_snap_name(snapshot)
+        unmanaged_snap_name = snap_name + UNMANAGED_SUFFIX
+        LOG.info(_LI("Renaming existing snapshot %(ref_name)s to "
+                     "%(new_name)s"), {"ref_name": snap_name,
+                                       "new_name": unmanaged_snap_name})
+        self._rename_volume_object(snap_name, unmanaged_snap_name)
 
     @staticmethod
     def _get_vol_name(volume):
