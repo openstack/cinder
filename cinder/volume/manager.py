@@ -1535,13 +1535,22 @@ class VolumeManager(manager.SchedulerDependentManager):
                 self._detach_volume(ctxt, dest_attach_info, dest_vol,
                                     properties, remote=dest_remote)
 
+        # Check the backend capabilities of migration destination host.
+        rpcapi = volume_rpcapi.VolumeAPI()
+        capabilities = rpcapi.get_capabilities(ctxt, dest_vol['host'],
+                                               False)
+        sparse_copy_volume = bool(capabilities and
+                                  capabilities.get('sparse_copy_volume',
+                                                   False))
+
         copy_error = True
         try:
             size_in_mb = int(src_vol['size']) * units.Ki    # vol size is in GB
             vol_utils.copy_volume(src_attach_info['device']['path'],
                                   dest_attach_info['device']['path'],
                                   size_in_mb,
-                                  self.configuration.volume_dd_blocksize)
+                                  self.configuration.volume_dd_blocksize,
+                                  sparse=sparse_copy_volume)
             copy_error = False
         except Exception:
             with excutils.save_and_reraise_exception():
