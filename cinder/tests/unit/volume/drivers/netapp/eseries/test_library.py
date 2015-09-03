@@ -2,6 +2,7 @@
 # Copyright (c) 2015 Alex Meade
 # Copyright (c) 2015 Rushil Chugh
 # Copyright (c) 2015 Yogesh Kshirsagar
+# Copyright (c) 2015 Michael Price
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -85,6 +86,29 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         filtered_pool_labels = [pool['label'] for pool in filtered_pools]
         self.assertListEqual(pool_labels, filtered_pool_labels)
 
+    def test_get_volume(self):
+        fake_volume = copy.deepcopy(get_fake_volume())
+        volume = copy.deepcopy(eseries_fake.VOLUME)
+        self.library._client.list_volume = mock.Mock(return_value=volume)
+
+        result = self.library._get_volume(fake_volume['id'])
+
+        self.assertEqual(1, self.library._client.list_volume.call_count)
+        self.assertDictMatch(volume, result)
+
+    def test_get_volume_bad_input(self):
+        volume = copy.deepcopy(eseries_fake.VOLUME)
+        self.library._client.list_volume = mock.Mock(return_value=volume)
+
+        self.assertRaises(exception.InvalidInput, self.library._get_volume,
+                          None)
+
+    def test_get_volume_bad_uuid(self):
+        volume = copy.deepcopy(eseries_fake.VOLUME)
+        self.library._client.list_volume = mock.Mock(return_value=volume)
+
+        self.assertRaises(ValueError, self.library._get_volume, '1')
+
     def test_update_ssc_info_no_ssc(self):
         drives = [{'currentVolumeGroupRef': 'test_vg1',
                    'driveMediaType': 'ssd'}]
@@ -139,11 +163,15 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
             da_enabled = pool['dataAssuranceCapable'] and (
                 data_assurance_supported)
 
+            thin_provisioned = pool['thinProvisioningCapable']
+
             expected = {
                 'netapp_disk_encryption':
                     six.text_type(pool['encrypted']).lower(),
                 'netapp_eseries_flash_read_cache':
                     six.text_type(pool['flashCacheCapable']).lower(),
+                'netapp_thin_provisioned':
+                    six.text_type(thin_provisioned).lower(),
                 'netapp_eseries_data_assurance':
                     six.text_type(da_enabled).lower(),
                 'netapp_eseries_disk_spindle_speed': pool['spindleSpeed'],
@@ -230,6 +258,9 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
 
     def test_terminate_connection_iscsi_volume_not_mapped(self):
         connector = {'initiator': eseries_fake.INITIATOR_NAME}
+        volume = copy.deepcopy(eseries_fake.VOLUME)
+        volume['listOfMappings'] = []
+        self.library._get_volume = mock.Mock(return_value=volume)
         self.assertRaises(eseries_exc.VolumeNotMapped,
                           self.library.terminate_connection_iscsi,
                           get_fake_volume(),
@@ -241,8 +272,8 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         fake_eseries_volume['listOfMappings'] = [
             eseries_fake.VOLUME_MAPPING
         ]
-        self.mock_object(self.library._client, 'list_volumes',
-                         mock.Mock(return_value=[fake_eseries_volume]))
+        self.mock_object(self.library._client, 'list_volume',
+                         mock.Mock(return_value=fake_eseries_volume))
         self.mock_object(host_mapper, 'unmap_volume_from_host')
 
         self.library.terminate_connection_iscsi(get_fake_volume(), connector)
@@ -267,6 +298,12 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         self.mock_object(host_mapper, 'map_volume_to_single_host',
                          mock.Mock(
                              return_value=eseries_fake.VOLUME_MAPPING))
+        fake_eseries_volume = copy.deepcopy(eseries_fake.VOLUME)
+        fake_eseries_volume['listOfMappings'] = [
+            eseries_fake.VOLUME_MAPPING
+        ]
+        self.mock_object(self.library._client, 'list_volume',
+                         mock.Mock(return_value=fake_eseries_volume))
 
         self.library.initialize_connection_iscsi(get_fake_volume(), connector)
 
@@ -287,6 +324,12 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         self.mock_object(host_mapper, 'map_volume_to_single_host',
                          mock.Mock(
                              return_value=eseries_fake.VOLUME_MAPPING))
+        fake_eseries_volume = copy.deepcopy(eseries_fake.VOLUME)
+        fake_eseries_volume['listOfMappings'] = [
+            eseries_fake.VOLUME_MAPPING
+        ]
+        self.mock_object(self.library._client, 'list_volume',
+                         mock.Mock(return_value=fake_eseries_volume))
 
         self.library.initialize_connection_iscsi(get_fake_volume(), connector)
 
@@ -303,6 +346,9 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         self.mock_object(host_mapper, 'map_volume_to_single_host',
                          mock.Mock(
                              return_value=eseries_fake.VOLUME_MAPPING))
+        fake_eseries_volume = copy.deepcopy(eseries_fake.VOLUME)
+        self.mock_object(self.library._client, 'list_volume',
+                         mock.Mock(return_value=fake_eseries_volume))
 
         self.library.initialize_connection_iscsi(get_fake_volume(), connector)
 
@@ -398,6 +444,10 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
             'type': 'fc',
             'address': eseries_fake.WWPN
         }]
+        volume = copy.deepcopy(eseries_fake.VOLUME)
+        volume['listOfMappings'] = []
+        self.mock_object(self.library, '_get_volume',
+                         mock.Mock(return_value=volume))
 
         self.mock_object(self.library._client, 'list_hosts',
                          mock.Mock(return_value=[fake_host]))
@@ -421,8 +471,8 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         ]
         self.mock_object(self.library._client, 'list_hosts',
                          mock.Mock(return_value=[fake_host]))
-        self.mock_object(self.library._client, 'list_volumes',
-                         mock.Mock(return_value=[fake_eseries_volume]))
+        self.mock_object(self.library._client, 'list_volume',
+                         mock.Mock(return_value=fake_eseries_volume))
         self.mock_object(host_mapper, 'unmap_volume_from_host')
 
         self.library.terminate_connection_fc(get_fake_volume(), connector)
@@ -447,8 +497,8 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         ]
         self.mock_object(self.library._client, 'list_hosts',
                          mock.Mock(return_value=[fake_host]))
-        self.mock_object(self.library._client, 'list_volumes',
-                         mock.Mock(return_value=[fake_eseries_volume]))
+        self.mock_object(self.library._client, 'list_volume',
+                         mock.Mock(return_value=fake_eseries_volume))
         self.mock_object(host_mapper, 'unmap_volume_from_host')
         self.mock_object(self.library._client, 'get_volume_mappings_for_host',
                          mock.Mock(return_value=[copy.deepcopy
@@ -484,8 +534,8 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         ]
         self.mock_object(self.library._client, 'list_hosts',
                          mock.Mock(return_value=[fake_host]))
-        self.mock_object(self.library._client, 'list_volumes',
-                         mock.Mock(return_value=[fake_eseries_volume]))
+        self.mock_object(self.library._client, 'list_volume',
+                         mock.Mock(return_value=fake_eseries_volume))
         self.mock_object(host_mapper, 'unmap_volume_from_host')
         self.mock_object(self.library._client, 'get_volume_mappings_for_host',
                          mock.Mock(return_value=[]))
@@ -738,6 +788,9 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
     @ddt.data(('netapp_eseries_flash_read_cache', 'flash_cache', 'true'),
               ('netapp_eseries_flash_read_cache', 'flash_cache', 'false'),
               ('netapp_eseries_flash_read_cache', 'flash_cache', None),
+              ('netapp_thin_provisioned', 'thin_provision', 'true'),
+              ('netapp_thin_provisioned', 'thin_provision', 'false'),
+              ('netapp_thin_provisioned', 'thin_provision', None),
               ('netapp_eseries_data_assurance', 'data_assurance', 'true'),
               ('netapp_eseries_data_assurance', 'data_assurance', 'false'),
               ('netapp_eseries_data_assurance', 'data_assurance', None),
@@ -884,14 +937,6 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
             1, self.library._client.delete_snapshot_volume.call_count)
         # Ensure the volume we created is not cleaned up
         self.assertEqual(0, self.library._client.delete_volume.call_count)
-
-    def test_get_non_existing_volume_raises_keyerror(self):
-        volume2 = get_fake_volume()
-        # Change to a nonexistent id.
-        volume2['name_id'] = '88888888-4444-4444-4444-cccccccccccc'
-        self.assertRaises(KeyError,
-                          self.library._get_volume,
-                          volume2['name_id'])
 
     def test_delete_non_existing_volume(self):
         volume2 = get_fake_volume()
