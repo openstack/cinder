@@ -909,7 +909,7 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
         """
 
         # Extract necessary information from input params
-        parent_volume_id = cloned_volume.get('source_volid')
+        parent_volume_id = src_volume.get('id')
 
         # Generating id for snapshot
         # as this is not user entered in this particular usecase
