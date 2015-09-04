@@ -90,7 +90,7 @@ class BackupSwiftTestCase(test.TestCase):
         self.addCleanup(self.volume_file.close)
         # Remove tempdir.
         self.addCleanup(shutil.rmtree, self.temp_dir)
-        for _i in xrange(0, 128):
+        for _i in xrange(0, 64):
             self.volume_file.write(os.urandom(1024))
 
     def test_backup_swift_url(self):
@@ -237,7 +237,7 @@ class BackupSwiftTestCase(test.TestCase):
 
         # Verify sha contents
         content1 = service._read_sha256file(backup)
-        self.assertEqual(128 * 1024 / content1['chunk_size'],
+        self.assertEqual(64 * 1024 / content1['chunk_size'],
                          len(content1['sha256s']))
 
     def test_backup_cmp_shafiles(self):
