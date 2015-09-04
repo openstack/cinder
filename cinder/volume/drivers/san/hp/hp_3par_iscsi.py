@@ -99,10 +99,11 @@ class HP3PARISCSIDriver(driver.TransferVD,
         2.0.20 - Adding changes to support 3PAR iSCSI multipath.
         2.0.21 - Adds consistency group support
         2.0.22 - Update driver to use ABC metaclasses
+        2.0.23 - Added update_migrated_volume. bug # 1492023
 
     """
 
-    VERSION = "2.0.22"
+    VERSION = "2.0.23"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -836,6 +837,16 @@ class HP3PARISCSIDriver(driver.TransferVD,
         common = self._login()
         try:
             return common.migrate_volume(volume, host)
+        finally:
+            self._logout(common)
+
+    def update_migrated_volume(self, context, volume, new_volume,
+                               original_volume_status):
+        """Update the name of the migrated volume to it's new ID."""
+        common = self._login()
+        try:
+            return common.update_migrated_volume(context, volume, new_volume,
+                                                 original_volume_status)
         finally:
             self._logout(common)
 
