@@ -476,6 +476,14 @@ VOLUMES = [
 
 VOLUME = VOLUMES[0]
 
+STORAGE_POOL = {
+    'label': 'DDP',
+    'volumeGroupRef': 'fakevolgroupref',
+    'raidLevel': 'raidDiskPool',
+    'usedSpace': '16413217521664',
+    'totalRaidedSpace': '16637410312192',
+}
+
 INITIATOR_NAME = 'iqn.1998-01.com.vmware:localhost-28a58148'
 INITIATOR_NAME_2 = 'iqn.1998-01.com.vmware:localhost-28a58149'
 INITIATOR_NAME_3 = 'iqn.1998-01.com.vmware:localhost-28a58150'
