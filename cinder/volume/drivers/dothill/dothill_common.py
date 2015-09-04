@@ -210,13 +210,13 @@ class DotHillCommon(object):
         self._assert_enough_space_for_copy(volume['size'])
         self._assert_source_detached(src_vref)
         LOG.debug("Cloning Volume %(source_id)s to (%(dest_id)s)",
-                  {'source_id': volume['source_volid'],
+                  {'source_id': src_vref['id'],
                    'dest_id': volume['id'], })
 
         if src_vref['name_id']:
             orig_name = self._get_vol_name(src_vref['name_id'])
         else:
-            orig_name = self._get_vol_name(volume['source_volid'])
+            orig_name = self._get_vol_name(src_vref['id'])
         dest_name = self._get_vol_name(volume['id'])
 
         self.client_login()
@@ -225,7 +225,7 @@ class DotHillCommon(object):
                                     self.backend_name, self.backend_type)
         except exception.DotHillRequestError as ex:
             LOG.exception(_LE("Cloning of volume %s failed."),
-                          volume['source_volid'])
+                          src_vref['id'])
             raise exception.Invalid(ex)
         finally:
             self.client_logout()
