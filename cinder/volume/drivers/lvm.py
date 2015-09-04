@@ -355,7 +355,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
                 self.vg.rename_volume(current_name, original_volume_name)
             except processutils.ProcessExecutionError:
                 LOG.error(_LE('Unable to rename the logical volume '
-                              'for volume: %s'), volume['name'])
+                              'for volume: %s'), volume['id'])
                 # If the rename fails, _name_id should be set to the new
                 # volume id and provider_location should be set to the
                 # one from the new volume as well.
