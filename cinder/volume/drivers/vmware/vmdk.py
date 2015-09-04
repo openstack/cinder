@@ -486,7 +486,10 @@ class VMwareEsxVmdkDriver(driver.VolumeDriver):
         hosts = []
         if clusters:
             for cluster in clusters:
-                hosts.extend(self.volumeops.get_cluster_hosts(cluster))
+                cluster_hosts = self.volumeops.get_cluster_hosts(cluster)
+                for host in cluster_hosts:
+                    if self.volumeops.is_host_usable(host):
+                        hosts.append(host)
         return hosts
 
     def _select_datastore(self, req, host=None):

@@ -322,6 +322,23 @@ class VMwareVolumeOps(object):
                                         self._session.vim, instance,
                                         'runtime.host')
 
+    def is_host_usable(self, host):
+        """Check if the given ESX host is usable.
+
+        A host is usable if it is connected to vCenter server and not in
+        maintenance mode.
+
+        :param host: Managed object reference to the ESX host
+        :return: True if host is usable, False otherwise
+        """
+        runtime_info = self._session.invoke_api(vim_util,
+                                                'get_object_property',
+                                                self._session.vim,
+                                                host,
+                                                'runtime')
+        return (runtime_info.connectionState == 'connected' and
+                not runtime_info.inMaintenanceMode)
+
     def get_hosts(self):
         """Get all host from the inventory.
 
