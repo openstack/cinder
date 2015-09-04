@@ -758,9 +758,9 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
     def _update_volume_stats(self):
         """Retrieve stats info for NexentaStor appliance."""
         LOG.debug('Updating volume stats')
-        # self._ensure_shares_mounted()
-        # if not self._mounted_shares:
-        #     return
+        self._ensure_shares_mounted()
+        if not self._mounted_shares:
+            return
         total_space = 0
         free_space = 0
         shares_with_capacities = {}
