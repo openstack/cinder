@@ -101,14 +101,15 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
 
         with mock.patch.object(self.drv, 'local_path',
                                return_value='/dev/loop1') as lp_mocked:
-            with mock.patch.object(self.drv, '_get_device_size',
-                                   return_value=1024) as gds_mocked:
+            with mock.patch.object(self.drv, '_get_devices_sizes',
+                                   return_value={'/dev/loop1': 1}) as \
+                    gds_mocked:
                 volutils.clear_volume(gds_mocked, lp_mocked)
 
                 self.drv.delete_volume(TEST_VOLUME1)
 
                 lp_mocked.assert_called_once_with(TEST_VOLUME1)
-                gds_mocked.assert_called_once_with('/dev/loop1')
+                gds_mocked.assert_called_once_with(['/dev/loop1'])
 
         self.assertTrue(_exists.called)
         self.assertTrue(_clear_volume.called)
@@ -121,8 +122,7 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
             lp_mocked.assert_called_once_with(TEST_VOLUME2)
 
     def test_create_volume(self):
-        TEST_VOLUME = {'size': 1,
-                       'name': 'vol1'}
+        TEST_VOLUME = {'size': 1, 'name': 'vol1'}
 
         with mock.patch.object(self.drv, 'find_appropriate_size_device',
                                return_value='dev_path') as fasd_mocked:
@@ -162,12 +162,13 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
 
         with mock.patch.object(self.drv, 'find_appropriate_size_device',
                                return_value='/dev/loop2') as fasd_mocked:
-            with mock.patch.object(self.drv, '_get_device_size',
-                                   return_value=1) as gds_mocked:
+            with mock.patch.object(self.drv, '_get_devices_sizes',
+                                   return_value={'/dev/loop2': 2}) as \
+                    gds_mocked:
                 with mock.patch.object(self.drv, 'local_path',
                                        return_value='/dev/loop1') as \
                         lp_mocked:
-                    volutils.copy_volume('/dev/loop1', fasd_mocked, 2048,
+                    volutils.copy_volume('/dev/loop1', fasd_mocked, 2,
                                          mock.sentinel,
                                          execute=self.drv._execute)
 
@@ -176,7 +177,7 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
                                                                    TEST_SRC))
                     fasd_mocked.assert_called_once_with(TEST_SRC['size'])
                     lp_mocked.assert_called_once_with(TEST_SRC)
-                    gds_mocked.assert_called_once_with('/dev/loop2')
+                    gds_mocked.assert_called_once_with(['/dev/loop2'])
 
     @mock.patch.object(cinder.image.image_utils, 'fetch_to_raw')
     def test_copy_image_to_volume(self, _fetch_to_raw):
@@ -232,19 +233,24 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
                     self.assertEqual(set([path1, path2]),
                                      self.drv._get_used_devices())
 
-    def test_get_device_size(self):
-        dev_path = '/dev/loop1'
-        out = '2048'
+    def test_get_devices_sizes(self):
+        dev_paths = ['/dev/loop1', '/dev/loop2', '/dev/loop3']
+        out = '4294967296\n2147483648\n3221225472\nn'
         with mock.patch.object(self.drv,
                                '_execute',
                                return_value=(out, None)) as _execute:
-            self.assertEqual(1, self.drv._get_device_size(dev_path))
-            _execute.assert_called_once_with('blockdev', '--getsz', dev_path,
-                                             run_as_root=True)
+            actual = self.drv._get_devices_sizes(dev_paths)
+            self.assertEqual(3, len(actual))
+            self.assertEqual({'/dev/loop1': 4096, '/dev/loop2': 2048,
+                              '/dev/loop3': 3072}, actual)
+            _execute.assert_called_once_with('blockdev', '--getsize64',
+                                             *dev_paths, run_as_root=True)
 
     def test_devices_sizes(self):
-        with mock.patch.object(self.drv, '_get_device_size') as _get_dvc_size:
-            _get_dvc_size.return_value = 1
+        with mock.patch.object(self.drv, '_get_devices_sizes') as \
+                _get_dvc_size:
+            _get_dvc_size.return_value = {'/dev/loop1': 1, '/dev/loop2': 1}
+            self.assertEqual(2, len(self.drv._devices_sizes()))
             self.assertEqual({'/dev/loop1': 1, '/dev/loop2': 1},
                              self.drv._devices_sizes())
 
@@ -253,19 +259,19 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
         with mock.patch.object(self.drv, '_devices_sizes') as _dvc_sizes:
             with mock.patch.object(self.drv, '_get_used_devices') as \
                     _get_used_dvc:
-                _dvc_sizes.return_value = {'/dev/loop1': 1024,
-                                           '/dev/loop2': 1024}
+                _dvc_sizes.return_value = {'/dev/loop1': 1,
+                                           '/dev/loop2': 1}
                 _get_used_dvc.return_value = set(['/dev/loop1', '/dev/loop2'])
                 self.assertRaises(cinder.exception.CinderException,
                                   self.drv.find_appropriate_size_device, size)
 
     def test_find_appropriate_size_device_not_big_enough_disk(self):
-        size = 2
+        size = 2948
         with mock.patch.object(self.drv, '_devices_sizes') as _dvc_sizes:
             with mock.patch.object(self.drv, '_get_used_devices') as \
                     _get_used_dvc:
                 _dvc_sizes.return_value = {'/dev/loop1': 1024,
-                                           '/dev/loop2': 1024}
+                                           '/dev/loop2': 1924}
                 _get_used_dvc.return_value = set(['/dev/loop1'])
                 self.assertRaises(cinder.exception.CinderException,
                                   self.drv.find_appropriate_size_device, size)
