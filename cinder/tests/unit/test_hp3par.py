@@ -1735,6 +1735,45 @@ class HP3PARBaseDriver(object):
         expected = []
         mock_client.assert_has_calls(expected)
 
+    def test_update_migrated_volume(self):
+        mock_client = self.setup_driver()
+        fake_old_volume = {'id': self.VOLUME_ID}
+        provider_location = 'foo'
+        fake_new_volume = {'id': self.CLONE_ID,
+                           '_name_id': self.CLONE_ID,
+                           'provider_location': provider_location}
+        original_volume_status = 'available'
+        with mock.patch.object(hpcommon.HP3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            actual_update = self.driver.update_migrated_volume(
+                context.get_admin_context(), fake_old_volume,
+                fake_new_volume, original_volume_status)
+
+            expected_update = {'_name_id': None,
+                               'provider_location': None}
+            self.assertEqual(expected_update, actual_update)
+
+    def test_update_migrated_volume_attached(self):
+        mock_client = self.setup_driver()
+        fake_old_volume = {'id': self.VOLUME_ID}
+        provider_location = 'foo'
+        fake_new_volume = {'id': self.CLONE_ID,
+                           '_name_id': self.CLONE_ID,
+                           'provider_location': provider_location}
+        original_volume_status = 'in-use'
+
+        with mock.patch.object(hpcommon.HP3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            actual_update = self.driver.update_migrated_volume(
+                context.get_admin_context(), fake_old_volume,
+                fake_new_volume, original_volume_status)
+
+            expected_update = {'_name_id': fake_new_volume['_name_id'],
+                               'provider_location': provider_location}
+            self.assertEqual(expected_update, actual_update)
+
     def test_attach_volume(self):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
