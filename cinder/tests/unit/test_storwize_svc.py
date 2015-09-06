@@ -463,6 +463,48 @@ port_speed!N/A
         stdout = node_infos.get(node_id, '')
         return stdout, ''
 
+    # Print made up stuff for the ports
+    def _cmd_lsportfc(self, **kwargs):
+        node_1 = [None] * 7
+        node_1[0] = ['id', 'fc_io_port_id', 'port_id', 'type',
+                     'port_speed', 'node_id', 'node_name', 'WWPN',
+                     'nportid', 'status', 'attachment']
+        node_1[1] = ['0', '1', '1', 'fc', '8Gb', '1', 'node1',
+                     '5005076802132ADE', '012E00', 'active', 'switch']
+        node_1[2] = ['1', '2', '2', 'fc', '8Gb', '1', 'node1',
+                     '5005076802232ADE', '012E00', 'active', 'switch']
+        node_1[3] = ['2', '3', '3', 'fc', '8Gb', '1', 'node1',
+                     '5005076802332ADE', '9B0600', 'active', 'switch']
+        node_1[4] = ['3', '4', '4', 'fc', '8Gb', '1', 'node1',
+                     '5005076802432ADE', '012A00', 'active', 'switch']
+        node_1[5] = ['4', '5', '5', 'fc', '8Gb', '1', 'node1',
+                     '5005076802532ADE', '014A00', 'active', 'switch']
+        node_1[6] = ['5', '6', '4', 'ethernet', 'N/A', '1', 'node1',
+                     '5005076802632ADE', '000000',
+                     'inactive_unconfigured', 'none']
+
+        node_2 = [None] * 7
+        node_2[0] = ['id', 'fc_io_port_id', 'port_id', 'type',
+                     'port_speed', 'node_id', 'node_name', 'WWPN',
+                     'nportid', 'status', 'attachment']
+        node_2[1] = ['6', '7', '7', 'fc', '8Gb', '2', 'node2',
+                     '5005086802132ADE', '012E00', 'active', 'switch']
+        node_2[2] = ['7', '8', '8', 'fc', '8Gb', '2', 'node2',
+                     '5005086802232ADE', '012E00', 'active', 'switch']
+        node_2[3] = ['8', '9', '9', 'fc', '8Gb', '2', 'node2',
+                     '5005086802332ADE', '9B0600', 'active', 'switch']
+        node_2[4] = ['9', '10', '10', 'fc', '8Gb', '2', 'node2',
+                     '5005086802432ADE', '012A00', 'active', 'switch']
+        node_2[5] = ['10', '11', '11', 'fc', '8Gb', '2', 'node2',
+                     '5005086802532ADE', '014A00', 'active', 'switch']
+        node_2[6] = ['11', '12', '12', 'ethernet', 'N/A', '2', 'node2',
+                     '5005086802632ADE', '000000',
+                     'inactive_unconfigured', 'none']
+        node_infos = [node_1, node_2]
+        node_id = int(kwargs['filtervalue'].split('=')[1]) - 1
+
+        return self._print_info_cmd(rows=node_infos[node_id], **kwargs)
+
     # Print mostly made-up stuff in the correct syntax
     def _cmd_lsportip(self, **kwargs):
         if self._next_cmd_error['lsportip'] == 'ip_no_config':
@@ -2339,7 +2381,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                     expected_fc_npiv = {
                         'driver_volume_type': 'fibre_channel',
                         'data': {'target_lun': 1,
-                                 'target_wwn': '500507680220C744',
+                                 'target_wwn': '5005076802432ADE',
                                  'target_discovered': False}}
                     ret = self.driver.initialize_connection(volume2,
                                                             self._connector)
@@ -3458,15 +3500,29 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         # Check that the initiator_target_map is as expected
         init_data = {'driver_volume_type': 'fibre_channel',
                      'data': {'initiator_target_map':
-                              {'ff00000000000000': ['500507680220C744',
-                                                    '500507680210C744',
-                                                    '500507680220C745'],
-                               'ff00000000000001': ['500507680220C744',
-                                                    '500507680210C744',
-                                                    '500507680220C745']},
+                              {'ff00000000000000': ['5005076802432ADE',
+                                                    '5005076802332ADE',
+                                                    '5005076802532ADE',
+                                                    '5005076802232ADE',
+                                                    '5005076802132ADE',
+                                                    '5005086802132ADE',
+                                                    '5005086802332ADE',
+                                                    '5005086802532ADE',
+                                                    '5005086802232ADE',
+                                                    '5005086802432ADE'],
+                               'ff00000000000001': ['5005076802432ADE',
+                                                    '5005076802332ADE',
+                                                    '5005076802532ADE',
+                                                    '5005076802232ADE',
+                                                    '5005076802132ADE',
+                                                    '5005086802132ADE',
+                                                    '5005086802332ADE',
+                                                    '5005086802532ADE',
+                                                    '5005086802232ADE',
+                                                    '5005086802432ADE']},
                               'target_discovered': False,
                               'target_lun': 0,
-                              'target_wwn': '500507680220C744',
+                              'target_wwn': '5005076802432ADE',
                               'volume_id': volume['id']
                               }
                      }
