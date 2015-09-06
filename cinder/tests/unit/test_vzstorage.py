@@ -168,7 +168,7 @@ class VZStorageTestCase(test.TestCase):
         with mock.patch.object(drv, '_get_capacity_info',
                                return_value = cap_info):
             ret = drv._is_share_eligible(self._FAKE_SHARE, 50)
-            self.assertEqual(False, ret)
+            self.assertFalse(ret)
 
     def test_is_share_eligible_true(self):
         drv = self._vz_driver
@@ -176,7 +176,7 @@ class VZStorageTestCase(test.TestCase):
         with mock.patch.object(drv, '_get_capacity_info',
                                return_value = cap_info):
             ret = drv._is_share_eligible(self._FAKE_SHARE, 30)
-            self.assertEqual(True, ret)
+            self.assertTrue(ret)
 
     @mock.patch.object(image_utils, 'resize_image')
     def test_extend_volume(self, mock_resize_image):

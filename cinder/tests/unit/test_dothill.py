@@ -210,10 +210,10 @@ class TestDotHillClient(test.TestCase):
     def test_backend_exists(self, mock_request):
         mock_request.side_effect = [exception.DotHillRequestError,
                                     fake_xml]
-        self.assertEqual(False, self.client.backend_exists('backend_name',
-                                                           'linear'))
-        self.assertEqual(True, self.client.backend_exists('backend_name',
-                                                          'linear'))
+        self.assertFalse(self.client.backend_exists('backend_name',
+                                                    'linear'))
+        self.assertTrue(self.client.backend_exists('backend_name',
+                                                   'linear'))
 
     @mock.patch.object(dothill.DotHillClient, '_request')
     def test_backend_stats(self, mock_request):
@@ -659,8 +659,8 @@ class TestDotHillFC(test.TestCase):
         mock_retype.side_effect = [exception.Invalid, True, False]
         args = [None, None, None, None, None]
         self.assertRaises(exception.Invalid, self.driver.retype, *args)
-        self.assertEqual(True, self.driver.retype(*args))
-        self.assertEqual(False, self.driver.retype(*args))
+        self.assertTrue(self.driver.retype(*args))
+        self.assertFalse(self.driver.retype(*args))
 
     @mock.patch.object(dothill_common.DotHillCommon, 'manage_existing')
     def test_manage_existing(self, mock_manage_existing):

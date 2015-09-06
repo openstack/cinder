@@ -2071,8 +2071,8 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             self.assertEqual(GOODNESS_FUNCTION, stats['goodness_function'])
             self.assertEqual(FILTER_FUNCTION, stats['filter_function'])
             self.assertEqual(1, int(stats['total_volumes']))
-            self.assertEqual(True, stats['thin_provisioning_support'])
-            self.assertEqual(True, stats['thick_provisioning_support'])
+            self.assertTrue(stats['thin_provisioning_support'])
+            self.assertTrue(stats['thick_provisioning_support'])
             self.assertEqual(1, int(stats['provisioned_capacity_gb']))
             self.assertEqual(25, int(stats['reserved_percentage']))
 
