@@ -92,7 +92,7 @@ class TestBrcdFCZoneClientCLI(client_cli.BrcdFCZoneClientCLI, test.TestCase):
                                             get_active_zs_mock):
         get_active_zs_mock.return_value = active_zoneset
         self.add_zones(new_zones, False, None)
-        get_active_zs_mock.assert_called_once_with()
+        self.assertEqual(2, get_active_zs_mock.call_count)
         self.assertEqual(3, apply_zone_change_mock.call_count)
         cfg_save_mock.assert_called_once_with()
 

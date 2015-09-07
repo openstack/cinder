@@ -163,6 +163,9 @@ class BrcdFCZoneClientCLI(object):
             iterator_count += 1
             zone_with_sep += zone
         try:
+            # Get active zone set from device, as some of the zones
+            # could be deleted.
+            active_zone_set = self.get_active_zone_set()
             cfg_name = active_zone_set[ZoneConstant.ACTIVE_ZONE_CONFIG]
             cmd = None
             if not cfg_name:
