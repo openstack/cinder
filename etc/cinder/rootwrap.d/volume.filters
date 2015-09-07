@@ -22,6 +22,12 @@ vgs_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, vgs
 lvs_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, lvs
 lvdisplay_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, lvdisplay
 
+# os-brick library commands
+# TODO(smcginnis) This is a temporary fix. Need to pull in os-brick
+# os-brick.filters file instead and clean out stale brick values from
+# this file.
+scsi_id: CommandFilter, /lib/udev/scsi_id, root
+
 # cinder/volumes/drivers/srb.py: 'pvresize', '--setphysicalvolumesize', sizestr, pvname
 pvresize: CommandFilter, pvresize, root
 
