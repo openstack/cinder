@@ -533,6 +533,7 @@ class HP3PARBaseDriver(object):
         configuration.hp3par_iscsi_chap_enabled = False
         configuration.goodness_function = GOODNESS_FUNCTION
         configuration.filter_function = FILTER_FUNCTION
+        configuration.image_volume_cache_enabled = False
         return configuration
 
     @mock.patch(
