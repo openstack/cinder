@@ -315,6 +315,7 @@ class PureBaseVolumeDriver(san.SanDriver):
             "max_over_subscription_ratio": thin_provisioning,
             "total_volumes": total_vols,
             "filter_function": self.get_filter_function(),
+            "multiattach": True,
         }
         self._stats = data
 

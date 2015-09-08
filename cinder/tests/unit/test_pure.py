@@ -547,6 +547,7 @@ class PureBaseVolumeDriverTestCase(PureDriverTestCase):
                                             USED_SPACE),
             "total_volumes": 100,
             "filter_function": filter_function,
+            "multiattach": True,
         }
         real_result = self.driver.get_volume_stats(refresh=True)
         self.assertDictMatch(result, real_result)
@@ -574,6 +575,7 @@ class PureBaseVolumeDriverTestCase(PureDriverTestCase):
             "max_over_subscription_ratio": DEFAULT_OVER_SUBSCRIPTION,
             "total_volumes": 100,
             "filter_function": filter_function,
+            "multiattach": True,
         }
         real_result = self.driver.get_volume_stats(refresh=True)
         self.assertDictMatch(result, real_result)
@@ -602,6 +604,7 @@ class PureBaseVolumeDriverTestCase(PureDriverTestCase):
             "max_over_subscription_ratio": DEFAULT_OVER_SUBSCRIPTION,
             "total_volumes": 0,
             "filter_function": filter_function,
+            "multiattach": True,
         }
         real_result = self.driver.get_volume_stats(refresh=True)
         self.assertDictMatch(result, real_result)
