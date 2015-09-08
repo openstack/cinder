@@ -74,9 +74,10 @@ class HPLeftHandCLIQProxy(san.SanISCSIDriver):
         1.2.1 - Fixed bug #1279897, HP LeftHand CLIQ proxy may return incorrect
                 capacity values.
         1.2.2 - Fixed driver with Paramiko 1.13.0, bug #1298608.
+        1.2.3 - Added update_migrated_volume #1493546
     """
 
-    VERSION = "1.2.2"
+    VERSION = "1.2.3"
 
     device_stats = {}
 
@@ -484,3 +485,7 @@ class HPLeftHandCLIQProxy(san.SanISCSIDriver):
                      dictionary of its reported capabilities.
         """
         return (False, None)
+
+    def update_migrated_volume(self, context, volume, new_volume,
+                               original_volume_status):
+        raise NotImplementedError()

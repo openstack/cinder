@@ -65,9 +65,10 @@ class HPLeftHandISCSIDriver(driver.TransferVD,
         1.0.6 - Updated minimum client version. bug #1432757
         1.0.7 - Update driver to use ABC metaclasses
         1.0.8 - Adds consistency group support
+        1.0.9 - Added update_migrated_volume #1493546
     """
 
-    VERSION = "1.0.8"
+    VERSION = "1.0.9"
 
     def __init__(self, *args, **kwargs):
         super(HPLeftHandISCSIDriver, self).__init__(*args, **kwargs)
@@ -195,6 +196,11 @@ class HPLeftHandISCSIDriver(driver.TransferVD,
     def migrate_volume(self, ctxt, volume, host):
         """Migrate directly if source and dest are managed by same storage."""
         return self.proxy.migrate_volume(ctxt, volume, host)
+
+    def update_migrated_volume(self, context, volume, new_volume,
+                               original_volume_status):
+        return self.proxy.update_migrated_volume(context, volume, new_volume,
+                                                 original_volume_status)
 
     def manage_existing(self, volume, existing_ref):
         return self.proxy.manage_existing(volume, existing_ref)

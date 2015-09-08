@@ -109,9 +109,10 @@ class HPLeftHandRESTProxy(driver.ISCSIDriver):
         1.0.10 - Add stats for goodness_function and filter_function
         1.0.11 - Add over subscription support
         1.0.12 - Adds consistency group support
+        1.0.13 - Added update_migrated_volume #1493546
     """
 
-    VERSION = "1.0.12"
+    VERSION = "1.0.13"
 
     device_stats = {}
 
@@ -804,6 +805,45 @@ class HPLeftHandRESTProxy(driver.ISCSIDriver):
             self._logout(client)
 
         return (True, None)
+
+    def update_migrated_volume(self, context, volume, new_volume,
+                               original_volume_status):
+        """Rename the new (temp) volume to it's original name.
+
+
+        This method tries to rename the new volume to it's original
+        name after the migration has completed.
+
+        """
+        LOG.debug("Update volume name for %(id)s.", {'id': new_volume['id']})
+        name_id = None
+        provider_location = None
+        if original_volume_status == 'available':
+            # volume isn't attached and can be updated
+            original_name = CONF.volume_name_template % volume['id']
+            current_name = CONF.volume_name_template % new_volume['id']
+            client = self._login()
+            try:
+                volume_info = client.getVolumeByName(current_name)
+                volumeMods = {'name': original_name}
+                client.modifyVolume(volume_info['id'], volumeMods)
+                LOG.info(_LI("Volume name changed from %(tmp)s to %(orig)s."),
+                         {'tmp': current_name, 'orig': original_name})
+            except Exception as e:
+                LOG.error(_LE("Changing the volume name from %(tmp)s to "
+                              "%(orig)s failed because %(reason)s."),
+                          {'tmp': current_name, 'orig': original_name,
+                           'reason': e})
+                name_id = new_volume['_name_id'] or new_volume['id']
+                provider_location = new_volume['provider_location']
+            finally:
+                self._logout(client)
+        else:
+            # the backend can't change the name.
+            name_id = new_volume['_name_id'] or new_volume['id']
+            provider_location = new_volume['provider_location']
+
+        return {'_name_id': name_id, 'provider_location': provider_location}
 
     def manage_existing(self, volume, existing_ref):
         """Manage an existing LeftHand volume.
