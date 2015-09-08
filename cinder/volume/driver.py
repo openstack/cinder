@@ -1957,8 +1957,7 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
         raise NotImplementedError(msg)
 
     def unmanage(self, volume):
-        msg = _("Unmanage volume not implemented.")
-        raise NotImplementedError(msg)
+        pass
 
     def manage_existing_snapshot(self, snapshot, existing_ref):
         msg = _("Manage existing snapshot not implemented.")
