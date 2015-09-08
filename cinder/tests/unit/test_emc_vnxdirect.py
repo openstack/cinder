@@ -127,7 +127,9 @@ class EMCVNXCLIDriverTestData(object):
         'display_name': 'vol2',
         'consistencygroup_id': None,
         'display_description': 'test volume',
-        'volume_type_id': None}
+        'volume_type_id': None,
+        'provider_location': 'system^FNM11111|type^lun|id^1|version^05.03.00',
+        'volume_metadata': [{'key': 'lun_type', 'value': 'lun'}]}
 
     volume_in_cg = {
         'name': 'vol2',
@@ -4241,6 +4243,14 @@ Time Remaining:  0 second(s)
             'target_portal': 'fake_ip_a1:3260',
             'volume_id': '1'}
         self.assertEqual(expected_info, connect_info)
+
+    def test_update_migrated_volume(self):
+        self.driverSetup()
+        expected_update = {'metadata': {'lun_type': 'lun'}}
+        model_update = self.driver.update_migrated_volume(
+            None, self.testData.test_volume,
+            self.testData.test_volume2, 'available')
+        self.assertDictMatch(expected_update, model_update)
 
 
 class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
