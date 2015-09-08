@@ -164,7 +164,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             for target in target_names:
                 if len(self.targets[target]) < len(self.targets[target_name]):
                     target_name = target
-            if len(self.targets[target_name]) >= 2:
+            if len(self.targets[target_name]) >= 20:
                 #create new target and target group
                 target_name = self._create_target(len(target_names))
             if not(volume['name'] in self.targets[target_name]):
