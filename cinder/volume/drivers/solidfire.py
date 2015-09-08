@@ -205,7 +205,9 @@ class SolidFireDriver(san.SanISCSIDriver):
         return updates
 
     def update_provider_info(self, vrefs):
-        return self._init_volume_mappings(vrefs)
+        volume_updates = self._init_volume_mappings(vrefs)
+        snapshot_updates = None
+        return (volume_updates, snapshot_updates)
 
     def _create_template_account(self, account_name):
         # We raise an API exception if the account doesn't exist

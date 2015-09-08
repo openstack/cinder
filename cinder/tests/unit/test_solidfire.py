@@ -1046,6 +1046,6 @@ class SolidFireVolumeTestCase(test.TestCase):
 
         with mock.patch.object(
                 sfv, '_issue_api_request', side_effect=_fake_issue_api_req):
-            updates = sfv._init_volume_mappings(vrefs)
-            self.assertEqual(99, updates[0]['provider_id'])
-            self.assertEqual(1, len(updates))
+            volume_updates, snapshot_updates = sfv.update_provider_info(vrefs)
+            self.assertEqual(99, volume_updates[0]['provider_id'])
+            self.assertEqual(1, len(volume_updates))
