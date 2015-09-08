@@ -118,6 +118,21 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         self.assertRaises(exception.NoValidHost, sched.schedule_create_volume,
                           fake_context, request_spec, {})
 
+    def test_create_volume_no_hosts_invalid_req(self):
+        sched = fakes.FakeFilterScheduler()
+
+        fake_context = context.RequestContext('user', 'project')
+
+        # request_spec is missing 'volume_id'
+        request_spec = {'volume_properties': {'project_id': 1,
+                                              'size': 1},
+                        'volume_type': {'name': 'LVM_iSCSI'}}
+        self.assertRaises(exception.NoValidHost,
+                          sched.schedule_create_volume,
+                          fake_context,
+                          request_spec,
+                          {})
+
     @mock.patch('cinder.scheduler.host_manager.HostManager.'
                 'get_all_host_states')
     def test_create_volume_non_admin(self, _mock_get_all_host_states):

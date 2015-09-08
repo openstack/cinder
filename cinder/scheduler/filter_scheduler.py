@@ -111,9 +111,10 @@ class FilterScheduler(driver.Scheduler):
             if host_state.host == host:
                 return host_state
 
+        volume_id = request_spec.get('volume_id', '??volume_id missing??')
         raise exception.NoValidHost(reason=_('Cannot place volume %(id)s on '
                                              '%(host)s') %
-                                    {'id': request_spec['volume_id'],
+                                    {'id': volume_id,
                                      'host': host})
 
     def find_retype_host(self, context, request_spec, filter_properties=None,
