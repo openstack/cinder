@@ -2159,9 +2159,23 @@ def snapshot_get_by_host(context, host, filters=None):
     if filters:
         query = query.filter_by(**filters)
 
-    return query.join(models.Snapshot.volume).filter(
-        models.Volume.host == host).options(
-            joinedload('snapshot_metadata')).all()
+    # As a side effect of the introduction of pool-aware scheduler,
+    # newly created volumes will have pool information appended to
+    # 'host' field of a volume record. So a volume record in DB can
+    # now be either form below:
+    #     Host
+    #     Host#Pool
+    if host and isinstance(host, six.string_types):
+        session = get_session()
+        with session.begin():
+            host_attr = getattr(models.Volume, 'host')
+            conditions = [host_attr == host,
+                          host_attr.op('LIKE')(host + '#%')]
+            query = query.join(models.Snapshot.volume).filter(
+                or_(*conditions)).options(joinedload('snapshot_metadata'))
+            return query.all()
+    elif not host:
+        return []
 
 
 @require_context
