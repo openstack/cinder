@@ -462,7 +462,7 @@ class FeatureState(object):
 
         :param supported: True if supported, false otherwise
         :param minimum_version: The minimum version that this feature is
-        suported at
+        supported at
         """
         self.supported = supported
         self.minimum_version = minimum_version

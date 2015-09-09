@@ -166,7 +166,7 @@ class API(base.Base):
         if not self._is_backup_service_enabled(volume, volume_host):
             raise exception.ServiceNotFound(service_id='cinder-backup')
 
-        # do quota reserver before setting volume status and backup status
+        # Reserve a quota before setting volume status and backup status
         try:
             reserve_opts = {'backups': 1,
                             'backup_gigabytes': volume['size']}
