@@ -399,6 +399,25 @@ class VolumeTypesManageApiTest(test.TestCase):
                                  {'expected_name': 'vol_type_888',
                                   'expected_desc': 'vol_type_desc_888_888'})
 
+    @mock.patch('cinder.volume.volume_types.update')
+    @mock.patch('cinder.volume.volume_types.get_volume_type')
+    def test_update_only_is_public(self, mock_get, mock_update):
+        is_public = False
+        mock_get.return_value = return_volume_types_get_volume_type_updated(
+            '123', is_public=is_public)
+
+        body = {"volume_type": {"is_public": is_public}}
+        req = fakes.HTTPRequest.blank('/v2/fake/types/123')
+        req.method = 'PUT'
+
+        self.assertEqual(0, len(self.notifier.notifications))
+        res_dict = self.controller._update(req, '123', body)
+        self.assertEqual(1, len(self.notifier.notifications))
+        self._check_test_results(res_dict,
+                                 {'expected_name': 'vol_type_123_123',
+                                  'expected_desc': 'vol_type_desc_123_123',
+                                  'is_public': False})
+
     def test_update_invalid_is_public(self):
         body = {"volume_type": {"name": "test",
                                 "description": "something",

@@ -120,8 +120,9 @@ class VolumeTypesManageController(wsgi.Controller):
             msg = _("Volume type name can not be empty.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
-        if name is None and description is None:
-            msg = _("Specify either volume type name and/or description.")
+        if name is None and description is None and is_public is None:
+            msg = _("Specify volume type name, description, is_public or"
+                    "a combination thereof.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         if is_public is not None and not utils.is_valid_boolstr(is_public):
