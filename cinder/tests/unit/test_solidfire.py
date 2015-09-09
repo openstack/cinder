@@ -1023,6 +1023,7 @@ class SolidFireVolumeTestCase(test.TestCase):
 
         vid_1 = 'c9125d6d-22ff-4cc3-974d-d4e350df9c91'
         vid_2 = '79883868-6933-47a1-a362-edfbf8d55a18'
+        sid_1 = 'e3caa4fa-485e-45ca-970e-1d3e693a2520'
         project_1 = 'e6fb073c-11f0-4f4c-897c-90e7c7c4bcf8'
         project_2 = '4ff32607-305c-4a6b-a51a-0dd33124eecf'
 
@@ -1032,7 +1033,10 @@ class SolidFireVolumeTestCase(test.TestCase):
                  {'id': vid_2,
                   'project_id': project_2,
                   'provider_id': 22}]
-
+        snaprefs = [{'id': sid_1,
+                     'project_id': project_1,
+                     'provider_id': None,
+                     'volume_id': 'vid_1'}]
         sf_vols = [{'volumeID': 99,
                     'name': 'UUID-' + vid_1,
                     'accountID': 100},
@@ -1046,6 +1050,7 @@ class SolidFireVolumeTestCase(test.TestCase):
 
         with mock.patch.object(
                 sfv, '_issue_api_request', side_effect=_fake_issue_api_req):
-            volume_updates, snapshot_updates = sfv.update_provider_info(vrefs)
+            volume_updates, snapshot_updates = sfv.update_provider_info(
+                vrefs, snaprefs)
             self.assertEqual(99, volume_updates[0]['provider_id'])
             self.assertEqual(1, len(volume_updates))

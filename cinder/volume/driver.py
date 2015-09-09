@@ -1388,10 +1388,11 @@ class BaseVD(object):
         """
         return None
 
-    def update_provider_info(self, volumes):
+    def update_provider_info(self, volumes, snapshots):
         """Get provider info updates from driver.
 
         :param volumes: List of Cinder volumes to check for updates
+        :param snapshots: List of Cinder snapshots to check for updates
         :return: tuple (volume_updates, snapshot_updates)
 
         where volume updates {'id': uuid, provider_id: <provider-id>}
