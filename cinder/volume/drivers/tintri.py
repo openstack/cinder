@@ -41,7 +41,7 @@ img_prefix = 'image-'
 tintri_path = '/tintri/'
 
 
-tintri_options = [
+tintri_opts = [
     cfg.StrOpt('tintri_server_hostname',
                default=None,
                help='The hostname (or IP address) for the storage system'),
@@ -58,7 +58,7 @@ tintri_options = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(tintri_options)
+CONF.register_opts(tintri_opts)
 
 
 class TintriDriver(driver.ManageableVD,
@@ -78,7 +78,7 @@ class TintriDriver(driver.ManageableVD,
         self._context = None
         super(TintriDriver, self).__init__(*args, **kwargs)
         self._execute_as_root = True
-        self.configuration.append_config_values(tintri_options)
+        self.configuration.append_config_values(tintri_opts)
 
     def do_setup(self, context):
         super(TintriDriver, self).do_setup(context)

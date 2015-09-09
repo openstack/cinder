@@ -19,7 +19,7 @@ from oslo_config import cfg
 from cinder.volume.drivers.dothill import dothill_common
 from cinder.volume.drivers.san.hp import hpmsa_client
 
-common_opt = [
+common_opts = [
     cfg.StrOpt('hpmsa_backend_name',
                default='A',
                help="Pool or Vdisk name to use for volume creation."),
@@ -40,15 +40,15 @@ common_opt = [
 
 ]
 
-iscsi_opt = [
+iscsi_opts = [
     cfg.ListOpt('hpmsa_iscsi_ips',
                 default=[],
                 help="List of comma-separated target iSCSI IP addresses."),
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(common_opt)
-CONF.register_opts(iscsi_opt)
+CONF.register_opts(common_opts)
+CONF.register_opts(iscsi_opts)
 
 
 class HPMSACommon(dothill_common.DotHillCommon):

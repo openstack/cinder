@@ -30,7 +30,7 @@ from cinder.volume.drivers.dothill import dothill_client as dothill
 
 LOG = logging.getLogger(__name__)
 
-common_opt = [
+common_opts = [
     cfg.StrOpt('dothill_backend_name',
                default='A',
                help="Pool or Vdisk name to use for volume creation."),
@@ -50,15 +50,15 @@ common_opt = [
                help="DotHill array SSL certificate path."),
 ]
 
-iscsi_opt = [
+iscsi_opts = [
     cfg.ListOpt('dothill_iscsi_ips',
                 default=[],
                 help="List of comma-separated target iSCSI IP addresses."),
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(common_opt)
-CONF.register_opts(iscsi_opt)
+CONF.register_opts(common_opts)
+CONF.register_opts(iscsi_opts)
 
 
 class DotHillCommon(object):

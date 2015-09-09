@@ -36,14 +36,14 @@ from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)
 
-huawei_opt = [
+huawei_opts = [
     cfg.StrOpt('cinder_huawei_conf_file',
                default='/etc/cinder/cinder_huawei_conf.xml',
                help='The configuration file for the Cinder Huawei '
                     'driver.')]
 
 CONF = cfg.CONF
-CONF.register_opts(huawei_opt)
+CONF.register_opts(huawei_opts)
 
 
 class HuaweiBaseDriver(driver.VolumeDriver):
@@ -55,7 +55,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             msg = _('_instantiate_driver: configuration not found.')
             raise exception.InvalidInput(reason=msg)
 
-        self.configuration.append_config_values(huawei_opt)
+        self.configuration.append_config_values(huawei_opts)
         self.xml_file_path = self.configuration.cinder_huawei_conf_file
 
     def do_setup(self, context):

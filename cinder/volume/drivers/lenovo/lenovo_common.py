@@ -19,7 +19,7 @@ from oslo_config import cfg
 from cinder.volume.drivers.dothill import dothill_common
 from cinder.volume.drivers.lenovo import lenovo_client
 
-common_opt = [
+common_opts = [
     cfg.StrOpt('lenovo_backend_name',
                default='A',
                help="Pool or Vdisk name to use for volume creation."),
@@ -39,15 +39,15 @@ common_opt = [
                help="Lenovo array SSL certificate path.")
 ]
 
-iscsi_opt = [
+iscsi_opts = [
     cfg.ListOpt('lenovo_iscsi_ips',
                 default=[],
                 help="List of comma-separated target iSCSI IP addresses."),
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(common_opt)
-CONF.register_opts(iscsi_opt)
+CONF.register_opts(common_opts)
+CONF.register_opts(iscsi_opts)
 
 
 class LenovoCommon(dothill_common.DotHillCommon):
