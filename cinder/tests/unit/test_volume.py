@@ -1050,24 +1050,6 @@ class VolumeTestCase(BaseVolumeTestCase):
                           self.context,
                           limit="-1")
 
-    def test_get_all_tenants_value(self):
-        """Validate allowable values for --all_tenants
-
-           Note: type of the value could be String, Boolean, or Int
-        """
-        api = cinder.volume.api.API()
-
-        self.assertTrue(api._get_all_tenants_value({'all_tenants': True}))
-        self.assertTrue(api._get_all_tenants_value({'all_tenants': 1}))
-        self.assertFalse(api._get_all_tenants_value({'all_tenants': 'False'}))
-        self.assertFalse(api._get_all_tenants_value({'all_tenants': '0'}))
-        self.assertRaises(exception.InvalidInput,
-                          api._get_all_tenants_value,
-                          {'all_tenants': 'No'})
-        self.assertRaises(exception.InvalidInput,
-                          api._get_all_tenants_value,
-                          {'all_tenants': -1})
-
     def test_get_all_tenants_volume_list(self):
         """Validate when the volume list for all tenants is returned"""
         volume_api = cinder.volume.api.API()

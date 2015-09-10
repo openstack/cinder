@@ -446,26 +446,6 @@ class API(base.Base):
         LOG.info(_LI("Volume info retrieved successfully."), resource=rv)
         return volume
 
-    def _get_all_tenants_value(self, filters):
-        """Returns a Boolean for the value of filters['all_tenants'].
-
-           False is returned if 'all_tenants' is not in the filters dictionary.
-           An InvalidInput exception is thrown for invalid values.
-        """
-
-        b = False
-        if 'all_tenants' in filters:
-            val = six.text_type(filters['all_tenants']).lower()
-            if val in ['true', '1']:
-                b = True
-            elif val in ['false', '0']:
-                b = False
-            else:
-                msg = _('all_tenants param must be 0 or 1')
-                raise exception.InvalidInput(reason=msg)
-
-        return b
-
     def get_all(self, context, marker=None, limit=None, sort_keys=None,
                 sort_dirs=None, filters=None, viewable_admin_meta=False,
                 offset=None):
@@ -474,7 +454,7 @@ class API(base.Base):
         if filters is None:
             filters = {}
 
-        allTenants = self._get_all_tenants_value(filters)
+        allTenants = utils.get_bool_param('all_tenants', filters)
 
         try:
             if limit is not None:
