@@ -460,10 +460,13 @@ class TestZFSSAISCSIDriver(test.TestCase):
             '')
 
     def test_get_volume_stats(self):
-        self.drv.zfssa.get_pool_stats.return_value = 2 * units.Gi, 3 * units.Gi
+        self.drv.zfssa.get_project_stats.return_value = 2 * units.Gi,\
+            3 * units.Gi
         lcfg = self.configuration
         stats = self.drv.get_volume_stats(refresh=True)
-        self.drv.zfssa.get_pool_stats.assert_called_once_with(lcfg.zfssa_pool)
+        self.drv.zfssa.get_project_stats.assert_called_once_with(
+            lcfg.zfssa_pool,
+            lcfg.zfssa_project)
         self.assertEqual('Oracle', stats['vendor_name'])
         self.assertEqual(self.configuration.volume_backend_name,
                          stats['volume_backend_name'])
@@ -1175,6 +1178,27 @@ class TestZFSSAApi(test.TestCase):
                         'share': self.clone,
                         'nodestroy': True}
         self.zfssa.rclient.put.assert_called_with(expected_svc, expected_arg)
+
+    def test_get_project_stats(self):
+        ret_val = json.dumps({"project": {"name": self.project,
+                                          "space_available": 15754895360,
+                                          "space_total": 25754895360,
+                                          "dedup": False,
+                                          "logbias": "latency",
+                                          "encryption": "off"}})
+        self.zfssa.rclient.get.return_value = self._create_response(
+            client.Status.OK, ret_val)
+        self.zfssa.get_project_stats(self.pool, self.project)
+        expected_svc = '/api/storage/v1/pools/' + self.pool + '/projects/' + \
+            self.project
+        self.zfssa.rclient.get.assert_called_with(expected_svc)
+
+        self.zfssa.rclient.get.return_value = self._create_response(
+            client.Status.NOT_FOUND)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.zfssa.get_project_stats,
+                          self.pool,
+                          self.project)
 
 
 class TestZFSSANfsApi(test.TestCase):
