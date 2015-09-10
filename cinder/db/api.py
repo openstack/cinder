@@ -1020,6 +1020,10 @@ def purge_deleted_rows(context, age_in_days):
     return IMPL.purge_deleted_rows(context, age_in_days=age_in_days)
 
 
+def get_booleans_for_table(table_name):
+    return IMPL.get_booleans_for_table(table_name)
+
+
 ###################
 
 
