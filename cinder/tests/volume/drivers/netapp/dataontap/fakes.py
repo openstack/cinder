@@ -127,3 +127,14 @@ AVAILABLE_BYTES = 13479932478
 CAPACITY_VALUES = (TOTAL_BYTES, AVAILABLE_BYTES)
 
 FILE_LIST = ['file1', 'file2', 'file3']
+
+HOST_NAME = 'fake.host.name'
+BACKEND_NAME = 'fake_backend_name'
+POOL_NAME = 'aggr1'
+HOST_STRING = '%s@%s#%s' % (HOST_NAME, BACKEND_NAME, POOL_NAME)
+VOLUME1 = {
+    'name': 'fake_volume_name',
+    'size': SIZE,
+    'id': 'fake_volume_id',
+    'host': HOST_STRING,
+}
