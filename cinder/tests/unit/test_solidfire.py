@@ -59,7 +59,9 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.stubs.Set(solidfire.SolidFireDriver,
                        '_build_endpoint_info',
                        self.fake_build_endpoint_info)
-
+        self.stubs.Set(solidfire.SolidFireDriver,
+                       '_set_cluster_uuid',
+                       self.fake_set_cluster_uuid)
         self.expected_qos_results = {'minIOPS': 1000,
                                      'maxIOPS': 10000,
                                      'burstIOPS': 20000}
@@ -97,6 +99,9 @@ class SolidFireVolumeTestCase(test.TestCase):
                                                      scheme='https')
 
         return endpoint
+
+    def fake_set_cluster_uuid(obj):
+        return '95e46307-67d4-49b3-8857-6104a9c30e46'
 
     def fake_issue_api_request(obj, method, params, version='1.0'):
         if method is 'GetClusterCapacity' and version == '1.0':
@@ -355,18 +360,22 @@ class SolidFireVolumeTestCase(test.TestCase):
                     'id': 'b831c4d1-d1f0-11e1-9b23-0800200c9a66',
                     'volume_id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
                     'volume_type_id': None,
-                    'created_at': timeutils.utcnow()}
+                    'created_at': timeutils.utcnow(),
+                    'provider_id': '8 99 None'}
 
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-        sfv.create_snapshot(testsnap)
-        with mock.patch.object(solidfire.SolidFireDriver,
-                               '_get_sf_snapshots',
-                               return_value=[{'snapshotID': '1',
-                                              'name': 'UUID-b831c4d1-d1f0-11e1-9b23-0800200c9a66'}]), \
+        fake_uuid = 'UUID-b831c4d1-d1f0-11e1-9b23-0800200c9a66'
+        with mock.patch.object(
+                solidfire.SolidFireDriver,
+                '_get_sf_snapshots',
+                return_value=[{'snapshotID': '5',
+                               'name': fake_uuid,
+                               'volumeID': 5}]), \
                 mock.patch.object(sfv,
                                   '_get_sfaccounts_for_tenant',
                                   return_value=[{'accountID': 5,
                                                  'name': 'testprjid'}]):
+            sfv.create_snapshot(testsnap)
             sfv.delete_snapshot(testsnap)
 
     @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
@@ -492,7 +501,9 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'name': 'test_volume',
                    'size': 1,
                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
-                   'created_at': timeutils.utcnow()}
+                   'created_at': timeutils.utcnow(),
+                   'provider_id': '1 5 None',
+                   }
         fake_sfaccounts = [{'accountID': 5,
                             'name': 'testprjid',
                             'targetSecret': 'shhhh',
@@ -1036,21 +1047,29 @@ class SolidFireVolumeTestCase(test.TestCase):
         snaprefs = [{'id': sid_1,
                      'project_id': project_1,
                      'provider_id': None,
-                     'volume_id': 'vid_1'}]
+                     'volume_id': vid_1}]
         sf_vols = [{'volumeID': 99,
                     'name': 'UUID-' + vid_1,
                     'accountID': 100},
                    {'volumeID': 22,
                     'name': 'UUID-' + vid_2,
                     'accountID': 200}]
+        sf_snaps = [{'snapshotID': 1,
+                     'name': 'UUID-' + sid_1,
+                     'volumeID': 99}]
 
         def _fake_issue_api_req(method, params, version=0):
             if 'ListActiveVolumes' in method:
                 return {'result': {'volumes': sf_vols}}
+            if 'ListSnapshots'in method:
+                return {'result': {'snapshots': sf_snaps}}
 
         with mock.patch.object(
                 sfv, '_issue_api_request', side_effect=_fake_issue_api_req):
             volume_updates, snapshot_updates = sfv.update_provider_info(
                 vrefs, snaprefs)
-            self.assertEqual(99, volume_updates[0]['provider_id'])
+            self.assertEqual('99 100 None', volume_updates[0]['provider_id'])
             self.assertEqual(1, len(volume_updates))
+
+            self.assertEqual('1 99 None', snapshot_updates[0]['provider_id'])
+            self.assertEqual(1, len(snapshot_updates))
