@@ -204,7 +204,7 @@ class SolidFireDriver(san.SanISCSIDriver):
                                     'provider_id': sfvol['volumeID']})
         return updates
 
-    def update_provider_info(self, vrefs):
+    def update_provider_info(self, vrefs, snaprefs):
         volume_updates = self._init_volume_mappings(vrefs)
         snapshot_updates = None
         return (volume_updates, snapshot_updates)
