@@ -1149,6 +1149,30 @@ class DBAPISnapshotTestCase(BaseTest):
                                             'host2', {'fake_key': 'fake'}),
                                         ignored_keys='volume')
 
+    def test_snapshot_get_by_host_with_pools(self):
+        db.volume_create(self.ctxt, {'id': 1, 'host': 'host1#pool1'})
+        db.volume_create(self.ctxt, {'id': 2, 'host': 'host1#pool2'})
+
+        snapshot1 = db.snapshot_create(self.ctxt, {'id': 1, 'volume_id': 1})
+        snapshot2 = db.snapshot_create(self.ctxt, {'id': 2, 'volume_id': 2})
+
+        self._assertEqualListsOfObjects([snapshot1, snapshot2],
+                                        db.snapshot_get_by_host(
+                                            self.ctxt,
+                                            'host1'),
+                                        ignored_keys='volume')
+        self._assertEqualListsOfObjects([snapshot1],
+                                        db.snapshot_get_by_host(
+                                            self.ctxt,
+                                            'host1#pool1'),
+                                        ignored_keys='volume')
+
+        self._assertEqualListsOfObjects([],
+                                        db.snapshot_get_by_host(
+                                            self.ctxt,
+                                            'host1#pool0'),
+                                        ignored_keys='volume')
+
     def test_snapshot_get_all_by_project(self):
         db.volume_create(self.ctxt, {'id': 1})
         db.volume_create(self.ctxt, {'id': 2})
