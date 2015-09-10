@@ -49,16 +49,8 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
         TEST_CONNECTOR = {'host': 'localhost1'}
 
         data = self.drv.initialize_connection(TEST_VOLUME1, TEST_CONNECTOR)
-        expected_data = {'data': {'auth_method': 'a',
-                                  'auth_password': 'c',
-                                  'auth_username': 'b',
-                                  'encrypted': False,
-                                  'target_discovered': False,
-                                  'target_iqn': '2',
-                                  'target_lun': 3,
-                                  'target_portal': '1',
-                                  'volume_id': 'fake-uuid'},
-                         'driver_volume_type': 'iscsi'}
+        expected_data = {'data': {'device_path': '/dev/loop1'},
+                         'driver_volume_type': 'local'}
 
         self.assertEqual(expected_data, data)
 
