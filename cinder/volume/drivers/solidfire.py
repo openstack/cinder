@@ -32,7 +32,7 @@ import six
 
 from cinder import context
 from cinder import exception
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _, _LE, _LW
 from cinder.image import image_utils
 from cinder.volume.drivers.san import san
 from cinder.volume import qos_specs
@@ -439,6 +439,7 @@ class SolidFireDriver(san.SanISCSIDriver):
                          src_project_id,
                          vref):
         """Create a clone of an existing volume or snapshot."""
+
         attributes = {}
         qos = {}
 
@@ -470,8 +471,7 @@ class SolidFireDriver(san.SanISCSIDriver):
             params['volumeID'] = int(snap['volumeID'])
             params['newSize'] = int(vref['size'] * units.Gi)
         else:
-            sf_vol = self._get_sf_volume(
-                src_uuid, {'accountID': sf_account['accountID']})
+            sf_vol = self._get_sf_volume(src_uuid)
             if sf_vol is None:
                 raise exception.VolumeNotFound(volume_id=src_uuid)
             params['volumeID'] = int(sf_vol['volumeID'])
@@ -591,9 +591,13 @@ class SolidFireDriver(san.SanISCSIDriver):
                 qos[key] = int(value)
         return qos
 
-    def _get_sf_volume(self, uuid, params):
-        vols = self._issue_api_request(
-            'ListVolumesForAccount', params)['result']['volumes']
+    def _get_sf_volume(self, uuid, params=None):
+        if params:
+            vols = self._issue_api_request(
+                'ListVolumesForAccount', params)['result']['volumes']
+        else:
+            vols = self._issue_api_request(
+                'ListActiveVolumes', params)['result']['volumes']
 
         found_count = 0
         sf_volref = None
@@ -635,63 +639,79 @@ class SolidFireDriver(san.SanISCSIDriver):
     def _create_image_volume(self, context,
                              image_meta, image_service,
                              image_id):
-        # NOTE(jdg): It's callers responsibility to ensure that
-        # the optional properties.virtual_size is set on the image
-        # before we get here
-        virt_size = int(image_meta['properties'].get('virtual_size'))
-        min_sz_in_bytes = (
-            math.ceil(virt_size / float(units.Gi)) * float(units.Gi))
-        min_sz_in_gig = math.ceil(min_sz_in_bytes / float(units.Gi))
+        with image_utils.TemporaryImages.fetch(image_service,
+                                               context,
+                                               image_id) as tmp_image:
+            data = image_utils.qemu_img_info(tmp_image)
+            fmt = data.file_format
+            if fmt is None:
+                raise exception.ImageUnacceptable(
+                    reason=_("'qemu-img info' parsing failed."),
+                    image_id=image_id)
 
-        attributes = {}
-        attributes['image_info'] = {}
-        attributes['image_info']['image_updated_at'] = (
-            image_meta['updated_at'].isoformat())
-        attributes['image_info']['image_name'] = (
-            image_meta['name'])
-        attributes['image_info']['image_created_at'] = (
-            image_meta['created_at'].isoformat())
-        attributes['image_info']['image_id'] = image_meta['id']
-        params = {'name': 'OpenStackIMG-%s' % image_id,
-                  'accountID': self.template_account_id,
-                  'sliceCount': 1,
-                  'totalSize': int(min_sz_in_bytes),
-                  'enable512e': self.configuration.sf_emulate_512,
-                  'attributes': attributes,
-                  'qos': {}}
+            backing_file = data.backing_file
+            if backing_file is not None:
+                raise exception.ImageUnacceptable(
+                    image_id=image_id,
+                    reason=_("fmt=%(fmt)s backed by:%(backing_file)s")
+                    % {'fmt': fmt, 'backing_file': backing_file, })
 
-        sf_account = self._issue_api_request(
-            'GetAccountByID',
-            {'accountID': self.template_account_id})['result']['account']
+            virtual_size = int(math.ceil(float(data.virtual_size) / units.Gi))
+            attributes = {}
+            attributes['image_info'] = {}
+            attributes['image_info']['image_updated_at'] = (
+                image_meta['updated_at'].isoformat())
+            attributes['image_info']['image_name'] = (
+                image_meta['name'])
+            attributes['image_info']['image_created_at'] = (
+                image_meta['created_at'].isoformat())
+            attributes['image_info']['image_id'] = image_meta['id']
+            params = {'name': 'OpenStackIMG-%s' % image_id,
+                      'accountID': self.template_account_id,
+                      'sliceCount': 1,
+                      'totalSize': int(virtual_size * units.Gi),
+                      'enable512e': self.configuration.sf_emulate_512,
+                      'attributes': attributes,
+                      'qos': {}}
 
-        template_vol = self._do_volume_create(sf_account, params)
-        tvol = {}
-        tvol['id'] = image_id
-        tvol['provider_location'] = template_vol['provider_location']
-        tvol['provider_auth'] = template_vol['provider_auth']
+            sf_account = self._issue_api_request(
+                'GetAccountByID',
+                {'accountID': self.template_account_id})['result']['account']
+            template_vol = self._do_volume_create(sf_account, params)
 
-        connector = 'na'
-        conn = self.initialize_connection(tvol, connector)
-        attach_info = super(SolidFireDriver, self)._connect_device(conn)
-        properties = 'na'
+            tvol = {}
+            tvol['id'] = image_id
+            tvol['provider_location'] = template_vol['provider_location']
+            tvol['provider_auth'] = template_vol['provider_auth']
 
-        try:
-            image_utils.fetch_to_raw(context,
-                                     image_service,
-                                     image_id,
-                                     attach_info['device']['path'],
-                                     self.configuration.volume_dd_blocksize,
-                                     size=min_sz_in_gig)
-        except Exception as exc:
-            params['volumeID'] = template_vol['volumeID']
-            LOG.error(_LE('Failed image conversion during cache creation: %s'),
-                      exc)
-            LOG.debug('Removing SolidFire Cache Volume (SF ID): %s',
-                      template_vol['volumeID'])
-
-            self._detach_volume(context, attach_info, tvol, properties)
-            self._issue_api_request('DeleteVolume', params)
-            return
+            connector = {'multipath': False}
+            conn = self.initialize_connection(tvol, connector)
+            attach_info = super(SolidFireDriver, self)._connect_device(conn)
+            properties = 'na'
+            try:
+                image_utils.convert_image(tmp_image,
+                                          attach_info['device']['path'],
+                                          'raw',
+                                          run_as_root=True)
+                data = image_utils.qemu_img_info(attach_info['device']['path'],
+                                                 run_as_root=True)
+                if data.file_format != 'raw':
+                    raise exception.ImageUnacceptable(
+                        image_id=image_id,
+                        reason=_("Converted to %(vol_format)s, but format is "
+                                 "now %(file_format)s") % {'vol_format': 'raw',
+                                                           'file_format': data.
+                                                           file_format})
+            except Exception as exc:
+                vol = self._get_sf_volume(image_id)
+                LOG.error(_LE('Failed image conversion during '
+                              'cache creation: %s'),
+                          exc)
+                LOG.debug('Removing SolidFire Cache Volume (SF ID): %s',
+                          vol['volumeID'])
+                self._detach_volume(context, attach_info, tvol, properties)
+                self._issue_api_request('DeleteVolume', params)
+                return
 
         self._detach_volume(context, attach_info, tvol, properties)
         sf_vol = self._get_sf_volume(image_id, params)
@@ -793,25 +813,28 @@ class SolidFireDriver(san.SanISCSIDriver):
     def clone_image(self, context,
                     volume, image_location,
                     image_meta, image_service):
-
+        public = False
         # Check out pre-requisites:
         # Is template caching enabled?
         if not self.configuration.sf_allow_template_caching:
             return None, False
 
-        # Is the image owned by this tenant or public?
-        if ((not image_meta.get('is_public', False)) and
-                (image_meta['owner'] != volume['project_id'])):
-                LOG.warning(_LW("Requested image is not "
-                                "accessible by current Tenant."))
-                return None, False
-
-        # Is virtual_size property set on the image?
-        if ((not image_meta.get('properties', None)) or
-                (not image_meta['properties'].get('virtual_size', None))):
-            LOG.info(_LI('Unable to create cache volume because image: %s '
-                         'does not include properties.virtual_size'),
-                     image_meta['id'])
+        # NOTE(jdg): Glance V2 moved from is_public to visibility
+        # so we check both, as we don't necessarily know or want
+        # to care which we're using.  Will need to look at
+        # future handling of things like shared and community
+        # but for now, it's owner or public and that's it
+        visibility = image_meta.get('visibility', None)
+        if visibility and visibility == 'public':
+            public = True
+        elif image_meta.get('is_public', False):
+            public = True
+        else:
+            if image_meta['owner'] == volume['project_id']:
+                public = True
+        if not public:
+            LOG.warning(_LW("Requested image is not "
+                            "accessible by current Tenant."))
             return None, False
 
         try:
