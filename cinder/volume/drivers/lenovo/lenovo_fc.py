@@ -30,7 +30,7 @@ class LenovoFCDriver(dothill_fc.DotHillFCDriver):
 
     def __init__(self, *args, **kwargs):
         super(LenovoFCDriver, self).__init__(*args, **kwargs)
-        self.configuration.append_config_values(lenovo_common.common_opt)
+        self.configuration.append_config_values(lenovo_common.common_opts)
 
     def _init_common(self):
         return lenovo_common.LenovoCommon(self.configuration)
