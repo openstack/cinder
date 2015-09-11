@@ -22,6 +22,7 @@ import socket
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import excutils
 from oslo_utils import importutils
 from oslo_utils import units
 import six
@@ -675,12 +676,19 @@ class LVMVolumeDriver(driver.VolumeDriver):
             # copy_volume expects sizes in MiB, we store integer GiB
             # be sure to convert before passing in
             size_in_mb = int(volume['size']) * units.Ki
-            volutils.copy_volume(self.local_path(volume),
-                                 self.local_path(volume, vg=dest_vg),
-                                 size_in_mb,
-                                 self.configuration.volume_dd_blocksize,
-                                 execute=self._execute,
-                                 sparse=self.sparse_copy_volume)
+            try:
+                volutils.copy_volume(self.local_path(volume),
+                                     self.local_path(volume, vg=dest_vg),
+                                     size_in_mb,
+                                     self.configuration.volume_dd_blocksize,
+                                     execute=self._execute,
+                                     sparse=self.sparse_copy_volume)
+            except Exception as e:
+                with excutils.save_and_reraise_exception():
+                    LOG.error(_LE("Volume migration failed due to "
+                                  "exception: %(reason)s."),
+                              {'reason': six.text_type(e)}, resource=volume)
+                    dest_vg_ref.delete(volume)
             self._delete_volume(volume)
 
             return (True, None)

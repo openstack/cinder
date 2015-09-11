@@ -6494,6 +6494,29 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
                           self.volume.driver.migrate_volume, self.context,
                           vol, host)
 
+    @mock.patch.object(lvm.LVMVolumeDriver, '_create_volume')
+    @mock.patch.object(brick_lvm.LVM, 'get_all_physical_volumes')
+    @mock.patch.object(brick_lvm.LVM, 'delete')
+    @mock.patch.object(volutils, 'copy_volume',
+                       side_effect=processutils.ProcessExecutionError)
+    @mock.patch.object(volutils, 'get_all_volume_groups',
+                       return_value=[{'name': 'cinder-volumes'}])
+    def test_lvm_migrate_volume_volume_copy_error(self, vgs, copy_volume,
+                                                  mock_delete, mock_pvs,
+                                                  mock_create):
+
+        hostname = socket.gethostname()
+        capabilities = {'location_info': 'LVMVolumeDriver:%s:'
+                        'cinder-volumes:default:0' % hostname}
+        host = {'capabilities': capabilities}
+        vol = {'name': 'test', 'id': 1, 'size': 1, 'status': 'available'}
+        self.volume.driver.vg = fake_lvm.FakeBrickLVM('cinder-volumes-old',
+                                                      False, None, 'default')
+        self.assertRaises(processutils.ProcessExecutionError,
+                          self.volume.driver.migrate_volume, self.context,
+                          vol, host)
+        mock_delete.assert_called_once_with(vol)
+
     def test_lvm_volume_group_missing(self):
         hostname = socket.gethostname()
         capabilities = {'location_info': 'LVMVolumeDriver:%s:'
