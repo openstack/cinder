@@ -837,16 +837,45 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
     def test_construct_image_url_loc(self):
         drv = self._driver
         img_loc = (None,
+                   # Valid metdata
                    [{'metadata':
                      {'share_location': 'nfs://host/path',
                       'mountpoint': '/opt/stack/data/glance',
                       'id': 'abc-123',
                       'type': 'nfs'},
-                     'url': 'file:///opt/stack/data/glance/image-id'}])
+                     'url': 'file:///opt/stack/data/glance/image-id-0'},
+                    # missing metadata
+                    {'metadata': {},
+                     'url': 'file:///opt/stack/data/glance/image-id-1'},
+                    # missing location_type
+                    {'metadata': {'location_type': None},
+                     'url': 'file:///opt/stack/data/glance/image-id-2'},
+                    # non-nfs location_type
+                    {'metadata': {'location_type': 'not-NFS'},
+                     'url': 'file:///opt/stack/data/glance/image-id-3'},
+                    # missing share_location
+                    {'metadata': {'location_type': 'nfs',
+                                  'share_location': None},
+                     'url': 'file:///opt/stack/data/glance/image-id-4'},
+                    # missing mountpoint
+                    {'metadata': {'location_type': 'nfs',
+                                  'share_location': 'nfs://host/path',
+                                  # Pre-kilo we documented "mount_point"
+                                  'mount_point': '/opt/stack/data/glance'},
+                     'url': 'file:///opt/stack/data/glance/image-id-5'},
+                    # Valid metadata
+                    {'metadata':
+                     {'share_location': 'nfs://host/path',
+                      'mountpoint': '/opt/stack/data/glance',
+                      'id': 'abc-123',
+                      'type': 'nfs'},
+                     'url': 'file:///opt/stack/data/glance/image-id-6'}])
 
         locations = drv._construct_image_nfs_url(img_loc)
 
-        self.assertIn("nfs://host/path/image-id", locations)
+        self.assertIn("nfs://host/path/image-id-0", locations)
+        self.assertIn("nfs://host/path/image-id-6", locations)
+        self.assertEqual(2, len(locations))
 
     def test_construct_image_url_direct(self):
         drv = self._driver

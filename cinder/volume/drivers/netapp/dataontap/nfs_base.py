@@ -602,19 +602,16 @@ class NetAppNfsDriver(nfs.NfsDriver):
             urls.append(direct_url)
         else:
             for location in locations:
-                url = location['url']
                 if not location['metadata']:
-                    urls.append(url)
-                    break
+                    continue
                 location_type = location['metadata'].get('type')
                 if not location_type or location_type.lower() != "nfs":
-                    urls.append(url)
-                    break
+                    continue
                 share_location = location['metadata'].get('share_location')
                 mountpoint = location['metadata'].get('mountpoint')
                 if not share_location or not mountpoint:
-                    urls.append(url)
-                    break
+                    continue
+                url = location['url']
                 url_parse = urlparse.urlparse(url)
                 abs_path = os.path.join(url_parse.netloc, url_parse.path)
                 rel_path = os.path.relpath(abs_path, mountpoint)
