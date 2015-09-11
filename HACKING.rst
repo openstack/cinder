@@ -26,6 +26,7 @@ Cinder Specific Commandments
 - [C307] LOG.warn is deprecated. Enforce use of LOG.warning.
 - [C308] timeutils.isotime() must not be used (deprecated).
 - [C309] Unit tests should not perform logging.
+- [C310] Check for improper use of logging format arguments.
 
 General
 -------
