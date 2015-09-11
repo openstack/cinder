@@ -1400,6 +1400,14 @@ class BaseVD(object):
         """
         return None, None
 
+    def migrate_volume(self, context, volume, host):
+        """Migrate volume stub.
+
+        This is for drivers that don't implement an enhanced version
+        of this operation.
+        """
+        return (False, None)
+
 
 @six.add_metaclass(abc.ABCMeta)
 class LocalVD(object):

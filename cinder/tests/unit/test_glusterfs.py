@@ -1792,3 +1792,16 @@ class GlusterFsDriverTestCase(test.TestCase):
             mock_upload_volume.assert_called_once_with(
                 mock.ANY, mock.ANY, mock.ANY, upload_path)
             self.assertEqual(1, mock_create_temporary_file.call_count)
+
+    def test_migrate_volume_is_there(self):
+        """Ensure that driver.migrate_volume() is there."""
+
+        drv = self._driver
+
+        ctxt = context.RequestContext('fake_user', 'fake_project')
+        volume = self._simple_volume()
+        ret = drv.migrate_volume(ctxt,
+                                 volume,
+                                 mock.sentinel.host)
+
+        self.assertEqual((False, None), ret)
