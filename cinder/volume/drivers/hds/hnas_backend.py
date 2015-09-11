@@ -43,12 +43,12 @@ class HnasBackend():
                                  check_exit_code=True)
         util = out.split()[1]
         out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw, ip0,
+                                 '--user', user, '--password', pw, ip0,
                                  "cluster-getmac",
                                  check_exit_code=True)
         hardware = out.split()[2]
         out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw,
+                                 '--user', user, '--password', pw,
                                  ip0, 'ver',
                                  check_exit_code=True)
         lines = out.split('\n')
@@ -76,7 +76,7 @@ class HnasBackend():
         """
 
         out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw, ip0,
+                                 '--user', user, '--password', pw, ip0,
                                  'evsipaddr', '-l',
                                  check_exit_code=True)
         lines = out.split('\n')
@@ -102,7 +102,7 @@ class HnasBackend():
         """
 
         out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw,
+                                 '--user', user, '--password', pw,
                                  ip0, 'df', '-a',
                                  check_exit_code=True)
         lines = out.split('\n')
@@ -141,7 +141,7 @@ class HnasBackend():
         """Gets the EVSID for the named filesystem."""
 
         out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw, ip0,
+                                 '--user', user, '--password', pw, ip0,
                                  "evsfs", "list",
                                  check_exit_code=True)
         LOG.debug('get_evs: out ' + out)
@@ -159,7 +159,7 @@ class HnasBackend():
         """Gets the EVS IPs for the named filesystem."""
 
         out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw, ip0,
+                                 '--user', user, '--password', pw, ip0,
                                  'evsipaddr', '-e', evsid,
                                  check_exit_code=True)
 
@@ -177,7 +177,7 @@ class HnasBackend():
         """Gets the FSID for the named filesystem."""
 
         out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw,
+                                 '--user', user, '--password', pw,
                                  ip0, 'evsfs', 'list',
                                  check_exit_code=True)
         LOG.debug('get_fsid: out ' + out)
@@ -202,7 +202,7 @@ class HnasBackend():
         """
 
         out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw, ip0,
+                                 '--user', user, '--password', pw, ip0,
                                  'for-each-evs', '-q',
                                  'nfs-export', 'list',
                                  check_exit_code=True)
@@ -251,7 +251,7 @@ class HnasBackend():
 
         _evsid = self._get_evs(cmd, ip0, user, pw, hdp)
         out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw,
+                                 '--user', user, '--password', pw,
                                  ip0, "console-context",
                                  "--evs", _evsid,
                                  'iscsi-lu', 'add', "-e",
@@ -279,7 +279,7 @@ class HnasBackend():
 
         _evsid = self._get_evs(cmd, ip0, user, pw, hdp)
         out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw,
+                                 '--user', user, '--password', pw,
                                  ip0, "console-context",
                                  "--evs", _evsid,
                                  'iscsi-lu', 'del', '-d',
@@ -306,7 +306,7 @@ class HnasBackend():
 
         _evsid = self._get_evs(cmd, ip0, user, pw, hdp)
         out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw,
+                                 '--user', user, '--password', pw,
                                  ip0, "console-context",
                                  "--evs", _evsid,
                                  'iscsi-lu', 'clone', '-e',
@@ -337,7 +337,7 @@ class HnasBackend():
         _fsid = self._get_fsid(cmd, ip0, user, pw, fslabel)
         _evsid = self._get_evs(cmd, ip0, user, pw, _fsid)
         out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw,
+                                 '--user', user, '--password', pw,
                                  ip0, "console-context",
                                  "--evs", _evsid,
                                  'file-clone-create', '-f', fslabel,
@@ -363,7 +363,7 @@ class HnasBackend():
 
         _evsid = self._get_evs(cmd, ip0, user, pw, hdp)
         out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw,
+                                 '--user', user, '--password', pw,
                                  ip0, "console-context",
                                  "--evs", _evsid,
                                  'iscsi-lu', 'expand',
@@ -391,7 +391,7 @@ class HnasBackend():
 
         _evsid = self._get_evs(cmd, ip0, user, pw, hdp)
         out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw,
+                                 '--user', user, '--password', pw,
                                  ip0, "console-context",
                                  "--evs", _evsid,
                                  'iscsi-target', 'list', iqn,
@@ -430,7 +430,7 @@ class HnasBackend():
                         break
 
         out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw,
+                                 '--user', user, '--password', pw,
                                  ip0, "console-context",
                                  "--evs", _evsid,
                                  'iscsi-target', 'addlu',
@@ -459,7 +459,7 @@ class HnasBackend():
         """
 
         out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw,
+                                 '--user', user, '--password', pw,
                                  ip0, "console-context",
                                  "--evs", evsid,
                                  'iscsi-target', 'list', iqn,
@@ -482,7 +482,7 @@ class HnasBackend():
 
         # remove the LU from the target
         out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw,
+                                 '--user', user, '--password', pw,
                                  ip0, "console-context",
                                  "--evs", evsid,
                                  'iscsi-target', 'dellu',
@@ -511,7 +511,7 @@ class HnasBackend():
 
         _evsid = self._get_evs(cmd, ip0, user, pw, hdp)
         out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw,
+                                 '--user', user, '--password', pw,
                                  ip0, "console-context",
                                  "--evs", _evsid,
                                  'iscsi-target', 'list', targetalias,
@@ -521,7 +521,7 @@ class HnasBackend():
             if secret == "":
                 secret = '""'
                 out, err = utils.execute(cmd,
-                                         '-u', user, '-p', pw,
+                                         '--user', user, '--password', pw,
                                          ip0, "console-context",
                                          "--evs", _evsid,
                                          'iscsi-target', 'add',
@@ -529,7 +529,7 @@ class HnasBackend():
                                          check_exit_code=True)
             else:
                 out, err = utils.execute(cmd,
-                                         '-u', user, '-p', pw,
+                                         '--user', user, '--password', pw,
                                          ip0, "console-context",
                                          "--evs", _evsid,
                                          'iscsi-target', 'add',
@@ -555,7 +555,7 @@ class HnasBackend():
 
         _evsid = self._get_evs(cmd, ip0, user, pw, hdp)
         out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw,
+                                 '--user', user, '--password', pw,
                                  ip0, "console-context",
                                  "--evs", _evsid,
                                  'iscsi-target', 'list',
@@ -564,7 +564,7 @@ class HnasBackend():
 
         if "does not exist" in out:
             out, err = utils.execute(cmd,
-                                     '-u', user, '-p', pw,
+                                     '--user', user, '--password', pw,
                                      ip0, "console-context",
                                      "--evs", _evsid,
                                      'iscsi-target', 'add',
@@ -573,7 +573,7 @@ class HnasBackend():
         else:
             LOG.info('targetlist: ' + targetalias + ' -- ' + out)
             out, err = utils.execute(cmd,
-                                     '-u', user, '-p', pw,
+                                     '--user', user, '--password', pw,
                                      ip0, "console-context",
                                      "--evs", _evsid,
                                      'iscsi-target', 'mod',
@@ -593,7 +593,7 @@ class HnasBackend():
 
         _evsid = self._get_evs(cmd, ip0, user, pw, hdp)
         out, err = utils.execute(cmd,
-                                 '-u', user, '-p', pw,
+                                 '--user', user, '--password', pw,
                                  ip0, "console-context",
                                  "--evs", _evsid,
                                  'iscsi-target', 'list', targetalias,

@@ -92,9 +92,9 @@ def _xml_read(root, element, check=None):
     """Read an xml element."""
     try:
         val = root.findtext(element)
-        LOG.info(_("%(element)s: %(val)s")
-                 % {'element': element,
-                    'val': val})
+        LOG.info(_("%(element)s: %(val)s"),
+                 {'element': element,
+                  'val': val if element != 'password' else '***'})
         if val:
             return val.strip()
         if check:
