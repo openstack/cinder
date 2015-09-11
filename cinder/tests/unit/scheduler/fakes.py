@@ -139,7 +139,7 @@ class FakeNovaClient(object):
 
     def __init__(self, ext_srv_attr=True):
         self.servers = FakeNovaClient.ServerManager()
-        self.list_extensions = FakeNovaClient.ListExtManager(
+        self.discover_extensions = FakeNovaClient.ListExtManager(
             ext_srv_attr=ext_srv_attr)
 
 
