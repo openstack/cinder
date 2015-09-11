@@ -264,7 +264,7 @@ class VolumeAdminController(AdminController):
         """Enable/Re-enable replication on replciation capable volume.
 
         Admin only method, used primarily for cases like disable/re-enable
-        replication proces on a replicated volume for maintenance or testing
+        replication process on a replicated volume for maintenance or testing
         """
 
         context = req.environ['cinder.context']

@@ -263,7 +263,7 @@ class BarbicanKeyManagerTestCase(test_key_mgr.KeyManagerTestCase):
 
         self.key_mgr.create_key(self.ctxt)
 
-        # assert proper calls occured, including with project_id
+        # assert proper calls occurred, including with project_id
         mock_token.assert_called_once_with(
             auth_url=CONF.keymgr.encryption_auth_url,
             token=self.ctxt.auth_token,
