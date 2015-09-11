@@ -206,7 +206,7 @@ class CxtAdm(iscsi.ISCSITarget):
         if tid is None:
             LOG.error(_LE("Failed to create iscsi target for volume "
                           "id:%(vol_id)s. Please verify your configuration "
-                          "in %(volumes_dir)'"), {
+                          "in %(volumes_dir)s'"), {
                       'vol_id': vol_id,
                       'volumes_dir': volumes_dir, })
             raise exception.NotFound()

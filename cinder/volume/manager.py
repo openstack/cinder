@@ -1048,7 +1048,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                                                     image_meta)
             if not image_volume:
                 LOG.warning(_LW('Unable to clone image_volume for image '
-                                '%(image_id) will not create cache entry.'),
+                                '%(image_id)s will not create cache entry.'),
                             {'image_id': image_id})
                 return
 
@@ -1107,7 +1107,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             return image_volume
         except exception.CinderException:
             LOG.exception(_LE('Failed to clone volume %(volume_id)s for '
-                              'image %(image_id).'),
+                              'image %(image_id)s.'),
                           {'volume_id': volume.id,
                            'image_id': image_meta['id']})
             try:
@@ -1320,7 +1320,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             raise exception.InvalidInput(reason=six.text_type(err))
         except Exception as err:
             err_msg = (_("Validate volume connection failed "
-                         "(error: %(err)).") % {'err': six.text_type(err)})
+                         "(error: %(err)s).") % {'err': six.text_type(err)})
             LOG.error(err_msg, resource=volume)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
