@@ -46,7 +46,7 @@ class DotHillFCDriver(cinder.volume.driver.FibreChannelDriver):
     def __init__(self, *args, **kwargs):
         super(DotHillFCDriver, self).__init__(*args, **kwargs)
         self.common = None
-        self.configuration.append_config_values(dothill_common.common_opt)
+        self.configuration.append_config_values(dothill_common.common_opts)
         self.configuration.append_config_values(san.san_opts)
         self.lookup_service = fczm_utils.create_lookup_service()
 
