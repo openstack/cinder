@@ -845,32 +845,6 @@ def retry(exceptions, interval=1, retries=3, backoff_rate=2,
     return _decorator
 
 
-def convert_version_to_int(version):
-    try:
-        if isinstance(version, six.string_types):
-            version = convert_version_to_tuple(version)
-        if isinstance(version, tuple):
-            return six.moves.reduce(lambda x, y: (x * 1000) + y, version)
-    except Exception:
-        msg = _("Version %s is invalid.") % version
-        raise exception.CinderException(msg)
-
-
-def convert_version_to_str(version_int):
-    version_numbers = []
-    factor = 1000
-    while version_int != 0:
-        version_number = version_int - (version_int // factor * factor)
-        version_numbers.insert(0, six.text_type(version_number))
-        version_int = version_int // factor
-
-    return '.'.join(map(str, version_numbers))
-
-
-def convert_version_to_tuple(version_str):
-    return tuple(int(part) for part in version_str.split('.'))
-
-
 def convert_str(text):
     """Convert to native string.
 

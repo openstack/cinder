@@ -18,6 +18,7 @@ import binascii
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
+from oslo_utils import versionutils
 from oslo_versionedobjects import fields
 import six
 
@@ -26,7 +27,6 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import objects
 from cinder.objects import base
-from cinder import utils
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
@@ -87,7 +87,7 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
     def obj_make_compatible(self, primitive, target_version):
         """Make an object representation compatible with a target version."""
         super(Backup, self).obj_make_compatible(primitive, target_version)
-        target_version = utils.convert_version_to_tuple(target_version)
+        target_version = versionutils.convert_version_to_tuple(target_version)
 
     @staticmethod
     def _from_db_object(context, backup, db_backup):

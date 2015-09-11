@@ -14,6 +14,7 @@
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import versionutils
 from oslo_versionedobjects import fields
 
 from cinder import db
@@ -21,7 +22,6 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import objects
 from cinder.objects import base
-from cinder import utils
 
 CONF = cfg.CONF
 # NOTE(thangp): OPTIONAL_FIELDS are fields that would be lazy-loaded. They are
@@ -99,7 +99,7 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
     def obj_make_compatible(self, primitive, target_version):
         """Make an object representation compatible with a target version."""
         super(Snapshot, self).obj_make_compatible(primitive, target_version)
-        target_version = utils.convert_version_to_tuple(target_version)
+        target_version = versionutils.convert_version_to_tuple(target_version)
 
     @staticmethod
     def _from_db_object(context, snapshot, db_snapshot, expected_attrs=None):
