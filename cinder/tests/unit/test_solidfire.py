@@ -528,10 +528,12 @@ class SolidFireVolumeTestCase(test.TestCase):
 
             sfv.delete_volume(testvol)
 
-    def test_delete_volume_fails_no_volume(self):
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_issue_api_request',
-                       self.fake_issue_api_request)
+    def test_delete_volume_no_volume_on_backend(self):
+        fake_sfaccounts = [{'accountID': 5,
+                            'name': 'testprjid',
+                            'targetSecret': 'shhhh',
+                            'username': 'john-wayne'}]
+        fake_no_volumes = []
         testvol = {'project_id': 'testprjid',
                    'name': 'no-name',
                    'size': 1,
@@ -539,11 +541,35 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'created_at': timeutils.utcnow()}
 
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-        try:
+        with mock.patch.object(sfv,
+                               '_get_sfaccounts_for_tenant',
+                               return_value=fake_sfaccounts), \
+            mock.patch.object(sfv,
+                              '_get_volumes_for_account',
+                              return_value=fake_no_volumes):
             sfv.delete_volume(testvol)
-            self.fail("Should have thrown Error")
-        except Exception:
-            pass
+
+    def test_delete_snapshot_no_snapshot_on_backend(self):
+        fake_sfaccounts = [{'accountID': 5,
+                            'name': 'testprjid',
+                            'targetSecret': 'shhhh',
+                            'username': 'john-wayne'}]
+        fake_no_volumes = []
+        testsnap = {'project_id': 'testprjid',
+                    'name': 'no-name',
+                    'size': 1,
+                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+                    'volume_id': 'b831c4d1-d1f0-11e1-9b23-0800200c9a66',
+                    'created_at': timeutils.utcnow()}
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        with mock.patch.object(sfv,
+                               '_get_sfaccounts_for_tenant',
+                               return_value=fake_sfaccounts), \
+            mock.patch.object(sfv,
+                              '_get_volumes_for_account',
+                              return_value=fake_no_volumes):
+            sfv.delete_snapshot(testsnap)
 
     def test_get_cluster_info(self):
         self.stubs.Set(solidfire.SolidFireDriver,

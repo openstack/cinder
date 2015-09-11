@@ -909,63 +909,59 @@ class SolidFireDriver(san.SanISCSIDriver):
 
         return model
 
-    def delete_volume(self, vref):
+    def delete_volume(self, volume):
         """Delete SolidFire Volume from device.
 
-        SolidFire allows multiple volumes with same name,
-        volumeID is what's guaranteed unique.
+         SolidFire allows multiple volumes with same name,
+         volumeID is what's guaranteed unique.
 
         """
-        sf_vid, sf_acctid, sf_clusterid = (
-            self._parse_provider_id_string(vref['provider_id']))
-        try:
-            params = {'volumeID': sf_vid}
-            self._issue_api_request('DeleteVolume', params)
-        except exception.SolidFireAPIException as ex:
-            if 'xVolumeIDDoesNotExist' in ex.mesg:
-                LOG.error(_LE("Volume ID %s was not found on "
-                              "the SolidFire Cluster while attempting "
-                              "delete_volume operation!"), sf_vid)
-            else:
-                raise
+        sf_vol = None
+        accounts = self._get_sfaccounts_for_tenant(volume['project_id'])
+        if accounts is None:
+            LOG.error(_LE("Account for Volume ID %s was not found on "
+                          "the SolidFire Cluster while attempting "
+                          "delete_volume operation!"), volume['id'])
+            LOG.error(_LE("This usually means the volume was never "
+                          "successfully created."))
+            return
 
-    def _legacy_snap_delete(self, snapshot):
-        vols = self._issue_api_request(
-            'ListActiveVolumes', {})['result']['volumes']
-        for v in vols:
-            if v['volumeID'].replace("UUID-", "") == snapshot['id']:
-                try:
-                    self._issue_api_request('DeleteVolume',
-                                            {'volumeID': v['volumeID']})
-                except exception.SolidFireAPIException as ex:
-                    if 'xVolumeIDDoesNotExist' in ex.mesg:
-                        LOG.error(_LE("Snapshot ID %s was not found on "
-                                      "the SolidFire Cluster while attempting "
-                                      "delete_snapshot operation!"),
-                                  snapshot['id'])
-                    else:
-                        raise
+        for acc in accounts:
+            vols = self._get_volumes_for_account(acc['accountID'],
+                                                 volume['id'])
+            if vols:
+                sf_vol = vols[0]
+                break
+
+        if sf_vol is not None:
+            params = {'volumeID': sf_vol['volumeID']}
+            self._issue_api_request('DeleteVolume', params)
+        else:
+            LOG.error(_LE("Volume ID %s was not found on "
+                          "the SolidFire Cluster while attempting "
+                          "delete_volume operation!"), volume['id'])
 
     def delete_snapshot(self, snapshot):
         """Delete the specified snapshot from the SolidFire cluster."""
-        # NOTE(jdg): For snapshots, they may be clones if they're "old"
-        # that means the provider_id won't update on init, so it will
-        # be empty here and we'll have to inspect volumes
-        if snapshot['provider_id']:
-            sf_sid, sf_vid, sf_clusterid = (
-                self._parse_provider_id_string(snapshot['provider_id']))
-            try:
-                params = {'snapshotID': sf_sid}
-                self._issue_api_request('DeleteSnapshot',
-                                        params,
-                                        version='6.0')
-            except exception.SolidFireAPIException as ex:
-                if 'xSnapshotIDDoesNotExist' in ex.mesg:
-                    pass
-        else:
-            LOG.debug("Snapshot provider_id not found, "
-                      "checking old style clones.")
-            self._legacy_snap_delete(snapshot)
+        sf_snap_name = 'UUID-%s' % snapshot['id']
+        accounts = self._get_sfaccounts_for_tenant(snapshot['project_id'])
+        snap = None
+        for acct in accounts:
+            params = {'accountID': acct['accountID']}
+            sf_vol = self._get_sf_volume(snapshot['volume_id'], params)
+            if sf_vol:
+                sf_snaps = self._get_sf_snapshots(sf_vol['volumeID'])
+                snap = next((s for s in sf_snaps if s["name"] == sf_snap_name),
+                            None)
+                if snap:
+                    params = {'snapshotID': snap['snapshotID']}
+                    self._issue_api_request('DeleteSnapshot',
+                                            params,
+                                            version='6.0')
+                    return
+        # Make sure it's not "old style" using clones as snaps
+        LOG.debug("Snapshot not found, checking old style clones.")
+        self.delete_volume(snapshot)
 
     def create_snapshot(self, snapshot):
         sfaccount = self._get_sfaccount(snapshot['project_id'])
