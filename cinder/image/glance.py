@@ -243,8 +243,9 @@ class GlanceImageService(object):
         return base_image_meta
 
     def get_location(self, context, image_id):
-        """Returns the direct url representing the backend storage location,
-        or None if this attribute is not shown by Glance.
+        """Returns a tuple of the direct url and locations representing the
+        backend storage location, or (None, None) if these attributes are not
+        shown by Glance.
         """
         if CONF.glance_api_version == 1:
             # image location not available in v1
@@ -267,16 +268,20 @@ class GlanceImageService(object):
 
     def download(self, context, image_id, data=None):
         """Calls out to Glance for data and writes data."""
-        if 'file' in CONF.allowed_direct_url_schemes:
-            location = self.get_location(context, image_id)
-            o = urlparse.urlparse(location)
-            if o.scheme == "file":
-                with open(o.path, "r") as f:
+        if data and 'file' in CONF.allowed_direct_url_schemes:
+            direct_url, locations = self.get_location(context, image_id)
+            urls = [direct_url] + [loc.get('url') for loc in locations or []]
+            for url in urls:
+                if url is None:
+                    continue
+                parsed_url = urlparse.urlparse(url)
+                if parsed_url.scheme == "file":
                     # a system call to cp could have significant performance
                     # advantages, however we do not have the path to files at
                     # this point in the abstraction.
-                    shutil.copyfileobj(f, data)
-                return
+                    with open(parsed_url.path, "r") as f:
+                        shutil.copyfileobj(f, data)
+                    return
 
         try:
             image_chunks = self._client.call(context, 'data', image_id)
