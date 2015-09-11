@@ -1739,7 +1739,7 @@ class VMwareVcVmdkDriverTestCase(VMwareEsxVmdkDriverTestCase):
     @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
                 'session', new_callable=mock.PropertyMock)
     def test_get_vc_version(self, session):
-        # test config overrides fetching from VC server
+        # test config overrides fetching from vCenter server
         version = self._driver._get_vc_version()
         self.assertEqual(ver.LooseVersion(self.DEFAULT_VC_VERSION), version)
         # explicitly remove config entry
