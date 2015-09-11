@@ -2051,9 +2051,9 @@ class EMCVMAXMasking(object):
                         sgInstanceName))
             else:
                 errorMessage = (_(
-                    "Storage group %(sgGroupName) "
+                    "Storage group %(sgGroupName)s "
                     "does not exist.")
-                    % {'StorageGroup': defaultStorageGroupName})
+                    % {'sgGroupName': defaultStorageGroupName})
                 LOG.error(errorMessage)
                 raise exception.VolumeBackendAPIException(
                     data=errorMessage)

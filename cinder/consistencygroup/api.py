@@ -170,7 +170,7 @@ class API(base.Base):
                 cgsnapshot = self.db.cgsnapshot_get(context, cgsnapshot_id)
             except exception.CgSnapshotNotFound:
                 with excutils.save_and_reraise_exception():
-                    LOG.error(_LE("CG snapshot %(cgsnap) not found when "
+                    LOG.error(_LE("CG snapshot %(cgsnap)s not found when "
                                   "creating consistency group %(cg)s from "
                                   "source."),
                               {'cg': name, 'cgsnap': cgsnapshot_id})
@@ -184,7 +184,7 @@ class API(base.Base):
                                                                source_cgid)
             except exception.ConsistencyGroupNotFound:
                 with excutils.save_and_reraise_exception():
-                    LOG.error(_LE("Source CG %(source_cg) not found when "
+                    LOG.error(_LE("Source CG %(source_cg)s not found when "
                                   "creating consistency group %(cg)s from "
                                   "source."),
                               {'cg': name, 'source_cg': source_cgid})

@@ -1674,7 +1674,7 @@ class CommandLineHelper(object):
             # When active sp is unavailable, switch to another sp
             # and set it to active and force a poll
             if self._toggle_sp():
-                LOG.debug('EMC: Command Exception: %(rc) %(result)s. '
+                LOG.debug('EMC: Command Exception: %(rc)s %(result)s. '
                           'Retry on another SP.', {'rc': rc,
                                                    'result': out})
                 kwargv['poll'] = True
@@ -2199,7 +2199,7 @@ class EMCVnxCliBase(object):
         if len(target_pool_name) == 0:
             # Destination host is using a legacy driver
             LOG.warning(_LW("Didn't get the pool information of the "
-                            "host %(s). Storage assisted Migration is not "
+                            "host %s. Storage assisted Migration is not "
                             "supported. The host may be using a legacy "
                             "driver."),
                         host['name'])

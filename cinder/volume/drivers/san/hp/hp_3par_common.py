@@ -443,10 +443,10 @@ class HP3PARCommon(object):
             LOG.warning(err)
         except hpexceptions.HTTPConflict as e:
             err = (_LE("Conflict detected in Virtual Volume Set"
-                       " %(volume_set): %(error)"),
-                   {"volume_set": cg_name,
-                    "error": e})
-            LOG.error(err)
+                       " %(volume_set)s: %(error)s"))
+            LOG.error(err,
+                      {"volume_set": cg_name,
+                       "error": e})
 
         volumes = self.db.volume_get_all_by_group(context, group.id)
         for volume in volumes:
