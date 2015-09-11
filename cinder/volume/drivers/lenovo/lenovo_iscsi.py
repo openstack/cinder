@@ -30,8 +30,8 @@ class LenovoISCSIDriver(dothill_iscsi.DotHillISCSIDriver):
 
     def __init__(self, *args, **kwargs):
         super(LenovoISCSIDriver, self).__init__(*args, **kwargs)
-        self.configuration.append_config_values(lenovo_common.common_opt)
-        self.configuration.append_config_values(lenovo_common.iscsi_opt)
+        self.configuration.append_config_values(lenovo_common.common_opts)
+        self.configuration.append_config_values(lenovo_common.iscsi_opts)
         self.iscsi_ips = self.configuration.lenovo_iscsi_ips
 
     def _init_common(self):
