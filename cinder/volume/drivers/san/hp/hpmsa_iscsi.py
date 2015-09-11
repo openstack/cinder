@@ -30,8 +30,8 @@ class HPMSAISCSIDriver(dothill_iscsi.DotHillISCSIDriver):
 
     def __init__(self, *args, **kwargs):
         super(HPMSAISCSIDriver, self).__init__(*args, **kwargs)
-        self.configuration.append_config_values(hpmsa_common.common_opt)
-        self.configuration.append_config_values(hpmsa_common.iscsi_opt)
+        self.configuration.append_config_values(hpmsa_common.common_opts)
+        self.configuration.append_config_values(hpmsa_common.iscsi_opts)
         self.iscsi_ips = self.configuration.hpmsa_iscsi_ips
 
     def _init_common(self):
