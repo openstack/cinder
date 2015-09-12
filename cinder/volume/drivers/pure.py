@@ -27,6 +27,7 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import units
 
+from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder import objects
@@ -701,13 +702,17 @@ class PureBaseVolumeDriver(san.SanDriver):
 
     def _get_pgroup_snap_name_from_snapshot(self, snapshot):
         """Return the name of the snapshot that Purity will use."""
-        pg_snaps = self._array.list_volumes(snap=True, pgroup=True)
-        for pg_snap in pg_snaps:
-            pg_snap_name = pg_snap['name']
-            if (snapshot.cgsnapshot_id in pg_snap_name and
-                    snapshot.volume_id in pg_snap_name):
-                return pg_snap_name
-        return None
+
+        # TODO(patrickeast): Remove DB calls once the cgsnapshot objects are
+        # available to use and can be associated with the snapshot objects.
+        ctxt = context.get_admin_context()
+        cgsnapshot = self.db.cgsnapshot_get(ctxt, snapshot.cgsnapshot_id)
+
+        pg_vol_snap_name = "%(group_snap)s.%(volume_name)s-cinder" % {
+            'group_snap': self._get_pgroup_snap_name(cgsnapshot),
+            'volume_name': snapshot.volume_name
+        }
+        return pg_vol_snap_name
 
     @staticmethod
     def _generate_purity_host_name(name):

@@ -642,33 +642,23 @@ class PureBaseVolumeDriverTestCase(PureDriverTestCase):
         self.assertEqual(expected_name, actual_name)
 
     def test_get_pgroup_snap_name_from_snapshot(self):
+
         cgsnapshot_id = 'b919b266-23b4-4b83-9a92-e66031b9a921'
-        volume_id = 'a3b8b294-8494-4a72-bec7-9aadec561332'
-        pgsnap_name_base = ('consisgroup-0cfc0e4e-5029-4839-af20-184fbc42a9ed'
-                            '-cinder.cgsnapshot-%s-cinder.volume-%s-cinder')
-        pgsnap_name = pgsnap_name_base % (cgsnapshot_id, volume_id)
+        volume_name = 'volume-a3b8b294-8494-4a72-bec7-9aadec561332'
+        cg_id = '0cfc0e4e-5029-4839-af20-184fbc42a9ed'
+        pgsnap_name_base = (
+            'consisgroup-%s-cinder.cgsnapshot-%s-cinder.%s-cinder')
+        pgsnap_name = pgsnap_name_base % (cg_id, cgsnapshot_id, volume_name)
 
-        target_pgsnap_dict = {
-            'source': 'volume-a3b8b294-8494-4a72-bec7-9aadec561332-cinder',
-            'serial': '590474D16E6708FD00015075',
-            'size': 1073741824,
-            'name': pgsnap_name,
-            'created': '2015-08-11T22:25:43Z'
-        }
-
-        # Simulate another pgroup snapshot for another volume in the same group
-        other_volume_id = '73f6af5e-43cd-4c61-8f57-21f312e4523d'
-        other_pgsnap_dict = target_pgsnap_dict.copy()
-        other_pgsnap_dict['name'] = pgsnap_name_base % (cgsnapshot_id,
-                                                        other_volume_id)
-
-        snap_list = [other_pgsnap_dict, target_pgsnap_dict]
-
-        self.array.list_volumes.return_value = snap_list
+        self.driver.db = mock.MagicMock()
+        mock_cgsnap = mock.MagicMock()
+        mock_cgsnap.id = cgsnapshot_id
+        mock_cgsnap.consistencygroup_id = cg_id
+        self.driver.db.cgsnapshot_get.return_value = mock_cgsnap
 
         mock_snap = mock.Mock()
         mock_snap.cgsnapshot_id = cgsnapshot_id
-        mock_snap.volume_id = volume_id
+        mock_snap.volume_name = volume_name
 
         actual_name = self.driver._get_pgroup_snap_name_from_snapshot(
             mock_snap
