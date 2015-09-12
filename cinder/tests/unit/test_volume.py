@@ -4125,11 +4125,12 @@ class VolumeTestCase(BaseVolumeTestCase):
         volume = tests_utils.create_volume(self.context, size=1,
                                            status='available',
                                            host=fake_host)
-        new_volume = tests_utils.create_volume(self.context, size=1,
-                                               status='available',
-                                               host=fake_new_host)
-        new_volume['_name_id'] = 'fake_name_id'
-        new_volume['provider_location'] = 'fake_provider_location'
+        new_volume = tests_utils.create_volume(
+            self.context, size=1,
+            status='available',
+            provider_location='fake_provider_location',
+            _name_id='fake_name_id',
+            host=fake_new_host)
         fake_update_error = {'_name_id': new_volume['_name_id'],
                              'provider_location':
                              new_volume['provider_location']}

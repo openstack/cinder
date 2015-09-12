@@ -3045,6 +3045,9 @@ class VolumeManager(manager.SchedulerDependentManager):
                                volume_status):
         """Finalize migration process on backend device."""
         model_update = None
+        # This is temporary fix for bug 1491210.
+        volume = self.db.volume_get(ctxt, volume['id'])
+        new_volume = self.db.volume_get(ctxt, new_volume['id'])
         try:
             model_update = self.driver.update_migrated_volume(ctxt,
                                                               volume,
