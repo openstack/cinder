@@ -1063,6 +1063,7 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/lun/expand/PUT'] = (
 MAP_COMMAND_TO_FAKE_RESPONSE['/lungroup/associate?ID=12&ASSOCIATEOBJTYPE=11'
                              '&ASSOCIATEOBJID=12/DELETE'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
+
 # mock snapshot info map
 MAP_COMMAND_TO_FAKE_RESPONSE['/snapshot'] = (
     FAKE_CREATE_SNAPSHOT_INFO_RESPONSE)
@@ -1229,6 +1230,7 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/MAPPINGVIEW/CREATE_ASSOCIATE/PUT'] = (
 MAP_COMMAND_TO_FAKE_RESPONSE['/fc_initiator?ISFREE=true&'
                              'range=[0-8191]/GET'] = (
     FAKE_FC_INFO_RESPONSE)
+
 MAP_COMMAND_TO_FAKE_RESPONSE['/fc_initiator/10000090fa0d6754/GET'] = (
     FAKE_FC_INFO_RESPONSE)
 
@@ -2114,6 +2116,34 @@ class Huawei18000FCDriverTestCase(test.TestCase):
         self.driver.restclient.test_multi_url_flag = True
         lun_info = self.driver.create_volume(test_volume)
         self.assertEqual('1', lun_info['provider_location'])
+
+    def test_get_id_from_result(self):
+        self.driver.restclient.login()
+        result = {}
+        name = 'test_name'
+        key = 'NAME'
+        re = self.driver.restclient._get_id_from_result(result, name, key)
+        self.assertIsNone(re)
+
+        result = {'data': {}}
+        re = self.driver.restclient._get_id_from_result(result, name, key)
+        self.assertIsNone(re)
+
+        result = {'data': [{'COUNT': 1, 'ID': '1'},
+                           {'COUNT': 2, 'ID': '2'}]}
+
+        re = self.driver.restclient._get_id_from_result(result, name, key)
+        self.assertIsNone(re)
+
+        result = {'data': [{'NAME': 'test_name1', 'ID': '1'},
+                           {'NAME': 'test_name2', 'ID': '2'}]}
+        re = self.driver.restclient._get_id_from_result(result, name, key)
+        self.assertIsNone(re)
+
+        result = {'data': [{'NAME': 'test_name', 'ID': '1'},
+                           {'NAME': 'test_name2', 'ID': '2'}]}
+        re = self.driver.restclient._get_id_from_result(result, name, key)
+        self.assertEqual('1', re)
 
     def create_fake_conf_file(self):
         """Create a fake Config file
