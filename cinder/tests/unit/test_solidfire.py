@@ -1099,3 +1099,25 @@ class SolidFireVolumeTestCase(test.TestCase):
 
             self.assertEqual('1 99 None', snapshot_updates[0]['provider_id'])
             self.assertEqual(1, len(snapshot_updates))
+
+    def test_get_sf_volume_missing_attributes(self):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        test_name = "existing_volume"
+        fake_response = {'result': {
+            'volumes': [{'volumeID': 5,
+                         'name': test_name,
+                         'accountID': 8,
+                         'sliceCount': 1,
+                         'totalSize': 1 * units.Gi,
+                         'enable512e': True,
+                         'access': "readWrite",
+                         'status': "active",
+                         'qos': None,
+                         'iqn': test_name}]}}
+
+        def _fake_issue_api_req(method, params, version=0):
+            return fake_response
+
+        with mock.patch.object(
+                sfv, '_issue_api_request', side_effect=_fake_issue_api_req):
+            self.assertEqual(5, sfv._get_sf_volume(test_name, 8)['volumeID'])
