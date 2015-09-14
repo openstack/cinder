@@ -149,7 +149,7 @@ class BarbicanKeyManagerTestCase(test_key_mgr.KeyManagerTestCase):
         returned_uuid = self.key_mgr.create_key(self.ctxt)
 
         self.mock_barbican.orders.get.assert_called_once_with(order_ref_url)
-        self.assertEqual(returned_uuid, self.key_id)
+        self.assertEqual(self.key_id, returned_uuid)
 
     def test_create_null_context(self):
         self.key_mgr._barbican_client = None
@@ -177,7 +177,7 @@ class BarbicanKeyManagerTestCase(test_key_mgr.KeyManagerTestCase):
 
         self.get.assert_called_once_with(self.secret_ref)
         encoded = array.array('B', binascii.unhexlify(self.hex)).tolist()
-        self.assertEqual(key.get_encoded(), encoded)
+        self.assertEqual(encoded, key.get_encoded())
 
     def test_get_null_context(self):
         self.key_mgr._barbican_client = None
@@ -207,7 +207,7 @@ class BarbicanKeyManagerTestCase(test_key_mgr.KeyManagerTestCase):
                                             'base64',
                                             'AES', 32, 'CBC',
                                             None)
-        self.assertEqual(returned_uuid, self.key_id)
+        self.assertEqual(self.key_id, returned_uuid)
 
     def test_store_key_plaintext(self):
         # Create the plaintext key

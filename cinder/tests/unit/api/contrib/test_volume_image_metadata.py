@@ -118,14 +118,14 @@ class VolumeImageMetadataTest(test.TestCase):
     def test_get_volume(self):
         res = self._make_request('/v2/fake/volumes/%s' % self.UUID)
         self.assertEqual(200, res.status_int)
-        self.assertEqual(self._get_image_metadata(res.body),
-                         fake_image_metadata)
+        self.assertEqual(fake_image_metadata,
+                         self._get_image_metadata(res.body))
 
     def test_list_detail_volumes(self):
         res = self._make_request('/v2/fake/volumes/detail')
         self.assertEqual(200, res.status_int)
-        self.assertEqual(self._get_image_metadata_list(res.body)[0],
-                         fake_image_metadata)
+        self.assertEqual(fake_image_metadata,
+                         self._get_image_metadata_list(res.body)[0])
 
     def test_create_image_metadata(self):
         self.stubs.Set(volume.API, 'get_volume_image_metadata',

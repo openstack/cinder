@@ -139,7 +139,7 @@ class VolumeUnmanageTest(test.TestCase):
         # volume_update is (context, id, new_data)
         self.assertEqual(1, mock_db.call_count)
         self.assertEqual(3, len(mock_db.call_args[0]), mock_db.call_args)
-        self.assertEqual(mock_db.call_args[0][1], detached_vol_id)
+        self.assertEqual(detached_vol_id, mock_db.call_args[0][1])
 
         # delete_volume is (context, status, unmanageOnly)
         self.assertEqual(1, mock_rpcapi.call_count)

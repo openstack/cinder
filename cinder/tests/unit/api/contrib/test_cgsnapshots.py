@@ -148,16 +148,16 @@ class CgsnapshotsAPITestCase(test.TestCase):
         res_dict = json.loads(res.body)
 
         self.assertEqual(200, res.status_int)
-        self.assertEqual(res_dict['cgsnapshots'][0]['id'],
-                         cgsnapshot_id1)
+        self.assertEqual(cgsnapshot_id1,
+                         res_dict['cgsnapshots'][0]['id'])
         self.assertEqual('test_cgsnapshot',
                          res_dict['cgsnapshots'][0]['name'])
-        self.assertEqual(res_dict['cgsnapshots'][1]['id'],
-                         cgsnapshot_id2)
+        self.assertEqual(cgsnapshot_id2,
+                         res_dict['cgsnapshots'][1]['id'])
         self.assertEqual('test_cgsnapshot',
                          res_dict['cgsnapshots'][1]['name'])
-        self.assertEqual(res_dict['cgsnapshots'][2]['id'],
-                         cgsnapshot_id3)
+        self.assertEqual(cgsnapshot_id3,
+                         res_dict['cgsnapshots'][2]['id'])
         self.assertEqual('test_cgsnapshot',
                          res_dict['cgsnapshots'][2]['name'])
 
@@ -193,12 +193,12 @@ class CgsnapshotsAPITestCase(test.TestCase):
         dom = minidom.parseString(res.body)
         cgsnapshot_list = dom.getElementsByTagName('cgsnapshot')
 
-        self.assertEqual(cgsnapshot_list.item(0).getAttribute('id'),
-                         cgsnapshot_id1)
-        self.assertEqual(cgsnapshot_list.item(1).getAttribute('id'),
-                         cgsnapshot_id2)
-        self.assertEqual(cgsnapshot_list.item(2).getAttribute('id'),
-                         cgsnapshot_id3)
+        self.assertEqual(cgsnapshot_id1,
+                         cgsnapshot_list.item(0).getAttribute('id'))
+        self.assertEqual(cgsnapshot_id2,
+                         cgsnapshot_list.item(1).getAttribute('id'))
+        self.assertEqual(cgsnapshot_id3,
+                         cgsnapshot_list.item(2).getAttribute('id'))
 
         db.cgsnapshot_destroy(context.get_admin_context(),
                               cgsnapshot_id3)
@@ -234,8 +234,8 @@ class CgsnapshotsAPITestCase(test.TestCase):
                          res_dict['cgsnapshots'][0]['description'])
         self.assertEqual('test_cgsnapshot',
                          res_dict['cgsnapshots'][0]['name'])
-        self.assertEqual(res_dict['cgsnapshots'][0]['id'],
-                         cgsnapshot_id1)
+        self.assertEqual(cgsnapshot_id1,
+                         res_dict['cgsnapshots'][0]['id'])
         self.assertEqual('creating',
                          res_dict['cgsnapshots'][0]['status'])
 
@@ -243,17 +243,17 @@ class CgsnapshotsAPITestCase(test.TestCase):
                          res_dict['cgsnapshots'][1]['description'])
         self.assertEqual('test_cgsnapshot',
                          res_dict['cgsnapshots'][1]['name'])
-        self.assertEqual(res_dict['cgsnapshots'][1]['id'],
-                         cgsnapshot_id2)
+        self.assertEqual(cgsnapshot_id2,
+                         res_dict['cgsnapshots'][1]['id'])
         self.assertEqual('creating',
                          res_dict['cgsnapshots'][1]['status'])
 
         self.assertEqual('this is a test cgsnapshot',
                          res_dict['cgsnapshots'][2]['description'])
-        self.assertEqual(res_dict['cgsnapshots'][2]['name'],
-                         'test_cgsnapshot')
-        self.assertEqual(res_dict['cgsnapshots'][2]['id'],
-                         cgsnapshot_id3)
+        self.assertEqual('test_cgsnapshot',
+                         res_dict['cgsnapshots'][2]['name'])
+        self.assertEqual(cgsnapshot_id3,
+                         res_dict['cgsnapshots'][2]['id'])
         self.assertEqual('creating',
                          res_dict['cgsnapshots'][2]['status'])
         db.cgsnapshot_destroy(context.get_admin_context(),
@@ -292,26 +292,26 @@ class CgsnapshotsAPITestCase(test.TestCase):
                          cgsnapshot_detail.item(0).getAttribute('description'))
         self.assertEqual('test_cgsnapshot',
                          cgsnapshot_detail.item(0).getAttribute('name'))
-        self.assertEqual(cgsnapshot_detail.item(0).getAttribute('id'),
-                         cgsnapshot_id1)
+        self.assertEqual(cgsnapshot_id1,
+                         cgsnapshot_detail.item(0).getAttribute('id'))
         self.assertEqual('creating',
                          cgsnapshot_detail.item(0).getAttribute('status'))
 
-        self.assertEqual(cgsnapshot_detail.item(1).getAttribute('description'),
-                         'this is a test cgsnapshot')
+        self.assertEqual('this is a test cgsnapshot',
+                         cgsnapshot_detail.item(1).getAttribute('description'))
         self.assertEqual('test_cgsnapshot',
                          cgsnapshot_detail.item(1).getAttribute('name'))
-        self.assertEqual(cgsnapshot_detail.item(1).getAttribute('id'),
-                         cgsnapshot_id2)
+        self.assertEqual(cgsnapshot_id2,
+                         cgsnapshot_detail.item(1).getAttribute('id'))
         self.assertEqual('creating',
                          cgsnapshot_detail.item(1).getAttribute('status'))
 
-        self.assertEqual(cgsnapshot_detail.item(2).getAttribute('description'),
-                         'this is a test cgsnapshot')
+        self.assertEqual('this is a test cgsnapshot',
+                         cgsnapshot_detail.item(2).getAttribute('description'))
         self.assertEqual('test_cgsnapshot',
                          cgsnapshot_detail.item(2).getAttribute('name'))
-        self.assertEqual(cgsnapshot_detail.item(2).getAttribute('id'),
-                         cgsnapshot_id3)
+        self.assertEqual(cgsnapshot_id3,
+                         cgsnapshot_detail.item(2).getAttribute('id'))
         self.assertEqual('creating',
                          cgsnapshot_detail.item(2).getAttribute('status'))
 

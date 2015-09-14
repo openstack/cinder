@@ -70,12 +70,12 @@ class VolumeReplicationAPITestCase(test.TestCase):
     def test_promote_bad_id(self):
         (req, res) = self._get_resp('promote', 'fake')
         msg = ("request: %s\nresult: %s" % (req, res))
-        self.assertEqual(res.status_int, 404, msg)
+        self.assertEqual(404, res.status_int, msg)
 
     def test_promote_bad_id_xml(self):
         (req, res) = self._get_resp('promote', 'fake', xml=True)
         msg = ("request: %s\nresult: %s" % (req, res))
-        self.assertEqual(res.status_int, 404, msg)
+        self.assertEqual(404, res.status_int, msg)
 
     def test_promote_volume_not_replicated(self):
         volume = tests_utils.create_volume(
@@ -83,7 +83,7 @@ class VolumeReplicationAPITestCase(test.TestCase):
             **self.volume_params)
         (req, res) = self._get_resp('promote', volume['id'])
         msg = ("request: %s\nresult: %s" % (req, res))
-        self.assertEqual(res.status_int, 400, msg)
+        self.assertEqual(400, res.status_int, msg)
 
     def test_promote_volume_not_replicated_xml(self):
         volume = tests_utils.create_volume(
@@ -91,7 +91,7 @@ class VolumeReplicationAPITestCase(test.TestCase):
             **self.volume_params)
         (req, res) = self._get_resp('promote', volume['id'], xml=True)
         msg = ("request: %s\nresult: %s" % (req, res))
-        self.assertEqual(res.status_int, 400, msg)
+        self.assertEqual(400, res.status_int, msg)
 
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.promote_replica')
     def test_promote_replication_volume_status(self,
@@ -103,7 +103,7 @@ class VolumeReplicationAPITestCase(test.TestCase):
                                                **self.volume_params)
             (req, res) = self._get_resp('promote', volume['id'])
             msg = ("request: %s\nresult: %s" % (req, res))
-            self.assertEqual(res.status_int, 400, msg)
+            self.assertEqual(400, res.status_int, msg)
 
         for status in ['available']:
             volume = tests_utils.create_volume(self.ctxt,
@@ -112,7 +112,7 @@ class VolumeReplicationAPITestCase(test.TestCase):
                                                **self.volume_params)
             (req, res) = self._get_resp('promote', volume['id'])
             msg = ("request: %s\nresult: %s" % (req, res))
-            self.assertEqual(res.status_int, 202, msg)
+            self.assertEqual(202, res.status_int, msg)
 
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.promote_replica')
     def test_promote_replication_volume_status_xml(self,
@@ -124,7 +124,7 @@ class VolumeReplicationAPITestCase(test.TestCase):
                                                **self.volume_params)
             (req, res) = self._get_resp('promote', volume['id'], xml=True)
             msg = ("request: %s\nresult: %s" % (req, res))
-            self.assertEqual(res.status_int, 400, msg)
+            self.assertEqual(400, res.status_int, msg)
 
         for status in ['available']:
             volume = tests_utils.create_volume(self.ctxt,
@@ -133,7 +133,7 @@ class VolumeReplicationAPITestCase(test.TestCase):
                                                **self.volume_params)
             (req, res) = self._get_resp('promote', volume['id'], xml=True)
             msg = ("request: %s\nresult: %s" % (req, res))
-            self.assertEqual(res.status_int, 202, msg)
+            self.assertEqual(202, res.status_int, msg)
 
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.promote_replica')
     def test_promote_replication_replication_status(self,
@@ -145,7 +145,7 @@ class VolumeReplicationAPITestCase(test.TestCase):
                                                **self.volume_params)
             (req, res) = self._get_resp('promote', volume['id'])
             msg = ("request: %s\nresult: %s" % (req, res))
-            self.assertEqual(res.status_int, 400, msg)
+            self.assertEqual(400, res.status_int, msg)
 
         for status in ['active', 'active-stopped']:
             volume = tests_utils.create_volume(self.ctxt,
@@ -154,7 +154,7 @@ class VolumeReplicationAPITestCase(test.TestCase):
                                                **self.volume_params)
             (req, res) = self._get_resp('promote', volume['id'])
             msg = ("request: %s\nresult: %s" % (req, res))
-            self.assertEqual(res.status_int, 202, msg)
+            self.assertEqual(202, res.status_int, msg)
 
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.promote_replica')
     def test_promote_replication_replication_status_xml(self,
@@ -166,7 +166,7 @@ class VolumeReplicationAPITestCase(test.TestCase):
                                                **self.volume_params)
             (req, res) = self._get_resp('promote', volume['id'], xml=True)
             msg = ("request: %s\nresult: %s" % (req, res))
-            self.assertEqual(res.status_int, 400, msg)
+            self.assertEqual(400, res.status_int, msg)
 
         for status in ['active', 'active-stopped']:
             volume = tests_utils.create_volume(self.ctxt,
@@ -175,17 +175,17 @@ class VolumeReplicationAPITestCase(test.TestCase):
                                                **self.volume_params)
             (req, res) = self._get_resp('promote', volume['id'], xml=True)
             msg = ("request: %s\nresult: %s" % (req, res))
-            self.assertEqual(res.status_int, 202, msg)
+            self.assertEqual(202, res.status_int, msg)
 
     def test_reenable_bad_id(self):
         (req, res) = self._get_resp('reenable', 'fake')
         msg = ("request: %s\nresult: %s" % (req, res))
-        self.assertEqual(res.status_int, 404, msg)
+        self.assertEqual(404, res.status_int, msg)
 
     def test_reenable_bad_id_xml(self):
         (req, res) = self._get_resp('reenable', 'fake', xml=True)
         msg = ("request: %s\nresult: %s" % (req, res))
-        self.assertEqual(res.status_int, 404, msg)
+        self.assertEqual(404, res.status_int, msg)
 
     def test_reenable_volume_not_replicated(self):
         volume = tests_utils.create_volume(
@@ -193,7 +193,7 @@ class VolumeReplicationAPITestCase(test.TestCase):
             **self.volume_params)
         (req, res) = self._get_resp('reenable', volume['id'])
         msg = ("request: %s\nresult: %s" % (req, res))
-        self.assertEqual(res.status_int, 400, msg)
+        self.assertEqual(400, res.status_int, msg)
 
     def test_reenable_volume_not_replicated_xml(self):
         volume = tests_utils.create_volume(
@@ -201,7 +201,7 @@ class VolumeReplicationAPITestCase(test.TestCase):
             **self.volume_params)
         (req, res) = self._get_resp('reenable', volume['id'], xml=True)
         msg = ("request: %s\nresult: %s" % (req, res))
-        self.assertEqual(res.status_int, 400, msg)
+        self.assertEqual(400, res.status_int, msg)
 
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.reenable_replication')
     def test_reenable_replication_replication_status(self,
@@ -213,7 +213,7 @@ class VolumeReplicationAPITestCase(test.TestCase):
                                                **self.volume_params)
             (req, res) = self._get_resp('reenable', volume['id'])
             msg = ("request: %s\nresult: %s" % (req, res))
-            self.assertEqual(res.status_int, 400, msg)
+            self.assertEqual(400, res.status_int, msg)
 
         for status in ['inactive', 'active-stopped', 'error']:
             volume = tests_utils.create_volume(self.ctxt,
@@ -222,7 +222,7 @@ class VolumeReplicationAPITestCase(test.TestCase):
                                                **self.volume_params)
             (req, res) = self._get_resp('reenable', volume['id'])
             msg = ("request: %s\nresult: %s" % (req, res))
-            self.assertEqual(res.status_int, 202, msg)
+            self.assertEqual(202, res.status_int, msg)
 
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.reenable_replication')
     def test_reenable_replication_replication_status_xml(self,
@@ -234,7 +234,7 @@ class VolumeReplicationAPITestCase(test.TestCase):
                                                **self.volume_params)
             (req, res) = self._get_resp('reenable', volume['id'], xml=True)
             msg = ("request: %s\nresult: %s" % (req, res))
-            self.assertEqual(res.status_int, 400, msg)
+            self.assertEqual(400, res.status_int, msg)
 
         for status in ['inactive', 'active-stopped', 'error']:
             volume = tests_utils.create_volume(self.ctxt,
@@ -243,4 +243,4 @@ class VolumeReplicationAPITestCase(test.TestCase):
                                                **self.volume_params)
             (req, res) = self._get_resp('reenable', volume['id'], xml=True)
             msg = ("request: %s\nresult: %s" % (req, res))
-            self.assertEqual(res.status_int, 202, msg)
+            self.assertEqual(202, res.status_int, msg)
