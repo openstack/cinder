@@ -1065,7 +1065,7 @@ class StorwizeHelpers(object):
 
         if len(vdisks) != 1:
             msg = (_('Expected single vdisk returned from lsvdisk when '
-                     'filtering on vdisk_UID.  %{count}s were returned.') %
+                     'filtering on vdisk_UID.  %(count)s were returned.') %
                    {'count': len(vdisks)})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
