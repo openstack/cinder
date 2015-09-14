@@ -21,6 +21,22 @@ UUID1 = '12345678-1234-5678-1234-567812345678'
 LUN1 = '/vol/vol0/lun1'
 VSERVER1_NAME = 'openstack-vserver'
 
+HOST_NAME = 'fake.host.name'
+BACKEND_NAME = 'fake_backend_name'
+SHARE_IP = '192.168.99.24'
+EXPORT_PATH = '/fake/export/path'
+NFS_SHARE = '%s:%s' % (SHARE_IP, EXPORT_PATH)
+NFS_HOST_STRING = '%s@%s#%s' % (HOST_NAME, BACKEND_NAME, NFS_SHARE)
+NFS_FILE_PATH = 'nfsvol'
+NFS_VOLUME = {
+    'name': NFS_FILE_PATH,
+    'size': SIZE,
+    'id': VOLUME,
+    'host': NFS_HOST_STRING,
+}
+
+VSERVER_NAME = 'openstack-vserver'
+
 FC_VOLUME = {'name': 'fake_volume'}
 
 FC_INITIATORS = ['21000024ff406cc3', '21000024ff406cc2']
@@ -138,3 +154,39 @@ VOLUME1 = {
     'id': 'fake_volume_id',
     'host': HOST_STRING,
 }
+
+
+class test_volume(object):
+    pass
+
+test_volume = test_volume()
+test_volume.id = {'vserver': 'openstack', 'name': 'vola'}
+test_volume.aggr = {
+    'disk_type': 'SSD',
+    'ha_policy': 'cfo',
+    'junction': '/vola',
+    'name': 'aggr1',
+    'raid_type': 'raiddp',
+}
+test_volume.export = {'path': NFS_SHARE}
+test_volume.sis = {'dedup': False, 'compression': False}
+test_volume.state = {
+    'status': 'online',
+    'vserver_root': False,
+    'junction_active': True,
+}
+test_volume.qos = {'qos_policy_group': None}
+
+
+class test_snapshot(object):
+    pass
+
+    def __getitem__(self, key):
+        return getattr(self, key)
+
+PROVIDER_LOCATION = 'fake_provider_location'
+test_snapshot = test_snapshot()
+test_snapshot.id = 'fake_snap_id'
+test_snapshot.name = 'snapshot-%s' % test_snapshot.id
+test_snapshot.volume_id = 'fake_volume_id'
+test_snapshot.provider_location = PROVIDER_LOCATION
