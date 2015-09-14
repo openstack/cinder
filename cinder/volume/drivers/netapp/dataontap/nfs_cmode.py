@@ -331,7 +331,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
     def delete_volume(self, volume):
         """Deletes a logical volume."""
         share = volume['provider_location']
-        super(NetAppCmodeNfsDriver, self).delete_volume(volume)
+        self._delete_backing_file_for_volume(volume)
         try:
             qos_policy_group_info = na_utils.get_valid_qos_policy_group_info(
                 volume)
@@ -343,11 +343,59 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
             pass
         self._post_prov_deprov_in_ssc(share)
 
+    def _delete_backing_file_for_volume(self, volume):
+        """Deletes file on nfs share that backs a cinder volume."""
+        try:
+            LOG.debug('Deleting backing file for volume %s.', volume['id'])
+            self._delete_volume_on_filer(volume)
+        except Exception:
+            LOG.exception(_LE('Could not do delete of volume %s on filer, '
+                              'falling back to exec of "rm" command.'),
+                          volume['id'])
+            try:
+                super(NetAppCmodeNfsDriver, self).delete_volume(volume)
+            except Exception:
+                LOG.exception(_LE('Exec of "rm" command on backing file for '
+                                  '%s was unsuccessful.'), volume['id'])
+
+    def _delete_volume_on_filer(self, volume):
+        (_vserver, flexvol) = self._get_export_ip_path(volume_id=volume['id'])
+        path_on_filer = '/vol' + flexvol + '/' + volume['name']
+        LOG.debug('Attempting to delete backing file %s for volume %s on '
+                  'filer.', path_on_filer, volume['id'])
+        self.zapi_client.delete_file(path_on_filer)
+
+    @utils.trace_method
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot."""
         share = self._get_provider_location(snapshot.volume_id)
-        super(NetAppCmodeNfsDriver, self).delete_snapshot(snapshot)
+        self._delete_backing_file_for_snapshot(snapshot)
         self._post_prov_deprov_in_ssc(share)
+
+    @utils.trace_method
+    def _delete_backing_file_for_snapshot(self, snapshot):
+        """Deletes file on nfs share that backs a cinder volume."""
+        try:
+            LOG.debug('Deleting backing file for snapshot %s.', snapshot['id'])
+            self._delete_snapshot_on_filer(snapshot)
+        except Exception:
+            LOG.exception(_LE('Could not do delete of snapshot %s on filer, '
+                              'falling back to exec of "rm" command.'),
+                          snapshot['id'])
+            try:
+                super(NetAppCmodeNfsDriver, self).delete_snapshot(snapshot)
+            except Exception:
+                LOG.exception(_LE('Exec of "rm" command on backing file for'
+                                  ' %s was unsuccessful.'), snapshot['id'])
+
+    @utils.trace_method
+    def _delete_snapshot_on_filer(self, snapshot):
+        (_vserver, flexvol) = self._get_export_ip_path(
+            volume_id=snapshot['volume_id'])
+        path_on_filer = '/vol' + flexvol + '/' + snapshot['name']
+        LOG.debug('Attempting to delete backing file %s for snapshot %s '
+                  'on filer.', path_on_filer, snapshot['id'])
+        self.zapi_client.delete_file(path_on_filer)
 
     def _post_prov_deprov_in_ssc(self, share):
         if self.ssc_enabled and share:

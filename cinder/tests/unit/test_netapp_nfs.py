@@ -218,48 +218,6 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
 
         mox.VerifyAll()
 
-    def _prepare_delete_snapshot_mock(self, snapshot_exists):
-        drv = self._driver
-        mox = self.mox
-
-        mox.StubOutWithMock(drv, '_get_provider_location')
-        mox.StubOutWithMock(drv, '_volume_not_present')
-        mox.StubOutWithMock(drv, '_post_prov_deprov_in_ssc')
-
-        if snapshot_exists:
-            mox.StubOutWithMock(drv, '_execute')
-            mox.StubOutWithMock(drv, '_get_volume_path')
-        drv._get_provider_location(mox_lib.IgnoreArg())
-        drv._get_provider_location(mox_lib.IgnoreArg())
-        drv._volume_not_present(mox_lib.IgnoreArg(), mox_lib.IgnoreArg())\
-            .AndReturn(not snapshot_exists)
-
-        if snapshot_exists:
-            drv._get_volume_path(mox_lib.IgnoreArg(), mox_lib.IgnoreArg())
-            drv._execute('rm', None, run_as_root=True)
-
-        drv._post_prov_deprov_in_ssc(mox_lib.IgnoreArg())
-
-        mox.ReplayAll()
-
-        return mox
-
-    def test_delete_existing_snapshot(self):
-        drv = self._driver
-        mox = self._prepare_delete_snapshot_mock(True)
-
-        drv.delete_snapshot(FakeSnapshot())
-
-        mox.VerifyAll()
-
-    def test_delete_missing_snapshot(self):
-        drv = self._driver
-        mox = self._prepare_delete_snapshot_mock(False)
-
-        drv.delete_snapshot(FakeSnapshot())
-
-        mox.VerifyAll()
-
     @mock.patch.object(nfs_base.NetAppNfsDriver, 'do_setup')
     @mock.patch.object(client_cmode.Client, '__init__', return_value=None)
     def test_do_setup(self, mock_client_init, mock_super_do_setup):

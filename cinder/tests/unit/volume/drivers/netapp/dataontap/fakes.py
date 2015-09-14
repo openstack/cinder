@@ -238,3 +238,39 @@ FAKE_LUN = netapp_api.NaElement.create_node_with_children(
        'uuid': 'cec1f3d7-3d41-11e2-9cf4-123478563412',
        'volume': 'fakeLUN',
        'vserver': 'fake_vserver'})
+
+
+class test_volume(object):
+    pass
+
+test_volume = test_volume()
+test_volume.id = {'vserver': 'openstack', 'name': 'vola'}
+test_volume.aggr = {
+    'disk_type': 'SSD',
+    'ha_policy': 'cfo',
+    'junction': '/vola',
+    'name': 'aggr1',
+    'raid_type': 'raiddp',
+}
+test_volume.export = {'path': NFS_SHARE}
+test_volume.sis = {'dedup': False, 'compression': False}
+test_volume.state = {
+    'status': 'online',
+    'vserver_root': False,
+    'junction_active': True,
+}
+test_volume.qos = {'qos_policy_group': None}
+
+
+class test_snapshot(object):
+    pass
+
+    def __getitem__(self, key):
+        return getattr(self, key)
+
+PROVIDER_LOCATION = 'fake_provider_location'
+test_snapshot = test_snapshot()
+test_snapshot.id = 'fake_snap_id'
+test_snapshot.name = 'snapshot-%s' % test_snapshot.id
+test_snapshot.volume_id = 'fake_volume_id'
+test_snapshot.provider_location = PROVIDER_LOCATION
