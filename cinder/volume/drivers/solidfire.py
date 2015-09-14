@@ -602,7 +602,9 @@ class SolidFireDriver(san.SanISCSIDriver):
             # update that on manage/import, so we use
             # the uuid attribute
             meta = v.get('attributes')
-            alt_id = meta.get('uuid', 'empty')
+            alt_id = ''
+            if meta:
+                alt_id = meta.get('uuid', '')
 
             if uuid in v['name'] or uuid in alt_id:
                 found_count += 1
