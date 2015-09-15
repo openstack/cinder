@@ -722,9 +722,10 @@ def volume_glance_metadata_copy_from_volume_to_volume(context,
 ###################
 
 
-def quota_create(context, project_id, resource, limit):
+def quota_create(context, project_id, resource, limit, allocated=0):
     """Create a quota for the given project and resource."""
-    return IMPL.quota_create(context, project_id, resource, limit)
+    return IMPL.quota_create(context, project_id, resource, limit,
+                             allocated=allocated)
 
 
 def quota_get(context, project_id, resource):

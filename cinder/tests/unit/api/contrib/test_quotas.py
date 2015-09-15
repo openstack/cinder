@@ -300,6 +300,18 @@ class QuotaSetsControllerTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPForbidden, self.controller.update,
                           self.req, self.B.id, body)
 
+    def test_update_subproject_quota_when_parent_has_default_quotas(self):
+        self.controller._get_project = mock.Mock()
+        self.controller._get_project.side_effect = self._get_project
+        # Since the quotas of the project A were not updated, it will have
+        # default quotas.
+        self.req.environ['cinder.context'].project_id = self.A.id
+        # Update the project B quota.
+        expected = make_body(gigabytes=1000, snapshots=10,
+                             volumes=5, backups=5, tenant_id=None)
+        result = self.controller.update(self.req, self.B.id, expected)
+        self.assertDictMatch(expected, result)
+
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_string_length')
     @mock.patch(
