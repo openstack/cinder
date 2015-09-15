@@ -175,6 +175,38 @@ class HackingTestCase(test.TestCase):
         self._assert_has_errors(code, checker,
                                 expected_errors=[(4, 37, 'C310')])
 
+    def test_opt_type_registration_args(self):
+        checker = checks.CheckOptRegistrationArgs
+        code = """
+               CONF.register_opts([opt1, opt2, opt3])
+               CONF.register_opt(lonely_opt)
+               CONF.register_opts([OPT1, OPT2], group="group_of_opts")
+               CONF.register_opt(single_opt, group=blah)
+               """
+        self._assert_has_no_errors(code, checker)
+
+        code = """
+               CONF.register_opt([opt4, opt5, opt6])
+               CONF.register_opts(lonely_opt)
+               CONF.register_opt((an_opt, another_opt))
+               """
+        for method in checker.register_methods:
+            self._assert_has_errors(code.format(method), checker,
+                                    expected_errors=[(1, 18, 'C311'),
+                                                     (2, 19, 'C311'),
+                                                     (3, 19, 'C311')])
+
+        code = """
+               CONF.register_opt(single_opt)
+               CONF.register_opts(other_opt)
+               CONF.register_opt(multiple_opts)
+               tuple_opts = (one_opt, two_opt)
+               CONF.register_opts(tuple_opts)
+               """
+        self._assert_has_errors(code, checker,
+                                expected_errors=[(2, 19, 'C311'),
+                                                 (3, 18, 'C311')])
+
     def test_str_unicode_exception(self):
 
         checker = checks.CheckForStrUnicodeExc
