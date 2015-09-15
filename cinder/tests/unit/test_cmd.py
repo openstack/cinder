@@ -117,6 +117,7 @@ class TestCinderAllCmd(test.TestCase):
     def tearDown(self):
         super(TestCinderAllCmd, self).tearDown()
 
+    @mock.patch('cinder.rpc.init')
     @mock.patch('cinder.service.Service.create')
     @mock.patch('cinder.service.WSGIService')
     @mock.patch('cinder.service.process_launcher')
@@ -124,7 +125,7 @@ class TestCinderAllCmd(test.TestCase):
     @mock.patch('oslo_log.log.getLogger')
     @mock.patch('oslo_log.log.setup')
     def test_main(self, log_setup, get_logger, monkey_patch, process_launcher,
-                  wsgi_service, service_create):
+                  wsgi_service, service_create, rpc_init):
         launcher = process_launcher.return_value
         server = wsgi_service.return_value
         server.workers = mock.sentinel.worker_count
@@ -137,19 +138,21 @@ class TestCinderAllCmd(test.TestCase):
         log_setup.assert_called_once_with(CONF, "cinder")
         get_logger.assert_called_once_with('cinder.all')
         monkey_patch.assert_called_once_with()
+        rpc_init.assert_called_once_with(CONF)
         process_launcher.assert_called_once_with()
         wsgi_service.assert_called_once_with('osapi_volume')
         launcher.launch_service.assert_any_call(server, workers=server.workers)
 
-        service_create.assert_has_calls([mock.call(binary='cinder-volume'),
-                                         mock.call(binary='cinder-scheduler'),
-                                         mock.call(binary='cinder-backup')])
+        service_create.assert_has_calls([mock.call(binary='cinder-scheduler'),
+                                         mock.call(binary='cinder-backup'),
+                                         mock.call(binary='cinder-volume')])
         self.assertEqual(3, service_create.call_count)
         launcher.launch_service.assert_has_calls([mock.call(service)] * 3)
         self.assertEqual(4, launcher.launch_service.call_count)
 
         launcher.wait.assert_called_once_with()
 
+    @mock.patch('cinder.rpc.init')
     @mock.patch('cinder.service.Service.create')
     @mock.patch('cinder.service.WSGIService')
     @mock.patch('cinder.service.process_launcher')
@@ -158,7 +161,8 @@ class TestCinderAllCmd(test.TestCase):
     @mock.patch('oslo_log.log.setup')
     def test_main_load_osapi_volume_exception(self, log_setup, get_logger,
                                               monkey_patch, process_launcher,
-                                              wsgi_service, service_create):
+                                              wsgi_service, service_create,
+                                              rpc_init):
         launcher = process_launcher.return_value
         server = wsgi_service.return_value
         server.workers = mock.sentinel.worker_count
@@ -176,6 +180,7 @@ class TestCinderAllCmd(test.TestCase):
             monkey_patch.assert_called_once_with()
             process_launcher.assert_called_once_with()
             wsgi_service.assert_called_once_with('osapi_volume')
+            rpc_init.assert_called_with(CONF)
             launcher.launch_service.assert_any_call(server,
                                                     workers=server.workers)
             self.assertTrue(mock_log.exception.called)
@@ -188,6 +193,7 @@ class TestCinderAllCmd(test.TestCase):
             wsgi_service.reset_mock()
             mock_log.reset_mock()
 
+    @mock.patch('cinder.rpc.init')
     @mock.patch('cinder.service.Service.create')
     @mock.patch('cinder.service.WSGIService')
     @mock.patch('cinder.service.process_launcher')
@@ -196,7 +202,8 @@ class TestCinderAllCmd(test.TestCase):
     @mock.patch('oslo_log.log.setup')
     def test_main_load_binary_exception(self, log_setup, get_logger,
                                         monkey_patch, process_launcher,
-                                        wsgi_service, service_create):
+                                        wsgi_service, service_create,
+                                        rpc_init):
         launcher = process_launcher.return_value
         server = wsgi_service.return_value
         server.workers = mock.sentinel.worker_count
@@ -223,6 +230,7 @@ class TestCinderAllCmd(test.TestCase):
         for binary in ['cinder-volume', 'cinder-scheduler', 'cinder-backup']:
             service_create.assert_any_call(binary=binary)
             launcher.launch_service.assert_called_with(service)
+        rpc_init.assert_called_once_with(CONF)
         self.assertTrue(mock_log.exception.called)
 
 
