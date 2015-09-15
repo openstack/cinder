@@ -76,11 +76,6 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver, driver.CloneableVD,
             'glusterfs', root_helper, execute,
             glusterfs_mount_point_base=self.base)
 
-    def set_execute(self, execute):
-        super(GlusterfsDriver, self).set_execute(execute)
-        if self._remotefsclient:
-            self._remotefsclient.set_execute(execute)
-
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
         super(GlusterfsDriver, self).do_setup(context)

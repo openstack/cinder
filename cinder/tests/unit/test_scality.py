@@ -82,6 +82,10 @@ class ScalityDriverTestCase(test.TestCase):
 
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.drv.check_for_setup_error)
+        exec_patcher = mock.patch.object(self.drv, '_execute',
+                                         mock.MagicMock())
+        exec_patcher.start()
+        self.addCleanup(exec_patcher.stop)
 
     @mock.patch.object(driver.urllib.request, 'urlopen')
     def test_check_for_setup_error_with_urlerror(self, mock_urlopen):

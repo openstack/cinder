@@ -125,11 +125,6 @@ class NfsDriver(driver.ExtendVD, remotefs.RemoteFSDriver):
         self.reserved_percentage = self._get_reserved_percentage()
         self.over_subscription_ratio = self._get_over_subscription_ratio()
 
-    def set_execute(self, execute):
-        super(NfsDriver, self).set_execute(execute)
-        if self._remotefsclient:
-            self._remotefsclient.set_execute(execute)
-
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
         super(NfsDriver, self).do_setup(context)

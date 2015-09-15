@@ -223,9 +223,6 @@ class HDSNFSDriver(nfs.NfsDriver):
 
         return service
 
-    def set_execute(self, execute):
-        self._execute = execute
-
     def extend_volume(self, volume, new_size):
         """Extend an existing volume.
 

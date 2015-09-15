@@ -323,7 +323,7 @@ class BaseVD(object):
             self.configuration.append_config_values(iser_opts)
             utils.setup_tracing(self.configuration.safe_get('trace_flags'))
 
-        self.set_execute(execute)
+        self._execute = execute
         self._stats = {}
 
         self.pools = []
@@ -452,9 +452,6 @@ class BaseVD(object):
                               {"snapshot": snapshot.id})
                 raise exception.RemoveExportException(volume=snapshot.id,
                                                       reason=ex)
-
-    def set_execute(self, execute):
-        self._execute = execute
 
     def set_initialized(self):
         self._initialized = True
