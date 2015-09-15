@@ -17,12 +17,9 @@ Handles all requests to Nova.
 """
 
 
+from novaclient import client as nova_client
 from novaclient import exceptions as nova_exceptions
-from novaclient import extension
 from novaclient import service_catalog
-from novaclient.v2 import client as nova_client
-from novaclient.v2.contrib import assisted_volume_snapshots
-from novaclient.v2.contrib import list_extensions
 from oslo_config import cfg
 from oslo_log import log as logging
 from requests import exceptions as request_exceptions
@@ -65,8 +62,11 @@ CONF.register_opts(nova_opts)
 
 LOG = logging.getLogger(__name__)
 
-nova_extensions = (assisted_volume_snapshots,
-                   extension.Extension('list_extensions', list_extensions))
+# TODO(e0ne): Make Nova version configurable in Mitaka.
+NOVA_API_VERSION = 2
+
+nova_extensions = [ext for ext in nova_client.discover_extensions(2)
+                   if ext.name == "assisted_volume_snapshots"]
 
 
 def novaclient(context, admin_endpoint=False, privileged_user=False,
@@ -137,7 +137,8 @@ def novaclient(context, admin_endpoint=False, privileged_user=False,
 
         LOG.debug('Nova client connection created using URL: %s', url)
 
-    c = nova_client.Client(context.user_id,
+    c = nova_client.Client(NOVA_API_VERSION,
+                           context.user_id,
                            context.auth_token,
                            context.project_name,
                            auth_url=url,
@@ -161,12 +162,7 @@ class API(base.Base):
 
     def has_extension(self, context, extension, timeout=None):
         try:
-            client = novaclient(context, timeout=timeout)
-
-            # Pylint gives a false positive here because the 'list_extensions'
-            # method is not explicitly declared. Overriding the error.
-            # pylint: disable-msg=E1101
-            nova_exts = client.list_extensions.show_all()
+            nova_exts = nova_client.discover_extensions(NOVA_API_VERSION)
         except request_exceptions.Timeout:
             raise exception.APITimeout(service='Nova')
         return extension in [e.name for e in nova_exts]
