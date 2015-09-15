@@ -386,6 +386,10 @@ class SolidFireVolumeTestCase(test.TestCase):
         _mock_issue_api_request.return_value = self.mock_stats_data
         _mock_create_template_account.return_value = 1
         _fake_get_snaps = [{'snapshotID': 5, 'name': 'testvol'}]
+        _fake_get_volume = (
+            {'volumeID': 99,
+             'name': 'UUID-a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+             'attributes': {}})
 
         testvol = {'project_id': 'testprjid',
                    'name': 'testvol',
@@ -405,6 +409,9 @@ class SolidFireVolumeTestCase(test.TestCase):
         with mock.patch.object(sfv,
                                '_get_sf_snapshots',
                                return_value=_fake_get_snaps), \
+                mock.patch.object(sfv,
+                                  '_get_sf_volume',
+                                  return_value=_fake_get_volume), \
                 mock.patch.object(sfv,
                                   '_issue_api_request',
                                   side_effect=self.fake_issue_api_request), \
@@ -985,33 +992,14 @@ class SolidFireVolumeTestCase(test.TestCase):
                                                            'fake',
                                                            _fake_image_meta,
                                                            'fake'))
-
-    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
-    @mock.patch.object(solidfire.SolidFireDriver, '_create_template_account')
-    def test_clone_image_virt_size_not_set(self,
-                                           _mock_create_template_account,
-                                           _mock_issue_api_request):
-        _mock_issue_api_request.return_value = self.mock_stats_data
-        _mock_create_template_account.return_value = 1
-
-        self.configuration.sf_allow_template_caching = True
-        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-
-        # Don't run clone_image if virtual_size property not on image
-        _fake_image_meta = {'id': '17c550bb-a411-44c0-9aaf-0d96dd47f501',
-                            'updated_at': datetime.datetime(2013, 9,
-                                                            28, 15,
-                                                            27, 36,
-                                                            325355),
-                            'is_public': True,
-                            'owner': 'testprjid'}
-
-        self.assertEqual((None, False),
-                         sfv.clone_image(self.ctxt,
-                                         self.mock_volume,
-                                         'fake',
-                                         _fake_image_meta,
-                                         'fake'))
+            # And using the new V2 visibility tag
+            _fake_image_meta['visibility'] = 'public'
+            _fake_image_meta['owner'] = 'wrong-owner'
+            self.assertEqual(('fo', True), sfv.clone_image(self.ctxt,
+                                                           self.mock_volume,
+                                                           'fake',
+                                                           _fake_image_meta,
+                                                           'fake'))
 
     def test_create_template_no_account(self):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
