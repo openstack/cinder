@@ -41,7 +41,11 @@ SERVICE_LIST = [
      'availability_zone': 'cinder'},
     {'created_at': created_time, 'updated_at': curr_time,
      'host': 'test.host.1', 'topic': 'cinder-volume', 'disabled': 0,
-     'availability_zone': 'cinder'}]
+     'availability_zone': 'cinder'},
+    {'created_at': created_time, 'updated_at': None,
+     'host': 'test.host.1', 'topic': 'cinder-volume', 'disabled': 0,
+     'availability_zone': 'cinder'},
+]
 
 LIST_RESPONSE = [{'service-status': 'available', 'service': 'cinder-volume',
                   'zone': 'cinder', 'service-state': 'enabled',
@@ -54,7 +58,11 @@ LIST_RESPONSE = [{'service-status': 'available', 'service': 'cinder-volume',
                   'host_name': 'test.host.1', 'last-update': curr_time},
                  {'service-status': 'available', 'service': 'cinder-volume',
                   'zone': 'cinder', 'service-state': 'enabled',
-                  'host_name': 'test.host.1', 'last-update': curr_time}]
+                  'host_name': 'test.host.1', 'last-update': curr_time},
+                 {'service-status': 'unavailable', 'service': 'cinder-volume',
+                  'zone': 'cinder', 'service-state': 'enabled',
+                  'host_name': 'test.host.1', 'last-update': None},
+                 ]
 
 
 def stub_utcnow(with_timezone=False):

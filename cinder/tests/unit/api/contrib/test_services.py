@@ -85,6 +85,15 @@ fake_services_list = [
      'created_at': datetime.datetime(2012, 9, 18, 2, 46, 28),
      'disabled_reason': '',
      'modified_at': datetime.datetime(2012, 9, 18, 8, 1, 38)},
+    {'binary': 'cinder-scheduler',
+     'host': 'host2',
+     'availability_zone': 'cinder',
+     'id': 6,
+     'disabled': False,
+     'updated_at': None,
+     'created_at': datetime.datetime(2012, 9, 18, 2, 46, 28),
+     'disabled_reason': '',
+     'modified_at': None},
 ]
 
 
@@ -212,7 +221,13 @@ class ServicesTest(test.TestCase):
                                   'zone': 'cinder',
                                   'status': 'enabled', 'state': 'down',
                                   'updated_at': datetime.datetime(
-                                      2012, 9, 18, 8, 3, 38)}]}
+                                      2012, 9, 18, 8, 3, 38)},
+                                 {'binary': 'cinder-scheduler',
+                                  'host': 'host2',
+                                  'zone': 'cinder',
+                                  'status': 'enabled', 'state': 'down',
+                                  'updated_at': None},
+                                 ]}
         self.assertEqual(response, res_dict)
 
     def test_services_detail(self):
@@ -260,7 +275,14 @@ class ServicesTest(test.TestCase):
                                   'status': 'enabled', 'state': 'down',
                                   'updated_at': datetime.datetime(
                                       2012, 9, 18, 8, 3, 38),
-                                  'disabled_reason': ''}]}
+                                  'disabled_reason': ''},
+                                 {'binary': 'cinder-scheduler',
+                                  'host': 'host2',
+                                  'zone': 'cinder',
+                                  'status': 'enabled', 'state': 'down',
+                                  'updated_at': None,
+                                  'disabled_reason': ''},
+                                 ]}
         self.assertEqual(response, res_dict)
 
     def test_services_list_with_host(self):

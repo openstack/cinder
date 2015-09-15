@@ -115,12 +115,15 @@ def _list_hosts(req, service=None):
             active = 'disabled'
         LOG.debug('status, active and update: %s, %s, %s',
                   status, active, host.updated_at)
+        updated_at = host.updated_at
+        if updated_at:
+            updated_at = timeutils.normalize_time(updated_at)
         hosts.append({'host_name': host.host,
                       'service': host.topic,
                       'zone': host.availability_zone,
                       'service-status': status,
                       'service-state': active,
-                      'last-update': timeutils.normalize_time(host.updated_at),
+                      'last-update': updated_at,
                       })
     if service:
         hosts = [host for host in hosts

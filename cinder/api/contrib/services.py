@@ -118,10 +118,12 @@ class ServiceController(wsgi.Controller):
             active = 'enabled'
             if svc.disabled:
                 active = 'disabled'
+            if updated_at:
+                updated_at = timeutils.normalize_time(updated_at)
             ret_fields = {'binary': svc.binary, 'host': svc.host,
                           'zone': svc.availability_zone,
                           'status': active, 'state': art,
-                          'updated_at': timeutils.normalize_time(updated_at)}
+                          'updated_at': updated_at}
             if detailed:
                 ret_fields['disabled_reason'] = svc.disabled_reason
             svcs.append(ret_fields)
