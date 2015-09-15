@@ -122,3 +122,16 @@ class NetApp7modeNfsDriverTestCase(test.TestCase):
             fake.NFS_SHARE, [])
 
         self.assertEqual([], result)
+
+    @ddt.data({'has_space': True, 'expected': True},
+              {'has_space': False, 'expected': False})
+    @ddt.unpack
+    def test_is_share_clone_compatible(self, has_space, expected):
+        mock_share_has_space_for_clone = self.mock_object(
+            self.driver, '_share_has_space_for_clone')
+        mock_share_has_space_for_clone.return_value = has_space
+
+        result = self.driver._is_share_clone_compatible(fake.VOLUME,
+                                                        fake.NFS_SHARE)
+
+        self.assertEqual(expected, result)

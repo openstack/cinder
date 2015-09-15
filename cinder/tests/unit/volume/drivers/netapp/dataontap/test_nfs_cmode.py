@@ -442,3 +442,59 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mock_loopingcall.assert_has_calls([
             mock.call(mock_remove_unused_qos_policy_groups)])
         self.assertTrue(harvest_qos_periodic_task.start.called)
+
+    @ddt.data(
+        {'space': True, 'ssc': True, 'match': True, 'expected': True},
+        {'space': True, 'ssc': True, 'match': False, 'expected': False},
+        {'space': True, 'ssc': False, 'match': True, 'expected': True},
+        {'space': True, 'ssc': False, 'match': False, 'expected': True},
+        {'space': False, 'ssc': True, 'match': True, 'expected': False},
+        {'space': False, 'ssc': True, 'match': False, 'expected': False},
+        {'space': False, 'ssc': False, 'match': True, 'expected': False},
+        {'space': False, 'ssc': False, 'match': False, 'expected': False},
+    )
+    @ddt.unpack
+    @mock.patch.object(nfs_cmode.NetAppCmodeNfsDriver,
+                       '_is_share_vol_type_match')
+    @mock.patch.object(nfs_cmode.NetAppCmodeNfsDriver,
+                       '_share_has_space_for_clone')
+    @mock.patch.object(nfs_cmode.NetAppCmodeNfsDriver,
+                       '_is_volume_thin_provisioned')
+    def test_is_share_clone_compatible(self,
+                                       mock_is_volume_thin_provisioned,
+                                       mock_share_has_space_for_clone,
+                                       mock_is_share_vol_type_match,
+                                       space, ssc, match, expected):
+        mock_share_has_space_for_clone.return_value = space
+        mock_is_share_vol_type_match.return_value = match
+
+        with mock.patch.object(self.driver, 'ssc_enabled', ssc):
+            result = self.driver._is_share_clone_compatible(fake.VOLUME,
+                                                            fake.NFS_SHARE)
+        self.assertEqual(expected, result)
+
+    @ddt.data(
+        {'sparsed': True, 'ssc': True, 'vol_thin': True, 'expected': True},
+        {'sparsed': True, 'ssc': True, 'vol_thin': False, 'expected': True},
+        {'sparsed': True, 'ssc': False, 'vol_thin': True, 'expected': True},
+        {'sparsed': True, 'ssc': False, 'vol_thin': False, 'expected': True},
+        {'sparsed': False, 'ssc': True, 'vol_thin': True, 'expected': True},
+        {'sparsed': False, 'ssc': True, 'vol_thin': False, 'expected': False},
+        {'sparsed': False, 'ssc': False, 'vol_thin': True, 'expected': False},
+        {'sparsed': False, 'ssc': False, 'vol_thin': False, 'expected': False},
+    )
+    @ddt.unpack
+    def test_is_volume_thin_provisioned(
+            self, sparsed, ssc, vol_thin, expected):
+        fake_volume = object()
+        ssc_vols = {'thin': {fake_volume if vol_thin else None}}
+
+        with mock.patch.object(self.driver, 'ssc_enabled', ssc):
+            with mock.patch.object(self.driver, 'ssc_vols', ssc_vols):
+                with mock.patch.object(self.driver.configuration,
+                                       'nfs_sparsed_volumes',
+                                       sparsed):
+                    result = self.driver._is_volume_thin_provisioned(
+                        fake_volume)
+
+        self.assertEqual(expected, result)

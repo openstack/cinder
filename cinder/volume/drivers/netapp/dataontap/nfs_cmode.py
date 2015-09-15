@@ -301,13 +301,23 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
                     return vol
         return None
 
-    def _is_share_vol_compatible(self, volume, share):
-        """Checks if share is compatible with volume to host it."""
-        compatible = self._is_share_eligible(share, volume['size'])
+    def _is_share_clone_compatible(self, volume, share):
+        """Checks if share is compatible with volume to host its clone."""
+        thin = self._is_volume_thin_provisioned(volume)
+        compatible = self._share_has_space_for_clone(share,
+                                                     volume['size'],
+                                                     thin)
         if compatible and self.ssc_enabled:
             matched = self._is_share_vol_type_match(volume, share)
             compatible = compatible and matched
         return compatible
+
+    def _is_volume_thin_provisioned(self, volume):
+        if self.configuration.nfs_sparsed_volumes:
+            return True
+        if self.ssc_enabled and volume in self.ssc_vols['thin']:
+            return True
+        return False
 
     def _is_share_vol_type_match(self, volume, share):
         """Checks if share matches volume type."""

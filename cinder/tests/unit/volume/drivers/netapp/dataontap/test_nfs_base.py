@@ -20,6 +20,7 @@ Unit tests for the NetApp NFS storage driver
 import os
 
 import copy
+import ddt
 import mock
 from os_brick.remotefs import remotefs as remotefs_brick
 from oslo_utils import units
@@ -33,14 +34,15 @@ from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume.drivers import nfs
 
 
+@ddt.ddt
 class NetAppNfsDriverTestCase(test.TestCase):
     def setUp(self):
         super(NetAppNfsDriverTestCase, self).setUp()
         configuration = mock.Mock()
         configuration.reserved_percentage = 0
         configuration.nfs_mount_point_base = '/mnt/test'
-        configuration.nfs_used_ratio = 0.89
-        configuration.nfs_oversub_ratio = 3.0
+        configuration.nfs_used_ratio = 1.0
+        configuration.nfs_oversub_ratio = 1.1
 
         kwargs = {'configuration': configuration}
 
@@ -347,4 +349,68 @@ class NetAppNfsDriverTestCase(test.TestCase):
 
         result = self.driver._get_export_path(fake.VOLUME_ID)
 
+        self.assertEqual(expected, result)
+
+    def test_is_share_clone_compatible(self):
+        self.assertRaises(NotImplementedError,
+                          self.driver._is_share_clone_compatible,
+                          fake.NFS_VOLUME,
+                          fake.NFS_SHARE)
+
+    @ddt.data(
+        {'size': 12, 'thin': False, 'over': 1.0, 'res': 0, 'expected': True},
+        {'size': 12, 'thin': False, 'over': 1.0, 'res': 5, 'expected': False},
+        {'size': 12, 'thin': True, 'over': 1.0, 'res': 5, 'expected': False},
+        {'size': 12, 'thin': True, 'over': 1.1, 'res': 5, 'expected': True},
+        {'size': 240, 'thin': True, 'over': 20.0, 'res': 0, 'expected': True},
+        {'size': 241, 'thin': True, 'over': 20.0, 'res': 0, 'expected': False},
+    )
+    @ddt.unpack
+    def test_share_has_space_for_clone(self, size, thin, over, res, expected):
+        total_bytes = 20 * units.Gi
+        available_bytes = 12 * units.Gi
+
+        with mock.patch.object(self.driver,
+                               '_get_capacity_info',
+                               return_value=(
+                                   total_bytes, available_bytes)):
+            with mock.patch.object(self.driver,
+                                   'over_subscription_ratio',
+                                   over):
+                with mock.patch.object(self.driver,
+                                       'reserved_percentage',
+                                       res):
+                    result = self.driver._share_has_space_for_clone(
+                        fake.NFS_SHARE,
+                        size,
+                        thin=thin)
+        self.assertEqual(expected, result)
+
+    @ddt.data(
+        {'size': 12, 'thin': False, 'over': 1.0, 'res': 0, 'expected': True},
+        {'size': 12, 'thin': False, 'over': 1.0, 'res': 5, 'expected': False},
+        {'size': 12, 'thin': True, 'over': 1.0, 'res': 5, 'expected': False},
+        {'size': 12, 'thin': True, 'over': 1.1, 'res': 5, 'expected': True},
+        {'size': 240, 'thin': True, 'over': 20.0, 'res': 0, 'expected': True},
+        {'size': 241, 'thin': True, 'over': 20.0, 'res': 0, 'expected': False},
+    )
+    @ddt.unpack
+    @mock.patch.object(nfs_base.NetAppNfsDriver, '_get_capacity_info')
+    def test_share_has_space_for_clone2(self,
+                                        mock_get_capacity,
+                                        size, thin, over, res, expected):
+        total_bytes = 20 * units.Gi
+        available_bytes = 12 * units.Gi
+        mock_get_capacity.return_value = (total_bytes, available_bytes)
+
+        with mock.patch.object(self.driver,
+                               'over_subscription_ratio',
+                               over):
+            with mock.patch.object(self.driver,
+                                   'reserved_percentage',
+                                   res):
+                result = self.driver._share_has_space_for_clone(
+                    fake.NFS_SHARE,
+                    size,
+                    thin=thin)
         self.assertEqual(expected, result)
