@@ -152,6 +152,10 @@ class SolidFireDriver(san.SanISCSIDriver):
             self._create_template_account(account)
 
     def _create_template_account(self, account_name):
+        # We need to take account_prefix settings into consideration
+        # This just uses the same method to do template account create
+        # as we use for any other OpenStack account
+        account_name = self._get_sf_account_name(account_name)
         chap_secret = self._generate_random_string(12)
         params = {'username': account_name,
                   'initiatorSecret': chap_secret,
