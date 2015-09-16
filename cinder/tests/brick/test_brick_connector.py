@@ -773,6 +773,20 @@ class FibreChannelConnectorS390XTestCase(ConnectorTestCase):
                          "LinuxFibreChannelS390X")
         self.assertIsNotNone(self.connector._linuxscsi)
 
+    def test_get_lun_string(self):
+        lun = 1
+        lunstring = self.connector._get_lun_string(lun)
+        self.assertEqual(lunstring, "0x0001000000000000")
+        lun = 0xff
+        lunstring = self.connector._get_lun_string(lun)
+        self.assertEqual(lunstring, "0x00ff000000000000")
+        lun = 0x101
+        lunstring = self.connector._get_lun_string(lun)
+        self.assertEqual(lunstring, "0x0101000000000000")
+        lun = 0x4020400a
+        lunstring = self.connector._get_lun_string(lun)
+        self.assertEqual(lunstring, "0x4020400a00000000")
+
     @mock.patch.object(linuxfc.LinuxFibreChannelS390X, 'configure_scsi_device')
     def test_get_host_devices(self, mock_configure_scsi_device):
         lun = 2
