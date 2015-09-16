@@ -641,7 +641,7 @@ class EMCVNXCLIDriverTestData(object):
                 storage_pool, '-fastcache')
 
     def CREATE_CONSISTENCYGROUP_CMD(self, cg_name, members=None):
-        create_cmd = ('-np', 'snap', '-group', '-create',
+        create_cmd = ('snap', '-group', '-create',
                       '-name', cg_name, '-allowSnapAutoDelete', 'no')
 
         if not members:
@@ -3637,7 +3637,7 @@ Time Remaining:  0 second(s)
         expect_cmd = [
             mock.call(
                 *self.testData.CREATE_CONSISTENCYGROUP_CMD(
-                    cg_name))]
+                    cg_name), poll=False)]
         fake_cli.assert_has_calls(expect_cmd)
 
     @mock.patch(
@@ -4013,7 +4013,7 @@ Time Remaining:  0 second(s)
             mock.call(*td.MIGRATION_VERIFY_CMD(6232), poll=True),
             mock.call(*td.MIGRATION_VERIFY_CMD(6231), poll=True),
             mock.call(*td.CREATE_CONSISTENCYGROUP_CMD(
-                      new_cg['id'], [6232, 6231])),
+                      new_cg['id'], [6232, 6231]), poll=True),
             mock.call(*td.DELETE_CG_SNAPSHOT(copied_snap_name))]
         self.assertEqual(expect_cmd, fake_cli.call_args_list)
 
