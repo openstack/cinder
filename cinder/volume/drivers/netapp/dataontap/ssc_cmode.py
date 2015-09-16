@@ -154,7 +154,13 @@ def get_cluster_vols_with_ssc(na_server, vserver, volume=None):
 def query_cluster_vols_for_ssc(na_server, vserver, volume=None):
     """Queries cluster volumes for ssc."""
     query = {'volume-attributes': None}
-    volume_id = {'volume-id-attributes': {'owning-vserver-name': vserver}}
+    volume_id = {
+        'volume-id-attributes': {
+            'owning-vserver-name': vserver,
+            'type': 'rw',
+            'style': 'flex',
+        },
+    }
     if volume:
         volume_id['volume-id-attributes']['name'] = volume
     query['volume-attributes'] = volume_id
