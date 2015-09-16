@@ -621,15 +621,10 @@ class TestCinderManageCmd(test.TestCase):
     @mock.patch('cinder.utils.service_is_up')
     @mock.patch('cinder.db.service_get_all')
     @mock.patch('cinder.context.get_admin_context')
-    def test_service_commands_list(self, get_admin_context, service_get_all,
-                                   service_is_up):
+    def _test_service_commands_list(self, service, get_admin_context,
+                                    service_get_all, service_is_up):
         ctxt = context.RequestContext('fake-user', 'fake-project')
         get_admin_context.return_value = ctxt
-        service = {'binary': 'cinder-binary',
-                   'host': 'fake-host.fake-domain',
-                   'availability_zone': 'fake-zone',
-                   'updated_at': '2014-06-30 11:22:33',
-                   'disabled': False}
         service_get_all.return_value = [service]
         service_is_up.return_value = True
         with mock.patch('sys.stdout', new=six.StringIO()) as fake_out:
@@ -654,6 +649,22 @@ class TestCinderManageCmd(test.TestCase):
             self.assertEqual(expected_out, fake_out.getvalue())
             get_admin_context.assert_called_with()
             service_get_all.assert_called_with(ctxt, None)
+
+    def test_service_commands_list(self):
+        service = {'binary': 'cinder-binary',
+                   'host': 'fake-host.fake-domain',
+                   'availability_zone': 'fake-zone',
+                   'updated_at': '2014-06-30 11:22:33',
+                   'disabled': False}
+        self._test_service_commands_list(service)
+
+    def test_service_commands_list_no_updated_at(self):
+        service = {'binary': 'cinder-binary',
+                   'host': 'fake-host.fake-domain',
+                   'availability_zone': 'fake-zone',
+                   'updated_at': None,
+                   'disabled': False}
+        self._test_service_commands_list(service)
 
     def test_get_arg_string(self):
         args1 = "foobar"

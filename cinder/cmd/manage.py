@@ -451,9 +451,12 @@ class ServiceCommands(object):
             status = 'enabled'
             if svc.disabled:
                 status = 'disabled'
+            updated_at = svc.updated_at
+            if updated_at:
+                updated_at = timeutils.normalize_time(updated_at)
             print(print_format % (svc.binary, svc.host.partition('.')[0],
                                   svc.availability_zone, status, art,
-                                  timeutils.normalize_time(svc.updated_at)))
+                                  updated_at))
 
     @args('binary', type=str,
           help='Service to delete from the host.')
