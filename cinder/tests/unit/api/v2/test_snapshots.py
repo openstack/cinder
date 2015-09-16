@@ -406,8 +406,8 @@ class SnapshotApiTest(test.TestCase):
         """Check a page of snapshots list."""
         # Since we are accessing v2 api directly we don't need to specify
         # v2 in the request path, if we did, we'd get /v2/v2 links back
-        request_path = '/%s/snapshots' % project
-        expected_path = '/v2' + request_path
+        request_path = '/v2/%s/snapshots' % project
+        expected_path = request_path
 
         # Construct the query if there are kwargs
         if kwargs:

@@ -1,4 +1,4 @@
-# Copyright (c) 2015 - 2016 Huawei Technologies Co., Ltd.
+# Copyright 2015 Clinton Knight
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -13,131 +13,186 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import webob
+import ddt
+import mock
+from oslo_serialization import jsonutils
 
+from cinder.api.openstack import api_version_request
+from cinder.api.openstack import wsgi
+from cinder.api.v1 import router
 from cinder.api import versions
 from cinder import test
+from cinder.tests.unit.api import fakes
 
 
-class VersionsTest(test.TestCase):
+version_header_name = 'OpenStack-Volume-microversion'
 
-    """Test the version information returned from the API service."""
 
-    def test_get_version_list_public_endpoint(self):
-        req = webob.Request.blank('/', base_url='http://127.0.0.1:8776/')
-        req.accept = 'application/json'
-        self.override_config('public_endpoint', 'https://example.com:8776')
-        res = versions.Versions().index(req)
-        results = res['versions']
-        expected = [
-            {
-                'id': 'v1.0',
-                'status': 'SUPPORTED',
-                'updated': '2014-06-28T12:20:21Z',
-                'links': [{'rel': 'self',
-                           'href': 'https://example.com:8776/v1/'}],
-            },
-            {
-                'id': 'v2.0',
-                'status': 'CURRENT',
-                'updated': '2012-11-21T11:33:21Z',
-                'links': [{'rel': 'self',
-                           'href': 'https://example.com:8776/v2/'}],
-            },
-        ]
-        self.assertEqual(expected, results)
+@ddt.ddt
+class VersionsControllerTestCase(test.TestCase):
 
-    def test_get_version_list(self):
-        req = webob.Request.blank('/', base_url='http://127.0.0.1:8776/')
-        req.accept = 'application/json'
-        res = versions.Versions().index(req)
-        results = res['versions']
-        expected = [
-            {
-                'id': 'v1.0',
-                'status': 'SUPPORTED',
-                'updated': '2014-06-28T12:20:21Z',
-                'links': [{'rel': 'self',
-                           'href': 'http://127.0.0.1:8776/v1/'}],
-            },
-            {
-                'id': 'v2.0',
-                'status': 'CURRENT',
-                'updated': '2012-11-21T11:33:21Z',
-                'links': [{'rel': 'self',
-                           'href': 'http://127.0.0.1:8776/v2/'}],
-            },
-        ]
-        self.assertEqual(expected, results)
+    def setUp(self):
+        super(VersionsControllerTestCase, self).setUp()
+        self.wsgi_apps = (versions.Versions(), router.APIRouter())
 
-    def test_get_version_detail_v1(self):
-        req = webob.Request.blank('/', base_url='http://127.0.0.1:8776/v1')
-        req.accept = 'application/json'
-        res = versions.VolumeVersion().show(req)
-        expected = {
-            "version": {
-                "status": "SUPPORTED",
-                "updated": "2014-06-28T12:20:21Z",
-                "media-types": [
-                    {
-                        "base": "application/xml",
-                        "type":
-                            "application/vnd.openstack.volume+xml;version=1"
-                    },
-                    {
-                        "base": "application/json",
-                        "type":
-                            "application/vnd.openstack.volume+json;version=1"
-                    }
-                ],
-                "id": "v1.0",
-                "links": [
-                    {
-                        "href": "http://127.0.0.1:8776/v1/",
-                        "rel": "self"
-                    },
-                    {
-                        "href": "http://docs.openstack.org/",
-                        "type": "text/html",
-                        "rel": "describedby"
-                    }
-                ]
-            }
-        }
-        self.assertEqual(expected, res)
+    @ddt.data('1.0', '2.0', '3.0')
+    def test_versions_root(self, version):
+        req = fakes.HTTPRequest.blank('/', base_url='http://localhost')
+        req.method = 'GET'
+        req.content_type = 'application/json'
 
-    def test_get_version_detail_v2(self):
-        req = webob.Request.blank('/', base_url='http://127.0.0.1:8776/v2')
-        req.accept = 'application/json'
-        res = versions.VolumeVersion().show(req)
-        expected = {
-            "version": {
-                "status": "CURRENT",
-                "updated": "2012-11-21T11:33:21Z",
-                "media-types": [
-                    {
-                        "base": "application/xml",
-                        "type":
-                            "application/vnd.openstack.volume+xml;version=1"
-                    },
-                    {
-                        "base": "application/json",
-                        "type":
-                            "application/vnd.openstack.volume+json;version=1"
-                    }
-                ],
-                "id": "v2.0",
-                "links": [
-                    {
-                        "href": "http://127.0.0.1:8776/v2/",
-                        "rel": "self"
-                    },
-                    {
-                        "href": "http://docs.openstack.org/",
-                        "type": "text/html",
-                        "rel": "describedby"
-                    }
-                ]
-            }
-        }
-        self.assertEqual(expected, res)
+        response = req.get_response(versions.Versions())
+        self.assertEqual(300, response.status_int)
+        body = jsonutils.loads(response.body)
+        version_list = body['versions']
+
+        ids = [v['id'] for v in version_list]
+        self.assertEqual({'v1.0', 'v2.0', 'v3.0'}, set(ids))
+
+        v1 = [v for v in version_list if v['id'] == 'v1.0'][0]
+        self.assertEqual('', v1.get('min_version'))
+        self.assertEqual('', v1.get('version'))
+
+        v2 = [v for v in version_list if v['id'] == 'v2.0'][0]
+        self.assertEqual('', v2.get('min_version'))
+        self.assertEqual('', v2.get('version'))
+
+        v3 = [v for v in version_list if v['id'] == 'v3.0'][0]
+        self.assertEqual(api_version_request._MAX_API_VERSION,
+                         v3.get('version'))
+        self.assertEqual(api_version_request._MIN_API_VERSION,
+                         v3.get('min_version'))
+
+    def test_versions_v1_no_header(self):
+        req = fakes.HTTPRequest.blank('/', base_url='http://localhost/v1')
+        req.method = 'GET'
+        req.content_type = 'application/json'
+
+        response = req.get_response(router.APIRouter())
+        self.assertEqual(200, response.status_int)
+
+    def test_versions_v2_no_header(self):
+        req = fakes.HTTPRequest.blank('/', base_url='http://localhost/v2')
+        req.method = 'GET'
+        req.content_type = 'application/json'
+
+        response = req.get_response(router.APIRouter())
+        self.assertEqual(200, response.status_int)
+
+    @ddt.data('1.0')
+    def test_versions_v1(self, version):
+        req = fakes.HTTPRequest.blank('/', base_url='http://localhost/v1')
+        req.method = 'GET'
+        req.content_type = 'application/json'
+        if version is not None:
+            req.headers = {version_header_name: version}
+
+        response = req.get_response(router.APIRouter())
+        self.assertEqual(200, response.status_int)
+        body = jsonutils.loads(response.body)
+        version_list = body['versions']
+
+        ids = [v['id'] for v in version_list]
+        self.assertEqual({'v1.0'}, set(ids))
+        self.assertEqual('1.0', response.headers[version_header_name])
+        self.assertEqual(version, response.headers[version_header_name])
+        self.assertEqual(version_header_name, response.headers['Vary'])
+
+        self.assertEqual('', version_list[0].get('min_version'))
+        self.assertEqual('', version_list[0].get('version'))
+
+    @ddt.data('2.0')
+    def test_versions_v2(self, version):
+        req = fakes.HTTPRequest.blank('/', base_url='http://localhost/v2')
+        req.method = 'GET'
+        req.content_type = 'application/json'
+        req.headers = {version_header_name: version}
+
+        response = req.get_response(router.APIRouter())
+        self.assertEqual(200, response.status_int)
+        body = jsonutils.loads(response.body)
+        version_list = body['versions']
+
+        ids = [v['id'] for v in version_list]
+        self.assertEqual({'v2.0'}, set(ids))
+        self.assertEqual('2.0', response.headers[version_header_name])
+        self.assertEqual(version, response.headers[version_header_name])
+        self.assertEqual(version_header_name, response.headers['Vary'])
+
+        self.assertEqual('', version_list[0].get('min_version'))
+        self.assertEqual('', version_list[0].get('version'))
+
+    @ddt.data('3.0', 'latest')
+    def test_versions_v3_0_and_latest(self, version):
+        req = fakes.HTTPRequest.blank('/', base_url='http://localhost/v3')
+        req.method = 'GET'
+        req.content_type = 'application/json'
+        req.headers = {version_header_name: version}
+
+        response = req.get_response(router.APIRouter())
+        self.assertEqual(200, response.status_int)
+        body = jsonutils.loads(response.body)
+        version_list = body['versions']
+
+        ids = [v['id'] for v in version_list]
+        self.assertEqual({'v3.0'}, set(ids))
+        self.assertEqual('3.0', response.headers[version_header_name])
+        self.assertEqual(version_header_name, response.headers['Vary'])
+
+        self.assertEqual(api_version_request._MAX_API_VERSION,
+                         version_list[0].get('version'))
+        self.assertEqual(api_version_request._MIN_API_VERSION,
+                         version_list[0].get('min_version'))
+
+    def test_versions_version_latest(self):
+        req = fakes.HTTPRequest.blank('/', base_url='http://localhost/v3')
+        req.method = 'GET'
+        req.content_type = 'application/json'
+        req.headers = {version_header_name: 'latest'}
+
+        response = req.get_response(router.APIRouter())
+
+        self.assertEqual(200, response.status_int)
+
+    def test_versions_version_invalid(self):
+        req = fakes.HTTPRequest.blank('/', base_url='http://localhost/v3')
+        req.method = 'GET'
+        req.content_type = 'application/json'
+        req.headers = {version_header_name: '2.0.1'}
+
+        for app in self.wsgi_apps:
+            response = req.get_response(app)
+
+            self.assertEqual(400, response.status_int)
+
+    def test_versions_version_not_found(self):
+        api_version_request_4_0 = api_version_request.APIVersionRequest('4.0')
+        self.mock_object(api_version_request,
+                         'max_api_version',
+                         mock.Mock(return_value=api_version_request_4_0))
+
+        class Controller(wsgi.Controller):
+
+            @wsgi.Controller.api_version('3.0', '3.0')
+            def index(self, req):
+                return 'off'
+
+        req = fakes.HTTPRequest.blank('/tests', base_url='http://localhost/v3')
+        req.headers = {version_header_name: '3.5'}
+        app = fakes.TestRouter(Controller())
+
+        response = req.get_response(app)
+
+        self.assertEqual(404, response.status_int)
+
+    def test_versions_version_not_acceptable(self):
+        req = fakes.HTTPRequest.blank('/', base_url='http://localhost/v3')
+        req.method = 'GET'
+        req.content_type = 'application/json'
+        req.headers = {version_header_name: '4.0'}
+
+        response = req.get_response(router.APIRouter())
+
+        self.assertEqual(406, response.status_int)
+        self.assertEqual('4.0', response.headers[version_header_name])
+        self.assertEqual(version_header_name, response.headers['Vary'])

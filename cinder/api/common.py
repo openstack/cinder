@@ -38,6 +38,16 @@ api_common_opts = [
                help='Base URL that will be presented to users in links '
                     'to the OpenStack Volume API',
                deprecated_name='osapi_compute_link_prefix'),
+    cfg.ListOpt('query_volume_filters',
+                default=['name', 'status', 'metadata',
+                         'availability_zone',
+                         'bootable'],
+                help="Volume filter options which "
+                     "non-admin user could use to "
+                     "query volumes. Default values "
+                     "are: ['name', 'status', "
+                     "'metadata', 'availability_zone' ,"
+                     "'bootable']")
 ]
 
 CONF = cfg.CONF

@@ -243,6 +243,20 @@ class InvalidUUID(Invalid):
     message = _("Expected a uuid but received %(uuid)s.")
 
 
+class InvalidAPIVersionString(Invalid):
+    message = _("API Version String %(version)s is of invalid format. Must "
+                "be of format MajorNum.MinorNum.")
+
+
+class VersionNotFoundForAPIMethod(Invalid):
+    message = _("API version %(version)s is not supported on this method.")
+
+
+class InvalidGlobalAPIVersion(Invalid):
+    message = _("Version %(req_ver)s is not supported by the API. Minimum "
+                "is %(min_ver)s and maximum is %(max_ver)s.")
+
+
 class APIException(CinderException):
     message = _("Error while requesting %(service)s API.")
 

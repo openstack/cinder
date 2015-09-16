@@ -1361,3 +1361,53 @@ class LogTracingTestCase(test.TestCase):
             host_stat['reserved_percentage'])
 
         self.assertEqual(37.02, free)
+
+
+class Comparable(utils.ComparableMixin):
+    def __init__(self, value):
+        self.value = value
+
+    def _cmpkey(self):
+        return self.value
+
+
+class TestComparableMixin(test.TestCase):
+
+    def setUp(self):
+        super(TestComparableMixin, self).setUp()
+        self.one = Comparable(1)
+        self.two = Comparable(2)
+
+    def test_lt(self):
+        self.assertTrue(self.one < self.two)
+        self.assertFalse(self.two < self.one)
+        self.assertFalse(self.one < self.one)
+
+    def test_le(self):
+        self.assertTrue(self.one <= self.two)
+        self.assertFalse(self.two <= self.one)
+        self.assertTrue(self.one <= self.one)
+
+    def test_eq(self):
+        self.assertFalse(self.one == self.two)
+        self.assertFalse(self.two == self.one)
+        self.assertTrue(self.one == self.one)
+
+    def test_ge(self):
+        self.assertFalse(self.one >= self.two)
+        self.assertTrue(self.two >= self.one)
+        self.assertTrue(self.one >= self.one)
+
+    def test_gt(self):
+        self.assertFalse(self.one > self.two)
+        self.assertTrue(self.two > self.one)
+        self.assertFalse(self.one > self.one)
+
+    def test_ne(self):
+        self.assertTrue(self.one != self.two)
+        self.assertTrue(self.two != self.one)
+        self.assertFalse(self.one != self.one)
+
+    def test_compare(self):
+        self.assertEqual(NotImplemented,
+                         self.one._compare(1, self.one._cmpkey))

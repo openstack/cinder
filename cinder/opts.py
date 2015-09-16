@@ -17,7 +17,6 @@ import itertools
 from cinder.api import common as cinder_api_common
 from cinder.api.middleware import auth as cinder_api_middleware_auth
 from cinder.api.middleware import sizelimit as cinder_api_middleware_sizelimit
-from cinder.api.v2 import volumes as cinder_api_v2_volumes
 from cinder.api.views import versions as cinder_api_views_versions
 from cinder.backup import chunkeddriver as cinder_backup_chunkeddriver
 from cinder.backup import driver as cinder_backup_driver
@@ -333,7 +332,6 @@ def list_opts():
                 cinder_volume_drivers_hpe_hpe3parcommon.hpe3par_opts,
                 cinder_volume_drivers_datera.d_opts,
                 cinder_volume_drivers_blockdevice.volume_opts,
-                [cinder_api_v2_volumes.query_volume_filters_opt],
                 cinder_volume_drivers_quobyte.volume_opts,
                 cinder_volume_drivers_vzstorage.vzstorage_opts,
                 cinder_volume_drivers_nfs.nfs_opts,
