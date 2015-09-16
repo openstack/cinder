@@ -361,15 +361,24 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
         try:
             major, minor = self.zapi_client.get_ontapi_version()
             col_path = self.configuration.netapp_copyoffload_tool_path
-            if major == 1 and minor >= 20 and col_path:
-                self._try_copyoffload(context, volume, image_service, image_id)
-                copy_success = True
-                LOG.info(_LI('Copied image %(img)s to volume %(vol)s using '
-                             'copy offload workflow.'),
+            # Search the local image cache before attempting copy offload
+            cache_result = self._find_image_in_cache(image_id)
+            if cache_result:
+                copy_success = self._copy_from_cache(volume, image_id,
+                                                     cache_result)
+                if copy_success:
+                    LOG.info(_LI('Copied image %(img)s to volume %(vol)s '
+                                 'using local image cache.'),
+                             {'img': image_id, 'vol': volume['id']})
+            # Image cache was not present, attempt copy offload workflow
+            if not copy_success and col_path and major == 1 and minor >= 20:
+                LOG.debug('No result found in image cache')
+                self._copy_from_img_service(context, volume, image_service,
+                                            image_id)
+                LOG.info(_LI('Copied image %(img)s to volume %(vol)s using'
+                             ' copy offload workflow.'),
                          {'img': image_id, 'vol': volume['id']})
-            else:
-                LOG.debug("Copy offload either not configured or"
-                          " unsupported.")
+                copy_success = True
         except Exception as e:
             LOG.exception(_LE('Copy offload workflow unsuccessful. %s'), e)
         finally:
@@ -379,16 +388,6 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
             if self.ssc_enabled:
                 sh = self._get_provider_location(volume['id'])
                 self._update_stale_vols(self._get_vol_for_share(sh))
-
-    def _try_copyoffload(self, context, volume, image_service, image_id):
-        """Tries server side file copy offload."""
-        copied = False
-        cache_result = self._find_image_in_cache(image_id)
-        if cache_result:
-            copied = self._copy_from_cache(volume, image_id, cache_result)
-        if not cache_result or not copied:
-            self._copy_from_img_service(context, volume, image_service,
-                                        image_id)
 
     def _get_ip_verify_on_cluster(self, host):
         """Verifies if host on same cluster and returns ip."""
