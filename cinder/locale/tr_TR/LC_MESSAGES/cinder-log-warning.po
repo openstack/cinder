@@ -4,21 +4,23 @@
 #
 # Translators:
 # Ying Chun Guo <daisy.ycguo@gmail.com>, 2015
+# OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: Cinder\n"
+"Project-Id-Version: cinder 7.0.0.0b4.dev130\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-08-27 06:19+0000\n"
+"POT-Creation-Date: 2015-09-17 06:19+0000\n"
 "PO-Revision-Date: 2015-08-26 03:31+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: Turkish (Turkey) (http://www.transifex.com/openstack/cinder/"
 "language/tr_TR/)\n"
-"Language: tr_TR\n"
+"Language: tr-TR\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.0\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Zanata 3.7.1\n"
 
 #, python-format
 msgid "%(path)s is being set with open permissions: %(perm)s"
@@ -270,13 +272,6 @@ msgid "Detected volume stuck in %s(curr_status)s status, setting to ERROR."
 msgstr ""
 "%s(curr_status)s durumunda sıkışıp kalmış mantıksal sürücü algılandı, HATA "
 "olarak ayarlanıyor."
-
-msgid ""
-"Didn't get the pool information of the host %(s). Storage assisted Migration "
-"is not supported. The host may be using a legacy driver."
-msgstr ""
-"%(s) istemcisinin havuz bilgisi alınamadı. Depolama destekli Göç "
-"desteklenmiyor. İstemci eski bir sürücü kullanıyor olabilir."
 
 msgid "Discover file retries exhausted."
 msgstr "Dosya keşfi yeniden denemeleri tükendi."
@@ -703,18 +698,6 @@ msgid ""
 msgstr ""
 "Mantıksal sürücü %s silme hatası atlanıyor: silmeyi zorla ayarları sebebiyle "
 "mantıksal sürücü bulunamadı."
-
-#, python-format
-msgid "Ignoring error mapping volume %s: volume already mapped."
-msgstr ""
-"Mantıksal sürücü %s eşleştirme hatası atlanıyor: mantıksal sürücü zaten "
-"eşleştirilmiş."
-
-#, python-format
-msgid "Ignoring error unmapping volume %s: volume not mapped."
-msgstr ""
-"%s mantıksal sürücüsü eşleştirmesinin kaldırılması hatası atlanıyor: "
-"mantıksal sürücü eşleştirilmedi."
 
 msgid "Image delete encountered an error."
 msgstr "İmaj silme bir hatayla karşılaştı."
@@ -1250,14 +1233,6 @@ msgstr ""
 "şu depolama havuzlarını yönetecek: %(exist)s"
 
 #, python-format
-msgid ""
-"The option %s has been deprecated and no longer has any effect. It will be "
-"removed in the Liberty release."
-msgstr ""
-"%s seçeneği artık kullanılmıyor ve artık bir etkisi yok. Liberty sürümünde "
-"kaldırılacak."
-
-#, python-format
 msgid "The provisioning: %(provisioning)s is not valid."
 msgstr "Hazırlık: %(provisioning)s geçerli değil."
 
@@ -1492,12 +1467,6 @@ msgstr ""
 "değiştirilecek."
 
 #, python-format
-msgid "Volume unmanage was unable to rename the volume, error message: %s"
-msgstr ""
-"Mantıksal sürücü yönetimini bırak mantıksal sürücüyü tekrar adlandıramadı, "
-"hata iletisi: %s"
-
-#, python-format
 msgid ""
 "Volume: %(volumeName)s Does not belong to storage group %(defaultSgName)s."
 msgstr ""
@@ -1629,20 +1598,6 @@ msgstr "vadesi geçmiş ssc işi tazeleme sürüyor. Dönülüyor... "
 
 msgid "san_secondary_ip is configured as the same value as san_ip."
 msgstr "san_secondary_ip san_ip ile aynı değer olarak yapılandırılmış."
-
-#, python-format
-msgid ""
-"scaleIO volume %(vol)s not yet found (no directory /dev/disk/by-id yet). Try "
-"number: %(tries)d."
-msgstr ""
-"scaleIO mantıksal sürücüsü %(vol)s henüz bulunamadı (henüz böyle bir dizin "
-"yok /dev/disk/by-id). Deneme numarası: %(tries)d."
-
-#, python-format
-msgid "scaleIO volume %(vol)s not yet found. Try number: %(tries)d."
-msgstr ""
-"scaleIO mantıksal sürücüsü %(vol)s henüz bulunamadı. Deneme numarası: "
-"%(tries)d."
 
 #, python-format
 msgid "snapshot: %s not found, skipping delete operation"
