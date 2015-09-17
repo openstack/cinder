@@ -2054,8 +2054,6 @@ Time Remaining:  0 second(s)
                     mock.call('storagegroup', '-addhlu', '-hlu', 2, '-alu', 1,
                               '-gname', 'fakehost', '-o',
                               poll=False),
-                    mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
-                              poll=False),
                     mock.call(*self.testData.PINGNODE_CMD('A', 4, 0,
                                                           '10.0.0.2'))]
         fake_cli.assert_has_calls(expected)
@@ -2090,8 +2088,6 @@ Time Remaining:  0 second(s)
                               poll=True),
                     mock.call('storagegroup', '-addhlu', '-hlu', 2, '-alu', 1,
                               '-gname', 'fakehost', '-o', poll=False),
-                    mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
-                              poll=False),
                     mock.call(*self.testData.PINGNODE_CMD('A', 4, 0,
                                                           '10.0.0.2'))]
         fake_cli.assert_has_calls(expected)
@@ -2123,9 +2119,7 @@ Time Remaining:  0 second(s)
                     mock.call(*self.testData.STORAGEGROUP_LIST_CMD('fakehost'),
                               poll=True),
                     mock.call('storagegroup', '-addhlu', '-hlu', 2, '-alu', 1,
-                              '-gname', 'fakehost', '-o', poll=False),
-                    mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
-                              poll=False)]
+                              '-gname', 'fakehost', '-o', poll=False)]
         fake_cli.assert_has_calls(expected)
 
     @mock.patch('random.randint',
@@ -2167,9 +2161,7 @@ Time Remaining:  0 second(s)
         expected = [mock.call(*self.testData.STORAGEGROUP_LIST_CMD('fakehost'),
                               poll=False),
                     mock.call('storagegroup', '-addhlu', '-hlu', 2, '-alu', 1,
-                              '-gname', 'fakehost', '-o', poll=False),
-                    mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
-                              poll=False)]
+                              '-gname', 'fakehost', '-o', poll=False)]
         fake_cli.assert_has_calls(expected)
 
     @mock.patch(
@@ -2216,8 +2208,6 @@ Time Remaining:  0 second(s)
                               poll=False),
                     mock.call(*self.testData.STORAGEGROUP_LIST_CMD('fakehost'),
                               poll=True),
-                    mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
-                              poll=False),
                     mock.call(*self.testData.PINGNODE_CMD('A', 4, 0,
                                                           '10.0.0.2'))]
         fake_cli.assert_has_calls(expected)
@@ -2258,8 +2248,6 @@ Time Remaining:  0 second(s)
                               poll=True),
                     mock.call('storagegroup', '-addhlu', '-hlu', 2, '-alu', 1,
                               '-gname', 'fakehost', '-o',
-                              poll=False),
-                    mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
                               poll=False)]
         fake_cli.assert_has_calls(expected)
 
@@ -2330,8 +2318,6 @@ Time Remaining:  0 second(s)
                               poll=True),
                     mock.call('storagegroup', '-addhlu', '-hlu', 2, '-alu', 4,
                               '-gname', 'fakehost', '-o',
-                              poll=False),
-                    mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
                               poll=False),
                     mock.call(*self.testData.PINGNODE_CMD('A', 4, 0,
                                                           u'10.0.0.2'))]
@@ -4162,12 +4148,11 @@ Time Remaining:  0 second(s)
                        'B': [port_b1]}
         targets = self.driver.cli._client.find_available_iscsi_targets(
             'fakehost',
-            'B',
             {('A', 2, 0), ('B', 1, 0)},
             all_targets)
-        self.assertEqual([port_b1, port_a2], targets)
+        self.assertTrue(port_a2 in targets)
+        self.assertTrue(port_b1 in targets)
 
-    @mock.patch("random.shuffle", mock.Mock())
     @mock.patch.object(emc_vnx_cli.CommandLineHelper,
                        'ping_node')
     def test_find_available_iscsi_targets_with_pingnode(self, ping_node):
@@ -4191,20 +4176,14 @@ Time Remaining:  0 second(s)
                    'IP Address': 'fake_ip_b1'}
         all_targets = {'A': [port_a1, port_a2],
                        'B': [port_b1]}
-        ping_node.side_effect = [False, True]
-        targets = self.driver.cli._client.find_available_iscsi_targets(
-            'fakehost',
-            'B',
-            {('A', 2, 0), ('A', 1, 0), ('B', 1, 0)},
-            all_targets)
-        self.assertEqual([port_a1, port_b1, port_a2], targets)
         ping_node.side_effect = [False, False, True]
         targets = self.driver.cli._client.find_available_iscsi_targets(
             'fakehost',
-            'B',
             {('A', 2, 0), ('A', 1, 0), ('B', 1, 0)},
             all_targets)
-        self.assertEqual([port_a2, port_b1, port_a1], targets)
+        self.assertTrue(port_a1 in targets)
+        self.assertTrue(port_a2 in targets)
+        self.assertTrue(port_b1 in targets)
 
     @mock.patch('cinder.volume.drivers.emc.emc_vnx_cli.'
                 'EMCVnxCliBase.get_lun_owner',

@@ -1591,7 +1591,6 @@ class CommandLineHelper(object):
         return False
 
     def find_available_iscsi_targets(self, hostname,
-                                     preferred_sp,
                                      registered_spport_set,
                                      all_iscsi_targets):
         """Finds available iscsi targets for a host.
@@ -1610,28 +1609,22 @@ class CommandLineHelper(object):
         else:
             iscsi_initiator_ips = None
 
-        # Check the targets on the owner first
-        if preferred_sp == 'A':
-            target_sps = ('A', 'B')
-        else:
-            target_sps = ('B', 'A')
-
         target_portals = []
-        for target_sp in target_sps:
-            sp_portals = all_iscsi_targets[target_sp]
-            random.shuffle(sp_portals)
-            for portal in sp_portals:
-                spport = (portal['SP'],
-                          portal['Port ID'],
-                          portal['Virtual Port ID'])
-                if spport not in registered_spport_set:
-                    LOG.debug(
-                        "Skip SP Port %(port)s since "
-                        "no path from %(host)s is through it.",
-                        {'port': spport,
-                         'host': hostname})
-                    continue
-                target_portals.append(portal)
+
+        all_portals = all_iscsi_targets['A'] + all_iscsi_targets['B']
+        random.shuffle(all_portals)
+        for portal in all_portals:
+            spport = (portal['SP'],
+                      portal['Port ID'],
+                      portal['Virtual Port ID'])
+            if spport not in registered_spport_set:
+                LOG.debug(
+                    "Skip SP Port %(port)s since "
+                    "no path from %(host)s is through it.",
+                    {'port': spport,
+                     'host': hostname})
+                continue
+            target_portals.append(portal)
 
         main_portal_index = None
         if iscsi_initiator_ips:
@@ -3192,13 +3185,12 @@ class EMCVnxCliBase(object):
 
     def vnx_get_iscsi_properties(self, volume, connector, hlu, sg_raw_output):
         storage_group = connector['host']
-        owner_sp = self.get_lun_owner(volume)
         registered_spports = self._client.get_registered_spport_set(
             connector['initiator'],
             storage_group,
             sg_raw_output)
         targets = self._client.find_available_iscsi_targets(
-            storage_group, owner_sp,
+            storage_group,
             registered_spports,
             self.iscsi_targets)
         properties = {'target_discovered': False,
