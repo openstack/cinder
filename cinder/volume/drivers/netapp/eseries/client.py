@@ -267,6 +267,13 @@ class RestClient(WebserviceClient):
             # Response code 422 returns error code and message
             if status_code == 422:
                 msg = _("Response error - %s.") % response.text
+                json_response = response.json()
+                if json_response is not None:
+                    ret_code = json_response.get('retcode', '')
+                    if ret_code == '30' or ret_code == 'authFailPassword':
+                        msg = _("The storage array password for %s is "
+                                "incorrect, please update the configured "
+                                "password.") % self._system_id
             else:
                 msg = _("Response error code - %s.") % status_code
             raise es_exception.WebServiceException(msg,
