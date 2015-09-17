@@ -600,6 +600,7 @@ STORAGE_SYSTEM = {
     '1fa6efb5-f07b-4de4-9f0e-52e5f7ff5d1b',
     'hotSpareSizeAsString': '0', 'wwn':
     '60080E500023C73400000000515AF323',
+    'passwordStatus': 'valid',
     'parameters': {
         'minVolSize': 1048576, 'maxSnapshotsPerBase': 16,
         'maxDrives': 192,
@@ -1071,3 +1072,6 @@ class FakeEseriesClient(object):
 
     def list_target_wwpns(self, *args, **kwargs):
         return [WWPN_2]
+
+    def update_stored_system_password(self, *args, **kwargs):
+        pass
