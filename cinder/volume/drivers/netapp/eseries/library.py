@@ -1144,28 +1144,37 @@ class NetAppESeriesLibrary(object):
                             "%s."), size_gb)
         return avl_pools
 
+    def _is_thin_provisioned(self, volume):
+        """Determine if a volume is thin provisioned"""
+        return volume.get('objectType') == 'thinVolume' or volume.get(
+            'thinProvisioned', False)
+
     def extend_volume(self, volume, new_size):
         """Extend an existing volume to the new size."""
-        stage_1, stage_2 = 0, 0
         src_vol = self._get_volume(volume['name_id'])
-        src_label = src_vol['label']
-        stage_label = 'tmp-%s' % utils.convert_uuid_to_es_fmt(uuid.uuid4())
-        extend_vol = {'id': uuid.uuid4(), 'size': new_size}
-        self.create_cloned_volume(extend_vol, volume)
-        new_vol = self._get_volume(extend_vol['id'])
-        try:
-            stage_1 = self._client.update_volume(src_vol['id'], stage_label)
-            stage_2 = self._client.update_volume(new_vol['id'], src_label)
-            new_vol = stage_2
-            LOG.info(_LI('Extended volume with label %s.'), src_label)
-        except exception.NetAppDriverException:
-            if stage_1 == 0:
-                with excutils.save_and_reraise_exception():
-                    self._client.delete_volume(new_vol['id'])
-            if stage_2 == 0:
-                with excutils.save_and_reraise_exception():
-                    self._client.update_volume(src_vol['id'], src_label)
-                    self._client.delete_volume(new_vol['id'])
+        if self._is_thin_provisioned(src_vol):
+            self._client.expand_volume(src_vol['id'], new_size)
+        else:
+            stage_1, stage_2 = 0, 0
+            src_label = src_vol['label']
+            stage_label = 'tmp-%s' % utils.convert_uuid_to_es_fmt(uuid.uuid4())
+            extend_vol = {'id': uuid.uuid4(), 'size': new_size}
+            self.create_cloned_volume(extend_vol, volume)
+            new_vol = self._get_volume(extend_vol['id'])
+            try:
+                stage_1 = self._client.update_volume(src_vol['id'],
+                                                     stage_label)
+                stage_2 = self._client.update_volume(new_vol['id'], src_label)
+                new_vol = stage_2
+                LOG.info(_LI('Extended volume with label %s.'), src_label)
+            except exception.NetAppDriverException:
+                if stage_1 == 0:
+                    with excutils.save_and_reraise_exception():
+                        self._client.delete_volume(new_vol['id'])
+                elif stage_2 == 0:
+                    with excutils.save_and_reraise_exception():
+                        self._client.update_volume(src_vol['id'], src_label)
+                        self._client.delete_volume(new_vol['id'])
 
     def _garbage_collect_tmp_vols(self):
         """Removes tmp vols with no snapshots."""

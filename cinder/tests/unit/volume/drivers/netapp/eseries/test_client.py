@@ -52,6 +52,7 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
         fake_response = mock.Mock()
         fake_response.status_code = 200
         self.my_client.invoke_service = mock.Mock(return_value=fake_response)
+        self.my_client.api_version = '01.52.9000.1'
 
     @ddt.data(200, 201, 203, 204)
     def test_eval_response_success(self, status_code):
@@ -630,6 +631,37 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
                                                           fake_volume['id']}
                                                        )
         self.assertDictMatch(expected_volume, updated_volume)
+
+    def test_extend_volume(self):
+        new_capacity = 10
+        fake_volume = copy.deepcopy(eseries_fake.VOLUME)
+        self.my_client.features = mock.Mock()
+        self.my_client.features.SSC_API_V2 = na_utils.FeatureState(
+            supported=True)
+        self.my_client._invoke = mock.Mock(return_value=fake_volume)
+
+        expanded_volume = self.my_client.expand_volume(fake_volume['id'],
+                                                       new_capacity)
+
+        url = self.my_client.RESOURCE_PATHS.get('ssc_volume')
+        body = {'newSize': new_capacity, 'sizeUnit': 'gb'}
+        self.my_client._invoke.assert_called_once_with('POST', url, body,
+                                                       **{'object-id':
+                                                          fake_volume['id']})
+        self.assertEqual(fake_volume, expanded_volume)
+
+    def test_extend_volume_unsupported(self):
+        new_capacity = 10
+        min_version = 1
+        fake_volume = copy.deepcopy(eseries_fake.VOLUME)
+        self.my_client.features = mock.Mock()
+        self.my_client.features.SSC_API_V2 = na_utils.FeatureState(
+            supported=False, minimum_version=min_version)
+        self.my_client._invoke = mock.Mock(return_value=fake_volume)
+
+        self.assertRaises(exception.NetAppDriverException,
+                          self.my_client.expand_volume, fake_volume['id'],
+                          new_capacity)
 
     @ddt.data(True, False)
     def test_delete_volume(self, ssc_api_enabled):

@@ -350,6 +350,21 @@ class RestClient(object):
         data = {'name': label}
         return self._invoke('POST', path, data, **{'object-id': object_id})
 
+    def expand_volume(self, object_id, new_capacity, capacity_unit='gb'):
+        """Increase the capacity of a volume"""
+        if not self.features.SSC_API_V2:
+            msg = _("E-series proxy API version %(current_version)s does "
+                    "not support this expansion API. The proxy"
+                    " version must be at at least %(min_version)s")
+            min_version = self.features.SSC_API_V2.minimum_version
+            msg_args = {'current_version': self.api_version,
+                        'min_version': min_version}
+            raise exception.NetAppDriverException(msg % msg_args)
+
+        path = self.RESOURCE_PATHS.get('ssc_volume')
+        data = {'newSize': new_capacity, 'sizeUnit': capacity_unit}
+        return self._invoke('POST', path, data, **{'object-id': object_id})
+
     def get_volume_mappings(self):
         """Creates volume mapping on array."""
         path = "/storage-systems/{system-id}/volume-mappings"
