@@ -50,14 +50,16 @@ class CreateVolumeFlowTestCase(test.TestCase):
         # called to avoid div by zero errors.
         self.counter = float(0)
 
+    @mock.patch('cinder.volume.utils.extract_host')
     @mock.patch('time.time', side_effect=time_inc)
     @mock.patch('cinder.objects.ConsistencyGroup.get_by_id')
-    def test_cast_create_volume(self, consistencygroup_get_by_id, mock_time):
+    def test_cast_create_volume(self, consistencygroup_get_by_id, mock_time,
+                                mock_extract_host):
         props = {}
-        consistencygroup_obj = \
-            fake_consistencygroup.fake_consistencyobject_obj(
-                self.ctxt, consistencygroup_id=1, host=None)
-        consistencygroup_get_by_id.return_value = consistencygroup_obj
+        cg_obj = (fake_consistencygroup.
+                  fake_consistencyobject_obj(self.ctxt, consistencygroup_id=1,
+                                             host='host@backend#pool'))
+        consistencygroup_get_by_id.return_value = cg_obj
         spec = {'volume_id': None,
                 'source_volid': None,
                 'snapshot_id': None,
@@ -90,6 +92,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
 
         task._cast_create_volume(self.ctxt, spec, props)
         consistencygroup_get_by_id.assert_called_once_with(self.ctxt, 5)
+        mock_extract_host.assert_called_once_with('host@backend#pool')
 
     @mock.patch('cinder.volume.volume_types.is_encrypted')
     @mock.patch('cinder.volume.flows.api.create_volume.'

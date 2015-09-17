@@ -27,6 +27,7 @@ from cinder import policy
 from cinder import quota
 from cinder import utils
 from cinder.volume.flows import common
+from cinder.volume import utils as vol_utils
 from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
@@ -697,8 +698,14 @@ class VolumeCastTask(flow_utils.CinderTask):
         cgsnapshot_id = request_spec['cgsnapshot_id']
 
         if cgroup_id:
+            # If cgroup_id existed, we should cast volume to the scheduler
+            # to choose a proper pool whose backend is same as CG's backend.
             cgroup = objects.ConsistencyGroup.get_by_id(context, cgroup_id)
-            host = cgroup.host
+            # FIXME(wanghao): CG_backend got added before request_spec was
+            # converted to versioned objects. We should make sure that this
+            # will be handled by object version translations once we add
+            # RequestSpec object.
+            request_spec['CG_backend'] = vol_utils.extract_host(cgroup.host)
         elif snapshot_id and CONF.snapshot_same_host:
             # NOTE(Rongze Zhu): A simple solution for bug 1008866.
             #
