@@ -3705,11 +3705,9 @@ Time Remaining:  0 second(s)
     def test_add_volume_to_cg(self):
         commands = [self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
                     self.testData.ADD_LUN_TO_CG_CMD('cg_id', 1),
-                    self.testData.GET_CG_BY_NAME_CMD('cg_id')
                     ]
         results = [self.testData.LUN_PROPERTY('vol1', True),
-                   SUCCEED,
-                   self.testData.CG_PROPERTY('cg_id')]
+                   SUCCEED]
         fake_cli = self.driverSetup(commands, results)
 
         self.driver.create_volume(self.testData.test_volume_cg)
