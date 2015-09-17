@@ -4427,8 +4427,8 @@ class VolumeMigrationTestCase(VolumeTestCase):
             self.volume.update_migrated_volume(self.context, volume,
                                                new_volume, 'available')
             volume_update.assert_has_calls((
-                mock.call(fake_elevated, volume['id'], fake_update),
-                mock.call(fake_elevated, new_volume['id'], expected_update)))
+                mock.call(fake_elevated, new_volume['id'], expected_update),
+                mock.call(fake_elevated, volume['id'], fake_update)))
 
             # Test the case for update_migrated_volume not implemented
             # for the driver.
@@ -4438,8 +4438,8 @@ class VolumeMigrationTestCase(VolumeTestCase):
             self.volume.update_migrated_volume(self.context, volume,
                                                new_volume, 'available')
             volume_update.assert_has_calls((
-                mock.call(fake_elevated, volume['id'], fake_update_error),
-                mock.call(fake_elevated, new_volume['id'], expected_update)))
+                mock.call(fake_elevated, new_volume['id'], expected_update),
+                mock.call(fake_elevated, volume['id'], fake_update_error)))
 
     def test_migrate_volume_generic_create_volume_error(self):
         self.expected_status = 'error'

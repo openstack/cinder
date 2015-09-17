@@ -250,10 +250,10 @@ class VolumeManager(manager.SchedulerDependentManager):
                 max_cache_size,
                 max_cache_entries
             )
-            LOG.info(_LI('Image-volume cache enabled for host %(host)s'),
+            LOG.info(_LI('Image-volume cache enabled for host %(host)s.'),
                      {'host': self.host})
         else:
-            LOG.info(_LI('Image-volume cache disabled for host %(host)s'),
+            LOG.info(_LI('Image-volume cache disabled for host %(host)s.'),
                      {'host': self.host})
             self.image_volume_cache = None
 
@@ -1059,7 +1059,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                 image_meta
             )
         except exception.CinderException as e:
-            LOG.warning(_LW('Failed to create new image-volume cache entry'
+            LOG.warning(_LW('Failed to create new image-volume cache entry.'
                             ' Error: %(exception)s'), {'exception': e})
             if image_volume:
                 self.delete_volume(ctx, image_volume.id)
@@ -3048,6 +3048,10 @@ class VolumeManager(manager.SchedulerDependentManager):
         # This is temporary fix for bug 1491210.
         volume = self.db.volume_get(ctxt, volume['id'])
         new_volume = self.db.volume_get(ctxt, new_volume['id'])
+        model_update_default = {'_name_id': new_volume['_name_id'] or
+                                new_volume['id'],
+                                'provider_location':
+                                new_volume['provider_location']}
         try:
             model_update = self.driver.update_migrated_volume(ctxt,
                                                               volume,
@@ -3057,19 +3061,32 @@ class VolumeManager(manager.SchedulerDependentManager):
             # If update_migrated_volume is not implemented for the driver,
             # _name_id and provider_location will be set with the values
             # from new_volume.
-            model_update = {'_name_id': new_volume['_name_id'] or
-                            new_volume['id'],
-                            'provider_location':
-                            new_volume['provider_location']}
+            model_update = model_update_default
         if model_update:
-            self.db.volume_update(ctxt.elevated(), volume['id'],
-                                  model_update)
+            model_update_default.update(model_update)
             # Swap keys that were changed in the source so we keep their values
             # in the temporary volume's DB record.
-            model_update_new = {key: volume[key]
-                                for key in model_update.iterkeys()}
+            # Need to convert 'metadata' and 'admin_metadata' since
+            # they are not keys of volume, their corresponding keys are
+            # 'volume_metadata' and 'volume_admin_metadata'.
+            model_update_new = dict()
+            for key in model_update:
+                if key == 'metadata':
+                    if volume.get('volume_metadata'):
+                        model_update_new[key] = {
+                            metadata['key']: metadata['value']
+                            for metadata in volume.get('volume_metadata')}
+                elif key == 'admin_metadata':
+                        model_update_new[key] = {
+                            metadata['key']: metadata['value']
+                            for metadata in volume.get(
+                                'volume_admin_metadata')}
+                else:
+                    model_update_new[key] = volume[key]
             self.db.volume_update(ctxt.elevated(), new_volume['id'],
                                   model_update_new)
+        self.db.volume_update(ctxt.elevated(), volume['id'],
+                              model_update_default)
 
     # Replication V2 methods
     def enable_replication(self, context, volume):
