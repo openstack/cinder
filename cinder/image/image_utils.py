@@ -491,6 +491,29 @@ def create_temporary_file(*args, **kwargs):
     return tmp
 
 
+def cleanup_temporary_file(backend_name):
+    temp_dir = CONF.image_conversion_dir
+    if (not temp_dir or not os.path.exists(temp_dir)):
+        LOG.debug("Configuration image_conversion_dir is None or the path "
+                  "doesn't exist.")
+        return
+    try:
+        # TODO(wanghao): Consider using os.scandir for better performance in
+        # future when cinder only supports Python version 3.5+.
+        files = os.listdir(CONF.image_conversion_dir)
+        # NOTE(wanghao): For multi-backend case, if one backend was slow
+        # starting but another backend is up and doing an image conversion,
+        # init_host should only clean the tmp files which belongs to its
+        # backend.
+        for tmp_file in files:
+            if tmp_file.endswith(backend_name):
+                path = os.path.join(temp_dir, tmp_file)
+                os.remove(path)
+    except OSError as e:
+        LOG.warning(_LW("Exception caught while clearing temporary image "
+                        "files: %s"), e)
+
+
 @contextlib.contextmanager
 def temporary_file(*args, **kwargs):
     tmp = None
@@ -570,9 +593,9 @@ class TemporaryImages(object):
 
     @classmethod
     @contextlib.contextmanager
-    def fetch(cls, image_service, context, image_id):
+    def fetch(cls, image_service, context, image_id, suffix=''):
         tmp_images = cls.for_image_service(image_service).temporary_images
-        with temporary_file() as tmp:
+        with temporary_file(suffix=suffix) as tmp:
             fetch_verify_image(context, image_service, image_id, tmp)
             user = context.user_id
             if not tmp_images.get(user):

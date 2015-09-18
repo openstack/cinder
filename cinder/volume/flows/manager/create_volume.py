@@ -766,10 +766,12 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         # Fall back to default behavior of creating volume,
         # download the image data and copy it into the volume.
         original_size = volume.size
+        backend_name = volume_utils.extract_host(volume.service_topic_queue)
         try:
             if not cloned:
                 with image_utils.TemporaryImages.fetch(
-                        image_service, context, image_id) as tmp_image:
+                        image_service, context, image_id,
+                        backend_name) as tmp_image:
                     # Try to create the volume as the minimal size, then we can
                     # extend once the image has been downloaded.
                     data = image_utils.qemu_img_info(tmp_image)
