@@ -2,7 +2,7 @@
 # of appearance. Changing the order has an impact on the overall integration
 # process, which may cause wedges in the gate later.
 
-pbr<2.0,>=1.6
+pbr>=1.6
 anyjson>=0.3.3
 Babel>=1.3
 enum34;python_version=='2.7' or python_version=='2.6'
