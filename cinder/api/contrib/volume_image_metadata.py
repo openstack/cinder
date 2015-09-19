@@ -45,7 +45,7 @@ class VolumeImageMetadataController(wsgi.Controller):
         except exception.VolumeNotFound:
             msg = _('Volume with volume id %s does not exist.') % volume_id
             raise webob.exc.HTTPNotFound(explanation=msg)
-        return meta
+        return (volume, meta)
 
     def _get_all_images_metadata(self, context):
         """Returns the image metadata for all volumes."""
@@ -146,21 +146,18 @@ class VolumeImageMetadataController(wsgi.Controller):
                 raise webob.exc.HTTPBadRequest(explanation=msg)
 
             if key:
-                metadata = self._get_image_metadata(context, id)
+                vol, metadata = self._get_image_metadata(context, id)
                 if key not in metadata:
                     msg = _("Metadata item was not found.")
                     raise webob.exc.HTTPNotFound(explanation=msg)
 
-            try:
-                volume = self.volume_api.get(context, id)
                 self.volume_api.delete_volume_metadata(
-                    context,
-                    volume,
-                    key,
+                    context, vol, key,
                     meta_type=common.METADATA_TYPES.image)
-            except exception.VolumeNotFound:
-                msg = _('Volume does not exist.')
-                raise webob.exc.HTTPNotFound(explanation=msg)
+            else:
+                msg = _("The key cannot be None.")
+                raise webob.exc.HTTPBadRequest(explanation=msg)
+
             return webob.Response(status_int=200)
 
 
