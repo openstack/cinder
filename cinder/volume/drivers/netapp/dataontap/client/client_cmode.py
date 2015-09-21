@@ -50,6 +50,15 @@ class Client(client_base.Client):
         self.connection.set_api_version(1, 15)
         (major, minor) = self.get_ontapi_version(cached=False)
         self.connection.set_api_version(major, minor)
+        self._init_features()
+
+    def _init_features(self):
+        super(Client, self)._init_features()
+
+        ontapi_version = self.get_ontapi_version()   # major, minor
+
+        ontapi_1_30 = ontapi_version >= (1, 30)
+        self.features.add_feature('FAST_CLONE_DELETE', supported=ontapi_1_30)
 
     def _invoke_vserver_api(self, na_element, vserver):
         server = copy.copy(self.connection)
@@ -618,3 +627,15 @@ class Client(client_base.Client):
             volume_space_attributes.get_child_content('size-total'))
 
         return size_total, size_available
+
+    @utils.trace_method
+    def delete_file(self, path_to_file):
+        """Delete file at path."""
+
+        api_args = {
+            'path': path_to_file,
+        }
+        # Use fast clone deletion engine if it is supported.
+        if self.features.FAST_CLONE_DELETE:
+            api_args['is-clone-file'] = 'true'
+        self.send_request('file-delete-file', api_args, True)

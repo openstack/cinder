@@ -27,6 +27,7 @@ import six
 
 from cinder.i18n import _LE, _LW, _LI
 from cinder import utils
+from cinder.volume.drivers.netapp import utils as na_utils
 
 netapp_lib = importutils.try_import('netapp_lib')
 if netapp_lib:
@@ -46,6 +47,10 @@ class Client(object):
             port=kwargs['port'],
             username=kwargs['username'],
             password=kwargs['password'])
+
+    def _init_features(self):
+        """Set up the repository of available Data ONTAP features."""
+        self.features = na_utils.Features()
 
     def get_ontapi_version(self, cached=True):
         """Gets the supported ontapi version."""
