@@ -2770,10 +2770,12 @@ def volume_type_access_remove(context, type_id, project_id):
     """Remove given tenant from the volume type access list."""
     volume_type_id = _volume_type_get_id_from_volume_type(context, type_id)
 
-    count = _volume_type_access_query(context).\
-        filter_by(volume_type_id=volume_type_id).\
-        filter_by(project_id=project_id).\
-        soft_delete(synchronize_session=False)
+    count = (_volume_type_access_query(context).
+             filter_by(volume_type_id=volume_type_id).
+             filter_by(project_id=project_id).
+             update({'deleted': True,
+                     'deleted_at': timeutils.utcnow(),
+                     'updated_at': literal_column('updated_at')}))
     if count == 0:
         raise exception.VolumeTypeAccessNotFound(
             volume_type_id=type_id, project_id=project_id)
