@@ -50,7 +50,7 @@ cisco_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(cisco_opts, 'fc-zone-manager')
+CONF.register_opts(cisco_opts, group='fc-zone-manager')
 
 
 class CiscoFCZoneDriver(fc_zone_driver.FCZoneDriver):
