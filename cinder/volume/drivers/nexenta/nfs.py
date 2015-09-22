@@ -230,8 +230,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         data = {'export': export, 'name': 'volume'}
         if volume['provider_location'] in self.shares:
             data['options'] = self.shares[volume['provider_location']]
-        else:
-            data['options'] = None
+        data['options'] = None
         return {
             'driver_volume_type': self.driver_volume_type,
             'data': data
