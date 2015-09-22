@@ -154,7 +154,6 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
                      'netapp_raid_type': 'raiddp',
                      'netapp_disk_type': 'SSD',
                      'netapp_nodedup': 'true',
-                     'reserved_percentage': 7,
                      'max_over_subscription_ratio': 19.0,
                      'provisioned_capacity_gb': 4456.0}]
 
