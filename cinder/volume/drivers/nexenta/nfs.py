@@ -233,7 +233,8 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         data['options'] = None
         return {
             'driver_volume_type': self.driver_volume_type,
-            'data': data
+            'data': data,
+            'mount_point_base': self._get_mount_point_base()
         }
 
     def retype(self, context, volume, new_type, diff, host):
