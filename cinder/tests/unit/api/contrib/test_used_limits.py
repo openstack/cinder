@@ -13,9 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import mock
+
 from cinder.api.contrib import used_limits
 from cinder.api.openstack import wsgi
-from cinder import quota
+from cinder import exception
 from cinder import test
 from cinder.tests.unit.api import fakes
 
@@ -31,7 +33,9 @@ class UsedLimitsTestCase(test.TestCase):
         super(UsedLimitsTestCase, self).setUp()
         self.controller = used_limits.UsedLimitsController()
 
-    def test_used_limits(self):
+    @mock.patch('cinder.quota.QUOTAS.get_project_quotas')
+    @mock.patch('cinder.policy.enforce')
+    def test_used_limits(self, _mock_policy_enforce, _mock_get_project_quotas):
         fake_req = FakeRequest(fakes.FakeRequestContext('fake', 'fake'))
         obj = {
             "limits": {
@@ -50,17 +54,30 @@ class UsedLimitsTestCase(test.TestCase):
         for display_name, q in quota_map.items():
             limits[q] = {'limit': 2,
                          'in_use': 1}
+        _mock_get_project_quotas.return_value = limits
 
-        def stub_get_project_quotas(context, project_id, usages=True):
-            return limits
-
-        self.stubs.Set(quota.QUOTAS, "get_project_quotas",
-                       stub_get_project_quotas)
-
-        self.mox.ReplayAll()
+        # allow user to access used limits
+        _mock_policy_enforce.return_value = None
 
         self.controller.index(fake_req, res)
         abs_limits = res.obj['limits']['absolute']
         for used_limit, value in abs_limits.items():
             self.assertEqual(value,
                              limits[quota_map[used_limit]]['in_use'])
+
+        obj = {
+            "limits": {
+                "rate": [],
+                "absolute": {},
+            },
+        }
+        res = wsgi.ResponseObject(obj)
+
+        # unallow user to access used limits
+        _mock_policy_enforce.side_effect = exception.NotAuthorized
+
+        self.controller.index(fake_req, res)
+        abs_limits = res.obj['limits']['absolute']
+        self.assertNotIn('totalVolumesUsed', abs_limits)
+        self.assertNotIn('totalGigabytesUsed', abs_limits)
+        self.assertNotIn('totalSnapshotsUsed', abs_limits)
