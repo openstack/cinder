@@ -71,6 +71,13 @@ class LVM(executor.Executor):
         self._supports_lvchange_ignoreskipactivation = None
         self.vg_provisioned_capacity = 0.0
 
+        # Ensure LVM_SYSTEM_DIR has been added to LVM.LVM_CMD_PREFIX
+        # before the first LVM command is executed.
+        if lvm_conf and os.path.isfile(lvm_conf):
+            LVM.LVM_CMD_PREFIX = ['env',
+                                  'LC_ALL=C',
+                                  'LVM_SYSTEM_DIR=/etc/cinder']
+
         if create_vg and physical_volumes is not None:
             self.pv_list = physical_volumes
 
@@ -104,10 +111,6 @@ class LVM(executor.Executor):
             self.vg_thin_pool = pool_name
             self.activate_lv(self.vg_thin_pool)
         self.pv_list = self.get_all_physical_volumes(root_helper, vg_name)
-        if lvm_conf and os.path.isfile(lvm_conf):
-            LVM.LVM_CMD_PREFIX = ['env',
-                                  'LC_ALL=C',
-                                  'LVM_SYSTEM_DIR=/etc/cinder']
 
     def _vg_exists(self):
         """Simple check to see if VG exists.
