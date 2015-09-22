@@ -20,10 +20,11 @@
 """Unit tests for brcd fc san lookup service."""
 
 import mock
+from oslo_concurrency import processutils as putils
 from oslo_config import cfg
-import paramiko
 
 from cinder import exception
+from cinder import ssh_utils
 from cinder import test
 from cinder.volume import configuration as conf
 import cinder.zonemanager.drivers.brocade.brcd_fc_san_lookup_service \
@@ -31,14 +32,41 @@ import cinder.zonemanager.drivers.brocade.brcd_fc_san_lookup_service \
 from cinder.zonemanager.drivers.brocade import fc_zone_constants
 
 
-nsshow = '20:1a:00:05:1e:e8:e3:29'
-switch_data = [' N 011a00;2,3;20:1a:00:05:1e:e8:e3:29;\
-                 20:1a:00:05:1e:e8:e3:29;na']
-nsshow_data = ['10:00:8c:7c:ff:52:3b:01', '20:24:00:02:ac:00:0a:50']
+parsed_switch_port_wwns = ['20:1a:00:05:1e:e8:e3:29',
+                           '10:00:00:90:fa:34:40:f6']
+switch_data = ("""
+ Type Pid    COS     PortName                NodeName                 TTL(sec)
+ N    011a00;    2,3;    %(port_1)s;    20:1a:00:05:1e:e8:e3:29;    na
+    FC4s: FCP
+    PortSymb: [26] "222222 - 1:1:1 - LPe12442"
+    NodeSymb: [32] "SomeSym 7211"
+    Fabric Port Name: 20:1a:00:05:1e:e8:e3:29
+    Permanent Port Name: 22:22:00:22:ac:00:bc:b0
+    Port Index: 0
+    Share Area: No
+    Device Shared in Other AD: No
+    Redirect: No
+    Partial: No
+    LSAN: No
+ N    010100;    2,3;    %(port_2)s;    20:00:00:00:af:00:00:af;     na
+    FC4s: FCP
+    PortSymb: [26] "333333 - 1:1:1 - LPe12442"
+    NodeSymb: [32] "SomeSym 2222"
+    Fabric Port Name: 10:00:00:90:fa:34:40:f6
+    Permanent Port Name: 22:22:00:22:ac:00:bc:b0
+    Port Index: 0
+    Share Area: No
+    Device Shared in Other AD: No
+    Redirect: No
+    Partial: No
+    LSAN: No""" % {'port_1': parsed_switch_port_wwns[0],
+                   'port_2': parsed_switch_port_wwns[1]})
+
 _device_map_to_verify = {
     'BRCD_FAB_2': {
-        'initiator_port_wwn_list': ['10008c7cff523b01'],
-        'target_port_wwn_list': ['20240002ac000a50']}}
+        'initiator_port_wwn_list': [parsed_switch_port_wwns[1].replace(':',
+                                                                       '')],
+        'target_port_wwn_list': [parsed_switch_port_wwns[0].replace(':', '')]}}
 
 
 class TestBrcdFCSanLookupService(brcd_lookup.BrcdFCSanLookupService,
@@ -46,7 +74,6 @@ class TestBrcdFCSanLookupService(brcd_lookup.BrcdFCSanLookupService,
 
     def setUp(self):
         super(TestBrcdFCSanLookupService, self).setUp()
-        self.client = paramiko.SSHClient()
         self.configuration = conf.Configuration(None)
         self.configuration.set_default('fc_fabric_names', 'BRCD_FAB_2',
                                        'fc-zone-manager')
@@ -73,57 +100,47 @@ class TestBrcdFCSanLookupService(brcd_lookup.BrcdFCSanLookupService,
         config = conf.Configuration(fc_fabric_opts, 'BRCD_FAB_2')
         self.fabric_configs = {'BRCD_FAB_2': config}
 
-    @mock.patch.object(paramiko.hostkeys.HostKeys, 'load')
-    def test_create_ssh_client(self, load_mock):
-        mock_args = {}
-        mock_args['known_hosts_file'] = 'dummy_host_key_file'
-        mock_args['missing_key_policy'] = paramiko.RejectPolicy()
-        ssh_client = self.create_ssh_client(**mock_args)
-        self.assertEqual('dummy_host_key_file', ssh_client._host_keys_filename)
-        self.assertTrue(isinstance(ssh_client._policy, paramiko.RejectPolicy))
-        mock_args = {}
-        ssh_client = self.create_ssh_client(**mock_args)
-        self.assertIsNone(ssh_client._host_keys_filename)
-        self.assertTrue(isinstance(ssh_client._policy, paramiko.WarningPolicy))
-
     @mock.patch.object(brcd_lookup.BrcdFCSanLookupService,
                        'get_nameserver_info')
-    def test_get_device_mapping_from_network(self, get_nameserver_info_mock):
-        initiator_list = ['10008c7cff523b01']
-        target_list = ['20240002ac000a50', '20240002ac000a40']
-        with mock.patch.object(self.client, 'connect'):
-            get_nameserver_info_mock.return_value = (nsshow_data)
-            device_map = self.get_device_mapping_from_network(
-                initiator_list, target_list)
-            self.assertDictMatch(device_map, _device_map_to_verify)
+    @mock.patch('cinder.zonemanager.drivers.brocade.brcd_fc_san_lookup_service'
+                '.ssh_utils.SSHPool')
+    def test_get_device_mapping_from_network(self, mock_ssh_pool,
+                                             get_nameserver_info_mock):
+        initiator_list = [parsed_switch_port_wwns[1]]
+        target_list = [parsed_switch_port_wwns[0], '20240002ac000a40']
+        get_nameserver_info_mock.return_value = parsed_switch_port_wwns
+        device_map = self.get_device_mapping_from_network(
+            initiator_list, target_list)
+        self.assertDictMatch(device_map, _device_map_to_verify)
 
     @mock.patch.object(brcd_lookup.BrcdFCSanLookupService, '_get_switch_data')
     def test_get_nameserver_info(self, get_switch_data_mock):
         ns_info_list = []
-        ns_info_list_expected = ['20:1a:00:05:1e:e8:e3:29',
-                                 '20:1a:00:05:1e:e8:e3:29']
+
         get_switch_data_mock.return_value = (switch_data)
-        ns_info_list = self.get_nameserver_info()
+        # get_switch_data will be called twice with the results appended
+        ns_info_list_expected = (parsed_switch_port_wwns +
+                                 parsed_switch_port_wwns)
+
+        ns_info_list = self.get_nameserver_info(None)
         self.assertEqual(ns_info_list_expected, ns_info_list)
 
-    def test__get_switch_data(self):
-        cmd = fc_zone_constants.NS_SHOW
-
-        with mock.patch.object(self.client, 'exec_command') \
-                as exec_command_mock:
-            exec_command_mock.return_value = (Stream(),
-                                              Stream(nsshow),
-                                              Stream())
-            switch_data = self._get_switch_data(cmd)
-            self.assertEqual(nsshow, switch_data)
-            exec_command_mock.assert_called_once_with(cmd)
+    @mock.patch.object(putils, 'ssh_execute', return_value=(switch_data, ''))
+    @mock.patch.object(ssh_utils.SSHPool, 'item')
+    def test__get_switch_data(self, ssh_pool_mock, ssh_execute_mock):
+        actual_switch_data = self._get_switch_data(ssh_pool_mock,
+                                                   fc_zone_constants.NS_SHOW)
+        self.assertEqual(actual_switch_data, switch_data)
+        ssh_execute_mock.side_effect = putils.ProcessExecutionError()
+        self.assertRaises(exception.FCSanLookupServiceException,
+                          self._get_switch_data, ssh_pool_mock,
+                          fc_zone_constants.NS_SHOW)
 
     def test__parse_ns_output(self):
-        invalid_switch_data = [' N 011a00;20:1a:00:05:1e:e8:e3:29']
+        invalid_switch_data = ' N 011a00;20:1a:00:05:1e:e8:e3:29'
         return_wwn_list = []
-        expected_wwn_list = ['20:1a:00:05:1e:e8:e3:29']
         return_wwn_list = self._parse_ns_output(switch_data)
-        self.assertEqual(expected_wwn_list, return_wwn_list)
+        self.assertEqual(parsed_switch_port_wwns, return_wwn_list)
         self.assertRaises(exception.InvalidParameterValue,
                           self._parse_ns_output, invalid_switch_data)
 
@@ -133,23 +150,3 @@ class TestBrcdFCSanLookupService(brcd_lookup.BrcdFCSanLookupService,
         expected_wwn_list = ['10:00:8c:7c:ff:52:3b:01']
         return_wwn_list.append(self.get_formatted_wwn(wwn_list[0]))
         self.assertEqual(expected_wwn_list, return_wwn_list)
-
-
-class Channel(object):
-    def recv_exit_status(self):
-        return 0
-
-
-class Stream(object):
-    def __init__(self, buffer=''):
-        self.buffer = buffer
-        self.channel = Channel()
-
-    def readlines(self):
-        return self.buffer
-
-    def close(self):
-        pass
-
-    def flush(self):
-        self.buffer = ''
