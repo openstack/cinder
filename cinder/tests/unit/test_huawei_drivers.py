@@ -1758,6 +1758,11 @@ class Huawei18000ISCSIDriverTestCase(test.TestCase):
         url.appendChild(url_text)
         storage.appendChild(url)
 
+        storagepool = doc.createElement('StoragePool')
+        pool_text = doc.createTextNode('OpenStack_Pool')
+        storagepool.appendChild(pool_text)
+        storage.appendChild(storagepool)
+
         lun = doc.createElement('LUN')
         config.appendChild(lun)
         storagepool = doc.createElement('StoragePool')
@@ -2206,6 +2211,17 @@ class Huawei18000FCDriverTestCase(test.TestCase):
         re = self.driver.restclient._get_id_from_result(result, name, key)
         self.assertEqual('1', re)
 
+    @mock.patch.object(rest_client.RestClient, 'find_pool_info',
+                       return_value={'ID': 1,
+                                     'CAPACITY': 110362624,
+                                     'TOTALCAPACITY': 209715200})
+    def test_get_capacity(self, mock_find_pool_info):
+        expected_pool_capacity = {'total_capacity': 100.0,
+                                  'free_capacity': 52.625}
+        pool_capacity = self.driver.restclient._get_capacity(None,
+                                                             None)
+        self.assertEqual(expected_pool_capacity, pool_capacity)
+
     def create_fake_conf_file(self):
         """Create a fake Config file
 
@@ -2248,6 +2264,11 @@ class Huawei18000FCDriverTestCase(test.TestCase):
                                       'deviceManager/rest/')
         url.appendChild(url_text)
         storage.appendChild(url)
+
+        storagepool = doc.createElement('StoragePool')
+        pool_text = doc.createTextNode('OpenStack_Pool')
+        storagepool.appendChild(pool_text)
+        storage.appendChild(storagepool)
 
         lun = doc.createElement('LUN')
         config.appendChild(lun)
