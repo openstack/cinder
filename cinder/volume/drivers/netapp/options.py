@@ -80,14 +80,6 @@ netapp_provisioning_opts = [
                        'the volume creation request.  Note: this option '
                        'is deprecated and will be removed in favor of '
                        '"reserved_percentage" in the Mitaka release.')),
-    cfg.StrOpt('netapp_volume_list',
-               default=None,
-               help=('This option is only utilized when the storage protocol '
-                     'is configured to use iSCSI or FC. This option is used '
-                     'to restrict provisioning to the specified controller '
-                     'volumes. Specify the value of this option to be a '
-                     'comma separated list of NetApp controller volume names '
-                     'to be used for provisioning.')),
     cfg.StrOpt('netapp_lun_space_reservation',
                default='enabled',
                choices=['enabled', 'disabled'],
@@ -164,13 +156,6 @@ netapp_eseries_opts = [
                default=None,
                help=('Password for the NetApp E-Series storage array.'),
                secret=True),
-    cfg.StrOpt('netapp_storage_pools',
-               default=None,
-               help=('This option is used to restrict provisioning to the '
-                     'specified storage pools. Only dynamic disk pools are '
-                     'currently supported. Specify the value of this option to'
-                     ' be a comma separated list of disk pool names to be used'
-                     ' for provisioning.')),
     cfg.BoolOpt('netapp_enable_multiattach',
                 default=False,
                 help='This option specifies whether the driver should allow '
@@ -200,7 +185,19 @@ netapp_san_opts = [
                help=('This option defines the type of operating system for'
                      ' all initiators that can access a LUN. This information'
                      ' is used when mapping LUNs to individual hosts or'
-                     ' groups of hosts.'))]
+                     ' groups of hosts.')),
+    cfg.StrOpt('netapp_pool_name_search_pattern',
+               deprecated_opts=[cfg.DeprecatedOpt(name='netapp_volume_list'),
+                                cfg.DeprecatedOpt(name='netapp_storage_pools')
+                                ],
+               default="(.+)",
+               help=('This option is used to restrict provisioning to the '
+                     'specified pools. Specify the value of '
+                     'this option to be a regular expression which will be '
+                     'applied to the names of objects from the storage '
+                     'backend which represent pools in Cinder. This option '
+                     'is only utilized when the storage protocol is '
+                     'configured to use iSCSI or FC.')), ]
 
 CONF = cfg.CONF
 CONF.register_opts(netapp_proxy_opts)

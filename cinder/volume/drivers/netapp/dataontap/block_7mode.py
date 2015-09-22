@@ -6,6 +6,7 @@
 # Copyright (c) 2014 Andrew Kerr.  All rights reserved.
 # Copyright (c) 2014 Jeff Applewhite.  All rights reserved.
 # Copyright (c) 2015 Tom Barron.  All rights reserved.
+# Copyright (c) 2015 Goutham Pacha Ravi. All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -23,6 +24,7 @@ Volume driver library for NetApp 7-mode block storage systems.
 """
 
 from oslo_log import log as logging
+from oslo_log import versionutils
 from oslo_utils import timeutils
 from oslo_utils import units
 import six
@@ -54,10 +56,7 @@ class NetAppBlockStorage7modeLibrary(block_base.NetAppBlockStorageLibrary):
     def do_setup(self, context):
         super(NetAppBlockStorage7modeLibrary, self).do_setup(context)
 
-        self.volume_list = self.configuration.netapp_volume_list
-        if self.volume_list:
-            self.volume_list = self.volume_list.split(',')
-            self.volume_list = [el.strip() for el in self.volume_list]
+        self.volume_list = []
 
         self.vfiler = self.configuration.netapp_vfiler
 
@@ -108,6 +107,14 @@ class NetAppBlockStorage7modeLibrary(block_base.NetAppBlockStorageLibrary):
         else:
             msg = _("API version could not be determined.")
             raise exception.VolumeBackendAPIException(data=msg)
+
+        self._refresh_volume_info()
+
+        if not self.volume_list:
+            msg = _('No pools are available for provisioning volumes. '
+                    'Ensure that the configuration option '
+                    'netapp_pool_name_search_pattern is set correctly.')
+            raise exception.NetAppDriverException(msg)
         super(NetAppBlockStorage7modeLibrary, self).check_for_setup_error()
 
     def _create_lun(self, volume_name, lun_name, size,
@@ -254,13 +261,12 @@ class NetAppBlockStorage7modeLibrary(block_base.NetAppBlockStorageLibrary):
         """Retrieve pool (i.e. Data ONTAP volume) stats info from volumes."""
 
         pools = []
-        if not self.vols:
-            return pools
 
         for vol in self.vols:
 
-            # omit volumes not specified in the config
             volume_name = vol.get_child_content('name')
+
+            # omit volumes not specified in the config
             if self.volume_list and volume_name not in self.volume_list:
                 continue
 
@@ -306,6 +312,35 @@ class NetAppBlockStorage7modeLibrary(block_base.NetAppBlockStorageLibrary):
 
         return pools
 
+    def _get_filtered_pools(self):
+        """Return available pools filtered by a pool name search pattern."""
+
+        # Inform deprecation of legacy option.
+        if self.configuration.safe_get('netapp_volume_list'):
+            msg = _LW("The option 'netapp_volume_list' is deprecated and "
+                      "will be removed in the future releases. Please use "
+                      "the option 'netapp_pool_name_search_pattern' instead.")
+            versionutils.report_deprecated_feature(LOG, msg)
+
+        pool_regex = na_utils.get_pool_name_filter_regex(self.configuration)
+
+        filtered_pools = []
+        for vol in self.vols:
+            vol_name = vol.get_child_content('name')
+            if pool_regex.match(vol_name):
+                msg = ("Volume '%(vol_name)s' matches against regular "
+                       "expression: %(vol_pattern)s")
+                LOG.debug(msg, {'vol_name': vol_name,
+                                'vol_pattern': pool_regex.pattern})
+                filtered_pools.append(vol_name)
+            else:
+                msg = ("Volume '%(vol_name)s' does not match against regular "
+                       "expression: %(vol_pattern)s")
+                LOG.debug(msg, {'vol_name': vol_name,
+                                'vol_pattern': pool_regex.pattern})
+
+        return filtered_pools
+
     def _get_lun_block_count(self, path):
         """Gets block counts for the LUN."""
         bs = super(NetAppBlockStorage7modeLibrary,
@@ -333,6 +368,7 @@ class NetAppBlockStorage7modeLibrary(block_base.NetAppBlockStorageLibrary):
                     return
                 self.vol_refresh_voluntary = False
                 self.vols = self.zapi_client.get_filer_volumes()
+                self.volume_list = self._get_filtered_pools()
                 self.vol_refresh_time = timeutils.utcnow()
             except Exception as e:
                 LOG.warning(_LW("Error refreshing volume info. Message: %s"),

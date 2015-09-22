@@ -6,6 +6,7 @@
 # Copyright (c) 2014 Andrew Kerr.  All rights reserved.
 # Copyright (c) 2014 Jeff Applewhite.  All rights reserved.
 # Copyright (c) 2015 Tom Barron.  All rights reserved.
+# Copyright (c) 2015 Goutham Pacha Ravi. All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -70,12 +71,19 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary):
             port=self.configuration.netapp_server_port,
             vserver=self.vserver)
 
-        self.ssc_vols = None
+        self.ssc_vols = {}
         self.stale_vols = set()
 
     def check_for_setup_error(self):
         """Check that the driver is working and can communicate."""
         ssc_cmode.check_ssc_api_permissions(self.zapi_client)
+        ssc_cmode.refresh_cluster_ssc(self, self.zapi_client.get_connection(),
+                                      self.vserver, synchronous=True)
+        if not self._get_filtered_pools():
+            msg = _('No pools are available for provisioning volumes. '
+                    'Ensure that the configuration option '
+                    'netapp_pool_name_search_pattern is set correctly.')
+            raise exception.NetAppDriverException(msg)
         super(NetAppBlockStorageCmodeLibrary, self).check_for_setup_error()
         self._start_periodic_tasks()
 
@@ -191,10 +199,11 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary):
         """Retrieve pool (Data ONTAP volume) stats info from SSC volumes."""
 
         pools = []
+
         if not self.ssc_vols:
             return pools
 
-        for vol in self.ssc_vols['all']:
+        for vol in self._get_filtered_pools():
             pool = dict()
             pool['pool_name'] = vol.id['name']
             pool['QoS_support'] = True
@@ -243,6 +252,27 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary):
             pools.append(pool)
 
         return pools
+
+    def _get_filtered_pools(self):
+        """Return filtered pools given a pool name search pattern."""
+        pool_regex = na_utils.get_pool_name_filter_regex(self.configuration)
+
+        filtered_pools = []
+        for vol in self.ssc_vols.get('all', []):
+            vol_name = vol.id['name']
+            if pool_regex.match(vol_name):
+                msg = ("Volume '%(vol_name)s' matches against regular "
+                       "expression: %(vol_pattern)s")
+                LOG.debug(msg, {'vol_name': vol_name,
+                                'vol_pattern': pool_regex.pattern})
+                filtered_pools.append(vol)
+            else:
+                msg = ("Volume '%(vol_name)s' does not match against regular "
+                       "expression: %(vol_pattern)s")
+                LOG.debug(msg, {'vol_name': vol_name,
+                                'vol_pattern': pool_regex.pattern})
+
+        return filtered_pools
 
     @utils.synchronized('update_stale')
     def _update_stale_vols(self, volume=None, reset=False):
