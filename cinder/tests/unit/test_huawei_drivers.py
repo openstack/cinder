@@ -84,7 +84,8 @@ test_snap = {'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0635',
              'display_description': 'test volume',
              'volume_type_id': None,
              'provider_location': '11',
-             'volume': {"volume_id": '21ec7341-9256-497b-97d9-ef48edcf0635'}
+             'volume': {"volume_id": '21ec7341-9256-497b-97d9-ef48edcf0635'},
+             'volume': {'provider_location': '12'},
              }
 
 test_host = {'host': 'ubuntu001@backend001#OpenStack_Pool',
@@ -1227,6 +1228,8 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/MAPPINGVIEW/CREATE_ASSOCIATE/PUT'] = (
 MAP_COMMAND_TO_FAKE_RESPONSE['/fc_initiator?ISFREE=true&'
                              'range=[0-8191]/GET'] = (
     FAKE_FC_INFO_RESPONSE)
+MAP_COMMAND_TO_FAKE_RESPONSE['/fc_initiator/10000090fa0d6754/GET'] = (
+    FAKE_FC_INFO_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/fc_initiator/10000090fa0d6754/PUT'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
@@ -1250,6 +1253,9 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/fc_port/GET'] = (
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/fc_initiator/GET'] = (
     FAKE_GET_FC_PORT_RESPONSE)
+
+MAP_COMMAND_TO_FAKE_RESPONSE['/lun/associate/cachepartition/POST'] = (
+    FAKE_SYSTEM_VERSION_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/fc_initiator?range=[0-100]/GET'] = (
     FAKE_GET_FC_PORT_RESPONSE)
@@ -1407,6 +1413,14 @@ class Huawei18000ISCSIDriverTestCase(test.TestCase):
         lun_info = self.driver.create_snapshot(test_snap)
         self.assertEqual(11, lun_info['provider_location'])
 
+        test_snap['volume']['provider_location'] = ''
+        lun_info = self.driver.create_snapshot(test_snap)
+        self.assertEqual(11, lun_info['provider_location'])
+
+        test_snap['volume']['provider_location'] = None
+        lun_info = self.driver.create_snapshot(test_snap)
+        self.assertEqual(11, lun_info['provider_location'])
+
     def test_delete_snapshot_success(self):
         self.driver.restclient.login()
         delete_flag = self.driver.delete_snapshot(test_snap)
@@ -1454,6 +1468,9 @@ class Huawei18000ISCSIDriverTestCase(test.TestCase):
     def test_create_volume_fail(self):
         self.driver.restclient.login()
         self.driver.restclient.test_fail = True
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_volume, test_volume)
+
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_volume, error_volume)
 
@@ -1756,6 +1773,14 @@ class Huawei18000FCDriverTestCase(test.TestCase):
 
     def test_create_snapshot_success(self):
         self.driver.restclient.login()
+        lun_info = self.driver.create_snapshot(test_snap)
+        self.assertEqual(11, lun_info['provider_location'])
+
+        test_snap['volume']['provider_location'] = ''
+        lun_info = self.driver.create_snapshot(test_snap)
+        self.assertEqual(11, lun_info['provider_location'])
+
+        test_snap['volume']['provider_location'] = None
         lun_info = self.driver.create_snapshot(test_snap)
         self.assertEqual(11, lun_info['provider_location'])
 
