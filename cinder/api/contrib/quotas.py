@@ -211,13 +211,22 @@ class QuotaSetsController(wsgi.Controller):
         else:
             usage = False
 
-        # With hierarchical projects, only the admin of the current project or
-        # the root project has privilege to perform quota show operations.
-        target_project = self._get_project(context, target_project_id)
-        context_project = self._get_project(context, context.project_id,
-                                            subtree_as_ids=True)
+        try:
+            # With hierarchical projects, only the admin of the current project
+            # or the root project has privilege to perform quota show
+            # operations.
+            target_project = self._get_project(context, target_project_id)
+            context_project = self._get_project(context, context.project_id,
+                                                subtree_as_ids=True)
 
-        self._authorize_show(context_project, target_project)
+            self._authorize_show(context_project, target_project)
+            parent_project_id = target_project.parent_id
+        except exceptions.Forbidden:
+            # NOTE(e0ne): Keystone API v2 requires admin permissions for
+            # project_get method. We ignore Forbidden exception for
+            # non-admin users.
+            parent_project_id = target_project_id
+
         try:
             sqlalchemy_api.authorize_project_context(context,
                                                      target_project_id)
@@ -225,7 +234,7 @@ class QuotaSetsController(wsgi.Controller):
             raise webob.exc.HTTPForbidden()
 
         quotas = self._get_quotas(context, target_project_id, usage,
-                                  parent_project_id=target_project.parent_id)
+                                  parent_project_id=parent_project_id)
         return self._format_quota_set(target_project_id, quotas)
 
     @wsgi.serializers(xml=QuotaTemplate)
@@ -277,8 +286,8 @@ class QuotaSetsController(wsgi.Controller):
         parent_id = target_project.parent_id
 
         if parent_id:
-            # Get the children of the project which the token is scoped to in
-            # order to know if the target_project is in its hierarchy.
+            # Get the children of the project which the token is scoped to
+            # in order to know if the target_project is in its hierarchy.
             context_project = self._get_project(context,
                                                 context.project_id,
                                                 subtree_as_ids=True)
@@ -340,9 +349,17 @@ class QuotaSetsController(wsgi.Controller):
     def defaults(self, req, id):
         context = req.environ['cinder.context']
         authorize_show(context)
-        project = self._get_project(context, context.project_id)
+        try:
+            project = self._get_project(context, context.project_id)
+            parent_id = project.parent_id
+        except exceptions.Forbidden:
+            # NOTE(e0ne): Keystone API v2 requires admin permissions for
+            # project_get method. We ignore Forbidden exception for
+            # non-admin users.
+            parent_id = context.project_id
+
         return self._format_quota_set(id, QUOTAS.get_defaults(
-            context, parent_project_id=project.parent_id))
+            context, parent_project_id=parent_id))
 
     @wsgi.serializers(xml=QuotaTemplate)
     def delete(self, req, id):
