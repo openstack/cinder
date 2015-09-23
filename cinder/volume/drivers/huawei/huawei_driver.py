@@ -868,7 +868,7 @@ class Huawei18000ISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
         lun_id = self.restclient.get_lunid(volume, volume_name)
 
         # Mapping lungroup and hostgroup to view.
-        self.restclient.do_mapping(volume_name, hostgroup_id,
+        self.restclient.do_mapping(lun_id, hostgroup_id,
                                    host_id, portgroup_id)
 
         hostlun_id = self.restclient.find_host_lun_id(host_id, lun_id)
@@ -1085,7 +1085,7 @@ class Huawei18000FCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
 
         # Add host into hostgroup.
         hostgroup_id = self.restclient.add_host_into_hostgroup(host_id)
-        self.restclient.do_mapping(volume_name, hostgroup_id, host_id)
+        self.restclient.do_mapping(lun_id, hostgroup_id, host_id)
         host_lun_id = self.restclient.find_host_lun_id(host_id, lun_id)
 
         # Return FC properties.
