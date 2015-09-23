@@ -60,3 +60,4 @@ HUAWEI_VALID_KEYS = ['maxIOPS', 'minIOPS', 'minBandWidth',
                      'maxBandWidth', 'latency', 'IOType']
 QOS_KEYS = ['MAXIOPS', 'MINIOPS', 'MINBANDWidth',
             'MAXBANDWidth', 'LATENCY', 'IOTYPE']
+MAX_LUN_NUM_IN_QOS = 64
