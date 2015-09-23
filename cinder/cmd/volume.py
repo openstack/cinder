@@ -42,6 +42,7 @@ i18n.enable_lazy()
 # Need to register global_opts
 from cinder.common import config  # noqa
 from cinder.db import api as session
+from cinder.i18n import _
 from cinder import service
 from cinder import utils
 from cinder import version
@@ -62,20 +63,36 @@ def main():
     utils.monkey_patch()
     gmr.TextGuruMeditation.setup_autorun(version)
     launcher = service.get_launcher()
+    LOG = logging.getLogger(__name__)
+    service_started = False
+
     if CONF.enabled_backends:
         for backend in CONF.enabled_backends:
             CONF.register_opt(host_opt, group=backend)
             backend_host = getattr(CONF, backend).backend_host
             host = "%s@%s" % (backend_host or CONF.host, backend)
-            server = service.Service.create(host=host,
-                                            service_name=backend,
-                                            binary='cinder-volume')
-            # Dispose of the whole DB connection pool here before
-            # starting another process.  Otherwise we run into cases where
-            # child processes share DB connections which results in errors.
-            session.dispose_engine()
-            launcher.launch_service(server)
+            try:
+                server = service.Service.create(host=host,
+                                                service_name=backend,
+                                                binary='cinder-volume')
+            except Exception:
+                msg = _('Volume service %s failed to start.') % host
+                LOG.exception(msg)
+            else:
+                # Dispose of the whole DB connection pool here before
+                # starting another process.  Otherwise we run into cases where
+                # child processes share DB connections which results in errors.
+                session.dispose_engine()
+                launcher.launch_service(server)
+                service_started = True
     else:
         server = service.Service.create(binary='cinder-volume')
         launcher.launch_service(server)
+        service_started = True
+
+    if not service_started:
+        msg = _('No volume service(s) started successfully, terminating.')
+        LOG.error(msg)
+        sys.exit(1)
+
     launcher.wait()
