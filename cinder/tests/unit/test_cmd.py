@@ -428,7 +428,7 @@ class TestCinderManageCmd(test.TestCase):
         mock_rpc_client = get_client.return_value
 
         volume_cmds = cinder_manage.VolumeCommands()
-        rpc_client = volume_cmds.rpc_client()
+        rpc_client = volume_cmds._rpc_client()
 
         rpc_initialized.assert_called_once_with()
         rpc_init.assert_called_once_with(CONF)
