@@ -134,9 +134,9 @@ class Fake_CIMProperty(object):
         cimproperty.value = '10000000000'
         return cimproperty
 
-    def fake_getElementNameCIMProperty(self):
+    def fake_getElementNameCIMProperty(self, name):
         cimproperty = Fake_CIMProperty()
-        cimproperty.value = 'OS-myhost-MV'
+        cimproperty.value = name
         return cimproperty
 
     def fake_getSupportedReplicationTypes(self):
@@ -815,7 +815,7 @@ class FakeEcomConnection(object):
 
         classcimproperty = Fake_CIMProperty()
         elementName = (
-            classcimproperty.fake_getElementNameCIMProperty())
+            classcimproperty.fake_getElementNameCIMProperty('OS-myhost-MV'))
         properties = {u'ElementName': elementName}
         antecedent.properties = properties
 
@@ -824,6 +824,19 @@ class FakeEcomConnection(object):
         unitname['CreationClassName'] = self.data.unit_creationclass
         unitnames.append(unitname)
 
+        # Second masking
+        unitname2 = unitname.copy()
+        elementName2 = (
+            classcimproperty.fake_getElementNameCIMProperty('OS-fakehost-MV'))
+        properties2 = {u'ElementName': elementName2}
+
+        antecedent2 = SYMM_LunMasking()
+        antecedent2['CreationClassName'] = self.data.lunmask_creationclass2
+        antecedent2['SystemName'] = self.data.storage_system
+
+        antecedent2.properties = properties2
+        unitname2['Antecedent'] = antecedent2
+        unitnames.append(unitname2)
         return unitnames
 
     def _default_ref(self, objectpath):
@@ -1789,6 +1802,19 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
 
     def fake_is_v3(self, conn, serialNumber):
         return False
+
+    def test_find_device_number(self):
+        host = 'myhost'
+        data = (
+            self.driver.common.find_device_number(self.data.test_volume_v2,
+                                                  host))
+        self.assertEqual('OS-myhost-MV', data['maskingview'])
+        host = 'bogushost'
+        data = (
+            self.driver.common.find_device_number(self.data.test_volume_v2,
+                                                  host))
+        # Empty dict
+        self.assertFalse(data)
 
     def test_unbind_and_get_volume_from_storage_pool(self):
         conn = self.fake_ecom_connection()

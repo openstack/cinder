@@ -320,7 +320,7 @@ class EMCVMAXCommon(object):
         LOG.info(_LI("Unmap volume: %(volume)s."),
                  {'volume': volumename})
 
-        device_info = self.find_device_number(volume)
+        device_info = self.find_device_number(volume, connector['host'])
         device_number = device_info['hostlunid']
         if device_number is None:
             LOG.info(_LI("Volume %s is not mapped. No volume to unmap."),
@@ -374,7 +374,7 @@ class EMCVMAXCommon(object):
         LOG.info(_LI("Initialize connection: %(volume)s."),
                  {'volume': volumeName})
         self.conn = self._get_ecom_connection()
-        deviceInfoDict = self.find_device_number(volume)
+        deviceInfoDict = self.find_device_number(volume, connector['host'])
 
         if ('hostlunid' in deviceInfoDict and
                 deviceInfoDict['hostlunid'] is not None):
@@ -423,7 +423,7 @@ class EMCVMAXCommon(object):
             self.conn, maskingViewDict, extraSpecs)
 
         # Find host lun id again after the volume is exported to the host.
-        deviceInfoDict = self.find_device_number(volume)
+        deviceInfoDict = self.find_device_number(volume, connector['host'])
         if 'hostlunid' not in deviceInfoDict:
             # Did not successfully attach to host,
             # so a rollback for FAST is required.
@@ -1412,15 +1412,18 @@ class EMCVMAXCommon(object):
                    'initiator': foundinitiatornames})
         return foundinitiatornames
 
-    def find_device_number(self, volume):
+    def find_device_number(self, volume, host):
         """Given the volume dict find a device number.
 
         Find a device number that a host can see
         for a volume.
 
         :param volume: the volume dict
+        :param host: host from connector
         :returns: dict -- the data dict
         """
+        maskedvols = []
+        data = {}
         foundNumDeviceNumber = None
         foundMaskingViewName = None
         volumeName = volume['name']
@@ -1448,23 +1451,33 @@ class EMCVMAXCommon(object):
                     if properties[0] == 'ElementName':
                         cimProperties = properties[1]
                         foundMaskingViewName = cimProperties.value
-                        break
 
-                break
+                devicedict = {'hostlunid': foundNumDeviceNumber,
+                              'storagesystem': storageSystemName,
+                              'maskingview': foundMaskingViewName}
+                maskedvols.append(devicedict)
 
-        if foundNumDeviceNumber is None:
+        if not maskedvols:
             LOG.debug(
                 "Device number not found for volume "
                 "%(volumeName)s %(volumeInstance)s.",
                 {'volumeName': volumeName,
                  'volumeInstance': volumeInstance.path})
+        else:
+            hoststr = ("-%(host)s-"
+                       % {'host': host})
 
-        data = {'hostlunid': foundNumDeviceNumber,
-                'storagesystem': storageSystemName,
-                'maskingview': foundMaskingViewName}
+            for maskedvol in maskedvols:
+                if hoststr.lower() in maskedvol['maskingview'].lower():
+                    data = maskedvol
+                    break
+            if not data:
+                LOG.warning(_LW(
+                    "Volume is masked but not to host %(host)s as "
+                    "expected. Returning empty dictionary."),
+                    {'host': hoststr})
 
         LOG.debug("Device info: %(data)s.", {'data': data})
-
         return data
 
     def get_target_wwns(self, storageSystem, connector):

@@ -212,7 +212,8 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
         LOG.debug("ISCSI Discovery: Found %s", location)
         properties['target_discovered'] = True
 
-        device_info = self.common.find_device_number(volume)
+        device_info = self.common.find_device_number(
+            volume, connector['host'])
 
         if device_info is None or device_info['hostlunid'] is None:
             exception_message = (_("Cannot find device number for volume "
