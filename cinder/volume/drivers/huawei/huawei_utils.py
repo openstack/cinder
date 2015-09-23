@@ -487,7 +487,7 @@ def check_conf_file(xml_file_path):
     resturl = root.findtext('Storage/RestURL')
     username = root.findtext('Storage/UserName')
     pwd = root.findtext('Storage/UserPassword')
-    pool_node = root.findall('Storage/StoragePool')
+    pool_node = root.findall('LUN/StoragePool')
 
     if (not resturl) or (not username) or (not pwd):
         err_msg = (_(

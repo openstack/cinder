@@ -177,9 +177,7 @@ class RestClient(object):
 
     def check_lun_exist(self, lun_id):
         url = "/lun/" + lun_id
-        data = json.dumps({"TYPE": "11",
-                           "ID": lun_id})
-        result = self.call(url, data, "GET")
+        result = self.call(url, None, "GET")
         error_code = result['error']['code']
         if error_code != 0:
             return False
@@ -282,9 +280,7 @@ class RestClient(object):
 
     def check_snapshot_exist(self, snapshot_id):
         url = "/snapshot/%s" % snapshot_id
-        data = json.dumps({"TYPE": "27",
-                           "ID": snapshot_id})
-        result = self.call(url, data, "GET")
+        result = self.call(url, None, "GET")
         error_code = result['error']['code']
         if error_code != 0:
             return False
@@ -305,8 +301,7 @@ class RestClient(object):
 
     def get_snapshotid_by_name(self, name):
         url = "/snapshot?range=[0-32767]"
-        data = json.dumps({"TYPE": "27"})
-        result = self.call(url, data, "GET")
+        result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Get snapshot id error.'))
 
         return self._get_id_from_result(result, name, 'NAME')
@@ -368,9 +363,8 @@ class RestClient(object):
                                  'view error.'))
 
     def _portgroup_associated(self, view_id, portgroup_id):
-        url_subfix = ("/mappingview/associate?TYPE=245&"
-                      "ASSOCIATEOBJTYPE=257&ASSOCIATEOBJID=%s" % portgroup_id)
-        url = url_subfix
+        url = ("/mappingview/associate?TYPE=245&"
+               "ASSOCIATEOBJTYPE=257&ASSOCIATEOBJID=%s" % portgroup_id)
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Check portgroup associate error.'))
 
@@ -579,8 +573,7 @@ class RestClient(object):
     def find_host(self, host_name):
         """Get the given host ID."""
         url = "/host?range=[0-65535]"
-        data = json.dumps({"TYPE": "21"})
-        result = self.call(url, data, "GET")
+        result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Find host in hostgroup error.'))
 
         return self._get_id_from_result(result, host_name, 'NAME')
@@ -725,7 +718,7 @@ class RestClient(object):
         data = json.dumps({"TYPE": "222",
                            "ID": initiator_name,
                            "USECHAP": "false"})
-        result = self.call(url, data)
+        result = self.call(url, data, "POST")
         self._assert_rest_result(result,
                                  _('Add initiator to array error.'))
 
@@ -829,8 +822,7 @@ class RestClient(object):
     def find_mapping_view(self, name):
         """Find mapping view."""
         url = "/mappingview?range=[0-8191]"
-        data = json.dumps({"TYPE": "245"})
-        result = self.call(url, data, "GET")
+        result = self.call(url, None, "GET")
 
         msg = _('Find mapping view error.')
         self._assert_rest_result(result, msg)
@@ -969,8 +961,7 @@ class RestClient(object):
     def get_luncopy_info(self, luncopy_id):
         """Get LUNcopy information."""
         url = "/LUNCOPY?range=[0-1023]"
-        data = json.dumps({"TYPE": "219", })
-        result = self.call(url, data, "GET")
+        result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Get LUNcopy information error.'))
 
         luncopyinfo = {}
@@ -1099,7 +1090,7 @@ class RestClient(object):
 
     def update_volume_stats(self):
         root = huawei_utils.parse_xml_file(self.xml_file_path)
-        pool_names = root.findtext('Storage/StoragePool')
+        pool_names = root.findtext('LUN/StoragePool')
         if not pool_names:
             msg = _(
                 'Invalid resource pool name. '
@@ -1301,9 +1292,7 @@ class RestClient(object):
     def get_qos_info(self, qos_id):
         """Get QoS information."""
         url = "/ioclass/" + qos_id
-        data = json.dumps({"TYPE": "230",
-                           "ID": qos_id})
-        result = self.call(url, data, "GET")
+        result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Get QoS information error.'))
 
         return result['data']
@@ -1357,10 +1346,7 @@ class RestClient(object):
     def get_qosid_by_lunid(self, lun_id):
         """Get QoS id by lun id."""
         url = "/lun/" + lun_id
-        data = json.dumps({"TYPE": "11",
-                           "ID": lun_id})
-
-        result = self.call(url, data, "GET")
+        result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Get QoS id by lun id error.'))
 
         return result['data']['IOCLASSID']
@@ -1382,9 +1368,7 @@ class RestClient(object):
 
     def get_lun_info(self, lun_id):
         url = "/lun/" + lun_id
-        data = json.dumps({"TYPE": "11",
-                           "ID": lun_id})
-        result = self.call(url, data, "GET")
+        result = self.call(url, None, "GET")
 
         msg = _('Get volume error.')
         self._assert_rest_result(result, msg)
@@ -1443,10 +1427,7 @@ class RestClient(object):
     def get_partition_info_by_id(self, partition_id):
 
         url = '/cachepartition/' + partition_id
-        data = json.dumps({"TYPE": '268',
-                           "ID": partition_id})
-
-        result = self.call(url, data, "GET")
+        result = self.call(url, None, "GET")
         self._assert_rest_result(result,
                                  _('Get partition by partition id error.'))
 
@@ -1502,7 +1483,7 @@ class RestClient(object):
         """"Find available QoS on the array."""
         qos_id = None
         lun_list = []
-        url = "/ioclass?range=[0-100]"
+        url = "/ioclass"
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Get QoS information error.'))
 
@@ -1584,10 +1565,8 @@ class RestClient(object):
         self._assert_rest_result(result, _('Remove iscsi from host error.'))
 
     def get_host_online_fc_initiators(self, host_id):
-        url = "/fc_initiator"
-        data = json.dumps({'PARENTTYPE': 21,
-                           'PARENTID': host_id})
-        result = self.call(url, data, "GET")
+        url = "/fc_initiator?PARENTTYPE=21&PARENTID=%s" % host_id
+        result = self.call(url, None, "GET")
 
         initiators = []
         if 'data' in result:
@@ -1599,10 +1578,8 @@ class RestClient(object):
         return initiators
 
     def get_host_fc_initiators(self, host_id):
-        url = "/fc_initiator"
-        data = json.dumps({'PARENTTYPE': 21,
-                           'PARENTID': host_id})
-        result = self.call(url, data, "GET")
+        url = "/fc_initiator?PARENTTYPE=21&PARENTID=%s" % host_id
+        result = self.call(url, None, "GET")
 
         initiators = []
         if 'data' in result:
@@ -1613,10 +1590,8 @@ class RestClient(object):
         return initiators
 
     def get_host_iscsi_initiators(self, host_id):
-        url = "/iscsi_initiator"
-        data = json.dumps({'PARENTTYPE': 21,
-                           'PARENTID': host_id})
-        result = self.call(url, data, "GET")
+        url = "/iscsi_initiator?PARENTTYPE=21&PARENTID=%s" % host_id
+        result = self.call(url, None, "GET")
 
         initiators = []
         if 'data' in result:
@@ -1655,9 +1630,8 @@ class RestClient(object):
         self._assert_rest_result(result, _('Remove fc from host error.'))
 
     def check_fc_initiators_exist_in_host(self, host_id):
-        url = '/fc_initiator?range=[0-256]'
-        data = json.dumps({"PARENTID": host_id})
-        result = self.call(url, data, "GET")
+        url = "/fc_initiator?range=[0-100]&PARENTID=%s" % host_id
+        result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Get host initiators info failed.'))
         if 'data' in result:
             return True
@@ -1666,10 +1640,8 @@ class RestClient(object):
 
     def _fc_initiator_is_added_to_array(self, ininame):
         """Check whether the fc initiator is already added on the array."""
-        url = '/fc_initiator/' + ininame
-        data = json.dumps({"TYPE": '223',
-                           "ID": ininame})
-        result = self.call(url, data, "GET")
+        url = "/fc_initiator/" + ininame
+        result = self.call(url, None, "GET")
         error_code = result['error']['code']
         if error_code != 0:
             return False
