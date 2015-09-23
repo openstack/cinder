@@ -656,9 +656,9 @@ class CommandLineHelper(object):
             if rc != 0:
                 self._raise_cli_error(command_modify_lun, rc, out)
 
-    def create_consistencygroup(self, cg_name, members=None):
+    def create_consistencygroup(self, cg_name, members=None, poll=False):
         """create the consistency group."""
-        command_create_cg = ('-np', 'snap', '-group',
+        command_create_cg = ('snap', '-group',
                              '-create',
                              '-name', cg_name,
                              '-allowSnapAutoDelete', 'no')
@@ -666,7 +666,7 @@ class CommandLineHelper(object):
             command_create_cg += ('-res', ','.join(map(six.text_type,
                                                        members)))
 
-        out, rc = self.command_execute(*command_create_cg)
+        out, rc = self.command_execute(*command_create_cg, poll=poll)
         if rc != 0:
             # Ignore the error if consistency group already exists
             if VNXError.has_error(out, VNXError.CG_EXISTED):
@@ -3817,7 +3817,8 @@ class CreateConsistencyGroupTask(task.Task):
     def execute(self, client, group, *args, **kwargs):
         LOG.debug('CreateConsistencyGroupTask.execute')
         lun_ids = [kwargs[key] for key in self.lun_id_keys]
-        client.create_consistencygroup(group['id'], lun_ids)
+        client.create_consistencygroup(group['id'], lun_ids,
+                                       poll=True)
 
 
 class WaitMigrationsCompleteTask(task.Task):
