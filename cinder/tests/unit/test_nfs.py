@@ -1317,20 +1317,67 @@ class NfsDriverDoSetupTestCase(test.TestCase):
                        check_exit_code=False,
                        run_as_root=False)])
 
-    def test_update_migrated_volume_is_there(self):
-        """Ensure that driver.update_migrated_volume() is there."""
+    @mock.patch.object(os, 'rename')
+    def test_update_migrated_available_volume(self, rename_volume):
+        self._test_update_migrated_volume('available', rename_volume)
 
+    @mock.patch.object(os, 'rename')
+    def test_update_migrated_available_volume_rename_fail(self, rename_volume):
+        self._test_update_migrated_volume('available', rename_volume,
+                                          rename_exception=True)
+
+    @mock.patch.object(os, 'rename')
+    def test_update_migrated_in_use_volume(self, rename_volume):
+        self._test_update_migrated_volume('in-use', rename_volume)
+
+    def _test_update_migrated_volume(self, volume_status, rename_volume,
+                                     rename_exception=False):
         drv = nfs.NfsDriver(configuration=self.configuration)
+        fake_volume_id = 'vol1'
+        fake_new_volume_id = 'vol2'
+        fake_provider_source = 'fake_provider_source'
+        fake_provider = 'fake_provider'
+        base_dir = '/dir_base/'
+        volume_name_template = 'volume-%s'
+        original_volume_name = volume_name_template % fake_volume_id
+        current_name = volume_name_template % fake_new_volume_id
+        original_volume_path = base_dir + original_volume_name
+        current_path = base_dir + current_name
+        fake_volume = {'size': 1, 'id': fake_volume_id,
+                       'provider_location': fake_provider_source,
+                       '_name_id': None}
+        fake_new_volume = {'size': 1, 'id': fake_new_volume_id,
+                           'provider_location': fake_provider,
+                           '_name_id': None}
 
-        v1 = DumbVolume()
-        v2 = DumbVolume()
-
-        self.assertRaises(NotImplementedError,
-                          drv.update_migrated_volume,
-                          self.context,
-                          v1,
-                          v2,
-                          mock.sentinel)
+        with mock.patch.object(drv, 'local_path') as local_path:
+            local_path.return_value = base_dir + current_name
+            if volume_status == 'in-use':
+                update = drv.update_migrated_volume(self.context,
+                                                    fake_volume,
+                                                    fake_new_volume,
+                                                    volume_status)
+                self.assertEqual({'_name_id': fake_new_volume_id,
+                                  'provider_location': fake_provider}, update)
+            elif rename_exception:
+                rename_volume.side_effect = OSError
+                update = drv.update_migrated_volume(self.context,
+                                                    fake_volume,
+                                                    fake_new_volume,
+                                                    volume_status)
+                rename_volume.assert_called_once_with(current_path,
+                                                      original_volume_path)
+                self.assertEqual({'_name_id': fake_new_volume_id,
+                                  'provider_location': fake_provider}, update)
+            else:
+                update = drv.update_migrated_volume(self.context,
+                                                    fake_volume,
+                                                    fake_new_volume,
+                                                    volume_status)
+                rename_volume.assert_called_once_with(current_path,
+                                                      original_volume_path)
+                self.assertEqual({'_name_id': None,
+                                  'provider_location': fake_provider}, update)
 
     def test_retype_is_there(self):
         "Ensure that driver.retype() is there."""
