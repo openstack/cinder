@@ -713,22 +713,6 @@ class CommandLineHelper(object):
                                                   'cg_name': cg_name})
             self._raise_cli_error(add_lun_to_cg_cmd, rc, out)
 
-        def add_lun_to_consistency_success():
-            data = self.get_consistency_group_by_name(cg_name)
-            if str(lun_id) in data['Luns']:
-                LOG.debug("Add lun %(lun)s to consistency "
-                          "group %(cg_name)s successfully.",
-                          {'lun': lun_id, 'cg_name': cg_name})
-                return True
-            else:
-                LOG.debug("Adding lun %(lun)s to consistency "
-                          "group %(cg_name)s.",
-                          {'lun': lun_id, 'cg_name': cg_name})
-                return False
-
-        self._wait_for_a_condition(add_lun_to_consistency_success,
-                                   interval=INTERVAL_30_SEC)
-
     def remove_luns_from_consistencygroup(self, cg_name, remove_ids,
                                           poll=False):
         """Removes LUN(s) from cg"""
