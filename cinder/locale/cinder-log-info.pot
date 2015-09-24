@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 7.0.0.0b4.dev130\n"
+"Project-Id-Version: cinder 7.0.0.0rc1\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-09-17 06:19+0000\n"
+"POT-Creation-Date: 2015-09-24 21:13+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -373,12 +373,12 @@ msgid ""
 "lv_name=%(lv)s"
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:3944
+#: cinder/db/sqlalchemy/api.py:3946
 #, python-format
 msgid "Purging deleted rows older than age=%(age)d days from table=%(table)s"
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:3959
+#: cinder/db/sqlalchemy/api.py:3961
 #, python-format
 msgid "Deleted %(row)d rows from table=%(table)s"
 msgstr ""
@@ -1077,27 +1077,27 @@ msgstr ""
 msgid "Deleting unneeded host %(host_name)r."
 msgstr ""
 
-#: cinder/volume/drivers/pure.py:563 cinder/volume/drivers/pure.py:609
+#: cinder/volume/drivers/pure.py:564 cinder/volume/drivers/pure.py:610
 #, python-format
 msgid "Renaming existing volume %(ref_name)s to %(new_name)s"
 msgstr ""
 
-#: cinder/volume/drivers/pure.py:634 cinder/volume/drivers/pure.py:665
+#: cinder/volume/drivers/pure.py:635 cinder/volume/drivers/pure.py:666
 #, python-format
 msgid "Renaming existing snapshot %(ref_name)s to %(new_name)s"
 msgstr ""
 
-#: cinder/volume/drivers/pure.py:881 cinder/volume/drivers/pure.py:984
+#: cinder/volume/drivers/pure.py:882 cinder/volume/drivers/pure.py:985
 #, python-format
 msgid "Re-using existing purity host %(host_name)r"
 msgstr ""
 
-#: cinder/volume/drivers/pure.py:904
+#: cinder/volume/drivers/pure.py:905
 #, python-format
 msgid "Creating host object %(host_name)r with IQN: %(iqn)s."
 msgstr ""
 
-#: cinder/volume/drivers/pure.py:988
+#: cinder/volume/drivers/pure.py:989
 #, python-format
 msgid "Creating host object %(host_name)r with WWN: %(wwn)s."
 msgstr ""
@@ -1775,80 +1775,80 @@ msgstr ""
 msgid "Cancelling Migration from LUN %s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:1727
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:1720
 #, python-format
 msgid "Toggle storage_vnx_ip_address from %(old)s to %(new)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:1815
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:1808
 msgid ""
 "initiator_auto_registration: False. Initiator auto registration is not "
 "enabled. Please register initiator manually."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:1991
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:1984
 #, python-format
 msgid ""
 "Create Volume: %(volume)s  Size: %(size)s pool: %(pool)s provisioning: "
 "%(provisioning)s tiering: %(tiering)s snapcopy: %(snapcopy)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2472
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3764
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2465
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3756
 #, python-format
 msgid "Create snapshot: %(snapshot)s: volume: %(volume)s"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2501
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2494
 #, python-format
 msgid "Delete Snapshot: %(snapshot)s"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2687
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2680
 #: cinder/volume/drivers/prophetstor/dplcommon.py:871
 #, python-format
 msgid "Start to create consistency group: %(group_name)s id: %(id)s"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2710
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2703
 #: cinder/volume/drivers/prophetstor/dplcommon.py:900
 #, python-format
 msgid "Start to delete consistency group: %(cg_name)s"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2770
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2763
 #: cinder/volume/drivers/prophetstor/dplcommon.py:927
 #, python-format
 msgid "Start to create cgsnapshot for consistency group: %(group_name)s"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2795
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2788
 #: cinder/volume/drivers/prophetstor/dplcommon.py:955
 #, python-format
 msgid "Delete cgsnapshot %(snap_name)s for consistency group: %(group_name)s"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2974
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2967
 #, python-format
 msgid "Get ISCSI targets %(tg)s to register initiator %(in)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3001
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2994
 #, python-format
 msgid "Get FC targets %(tg)s to register initiator %(in)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3074
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3067
 #, python-format
 msgid "iSCSI Initiators %(in)s of %(ins)s need registration."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3093
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3086
 #, python-format
 msgid "FC Initiators %(in)s of %(ins)s need registration"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3321
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3313
 #, python-format
 msgid "Storage Group %s was empty."
 msgstr ""
@@ -2346,90 +2346,90 @@ msgstr ""
 msgid "Extend volume: %(volumename)s, oldsize: %(oldsize)s  newsize: %(newsize)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:515
+#: cinder/volume/drivers/huawei/huawei_driver.py:507
 #, python-format
 msgid "stop_snapshot: snapshot name: %(snapshot)s, volume name: %(volume)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:579
+#: cinder/volume/drivers/huawei/huawei_driver.py:571
 #, python-format
 msgid ""
 "Retype LUN(id: %(lun_id)s) smartpartition from (name: %(old_name)s, id: "
 "%(old_id)s) to (name: %(new_name)s, id: %(new_id)s) success."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:596
+#: cinder/volume/drivers/huawei/huawei_driver.py:588
 #, python-format
 msgid ""
 "Retype LUN(id: %(lun_id)s) smartcache from (name: %(old_name)s, id: "
 "%(old_id)s) to (name: %(new_name)s, id: %(new_id)s) successfully."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:606
+#: cinder/volume/drivers/huawei/huawei_driver.py:598
 #, python-format
 msgid ""
 "Retype LUN(id: %(lun_id)s) smarttier policy from %(old_policy)s to "
 "%(new_policy)s success."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:621
+#: cinder/volume/drivers/huawei/huawei_driver.py:613
 #, python-format
 msgid ""
 "Retype LUN(id: %(lun_id)s) smartqos from %(old_qos_value)s to %(new_qos)s"
 " success."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:840
+#: cinder/volume/drivers/huawei/huawei_driver.py:832
 msgid "Enter initialize_connection."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:844
+#: cinder/volume/drivers/huawei/huawei_driver.py:836
 #, python-format
 msgid "initiator name: %(initiator_name)s, volume name: %(volume)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:854
+#: cinder/volume/drivers/huawei/huawei_driver.py:846
 #, python-format
 msgid ""
 "initialize_connection, iscsi_iqn: %(iscsi_iqn)s, target_ip: "
 "%(target_ip)s, portgroup_id: %(portgroup_id)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:884
+#: cinder/volume/drivers/huawei/huawei_driver.py:876
 #, python-format
 msgid "initialize_connection, host lun id is: %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:913
+#: cinder/volume/drivers/huawei/huawei_driver.py:905
 #, python-format
 msgid "initialize_connection success. Return data: %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:926
+#: cinder/volume/drivers/huawei/huawei_driver.py:918
 #, python-format
 msgid ""
 "terminate_connection: volume name: %(volume)s, initiator name: %(ini)s, "
 "lun_id: %(lunid)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1039
+#: cinder/volume/drivers/huawei/huawei_driver.py:1031
 #, python-format
 msgid "initialize_connection, initiator: %(wwpns)s, volume name: %(volume)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1107
+#: cinder/volume/drivers/huawei/huawei_driver.py:1099
 #, python-format
 msgid "initialize_connection, return data is: %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1123
+#: cinder/volume/drivers/huawei/huawei_driver.py:1115
 #, python-format
 msgid ""
 "terminate_connection: volume name: %(volume)s, wwpns: %(wwns)s, lun_id: "
 "%(lunid)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1204
+#: cinder/volume/drivers/huawei/huawei_driver.py:1196
 #, python-format
 msgid "terminate_connection, return data is: %s."
 msgstr ""
@@ -2474,80 +2474,80 @@ msgid ""
 "\n"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:250
+#: cinder/volume/drivers/huawei/rest_client.py:248
 #, python-format
 msgid "create_snapshot:snapshot name: %(snapshot)s, volume name: %(volume)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:386
+#: cinder/volume/drivers/huawei/rest_client.py:384
 #, python-format
 msgid ""
-"mapping_hostgroup_and_lungroup, lun_group: %(lun_group)s, view_id: "
-"%(view_id)s, lun_id: %(lun_id)s."
+"do_mapping, lun_group: %(lun_group)s, view_id: %(view_id)s, lun_id: "
+"%(lun_id)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:468
+#: cinder/volume/drivers/huawei/rest_client.py:464
 #, python-format
 msgid ""
 "create_hostgroup_with_check. hostgroup name: %(name)s, hostgroup id: "
 "%(id)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:479
+#: cinder/volume/drivers/huawei/rest_client.py:475
 #, python-format
 msgid ""
 "Failed to create hostgroup: %(name)s. Please check if it exists on the "
 "array."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:492
+#: cinder/volume/drivers/huawei/rest_client.py:488
 #, python-format
 msgid ""
 "create_hostgroup_with_check. Create hostgroup success. hostgroup name: "
 "%(name)s, hostgroup id: %(id)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:589
+#: cinder/volume/drivers/huawei/rest_client.py:584
 #, python-format
 msgid "add_host_with_check. host name: %(name)s, host id: %(id)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:600
+#: cinder/volume/drivers/huawei/rest_client.py:595
 #, python-format
 msgid "Failed to create host: %(name)s. Check if it exists on the array."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:613
+#: cinder/volume/drivers/huawei/rest_client.py:608
 #, python-format
 msgid ""
 "add_host_with_check. create host success. host name: %(name)s, host id: "
 "%(id)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:753
+#: cinder/volume/drivers/huawei/rest_client.py:748
 msgid "Use CHAP when adding initiator to host."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:759
+#: cinder/volume/drivers/huawei/rest_client.py:754
 msgid "Use ALUA when adding initiator to host."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1065
+#: cinder/volume/drivers/huawei/rest_client.py:1058
 #, python-format
 msgid "New str info is: %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1080
+#: cinder/volume/drivers/huawei/rest_client.py:1073
 #, python-format
 msgid "_get_tgt_iqn: iSCSI target iqn is: %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1176
+#: cinder/volume/drivers/huawei/rest_client.py:1169
 #, python-format
 msgid "_get_tgt_ip_from_portgroup: Get ip: %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1215
+#: cinder/volume/drivers/huawei/rest_client.py:1208
 #, python-format
 msgid "Get the default ip: %s."
 msgstr ""
@@ -2582,7 +2582,7 @@ msgid "Initialized driver for IBMNAS Platform: %s."
 msgstr ""
 
 #: cinder/volume/drivers/ibm/storwize_svc/__init__.py:577
-#: cinder/volume/drivers/netapp/eseries/library.py:701
+#: cinder/volume/drivers/netapp/eseries/library.py:710
 msgid "Need to remove FC Zone, building initiator target map."
 msgstr ""
 
@@ -2717,22 +2717,22 @@ msgid ""
 "%(storage_protocol)s loaded."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/utils.py:382
+#: cinder/volume/drivers/netapp/utils.py:408
 #, python-format
 msgid "No rpm info found for %(pkg)s package."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/utils.py:391
+#: cinder/volume/drivers/netapp/utils.py:417
 #, python-format
 msgid "Could not run rpm command: %(msg)s."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/utils.py:402
+#: cinder/volume/drivers/netapp/utils.py:428
 #, python-format
 msgid "No dpkg-query info found for %(pkg)s package."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/utils.py:420
+#: cinder/volume/drivers/netapp/utils.py:446
 #, python-format
 msgid "Could not run dpkg-query command: %(msg)s."
 msgstr ""
@@ -2799,12 +2799,12 @@ msgstr ""
 msgid "Cinder NFS volume with current path \"%(cr)s\" is no longer being managed."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/nfs_cmode.py:370
+#: cinder/volume/drivers/netapp/dataontap/nfs_cmode.py:418
 #, python-format
 msgid "Copied image %(img)s to volume %(vol)s using local image cache."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/nfs_cmode.py:378
+#: cinder/volume/drivers/netapp/dataontap/nfs_cmode.py:426
 #, python-format
 msgid "Copied image %(img)s to volume %(vol)s using copy offload workflow."
 msgstr ""
@@ -2829,114 +2829,114 @@ msgstr ""
 msgid "Successfully completed ssc job for %(server)s and vserver %(vs)s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/client/client_base.py:166
+#: cinder/volume/drivers/netapp/dataontap/client/client_base.py:171
 #, python-format
 msgid "Resizing LUN %s directly to new size."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/eseries/library.py:204
+#: cinder/volume/drivers/netapp/eseries/library.py:213
 #, python-format
 msgid ""
 "The multi-attach E-Series host group '%(label)s' already exists with "
 "clusterRef %(clusterRef)s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/eseries/library.py:210
+#: cinder/volume/drivers/netapp/eseries/library.py:219
 #, python-format
 msgid ""
 "Created multi-attach E-Series host group %(label)s with clusterRef "
 "%(clusterRef)s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/eseries/library.py:232
+#: cinder/volume/drivers/netapp/eseries/library.py:241
 msgid "Embedded mode detected."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/eseries/library.py:235
+#: cinder/volume/drivers/netapp/eseries/library.py:244
 msgid "Proxy mode detected."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/eseries/library.py:247
+#: cinder/volume/drivers/netapp/eseries/library.py:256
 #, python-format
 msgid "System with controller addresses [%s] is not registered with web service."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/eseries/library.py:265
+#: cinder/volume/drivers/netapp/eseries/library.py:274
 msgid "Waiting for web service array communication."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/eseries/library.py:282
+#: cinder/volume/drivers/netapp/eseries/library.py:291
 #, python-format
 msgid "System %(id)s has %(status)s status."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/eseries/library.py:417
-#: cinder/volume/drivers/netapp/eseries/library.py:436
-#: cinder/volume/drivers/netapp/eseries/library.py:452
+#: cinder/volume/drivers/netapp/eseries/library.py:426
+#: cinder/volume/drivers/netapp/eseries/library.py:445
+#: cinder/volume/drivers/netapp/eseries/library.py:461
 #, python-format
 msgid "Created volume with label %s."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/eseries/library.py:479
+#: cinder/volume/drivers/netapp/eseries/library.py:488
 #, python-format
 msgid "Copying src vol %(src)s to dest vol %(dst)s."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/eseries/library.py:496
+#: cinder/volume/drivers/netapp/eseries/library.py:505
 #, python-format
 msgid "Vol copy job completed for dest %s."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/eseries/library.py:509
+#: cinder/volume/drivers/netapp/eseries/library.py:518
 #, python-format
 msgid "Copy job to dest vol %s completed."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/eseries/library.py:547
+#: cinder/volume/drivers/netapp/eseries/library.py:556
 #, python-format
 msgid "Created snap grp with label %s."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/eseries/library.py:851
+#: cinder/volume/drivers/netapp/eseries/library.py:860
 #, python-format
 msgid "Creating host with ports %s."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/eseries/library.py:937
+#: cinder/volume/drivers/netapp/eseries/library.py:946
 #, python-format
 msgid "E-series proxy API version %s does not support autosupport logging."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/eseries/library.py:978
+#: cinder/volume/drivers/netapp/eseries/library.py:987
 #, python-format
 msgid "Updating storage service catalog information for backend '%s'"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/eseries/library.py:993
+#: cinder/volume/drivers/netapp/eseries/library.py:1002
 #, python-format
 msgid ""
 "E-series proxy API version %(version)s does not support full set of SSC "
 "extra specs. The proxy version must be at at least %(min_version)s."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/eseries/library.py:1160
+#: cinder/volume/drivers/netapp/eseries/library.py:1195
 #, python-format
 msgid "Extended volume with label %s."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/eseries/library.py:1196
+#: cinder/volume/drivers/netapp/eseries/library.py:1231
 #, python-format
 msgid "Volume with given ref %s need not be renamed during manage operation."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/eseries/library.py:1201
+#: cinder/volume/drivers/netapp/eseries/library.py:1236
 #, python-format
 msgid ""
 "Manage operation completed for volume with new label %(label)s and wwn "
 "%(wwn)s."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/eseries/library.py:1235
+#: cinder/volume/drivers/netapp/eseries/library.py:1270
 #, python-format
 msgid "Unmanaged volume with current label %(label)s and wwn %(wwn)s."
 msgstr ""
@@ -3248,7 +3248,7 @@ msgid "Unexporting lun %s."
 msgstr ""
 
 #: cinder/volume/drivers/vmware/vmdk.py:293
-#: cinder/volume/drivers/vmware/vmdk.py:1916
+#: cinder/volume/drivers/vmware/vmdk.py:1926
 #, python-format
 msgid "Successfully setup driver: %(driver)s for server: %(ip)s."
 msgstr ""
@@ -3309,82 +3309,82 @@ msgid ""
 msgstr ""
 
 #: cinder/volume/drivers/vmware/vmdk.py:773
-#: cinder/volume/drivers/vmware/vmdk.py:2055
+#: cinder/volume/drivers/vmware/vmdk.py:2065
 #, python-format
 msgid ""
 "There is no snapshot point for the snapshotted volume: %(snap)s. Not "
 "creating any backing for the volume: %(vol)s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1184
+#: cinder/volume/drivers/vmware/vmdk.py:1194
 #, python-format
 msgid "Done copying image: %(id)s to volume: %(vol)s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1195
+#: cinder/volume/drivers/vmware/vmdk.py:1205
 #, python-format
 msgid ""
 "The backing is not found, so there is no need to extend the vmdk virtual "
 "disk for the volume %s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1326
+#: cinder/volume/drivers/vmware/vmdk.py:1336
 #, python-format
 msgid "Backing not found, creating for volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1349
+#: cinder/volume/drivers/vmware/vmdk.py:1359
 #, python-format
 msgid "Done copying volume %(vol)s to a new image %(img)s"
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1540
-#: cinder/volume/drivers/vmware/vmdk.py:1570
+#: cinder/volume/drivers/vmware/vmdk.py:1550
+#: cinder/volume/drivers/vmware/vmdk.py:1580
 #, python-format
 msgid "Done extending volume %(vol)s to size %(size)s GB."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1545
+#: cinder/volume/drivers/vmware/vmdk.py:1555
 #, python-format
 msgid ""
 "Relocating volume %s vmdk to a different datastore since trying to extend"
 " vmdk file in place failed."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1556
+#: cinder/volume/drivers/vmware/vmdk.py:1566
 #, python-format
 msgid "Selected datastore %(ds)s to place extended volume of size %(size)s GB."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1857
+#: cinder/volume/drivers/vmware/vmdk.py:1867
 #, python-format
 msgid "Using overridden vmware_host_version from config: %s"
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1861
+#: cinder/volume/drivers/vmware/vmdk.py:1871
 #, python-format
 msgid "Fetched vCenter server version: %s"
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1914
+#: cinder/volume/drivers/vmware/vmdk.py:1924
 #, python-format
 msgid "Using compute cluster(s): %s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:2033
+#: cinder/volume/drivers/vmware/vmdk.py:2043
 #: cinder/volume/drivers/vmware/volumeops.py:1187
 #, python-format
 msgid "Successfully created clone: %s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:2047
+#: cinder/volume/drivers/vmware/vmdk.py:2057
 #, python-format
 msgid ""
 "There is no backing for the snapshotted volume: %(snap)s. Not creating "
 "any backing for the volume: %(vol)s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:2084
+#: cinder/volume/drivers/vmware/vmdk.py:2094
 #, python-format
 msgid ""
 "There is no backing for the source volume: %(src)s. Not creating any "

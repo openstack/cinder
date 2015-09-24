@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: cinder 7.0.0.0b4.dev130\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-09-17 06:18+0000\n"
+"POT-Creation-Date: 2015-09-24 21:13+0200\n"
 "PO-Revision-Date: 2015-09-16 08:16+0000\n"
 "Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
 "Language-Team: Turkish (Turkey) (http://www.transifex.com/openstack/cinder/"
@@ -4895,10 +4895,6 @@ msgid "SSH Command failed after '%(total_attempts)r' attempts : '%(command)s'"
 msgstr ""
 "SSH komutu '%(total_attempts)r' girişimden sonra başarısız oldu: "
 "'%(command)s'"
-
-#, python-format
-msgid "SSH Command failed with error '%(err)s' '%(command)s'"
-msgstr "SSH Komutu '%(err)s' hatasıyla başarısız oldu '%(command)s'"
 
 #, python-format
 msgid "SSH command injection detected: %(command)s"
