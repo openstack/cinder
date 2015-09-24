@@ -98,6 +98,51 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
 
         self.assertTrue(mock_check_flags.called)
 
+    @ddt.data('linux_dm_mp', 'linux_atto', 'linux_mpp_rdac',
+              'linux_pathmanager', 'linux_sf', 'ontap', 'ontap_rdac',
+              'vmware', 'windows_atto', 'windows_clustered',
+              'factoryDefault', 'windows', None)
+    def test_check_host_type(self, host_type):
+        config = mock.Mock()
+        default_host_type = self.library.host_type
+        config.netapp_host_type = host_type
+        self.mock_object(self.library, 'configuration', config)
+
+        result = self.library._check_host_type()
+
+        self.assertIsNone(result)
+        if host_type:
+            self.assertEqual(self.library.HOST_TYPES.get(host_type),
+                             self.library.host_type)
+        else:
+            self.assertEqual(default_host_type, self.library.host_type)
+
+    def test_check_host_type_invalid(self):
+        config = mock.Mock()
+        config.netapp_host_type = 'invalid'
+        self.mock_object(self.library, 'configuration', config)
+
+        self.assertRaises(exception.NetAppDriverException,
+                          self.library._check_host_type)
+
+    def test_check_host_type_new(self):
+        config = mock.Mock()
+        config.netapp_host_type = 'new_host_type'
+        expected = 'host_type'
+        self.mock_object(self.library, 'configuration', config)
+        host_types = [{
+            'name': 'new_host_type',
+            'index': 0,
+            'code': expected,
+        }]
+        self.mock_object(self.library._client, 'list_host_types',
+                         mock.Mock(return_value=host_types))
+
+        result = self.library._check_host_type()
+
+        self.assertIsNone(result)
+        self.assertEqual(expected, self.library.host_type)
+
     @ddt.data(('optimal', True), ('offline', False), ('needsAttn', True),
               ('neverContacted', False), ('newKey', True), (None, True))
     @ddt.unpack

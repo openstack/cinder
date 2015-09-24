@@ -60,25 +60,18 @@ class NetAppESeriesLibrary(object):
     REQUIRED_FLAGS = ['netapp_server_hostname', 'netapp_controller_ips',
                       'netapp_login', 'netapp_password']
     SLEEP_SECS = 5
-    HOST_TYPES = {'aix': 'AIX MPIO',
-                  'avt': 'AVT_4M',
-                  'factoryDefault': 'FactoryDefault',
-                  'hpux': 'HP-UX TPGS',
+    HOST_TYPES = {'factoryDefault': 'FactoryDefault',
                   'linux_atto': 'LnxTPGSALUA',
                   'linux_dm_mp': 'LnxALUA',
-                  'linux_mpp_rdac': 'Linux',
+                  'linux_mpp_rdac': 'LNX',
                   'linux_pathmanager': 'LnxTPGSALUA_PM',
-                  'macos': 'MacTPGSALUA',
-                  'ontap': 'ONTAP',
-                  'svc': 'SVC',
-                  'solaris_v11': 'SolTPGSALUA',
-                  'solaris_v10': 'Solaris',
+                  'linux_sf': 'LnxTPGSALUA_SF',
+                  'ontap': 'ONTAP_ALUA',
+                  'ontap_rdac': 'ONTAP_RDAC',
                   'vmware': 'VmwTPGSALUA',
-                  'windows':
-                  'Windows 2000/Server 2003/Server 2008 Non-Clustered',
+                  'windows': 'W2KNETNCL',
                   'windows_atto': 'WinTPGSALUA',
-                  'windows_clustered':
-                  'Windows 2000/Server 2003/Server 2008 Clustered'
+                  'windows_clustered': 'W2KNETCL',
                   }
     # NOTE(ameade): This maps what is reported by the e-series api to a
     # consistent set of values that are reported by all NetApp drivers
@@ -207,12 +200,23 @@ class NetAppESeriesLibrary(object):
         self._start_periodic_tasks()
 
     def _check_host_type(self):
-        host_type = (self.configuration.netapp_host_type
-                     or self.DEFAULT_HOST_TYPE)
-        self.host_type = self.HOST_TYPES.get(host_type)
-        if not self.host_type:
-            raise exception.NetAppDriverException(
-                _('Configured host type is not supported.'))
+        """Validate that the configured host-type is available for the array.
+
+        Not all host-types are available on every firmware version.
+        """
+        requested_host_type = (self.configuration.netapp_host_type
+                               or self.DEFAULT_HOST_TYPE)
+        actual_host_type = (
+            self.HOST_TYPES.get(requested_host_type, requested_host_type))
+
+        for host_type in self._client.list_host_types():
+            if(host_type.get('code') == actual_host_type or
+               host_type.get('name') == actual_host_type):
+                self.host_type = host_type.get('code')
+                return
+        exc_msg = _("The host-type '%s' is not supported on this storage "
+                    "system.")
+        raise exception.NetAppDriverException(exc_msg % requested_host_type)
 
     def _check_multipath(self):
         if not self.configuration.use_multipath_for_image_xfer:

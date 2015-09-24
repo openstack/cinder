@@ -1217,24 +1217,104 @@ class FakeEseriesClient(object):
     def list_host_types(self):
         return [
             {
-                'id': '4',
-                'code': 'AIX',
-                'name': 'AIX',
-                'index': 4
+                'name': 'FactoryDefault',
+                'index': 0,
+                'code': 'FactoryDefault',
             },
             {
-                'id': '5',
-                'code': 'IRX',
-                'name': 'IRX',
-                'index': 5
+                'name': 'Windows 2000/Server 2003/Server 2008 Non-Clustered',
+                'index': 1,
+                'code': 'W2KNETNCL',
             },
             {
-                'id': '6',
-                'code': 'LnxALUA',
+                'name': 'Solaris',
+                'index': 2,
+                'code': 'SOL',
+            },
+            {
+                'name': 'ONTAP_RDAC',
+                'index': 4,
+                'code': 'ONTAP_RDAC',
+            },
+            {
+                'name': 'AVT_4M',
+                'index': 5,
+                'code': 'AVT_4M',
+            },
+            {
+                'name': 'Linux',
+                'index': 6,
+                'code': 'LNX',
+            },
+            {
                 'name': 'LnxALUA',
-                'index': 6
+                'index': 7,
+                'code': 'LnxALUA',
+            },
+            {
+                'name': 'Windows 2000/Server 2003/Server 2008 Clustered',
+                'index': 8,
+                'code': 'W2KNETCL',
+            },
+            {
+                'name': 'AIX MPIO',
+                'index': 9,
+                'code': 'AIX MPIO',
+            },
+            {
+                'name': 'VmwTPGSALUA',
+                'index': 10,
+                'code': 'VmwTPGSALUA',
+            },
+            {
+                'name': 'HP-UX TPGS',
+                'index': 15,
+                'code': 'HPXTPGS',
+            },
+            {
+                'name': 'SolTPGSALUA',
+                'index': 17,
+                'code': 'SolTPGSALUA',
+            },
+            {
+                'name': 'SVC',
+                'index': 18,
+                'code': 'SVC',
+            },
+            {
+                'name': 'MacTPGSALUA',
+                'index': 22,
+                'code': 'MacTPGSALUA',
+            },
+            {
+                'name': 'WinTPGSALUA',
+                'index': 23,
+                'code': 'WinTPGSALUA',
+            },
+            {
+                'name': 'LnxTPGSALUA',
+                'index': 24,
+                'code': 'LnxTPGSALUA',
+            },
+            {
+                'name': 'LnxTPGSALUA_PM',
+                'index': 25,
+                'code': 'LnxTPGSALUA_PM',
+            },
+            {
+                'name': 'ONTAP_ALUA',
+                'index': 26,
+                'code': 'ONTAP_ALUA',
+            },
+            {
+                'name': 'LnxTPGSALUA_SF',
+                'index': 27,
+                'code': 'LnxTPGSALUA_SF',
             }
         ]
+
+    def update_host_type(self, *args, **kwargs):
+        pass
 
     def list_hardware_inventory(self):
         return HARDWARE_INVENTORY
