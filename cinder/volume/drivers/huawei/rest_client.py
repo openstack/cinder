@@ -216,7 +216,8 @@ class RestClient(object):
                        item['USAGETYPE'] == constants.FILE_SYSTEM_POOL_TYPE):
                         break
                     pool_info['ID'] = item['ID']
-                    pool_info['CAPACITY'] = item['USERFREECAPACITY']
+                    pool_info['CAPACITY'] = item.get('DATASPACE',
+                                                     item['USERFREECAPACITY'])
                     pool_info['TOTALCAPACITY'] = item['USERTOTALCAPACITY']
                     break
         return pool_info
