@@ -70,6 +70,7 @@ test_snap = {'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0635',
              'display_description': 'test volume',
              'volume_type_id': None,
              'provider_location': '11',
+             'volume': {"volume_id": '21ec7341-9256-497b-97d9-ef48edcf0635'},
              'volume': {'provider_location': '12'},
              }
 
@@ -1391,6 +1392,38 @@ class Huawei18000ISCSIDriverTestCase(test.TestCase):
 
     def test_create_volume_success(self):
         self.driver.restclient.login()
+
+        # Have pool info in the volume.
+        test_volume = {'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0635',
+                       'size': 2,
+                       'volume_name': 'vol1',
+                       'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
+                       'volume_id': '21ec7341-9256-497b-97d9-ef48edcf0635',
+                       'provider_auth': None,
+                       'project_id': 'project',
+                       'display_name': 'vol1',
+                       'display_description': 'test volume',
+                       'volume_type_id': None,
+                       'host': 'ubuntu001@backend001#OpenStack_Pool',
+                       'provider_location': '11',
+                       }
+        lun_info = self.driver.create_volume(test_volume)
+        self.assertEqual('1', lun_info['provider_location'])
+
+        # No pool info in the volume.
+        test_volume = {'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0635',
+                       'size': 2,
+                       'volume_name': 'vol1',
+                       'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
+                       'volume_id': '21ec7341-9256-497b-97d9-ef48edcf0635',
+                       'provider_auth': None,
+                       'project_id': 'project',
+                       'display_name': 'vol1',
+                       'display_description': 'test volume',
+                       'volume_type_id': None,
+                       'host': 'ubuntu001@backend001',
+                       'provider_location': '11',
+                       }
         lun_info = self.driver.create_volume(test_volume)
         self.assertEqual('1', lun_info['provider_location'])
 
@@ -1728,7 +1761,7 @@ class Huawei18000ISCSIDriverTestCase(test.TestCase):
         lun = doc.createElement('LUN')
         config.appendChild(lun)
         storagepool = doc.createElement('StoragePool')
-        pool_text = doc.createTextNode('OpenStack_Pool')
+        pool_text = doc.createTextNode('OpenStack_Pool;OpenStack_Pool2')
         storagepool.appendChild(pool_text)
         lun.appendChild(storagepool)
 
@@ -2219,7 +2252,7 @@ class Huawei18000FCDriverTestCase(test.TestCase):
         lun = doc.createElement('LUN')
         config.appendChild(lun)
         storagepool = doc.createElement('StoragePool')
-        pool_text = doc.createTextNode('OpenStack_Pool')
+        pool_text = doc.createTextNode('OpenStack_Pool;OpenStack_Pool2')
         storagepool.appendChild(pool_text)
         lun.appendChild(storagepool)
 

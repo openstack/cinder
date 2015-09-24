@@ -83,10 +83,15 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         pools = self.restclient.find_all_pools()
         pool_info = self.restclient.find_pool_info(pool_name, pools)
         if not pool_info:
-            msg = (_('Error in getting pool information for the pool: %s.')
-                   % pool_name)
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+            # The following code is to keep compatibility with old version of
+            # Huawei driver.
+            pool_names = huawei_utils.get_pools(self.xml_file_path)
+            for pool_name in pool_names.split(";"):
+                pool_info = self.restclient.find_pool_info(pool_name,
+                                                           pools)
+                if pool_info:
+                    break
+
         volume_name = huawei_utils.encode_name(volume['id'])
         volume_description = volume['name']
         volume_size = huawei_utils.get_volume_size(volume)
