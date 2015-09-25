@@ -35,7 +35,6 @@ class NetAppDriverFactoryTestCase(test.TestCase):
                          mock.Mock(return_value='fake_info'))
         mock_create_driver = self.mock_object(na_common.NetAppDriver,
                                               'create_driver')
-        mock_check_netapp_lib = self.mock_object(na_utils, 'check_netapp_lib')
 
         config = na_fakes.create_configuration()
         config.netapp_storage_family = 'fake_family'
@@ -47,7 +46,6 @@ class NetAppDriverFactoryTestCase(test.TestCase):
         kwargs['app_version'] = 'fake_info'
         mock_create_driver.assert_called_with('fake_family', 'fake_protocol',
                                               *(), **kwargs)
-        mock_check_netapp_lib.assert_called_once_with()
 
     def test_new_missing_config(self):
 

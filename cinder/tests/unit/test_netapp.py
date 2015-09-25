@@ -23,8 +23,6 @@ from six.moves import http_client
 
 from cinder import exception
 from cinder import test
-from cinder.tests.unit.volume.drivers.netapp.dataontap.client import (
-    fake_api as netapp_api)
 from cinder.tests.unit.volume.drivers.netapp.dataontap import fakes
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.netapp import common
@@ -561,10 +559,6 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
             lambda a, b, c, synchronous: None)
         self.mock_object(utils, 'OpenStackInfo')
 
-        # Inject fake netapp_lib module classes.
-        netapp_api.mock_netapp_lib([common, client_cmode, client_base])
-        self.mock_object(common.na_utils, 'check_netapp_lib')
-
         configuration = self._set_config(create_configuration())
         driver = common.NetAppDriver(configuration=configuration)
         self.stubs.Set(http_client, 'HTTPConnection',
@@ -784,10 +778,6 @@ class NetAppDriverNegativeTestCase(test.TestCase):
 
     def setUp(self):
         super(NetAppDriverNegativeTestCase, self).setUp()
-
-        # Inject fake netapp_lib module classes.
-        netapp_api.mock_netapp_lib([common])
-        self.mock_object(common.na_utils, 'check_netapp_lib')
 
     def test_incorrect_family(self):
         self.mock_object(utils, 'OpenStackInfo')
@@ -1252,10 +1242,6 @@ class NetAppDirect7modeISCSIDriverTestCase_NV(test.TestCase):
     def _custom_setup(self):
         self.mock_object(utils, 'OpenStackInfo')
 
-        # Inject fake netapp_lib module classes.
-        netapp_api.mock_netapp_lib([common, client_base, client_7mode])
-        self.mock_object(common.na_utils, 'check_netapp_lib')
-
         configuration = self._set_config(create_configuration())
         driver = common.NetAppDriver(configuration=configuration)
         self.stubs.Set(http_client, 'HTTPConnection',
@@ -1315,10 +1301,6 @@ class NetAppDirect7modeISCSIDriverTestCase_WV(
 
     def _custom_setup(self):
         self.mock_object(utils, 'OpenStackInfo')
-
-        # Inject fake netapp_lib module classes.
-        netapp_api.mock_netapp_lib([common, client_base, client_7mode])
-        self.mock_object(common.na_utils, 'check_netapp_lib')
 
         configuration = self._set_config(create_configuration())
         driver = common.NetAppDriver(configuration=configuration)
