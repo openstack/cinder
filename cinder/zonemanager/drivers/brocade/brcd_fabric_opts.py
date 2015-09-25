@@ -50,7 +50,7 @@ brcd_zone_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(brcd_zone_opts, 'BRCD_FABRIC_EXAMPLE')
+CONF.register_opts(brcd_zone_opts, group='BRCD_FABRIC_EXAMPLE')
 LOG = logging.getLogger(__name__)
 
 

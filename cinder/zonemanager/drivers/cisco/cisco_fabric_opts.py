@@ -47,7 +47,7 @@ cisco_zone_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(cisco_zone_opts, 'CISCO_FABRIC_EXAMPLE')
+CONF.register_opts(cisco_zone_opts, group='CISCO_FABRIC_EXAMPLE')
 
 
 def load_fabric_configurations(fabric_names):

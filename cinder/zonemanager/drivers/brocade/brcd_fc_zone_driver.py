@@ -52,7 +52,7 @@ brcd_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(brcd_opts, 'fc-zone-manager')
+CONF.register_opts(brcd_opts, group='fc-zone-manager')
 
 
 class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):

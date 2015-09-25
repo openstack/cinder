@@ -52,12 +52,13 @@ from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
 
 
-allow_force_upload = cfg.BoolOpt('enable_force_upload',
-                                 default=False,
-                                 help='Enables the Force option on '
-                                      'upload_to_image. This enables '
-                                      'running upload_volume on in-use '
-                                      'volumes for backends that support it.')
+allow_force_upload_opt = cfg.BoolOpt('enable_force_upload',
+                                     default=False,
+                                     help='Enables the Force option on '
+                                          'upload_to_image. This enables '
+                                          'running upload_volume on in-use '
+                                          'volumes for backends that '
+                                          'support it.')
 volume_host_opt = cfg.BoolOpt('snapshot_same_host',
                               default=True,
                               help='Create volume from snapshot at the host '
@@ -73,7 +74,7 @@ az_cache_time_opt = cfg.IntOpt('az_cache_duration',
                                     'seconds')
 
 CONF = cfg.CONF
-CONF.register_opt(allow_force_upload)
+CONF.register_opt(allow_force_upload_opt)
 CONF.register_opt(volume_host_opt)
 CONF.register_opt(volume_same_az_opt)
 CONF.register_opt(az_cache_time_opt)
