@@ -15,7 +15,6 @@
 
 
 import os
-import re
 
 from oslo_concurrency import processutils as putils
 from oslo_log import log as logging
@@ -87,33 +86,6 @@ class CxtAdm(iscsi.ISCSITarget):
         lun = 0  # For chiscsi dev starts at lun 0
         iscsi_target = 1
         return iscsi_target, lun
-
-    def _get_target_chap_auth(self, context, name):
-        volumes_dir = self._get_volumes_dir()
-        vol_id = name.split(':')[1]
-        volume_path = os.path.join(volumes_dir, vol_id)
-
-        try:
-            with open(volume_path, 'r') as f:
-                volume_conf = f.read()
-        except IOError as e_fnf:
-            LOG.debug('Failed to open config for %(vol_id)s: %(e)s',
-                      {'vol_id': vol_id, 'e': e_fnf})
-            # We don't run on anything non-linux
-            if e_fnf.errno == 2:
-                return None
-            else:
-                raise
-        except Exception as e_vol:
-            LOG.error(_LE('Failed to open config for %(vol_id)s: %(e)s'),
-                      {'vol_id': vol_id, 'e': e_vol})
-            raise
-
-        m = re.search('Auth_CHAP_Initiator="(\w+)":"(\w+)"', volume_conf)
-        if m:
-            return (m.group(1), m.group(2))
-        LOG.debug('Failed to find CHAP auth from config for %s', vol_id)
-        return None
 
     @staticmethod
     def _get_portal(ip, port=None):

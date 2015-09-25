@@ -28,8 +28,6 @@ class TestLioAdmDriver(tf.TargetDriverFixture):
         with mock.patch.object(lio.LioAdm, '_verify_rtstool'):
             self.target = lio.LioAdm(root_helper=utils.get_root_helper(),
                                      configuration=self.configuration)
-        self.target.db = mock.MagicMock(
-            volume_get=lambda x, y: {'provider_auth': 'IncomingUser foo bar'})
 
     @mock.patch.object(lio.LioAdm, '_execute', side_effect=lio.LioAdm._execute)
     @mock.patch.object(lio.LioAdm, '_persist_configuration')
@@ -56,12 +54,6 @@ class TestLioAdmDriver(tf.TargetDriverFixture):
         expected = (iscsi_target, lun)
         self.assertEqual(expected,
                          self.target._get_target_and_lun(ctxt, self.testvol))
-
-    def test_get_target_chap_auth(self):
-        ctxt = context.get_admin_context()
-        self.assertEqual(('foo', 'bar'),
-                         self.target._get_target_chap_auth(ctxt,
-                                                           self.test_vol))
 
     @mock.patch.object(lio.LioAdm, '_execute', side_effect=lio.LioAdm._execute)
     @mock.patch.object(lio.LioAdm, '_persist_configuration')

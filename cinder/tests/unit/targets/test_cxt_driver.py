@@ -13,11 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import contextlib
 import os
 
 import mock
-import six
 
 from cinder import context
 from cinder.tests.unit.targets import targets_fixture as tf
@@ -54,43 +52,6 @@ class TestCxtAdmDriver(tf.TargetDriverFixture):
                 )
             )
             self.assertTrue(m_exec.called)
-
-    def test_get_target_chap_auth(self):
-        tmp_file = six.StringIO()
-        tmp_file.write(
-            'target:\n'
-            '        TargetName=iqn.2010-10.org.openstack:volume-%(id)s\n'
-            '        TargetDevice=/dev/%(vg)s/volume-%(id)s\n'
-            '        PortalGroup=1@10.9.8.7:3260\n'
-            '        AuthMethod=CHAP\n'
-            '        Auth_CHAP_Policy=Oneway\n'
-            '        Auth_CHAP_Initiator="otzL":"234Z"\n' %
-            {'id': self.VOLUME_ID, 'vg': self.VG}
-        )
-        tmp_file.seek(0)
-
-        expected = ('otzL', '234Z')
-        with mock.patch('six.moves.builtins.open') as mock_open:
-            ctx = context.get_admin_context()
-            mock_open.return_value = contextlib.closing(tmp_file)
-            self.assertEqual(expected,
-                             self.target._get_target_chap_auth(ctx,
-                                                               self.test_vol))
-            self.assertTrue(mock_open.called)
-
-    def test_get_target_chap_auth_negative(self):
-        with mock.patch('six.moves.builtins.open') as mock_open:
-            e = IOError()
-            e.errno = 123
-            mock_open.side_effect = e
-            ctxt = context.get_admin_context()
-            self.assertRaises(IOError,
-                              self.target._get_target_chap_auth,
-                              ctxt, self.test_vol)
-            mock_open.side_effect = ZeroDivisionError()
-            self.assertRaises(ZeroDivisionError,
-                              self.target._get_target_chap_auth,
-                              ctxt, self.test_vol)
 
     @mock.patch('cinder.volume.targets.cxt.CxtAdm._get_target',
                 return_value=1)

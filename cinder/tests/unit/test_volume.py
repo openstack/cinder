@@ -2014,13 +2014,16 @@ class VolumeTestCase(BaseVolumeTestCase):
                           image_id='fake_id',
                           source_volume='fake_id')
 
+    @mock.patch.object(cinder.volume.targets.iscsi.ISCSITarget,
+                       '_get_target_chap_auth')
     @mock.patch.object(db, 'volume_admin_metadata_get')
     @mock.patch.object(db, 'volume_get')
     @mock.patch.object(db, 'volume_update')
     def test_initialize_connection_fetchqos(self,
                                             _mock_volume_update,
                                             _mock_volume_get,
-                                            _mock_volume_admin_metadata_get):
+                                            _mock_volume_admin_metadata_get,
+                                            mock_get_target):
         """Make sure initialize_connection returns correct information."""
         _fake_admin_meta = {'fake-key': 'fake-value'}
         _fake_volume = {'volume_type_id': 'fake_type_id',
@@ -2046,6 +2049,7 @@ class VolumeTestCase(BaseVolumeTestCase):
                               'initialize_connection') as driver_init:
             type_qos.return_value = dict(qos_specs=qos_values)
             driver_init.return_value = {'data': {}}
+            mock_get_target.return_value = None
             qos_specs_expected = {'key1': 'value1',
                                   'key2': 'value2'}
             # initialize_connection() passes qos_specs that is designated to
@@ -2098,6 +2102,8 @@ class VolumeTestCase(BaseVolumeTestCase):
                           'fake_volume_id',
                           connector)
 
+    @mock.patch.object(cinder.volume.targets.iscsi.ISCSITarget,
+                       '_get_target_chap_auth')
     @mock.patch.object(db, 'volume_admin_metadata_get')
     @mock.patch.object(db, 'volume_update')
     @mock.patch.object(db, 'volume_get')
@@ -2109,7 +2115,8 @@ class VolumeTestCase(BaseVolumeTestCase):
                                                   mock_driver_init,
                                                   mock_volume_get,
                                                   mock_volume_update,
-                                                  mock_metadata_get):
+                                                  mock_metadata_get,
+                                                  mock_get_target):
 
         fake_admin_meta = {'fake-key': 'fake-value'}
         fake_volume = {'volume_type_id': None,
@@ -2122,6 +2129,7 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         mock_volume_get.return_value = fake_volume
         mock_volume_update.return_value = fake_volume
+        mock_get_target.return_value = None
         connector = {'ip': 'IP', 'initiator': 'INITIATOR'}
         mock_driver_init.return_value = {
             'driver_volume_type': 'iscsi',

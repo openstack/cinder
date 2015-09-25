@@ -22,9 +22,6 @@ class FakeTarget(iscsi.ISCSITarget):
     def _get_target_and_lun(self, context, volume):
         return(0, 0)
 
-    def _get_target_chap_auth(self, context, iscsi_name):
-        pass
-
     def create_iscsi_target(self, name, tid, lun, path,
                             chap_auth, **kwargs):
         pass
