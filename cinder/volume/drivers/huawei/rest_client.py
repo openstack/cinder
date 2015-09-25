@@ -224,7 +224,7 @@ class RestClient(object):
     def _get_id_from_result(self, result, name, key):
         if 'data' in result:
             for item in result['data']:
-                if name == item[key]:
+                if name == item.get(key):
                     return item['ID']
 
     def get_volume_by_name(self, name):
@@ -368,10 +368,8 @@ class RestClient(object):
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Check portgroup associate error.'))
 
-        if 'data' in result:
-            for item in result['data']:
-                if view_id == item['ID']:
-                    return True
+        if self._get_id_from_result(result, view_id, 'ID'):
+            return True
         return False
 
     def do_mapping(self, lun_id, hostgroup_id, host_id, tgtportgroup_id=None):
@@ -531,10 +529,8 @@ class RestClient(object):
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Check lungroup associate error.'))
 
-        if 'data' in result:
-            for item in result['data']:
-                if view_id == item['ID']:
-                    return True
+        if self._get_id_from_result(result, view_id, 'ID'):
+            return True
         return False
 
     def hostgroup_associated(self, view_id, hostgroup_id):
@@ -544,10 +540,8 @@ class RestClient(object):
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Check hostgroup associate error.'))
 
-        if 'data' in result:
-            for item in result['data']:
-                if view_id == item['ID']:
-                    return True
+        if self._get_id_from_result(result, view_id, 'ID'):
+            return True
         return False
 
     def find_host_lun_id(self, host_id, lun_id):
@@ -636,10 +630,8 @@ class RestClient(object):
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Check hostgroup associate error.'))
 
-        if 'data' in result:
-            for item in result['data']:
-                if host_id == item['ID']:
-                    return True
+        if self._get_id_from_result(result, host_id, 'ID'):
+            return True
 
         return False
 
@@ -693,10 +685,8 @@ class RestClient(object):
         self._assert_rest_result(result,
                                  _('Check initiator added to array error.'))
 
-        if 'data' in result:
-            for item in result['data']:
-                if item['ID'] == ininame:
-                    return True
+        if self._get_id_from_result(result, ininame, 'ID'):
+            return True
         return False
 
     def is_initiator_associated_to_host(self, ininame):
@@ -1419,10 +1409,7 @@ class RestClient(object):
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Get partition by name error.'))
 
-        if 'data' in result:
-            for item in result['data']:
-                if name == item['NAME']:
-                    return item['ID']
+        return self._get_id_from_result(result, name, 'NAME')
 
     def get_partition_info_by_id(self, partition_id):
 
@@ -1453,10 +1440,7 @@ class RestClient(object):
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Get cache by name error.'))
 
-        if 'data' in result:
-            for item in result['data']:
-                if name == item['NAME']:
-                    return item['ID']
+        return self._get_id_from_result(result, name, 'NAME')
 
     def get_cache_info_by_id(self, cacheid):
         url = "/SMARTCACHEPARTITION/" + cacheid
