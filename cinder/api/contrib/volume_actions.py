@@ -315,7 +315,11 @@ class VolumeActionsController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         size = int(body['os-extend']['new_size'])
-        self.volume_api.extend(context, volume, size)
+        try:
+            self.volume_api.extend(context, volume, size)
+        except exception.InvalidVolume as error:
+            raise webob.exc.HTTPBadRequest(explanation=error.msg)
+
         return webob.Response(status_int=202)
 
     @wsgi.action('os-update_readonly_flag')
