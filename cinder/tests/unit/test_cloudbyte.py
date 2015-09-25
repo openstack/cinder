@@ -879,8 +879,8 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
         # run the test
         self.driver.delete_volume(volume)
 
-        # assert that 3 api calls were invoked
-        self.assertEqual(3, mock_api_req.call_count)
+        # assert that 7 api calls were invoked
+        self.assertEqual(7, mock_api_req.call_count)
 
         # Test-II
 
@@ -912,8 +912,8 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
                           self.driver.delete_volume,
                           volume)
 
-        # assert that 2 api calls were invoked
-        self.assertEqual(2, mock_api_req.call_count)
+        # assert that 6 api calls were invoked
+        self.assertEqual(6, mock_api_req.call_count)
 
         # Test - IV
 
@@ -929,8 +929,8 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
                           self.driver.delete_volume,
                           volume)
 
-        # assert that 3 api calls were invoked
-        self.assertEqual(3, mock_api_req.call_count)
+        # assert that 7 api calls were invoked
+        self.assertEqual(7, mock_api_req.call_count)
 
     @mock.patch.object(cloudbyte.CloudByteISCSIDriver,
                        '_api_request_for_cloudbyte')
