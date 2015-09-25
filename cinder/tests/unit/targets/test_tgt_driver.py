@@ -178,20 +178,6 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
                     self.testvol_path,
                     chap_auth=('chap_foo', 'chap_bar')))
 
-        mock_open.assert_called_once_with(
-            os.path.join(self.fake_volumes_dir, self.test_vol.split(':')[1]),
-            'w+')
-        expected = ('\n<target iqn.2010-10.org.openstack:volume-%(id)s>\n'
-                    '    backing-store %(bspath)s\n'
-                    '    driver iscsi\n'
-                    '    incominguser chap_foo chap_bar\n'
-                    '    bsoflags foo\n'
-                    '    write-cache bar\n'
-                    '</target>\n' % {'id': self.VOLUME_ID,
-                                     'bspath': self.testvol_path})
-        self.assertEqual(expected,
-                         mock_open.return_value.write.call_args[0][0])
-
     def test_create_iscsi_target_already_exists(self):
         def _fake_execute(*args, **kwargs):
             if 'update' in args:

@@ -191,6 +191,50 @@ class GenericUtilsTestCase(test.TestCase):
                           utils.read_file_as_root,
                           test_filepath)
 
+    @mock.patch('tempfile.NamedTemporaryFile')
+    @mock.patch.object(os, 'open')
+    @mock.patch.object(os, 'fdatasync')
+    @mock.patch.object(os, 'fsync')
+    @mock.patch.object(os, 'rename')
+    @mock.patch.object(os, 'close')
+    @mock.patch.object(os.path, 'isfile')
+    @mock.patch.object(os, 'unlink')
+    def test_write_configfile(self, mock_unlink, mock_isfile, mock_close,
+                              mock_rename, mock_fsync, mock_fdatasync,
+                              mock_open, mock_tmp):
+        filename = 'foo'
+        directory = '/some/random/path'
+        filepath = os.path.join(directory, filename)
+        expected = ('\n<target iqn.2010-10.org.openstack:volume-%(id)s>\n'
+                    '    backing-store %(bspath)s\n'
+                    '    driver iscsi\n'
+                    '    incominguser chap_foo chap_bar\n'
+                    '    bsoflags foo\n'
+                    '    write-cache bar\n'
+                    '</target>\n' % {'id': filename,
+                                     'bspath': filepath})
+
+        # Normal case
+        utils.robust_file_write(directory, filename, expected)
+        mock_open.assert_called_once_with(directory, os.O_DIRECTORY)
+        mock_rename.assert_called_once_with(mock.ANY, filepath)
+        self.assertEqual(
+            expected.encode('utf-8'),
+            mock_tmp.return_value.__enter__.return_value.write.call_args[0][0]
+        )
+
+        # Failure to write persistent file.
+        tempfile = '/some/tempfile'
+        mock_tmp.return_value.__enter__.return_value.name = tempfile
+        mock_rename.side_effect = OSError
+        self.assertRaises(OSError,
+                          utils.robust_file_write,
+                          directory,
+                          filename,
+                          mock.MagicMock())
+        mock_isfile.assert_called_once_with(tempfile)
+        mock_unlink.assert_called_once_with(tempfile)
+
     @mock.patch('oslo_utils.timeutils.utcnow')
     def test_service_is_up(self, mock_utcnow):
         fts_func = datetime.datetime.fromtimestamp
