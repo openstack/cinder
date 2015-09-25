@@ -26,13 +26,6 @@ from cinder.volume.drivers.netapp.eseries import utils
 import cinder.volume.drivers.netapp.options as na_opts
 
 
-def mock_netapp_lib(modules):
-    """Inject fake netapp_lib module classes."""
-    netapp_lib = mock.Mock()
-    netapp_lib.api.rest.rest.WebserviceClient = mock.Mock()
-    for module in modules:
-        setattr(module, 'netapp_restclient', netapp_lib.api.rest.rest)
-
 MULTIATTACH_HOST_GROUP = {
     'clusterRef': '8500000060080E500023C7340036035F515B78FC',
     'label': utils.MULTI_ATTACH_HOST_GROUP_NAME,
@@ -854,6 +847,8 @@ VOLUME_COPY_JOB = {
 FAKE_ENDPOINT_HTTP = 'http://host:80/endpoint'
 
 FAKE_ENDPOINT_HTTPS = 'https://host:8443/endpoint'
+
+FAKE_INVOC_MSG = 'success'
 
 FAKE_CLIENT_PARAMS = {
     'scheme': 'http',

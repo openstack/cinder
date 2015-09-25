@@ -668,10 +668,6 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
     def _custom_setup(self):
         self.mock_object(na_utils, 'OpenStackInfo')
 
-        # Inject fake netapp_lib module classes.
-        fakes.mock_netapp_lib([client])
-        self.mock_object(common.na_utils, 'check_netapp_lib')
-
         configuration = self._set_config(create_configuration())
         self.driver = common.NetAppDriver(configuration=configuration)
         self.library = self.driver.library

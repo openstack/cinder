@@ -19,17 +19,13 @@ import math
 import time
 
 from oslo_log import log as logging
-from oslo_utils import importutils
 import six
 
 from cinder import exception
 from cinder.i18n import _, _LW
 from cinder import utils
+from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_base
-
-netapp_lib = importutils.try_import('netapp_lib')
-if netapp_lib:
-    from netapp_lib.api.zapi import zapi as netapp_api
 
 
 LOG = logging.getLogger(__name__)
