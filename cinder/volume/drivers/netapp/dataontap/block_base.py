@@ -29,21 +29,17 @@ import uuid
 from oslo_log import log as logging
 from oslo_log import versionutils
 from oslo_utils import excutils
-from oslo_utils import importutils
 from oslo_utils import units
 import six
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder import utils
+from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp import options as na_opts
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume import utils as volume_utils
 from cinder.zonemanager import utils as fczm_utils
-
-netapp_lib = importutils.try_import('netapp_lib')
-if netapp_lib:
-    from netapp_lib.api.zapi import zapi as netapp_api
 
 
 LOG = logging.getLogger(__name__)
