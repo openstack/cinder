@@ -80,7 +80,8 @@ def _get_version_from_string(version_string):
 
 def check_qemu_img_version(minimum_version):
     qemu_version = get_qemu_img_version()
-    if qemu_version < _get_version_from_string(minimum_version):
+    if (qemu_version is None
+       or qemu_version < _get_version_from_string(minimum_version)):
         if qemu_version:
             current_version = '.'.join((str(element)
                                        for element in qemu_version))
