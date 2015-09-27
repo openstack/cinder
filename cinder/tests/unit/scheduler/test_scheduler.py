@@ -225,37 +225,37 @@ class SchedulerManagerTestCase(test.TestCase):
                                                   request_spec, {})
 
     @mock.patch('cinder.db.volume_update')
-    @mock.patch('cinder.db.volume_get')
-    def test_retype_volume_exception_returns_volume_state(self, _mock_vol_get,
-                                                          _mock_vol_update):
+    @mock.patch('cinder.db.volume_attachment_get_used_by_volume_id')
+    def test_retype_volume_exception_returns_volume_state(
+            self, _mock_vol_attachment_get, _mock_vol_update):
         # Test NoValidHost exception behavior for retype.
         # Puts the volume in original state and eats the exception.
         volume = tests_utils.create_volume(self.context,
                                            status='retyping',
                                            previous_status='in-use')
         instance_uuid = '12345678-1234-5678-1234-567812345678'
-        volume = tests_utils.attach_volume(self.context, volume['id'],
-                                           instance_uuid, None, '/dev/fake')
-        fake_volume_id = volume.id
+        volume_attach = tests_utils.attach_volume(self.context, volume.id,
+                                                  instance_uuid, None,
+                                                  '/dev/fake')
+        _mock_vol_attachment_get.return_value = [volume_attach]
         topic = 'fake_topic'
-        request_spec = {'volume_id': fake_volume_id, 'volume_type': {'id': 3},
+        request_spec = {'volume_id': volume.id, 'volume_type': {'id': 3},
                         'migration_policy': 'on-demand'}
-        _mock_vol_get.return_value = volume
         _mock_vol_update.return_value = {'status': 'in-use'}
         _mock_find_retype_host = mock.Mock(
             side_effect=exception.NoValidHost(reason=""))
         orig_retype = self.manager.driver.find_retype_host
         self.manager.driver.find_retype_host = _mock_find_retype_host
 
-        self.manager.retype(self.context, topic, fake_volume_id,
+        self.manager.retype(self.context, topic, volume.id,
                             request_spec=request_spec,
-                            filter_properties={})
+                            filter_properties={},
+                            volume=volume)
 
-        _mock_vol_get.assert_called_once_with(self.context, fake_volume_id)
         _mock_find_retype_host.assert_called_once_with(self.context,
                                                        request_spec, {},
                                                        'on-demand')
-        _mock_vol_update.assert_called_once_with(self.context, fake_volume_id,
+        _mock_vol_update.assert_called_once_with(self.context, volume.id,
                                                  {'status': 'in-use'})
         self.manager.driver.find_retype_host = orig_retype
 

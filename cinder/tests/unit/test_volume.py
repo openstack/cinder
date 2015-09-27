@@ -683,6 +683,17 @@ class VolumeTestCase(BaseVolumeTestCase):
                           False,
                           FAKE_METADATA_TYPE.fake_type)
 
+    @mock.patch('cinder.db.volume_update')
+    def test_update_with_ovo(self, volume_update):
+        """Test update volume using oslo_versionedobject."""
+        volume = tests_utils.create_volume(self.context, **self.volume_params)
+        volume_api = cinder.volume.api.API()
+        updates = {'display_name': 'foobbar'}
+        volume_api.update(self.context, volume, updates)
+        volume_update.assert_called_once_with(self.context, volume.id,
+                                              updates)
+        self.assertEqual('foobbar', volume.display_name)
+
     def test_delete_volume_metadata_with_metatype(self):
         """Test delete volume metadata with different metadata type."""
         test_meta1 = {'fake_key1': 'fake_value1', 'fake_key2': 'fake_value2'}
@@ -3908,7 +3919,6 @@ class VolumeTestCase(BaseVolumeTestCase):
                                            status='creating', host=CONF.host)
         self.volume.create_volume(self.context, volume['id'])
         volume['status'] = 'in-use'
-        volume['host'] = 'fakehost'
 
         volume_api = cinder.volume.api.API()
 
@@ -4753,15 +4763,16 @@ class VolumeMigrationTestCase(VolumeTestCase):
                                            host=CONF.host, status='retyping',
                                            volume_type_id=old_vol_type['id'],
                                            replication_status=rep_status)
-        volume['previous_status'] = 'available'
+        volume.previous_status = 'available'
+        volume.save()
         if snap:
-            self._create_snapshot(volume['id'], size=volume['size'])
+            self._create_snapshot(volume.id, size=volume.size)
         if driver or diff_equal:
             host_obj = {'host': CONF.host, 'capabilities': {}}
         else:
             host_obj = {'host': 'newhost', 'capabilities': {}}
 
-        reserve_opts = {'volumes': 1, 'gigabytes': volume['size']}
+        reserve_opts = {'volumes': 1, 'gigabytes': volume.size}
         QUOTAS.add_volume_type_opts(self.context,
                                     reserve_opts,
                                     vol_type['id'])
@@ -4782,20 +4793,21 @@ class VolumeMigrationTestCase(VolumeTestCase):
                 _mig.return_value = True
 
             if not exc:
-                self.volume.retype(self.context, volume['id'],
+                self.volume.retype(self.context, volume.id,
                                    vol_type['id'], host_obj,
                                    migration_policy=policy,
-                                   reservations=reservations)
+                                   reservations=reservations,
+                                   volume=volume)
             else:
                 self.assertRaises(exc, self.volume.retype,
-                                  self.context, volume['id'],
+                                  self.context, volume.id,
                                   vol_type['id'], host_obj,
                                   migration_policy=policy,
-                                  reservations=reservations)
-            get_volume.assert_called_once_with(self.context, volume['id'])
+                                  reservations=reservations,
+                                  volume=volume)
 
         # get volume/quota properties
-        volume = db.volume_get(elevated, volume['id'])
+        volume = objects.Volume.get_by_id(elevated, volume.id)
         try:
             usage = db.quota_usage_get(elevated, project_id, 'volumes_new')
             volumes_in_use = usage.in_use
@@ -4804,19 +4816,19 @@ class VolumeMigrationTestCase(VolumeTestCase):
 
         # check properties
         if driver or diff_equal:
-            self.assertEqual(vol_type['id'], volume['volume_type_id'])
-            self.assertEqual('available', volume['status'])
-            self.assertEqual(CONF.host, volume['host'])
+            self.assertEqual(vol_type['id'], volume.volume_type_id)
+            self.assertEqual('available', volume.status)
+            self.assertEqual(CONF.host, volume.host)
             self.assertEqual(1, volumes_in_use)
         elif not exc:
-            self.assertEqual(old_vol_type['id'], volume['volume_type_id'])
-            self.assertEqual('retyping', volume['status'])
-            self.assertEqual(CONF.host, volume['host'])
+            self.assertEqual(old_vol_type['id'], volume.volume_type_id)
+            self.assertEqual('retyping', volume.status)
+            self.assertEqual(CONF.host, volume.host)
             self.assertEqual(1, volumes_in_use)
         else:
-            self.assertEqual(old_vol_type['id'], volume['volume_type_id'])
-            self.assertEqual('available', volume['status'])
-            self.assertEqual(CONF.host, volume['host'])
+            self.assertEqual(old_vol_type['id'], volume.volume_type_id)
+            self.assertEqual('available', volume.status)
+            self.assertEqual(CONF.host, volume.host)
             self.assertEqual(0, volumes_in_use)
 
     def test_retype_volume_driver_success(self):

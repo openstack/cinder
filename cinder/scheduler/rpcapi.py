@@ -43,6 +43,7 @@ class SchedulerAPI(object):
         1.7 - Add get_active_pools method
         1.8 - Add sending object over RPC in create_consistencygroup method
         1.9 - Adds support for sending objects over RPC in create_volume()
+        1.10 - Adds support for sending objects over RPC in retype()
     """
 
     RPC_API_VERSION = '1.0'
@@ -107,15 +108,20 @@ class SchedulerAPI(object):
                           filter_properties=filter_properties)
 
     def retype(self, ctxt, topic, volume_id,
-               request_spec=None, filter_properties=None):
+               request_spec=None, filter_properties=None, volume=None):
 
-        cctxt = self.client.prepare(version='1.4')
         request_spec_p = jsonutils.to_primitive(request_spec)
-        return cctxt.cast(ctxt, 'retype',
-                          topic=topic,
-                          volume_id=volume_id,
-                          request_spec=request_spec_p,
-                          filter_properties=filter_properties)
+        msg_args = {'topic': topic, 'volume_id': volume_id,
+                    'request_spec': request_spec_p,
+                    'filter_properties': filter_properties}
+        if self.client.can_send_version('1.10'):
+            version = '1.10'
+            msg_args['volume'] = volume
+        else:
+            version = '1.4'
+
+        cctxt = self.client.prepare(version=version)
+        return cctxt.cast(ctxt, 'retype', **msg_args)
 
     def manage_existing(self, ctxt, topic, volume_id,
                         request_spec=None, filter_properties=None):

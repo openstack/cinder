@@ -81,6 +81,7 @@ class VolumeAPI(object):
                args. Forwarding CGSnapshot object instead of CGSnapshot_id.
         1.32 - Adds support for sending objects over RPC in create_volume().
         1.33 - Adds support for sending objects over RPC in delete_volume().
+        1.34 - Adds support for sending objects over RPC in retype().
     """
 
     BASE_RPC_API_VERSION = '1.0'
@@ -253,14 +254,20 @@ class VolumeAPI(object):
 
     def retype(self, ctxt, volume, new_type_id, dest_host,
                migration_policy='never', reservations=None):
-        new_host = utils.extract_host(volume['host'])
-        cctxt = self.client.prepare(server=new_host, version='1.12')
         host_p = {'host': dest_host.host,
                   'capabilities': dest_host.capabilities}
-        cctxt.cast(ctxt, 'retype', volume_id=volume['id'],
-                   new_type_id=new_type_id, host=host_p,
-                   migration_policy=migration_policy,
-                   reservations=reservations)
+        msg_args = {'volume_id': volume.id, 'new_type_id': new_type_id,
+                    'host': host_p, 'migration_policy': migration_policy,
+                    'reservations': reservations}
+        if self.client.can_send_version('1.34'):
+            version = '1.34'
+            msg_args['volume'] = volume
+        else:
+            version = '1.12'
+
+        new_host = utils.extract_host(volume.host)
+        cctxt = self.client.prepare(server=new_host, version=version)
+        cctxt.cast(ctxt, 'retype', **msg_args)
 
     def manage_existing(self, ctxt, volume, ref):
         new_host = utils.extract_host(volume['host'])
