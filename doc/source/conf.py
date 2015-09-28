@@ -33,6 +33,7 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.ifconfig',
               'sphinx.ext.graphviz',
               'oslosphinx',
+              'stevedore.sphinxext'
               ]
 
 # autodoc generation is a bit aggressive and a nuisance
