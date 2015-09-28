@@ -38,9 +38,10 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
         1.0.0 - Initial driver
         1.1.0 - Add chap support and minor bug fixes
         1.1.1 - Add wait logic for delete volumes
+        1.1.2 - Update ig to None before delete volume
     """
 
-    VERSION = '1.1.1'
+    VERSION = '1.1.2'
     volume_stats = {}
 
     def __init__(self, *args, **kwargs):
@@ -285,6 +286,20 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
                          "volume [%(cb_volume)s]."),
                      {'operation': operation, 'cb_volume': cb_volume})
             raise loopingcall.LoopingCallDone()
+        elif status == 2:
+            job_result = result_res.get("jobresult")
+            err_msg = job_result.get("errortext")
+            err_code = job_result.get("errorcode")
+            msg = (_(
+                "Error in Operation [%(operation)s] "
+                "for volume [%(cb_volume)s] in CloudByte "
+                "storage: [%(cb_error)s], "
+                "error code: [%(error_code)s]."),
+                {'cb_error': err_msg,
+                 'error_code': err_code,
+                 'cb_volume': cb_volume,
+                 'operation': operation})
+            raise exception.VolumeBackendAPIException(data=msg)
         elif count == max_retries:
             # All attempts exhausted
             LOG.error(_LE("CloudByte operation [%(operation)s] failed"
@@ -449,7 +464,7 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
 
         return model_update
 
-    def _get_initiator_group_id_from_response(self, data):
+    def _get_initiator_group_id_from_response(self, data, filter):
         """Find iSCSI initiator group id."""
 
         ig_list_res = data.get('listInitiatorsResponse')
@@ -468,7 +483,7 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
         ig_id = None
 
         for ig in ig_list:
-            if ig.get('initiatorgroup') == 'ALL':
+            if ig.get('initiatorgroup') == filter:
                 ig_id = ig['id']
                 break
 
@@ -710,6 +725,37 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
 
         return model_update
 
+    def _update_initiator_group(self, volume_id, ig_name):
+
+        # Get account id of this account
+        account_name = self.configuration.cb_account_name
+        account_id = self._get_account_id_from_name(account_name)
+
+        # Fetch the initiator group ID
+        params = {"accountid": account_id}
+
+        iscsi_initiator_data = self._api_request_for_cloudbyte(
+            'listiSCSIInitiator', params)
+
+        # Filter the list of initiator groups with the name
+        ig_id = self._get_initiator_group_id_from_response(
+            iscsi_initiator_data, ig_name)
+
+        params = {"storageid": volume_id}
+
+        iscsi_service_data = self._api_request_for_cloudbyte(
+            'listVolumeiSCSIService', params)
+        iscsi_id = self._get_iscsi_service_id_from_response(
+            volume_id, iscsi_service_data)
+
+        # Update the iscsi service with above fetched iscsi_id
+        self._request_update_iscsi_service(iscsi_id, ig_id, None)
+
+        LOG.debug("CloudByte initiator group updated successfully for volume "
+                  "[%(vol)s] with ig [%(ig)s].",
+                  {'vol': volume_id,
+                   'ig': ig_name})
+
     def create_volume(self, volume):
 
         tsm_name = self.configuration.cb_tsm_name
@@ -771,7 +817,7 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
         iscsi_initiator_data = self._api_request_for_cloudbyte(
             'listiSCSIInitiator', params)
         ig_id = self._get_initiator_group_id_from_response(
-            iscsi_initiator_data)
+            iscsi_initiator_data, 'ALL')
 
         LOG.debug("Updating iscsi service for CloudByte volume [%s].",
                   cb_volume_name)
@@ -828,6 +874,8 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
 
             # Delete volume at CloudByte
             if cb_volume_id is not None:
+                # Need to set the initiator group to None before deleting
+                self._update_initiator_group(cb_volume_id, 'None')
 
                 params = {"id": cb_volume_id}
                 del_res = self._api_request_for_cloudbyte('deleteFileSystem',
