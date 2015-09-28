@@ -1376,7 +1376,7 @@ class IsBlkDeviceTestCase(test.TestCase):
 
 
 class WrongException(Exception):
-        pass
+    pass
 
 
 class TestRetryDecorator(test.TestCase):

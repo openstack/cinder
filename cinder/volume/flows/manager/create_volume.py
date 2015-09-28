@@ -772,9 +772,9 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                 # Update the newly created volume db entry before we clone it
                 # for the image-volume creation.
                 if model_update:
-                        volume_ref = self.db.volume_update(context,
-                                                           volume_ref['id'],
-                                                           model_update)
+                    volume_ref = self.db.volume_update(context,
+                                                       volume_ref['id'],
+                                                       model_update)
                 self.manager._create_image_cache_volume_entry(internal_context,
                                                               volume_ref,
                                                               image_id,

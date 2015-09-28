@@ -191,9 +191,9 @@ class NetApp7modeNfsDriver(nfs_base.NetAppNfsDriver):
                           " on this storage family and ontap version.")))
         volume_type = na_utils.get_volume_type_from_volume(volume)
         if volume_type and 'qos_spec_id' in volume_type:
-                raise exception.ManageExistingVolumeTypeMismatch(
-                    reason=_("QoS specs are not supported"
-                             " on this storage family and ONTAP version."))
+            raise exception.ManageExistingVolumeTypeMismatch(
+                reason=_("QoS specs are not supported"
+                         " on this storage family and ONTAP version."))
 
     def _do_qos_for_volume(self, volume, extra_specs, cleanup=False):
         """Set QoS policy on backend from volume type information."""

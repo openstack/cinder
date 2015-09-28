@@ -390,11 +390,11 @@ class QuotaSetsController(wsgi.Controller):
         # If the project which is being deleted has allocated part of its quota
         # to its subprojects, then subprojects' quotas should be deleted first.
         for key, value in project_quotas.items():
-                if 'allocated' in project_quotas[key].keys():
-                    if project_quotas[key]['allocated'] != 0:
-                        msg = _("About to delete child projects having "
-                                "non-zero quota. This should not be performed")
-                        raise webob.exc.HTTPBadRequest(explanation=msg)
+            if 'allocated' in project_quotas[key].keys():
+                if project_quotas[key]['allocated'] != 0:
+                    msg = _("About to delete child projects having "
+                            "non-zero quota. This should not be performed")
+                    raise webob.exc.HTTPBadRequest(explanation=msg)
 
         if parent_id:
             # Get the children of the project which the token is scoped to in

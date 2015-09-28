@@ -874,7 +874,7 @@ class GlusterFsDriverTestCase(test.TestCase):
         drv = self._driver
 
         with mock.patch.object(drv, '_execute') as mock_execute,\
-                mock.patch.object(drv, '_ensure_share_mounted') as \
+            mock.patch.object(drv, '_ensure_share_mounted') as \
                 mock_ensure_share_mounted:
             volume = DumbVolume()
             volume['id'] = self.VOLUME_UUID
@@ -890,23 +890,23 @@ class GlusterFsDriverTestCase(test.TestCase):
         drv = self._driver
 
         with mock.patch.object(drv, '_read_file') as mock_read_file:
-                hashed = drv._get_hash_str(self.TEST_EXPORT1)
-                volume_path = '%s/%s/volume-%s' % (self.TEST_MNT_POINT_BASE,
-                                                   hashed,
-                                                   self.VOLUME_UUID)
-                info_path = '%s%s' % (volume_path, '.info')
+            hashed = drv._get_hash_str(self.TEST_EXPORT1)
+            volume_path = '%s/%s/volume-%s' % (self.TEST_MNT_POINT_BASE,
+                                               hashed,
+                                               self.VOLUME_UUID)
+            info_path = '%s%s' % (volume_path, '.info')
 
-                mock_read_file.return_value = '{"%(id)s": "volume-%(id)s"}' %\
-                    {'id': self.VOLUME_UUID}
+            mock_read_file.return_value = '{"%(id)s": "volume-%(id)s"}' %\
+                {'id': self.VOLUME_UUID}
 
-                volume = DumbVolume()
-                volume['id'] = self.VOLUME_UUID
-                volume['name'] = 'volume-%s' % self.VOLUME_UUID
+            volume = DumbVolume()
+            volume['id'] = self.VOLUME_UUID
+            volume['name'] = 'volume-%s' % self.VOLUME_UUID
 
-                info = drv._read_info_file(info_path)
+            info = drv._read_info_file(info_path)
 
-                self.assertEqual('volume-%s' % self.VOLUME_UUID,
-                                 info[self.VOLUME_UUID])
+            self.assertEqual('volume-%s' % self.VOLUME_UUID,
+                             info[self.VOLUME_UUID])
 
     def test_extend_volume(self):
         drv = self._driver

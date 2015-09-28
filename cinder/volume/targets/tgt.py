@@ -145,10 +145,10 @@ class TgtAdm(iscsi.ISCSITarget):
 
     @utils.retry(putils.ProcessExecutionError)
     def _do_tgt_update(self, name):
-            (out, err) = utils.execute('tgt-admin', '--update', name,
-                                       run_as_root=True)
-            LOG.debug("StdOut from tgt-admin --update: %s", out)
-            LOG.debug("StdErr from tgt-admin --update: %s", err)
+        (out, err) = utils.execute('tgt-admin', '--update', name,
+                                   run_as_root=True)
+        LOG.debug("StdOut from tgt-admin --update: %s", out)
+        LOG.debug("StdErr from tgt-admin --update: %s", err)
 
     def create_iscsi_target(self, name, tid, lun, path,
                             chap_auth=None, **kwargs):

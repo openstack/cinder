@@ -945,7 +945,7 @@ class VolumeOpsTestCase(test.TestCase):
                 del obj.eagerlyScrub
             elif (type == "ns0:VirtualMachineRelocateSpec" and
                   delete_disk_attribute):
-                    del obj.disk
+                del obj.disk
             else:
                 pass
             return obj

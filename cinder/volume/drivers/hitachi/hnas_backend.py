@@ -126,7 +126,7 @@ class HnasBackend(object):
        """
         if (self.drv_configs['ssh_enabled'] == 'True' and
                 self.drv_configs['cluster_admin_ip0'] is not None):
-                util = 'SMU ' + cmd
+            util = 'SMU ' + cmd
         else:
             out, err = utils.execute(cmd,
                                      "-version",

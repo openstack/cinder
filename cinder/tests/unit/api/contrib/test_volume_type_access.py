@@ -63,7 +63,7 @@ def _has_type_access(type_id, project_id):
     for access in ACCESS_LIST:
         if access['volume_type_id'] == type_id and \
            access['project_id'] == project_id:
-                return True
+            return True
     return False
 
 

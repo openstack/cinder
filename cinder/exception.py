@@ -932,9 +932,9 @@ class ViolinBackendErrNotFound(CinderException):
 
 # ZFSSA NFS driver exception.
 class WebDAVClientError(CinderException):
-        message = _("The WebDAV request failed. Reason: %(msg)s, "
-                    "Return code/reason: %(code)s, Source Volume: %(src)s, "
-                    "Destination Volume: %(dst)s, Method: %(method)s.")
+    message = _("The WebDAV request failed. Reason: %(msg)s, "
+                "Return code/reason: %(code)s, Source Volume: %(src)s, "
+                "Destination Volume: %(dst)s, Method: %(method)s.")
 
 
 # XtremIO Drivers

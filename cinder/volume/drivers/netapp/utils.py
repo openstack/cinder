@@ -138,35 +138,35 @@ def round_down(value, precision):
 def log_extra_spec_warnings(extra_specs):
     for spec in (set(extra_specs.keys() if extra_specs else []) &
                  set(OBSOLETE_SSC_SPECS.keys())):
-            LOG.warning(_LW('Extra spec %(old)s is obsolete.  Use %(new)s '
-                            'instead.'), {'old': spec,
-                                          'new': OBSOLETE_SSC_SPECS[spec]})
+        LOG.warning(_LW('Extra spec %(old)s is obsolete.  Use %(new)s '
+                        'instead.'), {'old': spec,
+                                      'new': OBSOLETE_SSC_SPECS[spec]})
     for spec in (set(extra_specs.keys() if extra_specs else []) &
                  set(DEPRECATED_SSC_SPECS.keys())):
-            LOG.warning(_LW('Extra spec %(old)s is deprecated.  Use %(new)s '
-                            'instead.'), {'old': spec,
-                                          'new': DEPRECATED_SSC_SPECS[spec]})
+        LOG.warning(_LW('Extra spec %(old)s is deprecated.  Use %(new)s '
+                        'instead.'), {'old': spec,
+                                      'new': DEPRECATED_SSC_SPECS[spec]})
 
 
 def get_iscsi_connection_properties(lun_id, volume, iqn,
                                     address, port):
 
-        properties = {}
-        properties['target_discovered'] = False
-        properties['target_portal'] = '%s:%s' % (address, port)
-        properties['target_iqn'] = iqn
-        properties['target_lun'] = int(lun_id)
-        properties['volume_id'] = volume['id']
-        auth = volume['provider_auth']
-        if auth:
-            (auth_method, auth_username, auth_secret) = auth.split()
-            properties['auth_method'] = auth_method
-            properties['auth_username'] = auth_username
-            properties['auth_password'] = auth_secret
-        return {
-            'driver_volume_type': 'iscsi',
-            'data': properties,
-        }
+    properties = {}
+    properties['target_discovered'] = False
+    properties['target_portal'] = '%s:%s' % (address, port)
+    properties['target_iqn'] = iqn
+    properties['target_lun'] = int(lun_id)
+    properties['volume_id'] = volume['id']
+    auth = volume['provider_auth']
+    if auth:
+        (auth_method, auth_username, auth_secret) = auth.split()
+        properties['auth_method'] = auth_method
+        properties['auth_username'] = auth_username
+        properties['auth_password'] = auth_secret
+    return {
+        'driver_volume_type': 'iscsi',
+        'data': properties,
+    }
 
 
 def validate_qos_spec(qos_spec):

@@ -3830,7 +3830,7 @@ class EMCVMAXCommon(object):
                         self.conn, storageConfigservice,
                         memberInstanceNames, None, extraSpecs)
                     for volumeRef in volumes:
-                            volumeRef['status'] = 'deleted'
+                        volumeRef['status'] = 'deleted'
             except Exception:
                 for volumeRef in volumes:
                     volumeRef['status'] = 'error_deleting'

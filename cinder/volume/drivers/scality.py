@@ -125,7 +125,7 @@ class ScalityDriver(remotefs_drv.RemoteFSSnapDriver):
             parts = mount.split()
             if (parts[0].endswith('fuse') and
                     parts[1].rstrip('/') == mount_path):
-                        return True
+                return True
         return False
 
     @lockutils.synchronized('mount-sofs', 'cinder-sofs', external=True)
