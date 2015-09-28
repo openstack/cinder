@@ -268,6 +268,18 @@ class VolumeImageMetadataTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.delete, req, 1, body)
 
+    def test_show_image_metadata(self):
+        body = {"os-show_image_metadata": None}
+        req = webob.Request.blank('/v2/fake/volumes/1/action')
+        req.method = 'POST'
+        req.body = jsonutils.dumps(body)
+        req.headers["content-type"] = "application/json"
+
+        res = req.get_response(fakes.wsgi_app())
+        self.assertEqual(200, res.status_int)
+        self.assertEqual(fake_image_metadata,
+                         json.loads(res.body)["metadata"])
+
 
 class ImageMetadataXMLDeserializer(common.MetadataXMLDeserializer):
     metadata_node_name = "volume_image_metadata"

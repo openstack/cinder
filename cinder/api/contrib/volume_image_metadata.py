@@ -134,6 +134,12 @@ class VolumeImageMetadataController(wsgi.Controller):
         except exception.InvalidVolumeMetadataSize as error:
             raise webob.exc.HTTPRequestEntityTooLarge(explanation=error.msg)
 
+    @wsgi.action("os-show_image_metadata")
+    @wsgi.serializers(xml=common.MetadataTemplate)
+    def index(self, req, id, body):
+        context = req.environ['cinder.context']
+        return {'metadata': self._get_image_metadata(context, id)[1]}
+
     @wsgi.action("os-unset_image_metadata")
     def delete(self, req, id, body):
         """Deletes an existing image metadata."""
