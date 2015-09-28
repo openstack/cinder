@@ -1652,6 +1652,49 @@ class Huawei18000ISCSIDriverTestCase(test.TestCase):
         lun_info = self.driver.create_volume(test_volume)
         self.assertEqual('1', lun_info['provider_location'])
 
+    def test_find_available_qos(self):
+        self.driver.restclient.login()
+        qos = {'MAXIOPS': '100', 'IOType': '2'}
+        fake_qos_info_response_equal = {
+            "error": {
+                "code": 0
+            },
+            "data": [{
+                "ID": "11",
+                "MAXIOPS": "100",
+                "IOType": "2",
+                "LUNLIST": u'["1", "2", "3", "4", "5", "6", "7", "8", "9",\
+                "10", ,"11", "12", "13", "14", "15", "16", "17", "18", "19",\
+                "20", ,"21", "22", "23", "24", "25", "26", "27", "28", "29",\
+                "30", ,"31", "32", "33", "34", "35", "36", "37", "38", "39",\
+                "40", ,"41", "42", "43", "44", "45", "46", "47", "48", "49",\
+                "50", ,"51", "52", "53", "54", "55", "56", "57", "58", "59",\
+                "60", ,"61", "62", "63", "64"]'
+            }]
+        }
+        # Number of LUNs in QoS is equal to 64
+        with mock.patch.object(rest_client.RestClient, 'get_qos',
+                               return_value=fake_qos_info_response_equal):
+            (qos_id, lun_list) = self.driver.restclient.find_available_qos(qos)
+            self.assertEqual((None, []), (qos_id, lun_list))
+
+        # Number of LUNs in QoS is less than 64
+        fake_qos_info_response_less = {
+            "error": {
+                "code": 0
+            },
+            "data": [{
+                "ID": "11",
+                "MAXIOPS": "100",
+                "IOType": "2",
+                "LUNLIST": u'["0", "1", "2"]'
+            }]
+        }
+        with mock.patch.object(rest_client.RestClient, 'get_qos',
+                               return_value=fake_qos_info_response_less):
+            (qos_id, lun_list) = self.driver.restclient.find_available_qos(qos)
+            self.assertEqual(("11", u'["0", "1", "2"]'), (qos_id, lun_list))
+
     def create_fake_conf_file(self):
         """Create a fake Config file.
 
@@ -1687,11 +1730,6 @@ class Huawei18000ISCSIDriverTestCase(test.TestCase):
                                       'deviceManager/rest/')
         url.appendChild(url_text)
         storage.appendChild(url)
-
-        storagepool = doc.createElement('StoragePool')
-        pool_text = doc.createTextNode('OpenStack_Pool')
-        storagepool.appendChild(pool_text)
-        storage.appendChild(storagepool)
 
         lun = doc.createElement('LUN')
         config.appendChild(lun)
@@ -2186,11 +2224,6 @@ class Huawei18000FCDriverTestCase(test.TestCase):
                                       'deviceManager/rest/')
         url.appendChild(url_text)
         storage.appendChild(url)
-
-        storagepool = doc.createElement('StoragePool')
-        pool_text = doc.createTextNode('OpenStack_Pool')
-        storagepool.appendChild(pool_text)
-        storage.appendChild(storagepool)
 
         lun = doc.createElement('LUN')
         config.appendChild(lun)
