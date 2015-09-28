@@ -35,7 +35,7 @@ from cinder.wsgi import common as wsgi_common
 CONF = cfg.CONF
 
 
-def _application():
+def initialize_application():
     objects.register_all()
     CONF(sys.argv[1:], project='cinder',
          version=version.version_string())
@@ -43,6 +43,3 @@ def _application():
 
     rpc.init(CONF)
     return wsgi_common.Loader().load_app(name='osapi_volume')
-
-
-application = _application()
