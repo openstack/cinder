@@ -325,6 +325,7 @@ class BaseVD(object):
 
         self._execute = execute
         self._stats = {}
+        self._throttle = None
 
         self.pools = []
         self.capabilities = {}
@@ -2009,7 +2010,7 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
     def remove_export_snapshot(self, context, snapshot):
         raise NotImplementedError()
 
-    def initialize_connection(self, volume, connector):
+    def initialize_connection(self, volume, connector, **kwargs):
         raise NotImplementedError()
 
     def initialize_connection_snapshot(self, snapshot, connector, **kwargs):
