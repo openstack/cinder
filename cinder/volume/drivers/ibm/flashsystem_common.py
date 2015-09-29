@@ -789,9 +789,8 @@ class FlashSystemDriver(san.SanDriver):
                      'via the path %(path)s.') % {'path': host_device})
             raise exception.VolumeBackendAPIException(data=msg)
 
-        return device
-
         LOG.debug('leave: _scan_device')
+        return device
 
     @utils.synchronized('flashsystem-unmap', external=True)
     def _unmap_vdisk_from_host(self, vdisk_name, connector):

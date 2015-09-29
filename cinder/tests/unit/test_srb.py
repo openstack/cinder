@@ -155,7 +155,6 @@ class SRBRetryTestCase(test.TestCase):
         def _try_failing(self):
             self.attempts = self.attempts + 1
             raise processutils.ProcessExecutionError("Fail everytime")
-            return True
 
         try:
             ret = _try_failing(self)

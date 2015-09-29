@@ -272,7 +272,7 @@ class DotHillClient(object):
                 if count >= 5:
                     LOG.error(_LE('Error in copying volume: %s'), src_name)
                     raise exception.DotHillRequestError
-                    break
+
                 time.sleep(1)
                 count += 1
 
