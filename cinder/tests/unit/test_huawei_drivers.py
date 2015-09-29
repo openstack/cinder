@@ -59,20 +59,6 @@ fake_smartx_value = {'smarttier': 'true',
                      'partitionname': 'partition-test',
                      }
 
-error_volume = {'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0637',
-                'size': 2,
-                'volume_name': 'vol2',
-                'id': '21ec7341-9256-497b-97d9-ef48edcf0637',
-                'volume_id': '21ec7341-9256-497b-97d9-ef48edcf0637',
-                'provider_auth': None,
-                'project_id': 'project',
-                'display_name': 'vol2',
-                'display_description': 'test error_volume',
-                'volume_type_id': None,
-                'host': 'ubuntu@huawei#OpenStack_Pool_error',
-                'provider_location': '12',
-                }
-
 test_snap = {'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0635',
              'size': 1,
              'volume_name': 'vol1',
@@ -1476,9 +1462,6 @@ class Huawei18000ISCSIDriverTestCase(test.TestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_volume, test_volume)
 
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.create_volume, error_volume)
-
     def test_delete_volume_fail(self):
         self.driver.restclient.login()
         self.driver.restclient.test_fail = True
@@ -1608,7 +1591,13 @@ class Huawei18000ISCSIDriverTestCase(test.TestCase):
                  "ID": "1",
                  "USERFREECAPACITY": "37",
                  "USERTOTALCAPACITY": "49",
-                 "USAGETYPE": constants.FILE_SYSTEM_POOL_TYPE}]}
+                 "USAGETYPE": constants.FILE_SYSTEM_POOL_TYPE},
+                {"NAME": "test003",
+                 "ID": "0",
+                 "USERFREECAPACITY": "36",
+                 "DATASPACE": "35",
+                 "USERTOTALCAPACITY": "48",
+                 "USAGETYPE": constants.BLOCK_STORAGE_POOL_TYPE}]}
         pool_name = 'test001'
         test_info = {'CAPACITY': '36', 'ID': '0', 'TOTALCAPACITY': '48'}
         pool_info = self.driver.restclient.find_pool_info(pool_name, pools)
@@ -1621,6 +1610,11 @@ class Huawei18000ISCSIDriverTestCase(test.TestCase):
 
         pool_name = 'test000'
         test_info = {}
+        pool_info = self.driver.restclient.find_pool_info(pool_name, pools)
+        self.assertEqual(test_info, pool_info)
+
+        pool_name = 'test003'
+        test_info = {'CAPACITY': '35', 'ID': '0', 'TOTALCAPACITY': '48'}
         pool_info = self.driver.restclient.find_pool_info(pool_name, pools)
         self.assertEqual(test_info, pool_info)
 
@@ -1876,9 +1870,6 @@ class Huawei18000FCDriverTestCase(test.TestCase):
         self.driver.restclient.test_fail = True
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_volume, test_volume)
-
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.create_volume, error_volume)
 
     def test_delete_volume_fail(self):
         self.driver.restclient.login()
