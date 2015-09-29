@@ -173,7 +173,6 @@ class DPLCommand(object):
                        'expects': expected_status})
             if response.status == http_client.UNAUTHORIZED:
                 raise exception.NotAuthorized
-                retcode = errno.EACCES
             else:
                 retcode = errno.EIO
         elif retcode == 0 and response.status is http_client.NOT_FOUND:
@@ -784,8 +783,6 @@ class DPLCOMMONDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
                               '(%(status)s).'),
                           {'volume': eventid, 'status': e})
                 raise loopingcall.LoopingCallDone(retvalue=False)
-                status['state'] = 'error'
-                fExit = True
 
             if fExit is True:
                 break
