@@ -1259,27 +1259,27 @@ class API(base.Base):
 
     @wrap_check_policy
     def extend(self, context, volume, new_size):
-        if volume['status'] != 'available':
+        if volume.status != 'available':
             msg = _('Volume %(vol_id)s status must be available '
                     'to extend, but current status is: '
-                    '%(vol_status)s.') % {'vol_id': volume['id'],
-                                          'vol_status': volume['status']}
+                    '%(vol_status)s.') % {'vol_id': volume.id,
+                                          'vol_status': volume.status}
             raise exception.InvalidVolume(reason=msg)
 
-        size_increase = (int(new_size)) - volume['size']
+        size_increase = (int(new_size)) - volume.size
         if size_increase <= 0:
             msg = (_("New size for extend must be greater "
                      "than current size. (current: %(size)s, "
                      "extended: %(new_size)s).") % {'new_size': new_size,
-                                                    'size': volume['size']})
+                                                    'size': volume.size})
             raise exception.InvalidInput(reason=msg)
 
         try:
             reserve_opts = {'gigabytes': size_increase}
             QUOTAS.add_volume_type_opts(context, reserve_opts,
-                                        volume.get('volume_type_id'))
+                                        volume.volume_type_id)
             reservations = QUOTAS.reserve(context,
-                                          project_id=volume['project_id'],
+                                          project_id=volume.project_id,
                                           **reserve_opts)
         except exception.OverQuota as exc:
             usages = exc.kwargs['usages']

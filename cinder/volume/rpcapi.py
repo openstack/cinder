@@ -82,6 +82,7 @@ class VolumeAPI(object):
         1.32 - Adds support for sending objects over RPC in create_volume().
         1.33 - Adds support for sending objects over RPC in delete_volume().
         1.34 - Adds support for sending objects over RPC in retype().
+        1.35 - Adds support for sending objects over RPC in extend_volume().
     """
 
     BASE_RPC_API_VERSION = '1.0'
@@ -231,10 +232,18 @@ class VolumeAPI(object):
                           new_user=new_user, new_project=new_project)
 
     def extend_volume(self, ctxt, volume, new_size, reservations):
-        new_host = utils.extract_host(volume['host'])
-        cctxt = self.client.prepare(server=new_host, version='1.14')
-        cctxt.cast(ctxt, 'extend_volume', volume_id=volume['id'],
-                   new_size=new_size, reservations=reservations)
+        new_host = utils.extract_host(volume.host)
+
+        msg_args = {'volume_id': volume.id, 'new_size': new_size,
+                    'reservations': reservations}
+        if self.client.can_send_version('1.35'):
+            version = '1.35'
+            msg_args['volume'] = volume
+        else:
+            version = '1.14'
+
+        cctxt = self.client.prepare(server=new_host, version=version)
+        cctxt.cast(ctxt, 'extend_volume', **msg_args)
 
     def migrate_volume(self, ctxt, volume, dest_host, force_host_copy):
         new_host = utils.extract_host(volume['host'])
