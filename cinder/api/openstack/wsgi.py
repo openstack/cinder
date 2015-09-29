@@ -1336,7 +1336,10 @@ class Fault(webob.exc.HTTPException):
             'application/json': JSONDictSerializer(),
         }[content_type]
 
-        self.wrapped_exc.body = serializer.serialize(fault_data)
+        body = serializer.serialize(fault_data)
+        if isinstance(body, six.text_type):
+            body = body.encode('utf-8')
+        self.wrapped_exc.body = body
         self.wrapped_exc.content_type = content_type
         _set_request_id_header(req, self.wrapped_exc.headers)
 
