@@ -60,7 +60,7 @@ class EMCVMAXMasking(object):
             return self.get_or_create_masking_view_and_map_lun(conn,
                                                                maskingViewDict,
                                                                extraSpecs)
-        do_get_or_create_masking_view_and_map_lun()
+        return do_get_or_create_masking_view_and_map_lun()
 
     def get_or_create_masking_view_and_map_lun(self, conn, maskingViewDict,
                                                extraSpecs):
