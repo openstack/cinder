@@ -1406,6 +1406,22 @@ class BaseVD(object):
         """
         return (False, None)
 
+    def manage_existing(self, volume, existing_ref):
+        """Manage exiting stub.
+
+        This is for drivers that don't implement manage_existing().
+        """
+        msg = _("Manage existing volume not implemented.")
+        raise NotImplementedError(msg)
+
+    def unmanage(self, volume):
+        """Unmanage stub.
+
+        This is for drivers that don't implement unmanage().
+        """
+        msg = _("Unmanage volume not implemented.")
+        raise NotImplementedError(msg)
+
 
 @six.add_metaclass(abc.ABCMeta)
 class LocalVD(object):

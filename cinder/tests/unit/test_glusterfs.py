@@ -1828,3 +1828,24 @@ class GlusterFsDriverTestCase(test.TestCase):
                                  mock.sentinel.host)
 
         self.assertEqual((False, None), ret)
+
+    def test_manage_existing_is_there(self):
+        """Ensure that driver.manage_existing() is there."""
+
+        drv = self._driver
+
+        volume = self._simple_volume(id=mock.sentinel.manage_id)
+
+        self.assertRaises(NotImplementedError,
+                          drv.manage_existing,
+                          volume, mock.sentinel.existing_ref)
+
+    def test_unmanage_is_there(self):
+        """Ensure that driver.unmanage() is there."""
+
+        drv = self._driver
+
+        volume = self._simple_volume(id=mock.sentinel.unmanage_id)
+        self.assertRaises(NotImplementedError,
+                          drv.unmanage,
+                          volume)
