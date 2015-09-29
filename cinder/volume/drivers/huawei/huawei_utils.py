@@ -527,3 +527,15 @@ def get_protocol(xml_file_path):
         raise exception.InvalidInput(reason=err_msg)
 
     return protocol
+
+
+def get_pools(xml_file_path):
+    """Get pools from huawei conf file."""
+    root = parse_xml_file(xml_file_path)
+    pool_names = root.findtext('LUN/StoragePool')
+    if not pool_names:
+        msg = _('Invalid resource pool name. '
+                'Please check the config file.')
+        LOG.error(msg)
+        raise exception.InvalidInput(msg)
+    return pool_names
