@@ -197,7 +197,7 @@ def locked_snapshot_operation(f):
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '1.35'
+    RPC_API_VERSION = '1.36'
 
     target = messaging.Target(version=RPC_API_VERSION)
 
@@ -1626,35 +1626,38 @@ class VolumeManager(manager.SchedulerDependentManager):
         # Wait for new_volume to become ready
         starttime = time.time()
         deadline = starttime + CONF.migration_create_volume_timeout_secs
-        new_volume = self.db.volume_get(ctxt, new_volume['id'])
+        # TODO(thangp): Replace get_by_id with refresh when it is available
+        new_volume = objects.Volume.get_by_id(ctxt, new_volume.id)
         tries = 0
-        while new_volume['status'] != 'available':
+        while new_volume.status != 'available':
             tries += 1
             now = time.time()
-            if new_volume['status'] == 'error':
+            if new_volume.status == 'error':
                 msg = _("failed to create new_volume on destination host")
-                self._clean_temporary_volume(ctxt, volume['id'],
-                                             new_volume['id'],
+                self._clean_temporary_volume(ctxt, volume,
+                                             new_volume,
                                              clean_db_only=True)
                 raise exception.VolumeMigrationFailed(reason=msg)
             elif now > deadline:
                 msg = _("timeout creating new_volume on destination host")
-                self._clean_temporary_volume(ctxt, volume['id'],
-                                             new_volume['id'],
+                self._clean_temporary_volume(ctxt, volume,
+                                             new_volume,
                                              clean_db_only=True)
                 raise exception.VolumeMigrationFailed(reason=msg)
             else:
                 time.sleep(tries ** 2)
-            new_volume = self.db.volume_get(ctxt, new_volume['id'])
+            # TODO(thangp): Replace get_by_id with refresh when it is
+            # available
+            new_volume = objects.Volume.get_by_id(ctxt, new_volume.id)
 
         # Copy the source volume to the destination volume
         try:
-            attachments = volume['volume_attachment']
+            attachments = volume.volume_attachment
             if not attachments:
                 self._copy_volume_data(ctxt, volume, new_volume, remote='dest')
                 # The above call is synchronous so we complete the migration
-                self.migrate_volume_completion(ctxt, volume['id'],
-                                               new_volume['id'],
+                self.migrate_volume_completion(ctxt, volume.id,
+                                               new_volume.id,
                                                error=False)
             else:
                 nova_api = compute.API()
@@ -1663,58 +1666,63 @@ class VolumeManager(manager.SchedulerDependentManager):
                 for attachment in attachments:
                     instance_uuid = attachment['instance_uuid']
                     nova_api.update_server_volume(ctxt, instance_uuid,
-                                                  volume['id'],
-                                                  new_volume['id'])
+                                                  volume.id,
+                                                  new_volume.id)
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE("Failed to copy volume %(vol1)s to %(vol2)s"),
-                          {'vol1': volume['id'], 'vol2': new_volume['id']})
-                self._clean_temporary_volume(ctxt, volume['id'],
-                                             new_volume['id'])
+                          {'vol1': volume.id, 'vol2': new_volume.id})
+                self._clean_temporary_volume(ctxt, volume,
+                                             new_volume)
 
-    def _clean_temporary_volume(self, ctxt, volume_id, new_volume_id,
+    def _clean_temporary_volume(self, ctxt, volume, new_volume,
                                 clean_db_only=False):
-        volume = self.db.volume_get(ctxt, volume_id)
         # If we're in the migrating phase, we need to cleanup
         # destination volume because source volume is remaining
-        if volume['migration_status'] == 'migrating':
+        if volume.migration_status == 'migrating':
             try:
                 if clean_db_only:
                     # The temporary volume is not created, only DB data
                     # is created
-                    self.db.volume_destroy(ctxt, new_volume_id)
+                    new_volume.destroy()
                 else:
                     # The temporary volume is already created
                     rpcapi = volume_rpcapi.VolumeAPI()
-                    volume = self.db.volume_get(ctxt, new_volume_id)
-                    rpcapi.delete_volume(ctxt, volume)
+                    rpcapi.delete_volume(ctxt, new_volume)
             except exception.VolumeNotFound:
                 LOG.info(_LI("Couldn't find the temporary volume "
                              "%(vol)s in the database. There is no need "
                              "to clean up this volume."),
-                         {'vol': new_volume_id})
+                         {'vol': new_volume.id})
         else:
             # If we're in the completing phase don't delete the
             # destination because we may have already deleted the
             # source! But the migration_status in database should
             # be cleared to handle volume after migration failure
             try:
-                updates = {'migration_status': None}
-                self.db.volume_update(ctxt, new_volume_id, updates)
+                new_volume.migration_status = None
+                new_volume.save()
             except exception.VolumeNotFound:
                 LOG.info(_LI("Couldn't find destination volume "
                              "%(vol)s in the database. The entry might be "
                              "successfully deleted during migration "
                              "completion phase."),
-                         {'vol': new_volume_id})
+                         {'vol': new_volume.id})
 
                 LOG.warning(_LW("Failed to migrate volume. The destination "
                                 "volume %(vol)s is not deleted since the "
                                 "source volume may have been deleted."),
-                            {'vol': new_volume_id})
+                            {'vol': new_volume.id})
 
     def migrate_volume_completion(self, ctxt, volume_id, new_volume_id,
-                                  error=False):
+                                  error=False, volume=None, new_volume=None):
+        # FIXME(thangp): Remove this in v2.0 of RPC API.
+        if volume is None or new_volume is None:
+            # For older clients, mimic the old behavior and look up the volume
+            # by its volume_id.
+            volume = objects.Volume.get_by_id(ctxt, volume_id)
+            new_volume = objects.Volume.get_by_id(ctxt, new_volume_id)
+
         try:
             # NOTE(flaper87): Verify the driver is enabled
             # before going forward. The exception will be caught
@@ -1722,37 +1730,36 @@ class VolumeManager(manager.SchedulerDependentManager):
             utils.require_driver_initialized(self.driver)
         except exception.DriverNotInitialized:
             with excutils.save_and_reraise_exception():
-                self.db.volume_update(ctxt, volume_id,
-                                      {'migration_status': 'error'})
+                volume.migration_status = 'error'
+                volume.save()
 
         LOG.debug("migrate_volume_completion: completing migration for "
                   "volume %(vol1)s (temporary volume %(vol2)s",
-                  {'vol1': volume_id, 'vol2': new_volume_id})
-        volume = self.db.volume_get(ctxt, volume_id)
-        new_volume = self.db.volume_get(ctxt, new_volume_id)
+                  {'vol1': volume.id, 'vol2': new_volume.id})
         rpcapi = volume_rpcapi.VolumeAPI()
 
-        orig_volume_status = volume['previous_status']
+        orig_volume_status = volume.previous_status
 
         if error:
             LOG.info(_LI("migrate_volume_completion is cleaning up an error "
                          "for volume %(vol1)s (temporary volume %(vol2)s"),
-                     {'vol1': volume['id'], 'vol2': new_volume['id']})
+                     {'vol1': volume['id'], 'vol2': new_volume.id})
             rpcapi.delete_volume(ctxt, new_volume)
             updates = {'migration_status': 'error',
                        'status': orig_volume_status}
-            self.db.volume_update(ctxt, volume_id, updates)
-            return volume_id
+            volume.update(updates)
+            volume.save()
+            return volume.id
 
-        self.db.volume_update(ctxt, volume_id,
-                              {'migration_status': 'completing'})
+        volume.migration_status = 'completing'
+        volume.save()
 
         # Detach the source volume (if it fails, don't fail the migration)
         try:
             if orig_volume_status == 'in-use':
-                attachments = volume['volume_attachment']
+                attachments = volume.volume_attachment
                 for attachment in attachments:
-                    self.detach_volume(ctxt, volume_id, attachment['id'])
+                    self.detach_volume(ctxt, volume.id, attachment['id'])
         except Exception as ex:
             LOG.error(_LE("Detach migration source volume failed:  %(err)s"),
                       {'err': ex}, resource=volume)
@@ -1767,20 +1774,21 @@ class VolumeManager(manager.SchedulerDependentManager):
         # Swap src and dest DB records so we can continue using the src id and
         # asynchronously delete the destination id
         __, updated_new = self.db.finish_volume_migration(
-            ctxt, volume_id, new_volume_id)
+            ctxt, volume.id, new_volume.id)
         updates = {'status': orig_volume_status,
-                   'previous_status': volume['status'],
+                   'previous_status': volume.status,
                    'migration_status': 'success'}
 
         if orig_volume_status == 'in-use':
-            attachments = volume['volume_attachment']
+            attachments = volume.volume_attachment
             for attachment in attachments:
                 rpcapi.attach_volume(ctxt, volume,
                                      attachment['instance_uuid'],
                                      attachment['attached_host'],
                                      attachment['mountpoint'],
                                      'rw')
-        self.db.volume_update(ctxt, volume_id, updates)
+        volume.update(updates)
+        volume.save()
 
         # Asynchronous deletion of the source volume in the back-end (now
         # pointed by the target volume id)
@@ -1789,15 +1797,21 @@ class VolumeManager(manager.SchedulerDependentManager):
         except Exception as ex:
             LOG.error(_LE('Failed to request async delete of migration source '
                           'vol %(vol)s: %(err)s'),
-                      {'vol': volume_id, 'err': ex})
+                      {'vol': volume.id, 'err': ex})
 
         LOG.info(_LI("Complete-Migrate volume completed successfully."),
                  resource=volume)
-        return volume['id']
+        return volume.id
 
     def migrate_volume(self, ctxt, volume_id, host, force_host_copy=False,
-                       new_type_id=None):
+                       new_type_id=None, volume=None):
         """Migrate the volume to the specified host (called on source host)."""
+        # FIXME(thangp): Remove this in v2.0 of RPC API.
+        if volume is None:
+            # For older clients, mimic the old behavior and look up the volume
+            # by its volume_id.
+            volume = objects.Volume.get_by_id(context, volume_id)
+
         try:
             # NOTE(flaper87): Verify the driver is enabled
             # before going forward. The exception will be caught
@@ -1805,54 +1819,54 @@ class VolumeManager(manager.SchedulerDependentManager):
             utils.require_driver_initialized(self.driver)
         except exception.DriverNotInitialized:
             with excutils.save_and_reraise_exception():
-                self.db.volume_update(ctxt, volume_id,
-                                      {'migration_status': 'error'})
+                volume.migration_status = 'error'
+                volume.save()
 
-        volume_ref = self.db.volume_get(ctxt, volume_id)
         model_update = None
         moved = False
 
         status_update = None
-        if volume_ref['status'] in ('retyping', 'maintenance'):
-            status_update = {'status': volume_ref['previous_status']}
+        if volume.status in ('retyping', 'maintenance'):
+            status_update = {'status': volume.previous_status}
 
-        self.db.volume_update(ctxt, volume_ref['id'],
-                              {'migration_status': 'migrating'})
+        volume.migration_status = 'migrating'
+        volume.save()
         if not force_host_copy and new_type_id is None:
             try:
-                LOG.debug("Issue driver.migrate_volume.", resource=volume_ref)
+                LOG.debug("Issue driver.migrate_volume.", resource=volume)
                 moved, model_update = self.driver.migrate_volume(ctxt,
-                                                                 volume_ref,
+                                                                 volume,
                                                                  host)
                 if moved:
                     updates = {'host': host['host'],
                                'migration_status': 'success',
-                               'previous_status': volume_ref['status']}
+                               'previous_status': volume.status}
                     if status_update:
                         updates.update(status_update)
                     if model_update:
                         updates.update(model_update)
-                    volume_ref = self.db.volume_update(ctxt,
-                                                       volume_ref['id'],
-                                                       updates)
+                    volume.update(updates)
+                    volume.save()
             except Exception:
                 with excutils.save_and_reraise_exception():
                     updates = {'migration_status': 'error'}
                     if status_update:
                         updates.update(status_update)
-                    self.db.volume_update(ctxt, volume_ref['id'], updates)
+                    volume.update(updates)
+                    volume.save()
         if not moved:
             try:
-                self._migrate_volume_generic(ctxt, volume_ref, host,
+                self._migrate_volume_generic(ctxt, volume, host,
                                              new_type_id)
             except Exception:
                 with excutils.save_and_reraise_exception():
                     updates = {'migration_status': 'error'}
                     if status_update:
                         updates.update(status_update)
-                    self.db.volume_update(ctxt, volume_ref['id'], updates)
+                    volume.update(updates)
+                    volume.save()
         LOG.info(_LI("Migrate volume completed successfully."),
-                 resource=volume_ref)
+                 resource=volume)
 
     @periodic_task.periodic_task
     def _report_driver_status(self, context):
@@ -3088,14 +3102,16 @@ class VolumeManager(manager.SchedulerDependentManager):
     def update_migrated_volume(self, ctxt, volume, new_volume,
                                volume_status):
         """Finalize migration process on backend device."""
+        # FIXME(thangp): Remove this in v2.0 of RPC API.
+        if (not isinstance(volume, objects.Volume) or
+                not isinstance(new_volume, objects.Volume)):
+            volume = objects.Volume.get_by_id(ctxt, volume['id'])
+            new_volume = objects.Volume.get_by_id(ctxt, new_volume['id'])
+
         model_update = None
-        # This is temporary fix for bug 1491210.
-        volume = self.db.volume_get(ctxt, volume['id'])
-        new_volume = self.db.volume_get(ctxt, new_volume['id'])
-        model_update_default = {'_name_id': new_volume['_name_id'] or
-                                new_volume['id'],
+        model_update_default = {'_name_id': new_volume.name_id,
                                 'provider_location':
-                                new_volume['provider_location']}
+                                new_volume.provider_location}
         try:
             model_update = self.driver.update_migrated_volume(ctxt,
                                                               volume,
@@ -3119,17 +3135,19 @@ class VolumeManager(manager.SchedulerDependentManager):
                     if volume.get('volume_metadata'):
                         model_update_new[key] = {
                             metadata['key']: metadata['value']
-                            for metadata in volume.get('volume_metadata')}
+                            for metadata in volume.volume_metadata}
                 elif key == 'admin_metadata':
                     model_update_new[key] = {
                         metadata['key']: metadata['value']
-                        for metadata in volume.get('volume_admin_metadata')}
+                        for metadata in volume.volume_admin_metadata}
                 else:
                     model_update_new[key] = volume[key]
-            self.db.volume_update(ctxt.elevated(), new_volume['id'],
-                                  model_update_new)
-        self.db.volume_update(ctxt.elevated(), volume['id'],
-                              model_update_default)
+            with new_volume.obj_as_admin():
+                new_volume.update(model_update_new)
+                new_volume.save()
+        with volume.obj_as_admin():
+                volume.update(model_update_default)
+                volume.save()
 
     # Replication V2 methods
     def enable_replication(self, context, volume):

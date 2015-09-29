@@ -801,7 +801,7 @@ class AdminActionsTest(test.TestCase):
                              force_host_copy=False):
         admin_ctx = context.get_admin_context()
         # build request to migrate to host
-        req = webob.Request.blank('/v2/fake/volumes/%s/action' % volume['id'])
+        req = webob.Request.blank('/v2/fake/volumes/%s/action' % volume.id)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         body = {'os-migrate_volume': {'host': host,
@@ -811,7 +811,7 @@ class AdminActionsTest(test.TestCase):
         resp = req.get_response(app())
         # verify status
         self.assertEqual(expected_status, resp.status_int)
-        volume = db.volume_get(admin_ctx, volume['id'])
+        volume = objects.Volume.get_by_id(admin_ctx, volume.id)
         return volume
 
     def test_migrate_volume_success(self):
