@@ -922,15 +922,51 @@ class GlusterFsDriverTestCase(test.TestCase):
 
         with mock.patch.object(drv, 'get_active_image_from_info') as \
                 mock_get_active_image_from_info,\
+                mock.patch.object(self._driver, '_local_volume_dir') as \
+                mock_local_volume_dir,\
                 mock.patch.object(image_utils, 'qemu_img_info') as \
                 mock_qemu_img_info,\
                 mock.patch.object(image_utils, 'resize_image') as \
                 mock_resize_image:
             mock_get_active_image_from_info.return_value = volume['name']
+            mock_local_volume_dir.return_value = self.TEST_MNT_POINT
             mock_qemu_img_info.return_value = img_info
 
             drv.extend_volume(volume, 3)
             self.assertTrue(mock_resize_image.called)
+
+    def test_extend_volume_with_snapshot(self):
+        drv = self._driver
+
+        volume = self._simple_volume()
+
+        snap_file = 'volume-%s.%s' % (self.VOLUME_UUID,
+                                      self.SNAP_UUID)
+
+        qemu_img_info_output = """image: %s
+        file format: qcow2
+        virtual size: 1.0G (1073741824 bytes)
+        disk size: 473K
+        """ % snap_file
+
+        img_info = imageutils.QemuImgInfo(qemu_img_info_output)
+
+        with mock.patch.object(drv, 'get_active_image_from_info') as \
+                mock_get_active_image_from_info,\
+                mock.patch.object(self._driver, '_local_volume_dir') as \
+                mock_local_volume_dir,\
+                mock.patch.object(image_utils, 'qemu_img_info') as \
+                mock_qemu_img_info,\
+                mock.patch.object(image_utils, 'resize_image') as \
+                mock_resize_image:
+            mock_get_active_image_from_info.return_value = snap_file
+            mock_local_volume_dir.return_value = self.TEST_MNT_POINT
+            mock_qemu_img_info.return_value = img_info
+
+            snap_path = '%s/%s' % (self.TEST_MNT_POINT,
+                                   snap_file)
+            drv.extend_volume(volume, 3)
+            mock_resize_image.assert_called_once_with(snap_path, 3)
 
     def test_create_snapshot_online(self):
         drv = self._driver
