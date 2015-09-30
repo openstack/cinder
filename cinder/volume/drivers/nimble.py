@@ -43,8 +43,10 @@ AES_256_XTS_CIPHER = 2
 DEFAULT_CIPHER = 3
 EXTRA_SPEC_ENCRYPTION = 'nimble:encryption'
 EXTRA_SPEC_PERF_POLICY = 'nimble:perfpol-name'
+EXTRA_SPEC_MULTI_INITIATOR = 'nimble:multi-initiator'
 DEFAULT_PERF_POLICY_SETTING = 'default'
 DEFAULT_ENCRYPTION_SETTING = 'no'
+DEFAULT_MULTI_INITIATOR_SETTING = 'false'
 DEFAULT_SNAP_QUOTA = sys.maxsize
 VOL_EDIT_MASK = 4 + 16 + 32 + 64 + 256 + 512
 MANAGE_EDIT_MASK = 1 + 262144
@@ -617,8 +619,14 @@ class NimbleAPIExecutor(object):
                                            DEFAULT_PERF_POLICY_SETTING)
         encryption = extra_specs.get(EXTRA_SPEC_ENCRYPTION,
                                      DEFAULT_ENCRYPTION_SETTING)
+        multi_initiator = extra_specs.get(EXTRA_SPEC_MULTI_INITIATOR,
+                                          DEFAULT_MULTI_INITIATOR_SETTING)
+        extra_specs_map = {}
+        extra_specs_map[EXTRA_SPEC_PERF_POLICY] = perf_policy_name
+        extra_specs_map[EXTRA_SPEC_ENCRYPTION] = encryption
+        extra_specs_map[EXTRA_SPEC_MULTI_INITIATOR] = multi_initiator
 
-        return perf_policy_name, encryption
+        return extra_specs_map
 
     @_connection_checker
     @_response_checker
@@ -634,7 +642,10 @@ class NimbleAPIExecutor(object):
         description = description[:254]
 
         specs = self._get_volumetype_extraspecs(volume)
-        perf_policy_name, encrypt = self._get_extra_spec_values(specs)
+        extra_specs_map = self._get_extra_spec_values(specs)
+        perf_policy_name = extra_specs_map[EXTRA_SPEC_PERF_POLICY]
+        encrypt = extra_specs_map[EXTRA_SPEC_ENCRYPTION]
+        multi_initiator = extra_specs_map[EXTRA_SPEC_MULTI_INITIATOR]
         # default value of cipher for encryption
         cipher = DEFAULT_CIPHER
         if encrypt.lower() == 'yes':
@@ -645,7 +656,8 @@ class NimbleAPIExecutor(object):
                   ' description=%(description)s with Extra Specs'
                   ' perfpol-name=%(perfpol-name)s'
                   ' encryption=%(encryption)s cipher=%(cipher)s'
-                  ' agent-type=%(agent-type)s',
+                  ' agent-type=%(agent-type)s'
+                  ' multi-initiator=%(multi-initiator)s',
                   {'vol': volume['name'],
                    'size': volume_size,
                    'reserve': reserve,
@@ -654,7 +666,8 @@ class NimbleAPIExecutor(object):
                    'perfpol-name': perf_policy_name,
                    'encryption': encrypt,
                    'cipher': cipher,
-                   'agent-type': AGENT_TYPE_OPENSTACK})
+                   'agent-type': AGENT_TYPE_OPENSTACK,
+                   'multi-initiator': multi_initiator})
 
         return self.client.service.createVol(
             request={'sid': self.sid,
@@ -669,7 +682,8 @@ class NimbleAPIExecutor(object):
                               'pool-name': pool_name,
                               'agent-type': AGENT_TYPE_OPENSTACK,
                               'perfpol-name': perf_policy_name,
-                              'encryptionAttr': {'cipher': cipher}}})
+                              'encryptionAttr': {'cipher': cipher},
+                              'multi-initiator': multi_initiator}})
 
     def create_vol(self, volume, pool_name, reserve):
         """Execute createVol API."""
