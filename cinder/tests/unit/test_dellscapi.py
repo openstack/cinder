@@ -1452,6 +1452,42 @@ class DellSCSanAPITestCase(test.TestCase):
          u'userCreated': False,
          u'volumeCount': 0}]
 
+    CGS = [{u'profile':
+            {u'instanceId': u'65690.4',
+             u'instanceName': u'0869559e-6881-454e-ba18-15c6726d33c1',
+             u'objectType': u'ScReplayProfile'},
+            u'scSerialNumber': 65690,
+            u'globalIndex': u'65690-4-2',
+            u'description': u'GUID1-0869559e-6881-454e-ba18-15c6726d33c1',
+            u'instanceId': u'65690.65690.4.2',
+            u'scName': u'Storage Center 65690',
+            u'expires': False,
+            u'freezeTime': u'2015-09-28T14:00:59-05:00',
+            u'expireTime': u'1969-12-31T18:00:00-06:00',
+            u'expectedReplayCount': 2,
+            u'writesHeldDuration': 19809,
+            u'replayCount': 2,
+            u'instanceName': u'Name1',
+            u'objectType': u'ScReplayConsistencyGroup'},
+           {u'profile':
+            {u'instanceId': u'65690.4',
+             u'instanceName': u'0869559e-6881-454e-ba18-15c6726d33c1',
+             u'objectType': u'ScReplayProfile'},
+            u'scSerialNumber': 65690,
+            u'globalIndex': u'65690-4-3',
+            u'description': u'GUID2-0869559e-6881-454e-ba18-15c6726d33c1',
+            u'instanceId': u'65690.65690.4.3',
+            u'scName': u'Storage Center 65690',
+            u'expires': False,
+            u'freezeTime': u'2015-09-28T14:00:59-05:00',
+            u'expireTime': u'1969-12-31T18:00:00-06:00',
+            u'expectedReplayCount': 2,
+            u'writesHeldDuration': 19809,
+            u'replayCount': 2,
+            u'instanceName': u'Name2',
+            u'objectType': u'ScReplayConsistencyGroup'}
+           ]
+
     ISCSI_CONFIG = {
         u'initialReadyToTransfer': True,
         u'scSerialNumber': 64065,
@@ -5149,117 +5185,169 @@ class DellSCSanAPITestCase(test.TestCase):
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_get_json',
+                       return_value=CGS)
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'get',
+                       return_value=RESPONSE_200)
+    def test_find_sc_cg(self,
+                        mock_get,
+                        mock_get_json,
+                        mock_close_connection,
+                        mock_open_connection,
+                        mock_init):
+        res = self.scapi._find_sc_cg(
+            {},
+            'GUID1-0869559e-6881-454e-ba18-15c6726d33c1')
+        self.assertEqual(self.CGS[0], res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_json',
+                       return_value=CGS)
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'get',
+                       return_value=RESPONSE_200)
+    def test_find_sc_cg_not_found(self,
+                                  mock_get,
+                                  mock_get_json,
+                                  mock_close_connection,
+                                  mock_open_connection,
+                                  mock_init):
+        res = self.scapi._find_sc_cg(
+            {},
+            'GUID3-0869559e-6881-454e-ba18-15c6726d33c1')
+        self.assertIsNone(res)
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'get',
+                       return_value=RESPONSE_400)
+    def test_find_sc_cg_fail(self,
+                             mock_get,
+                             mock_close_connection,
+                             mock_open_connection,
+                             mock_init):
+        res = self.scapi._find_sc_cg(
+            {},
+            'GUID1-0869559e-6881-454e-ba18-15c6726d33c1')
+        self.assertIsNone(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_sc_cg',
+                       return_value={'instanceId': 101})
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_json',
                        return_value=RPLAYS)
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'get')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_get_id',
-                       return_value='100')
-    def test_find_cg_replay(self,
-                            mock_get_id,
-                            mock_get,
-                            mock_get_json,
-                            mock_close_connection,
-                            mock_open_connection,
-                            mock_init):
+    def test_find_cg_replays(self,
+                             mock_get,
+                             mock_get_json,
+                             mock_find_sc_cg,
+                             mock_close_connection,
+                             mock_open_connection,
+                             mock_init):
         profile = {'instanceId': '100'}
         replayid = 'Cinder Test Replay012345678910'
-        res = self.scapi.find_cg_replay(profile, replayid)
-        expected_url = 'StorageCenter/ScReplayProfile/100/ReplayList'
+        res = self.scapi._find_cg_replays(profile, replayid)
+        expected_url = 'StorageCenter/ScReplayConsistencyGroup/101/ReplayList'
         mock_get.assert_called_once_with(expected_url)
-        self.assertTrue(mock_get_id.called)
+        self.assertTrue(mock_find_sc_cg.called)
         self.assertTrue(mock_get_json.called)
-        # We should fine RPLAYS[1]
-        self.assertEqual(self.RPLAYS[1], res, 'Wrong replay returned')
+        # We should fine RPLAYS
+        self.assertEqual(self.RPLAYS, res)
 
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_sc_cg',
+                       return_value=None)
+    def test_find_cg_replays_no_cg(self,
+                                   mock_find_sc_cg,
+                                   mock_close_connection,
+                                   mock_open_connection,
+                                   mock_init):
+        profile = {'instanceId': '100'}
+        replayid = 'Cinder Test Replay012345678910'
+        res = self.scapi._find_cg_replays(profile, replayid)
+        self.assertTrue(mock_find_sc_cg.called)
+        # We should return an empty list.
+        self.assertEqual([], res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_sc_cg',
+                       return_value={'instanceId': 101})
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_get_json',
                        return_value=None)
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'get')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_get_id',
-                       return_value='100')
-    def test_find_cg_replay_bad_json(self,
-                                     mock_get_id,
-                                     mock_get,
-                                     mock_get_json,
-                                     mock_close_connection,
-                                     mock_open_connection,
-                                     mock_init):
+    def test_find_cg_replays_bad_json(self,
+                                      mock_get,
+                                      mock_get_json,
+                                      mock_find_sc_cg,
+                                      mock_close_connection,
+                                      mock_open_connection,
+                                      mock_init):
         profile = {'instanceId': '100'}
         replayid = 'Cinder Test Replay012345678910'
-        res = self.scapi.find_cg_replay(profile, replayid)
-        expected_url = 'StorageCenter/ScReplayProfile/100/ReplayList'
+        res = self.scapi._find_cg_replays(profile, replayid)
+        expected_url = 'StorageCenter/ScReplayConsistencyGroup/101/ReplayList'
         mock_get.assert_called_once_with(expected_url)
-        self.assertTrue(mock_get_id.called)
+        self.assertTrue(mock_find_sc_cg.called)
         self.assertTrue(mock_get_json.called)
         self.assertIsNone(res)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       'find_replay',
-                       return_value=RPLAY)
+                       '_find_cg_replays',
+                       return_value=RPLAYS)
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'post',
                        return_value=RESPONSE_204)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_get_id',
-                       return_value='100')
     def test_delete_cg_replay(self,
-                              mock_get_id,
                               mock_post,
-                              mock_find_replay,
+                              mock_find_cg_replays,
                               mock_close_connection,
                               mock_open_connection,
                               mock_init):
-        profile = {'instanceId': '100'}
-        replayid = 'guid'
-        expected_url = 'StorageCenter/ScReplay/100/Expire'
-        expected_payload = {}
-        res = self.scapi.delete_cg_replay(profile, replayid)
-        mock_post.assert_called_once_with(expected_url, expected_payload)
-        self.assertTrue(mock_find_replay.called)
-        self.assertTrue(mock_get_id.called)
+        res = self.scapi.delete_cg_replay({}, '')
+        expected_url = ('StorageCenter/ScReplay/' +
+                        self.RPLAYS[0]['instanceId'] +
+                        '/Expire')
+        mock_post.assert_any_call(expected_url, {})
+        expected_url = ('StorageCenter/ScReplay/' +
+                        self.RPLAYS[1]['instanceId'] +
+                        '/Expire')
+        mock_post.assert_any_call(expected_url, {})
+        self.assertTrue(mock_find_cg_replays.called)
         self.assertTrue(res)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       'find_replay',
-                       return_value=RPLAY)
+                       '_find_cg_replays',
+                       return_value=RPLAYS)
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'post',
                        return_value=RESPONSE_400)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_get_id',
-                       return_value='100')
     def test_delete_cg_replay_error(self,
-                                    mock_get_id,
                                     mock_post,
-                                    mock_find_replay,
+                                    mock_find_cg_replays,
                                     mock_close_connection,
                                     mock_open_connection,
                                     mock_init):
-        profile = {'instanceId': '100'}
-        replayid = 'guid'
-        expected_url = 'StorageCenter/ScReplay/100/Expire'
-        expected_payload = {}
-        res = self.scapi.delete_cg_replay(profile, replayid)
-        mock_post.assert_called_once_with(expected_url, expected_payload)
-        self.assertTrue(mock_get_id.called)
-        self.assertTrue(mock_find_replay.called)
+        expected_url = ('StorageCenter/ScReplay/' +
+                        self.RPLAYS[0]['instanceId'] +
+                        '/Expire')
+        res = self.scapi.delete_cg_replay({}, '')
+        mock_post.assert_called_once_with(expected_url, {})
+        self.assertTrue(mock_find_cg_replays.called)
         self.assertFalse(res)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       'find_replay',
-                       return_value=None)
+                       '_find_cg_replays',
+                       return_value=[])
     def test_delete_cg_replay_cant_find(self,
-                                        mock_find_replay,
+                                        mock_find_cg_replays,
                                         mock_close_connection,
                                         mock_open_connection,
                                         mock_init):
-        profile = {'instanceId': '100'}
-        replayid = 'guid'
-        res = self.scapi.delete_cg_replay(profile, replayid)
-        self.assertTrue(mock_find_replay.called)
+        res = self.scapi.delete_cg_replay({}, '')
+        self.assertTrue(mock_find_cg_replays.called)
         self.assertTrue(res)
 
     def test_size_to_gb(self,
