@@ -536,7 +536,7 @@ class NetAppESeriesLibrary(object):
         try:
             vol = self._get_volume(volume['name_id'])
             self._client.delete_volume(vol['volumeRef'])
-        except (exception.NetAppDriverException, KeyError):
+        except (exception.NetAppDriverException, exception.VolumeNotFound):
             LOG.warning(_LW("Volume %s already deleted."), volume['id'])
             return
 
@@ -1255,7 +1255,7 @@ class NetAppESeriesLibrary(object):
                        ' or source-id element.')
             raise exception.ManageExistingInvalidReference(
                 existing_ref=existing_ref, reason=reason)
-        except KeyError:
+        except exception.VolumeNotFound:
             raise exception.ManageExistingInvalidReference(
                 existing_ref=existing_ref,
                 reason=_('Volume not found on configured storage pools.'))
