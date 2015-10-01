@@ -912,7 +912,7 @@ class EMCVMAXUtils(object):
         """
         errorDesc = None
         if compositeType in 'concatenated' and int(sizeStr) > 240:
-            newMemberCount = int(sizeStr) / 240
+            newMemberCount = int(sizeStr) // 240
             modular = int(sizeStr) % 240
             if modular > 0:
                 newMemberCount += 1
@@ -1012,7 +1012,7 @@ class EMCVMAXUtils(object):
         :param strBitSize: string -- The size in bytes
         :returns: int -- The size in GB
         """
-        gbSize = int(strBitSize) / 1024 / 1024 / 1024
+        gbSize = int(strBitSize) // 1024 // 1024 // 1024
         return gbSize
 
     def compare_size(self, size1Str, size2Str):
@@ -1154,8 +1154,8 @@ class EMCVMAXUtils(object):
         :returns: string -- truncated string or original string
         """
         if len(strToTruncate) > maxNum:
-            newNum = len(strToTruncate) - maxNum / 2
-            firstChars = strToTruncate[:maxNum / 2]
+            newNum = len(strToTruncate) - maxNum // 2
+            firstChars = strToTruncate[:maxNum // 2]
             lastChars = strToTruncate[newNum:]
             strToTruncate = firstChars + lastChars
 
