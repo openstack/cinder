@@ -3088,7 +3088,11 @@ class VolumeManager(manager.SchedulerDependentManager):
         # we are in an expected state ('enabling')
         volume = self.db.volume_get(context, volume['id'])
         if volume['replication_status'] != 'enabling':
-            raise exception.InvalidVolume()
+            msg = (_("Unable to enable replication due to invalid "
+                     "replication status: %(status)s.") %
+                   {'status': volume['replication_status']})
+            LOG.error(msg, resource=volume)
+            raise exception.InvalidVolume(reason=msg)
 
         try:
             rep_driver_data = self.driver.replication_enable(context,
@@ -3124,7 +3128,11 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         volume = self.db.volume_get(context, volume['id'])
         if volume['replication_status'] != 'disabling':
-            raise exception.InvalidVolume()
+            msg = (_("Unable to disable replication due to invalid "
+                     "replication status: %(status)s.") %
+                   {'status': volume['replication_status']})
+            LOG.error(msg, resource=volume)
+            raise exception.InvalidVolume(reason=msg)
 
         try:
             rep_driver_data = self.driver.replication_disable(context,
