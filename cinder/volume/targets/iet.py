@@ -80,42 +80,6 @@ class IetAdm(iscsi.ISCSITarget):
 
         return iscsi_target, lun
 
-    def _get_target_chap_auth(self, context, name):
-
-        vol_id = name.split(':')[1]
-        if os.path.exists(self.iet_conf):
-            try:
-                with utils.temporary_chown(self.iet_conf):
-                    with open(self.iet_conf, 'r') as f:
-                        iet_conf_text = f.readlines()
-            except Exception:
-                # If we fail to handle config file, raise exception here to
-                # prevent unexpected behavior during subsequent operations.
-                LOG.exception(_LE("Failed to open config for %s."), vol_id)
-                raise
-
-            target_found = False
-            for line in iet_conf_text:
-                if target_found:
-                    m = re.search('(\w+) (\w+) (\w+)', line)
-                    if m:
-                        return (m.group(2), m.group(3))
-                    else:
-                        LOG.debug("Failed to find CHAP auth from config "
-                                  "for %s", vol_id)
-                        return None
-                elif name in line:
-                    target_found = True
-        else:
-            # Missing config file is unxepected sisuation. But we will create
-            # new config file during create_iscsi_target(). Just we warn the
-            # operator here.
-            LOG.warning(_LW("Failed to find CHAP auth from config for "
-                            "%(vol_id)s. Config file %(conf)s does not "
-                            "exist."),
-                        {'vol_id': vol_id, 'conf': self.iet_conf})
-            return None
-
     def create_iscsi_target(self, name, tid, lun, path,
                             chap_auth=None, **kwargs):
 

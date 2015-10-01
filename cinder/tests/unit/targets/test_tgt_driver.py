@@ -142,39 +142,6 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
         self.assertEqual(expected,
                          self.target._get_target_and_lun(ctxt, self.testvol))
 
-    def test_get_target_chap_auth(self):
-        persist_file =\
-            '<target iqn.2010-10.org.openstack:volume-%(id)s>\n'\
-            '    backing-store %(bspath)s\n'\
-            '    driver iscsi\n'\
-            '    incominguser otzL 234Z\n'\
-            '    write-cache on\n'\
-            '</target>' % {'id': self.VOLUME_ID,
-                           'bspath': self.testvol_path}
-        with open(os.path.join(self.fake_volumes_dir,
-                               self.test_vol.split(':')[1]),
-                  'w') as tmp_file:
-            tmp_file.write(persist_file)
-        ctxt = context.get_admin_context()
-        expected = ('otzL', '234Z')
-        self.assertEqual(expected,
-                         self.target._get_target_chap_auth(ctxt,
-                                                           self.test_vol))
-
-    def test_get_target_chap_auth_negative(self):
-        with mock.patch('six.moves.builtins.open') as mock_open:
-            e = IOError()
-            e.errno = 123
-            mock_open.side_effect = e
-            ctxt = context.get_admin_context()
-            self.assertRaises(IOError,
-                              self.target._get_target_chap_auth,
-                              ctxt, self.test_vol)
-            mock_open.side_effect = ZeroDivisionError()
-            self.assertRaises(ZeroDivisionError,
-                              self.target._get_target_chap_auth,
-                              ctxt, self.test_vol)
-
     def test_create_iscsi_target(self):
         with mock.patch('cinder.utils.execute', return_value=('', '')),\
                 mock.patch.object(self.target, '_get_target',
