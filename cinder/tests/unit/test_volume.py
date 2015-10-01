@@ -64,6 +64,7 @@ from cinder.volume import driver
 from cinder.volume.drivers import lvm
 from cinder.volume import manager as vol_manager
 from cinder.volume import rpcapi as volume_rpcapi
+import cinder.volume.targets.tgt
 from cinder.volume import utils as volutils
 from cinder.volume import volume_types
 
@@ -239,15 +240,18 @@ class AvailabilityZoneTestCase(BaseVolumeTestCase):
         self.stubs.Set(db, 'service_get_all_by_topic',
                        stub_service_get_all_by_topic)
 
+        def sort_func(obj):
+            return obj['name']
+
         volume_api = cinder.volume.api.API()
         azs = volume_api.list_availability_zones()
-        azs = list(azs).sort()
+        azs = sorted(azs, key=sort_func)
 
-        expected = [
+        expected = sorted([
             {'name': 'pung', 'available': False},
             {'name': 'pong', 'available': True},
             {'name': 'ping', 'available': True},
-        ].sort()
+        ], key=sort_func)
 
         self.assertEqual(expected, azs)
 
@@ -4165,6 +4169,9 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.volume.create_volume(self.context, volume['id'])
         volume['status'] = 'in-use'
 
+        def sort_func(obj):
+            return obj['name']
+
         volume_api = cinder.volume.api.API()
 
         # Update fails when status != available
@@ -6047,7 +6054,7 @@ class GenericVolumeDriverTestCase(DriverTestCase):
 
         mock_volume_get.return_value = vol
         mock_get_connector_properties.return_value = properties
-        f = mock_file_open.return_value = file('/dev/null')
+        f = mock_file_open.return_value = open('/dev/null', 'rb')
 
         backup_service.backup(backup_obj, f, None)
         self.volume.driver._attach_volume.return_value = attach_info, vol
@@ -6088,7 +6095,7 @@ class GenericVolumeDriverTestCase(DriverTestCase):
         mock_volume_get.return_value = vol
         self.volume.driver._create_temp_cloned_volume.return_value = temp_vol
         mock_get_connector_properties.return_value = properties
-        f = mock_file_open.return_value = file('/dev/null')
+        f = mock_file_open.return_value = open('/dev/null', 'rb')
 
         backup_service.backup(backup_obj, f, None)
         self.volume.driver._attach_volume.return_value = attach_info, vol
@@ -6146,7 +6153,7 @@ class GenericVolumeDriverTestCase(DriverTestCase):
         mock_volume_get.return_value = vol
         mock_connect_volume.return_value = {'type': 'local',
                                             'path': '/dev/null'}
-        f = mock_file_open.return_value = file('/dev/null')
+        f = mock_file_open.return_value = open('/dev/null', 'rb')
 
         self.volume.driver._connect_device
         backup_service.backup(backup_obj, f, None)
@@ -6945,7 +6952,7 @@ class LVMVolumeDriverTestCase(DriverTestCase):
 
         mock_volume_get.return_value = vol
         mock_get_connector_properties.return_value = properties
-        f = mock_file_open.return_value = file('/dev/null')
+        f = mock_file_open.return_value = open('/dev/null', 'rb')
 
         backup_service.backup(backup_obj, f, None)
         self.volume.driver._attach_volume.return_value = attach_info
@@ -7024,7 +7031,7 @@ class LVMVolumeDriverTestCase(DriverTestCase):
         self.volume.driver._delete_temp_snapshot = mock.MagicMock()
 
         mock_get_connector_properties.return_value = properties
-        f = mock_file_open.return_value = file('/dev/null')
+        f = mock_file_open.return_value = open('/dev/null', 'rb')
 
         backup_service.backup(backup_obj, f, None)
         self.volume.driver._attach_volume.return_value = attach_info

@@ -46,14 +46,14 @@ class MockKeyManagerTestCase(test_key_mgr.KeyManagerTestCase):
         for length in [64, 128, 256]:
             key_id = self.key_mgr.create_key(self.ctxt, key_length=length)
             key = self.key_mgr.get_key(self.ctxt, key_id)
-            self.assertEqual(length / 8, len(key.get_encoded()))
+            self.assertEqual(length // 8, len(key.get_encoded()))
 
     def test_create_null_context(self):
         self.assertRaises(exception.NotAuthorized,
                           self.key_mgr.create_key, None)
 
     def test_store_key(self):
-        secret_key = array.array('B', ('0' * 64).decode('hex')).tolist()
+        secret_key = array.array('B', b'\x00' * 32).tolist()
         _key = keymgr_key.SymmetricKey('AES', secret_key)
         key_id = self.key_mgr.store_key(self.ctxt, _key)
 

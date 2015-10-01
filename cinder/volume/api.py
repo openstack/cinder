@@ -798,7 +798,7 @@ class API(base.Base):
         except Exception:
             with excutils.save_and_reraise_exception():
                 try:
-                    if hasattr(snapshot, 'id'):
+                    if snapshot.obj_attr_is_set('id'):
                         snapshot.destroy()
                 finally:
                     QUOTAS.rollback(context, reservations)

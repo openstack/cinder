@@ -2482,8 +2482,8 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         sorted_snapshots = []
         for vol in volumes:
-            found_snaps = filter(
-                lambda snap: snap['id'] == vol['snapshot_id'], snapshots)
+            found_snaps = [snap for snap in snapshots
+                           if snap['id'] == vol['snapshot_id']]
             if not found_snaps:
                 LOG.error(_LE("Source snapshot cannot be found for target "
                               "volume %(volume_id)s."),
@@ -2505,9 +2505,8 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         sorted_source_vols = []
         for vol in volumes:
-            found_source_vols = filter(
-                lambda source_vol: source_vol['id'] == vol['source_volid'],
-                source_vols)
+            found_source_vols = [source_vol for source_vol in source_vols
+                                 if source_vol['id'] == vol['source_volid']]
             if not found_source_vols:
                 LOG.error(_LE("Source volumes cannot be found for target "
                               "volume %(volume_id)s."),
