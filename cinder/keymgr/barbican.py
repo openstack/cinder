@@ -20,6 +20,7 @@ Key manager implementation for Barbican
 import array
 import base64
 import binascii
+import re
 
 from barbicanclient import client as barbican_client
 from keystoneclient.auth import identity
@@ -37,6 +38,8 @@ CONF = cfg.CONF
 CONF.import_opt('encryption_auth_url', 'cinder.keymgr.key_mgr', group='keymgr')
 CONF.import_opt('encryption_api_url', 'cinder.keymgr.key_mgr', group='keymgr')
 LOG = logging.getLogger(__name__)
+URL_PATTERN = re.compile(
+    "(?P<url_base>http[s]?://[^/]*)[/]?(?P<url_version>(v[0-9.]+)?).*")
 
 
 class BarbicanKeyManager(key_mgr.KeyManager):
@@ -44,9 +47,32 @@ class BarbicanKeyManager(key_mgr.KeyManager):
 
     def __init__(self):
         self._base_url = CONF.keymgr.encryption_api_url
-        # the barbican endpoint can't have the '/v1' on the end
-        self._barbican_endpoint = self._base_url.rpartition('/')[0]
+        self._parse_barbican_api_url()
         self._barbican_client = None
+
+    def _parse_barbican_api_url(self):
+        """Setup member variables to reference the Barbican URL.
+
+        The key manipulation functions in this module need to use the
+        barbican URL with the version appended. But the barbicanclient
+        Client() class needs the URL without the version appended.
+        So set up a member variables here for each case.
+        """
+        m = URL_PATTERN.search(self._base_url)
+        if m is None:
+            raise exception.KeyManagerError(_(
+                "Invalid url: must be in the form "
+                "'http[s]://<ipaddr>|<fqdn>[:port]/<version>', "
+                "url specified is: %s"), self._base_url)
+        url_info = dict(m.groupdict())
+        if 'url_version' not in url_info or url_info['url_version'] == "":
+            raise exception.KeyManagerError(_(
+                "Invalid barbican api url: version is required, "
+                "e.g. 'http[s]://<ipaddr>|<fqdn>[:port]/<version>' "
+                "url specified is: %s") % self._base_url)
+        # We will also need the barbican API URL without the '/v1'.
+        # So save that now.
+        self._barbican_endpoint = url_info['url_base']
 
     def _get_barbican_client(self, ctxt):
         """Creates a client to connect to the Barbican service.

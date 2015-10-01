@@ -57,6 +57,7 @@ class BarbicanKeyManagerTestCase(test_key_mgr.KeyManagerTestCase):
         self.pre_hex = "AIDxQp2++uAbKaTVDMXFYIu8PIugJGqkK0JLqkU0rhY="
         self.hex = ("0080f1429dbefae01b29a4d50cc5c5608bbc3c8ba0246aa42b424baa4"
                     "534ae16")
+        self.original_api_url = CONF.keymgr.encryption_api_url
         self.addCleanup(self._restore)
 
     def _restore(self):
@@ -64,6 +65,8 @@ class BarbicanKeyManagerTestCase(test_key_mgr.KeyManagerTestCase):
             keymgr_key.SymmetricKey = self.original_key
         if hasattr(self, 'original_base64'):
             base64.b64encode = self.original_base64
+        if hasattr(self, 'original_api_url'):
+            CONF.keymgr.encryption_api_url = self.original_api_url
 
     def _build_mock_barbican(self):
         self.mock_barbican = mock.MagicMock(name='mock_barbican')
@@ -271,3 +274,17 @@ class BarbicanKeyManagerTestCase(test_key_mgr.KeyManagerTestCase):
         mock_session.assert_called_once_with(auth=mock_auth)
         mock_client.assert_called_once_with(session=mock_sess,
                                             endpoint=mock_endpoint)
+
+    def test_parse_barbican_api_url(self):
+        # assert that the correct format is handled correctly
+        CONF.keymgr.encryption_api_url = "http://host:port/v1/"
+        dummy = barbican.BarbicanKeyManager()
+        self.assertEqual(dummy._barbican_endpoint, "http://host:port")
+
+        # assert that invalid api url formats will raise an exception
+        CONF.keymgr.encryption_api_url = "http://host:port/"
+        self.assertRaises(exception.KeyManagerError,
+                          barbican.BarbicanKeyManager)
+        CONF.keymgr.encryption_api_url = "http://host:port/secrets"
+        self.assertRaises(exception.KeyManagerError,
+                          barbican.BarbicanKeyManager)
