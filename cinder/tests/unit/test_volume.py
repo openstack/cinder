@@ -6268,6 +6268,20 @@ class GenericVolumeDriverTestCase(DriverTestCase):
             volume_api.enable_replication(ctxt, volume)
             self.assertTrue(mock_enable_rep.called)
 
+    def test_enable_replication_driver_initialized(self):
+        volume = tests_utils.create_volume(self.context,
+                                           size=1,
+                                           host=CONF.host,
+                                           replication_status='enabling')
+        # set initialized to False
+        self.volume.driver._initialized = False
+
+        # start test
+        self.assertRaises(exception.DriverNotInitialized,
+                          self.volume.enable_replication,
+                          self.context,
+                          volume)
+
     def test_disable_replication_invalid_state(self):
         volume_api = cinder.volume.api.API()
         ctxt = context.get_admin_context()
@@ -6297,6 +6311,20 @@ class GenericVolumeDriverTestCase(DriverTestCase):
             volume['replication_status'] = 'enabled'
             volume_api.disable_replication(ctxt, volume)
             self.assertTrue(mock_disable_rep.called)
+
+    def test_disable_replication_driver_initialized(self):
+        volume = tests_utils.create_volume(self.context,
+                                           size=1,
+                                           host=CONF.host,
+                                           replication_status='disabling')
+        # set initialized to False
+        self.volume.driver._initialized = False
+
+        # start test
+        self.assertRaises(exception.DriverNotInitialized,
+                          self.volume.disable_replication,
+                          self.context,
+                          volume)
 
     @mock.patch.object(utils, 'brick_get_connector_properties')
     @mock.patch.object(cinder.volume.driver.VolumeDriver, '_attach_volume')
