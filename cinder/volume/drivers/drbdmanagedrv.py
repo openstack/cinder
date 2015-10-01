@@ -24,6 +24,7 @@ for more details.
 """
 
 import six
+import socket
 import uuid
 
 from oslo_config import cfg
@@ -54,6 +55,13 @@ drbd_opts = [
     cfg.StrOpt('drbdmanage_redundancy',
                default='1',
                help='Number of nodes that should replicate the data.'),
+    cfg.BoolOpt('drbdmanage_devs_on_controller',
+                default=True,
+                help='''If set, the c-vol node will receive a useable
+                /dev/drbdX device, even if the actual data is stored on
+                other nodes only.
+                This is useful for debugging, maintenance, and to be
+                able to do the iSCSI export from the c-vol node.''')
     # TODO(PM): offsite_redundancy?
     # TODO(PM): choose DRBDmanage storage pool?
 ]
@@ -86,6 +94,10 @@ class DrbdManageDriver(driver.VolumeDriver):
             self.drbdmanage_dbus_interface = '/interface'
         self.drbdmanage_redundancy = int(getattr(self.configuration,
                                                  'drbdmanage_redundancy', 1))
+        self.drbdmanage_devs_on_controller = bool(
+            getattr(self.configuration,
+                    'drbdmanage_devs_on_controller',
+                    True))
         self.dm_control_vol = ".drbdctrl"
 
         # Copied from the LVM driver, see
@@ -335,6 +347,14 @@ class DrbdManageDriver(driver.VolumeDriver):
                                      dres, self.drbdmanage_redundancy,
                                      0, True)
         self._check_result(res)
+
+        if self.drbdmanage_devs_on_controller:
+            # FIXME: Consistency groups, vol#
+            res = self.call_or_reconnect(self.odm.assign,
+                                         socket.gethostname(),
+                                         dres,
+                                         self.empty_dict)
+            self._check_result(res, ignore=[dm_exc.DM_EEXIST])
 
         return 0
 
