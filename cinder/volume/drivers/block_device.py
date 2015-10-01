@@ -196,6 +196,16 @@ class BlockDeviceDriver(driver.BaseVD, driver.LocalVD, driver.CloneableVD,
         else:
             raise exception.CinderException(_("No big enough free disk"))
 
+    def extend_volume(self, volume, new_size):
+        dev_path = self.local_path(volume)
+        total_size = self._get_devices_sizes([dev_path])
+        # Convert from Megabytes to Gigabytes
+        size = total_size[dev_path] / units.Ki
+        if size < new_size:
+            msg = _("Insufficient free space available to extend volume.")
+            LOG.error(msg, resource=volume)
+            raise exception.CinderException(msg)
+
     # #######  Interface methods for DataPath (Target Driver) ########
 
     def ensure_export(self, context, volume):
