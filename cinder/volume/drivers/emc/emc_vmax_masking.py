@@ -497,9 +497,9 @@ class EMCVMAXMasking(object):
         if self._is_volume_in_storage_group(
                 conn, storageGroupInstanceName,
                 volumeInstance, sgGroupName):
-            LOG.warning(_LW(
+            LOG.debug(
                 "Volume: %(volumeName)s is already part "
-                "of storage group %(sgGroupName)s."),
+                "of storage group %(sgGroupName)s.",
                 {'volumeName': volumeName,
                  'sgGroupName': sgGroupName})
         else:
@@ -518,10 +518,10 @@ class EMCVMAXMasking(object):
                      'sgGroupName': sgGroupName})
                 LOG.error(msg)
             else:
-                LOG.debug("Successfully added %(volumeName)s to "
-                          "%(sgGroupName)s.",
-                          {'volumeName': volumeName,
-                           'sgGroupName': sgGroupName})
+                LOG.info(_LI(
+                    "Successfully added %(volumeName)s to %(sgGroupName)s."),
+                    {'volumeName': volumeName,
+                     'sgGroupName': sgGroupName})
 
         return msg
 
@@ -752,7 +752,7 @@ class EMCVMAXMasking(object):
 
         return foundStorageGroupInstanceName
 
-    def _find_port_group(self, conn, controllerConfigService, portGroupName):
+    def find_port_group(self, conn, controllerConfigService, portGroupName):
         """Given the port Group name get the port group instance name.
 
         :param conn: connection to the ecom server
@@ -1031,8 +1031,9 @@ class EMCVMAXMasking(object):
                 raise exception.VolumeBackendAPIException(
                     data=exceptionMessage)
 
-        LOG.info(_LI("Created new masking view : %(maskingViewName)s."),
-                 {'maskingViewName': maskingViewName})
+        LOG.info(_LI(
+            "Created new masking view : %(maskingViewName)s."),
+            {'maskingViewName': maskingViewName})
         return rc, job
 
     def find_new_masking_view(self, conn, jobDict):
@@ -1148,7 +1149,7 @@ class EMCVMAXMasking(object):
         :param pgGroupName: the port group name
         :returns: instance name foundPortGroupInstanceName
         """
-        foundPortGroupInstanceName = self._find_port_group(
+        foundPortGroupInstanceName = self.find_port_group(
             conn, controllerConfigService, pgGroupName)
         if foundPortGroupInstanceName is None:
             LOG.error(_LE(
@@ -1978,9 +1979,9 @@ class EMCVMAXMasking(object):
             raise exception.VolumeBackendAPIException(
                 data=exceptionMessage)
         else:
-            LOG.debug("Masking view %(maskingViewName)s "
-                      "successfully deleted.",
-                      {'maskingViewName': maskingViewName})
+            LOG.info(_LI(
+                "Masking view %(maskingViewName)s successfully deleted."),
+                {'maskingViewName': maskingViewName})
 
     def _get_and_remove_rule_association(
             self, conn, fastPolicyName, isTieringPolicySupported,
@@ -2001,9 +2002,9 @@ class EMCVMAXMasking(object):
             tierPolicyInstanceName = self.fast.get_tier_policy_by_name(
                 conn, storageSystemName, fastPolicyName)
 
-            LOG.info(_LI(
+            LOG.debug(
                 "Policy: %(policy)s, policy service:%(service)s, "
-                "masking group: %(maskingGroup)s."),
+                "masking group: %(maskingGroup)s.",
                 {'policy': tierPolicyInstanceName,
                  'service': tierPolicyServiceInstanceName,
                  'maskingGroup': storageGroupInstanceName})
@@ -2280,9 +2281,9 @@ class EMCVMAXMasking(object):
             raise exception.VolumeBackendAPIException(
                 data=exceptionMessage)
         else:
-            LOG.debug("Storage Group %(storageGroupName)s "
-                      "successfully deleted.",
-                      {'storageGroupName': storageGroupName})
+            LOG.info(_LI(
+                "Storage Group %(storageGroupName)s successfully deleted."),
+                {'storageGroupName': storageGroupName})
 
     def _delete_storage_group(self, conn, controllerConfigService,
                               storageGroupInstanceName, storageGroupName,
