@@ -61,12 +61,13 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
             emc_vmax_common.EMCVMAXCommon('iSCSI',
                                           self.VERSION,
                                           configuration=self.configuration))
+        self.iscsi_ip_addresses = []
 
     def check_for_setup_error(self):
         pass
 
     def create_volume(self, volume):
-        """Creates a EMC(VMAX/VNX) volume."""
+        """Creates a VMAX volume."""
         volpath = self.common.create_volume(volume)
 
         model_update = {}
@@ -153,7 +154,7 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
                 }
             }
         """
-        self.common.initialize_connection(
+        self.iscsi_ip_addresses = self.common.initialize_connection(
             volume, connector)
 
         iscsi_properties = self.smis_get_iscsi_properties(
@@ -165,21 +166,42 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
             'data': iscsi_properties
         }
 
-    def smis_do_iscsi_discovery(self, volume):
-        LOG.info(_LI("ISCSI provider_location not stored, using discovery."))
-        if not self._check_for_iscsi_ip_address():
-            LOG.error(_LE(
-                "You must set your iscsi_ip_address in cinder.conf."))
+    def _call_iscsiadm(self, iscsi_ip_address):
+        """Calls iscsiadm with iscsi ip address"""
+        try:
+            (out, _err) = self._execute('iscsiadm', '-m', 'discovery',
+                                        '-t', 'sendtargets', '-p',
+                                        iscsi_ip_address,
+                                        run_as_root=True)
+            return out, _err, False, None
+        except Exception as ex:
+            return None, None, True, ex
 
-        (out, _err) = self._execute('iscsiadm', '-m', 'discovery',
-                                    '-t', 'sendtargets', '-p',
-                                    self.configuration.iscsi_ip_address,
-                                    run_as_root=True)
+    def smis_do_iscsi_discovery(self, volume):
+        """Calls iscsiadm with each iscsi ip address in the list"""
+        LOG.info(_LI("ISCSI provider_location not stored, using discovery."))
+        targets = []
+        if len(self.iscsi_ip_addresses) == 0:
+            LOG.error(_LE("The list of iscsi_ip_addresses is empty"))
+            return targets
+
+        for iscsi_ip_address in self.iscsi_ip_addresses:
+            out, _err, go_again, ex = self._call_iscsiadm(iscsi_ip_address)
+            if not go_again:
+                break
+        if not out:
+            if ex:
+                exception_message = (_("Unsuccessful iscsiadm. "
+                                       "Exception is %(ex)s. ")
+                                     % {'ex': ex})
+            else:
+                exception_message = (_("iscsiadm execution failed. "))
+            raise exception.VolumeBackendAPIException(data=exception_message)
 
         LOG.info(_LI(
             "smis_do_iscsi_discovery is: %(out)s."),
             {'out': out})
-        targets = []
+
         for target in out.splitlines():
             targets.append(target)
 
