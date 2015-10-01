@@ -18,12 +18,8 @@ import mock
 from oslo_utils import timeutils
 
 from cinder import context as ctxt
-from cinder import test
-
-patcher = mock.patch('cinder.rpc')
-patcher.start()
 from cinder.image import cache as image_cache
-patcher.stop()
+from cinder import test
 
 
 class ImageVolumeCacheTestCase(test.TestCase):
@@ -33,7 +29,6 @@ class ImageVolumeCacheTestCase(test.TestCase):
         self.mock_db = mock.Mock()
         self.mock_volume_api = mock.Mock()
         self.context = ctxt.get_admin_context()
-        self.notifier = mock.Mock()
 
     def _build_cache(self, max_gb=0, max_count=0):
         cache = image_cache.ImageVolumeCache(self.mock_db,
@@ -75,11 +70,13 @@ class ImageVolumeCacheTestCase(test.TestCase):
             self.context,
             entry['volume_id']
         )
-        self.notifier.info.assert_called_once_with(
-            self.context,
-            'image_volume_cache.evict',
-            {'image_id': entry['image_id'], 'host': entry['host']}
-        )
+
+        msg = self.notifier.notifications[0]
+        self.assertEqual('image_volume_cache.evict', msg['event_type'])
+        self.assertEqual('INFO', msg['priority'])
+        self.assertEqual(entry['host'], msg['payload']['host'])
+        self.assertEqual(entry['image_id'], msg['payload']['image_id'])
+        self.assertEqual(1, len(self.notifier.notifications))
 
     def test_get_entry(self):
         cache = self._build_cache()
@@ -108,11 +105,13 @@ class ImageVolumeCacheTestCase(test.TestCase):
             entry['image_id'],
             volume_ref['host']
         )
-        self.notifier.info.assert_called_once_with(
-            self.context,
-            'image_volume_cache.hit',
-            {'image_id': entry['image_id'], 'host': entry['host']}
-        )
+
+        msg = self.notifier.notifications[0]
+        self.assertEqual('image_volume_cache.hit', msg['event_type'])
+        self.assertEqual('INFO', msg['priority'])
+        self.assertEqual(entry['host'], msg['payload']['host'])
+        self.assertEqual(entry['image_id'], msg['payload']['image_id'])
+        self.assertEqual(1, len(self.notifier.notifications))
 
     def test_get_entry_not_exists(self):
         cache = self._build_cache()
@@ -138,11 +137,12 @@ class ImageVolumeCacheTestCase(test.TestCase):
 
         self.assertIsNone(found_entry)
 
-        self.notifier.info.assert_called_once_with(
-            self.context,
-            'image_volume_cache.miss',
-            {'image_id': image_id, 'host': volume_ref['host']}
-        )
+        msg = self.notifier.notifications[0]
+        self.assertEqual('image_volume_cache.miss', msg['event_type'])
+        self.assertEqual('INFO', msg['priority'])
+        self.assertEqual(volume_ref['host'], msg['payload']['host'])
+        self.assertEqual(image_id, msg['payload']['image_id'])
+        self.assertEqual(1, len(self.notifier.notifications))
 
     def test_get_entry_needs_update(self):
         cache = self._build_cache()
@@ -173,11 +173,12 @@ class ImageVolumeCacheTestCase(test.TestCase):
         self.assertIsNone(found_entry)
         self.mock_volume_api.delete.assert_called_with(self.context,
                                                        mock_volume)
-        self.notifier.info.assert_called_once_with(
-            self.context,
-            'image_volume_cache.miss',
-            {'image_id': entry['image_id'], 'host': volume_ref['host']}
-        )
+        msg = self.notifier.notifications[0]
+        self.assertEqual('image_volume_cache.miss', msg['event_type'])
+        self.assertEqual('INFO', msg['priority'])
+        self.assertEqual(volume_ref['host'], msg['payload']['host'])
+        self.assertEqual(entry['image_id'], msg['payload']['image_id'])
+        self.assertEqual(1, len(self.notifier.notifications))
 
     def test_create_cache_entry(self):
         cache = self._build_cache()
