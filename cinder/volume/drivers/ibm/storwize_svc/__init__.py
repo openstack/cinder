@@ -49,8 +49,10 @@ from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder import utils
 from cinder.volume import driver
-from cinder.volume.drivers.ibm.storwize_svc import helpers as storwize_helpers
-from cinder.volume.drivers.ibm.storwize_svc import replication as storwize_rep
+from cinder.volume.drivers.ibm.storwize_svc import (
+    replication as storwize_rep)
+from cinder.volume.drivers.ibm.storwize_svc import (
+    storwize_svc_common as storwize_helpers)
 from cinder.volume.drivers.san import san
 from cinder.volume import volume_types
 from cinder.zonemanager import utils as fczm_utils
