@@ -6646,7 +6646,7 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
                                                   False,
                                                   None,
                                                   'default')
-            lvm_driver.sparse_copy_volume = True
+            lvm_driver._sparse_copy_volume = True
             moved, model_update = \
                 lvm_driver.migrate_volume(self.context, vol, host)
             self.assertTrue(moved)
@@ -7090,7 +7090,7 @@ class LVMVolumeDriverTestCase(DriverTestCase):
                 mock.patch.object(volutils, 'copy_volume') as mock_copy:
 
             # Test case for thin LVM
-            lvm_driver.sparse_copy_volume = True
+            lvm_driver._sparse_copy_volume = True
             src_volume = tests_utils.create_volume(self.context)
             snapshot_ref = tests_utils.create_snapshot(self.context,
                                                        src_volume['id'])
@@ -7279,12 +7279,15 @@ class ISCSITestCase(DriverTestCase):
         self.assertEqual(["iqn:iqn", "iqn:iqn"], result["target_iqns"])
         self.assertEqual([0, 0], result["target_luns"])
 
-    def test_get_volume_stats(self):
+    @mock.patch('cinder.brick.local_dev.lvm.LVM.get_lvm_version',
+                return_value=(2, 2, 100))
+    def test_get_volume_stats(self, _mock_get_version):
 
         def _fake_get_all_physical_volumes(obj, root_helper, vg_name):
             return [{}]
 
-        def _fake_get_all_volume_groups(obj, vg_name=None, no_suffix=True):
+        @staticmethod
+        def _fake_get_all_volume_groups(root_helper, vg_name=None):
             return [{'name': 'cinder-volumes',
                      'size': '5.52',
                      'available': '0.52',
@@ -7323,10 +7326,17 @@ class ISCSITestCase(DriverTestCase):
         self.assertFalse(stats['sparse_copy_volume'])
 
         # Check value of sparse_copy_volume for thin enabled case.
+        # This value is set in check_for_setup_error.
         self.configuration = conf.Configuration(None)
         self.configuration.lvm_type = 'thin'
+        vg_obj = fake_lvm.FakeBrickLVM('cinder-volumes',
+                                       False,
+                                       None,
+                                       'default')
         lvm_driver = lvm.LVMVolumeDriver(configuration=self.configuration,
-                                         db=db)
+                                         db=db,
+                                         vg_obj=vg_obj)
+        lvm_driver.check_for_setup_error()
         lvm_driver.vg = brick_lvm.LVM('cinder-volumes', 'sudo')
         lvm_driver._update_volume_stats()
         stats = lvm_driver._stats
