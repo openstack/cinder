@@ -14,6 +14,7 @@
 #    under the License.
 
 import datetime
+import hashlib
 import random
 import re
 from xml.dom import minidom
@@ -629,12 +630,12 @@ class EMCVMAXUtils(object):
         shortHostName = None
 
         hostArray = hostName.split('.')
-        if len(hostArray) > 2:
+        if len(hostArray) > 1:
             shortHostName = hostArray[0]
         else:
             shortHostName = hostName
 
-        return shortHostName
+        return self.generate_unique_trunc_host(shortHostName)
 
     def get_instance_name(self, classname, bindings):
         """Get the instance from the classname and bindings.
@@ -2343,3 +2344,35 @@ class EMCVMAXUtils(object):
                       {'volume': volumeInstance.path, 'rc': rc, 'ret': ret})
             memberVolumes = ret['OutElements']
         return memberVolumes
+
+    def generate_unique_trunc_host(self, hostName):
+        """Create a unique short host name under 40 chars
+
+        :param sgName: long storage group name
+        :returns: truncated storage group name
+        """
+        if hostName and len(hostName) > 38:
+            hostName = hostName.lower()
+            m = hashlib.md5()
+            m.update(hostName.encode('utf-8'))
+            uuid = m.hexdigest()
+            return(
+                ("%(host)s%(uuid)s"
+                 % {'host': hostName[-6:],
+                    'uuid': uuid}))
+        else:
+            return hostName
+
+    def generate_unique_trunc_pool(self, poolName):
+        """Create a unique pool name under 16 chars
+
+        :param poolName: long pool name
+        :returns: truncated pool name
+        """
+        if poolName and len(poolName) > 16:
+            return (
+                ("%(first)s_%(last)s"
+                 % {'first': poolName[:8],
+                    'last': poolName[-7:]}))
+        else:
+            return poolName

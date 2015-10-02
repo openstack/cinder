@@ -1803,6 +1803,35 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
     def fake_is_v3(self, conn, serialNumber):
         return False
 
+    def test_generate_unique_trunc_pool(self):
+        pool_under_16_chars = 'pool_under_16'
+        pool1 = self.driver.utils.generate_unique_trunc_pool(
+            pool_under_16_chars)
+        self.assertEqual(pool_under_16_chars, pool1)
+
+        pool_over_16_chars = (
+            'pool_over_16_pool_over_16')
+        # Should generate truncated string first 8 chars and
+        # last 7 chars
+        pool2 = self.driver.utils.generate_unique_trunc_pool(
+            pool_over_16_chars)
+        self.assertEqual('pool_ove_over_16', pool2)
+
+    def test_generate_unique_trunc_host(self):
+        host_under_38_chars = 'host_under_38_chars'
+        host1 = self.driver.utils.generate_unique_trunc_host(
+            host_under_38_chars)
+        self.assertEqual(host_under_38_chars, host1)
+
+        host_over_38_chars = (
+            'host_over_38_chars_host_over_38_chars_host_over_38_chars')
+        # Check that the same md5 value is retrieved from multiple calls
+        host2 = self.driver.utils.generate_unique_trunc_host(
+            host_over_38_chars)
+        host3 = self.driver.utils.generate_unique_trunc_host(
+            host_over_38_chars)
+        self.assertEqual(host2, host3)
+
     def test_find_device_number(self):
         host = 'myhost'
         data = (
