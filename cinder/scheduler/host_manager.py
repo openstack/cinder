@@ -17,7 +17,7 @@
 Manage hosts in the current zone.
 """
 
-import UserDict
+import collections
 
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -57,36 +57,25 @@ CONF.import_opt('max_over_subscription_ratio', 'cinder.volume.driver')
 LOG = logging.getLogger(__name__)
 
 
-class ReadOnlyDict(UserDict.IterableUserDict):
+class ReadOnlyDict(collections.Mapping):
     """A read-only dict."""
     def __init__(self, source=None):
-        self.data = {}
-        self.update(source)
-
-    def __setitem__(self, key, item):
-        raise TypeError
-
-    def __delitem__(self, key):
-        raise TypeError
-
-    def clear(self):
-        raise TypeError
-
-    def pop(self, key, *args):
-        raise TypeError
-
-    def popitem(self):
-        raise TypeError
-
-    def update(self, source=None):
-        if source is None:
-            return
-        elif isinstance(source, UserDict.UserDict):
-            self.data = source.data
-        elif isinstance(source, type({})):
-            self.data = source
+        if source is not None:
+            self.data = dict(source)
         else:
-            raise TypeError
+            self.data = {}
+
+    def __getitem__(self, key):
+        return self.data[key]
+
+    def __iter__(self):
+        return iter(self.data)
+
+    def __len__(self):
+        return len(self.data)
+
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, self.data)
 
 
 class HostState(object):
