@@ -67,8 +67,8 @@ class FakeHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 class FakeHttplibSocket(object):
     """A fake socket implementation for http_client.HTTPResponse."""
     def __init__(self, value):
-        self._rbuffer = six.StringIO(value)
-        self._wbuffer = six.StringIO('')
+        self._rbuffer = six.BytesIO(value)
+        self._wbuffer = six.BytesIO()
         oldclose = self._wbuffer.close
 
         def newclose():
@@ -76,24 +76,27 @@ class FakeHttplibSocket(object):
             oldclose()
         self._wbuffer.close = newclose
 
-    def makefile(self, mode, _other):
+    def makefile(self, mode, *args):
         """Returns the socket's internal buffer"""
         if mode == 'r' or mode == 'rb':
             return self._rbuffer
         if mode == 'w' or mode == 'wb':
             return self._wbuffer
 
+    def close(self):
+        pass
 
-RESPONSE_PREFIX_DIRECT_CMODE = """<?xml version='1.0' encoding='UTF-8' ?>
+
+RESPONSE_PREFIX_DIRECT_CMODE = b"""<?xml version='1.0' encoding='UTF-8' ?>
 <!DOCTYPE netapp SYSTEM 'file:/etc/netapp_gx.dtd'>"""
 
-RESPONSE_PREFIX_DIRECT_7MODE = """<?xml version='1.0' encoding='UTF-8' ?>
+RESPONSE_PREFIX_DIRECT_7MODE = b"""<?xml version='1.0' encoding='UTF-8' ?>
 <!DOCTYPE netapp SYSTEM "/na_admin/netapp_filer.dtd">"""
 
-RESPONSE_PREFIX_DIRECT = """
+RESPONSE_PREFIX_DIRECT = b"""
 <netapp version='1.15' xmlns='http://www.netapp.com/filer/admin'>"""
 
-RESPONSE_SUFFIX_DIRECT = """</netapp>"""
+RESPONSE_SUFFIX_DIRECT = b"""</netapp>"""
 
 
 class FakeDirectCMODEServerHandler(FakeHTTPRequestHandler):
@@ -431,6 +434,8 @@ class FakeDirectCMODEServerHandler(FakeHTTPRequestHandler):
         s.end_headers()
         s.wfile.write(RESPONSE_PREFIX_DIRECT_CMODE)
         s.wfile.write(RESPONSE_PREFIX_DIRECT)
+        if isinstance(body, six.text_type):
+            body = body.encode('utf-8')
         s.wfile.write(body)
         s.wfile.write(RESPONSE_SUFFIX_DIRECT)
 
@@ -466,8 +471,10 @@ class FakeDirectCmodeHTTPConnection(object):
         req_str = '%s %s HTTP/1.1\r\n' % (method, path)
         for key, value in headers.items():
             req_str += "%s: %s\r\n" % (key, value)
+        if isinstance(req_str, six.text_type):
+            req_str = req_str.encode('latin1')
         if data:
-            req_str += '\r\n%s' % data
+            req_str += b'\r\n' + data
 
         # NOTE(vish): normally the http transport normalizes from unicode
         sock = FakeHttplibSocket(req_str.decode("latin-1").encode("utf-8"))
@@ -488,6 +495,9 @@ class FakeDirectCmodeHTTPConnection(object):
 
     def getresponsebody(self):
         return self.sock.result
+
+    def close(self):
+        pass
 
 
 class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
@@ -1174,6 +1184,8 @@ class FakeDirect7MODEServerHandler(FakeHTTPRequestHandler):
         s.end_headers()
         s.wfile.write(RESPONSE_PREFIX_DIRECT_7MODE)
         s.wfile.write(RESPONSE_PREFIX_DIRECT)
+        if isinstance(body, six.text_type):
+            body = body.encode('utf-8')
         s.wfile.write(body)
         s.wfile.write(RESPONSE_SUFFIX_DIRECT)
 
@@ -1194,8 +1206,10 @@ class FakeDirect7modeHTTPConnection(object):
         req_str = '%s %s HTTP/1.1\r\n' % (method, path)
         for key, value in headers.items():
             req_str += "%s: %s\r\n" % (key, value)
+        if isinstance(req_str, six.text_type):
+            req_str = req_str.encode('latin1')
         if data:
-            req_str += '\r\n%s' % data
+            req_str += b'\r\n' + data
 
         # NOTE(vish): normally the http transport normailizes from unicode
         sock = FakeHttplibSocket(req_str.decode("latin-1").encode("utf-8"))
@@ -1216,6 +1230,9 @@ class FakeDirect7modeHTTPConnection(object):
 
     def getresponsebody(self):
         return self.sock.result
+
+    def close(self):
+        pass
 
 
 class NetAppDirect7modeISCSIDriverTestCase_NV(test.TestCase):
