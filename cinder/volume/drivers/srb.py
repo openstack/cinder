@@ -78,7 +78,7 @@ class retry(object):
         self._sleep_factor = sleep_factor
 
     def __call__(self, fun):
-        func_name = fun.func_name
+        func_name = fun.__name__
 
         @functools.wraps(fun)
         def wrapped(*args, **kwargs):

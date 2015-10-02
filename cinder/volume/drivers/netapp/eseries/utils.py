@@ -47,7 +47,7 @@ def decode_base32_to_hex(base32_string):
 def convert_uuid_to_es_fmt(uuid_str):
     """Converts uuid to e-series compatible name format."""
     uuid_base32 = encode_hex_to_base32(uuid.UUID(six.text_type(uuid_str)).hex)
-    return uuid_base32.strip('=')
+    return uuid_base32.strip(b'=')
 
 
 def convert_es_fmt_to_uuid(es_label):
