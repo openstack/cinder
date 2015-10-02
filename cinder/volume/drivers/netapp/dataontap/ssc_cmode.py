@@ -173,7 +173,7 @@ def query_cluster_vols_for_ssc(na_server, vserver, volume=None):
     vols = set()
     for res in result:
         records = res.get_child_content('num-records')
-        if records > 0:
+        if int(records) > 0:
             attr_list = res.get_child_by_name('attributes-list')
             if attr_list:
                 vol_attrs = attr_list.get_children()
