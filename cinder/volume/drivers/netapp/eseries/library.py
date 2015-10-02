@@ -1170,32 +1170,67 @@ class NetAppESeriesLibrary(object):
         return volume.get('objectType') == 'thinVolume' or volume.get(
             'thinProvisioned', False)
 
+    def _get_pool_operation_progress(self, pool_id, action=None):
+        """Retrieve the progress of a long running operation on a pool
+
+        The return will be a tuple containing: a bool representing whether
+        or not the operation is complete, a set of actions that are
+        currently running on the storage pool, and the estimated time
+        remaining in minutes.
+
+        An action type may be passed in such that once no actions of that type
+        remain active on the pool, the operation will be considered
+        completed. If no action str is passed in, it is assumed that
+        multiple actions compose the operation, and none are terminal,
+        so the operation will not be considered completed until there are no
+        actions remaining to be completed on any volume on the pool.
+
+        :param pool_id: The id of a storage pool
+        :param action: The anticipated action
+        :return: A tuple (bool, set(str), int)
+        """
+        actions = set()
+        eta = 0
+        for progress in self._client.get_pool_operation_progress(pool_id):
+            actions.add(progress.get('currentAction'))
+            eta += progress.get('estimatedTimeToCompletion', 0)
+        if action is not None:
+            complete = action not in actions
+        else:
+            complete = not actions
+        return complete, actions, eta
+
     def extend_volume(self, volume, new_size):
         """Extend an existing volume to the new size."""
         src_vol = self._get_volume(volume['name_id'])
-        if self._is_thin_provisioned(src_vol):
-            self._client.expand_volume(src_vol['id'], new_size)
-        else:
-            stage_1, stage_2 = 0, 0
-            src_label = src_vol['label']
-            stage_label = 'tmp-%s' % utils.convert_uuid_to_es_fmt(uuid.uuid4())
-            extend_vol = {'id': uuid.uuid4(), 'size': new_size}
-            self.create_cloned_volume(extend_vol, volume)
-            new_vol = self._get_volume(extend_vol['id'])
-            try:
-                stage_1 = self._client.update_volume(src_vol['id'],
-                                                     stage_label)
-                stage_2 = self._client.update_volume(new_vol['id'], src_label)
-                new_vol = stage_2
-                LOG.info(_LI('Extended volume with label %s.'), src_label)
-            except exception.NetAppDriverException:
-                if stage_1 == 0:
-                    with excutils.save_and_reraise_exception():
-                        self._client.delete_volume(new_vol['id'])
-                elif stage_2 == 0:
-                    with excutils.save_and_reraise_exception():
-                        self._client.update_volume(src_vol['id'], src_label)
-                        self._client.delete_volume(new_vol['id'])
+        thin_provisioned = self._is_thin_provisioned(src_vol)
+        self._client.expand_volume(src_vol['id'], new_size, thin_provisioned)
+
+        # If the volume is thin or defined on a disk pool, there is no need
+        # to block.
+        if not (thin_provisioned or src_vol.get('diskPool')):
+            # Wait for the expansion to start
+
+            def check_progress():
+                complete, actions, eta = (
+                    self._get_pool_operation_progress(src_vol[
+                                                      'volumeGroupRef'],
+                                                      'remappingDve'))
+                if complete:
+                    raise loopingcall.LoopingCallDone()
+                else:
+                    msg = _LI("Waiting for volume expansion of %(vol)s to "
+                              "complete, current remaining actions are "
+                              "%(action)s. ETA: %(eta)s mins.")
+                    LOG.info(msg, {'vol': volume['name_id'],
+                                   'action': ', '.join(actions), 'eta': eta})
+
+            checker = loopingcall.FixedIntervalLoopingCall(
+                check_progress)
+
+            checker.start(interval=self.SLEEP_SECS,
+                          initial_delay=self.SLEEP_SECS,
+                          stop_on_exception=True).wait()
 
     def _garbage_collect_tmp_vols(self):
         """Removes tmp vols with no snapshots."""

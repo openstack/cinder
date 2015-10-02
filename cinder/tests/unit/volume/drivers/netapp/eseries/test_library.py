@@ -1088,66 +1088,107 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         # Ensure the volume we created is not cleaned up
         self.assertEqual(0, self.library._client.delete_volume.call_count)
 
-    def test_extend_volume(self):
+    @ddt.data(False, True)
+    def test_get_pool_operation_progress(self, expect_complete):
+        """Validate the operation progress is interpreted correctly"""
+
+        pool = copy.deepcopy(eseries_fake.STORAGE_POOL)
+        if expect_complete:
+            pool_progress = []
+        else:
+            pool_progress = copy.deepcopy(
+                eseries_fake.FAKE_POOL_ACTION_PROGRESS)
+
+        expected_actions = set(action['currentAction'] for action in
+                               pool_progress)
+        expected_eta = reduce(lambda x, y: x + y['estimatedTimeToCompletion'],
+                              pool_progress, 0)
+
+        self.library._client.get_pool_operation_progress = mock.Mock(
+            return_value=pool_progress)
+
+        complete, actions, eta = self.library._get_pool_operation_progress(
+            pool['id'])
+        self.assertEqual(expect_complete, complete)
+        self.assertEqual(expected_actions, actions)
+        self.assertEqual(expected_eta, eta)
+
+    @ddt.data(False, True)
+    def test_get_pool_operation_progress_with_action(self, expect_complete):
+        """Validate the operation progress is interpreted correctly"""
+
+        expected_action = 'fakeAction'
+        pool = copy.deepcopy(eseries_fake.STORAGE_POOL)
+        if expect_complete:
+            pool_progress = copy.deepcopy(
+                eseries_fake.FAKE_POOL_ACTION_PROGRESS)
+            for progress in pool_progress:
+                progress['currentAction'] = 'none'
+        else:
+            pool_progress = copy.deepcopy(
+                eseries_fake.FAKE_POOL_ACTION_PROGRESS)
+            pool_progress[0]['currentAction'] = expected_action
+
+        expected_actions = set(action['currentAction'] for action in
+                               pool_progress)
+        expected_eta = reduce(lambda x, y: x + y['estimatedTimeToCompletion'],
+                              pool_progress, 0)
+
+        self.library._client.get_pool_operation_progress = mock.Mock(
+            return_value=pool_progress)
+
+        complete, actions, eta = self.library._get_pool_operation_progress(
+            pool['id'], expected_action)
+        self.assertEqual(expect_complete, complete)
+        self.assertEqual(expected_actions, actions)
+        self.assertEqual(expected_eta, eta)
+
+    @mock.patch('eventlet.greenthread.sleep')
+    def test_extend_volume(self, _mock_sleep):
+        """Test volume extend with a thick-provisioned volume"""
+
+        def get_copy_progress():
+            for eta in xrange(5, -1, -1):
+                action_status = 'none' if eta == 0 else 'remappingDve'
+                complete = action_status == 'none'
+                yield complete, action_status, eta
+
         fake_volume = copy.deepcopy(get_fake_volume())
         volume = copy.deepcopy(eseries_fake.VOLUME)
         new_capacity = 10
         volume['objectType'] = 'volume'
-        self.library.create_cloned_volume = mock.Mock()
+        self.library._client.expand_volume = mock.Mock()
+        self.library._get_pool_operation_progress = mock.Mock(
+            side_effect=get_copy_progress())
         self.library._get_volume = mock.Mock(return_value=volume)
-        self.library._client.update_volume = mock.Mock()
 
         self.library.extend_volume(fake_volume, new_capacity)
 
-        self.library.create_cloned_volume.assert_called_with(mock.ANY,
-                                                             fake_volume)
+        # Ensure that the extend method waits until the expansion is completed
+        self.assertEqual(6,
+                         self.library._get_pool_operation_progress.call_count
+                         )
+        self.library._client.expand_volume.assert_called_with(volume['id'],
+                                                              new_capacity,
+                                                              False)
 
     def test_extend_volume_thin(self):
+        """Test volume extend with a thin-provisioned volume"""
+
         fake_volume = copy.deepcopy(get_fake_volume())
         volume = copy.deepcopy(eseries_fake.VOLUME)
         new_capacity = 10
         volume['objectType'] = 'thinVolume'
         self.library._client.expand_volume = mock.Mock(return_value=volume)
+        self.library._get_volume_operation_progress = mock.Mock()
         self.library._get_volume = mock.Mock(return_value=volume)
 
         self.library.extend_volume(fake_volume, new_capacity)
 
+        self.assertFalse(self.library._get_volume_operation_progress.called)
         self.library._client.expand_volume.assert_called_with(volume['id'],
-                                                              new_capacity)
-
-    def test_extend_volume_stage_2_failure(self):
-        fake_volume = copy.deepcopy(get_fake_volume())
-        volume = copy.deepcopy(eseries_fake.VOLUME)
-        new_capacity = 10
-        volume['objectType'] = 'volume'
-        self.library.create_cloned_volume = mock.Mock()
-        self.library._client.delete_volume = mock.Mock()
-        # Create results for multiple calls to _get_volume and _update_volume
-        get_volume_results = [volume, {'id': 'newId', 'label': 'newVolume'}]
-        self.library._get_volume = mock.Mock(side_effect=get_volume_results)
-        update_volume_results = [volume, exception.NetAppDriverException,
-                                 volume]
-        self.library._client.update_volume = mock.Mock(
-            side_effect=update_volume_results)
-
-        self.assertRaises(exception.NetAppDriverException,
-                          self.library.extend_volume, fake_volume,
-                          new_capacity)
-        self.assertTrue(self.library._client.delete_volume.called)
-
-    def test_extend_volume_stage_1_failure(self):
-        fake_volume = copy.deepcopy(get_fake_volume())
-        volume = copy.deepcopy(eseries_fake.VOLUME)
-        new_capacity = 10
-        volume['objectType'] = 'volume'
-        self.library.create_cloned_volume = mock.Mock()
-        self.library._get_volume = mock.Mock(return_value=volume)
-        self.library._client.update_volume = mock.Mock(
-            side_effect=exception.NetAppDriverException)
-
-        self.assertRaises(exception.NetAppDriverException,
-                          self.library.extend_volume, fake_volume,
-                          new_capacity)
+                                                              new_capacity,
+                                                              True)
 
     def test_delete_non_existing_volume(self):
         volume2 = get_fake_volume()

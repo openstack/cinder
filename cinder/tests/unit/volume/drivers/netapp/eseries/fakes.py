@@ -471,6 +471,7 @@ VOLUME = VOLUMES[0]
 
 STORAGE_POOL = {
     'label': 'DDP',
+    'id': 'fakevolgroupref',
     'volumeGroupRef': 'fakevolgroupref',
     'raidLevel': 'raidDiskPool',
     'usedSpace': '16413217521664',
@@ -788,6 +789,22 @@ HARDWARE_INVENTORY = {
         },
     ]
 }
+
+FAKE_POOL_ACTION_PROGRESS = [
+    {
+        "volumeRef": "0200000060080E50002998A00000945355C37C19",
+        "progressPercentage": 55,
+        "estimatedTimeToCompletion": 1,
+        "currentAction": "initializing"
+    },
+    {
+        "volumeRef": "0200000060080E50002998A00000945355C37C18",
+        "progressPercentage": 0,
+        "estimatedTimeToCompletion": 0,
+        "currentAction": "progressDve"
+    },
+]
+
 
 FAKE_RESOURCE_URL = '/devmgr/v2/devmgr/utils/about'
 FAKE_APP_VERSION = '2015.2|2015.2.dev59|vendor|Linux-3.13.0-24-generic'
