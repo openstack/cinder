@@ -963,7 +963,26 @@ class BaseVD(object):
                     LOG.error(err_msg)
                     raise exception.VolumeBackendAPIException(data=ex_msg)
                 raise exception.VolumeBackendAPIException(data=err_msg)
-        return (self._connect_device(conn), volume)
+
+        try:
+            attach_info = self._connect_device(conn)
+        except exception.DeviceUnavailable as exc:
+            # We may have reached a point where we have attached the volume,
+            # so we have to detach it (do the cleanup).
+            attach_info = exc.kwargs.get('attach_info', None)
+            if attach_info:
+                try:
+                    LOG.debug('Device for volume %s is unavailable but did '
+                              'attach, detaching it.', volume['id'])
+                    self._detach_volume(context, attach_info, volume,
+                                        properties, force=True,
+                                        remote=remote)
+                except Exception:
+                    LOG.exception(_LE('Error detaching volume %s'),
+                                  volume['id'])
+            raise
+
+        return (attach_info, volume)
 
     def _attach_snapshot(self, context, snapshot, properties, remote=False):
         """Attach the snapshot."""
@@ -1036,17 +1055,26 @@ class BaseVD(object):
         device = connector.connect_volume(conn['data'])
         host_device = device['path']
 
-        # Secure network file systems will NOT run as root.
-        root_access = not self.secure_file_operations_enabled()
+        attach_info = {'conn': conn, 'device': device, 'connector': connector}
 
-        if not connector.check_valid_device(host_device, root_access):
+        unavailable = True
+        try:
+            # Secure network file systems will NOT run as root.
+            root_access = not self.secure_file_operations_enabled()
+            unavailable = not connector.check_valid_device(host_device,
+                                                           root_access)
+        except Exception:
+            LOG.exception(_LE('Could not validate device %s'), host_device)
+
+        if unavailable:
             raise exception.DeviceUnavailable(path=host_device,
+                                              attach_info=attach_info,
                                               reason=(_("Unable to access "
                                                         "the backend storage "
                                                         "via the path "
                                                         "%(path)s.") %
                                                       {'path': host_device}))
-        return {'conn': conn, 'device': device, 'connector': connector}
+        return attach_info
 
     def clone_image(self, context, volume,
                     image_location, image_meta,
