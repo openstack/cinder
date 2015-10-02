@@ -17,7 +17,6 @@ Tests for Posix backup driver.
 
 """
 
-import exceptions
 import os
 
 import mock
@@ -118,11 +117,11 @@ class PosixBackupDriverTestCase(test.TestCase):
     def test_put_container_exception(self):
         self.mock_object(os.path, 'exists', mock.Mock(return_value=False))
         self.mock_object(os, 'makedirs', mock.Mock(
-            side_effect=exceptions.OSError))
+            side_effect=OSError))
         self.mock_object(os, 'chmod')
         path = os.path.join(self.driver.backup_path, FAKE_CONTAINER)
 
-        self.assertRaises(exceptions.OSError, self.driver.put_container,
+        self.assertRaises(OSError, self.driver.put_container,
                           FAKE_CONTAINER)
         os.path.exists.assert_called_once_with(path)
         os.makedirs.called_once_with(path)
@@ -176,8 +175,8 @@ class PosixBackupDriverTestCase(test.TestCase):
 
     def test_delete_nonexistent_object(self):
         self.mock_object(os, 'remove', mock.Mock(
-            side_effect=exceptions.OSError))
+            side_effect=OSError))
 
-        self.assertRaises(exceptions.OSError,
+        self.assertRaises(OSError,
                           self.driver.delete_object, FAKE_CONTAINER,
                           FAKE_OBJECT_NAME)

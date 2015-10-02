@@ -299,7 +299,7 @@ class NetAppApiElementTransTests(test.TestCase):
         root['e1'] = 'v1'
         root['e2'] = 1
         root['e3'] = 2.0
-        root['e4'] = 8l
+        root['e4'] = 8
         self.assertEqual(4, len(root.get_children()))
         self.assertEqual('v1', root.get_child_content('e1'))
         self.assertEqual('1', root.get_child_content('e2'))
@@ -491,7 +491,7 @@ class NetAppApiInvokeTests(test.TestCase):
         invoke_generator = netapp_api.invoke_api(**params)
 
         self.assertEqual(netapp_api.NaElement('success').to_string(),
-                         invoke_generator.next().to_string())
+                         next(invoke_generator).to_string())
 
     def test_create_api_request(self):
         """"Tests creating api request"""
