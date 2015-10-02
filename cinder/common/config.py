@@ -175,9 +175,8 @@ global_opts = [
                help='The full class name of the volume backup API class'),
     cfg.StrOpt('auth_strategy',
                default='keystone',
-               choices=['noauth', 'keystone', 'deprecated'],
-               help='The strategy to use for auth. Supports noauth, keystone, '
-                    'and deprecated.'),
+               choices=['noauth', 'keystone'],
+               help='The strategy to use for auth. Supports noauth or keystone.'),
     cfg.ListOpt('enabled_backends',
                 default=None,
                 help='A list of backend names to use. These backend names '
