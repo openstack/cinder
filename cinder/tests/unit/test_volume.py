@@ -3038,7 +3038,9 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertEqual('INFO', msg['priority'])
         if len(self.notifier.notifications) > 2:
             # Cause an assert to print the unexpected item
-            self.assertFalse(self.notifier.notifications[2])
+            # and all of the notifications.
+            self.assertFalse(self.notifier.notifications[2],
+                             self.notifier.notifications)
         self.assertEqual(2, len(self.notifier.notifications),
                          self.notifier.notifications)
 
@@ -3071,7 +3073,9 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         if len(self.notifier.notifications) > 4:
             # Cause an assert to print the unexpected item
-            self.assertFalse(self.notifier.notifications[4])
+            # and all of the notifications.
+            self.assertFalse(self.notifier.notifications[4],
+                             self.notifier.notifications)
 
         self.assertEqual(4, len(self.notifier.notifications),
                          self.notifier.notifications)
@@ -3087,7 +3091,9 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         if len(self.notifier.notifications) > 6:
             # Cause an assert to print the unexpected item
-            self.assertFalse(self.notifier.notifications[6])
+            # and all of the notifications.
+            self.assertFalse(self.notifier.notifications[6],
+                             self.notifier.notifications)
 
         self.assertEqual(6, len(self.notifier.notifications),
                          self.notifier.notifications)
@@ -5092,14 +5098,16 @@ class ConsistencyGroupTestCase(BaseVolumeTestCase):
         self.assertDictMatch(expected, msg['payload'])
 
         if len(self.notifier.notifications) > 6:
-            self.assertFalse(self.notifier.notifications[6])
+            self.assertFalse(self.notifier.notifications[6],
+                             self.notifier.notifications)
         self.assertEqual(6, len(self.notifier.notifications),
                          self.notifier.notifications)
 
         self.volume.delete_consistencygroup(self.context, group2)
 
         if len(self.notifier.notifications) > 10:
-            self.assertFalse(self.notifier.notifications[10])
+            self.assertFalse(self.notifier.notifications[10],
+                             self.notifier.notifications)
         self.assertEqual(10, len(self.notifier.notifications),
                          self.notifier.notifications)
 
@@ -5291,7 +5299,8 @@ class ConsistencyGroupTestCase(BaseVolumeTestCase):
         self.volume.create_volume(self.context, volume_id)
 
         if len(self.notifier.notifications) > 2:
-            self.assertFalse(self.notifier.notifications[2])
+            self.assertFalse(self.notifier.notifications[2],
+                             self.notifier.notifications)
         self.assertEqual(2, len(self.notifier.notifications),
                          self.notifier.notifications)
 
@@ -5303,7 +5312,8 @@ class ConsistencyGroupTestCase(BaseVolumeTestCase):
                                            cgsnapshot_id).id)
 
         if len(self.notifier.notifications) > 6:
-            self.assertFalse(self.notifier.notifications[6])
+            self.assertFalse(self.notifier.notifications[6],
+                             self.notifier.notifications)
 
         msg = self.notifier.notifications[2]
         self.assertEqual('cgsnapshot.create.start', msg['event_type'])
@@ -5331,7 +5341,8 @@ class ConsistencyGroupTestCase(BaseVolumeTestCase):
         self.volume.delete_cgsnapshot(self.context, cgsnapshot_id)
 
         if len(self.notifier.notifications) > 10:
-            self.assertFalse(self.notifier.notifications[10])
+            self.assertFalse(self.notifier.notifications[10],
+                             self.notifier.notifications)
 
         msg = self.notifier.notifications[6]
         self.assertEqual('cgsnapshot.delete.start', msg['event_type'])
