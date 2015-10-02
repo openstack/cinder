@@ -15,8 +15,7 @@
 
 from lxml import etree
 
-from cinder.tests.unit.volume.drivers.netapp.dataontap.client import (
-    fake_api as netapp_api)
+from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap import ssc_cmode
 
 

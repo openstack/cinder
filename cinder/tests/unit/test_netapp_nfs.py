@@ -27,8 +27,6 @@ import six
 from cinder import exception
 from cinder.image import image_utils
 from cinder import test
-from cinder.tests.unit.volume.drivers.netapp.dataontap.client import (
-    fake_api as netapp_api)
 from cinder import utils as cinder_utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.netapp import common
@@ -36,6 +34,7 @@ from cinder.volume.drivers.netapp.dataontap import (nfs_7mode
                                                     as netapp_nfs_7mode)
 from cinder.volume.drivers.netapp.dataontap import (nfs_cmode
                                                     as netapp_nfs_cmode)
+from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_7mode
 from cinder.volume.drivers.netapp.dataontap.client import client_base
 from cinder.volume.drivers.netapp.dataontap.client import client_cmode
@@ -158,10 +157,6 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         kwargs = {}
         kwargs['netapp_mode'] = 'proxy'
         kwargs['configuration'] = create_configuration()
-
-        # Inject fake netapp_lib module classes.
-        netapp_api.mock_netapp_lib([client_cmode, client_base])
-        self.mock_object(common.na_utils, 'check_netapp_lib')
 
         self.mock_object(nfs_base, 'LOG')
         self._driver = netapp_nfs_cmode.NetAppCmodeNfsDriver(**kwargs)
@@ -1471,10 +1466,6 @@ class NetApp7modeNfsDriverTestCase(NetAppCmodeNfsDriverTestCase):
 
     def _custom_setup(self):
         self.mock_object(utils, 'OpenStackInfo')
-
-        # Inject fake netapp_lib module classes.
-        netapp_api.mock_netapp_lib([client_cmode, client_base])
-        self.mock_object(common.na_utils, 'check_netapp_lib')
 
         self.mock_object(common.na_utils, 'LOG')
         self.mock_object(nfs_base, 'LOG')

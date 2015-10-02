@@ -25,8 +25,7 @@ from six.moves import http_client
 
 from cinder import exception
 from cinder import test
-from cinder.tests.unit.volume.drivers.netapp.dataontap.client import (
-    fake_api as netapp_api)
+from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap import ssc_cmode
 
 
@@ -375,7 +374,6 @@ class SscUtilsTestCase(test.TestCase):
 
     def setUp(self):
         super(SscUtilsTestCase, self).setUp()
-        netapp_api.mock_netapp_lib([ssc_cmode])
         self.stubs.Set(http_client, 'HTTPConnection',
                        FakeDirectCmodeHTTPConnection)
 

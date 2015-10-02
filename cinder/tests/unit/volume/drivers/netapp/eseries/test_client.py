@@ -41,13 +41,10 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
         self.mock_object(client, 'LOG', self.mock_log)
         self.fake_password = 'mysecret'
 
-        # Inject fake netapp_lib module classes.
-        eseries_fake.mock_netapp_lib([client])
-
         self.my_client = client.RestClient('http', 'host', '80', '/test',
                                            'user', self.fake_password,
                                            system_id='fake_sys_id')
-        self.my_client.client._endpoint = eseries_fake.FAKE_ENDPOINT_HTTP
+        self.my_client._endpoint = eseries_fake.FAKE_ENDPOINT_HTTP
 
         fake_response = mock.Mock()
         fake_response.status_code = 200
@@ -67,8 +64,8 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
         fake_resp.status_code = status_code
         expected_msg = "Response error code - %s." % status_code
 
-        with self.assertRaisesRegexp(es_exception.WebServiceException,
-                                     expected_msg) as exc:
+        with self.assertRaisesRegex(es_exception.WebServiceException,
+                                    expected_msg) as exc:
             self.my_client._eval_response(fake_resp)
 
             self.assertEqual(status_code, exc.status_code)
@@ -81,8 +78,8 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
         fake_resp.text = resp_text
         expected_msg = "Response error - %s." % resp_text
 
-        with self.assertRaisesRegexp(es_exception.WebServiceException,
-                                     expected_msg) as exc:
+        with self.assertRaisesRegex(es_exception.WebServiceException,
+                                    expected_msg) as exc:
             self.my_client._eval_response(fake_resp)
 
             self.assertEqual(status_code, exc.status_code)
@@ -413,7 +410,7 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
             client.RestClient, '_get_resource_url',
             mock.Mock(return_value=eseries_fake.FAKE_RESOURCE_URL))
         self.mock_object(
-            self.my_client.client, 'invoke_service',
+            self.my_client, 'invoke_service',
             mock.Mock(return_value=fake_invoke_service))
 
         eseries_info = client.RestClient.get_eseries_api_info(
@@ -732,3 +729,42 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
         client.RestClient._init_features(self.my_client)
 
         self.assertTrue(self.my_client.features.SSC_API_V2.supported)
+
+
+@ddt.ddt
+class TestWebserviceClientTestCase(test.TestCase):
+
+    def setUp(self):
+        """sets up the mock tests"""
+        super(TestWebserviceClientTestCase, self).setUp()
+        self.mock_log = mock.Mock()
+        self.mock_object(client, 'LOG', self.mock_log)
+        self.webclient = client.WebserviceClient('http', 'host', '80',
+                                                 '/test', 'user', '****')
+
+    @ddt.data({'params': {'host': None, 'scheme': 'https', 'port': '80'}},
+              {'params': {'host': 'host', 'scheme': None, 'port': '80'}},
+              {'params': {'host': 'host', 'scheme': 'http', 'port': None}})
+    @ddt.unpack
+    def test__validate_params_value_error(self, params):
+        """Tests various scenarios for ValueError in validate method"""
+        self.assertRaises(exception.InvalidInput,
+                          self.webclient._validate_params, **params)
+
+    def test_invoke_service_no_endpoint_error(self):
+        """Tests Exception and Log error if no endpoint is provided"""
+        self.webclient._endpoint = None
+        log_error = 'Unexpected error while invoking web service'
+
+        self.assertRaises(exception.NetAppDriverException,
+                          self.webclient.invoke_service)
+        self.assertTrue(self.mock_log.exception.find(log_error))
+
+    def test_invoke_service(self):
+        """Tests if invoke_service evaluates the right response"""
+        self.webclient._endpoint = eseries_fake.FAKE_ENDPOINT_HTTP
+        self.mock_object(self.webclient.conn, 'request',
+                         mock.Mock(return_value=eseries_fake.FAKE_INVOC_MSG))
+        result = self.webclient.invoke_service()
+
+        self.assertIsNotNone(result)
