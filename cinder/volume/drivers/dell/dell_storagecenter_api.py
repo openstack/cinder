@@ -2038,43 +2038,57 @@ class StorageCenterApi(object):
                        'reason': r.reason})
         return False
 
-    def find_cg_replay(self, profile, replayid):
-        """Searches for the replay by replayid.
+    def _find_sc_cg(self, profile, replayid):
+        """Finds the sc consistency group that matches replayid
 
-        replayid is stored in the replay's description attribute.
-
-        :param scvolume: Dell volume object.
+        :param profile: Dell profile object.
         :param replayid: Name to search for.  This is a portion of the
                          snapshot ID as we do not have space for the entire
                          GUID in the replay description.
-        :returns: Dell replay object or None.
+        :return: Consistency group object or None.
         """
         self.cg_except_on_no_support()
-        r = self.client.get('StorageCenter/ScReplayProfile/%s/ReplayList'
-                            % self._get_id(profile))
-        replays = self._get_json(r)
-        # This will be a list.  If it isn't bail
-        if isinstance(replays, list):
-            for replay in replays:
-                # The only place to save our information with the public
-                # api is the description field which isn't quite long
-                # enough.  So we check that our description is pretty much
-                # the max length and we compare that to the start of
-                # the snapshot id.
-                description = replay.get('description')
-                if (len(description) >= 30 and
-                        replayid.startswith(description) is True and
-                        replay.get('markedForExpiration') is not True):
-                    # We found our replay so return it.
-                    return replay
-        # If we are here then we didn't find the replay so warn and leave.
-        LOG.warning(_LW('Unable to find snapshot %s'),
-                    replayid)
-
+        r = self.client.get(
+            'StorageCenter/ScReplayProfile/%s/ConsistencyGroupList'
+            % self._get_id(profile))
+        if r.status_code == 200:
+            cglist = self._get_json(r)
+            if cglist and isinstance(cglist, list):
+                for cg in cglist:
+                    desc = cg.get('description')
+                    if (len(desc) >= 30 and
+                            replayid.startswith(desc) is True):
+                        # We found our cg so return it.
+                        return cg
         return None
 
+    def _find_cg_replays(self, profile, replayid):
+        """Searches for the replays that match replayid for a given profile.
+
+        replayid is stored in the replay's description attribute.
+
+        :param profile: Dell profile object.
+        :param replayid: Name to search for.  This is a portion of the
+                         snapshot ID as we do not have space for the entire
+                         GUID in the replay description.
+        :returns: Dell replay object array.
+        """
+        self.cg_except_on_no_support()
+        replays = []
+        sccg = self._find_sc_cg(profile, replayid)
+        if sccg:
+            r = self.client.get(
+                'StorageCenter/ScReplayConsistencyGroup/%s/ReplayList'
+                % self._get_id(sccg))
+
+            replays = self._get_json(r)
+        else:
+            LOG.error(_LE('Unable to locate snapshot %s'), replayid)
+
+        return replays
+
     def delete_cg_replay(self, profile, replayid):
-        """Finds a Dell replay by replayid string and expires it.
+        """Finds a Dell cg replay by replayid string and expires it.
 
         Once marked for expiration we do not return the replay as a snapshot
         even though it might still exist.  (Backend requirements.)
@@ -2087,11 +2101,13 @@ class StorageCenterApi(object):
         """
         self.cg_except_on_no_support()
         LOG.debug('Expiring consistency group replay %s', replayid)
-        replay = self.find_replay(profile,
-                                  replayid)
-        if replay is not None:
+        replays = self._find_cg_replays(profile,
+                                        replayid)
+        for replay in replays:
+            instanceid = self._get_id(replay)
+            LOG.debug('Expiring replay %s', instanceid)
             r = self.client.post('StorageCenter/ScReplay/%s/Expire'
-                                 % self._get_id(replay),
+                                 % instanceid,
                                  {})
             if r.status_code != 204:
                 LOG.error(_LE('ScReplay Expire error: %(code)d %(reason)s'),
