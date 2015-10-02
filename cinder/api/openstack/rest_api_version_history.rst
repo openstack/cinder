@@ -28,3 +28,8 @@ user documentation.
   3.0 and later versions and their respective /v3 endpoints.
 
   All other 3.0 APIs are functionally identical to version 2.0.
+
+3.1
+---
+  Added the parameters ``protected`` and ``visibility`` to
+  _volume_upload_image requests.

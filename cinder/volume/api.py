@@ -1187,6 +1187,12 @@ class API(base.Base):
                     "container_format": recv_metadata['container_format'],
                     "disk_format": recv_metadata['disk_format'],
                     "image_name": recv_metadata.get('name', None)}
+        if 'protected' in recv_metadata:
+            response['protected'] = recv_metadata.get('protected')
+        if 'is_public' in recv_metadata:
+            response['is_public'] = recv_metadata.get('is_public')
+        elif 'visibility' in recv_metadata:
+            response['visibility'] = recv_metadata.get('visibility')
         LOG.info(_LI("Copy volume to image completed successfully."),
                  resource=volume)
         return response

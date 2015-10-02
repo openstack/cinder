@@ -46,6 +46,7 @@ REST_API_VERSION_HISTORY = """
 
     * 3.0 - Includes all V2 APIs and extensions. V1 API is still supported.
     * 3.0 - Versions API updated to reflect beginning of microversions epoch.
+    * 3.1 - Adds visibility and protected to _volume_upload_image parameters.
 
 """
 
@@ -54,7 +55,7 @@ REST_API_VERSION_HISTORY = """
 # the minimum version of the API supported.
 # Explicitly using /v1 or /v2 enpoints will still work
 _MIN_API_VERSION = "3.0"
-_MAX_API_VERSION = "3.0"
+_MAX_API_VERSION = "3.1"
 _LEGACY_API_VERSION1 = "1.0"
 _LEGACY_API_VERSION2 = "2.0"
 
