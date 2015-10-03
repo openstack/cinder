@@ -1726,7 +1726,7 @@ class EMCVMAXCommon(object):
         """
         maskingViewDict = {}
         hostName = connector['host']
-        poolName = extraSpecs[POOL]
+        uniqueName = self.utils.generate_unique_trunc_pool(extraSpecs[POOL])
         isV3 = extraSpecs[ISV3]
         maskingViewDict['isV3'] = isV3
         protocol = self.utils.get_short_protocol_type(self.protocol)
@@ -1736,18 +1736,18 @@ class EMCVMAXCommon(object):
             workload = extraSpecs[WORKLOAD]
             maskingViewDict['slo'] = slo
             maskingViewDict['workload'] = workload
-            maskingViewDict['pool'] = poolName
+            maskingViewDict['pool'] = uniqueName
             prefix = (
                 ("OS-%(shortHostName)s-%(poolName)s-%(slo)s-%(workload)s"
                  % {'shortHostName': shortHostName,
-                    'poolName': poolName,
+                    'poolName': uniqueName,
                     'slo': slo,
                     'workload': workload}))
         else:
             prefix = (
                 ("OS-%(shortHostName)s-%(poolName)s-%(protocol)s"
                  % {'shortHostName': shortHostName,
-                    'poolName': poolName,
+                    'poolName': uniqueName,
                     'protocol': protocol}))
             maskingViewDict['fastPolicy'] = extraSpecs[FASTPOLICY]
 
