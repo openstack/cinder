@@ -136,10 +136,6 @@ class RequestContextSerializer(messaging.Serializer):
         return cinder.context.RequestContext.from_dict(context)
 
 
-def get_transport_url(url_str=None):
-    return messaging.TransportURL.parse(CONF, url_str, TRANSPORT_ALIASES)
-
-
 def get_client(target, version_cap=None, serializer=None):
     assert TRANSPORT is not None
     serializer = RequestContextSerializer(serializer)
