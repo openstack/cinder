@@ -6,16 +6,16 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 7.0.0.0rc1\n"
+"Project-Id-Version: cinder 7.0.0.0rc2.dev11\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-09-24 21:13+0200\n"
+"POT-Creation-Date: 2015-10-03 06:22+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.0\n"
+"Generated-By: Babel 2.1.1\n"
 
 #: cinder/exception.py:95
 msgid "Exception in string format operation"
@@ -1268,7 +1268,7 @@ msgid "Configuration value %s is not set."
 msgstr ""
 
 #: cinder/volume/drivers/tintri.py:161 cinder/volume/drivers/tintri.py:290
-#: cinder/volume/drivers/netapp/dataontap/block_base.py:318
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:314
 #: cinder/volume/drivers/netapp/dataontap/nfs_base.py:191
 #, python-format
 msgid "Resizing %s failed. Cleaning volume."
@@ -1591,7 +1591,7 @@ msgid "Invalid ReplayList return: %s"
 msgstr ""
 
 #: cinder/volume/drivers/dell/dell_storagecenter_api.py:1600
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2097
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2113
 #, python-format
 msgid "ScReplay Expire error: %(code)d %(reason)s"
 msgstr ""
@@ -1680,8 +1680,13 @@ msgstr ""
 msgid "snap_cg error: %(code)d %(reason)s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2184
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2239
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2086
+#, python-format
+msgid "Unable to locate snapshot %s"
+msgstr ""
+
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2200
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2255
 #, python-format
 msgid "ScVolume error on rename: %(code)d %(reason)s"
 msgstr ""
@@ -2477,13 +2482,13 @@ msgstr ""
 msgid "Can't open the recent url, relogin."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:420
+#: cinder/volume/drivers/huawei/rest_client.py:421
 msgid ""
 "Error occurred when adding hostgroup and lungroup to view. Remove lun "
 "from lungroup now."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:569
+#: cinder/volume/drivers/huawei/rest_client.py:570
 #, python-format
 msgid "JSON transfer data error. %s."
 msgstr ""
@@ -2700,42 +2705,42 @@ msgstr ""
 msgid "Failed to rename %(new_volume)s into %(volume)s."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/utils.py:282
+#: cinder/volume/drivers/netapp/utils.py:273
 #, python-format
 msgid "Cannot get QoS spec for volume %s."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/block_base.py:210
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:206
 #, python-format
 msgid "Exception creating LUN %(name)s in pool %(pool)s."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/block_base.py:323
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:319
 #, python-format
 msgid "Exception cloning volume %(name)s from source volume %(source)s."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/block_base.py:461
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:457
 #, python-format
 msgid "Message: %s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/block_base.py:463
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:459
 #, python-format
 msgid "Error getting LUN attribute. Exception: %s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/block_base.py:584
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:580
 #, python-format
 msgid "Failure deleting staged tmp LUN %s."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/block_base.py:587
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:583
 #, python-format
 msgid "Unknown exception in post clone resize LUN %s."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/block_base.py:589
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:585
 #, python-format
 msgid "Exception details: %s"
 msgstr ""
@@ -2787,14 +2792,19 @@ msgstr ""
 msgid "Error in workflow copy from cache. %s."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/client/client_base.py:99
+#: cinder/volume/drivers/netapp/dataontap/client/client_base.py:95
 #, python-format
 msgid "Error provisioning volume %(lun_name)s on %(volume_name)s. Details: %(ex)s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/client/client_base.py:199
+#: cinder/volume/drivers/netapp/dataontap/client/client_base.py:195
 #, python-format
 msgid "LUN %(path)s geometry failed. Message - %(msg)s"
+msgstr ""
+
+#: cinder/volume/drivers/netapp/eseries/client.py:87
+#, python-format
+msgid "Unexpected error while invoking web service. Error - %s."
 msgstr ""
 
 #: cinder/volume/drivers/netapp/eseries/library.py:229
