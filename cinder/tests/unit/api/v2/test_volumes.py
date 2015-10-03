@@ -1307,6 +1307,34 @@ class VolumeApiTest(test.TestCase):
             viewable_admin_meta=True, offset=0)
 
     @mock.patch('cinder.volume.api.API.get_all')
+    def test_get_volumes_filter_with_true(self, get_all):
+        req = mock.MagicMock()
+        context = mock.Mock()
+        req.environ = {'cinder.context': context}
+        req.params = {'display_name': 'Volume-573108026', 'bootable': 1}
+        self.controller._view_builder.detail_list = mock.Mock()
+        self.controller._get_volumes(req, True)
+        get_all.assert_called_once_with(
+            context, None, CONF.osapi_max_limit,
+            sort_keys=['created_at'], sort_dirs=['desc'],
+            filters={'display_name': 'Volume-573108026', 'bootable': True},
+            viewable_admin_meta=True, offset=0)
+
+    @mock.patch('cinder.volume.api.API.get_all')
+    def test_get_volumes_filter_with_false(self, get_all):
+        req = mock.MagicMock()
+        context = mock.Mock()
+        req.environ = {'cinder.context': context}
+        req.params = {'display_name': 'Volume-573108026', 'bootable': 0}
+        self.controller._view_builder.detail_list = mock.Mock()
+        self.controller._get_volumes(req, True)
+        get_all.assert_called_once_with(
+            context, None, CONF.osapi_max_limit,
+            sort_keys=['created_at'], sort_dirs=['desc'],
+            filters={'display_name': 'Volume-573108026', 'bootable': False},
+            viewable_admin_meta=True, offset=0)
+
+    @mock.patch('cinder.volume.api.API.get_all')
     def test_get_volumes_filter_with_list(self, get_all):
         req = mock.MagicMock()
         context = mock.Mock()

@@ -16,7 +16,7 @@
 
 """Handles all requests relating to volumes."""
 
-
+import ast
 import collections
 import datetime
 import functools
@@ -1691,6 +1691,17 @@ class API(base.Base):
         # also, would be worth having something at a backend/host
         # level to show an admin how a backend is configured.
         return self.volume_rpcapi.list_replication_targets(ctxt, volume)
+
+    def check_volume_filters(self, filters):
+        booleans = self.db.get_booleans_for_table('volume')
+        for k, v in filters.iteritems():
+            try:
+                if k in booleans:
+                    filters[k] = bool(v)
+                else:
+                    filters[k] = ast.literal_eval(v)
+            except (ValueError, SyntaxError):
+                LOG.debug('Could not evaluate value %s, assuming string', v)
 
 
 class HostAPI(base.Base):
