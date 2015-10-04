@@ -18,6 +18,7 @@ import os
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import importutils
+from oslo_utils import units
 
 from cinder import context
 from cinder.db.sqlalchemy import api
@@ -76,14 +77,15 @@ class BlockDeviceDriver(driver.BaseVD, driver.LocalVD, driver.CloneableVD,
             return
         if os.path.exists(dev_path) and \
                 self.configuration.volume_clear != 'none':
+            dev_size = self._get_devices_sizes([dev_path])
             volutils.clear_volume(
-                self._get_device_size(dev_path), dev_path,
+                dev_size[dev_path], dev_path,
                 volume_clear=self.configuration.volume_clear,
                 volume_clear_size=self.configuration.volume_clear_size)
 
-    def local_path(self, volume):
-        if volume['provider_location']:
-            path = volume['provider_location'].rsplit(" ", 1)
+    def local_path(self, device):
+        if device['provider_location']:
+            path = device['provider_location'].rsplit(" ", 1)
             return path[-1]
         else:
             return None
@@ -107,9 +109,10 @@ class BlockDeviceDriver(driver.BaseVD, driver.LocalVD, driver.CloneableVD,
     def create_cloned_volume(self, volume, src_vref):
         LOG.info(_LI('Creating clone of volume: %s'), src_vref['id'])
         device = self.find_appropriate_size_device(src_vref['size'])
+        dev_size = self._get_devices_sizes([device])
         volutils.copy_volume(
             self.local_path(src_vref), device,
-            self._get_device_size(device) * 2048,
+            dev_size[device],
             self.configuration.volume_dd_blocksize,
             execute=self._execute)
         return {
@@ -134,8 +137,8 @@ class BlockDeviceDriver(driver.BaseVD, driver.LocalVD, driver.CloneableVD,
 
         LOG.debug("Updating volume stats")
         backend_name = self.configuration.safe_get('volume_backend_name')
-        data = {'total_capacity_gb': total_size / 1024,
-                'free_capacity_gb': free_size / 1024,
+        data = {'total_capacity_gb': total_size / units.Ki,
+                'free_capacity_gb': free_size / units.Ki,
                 'reserved_percentage': self.configuration.reserved_percentage,
                 'QoS_support': False,
                 'volume_backend_name': backend_name or self.__class__.__name__,
@@ -155,18 +158,22 @@ class BlockDeviceDriver(driver.BaseVD, driver.LocalVD, driver.CloneableVD,
                 used_devices.add(local_path)
         return used_devices
 
-    def _get_device_size(self, dev_path):
-        out, _err = self._execute('blockdev', '--getsz', dev_path,
+    def _get_devices_sizes(self, dev_paths):
+        """Return devices' sizes in Mb"""
+        out, _err = self._execute('blockdev', '--getsize64', *dev_paths,
                                   run_as_root=True)
-        size_in_m = int(out)
-        return size_in_m / 2048
+        dev_sizes = {}
+        out = out.split('\n')
+        # blockdev returns devices' sizes in order that
+        # they have been passed to it.
+        for n, size in enumerate(out[:-1]):
+            dev_sizes[dev_paths[n]] = int(size) / units.Mi
+
+        return dev_sizes
 
     def _devices_sizes(self):
         available_devices = self.configuration.available_devices
-        dict_of_devices_sizes = {}
-        for device in available_devices:
-            dict_of_devices_sizes[device] = self._get_device_size(device)
-        return dict_of_devices_sizes
+        return self._get_devices_sizes(available_devices)
 
     def find_appropriate_size_device(self, size):
         dict_of_devices_sizes = self._devices_sizes()
@@ -178,8 +185,9 @@ class BlockDeviceDriver(driver.BaseVD, driver.LocalVD, driver.CloneableVD,
         possible_device_size = None
         for device in free_devices:
             dev_size = dict_of_devices_sizes[device]
-            if size * 1024 <= dev_size and (possible_device is None or
-                                            dev_size < possible_device_size):
+            if (size * units.Ki <= dev_size and
+                    (possible_device is None or
+                     dev_size < possible_device_size)):
                 possible_device = device
                 possible_device_size = dev_size
 
