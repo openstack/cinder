@@ -124,6 +124,10 @@ storwize_svc_opts = [
                help='If operating in stretched cluster mode, specify the '
                     'name of the pool in which mirrored copies are stored.'
                     'Example: "pool2"'),
+    cfg.BoolOpt('storwize_svc_vol_nofmtdisk',
+                default=False,
+                help='Specifies that the volume not be formatted during '
+                     'creation.'),
 ]
 
 CONF = cfg.CONF
