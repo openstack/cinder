@@ -278,3 +278,15 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
                 _get_used_dvc.return_value = set()
                 self.assertEqual('/dev/loop2',
                                  self.drv.find_appropriate_size_device(size))
+
+    def test_extend_volume_exists(self):
+        TEST_VOLUME = {'name': 'vol1', 'id': 123}
+        with mock.patch.object(self.drv, '_get_devices_sizes',
+                               return_value={'/dev/loop1': 1024}) as \
+                mock_get_size:
+            with mock.patch.object(self.drv, 'local_path',
+                                   return_value='/dev/loop1') as lp_mocked:
+                self.assertRaises(cinder.exception.CinderException,
+                                  self.drv.extend_volume, TEST_VOLUME, 2)
+                lp_mocked.assert_called_once_with(TEST_VOLUME)
+                mock_get_size.assert_called_once_with(['/dev/loop1'])
