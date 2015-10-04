@@ -1234,7 +1234,8 @@ class BaseVD(object):
             self.create_cloned_volume(temp_vol_ref, volume)
         except Exception:
             with excutils.save_and_reraise_exception():
-                self.db.volume_destroy(context, temp_vol_ref['id'])
+                self.db.volume_destroy(context.elevated(),
+                                       temp_vol_ref['id'])
 
         self.db.volume_update(context, temp_vol_ref['id'],
                               {'status': 'available'})
