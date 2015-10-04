@@ -161,6 +161,10 @@ class DrbdManageFakeDriver(object):
         self.calls.append(["restore_snapshot", res, snap, new, rprop, vprops])
         return [[mock_dm_exc.DM_SUCCESS, "ack", []]]
 
+    def assign(self, host, resource, props):
+        self.calls.append(["assign", host, resource, props])
+        return [[mock_dm_exc.DM_SUCCESS, "ack", []]]
+
 
 class DrbdManageTestCase(test.TestCase):
 
@@ -215,6 +219,7 @@ class DrbdManageTestCase(test.TestCase):
                    'created_at': timeutils.utcnow()}
 
         dmd = drbdmanagedrv.DrbdManageDriver(configuration=self.configuration)
+        dmd.drbdmanage_devs_on_controller = False
         dmd.odm = DrbdManageFakeDriver()
         dmd.create_volume(testvol)
         self.assertEqual("create_resource", dmd.odm.calls[0][0])
@@ -222,6 +227,27 @@ class DrbdManageTestCase(test.TestCase):
         self.assertEqual("create_volume", dmd.odm.calls[2][0])
         self.assertEqual(1048576, dmd.odm.calls[2][2])
         self.assertEqual("auto_deploy", dmd.odm.calls[3][0])
+        self.assertEqual(len(dmd.odm.calls), 4)
+
+    def test_create_volume_controller_all_vols(self):
+        testvol = {'project_id': 'testprjid',
+                   'name': 'testvol',
+                   'size': 1,
+                   'id': 'deadbeef-8068-11e4-98c0-5254008ea111',
+                   'volume_type_id': 'drbdmanage',
+                   'created_at': timeutils.utcnow()}
+
+        dmd = drbdmanagedrv.DrbdManageDriver(configuration=self.configuration)
+        dmd.drbdmanage_devs_on_controller = True
+        dmd.odm = DrbdManageFakeDriver()
+        dmd.create_volume(testvol)
+        self.assertEqual("create_resource", dmd.odm.calls[0][0])
+        self.assertEqual("list_volumes", dmd.odm.calls[1][0])
+        self.assertEqual("create_volume", dmd.odm.calls[2][0])
+        self.assertEqual(1048576, dmd.odm.calls[2][2])
+        self.assertEqual("auto_deploy", dmd.odm.calls[3][0])
+        self.assertEqual("assign", dmd.odm.calls[4][0])
+        self.assertEqual(len(dmd.odm.calls), 5)
 
     def test_delete_volume(self):
         testvol = {'project_id': 'testprjid',
