@@ -403,7 +403,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                                               {'status': 'error'})
                 elif volume['status'] in ('downloading', 'creating'):
                     LOG.warning(_LW("Detected volume stuck "
-                                    "in %s(curr_status)s "
+                                    "in %(curr_status)s "
                                     "status, setting to ERROR."),
                                 {'curr_status': volume['status']},
                                 resource=volume)
