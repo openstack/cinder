@@ -57,6 +57,12 @@ sf_opts = [
                     'and will create a prefix using the cinder node hostname '
                     '(previous default behavior).  The default is NO prefix.'),
 
+    cfg.StrOpt('sf_volume_prefix',
+               default='UUID-',
+               help='Create SolidFire volumes with this prefix. Volume names '
+                    'are of the form <sf_volume_prefix><cinder-volume-id>.  '
+                    'The default is to use a prefix of \'UUID-\'.'),
+
     cfg.StrOpt('sf_template_account_name',
                default='openstack-vtemplate',
                help='Account name on the SolidFire Cluster to use as owner of '
@@ -212,7 +218,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         sf_snaps = self._issue_api_request(
             'ListSnapshots', {}, version='6.0')['result']['snapshots']
         for s in srefs:
-            seek_name = 'UUID-%s' % s['id']
+            seek_name = '%s%s' % (self.configuration.sf_volume_prefix, s['id'])
             sfsnap = next(
                 (ss for ss in sf_snaps if ss['name'] == seek_name), None)
             if sfsnap:
@@ -230,7 +236,7 @@ class SolidFireDriver(san.SanISCSIDriver):
                                           {})['result']['volumes']
         self.volume_map = {}
         for v in vrefs:
-            seek_name = 'UUID-%s' % v['id']
+            seek_name = '%s%s' % (self.configuration.sf_volume_prefix, v['id'])
             sfvol = next(
                 (sv for sv in sf_vols if sv['name'] == seek_name), None)
             if sfvol:
@@ -455,7 +461,8 @@ class SolidFireDriver(san.SanISCSIDriver):
                         'and secondary SolidFire accounts')
                 raise exception.SolidFireDriverException(msg)
 
-        params = {'name': 'UUID-%s' % vref['id'],
+        params = {'name': '%s%s' % (self.configuration.sf_volume_prefix,
+                                    vref['id']),
                   'newAccountID': sf_account['accountID']}
 
         # NOTE(jdg): First check the SF snapshots
@@ -463,7 +470,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         # volumes.  This may be a running system that was updated from
         # before we did snapshots, so need to check both
         is_clone = False
-        snap_name = 'UUID-%s' % src_uuid
+        snap_name = '%s%s' % (self.configuration.sf_volume_prefix, src_uuid)
         snaps = self._get_sf_snapshots()
         snap = next((s for s in snaps if s["name"] == snap_name), None)
         if snap:
@@ -907,7 +914,8 @@ class SolidFireDriver(san.SanISCSIDriver):
         else:
             sf_account = self._get_account_create_availability(sf_accounts)
 
-        params = {'name': 'UUID-%s' % volume['id'],
+        vname = '%s%s' % (self.configuration.sf_volume_prefix, volume['id'])
+        params = {'name': vname,
                   'accountID': sf_account['accountID'],
                   'sliceCount': slice_count,
                   'totalSize': int(volume['size'] * units.Gi),
@@ -920,7 +928,8 @@ class SolidFireDriver(san.SanISCSIDriver):
         migration_status = volume.get('migration_status', None)
         if migration_status and 'target' in migration_status:
             k, v = migration_status.split(':')
-            params['name'] = 'UUID-%s' % v
+            vname = '%s%s' % (self.configuration.sf_volume_prefix, v)
+            params['name'] = vname
             params['attributes']['migration_uuid'] = volume['id']
             params['attributes']['uuid'] = v
         return self._do_volume_create(sf_account, params)
@@ -968,7 +977,8 @@ class SolidFireDriver(san.SanISCSIDriver):
 
     def delete_snapshot(self, snapshot):
         """Delete the specified snapshot from the SolidFire cluster."""
-        sf_snap_name = 'UUID-%s' % snapshot['id']
+        sf_snap_name = '%s%s' % (self.configuration.sf_volume_prefix,
+                                 snapshot['id'])
         accounts = self._get_sfaccounts_for_tenant(snapshot['project_id'])
         snap = None
         for acct in accounts:
@@ -1001,8 +1011,8 @@ class SolidFireDriver(san.SanISCSIDriver):
         if sf_vol is None:
             raise exception.VolumeNotFound(volume_id=snapshot['volume_id'])
         params = {'volumeID': sf_vol['volumeID'],
-                  'name': 'UUID-%s' % snapshot['id']}
-
+                  'name': '%s%s' % (self.configuration.sf_volume_prefix,
+                                    snapshot['id'])}
         return self._do_snapshot_create(params)
 
     def create_volume_from_snapshot(self, volume, snapshot):
