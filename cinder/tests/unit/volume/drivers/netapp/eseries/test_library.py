@@ -878,6 +878,78 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
 
         mock_invoke.assert_not_called()
 
+    @mock.patch.object(library, 'LOG', mock.Mock())
+    def test_create_volume_fail_clean(self):
+        """Test volume creation fail w/o a partial volume being created.
+
+        Test the failed creation of a volume where a partial volume with
+        the name has not been created, thus no cleanup is required.
+        """
+        self.library._get_volume = mock.Mock(
+            side_effect = exception.VolumeNotFound(message=''))
+        self.library._client.create_volume = mock.Mock(
+            side_effect = exception.NetAppDriverException)
+        self.library._client.delete_volume = mock.Mock()
+        fake_volume = copy.deepcopy(get_fake_volume())
+
+        self.assertRaises(exception.NetAppDriverException,
+                          self.library.create_volume, fake_volume)
+
+        self.assertTrue(self.library._get_volume.called)
+        self.assertFalse(self.library._client.delete_volume.called)
+        self.assertEqual(1, library.LOG.error.call_count)
+
+    @mock.patch.object(library, 'LOG', mock.Mock())
+    def test_create_volume_fail_dirty(self):
+        """Test volume creation fail where a partial volume has been created.
+
+        Test scenario where the creation of a volume fails and a partial
+        volume is created with the name/id that was supplied by to the
+        original creation call.  In this situation the partial volume should
+        be detected and removed.
+        """
+        fake_volume = copy.deepcopy(get_fake_volume())
+        self.library._get_volume = mock.Mock(return_value=fake_volume)
+        self.library._client.list_volume = mock.Mock(return_value=fake_volume)
+        self.library._client.create_volume = mock.Mock(
+            side_effect = exception.NetAppDriverException)
+        self.library._client.delete_volume = mock.Mock()
+
+        self.assertRaises(exception.NetAppDriverException,
+                          self.library.create_volume, fake_volume)
+
+        self.assertTrue(self.library._get_volume.called)
+        self.assertTrue(self.library._client.delete_volume.called)
+        self.library._client.delete_volume.assert_called_once_with(
+            fake_volume["id"])
+        self.assertEqual(1, library.LOG.error.call_count)
+
+    @mock.patch.object(library, 'LOG', mock.Mock())
+    def test_create_volume_fail_dirty_fail_delete(self):
+        """Volume creation fail with partial volume deletion fails
+
+        Test scenario where the creation of a volume fails and a partial
+        volume is created with the name/id that was supplied by to the
+        original creation call. The partial volume is detected but when
+        the cleanup deletetion of that fragment volume is attempted it fails.
+        """
+        fake_volume = copy.deepcopy(get_fake_volume())
+        self.library._get_volume = mock.Mock(return_value=fake_volume)
+        self.library._client.list_volume = mock.Mock(return_value=fake_volume)
+        self.library._client.create_volume = mock.Mock(
+            side_effect = exception.NetAppDriverException)
+        self.library._client.delete_volume = mock.Mock(
+            side_effect = exception.NetAppDriverException)
+
+        self.assertRaises(exception.NetAppDriverException,
+                          self.library.create_volume, fake_volume)
+
+        self.assertTrue(self.library._get_volume.called)
+        self.assertTrue(self.library._client.delete_volume.called)
+        self.library._client.delete_volume.assert_called_once_with(
+            fake_volume["id"])
+        self.assertEqual(2, library.LOG.error.call_count)
+
 
 @ddt.ddt
 class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
