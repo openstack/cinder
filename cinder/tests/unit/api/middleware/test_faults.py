@@ -72,14 +72,14 @@ class TestFaults(test.TestCase):
         for request in requests:
             exc = webob.exc.HTTPRequestEntityTooLarge
             fault = wsgi.Fault(exc(explanation='sorry',
-                                   headers={'Retry-After': 4}))
+                                   headers={'Retry-After': '4'}))
             response = request.get_response(fault)
 
             expected = {
                 "overLimit": {
                     "message": "sorry",
                     "code": 413,
-                    "retryAfter": 4,
+                    "retryAfter": "4",
                 },
             }
             actual = jsonutils.loads(response.body)
