@@ -147,9 +147,7 @@ class ScaleIODriver(driver.VolumeDriver):
             {'domain_id': self.protection_domain_id})
 
         self.connector = connector.InitiatorConnector.factory(
-            # TODO(xyang): Change 'SCALEIO' to connector.SCALEIO after
-            # os-brick 0.4.0 is released.
-            'SCALEIO', utils.get_root_helper(),
+            connector.SCALEIO, utils.get_root_helper(),
             device_scan_attempts=
             self.configuration.num_volume_device_scan_tries
         )
@@ -907,6 +905,75 @@ class ScaleIODriver(driver.VolumeDriver):
                                       self._sio_attach_volume(volume))
         finally:
             self._sio_detach_volume(volume)
+
+    def update_migrated_volume(self, ctxt, volume, new_volume,
+                               original_volume_status):
+        """Return the update from ScaleIO migrated volume.
+
+        This method updates the volume name of the new ScaleIO volume to
+        match the updated volume ID.
+        The original volume is renamed first since ScaleIO does not allow
+        multiple volumes to have the same name.
+        """
+        name_id = None
+        location = None
+        if original_volume_status == 'available':
+            # During migration, a new volume is created and will replace
+            # the original volume at the end of the migration. We need to
+            # rename the new volume. The current_name of the new volume,
+            # which is the id of the new volume, will be changed to the
+            # new_name, which is the id of the original volume.
+            current_name = new_volume['id']
+            new_name = volume['id']
+            vol_id = new_volume['provider_id']
+            LOG.info(_LI("Renaming %(id)s from %(current_name)s to "
+                         "%(new_name)s."),
+                     {'id': vol_id, 'current_name': current_name,
+                      'new_name': new_name})
+
+            # Original volume needs to be renamed first
+            self._rename_volume(volume, "ff" + new_name)
+            self._rename_volume(new_volume, new_name)
+        else:
+            # The back-end will not be renamed.
+            name_id = new_volume['_name_id'] or new_volume['id']
+            location = new_volume['provider_location']
+
+        return {'_name_id': name_id, 'provider_location': location}
+
+    def _rename_volume(self, volume, new_id):
+        new_name = self._id_to_base64(new_id)
+        vol_id = volume['provider_id']
+
+        req_vars = {'server_ip': self.server_ip,
+                    'server_port': self.server_port,
+                    'id': vol_id}
+        request = ("https://%(server_ip)s:%(server_port)s"
+                   "/api/instances/Volume::%(id)s/action/setVolumeName" %
+                   req_vars)
+        LOG.info(_LI("ScaleIO rename volume request: %s."), request)
+
+        params = {'newName': new_name}
+        r = requests.post(
+            request,
+            data=json.dumps(params),
+            headers=self._get_headers(),
+            auth=(self.server_username,
+                  self.server_token),
+            verify=self._get_verify_cert()
+        )
+        r = self._check_response(r, request, False, params)
+
+        if r.status_code != OK_STATUS_CODE:
+            response = r.json()
+            msg = (_("Error renaming volume %(vol)s: %(err)s.") %
+                   {'vol': vol_id, 'err': response['message']})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        else:
+            LOG.info(_LI("ScaleIO volume %(vol)s was renamed to "
+                         "%(new_name)s."),
+                     {'vol': vol_id, 'new_name': new_name})
 
     def ensure_export(self, context, volume):
         """Driver entry point to get the export info for an existing volume."""

@@ -12,10 +12,14 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import mock
 from six.moves import urllib
 
+from cinder import context
 from cinder import exception
+from cinder.tests.unit import fake_volume
 from cinder.tests.unit.volume.drivers.emc import scaleio
+from cinder.tests.unit.volume.drivers.emc.scaleio import mocks
 
 
 class TestMisc(scaleio.TestScaleIODriver):
@@ -29,9 +33,16 @@ class TestMisc(scaleio.TestScaleIODriver):
         Defines the mock HTTPS responses for the REST API calls.
         """
         super(TestMisc, self).setUp()
-
         self.domain_name_enc = urllib.parse.quote(self.DOMAIN_NAME)
         self.pool_name_enc = urllib.parse.quote(self.POOL_NAME)
+        self.ctx = context.RequestContext('fake', 'fake', auth_token=True)
+
+        self.volume = fake_volume.fake_volume_obj(
+            self.ctx, **{'name': 'vol1', 'provider_id': '0123456789abcdef'}
+        )
+        self.new_volume = fake_volume.fake_volume_obj(
+            self.ctx, **{'name': 'vol2', 'provider_id': 'fedcba9876543210'}
+        )
 
         self.HTTPS_MOCK_RESPONSES = {
             self.RESPONSE_MODE.Valid: {
@@ -50,6 +61,12 @@ class TestMisc(scaleio.TestScaleIODriver):
                         'capacityLimitInKb': 1024,
                     },
                 },
+                'instances/Volume::{}/action/setVolumeName'.format(
+                    self.volume['provider_id']):
+                        self.new_volume['provider_id'],
+                'instances/Volume::{}/action/setVolumeName'.format(
+                    self.new_volume['provider_id']):
+                        self.volume['provider_id'],
             },
             self.RESPONSE_MODE.BadStatus: {
                 'types/Domain/instances/getByName::' +
@@ -58,6 +75,13 @@ class TestMisc(scaleio.TestScaleIODriver):
             self.RESPONSE_MODE.Invalid: {
                 'types/Domain/instances/getByName::' +
                 self.domain_name_enc: None,
+                'instances/Volume::{}/action/setVolumeName'.format(
+                    self.volume['provider_id']): mocks.MockHTTPSResponse(
+                    {
+                        'message': 'Invalid volume.',
+                        'httpStatusCode': 400,
+                        'errorCode': 0
+                    }, 400),
             },
         }
 
@@ -114,3 +138,51 @@ class TestMisc(scaleio.TestScaleIODriver):
     def test_get_volume_stats(self):
         self.driver.storage_pools = self.STORAGE_POOLS
         self.driver.get_volume_stats(True)
+
+    @mock.patch(
+        'cinder.volume.drivers.emc.scaleio.ScaleIODriver._rename_volume',
+        return_value=None)
+    def test_update_migrated_volume(self, mock_rename):
+        test_vol = self.driver.update_migrated_volume(
+            self.ctx, self.volume, self.new_volume, 'available')
+        mock_rename.assert_called_with(self.new_volume, self.volume['id'])
+        self.assertEqual({'_name_id': None, 'provider_location': None},
+                         test_vol)
+
+    @mock.patch(
+        'cinder.volume.drivers.emc.scaleio.ScaleIODriver._rename_volume',
+        return_value=None)
+    def test_update_unavailable_migrated_volume(self, mock_rename):
+        test_vol = self.driver.update_migrated_volume(
+            self.ctx, self.volume, self.new_volume, 'unavailable')
+        self.assertFalse(mock_rename.called)
+        self.assertEqual({'_name_id': '1', 'provider_location': None},
+                         test_vol)
+
+    @mock.patch(
+        'cinder.volume.drivers.emc.scaleio.ScaleIODriver._rename_volume',
+        side_effect=exception.VolumeBackendAPIException(data='Error!'))
+    def test_fail_update_migrated_volume(self, mock_rename):
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.driver.update_migrated_volume,
+            self.ctx,
+            self.volume,
+            self.new_volume,
+            'available'
+        )
+        mock_rename.assert_called_with(self.volume, "ff" + self.volume['id'])
+
+    def test_rename_volume(self):
+        rc = self.driver._rename_volume(
+            self.volume, self.new_volume['id'])
+        self.assertIsNone(rc)
+
+    def test_fail_rename_volume(self):
+        self.set_https_response_mode(self.RESPONSE_MODE.Invalid)
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.driver._rename_volume,
+            self.volume,
+            self.new_volume['id']
+        )
