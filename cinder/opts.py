@@ -82,6 +82,8 @@ from cinder.volume.drivers.emc import scaleio as \
 from cinder.volume.drivers.emc import xtremio as \
     cinder_volume_drivers_emc_xtremio
 from cinder.volume.drivers import eqlx as cinder_volume_drivers_eqlx
+from cinder.volume.drivers.fujitsu import eternus_dx_common as \
+    cinder_volume_drivers_fujitsu_eternusdxcommon
 from cinder.volume.drivers import glusterfs as cinder_volume_drivers_glusterfs
 from cinder.volume.drivers import hgst as cinder_volume_drivers_hgst
 from cinder.volume.drivers.hitachi import hbsd_common as \
@@ -213,6 +215,8 @@ def list_opts():
                 storwize_svc_iscsi_opts,
                 cinder_backup_drivers_glusterfs.glusterfsbackup_service_opts,
                 cinder_backup_drivers_tsm.tsm_opts,
+                cinder_volume_drivers_fujitsu_eternusdxcommon.
+                FJ_ETERNUS_DX_OPT_opts,
                 cinder_test.test_opts,
                 cinder_volume_drivers_ibm_gpfs.gpfs_opts,
                 cinder_volume_drivers_violin_v7000common.violin_opts,
