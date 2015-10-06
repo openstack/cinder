@@ -6292,6 +6292,24 @@ class GenericVolumeDriverTestCase(DriverTestCase):
                           volume_api.enable_replication,
                           ctxt, volume)
 
+    def test_enable_replication_invalid_type(self):
+        volume_api = cinder.volume.api.API()
+        ctxt = context.get_admin_context()
+
+        volume = tests_utils.create_volume(self.context,
+                                           size=1,
+                                           host=CONF.host,
+                                           replication_status='disabled')
+        volume['volume_type_id'] = 'dab02f01-b50f-4ed6-8d42-2b5b9680996e'
+        fake_specs = {}
+        with mock.patch.object(volume_types,
+                               'get_volume_type_extra_specs',
+                               return_value = fake_specs):
+            self.assertRaises(exception.InvalidVolume,
+                              volume_api.enable_replication,
+                              ctxt,
+                              volume)
+
     def test_enable_replication(self):
         volume_api = cinder.volume.api.API()
         ctxt = context.get_admin_context()
@@ -6300,8 +6318,14 @@ class GenericVolumeDriverTestCase(DriverTestCase):
                                            size=1,
                                            host=CONF.host,
                                            replication_status='disabled')
+        volume['volume_type_id'] = 'dab02f01-b50f-4ed6-8d42-2b5b9680996e'
+        fake_specs = {'replication_enabled': '<is> True'}
         with mock.patch.object(volume_rpcapi.VolumeAPI,
-                               'enable_replication') as mock_enable_rep:
+                               'enable_replication') as mock_enable_rep,\
+            mock.patch.object(volume_types,
+                              'get_volume_type_extra_specs',
+                              return_value = fake_specs):
+
             volume_api.enable_replication(ctxt, volume)
             self.assertTrue(mock_enable_rep.called)
 
@@ -6326,8 +6350,13 @@ class GenericVolumeDriverTestCase(DriverTestCase):
                                            host=CONF.host,
                                            replication_status='disabled')
 
+        volume['volume_type_id'] = 'dab02f01-b50f-4ed6-8d42-2b5b9680996e'
+        fake_specs = {'replication_enabled': '<is> True'}
         with mock.patch.object(volume_rpcapi.VolumeAPI,
-                               'disable_replication') as mock_disable_rep:
+                               'disable_replication') as mock_disable_rep,\
+                mock.patch.object(volume_types,
+                                  'get_volume_type_extra_specs',
+                                  return_value = fake_specs):
             volume_api.disable_replication(ctxt, volume)
             self.assertTrue(mock_disable_rep.called)
 

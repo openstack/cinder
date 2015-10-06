@@ -115,6 +115,29 @@ def check_policy(context, action, target_obj=None):
     cinder.policy.enforce(context, _action, target)
 
 
+def valid_replication_volume(func):
+    """Check that the volume is capable of replication.
+
+    This decorator requires the first 3 args of the wrapped function
+    to be (self, context, volume)
+    """
+    @functools.wraps(func)
+    def wrapped(self, context, volume, *args, **kwargs):
+        rep_capable = False
+        if volume.get('volume_type_id', None):
+            extra_specs = volume_types.get_volume_type_extra_specs(
+                volume.get('volume_type_id'))
+            rep_capable = extra_specs.get('replication_enabled',
+                                          False) == "<is> True"
+        if not rep_capable:
+            msg = _("Volume is not a replication enabled volume, "
+                    "replication operations can only be performed "
+                    "on volumes that are of type replication_enabled.")
+            raise exception.InvalidVolume(reason=msg)
+        return func(self, context, volume, *args, **kwargs)
+    return wrapped
+
+
 class API(base.Base):
     """API for interacting with the volume manager."""
 
@@ -1590,8 +1613,8 @@ class API(base.Base):
     # now they're a special resource, so no.
 
     @wrap_check_policy
+    @valid_replication_volume
     def enable_replication(self, ctxt, volume):
-
         # NOTE(jdg): details like sync vs async
         # and replica count are to be set via the
         # volume-type and config files.
@@ -1627,6 +1650,7 @@ class API(base.Base):
         self.volume_rpcapi.enable_replication(ctxt, vref)
 
     @wrap_check_policy
+    @valid_replication_volume
     def disable_replication(self, ctxt, volume):
 
         valid_disable_status = ['disabled', 'enabled']
@@ -1652,6 +1676,7 @@ class API(base.Base):
         self.volume_rpcapi.disable_replication(ctxt, vref)
 
     @wrap_check_policy
+    @valid_replication_volume
     def failover_replication(self,
                              ctxt,
                              volume,
@@ -1684,6 +1709,7 @@ class API(base.Base):
                                                 secondary)
 
     @wrap_check_policy
+    @valid_replication_volume
     def list_replication_targets(self, ctxt, volume):
 
         # NOTE(jdg): This collects info for the specified volume
