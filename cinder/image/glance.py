@@ -46,7 +46,7 @@ glance_opts = [
                      'via the direct_url.  Currently supported schemes: '
                      '[file].'),
 ]
-glance_core_properties = [
+glance_core_properties_opts = [
     cfg.ListOpt('glance_core_properties',
                 default=['checksum', 'container_format',
                          'disk_format', 'image_name', 'image_id',
@@ -55,7 +55,7 @@ glance_core_properties = [
 ]
 CONF = cfg.CONF
 CONF.register_opts(glance_opts)
-CONF.register_opts(glance_core_properties)
+CONF.register_opts(glance_core_properties_opts)
 CONF.import_opt('glance_api_version', 'cinder.common.config')
 
 LOG = logging.getLogger(__name__)

@@ -49,7 +49,8 @@ if __name__ == "__main__":
 
     for atree in dir_trees_list:
 
-        if atree == "cinder/config/generate_cinder_opts.py":
+        if atree in ["cinder/config/generate_cinder_opts.py",
+                     "cinder/hacking/checks.py"]:
             continue
 
         dirs_list = atree.split('/')

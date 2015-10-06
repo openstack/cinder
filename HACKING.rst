@@ -27,6 +27,7 @@ Cinder Specific Commandments
 - [C308] timeutils.isotime() must not be used (deprecated).
 - [C309] Unit tests should not perform logging.
 - [C310] Check for improper use of logging format arguments.
+- [C311] Check for proper naming and usage in option registration.
 
 General
 -------
