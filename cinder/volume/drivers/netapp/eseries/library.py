@@ -48,11 +48,6 @@ from cinder.zonemanager import utils as fczm_utils
 LOG = logging.getLogger(__name__)
 
 CONF = cfg.CONF
-CONF.register_opts(na_opts.netapp_basicauth_opts)
-CONF.register_opts(na_opts.netapp_connection_opts)
-CONF.register_opts(na_opts.netapp_eseries_opts)
-CONF.register_opts(na_opts.netapp_transport_opts)
-CONF.register_opts(na_opts.netapp_san_opts)
 
 
 @six.add_metaclass(cinder_utils.TraceWrapperMetaclass)
