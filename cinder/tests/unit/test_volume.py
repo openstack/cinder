@@ -3515,7 +3515,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         """Test function of create_volume_from_image.
 
         Test cases call this function to create a volume from image, caller
-        can choose whether to fake out copy_image_to_volume and conle_image,
+        can choose whether to fake out copy_image_to_volume and clone_image,
         after calling this, test cases should check status of the volume.
         """
         def fake_local_path(volume):
@@ -3541,7 +3541,7 @@ class VolumeTestCase(BaseVolumeTestCase):
             self.stubs.Set(self.volume.driver, 'clone_image', fake_clone_image)
         self.stubs.Set(image_utils, 'fetch_to_raw', fake_fetch_to_raw)
         if fakeout_copy_image_to_volume:
-            self.stubs.Set(self.volume, '_copy_image_to_volume',
+            self.stubs.Set(self.volume.driver, 'copy_image_to_volume',
                            fake_copy_image_to_volume)
         mock_clone_image_volume.return_value = ({}, clone_image_volume)
         mock_fetch_img.return_value = mock.MagicMock(
@@ -3639,6 +3639,32 @@ class VolumeTestCase(BaseVolumeTestCase):
         # allocated_capacity is incremented.
         self.assertDictEqual(self.volume.stats['pools'],
                              {'_pool0': {'allocated_capacity_gb': 1}})
+
+    @mock.patch('cinder.utils.brick_get_connector_properties')
+    @mock.patch('cinder.utils.brick_get_connector')
+    @mock.patch('cinder.volume.driver.BaseVD.secure_file_operations_enabled')
+    @mock.patch('cinder.volume.driver.BaseVD._detach_volume')
+    def test_create_volume_from_image_unavailable(self, mock_detach,
+                                                  mock_secure, *args):
+        """Test create volume with ImageCopyFailure
+
+        We'll raise an exception inside _connect_device after volume has
+        already been attached to confirm that it detaches the volume.
+        """
+        mock_secure.side_effect = NameError
+
+        # We want to test BaseVD copy_image_to_volume and since FakeISCSIDriver
+        # inherits from LVM it overwrites it, so we'll mock it to use the
+        # BaseVD implementation.
+        unbound_copy_method = cinder.volume.driver.BaseVD.copy_image_to_volume
+        bound_copy_method = unbound_copy_method.__get__(self.volume.driver)
+        with mock.patch.object(self.volume.driver, 'copy_image_to_volume',
+                               side_effect=bound_copy_method):
+            self.assertRaises(exception.ImageCopyFailure,
+                              self._create_volume_from_image,
+                              fakeout_copy_image_to_volume=False)
+        # We must have called detach method.
+        self.assertEqual(1, mock_detach.call_count)
 
     def test_create_volume_from_image_clone_image_volume(self):
         """Test create volume from image via image volume.
