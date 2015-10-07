@@ -12,6 +12,13 @@
 
 BASEDIR=${BASEDIR:-`pwd`}
 
+NOSAMPLE=0
+if [ ! -z ${2} ] ; then
+    if [ "${2}" == "--nosamplefile" ]; then
+        NOSAMPLE=1
+    fi
+fi
+
 print_error ()
 {
     echo -en "\n\n##########################################################"
@@ -31,11 +38,9 @@ if [ ${1} != "from_tox" ] ; then
     exit 1
 fi
 
-if ! [ -d $BASEDIR ]
-then
+if ! [ -d $BASEDIR ] ; then
     echo "${0##*/}: missing project base directory" >&2 ; exit 1
-elif [[ $BASEDIR != /* ]]
-then
+elif [[ $BASEDIR != /* ]] ; then
     BASEDIR=$(cd "$BASEDIR" && pwd)
 fi
 
@@ -51,34 +56,47 @@ find $TARGETDIR -type f -name "*.pyc" -delete
 export TARGETDIR=$TARGETDIR
 export BASEDIRESC=$BASEDIRESC
 
+if [ -e $TARGETDIR/opts.py ] ; then
+    mv $TARGETDIR/opts.py $TARGETDIR/opts.py.bak
+fi
+
 python cinder/config/generate_cinder_opts.py
 
-if [ $? -ne 0 ]
-then
+if [ $? -ne 0 ] ; then
     echo -en "\n\n#################################################"
     echo -en "\nERROR: Non-zero exit from generate_cinder_opts.py."
     echo -en "\n       See output above for details.\n"
     echo -en "#################################################\n"
+    if [ -e $TARGETDIR/opts.py.bak ] ; then
+        mv $TARGETDIR/opts.py.bak $TARGETDIR/opts.py
+    fi
     exit 1
 fi
 
-oslo-config-generator --config-file=cinder/config/cinder-config-generator.conf
+if [ $NOSAMPLE -eq 0 ] ; then
+    oslo-config-generator --config-file=cinder/config/cinder-config-generator.conf
 
-if [ $? -ne 0 ]
-then
-    echo -en "\n\n#################################################"
-    echo -en "\nERROR: Non-zero exit from oslo-config-generator."
-    echo -en "\n       See output above for details.\n"
-    echo -en "#################################################\n"
-    exit 1
-fi
-if [ ! -s ./etc/cinder/cinder.conf.sample ] ; then
-    echo -en "\n\n#########################################################"
-    echo -en "\nERROR: etc/cinder/cinder.sample.conf not created properly."
-    echo -en "\n        See above output for details.\n"
-    echo -en "###########################################################\n"
-    exit 1
-fi
+    diff $TARGETDIR/opts.py $TARGETDIR/opts.py.bak &> /dev/null
+    if [ $? -ne 0 ] ; then
+        mv $TARGETDIR/opts.py.bak $TARGETDIR/opts.py
+    else
+       rm -f $TARGETDIR/opts.py.bak
+    fi
 
-rm -f cinder/opts.py
-rm -f cinder/opts.pyc
+    if [ $? -ne 0 ] ; then
+        echo -en "\n\n#################################################"
+        echo -en "\nERROR: Non-zero exit from oslo-config-generator."
+        echo -en "\n       See output above for details.\n"
+        echo -en "#################################################\n"
+        exit 1
+    fi
+    if [ ! -s ./etc/cinder/cinder.conf.sample ] ; then
+        echo -en "\n\n#########################################################"
+        echo -en "\nERROR: etc/cinder/cinder.sample.conf not created properly."
+        echo -en "\n        See above output for details.\n"
+        echo -en "###########################################################\n"
+        exit 1
+    fi
+else
+    rm -f $TARGETDIR/opts.py.bak
+fi
