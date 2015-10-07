@@ -51,6 +51,7 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.configuration.sf_allow_template_caching = False
         self.configuration.sf_svip = None
         self.configuration.sf_enable_volume_mapping = True
+        self.configuration.sf_volume_prefix = 'UUID-'
 
         super(SolidFireVolumeTestCase, self).setUp()
         self.stubs.Set(solidfire.SolidFireDriver,
