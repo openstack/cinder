@@ -467,43 +467,28 @@ class VolumeActionsTest(test.TestCase):
         make_set_bootable_test(self, None, 400)
 
 
-class VolumeRetypeActionsTest(VolumeActionsTest):
+class VolumeRetypeActionsTest(test.TestCase):
     def setUp(self):
-        def get_vol_type(*args, **kwargs):
-            d1 = {'id': fake.VOLUME_TYPE_ID,
-                  'qos_specs_id': fake.QOS_SPEC_ID,
-                  'extra_specs': {}}
-            d2 = {'id': fake.VOLUME_TYPE2_ID,
-                  'qos_specs_id': fake.QOS_SPEC2_ID,
-                  'extra_specs': {}}
-            return d1 if d1['id'] == args[1] else d2
+        super(VolumeRetypeActionsTest, self).setUp()
 
-        self.retype_patchers = {}
+        self.context = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
+                                              is_admin=False)
+        self.flags(rpc_backend='cinder.openstack.common.rpc.impl_fake')
+
         self.retype_mocks = {}
-        paths = ['cinder.volume.volume_types.get_volume_type',
-                 'cinder.volume.volume_types.get_volume_type_by_name',
-                 'cinder.volume.qos_specs.get_qos_specs',
-                 'cinder.quota.QUOTAS.add_volume_type_opts',
-                 'cinder.quota.QUOTAS.reserve']
+        paths = ('cinder.quota.QUOTAS.add_volume_type_opts',
+                 'cinder.quota.QUOTAS.reserve')
         for path in paths:
             name = path.split('.')[-1]
-            self.retype_patchers[name] = mock.patch(path)
-            self.retype_mocks[name] = self.retype_patchers[name].start()
-            self.addCleanup(self.retype_patchers[name].stop)
+            patcher = mock.patch(path, return_value=None)
+            self.retype_mocks[name] = patcher.start()
+            self.addCleanup(patcher.stop)
 
-        self.retype_mocks['get_volume_type'].side_effect = get_vol_type
-        self.retype_mocks['get_volume_type_by_name'].side_effect = get_vol_type
-        self.retype_mocks['add_volume_type_opts'].return_value = None
-        self.retype_mocks['reserve'].return_value = None
-
-        super(VolumeRetypeActionsTest, self).setUp()
-        self.context = context.RequestContext(
-            fake.USER_ID, fake.PROJECT_ID, auth_token=True)
-
-    def _retype_volume_exec(self, expected_status,
-                            new_type=fake.VOLUME_TYPE2_ID):
+    def _retype_volume_exec(self, expected_status, new_type='foo',
+                            vol_id=None):
+        vol_id = vol_id or fake.VOLUME_ID
         req = webob.Request.blank('/v2/%s/volumes/%s/action' %
-                                  (fake.PROJECT_ID, fake.VOLUME_ID))
+                                  (fake.PROJECT_ID, vol_id))
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         retype_body = {'new_type': new_type, 'migration_policy': 'never'}
@@ -511,20 +496,13 @@ class VolumeRetypeActionsTest(VolumeActionsTest):
         res = req.get_response(fakes.wsgi_app(fake_auth_context=self.context))
         self.assertEqual(expected_status, res.status_int)
 
-    @mock.patch('cinder.volume.qos_specs.get_qos_specs')
-    def test_retype_volume_success(self, _mock_get_qspecs):
-        # Test that the retype API works for both available and in-use
-        self._retype_volume_exec(202)
-        self.mock_volume_get.return_value['status'] = 'in-use'
-        specs = {'id': fake.QOS_SPEC_ID, 'name': 'fake_name1',
-                 'consumer': 'back-end', 'specs': {'key1': 'value1'}}
-        _mock_get_qspecs.return_value = specs
-        self._retype_volume_exec(202)
-
     def test_retype_volume_no_body(self):
         # Request with no body should fail
+        vol = utils.create_volume(self.context,
+                                  status='available',
+                                  testcase_instance=self)
         req = webob.Request.blank('/v2/%s/volumes/%s/action' %
-                                  (fake.PROJECT_ID, fake.VOLUME_ID))
+                                  (fake.PROJECT_ID, vol.id))
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes({'os-retype': None})
@@ -533,8 +511,11 @@ class VolumeRetypeActionsTest(VolumeActionsTest):
 
     def test_retype_volume_bad_policy(self):
         # Request with invalid migration policy should fail
+        vol = utils.create_volume(self.context,
+                                  status='available',
+                                  testcase_instance=self)
         req = webob.Request.blank('/v2/%s/volumes/%s/action' %
-                                  (fake.PROJECT_ID, fake.VOLUME_ID))
+                                  (fake.PROJECT_ID, vol.id))
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         retype_body = {'new_type': 'foo', 'migration_policy': 'invalid'}
@@ -544,54 +525,228 @@ class VolumeRetypeActionsTest(VolumeActionsTest):
 
     def test_retype_volume_bad_status(self):
         # Should fail if volume does not have proper status
-        self.mock_volume_get.return_value['status'] = 'error'
-        self._retype_volume_exec(400)
+        vol_type_old = utils.create_volume_type(context.get_admin_context(),
+                                                self, name='old')
+        vol_type_new = utils.create_volume_type(context.get_admin_context(),
+                                                self, name='new')
+        vol = utils.create_volume(self.context,
+                                  status='error',
+                                  volume_type_id=vol_type_old.id,
+                                  testcase_instance=self)
+
+        self._retype_volume_exec(400, vol_type_new.id, vol.id)
 
     def test_retype_type_no_exist(self):
         # Should fail if new type does not exist
-        exc = exception.VolumeTypeNotFound('exc')
-        self.retype_mocks['get_volume_type'].side_effect = exc
-        self._retype_volume_exec(404)
+        vol_type_old = utils.create_volume_type(context.get_admin_context(),
+                                                self, name='old')
+        vol = utils.create_volume(self.context,
+                                  status='available',
+                                  volume_type_id=vol_type_old.id,
+                                  testcase_instance=self)
+        self._retype_volume_exec(404, 'fake_vol_type', vol.id)
 
     def test_retype_same_type(self):
         # Should fail if new type and old type are the same
-        self._retype_volume_exec(400, new_type=fake.VOLUME_TYPE_ID)
+        vol_type_old = utils.create_volume_type(context.get_admin_context(),
+                                                self, name='old')
+        vol = utils.create_volume(self.context,
+                                  status='available',
+                                  volume_type_id=vol_type_old.id,
+                                  testcase_instance=self)
+        self._retype_volume_exec(400, vol_type_old.id, vol.id)
 
     def test_retype_over_quota(self):
         # Should fail if going over quota for new type
+        vol_type_new = utils.create_volume_type(context.get_admin_context(),
+                                                self, name='old')
+        vol = utils.create_volume(self.context,
+                                  status='available',
+                                  testcase_instance=self)
+
         exc = exception.OverQuota(overs=['gigabytes'],
                                   quotas={'gigabytes': 20},
                                   usages={'gigabytes': {'reserved': 5,
                                                         'in_use': 15}})
         self.retype_mocks['reserve'].side_effect = exc
-        self._retype_volume_exec(413)
+        self._retype_volume_exec(413, vol_type_new.id, vol.id)
 
-    @mock.patch('cinder.volume.qos_specs.get_qos_specs')
-    def _retype_volume_diff_qos(self, vol_status, consumer, expected_status,
-                                _mock_get_qspecs):
-        def fake_get_qos(ctxt, qos_id):
-            d1 = {'id': fake.QOS_SPEC_ID, 'name': 'fake_name1',
-                  'consumer': consumer, 'specs': {'key1': 'value1'}}
-            d2 = {'id': fake.QOS_SPEC2_ID, 'name': 'fake_name2',
-                  'consumer': consumer, 'specs': {'key1': 'value1'}}
-            return d1 if d1['id'] == qos_id else d2
+    def _retype_volume_qos(self, vol_status, consumer, expected_status,
+                           same_qos=False, has_qos=True, has_type=True):
+        admin_ctxt = context.get_admin_context()
+        if has_qos:
+            qos_old = utils.create_qos(admin_ctxt, self,
+                                       name='old',
+                                       qos_specs={'consumer': consumer})['id']
+        else:
+            qos_old = None
 
-        self.mock_volume_get.return_value['status'] = vol_status
-        _mock_get_qspecs.side_effect = fake_get_qos
-        self._retype_volume_exec(expected_status)
+        if same_qos:
+            qos_new = qos_old
+        else:
+            qos_new = utils.create_qos(admin_ctxt, self,
+                                       name='new',
+                                       qos_specs={'consumer': consumer})['id']
+
+        if has_type:
+            vol_type_old = utils.create_volume_type(admin_ctxt, self,
+                                                    name='old',
+                                                    qos_specs_id=qos_old).id
+        else:
+            vol_type_old = None
+
+        vol_type_new = utils.create_volume_type(admin_ctxt, self,
+                                                name='new',
+                                                qos_specs_id=qos_new).id
+
+        vol = utils.create_volume(self.context,
+                                  status=vol_status,
+                                  volume_type_id=vol_type_old,
+                                  testcase_instance=self)
+
+        self._retype_volume_exec(expected_status, vol_type_new, vol.id)
 
     def test_retype_volume_diff_qos_fe_in_use(self):
-        # should fail if changing qos enforced by front-end for in-use volumes
-        self._retype_volume_diff_qos('in-use', 'front-end', 400)
+        # should fail if changing qos enforced by front-end for in-use volume
+        self._retype_volume_qos('in-use', 'front-end', 400)
+
+    def test_retype_volume_diff_qos_be_in_use(self):
+        # should NOT fail for in-use if changing qos enforced by back-end
+        self._retype_volume_qos('in-use', 'back-end', 202)
 
     def test_retype_volume_diff_qos_fe_available(self):
         # should NOT fail if changing qos enforced by FE for available volumes
-        self._retype_volume_diff_qos('available', 'front-end', 202)
+        self._retype_volume_qos('available', 'front-end', 202)
 
-    def test_retype_volume_diff_qos_be(self):
-        # should NOT fail if changing qos enforced by back-end
-        self._retype_volume_diff_qos('available', 'back-end', 202)
-        self._retype_volume_diff_qos('in-use', 'back-end', 202)
+    def test_retype_volume_diff_qos_be_available(self):
+        # should NOT fail if changing qos enforced by back-end for available
+        # volumes
+        self._retype_volume_qos('available', 'back-end', 202)
+
+    def test_retype_volume_same_qos_fe_in_use(self):
+        # should NOT fail if changing qos enforced by front-end for in-use
+        # volumes if the qos is the same
+        self._retype_volume_qos('in-use', 'front-end', 202, True)
+
+    def test_retype_volume_same_qos_be_in_use(self):
+        # should NOT fail if changing qos enforced by back-end for in-use
+        # volumes if the qos is the same
+        self._retype_volume_qos('in-use', 'back-end', 202, True)
+
+    def test_retype_volume_same_qos_fe_available(self):
+        # should NOT fail if changing qos enforced by front-end for available
+        # volumes if the qos is the same
+        self._retype_volume_qos('available', 'front-end', 202, True)
+
+    def test_retype_volume_same_qos_be_available(self):
+        # should NOT fail if changing qos enforced by back-end for available
+        # volumes if the qos is the same
+        self._retype_volume_qos('available', 'back-end', 202, True)
+
+    def test_retype_volume_orig_no_qos_dest_fe_in_use(self):
+        # should fail if changing qos enforced by front-end on the new type
+        # and volume originally had no qos and was in-use
+        self._retype_volume_qos('in-use', 'front-end', 400, False, False)
+
+    def test_retype_volume_orig_no_qos_dest_be_in_use(self):
+        # should NOT fail if changing qos enforced by back-end on the new type
+        # and volume originally had no qos and was in-use
+        self._retype_volume_qos('in-use', 'back-end', 202, False, False)
+
+    def test_retype_volume_same_no_qos_in_use(self):
+        # should NOT fail if original and destinal types had no qos for in-use
+        # volumes
+        self._retype_volume_qos('in-use', '', 202, True, False)
+
+    def test_retype_volume_orig_no_qos_dest_fe_available(self):
+        # should NOT fail if changing qos enforced by front-end on the new type
+        # and volume originally had no qos and was available
+        self._retype_volume_qos('available', 'front-end', 202, False, False)
+
+    def test_retype_volume_orig_no_qos_dest_be_available(self):
+        # should NOT fail if changing qos enforced by back-end on the new type
+        # and volume originally had no qos and was available
+        self._retype_volume_qos('available', 'back-end', 202, False, False)
+
+    def test_retype_volume_same_no_qos_vailable(self):
+        # should NOT fail if original and destinal types had no qos for
+        # available volumes
+        self._retype_volume_qos('available', '', 202, True, False)
+
+    def test_retype_volume_orig_no_type_dest_fe_in_use(self):
+        # should fail if changing volume had no type, was in-use and
+        # destination type qos was enforced by front-end
+        self._retype_volume_qos('in-use', 'front-end', 400, False, False,
+                                False)
+
+    def test_retype_volume_orig_no_type_dest_no_qos_in_use(self):
+        # should NOT fail if changing volume had no type, was in-use and
+        # destination type had no qos
+        # and volume originally had no type and was in-use
+        self._retype_volume_qos('in-use', '', 202, True, False, False)
+
+    def test_retype_volume_orig_no_type_dest_be_in_use(self):
+        # should NOT fail if changing volume had no type, was in-use and
+        # destination type qos was enforced by back-end
+        self._retype_volume_qos('in-use', 'back-end', 202, False, False,
+                                False)
+
+    def test_retype_volume_orig_no_type_dest_fe_available(self):
+        # should NOT fail if changing volume had no type, was in-use and
+        # destination type qos was enforced by front-end
+        self._retype_volume_qos('available', 'front-end', 202, False, False,
+                                False)
+
+    def test_retype_volume_orig_no_type_dest_no_qos_available(self):
+        # should NOT fail if changing volume had no type, was available and
+        # destination type had no qos
+        # and volume originally had no type and was in-use
+        self._retype_volume_qos('in-use', '', 202, True, False, False)
+
+    def test_retype_volume_orig_no_type_dest_be_available(self):
+        # should NOT fail if changing volume had no type, was available and
+        # destination type qos was enforced by back-end
+        self._retype_volume_qos('in-use', 'back-end', 202, False, False,
+                                False)
+
+    def _retype_volume_encryption(self, vol_status, expected_status,
+                                  has_type=True, enc_orig=True, enc_dest=True):
+        enc_orig = None
+        admin_ctxt = context.get_admin_context()
+        if has_type:
+            vol_type_old = utils.create_volume_type(admin_ctxt, self,
+                                                    name='old').id
+            if enc_orig:
+                utils.create_encryption(admin_ctxt, vol_type_old, self)
+        else:
+            vol_type_old = None
+
+        vol_type_new = utils.create_volume_type(admin_ctxt, self,
+                                                name='new').id
+        if enc_dest:
+            utils.create_encryption(admin_ctxt, vol_type_new, self)
+
+        vol = utils.create_volume(self.context,
+                                  status=vol_status,
+                                  volume_type_id=vol_type_old,
+                                  testcase_instance=self)
+
+        self._retype_volume_exec(expected_status, vol_type_new, vol.id)
+
+    def test_retype_volume_orig_no_type_dest_no_enc(self):
+        self._retype_volume_encryption('available', 202, False, False, False)
+
+    def test_retype_volume_orig_no_type_dest_enc(self):
+        self._retype_volume_encryption('available', 400, False, False)
+
+    def test_retype_volume_orig_type_no_enc_dest_no_enc(self):
+        self._retype_volume_encryption('available', 202, True, False, False)
+
+    def test_retype_volume_orig_type_no_enc_dest_enc(self):
+        self._retype_volume_encryption('available', 400, True, False)
+
+    def test_retype_volume_orig_type_enc_dest_enc(self):
+        self._retype_volume_encryption('available', 400)
 
 
 def stub_volume_get(self, context, volume_id):

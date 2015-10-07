@@ -42,6 +42,7 @@ import six
 import sqlalchemy
 from sqlalchemy import MetaData
 from sqlalchemy import or_, and_, case
+from sqlalchemy.orm import aliased
 from sqlalchemy.orm import joinedload, joinedload_all
 from sqlalchemy.orm import RelationshipProperty
 from sqlalchemy.schema import Table
@@ -1900,6 +1901,72 @@ def volume_has_attachments_filter():
         and_(models.Volume.id == models.VolumeAttachment.volume_id,
              models.VolumeAttachment.attach_status != 'detached',
              ~models.VolumeAttachment.deleted))
+
+
+def volume_has_same_encryption_type(new_vol_type):
+    """Filter to check that encryption matches with new volume type.
+
+    They match if both don't have encryption or both have the same Encryption.
+    """
+    # Query for the encryption in the new volume type
+    encryption_alias = aliased(models.Encryption)
+    new_enc = sql.select((encryption_alias.encryption_id,)).where(and_(
+        ~encryption_alias.deleted,
+        encryption_alias.volume_type_id == new_vol_type))
+
+    # Query for the encryption in the old volume type
+    old_enc = sql.select((models.Encryption.encryption_id,)).where(and_(
+        ~models.Encryption.deleted,
+        models.Encryption.volume_type_id == models.Volume.volume_type_id))
+
+    # NOTE(geguileo): This query is optimizable, but at this moment I can't
+    #                 figure out how.
+    return or_(and_(new_enc.as_scalar().is_(None),
+                    old_enc.as_scalar().is_(None)),
+               new_enc.as_scalar() == old_enc.as_scalar())
+
+
+def volume_qos_allows_retype(new_vol_type):
+    """Filter to check that qos allows retyping the volume to new_vol_type.
+
+    Returned sqlalchemy filter will evaluate to True when volume's status is
+    available or when it's 'in-use' but the qos in new_vol_type is the same as
+    the qos of the volume or when it doesn't exist a consumer spec key that
+    specifies anything other than the back-end in any of the 2 volume_types.
+    """
+    # Query to get the qos of the volume type new_vol_type
+    q = sql.select([models.VolumeTypes.qos_specs_id]).where(and_(
+        ~models.VolumeTypes.deleted,
+        models.VolumeTypes.id == new_vol_type))
+    # Construct the filter to check qos when volume is 'in-use'
+    return or_(
+        # If volume is available
+        models.Volume.status == 'available',
+        # Or both volume types have the same qos specs
+        sql.exists().where(and_(
+            ~models.VolumeTypes.deleted,
+            models.VolumeTypes.id == models.Volume.volume_type_id,
+            models.VolumeTypes.qos_specs_id == q.as_scalar())),
+        # Or they are different specs but they are handled by the backend or
+        # it is not specified.  The way SQL evaluatels value != 'back-end'
+        # makes it result in False not only for 'back-end' values but for
+        # NULL as well, and with the double negation we ensure that we only
+        # allow QoS with 'consumer' values of 'back-end' and NULL.
+        and_(
+            ~sql.exists().where(and_(
+                ~models.VolumeTypes.deleted,
+                models.VolumeTypes.id == models.Volume.volume_type_id,
+                (models.VolumeTypes.qos_specs_id ==
+                 models.QualityOfServiceSpecs.specs_id),
+                models.QualityOfServiceSpecs.key == 'consumer',
+                models.QualityOfServiceSpecs.value != 'back-end')),
+            ~sql.exists().where(and_(
+                ~models.VolumeTypes.deleted,
+                models.VolumeTypes.id == new_vol_type,
+                (models.VolumeTypes.qos_specs_id ==
+                 models.QualityOfServiceSpecs.specs_id),
+                models.QualityOfServiceSpecs.key == 'consumer',
+                models.QualityOfServiceSpecs.value != 'back-end'))))
 
 
 ####################
