@@ -69,8 +69,10 @@ a backend_name, it takes the vendor unique config options::
     volume_driver=xxxx
     volume_backend_name=foo
     managed_replication_target=False
-    replication_devices={'key1'='val1' 'key2'='val2' ...},
-                        {'key7'='val7'....},...
+    replication_devices={'remote_device_id'='vendor-id-of-remote-backend',
+                         'key1'='val1' 'key2'='val2' ...},
+                        {'remote_device_id'='vendor-id-of-remote-backend',
+                         'key7'='val7'....},...
 
 Note the key/value entries can be whatever the device requires, we treat the actual
 variable in the config parser as a comma delimited list, the {} and = notations are

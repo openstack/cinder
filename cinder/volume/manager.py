@@ -3246,15 +3246,21 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         Example response for replicating to a managed backend:
             {'volume_id': volume['id'],
-             'targets':[{'managed_host': 'backend_name'}...]
+             'targets':[{'remote_device_id': 'vendor-id-for-target-device',
+                         'managed_host': 'backend_name'}...]
 
         Example response for replicating to an unmanaged backend:
-            {'volume_id': volume['id'], 'targets':[{'san_ip': '1.1.1.1',
-                                                    'san_login': 'admin'},
-                                                    ....]}
+            {'volume_id': volume['id'], 'targets':[
+                {'remote_device_id': 'vendor-id-for-target-device',
+                                      'san_ip': '1.1.1.1',
+                                      'san_login': 'admin'},
+                                      ....]}
 
         NOTE: It's the responsibility of the driver to mask out any
         passwords or sensitive information.
+
+        `remote_device_id` is required and is used for drivers to identify
+        the devices they have in use.
 
         """
 
