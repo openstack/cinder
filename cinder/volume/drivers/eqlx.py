@@ -327,6 +327,8 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
         data['total_capacity_gb'] = 0
         data['free_capacity_gb'] = 0
 
+        provisioned_capacity = 0
+
         for line in self._eql_execute('pool', 'select',
                                       self.configuration.eqlx_pool, 'show'):
             if line.startswith('TotalCapacity:'):
@@ -335,6 +337,22 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
             if line.startswith('FreeSpace:'):
                 out_tup = line.rstrip().partition(' ')
                 data['free_capacity_gb'] = self._get_space_in_gb(out_tup[-1])
+            if line.startswith('VolumeReserve:'):
+                out_tup = line.rstrip().partition(' ')
+                provisioned_capacity = self._get_space_in_gb(out_tup[-1])
+
+        global_capacity = data['total_capacity_gb']
+        global_free = data['free_capacity_gb']
+
+        thin_enabled = self.configuration.san_thin_provision
+        if not thin_enabled:
+            provisioned_capacity = round(global_capacity - global_free, 2)
+
+        data['provisioned_capacity_gb'] = provisioned_capacity
+        data['max_over_subscription_ratio'] = (
+            self.configuration.max_over_subscription_ratio)
+        data['thin_provisioning_support'] = thin_enabled
+        data['thick_provisioning_support'] = not thin_enabled
 
         self._stats = data
 

@@ -55,6 +55,11 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
         self.configuration.chap_username = 'admin'
         self.configuration.chap_password = 'password'
 
+        self.configuration.max_over_subscription_ratio = 1.0
+
+        self.driver_stats_output = ['TotalCapacity: 111GB',
+                                    'FreeSpace: 11GB',
+                                    'VolumeReserve: 80GB']
         self.cmd = 'this is dummy command'
         self._context = context.get_admin_context()
         self.driver = eqlx.DellEQLSanISCSIDriver(
@@ -233,29 +238,64 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
             self.driver.do_setup(self._context)
             self.assertEqual(fake_group_ip, self.driver._group_ip)
 
-    def test_update_volume_stats(self):
+    def test_update_volume_stats_thin(self):
         mock_attrs = {'args': ['pool', 'select',
                                self.configuration.eqlx_pool, 'show']}
+        self.configuration.san_thin_provision = True
         with mock.patch.object(self.driver,
                                '_eql_execute') as mock_eql_execute:
             mock_eql_execute.configure_mock(**mock_attrs)
-            mock_eql_execute.return_value = ['TotalCapacity: 111GB',
-                                             'FreeSpace: 11GB']
+            mock_eql_execute.return_value = self.driver_stats_output
             self.driver._update_volume_stats()
-            self.assertEqual(111.0, self.driver._stats['total_capacity_gb'])
-            self.assertEqual(11.0, self.driver._stats['free_capacity_gb'])
+            self.assert_volume_stats(self.driver._stats)
 
-    def test_get_volume_stats(self):
+    def test_update_volume_stats_thick(self):
         mock_attrs = {'args': ['pool', 'select',
                                self.configuration.eqlx_pool, 'show']}
+        self.configuration.san_thin_provision = False
         with mock.patch.object(self.driver,
                                '_eql_execute') as mock_eql_execute:
             mock_eql_execute.configure_mock(**mock_attrs)
-            mock_eql_execute.return_value = ['TotalCapacity: 111GB',
-                                             'FreeSpace: 11GB']
+            mock_eql_execute.return_value = self.driver_stats_output
+            self.driver._update_volume_stats()
+            self.assert_volume_stats(self.driver._stats)
+
+    def test_get_volume_stats_thin(self):
+        mock_attrs = {'args': ['pool', 'select',
+                               self.configuration.eqlx_pool, 'show']}
+        self.configuration.san_thin_provision = True
+        with mock.patch.object(self.driver,
+                               '_eql_execute') as mock_eql_execute:
+            mock_eql_execute.configure_mock(**mock_attrs)
+            mock_eql_execute.return_value = self.driver_stats_output
             stats = self.driver.get_volume_stats(refresh=True)
+            self.assert_volume_stats(stats)
+
+    def test_get_volume_stats_thick(self):
+        mock_attrs = {'args': ['pool', 'select',
+                               self.configuration.eqlx_pool, 'show']}
+        self.configuration.san_thin_provision = False
+        with mock.patch.object(self.driver,
+                               '_eql_execute') as mock_eql_execute:
+            mock_eql_execute.configure_mock(**mock_attrs)
+            mock_eql_execute.return_value = self.driver_stats_output
+            stats = self.driver.get_volume_stats(refresh=True)
+            self.assert_volume_stats(stats)
+
+    def assert_volume_stats(self, stats):
+            thin_enabled = self.configuration.san_thin_provision
             self.assertEqual(float('111.0'), stats['total_capacity_gb'])
             self.assertEqual(float('11.0'), stats['free_capacity_gb'])
+
+            if thin_enabled:
+                self.assertEqual(80.0, stats['provisioned_capacity_gb'])
+            else:
+                space = stats['total_capacity_gb'] - stats['free_capacity_gb']
+                self.assertEqual(space, stats['provisioned_capacity_gb'])
+
+            self.assertEqual(thin_enabled, stats['thin_provisioning_support'])
+            self.assertEqual(not thin_enabled,
+                             stats['thick_provisioning_support'])
             self.assertEqual('Dell', stats['vendor_name'])
 
     def test_get_space_in_gb(self):
