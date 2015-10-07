@@ -377,13 +377,13 @@ def _transfer_data(src, dest, length, chunk_size):
     LOG.debug("%(chunks)s chunks of %(bytes)s bytes to be transferred.",
               {'chunks': chunks, 'bytes': chunk_size})
 
-    for chunk in xrange(0, chunks):
+    for chunk in range(0, chunks):
         before = time.time()
         data = tpool.execute(src.read, min(chunk_size, remaining_length))
 
         # If we have reached end of source, discard any extraneous bytes from
         # destination volume if trim is enabled and stop writing.
-        if data == '':
+        if data == b'':
             break
 
         tpool.execute(dest.write, data)

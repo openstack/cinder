@@ -142,7 +142,7 @@ class RBDImageIOWrapper(io.RawIOBase):
         # length (they just return nothing) but rbd images do so we need to
         # return empty string if we have reached the end of the image.
         if (offset >= total):
-            return ''
+            return b''
 
         if length is None:
             length = total
