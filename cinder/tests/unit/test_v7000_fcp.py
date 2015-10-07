@@ -385,9 +385,9 @@ class V7000FCPDriverTestCase(test.TestCase):
 
         result = self.driver._get_active_fc_targets()
 
-        self.assertEqual(['2100001b9745e230', '2100001b9745e25f',
-                          '2100001b9745e231', '2100001b9745e25e'],
-                         result)
+        self.assertEqual({'2100001b9745e230', '2100001b9745e25f',
+                          '2100001b9745e231', '2100001b9745e25e'},
+                         set(result))
 
     def test_initialize_connection(self):
         lun_id = 1
