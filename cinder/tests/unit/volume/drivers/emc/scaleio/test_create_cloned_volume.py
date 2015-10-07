@@ -14,7 +14,8 @@
 #    under the License.
 
 import json
-import urllib
+
+from six.moves import urllib
 
 from cinder import context
 from cinder import exception
@@ -36,8 +37,8 @@ class TestCreateClonedVolume(scaleio.TestScaleIODriver):
         self.src_volume = fake_volume.fake_volume_obj(
             ctx, **{'provider_id': 'pid001'})
 
-        self.src_volume_name_2x_enc = urllib.quote(
-            urllib.quote(
+        self.src_volume_name_2x_enc = urllib.parse.quote(
+            urllib.parse.quote(
                 self.driver._id_to_base64(self.src_volume.id)
             )
         )
@@ -51,8 +52,8 @@ class TestCreateClonedVolume(scaleio.TestScaleIODriver):
             ctx, **self.new_volume_extras
         )
 
-        self.new_volume_name_2x_enc = urllib.quote(
-            urllib.quote(
+        self.new_volume_name_2x_enc = urllib.parse.quote(
+            urllib.parse.quote(
                 self.driver._id_to_base64(self.new_volume.id)
             )
         )

@@ -17,6 +17,7 @@ Driver for EMC ScaleIO based on ScaleIO remote CLI.
 """
 
 import base64
+import binascii
 import json
 
 from os_brick.initiator import connector
@@ -25,7 +26,7 @@ from oslo_log import log as logging
 from oslo_utils import units
 import requests
 import six
-import urllib
+from six.moves import urllib
 
 from cinder import context
 from cinder import exception
@@ -250,9 +251,14 @@ class ScaleIODriver(driver.VolumeDriver):
         name = six.text_type(id).replace("-", "")
         try:
             name = base64.b16decode(name.upper())
-        except TypeError:
+        except (TypeError, binascii.Error):
             pass
-        encoded_name = base64.b64encode(name)
+        encoded_name = name
+        if isinstance(encoded_name, six.text_type):
+            encoded_name = encoded_name.encode('utf-8')
+        encoded_name = base64.b64encode(encoded_name)
+        if six.PY3:
+            encoded_name = encoded_name.decode('ascii')
         LOG.debug(
             "Converted id %(id)s to scaleio name %(name)s.",
             {'id': id, 'name': encoded_name})
@@ -307,7 +313,8 @@ class ScaleIODriver(driver.VolumeDriver):
                         " protection domain id.")
                 raise exception.VolumeBackendAPIException(data=msg)
 
-            encoded_domain_name = urllib.quote(self.protection_domain_name, '')
+            domain_name = self.protection_domain_name
+            encoded_domain_name = urllib.parse.quote(domain_name, '')
             req_vars = {'server_ip': self.server_ip,
                         'server_port': self.server_port,
                         'encoded_domain_name': encoded_domain_name}
@@ -341,7 +348,7 @@ class ScaleIODriver(driver.VolumeDriver):
         pool_name = self.storage_pool_name
         pool_id = self.storage_pool_id
         if pool_name:
-            encoded_domain_name = urllib.quote(pool_name, '')
+            encoded_domain_name = urllib.parse.quote(pool_name, '')
             req_vars = {'server_ip': self.server_ip,
                         'server_port': self.server_port,
                         'domain_id': domain_id,
@@ -702,7 +709,7 @@ class ScaleIODriver(driver.VolumeDriver):
                       {'domain': domain_name,
                        'pool': pool_name})
             # Get domain id from name.
-            encoded_domain_name = urllib.quote(domain_name, '')
+            encoded_domain_name = urllib.parse.quote(domain_name, '')
             req_vars = {'server_ip': self.server_ip,
                         'server_port': self.server_port,
                         'encoded_domain_name': encoded_domain_name}
@@ -738,7 +745,7 @@ class ScaleIODriver(driver.VolumeDriver):
             LOG.info(_LI("Domain id is %s."), domain_id)
 
             # Get pool id from name.
-            encoded_pool_name = urllib.quote(pool_name, '')
+            encoded_pool_name = urllib.parse.quote(pool_name, '')
             req_vars = {'server_ip': self.server_ip,
                         'server_port': self.server_port,
                         'domain_id': domain_id,

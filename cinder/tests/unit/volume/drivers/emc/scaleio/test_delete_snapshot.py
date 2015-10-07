@@ -12,7 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-import urllib
+from six.moves import urllib
 
 from cinder import context
 from cinder import exception
@@ -34,8 +34,8 @@ class TestDeleteSnapShot(scaleio.TestScaleIODriver):
 
         self.snapshot = fake_snapshot_obj(
             ctx, **{'provider_id': 'snap_1'})
-        self.snapshot_name_2x_enc = urllib.quote(
-            urllib.quote(
+        self.snapshot_name_2x_enc = urllib.parse.quote(
+            urllib.parse.quote(
                 self.driver._id_to_base64(self.snapshot.id)
             )
         )

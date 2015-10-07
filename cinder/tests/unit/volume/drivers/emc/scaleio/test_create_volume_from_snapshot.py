@@ -13,7 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 import json
-import urllib
+
+from six.moves import urllib
 
 from cinder import context
 from cinder import exception
@@ -35,12 +36,12 @@ class TestCreateVolumeFromSnapShot(scaleio.TestScaleIODriver):
         ctx = context.RequestContext('fake', 'fake', auth_token=True)
 
         self.snapshot = fake_snapshot.fake_snapshot_obj(ctx)
-        self.snapshot_name_2x_enc = urllib.quote(
-            urllib.quote(self.driver._id_to_base64(self.snapshot.id))
+        self.snapshot_name_2x_enc = urllib.parse.quote(
+            urllib.parse.quote(self.driver._id_to_base64(self.snapshot.id))
         )
         self.volume = fake_volume.fake_volume_obj(ctx)
-        self.volume_name_2x_enc = urllib.quote(
-            urllib.quote(self.driver._id_to_base64(self.volume.id))
+        self.volume_name_2x_enc = urllib.parse.quote(
+            urllib.parse.quote(self.driver._id_to_base64(self.volume.id))
         )
 
         self.snapshot_reply = json.dumps(
