@@ -1207,67 +1207,57 @@ def is_orm_value(obj):
 
 
 def conditional_update(context, model, values, expected_values, filters=(),
-                       include_deleted='no', project_only=False):
+                       include_deleted='no', project_only=False, order=None):
     """Compare-and-swap conditional update.
 
-       Update will only occur in the DB if conditions are met.
+    Update will only occur in the DB if conditions are met.
 
-       We have 4 different condition types we can use in expected_values:
-        - Equality:  {'status': 'available'}
-        - Inequality: {'status': vol_obj.Not('deleting')}
-        - In range: {'status': ['available', 'error']
-        - Not in range: {'status': vol_obj.Not(['in-use', 'attaching'])
+    We have 4 different condition types we can use in expected_values:
+     - Equality:  {'status': 'available'}
+     - Inequality: {'status': vol_obj.Not('deleting')}
+     - In range: {'status': ['available', 'error']
+     - Not in range: {'status': vol_obj.Not(['in-use', 'attaching'])
 
-       Method accepts additional filters, which are basically anything that
-       can be passed to a sqlalchemy query's filter method, for example:
-       [~sql.exists().where(models.Volume.id == models.Snapshot.volume_id)]
+    Method accepts additional filters, which are basically anything that can be
+    passed to a sqlalchemy query's filter method, for example:
 
-       We can select values based on conditions using Case objects in the
-       'values' argument. For example:
+    .. code-block:: python
 
-       .. code-block:: python
+     [~sql.exists().where(models.Volume.id == models.Snapshot.volume_id)]
 
-        has_snapshot_filter = sql.exists().where(
-            models.Snapshot.volume_id == models.Volume.id)
-        case_values = db.Case([(has_snapshot_filter, 'has-snapshot')],
-                              else_='no-snapshot')
-        db.conditional_update(context, models.Volume, {'status': case_values},
-                              {'status': 'available'})
+    We can select values based on conditions using Case objects in the 'values'
+    argument. For example:
 
-       And we can use DB fields for example to store previous status in the
-       corresponding field even though we don't know which value is in the db
-       from those we allowed:
+    .. code-block:: python
 
-       .. code-block:: python
+     has_snapshot_filter = sql.exists().where(
+         models.Snapshot.volume_id == models.Volume.id)
+     case_values = db.Case([(has_snapshot_filter, 'has-snapshot')],
+                           else_='no-snapshot')
+     db.conditional_update(context, models.Volume, {'status': case_values},
+                           {'status': 'available'})
 
-        db.conditional_update(context, models.Volume,
-                              {'status': 'deleting',
-                               'previous_status': models.Volume.status},
-                              {'status': ('available', 'error')})
+    And we can use DB fields for example to store previous status in the
+    corresponding field even though we don't know which value is in the db from
+    those we allowed:
 
-       WARNING: SQLAlchemy does not allow selecting order of SET clauses, so
-       for now we cannot do things like:
+    .. code-block:: python
 
-       .. code-block:: python
+     db.conditional_update(context, models.Volume,
+                           {'status': 'deleting',
+                            'previous_status': models.Volume.status},
+                           {'status': ('available', 'error')})
 
-           {'previous_status': model.status, 'status': 'retyping'}
-
-       because it will result in both previous_status and status being set to
-       'retyping'.  Issue has been reported [1] and a patch to fix it [2] has
-       been submitted.
-
-       [1]: https://bitbucket.org/zzzeek/sqlalchemy/issues/3541/
-
-       [2]: https://github.com/zzzeek/sqlalchemy/pull/200
-
-       :param values: Dictionary of key-values to update in the DB.
-       :param expected_values: Dictionary of conditions that must be met
-                               for the update to be executed.
-       :param filters: Iterable with additional filters
-       :param include_deleted: Should the update include deleted items, this
-                               is equivalent to read_deleted
-       :param project_only: Should the query be limited to context's project.
-       :returns: number of db rows that were updated
+    :param values: Dictionary of key-values to update in the DB.
+    :param expected_values: Dictionary of conditions that must be met for the
+                            update to be executed.
+    :param filters: Iterable with additional filters.
+    :param include_deleted: Should the update include deleted items, this is
+                            equivalent to read_deleted.
+    :param project_only: Should the query be limited to context's project.
+    :param order: Specific order of fields in which to update the values
+    :returns number of db rows that were updated.
     """
     return IMPL.conditional_update(context, model, values, expected_values,
-                                   filters, include_deleted, project_only)
+                                   filters, include_deleted, project_only,
+                                   order)
