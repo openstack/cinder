@@ -564,11 +564,13 @@ def quota_allocated_get_all_by_project(context, project_id):
 
 
 @require_admin_context
-def quota_create(context, project_id, resource, limit):
+def quota_create(context, project_id, resource, limit, allocated):
     quota_ref = models.Quota()
     quota_ref.project_id = project_id
     quota_ref.resource = resource
     quota_ref.hard_limit = limit
+    if allocated:
+        quota_ref.allocated = allocated
 
     session = get_session()
     with session.begin():
