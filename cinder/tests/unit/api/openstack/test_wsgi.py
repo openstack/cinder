@@ -23,13 +23,13 @@ from cinder.tests.unit.api import fakes
 class RequestTest(test.TestCase):
     def test_content_type_missing(self):
         request = wsgi.Request.blank('/tests/123', method='POST')
-        request.body = "<body />"
+        request.body = b"<body />"
         self.assertIsNone(request.get_content_type())
 
     def test_content_type_unsupported(self):
         request = wsgi.Request.blank('/tests/123', method='POST')
         request.headers["Content-Type"] = "text/html"
-        request.body = "asdf<br />"
+        request.body = b"asdf<br />"
         self.assertRaises(exception.InvalidContentType,
                           request.get_content_type)
 
@@ -206,10 +206,10 @@ class DictSerializerTest(test.TestCase):
 class XMLDictSerializerTest(test.TestCase):
     def test_xml(self):
         input_dict = dict(servers=dict(a=(2, 3)))
-        expected_xml = '<serversxmlns="asdf"><a>(2,3)</a></servers>'
+        expected_xml = b'<serversxmlns="asdf"><a>(2,3)</a></servers>'
         serializer = wsgi.XMLDictSerializer(xmlns="asdf")
         result = serializer.serialize(input_dict)
-        result = result.replace('\n', '').replace(' ', '')
+        result = result.replace(b'\n', b'').replace(b' ', b'')
         self.assertEqual(expected_xml, result)
 
 
@@ -317,7 +317,7 @@ class ResourceTest(test.TestCase):
         req = webob.Request.blank('/tests')
         app = fakes.TestRouter(Controller())
         response = req.get_response(app)
-        self.assertEqual('off', response.body)
+        self.assertEqual(b'off', response.body)
         self.assertEqual(200, response.status_int)
 
     def test_resource_not_authorized(self):
@@ -443,7 +443,7 @@ class ResourceTest(test.TestCase):
 
         request = wsgi.Request.blank('/', method='POST')
         request.headers['Content-Type'] = 'application/none'
-        request.body = 'foo'
+        request.body = b'foo'
 
         content_type, body = resource.get_body(request)
         self.assertIsNone(content_type)
@@ -458,7 +458,7 @@ class ResourceTest(test.TestCase):
         resource = wsgi.Resource(controller)
 
         request = wsgi.Request.blank('/', method='POST')
-        request.body = 'foo'
+        request.body = b'foo'
 
         content_type, body = resource.get_body(request)
         self.assertIsNone(content_type)
@@ -474,7 +474,7 @@ class ResourceTest(test.TestCase):
 
         request = wsgi.Request.blank('/', method='POST')
         request.headers['Content-Type'] = 'application/json'
-        request.body = ''
+        request.body = b''
 
         content_type, body = resource.get_body(request)
         self.assertIsNone(content_type)
@@ -490,11 +490,11 @@ class ResourceTest(test.TestCase):
 
         request = wsgi.Request.blank('/', method='POST')
         request.headers['Content-Type'] = 'application/json'
-        request.body = 'foo'
+        request.body = b'foo'
 
         content_type, body = resource.get_body(request)
         self.assertEqual('application/json', content_type)
-        self.assertEqual('foo', body)
+        self.assertEqual(b'foo', body)
 
     def test_deserialize_badtype(self):
         class Controller(object):
@@ -952,7 +952,7 @@ class ResponseObjectTest(test.TestCase):
             self.assertEqual('header1', response.headers['X-header1'])
             self.assertEqual('header2', response.headers['X-header2'])
             self.assertEqual(202, response.status_int)
-            self.assertEqual(mtype, response.body)
+            self.assertEqual(mtype, response.body.decode('utf-8'))
 
 
 class ValidBodyTest(test.TestCase):

@@ -205,6 +205,7 @@ class TestWSGIServer(test.TestCase):
         self.assertFalse(buf)
         server.stop()
 
+    @testtools.skipIf(six.PY3, "bug/1505103: test hangs on Python 3")
     def test_app_using_ssl(self):
         CONF.set_default("ssl_cert_file",
                          os.path.join(TEST_VAR_DIR, 'certificate.crt'))
@@ -229,6 +230,7 @@ class TestWSGIServer(test.TestCase):
 
     @testtools.skipIf(not _ipv6_configured(),
                       "Test requires an IPV6 configured interface")
+    @testtools.skipIf(six.PY3, "bug/1505103: test hangs on Python 3")
     def test_app_using_ipv6_and_ssl(self):
         CONF.set_default("ssl_cert_file",
                          os.path.join(TEST_VAR_DIR, 'certificate.crt'))
