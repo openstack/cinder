@@ -10,8 +10,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import ast
-
 import fixtures
 import mock
 from oslo_concurrency import lockutils
@@ -77,8 +75,7 @@ class AdminActionsTest(test.TestCase):
         req = webob.Request.blank('/v2/fake/volumes/%s/action' % volume['id'])
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.body = \
-            jsonutils.dumps({'os-reset_status': updated_status})
+        req.body = jsonutils.dump_as_bytes({'os-reset_status': updated_status})
         req.environ['cinder.context'] = ctx
         resp = req.get_response(app())
         return resp
@@ -88,8 +85,7 @@ class AdminActionsTest(test.TestCase):
                                   snapshot.id)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.body = \
-            jsonutils.dumps({'os-reset_status': updated_status})
+        req.body = jsonutils.dump_as_bytes({'os-reset_status': updated_status})
         req.environ['cinder.context'] = ctx
         resp = req.get_response(app())
         return resp
@@ -98,8 +94,7 @@ class AdminActionsTest(test.TestCase):
         req = webob.Request.blank('/v2/fake/backups/%s/action' % backup['id'])
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.body = \
-            jsonutils.dumps({'os-reset_status': updated_status})
+        req.body = jsonutils.dump_as_bytes({'os-reset_status': updated_status})
         req.environ['cinder.context'] = ctx
         resp = req.get_response(app())
         return resp
@@ -297,8 +292,8 @@ class AdminActionsTest(test.TestCase):
                                   'missing-volume-id')
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.body = jsonutils.dumps({'os-reset_status': {'status':
-                                                        'available'}})
+        body = {'os-reset_status': {'status': 'available'}}
+        req.body = jsonutils.dump_as_bytes(body)
         req.environ['cinder.context'] = ctx
         resp = req.get_response(app())
         self.assertEqual(404, resp.status_int)
@@ -384,7 +379,7 @@ class AdminActionsTest(test.TestCase):
         req = webob.Request.blank('/v2/fake/volumes/%s/action' % volume['id'])
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.body = jsonutils.dumps({'os-force_delete': {}})
+        req.body = jsonutils.dump_as_bytes({'os-force_delete': {}})
         # attach admin context to request
         req.environ['cinder.context'] = ctx
         resp = req.get_response(app())
@@ -411,7 +406,7 @@ class AdminActionsTest(test.TestCase):
         req = webob.Request.blank(path)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
-        req.body = jsonutils.dumps({'os-force_delete': {}})
+        req.body = jsonutils.dump_as_bytes({'os-force_delete': {}})
         # attach admin context to request
         req.environ['cinder.context'] = ctx
         resp = req.get_response(app())
@@ -451,9 +446,9 @@ class AdminActionsTest(test.TestCase):
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         # request status of 'error'
-        req.body = jsonutils.dumps({'os-force_detach':
-                                   {'attachment_id': attachment['id'],
-                                    'connector': connector}})
+        body = {'os-force_detach': {'attachment_id': attachment['id'],
+                                    'connector': connector}}
+        req.body = jsonutils.dump_as_bytes(body)
         # attach admin context to request
         req.environ['cinder.context'] = ctx
         # make request
@@ -509,9 +504,9 @@ class AdminActionsTest(test.TestCase):
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         # request status of 'error'
-        req.body = jsonutils.dumps({'os-force_detach':
-                                    {'attachment_id': attachment['id'],
-                                     'connector': connector}})
+        body = {'os-force_detach': {'attachment_id': attachment['id'],
+                                    'connector': connector}}
+        req.body = jsonutils.dump_as_bytes(body)
         # attach admin context to request
         req.environ['cinder.context'] = ctx
         # make request
@@ -569,8 +564,8 @@ class AdminActionsTest(test.TestCase):
                                       volume['id'])
             req.method = 'POST'
             req.headers['content-type'] = 'application/json'
-            req.body = jsonutils.dumps({'os-force_detach':
-                                        {'attachment_id': 'fake'}})
+            body = {'os-force_detach': {'attachment_id': 'fake'}}
+            req.body = jsonutils.dump_as_bytes(body)
             # attach admin context to request
             req.environ['cinder.context'] = ctx
             # make request
@@ -586,8 +581,8 @@ class AdminActionsTest(test.TestCase):
                                       volume['id'])
             req.method = 'POST'
             req.headers['content-type'] = 'application/json'
-            req.body = jsonutils.dumps({'os-force_detach':
-                                        {'attachment_id': 'fake'}})
+            body = {'os-force_detach': {'attachment_id': 'fake'}}
+            req.body = jsonutils.dump_as_bytes(body)
             # attach admin context to request
             req.environ['cinder.context'] = ctx
             # make request
@@ -604,9 +599,9 @@ class AdminActionsTest(test.TestCase):
                                       volume['id'])
             req.method = 'POST'
             req.headers['content-type'] = 'application/json'
-            req.body = jsonutils.dumps({'os-force_detach':
-                                       {'attachment_id': 'fake',
-                                        'connector': connector}})
+            body = {'os-force_detach': {'attachment_id': 'fake',
+                                        'connector': connector}}
+            req.body = jsonutils.dump_as_bytes(body)
 
             # attach admin context to request
             req.environ['cinder.context'] = ctx
@@ -656,9 +651,9 @@ class AdminActionsTest(test.TestCase):
                                       volume['id'])
             req.method = 'POST'
             req.headers['content-type'] = 'application/json'
-            req.body = jsonutils.dumps({'os-force_detach':
-                                       {'attachment_id': 'fake',
-                                        'connector': connector}})
+            body = {'os-force_detach': {'attachment_id': 'fake',
+                                        'connector': connector}}
+            req.body = jsonutils.dump_as_bytes(body)
             # attach admin context to request
             req.environ['cinder.context'] = ctx
             # make request
@@ -820,7 +815,7 @@ class AdminActionsTest(test.TestCase):
         req.headers['content-type'] = 'application/json'
         body = {'os-migrate_volume': {'host': host,
                                       'force_host_copy': force_host_copy}}
-        req.body = jsonutils.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         req.environ['cinder.context'] = ctx
         resp = req.get_response(app())
         # verify status
@@ -868,7 +863,7 @@ class AdminActionsTest(test.TestCase):
         req.headers['content-type'] = 'application/json'
         body = {'os-migrate_volume': {'host': host,
                                       'force_host_copy': False}}
-        req.body = jsonutils.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         req.environ['cinder.context'] = ctx
         resp = req.get_response(app())
         # verify status
@@ -922,12 +917,13 @@ class AdminActionsTest(test.TestCase):
         req.headers['content-type'] = 'application/json'
         body = {'new_volume': new_volume['id'], 'error': error}
         if no_body:
-            req.body = jsonutils.dumps({'': body})
+            body = {'': body}
         else:
-            req.body = jsonutils.dumps({'os-migrate_volume_completion': body})
+            body = {'os-migrate_volume_completion': body}
+        req.body = jsonutils.dump_as_bytes(body)
         req.environ['cinder.context'] = ctx
         resp = req.get_response(app())
-        resp_dict = ast.literal_eval(resp.body)
+        resp_dict = resp.json
         # verify status
         self.assertEqual(expected_status, resp.status_int)
         if expected_id:
@@ -1024,7 +1020,7 @@ class AdminActionsTest(test.TestCase):
         req = webob.Request.blank('/v2/fake/backups/%s/action' % id)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = jsonutils.dumps({'os-force_delete': {}})
+        req.body = jsonutils.dump_as_bytes({'os-force_delete': {}})
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
 
@@ -1062,7 +1058,7 @@ class AdminActionsTest(test.TestCase):
         req = webob.Request.blank('/v2/fake/backups/%s/action' % id)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = jsonutils.dumps({'os-force_delete': {}})
+        req.body = jsonutils.dump_as_bytes({'os-force_delete': {}})
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
         self.assertEqual(405, res.status_int)

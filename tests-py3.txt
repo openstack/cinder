@@ -1,3 +1,4 @@
+cinder.tests.unit.api.contrib.test_admin_actions
 cinder.tests.unit.api.contrib.test_availability_zones
 cinder.tests.unit.api.contrib.test_capabilities
 cinder.tests.unit.api.contrib.test_extended_snapshot_attributes
