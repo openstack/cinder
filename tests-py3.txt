@@ -13,6 +13,7 @@ cinder.tests.unit.scheduler.test_scheduler_options
 cinder.tests.unit.scheduler.test_volume_number_weigher
 cinder.tests.unit.targets.test_base_iscsi_driver
 cinder.tests.unit.targets.test_cxt_driver
+cinder.tests.unit.targets.test_iet_driver
 cinder.tests.unit.targets.test_iser_driver
 cinder.tests.unit.targets.test_lio_driver
 cinder.tests.unit.targets.test_scst_driver
