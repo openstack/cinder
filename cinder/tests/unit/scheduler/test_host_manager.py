@@ -389,8 +389,13 @@ class HostManagerTestCase(test.TestCase):
                         'provisioned_capacity_gb': 9300},
                 }
             ]
+
+            def sort_func(data):
+                return data['name']
+
             self.assertEqual(len(expected), len(res))
-            self.assertEqual(sorted(expected), sorted(res))
+            self.assertEqual(sorted(expected, key=sort_func),
+                             sorted(res, key=sort_func))
 
 
 class HostStateTestCase(test.TestCase):
