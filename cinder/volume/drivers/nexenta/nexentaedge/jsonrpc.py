@@ -21,7 +21,10 @@
 """
 
 import json
-import urllib2
+import requests
+import socket
+import time
+from six import wraps
 
 from cinder.i18n import _, _LE, _LI
 
@@ -36,9 +39,31 @@ except:
         from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
+socket.setdefaulttimeout(100)
 
+def retry(exc_tuple, tries=5, delay=1, backoff=2):
+    def retry_dec(f):
+        @wraps(f)
+        def func_retry(*args, **kwargs):
+            _tries, _delay = tries, delay
+            while _tries > 1:
+                try:
+                    return f(*args, **kwargs)
+                except exc_tuple:
+                    time.sleep(_delay)
+                    _tries -= 1
+                    _delay *= backoff
+                    LOG.debug(_('Retrying %s, (%s attempts remaining)...'),
+                              (args, _tries))
+            msg = (_('Retry count exceeded for command: %s'), (args,))
+            LOG.error(msg)
+            raise Exception(msg)
+        return func_retry
+    return retry_dec
 
 class NexentaEdgeJSONProxy(object):
+
+    retry_exc_tuple = (requests.exceptions.ConnectionError,)
 
     def __init__(self, protocol, host, port, path, user, password, auto=False,
                  method=None):
@@ -71,6 +96,7 @@ class NexentaEdgeJSONProxy(object):
     def __repr__(self):
         return 'HTTP JSON proxy: %s' % self.url
 
+    @retry(retry_exc_tuple, tries=6)
     def __call__(self, *args):
         self.path += args[0]
         data = None
@@ -85,51 +111,19 @@ class NexentaEdgeJSONProxy(object):
 
         LOG.debug('Sending JSON data: %s', self.url)
 
-        try:
-            request = urllib2.Request(self.url, data, headers)
-            if self.method == 'get':
-                request.get_method = lambda: 'GET'
-            elif self.method == 'post':
-                request.get_method = lambda: 'POST'
-            elif self.method == 'put':
-                request.get_method = lambda: 'PUT'
-            elif self.method == 'delete':
-                request.get_method = lambda: 'DELETE'
+        if self.method == 'get':
+            req = requests.get(self.url, headers=headers)
+        if self.method == 'post':
+            req = requests.post(self.url, data=data, headers=headers)
+        if self.method == 'put':
+            req = requests.put(self.url, data=data, headers=headers)
+        if self.method == 'delete':
+            req = requests.delete(self.url, data=data, headers=headers)
 
-            response_obj = urllib2.urlopen(request)
-
-            # Handle 'auto' switch mode.. from HTTP to HTTPS
-            if response_obj.info().status == 'EOF in headers':
-                if not self.auto or self.protocol != 'http':
-                    LOG.error(_LE('No headers in server response'))
-                    raise Exception(_('Bad response from server'))
-                LOG.info(
-                    _LI('Auto switching to HTTPS connection to %s'), self.url)
-                self.protocol = 'https'
-                request = urllib2.Request(self.url, data, headers)
-                if self.method == 'get':
-                    request.get_method = lambda: 'GET'
-                elif self.method == 'post':
-                    request.get_method = lambda: 'POST'
-                elif self.method == 'put':
-                    request.get_method = lambda: 'PUT'
-                elif self.method == 'delete':
-                    request.get_method = lambda: 'DELETE'
-                response_obj = urllib2.urlopen(request)
-
-            response_data = response_obj.read()
-            rsp = json.loads(response_data)
-        except urllib2.HTTPError as e:
-            response_data = e.read()
-            rsp = json.loads(response_data)
-        except urllib2.URLError as e:
-            rsp = {'code': e.reason, 'message': e}
-        except Exception as e:
-            rsp = {'code': 'UNKNOWN_ERROR',
-                   "message": _LE('Error: %s') % e}
+        rsp = req.json()
+        req.close()
 
         LOG.info(_LI('Got response: %s') % rsp)
-
-        if 'code' in rsp:
-            raise Exception(rsp['message'])
-        return rsp['response']
+        if rsp.get('response') is None:
+            raise Exception(_LE('Bad response: %s') % rsp)
+        return rsp.get('response')
