@@ -7,9 +7,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 7.0.0.0b4.dev130\n"
+"Project-Id-Version: cinder 8.0.0.dev113\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-09-17 06:19+0000\n"
+"POT-Creation-Date: 2015-10-08 06:23+0000\n"
 "PO-Revision-Date: 2015-09-16 08:22+0000\n"
 "Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
 "Language-Team: Turkish (Turkey) (http://www.transifex.com/openstack/cinder/"
@@ -1437,14 +1437,6 @@ msgid "Plain text credentials are being used for authentication"
 msgstr "Kimlik doğrulama için düz metin kimlik bilgileri kullanılıyor"
 
 #, python-format
-msgid ""
-"Policy: %(policy)s, policy service:%(service)s, masking group: "
-"%(maskingGroup)s."
-msgstr ""
-"İlke: %(policy)s, ilke servisi:%(service)s, maskeleme grubu: "
-"%(maskingGroup)s."
-
-#, python-format
 msgid "Pool id is %s."
 msgstr "Havuz id'si %s."
 
@@ -1898,12 +1890,6 @@ msgid "Successful login by user %s"
 msgstr "%s kullanıcısı tarafından başarılı giriş"
 
 #, python-format
-msgid ""
-"Successfully cloned new backing: %(back)s from source VMDK file: %(vmdk)s."
-msgstr ""
-"Yeni destek: %(back)s VMDK dosyası: %(vmdk)s kaynağından başarıyla klonlandı."
-
-#, python-format
 msgid "Successfully completed ssc job for %(server)s and vserver %(vs)s"
 msgstr "%(server)s ve vserver %(vs)s için ssc işi başarıyla tamamlandı"
 
@@ -2101,27 +2087,11 @@ msgstr ""
 
 #, python-format
 msgid ""
-"There is no backing for the source snapshot: %(snap)s. Not creating any "
-"backing for the volume: %(vol)s."
-msgstr ""
-"Kaynak anlık görüntü: %(snap)s için destek yok. Mantıksal sürücü: %(vol)s "
-"için destek oluşturulmuyor."
-
-#, python-format
-msgid ""
 "There is no backing for the source volume: %(src)s. Not creating any backing "
 "for volume: %(vol)s."
 msgstr ""
 "Kaynak mantıksal sürücü: %(src)s için destek yok. Mantıksal sürücü: %(vol)s "
 "için herhangi bir destek oluşturulmuyor."
-
-#, python-format
-msgid ""
-"There is no backing for the source volume: %(svol)s. Not creating any "
-"backing for the volume: %(vol)s."
-msgstr ""
-"Kaynak mantıksal sürücü: %(svol)s için destek yok. Mantıksal sürücü: %(vol)s "
-"için bir destek oluşturulmuyor."
 
 #, python-format
 msgid "There is no backing for the volume: %s. Need to create one."

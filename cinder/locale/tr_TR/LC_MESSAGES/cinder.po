@@ -7,9 +7,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev5\n"
+"Project-Id-Version: cinder 8.0.0.dev113\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-09-28 06:18+0000\n"
+"POT-Creation-Date: 2015-10-08 06:23+0000\n"
 "PO-Revision-Date: 2015-09-16 08:16+0000\n"
 "Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
 "Language: tr_TR\n"
@@ -2257,10 +2257,6 @@ msgstr "Mantıksal sürücü api'si oluşturulamadı."
 #, python-format
 msgid "Failed to create cg snapshot %(id)s due to %(reason)s."
 msgstr "%(reason)s sebebiyle cg anlık görüntüsü %(id)s oluşturulamadı."
-
-#, python-format
-msgid "Failed to create cloned volume %s."
-msgstr "Kopyalanmış %s mantıksal sürücüsü oluşturulamadı."
 
 #, python-format
 msgid "Failed to create consistency group %(id)s due to %(reason)s."
@@ -5963,6 +5959,9 @@ msgstr "Bilinmeyen sıralama yönü, 'desc' ya da 'asc'"
 
 msgid "Unknown sort direction, must be 'desc' or 'asc'."
 msgstr "Bilinmeyen sıralama yönü, 'desc' ya da 'asc' olmalıdır."
+
+msgid "Unmanage volume not implemented."
+msgstr "Mantıksal sürücünün yönetimini bırakma uygulanmadı."
 
 #, python-format
 msgid "Unrecognized QOS keyword: \"%s\""
