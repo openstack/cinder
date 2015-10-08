@@ -63,6 +63,8 @@ def retry(exc_tuple, tries=5, delay=1, backoff=2):
 
 class NexentaEdgeJSONProxy(object):
 
+    retry_exc_tuple = (requests.exceptions.ConnectionError,)
+
     def __init__(self, protocol, host, port, path, user, password, auto=False,
                  method=None):
         self.protocol = protocol.lower()
@@ -94,6 +96,7 @@ class NexentaEdgeJSONProxy(object):
     def __repr__(self):
         return 'HTTP JSON proxy: %s' % self.url
 
+    @retry(retry_exc_tuple, tries=6)
     def __call__(self, *args):
         self.path += args[0]
         data = None
