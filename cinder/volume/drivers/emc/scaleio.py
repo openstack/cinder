@@ -148,7 +148,7 @@ class ScaleIODriver(driver.VolumeDriver):
             {'domain_name': self.protection_domain_name})
         self.protection_domain_id = self.configuration.sio_protection_domain_id
         LOG.info(_LI(
-            "Protection domain name: %(domain_id)s."),
+            "Protection domain id: %(domain_id)s."),
             {'domain_id': self.protection_domain_id})
 
         self.connector = connector.InitiatorConnector.factory(
