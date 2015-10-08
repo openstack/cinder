@@ -530,7 +530,7 @@ class XtremIOVolumeDriver(san.SanDriver):
             lunmap = self._obj_from_result(res)
             LOG.info(_LI('Created lun-map:\n%s'), lunmap)
         except exception.XtremIOAlreadyMappedError:
-            LOG.info(_LI('Volume already mapped, retrieving %(ig)s, %(vol)d'),
+            LOG.info(_LI('Volume already mapped, retrieving %(ig)s, %(vol)s'),
                      {'ig': ig, 'vol': volume['id']})
             lunmap = self.client.find_lunmap(ig, volume['id'])
         return lunmap
@@ -748,7 +748,7 @@ class XtremIOISCSIDriver(XtremIOVolumeDriver, driver.ISCSIDriver):
             self.client.req('initiators', 'PUT', data, idx=initiator['index'])
 
         # lun mappping
-        lunmap = self.create_lun_map(volume, ig['ig-id'][2])
+        lunmap = self.create_lun_map(volume, ig['ig-id'][1])
 
         properties = self._get_iscsi_properties(lunmap)
 
