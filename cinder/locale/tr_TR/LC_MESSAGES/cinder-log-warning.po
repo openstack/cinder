@@ -7,9 +7,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 7.0.0.0b4.dev130\n"
+"Project-Id-Version: cinder 8.0.0.dev113\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-09-17 06:19+0000\n"
+"POT-Creation-Date: 2015-10-08 06:23+0000\n"
 "PO-Revision-Date: 2015-08-26 03:31+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: Turkish (Turkey) (http://www.transifex.com/openstack/cinder/"
@@ -267,12 +267,6 @@ msgid "Detected snapshot stuck in creating status, setting to ERROR."
 msgstr ""
 "Oluşturma durumunda kalmış anlık görüntü algılandı, HATA olarak ayarlanıyor."
 
-#, python-format
-msgid "Detected volume stuck in %s(curr_status)s status, setting to ERROR."
-msgstr ""
-"%s(curr_status)s durumunda sıkışıp kalmış mantıksal sürücü algılandı, HATA "
-"olarak ayarlanıyor."
-
 msgid "Discover file retries exhausted."
 msgstr "Dosya keşfi yeniden denemeleri tükendi."
 
@@ -465,14 +459,6 @@ msgid "Failed to extract initiators of %s, so ignore deregistration operation."
 msgstr ""
 "%s ilklendiricilerinin çıkarılması başarısız, kayıt silme işlemini göz ardı "
 "et."
-
-#, python-format
-msgid ""
-"Failed to find CHAP auth from config for %(vol_id)s. Config file %(conf)s "
-"does not exist."
-msgstr ""
-"%(vol_id)s için yapılandırmadan CHAP yetkilendirme bulma başarısız. %(conf)s "
-"yapılandırma dosyası mevcut değil."
 
 msgid "Failed to get Raid Snapshot ID and did not store in snapshot."
 msgstr ""
@@ -1216,14 +1202,6 @@ msgstr ""
 "bu komut satırından bir Retype üzerinde gerçekleşir: cinder --os-volume-api-"
 "version 2 retype <volumeId> <volumeType> --migration-policy on-demand"
 
-msgid ""
-"The VMware ESX VMDK driver is now deprecated and will be removed in the Juno "
-"release. The VMware vCenter VMDK driver will remain and continue to be "
-"supported."
-msgstr ""
-"VMware ESX VMDK sürücüsü artık kullanılmıyor ve Juno sürümüyle kaldırılacak. "
-"VMware vCenter VMDK sürücüsü kalacak ve desteklenmeye devam edilecek."
-
 #, python-format
 msgid ""
 "The following specified storage pools do not exist: %(unexist)s. This host "
@@ -1480,13 +1458,6 @@ msgid ""
 msgstr ""
 "Mantıksal sürücü: %(volumeName)s %(defaultSgGroupName)s depolama grubuna ait "
 "değil."
-
-#, python-format
-msgid ""
-"Volume: %(volumeName)s is already part of storage group %(sgGroupName)s."
-msgstr ""
-"Mantıksal sürücü: %(volumeName)s zaten %(sgGroupName)s depolama grubunun "
-"parçası."
 
 #, python-format
 msgid "Volume: %(volumeName)s is not currently belonging to any storage group."
