@@ -24,7 +24,7 @@ import json
 
 from cinder.i18n import _, _LE
 from cinder.volume import driver
-from cinder.volume.drivers.nexenta.nexentaedge import jsonrpc as jsonrpc
+from cinder.volume.drivers.nexenta.nexentaedge import jsonrpc
 
 #from oslo_config import cfg
 #from oslo_log import log as logging
@@ -91,7 +91,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
     VERSION = '1.0.0'
 
     LUN_BLOCKSIZE = 4096
-    LUN_CHUNKSIZE = 32768
+    LUN_CHUNKSIZE = 16384
 
     def __init__(self, *args, **kwargs):
         super(NexentaEdgeISCSIDriver, self).__init__(*args, **kwargs)
@@ -290,29 +290,29 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
     def remove_export(self, context, volume):
         pass
 
-    def initialize_connection(self, volume, connector):
-        lunNumber = self._get_lun_number(volume['name'])
-
-        target_portal = (self._get_target_address(volume['name']) + ':' +
-                         str(self.iscsi_target_port))
-        return {
-            'driver_volume_type': 'iscsi',
-            'data': {
-                'bucket_path': self.bucket_path,
-                'target_discovered': True,
-                'target_lun': lunNumber,
-                'target_iqn': self.target_name,
-                'target_portal': target_portal,
-                'volume_id': volume['id'],
-                'access_mode': 'rw'
-            }
-        }
-
-    def terminate_connection(self, volume, connector, **kwargs):
-        pass
+#    def initialize_connection(self, volume, connector):
+#        lunNumber = self._get_lun_number(volume['name'])
+#
+#        target_portal = (self._get_target_address(volume['name']) + ':' +
+#                         str(self.iscsi_target_port))
+#        return {
+#            'driver_volume_type': 'iscsi',
+#            'data': {
+#                'bucket_path': self.bucket_path,
+#                'target_discovered': True,
+#                'target_lun': lunNumber,
+#                'target_iqn': self.target_name,
+#                'target_portal': target_portal,
+#                'volume_id': volume['id'],
+#                'access_mode': 'rw'
+#            }
+#        }
+#
+#    def terminate_connection(self, volume, connector, **kwargs):
+#        pass
 
     def local_path(self, volume):
-        return self.bucket_path + '/' + volume['name']
+        raise NotImplementedError
 
     def get_volume_stats(self, refresh=False):
         location_info = '%(driver)s:%(host)s:%(bucket)s' % {
