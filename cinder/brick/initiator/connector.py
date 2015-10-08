@@ -43,6 +43,8 @@ LOG = logging.getLogger(__name__)
 synchronized = lockutils.synchronized_with_prefix('brick-')
 DEVICE_SCAN_ATTEMPTS_DEFAULT = 3
 MULTIPATH_ERROR_REGEX = re.compile("\w{3} \d+ \d\d:\d\d:\d\d \|.*$")
+MULTIPATH_DEV_CHECK_REGEX = re.compile("\s+dm-\d+\s+")
+MULTIPATH_PATH_CHECK_REGEX = re.compile("\s+\d+:\d+:\d+:\d+\s+")
 
 
 def _check_multipathd_running(root_helper, enforce_multipath):
@@ -477,6 +479,7 @@ class ISCSIConnector(InitiatorConnector):
                                            multipath_name):
         """This removes a multipath device and it's LUNs."""
         LOG.debug("Disconnect multipath device %s" % multipath_name)
+        mpath_map = self._get_multipath_device_map()
         block_devices = self.driver.get_all_block_devices()
         devices = []
         for dev in block_devices:
@@ -484,7 +487,7 @@ class ISCSIConnector(InitiatorConnector):
                 if "/mapper/" in dev:
                     devices.append(dev)
                 else:
-                    mpdev = self._get_multipath_device_name(dev)
+                    mpdev = mpath_map.get(dev)
                     if mpdev:
                         devices.append(mpdev)
 
@@ -499,8 +502,7 @@ class ISCSIConnector(InitiatorConnector):
             return
 
         # Get a target for all other multipath devices
-        other_iqns = [self._get_multipath_iqn(device)
-                      for device in devices]
+        other_iqns = self._get_multipath_iqns(devices, mpath_map)
         # Get all the targets for the current multipath device
         current_iqns = [iqn for ip, iqn in ips_iqns]
 
@@ -623,14 +625,34 @@ class ISCSIConnector(InitiatorConnector):
 
         self._rescan_multipath()
 
-    def _get_multipath_iqn(self, multipath_device):
+    def _get_multipath_iqns(self, multipath_devices, mpath_map):
         entries = self._get_iscsi_devices()
+        iqns = []
         for entry in entries:
             entry_real_path = os.path.realpath("/dev/disk/by-path/%s" % entry)
-            entry_multipath = self._get_multipath_device_name(entry_real_path)
-            if entry_multipath == multipath_device:
-                return entry.split("iscsi-")[1].split("-lun")[0]
-        return None
+            entry_multipath = mpath_map.get(entry_real_path)
+            if entry_multipath and entry_multipath in multipath_devices:
+                iqns.append(entry.split("iscsi-")[1].split("-lun")[0])
+        return iqns
+
+    def _get_multipath_device_map(self):
+        out = self._run_multipath(['-ll'], check_exit_code=[0, 1])[0]
+        mpath_line = [line for line in out.splitlines()
+                      if not re.match(MULTIPATH_ERROR_REGEX, line)]
+        mpath_dev = None
+        mpath_map = {}
+        for line in out.splitlines():
+            m = MULTIPATH_DEV_CHECK_REGEX.split(line)
+            if len(m) >= 2:
+                mpath_dev = '/dev/mapper/' + m[0].split(" ")[0]
+                continue
+            m = MULTIPATH_PATH_CHECK_REGEX.split(line)
+            if len(m) >= 2:
+                mpath_map['/dev/' + m[1].split(" ")[0]] = mpath_dev
+
+        if mpath_line and not mpath_map:
+            LOG.warn(_LW("Failed to parse the output of multipath -ll."))
+        return mpath_map
 
     def _run_iscsiadm_bare(self, iscsi_command, **kwargs):
         check_exit_code = kwargs.pop('check_exit_code', 0)
