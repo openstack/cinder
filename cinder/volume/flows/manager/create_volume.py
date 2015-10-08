@@ -213,7 +213,8 @@ class ExtractVolumeRefTask(flow_utils.CinderTask):
         if isinstance(result, ft.Failure) or not self.set_error:
             return
 
-        common.error_out_volume(context, self.db, volume_id)
+        reason = _('Volume create failed while extracting volume ref.')
+        common.error_out_volume(context, self.db, volume_id, reason=reason)
         LOG.error(_LE("Volume %s: create failed"), volume_id)
 
 
