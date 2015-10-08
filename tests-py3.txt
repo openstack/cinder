@@ -76,6 +76,7 @@ cinder.tests.unit.test_scality
 cinder.tests.unit.test_service
 cinder.tests.unit.test_sheepdog
 cinder.tests.unit.test_smbfs
+cinder.tests.unit.test_srb
 cinder.tests.unit.test_solidfire
 cinder.tests.unit.test_test
 cinder.tests.unit.test_test_utils

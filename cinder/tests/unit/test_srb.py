@@ -17,6 +17,7 @@
 import mock
 from oslo_concurrency import processutils
 from oslo_utils import units
+import six
 
 from cinder import context
 from cinder import exception
@@ -265,7 +266,7 @@ class SRBDriverTestCase(test.TestCase):
 
     @staticmethod
     def _convert_size(s):
-        if isinstance(s, (int, long)):
+        if isinstance(s, six.integer_types):
             return s
 
         try:

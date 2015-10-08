@@ -17,7 +17,6 @@
 LVM class for performing LVM operations.
 """
 
-import itertools
 import math
 import os
 import re
@@ -26,6 +25,7 @@ from os_brick import executor
 from oslo_concurrency import processutils as putils
 from oslo_log import log as logging
 from oslo_utils import excutils
+from six import moves
 
 from cinder import exception
 from cinder.i18n import _LE, _LI
@@ -290,7 +290,8 @@ class LVM(executor.Executor):
         lv_list = []
         if out is not None:
             volumes = out.split()
-            for vg, name, size in itertools.izip(*[iter(volumes)] * 3):
+            iterator = moves.zip(*[iter(volumes)] * 3)  # pylint: disable=E1101
+            for vg, name, size in iterator:
                 lv_list.append({"vg": vg, "name": name, "size": size})
 
         return lv_list
