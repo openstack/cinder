@@ -23,7 +23,6 @@ import warnings
 
 from oslo_config import cfg
 from oslo_log import log as logging
-from oslo_utils import importutils
 from oslo_utils import timeutils
 from oslo_utils import units
 import requests
@@ -183,12 +182,12 @@ class SolidFireDriver(san.SanISCSIDriver):
         if self.configuration.sf_allow_template_caching:
             account = self.configuration.sf_template_account_name
             self.template_account_id = self._create_template_account(account)
-        self.target_driver = (
-            importutils.import_object(
-                'cinder.volume.drivers.solidfire.SolidFireISCSI',
-                solidfire_driver=self,
-                configuration=self.configuration))
+        self.target_driver = SolidFireISCSI(solidfire_driver=self,
+                                            configuration=self.configuration)
         self._set_cluster_uuid()
+
+    def __getattr__(self, attr):
+        return getattr(self.target_driver, attr)
 
     def _set_cluster_uuid(self):
         self.cluster_uuid = (
@@ -1300,42 +1299,17 @@ class SolidFireDriver(san.SanISCSIDriver):
         self._issue_api_request('ModifyVolume',
                                 params, version='5.0')
 
-    # #### Interface methods for transport layer #### #
-
-    # TODO(jdg): SolidFire can mix and do iSCSI and FC on the
-    # same cluster, we'll modify these later to check based on
-    # the volume info if we need an FC target driver or an
-    # iSCSI target driver
-    def ensure_export(self, context, volume):
-        return self.target_driver.ensure_export(context, volume, None)
-
-    def create_export(self, context, volume, connector):
-        return self.target_driver.create_export(
-            context,
-            volume,
-            None)
-
-    def remove_export(self, context, volume):
-        return self.target_driver.remove_export(context, volume)
-
-    def initialize_connection(self, volume, connector):
-        return self.target_driver.initialize_connection(volume, connector)
-
-    def validate_connector(self, connector):
-        return self.target_driver.validate_connector(connector)
-
-    def terminate_connection(self, volume, connector, **kwargs):
-        return self.target_driver.terminate_connection(volume, connector,
-                                                       **kwargs)
-
 
 class SolidFireISCSI(iscsi_driver.SanISCSITarget):
     def __init__(self, *args, **kwargs):
         super(SolidFireISCSI, self).__init__(*args, **kwargs)
         self.sf_driver = kwargs.get('solidfire_driver')
 
+    def __getattr__(self, attr):
+        return getattr(self.sf_driver, attr)
+
     def _do_iscsi_export(self, volume):
-        sfaccount = self.sf_driver._get_sfaccount(volume['project_id'])
+        sfaccount = self._get_sfaccount(volume['project_id'])
         model_update = {}
         model_update['provider_auth'] = ('CHAP %s %s'
                                          % (sfaccount['username'],
