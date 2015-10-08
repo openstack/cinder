@@ -426,7 +426,10 @@ class NaElement(object):
                               pretty_print=pretty)
 
     def __str__(self):
-        return self.to_string(pretty=True)
+        xml = self.to_string(pretty=True)
+        if six.PY3:
+            xml = xml.decode('utf-8')
+        return xml
 
     def __repr__(self):
         return str(self)
