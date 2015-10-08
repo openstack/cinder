@@ -574,7 +574,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             shared = False  # LU does not exist
         return shared
 
-    def create_export(self, _ctx, volume, connector):
+    def create_export(self, _ctx, volume):
         """Create new export for zvol.
         :param volume: reference of volume to be exported
         :return: iscsiadm-formatted provider location string
