@@ -449,7 +449,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
         # 1. The notifications are periodically sent in a certain interval.
         # 2. The notifications are sent after a certain number of chunks.
         # Both of them are working simultaneously during the volume backup,
-        # when swift is taken as the backup backend.
+        # when "chunked" backup drivers are deployed.
         def _notify_progress():
             self._send_progress_notification(self.context, backup,
                                              object_meta,
@@ -707,7 +707,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
             try:
                 object_names = self._generate_object_names(backup)
             except Exception:
-                LOG.warning(_LW('swift error while listing objects, continuing'
+                LOG.warning(_LW('Error while listing objects, continuing'
                                 ' with delete.'))
 
             for object_name in object_names:
