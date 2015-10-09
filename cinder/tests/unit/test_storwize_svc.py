@@ -223,6 +223,7 @@ class StorwizeSVCManagementSimulator(object):
             'compressed',
             'force',
             'nohdr',
+            'nofmtdisk'
         ]
         one_param_args = [
             'chapsecret',
@@ -622,6 +623,7 @@ port_speed!N/A
                 volume_info['easy_tier'] = 'off'
 
         if 'rsize' in kwargs:
+            volume_info['formatted'] = 'no'
             # Fake numbers
             volume_info['used_capacity'] = '786432'
             volume_info['real_capacity'] = '21474816'
@@ -650,6 +652,10 @@ port_speed!N/A
             volume_info['autoexpand'] = ''
             volume_info['grainsize'] = ''
             volume_info['compressed_copy'] = 'no'
+            volume_info['formatted'] = 'yes'
+            if 'nofmtdisk' in kwargs:
+                if kwargs['nofmtdisk']:
+                    volume_info['formatted'] = 'no'
 
         vol_cp = {'id': '0',
                   'status': 'online',
@@ -778,7 +784,7 @@ port_speed!N/A
             rows.append(['IO_group_name', vol['IO_group_name']])
             rows.append(['status', 'online'])
             rows.append(['capacity', cap])
-            rows.append(['formatted', 'no'])
+            rows.append(['formatted', vol['formatted']])
             rows.append(['mdisk_id', ''])
             rows.append(['mdisk_name', ''])
             rows.append(['FC_id', fcmap_info['fc_id']])
@@ -1840,6 +1846,12 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                           self.driver.check_for_setup_error)
         self._reset_flags()
 
+        self._set_flag('storwize_svc_vol_rsize', 2)
+        self._set_flag('storwize_svc_vol_nofmtdisk', True)
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.check_for_setup_error)
+        self._reset_flags()
+
         self._set_flag('storwize_svc_connection_protocol', 'foo')
         self.assertRaises(exception.InvalidInput,
                           self.driver.check_for_setup_error)
@@ -1940,7 +1952,8 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                'iogrp': 0,
                'qos': None,
                'replication': False,
-               'stretched_cluster': None}
+               'stretched_cluster': None,
+               'nofmtdisk': False}
         return opt
 
     @mock.patch.object(helpers.StorwizeHelpers, 'add_vdisk_qos')
@@ -2186,12 +2199,21 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         # easytier      False   2
         # iogrp         0       1
         # iogrp         1       2
+        # nofmtdisk     False   1
+        # nofmtdisk     True    1
 
         opts_list = []
         chck_list = []
         opts_list.append({'rsize': -1, 'easytier': True, 'iogrp': 0})
         chck_list.append({'free_capacity': '0', 'easy_tier': 'on',
                           'IO_group_id': '0'})
+
+        opts_list.append({'rsize': -1, 'nofmtdisk': False})
+        chck_list.append({'formatted': 'yes'})
+
+        opts_list.append({'rsize': -1, 'nofmtdisk': True})
+        chck_list.append({'formatted': 'no'})
+
         test_iogrp = 1 if self.USESIM else 0
         opts_list.append({'rsize': 2, 'compression': False, 'warning': 0,
                           'autoexpand': True, 'grainsize': 32,

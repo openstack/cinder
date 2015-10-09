@@ -399,7 +399,8 @@ class StorwizeHelpers(object):
                'iogrp': config.storwize_svc_vol_iogrp,
                'qos': None,
                'stretched_cluster': cluster_partner,
-               'replication': False}
+               'replication': False,
+               'nofmtdisk': config.storwize_svc_vol_nofmtdisk}
         return opt
 
     @staticmethod
@@ -438,6 +439,11 @@ class StorwizeHelpers(object):
                          'I/O groups are %(avail)s.')
                 % {'iogrp': opts['iogrp'],
                    'avail': avail_grps})
+
+        if opts['nofmtdisk'] and opts['rsize'] != -1:
+            raise exception.InvalidInput(
+                reason=_('If nofmtdisk is set to True, rsize must '
+                         'also be set to -1.'))
 
     def _get_opts_from_specs(self, opts, specs):
         qos = {}
@@ -594,9 +600,10 @@ class StorwizeHelpers(object):
     @staticmethod
     def _get_vdisk_create_params(opts):
         easytier = 'on' if opts['easytier'] else 'off'
-
         if opts['rsize'] == -1:
             params = []
+            if opts['nofmtdisk']:
+                params.append('-nofmtdisk')
         else:
             params = ['-rsize', '%s%%' % str(opts['rsize']),
                       '-autoexpand', '-warning',
