@@ -105,6 +105,11 @@ class BackupSwiftTestCase(test.TestCase):
         for _i in range(0, 64):
             self.volume_file.write(os.urandom(1024))
 
+        notify_patcher = mock.patch(
+            'cinder.volume.utils.notify_about_backup_usage')
+        notify_patcher.start()
+        self.addCleanup(notify_patcher.stop)
+
     def test_backup_swift_url(self):
         self.ctxt.service_catalog = [{u'type': u'object-store',
                                       u'name': u'swift',
