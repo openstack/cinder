@@ -171,6 +171,7 @@ class VolumeApiTest(test.TestCase):
                    'bootable': 'false',
                    'consistencygroup_id': consistencygroup_id,
                    'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
+                   'updated_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
                    'description': description,
                    'id': stubs.DEFAULT_VOL_ID,
                    'links':
@@ -637,7 +638,9 @@ class VolumeApiTest(test.TestCase):
         attachment = db.volume_attach(context.get_admin_context(), values)
         db.volume_attached(context.get_admin_context(),
                            attachment['id'], stubs.FAKE_UUID, None, '/')
-
+        attach_tmp = db.volume_attachment_get(context.get_admin_context(),
+                                              attachment['id'])
+        volume_tmp = db.volume_get(context.get_admin_context(), '1')
         updates = {
             "name": "Updated Test Name",
         }
@@ -650,16 +653,17 @@ class VolumeApiTest(test.TestCase):
         expected = self._expected_vol_from_controller(
             availability_zone=stubs.DEFAULT_AZ, volume_type=None,
             status='in-use', name='Updated Test Name',
-            attachments=[{
-                'id': '1',
-                'attachment_id': attachment['id'],
-                'volume_id': stubs.DEFAULT_VOL_ID,
-                'server_id': stubs.FAKE_UUID,
-                'host_name': None,
-                'device': '/',
-            }],
+            attachments=[{'id': '1',
+                          'attachment_id': attachment['id'],
+                          'volume_id': stubs.DEFAULT_VOL_ID,
+                          'server_id': stubs.FAKE_UUID,
+                          'host_name': None,
+                          'device': '/',
+                          'attached_at': attach_tmp['attach_time'],
+                          }],
             metadata={'key': 'value', 'readonly': 'True'},
             with_migration_status=True)
+        expected['volume']['updated_at'] = volume_tmp['updated_at']
         self.assertEqual(expected, res_dict)
         self.assertEqual(2, len(self.notifier.notifications))
         self.assertTrue(mock_validate.called)
@@ -751,6 +755,9 @@ class VolumeApiTest(test.TestCase):
         attachment = db.volume_attach(context.get_admin_context(), values)
         db.volume_attached(context.get_admin_context(),
                            attachment['id'], stubs.FAKE_UUID, None, '/')
+        attach_tmp = db.volume_attachment_get(context.get_admin_context(),
+                                              attachment['id'])
+        volume_tmp = db.volume_get(context.get_admin_context(), '1')
 
         req = fakes.HTTPRequest.blank('/v2/volumes/detail')
         admin_ctx = context.RequestContext('admin', 'fakeproject', True)
@@ -764,9 +771,12 @@ class VolumeApiTest(test.TestCase):
                           'server_id': stubs.FAKE_UUID,
                           'host_name': None,
                           'id': '1',
-                          'volume_id': stubs.DEFAULT_VOL_ID}],
+                          'volume_id': stubs.DEFAULT_VOL_ID,
+                          'attached_at': attach_tmp['attach_time'],
+                          }],
             metadata={'key': 'value', 'readonly': 'True'},
             with_migration_status=True)
+        exp_vol['volume']['updated_at'] = volume_tmp['updated_at']
         expected = {'volumes': [exp_vol['volume']]}
         self.assertEqual(expected, res_dict)
 
@@ -1167,7 +1177,9 @@ class VolumeApiTest(test.TestCase):
         attachment = db.volume_attach(context.get_admin_context(), values)
         db.volume_attached(context.get_admin_context(),
                            attachment['id'], stubs.FAKE_UUID, None, '/')
-
+        attach_tmp = db.volume_attachment_get(context.get_admin_context(),
+                                              attachment['id'])
+        volume_tmp = db.volume_get(context.get_admin_context(), '1')
         req = fakes.HTTPRequest.blank('/v2/volumes/1')
         admin_ctx = context.RequestContext('admin', 'fakeproject', True)
         req.environ['cinder.context'] = admin_ctx
@@ -1175,15 +1187,17 @@ class VolumeApiTest(test.TestCase):
         expected = self._expected_vol_from_controller(
             availability_zone=stubs.DEFAULT_AZ,
             volume_type=None, status='in-use',
-            attachments=[{
-                'id': '1',
-                'attachment_id': attachment['id'],
-                'volume_id': stubs.DEFAULT_VOL_ID,
-                'server_id': stubs.FAKE_UUID,
-                'host_name': None,
-                'device': '/'}],
+            attachments=[{'id': '1',
+                          'attachment_id': attachment['id'],
+                          'volume_id': stubs.DEFAULT_VOL_ID,
+                          'server_id': stubs.FAKE_UUID,
+                          'host_name': None,
+                          'device': '/',
+                          'attached_at': attach_tmp['attach_time'],
+                          }],
             metadata={'key': 'value', 'readonly': 'True'},
             with_migration_status=True)
+        expected['volume']['updated_at'] = volume_tmp['updated_at']
         self.assertEqual(expected, res_dict)
 
     def test_volume_show_with_encrypted_volume(self):

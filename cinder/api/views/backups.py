@@ -70,6 +70,7 @@ class ViewBuilder(common.ViewBuilder):
                 'availability_zone': backup.get('availability_zone'),
                 'container': backup.get('container'),
                 'created_at': backup.get('created_at'),
+                'updated_at': backup.get('updated_at'),
                 'name': backup.get('display_name'),
                 'description': backup.get('display_description'),
                 'fail_reason': backup.get('fail_reason'),
