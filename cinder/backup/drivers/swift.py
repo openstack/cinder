@@ -35,6 +35,8 @@
                                None (to disable), zlib and bz2 (default: zlib)
 :backup_swift_ca_cert_file: The location of the CA certificate file to use
                             for swift client requests (default: None)
+:backup_swift_auth_insecure: If true, bypass verification of server's
+                             certificate for SSL connections (default: False)
 """
 
 import hashlib
@@ -107,6 +109,10 @@ swiftbackup_service_opts = [
                default=None,
                help='Location of the CA certificate file to use for swift '
                     'client requests.'),
+    cfg.BoolOpt('backup_swift_auth_insecure',
+                default=False,
+                help='Bypass verification of server certificate when '
+                     'making SSL connection to Swift.'),
 ]
 
 CONF = cfg.CONF
@@ -153,6 +159,7 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
         self.swift_backoff = CONF.backup_swift_retry_backoff
         LOG.debug('Connect to %s in "%s" mode', CONF.backup_swift_url,
                   CONF.backup_swift_auth)
+        self.backup_swift_auth_insecure = CONF.backup_swift_auth_insecure
         if CONF.backup_swift_auth == 'single_user':
             if CONF.backup_swift_user is None:
                 LOG.error(_LE("single_user auth mode enabled, "
@@ -167,12 +174,15 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
                 key=CONF.backup_swift_key,
                 retries=self.swift_attempts,
                 starting_backoff=self.swift_backoff,
+                insecure=self.backup_swift_auth_insecure,
                 cacert=CONF.backup_swift_ca_cert_file)
         else:
             self.conn = swift.Connection(retries=self.swift_attempts,
                                          preauthurl=self.swift_url,
                                          preauthtoken=self.context.auth_token,
                                          starting_backoff=self.swift_backoff,
+                                         insecure= (
+                                             self.backup_swift_auth_insecure),
                                          cacert=CONF.backup_swift_ca_cert_file)
 
     class SwiftObjectWriter(object):
