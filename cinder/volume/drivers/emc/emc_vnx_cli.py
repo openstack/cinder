@@ -2262,17 +2262,24 @@ class EMCVnxCliBase(object):
             self._get_and_validate_extra_specs(new_specs))
 
         # Check what changes are needed
-        migration, tiering_change = self.determine_changes_when_retype(
-            volume, new_type, host)
+        changes = self.determine_changes_when_retype(volume, new_type, host)
 
-        # Reject if volume has snapshot when migration is needed
-        if migration and self._client.check_lun_has_snap(
-                self.get_lun_id(volume)):
-            LOG.debug('Driver is not able to do retype because the volume '
-                      'has snapshot which is forbidden to migrate.')
-            return False
+        if self._client.check_lun_has_snap(self.get_lun_id(volume)):
+            # Reject if volume has snapshot when migration is needed
+            if changes['migration']:
+                LOG.debug('Driver is not able to do retype because the volume '
+                          '%s has a snapshot which is forbidden to migrate.',
+                          volume['id'])
+                return False
+            # Reject if volume has snapshot when trying to
+            # turn on compression
+            if changes['compression_on']:
+                LOG.debug('Driver is not able to do retype because the volume '
+                          '%s has a snapshot which is forbidden to turn on '
+                          'compression.', volume['id'])
+                return False
 
-        if migration:
+        if changes['migration']:
             # Check whether the migration is valid
             is_valid, target_pool_name = (
                 self._is_valid_for_storage_assisted_migration(
@@ -2292,16 +2299,21 @@ class EMCVnxCliBase(object):
                           'storage-assisted migration is not valid '
                           'in this situation.')
                 return False
-        elif tiering_change:
+        if changes['compression_on']:
+            # Turn on compression feature on the volume
+            self._client.enable_or_disable_compression_on_lun(
+                volume['name'], 'on')
+        if changes['tiering']:
             # Modify lun to change tiering policy
             self._client.modify_lun_tiering(volume['name'], new_tiering)
-            return True
-        else:
-            return True
+        return True
 
     def determine_changes_when_retype(self, volume, new_type, host):
-        migration = False
-        tiering_change = False
+        changes = {
+            'migration': False,
+            'tiering': False,
+            'compression_on': False
+        }
 
         old_specs = self.get_volumetype_extraspecs(volume)
         old_provisioning, old_tiering, old_snapcopy = (
@@ -2314,15 +2326,20 @@ class EMCVnxCliBase(object):
         lun_type = self._extract_provider_location_for_lun(
             volume['provider_location'], 'type')
 
-        if volume['host'] != host['host'] or \
-                old_provisioning != new_provisioning:
-            migration = True
+        if volume['host'] != host['host']:
+            changes['migration'] = True
+        elif old_provisioning != new_provisioning:
+            if (old_provisioning in ['thin', 'thick'] and
+                    new_provisioning == 'compressed'):
+                changes['compression_on'] = True
+            else:
+                changes['migration'] = True
         if lun_type == 'smp':
-            migration = True
+            changes['migration'] = True
 
         if new_tiering != old_tiering:
-            tiering_change = True
-        return migration, tiering_change
+            changes['tiering'] = True
+        return changes
 
     def determine_all_enablers_exist(self, enablers):
         """Determine all wanted enablers whether exist."""

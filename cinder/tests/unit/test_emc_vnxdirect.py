@@ -596,6 +596,11 @@ class EMCVNXCLIDriverTestData(object):
         return ('snap', '-modify', '-id', snap_name,
                 '-allowReadWrite', 'yes', '-allowAutoDelete', 'yes')
 
+    def MODIFY_TIERING_CMD(self, lun_name, tiering):
+        cmd = ['lun', '-modify', '-name', lun_name, '-o']
+        cmd.extend(self.tiering_values[tiering])
+        return tuple(cmd)
+
     provisioning_values = {
         'thin': ['-type', 'Thin'],
         'thick': ['-type', 'NonThin'],
@@ -3046,15 +3051,10 @@ Time Remaining:  0 second(s)
     @mock.patch(
         "cinder.volume.volume_types."
         "get_volume_type_extra_specs",
-        mock.Mock(return_value={'storagetype:provisioning': 'thin'}))
-    def test_retype_thin_to_compressed_auto(self):
-        """Unit test for retype thin to compressed and auto tiering."""
-        diff_data = {'encryption': {}, 'qos_specs': {},
-                     'extra_specs':
-                     {'storagetype:provsioning': ('thin',
-                                                  'compressed'),
-                      'storagetype:tiering': (None, 'auto')}}
-
+        mock.Mock(side_effect=[{'provisioning:type': 'thin'},
+                               {'provisioning:type': 'thick'}]))
+    def test_retype_turn_on_compression_and_autotiering(self):
+        """Unit test for retype a volume to compressed and auto tiering."""
         new_type_data = {'name': 'voltype0', 'qos_specs_id': None,
                          'deleted': False,
                          'extra_specs': {'storagetype:provisioning':
@@ -3062,20 +3062,15 @@ Time Remaining:  0 second(s)
                                          'storagetype:tiering': 'auto'},
                          'id': 'f82f28c8-148b-416e-b1ae-32d3c02556c0'}
 
-        host_test_data = {'host': 'ubuntu-server12@pool_backend_1',
+        host_test_data = {'host': 'host@backendsec#unit_test_pool',
                           'capabilities':
                           {'location_info': 'unit_test_pool|FNM00124500890',
                            'volume_backend_name': 'pool_backend_1',
                            'storage_protocol': 'iSCSI'}}
-        cmd_migrate_verify = self.testData.MIGRATION_VERIFY_CMD(1)
-        output_migrate_verify = (r'The specified source LUN '
-                                 'is not currently migrating', 23)
         commands = [self.testData.NDU_LIST_CMD,
-                    self.testData.SNAP_LIST_CMD(),
-                    cmd_migrate_verify]
+                    self.testData.SNAP_LIST_CMD()]
         results = [self.testData.NDU_LIST_RESULT,
-                   ('No snap', 1023),
-                   output_migrate_verify]
+                   ('No snap', 1023)]
         fake_cli = self.driverSetup(commands, results)
         self.driver.cli.enablers = ['-Compression',
                                     '-Deduplication',
@@ -3083,20 +3078,68 @@ Time Remaining:  0 second(s)
                                     '-FAST']
         emc_vnx_cli.CommandLineHelper.get_array_serial = mock.Mock(
             return_value={'array_serial': "FNM00124500890"})
-
+        # Retype a thin volume to a compressed volume
         self.driver.retype(None, self.testData.test_volume3,
-                           new_type_data,
-                           diff_data,
-                           host_test_data)
+                           new_type_data, None, host_test_data)
         expect_cmd = [
             mock.call(*self.testData.SNAP_LIST_CMD(), poll=False),
-            mock.call(*self.testData.LUN_CREATION_CMD(
-                'vol3-123456', 2, 'unit_test_pool', 'compressed', 'auto')),
             mock.call(*self.testData.ENABLE_COMPRESSION_CMD(1)),
-            mock.call(*self.testData.MIGRATION_CMD(),
-                      retry_disable=True,
-                      poll=True)]
+            mock.call(*self.testData.MODIFY_TIERING_CMD('vol3', 'auto'))
+        ]
         fake_cli.assert_has_calls(expect_cmd)
+
+        # Retype a thick volume to a compressed volume
+        self.driver.retype(None, self.testData.test_volume3,
+                           new_type_data, None, host_test_data)
+        fake_cli.assert_has_calls(expect_cmd)
+
+    @mock.patch(
+        "cinder.volume.drivers.emc.emc_vnx_cli.EMCVnxCliBase.get_lun_id",
+        mock.Mock(return_value=1))
+    @mock.patch(
+        "cinder.volume.drivers.emc.emc_vnx_cli.CommandLineHelper." +
+        "get_lun_by_name",
+        mock.Mock(return_value={'lun_id': 1}))
+    @mock.patch(
+        "eventlet.event.Event.wait",
+        mock.Mock(return_value=None))
+    @mock.patch(
+        "time.time",
+        mock.Mock(return_value=123456))
+    @mock.patch(
+        "cinder.volume.volume_types."
+        "get_volume_type_extra_specs",
+        mock.Mock(return_value={'provisioning:type': 'thin'}))
+    def test_retype_turn_on_compression_volume_has_snap(self):
+        """Unit test for retype a volume which has snap to compressed."""
+        new_type_data = {'name': 'voltype0', 'qos_specs_id': None,
+                         'deleted': False,
+                         'extra_specs': {'storagetype:provisioning':
+                                         'compressed'},
+                         'id': 'f82f28c8-148b-416e-b1ae-32d3c02556c0'}
+
+        host_test_data = {'host': 'host@backendsec#unit_test_pool',
+                          'capabilities':
+                          {'location_info': 'unit_test_pool|FNM00124500890',
+                           'volume_backend_name': 'pool_backend_1',
+                           'storage_protocol': 'iSCSI'}}
+        commands = [self.testData.NDU_LIST_CMD,
+                    self.testData.SNAP_LIST_CMD()]
+        results = [self.testData.NDU_LIST_RESULT,
+                   ('Has snap', 0)]
+        self.driverSetup(commands, results)
+        self.driver.cli.enablers = ['-Compression',
+                                    '-Deduplication',
+                                    '-ThinProvisioning',
+                                    '-FAST']
+        emc_vnx_cli.CommandLineHelper.get_array_serial = mock.Mock(
+            return_value={'array_serial': "FNM00124500890"})
+        # Retype a thin volume which has a snap to a compressed volume
+        retyped = self.driver.retype(None, self.testData.test_volume3,
+                                     new_type_data, None, host_test_data)
+        self.assertFalse(retyped,
+                         "Retype should failed due to "
+                         "the volume has snapshot")
 
     @mock.patch(
         "cinder.volume.drivers.emc.emc_vnx_cli.EMCVnxCliBase.get_lun_id",
