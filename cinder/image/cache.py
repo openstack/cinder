@@ -87,7 +87,7 @@ class ImageVolumeCache(object):
         # we just need to parse it into one. If it is an actual datetime
         # we want to just grab it as a UTC naive datetime.
         image_updated_at = image_meta['updated_at']
-        if type(image_updated_at) in [unicode, str]:
+        if isinstance(image_updated_at, six.string_types):
             image_updated_at = timeutils.parse_strtime(image_updated_at)
         else:
             image_updated_at = image_updated_at.astimezone(timezone('UTC'))
