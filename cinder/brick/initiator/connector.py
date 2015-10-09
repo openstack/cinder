@@ -496,7 +496,17 @@ class ISCSIConnector(InitiatorConnector):
         # Do a discovery to find all targets.
         # Targets for multiple paths for the same multipath device
         # may not be the same.
-        ips_iqns = self._discover_iscsi_portals(connection_properties)
+        all_ips_iqns = self._discover_iscsi_portals(connection_properties)
+
+        # As discovery result may contain other targets' iqns, extract targets
+        # to be disconnected whose block devices are already deleted here.
+        ips_iqns = []
+        entries = map(lambda x: x.lstrip('ip-').split('-lun-')[0],
+                      self._get_iscsi_devices())
+        for ip, iqn in all_ips_iqns:
+            ip_iqn = "%s-iscsi-%s" % (ip.split(",")[0], iqn)
+            if ip_iqn not in entries:
+                ips_iqns.append([ip, iqn])
 
         if not devices:
             # disconnect if no other multipath devices
