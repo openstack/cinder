@@ -5658,6 +5658,19 @@ class ConsistencyGroupTestCase(BaseVolumeTestCase):
                                                     discover)
         self.assertEqual(expected, capabilities['properties'])
 
+    def test_delete_encryptied_volume(self):
+        self.volume_params['status'] = 'active'
+        volume = tests_utils.create_volume(self.context,
+                                           **self.volume_params)
+        vol_api = cinder.volume.api.API()
+        with mock.patch.object(
+                vol_api.key_manager,
+                'delete_key',
+                side_effect=Exception):
+            self.assertRaises(exception.InvalidVolume,
+                              vol_api.delete,
+                              self.context, volume)
+
 
 class CopyVolumeToImageTestCase(BaseVolumeTestCase):
     def fake_local_path(self, volume):

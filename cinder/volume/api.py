@@ -410,7 +410,11 @@ class API(base.Base):
         # because the volume cannot be decrypted without its key.
         encryption_key_id = volume.get('encryption_key_id', None)
         if encryption_key_id is not None:
-            self.key_manager.delete_key(context, encryption_key_id)
+            try:
+                self.key_manager.delete_key(context, encryption_key_id)
+            except Exception as e:
+                msg = _("Unable to delete encrypted volume: %s.") % e.msg
+                raise exception.InvalidVolume(reason=msg)
 
         now = timeutils.utcnow()
         vref = self.db.volume_update(context,
