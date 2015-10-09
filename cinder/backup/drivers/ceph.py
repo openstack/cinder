@@ -310,7 +310,7 @@ class CephBackupDriver(driver.BackupDriver):
             data = src.read(self.chunk_size)
             # If we have reach end of source, discard any extraneous bytes from
             # destination volume if trim is enabled and stop writing.
-            if data == '':
+            if data == b'':
                 if CONF.restore_discard_excess_bytes:
                     self._discard_bytes(dest, dest.tell(),
                                         length - dest.tell())
@@ -334,7 +334,7 @@ class CephBackupDriver(driver.BackupDriver):
         if rem:
             LOG.debug("Transferring remaining %s bytes", rem)
             data = src.read(rem)
-            if data == '':
+            if data == b'':
                 if CONF.restore_discard_excess_bytes:
                     self._discard_bytes(dest, dest.tell(), rem)
             else:

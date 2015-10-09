@@ -966,7 +966,7 @@ class RBDImageIOWrapperTestCase(test.TestCase):
         self.meta.image.size = mock.Mock()
         self.mock_rbd_wrapper = driver.RBDImageIOWrapper(self.meta)
         self.data_length = 1024
-        self.full_data = 'abcd' * 256
+        self.full_data = b'abcd' * 256
 
     def test_init(self):
         self.assertEqual(self.mock_rbd_wrapper._rbd_meta, self.meta)
@@ -1001,7 +1001,7 @@ class RBDImageIOWrapperTestCase(test.TestCase):
         self.assertEqual(self.full_data, data)
 
         data = self.mock_rbd_wrapper.read()
-        self.assertEqual('', data)
+        self.assertEqual(b'', data)
 
         self.mock_rbd_wrapper.seek(0)
         data = self.mock_rbd_wrapper.read()
