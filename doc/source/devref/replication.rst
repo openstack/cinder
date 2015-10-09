@@ -16,26 +16,27 @@ Config file examples
 --------------------
 
 The cinder.conf file is used to specify replication target
-devices for a specific driver.  There are two types of target
-devices that can be configured:
+devices for a specific driver.  Replication targets may
+be specified as external (unmanaged) or internally
+Cinder managed backend devices.
 
-   1. Cinder Managed (represented by the volume-backend name)
-   2. External devices (require vendor specific data to configure)
+**replication_device**
 
-NOTE that it is expected to be an error to have both managed and unmanaged replication
-config variables set for a single driver.
+Is a multi-dict opt, that should be specified
+for each replication target device the admin would
+like to configure.
 
-Cinder managed target device
------------------------------
+*NOTE:*
 
-In the case of a Cinder managed target device, we simply
-use another Cinder configured backend as the replication
-target.
+There are two standardized keys in the config
+entry, all others are vendor-unique:
 
-For example if we have two backend devices foo and biz that
-can replicate to each other, we can set up backend biz as
-a replication target for device foo using the following
-config entries::
+* device_target_id:<vendor-identifier-for-rep-target>
+* managed_backend_name:<cinder-backend-host-entry>,"
+
+
+An example config entry for a managed replication device
+would look like this::
 
     .....
     [driver-biz]
@@ -45,42 +46,98 @@ config entries::
     [driver-foo]
     volume_driver=xxxx
     volume_backend_name=foo
-    managed_replication_target=True
-    replication_devices=volume_backend_name-1,volume_backend_name-2....
+    replication_device = device_target_id:vendor-id-info,managed_backend_name:biz,unique_key:val....
 
-Notice that the only change from the usual driver configuration
-section here is the addition of the replication_devices option.
+The use of multiopt will result in self.configuration.get('replication_device')
+returning a list of properly formed python dictionaries that can
+be easily consumed::
+
+    [{device_target_id: blahblah, managed_backend_name: biz, unique_key: val1}]
 
 
-Unmanaged target device
-------------------------
-
-In some cases the replication target device may not be a
-configured Cinder backend.  In this case it's the configured
-drivers responsibility to route commands to the active device
-and to update provider info to ensure the proper iSCSI targets
-are being used.
-
-This type of config changes only slightly, and instead of using
-a backend_name, it takes the vendor unique config options::
+In the case of multiple replication target devices::
 
     .....
+    [driver-biz]
+    volume_driver=xxxx
+    volume_backend_name=biz
+
+    [driver-baz]
+    volume_driver=xxxx
+    volume_backend_name=baz
+
     [driver-foo]
     volume_driver=xxxx
     volume_backend_name=foo
-    managed_replication_target=False
-    replication_devices={'remote_device_id'='vendor-id-of-remote-backend',
-                         'key1'='val1' 'key2'='val2' ...},
-                        {'remote_device_id'='vendor-id-of-remote-backend',
-                         'key7'='val7'....},...
+    managed_replication_target=True
+    replication_device = device_target_id:vendor-id-info,managed_backend_name:biz,unique_key:val....
+    replication_device = device_target_id:vendor-id-info,managed_backend_name:baz,unique_key:val....
 
-Note the key/value entries can be whatever the device requires, we treat the actual
-variable in the config parser as a comma delimited list, the {} and = notations are
-convenient/common parser delimeters, and the K/V entries are space seperated.
+In this example the result is self.configuration.get('replication_device')
+returning a list of properly formed python dictionaries::
 
-We provide a literal evaluator to convert these entries into a proper dict, thus
-format is extremely important here.
+    [{device_target_id: blahblah, managed_backend_name: biz, unique_key: val1},
+     {device_target_id: moreblah, managed_backend_name: baz, unique_key: val1}]
 
+
+In the case of unmanaged replication target devices::
+
+    .....
+    [driver-biz]
+    volume_driver=xxxx
+    volume_backend_name=biz
+
+    [driver-baz]
+    volume_driver=xxxx
+    volume_backend_name=baz
+
+    [driver-foo]
+    volume_driver=xxxx
+    volume_backend_name=foo
+    replication_device = device_target_id:vendor-id-info,managed_backend_name:None,unique_key:val....
+    replication_device = device_target_id:vendor-id-info,managed_backend_name:None,unique_key:val....
+
+The managed_backend_name entry may also be omitted altogether in the case of unmanaged targets.
+
+In this example the result is self.configuration.get('replication_device) with the list::
+
+    [{device_target_id: blahblah, managed_backend_name: None, unique_key: val1},
+     {device_target_id: moreblah, managed_backend_name: None, unique_key: val1}]
+
+
+
+Special note about Managed target device
+----------------------------------------
+Remember that in the case where another Cinder backend is
+used that it's likely you'll still need some special data
+to instruct the primary driver how to communicate with the
+secondary.  In this case we use the same structure and entries
+but we set the key **managed_backend_name** to a valid
+Cinder backend name.
+
+**WARNING**
+The building of the host string for a driver is not always
+very straight forward.  The enabled_backends names which
+correspond to the driver-section are what actually get used
+to form the host string for the volume service.
+
+Also, take care that your driver knows how to parse out the
+host correctly, although the secondary backend may be managed
+it may not be on the same host, it may have a pool specification
+etc.  In the example above we can assume the same host, in other
+cases we would need to use the form::
+
+    <host>@<driver-section-name>
+
+and for some vendors we may require pool specification::
+
+    <host>@<driver-section-name>#<pool-name>
+
+Regardless, it's best that you actually check the services entry
+and verify that you've set this correctly, and likely to avoid
+problems your vendor documentation for customers to configure this
+should recommend configuring backends, then verifying settings
+from cinder services list.
 
 Volume Types / Extra Specs
 ---------------------------
@@ -101,7 +158,7 @@ If you needed to provide a specific backend device (multiple backends supporting
 
 Additionally you could provide additional details using scoped keys::
     {replication: enabled, volume_backend_name: foo,
-     replication:replication_type: async}
+     replication: replication_type: async}
 
 Again, it's up to the driver to parse the volume type info on create and set things up
 as requested.  While the scoping key can be anything, it's strongly recommended that all
@@ -153,7 +210,7 @@ act as a toggle, allowing to switch back and forth betweeen primary and secondar
 **list_replication_targets**
 
 Used by the admin to query a volume for a list of configured replication targets
-The expected return for this call is expeceted to mimic the form used in the config file.
+The expected return for this call is expected to mimic the form used in the config file.
 
 For a volume replicating to managed replication targets::
 
