@@ -115,7 +115,7 @@ class V6000Common(object):
         ret_dict = self.vip.basic.get_node_values(
             "/vshare/state/local/container/*")
         if ret_dict:
-            self.container = ret_dict.items()[0][1]
+            self.container = list(ret_dict.items())[0][1]
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""

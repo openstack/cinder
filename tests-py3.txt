@@ -84,6 +84,10 @@ cinder.tests.unit.test_solidfire
 cinder.tests.unit.test_test
 cinder.tests.unit.test_test_utils
 cinder.tests.unit.test_v6000_common
+cinder.tests.unit.test_v6000_fcp
+cinder.tests.unit.test_v6000_iscsi
+cinder.tests.unit.test_v7000_common
+cinder.tests.unit.test_v7000_fcp
 cinder.tests.unit.test_vmware_vmdk
 cinder.tests.unit.test_vmware_volumeops
 cinder.tests.unit.test_volume

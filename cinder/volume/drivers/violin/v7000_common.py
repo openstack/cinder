@@ -133,7 +133,7 @@ class V7000Common(object):
             thin_lun = True
             # Set the actual allocation size for thin lun
             # default here is 10%
-            size_mb = size_mb / 10
+            size_mb = size_mb // 10
 
         typeid = volume['volume_type_id']
         if typeid:
@@ -143,7 +143,7 @@ class V7000Common(object):
                 thin_lun = True
                 # Set the actual allocation size for thin lun
                 # default here is 10%
-                size_mb = size_mb / 10
+                size_mb = size_mb // 10
 
             spec_value = self._get_volume_type_extra_spec(volume, "dedup")
             if spec_value and spec_value.lower() == "true":
@@ -153,7 +153,7 @@ class V7000Common(object):
                 # Set the actual allocation size for thin lun
                 # default here is 10%. The actual allocation may
                 # different, depending on other factors
-                size_mb = full_size_mb / 10
+                size_mb = full_size_mb // 10
 
             # Extract the storage_pool name if one is specified
             pool = self._get_violin_extra_spec(volume, "storage_pool")
@@ -817,7 +817,7 @@ class V7000Common(object):
         if typeid:
             volume_type = volume_types.get_volume_type(ctxt, typeid)
             volume_specs = volume_type.get('extra_specs')
-            for key, val in volume_specs.iteritems():
+            for key, val in volume_specs.items():
 
                 # Strip the prefix "capabilities"
                 if ':' in key:
@@ -842,7 +842,7 @@ class V7000Common(object):
         if typeid:
             volume_type = volume_types.get_volume_type(ctxt, typeid)
             volume_specs = volume_type.get('extra_specs')
-            for key, val in volume_specs.iteritems():
+            for key, val in volume_specs.items():
 
                 # Strip the prefix "violin"
                 if ':' in key:

@@ -449,8 +449,8 @@ class V6000ISCSIDriver(driver.ISCSIDriver):
         free_gb = 0
         v = self.common.vip
 
-        master_cluster_id = v.basic.get_node_values(
-            '/cluster/state/master_id').values()[0]
+        master_cluster_id = list(v.basic.get_node_values(
+            '/cluster/state/master_id').values())[0]
 
         bn1 = "/vshare/state/global/%s/container/%s/total_bytes" \
             % (master_cluster_id, self.common.container)
@@ -459,14 +459,14 @@ class V6000ISCSIDriver(driver.ISCSIDriver):
         resp = v.basic.get_node_values([bn1, bn2])
 
         if bn1 in resp:
-            total_gb = resp[bn1] / units.Gi
+            total_gb = resp[bn1] // units.Gi
         else:
             LOG.warning(_LW("Failed to receive update for total_gb stat!"))
             if 'total_capacity_gb' in self.stats:
                 total_gb = self.stats['total_capacity_gb']
 
         if bn2 in resp:
-            free_gb = resp[bn2] / units.Gi
+            free_gb = resp[bn2] // units.Gi
         else:
             LOG.warning(_LW("Failed to receive update for free_gb stat!"))
             if 'free_capacity_gb' in self.stats:
@@ -554,7 +554,7 @@ class V6000ISCSIDriver(driver.ISCSIDriver):
 
         ret_dict = conn.basic.get_node_values("/system/hostname")
         if ret_dict:
-            hostname = ret_dict.items()[0][1]
+            hostname = list(ret_dict.items())[0][1]
         else:
             LOG.debug("Unable to fetch gateway hostname for %s.", mg_to_query)
 
