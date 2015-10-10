@@ -38,7 +38,8 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
     # Version 1.0: Initial version
     # Version 1.1: Add new field num_dependent_backups and extra fields
     #              is_incremental and has_dependent_backups.
-    VERSION = '1.1'
+    # Version 1.2: Add new field snapshot_id and data_timestamp.
+    VERSION = '1.2'
 
     fields = {
         'id': fields.UUIDField(),
@@ -68,6 +69,8 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
         'temp_volume_id': fields.StringField(nullable=True),
         'temp_snapshot_id': fields.StringField(nullable=True),
         'num_dependent_backups': fields.IntegerField(),
+        'snapshot_id': fields.StringField(nullable=True),
+        'data_timestamp': fields.DateTimeField(nullable=True),
     }
 
     obj_extra_fields = ['name', 'is_incremental', 'has_dependent_backups']

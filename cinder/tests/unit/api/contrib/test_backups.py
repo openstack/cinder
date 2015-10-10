@@ -20,6 +20,7 @@ Tests for Backup code.
 import json
 from xml.dom import minidom
 
+import ddt
 import mock
 from oslo_utils import timeutils
 import webob
@@ -37,7 +38,10 @@ from cinder.tests.unit import utils
 # needed for stubs to work
 import cinder.volume
 
+NUM_ELEMENTS_IN_BACKUP = 17
 
+
+@ddt.ddt
 class BackupsAPITestCase(test.TestCase):
     """Test Case for backups API."""
 
@@ -55,11 +59,12 @@ class BackupsAPITestCase(test.TestCase):
                        display_description='this is a test backup',
                        container='volumebackups',
                        status='creating',
-                       snapshot=False,
                        incremental=False,
                        parent_id=None,
                        size=0, object_count=0, host='testhost',
-                       num_dependent_backups=0):
+                       num_dependent_backups=0,
+                       snapshot_id=None,
+                       data_timestamp=None):
         """Create a backup object."""
         backup = {}
         backup['volume_id'] = volume_id
@@ -74,21 +79,35 @@ class BackupsAPITestCase(test.TestCase):
         backup['fail_reason'] = ''
         backup['size'] = size
         backup['object_count'] = object_count
-        backup['snapshot'] = snapshot
         backup['incremental'] = incremental
         backup['parent_id'] = parent_id
         backup['num_dependent_backups'] = num_dependent_backups
-        return db.backup_create(context.get_admin_context(), backup)['id']
+        backup['snapshot_id'] = snapshot_id
+        backup['data_timestamp'] = data_timestamp
+        backup = db.backup_create(context.get_admin_context(), backup)
+        if not snapshot_id:
+            db.backup_update(context.get_admin_context(),
+                             backup['id'],
+                             {'data_timestamp': backup['created_at']})
+        return backup['id']
 
     @staticmethod
     def _get_backup_attrib(backup_id, attrib_name):
         return db.backup_get(context.get_admin_context(),
                              backup_id)[attrib_name]
 
-    def test_show_backup(self):
+    @ddt.data(False, True)
+    def test_show_backup(self, backup_from_snapshot):
         volume_id = utils.create_volume(self.context, size=5,
                                         status='creating')['id']
-        backup_id = self._create_backup(volume_id)
+        snapshot = None
+        snapshot_id = None
+        if backup_from_snapshot:
+            snapshot = utils.create_snapshot(self.context,
+                                             volume_id)
+            snapshot_id = snapshot.id
+        backup_id = self._create_backup(volume_id,
+                                        snapshot_id=snapshot_id)
         req = webob.Request.blank('/v2/fake/backups/%s' %
                                   backup_id)
         req.method = 'GET'
@@ -109,8 +128,11 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(volume_id, res_dict['backup']['volume_id'])
         self.assertFalse(res_dict['backup']['is_incremental'])
         self.assertFalse(res_dict['backup']['has_dependent_backups'])
+        self.assertEqual(snapshot_id, res_dict['backup']['snapshot_id'])
         self.assertIn('updated_at', res_dict['backup'])
 
+        if snapshot:
+            snapshot.destroy()
         db.backup_destroy(context.get_admin_context(), backup_id)
         db.volume_destroy(context.get_admin_context(), volume_id)
 
@@ -283,7 +305,7 @@ class BackupsAPITestCase(test.TestCase):
         res_dict = json.loads(res.body)
 
         self.assertEqual(200, res.status_int)
-        self.assertEqual(15, len(res_dict['backups'][0]))
+        self.assertEqual(NUM_ELEMENTS_IN_BACKUP, len(res_dict['backups'][0]))
         self.assertEqual('az1', res_dict['backups'][0]['availability_zone'])
         self.assertEqual('volumebackups',
                          res_dict['backups'][0]['container'])
@@ -298,7 +320,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual('1', res_dict['backups'][0]['volume_id'])
         self.assertIn('updated_at', res_dict['backups'][0])
 
-        self.assertEqual(15, len(res_dict['backups'][1]))
+        self.assertEqual(NUM_ELEMENTS_IN_BACKUP, len(res_dict['backups'][1]))
         self.assertEqual('az1', res_dict['backups'][1]['availability_zone'])
         self.assertEqual('volumebackups',
                          res_dict['backups'][1]['container'])
@@ -313,7 +335,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual('1', res_dict['backups'][1]['volume_id'])
         self.assertIn('updated_at', res_dict['backups'][1])
 
-        self.assertEqual(15, len(res_dict['backups'][2]))
+        self.assertEqual(NUM_ELEMENTS_IN_BACKUP, len(res_dict['backups'][2]))
         self.assertEqual('az1', res_dict['backups'][2]['availability_zone'])
         self.assertEqual('volumebackups', res_dict['backups'][2]['container'])
         self.assertEqual('this is a test backup',
@@ -469,9 +491,9 @@ class BackupsAPITestCase(test.TestCase):
 
         self.assertEqual(200, res.status_int)
         self.assertEqual(2, len(res_dict['backups']))
-        self.assertEqual(15, len(res_dict['backups'][0]))
+        self.assertEqual(NUM_ELEMENTS_IN_BACKUP, len(res_dict['backups'][0]))
         self.assertEqual(backup_id3, res_dict['backups'][0]['id'])
-        self.assertEqual(15, len(res_dict['backups'][1]))
+        self.assertEqual(NUM_ELEMENTS_IN_BACKUP, len(res_dict['backups'][1]))
         self.assertEqual(backup_id2, res_dict['backups'][1]['id'])
 
         db.backup_destroy(context.get_admin_context(), backup_id3)
@@ -492,9 +514,9 @@ class BackupsAPITestCase(test.TestCase):
 
         self.assertEqual(200, res.status_int)
         self.assertEqual(2, len(res_dict['backups']))
-        self.assertEqual(15, len(res_dict['backups'][0]))
+        self.assertEqual(NUM_ELEMENTS_IN_BACKUP, len(res_dict['backups'][0]))
         self.assertEqual(backup_id2, res_dict['backups'][0]['id'])
-        self.assertEqual(15, len(res_dict['backups'][1]))
+        self.assertEqual(NUM_ELEMENTS_IN_BACKUP, len(res_dict['backups'][1]))
         self.assertEqual(backup_id1, res_dict['backups'][1]['id'])
 
         db.backup_destroy(context.get_admin_context(), backup_id3)
@@ -515,7 +537,7 @@ class BackupsAPITestCase(test.TestCase):
 
         self.assertEqual(200, res.status_int)
         self.assertEqual(1, len(res_dict['backups']))
-        self.assertEqual(15, len(res_dict['backups'][0]))
+        self.assertEqual(NUM_ELEMENTS_IN_BACKUP, len(res_dict['backups'][0]))
         self.assertEqual(backup_id2, res_dict['backups'][0]['id'])
 
         db.backup_destroy(context.get_admin_context(), backup_id3)
@@ -683,14 +705,22 @@ class BackupsAPITestCase(test.TestCase):
     @mock.patch('cinder.db.service_get_all_by_topic')
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
-    def test_create_backup_delta(self, mock_validate,
+    @ddt.data(False, True)
+    def test_create_backup_delta(self, backup_from_snapshot,
+                                 mock_validate,
                                  _mock_service_get_all_by_topic):
         _mock_service_get_all_by_topic.return_value = [
             {'availability_zone': "fake_az", 'host': 'test_host',
              'disabled': 0, 'updated_at': timeutils.utcnow()}]
 
         volume_id = utils.create_volume(self.context, size=5)['id']
-
+        snapshot = None
+        snapshot_id = None
+        if backup_from_snapshot:
+            snapshot = utils.create_snapshot(self.context,
+                                             volume_id,
+                                             status='available')
+            snapshot_id = snapshot.id
         backup_id = self._create_backup(volume_id, status="available")
         body = {"backup": {"display_name": "nightly001",
                            "display_description":
@@ -698,6 +728,7 @@ class BackupsAPITestCase(test.TestCase):
                            "volume_id": volume_id,
                            "container": "nightlybackups",
                            "incremental": True,
+                           "snapshot_id": snapshot_id,
                            }
                 }
         req = webob.Request.blank('/v2/fake/backups')
@@ -713,6 +744,8 @@ class BackupsAPITestCase(test.TestCase):
         self.assertTrue(mock_validate.called)
 
         db.backup_destroy(context.get_admin_context(), backup_id)
+        if snapshot:
+            snapshot.destroy()
         db.volume_destroy(context.get_admin_context(), volume_id)
 
     @mock.patch('cinder.db.service_get_all_by_topic')
@@ -1932,7 +1965,8 @@ class BackupsAPITestCase(test.TestCase):
         self.assertRaises(exception.NotSupportedOperation,
                           self.backup_api.delete, self.context, backup, True)
 
-    def test_show_incremental_backup(self):
+    @ddt.data(False, True)
+    def test_show_incremental_backup(self, backup_from_snapshot):
         volume_id = utils.create_volume(self.context, size=5)['id']
         parent_backup_id = self._create_backup(volume_id, status="available",
                                                num_dependent_backups=1)
@@ -1940,9 +1974,16 @@ class BackupsAPITestCase(test.TestCase):
                                         incremental=True,
                                         parent_id=parent_backup_id,
                                         num_dependent_backups=1)
+        snapshot = None
+        snapshot_id = None
+        if backup_from_snapshot:
+            snapshot = utils.create_snapshot(self.context,
+                                             volume_id)
+            snapshot_id = snapshot.id
         child_backup_id = self._create_backup(volume_id, status="available",
                                               incremental=True,
-                                              parent_id=backup_id)
+                                              parent_id=backup_id,
+                                              snapshot_id=snapshot_id)
 
         req = webob.Request.blank('/v2/fake/backups/%s' %
                                   backup_id)
@@ -1954,6 +1995,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(200, res.status_int)
         self.assertTrue(res_dict['backup']['is_incremental'])
         self.assertTrue(res_dict['backup']['has_dependent_backups'])
+        self.assertIsNone(res_dict['backup']['snapshot_id'])
 
         req = webob.Request.blank('/v2/fake/backups/%s' %
                                   parent_backup_id)
@@ -1965,6 +2007,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(200, res.status_int)
         self.assertFalse(res_dict['backup']['is_incremental'])
         self.assertTrue(res_dict['backup']['has_dependent_backups'])
+        self.assertIsNone(res_dict['backup']['snapshot_id'])
 
         req = webob.Request.blank('/v2/fake/backups/%s' %
                                   child_backup_id)
@@ -1976,7 +2019,11 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(200, res.status_int)
         self.assertTrue(res_dict['backup']['is_incremental'])
         self.assertFalse(res_dict['backup']['has_dependent_backups'])
+        self.assertEqual(snapshot_id, res_dict['backup']['snapshot_id'])
 
         db.backup_destroy(context.get_admin_context(), child_backup_id)
         db.backup_destroy(context.get_admin_context(), backup_id)
+        db.backup_destroy(context.get_admin_context(), parent_backup_id)
+        if snapshot:
+            snapshot.destroy()
         db.volume_destroy(context.get_admin_context(), volume_id)

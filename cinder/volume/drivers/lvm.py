@@ -31,6 +31,7 @@ from cinder.brick.local_dev import lvm as lvm
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
+from cinder import objects
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume import utils as volutils
@@ -505,15 +506,28 @@ class LVMVolumeDriver(driver.VolumeDriver):
     def backup_volume(self, context, backup, backup_service):
         """Create a new backup from an existing volume."""
         volume = self.db.volume_get(context, backup.volume_id)
+        snapshot = None
+        if backup.snapshot_id:
+            snapshot = objects.Snapshot.get_by_id(context, backup.snapshot_id)
         temp_snapshot = None
-        previous_status = volume['previous_status']
-        if previous_status == 'in-use':
-            temp_snapshot = self._create_temp_snapshot(context, volume)
-            backup.temp_snapshot_id = temp_snapshot.id
-            backup.save()
-            volume_path = self.local_path(temp_snapshot)
+        # NOTE(xyang): If it is to backup from snapshot, back it up
+        # directly. No need to clean it up.
+        if snapshot:
+            volume_path = self.local_path(snapshot)
         else:
-            volume_path = self.local_path(volume)
+            # NOTE(xyang): If it is not to backup from snapshot, check volume
+            # status. If the volume status is 'in-use', create a temp snapshot
+            # from the source volume, backup the temp snapshot, and then clean
+            # up the temp snapshot; if the volume status is 'available', just
+            # backup the volume.
+            previous_status = volume.get('previous_status', None)
+            if previous_status == "in-use":
+                temp_snapshot = self._create_temp_snapshot(context, volume)
+                backup.temp_snapshot_id = temp_snapshot.id
+                backup.save()
+                volume_path = self.local_path(temp_snapshot)
+            else:
+                volume_path = self.local_path(volume)
 
         try:
             with utils.temporary_chown(volume_path):
