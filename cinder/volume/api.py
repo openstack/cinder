@@ -1503,8 +1503,8 @@ class API(base.Base):
         # We're checking here in so that we can report any quota issues as
         # early as possible, but won't commit until we change the type. We
         # pass the reservations onward in case we need to roll back.
-        reservations = quota_utils.get_volume_type_reservation(context, volume,
-                                                               vol_type_id)
+        reservations = quota_utils.get_volume_type_reservation(
+            context, volume, vol_type_id, reserve_vol_type_only=True)
 
         # Get old reservations
         try:
@@ -1512,6 +1512,11 @@ class API(base.Base):
             QUOTAS.add_volume_type_opts(context,
                                         reserve_opts,
                                         old_vol_type_id)
+            # NOTE(wanghao): We don't need to reserve volumes and gigabytes
+            # quota for retyping operation since they didn't changed, just
+            # reserve volume_type and type gigabytes is fine.
+            reserve_opts.pop('volumes')
+            reserve_opts.pop('gigabytes')
             old_reservations = QUOTAS.reserve(context,
                                               project_id=volume.project_id,
                                               **reserve_opts)

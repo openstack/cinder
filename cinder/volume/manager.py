@@ -2120,6 +2120,11 @@ class VolumeManager(manager.SchedulerDependentManager):
                 QUOTAS.add_volume_type_opts(context,
                                             reserve_opts,
                                             volume.volume_type_id)
+                # NOTE(wanghao): We don't need to reserve volumes and gigabytes
+                # quota for retyping operation since they didn't changed, just
+                # reserve volume_type and type gigabytes is fine.
+                reserve_opts.pop('volumes')
+                reserve_opts.pop('gigabytes')
                 old_reservations = QUOTAS.reserve(context,
                                                   project_id=project_id,
                                                   **reserve_opts)
