@@ -95,6 +95,7 @@ cinder.tests.unit.test_volume_transfer
 cinder.tests.unit.test_volume_types
 cinder.tests.unit.test_volume_types_extra_specs
 cinder.tests.unit.test_volume_utils
+cinder.tests.unit.volume.drivers.emc.scaleio
 cinder.tests.unit.volume.flows.test_create_volume_flow
 cinder.tests.unit.windows.test_smbfs
 cinder.tests.unit.windows.test_vhdutils

@@ -99,18 +99,20 @@ class MockHTTPSResponse(requests.Response):
     def __init__(self, content, status_code=200):
         super(MockHTTPSResponse, self).__init__()
 
+        if isinstance(content, six.text_type):
+            content = content.encode('utf-8')
         self._content = content
         self.status_code = status_code
 
     def json(self, **kwargs):
-        if isinstance(self._content, six.string_types):
+        if isinstance(self._content, (bytes, six.text_type)):
             return super(MockHTTPSResponse, self).json(**kwargs)
 
         return self._content
 
     @property
     def text(self):
-        if not isinstance(self._content, six.string_types):
+        if not isinstance(self._content, (bytes, six.text_type)):
             return json.dumps(self._content)
 
         return super(MockHTTPSResponse, self).text

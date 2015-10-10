@@ -13,7 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 import json
-import urllib
+
+from six.moves import urllib
 
 from cinder import context
 from cinder import db
@@ -46,11 +47,12 @@ class TestCreateSnapShot(scaleio.TestScaleIODriver):
 
         self.mock_object(db, 'volume_get', self.return_fake_volume)
 
-        self.volume_name_2x_enc = urllib.quote(
-            urllib.quote(self.driver._id_to_base64(self.snapshot.volume_id))
+        snap_vol_id = self.snapshot.volume_id
+        self.volume_name_2x_enc = urllib.parse.quote(
+            urllib.parse.quote(self.driver._id_to_base64(snap_vol_id))
         )
-        self.snapshot_name_2x_enc = urllib.quote(
-            urllib.quote(self.driver._id_to_base64(self.snapshot.id))
+        self.snapshot_name_2x_enc = urllib.parse.quote(
+            urllib.parse.quote(self.driver._id_to_base64(self.snapshot.id))
         )
 
         self.snapshot_reply = json.dumps(
