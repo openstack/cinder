@@ -230,7 +230,7 @@ FAKE_LUN_INFO_RESPONSE = """
 }
 """
 
-FAKE_LUN_DELETE_SUCCESS_RESPONSE = """
+FAKE_LUN_GET_SUCCESS_RESPONSE = """
 {
     "error": {
         "code": 0
@@ -265,7 +265,7 @@ FAKE_QUERY_ALL_LUN_RESPONSE = """
         "code": 0
     },
     "data": [{
-        "ID": "1",
+        "ID": "11",
         "NAME": "IexzQZJWSXuX2e9I7c8GNQ"
     }]
 }
@@ -970,10 +970,10 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/lun'] = (
     FAKE_LUN_INFO_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/lun/11/GET'] = (
-    FAKE_LUN_DELETE_SUCCESS_RESPONSE)
+    FAKE_LUN_GET_SUCCESS_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/lun/1/GET'] = (
-    FAKE_LUN_DELETE_SUCCESS_RESPONSE)
+    FAKE_LUN_GET_SUCCESS_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/lun/11/DELETE'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
@@ -1072,7 +1072,7 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/snapshot?range=[0-32767]/GET'] = (
 
 # mock QoS info map
 MAP_COMMAND_TO_FAKE_RESPONSE['/ioclass/11/GET'] = (
-    FAKE_LUN_DELETE_SUCCESS_RESPONSE)
+    FAKE_LUN_GET_SUCCESS_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/ioclass/11/DELETE'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
@@ -1721,6 +1721,27 @@ class Huawei18000ISCSIDriverTestCase(test.TestCase):
                                return_value=fake_qos_info_response_less):
             (qos_id, lun_list) = self.driver.restclient.find_available_qos(qos)
             self.assertEqual(("11", u'["0", "1", "2"]'), (qos_id, lun_list))
+
+    @mock.patch.object(rest_client.RestClient, 'get_volume_by_name',
+                       return_value='11')
+    @mock.patch.object(rest_client.RestClient, 'get_lun_info',
+                       return_value={'ID': '11'})
+    def test_create_volume_exist(self, mock_lun_info, mock_volume_info):
+        self.driver.restclient.login()
+        lun_param = {'NAME': 'IexzQZJWSXuX2e9I7c8GNQ'}
+
+        fack_error_volume_exist = {"error": {"code": 1077948993}}
+        with mock.patch.object(rest_client.RestClient, 'call',
+                               return_value=fack_error_volume_exist):
+            lun_info = self.driver.restclient.create_volume(lun_param)
+            self.assertEqual('11', lun_info['ID'])
+
+        fack_error_volume_exist = {"error": {"code": 123456789}}
+        with mock.patch.object(rest_client.RestClient, 'call',
+                               return_value=fack_error_volume_exist):
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.driver.restclient.create_volume,
+                              lun_param)
 
     def create_fake_conf_file(self):
         """Create a fake Config file.

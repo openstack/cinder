@@ -168,6 +168,10 @@ class RestClient(object):
         url = "/lun"
         data = json.dumps(lun_param)
         result = self.call(url, data)
+        if result['error']['code'] == constants.ERROR_VOLUME_ALREADY_EXIST:
+            lun_id = self.get_volume_by_name(lun_param["NAME"])
+            if lun_id:
+                return self.get_lun_info(lun_id)
 
         msg = _('Create volume error.')
         self._assert_rest_result(result, msg)
