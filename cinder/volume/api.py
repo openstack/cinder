@@ -1642,7 +1642,7 @@ class API(base.Base):
         if rep_status not in valid_rep_status:
             msg = (_("Invalid status to enable replication. "
                      "valid states are: %(valid_states)s, "
-                     "current replication-state is: %(curr_state)s."),
+                     "current replication-state is: %(curr_state)s.") %
                    {'valid_states': valid_rep_status,
                     'curr_state': rep_status})
 
@@ -1667,7 +1667,7 @@ class API(base.Base):
         if rep_status not in valid_disable_status:
             msg = (_("Invalid status to disable replication. "
                      "valid states are: %(valid_states)s, "
-                     "current replication-state is: %(curr_state)s."),
+                     "current replication-state is: %(curr_state)s.") %
                    {'valid_states': valid_disable_status,
                     'curr_state': rep_status})
 
@@ -1697,7 +1697,7 @@ class API(base.Base):
         if rep_status not in valid_failover_status:
             msg = (_("Invalid status to failover replication. "
                      "valid states are: %(valid_states)s, "
-                     "current replication-state is: %(curr_state)s."),
+                     "current replication-state is: %(curr_state)s.") %
                    {'valid_states': valid_failover_status,
                     'curr_state': rep_status})
 
