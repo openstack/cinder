@@ -208,7 +208,7 @@ class VolumeTransferController(wsgi.Controller):
                                                          auth_key)
         except exception.VolumeSizeExceedsAvailableQuota as error:
             raise exc.HTTPRequestEntityTooLarge(
-                explanation=error.msg, headers={'Retry-After': 0})
+                explanation=error.msg, headers={'Retry-After': '0'})
         except exception.InvalidVolume as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
 

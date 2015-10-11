@@ -441,7 +441,7 @@ class NoMoreTargets(CinderException):
 class QuotaError(CinderException):
     message = _("Quota exceeded: code=%(code)s")
     code = 413
-    headers = {'Retry-After': 0}
+    headers = {'Retry-After': '0'}
     safe = True
 
 

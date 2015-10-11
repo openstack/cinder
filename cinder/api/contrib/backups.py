@@ -317,10 +317,10 @@ class BackupsController(wsgi.Controller):
             raise exc.HTTPNotFound(explanation=error.msg)
         except exception.VolumeSizeExceedsAvailableQuota as error:
             raise exc.HTTPRequestEntityTooLarge(
-                explanation=error.msg, headers={'Retry-After': 0})
+                explanation=error.msg, headers={'Retry-After': '0'})
         except exception.VolumeLimitExceeded as error:
             raise exc.HTTPRequestEntityTooLarge(
-                explanation=error.msg, headers={'Retry-After': 0})
+                explanation=error.msg, headers={'Retry-After': '0'})
 
         retval = self._view_builder.restore_summary(
             req, dict(new_restore))
