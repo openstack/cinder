@@ -427,8 +427,8 @@ class BaseVD(object):
         # flag in the interface is for anticipation that it will be enabled
         # in the future.
         if remote:
-            LOG.exception(_LE("Detaching snapshot from a remote node "
-                              "is not supported."))
+            LOG.error(_LE("Detaching snapshot from a remote node "
+                          "is not supported."))
             raise exception.NotSupportedOperation(
                 operation=_("detach snapshot from remote node"))
         else:
@@ -995,8 +995,8 @@ class BaseVD(object):
         # flag in the interface is for anticipation that it will be enabled
         # in the future.
         if remote:
-            LOG.exception(_LE("Attaching snapshot from a remote node "
-                              "is not supported."))
+            LOG.error(_LE("Attaching snapshot from a remote node "
+                          "is not supported."))
             raise exception.NotSupportedOperation(
                 operation=_("attach snapshot from remote node"))
         else:
