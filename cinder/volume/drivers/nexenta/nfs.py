@@ -705,7 +705,10 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         nms = self.share2nms[share]
         nfs_opts = nms.netsvc.get_confopts(
             'svc:/network/nfs/server:default', 'configure')
-        version = nfs_opts['nfs_server_versmax']['current']
+        try:
+            version = nfs_opts['nfs_server_versmax']['current']
+        except KeyError:
+            version = nfs_opts['server_versmax']['current']
         return int(version)
 
     def _get_capacity_info(self, nfs_share):
