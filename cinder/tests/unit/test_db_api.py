@@ -1148,6 +1148,9 @@ class DBAPISnapshotTestCase(BaseTest):
                                             self.ctxt,
                                             'host2', {'fake_key': 'fake'}),
                                         ignored_keys='volume')
+        # If host is None or empty string, empty list should be returned.
+        self.assertEqual([], db.snapshot_get_by_host(self.ctxt, None))
+        self.assertEqual([], db.snapshot_get_by_host(self.ctxt, ''))
 
     def test_snapshot_get_by_host_with_pools(self):
         db.volume_create(self.ctxt, {'id': 1, 'host': 'host1#pool1'})
