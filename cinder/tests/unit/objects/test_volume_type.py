@@ -88,7 +88,7 @@ class TestVolumeTypeList(test_objects.BaseObjectsTestCase):
     @mock.patch('cinder.volume.volume_types.get_all_types')
     def test_get_all(self, get_all_types):
         db_volume_type = fake_volume.fake_db_volume_type()
-        get_all_types.return_value = [db_volume_type]
+        get_all_types.return_value = {db_volume_type['name']: db_volume_type}
 
         volume_types = objects.VolumeTypeList.get_all(self.context)
         self.assertEqual(1, len(volume_types))

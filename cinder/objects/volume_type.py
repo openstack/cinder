@@ -121,5 +121,5 @@ class VolumeTypeList(base.ObjectListBase, base.CinderObject):
         types = volume_types.get_all_types(context, inactive, search_opts)
         expected_attrs = ['extra_specs', 'projects']
         return base.obj_make_list(context, cls(context),
-                                  objects.VolumeType, types,
+                                  objects.VolumeType, types.values(),
                                   expected_attrs=expected_attrs)
