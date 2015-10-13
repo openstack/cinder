@@ -140,9 +140,13 @@ class BrcdFCZoneClientCLI(object):
         zone_list = active_zone_set[ZoneConstant.CFG_ZONES]
         LOG.debug("zone list: %s", zone_list)
         for zone in zones.keys():
-            # if zone exists, its an update. Delete & insert
-            # TODO(skolathur): This can be optimized to an update call later
+            # If zone exists, its an update. Delete & insert
+            # TODO(skolathur): This still need to be optimized
+            # to an update call later. Now we just handled the
+            # same zone name with same zone members.
             if (zone in zone_list):
+                if set(zones[zone]) == set(zone_list[zone]):
+                    break
                 try:
                     self.delete_zones(zone, activate, active_zone_set)
                 except exception.BrocadeZoningCliException:
@@ -162,6 +166,8 @@ class BrcdFCZoneClientCLI(object):
                 zone_with_sep += ';'
             iterator_count += 1
             zone_with_sep += zone
+        if not zone_with_sep:
+            return
         try:
             # Get active zone set from device, as some of the zones
             # could be deleted.

@@ -50,6 +50,12 @@ active_zoneset_multiple_zones = {
         'openstack50060b0000c26602201900051ee8e327':
         ['50:06:0b:00:00:c2:66:02', '20:19:00:05:1e:e8:e3:27']},
     'active_zone_config': 'OpenStack_Cfg'}
+new_zone_memb_same = {
+    'openstack50060b0000c26604201900051ee8e329':
+    ['50:06:0b:00:00:c2:66:04', '20:19:00:05:1e:e8:e3:29']}
+new_zone_memb_not_same = {
+    'openstack50060b0000c26604201900051ee8e329':
+    ['50:06:0b:00:00:c2:66:04', '20:19:00:05:1e:e8:e3:30']}
 new_zone = {'openstack10000012345678902001009876543210':
             ['10:00:00:12:34:56:78:90', '20:01:00:98:76:54:32:10']}
 new_zones = {'openstack10000012345678902001009876543210':
@@ -107,6 +113,32 @@ class TestBrcdFCZoneClientCLI(client_cli.BrcdFCZoneClientCLI, test.TestCase):
         self.assertEqual(2, apply_zone_change_mock.call_count)
         activate_zoneset_mock.assert_called_once_with(
             active_zoneset['active_zone_config'])
+
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, 'get_active_zone_set')
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, 'delete_zones')
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, 'activate_zoneset')
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, 'apply_zone_change')
+    def test_add_zone_exists_memb_same(self, apply_zone_change_mock,
+                                       activate_zoneset_mock,
+                                       delete_zones_mock,
+                                       get_active_zs_mock):
+        get_active_zs_mock.return_value = active_zoneset
+        self.add_zones(new_zone_memb_same, True, active_zoneset)
+        self.assertEqual(0, apply_zone_change_mock.call_count)
+        self.assertEqual(0, delete_zones_mock.call_count)
+
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, 'get_active_zone_set')
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, 'delete_zones')
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, 'activate_zoneset')
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, 'apply_zone_change')
+    def test_add_zone_exists_memb_not_same(self, apply_zone_change_mock,
+                                           activate_zoneset_mock,
+                                           delete_zones_mock,
+                                           get_active_zs_mock):
+        get_active_zs_mock.return_value = active_zoneset
+        self.add_zones(new_zone_memb_not_same, True, active_zoneset)
+        self.assertEqual(2, apply_zone_change_mock.call_count)
+        self.assertEqual(1, delete_zones_mock.call_count)
 
     @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_ssh_execute')
     def test_activate_zoneset(self, ssh_execute_mock):
