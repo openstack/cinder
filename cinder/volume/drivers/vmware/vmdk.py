@@ -57,6 +57,7 @@ EAGER_ZEROED_THICK_VMDK_TYPE = 'eagerZeroedThick'
 CREATE_PARAM_ADAPTER_TYPE = 'adapter_type'
 CREATE_PARAM_DISK_LESS = 'disk_less'
 CREATE_PARAM_BACKING_NAME = 'name'
+CREATE_PARAM_DISK_SIZE = 'disk_size'
 
 TMP_IMAGES_DATASTORE_FOLDER_PATH = "cinder_temp/"
 
@@ -480,8 +481,11 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         :return: (host, resource_pool, folder, summary)
         """
         # Form requirements for datastore selection.
+        create_params = create_params or {}
+        size = create_params.get(CREATE_PARAM_DISK_SIZE, volume['size'])
+
         req = {}
-        req[hub.DatastoreSelector.SIZE_BYTES] = (volume['size'] * units.Gi)
+        req[hub.DatastoreSelector.SIZE_BYTES] = size * units.Gi
         req[hub.DatastoreSelector.PROFILE_NAME] = self._get_storage_profile(
             volume)
 
@@ -1043,39 +1047,16 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         LOG.info(_LI("Done copying image: %(id)s to volume: %(vol)s."),
                  {'id': image_id, 'vol': volume['name']})
 
-    def _extend_vmdk_virtual_disk(self, name, new_size_in_gb):
-        """Extend the size of the vmdk virtual disk to the new size.
+    def _extend_backing(self, backing, new_size_in_gb):
+        """Extend volume backing's virtual disk.
 
-        :param name: the name of the volume
-        :param new_size_in_gb: the new size the vmdk virtual disk extends to
+        :param backing: volume backing
+        :param new_size_in_gb: new size of virtual disk
         """
-        backing = self.volumeops.get_backing(name)
-        if not backing:
-            LOG.info(_LI("The backing is not found, so there is no need "
-                         "to extend the vmdk virtual disk for the volume "
-                         "%s."), name)
-        else:
-            root_vmdk_path = self.volumeops.get_vmdk_path(backing)
-            datacenter = self.volumeops.get_dc(backing)
-            self._extend_volumeops_virtual_disk(new_size_in_gb, root_vmdk_path,
-                                                datacenter)
-
-    def _extend_volumeops_virtual_disk(self, new_size_in_gb, root_vmdk_path,
-                                       datacenter):
-        """Call the ExtendVirtualDisk_Task.
-
-        :param new_size_in_gb: the new size the vmdk virtual disk extends to
-        :param root_vmdk_path: the path for the vmdk file
-        :param datacenter: reference to the datacenter
-        """
-        try:
-            self.volumeops.extend_virtual_disk(new_size_in_gb,
-                                               root_vmdk_path, datacenter)
-        except exceptions.VimException:
-            with excutils.save_and_reraise_exception():
-                LOG.exception(_LE("Unable to extend the size of the "
-                                  "vmdk virtual disk at the path %s."),
-                              root_vmdk_path)
+        root_vmdk_path = self.volumeops.get_vmdk_path(backing)
+        datacenter = self.volumeops.get_dc(backing)
+        self.volumeops.extend_virtual_disk(new_size_in_gb, root_vmdk_path,
+                                           datacenter)
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Creates volume from image.
@@ -1152,7 +1133,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                       {'name': volume['name'],
                        'vol_size': volume_size,
                        'disk_size': disk_size})
-            self._extend_vmdk_virtual_disk(volume['name'], volume['size'])
+            self._extend_backing(backing, volume['size'])
         # TODO(vbala): handle volume_size < disk_size case.
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
@@ -1383,50 +1364,58 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         return True
 
     def extend_volume(self, volume, new_size):
-        """Extend vmdk to new_size.
+        """Extend volume to new size.
 
-        Extends the vmdk backing to new volume size. First try to extend in
-        place on the same datastore. If that fails, try to relocate the volume
-        to a different datastore that can accommodate the new_size'd volume.
+        Extends the volume backing's virtual disk to new size. First, try to
+        extend in place on the same datastore. If that fails due to
+        insufficient disk space, then try to relocate the volume to a different
+        datastore that can accommodate the backing with new size and retry
+        extend.
 
         :param volume: dictionary describing the existing 'available' volume
         :param new_size: new size in GB to extend this volume to
         """
         vol_name = volume['name']
+        backing = self.volumeops.get_backing(vol_name)
+        if not backing:
+            LOG.info(_LI("There is no backing for volume: %s; no need to "
+                         "extend the virtual disk."), vol_name)
+            return
+
         # try extending vmdk in place
         try:
-            self._extend_vmdk_virtual_disk(vol_name, new_size)
-            LOG.info(_LI("Done extending volume %(vol)s "
-                         "to size %(size)s GB."),
+            self._extend_backing(backing, new_size)
+            LOG.info(_LI("Successfully extended volume: %(vol)s to size: "
+                         "%(size)s GB."),
                      {'vol': vol_name, 'size': new_size})
             return
-        except exceptions.VimFaultException:
-            LOG.info(_LI("Relocating volume %s vmdk to a different "
-                         "datastore since trying to extend vmdk file "
-                         "in place failed."), vol_name)
-        # If in place extend fails, then try to relocate the volume
-        try:
-            (host, rp, folder, summary) = self._select_ds_for_volume(new_size)
-        except exceptions.VimException:
-            with excutils.save_and_reraise_exception():
-                LOG.exception(_LE("Not able to find a different datastore to "
-                                  "place the extended volume %s."), vol_name)
+        except exceptions.NoDiskSpaceException:
+            LOG.warning(_LW("Unable to extend volume: %(vol)s to size: "
+                            "%(size)s on current datastore due to insufficient"
+                            " space."),
+                        {'vol': vol_name, 'size': new_size})
 
-        LOG.info(_LI("Selected datastore %(ds)s to place extended volume of "
-                     "size %(size)s GB."), {'ds': summary.name,
-                                            'size': new_size})
-
+        # Insufficient disk space; relocate the volume to a different datastore
+        # and retry extend.
+        LOG.info(_LI("Relocating volume: %s to a different datastore due to "
+                     "insufficient disk space on current datastore."),
+                 vol_name)
         try:
-            backing = self.volumeops.get_backing(vol_name)
+            create_params = {CREATE_PARAM_DISK_SIZE: new_size}
+            (host, rp, folder, summary) = self._select_ds_for_volume(
+                volume, create_params=create_params)
             self.volumeops.relocate_backing(backing, summary.datastore, rp,
                                             host)
-            self._extend_vmdk_virtual_disk(vol_name, new_size)
             self.volumeops.move_backing_to_folder(backing, folder)
-        except exceptions.VimException:
+            self._extend_backing(backing, new_size)
+        except exceptions.VMwareDriverException:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE("Not able to relocate volume %s for "
-                                  "extending."), vol_name)
-        LOG.info(_LI("Done extending volume %(vol)s to size %(size)s GB."),
+                LOG.error(_LE("Failed to extend volume: %(vol)s to size: "
+                              "%(size)s GB."),
+                          {'vol': vol_name, 'size': new_size})
+
+        LOG.info(_LI("Successfully extended volume: %(vol)s to size: "
+                     "%(size)s GB."),
                  {'vol': vol_name, 'size': new_size})
 
     @contextlib.contextmanager
@@ -1869,7 +1858,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         # we need to extend/resize the capacity of the vmdk virtual disk from
         # the size of the source volume to the volume size.
         if volume['size'] > src_vsize:
-            self._extend_vmdk_virtual_disk(volume['name'], volume['size'])
+            self._extend_backing(clone, volume['size'])
         LOG.info(_LI("Successfully created clone: %s."), clone)
 
     def _create_volume_from_snapshot(self, volume, snapshot):
