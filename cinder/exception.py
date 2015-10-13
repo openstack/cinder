@@ -29,6 +29,8 @@ from oslo_log import log as logging
 from oslo_versionedobjects import exception as obj_exc
 import six
 import webob.exc
+from webob.util import status_generic_reasons
+from webob.util import status_reasons
 
 from cinder.i18n import _, _LE
 
@@ -48,7 +50,21 @@ CONF.register_opts(exc_log_opts)
 class ConvertedException(webob.exc.WSGIHTTPException):
     def __init__(self, code=400, title="", explanation=""):
         self.code = code
-        self.title = title
+        # There is a strict rule about constructing status line for HTTP:
+        # '...Status-Line, consisting of the protocol version followed by a
+        # numeric status code and its associated textual phrase, with each
+        # element separated by SP characters'
+        # (http://www.faqs.org/rfcs/rfc2616.html)
+        # 'code' and 'title' can not be empty because they correspond
+        # to numeric status code and its associated text
+        if title:
+            self.title = title
+        else:
+            try:
+                self.title = status_reasons[self.code]
+            except KeyError:
+                generic_code = self.code // 100
+                self.title = status_generic_reasons[generic_code]
         self.explanation = explanation
         super(ConvertedException, self).__init__()
 

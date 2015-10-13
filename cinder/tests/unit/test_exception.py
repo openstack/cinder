@@ -18,36 +18,9 @@
 from cinder import exception
 from cinder import test
 
+import mock
 import six
-
-
-class FakeNotifier(object):
-    """Acts like the cinder.openstack.common.notifier.api module."""
-    ERROR = 88
-
-    def __init__(self):
-        self.provided_publisher = None
-        self.provided_event = None
-        self.provided_priority = None
-        self.provided_payload = None
-
-    def notify(self, context, publisher, event, priority, payload):
-        self.provided_publisher = publisher
-        self.provided_event = event
-        self.provided_priority = priority
-        self.provided_payload = payload
-
-
-def good_function():
-    return 99
-
-
-def bad_function_error():
-    raise exception.Error()
-
-
-def bad_function_exception():
-    raise test.TestingException()
+import webob.util
 
 
 class CinderExceptionTestCase(test.TestCase):
@@ -128,3 +101,23 @@ class CinderExceptionTestCase(test.TestCase):
         exc1 = Exception(msg)
         exc2 = FakeCinderException(message=exc1)
         self.assertEqual('Exception: test message', six.text_type(exc2))
+
+
+class CinderConvertedExceptionTestCase(test.TestCase):
+    def test_default_args(self):
+        exc = exception.ConvertedException()
+        self.assertNotEqual('', exc.title)
+        self.assertEqual(400, exc.code)
+        self.assertEqual('', exc.explanation)
+
+    def test_standard_status_code(self):
+        with mock.patch.dict(webob.util.status_reasons, {200: 'reason'}):
+            exc = exception.ConvertedException(code=200)
+            self.assertEqual('reason', exc.title)
+
+    @mock.patch.dict(webob.util.status_reasons, {500: 'reason'})
+    def test_generic_status_code(self):
+        with mock.patch.dict(webob.util.status_generic_reasons,
+                             {5: 'generic_reason'}):
+            exc = exception.ConvertedException(code=599)
+            self.assertEqual('generic_reason', exc.title)
