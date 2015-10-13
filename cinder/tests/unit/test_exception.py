@@ -107,7 +107,7 @@ class CinderConvertedExceptionTestCase(test.TestCase):
     def test_default_args(self):
         exc = exception.ConvertedException()
         self.assertNotEqual('', exc.title)
-        self.assertEqual(400, exc.code)
+        self.assertEqual(500, exc.code)
         self.assertEqual('', exc.explanation)
 
     def test_standard_status_code(self):
