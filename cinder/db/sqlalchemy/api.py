@@ -1188,9 +1188,11 @@ def finish_volume_migration(context, src_vol_id, dest_vol_id):
     """
     session = get_session()
     with session.begin():
-        src_volume_ref = _volume_get(context, src_vol_id, session=session)
+        src_volume_ref = _volume_get(context, src_vol_id, session=session,
+                                     joined_load=False)
         src_original_data = dict(src_volume_ref.iteritems())
-        dest_volume_ref = _volume_get(context, dest_vol_id, session=session)
+        dest_volume_ref = _volume_get(context, dest_vol_id, session=session,
+                                      joined_load=False)
 
         # NOTE(rpodolyaka): we should copy only column values, while model
         #                   instances also have relationships attributes, which
@@ -1320,7 +1322,24 @@ def volume_detached(context, volume_id, attachment_id):
 
 
 @require_context
-def _volume_get_query(context, session=None, project_only=False):
+def _volume_get_query(context, session=None, project_only=False,
+                      joined_load=True):
+    """Get the query to retrieve the volume.
+
+    :param context: the context used to run the method _volume_get_query
+    :param session: the session to use
+    :param project_only: the boolean used to decide whether to query the
+                         volume in the current project or all projects
+    :param joined_load: the boolean used to decide whether the query loads
+                        the other models, which join the volume model in
+                        the database. Currently, the False value for this
+                        parameter is specially for the case of updating
+                        database during volume migration
+    :returns: updated query or None
+    """
+    if not joined_load:
+        return model_query(context, models.Volume, session=session,
+                           project_only=project_only)
     if is_admin_context(context):
         return model_query(context, models.Volume, session=session,
                            project_only=project_only).\
@@ -1339,11 +1358,12 @@ def _volume_get_query(context, session=None, project_only=False):
 
 
 @require_context
-def _volume_get(context, volume_id, session=None):
-    result = _volume_get_query(context, session=session, project_only=True).\
-        options(joinedload('volume_type.extra_specs')).\
-        filter_by(id=volume_id).\
-        first()
+def _volume_get(context, volume_id, session=None, joined_load=True):
+    result = _volume_get_query(context, session=session, project_only=True,
+                               joined_load=joined_load)
+    if joined_load:
+        result = result.options(joinedload('volume_type.extra_specs'))
+    result = result.filter_by(id=volume_id).first()
 
     if not result:
         raise exception.VolumeNotFound(volume_id=volume_id)
