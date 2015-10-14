@@ -29,6 +29,15 @@ class WindowsUtilsTestCase(test.TestCase):
         self.wutils._conn_wmi = mock.Mock()
         self.wutils._conn_cimv2 = mock.MagicMock()
 
+    @mock.patch.object(windows_utils.WindowsUtils, 'get_windows_version')
+    def test_check_min_windows_version(self, mock_get_win_version):
+        required_win_version = [6, 4]
+        actual_win_version = '6.3.0'
+        mock_get_win_version.return_value = actual_win_version
+
+        self.assertFalse(self.wutils.check_min_windows_version(
+            *required_win_version))
+
     def _test_copy_vhd_disk(self, source_exists=True, copy_failed=False):
         fake_data_file_object = mock.MagicMock()
         fake_data_file_object.Copy.return_value = [int(copy_failed)]
