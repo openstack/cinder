@@ -20,6 +20,7 @@ import time
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_config import types
 from oslo_log import log as logging
 from oslo_utils import excutils
 import six
@@ -217,20 +218,17 @@ volume_opts = [
                 help='List of options that control which trace info '
                      'is written to the DEBUG log level to assist '
                      'developers. Valid values are method and api.'),
-    cfg.BoolOpt('managed_replication_target',
-                default=True,
-                help='There are two types of target configurations '
-                     'managed (replicate to another configured backend) '
-                     'or unmanaged (replicate to a device not managed '
-                     'by Cinder).'),
-    cfg.ListOpt('replication_devices',
-                default=None,
-                help="List of k/v pairs representing a replication target "
-                     "for this backend device.  For unmanaged the format "
-                     "is: {'key-1'='val1' 'key-2'='val2'...},{...} "
-                     "and for managed devices its simply a list of valid "
-                     "configured backend_names that the driver supports "
-                     "replicating to: backend-a,bakcend-b..."),
+    cfg.MultiOpt('replication_device',
+                 item_type=types.Dict(),
+                 default=None,
+                 help="Multi opt of dictionaries to represent a replication "
+                      "target device.  This option may be specified multiple "
+                      "times in a single config section to specify multiple "
+                      "replication target devices.  Each entry takes the "
+                      "standard dict config form: replication_device = "
+                      "device_target_id:<required>,"
+                      "managed_backend_name:<host@backend_name>,"
+                      "key1:value1,key2:value2..."),
     cfg.BoolOpt('image_upload_use_cinder_backend',
                 default=False,
                 help='If set to True, upload-to-image in raw format will '
