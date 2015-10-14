@@ -22,6 +22,7 @@ from xml.parsers import expat
 
 from lxml import etree
 from oslo_log import log as logging
+from oslo_log import versionutils
 from oslo_serialization import jsonutils
 from oslo_utils import excutils
 import six
@@ -37,6 +38,7 @@ from cinder.wsgi import common as wsgi
 XML_NS_V1 = 'http://docs.openstack.org/api/openstack-block-storage/1.0/content'
 XML_NS_V2 = 'http://docs.openstack.org/api/openstack-block-storage/2.0/content'
 XML_NS_ATOM = 'http://www.w3.org/2005/Atom'
+XML_WARNING = False
 
 LOG = logging.getLogger(__name__)
 
@@ -1338,6 +1340,14 @@ class Fault(webob.exc.HTTPException):
             'application/xml': xml_serializer,
             'application/json': JSONDictSerializer(),
         }[content_type]
+
+        if content_type == 'application/xml':
+            global XML_WARNING
+            if not XML_WARNING:
+                msg = _('XML support has been deprecated and will be removed '
+                        'in the N release.')
+                versionutils.report_deprecated_feature(LOG, msg)
+            XML_WARNING = True
 
         body = serializer.serialize(fault_data)
         if isinstance(body, six.text_type):
