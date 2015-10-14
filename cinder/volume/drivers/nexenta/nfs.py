@@ -721,7 +721,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         nms = self.share2nms[nfs_share]
         ns_volume, ns_folder = self._get_share_datasets(nfs_share)
         folder_props = nms.folder.get_child_props('%s/%s' % (ns_volume,
-                                                             ns_folder), '')
+                                                             ns_folder), 'used|available')
         free = utils.str2size(folder_props['available'])
         allocated = utils.str2size(folder_props['used'])
         return free + allocated, free, allocated
