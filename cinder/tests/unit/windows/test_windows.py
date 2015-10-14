@@ -1,4 +1,5 @@
 # Copyright 2012 Pedro Navarro Perez
+# Copyright 2015 Cloudbase Solutions SRL
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -17,389 +18,409 @@
 Unit tests for Windows Server 2012 OpenStack Cinder volume driver
 """
 
-
+import mock
 import os
-import shutil
-import tempfile
 
-from mox3 import mox
-from oslo_config import cfg
 from oslo_utils import fileutils
+from oslo_utils import units
 
 from cinder.image import image_utils
 from cinder import test
 from cinder.tests.unit.windows import db_fakes
 from cinder.volume import configuration as conf
-from cinder.volume.drivers.windows import constants
-from cinder.volume.drivers.windows import vhdutils
 from cinder.volume.drivers.windows import windows
-from cinder.volume.drivers.windows import windows_utils
-
-CONF = cfg.CONF
 
 
 class TestWindowsDriver(test.TestCase):
-
-    def __init__(self, method):
-        super(TestWindowsDriver, self).__init__(method)
-
-    def setUp(self):
-        self.lun_path_tempdir = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, self.lun_path_tempdir)
-
+    @mock.patch.object(windows, 'utilsfactory')
+    def setUp(self, mock_utilsfactory):
         super(TestWindowsDriver, self).setUp()
-        self.flags(
-            windows_iscsi_lun_path=self.lun_path_tempdir,
-        )
-        self._setup_stubs()
         configuration = conf.Configuration(None)
         configuration.append_config_values(windows.windows_opts)
+        self.flags(windows_iscsi_lun_path=mock.sentinel.iscsi_lun_path)
+        self.flags(image_conversion_dir=mock.sentinel.image_conversion_dir)
+
         self._driver = windows.WindowsDriver(configuration=configuration)
-        self._driver.do_setup({})
 
-    def _setup_stubs(self):
+    @mock.patch.object(fileutils, 'ensure_tree')
+    def test_do_setup(self, mock_ensure_tree):
+        self._driver.do_setup(mock.sentinel.context)
 
-        def fake_wutils__init__(self):
-            pass
+        mock_ensure_tree.assert_has_calls(
+            [mock.call(mock.sentinel.iscsi_lun_path),
+             mock.call(mock.sentinel.image_conversion_dir)])
 
-        windows_utils.WindowsUtils.__init__ = fake_wutils__init__
+    def test_check_for_setup_error(self):
+        self._driver.check_for_setup_error()
 
-    def fake_local_path(self, volume):
-        return os.path.join(CONF.windows_iscsi_lun_path,
-                            str(volume['name']) + ".vhd")
+        self._driver._tgt_utils.get_portal_locations.assert_called_once_with(
+            available_only=True, fail_if_none_found=True)
 
-    def test_check_for_setup_errors(self):
-        drv = self._driver
-        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                 'check_for_setup_error')
-        windows_utils.WindowsUtils.check_for_setup_error()
+    @mock.patch.object(windows.WindowsDriver, '_get_target_name')
+    def test_get_host_information(self, mock_get_target_name):
+        tgt_utils = self._driver._tgt_utils
 
-        self.mox.ReplayAll()
+        fake_auth_meth = 'CHAP'
+        fake_chap_username = 'fake_chap_username'
+        fake_chap_password = 'fake_chap_password'
+        fake_host_info = {'fake_prop': 'fake_value'}
+        fake_volume = db_fakes.get_fake_volume_info()
+        fake_volume['provider_auth'] = "%s %s %s" % (fake_auth_meth,
+                                                     fake_chap_username,
+                                                     fake_chap_password)
 
-        drv.check_for_setup_error()
+        mock_get_target_name.return_value = mock.sentinel.target_name
+        tgt_utils.get_portal_locations.return_value = [
+            mock.sentinel.portal_location]
+        tgt_utils.get_target_information.return_value = fake_host_info
 
-    def test_create_volume(self):
-        drv = self._driver
-        vol = db_fakes.get_fake_volume_info()
+        expected_host_info = dict(fake_host_info,
+                                  auth_method=fake_auth_meth,
+                                  auth_username=fake_chap_username,
+                                  auth_password=fake_chap_password,
+                                  target_discovered=False,
+                                  target_portal=mock.sentinel.portal_location,
+                                  target_lun=0,
+                                  volume_id=fake_volume['id'])
 
-        self.stubs.Set(drv, 'local_path', self.fake_local_path)
+        host_info = self._driver._get_host_information(fake_volume)
 
-        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                 'create_volume')
+        self.assertEqual(expected_host_info, host_info)
 
-        windows_utils.WindowsUtils.create_volume(self.fake_local_path(vol),
-                                                 vol['name'], vol['size'])
+        mock_get_target_name.assert_called_once_with(fake_volume)
+        tgt_utils.get_portal_locations.assert_called_once_with()
+        tgt_utils.get_target_information.assert_called_once_with(
+            mock.sentinel.target_name)
 
-        self.mox.ReplayAll()
+    @mock.patch.object(windows.WindowsDriver, '_get_host_information')
+    def test_initialize_connection(self, mock_get_host_info):
+        tgt_utils = self._driver._tgt_utils
 
-        drv.create_volume(vol)
+        fake_volume = db_fakes.get_fake_volume_info()
+        fake_initiator = db_fakes.get_fake_connector_info()
+        fake_host_info = {'fake_host_prop': 'fake_value'}
 
-    def test_delete_volume(self):
-        """delete_volume simple test case."""
-        drv = self._driver
+        mock_get_host_info.return_value = fake_host_info
 
-        vol = db_fakes.get_fake_volume_info()
+        expected_conn_info = {'driver_volume_type': 'iscsi',
+                              'data': fake_host_info}
+        conn_info = self._driver.initialize_connection(fake_volume,
+                                                       fake_initiator)
 
-        self.mox.StubOutWithMock(drv, 'local_path')
-        drv.local_path(vol).AndReturn(self.fake_local_path(vol))
+        self.assertEqual(expected_conn_info, conn_info)
+        mock_associate = tgt_utils.associate_initiator_with_iscsi_target
+        mock_associate.assert_called_once_with(
+            fake_initiator['initiator'],
+            fake_volume['provider_location'])
 
-        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                 'delete_volume')
-        windows_utils.WindowsUtils.delete_volume(vol['name'],
-                                                 self.fake_local_path(vol))
-        self.mox.ReplayAll()
+    def test_terminate_connection(self):
+        fake_volume = db_fakes.get_fake_volume_info()
+        fake_initiator = db_fakes.get_fake_connector_info()
 
-        drv.delete_volume(vol)
+        self._driver.terminate_connection(fake_volume, fake_initiator)
+
+        self._driver._tgt_utils.deassociate_initiator.assert_called_once_with(
+            fake_initiator['initiator'], fake_volume['provider_location'])
+
+    @mock.patch.object(windows.WindowsDriver, 'local_path')
+    def test_create_volume(self, mock_local_path):
+        fake_volume = db_fakes.get_fake_volume_info()
+
+        self._driver.create_volume(fake_volume)
+
+        mock_local_path.assert_called_once_with(fake_volume)
+        self._driver._tgt_utils.create_wt_disk.assert_called_once_with(
+            mock_local_path.return_value,
+            fake_volume['name'],
+            size_mb=fake_volume['size'] * 1024)
+
+    def test_local_path(self):
+        fake_volume = db_fakes.get_fake_volume_info()
+
+        fake_lun_path = 'fake_lun_path'
+        self.flags(windows_iscsi_lun_path=fake_lun_path)
+
+        disk_format = 'vhd'
+        mock_get_fmt = self._driver._tgt_utils.get_supported_disk_format
+        mock_get_fmt.return_value = disk_format
+
+        disk_path = self._driver.local_path(fake_volume)
+
+        expected_fname = "%s.%s" % (fake_volume['name'], disk_format)
+        expected_disk_path = os.path.join(fake_lun_path,
+                                          expected_fname)
+        self.assertEqual(expected_disk_path, disk_path)
+        mock_get_fmt.assert_called_once_with()
+
+    @mock.patch.object(windows.WindowsDriver, 'local_path')
+    @mock.patch.object(fileutils, 'delete_if_exists')
+    def test_delete_volume(self, mock_delete_if_exists, mock_local_path):
+        fake_volume = db_fakes.get_fake_volume_info()
+
+        self._driver.delete_volume(fake_volume)
+
+        mock_local_path.assert_called_once_with(fake_volume)
+        self._driver._tgt_utils.remove_wt_disk.assert_called_once_with(
+            fake_volume['name'])
+        mock_delete_if_exists.assert_called_once_with(
+            mock_local_path.return_value)
 
     def test_create_snapshot(self):
-        drv = self._driver
-        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                 'create_snapshot')
-        volume = db_fakes.get_fake_volume_info()
-        snapshot = db_fakes.get_fake_snapshot_info()
+        fake_snapshot = db_fakes.get_fake_snapshot_info()
 
-        self.stubs.Set(drv, 'local_path', self.fake_local_path(snapshot))
+        self._driver.create_snapshot(fake_snapshot)
 
-        windows_utils.WindowsUtils.create_snapshot(volume['name'],
-                                                   snapshot['name'])
+        self._driver._tgt_utils.create_snapshot.assert_called_once_with(
+            fake_snapshot['volume_name'], fake_snapshot['name'])
 
-        self.mox.ReplayAll()
+    @mock.patch.object(windows.WindowsDriver, 'local_path')
+    def test_create_volume_from_snapshot(self, mock_local_path):
+        fake_volume = db_fakes.get_fake_volume_info()
+        fake_snapshot = db_fakes.get_fake_snapshot_info()
 
-        drv.create_snapshot(snapshot)
+        self._driver.create_volume_from_snapshot(fake_volume, fake_snapshot)
 
-    def test_create_volume_from_snapshot(self):
-        drv = self._driver
-
-        snapshot = db_fakes.get_fake_snapshot_info()
-        volume = db_fakes.get_fake_volume_info()
-
-        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                 'create_volume_from_snapshot')
-        windows_utils.WindowsUtils.\
-            create_volume_from_snapshot(volume, snapshot['name'])
-
-        self.mox.ReplayAll()
-
-        drv.create_volume_from_snapshot(volume, snapshot)
+        self._driver._tgt_utils.export_snapshot.assert_called_once_with(
+            fake_snapshot['name'],
+            mock_local_path.return_value)
+        self._driver._tgt_utils.import_wt_disk.assert_called_once_with(
+            mock_local_path.return_value,
+            fake_volume['name'])
 
     def test_delete_snapshot(self):
-        drv = self._driver
+        fake_snapshot = db_fakes.get_fake_snapshot_info()
 
-        snapshot = db_fakes.get_fake_snapshot_info()
+        self._driver.delete_snapshot(fake_snapshot)
 
-        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                 'delete_snapshot')
-        windows_utils.WindowsUtils.delete_snapshot(snapshot['name'])
+        self._driver._tgt_utils.delete_snapshot.assert_called_once_with(
+            fake_snapshot['name'])
 
-        self.mox.ReplayAll()
+    def test_get_target_name(self):
+        fake_volume = db_fakes.get_fake_volume_info()
+        expected_target_name = "%s%s" % (
+            self._driver.configuration.iscsi_target_prefix,
+            fake_volume['name'])
 
-        drv.delete_snapshot(snapshot)
+        target_name = self._driver._get_target_name(fake_volume)
+        self.assertEqual(expected_target_name, target_name)
 
-    def _test_create_export(self, chap_enabled=False):
-        drv = self._driver
-        volume = db_fakes.get_fake_volume_info()
-        initiator_name = "%s%s" % (CONF.iscsi_target_prefix, volume['name'])
+    @mock.patch.object(windows.WindowsDriver, '_get_target_name')
+    @mock.patch.object(windows.utils, 'generate_username')
+    @mock.patch.object(windows.utils, 'generate_password')
+    def test_create_export(self, mock_generate_password,
+                           mock_generate_username,
+                           mock_get_target_name):
+        tgt_utils = self._driver._tgt_utils
+        fake_volume = db_fakes.get_fake_volume_info()
+        self._driver.configuration.chap_username = None
+        self._driver.configuration.chap_password = None
+        self._driver.configuration.use_chap_auth = True
         fake_chap_username = 'fake_chap_username'
         fake_chap_password = 'fake_chap_password'
 
-        self.flags(use_chap_auth=chap_enabled)
-        self.flags(chap_username=fake_chap_username)
-        self.flags(chap_password=fake_chap_password)
+        mock_get_target_name.return_value = mock.sentinel.target_name
+        mock_generate_username.return_value = fake_chap_username
+        mock_generate_password.return_value = fake_chap_password
+        tgt_utils.iscsi_target_exists.return_value = False
 
-        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                 'add_disk_to_target')
-        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                 'create_iscsi_target')
-        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                 'set_chap_credentials')
-        self.mox.StubOutWithMock(self._driver,
-                                 'remove_export')
+        vol_updates = self._driver.create_export(mock.sentinel.context,
+                                                 fake_volume,
+                                                 mock.sentinel.connector)
 
-        self._driver.remove_export(mox.IgnoreArg(), mox.IgnoreArg())
-        windows_utils.WindowsUtils.create_iscsi_target(initiator_name)
+        mock_get_target_name.assert_called_once_with(fake_volume)
+        tgt_utils.iscsi_target_exists.assert_called_once_with(
+            mock.sentinel.target_name)
+        tgt_utils.set_chap_credentials.assert_called_once_with(
+            mock.sentinel.target_name,
+            fake_chap_username,
+            fake_chap_password)
+        tgt_utils.add_disk_to_target.assert_called_once_with(
+            fake_volume['name'], mock.sentinel.target_name)
 
-        if chap_enabled:
-            windows_utils.WindowsUtils.set_chap_credentials(
-                mox.IgnoreArg(),
-                fake_chap_username,
-                fake_chap_password)
+        expected_provider_auth = ' '.join(('CHAP',
+                                           fake_chap_username,
+                                           fake_chap_password))
+        expected_vol_updates = dict(
+            provider_location=mock.sentinel.target_name,
+            provider_auth=expected_provider_auth)
+        self.assertEqual(expected_vol_updates, vol_updates)
 
-        windows_utils.WindowsUtils.add_disk_to_target(volume['name'],
-                                                      initiator_name)
+    @mock.patch.object(windows.WindowsDriver, '_get_target_name')
+    def test_remove_export(self, mock_get_target_name):
+        fake_volume = db_fakes.get_fake_volume_info()
 
-        self.mox.ReplayAll()
+        self._driver.remove_export(mock.sentinel.context, fake_volume)
 
-        export_info = drv.create_export(None, volume, {})
+        mock_get_target_name.assert_called_once_with(fake_volume)
+        self._driver._tgt_utils.delete_iscsi_target.assert_called_once_with(
+            mock_get_target_name.return_value)
 
-        self.assertEqual(initiator_name, export_info['provider_location'])
-        if chap_enabled:
-            expected_provider_auth = ' '.join(('CHAP',
-                                               fake_chap_username,
-                                               fake_chap_password))
-            self.assertEqual(expected_provider_auth,
-                             export_info['provider_auth'])
+    @mock.patch.object(windows.WindowsDriver, 'local_path')
+    @mock.patch.object(image_utils, 'temporary_file')
+    @mock.patch.object(image_utils, 'fetch_to_vhd')
+    @mock.patch('os.unlink')
+    def test_copy_image_to_volume(self, mock_unlink, mock_fetch_to_vhd,
+                                  mock_tmp_file, mock_local_path):
+        tgt_utils = self._driver._tgt_utils
+        fake_volume = db_fakes.get_fake_volume_info()
 
-    def test_create_export_chap_disabled(self):
-        self._test_create_export()
+        mock_tmp_file.return_value.__enter__.return_value = (
+            mock.sentinel.tmp_vhd_path)
+        mock_local_path.return_value = mock.sentinel.vol_vhd_path
 
-    def test_create_export_chap_enabled(self):
-        self._test_create_export(chap_enabled=True)
+        self._driver.copy_image_to_volume(mock.sentinel.context,
+                                          fake_volume,
+                                          mock.sentinel.image_service,
+                                          mock.sentinel.image_id)
 
-    def test_initialize_connection(self):
-        drv = self._driver
+        mock_local_path.assert_called_once_with(fake_volume)
+        mock_tmp_file.assert_called_once_with(suffix='.vhd')
+        image_utils.fetch_to_vhd.assert_called_once_with(
+            mock.sentinel.context, mock.sentinel.image_service,
+            mock.sentinel.image_id, mock.sentinel.tmp_vhd_path,
+            self._driver.configuration.volume_dd_blocksize)
 
-        volume = db_fakes.get_fake_volume_info()
-        initiator_name = "%s%s" % (CONF.iscsi_target_prefix, volume['name'])
+        mock_unlink.assert_called_once_with(mock.sentinel.vol_vhd_path)
+        self._driver._vhdutils.convert_vhd.assert_called_once_with(
+            mock.sentinel.tmp_vhd_path,
+            mock.sentinel.vol_vhd_path,
+            tgt_utils.get_supported_vhd_type.return_value)
+        self._driver._vhdutils.resize_vhd.assert_called_once_with(
+            mock.sentinel.vol_vhd_path,
+            fake_volume['size'] * units.Gi,
+            is_file_max_size=False)
 
-        connector = db_fakes.get_fake_connector_info()
+        tgt_utils.change_wt_disk_status.assert_has_calls(
+            [mock.call(fake_volume['name'], enabled=False),
+             mock.call(fake_volume['name'], enabled=True)])
 
-        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                 'associate_initiator_with_iscsi_target')
-        windows_utils.WindowsUtils.associate_initiator_with_iscsi_target(
-            volume['provider_location'], initiator_name, )
+    @mock.patch.object(windows.uuidutils, 'generate_uuid')
+    def test_temporary_snapshot(self, mock_generate_uuid):
+        tgt_utils = self._driver._tgt_utils
+        mock_generate_uuid.return_value = mock.sentinel.snap_uuid
+        expected_snap_name = '%s-tmp-snapshot-%s' % (
+            mock.sentinel.volume_name, mock.sentinel.snap_uuid)
 
-        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                 'get_host_information')
-        windows_utils.WindowsUtils.get_host_information(
-            volume, volume['provider_location'])
+        with self._driver._temporary_snapshot(
+                mock.sentinel.volume_name) as snap_name:
+            self.assertEqual(expected_snap_name, snap_name)
+            tgt_utils.create_snapshot.assert_called_once_with(
+                mock.sentinel.volume_name, expected_snap_name)
 
-        self.mox.ReplayAll()
+        tgt_utils.delete_snapshot.assert_called_once_with(
+            expected_snap_name)
 
-        drv.initialize_connection(volume, connector)
+    @mock.patch.object(windows.WindowsDriver, '_temporary_snapshot')
+    @mock.patch.object(image_utils, 'upload_volume')
+    @mock.patch.object(fileutils, 'delete_if_exists')
+    def test_copy_volume_to_image(self, mock_delete_if_exists,
+                                  mock_upload_volume,
+                                  mock_tmp_snap):
+        tgt_utils = self._driver._tgt_utils
 
-    def test_terminate_connection(self):
-        drv = self._driver
+        disk_format = 'vhd'
+        fake_image_meta = db_fakes.get_fake_image_meta()
+        fake_volume = db_fakes.get_fake_volume_info()
+        fake_img_conv_dir = 'fake_img_conv_dir'
+        self._driver.configuration.image_conversion_dir = fake_img_conv_dir
 
-        volume = db_fakes.get_fake_volume_info()
-        initiator_name = "%s%s" % (CONF.iscsi_target_prefix, volume['name'])
-        connector = db_fakes.get_fake_connector_info()
+        tgt_utils.get_supported_disk_format.return_value = disk_format
+        mock_tmp_snap.return_value.__enter__.return_value = (
+            mock.sentinel.tmp_snap_name)
 
-        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                 'delete_iscsi_target')
-        windows_utils.WindowsUtils.delete_iscsi_target(
-            initiator_name, volume['provider_location'])
+        expected_tmp_vhd_path = os.path.join(
+            fake_img_conv_dir,
+            fake_image_meta['id'] + '.' + disk_format)
 
-        self.mox.ReplayAll()
+        self._driver.copy_volume_to_image(
+            mock.sentinel.context, fake_volume,
+            mock.sentinel.image_service,
+            fake_image_meta)
 
-        drv.terminate_connection(volume, connector)
+        mock_tmp_snap.assert_called_once_with(fake_volume['name'])
+        tgt_utils.export_snapshot.assert_called_once_with(
+            mock.sentinel.tmp_snap_name,
+            expected_tmp_vhd_path)
+        mock_upload_volume.assert_called_once_with(
+            mock.sentinel.context, mock.sentinel.image_service,
+            fake_image_meta, expected_tmp_vhd_path, 'vhd')
+        mock_delete_if_exists.assert_called_once_with(
+            expected_tmp_vhd_path)
 
-    def test_remove_export(self):
-        drv = self._driver
+    @mock.patch.object(windows.WindowsDriver, '_temporary_snapshot')
+    @mock.patch.object(windows.WindowsDriver, 'local_path')
+    def test_create_cloned_volume(self, mock_local_path,
+                                  mock_tmp_snap):
+        tgt_utils = self._driver._tgt_utils
 
-        volume = db_fakes.get_fake_volume_info()
+        fake_volume = db_fakes.get_fake_volume_info()
+        fake_src_volume = db_fakes.get_fake_volume_info_cloned()
 
-        target_name = volume['provider_location']
+        mock_tmp_snap.return_value.__enter__.return_value = (
+            mock.sentinel.tmp_snap_name)
+        mock_local_path.return_value = mock.sentinel.vol_vhd_path
 
-        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                 'remove_iscsi_target')
-        windows_utils.WindowsUtils.remove_iscsi_target(target_name)
+        self._driver.create_cloned_volume(fake_volume, fake_src_volume)
 
-        self.mox.ReplayAll()
+        mock_tmp_snap.assert_called_once_with(fake_src_volume['name'])
+        tgt_utils.export_snapshot.assert_called_once_with(
+            mock.sentinel.tmp_snap_name,
+            mock.sentinel.vol_vhd_path)
+        self._driver._vhdutils.resize_vhd.assert_called_once_with(
+            mock.sentinel.vol_vhd_path, fake_volume['size'] * units.Gi,
+            is_file_max_size=False)
+        tgt_utils.import_wt_disk.assert_called_once_with(
+            mock.sentinel.vol_vhd_path, fake_volume['name'])
 
-        drv.remove_export(None, volume)
+    @mock.patch('os.path.splitdrive')
+    def test_get_capacity_info(self, mock_splitdrive):
+        mock_splitdrive.return_value = (mock.sentinel.drive,
+                                        mock.sentinel.path_tail)
+        fake_size_gb = 2
+        fake_free_space_gb = 1
+        self._driver._hostutils.get_volume_info.return_value = (
+            fake_size_gb * units.Gi,
+            fake_free_space_gb * units.Gi)
 
-    def test_copy_image_to_volume(self):
-        """resize_image common case usage."""
-        drv = self._driver
+        total_gb, free_gb = self._driver._get_capacity_info()
 
-        volume = db_fakes.get_fake_volume_info()
+        self.assertEqual(fake_size_gb, total_gb)
+        self.assertEqual(fake_free_space_gb, free_gb)
 
-        fake_get_supported_type = lambda x: constants.VHD_TYPE_FIXED
-        self.stubs.Set(drv, 'local_path', self.fake_local_path)
-        self.stubs.Set(windows_utils.WindowsUtils, 'get_supported_vhd_type',
-                       fake_get_supported_type)
+        self._driver._hostutils.get_volume_info.assert_called_once_with(
+            mock.sentinel.drive)
+        mock_splitdrive.assert_called_once_with(
+            mock.sentinel.iscsi_lun_path)
 
-        self.mox.StubOutWithMock(os, 'unlink')
-        self.mox.StubOutWithMock(image_utils, 'create_temporary_file')
-        self.mox.StubOutWithMock(image_utils, 'fetch_to_vhd')
-        self.mox.StubOutWithMock(vhdutils.VHDUtils, 'convert_vhd')
-        self.mox.StubOutWithMock(vhdutils.VHDUtils, 'resize_vhd')
-        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                 'change_disk_status')
+    @mock.patch.object(windows.WindowsDriver, '_get_capacity_info')
+    def test_update_volume_stats(self, mock_get_capacity_info):
+        mock_get_capacity_info.return_value = (
+            mock.sentinel.size_gb,
+            mock.sentinel.free_space_gb)
 
-        fake_temp_path = r'C:\fake\temp\file'
-        if (CONF.image_conversion_dir and not
-                os.path.exists(CONF.image_conversion_dir)):
-            os.makedirs(CONF.image_conversion_dir)
-        image_utils.create_temporary_file(suffix='.vhd').AndReturn(
-            fake_temp_path)
+        self.flags(volume_backend_name=mock.sentinel.backend_name)
+        self.flags(reserved_percentage=mock.sentinel.reserved_percentage)
 
-        fake_volume_path = self.fake_local_path(volume)
+        expected_volume_stats = dict(
+            volume_backend_name=mock.sentinel.backend_name,
+            vendor_name='Microsoft',
+            driver_version=self._driver.VERSION,
+            storage_protocol='iSCSI',
+            total_capacity_gb=mock.sentinel.size_gb,
+            free_capacity_gb=mock.sentinel.free_space_gb,
+            reserved_percentage=mock.sentinel.reserved_percentage,
+            QoS_support=False)
 
-        image_utils.fetch_to_vhd(None, None, None,
-                                 fake_temp_path,
-                                 mox.IgnoreArg())
-        windows_utils.WindowsUtils.change_disk_status(volume['name'],
-                                                      mox.IsA(bool))
-        vhdutils.VHDUtils.convert_vhd(fake_temp_path,
-                                      fake_volume_path,
-                                      constants.VHD_TYPE_FIXED)
-        vhdutils.VHDUtils.resize_vhd(fake_volume_path,
-                                     volume['size'] << 30)
-        windows_utils.WindowsUtils.change_disk_status(volume['name'],
-                                                      mox.IsA(bool))
-        os.unlink(mox.IsA(str))
-
-        self.mox.ReplayAll()
-
-        drv.copy_image_to_volume(None, volume, None, None)
-
-    def _test_copy_volume_to_image(self, supported_format):
-        drv = self._driver
-
-        vol = db_fakes.get_fake_volume_info()
-
-        image_meta = db_fakes.get_fake_image_meta()
-
-        fake_get_supported_format = lambda x: supported_format
-
-        self.stubs.Set(os.path, 'exists', lambda x: False)
-        self.stubs.Set(drv, 'local_path', self.fake_local_path)
-        self.stubs.Set(windows_utils.WindowsUtils, 'get_supported_format',
-                       fake_get_supported_format)
-
-        self.mox.StubOutWithMock(fileutils, 'ensure_tree')
-        self.mox.StubOutWithMock(fileutils, 'delete_if_exists')
-        self.mox.StubOutWithMock(image_utils, 'upload_volume')
-        self.mox.StubOutWithMock(windows_utils.WindowsUtils, 'copy_vhd_disk')
-        self.mox.StubOutWithMock(vhdutils.VHDUtils, 'convert_vhd')
-
-        fileutils.ensure_tree(CONF.image_conversion_dir)
-        temp_vhd_path = os.path.join(CONF.image_conversion_dir,
-                                     str(image_meta['id']) + "." +
-                                     supported_format)
-        upload_image = temp_vhd_path
-
-        windows_utils.WindowsUtils.copy_vhd_disk(self.fake_local_path(vol),
-                                                 temp_vhd_path)
-        if supported_format == 'vhdx':
-            upload_image = upload_image[:-1]
-            vhdutils.VHDUtils.convert_vhd(temp_vhd_path, upload_image,
-                                          constants.VHD_TYPE_DYNAMIC)
-
-        image_utils.upload_volume(None, None, image_meta, upload_image, 'vhd')
-
-        fileutils.delete_if_exists(temp_vhd_path)
-        fileutils.delete_if_exists(upload_image)
-
-        self.mox.ReplayAll()
-
-        drv.copy_volume_to_image(None, vol, None, image_meta)
-
-    def test_copy_volume_to_image_using_vhd(self):
-        self._test_copy_volume_to_image('vhd')
-
-    def test_copy_volume_to_image_using_vhdx(self):
-        self._test_copy_volume_to_image('vhdx')
-
-    def test_create_cloned_volume(self):
-        drv = self._driver
-
-        volume = db_fakes.get_fake_volume_info()
-        volume_cloned = db_fakes.get_fake_volume_info_cloned()
-        new_vhd_path = self.fake_local_path(volume)
-        src_vhd_path = self.fake_local_path(volume_cloned)
-
-        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                 'copy_vhd_disk')
-        self.mox.StubOutWithMock(windows_utils.WindowsUtils,
-                                 'import_wt_disk')
-        self.mox.StubOutWithMock(vhdutils.VHDUtils,
-                                 'resize_vhd')
-
-        self.stubs.Set(drv.utils,
-                       'is_resize_needed',
-                       lambda vhd_path, new_size, old_size: True)
-        self.stubs.Set(drv, 'local_path', self.fake_local_path)
-
-        windows_utils.WindowsUtils.copy_vhd_disk(src_vhd_path,
-                                                 new_vhd_path)
-        drv.utils.is_resize_needed(new_vhd_path,
-                                   volume['size'],
-                                   volume_cloned['size'])
-        vhdutils.VHDUtils.resize_vhd(new_vhd_path, volume['size'] << 30)
-        windows_utils.WindowsUtils.import_wt_disk(new_vhd_path,
-                                                  volume['name'])
-
-        self.mox.ReplayAll()
-
-        drv.create_cloned_volume(volume, volume_cloned)
+        self._driver._update_volume_stats()
+        self.assertEqual(expected_volume_stats,
+                         self._driver._stats)
 
     def test_extend_volume(self):
-        drv = self._driver
+        fake_volume = db_fakes.get_fake_volume_info()
+        new_size_gb = 2
+        expected_additional_sz_mb = 1024
 
-        volume = db_fakes.get_fake_volume_info()
+        self._driver.extend_volume(fake_volume, new_size_gb)
 
-        TEST_VOLUME_ADDITIONAL_SIZE_MB = 1024
-        TEST_VOLUME_ADDITIONAL_SIZE_GB = 1
-
-        self.mox.StubOutWithMock(windows_utils.WindowsUtils, 'extend')
-
-        windows_utils.WindowsUtils.extend(volume['name'],
-                                          TEST_VOLUME_ADDITIONAL_SIZE_MB)
-
-        new_size = volume['size'] + TEST_VOLUME_ADDITIONAL_SIZE_GB
-
-        self.mox.ReplayAll()
-
-        drv.extend_volume(volume, new_size)
+        self._driver._tgt_utils.extend_wt_disk.assert_called_once_with(
+            fake_volume['name'], expected_additional_sz_mb)
