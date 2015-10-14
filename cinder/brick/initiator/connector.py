@@ -367,12 +367,6 @@ class ISCSIConnector(InitiatorConnector):
         target_iqn(s) - iSCSI Qualified Name
         target_lun(s) - LUN id of the volume
         """
-        # Moved _rescan_iscsi and _rescan_multipath
-        # from _disconnect_volume_multipath_iscsi to here.
-        # Otherwise, if we do rescan after _linuxscsi.remove_multipath_device
-        # but before logging out, the removed devices under /dev/disk/by-path
-        # will reappear after rescan.
-        self._rescan_iscsi()
         if self.use_multipath:
             self._rescan_multipath()
             host_device = multipath_device = None
