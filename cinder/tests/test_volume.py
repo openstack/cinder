@@ -5496,6 +5496,12 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
                           self.volume.driver.manage_existing_get_size,
                           vol, ref)
 
+    def test_lvm_unmanage(self):
+        volume = tests_utils.create_volume(self.context, status='available',
+                                           size=1, host=CONF.host)
+        ret = self.volume.driver.unmanage(volume)
+        self.assertEqual(ret, None)
+
 
 class LVMVolumeDriverTestCase(DriverTestCase):
     """Test case for VolumeDriver"""
