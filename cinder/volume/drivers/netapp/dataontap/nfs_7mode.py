@@ -201,9 +201,10 @@ class NetApp7modeNfsDriver(nfs_base.NetAppNfsDriver):
         LOG.debug('No share match found for ip %s', ip)
         return None
 
-    def _is_share_vol_compatible(self, volume, share):
-        """Checks if share is compatible with volume to host it."""
-        return self._is_share_eligible(share, volume['size'])
+    def _is_share_clone_compatible(self, volume, share):
+        """Checks if share is compatible with volume to host its clone."""
+        thin = self.configuration.nfs_sparsed_volumes
+        return self._share_has_space_for_clone(share, volume['size'], thin)
 
     def _check_volume_type(self, volume, share, file_name):
         """Matches a volume type for share file."""
