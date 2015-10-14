@@ -72,11 +72,13 @@ class LVM(executor.Executor):
         self.vg_provisioned_capacity = 0.0
 
         # Ensure LVM_SYSTEM_DIR has been added to LVM.LVM_CMD_PREFIX
-        # before the first LVM command is executed.
+        # before the first LVM command is executed, and use the directory
+        # where the specified lvm_conf file is located as the value.
         if lvm_conf and os.path.isfile(lvm_conf):
+            lvm_sys_dir = os.path.dirname(lvm_conf)
             LVM.LVM_CMD_PREFIX = ['env',
                                   'LC_ALL=C',
-                                  'LVM_SYSTEM_DIR=/etc/cinder']
+                                  'LVM_SYSTEM_DIR=' + lvm_sys_dir]
 
         if create_vg and physical_volumes is not None:
             self.pv_list = physical_volumes
