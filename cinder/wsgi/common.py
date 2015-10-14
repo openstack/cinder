@@ -20,6 +20,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from paste import deploy
 import routes.middleware
+import six
 import webob.dec
 import webob.exc
 
@@ -193,8 +194,13 @@ class Debug(Middleware):
         """Iterator that prints the contents of a wrapper string."""
         print(('*' * 40) + ' BODY')  # noqa
         for part in app_iter:
-            sys.stdout.write(part)
-            sys.stdout.flush()
+            if six.PY3:
+                sys.stdout.flush()
+                sys.stdout.buffer.write(part)   # pylint: disable=E1101
+                sys.stdout.buffer.flush()       # pylint: disable=E1101
+            else:
+                sys.stdout.write(part)
+                sys.stdout.flush()
             yield part
         print()  # noqa
 

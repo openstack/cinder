@@ -39,12 +39,13 @@ class Test(test.TestCase):
 
             def __call__(self, environ, start_response):
                 start_response("200", [("X-Test", "checking")])
-                return ['Test result']
+                return [b'Test result']
 
-        with mock.patch('sys.stdout', new=six.StringIO()):
+        with mock.patch('sys.stdout', new=six.StringIO()) as mock_stdout:
+            mock_stdout.buffer = six.BytesIO()
             application = wsgi.Debug(Application())
             result = webob.Request.blank('/').get_response(application)
-            self.assertEqual("Test result", result.body)
+            self.assertEqual(b"Test result", result.body)
 
     def test_router(self):
 
@@ -53,7 +54,7 @@ class Test(test.TestCase):
 
             def __call__(self, environ, start_response):
                 start_response("200", [])
-                return ['Router result']
+                return [b'Router result']
 
         class Router(wsgi.Router):
             """Test router."""
@@ -64,6 +65,6 @@ class Test(test.TestCase):
                 super(Router, self).__init__(mapper)
 
         result = webob.Request.blank('/test').get_response(Router())
-        self.assertEqual("Router result", result.body)
+        self.assertEqual(b"Router result", result.body)
         result = webob.Request.blank('/bad').get_response(Router())
-        self.assertNotEqual("Router result", result.body)
+        self.assertNotEqual(b"Router result", result.body)

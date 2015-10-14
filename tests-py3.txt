@@ -1,3 +1,4 @@
+cinder.tests.unit.api.openstack.test_wsgi
 cinder.tests.unit.image.test_cache
 cinder.tests.unit.image.test_glance
 cinder.tests.unit.keymgr.test_mock_key_mgr
@@ -107,3 +108,4 @@ cinder.tests.unit.windows.test_vhdutils
 cinder.tests.unit.windows.test_windows
 cinder.tests.unit.windows.test_windows_remotefs
 cinder.tests.unit.windows.test_windows_utils
+cinder.tests.unit.wsgi
