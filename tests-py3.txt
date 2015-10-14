@@ -81,6 +81,7 @@ cinder.tests.unit.test_sheepdog
 cinder.tests.unit.test_smbfs
 cinder.tests.unit.test_srb
 cinder.tests.unit.test_solidfire
+cinder.tests.unit.test_ssh_utils
 cinder.tests.unit.test_test
 cinder.tests.unit.test_test_utils
 cinder.tests.unit.test_v6000_common
