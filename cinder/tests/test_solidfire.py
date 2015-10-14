@@ -53,6 +53,7 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.configuration.iscsi_helper = None
         self.configuration.sf_template_account_name = 'openstack-vtemplate'
         self.configuration.sf_allow_template_caching = False
+        self.configuration.sf_svip = None
 
         super(SolidFireVolumeTestCase, self).setUp()
         self.stubs.Set(solidfire.SolidFireDriver,
@@ -875,3 +876,31 @@ class SolidFireVolumeTestCase(test.TestCase):
                                          'fake',
                                          _fake_image_meta,
                                          'fake'))
+
+    def test_configured_svip(self):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+
+        def _fake_get_volumes(account_id):
+            return [{'volumeID': 1,
+                     'iqn': ''}]
+
+        def _fake_get_cluster_info():
+            return {'clusterInfo': {'svip': 1}}
+
+        with mock.patch.object(sfv,
+                               '_get_volumes_by_sfaccount',
+                               side_effect=_fake_get_volumes),\
+                mock.patch.object(sfv,
+                                  '_issue_api_request',
+                                  side_effect=self.fake_issue_api_request):
+
+            sfaccount = {'targetSecret': 'yakitiyak',
+                         'accountID': 5,
+                         'username': 'bobthebuilder'}
+            v = sfv._get_model_info(sfaccount, 1)
+            self.assertEqual('1.1.1.1:3260  0', v['provider_location'])
+
+            configured_svip = '9.9.9.9:6500'
+            self.configuration.sf_svip = configured_svip
+            v = sfv._get_model_info(sfaccount, 1)
+            self.assertEqual('%s  0' % configured_svip, v['provider_location'])

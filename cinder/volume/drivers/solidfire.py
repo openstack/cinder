@@ -64,6 +64,13 @@ sf_opts = [
                      'a bootable volume is created to eliminate fetch from '
                      'glance and qemu-conversion on subsequent calls.'),
 
+    cfg.StrOpt('sf_svip',
+               default=None,
+               help='Overrides default cluster SVIP with the one specified. '
+                    'This is required or deployments that have implemented '
+                    'the use of VLANs for iSCSI networks in their cloud.'),
+
+
     cfg.IntOpt('sf_api_port',
                default=443,
                help='SolidFire API port. Useful if the device api is behind '
@@ -310,7 +317,10 @@ class SolidFireDriver(san.SanISCSIDriver):
     def _get_model_info(self, sfaccount, sf_volume_id):
         """Gets the connection info for specified account and volume."""
         cluster_info = self._get_cluster_info()
-        iscsi_portal = cluster_info['clusterInfo']['svip'] + ':3260'
+        if self.configuration.sf_svip is None:
+            iscsi_portal = cluster_info['clusterInfo']['svip'] + ':3260'
+        else:
+            iscsi_portal = self.configuration.sf_svip
         chap_secret = sfaccount['targetSecret']
 
         found_volume = False
