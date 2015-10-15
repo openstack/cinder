@@ -146,8 +146,9 @@ def delete_initiator(target_iqn, initiator_iqn):
         if acl.node_wwn == initiator_iqn:
             acl.delete()
             return
-    raise RtstoolError(_('Could not find ACL %(acl)s in target %(target)s')
-                       % {'target': target_iqn, 'acl': initiator_iqn})
+
+    print(_('delete_initiator: %s ACL not found. Continuing.') % initiator_iqn)
+    # Return successfully.
 
 
 def get_targets():
