@@ -53,7 +53,8 @@ class VolumeActionsTest(test.TestCase):
             self.api_patchers[_meth].return_value = True
 
         vol = {'id': 'fake', 'host': 'fake', 'status': 'available', 'size': 1,
-               'migration_status': None, 'volume_type_id': 'fake'}
+               'migration_status': None, 'volume_type_id': 'fake',
+               'project_id': 'project_id'}
         self.get_patcher = mock.patch('cinder.volume.API.get')
         self.mock_volume_get = self.get_patcher.start()
         self.addCleanup(self.get_patcher.stop)

@@ -31,7 +31,14 @@ def get_volume_type_reservation(ctxt, volume, type_id):
         QUOTAS.add_volume_type_opts(ctxt,
                                     reserve_opts,
                                     type_id)
-        reservations = QUOTAS.reserve(ctxt, **reserve_opts)
+        # Note that usually the project_id on the volume will be the same as
+        # the project_id in the context. But, if they are different then the
+        # reservations must be recorded against the project_id that owns the
+        # volume.
+        project_id = volume['project_id']
+        reservations = QUOTAS.reserve(ctxt,
+                                      project_id=project_id,
+                                      **reserve_opts)
     except exception.OverQuota as e:
         overs = e.kwargs['overs']
         usages = e.kwargs['usages']
