@@ -23,7 +23,7 @@ Paste<=1.7.5.1
 PasteDeploy<=1.5.2,>=1.5.0
 pycrypto<=2.6.1,>=2.6
 python-barbicanclient!=3.0.0,<3.0.2,>=2.1.0
-python-glanceclient<=0.15.0,>=0.14.0
+python-glanceclient<0.15.0,>=0.14.0
 python-novaclient<=2.20.0,>=2.18.0
 python-swiftclient<2.4.0,>=2.2.0
 requests!=2.4.0,<=2.2.1,>=2.1.0
