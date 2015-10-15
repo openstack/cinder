@@ -200,12 +200,12 @@ class ExtensionControllerIdFormatTest(test.TestCase):
 
     def test_id_with_xml_format(self):
         result = self._bounce_id('foo.xml')
-        self.assertEqual('foo', result)
+        self.assertEqual(b'foo', result)
 
     def test_id_with_json_format(self):
         result = self._bounce_id('foo.json')
-        self.assertEqual('foo', result)
+        self.assertEqual(b'foo', result)
 
     def test_id_with_bad_format(self):
         result = self._bounce_id('foo.bad')
-        self.assertEqual('foo.bad', result)
+        self.assertEqual(b'foo.bad', result)

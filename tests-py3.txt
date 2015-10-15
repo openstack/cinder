@@ -1,4 +1,8 @@
 cinder.tests.unit.api.openstack.test_wsgi
+cinder.tests.unit.api.test_common
+cinder.tests.unit.api.test_extensions
+cinder.tests.unit.api.test_versions
+cinder.tests.unit.api.test_xmlutil
 cinder.tests.unit.image.test_cache
 cinder.tests.unit.image.test_glance
 cinder.tests.unit.keymgr.test_mock_key_mgr

@@ -656,14 +656,12 @@ class TemplateTest(test.TestCase):
                                           selector='scope0:scope1:scope2:key3')
         key3.text = xmlutil.Selector()
         serializer = xmlutil.MasterTemplate(root, 1)
-        xml_list = []
-        xml_list.append("<?xmlversion='1.0'encoding='UTF-8'?><test>")
-        xml_list.append("<scope0><key1>Value1</key1><scope1>")
-        xml_list.append("<key2>Value2</key2><scope2><key3>Value3</key3>")
-        xml_list.append("</scope2></scope1></scope0></test>")
-        expected_xml = ''.join(xml_list)
+        expected_xml = (b"<?xmlversion='1.0'encoding='UTF-8'?><test>"
+                        b"<scope0><key1>Value1</key1><scope1>"
+                        b"<key2>Value2</key2><scope2><key3>Value3</key3>"
+                        b"</scope2></scope1></scope0></test>")
         result = serializer.serialize(obj)
-        result = result.replace('\n', '').replace(' ', '')
+        result = result.replace(b'\n', b'').replace(b' ', b'')
         self.assertEqual(expected_xml, result)
 
 
@@ -728,9 +726,9 @@ class TemplateBuilderTest(test.TestCase):
 
 class MiscellaneousXMLUtilTests(test.TestCase):
     def test_make_flat_dict(self):
-        expected_xml = ("<?xml version='1.0' encoding='UTF-8'?>\n"
-                        '<wrapper><a>foo</a><b>bar</b></wrapper>')
+        expected_xml = (b"<?xml version='1.0' encoding='UTF-8'?>\n"
+                        b'<wrapper><a>foo</a></wrapper>')
         root = xmlutil.make_flat_dict('wrapper')
         tmpl = xmlutil.MasterTemplate(root, 1)
-        result = tmpl.serialize(dict(wrapper=dict(a='foo', b='bar')))
+        result = tmpl.serialize(dict(wrapper=dict(a='foo')))
         self.assertEqual(expected_xml, result)

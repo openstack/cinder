@@ -42,7 +42,7 @@ class VolumeTypeExtraSpecTemplate(xmlutil.TemplateBuilder):
 
         def extraspec_sel(obj, do_raise=False):
             # Have to extract the key and value for later use...
-            key, value = obj.items()[0]
+            key, value = list(obj.items())[0]
             return dict(key=key, value=value)
 
         root = xmlutil.TemplateElement(tagname, selector=extraspec_sel)
