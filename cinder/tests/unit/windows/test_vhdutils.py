@@ -354,3 +354,29 @@ class VHDUtilsTestCase(test.TestCase):
 
     def test_reconnect_parent_failed(self):
         self._test_reconnect_parent(reconnect_failed=True)
+
+    @mock.patch('sys.exc_info')
+    @mock.patch.object(vhdutils, 'LOG')
+    def test_run_and_check_output_fails_exc_info_set(self, mock_log,
+                                                     mock_exc_info):
+        # we can't use assertRaises because we're mocking sys.exc_info and
+        # that messes up how assertRaises handles the exception
+        try:
+            self._vhdutils._run_and_check_output(lambda *args, **kwargs: 1)
+            self.fail('Expected _run_and_check_output to fail.')
+        except exception.VolumeBackendAPIException:
+            pass
+        mock_log.error.assert_called_once_with(mock.ANY, exc_info=True)
+
+    @mock.patch('sys.exc_info', return_value=None)
+    @mock.patch.object(vhdutils, 'LOG')
+    def test_run_and_check_output_fails_exc_info_not_set(self, mock_log,
+                                                         mock_exc_info):
+        # we can't use assertRaises because we're mocking sys.exc_info and
+        # that messes up how assertRaises handles the exception
+        try:
+            self._vhdutils._run_and_check_output(lambda *args, **kwargs: 1)
+            self.fail('Expected _run_and_check_output to fail.')
+        except exception.VolumeBackendAPIException:
+            pass
+        mock_log.error.assert_called_once_with(mock.ANY, exc_info=False)

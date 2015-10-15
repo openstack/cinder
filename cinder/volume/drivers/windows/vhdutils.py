@@ -28,6 +28,7 @@ http://msdn.microsoft.com/en-us/library/windows/desktop/dd323700.aspx
 """
 import ctypes
 import os
+import sys
 
 if os.name == 'nt':
     from ctypes import wintypes
@@ -210,7 +211,7 @@ class VHDUtils(object):
                    {'func_name': func_name,
                     'error_code': ret_val,
                     'error_message': error_message})
-            LOG.exception(err)
+            LOG.error(err, exc_info=(sys.exc_info() is not None))
             raise exception.VolumeBackendAPIException(err)
 
     @staticmethod
