@@ -35,8 +35,7 @@ from cinder.tests.unit import utils as testutils
 from cinder import utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.ibm import storwize_svc
-from cinder.volume.drivers.ibm.storwize_svc import helpers
-from cinder.volume.drivers.ibm.storwize_svc import ssh
+from cinder.volume.drivers.ibm.storwize_svc import storwize_svc_common
 from cinder.volume import qos_specs
 from cinder.volume import volume_types
 
@@ -1956,7 +1955,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                'nofmtdisk': False}
         return opt
 
-    @mock.patch.object(helpers.StorwizeHelpers, 'add_vdisk_qos')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers, 'add_vdisk_qos')
     @mock.patch.object(storwize_svc.StorwizeSVCDriver, '_get_vdisk_params')
     def test_storwize_svc_create_volume_with_qos(self, get_vdisk_params,
                                                  add_vdisk_qos):
@@ -1993,7 +1992,8 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         self._reset_flags()
 
         # Test prestartfcmap failing
-        with mock.patch.object(ssh.StorwizeSSH, 'prestartfcmap') as prestart:
+        with mock.patch.object(
+                storwize_svc_common.StorwizeSSH, 'prestartfcmap') as prestart:
             prestart.side_effect = exception.VolumeBackendAPIException
             self.assertRaises(exception.VolumeBackendAPIException,
                               self.driver.create_snapshot, snap1)
@@ -2040,7 +2040,8 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                           snap_novol)
 
         # Fail the snapshot
-        with mock.patch.object(ssh.StorwizeSSH, 'prestartfcmap') as prestart:
+        with mock.patch.object(
+                storwize_svc_common.StorwizeSSH, 'prestartfcmap') as prestart:
             prestart.side_effect = exception.VolumeBackendAPIException
             self.assertRaises(exception.VolumeBackendAPIException,
                               self.driver.create_volume_from_snapshot,
@@ -2084,7 +2085,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         self.driver.delete_volume(vol1)
         self._assert_vol_exists(vol1['name'], False)
 
-    @mock.patch.object(helpers.StorwizeHelpers, 'add_vdisk_qos')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers, 'add_vdisk_qos')
     def test_storwize_svc_create_volfromsnap_clone_with_qos(self,
                                                             add_vdisk_qos):
         vol1 = self._create_volume()
@@ -2395,7 +2396,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                 # lsfabric can return [] and initilize_connection will still
                 # complete successfully
 
-                with mock.patch.object(helpers.StorwizeHelpers,
+                with mock.patch.object(storwize_svc_common.StorwizeHelpers,
                                        'get_conn_fc_wwpns') as conn_fc_wwpns:
                     conn_fc_wwpns.return_value = []
                     self._set_flag('storwize_svc_npiv_compatibility_mode',
@@ -2813,8 +2814,10 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         volume_types.destroy(self.ctxt, type_id)
         qos_specs.delete(self.ctxt, qos_spec['qos_specs']['id'])
 
-    @mock.patch.object(helpers.StorwizeHelpers, 'disable_vdisk_qos')
-    @mock.patch.object(helpers.StorwizeHelpers, 'update_vdisk_qos')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'disable_vdisk_qos')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'update_vdisk_qos')
     def test_storwize_svc_retype_no_copy(self, update_vdisk_qos,
                                          disable_vdisk_qos):
         self.driver.do_setup(None)
@@ -2936,8 +2939,10 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                          'failed')
         self.driver.delete_volume(volume)
 
-    @mock.patch.object(helpers.StorwizeHelpers, 'disable_vdisk_qos')
-    @mock.patch.object(helpers.StorwizeHelpers, 'update_vdisk_qos')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'disable_vdisk_qos')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'update_vdisk_qos')
     def test_storwize_svc_retype_need_copy(self, update_vdisk_qos,
                                            disable_vdisk_qos):
         self.driver.do_setup(None)
@@ -3035,7 +3040,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
             self.assertEqual((7, 2, 0, 0), res['code_level'],
                              'Get code level error')
 
-    @mock.patch.object(helpers.StorwizeHelpers, 'rename_vdisk')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers, 'rename_vdisk')
     def test_storwize_update_migrated_volume(self, rename_vdisk):
         ctxt = testutils.get_test_admin_context()
         current_volume_id = 'fake_volume_id'
@@ -3126,7 +3131,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         wwpns = ['ff00000000000000', 'ff00000000000001']
         connector = {'host': 'storwize-svc-test', 'wwpns': wwpns}
 
-        with mock.patch.object(helpers.StorwizeHelpers,
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
                                'get_conn_fc_wwpns') as get_mappings:
             get_mappings.return_value = ['AABBCCDDEEFF0001',
                                          'AABBCCDDEEFF0002',
@@ -3160,7 +3165,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         wwpns = ['ff00000000000000', 'ff00000000000001']
         connector = {'host': 'storwize-svc-test', 'wwpns': wwpns}
 
-        with mock.patch.object(helpers.StorwizeHelpers,
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
                                'get_conn_fc_wwpns') as get_mappings:
             get_mappings.return_value = ['AABBCCDDEEFF0001',
                                          'AABBCCDDEEFF0002',
@@ -3193,7 +3198,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         wwpns = ['ff00000000000000', 'ff00000000000001']
         connector = {'host': 'storwize-svc-test', 'wwpns': wwpns}
 
-        with mock.patch.object(helpers.StorwizeHelpers,
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
                                'get_conn_fc_wwpns') as get_mappings:
             get_mappings.return_value = ['AABBCCDDEEFF0001',
                                          'AABBCCDDEEFF0002',
@@ -3514,7 +3519,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         connector = {'host': 'storwize-svc-test', 'wwpns': wwpns}
 
         # Initialise the connection
-        with mock.patch.object(helpers.StorwizeHelpers,
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
                                'get_conn_fc_wwpns') as conn_fc_wwpns:
             conn_fc_wwpns.return_value = []
             init_ret = self.driver.initialize_connection(volume, connector)
@@ -3785,15 +3790,17 @@ class StorwizeSVCDriverTestCase(test.TestCase):
 
 class CLIResponseTestCase(test.TestCase):
     def test_empty(self):
-        self.assertEqual(0, len(ssh.CLIResponse('')))
-        self.assertEqual(0, len(ssh.CLIResponse(('', 'stderr'))))
+        self.assertEqual(0, len(
+            storwize_svc_common.CLIResponse('')))
+        self.assertEqual(0, len(
+            storwize_svc_common.CLIResponse(('', 'stderr'))))
 
     def test_header(self):
         raw = r'''id!name
 1!node1
 2!node2
 '''
-        resp = ssh.CLIResponse(raw, with_header=True)
+        resp = storwize_svc_common.CLIResponse(raw, with_header=True)
         self.assertEqual(2, len(resp))
         self.assertEqual('1', resp[0]['id'])
         self.assertEqual('2', resp[1]['id'])
@@ -3813,7 +3820,7 @@ age!40
 home address!s3
 home address!s4
 '''
-        resp = ssh.CLIResponse(raw, with_header=False)
+        resp = storwize_svc_common.CLIResponse(raw, with_header=False)
         self.assertEqual([('s1', 'Bill', 's1'), ('s2', 'Bill2', 's2'),
                           ('s3', 'John', 's3'), ('s4', 'John2', 's4')],
                          list(resp.select('home address', 'name',
@@ -3824,7 +3831,7 @@ home address!s4
 1!node1!!500507680200C744!online
 2!node2!!500507680200C745!online
 '''
-        resp = ssh.CLIResponse(raw)
+        resp = storwize_svc_common.CLIResponse(raw)
         self.assertEqual(2, len(resp))
         self.assertEqual('1', resp[0]['id'])
         self.assertEqual('500507680200C744', resp[0]['WWNN'])
@@ -3840,7 +3847,7 @@ port_id!500507680240C744
 port_status!inactive
 port_speed!8Gb
 '''
-        resp = ssh.CLIResponse(raw, with_header=False)
+        resp = storwize_svc_common.CLIResponse(raw, with_header=False)
         self.assertEqual(1, len(resp))
         self.assertEqual('1', resp[0]['id'])
         self.assertEqual([('500507680210C744', 'active'),
@@ -3851,7 +3858,7 @@ port_speed!8Gb
 class StorwizeHelpersTestCase(test.TestCase):
     def setUp(self):
         super(StorwizeHelpersTestCase, self).setUp()
-        self.helpers = helpers.StorwizeHelpers(None)
+        self.storwize_svc_common = storwize_svc_common.StorwizeHelpers(None)
 
     def test_compression_enabled(self):
         fake_license_without_keys = {}
@@ -3862,10 +3869,12 @@ class StorwizeHelpersTestCase(test.TestCase):
 
         # Check when keys of return licenses do not contain
         # 'license_compression_enclosures' and 'license_compression_capacity'
-        with mock.patch.object(ssh.StorwizeSSH, 'lslicense') as lslicense:
+        with mock.patch.object(
+                storwize_svc_common.StorwizeSSH, 'lslicense') as lslicense:
             lslicense.return_value = fake_license_without_keys
-            self.assertFalse(self.helpers.compression_enabled())
+            self.assertFalse(self.storwize_svc_common.compression_enabled())
 
-        with mock.patch.object(ssh.StorwizeSSH, 'lslicense') as lslicense:
+        with mock.patch.object(
+                storwize_svc_common.StorwizeSSH, 'lslicense') as lslicense:
             lslicense.return_value = fake_license
-            self.assertTrue(self.helpers.compression_enabled())
+            self.assertTrue(self.storwize_svc_common.compression_enabled())
