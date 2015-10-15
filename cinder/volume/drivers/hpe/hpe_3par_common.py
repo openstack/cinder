@@ -61,7 +61,6 @@ from cinder import context
 from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder import objects
 from cinder.volume import qos_specs
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
@@ -214,10 +213,11 @@ class HPE3PARCommon(object):
         3.0.0 - Rebranded HP to HPE.
         3.0.1 - Fixed find_existing_vluns bug #1515033
         3.0.2 - Python 3 support
+        3.0.3 - Remove db access for consistency groups
 
     """
 
-    VERSION = "3.0.2"
+    VERSION = "3.0.3"
 
     stats = {}
 
@@ -258,7 +258,6 @@ class HPE3PARCommon(object):
         self.config = config
         self.client = None
         self.uuid = uuid.uuid4()
-        self.db = importutils.import_module('cinder.db')
 
     def get_version(self):
         return self.VERSION
@@ -423,7 +422,7 @@ class HPE3PARCommon(object):
         if cgsnapshot and snapshots:
             self.create_consistencygroup(context, group)
             vvs_name = self._get_3par_vvs_name(group.id)
-            cgsnap_name = self._get_3par_snap_name(cgsnapshot['id'])
+            cgsnap_name = self._get_3par_snap_name(cgsnapshot.id)
             for i, (volume, snapshot) in enumerate(zip(volumes, snapshots)):
                 snap_name = cgsnap_name + "-" + six.text_type(i)
                 volume_name = self._get_3par_vol_name(volume['id'])
@@ -439,7 +438,7 @@ class HPE3PARCommon(object):
 
         return None, None
 
-    def delete_consistencygroup(self, context, group):
+    def delete_consistencygroup(self, context, group, volumes):
         """Deletes a consistency group."""
 
         try:
@@ -456,14 +455,23 @@ class HPE3PARCommon(object):
                       {"volume_set": cg_name,
                        "error": e})
 
-        volumes = self.db.volume_get_all_by_group(context, group.id)
+        volume_model_updates = []
         for volume in volumes:
-            self.delete_volume(volume)
-            volume.status = 'deleted'
+            volume_update = {'id': volume.id}
+            try:
+                self.delete_volume(volume)
+                volume_update['status'] = 'deleted'
+            except Exception as ex:
+                LOG.error(_LE("There was an error deleting volume %(id)s: "
+                              "%(error)."),
+                          {'id': volume.id,
+                           'error': six.text_type(ex)})
+                volume_update['status'] = 'error'
+            volume_model_updates.append(volume_update)
 
         model_update = {'status': group.status}
 
-        return model_update, volumes
+        return model_update, volume_model_updates
 
     def update_consistencygroup(self, context, group,
                                 add_volumes=None, remove_volumes=None):
@@ -493,17 +501,17 @@ class HPE3PARCommon(object):
 
         return None, None, None
 
-    def create_cgsnapshot(self, context, cgsnapshot):
+    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Creates a cgsnapshot."""
 
-        cg_id = cgsnapshot['consistencygroup_id']
-        snap_shot_name = self._get_3par_snap_name(cgsnapshot['id']) + (
+        cg_id = cgsnapshot.consistencygroup_id
+        snap_shot_name = self._get_3par_snap_name(cgsnapshot.id) + (
             "-@count@")
         copy_of_name = self._get_3par_vvs_name(cg_id)
 
-        extra = {'cgsnapshot_id': cgsnapshot['id']}
+        extra = {'cgsnapshot_id': cgsnapshot.id}
         extra['consistency_group_id'] = cg_id
-        extra['description'] = cgsnapshot['description']
+        extra['description'] = cgsnapshot.description
 
         optional = {'comment': json.dumps(extra),
                     'readOnly': False}
@@ -515,48 +523,55 @@ class HPE3PARCommon(object):
             optional['retentionHours'] = (
                 int(self.config.hpe3par_snapshot_retention))
 
-        self.client.createSnapshotOfVolumeSet(snap_shot_name, copy_of_name,
-                                              optional=optional)
+        try:
+            self.client.createSnapshotOfVolumeSet(snap_shot_name, copy_of_name,
+                                                  optional=optional)
+        except Exception as ex:
+            msg = (_('There was an error creating the cgsnapshot: %s'),
+                   six.text_type(ex))
+            LOG.error(msg)
+            raise exception.InvalidInput(reason=msg)
 
-        snapshots = objects.SnapshotList().get_all_for_cgsnapshot(
-            context, cgsnapshot['id'])
-
+        snapshot_model_updates = []
         for snapshot in snapshots:
-            snapshot.status = 'available'
+            snapshot_update = {'id': snapshot['id'],
+                               'status': 'available'}
+            snapshot_model_updates.append(snapshot_update)
 
         model_update = {'status': 'available'}
 
-        return model_update, snapshots
+        return model_update, snapshot_model_updates
 
-    def delete_cgsnapshot(self, context, cgsnapshot):
+    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Deletes a cgsnapshot."""
 
-        cgsnap_name = self._get_3par_snap_name(cgsnapshot['id'])
+        cgsnap_name = self._get_3par_snap_name(cgsnapshot.id)
 
-        snapshots = objects.SnapshotList().get_all_for_cgsnapshot(
-            context, cgsnapshot['id'])
-
+        snapshot_model_updates = []
         for i, snapshot in enumerate(snapshots):
+            snapshot_update = {'id': snapshot['id']}
             try:
                 snap_name = cgsnap_name + "-" + six.text_type(i)
                 self.client.deleteVolume(snap_name)
-            except hpeexceptions.HTTPForbidden as ex:
-                LOG.error(_LE("Exception: %s."), ex)
-                raise exception.NotAuthorized()
+                snapshot_update['status'] = 'deleted'
             except hpeexceptions.HTTPNotFound as ex:
                 # We'll let this act as if it worked
                 # it helps clean up the cinder entries.
                 LOG.warning(_LW("Delete Snapshot id not found. Removing from "
                                 "cinder: %(id)s Ex: %(msg)s"),
                             {'id': snapshot['id'], 'msg': ex})
-            except hpeexceptions.HTTPConflict as ex:
-                LOG.error(_LE("Exception: %s."), ex)
-                raise exception.SnapshotIsBusy(snapshot_name=snapshot['id'])
-            snapshot['status'] = 'deleted'
+                snapshot_update['status'] = 'error'
+            except Exception as ex:
+                LOG.error(_LE("There was an error deleting snapshot %(id)s: "
+                              "%(error)."),
+                          {'id': snapshot['id'],
+                           'error': six.text_type(ex)})
+                snapshot_update['status'] = 'error'
+            snapshot_model_updates.append(snapshot_update)
 
-        model_update = {'status': cgsnapshot['status']}
+        model_update = {'status': cgsnapshot.status}
 
-        return model_update, snapshots
+        return model_update, snapshot_model_updates
 
     def manage_existing(self, volume, existing_ref):
         """Manage an existing 3PAR volume.
