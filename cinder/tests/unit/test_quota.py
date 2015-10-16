@@ -31,6 +31,7 @@ from cinder.db.sqlalchemy import models as sqa_models
 from cinder import exception
 from cinder import objects
 from cinder import quota
+from cinder import quota_utils
 from cinder import test
 import cinder.tests.unit.image.fake
 from cinder import volume
@@ -1821,3 +1822,38 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
                                        usage_id=self.usages['gigabytes'],
                                        project_id='test_project',
                                        delta=-2 * 1024), ])
+
+
+class QuotaVolumeTypeReservationTestCase(test.TestCase):
+
+    def setUp(self):
+        super(QuotaVolumeTypeReservationTestCase, self).setUp()
+
+        self.volume_type_name = CONF.default_volume_type
+        self.volume_type = db.volume_type_create(
+            context.get_admin_context(),
+            dict(name=self.volume_type_name))
+
+    @mock.patch.object(quota.QUOTAS, 'reserve')
+    @mock.patch.object(quota.QUOTAS, 'add_volume_type_opts')
+    def test_volume_type_reservation(self,
+                                     mock_add_volume_type_opts,
+                                     mock_reserve):
+        my_context = FakeContext('MyProject', None)
+        volume = {'name': 'my_vol_name',
+                  'id': 'my_vol_id',
+                  'size': '1',
+                  'project_id': 'vol_project_id',
+                  }
+        reserve_opts = {'volumes': 1, 'gigabytes': volume['size']}
+        quota_utils.get_volume_type_reservation(my_context,
+                                                volume,
+                                                self.volume_type['id'])
+        mock_add_volume_type_opts.assert_called_once_with(
+            my_context,
+            reserve_opts,
+            self.volume_type['id'])
+        mock_reserve.assert_called_once_with(my_context,
+                                             project_id='vol_project_id',
+                                             gigabytes='1',
+                                             volumes=1)
