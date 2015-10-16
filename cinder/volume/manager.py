@@ -2626,9 +2626,9 @@ class VolumeManager(manager.SchedulerDependentManager):
             if model_update:
                 if model_update['status'] in ['error_deleting', 'error']:
                     msg = (_('Delete consistency group failed.'))
-                    LOG.exception(msg,
-                                  resource={'type': 'consistency_group',
-                                            'id': group.id})
+                    LOG.error(msg,
+                              resource={'type': 'consistency_group',
+                                        'id': group.id})
                     raise exception.VolumeDriverException(message=msg)
                 else:
                     group.update(model_update)
@@ -2779,7 +2779,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                 if model_update['status'] in ['error']:
                     msg = (_('Error occurred when updating consistency group '
                              '%s.') % group.id)
-                    LOG.exception(msg)
+                    LOG.error(msg)
                     raise exception.VolumeDriverException(message=msg)
                 group.update(model_update)
                 group.save()

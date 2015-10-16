@@ -697,7 +697,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
                          "check your configuration because source and "
                          "destination are the same Volume Group: %(name)s.") %
                        {'id': volume['id'], 'name': self.vg.vg_name})
-            LOG.exception(message)
+            LOG.error(message)
             raise exception.VolumeBackendAPIException(data=message)
 
     def get_pool(self, volume):

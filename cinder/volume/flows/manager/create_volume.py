@@ -807,8 +807,8 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         # we can't do anything if the driver didn't init
         if not self.driver.initialized:
             driver_name = self.driver.__class__.__name__
-            LOG.exception(_LE("Unable to create volume. "
-                              "Volume driver %s not initialized"), driver_name)
+            LOG.error(_LE("Unable to create volume. "
+                          "Volume driver %s not initialized"), driver_name)
             raise exception.DriverNotInitialized()
 
         create_type = volume_spec.pop('type', None)
