@@ -343,6 +343,22 @@ class VolumeActionsTest(test.TestCase):
         res = req.get_response(fakes.wsgi_app())
         self.assertEqual(202, res.status_int)
 
+    def test_extend_volume_invalid_status(self):
+        def fake_extend_volume(*args, **kwargs):
+            msg = "Volume status must be available"
+            raise exception.InvalidVolume(reason=msg)
+        self.stubs.Set(volume.API, 'extend',
+                       fake_extend_volume)
+
+        body = {'os-extend': {'new_size': 5}}
+        req = webob.Request.blank('/v2/fake/volumes/1/action')
+        req.method = "POST"
+        req.body = jsonutils.dumps(body)
+        req.headers["content-type"] = "application/json"
+
+        res = req.get_response(fakes.wsgi_app())
+        self.assertEqual(400, res.status_int)
+
     def test_update_readonly_flag(self):
         def fake_update_readonly_flag(*args, **kwargs):
             return {}
