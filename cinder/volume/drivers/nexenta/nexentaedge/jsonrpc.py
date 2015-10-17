@@ -41,6 +41,7 @@ except:
 LOG = logging.getLogger(__name__)
 socket.setdefaulttimeout(100)
 
+
 def retry(exc_tuple, tries=5, delay=1, backoff=2):
     def retry_dec(f):
         @wraps(f)
@@ -61,9 +62,13 @@ def retry(exc_tuple, tries=5, delay=1, backoff=2):
         return func_retry
     return retry_dec
 
+
 class NexentaEdgeJSONProxy(object):
 
-    retry_exc_tuple = (requests.exceptions.ConnectionError,)
+    retry_exc_tuple = (
+        requests.exceptions.ConnectionError,
+        requests.exceptions.ConnectTimeout
+    )
 
     def __init__(self, protocol, host, port, path, user, password, auto=False,
                  method=None):

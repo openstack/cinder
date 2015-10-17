@@ -281,7 +281,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             LOG.error(_LE('Error creating cloned volume: %s'), e)
             raise
 
-    def create_export(self, context, volume, connector = None):
+    def create_export(self, context, volume, connector=None):
         return {'provider_location': self._get_provider_location(volume)}
 
     def ensure_export(self, context, volume):
