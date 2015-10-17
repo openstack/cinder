@@ -54,7 +54,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 of migrated volume; after migrating volume migrate_volume
                 destroy snapshot on migration destination.
         1.3.0 - Added retype method.
-        1.3.0.1 - Target creation on setup.
+        1.3.0.1 - Target creation refactor.
     """
 
     VERSION = VERSION
@@ -124,24 +124,39 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             self.nms_host,
             target_idx
         )
-        try:
-            self.nms.iscsitarget.create_target({
-                'target_name': target_name})
-        except nexenta.NexentaException as exc:
-            if not('already' in exc.args[0]):
-                raise
         target_group_name = self._get_target_group_name(target_name)
-        try:
-            self.nms.stmf.create_targetgroup(target_group_name)
-        except nexenta.NexentaException as exc:
-            if not('already' in exc.args[0]):
-                raise
-        try:
-            self.nms.stmf.add_targetgroup_member(target_group_name,
-                                                 target_name)
-        except nexenta.NexentaException as exc:
-            if not('already' in exc.args[0]):
-                raise
+
+        if not self._target_exists(target_name):
+            try:
+                self.nms.iscsitarget.create_target({
+                    'target_name': target_name})
+            except nexenta.NexentaException as exc:
+                if 'already' in exc.args[0]:
+                    LOG.info('Ignored target creation error "%s" while '
+                             'ensuring export.', exc)
+                else:
+                    raise
+        if not self._target_group_exists(target_group_name):
+            try:
+                self.nms.stmf.create_targetgroup(target_group_name)
+            except nexenta.NexentaException as exc:
+                if ('already' in exc.args[0]):
+                    LOG.info('Ignored target group creation error "%s" '
+                             'while ensuring export.', exc)
+                else:
+                    raise
+        if not self._target_member_in_target_group(target_group_name,
+                                                   target_name):
+            try:
+                self.nms.stmf.add_targetgroup_member(target_group_name,
+                                                     target_name)
+            except nexenta.NexentaException as exc:
+                if ('already' in exc.args[0]):
+                    LOG.info('Ignored target group member addition error '
+                             '"%s" while ensuring export.', exc)
+                else:
+                    raise
+
         self.targets[target_name] = []
         return target_name
 
@@ -231,7 +246,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 return
             raise
         origin = props.get('origin')
-        if origin:# and self._is_clone_snapshot_name(origin):
+        if origin and self._is_clone_snapshot_name(origin):
             volume, snapshot = origin.split('@')
             volume = volume.lstrip('%s/' % self.configuration.nexenta_volume)
             try:
@@ -505,7 +520,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         targets = self.nms.stmf.list_targets()
         if not targets:
             return False
-        return target in self.nms.stmf.list_targets()
+        return (target in self.nms.stmf.list_targets())
 
     def _target_group_exists(self, target_group):
         """Check if target group exist.
@@ -565,23 +580,13 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :param volume: reference of volume to be exported
         :return: iscsiadm-formatted provider location string
         """
-        zvol_name = self._get_zvol_name(volume['name'])
-        target_name = self._get_target_name(volume)
-        target_group_name = self._get_target_group_name(target_name)
-
-        self.nms.scsidisk.create_lu(zvol_name, {})
-        entry = self.nms.scsidisk.add_lun_mapping_entry(zvol_name, {
-                    'target_group': target_group_name})
-
-        provider_location =  '%(host)s:%(port)s,1 %(name)s %(lun)s' % {
-            'host': self.nms_host,
-            'port': self.configuration.nexenta_iscsi_target_portal_port,
-            'name': target_name,
-            'lun': entry['lun'],
-        }
-        return {'provider_location': provider_location}
+        model_update = self._do_export(_ctx, volume)
+        return model_update
 
     def ensure_export(self, _ctx, volume):
+        self._do_export(_ctx, volume)
+
+    def _do_export(self, _ctx, volume):
         """Recreate parts of export if necessary.
         :param volume: reference of volume to be exported
         """
@@ -589,40 +594,10 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         target_name = self._get_target_name(volume)
         target_group_name = self._get_target_group_name(target_name)
 
-        if not self._target_exists(target_name):
-            try:
-                self.nms.iscsitarget.create_target({
-                    'target_name': target_name})
-            except nexenta.NexentaException as exc:
-                if 'already contains' in exc.args[0]:
-                    LOG.info('Ignored target creation error "%s" while '
-                             'ensuring export.', exc)
-                else:
-                    raise
-        if not self._target_group_exists(target_group_name):
-            try:
-                self.nms.stmf.create_targetgroup(target_group_name)
-            except nexenta.NexentaException as exc:
-                if ('already exists' in exc.args[0]):
-                    LOG.info('Ignored target group creation error "%s" '
-                             'while ensuring export.', exc)
-                else:
-                    raise
-        if not self._target_member_in_target_group(target_group_name,
-                                                   target_name):
-            try:
-                self.nms.stmf.add_targetgroup_member(target_group_name,
-                                                     target_name)
-            except nexenta.NexentaException as exc:
-                if ('already exists' in exc.args[0]):
-                    LOG.info('Ignored target group member addition error '
-                             '"%s" while ensuring export.', exc)
-                else:
-                    raise
-
+        entry = None
         if not self._lu_exists(zvol_name):
             try:
-                self.nms.scsidisk.create_lu(zvol_name, {})
+                entry = self.nms.scsidisk.create_lu(zvol_name, {})
             except nexenta.NexentaException as exc:
                 if 'in use' not in exc.args[0]:
                     raise
@@ -630,19 +605,31 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                              'export.'), exc)
         if not self._is_lu_shared(zvol_name):
             try:
-                self.nms.scsidisk.add_lun_mapping_entry(zvol_name, {
+                entry = self.nms.scsidisk.add_lun_mapping_entry(zvol_name, {
                     'target_group': target_group_name})
             except nexenta.NexentaException as exc:
                 if 'view entry exists' not in exc.args[0]:
                     raise
                 LOG.info(_LI('Ignored LUN mapping entry addition error "%s" '
                              'while ensuring export.'), exc)
+        model_update = {}
+        if entry:
+            provider_location =  '%(host)s:%(port)s,1 %(name)s %(lun)s' % {
+                'host': self.nms_host,
+                'port': self.configuration.nexenta_iscsi_target_portal_port,
+                'name': target_name,
+                'lun': entry['lun'],
+            }
+            model_update = {'provider_location': provider_location}
+        return model_update
 
     def remove_export(self, _ctx, volume):
         """Destroy all resources created to export zvol.
 
         :param volume: reference of volume to be unexported
         """
+        target_name = self._get_target_name(volume)
+        self.targets[target_name].remove(volume['name'])
         zvol_name = self._get_zvol_name(volume['name'])
         self.nms.scsidisk.delete_lu(zvol_name)
 
