@@ -23,44 +23,14 @@
 import json
 import requests
 import socket
-import time
-from six import wraps
 
-from cinder.i18n import _, _LE, _LI
+from oslo_log import log as logging
 
-#from oslo_log import log as logging
-
-try:
-    from oslo_log import log as logging
-except:
-    try:
-        from oslo.log import log as logging
-    except:
-        from cinder.openstack.common import log as logging
+from cinder.i18n import _
+from cinder.utils import retry
 
 LOG = logging.getLogger(__name__)
 socket.setdefaulttimeout(100)
-
-
-def retry(exc_tuple, tries=5, delay=1, backoff=2):
-    def retry_dec(f):
-        @wraps(f)
-        def func_retry(*args, **kwargs):
-            _tries, _delay = tries, delay
-            while _tries > 1:
-                try:
-                    return f(*args, **kwargs)
-                except exc_tuple:
-                    time.sleep(_delay)
-                    _tries -= 1
-                    _delay *= backoff
-                    LOG.debug(_('Retrying %s, (%s attempts remaining)...'),
-                              (args, _tries))
-            msg = (_('Retry count exceeded for command: %s'), (args,))
-            LOG.error(msg)
-            raise Exception(msg)
-        return func_retry
-    return retry_dec
 
 
 class NexentaEdgeJSONProxy(object):
@@ -101,7 +71,7 @@ class NexentaEdgeJSONProxy(object):
     def __repr__(self):
         return 'HTTP JSON proxy: %s' % self.url
 
-    @retry(retry_exc_tuple, tries=6)
+    @retry(retry_exc_tuple, interval=1, retries=6)
     def __call__(self, *args):
         self.path += args[0]
         data = None
@@ -128,7 +98,7 @@ class NexentaEdgeJSONProxy(object):
         rsp = req.json()
         req.close()
 
-        LOG.info(_LI('Got response: %s') % rsp)
+        LOG.debug('Got response: %s', rsp)
         if rsp.get('response') is None:
-            raise Exception(_LE('Bad response: %s') % rsp)
+            raise Exception(_('Bad response: %s') % rsp)
         return rsp.get('response')
