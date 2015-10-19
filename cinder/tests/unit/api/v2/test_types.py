@@ -85,7 +85,7 @@ class VolumeTypesApiTest(test.TestCase):
         self.stubs.Set(volume_types, 'get_all_types',
                        return_volume_types_get_all_types)
 
-        req = fakes.HTTPRequest.blank('/v2/fake/types')
+        req = fakes.HTTPRequest.blank('/v2/fake/types', use_admin_context=True)
         res_dict = self.controller.index(req)
 
         self.assertEqual(3, len(res_dict['volume_types']))
@@ -171,7 +171,6 @@ class VolumeTypesApiTest(test.TestCase):
             name='new_type',
             description='new_type_desc',
             is_public=True,
-            extra_specs={},
             id=42,
         )
         self.assertDictMatch(output['volume_type'], expected_volume_type)
@@ -237,7 +236,6 @@ class VolumeTypesApiTest(test.TestCase):
                 name='new_type',
                 description='new_type_desc',
                 is_public=True,
-                extra_specs={},
                 id=42 + i
             )
             self.assertDictMatch(output['volume_types'][i],

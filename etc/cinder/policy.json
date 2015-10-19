@@ -25,6 +25,7 @@
 
     "volume_extension:types_manage": "rule:admin_api",
     "volume_extension:types_extra_specs": "rule:admin_api",
+    "volume_extension:access_types_extra_specs": "rule:admin_api",
     "volume_extension:volume_type_access": "rule:admin_or_owner",
     "volume_extension:volume_type_access:addProjectAccess": "rule:admin_api",
     "volume_extension:volume_type_access:removeProjectAccess": "rule:admin_api",
