@@ -2113,9 +2113,8 @@ class EMCVnxCliBase(object):
              'thick_provisioning_support': True}
     enablers = []
     tmp_snap_prefix = 'tmp-snap-'
-    snap_as_vol_prefix = 'snap-as-vol-'
-    tmp_cgsnap_prefix = 'tmp-cgsnapshot-'
     tmp_smp_for_backup_prefix = 'tmp-smp-'
+    snap_as_vol_prefix = 'snap-as-vol-'
 
     def __init__(self, prtcl, configuration=None):
         self.protocol = prtcl
@@ -2260,40 +2259,39 @@ class EMCVnxCliBase(object):
 
     def _construct_store_spec(self, volume, snapshot):
         if snapshot['cgsnapshot_id']:
+            # Snapshot is part of cg snapshot
             snapshot_name = snapshot['cgsnapshot_id']
         else:
             snapshot_name = snapshot['name']
-        source_volume_name = snapshot['volume_name']
+        new_snap_name = snapshot_name
+        if self._is_snapcopy_enabled(volume):
+            new_snap_name = self._construct_snap_name(volume)
+        pool_name = self.get_target_storagepool(volume, snapshot['volume'])
         volume_name = volume['name']
         volume_size = snapshot['volume_size']
         dest_volume_name = volume_name + '_dest'
-        snap_name = snapshot_name
-        pool_name = self.get_target_storagepool(volume, snapshot['volume'])
         specs = self.get_volumetype_extraspecs(volume)
-        provisioning, tiering, snapcopy = self._get_extra_spec_value(specs)
-        if snapcopy == 'true':
-            snap_name = self._construct_snap_as_vol_name(volume)
+        provisioning, tiering = self._get_extra_spec_value(specs)
         store_spec = {
-            'source_vol_name': source_volume_name,
             'volume': volume,
             'src_snap_name': snapshot_name,
-            'snap_name': snap_name,
+            'new_snap_name': new_snap_name,
             'dest_vol_name': dest_volume_name,
             'pool_name': pool_name,
             'provisioning': provisioning,
             'tiering': tiering,
-            'snapcopy': snapcopy,
             'volume_size': volume_size,
             'client': self._client,
             'ignore_pool_full_threshold': self.ignore_pool_full_threshold
         }
         return store_spec
 
-    def _construct_snap_as_vol_name(self, volume):
-        return self.snap_as_vol_prefix + volume['id']
-
-    def _construct_tmp_snap_name(self, volume):
-        return self.tmp_snap_prefix + volume['id']
+    def _construct_snap_name(self, volume):
+        """Returns snapshot or cgsnapshot name."""
+        if self._is_snapcopy_enabled(volume):
+            return self.snap_as_vol_prefix + six.text_type(volume['name_id'])
+        else:
+            return self.tmp_snap_prefix + six.text_type(volume['name_id'])
 
     def _construct_tmp_smp_name(self, snapshot):
         return self.tmp_smp_for_backup_prefix + snapshot.id
@@ -2308,33 +2306,30 @@ class EMCVnxCliBase(object):
         # defining CLI command
         specs = self.get_volumetype_extraspecs(volume)
         pool = self.get_target_storagepool(volume)
-        provisioning, tiering, snapcopy = self._get_extra_spec_value(specs)
+        provisioning, tiering = self._get_extra_spec_value(specs)
+        if 'snapcopy' in volume_metadata:
+            # We ignore snapcopy metadata when creating volume
+            LOG.warning(_LW('snapcopy metadata is ignored when'
+                            ' creating volume.'))
 
-        if snapcopy == 'true' and volume['consistencygroup_id']:
-            msg = _("Volume with copytype:snap=True can not be put in "
-                    "consistency group.")
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-
+        volume_metadata['snapcopy'] = 'False'
         LOG.info(_LI('Create Volume: %(volume)s  Size: %(size)s '
                      'pool: %(pool)s '
                      'provisioning: %(provisioning)s '
-                     'tiering: %(tiering)s '
-                     'snapcopy: %(snapcopy)s.'),
+                     'tiering: %(tiering)s '),
                  {'volume': volume_name,
                   'size': volume_size,
                   'pool': pool,
                   'provisioning': provisioning,
-                  'tiering': tiering,
-                  'snapcopy': snapcopy})
+                  'tiering': tiering})
 
         data = self._client.create_lun_with_advance_feature(
             pool, volume_name, volume_size,
             provisioning, tiering, volume['consistencygroup_id'],
             ignore_thresholds=self.ignore_pool_full_threshold,
             poll=False)
-        pl = self._build_provider_location(data['lun_id'])
-        volume_metadata['lun_type'] = 'lun'
+        pl = self._build_provider_location(lun_id=data['lun_id'],
+                                           base_lun_name=volume['name'])
         model_update = {'provider_location': pl,
                         'metadata': volume_metadata}
 
@@ -2352,7 +2347,7 @@ class EMCVnxCliBase(object):
                             "since driver version 5.1.0. This key will be "
                             "ignored."))
 
-        provisioning, tiering, snap_copy = self._get_extra_spec_value(specs)
+        provisioning, tiering = self._get_extra_spec_value(specs)
         # step 1: check extra spec value
         if provisioning:
             self._check_extra_spec_value(
@@ -2362,13 +2357,10 @@ class EMCVnxCliBase(object):
             self._check_extra_spec_value(
                 tiering,
                 VNXTieringEnum.get_all())
-        if snap_copy:
-            self._check_extra_spec_value(
-                snap_copy, ['true', 'false'])
 
         # step 2: check extra spec combination
-        self._check_extra_spec_combination([provisioning, tiering, snap_copy])
-        return provisioning, tiering, snap_copy
+        self._check_extra_spec_combination([provisioning, tiering])
+        return provisioning, tiering
 
     def _check_extra_spec_value(self, extra_spec, valid_values):
         """Checks whether an extra spec's value is valid."""
@@ -2403,17 +2395,15 @@ class EMCVnxCliBase(object):
                             "'provisioning:type' instead."))
         tiering = extra_specs.get(
             self._client.tiering_spec, 'None').lower()
-        snapcopy = extra_specs.get(
-            self._client.copytype_spec, 'False').lower()
 
-        return provisioning, tiering, snapcopy
+        return provisioning, tiering
 
     def _check_extra_spec_combination(self, spec_values):
         """Checks whether extra spec combination is valid."""
         enablers = self.enablers
-        # check provisioning, tiering, snapcopy
+        # check provisioning, tiering
         # deduplicated and tiering can not be both enabled
-        provisioning, tiering, snapcopy = spec_values
+        provisioning, tiering = spec_values
         if provisioning == 'deduplicated' and tiering != 'none':
             msg = _("deduplicated and auto tiering can't be both enabled.")
             LOG.error(msg)
@@ -2464,11 +2454,11 @@ class EMCVnxCliBase(object):
                     # Reraise the original exception
                     pass
         if volume['provider_location']:
-            lun_type = self._extract_provider_location_for_lun(
+            lun_type = self._extract_provider_location(
                 volume['provider_location'], 'type')
             if lun_type == 'smp':
                 self._client.delete_snapshot(
-                    self._construct_snap_as_vol_name(volume))
+                    self._construct_snap_name(volume))
 
     def extend_volume(self, volume, new_size):
         """Extends an EMC volume."""
@@ -2581,10 +2571,10 @@ class EMCVnxCliBase(object):
             src_id = self.get_lun_id(volume)
 
         if type_specs is not None:
-            provisioning, tiering, snapcopy = self._get_extra_spec_value(
+            provisioning, tiering = self._get_extra_spec_value(
                 type_specs)
         else:
-            provisioning, tiering, snapcopy = self._get_extra_spec_value(
+            provisioning, tiering = self._get_extra_spec_value(
                 self.get_volumetype_extraspecs(volume))
 
         data = self._client.create_lun_with_advance_feature(
@@ -2596,33 +2586,39 @@ class EMCVnxCliBase(object):
         moved = self._client.migrate_lun_with_verification(
             src_id, dst_id, new_volume_name)
 
-        lun_type = self._extract_provider_location_for_lun(
+        lun_type = self._extract_provider_location(
             volume['provider_location'], 'type')
+        # A smp will become a LUN after migration
         if lun_type == 'smp':
             self._client.delete_snapshot(
-                self._construct_snap_as_vol_name(volume))
+                self._construct_snap_name(volume))
 
-        pl = self._build_provider_location(src_id, 'lun')
+        pl = self._build_provider_location(src_id, 'lun',
+                                           base_lun_name=volume['name'])
         volume_metadata = self._get_volume_metadata(volume)
-        volume_metadata['lun_type'] = 'lun'
+        volume_metadata['snapcopy'] = 'False'
         model_update = {'provider_location': pl,
                         'metadata': volume_metadata}
         return moved, model_update
 
     def update_migrated_volume(self, context, volume, new_volume,
                                original_volume_status):
-        lun_type = self._extract_provider_location_for_lun(
+        """Updates metadata after host-assisted migration."""
+        lun_type = self._extract_provider_location(
             new_volume['provider_location'], 'type')
         volume_metadata = self._get_volume_metadata(volume)
+        model_update = {'provider_location':
+                        new_volume['provider_location']}
         if lun_type:
-            volume_metadata['lun_type'] = lun_type
-            model_update = {'metadata': volume_metadata}
-            return model_update
+            volume_metadata['snapcopy'] = (
+                'True' if lun_type == 'smp' else 'False')
+            model_update['metadata'] = volume_metadata
+        return model_update
 
     def retype(self, ctxt, volume, new_type, diff, host):
         new_specs = new_type['extra_specs']
 
-        new_provisioning, new_tiering, snapcopy = (
+        new_provisioning, new_tiering = (
             self._get_and_validate_extra_specs(new_specs))
 
         # Check what changes are needed
@@ -2684,14 +2680,14 @@ class EMCVnxCliBase(object):
         }
 
         old_specs = self.get_volumetype_extraspecs(volume)
-        old_provisioning, old_tiering, old_snapcopy = (
+        old_provisioning, old_tiering = (
             self._get_extra_spec_value(old_specs))
 
         new_specs = new_type['extra_specs']
-        new_provisioning, new_tiering, new_snapcopy = (
+        new_provisioning, new_tiering = (
             self._get_extra_spec_value(new_specs))
 
-        lun_type = self._extract_provider_location_for_lun(
+        lun_type = self._extract_provider_location(
             volume['provider_location'], 'type')
 
         if volume['host'] != host['host']:
@@ -2821,14 +2817,6 @@ class EMCVnxCliBase(object):
         snapshot_name = snapshot['name']
         volume_name = snapshot['volume_name']
         volume = snapshot['volume']
-        lun_type = self._extract_provider_location_for_lun(
-            volume['provider_location'], 'type')
-        if lun_type == 'smp':
-            msg = (_('Failed to create snapshot of %s because it is a '
-                     'snapshot mount point.')
-                   % volume_name)
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
         LOG.info(_LI('Create snapshot: %(snapshot)s: volume: %(volume)s'),
                  {'snapshot': snapshot_name,
                   'volume': volume_name})
@@ -2871,27 +2859,18 @@ class EMCVnxCliBase(object):
         1. Create a snap mount point (SMP) for the snapshot.
         2. Attach the snapshot to the SMP created in the first step.
         3. Create a temporary lun prepare for migration.
-           (Skipped if copytype:snap='true')
+           (Skipped if snapcopy='true')
         4. Start a migration between the SMP and the temp lun.
-           (Skipped if copytype:snap='true')
+           (Skipped if snapcopy='true')
         """
         self._volume_creation_check(volume)
         flow_name = 'create_volume_from_snapshot'
+        base_lun_name = self._get_base_lun_name(snapshot.volume)
         work_flow = linear_flow.Flow(flow_name)
         store_spec = self._construct_store_spec(volume, snapshot)
+        store_spec.update({'base_lun_name': base_lun_name})
         volume_metadata = self._get_volume_metadata(volume)
-        if store_spec['snapcopy'] == 'false':
-            work_flow.add(CreateSMPTask(),
-                          AttachSnapTask(),
-                          CreateDestLunTask(),
-                          MigrateLunTask())
-            flow_engine = taskflow.engines.load(work_flow,
-                                                store=store_spec)
-            flow_engine.run()
-            new_lun_id = flow_engine.storage.fetch('new_lun_id')
-            pl = self._build_provider_location(new_lun_id, 'lun')
-            volume_metadata['lun_type'] = 'lun'
-        else:
+        if self._is_snapcopy_enabled(volume):
             work_flow.add(CopySnapshotTask(),
                           AllowReadWriteOnSnapshotTask(),
                           CreateSMPTask(),
@@ -2900,8 +2879,21 @@ class EMCVnxCliBase(object):
                                                 store=store_spec)
             flow_engine.run()
             new_lun_id = flow_engine.storage.fetch('new_smp_id')
-            pl = self._build_provider_location(new_lun_id, 'smp')
-            volume_metadata['lun_type'] = 'smp'
+            pl = self._build_provider_location(
+                new_lun_id, 'smp', base_lun_name)
+            volume_metadata['snapcopy'] = 'True'
+        else:
+            work_flow.add(CreateSMPTask(),
+                          AttachSnapTask(),
+                          CreateDestLunTask(),
+                          MigrateLunTask())
+            flow_engine = taskflow.engines.load(work_flow,
+                                                store=store_spec)
+            flow_engine.run()
+            new_lun_id = flow_engine.storage.fetch('new_lun_id')
+            pl = self._build_provider_location(
+                new_lun_id, 'lun', volume['name'])
+            volume_metadata['snapcopy'] = 'False'
         model_update = {'provider_location': pl,
                         'metadata': volume_metadata}
         volume_host = volume['host']
@@ -2914,42 +2906,46 @@ class EMCVnxCliBase(object):
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
-        lun_type = self._extract_provider_location_for_lun(
-            src_vref['provider_location'], 'type')
-        if lun_type == 'smp':
-            msg = (_('Failed to clone %s because it is a '
-                     'snapshot mount point.')
-                   % src_vref['name'])
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
         self._volume_creation_check(volume)
-        source_volume_name = src_vref['name']
+        base_lun_name = self._get_base_lun_name(src_vref)
         source_lun_id = self.get_lun_id(src_vref)
         volume_size = src_vref['size']
+        source_volume_name = src_vref['name']
         consistencygroup_id = src_vref['consistencygroup_id']
-        snapshot_name = self._construct_tmp_snap_name(volume)
-        tmp_cgsnapshot_name = None
+        cgsnapshot_name = None
         if consistencygroup_id:
-            tmp_cgsnapshot_name = self.tmp_cgsnap_prefix + volume['id']
+            cgsnapshot_name = self._construct_snap_name(volume)
 
+        snapshot_name = self._construct_snap_name(volume)
         snapshot = {
             'name': snapshot_name,
             'volume_name': source_volume_name,
             'volume_size': volume_size,
             'volume': src_vref,
-            'cgsnapshot_id': tmp_cgsnapshot_name,
+            'cgsnapshot_id': cgsnapshot_name,
             'consistencygroup_id': consistencygroup_id,
-            'id': tmp_cgsnapshot_name
+            'id': cgsnapshot_name
         }
         flow_name = 'create_cloned_volume'
         store_spec = self._construct_store_spec(volume, snapshot)
-        volume_metadata = self._get_volume_metadata(volume)
         work_flow = linear_flow.Flow(flow_name)
-        if store_spec['snapcopy'] == 'true':
-            snapshot['name'] = self._construct_snap_as_vol_name(volume)
         store_spec.update({'snapshot': snapshot})
         store_spec.update({'source_lun_id': source_lun_id})
-        if store_spec['snapcopy'] == 'false':
+        store_spec.update({'base_lun_name': base_lun_name})
+        volume_metadata = self._get_volume_metadata(volume)
+        if self._is_snapcopy_enabled(volume):
+            # snapcopy feature enabled
+            work_flow.add(CreateSnapshotTask(),
+                          CreateSMPTask(),
+                          AttachSnapTask())
+            flow_engine = taskflow.engines.load(work_flow,
+                                                store=store_spec)
+            flow_engine.run()
+            new_lun_id = flow_engine.storage.fetch('new_smp_id')
+            pl = self._build_provider_location(
+                new_lun_id, 'smp', base_lun_name)
+        else:
+            # snapcopy feature disabled, need to migrate
             work_flow.add(CreateSnapshotTask(),
                           CreateSMPTask(),
                           AttachSnapTask(),
@@ -2964,18 +2960,10 @@ class EMCVnxCliBase(object):
                 self._client.delete_cgsnapshot(snapshot['id'])
             else:
                 self.delete_snapshot(snapshot)
-            pl = self._build_provider_location(new_lun_id, 'lun')
-            volume_metadata['lun_type'] = 'lun'
-        else:
-            work_flow.add(CreateSnapshotTask(),
-                          CreateSMPTask(),
-                          AttachSnapTask())
-            flow_engine = taskflow.engines.load(work_flow,
-                                                store=store_spec)
-            flow_engine.run()
-            new_lun_id = flow_engine.storage.fetch('new_smp_id')
-            pl = self._build_provider_location(new_lun_id, 'smp')
-            volume_metadata['lun_type'] = 'smp'
+            # After migration, volume's base lun is itself
+            pl = self._build_provider_location(
+                new_lun_id, 'lun', volume['name'])
+            volume_metadata['snapcopy'] = 'False'
 
         model_update = {'provider_location': pl,
                         'metadata': volume_metadata}
@@ -2998,18 +2986,37 @@ class EMCVnxCliBase(object):
             return volume_metadata
         return volume['metadata'] if 'metadata' in volume else {}
 
+    def _is_snapcopy_enabled(self, volume):
+        meta = self._get_volume_metadata(volume)
+        return 'snapcopy' in meta and meta['snapcopy'].lower() == 'true'
+
+    def _get_base_lun_name(self, volume):
+        """Returns base LUN name for SMP or LUN."""
+        base_name = self._extract_provider_location(
+            volume['provider_location'], 'base_lun_name')
+        if base_name is None or base_name == 'None':
+            return volume['name']
+        return base_name
+
     def dumps_provider_location(self, pl_dict):
         return '|'.join([k + '^' + pl_dict[k] for k in pl_dict])
 
-    def _build_provider_location(self, lun_id, type='lun'):
-        """Builds provider_location for volume or snapshot."""
+    def _build_provider_location(self, lun_id, type='lun', base_lun_name=None):
+        """Builds provider_location for volume or snapshot.
+
+        :param lun_id: LUN ID in VNX
+        :param type: 'lun' or 'smp'
+        "param base_lun_name: primary LUN name,
+                              it will be used when creating snap lun
+        """
         pl_dict = {'system': self.get_array_serial(),
                    'type': type,
                    'id': six.text_type(lun_id),
+                   'base_lun_name': six.text_type(base_lun_name),
                    'version': self.VERSION}
         return self.dumps_provider_location(pl_dict)
 
-    def _extract_provider_location_for_lun(self, provider_location, key='id'):
+    def _extract_provider_location(self, provider_location, key='id'):
         """Extracts value of the specified field from provider_location string.
 
         :param provider_location: provider_location string
@@ -3030,19 +3037,13 @@ class EMCVnxCliBase(object):
         if group.get('volume_type_id') is not None:
             for id in group['volume_type_id'].split(","):
                 if id:
-                    provisioning, tiering, snapcopy = (
+                    provisioning, tiering = (
                         self._get_extra_spec_value(
                             volume_types.get_volume_type_extra_specs(id)))
                     if provisioning == 'compressed':
                         msg = _("Failed to create consistency group %s "
                                 "because VNX consistency group cannot "
                                 "accept compressed LUNs as members."
-                                ) % group['id']
-                        raise exception.VolumeBackendAPIException(data=msg)
-                    if snapcopy == 'true':
-                        msg = _("Failed to create consistency group %s "
-                                "because VNX consistency group cannot "
-                                "enable copytype:snap=True on its members."
                                 ) % group['id']
                         raise exception.VolumeBackendAPIException(data=msg)
 
@@ -3178,7 +3179,7 @@ class EMCVnxCliBase(object):
         try:
             provider_location = volume.get('provider_location')
             if provider_location:
-                lun_id = self._extract_provider_location_for_lun(
+                lun_id = self._extract_provider_location(
                     provider_location,
                     'id')
             if lun_id:
@@ -3778,7 +3779,7 @@ class EMCVnxCliBase(object):
         tar_pool = vol_utils.extract_host(volume['host'], 'pool')
         LOG.debug("Target pool of LUN to manage is: %s.", tar_pool)
 
-        tar_type, tar_tier, snap_copy = self._get_extra_spec_value(specs)
+        tar_type, tar_tier = self._get_extra_spec_value(specs)
         vnx_lun = self._get_lun_pool_and_type(lun_id)
         LOG.debug("LUN to manage: %s.", vnx_lun)
         LOG.debug("Target info: pool: %(pool)s, type: %(type)s, "
@@ -3819,7 +3820,7 @@ class EMCVnxCliBase(object):
         else:
             client.rename_lun(lun_id, volume['name'])
 
-        location = self._build_provider_location(lun_id)
+        location = self._build_provider_location(lun_id, 'lun', volume['name'])
         return {'provider_location': location}
 
     def _get_lun_pool_and_type(self, lun_id):
@@ -3910,7 +3911,7 @@ class EMCVnxCliBase(object):
             'group': group,
             'snapshot': {'id': temp_cgsnapshot_name,
                          'consistencygroup_id': source_cg.id},
-            'snap_name': temp_cgsnapshot_name,
+            'new_snap_name': temp_cgsnapshot_name,
             'source_lun_id': None,
             'client': self._client
         }
@@ -3935,7 +3936,7 @@ class EMCVnxCliBase(object):
         store_spec = {
             'group': group,
             'src_snap_name': cgsnapshot['id'],
-            'snap_name': copied_snapshot_name,
+            'new_snap_name': copied_snapshot_name,
             'client': self._client
         }
 
@@ -3976,12 +3977,13 @@ class EMCVnxCliBase(object):
 
         for i, (volume, src_volume) in enumerate(zip(volumes, source_vols)):
             specs = self.get_volumetype_extraspecs(volume)
-            provisioning, tiering, snap_copy = (
+            provisioning, tiering = (
                 self._get_and_validate_extra_specs(specs))
             pool_name = self.get_target_storagepool(volume, src_volume)
+            base_lun_name = self._get_base_lun_name(src_volume)
             sub_store_spec = {
                 'volume': volume,
-                'source_vol_name': src_volume['name'],
+                'base_lun_name': base_lun_name,
                 'pool_name': pool_name,
                 'dest_vol_name': volume['name'] + '_dest',
                 'volume_size': volume['size'],
@@ -4041,8 +4043,8 @@ class EMCVnxCliBase(object):
         provider_location = source_volume.get('provider_location')
 
         if (not provider_location or
-                not self._extract_provider_location_for_lun(provider_location,
-                                                            'version')):
+                not self._extract_provider_location(provider_location,
+                                                    'version')):
             LOG.warning(_LW("The source volume is a legacy volume. "
                             "Create volume in the pool where the source "
                             "volume %s is created."),
@@ -4108,9 +4110,9 @@ class CreateSMPTask(task.Task):
                                             provides='new_smp_id',
                                             inject=inject)
 
-    def execute(self, client, volume, source_vol_name, *args, **kwargs):
+    def execute(self, client, volume, base_lun_name, *args, **kwargs):
         LOG.debug('CreateSMPTask.execute')
-        client.create_mount_point(source_vol_name, volume['name'])
+        client.create_mount_point(base_lun_name, volume['name'])
         return client.get_lun_by_name(volume['name'])['lun_id']
 
     def revert(self, result, client, volume, *args, **kwargs):
@@ -4128,10 +4130,10 @@ class AttachSnapTask(task.Task):
 
     Reversion strategy: Detach the SMP.
     """
-    def execute(self, client, volume, snap_name,
+    def execute(self, client, volume, new_snap_name,
                 *args, **kwargs):
         LOG.debug('AttachSnapTask.execute')
-        client.attach_mount_point(volume['name'], snap_name)
+        client.attach_mount_point(volume['name'], new_snap_name)
 
     def revert(self, result, client, volume, *args, **kwargs):
         LOG.debug('AttachSnapTask.revert')
@@ -4260,12 +4262,12 @@ class CopySnapshotTask(task.Task):
 
     Reversion Strategy: Delete the copied snapshot/cgsnapshot
     """
-    def execute(self, client, src_snap_name, snap_name, *args, **kwargs):
+    def execute(self, client, src_snap_name, new_snap_name, *args, **kwargs):
         LOG.debug('CopySnapshotTask.execute')
         client.copy_snapshot(src_snap_name,
-                             snap_name)
+                             new_snap_name)
 
-    def revert(self, result, client, src_snap_name, snap_name,
+    def revert(self, result, client, src_snap_name, new_snap_name,
                *args, **kwargs):
         LOG.debug('CopySnapshotTask.revert')
         if isinstance(result, failure.Failure):
@@ -4274,16 +4276,16 @@ class CopySnapshotTask(task.Task):
             LOG.warning(_LW('CopySnapshotTask.revert: delete the '
                             'copied snapshot %(new_name)s of '
                             '%(source_name)s.'),
-                        {'new_name': snap_name,
+                        {'new_name': new_snap_name,
                          'source_name': src_snap_name})
-            client.delete_snapshot(snap_name)
+            client.delete_snapshot(new_snap_name)
 
 
 class AllowReadWriteOnSnapshotTask(task.Task):
     """Task to modify a Snapshot to allow ReadWrite on it."""
-    def execute(self, client, snap_name, *args, **kwargs):
+    def execute(self, client, new_snap_name, *args, **kwargs):
         LOG.debug('AllowReadWriteOnSnapshotTask.execute')
-        client.allow_snapshot_readwrite_and_autodelete(snap_name)
+        client.allow_snapshot_readwrite_and_autodelete(new_snap_name)
 
 
 class CreateConsistencyGroupTask(task.Task):
