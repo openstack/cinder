@@ -80,7 +80,7 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
         self.fake_iqn_return = ['iSCSI target name is %s.' % self.fake_iqn]
         self.driver._group_ip = '10.0.1.6'
         self.properties = {
-            'target_discoverd': True,
+            'target_discovered': True,
             'target_portal': '%s:3260' % self.driver._group_ip,
             'target_iqn': self.fake_iqn,
             'volume_id': 1}
