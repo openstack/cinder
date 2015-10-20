@@ -7,9 +7,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev113\n"
+"Project-Id-Version: cinder 8.0.0.dev41\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-10-08 06:23+0000\n"
+"POT-Creation-Date: 2015-10-20 06:08+0000\n"
 "PO-Revision-Date: 2015-08-26 03:31+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: Turkish (Turkey) (http://www.transifex.com/openstack/cinder/"
@@ -231,16 +231,6 @@ msgstr ""
 #, python-format
 msgid "Delete temp LUN after migration start failed. LUN: %s"
 msgstr "Göç başladıktan sonra geçici LUN silme başarısız. LUN: %s"
-
-#, python-format
-msgid ""
-"Delete the temporary cgsnapshot %(name)s failed. This temporary cgsnapshot "
-"can be deleted manually. Consistency group %(cg)s is created successfully "
-"from cgsnapshot %(cgsnapshot)s. Message: %(msg)s"
-msgstr ""
-"Geçici cgsnapshot %(name)s silinmesi başarısız. Geçici cgsnapshot elle "
-"silinebilir. Tutarlılık grubu %(cg)s %(cgsnapshot)s cgsnapshot'ından "
-"başarıyla oluşturuldu. İleti: %(msg)s"
 
 #, python-format
 msgid "Delete volume id not found. Removing from cinder: %(id)s Ex: %(msg)s"
@@ -1580,9 +1570,6 @@ msgstr "anlık görüntü: %s bulunamadı, silme işlemleri atlanıyor"
 
 msgid "ssc job in progress. Returning... "
 msgstr "ssc işi sürüyor. Dönülüyor... "
-
-msgid "swift error while listing objects, continuing with delete."
-msgstr "nesneler listelenirken swift hatası, silme ile devam ediliyor."
 
 msgid "terminate_conn: provider location empty."
 msgstr "terminate_conn: sağlayıcı konumu boş."
