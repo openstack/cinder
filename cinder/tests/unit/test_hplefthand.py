@@ -389,7 +389,7 @@ class TestHPLeftHandCLIQISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         super(TestHPLeftHandCLIQISCSIDriver, self).setUp()
 
         self.properties = {
-            'target_discoverd': True,
+            'target_discovered': True,
             'target_portal': '10.0.1.6:3260',
             'target_iqn':
             'iqn.2003-10.com.lefthandnetworks:group01:25366:fakev',

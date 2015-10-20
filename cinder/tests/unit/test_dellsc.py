@@ -253,7 +253,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
 
         self.fake_iqn = 'iqn.2002-03.com.compellent:5000D31000000001'
         self.properties = {
-            'target_discoverd': True,
+            'target_discovered': True,
             'target_portal': '%s:3260'
             % self.driver.configuration.dell_sc_iscsi_ip,
             'target_iqn': self.fake_iqn,
