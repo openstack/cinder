@@ -7,9 +7,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev113\n"
+"Project-Id-Version: cinder 8.0.0.dev41\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-10-08 06:23+0000\n"
+"POT-Creation-Date: 2015-10-20 06:08+0000\n"
 "PO-Revision-Date: 2015-09-16 08:22+0000\n"
 "Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
 "Language-Team: Turkish (Turkey) (http://www.transifex.com/openstack/cinder/"
@@ -1462,10 +1462,6 @@ msgstr "%s profili silindi."
 
 msgid "Promote volume replica completed successfully."
 msgstr "Mantıksal sürücü kopyasının terfisi başarıyla tamamlandı."
-
-#, python-format
-msgid "Protection domain name: %(domain_id)s."
-msgstr "Koruma alan adı: %(domain_id)s."
 
 #, python-format
 msgid "Protection domain name: %(domain_name)s."
