@@ -3083,6 +3083,14 @@ class VolumeManager(manager.SchedulerDependentManager):
         :param context: security context
         :param volume: volume object returned by DB
         """
+        try:
+            # If the driver isn't initialized, we can't talk to the backend
+            # so the driver can't enable replication
+            utils.require_driver_initialized(self.driver)
+        except exception.DriverNotInitialized:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE("Can't enable replication because the "
+                              "driver isn't initialized"))
 
         # NOTE(jdg): We're going to do fresh get from the DB and verify that
         # we are in an expected state ('enabling')
@@ -3101,6 +3109,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             err_msg = (_("Enable replication for volume failed."))
             LOG.exception(err_msg, resource=volume)
             raise exception.VolumeBackendAPIException(data=err_msg)
+
         try:
             if rep_driver_data:
                 volume = self.db.volume_update(context,
@@ -3125,6 +3134,14 @@ class VolumeManager(manager.SchedulerDependentManager):
         :param context: security context
         :param volume: volume object returned by DB
         """
+        try:
+            # If the driver isn't initialized, we can't talk to the backend
+            # so the driver can't enable replication
+            utils.require_driver_initialized(self.driver)
+        except exception.DriverNotInitialized:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE("Can't disable replication because the "
+                              "driver isn't initialized"))
 
         volume = self.db.volume_get(context, volume['id'])
         if volume['replication_status'] != 'disabling':
@@ -3175,6 +3192,13 @@ class VolumeManager(manager.SchedulerDependentManager):
         :param volume: volume object returned by DB
         :param secondary: Specifies rep target to fail over to
         """
+        # NOTE(hemna) We intentionally don't enforce the driver being
+        # initialized here.  because the primary might actually be down,
+        # but we still want to give the driver a chance of doing some work
+        # against the target.  It's entirely up to the driver to deal with
+        # not being able to talk to the primary array that it's configured
+        # to manage.
+
         try:
             volume = self.db.volume_get(context, volume['id'])
             model_update = self.driver.replication_failover(context,
@@ -3263,6 +3287,12 @@ class VolumeManager(manager.SchedulerDependentManager):
         the devices they have in use.
 
         """
+        # NOTE(hemna) We intentionally don't enforce the driver being
+        # initialized here.  because the primary might actually be down,
+        # but we still want to give the driver a chance of doing some work
+        # against the target.  It's entirely up to the driver to deal with
+        # not being able to talk to the primary array that it's configured
+        # to manage.
 
         try:
             volume = self.db.volume_get(context, volume['id'])
