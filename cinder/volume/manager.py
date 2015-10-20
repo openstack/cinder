@@ -191,7 +191,7 @@ def locked_snapshot_operation(f):
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '1.30'
+    RPC_API_VERSION = '1.31'
 
     target = messaging.Target(version=RPC_API_VERSION)
 
@@ -1966,7 +1966,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         if not snapshots:
             snapshots = objects.SnapshotList.get_all_for_cgsnapshot(
-                context, cgsnapshot['id'])
+                context, cgsnapshot.id)
         if snapshots:
             for snapshot in snapshots:
                 vol_utils.notify_about_snapshot_usage(
@@ -2335,41 +2335,45 @@ class VolumeManager(manager.SchedulerDependentManager):
         return group
 
     def create_consistencygroup_from_src(self, context, group,
-                                         cgsnapshot_id=None, source_cg=None):
+                                         cgsnapshot=None, source_cg=None):
         """Creates the consistency group from source.
 
         The source can be a CG snapshot or a source CG.
         """
+        source_name = None
+        snapshots = None
+        source_vols = None
         try:
             volumes = self.db.volume_get_all_by_group(context, group.id)
 
-            cgsnapshot = None
-            snapshots = None
-            if cgsnapshot_id:
+            if cgsnapshot:
                 try:
-                    cgsnapshot = self.db.cgsnapshot_get(context, cgsnapshot_id)
+                    # Check if cgsnapshot still exists
+                    cgsnapshot = objects.CGSnapshot.get_by_id(
+                        context, cgsnapshot.id)
                 except exception.CgSnapshotNotFound:
                     LOG.error(_LE("Create consistency group "
                                   "from snapshot-%(snap)s failed: "
                                   "SnapshotNotFound."),
-                              {'snap': cgsnapshot_id},
+                              {'snap': cgsnapshot.id},
                               resource={'type': 'consistency_group',
                                         'id': group.id})
                     raise
-                if cgsnapshot:
-                    snapshots = objects.SnapshotList.get_all_for_cgsnapshot(
-                        context, cgsnapshot_id)
-                    for snap in snapshots:
-                        if (snap.status not in
-                                VALID_CREATE_CG_SRC_SNAP_STATUS):
-                            msg = (_("Cannot create consistency group "
-                                     "%(group)s because snapshot %(snap)s is "
-                                     "not in a valid state. Valid states are: "
-                                     "%(valid)s.") %
-                                   {'group': group.id,
-                                    'snap': snap['id'],
-                                    'valid': VALID_CREATE_CG_SRC_SNAP_STATUS})
-                            raise exception.InvalidConsistencyGroup(reason=msg)
+
+                source_name = _("snapshot-%s") % cgsnapshot.id
+                snapshots = objects.SnapshotList.get_all_for_cgsnapshot(
+                    context, cgsnapshot.id)
+                for snap in snapshots:
+                    if (snap.status not in
+                            VALID_CREATE_CG_SRC_SNAP_STATUS):
+                        msg = (_("Cannot create consistency group "
+                                 "%(group)s because snapshot %(snap)s is "
+                                 "not in a valid state. Valid states are: "
+                                 "%(valid)s.") %
+                               {'group': group.id,
+                                'snap': snap['id'],
+                                'valid': VALID_CREATE_CG_SRC_SNAP_STATUS})
+                        raise exception.InvalidConsistencyGroup(reason=msg)
 
             if source_cg:
                 try:
@@ -2383,21 +2387,22 @@ class VolumeManager(manager.SchedulerDependentManager):
                               resource={'type': 'consistency_group',
                                         'id': group.id})
                     raise
-                if source_cg:
-                    source_vols = self.db.volume_get_all_by_group(
-                        context, source_cg.id)
-                    for source_vol in source_vols:
-                        if (source_vol['status'] not in
-                                VALID_CREATE_CG_SRC_CG_STATUS):
-                            msg = (_("Cannot create consistency group "
-                                     "%(group)s because source volume "
-                                     "%(source_vol)s is not in a valid "
-                                     "state. Valid states are: "
-                                     "%(valid)s.") %
-                                   {'group': group.id,
-                                    'source_vol': source_vol['id'],
-                                    'valid': VALID_CREATE_CG_SRC_CG_STATUS})
-                            raise exception.InvalidConsistencyGroup(reason=msg)
+
+                source_name = _("cg-%s") % source_cg.id
+                source_vols = self.db.volume_get_all_by_group(
+                    context, source_cg.id)
+                for source_vol in source_vols:
+                    if (source_vol['status'] not in
+                            VALID_CREATE_CG_SRC_CG_STATUS):
+                        msg = (_("Cannot create consistency group "
+                                 "%(group)s because source volume "
+                                 "%(source_vol)s is not in a valid "
+                                 "state. Valid states are: "
+                                 "%(valid)s.") %
+                               {'group': group.id,
+                                'source_vol': source_vol['id'],
+                                'valid': VALID_CREATE_CG_SRC_CG_STATUS})
+                        raise exception.InvalidConsistencyGroup(reason=msg)
 
             # Sort source snapshots so that they are in the same order as their
             # corresponding target volumes.
@@ -2434,15 +2439,9 @@ class VolumeManager(manager.SchedulerDependentManager):
             with excutils.save_and_reraise_exception():
                 group.status = 'error'
                 group.save()
-                if cgsnapshot_id:
-                    source = _("snapshot-%s") % cgsnapshot_id
-                elif source_cg:
-                    source = _("cg-%s") % source_cg.id
-                else:
-                    source = None
                 LOG.error(_LE("Create consistency group "
                               "from source %(source)s failed."),
-                          {'source': source},
+                          {'source': source_name},
                           resource={'type': 'consistency_group',
                                     'id': group.id})
                 # Update volume status to 'error' as well.
@@ -2463,10 +2462,9 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         self._notify_about_consistencygroup_usage(
             context, group, "create.end")
-
         LOG.info(_LI("Create consistency group "
-                     "from snapshot-%(snap)s completed successfully."),
-                 {'snap': cgsnapshot_id},
+                     "from source-%(source)s completed successfully."),
+                 {'source': source_name},
                  resource={'type': 'consistency_group',
                            'id': group.id})
         return group
@@ -2833,33 +2831,33 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         return True
 
-    def create_cgsnapshot(self, context, group, cgsnapshot_id):
+    def create_cgsnapshot(self, context, cgsnapshot):
         """Creates the cgsnapshot."""
         caller_context = context
         context = context.elevated()
-        cgsnapshot_ref = self.db.cgsnapshot_get(context, cgsnapshot_id)
-        LOG.info(_LI("Cgsnapshot %s: creating."), cgsnapshot_ref['id'])
+
+        LOG.info(_LI("Cgsnapshot %s: creating."), cgsnapshot.id)
 
         snapshots = objects.SnapshotList.get_all_for_cgsnapshot(
-            context, cgsnapshot_id)
+            context, cgsnapshot.id)
 
         self._notify_about_cgsnapshot_usage(
-            context, cgsnapshot_ref, "create.start")
+            context, cgsnapshot, "create.start")
 
         try:
             utils.require_driver_initialized(self.driver)
 
             LOG.debug("Cgsnapshot %(cgsnap_id)s: creating.",
-                      {'cgsnap_id': cgsnapshot_id})
+                      {'cgsnap_id': cgsnapshot.id})
 
             # Pass context so that drivers that want to use it, can,
             # but it is not a requirement for all drivers.
-            cgsnapshot_ref['context'] = caller_context
+            cgsnapshot.context = caller_context
             for snapshot in snapshots:
                 snapshot.context = caller_context
 
             model_update, snapshots = \
-                self.driver.create_cgsnapshot(context, cgsnapshot_ref)
+                self.driver.create_cgsnapshot(context, cgsnapshot)
 
             if snapshots:
                 for snapshot in snapshots:
@@ -2868,7 +2866,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                         update = {'status': snapshot['status']}
 
                         # TODO(thangp): Switch over to use snapshot.update()
-                        # after cgsnapshot has been switched over to objects
+                        # after cgsnapshot-objects bugs are fixed
                         self.db.snapshot_update(context, snapshot['id'],
                                                 update)
                         # If status for one snapshot is error, make sure
@@ -2879,15 +2877,14 @@ class VolumeManager(manager.SchedulerDependentManager):
             if model_update:
                 if model_update['status'] == 'error':
                     msg = (_('Error occurred when creating cgsnapshot '
-                             '%s.') % cgsnapshot_ref['id'])
+                             '%s.') % cgsnapshot.id)
                     LOG.error(msg)
                     raise exception.VolumeDriverException(message=msg)
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                self.db.cgsnapshot_update(context,
-                                          cgsnapshot_ref['id'],
-                                          {'status': 'error'})
+                cgsnapshot.status = 'error'
+                cgsnapshot.save()
 
         for snapshot in snapshots:
             volume_id = snapshot['volume_id']
@@ -2905,9 +2902,8 @@ class VolumeManager(manager.SchedulerDependentManager):
                                'snapshot_id': snapshot_id})
 
                     # TODO(thangp): Switch over to use snapshot.update()
-                    # after cgsnapshot has been switched over to objects
-                    self.db.snapshot_update(context,
-                                            snapshot_id,
+                    # after cgsnapshot-objects bugs are fixed
+                    self.db.snapshot_update(context, snapshot_id,
                                             {'status': 'error'})
                     raise exception.MetadataCopyFailure(
                         reason=six.text_type(ex))
@@ -2916,52 +2912,50 @@ class VolumeManager(manager.SchedulerDependentManager):
                                     snapshot['id'], {'status': 'available',
                                                      'progress': '100%'})
 
-        self.db.cgsnapshot_update(context,
-                                  cgsnapshot_ref['id'],
-                                  {'status': 'available'})
+        cgsnapshot.status = 'available'
+        cgsnapshot.save()
 
         LOG.info(_LI("cgsnapshot %s: created successfully"),
-                 cgsnapshot_ref['id'])
+                 cgsnapshot.id)
         self._notify_about_cgsnapshot_usage(
-            context, cgsnapshot_ref, "create.end")
-        return cgsnapshot_id
+            context, cgsnapshot, "create.end")
+        return cgsnapshot
 
-    def delete_cgsnapshot(self, context, cgsnapshot_id):
+    def delete_cgsnapshot(self, context, cgsnapshot):
         """Deletes cgsnapshot."""
         caller_context = context
         context = context.elevated()
-        cgsnapshot_ref = self.db.cgsnapshot_get(context, cgsnapshot_id)
-        project_id = cgsnapshot_ref['project_id']
+        project_id = cgsnapshot.project_id
 
-        LOG.info(_LI("cgsnapshot %s: deleting"), cgsnapshot_ref['id'])
+        LOG.info(_LI("cgsnapshot %s: deleting"), cgsnapshot.id)
 
         snapshots = objects.SnapshotList.get_all_for_cgsnapshot(
-            context, cgsnapshot_id)
+            context, cgsnapshot.id)
 
         self._notify_about_cgsnapshot_usage(
-            context, cgsnapshot_ref, "delete.start")
+            context, cgsnapshot, "delete.start")
 
         try:
             utils.require_driver_initialized(self.driver)
 
             LOG.debug("cgsnapshot %(cgsnap_id)s: deleting",
-                      {'cgsnap_id': cgsnapshot_id})
+                      {'cgsnap_id': cgsnapshot.id})
 
             # Pass context so that drivers that want to use it, can,
             # but it is not a requirement for all drivers.
-            cgsnapshot_ref['context'] = caller_context
+            cgsnapshot.context = caller_context
             for snapshot in snapshots:
                 snapshot['context'] = caller_context
 
             model_update, snapshots = \
-                self.driver.delete_cgsnapshot(context, cgsnapshot_ref)
+                self.driver.delete_cgsnapshot(context, cgsnapshot)
 
             if snapshots:
                 for snapshot in snapshots:
                     update = {'status': snapshot['status']}
 
                     # TODO(thangp): Switch over to use snapshot.update()
-                    # after cgsnapshot has been switched over to objects
+                    # after cgsnapshot-objects bugs are fixed
                     self.db.snapshot_update(context, snapshot['id'],
                                             update)
                     if snapshot['status'] in ['error_deleting', 'error'] and \
@@ -2972,18 +2966,17 @@ class VolumeManager(manager.SchedulerDependentManager):
             if model_update:
                 if model_update['status'] in ['error_deleting', 'error']:
                     msg = (_('Error occurred when deleting cgsnapshot '
-                             '%s.') % cgsnapshot_ref['id'])
+                             '%s.') % cgsnapshot.id)
                     LOG.error(msg)
                     raise exception.VolumeDriverException(message=msg)
                 else:
-                    self.db.cgsnapshot_update(context, cgsnapshot_ref['id'],
-                                              model_update)
+                    cgsnapshot.update(model_update)
+                    cgsnapshot.save()
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                self.db.cgsnapshot_update(context,
-                                          cgsnapshot_ref['id'],
-                                          {'status': 'error_deleting'})
+                cgsnapshot.status = 'error_deleting'
+                cgsnapshot.save()
 
         for snapshot in snapshots:
             # Get reservations
@@ -3010,19 +3003,18 @@ class VolumeManager(manager.SchedulerDependentManager):
             self.db.volume_glance_metadata_delete_by_snapshot(context,
                                                               snapshot['id'])
 
-            # TODO(thangp): Switch over to use snapshot.destroy()
-            # after cgsnapshot has been switched over to objects
+            # TODO(thangp): Switch over to use snapshot.delete()
+            # after cgsnapshot-objects bugs are fixed
             self.db.snapshot_destroy(context, snapshot['id'])
 
             # Commit the reservations
             if reservations:
                 QUOTAS.commit(context, reservations, project_id=project_id)
 
-        self.db.cgsnapshot_destroy(context, cgsnapshot_id)
-        LOG.info(_LI("cgsnapshot %s: deleted successfully"),
-                 cgsnapshot_ref['id'])
-        self._notify_about_cgsnapshot_usage(
-            context, cgsnapshot_ref, "delete.end", snapshots)
+        cgsnapshot.destroy()
+        LOG.info(_LI("cgsnapshot %s: deleted successfully"), cgsnapshot.id)
+        self._notify_about_cgsnapshot_usage(context, cgsnapshot, "delete.end",
+                                            snapshots)
 
         return True
 

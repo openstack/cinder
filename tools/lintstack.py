@@ -65,15 +65,17 @@ objects_ignore_codes = ["E0213", "E1101", "E1102"]
 # member is created dynamically.
 objects_ignore_messages = [
     "No value passed for parameter 'id' in function call",
-    "Module 'cinder.objects' has no 'Snapshot' member",
-    "Module 'cinder.objects' has no 'SnapshotList' member",
     "Module 'cinder.objects' has no 'Backup' member",
-    "Module 'cinder.objects' has no 'BackupList' member",
-    "Module 'cinder.objects' has no 'Service' member",
-    "Module 'cinder.objects' has no 'ServiceList' member",
     "Module 'cinder.objects' has no 'BackupImport' member",
+    "Module 'cinder.objects' has no 'BackupList' member",
+    "Module 'cinder.objects' has no 'CGSnapshot' member",
+    "Module 'cinder.objects' has no 'CGSnapshotList' member",
     "Module 'cinder.objects' has no 'ConsistencyGroup' member",
     "Module 'cinder.objects' has no 'ConsistencyGroupList' member",
+    "Module 'cinder.objects' has no 'Service' member",
+    "Module 'cinder.objects' has no 'ServiceList' member",
+    "Module 'cinder.objects' has no 'Snapshot' member",
+    "Module 'cinder.objects' has no 'SnapshotList' member",
 ]
 objects_ignore_modules = ["cinder/objects/"]
 

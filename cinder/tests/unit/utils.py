@@ -139,22 +139,23 @@ def create_consistencygroup(ctxt,
 
 
 def create_cgsnapshot(ctxt,
-                      name='test_cgsnap',
-                      description='this is a test cgsnap',
-                      status='available',
-                      consistencygroup_id=None,
+                      consistencygroup_id,
+                      name='test_cgsnapshot',
+                      description='this is a test cgsnapshot',
+                      status='creating',
                       **kwargs):
     """Create a cgsnapshot object in the DB."""
-    cgsnap = {}
-    cgsnap['user_id'] = ctxt.user_id
-    cgsnap['project_id'] = ctxt.project_id
-    cgsnap['status'] = status
-    cgsnap['name'] = name
-    cgsnap['description'] = description
-    cgsnap['consistencygroup_id'] = consistencygroup_id
+    cgsnap = objects.CGSnapshot(ctxt)
+    cgsnap.user_id = ctxt.user_id or 'fake_user_id'
+    cgsnap.project_id = ctxt.project_id or 'fake_project_id'
+    cgsnap.status = status
+    cgsnap.name = name
+    cgsnap.description = description
+    cgsnap.consistencygroup_id = consistencygroup_id
     for key in kwargs:
-        cgsnap[key] = kwargs[key]
-    return db.cgsnapshot_create(ctxt, cgsnap)
+        setattr(cgsnap, key, kwargs[key])
+    cgsnap.create()
+    return cgsnap
 
 
 def create_backup(ctxt,
