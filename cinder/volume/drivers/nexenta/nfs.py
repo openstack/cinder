@@ -449,14 +449,16 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                 raise
             origin = props.get('origin')
             if origin and self._is_clone_snapshot_name(origin):
+                volume, snapshot = origin.split('@')
+                volume = volume.lstrip(
+                    '%s/%s/' % (vol, parent_folder))
                 try:
-                    nms.snapshot.destroy(origin, '')
+                    self.delete_snapshot({'volume_name': volume,
+                                          'name': snapshot})
                 except nexenta.NexentaException as exc:
-                    if 'does not exist' in exc.args[0]:
-                        LOG.info(_('Snapshot %s does not exist, it was '
-                                   'already deleted.'), origin)
-                        return
-                    raise
+                    LOG.warning(_LW(
+                        'Cannot delete snapshot %(origin)s: %(exc)s'),
+                                {'origin': origin, 'exc': exc})
 
     def extend_volume(self, volume, new_size):
         """Extend an existing volume.
@@ -520,6 +522,14 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                 LOG.info(_LI('Snapshot %s has dependent clones, it will '
                              'be deleted later.'), '%s@%s' % (folder, snapshot))
                 return
+        ctxt = context.get_admin_context()
+        try:
+            self.db.volume_get(ctxt, snapshot['volume_name'])
+        except exception.VolumeNotFound:
+            LOG.info(_LI('Origin volume %s appears to be removed, try to '
+                         'remove it from backend if it is there.'))
+            if nms.folder.object_exists(folder):
+                nms.folder.destroy(folder, '-r')
 
     def _create_sparsed_file(self, nms, path, size):
         """Creates file with 0 disk usage.
