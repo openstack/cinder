@@ -23,13 +23,15 @@ Running a subset of tests using tox
 -----------------------------------
 One common activity is to just run a single test, you can do this with tox simply by
 specifying to just run py27 or py34 tests against a single test::
-    tox -epy27 -- -n cinder.tests.unit.test_volume:AvailabilityZoneTestCase.test_list_availability_zones_cached
 
-Or all file in the test_volume.py file::
+    tox -epy27 -- -n cinder.tests.unit.test_volume.AvailabilityZoneTestCase.test_list_availability_zones_cached
+
+Or all tests in the test_volume.py file::
+
     tox -epy27 -- -n cinder.tests.unit.test_volume
 
-For more information on these options and how to run tests, please see the ostestr
-documentation _a link: http://docs.openstack.org/developer/os-testr/
+For more information on these options and how to run tests, please see the `ostestr
+documentation <http://docs.openstack.org/developer/os-testr/>`_.
 
 Run tests wrapper script
 ------------------------
@@ -38,7 +40,7 @@ In addition you can also use the wrapper script run_tests.sh by simply executing
 
     ./run_tests.sh
 
-This script is a wrapper around the `testr`_ testrunner and the `flake8`_ checker. Note that
+This script is a wrapper around the testr testrunner and the flake8 checker. Note that
 there has been talk around deprecating this wrapper and this method of testing, it's currently
 available still but it may be good to get used to using tox or even ostestr directly.
 
