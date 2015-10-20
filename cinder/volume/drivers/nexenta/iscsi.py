@@ -590,7 +590,6 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         target_name = self._get_target_name(volume)
         target_group_name = self._get_target_group_name(target_name)
 
-        mapping = None
         entry = None
         if not self._lu_exists(zvol_name):
             try:
@@ -600,27 +599,15 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                     raise
                 LOG.info('Ignored LU creation error "%s" while ensuring '
                              'export.', exc)
-        else:
-            mapping = self.nms.scsidisk.list_lun_mapping_entries(zvol_name)[0]
         if not self._is_lu_shared(zvol_name):
-            if mapping:
-                try:
-                    entry = self.nms.scsidisk.add_lun_mapping_entry(zvol_name, {
-                        'target_group': mapping['target_group']})
-                except nexenta.NexentaException as exc:
-                    if 'view entry exists' not in exc.args[0]:
-                        raise
-                    LOG.info('Ignored LUN mapping entry addition error "%s" '
-                                 'while ensuring export.', exc)
-            else:
-                try:
-                    entry = self.nms.scsidisk.add_lun_mapping_entry(zvol_name, {
-                        'target_group': target_group_name})
-                except nexenta.NexentaException as exc:
-                    if 'view entry exists' not in exc.args[0]:
-                        raise
-                    LOG.info('Ignored LUN mapping entry addition error "%s" '
-                                 'while ensuring export.', exc)
+            try:
+                entry = self.nms.scsidisk.add_lun_mapping_entry(zvol_name, {
+                    'target_group': target_group_name})
+            except nexenta.NexentaException as exc:
+                if 'view entry exists' not in exc.args[0]:
+                    raise
+                LOG.info('Ignored LUN mapping entry addition error "%s" '
+                             'while ensuring export.', exc)
         model_update = {}
         if entry:
             provider_location =  '%(host)s:%(port)s,1 %(name)s %(lun)s' % {
