@@ -189,13 +189,6 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         """Return Nexenta iSCSI target group name for volume."""
         return target_name
 
-    def _get_target_group_name_old(self, target_name):
-        """Return Nexenta iSCSI target group name for volume."""
-        return target_name.replace(
-            self.configuration.nexenta_target_prefix,
-            self.configuration.nexenta_target_group_prefix
-        )
-
     @staticmethod
     def _get_clone_snapshot_name(volume):
         """Return name for snapshot that will be used to clone the volume."""
@@ -611,21 +604,10 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 entry = self.nms.scsidisk.add_lun_mapping_entry(zvol_name, {
                     'target_group': target_group_name})
             except nexenta.NexentaException as exc:
-                if 'STMF_ERROR_INVALID_TG' in exc.args[0]:
-                    target_group_name = self._get_target_group_name_old(target_name)
-                    try:
-                        entry = self.nms.scsidisk.add_lun_mapping_entry(zvol_name, {
-                            'target_group': target_group_name})
-                        LOG.info('Got %s exception meaning that volume was created '
-                                     'with old driver; looking for old TG', exc)
-                    except nexenta.NexentaException as exc:
-                        if 'view entry exists' not in exc.args[0]:
-                            raise
-                elif 'view entry exists' not in exc.args[0]:
+                if 'view entry exists' not in exc.args[0]:
                     raise
-                else:
-                    LOG.info('Ignored LUN mapping entry addition error "%s" '
-                                 'while ensuring export.', exc)
+                LOG.info('Ignored LUN mapping entry addition error "%s" '
+                             'while ensuring export.', exc)
         model_update = {}
         if entry:
             provider_location =  '%(host)s:%(port)s,1 %(name)s %(lun)s' % {
