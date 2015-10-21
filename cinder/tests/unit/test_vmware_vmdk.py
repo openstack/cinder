@@ -79,7 +79,7 @@ class FakeObject(object):
 # TODO(vbala) Split test methods handling multiple cases into multiple methods,
 # each handling a specific case.
 class VMwareVcVmdkDriverTestCase(test.TestCase):
-    """Test class for VMwareVcVmdkDriver."""
+    """Unit tests for VMwareVcVmdkDriver."""
 
     IP = 'localhost'
     PORT = 443
@@ -96,10 +96,17 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     CLUSTERS = ["cls-1", "cls-2"]
     DEFAULT_VC_VERSION = '5.5'
 
+    VOL_ID = 'abcdefab-cdef-abcd-efab-cdefabcdefab',
+    DISPLAY_NAME = 'foo',
+    VOL_TYPE_ID = 'd61b8cb3-aa1b-4c9b-b79e-abcdbda8b58a'
+    SNAPSHOT_ID = '2f59670a-0355-4790-834c-563b65bba740'
+    SNAPSHOT_NAME = 'snap-foo'
+    SNAPSHOT_DESCRIPTION = 'test snapshot'
+
     def setUp(self):
         super(VMwareVcVmdkDriverTestCase, self).setUp()
-        self._config = mox.MockObject(configuration.Configuration)
-        self._config.append_config_values(mox.IgnoreArg())
+
+        self._config = mock.Mock(spec=configuration.Configuration)
         self._config.vmware_host_ip = self.IP
         self._config.vmware_host_username = self.USERNAME
         self._config.vmware_host_password = self.PASSWORD
@@ -114,9 +121,11 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         self._config.vmware_insecure = False
         self._config.vmware_cluster_name = self.CLUSTERS
         self._config.vmware_host_version = self.DEFAULT_VC_VERSION
+
         self._db = mock.Mock()
         self._driver = vmdk.VMwareVcVmdkDriver(configuration=self._config,
                                                db=self._db)
+
         api_retry_count = self._config.vmware_api_retry_count
         task_poll_interval = self._config.vmware_task_poll_interval,
         self._session = api.VMwareAPISession(self.IP, self.USERNAME,
@@ -127,13 +136,9 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                                                     self.MAX_OBJECTS)
         self._vim = FakeVim()
 
-    def test_check_for_setup_error(self):
-        """Test check_for_setup_error."""
-        self._driver.check_for_setup_error()
-
     def test_get_volume_stats(self):
-        """Test get_volume_stats."""
         stats = self._driver.get_volume_stats()
+
         self.assertEqual('VMware', stats['vendor_name'])
         self.assertEqual(self._driver.VERSION, stats['driver_version'])
         self.assertEqual('vmdk', stats['storage_protocol'])
@@ -141,203 +146,148 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         self.assertEqual('unknown', stats['total_capacity_gb'])
         self.assertEqual('unknown', stats['free_capacity_gb'])
 
-    def test_create_volume(self):
-        """Test create_volume."""
-        driver = self._driver
-        host = mock.sentinel.host
-        rp = mock.sentinel.resource_pool
-        folder = mock.sentinel.folder
-        summary = mock.sentinel.summary
-        driver._select_ds_for_volume = mock.MagicMock()
-        driver._select_ds_for_volume.return_value = (host, rp, folder,
-                                                     summary)
-        # invoke the create_volume call
-        volume = {'name': 'fake_volume'}
-        driver.create_volume(volume)
-        # verify calls made
-        driver._select_ds_for_volume.assert_called_once_with(volume)
+    def _create_volume_dict(self,
+                            vol_id=VOL_ID,
+                            display_name=DISPLAY_NAME,
+                            volume_type_id=VOL_TYPE_ID,
+                            status='available'):
+        return {'id': vol_id,
+                'display_name': display_name,
+                'name': 'volume-%s' % vol_id,
+                'volume_type_id': volume_type_id,
+                'status': status,
+                }
 
-        # test create_volume call when _select_ds_for_volume fails
-        driver._select_ds_for_volume.side_effect = exceptions.VimException('')
-        self.assertRaises(exceptions.VimFaultException, driver.create_volume,
-                          volume)
+    @mock.patch.object(VMDK_DRIVER, '_select_ds_for_volume')
+    def test_verify_volume_creation(self, select_ds_for_volume):
+        volume = self._create_volume_dict()
+        self._driver._verify_volume_creation(volume)
 
-        # Clear side effects.
-        driver._select_ds_for_volume.side_effect = None
+        select_ds_for_volume.assert_called_once_with(volume)
 
-    def test_delete_volume_without_backing(self):
-        """Test delete_volume without backing."""
-        m = self.mox
-        m.StubOutWithMock(self._driver.__class__, 'volumeops')
-        self._driver.volumeops = self._volumeops
-        m.StubOutWithMock(self._volumeops, 'get_backing')
-        self._volumeops.get_backing('hello_world').AndReturn(None)
+    @mock.patch.object(VMDK_DRIVER, '_verify_volume_creation')
+    def test_create_volume(self, verify_volume_creation):
+        volume = self._create_volume_dict()
+        self._driver.create_volume(volume)
 
-        m.ReplayAll()
-        volume = FakeObject()
-        volume['name'] = 'hello_world'
+        verify_volume_creation.assert_called_once_with(volume)
+
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    def test_delete_volume_without_backing(self, vops):
+        vops.get_backing.return_value = None
+
+        volume = self._create_volume_dict()
         self._driver.delete_volume(volume)
-        m.UnsetStubs()
-        m.VerifyAll()
 
-    def test_delete_volume_with_backing(self):
-        """Test delete_volume with backing."""
-        m = self.mox
-        m.StubOutWithMock(self._driver.__class__, 'volumeops')
-        self._driver.volumeops = self._volumeops
+        vops.get_backing.assert_called_once_with(volume['name'])
+        self.assertFalse(vops.delete_backing.called)
 
-        backing = FakeMor('VirtualMachine', 'my_vm')
-        FakeMor('Task', 'my_task')
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    def test_delete_volume(self, vops):
+        backing = mock.sentinel.backing
+        vops.get_backing.return_value = backing
 
-        m.StubOutWithMock(self._volumeops, 'get_backing')
-        m.StubOutWithMock(self._volumeops, 'delete_backing')
-        self._volumeops.get_backing('hello_world').AndReturn(backing)
-        self._volumeops.delete_backing(backing)
-
-        m.ReplayAll()
-        volume = FakeObject()
-        volume['name'] = 'hello_world'
+        volume = self._create_volume_dict()
         self._driver.delete_volume(volume)
-        m.UnsetStubs()
-        m.VerifyAll()
 
-    def test_create_export(self):
-        """Test create_export."""
-        self._driver.create_export(mox.IgnoreArg(), mox.IgnoreArg(), {})
+        vops.get_backing.assert_called_once_with(volume['name'])
+        vops.delete_backing.assert_called_once_with(backing)
 
-    def test_ensure_export(self):
-        """Test ensure_export."""
-        self._driver.ensure_export(mox.IgnoreArg(), mox.IgnoreArg())
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.'
+                '_get_volume_type_extra_spec')
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.'
+                'VirtualDiskType.validate')
+    def test_get_extra_spec_disk_type(self, validate,
+                                      get_volume_type_extra_spec):
+        vmdk_type = mock.sentinel.vmdk_type
+        get_volume_type_extra_spec.return_value = vmdk_type
 
-    def test_remove_export(self):
-        """Test remove_export."""
-        self._driver.remove_export(mox.IgnoreArg(), mox.IgnoreArg())
+        type_id = mock.sentinel.type_id
+        self.assertEqual(vmdk_type,
+                         self._driver._get_extra_spec_disk_type(type_id))
+        get_volume_type_extra_spec.assert_called_once_with(
+            type_id, 'vmdk_type', default_value=vmdk.THIN_VMDK_TYPE)
+        validate.assert_called_once_with(vmdk_type)
 
-    def test_terminate_connection(self):
-        """Test terminate_connection."""
-        self._driver.terminate_connection(mox.IgnoreArg(), mox.IgnoreArg(),
-                                          force=mox.IgnoreArg())
+    @mock.patch.object(VMDK_DRIVER, '_get_extra_spec_disk_type')
+    def test_get_disk_type(self, get_extra_spec_disk_type):
+        vmdk_type = mock.sentinel.vmdk_type
+        get_extra_spec_disk_type.return_value = vmdk_type
 
-    @mock.patch('cinder.volume.volume_types.get_volume_type_extra_specs')
-    def test_get_disk_type(self, get_volume_type_extra_specs):
-        """Test _get_disk_type."""
-        # Test with no volume type.
-        volume = {'volume_type_id': None}
-        self.assertEqual(vmdk.THIN_VMDK_TYPE,
-                         vmdk.VMwareVcVmdkDriver._get_disk_type(volume))
+        volume = self._create_volume_dict()
+        self.assertEqual(vmdk_type, self._driver._get_disk_type(volume))
+        get_extra_spec_disk_type.assert_called_once_with(
+            volume['volume_type_id'])
 
-        # Test with valid vmdk_type.
-        volume_type_id = mock.sentinel.volume_type_id
-        volume = {'volume_type_id': volume_type_id}
-        get_volume_type_extra_specs.return_value = vmdk.THICK_VMDK_TYPE
+    def _create_snapshot_dict(self,
+                              volume,
+                              snap_id=SNAPSHOT_ID,
+                              name=SNAPSHOT_NAME,
+                              description=SNAPSHOT_DESCRIPTION):
+        return {'id': snap_id,
+                'volume': volume,
+                'volume_name': volume['name'],
+                'name': name,
+                'display_description': description,
+                }
 
-        self.assertEqual(vmdk.THICK_VMDK_TYPE,
-                         vmdk.VMwareVcVmdkDriver._get_disk_type(volume))
-        get_volume_type_extra_specs.assert_called_once_with(volume_type_id,
-                                                            'vmware:vmdk_type')
-        # Test with invalid vmdk_type.
-        get_volume_type_extra_specs.return_value = 'sparse'
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    def test_create_snapshot_without_backing(self, vops):
+        vops.get_backing.return_value = None
 
-        self.assertRaises(vmdk_exceptions.InvalidDiskTypeException,
-                          vmdk.VMwareVcVmdkDriver._get_disk_type,
-                          volume)
-
-    def test_create_snapshot_without_backing(self):
-        """Test create_snapshot without backing."""
-        m = self.mox
-        m.StubOutWithMock(self._driver.__class__, 'volumeops')
-        self._driver.volumeops = self._volumeops
-        m.StubOutWithMock(self._volumeops, 'get_backing')
-        snapshot = FakeObject()
-        snapshot['volume_name'] = 'volume_name'
-        snapshot['name'] = 'snap_name'
-        snapshot['volume'] = FakeObject()
-        snapshot['volume']['status'] = 'available'
-        self._volumeops.get_backing(snapshot['volume_name'])
-
-        m.ReplayAll()
+        volume = self._create_volume_dict()
+        snapshot = self._create_snapshot_dict(volume)
         self._driver.create_snapshot(snapshot)
-        m.UnsetStubs()
-        m.VerifyAll()
 
-    def test_create_snapshot_with_backing(self):
-        """Test create_snapshot with backing."""
-        m = self.mox
-        m.StubOutWithMock(self._driver.__class__, 'volumeops')
-        self._driver.volumeops = self._volumeops
-        m.StubOutWithMock(self._volumeops, 'get_backing')
-        snapshot = FakeObject()
-        snapshot['volume_name'] = 'volume_name'
-        snapshot['name'] = 'snapshot_name'
-        snapshot['display_description'] = 'snapshot_desc'
-        snapshot['volume'] = FakeObject()
-        snapshot['volume']['status'] = 'available'
-        backing = FakeMor('VirtualMachine', 'my_back')
-        self._volumeops.get_backing(snapshot['volume_name']).AndReturn(backing)
-        m.StubOutWithMock(self._volumeops, 'create_snapshot')
-        self._volumeops.create_snapshot(backing, snapshot['name'],
-                                        snapshot['display_description'])
+        vops.get_backing.assert_called_once_with(snapshot['volume_name'])
+        self.assertFalse(vops.create_snapshot.called)
 
-        m.ReplayAll()
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    def test_create_snapshot_with_backing(self, vops):
+        backing = mock.sentinel.backing
+        vops.get_backing.return_value = backing
+
+        volume = self._create_volume_dict()
+        snapshot = self._create_snapshot_dict(volume)
         self._driver.create_snapshot(snapshot)
-        m.UnsetStubs()
-        m.VerifyAll()
+
+        vops.get_backing.assert_called_once_with(snapshot['volume_name'])
+        vops.create_snapshot.assert_called_once_with(
+            backing, snapshot['name'], snapshot['display_description'])
 
     def test_create_snapshot_when_attached(self):
-        """Test create_snapshot when volume is attached."""
-        snapshot = FakeObject()
-        snapshot['volume'] = FakeObject()
-        snapshot['volume']['status'] = 'in-use'
-
+        volume = self._create_volume_dict(status='in-use')
+        snapshot = self._create_snapshot_dict(volume)
         self.assertRaises(cinder_exceptions.InvalidVolume,
                           self._driver.create_snapshot, snapshot)
 
-    def test_delete_snapshot_without_backing(self):
-        """Test delete_snapshot without backing."""
-        m = self.mox
-        m.StubOutWithMock(self._driver.__class__, 'volumeops')
-        self._driver.volumeops = self._volumeops
-        m.StubOutWithMock(self._volumeops, 'get_backing')
-        snapshot = FakeObject()
-        snapshot['volume_name'] = 'volume_name'
-        snapshot['name'] = 'snap_name'
-        snapshot['volume'] = FakeObject()
-        snapshot['volume']['status'] = 'available'
-        self._volumeops.get_backing(snapshot['volume_name'])
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    def test_delete_snapshot_without_backing(self, vops):
+        vops.get_backing.return_value = None
 
-        m.ReplayAll()
+        volume = self._create_volume_dict()
+        snapshot = self._create_snapshot_dict(volume)
         self._driver.delete_snapshot(snapshot)
-        m.UnsetStubs()
-        m.VerifyAll()
 
-    def test_delete_snapshot_with_backing(self):
-        """Test delete_snapshot with backing."""
-        m = self.mox
-        m.StubOutWithMock(self._driver.__class__, 'volumeops')
-        self._driver.volumeops = self._volumeops
-        m.StubOutWithMock(self._volumeops, 'get_backing')
-        snapshot = FakeObject()
-        snapshot['name'] = 'snapshot_name'
-        snapshot['volume_name'] = 'volume_name'
-        snapshot['name'] = 'snap_name'
-        snapshot['volume'] = FakeObject()
-        snapshot['volume']['status'] = 'available'
-        backing = FakeMor('VirtualMachine', 'my_back')
-        self._volumeops.get_backing(snapshot['volume_name']).AndReturn(backing)
-        m.StubOutWithMock(self._volumeops, 'delete_snapshot')
-        self._volumeops.delete_snapshot(backing,
-                                        snapshot['name'])
+        vops.get_backing.assert_called_once_with(snapshot['volume_name'])
+        self.assertFalse(vops.delete_snapshot.called)
 
-        m.ReplayAll()
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    def test_delete_snapshot_with_backing(self, vops):
+        backing = mock.sentinel.backing
+        vops.get_backing.return_value = backing
+
+        volume = self._create_volume_dict()
+        snapshot = self._create_snapshot_dict(volume)
         self._driver.delete_snapshot(snapshot)
-        m.UnsetStubs()
-        m.VerifyAll()
+
+        vops.get_backing.assert_called_once_with(snapshot['volume_name'])
+        vops.delete_snapshot.assert_called_once_with(
+            backing, snapshot['name'])
 
     def test_delete_snapshot_when_attached(self):
-        """Test delete_snapshot when volume is attached."""
-        snapshot = FakeObject()
-        snapshot['volume'] = FakeObject()
-        snapshot['volume']['status'] = 'in-use'
+        volume = self._create_volume_dict(status='in-use')
+        snapshot = self._create_snapshot_dict(volume)
 
         self.assertRaises(cinder_exceptions.InvalidVolume,
                           self._driver.delete_snapshot, snapshot)
