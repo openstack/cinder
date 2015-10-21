@@ -67,7 +67,7 @@ class QoSSpecsTestCase(test.TestCase):
         expected.update(dict(name='FakeName'))
         del input['consumer']
         expected.update(dict(specs=input))
-        self.assertDictMatch(specs, expected)
+        self.assertDictMatch(expected, specs)
 
         self.stubs.Set(db, 'qos_specs_create',
                        fake_db_qos_specs_create)

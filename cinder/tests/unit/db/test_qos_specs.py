@@ -77,7 +77,7 @@ class QualityOfServiceSpecsTableTestCase(test.TestCase):
         expected = dict(name='Name1', id=specs_id, consumer='front-end')
         del value['consumer']
         expected.update(dict(specs=value))
-        self.assertDictMatch(specs, expected)
+        self.assertDictMatch(expected, specs)
 
     def test_qos_specs_get_all(self):
         value1 = dict(consumer='front-end',
@@ -119,7 +119,7 @@ class QualityOfServiceSpecsTableTestCase(test.TestCase):
                     'id': specs_id,
                     'consumer': 'front-end',
                     'specs': value}
-        self.assertDictMatch(specs, expected)
+        self.assertDictMatch(expected, specs)
 
     def test_qos_specs_delete(self):
         name = str(int(time.time()))
@@ -143,7 +143,7 @@ class QualityOfServiceSpecsTableTestCase(test.TestCase):
                     'specs': value}
         db.qos_specs_item_delete(self.ctxt, specs_id, 'foo')
         specs = db.qos_specs_get_by_name(self.ctxt, name)
-        self.assertDictMatch(specs, expected)
+        self.assertDictMatch(expected, specs)
 
     def test_associate_type_with_qos(self):
         self.assertRaises(exception.VolumeTypeNotFound,

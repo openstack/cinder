@@ -139,7 +139,7 @@ class TestCiscoFCZoneClientCLI(cli.CiscoFCZoneClientCLI, test.TestCase):
         get_switch_info_mock.return_value = cfgactv
         active_zoneset_returned = self.get_active_zone_set()
         get_switch_info_mock.assert_called_once_with(cmd_list)
-        self.assertDictMatch(active_zoneset_returned, active_zoneset)
+        self.assertDictMatch(active_zoneset, active_zoneset_returned)
 
     @mock.patch.object(cli.CiscoFCZoneClientCLI, '_run_ssh')
     def test_get_active_zone_set_ssh_error(self, run_ssh_mock):
@@ -153,7 +153,7 @@ class TestCiscoFCZoneClientCLI(cli.CiscoFCZoneClientCLI, test.TestCase):
         get_zoning_status_mock.return_value = zoning_status_data_basic
         zoning_status_returned = self.get_zoning_status()
         get_zoning_status_mock.assert_called_once_with(cmd_list)
-        self.assertDictMatch(zoning_status_returned, zoning_status_basic)
+        self.assertDictMatch(zoning_status_basic, zoning_status_returned)
 
     @mock.patch.object(cli.CiscoFCZoneClientCLI, '_get_switch_info')
     def test_get_zoning_status_enhanced_nosess(self, get_zoning_status_mock):
@@ -162,8 +162,8 @@ class TestCiscoFCZoneClientCLI(cli.CiscoFCZoneClientCLI, test.TestCase):
             zoning_status_data_enhanced_nosess
         zoning_status_returned = self.get_zoning_status()
         get_zoning_status_mock.assert_called_once_with(cmd_list)
-        self.assertDictMatch(zoning_status_returned,
-                             zoning_status_enhanced_nosess)
+        self.assertDictMatch(zoning_status_enhanced_nosess,
+                             zoning_status_returned)
 
     @mock.patch.object(cli.CiscoFCZoneClientCLI, '_get_switch_info')
     def test_get_zoning_status_enhanced_sess(self, get_zoning_status_mock):
@@ -171,8 +171,8 @@ class TestCiscoFCZoneClientCLI(cli.CiscoFCZoneClientCLI, test.TestCase):
         get_zoning_status_mock.return_value = zoning_status_data_enhanced_sess
         zoning_status_returned = self.get_zoning_status()
         get_zoning_status_mock.assert_called_once_with(cmd_list)
-        self.assertDictMatch(zoning_status_returned,
-                             zoning_status_enhanced_sess)
+        self.assertDictMatch(zoning_status_enhanced_sess,
+                             zoning_status_returned)
 
     @mock.patch.object(cli.CiscoFCZoneClientCLI, '_get_switch_info')
     def test_get_nameserver_info(self, get_switch_info_mock):

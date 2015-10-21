@@ -91,7 +91,7 @@ class HostManagerTestCase(test.TestCase):
     @mock.patch('oslo_utils.timeutils.utcnow')
     def test_update_service_capabilities(self, _mock_utcnow):
         service_states = self.host_manager.service_states
-        self.assertDictMatch(service_states, {})
+        self.assertDictMatch({}, service_states)
         _mock_utcnow.side_effect = [31337, 31338, 31339]
 
         host1_volume_capabs = dict(free_capacity_gb=4321, timestamp=1)
@@ -610,4 +610,4 @@ class PoolStateTestCase(test.TestCase):
         self.assertEqual(512,
                          fake_pool.provisioned_capacity_gb)
 
-        self.assertDictMatch(fake_pool.capabilities, volume_capability)
+        self.assertDictMatch(volume_capability, fake_pool.capabilities)

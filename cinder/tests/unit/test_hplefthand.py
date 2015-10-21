@@ -509,7 +509,7 @@ class TestHPLeftHandCLIQISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         result = self.driver.initialize_connection(volume,
                                                    self.connector)
         self.assertEqual('iscsi', result['driver_volume_type'])
-        self.assertDictMatch(result['data'], self.properties)
+        self.assertDictMatch(self.properties, result['data'])
 
         expected = [
             mock.call(
