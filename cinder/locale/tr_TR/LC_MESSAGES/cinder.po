@@ -7,9 +7,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev41\n"
+"Project-Id-Version: cinder 8.0.0.dev51\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-10-20 06:08+0000\n"
+"POT-Creation-Date: 2015-10-21 06:04+0000\n"
 "PO-Revision-Date: 2015-09-16 08:16+0000\n"
 "Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
 "Language: tr_TR\n"
@@ -1149,10 +1149,6 @@ msgstr " %(vol)s mantıksal sürücüsü %(dev)s aygıtından ayrılamadı."
 
 msgid "Could not extend volume on any configured REST server."
 msgstr "Mantıksal sürücü yapılandırılan hiçbir REST sunucuda büyütülemiyor."
-
-#, python-format
-msgid "Could not find ACL %(acl)s in target %(target)s"
-msgstr "Hedefte %(target)s ACL %(acl)s bulunamadı"
 
 #, python-format
 msgid "Could not find GPFS cluster id: %s."

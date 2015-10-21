@@ -7,9 +7,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev41\n"
+"Project-Id-Version: cinder 8.0.0.dev51\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-10-20 06:08+0000\n"
+"POT-Creation-Date: 2015-10-21 06:04+0000\n"
 "PO-Revision-Date: 2015-09-16 08:22+0000\n"
 "Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
 "Language-Team: Turkish (Turkey) (http://www.transifex.com/openstack/cinder/"
@@ -508,11 +508,6 @@ msgstr ""
 
 msgid "Create consistency group completed successfully."
 msgstr "Tutarlılık grubu oluşturma başarıyla tamamlandı."
-
-#, python-format
-msgid "Create consistency group from snapshot-%(snap)s completed successfully."
-msgstr ""
-"Anlık görüntü-%(snap)s den tutarlılık grubu oluşturma başarıyla tamamlandı."
 
 #, python-format
 msgid "Create export done from Volume %(volume_id)s."
