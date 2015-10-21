@@ -857,8 +857,8 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
         if image_meta['disk_format'] != 'raw':
             LOG.debug("rbd image clone requires image format to be "
                       "'raw' but image %(image)s is '%(format)s'",
-                      {"image", image_location,
-                       "format", image_meta['disk_format']})
+                      {"image": image_location,
+                       "format": image_meta['disk_format']})
             return False
 
         # check that we can read the image
