@@ -272,6 +272,10 @@ class FilterScheduler(driver.Scheduler):
             filter_properties = {}
         self._populate_retry(filter_properties, resource_properties)
 
+        if resource_type is None:
+            msg = _("volume_type cannot be None")
+            raise exception.InvalidVolumeType(reason=msg)
+
         filter_properties.update({'context': context,
                                   'request_spec': request_spec,
                                   'config_options': config_options,
