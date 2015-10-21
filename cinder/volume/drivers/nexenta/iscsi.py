@@ -187,7 +187,10 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def _get_target_group_name(self, target_name):
         """Return Nexenta iSCSI target group name for volume."""
-        return target_name
+        return target_name.replace(
+            self.configuration.nexenta_target_prefix,
+            self.configuration.nexenta_target_group_prefix
+        )
 
     @staticmethod
     def _get_clone_snapshot_name(volume):
