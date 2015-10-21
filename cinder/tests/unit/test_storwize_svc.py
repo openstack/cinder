@@ -1917,9 +1917,9 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         for volume in volumes:
             testutils.create_snapshot(self.ctxt,
                                       volume['id'],
-                                      cg_snapshot['id'],
-                                      cg_snapshot['name'],
-                                      cg_snapshot['id'],
+                                      cg_snapshot.id,
+                                      cg_snapshot.name,
+                                      cg_snapshot.id,
                                       "creating")
 
         return cg_snapshot
