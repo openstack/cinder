@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev41\n"
+"Project-Id-Version: cinder 8.0.0.dev51\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-10-20 06:08+0000\n"
+"POT-Creation-Date: 2015-10-21 06:04+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -2297,24 +2297,24 @@ msgstr ""
 msgid "Could not find target %s"
 msgstr ""
 
-#: cinder/cmd/rtstool.py:149
+#: cinder/cmd/rtstool.py:150
 #, python-format
-msgid "Could not find ACL %(acl)s in target %(target)s"
+msgid "delete_initiator: %s ACL not found. Continuing."
 msgstr ""
 
-#: cinder/cmd/rtstool.py:177
+#: cinder/cmd/rtstool.py:178
 #, python-format
 msgid "rtslib_fb is missing member %s: You may need a newer python-rtslib-fb."
 msgstr ""
 
-#: cinder/cmd/rtstool.py:216
+#: cinder/cmd/rtstool.py:217
 #, python-format
 msgid ""
 "targetcli not installed and could not create default directory "
 "(%(default_path)s): %(exc)s"
 msgstr ""
 
-#: cinder/cmd/rtstool.py:222
+#: cinder/cmd/rtstool.py:223
 #, python-format
 msgid "Could not save configuration to %(file_path)s: %(exc)s"
 msgstr ""
@@ -2350,20 +2350,20 @@ msgstr ""
 msgid "Unknown sort direction, must be 'desc' or 'asc'"
 msgstr ""
 
-#: cinder/consistencygroup/api.py:227
+#: cinder/consistencygroup/api.py:228
 #, python-format
 msgid "No host to create consistency group %s."
 msgstr ""
 
-#: cinder/consistencygroup/api.py:244
+#: cinder/consistencygroup/api.py:245
 msgid "Cgsnahost is empty. No consistency group will be created."
 msgstr ""
 
-#: cinder/consistencygroup/api.py:305
+#: cinder/consistencygroup/api.py:306
 msgid "Source CG is empty. No consistency group will be created."
 msgstr ""
 
-#: cinder/consistencygroup/api.py:443
+#: cinder/consistencygroup/api.py:444
 #, python-format
 msgid ""
 "Consistency group status must be available or error, but current status "
@@ -2451,14 +2451,14 @@ msgid ""
 " volume type %(volume_type)s is not supported by the group."
 msgstr ""
 
-#: cinder/consistencygroup/api.py:648 cinder/volume/manager.py:2728
+#: cinder/consistencygroup/api.py:648 cinder/volume/manager.py:2726
 #, python-format
 msgid ""
 "Cannot add volume %(volume_id)s to consistency group %(group_id)s because"
 " volume is in an invalid state: %(status)s. Valid states are: %(valid)s."
 msgstr ""
 
-#: cinder/consistencygroup/api.py:665 cinder/volume/manager.py:2742
+#: cinder/consistencygroup/api.py:665 cinder/volume/manager.py:2740
 msgid "Volume is not local to this node."
 msgstr ""
 
@@ -2469,12 +2469,12 @@ msgid ""
 " volume does not exist."
 msgstr ""
 
-#: cinder/consistencygroup/api.py:735
+#: cinder/consistencygroup/api.py:734
 #: cinder/tests/unit/test_storwize_svc.py:1913
 msgid "Consistency group is empty. No cgsnapshot will be created."
 msgstr ""
 
-#: cinder/consistencygroup/api.py:758
+#: cinder/consistencygroup/api.py:757
 msgid "Cgsnapshot status must be available or error"
 msgstr ""
 
@@ -2617,8 +2617,26 @@ msgstr ""
 msgid "Can't parse backup record."
 msgstr ""
 
-#: cinder/objects/consistencygroup.py:62
+#: cinder/objects/cgsnapshot.py:80 cinder/objects/consistencygroup.py:62
 msgid "already_created"
+msgstr ""
+
+#: cinder/objects/cgsnapshot.py:85
+msgid "consistencygroup assigned"
+msgstr ""
+
+#: cinder/objects/cgsnapshot.py:94 cinder/objects/snapshot.py:178
+#: cinder/objects/volume.py:229
+#, python-format
+msgid "attribute %s not lazy-loadable"
+msgstr ""
+
+#: cinder/objects/cgsnapshot.py:115
+msgid "consistencygroup changed"
+msgstr ""
+
+#: cinder/objects/cgsnapshot.py:118
+msgid "snapshots changed"
 msgstr ""
 
 #: cinder/objects/service.py:88 cinder/objects/snapshot.py:140
@@ -2632,11 +2650,6 @@ msgstr ""
 
 #: cinder/objects/snapshot.py:156
 msgid "volume changed"
-msgstr ""
-
-#: cinder/objects/snapshot.py:178 cinder/objects/volume.py:229
-#, python-format
-msgid "attribute %s not lazy-loadable"
 msgstr ""
 
 #: cinder/openstack/common/imageutils.py:76
@@ -3487,92 +3500,92 @@ msgstr ""
 msgid "Synchronizing secondary volume to primary failed."
 msgstr ""
 
-#: cinder/volume/manager.py:2365
+#: cinder/volume/manager.py:2363
+#, python-format
+msgid "snapshot-%s"
+msgstr ""
+
+#: cinder/volume/manager.py:2369
 #, python-format
 msgid ""
 "Cannot create consistency group %(group)s because snapshot %(snap)s is "
 "not in a valid state. Valid states are: %(valid)s."
 msgstr ""
 
-#: cinder/volume/manager.py:2392
+#: cinder/volume/manager.py:2391
+#, python-format
+msgid "cg-%s"
+msgstr ""
+
+#: cinder/volume/manager.py:2397
 #, python-format
 msgid ""
 "Cannot create consistency group %(group)s because source volume "
 "%(source_vol)s is not in a valid state. Valid states are: %(valid)s."
 msgstr ""
 
-#: cinder/volume/manager.py:2438
-#, python-format
-msgid "snapshot-%s"
-msgstr ""
-
-#: cinder/volume/manager.py:2440
-#, python-format
-msgid "cg-%s"
-msgstr ""
-
-#: cinder/volume/manager.py:2479
+#: cinder/volume/manager.py:2477
 msgid "Input volumes or snapshots are invalid."
 msgstr ""
 
-#: cinder/volume/manager.py:2502
+#: cinder/volume/manager.py:2500
 msgid "Input volumes or source volumes are invalid."
 msgstr ""
 
-#: cinder/volume/manager.py:2603
+#: cinder/volume/manager.py:2601
 msgid "Volume is not local to this node"
 msgstr ""
 
-#: cinder/volume/manager.py:2628
+#: cinder/volume/manager.py:2626
 msgid "Delete consistency group failed."
 msgstr ""
 
-#: cinder/volume/manager.py:2780
+#: cinder/volume/manager.py:2778
 #, python-format
 msgid "Error occurred when updating consistency group %s."
 msgstr ""
 
-#: cinder/volume/manager.py:2881
+#: cinder/volume/manager.py:2879
 #, python-format
 msgid "Error occurred when creating cgsnapshot %s."
 msgstr ""
 
-#: cinder/volume/manager.py:2974
+#: cinder/volume/manager.py:2968
 #, python-format
 msgid "Error occurred when deleting cgsnapshot %s."
 msgstr ""
 
-#: cinder/volume/manager.py:3099
+#: cinder/volume/manager.py:3091
 #, python-format
 msgid ""
 "Unable to enable replication due to invalid replication status: "
 "%(status)s."
 msgstr ""
 
-#: cinder/volume/manager.py:3109
+#: cinder/volume/manager.py:3101
 msgid "Enable replication for volume failed."
 msgstr ""
 
-#: cinder/volume/manager.py:3148
+#: cinder/volume/manager.py:3140
 #, python-format
 msgid ""
 "Unable to disable replication due to invalid replication status: "
 "%(status)s."
 msgstr ""
 
-#: cinder/volume/manager.py:3158
+#: cinder/volume/manager.py:3150
 msgid "Disable replication for volume failed."
 msgstr ""
 
-#: cinder/volume/manager.py:3227
+#: cinder/volume/manager.py:3219
 msgid "Replication failover for volume failed."
 msgstr ""
 
-#: cinder/volume/manager.py:3303
+#: cinder/volume/manager.py:3295
 msgid "Get replication targets failed."
 msgstr ""
 
-#: cinder/volume/manager.py:3325
+#: cinder/volume/manager.py:3317
 msgid "Failed to create manage existing flow."
 msgstr ""
 
