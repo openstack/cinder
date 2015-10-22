@@ -24,7 +24,7 @@
 from oslo_config import cfg
 
 
-NEXENTA_CONNECTION_OPTIONS = [
+NEXENTA_CONNECTION_OPTS = [
     cfg.StrOpt('nexenta_host',
                default='',
                help='IP address of Nexenta SA'),
@@ -44,7 +44,7 @@ NEXENTA_CONNECTION_OPTIONS = [
                secret=True),
 ]
 
-NEXENTA_ISCSI_OPTIONS = [
+NEXENTA_ISCSI_OPTS = [
     cfg.IntOpt('nexenta_iscsi_target_portal_port',
                default=3260,
                help='Nexenta target portal port'),
@@ -59,7 +59,7 @@ NEXENTA_ISCSI_OPTIONS = [
                help='Prefix for iSCSI target groups on SA'),
 ]
 
-NEXENTA_NFS_OPTIONS = [
+NEXENTA_NFS_OPTS = [
     cfg.StrOpt('nexenta_shares_config',
                default='/etc/cinder/nfs_shares',
                help='File with the list of available nfs shares'),
@@ -78,7 +78,7 @@ NEXENTA_NFS_OPTIONS = [
                       'value.'))
 ]
 
-NEXENTA_VOLUME_OPTIONS = [
+NEXENTA_VOLUME_OPTS = [
     cfg.StrOpt('nexenta_volume_compression',
                default='on',
                choices=['on', 'off', 'gzip', 'gzip-1', 'gzip-2', 'gzip-3',
@@ -107,7 +107,7 @@ NEXENTA_VOLUME_OPTIONS = [
                      '80 is recommened')),
 ]
 
-NEXENTA_RRMGR_OPTIONS = [
+NEXENTA_RRMGR_OPTS = [
     cfg.IntOpt('nexenta_rrmgr_compression',
                default=0,
                help=('Enable stream compression, level 1..9. 1 - gives best '
@@ -121,8 +121,8 @@ NEXENTA_RRMGR_OPTIONS = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(NEXENTA_CONNECTION_OPTIONS)
-CONF.register_opts(NEXENTA_ISCSI_OPTIONS)
-CONF.register_opts(NEXENTA_VOLUME_OPTIONS)
-CONF.register_opts(NEXENTA_NFS_OPTIONS)
-CONF.register_opts(NEXENTA_RRMGR_OPTIONS)
+CONF.register_opts(NEXENTA_CONNECTION_OPTS)
+CONF.register_opts(NEXENTA_ISCSI_OPTS)
+CONF.register_opts(NEXENTA_VOLUME_OPTS)
+CONF.register_opts(NEXENTA_NFS_OPTS)
+CONF.register_opts(NEXENTA_RRMGR_OPTS)

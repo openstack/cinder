@@ -28,11 +28,12 @@ from oslo_serialization import jsonutils
 import requests
 from six import wraps
 
-from cinder.i18n import _, _LE, _LI
+from cinder.i18n import _LE
 from cinder.volume.drivers import nexenta
 
 LOG = logging.getLogger(__name__)
 socket.setdefaulttimeout(100)
+
 
 def retry(exc_tuple, tries=5, delay=1, backoff=2):
     def retry_dec(f):
@@ -46,9 +47,9 @@ def retry(exc_tuple, tries=5, delay=1, backoff=2):
                     time.sleep(_delay)
                     _tries -= 1
                     _delay *= backoff
-                    LOG.debug(_('Retrying %s, (%s attempts remaining)...'),
-                              (args, _tries))
-            msg = (_('Retry count exceeded for command: %s'), (args,))
+                    LOG.debug('Retrying %s, (%s attempts remaining)...',
+                              args, _tries)
+            msg = (_LE('Retry count exceeded for command: %s'), args)
             LOG.error(msg)
             raise NexentaJSONException(msg)
         return func_retry
@@ -63,15 +64,14 @@ class NexentaJSONProxy(object):
 
     retry_exc_tuple = (requests.exceptions.ConnectionError,)
 
-    def __init__(self, scheme, host, port, path, user, password, auto=False,
-                 obj=None, method=None):
+    def __init__(self, scheme, host, port, path, user, password, obj=None,
+                 method=None):
         self.scheme = scheme.lower()
         self.host = host
         self.port = port
         self.path = path
         self.user = user
         self.password = password
-        self.auto = auto
         self.obj = obj
         self.method = method
 
@@ -83,8 +83,7 @@ class NexentaJSONProxy(object):
         else:
             obj, method = '%s.%s' % (self.obj, self.method), name
         return NexentaJSONProxy(self.scheme, self.host, self.port, self.path,
-                                self.user, self.password, self.auto, obj,
-                                method)
+                                self.user, self.password, obj, method)
 
     @property
     def url(self):
@@ -113,7 +112,7 @@ class NexentaJSONProxy(object):
         response = req.json()
         req.close()
 
-        LOG.debug(_('Got response: %s'), response)
+        LOG.debug('Got response: %s', response)
         if response.get('error') is not None:
             raise NexentaJSONException(response['error'].get('message', ''))
         return response.get('result')

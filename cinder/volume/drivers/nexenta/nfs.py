@@ -67,13 +67,13 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         super(NexentaNfsDriver, self).__init__(*args, **kwargs)
         if self.configuration:
             self.configuration.append_config_values(
-                options.NEXENTA_CONNECTION_OPTIONS)
+                options.NEXENTA_CONNECTION_OPTS)
             self.configuration.append_config_values(
-                options.NEXENTA_NFS_OPTIONS)
+                options.NEXENTA_NFS_OPTS)
             self.configuration.append_config_values(
-                options.NEXENTA_VOLUME_OPTIONS)
+                options.NEXENTA_VOLUME_OPTS)
             self.configuration.append_config_values(
-                options.NEXENTA_RRMGR_OPTIONS)
+                options.NEXENTA_RRMGR_OPTS)
 
         self.nms_cache_volroot = self.configuration.nexenta_nms_cache_volroot
         self.rrmgr_compression = self.configuration.nexenta_rrmgr_compression
@@ -174,9 +174,9 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             'name': utils.get_migrate_snapshot_name(volume)
         }
         self.create_snapshot(snapshot)
+        location = volume['provider_location']
         src = '%(share)s/%(volume)s@%(snapshot)s' % {
-            'share': (
-               volume['provider_location'].split(':')[1].split('volumes/')[1]),
+            'share': location.split(':')[1].split('volumes/')[1],
             'volume': volume['name'],
             'snapshot': snapshot['name']
         }
@@ -237,6 +237,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
 
     def retype(self, context, volume, new_type, diff, host):
         """Convert the volume to be of the new type.
+
         :param ctxt: Context
         :param volume: A dictionary describing the volume to migrate
         :param new_type: A dictionary describing the volume type to convert to
@@ -256,7 +257,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             compression='compression',
             dedup='dedup',
             description='nms:description'
-            )
+        )
 
         retyped = False
         migrated = False
@@ -265,11 +266,12 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         src_backend = self.__class__.__name__
         dst_backend = host['capabilities']['location_info'].split(':')[0]
         if src_backend != dst_backend:
-            LOG.warning('Cannot retype from %(src_backend)s to '
-                        '%(dst_backend)s.', {
+            LOG.warning(_LW('Cannot retype from %(src_backend)s to '
+                            '%(dst_backend)s.'),
+                        {
                             'src_backend': src_backend,
                             'dst_backend': dst_backend
-                        })
+            })
             return False
 
         hosts = (volume['host'], host['host'])
@@ -356,8 +358,8 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             try:
                 nms.folder.destroy('%s/%s' % (vol, folder))
             except nexenta.NexentaException:
-                LOG.warning(_("Cannot destroy created folder: "
-                              "%(vol)s/%(folder)s"),
+                LOG.warning(_LW("Cannot destroy created folder: "
+                                "%(vol)s/%(folder)s"),
                             {'vol': vol, 'folder': folder})
             raise exc
 
@@ -443,8 +445,8 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                 nms.folder.destroy(folder, '-r')
             except nexenta.NexentaException as exc:
                 if 'does not exist' in exc.args[0]:
-                    LOG.info(_('Folder %s does not exist, it was '
-                               'already deleted.'), folder)
+                    LOG.info(_LI('Folder %s does not exist, it was '
+                                 'already deleted.'), folder)
                     return
                 raise
             origin = props.get('origin')
@@ -453,8 +455,8 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                     nms.snapshot.destroy(origin, '')
                 except nexenta.NexentaException as exc:
                     if 'does not exist' in exc.args[0]:
-                        LOG.info(_('Snapshot %s does not exist, it was '
-                                   'already deleted.'), origin)
+                        LOG.info(_LI('Snapshot %s does not exist, it was '
+                                     'already deleted.'), origin)
                         return
                     raise
 
@@ -517,8 +519,12 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                              'already deleted.'), '%s@%s' % (folder, snapshot))
                 return
             elif 'has dependent clones' in exc.args[0]:
-                LOG.info(_LI('Snapshot %s has dependent clones, it will '
-                             'be deleted later.'), '%s@%s' % (folder, snapshot))
+                LOG.info(_LI('Snapshot %(folder)s@%(snapshot)s has dependent '
+                             'clones, it will be deleted later.'),
+                         {
+                             'folder': folder,
+                             'snapshot': snapshot,
+                })
                 return
 
     def _create_sparsed_file(self, nms, path, size):
@@ -537,6 +543,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
 
     def _create_regular_file(self, nms, path, size):
         """Creates regular file of given size.
+
         Takes a lot of time for large files.
 
         :param nms: nms object
@@ -635,8 +642,9 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             share_opts = share_info[2].strip() if len(share_info) > 2 else None
 
             if not re.match(r'.+:/.+', share_address):
-                LOG.warn("Share %s ignored due to invalid format.  Must be of "
-                         "form address:/export." % share_address)
+                LOG.warning(_LW("Share %s ignored due to invalid format. "
+                                "Must be of form address:/export."),
+                            share_address)
                 continue
 
             self.shares[share_address] = share_opts
@@ -708,9 +716,11 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             nfs_opts = nms.netsvc.get_confopts(
                 'svc:/network/nfs/server:default', 'configure')
             try:
-                self.nfs_versions[share] = int(nfs_opts['nfs_server_versmax']['current'])
+                self.nfs_versions[share] = int(
+                    nfs_opts['nfs_server_versmax']['current'])
             except KeyError:
-                self.nfs_versions[share] = int(nfs_opts['server_versmax']['current'])
+                self.nfs_versions[share] = int(
+                    nfs_opts['server_versmax']['current'])
         return self.nfs_versions[share]
 
     def _get_capacity_info(self, nfs_share):
@@ -721,7 +731,8 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         nms = self.share2nms[nfs_share]
         ns_volume, ns_folder = self._get_share_datasets(nfs_share)
         folder_props = nms.folder.get_child_props('%s/%s' % (ns_volume,
-                                                             ns_folder), 'used|available')
+                                                             ns_folder),
+                                                  'used|available')
         free = utils.str2size(folder_props['available'])
         allocated = utils.str2size(folder_props['used'])
         return free + allocated, free, allocated

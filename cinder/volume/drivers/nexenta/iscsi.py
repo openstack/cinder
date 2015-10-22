@@ -65,13 +65,13 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         self.targets = {}
         if self.configuration:
             self.configuration.append_config_values(
-                options.NEXENTA_CONNECTION_OPTIONS)
+                options.NEXENTA_CONNECTION_OPTS)
             self.configuration.append_config_values(
-                options.NEXENTA_ISCSI_OPTIONS)
+                options.NEXENTA_ISCSI_OPTS)
             self.configuration.append_config_values(
-                options.NEXENTA_VOLUME_OPTIONS)
+                options.NEXENTA_VOLUME_OPTS)
             self.configuration.append_config_values(
-                options.NEXENTA_RRMGR_OPTIONS)
+                options.NEXENTA_RRMGR_OPTS)
         self.nms_protocol = self.configuration.nexenta_rest_protocol
         self.nms_host = self.configuration.nexenta_host
         self.nms_port = self.configuration.nexenta_rest_port
@@ -132,8 +132,9 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                     'target_name': target_name})
             except nexenta.NexentaException as exc:
                 if 'already' in exc.args[0]:
-                    LOG.info('Ignored target creation error "%s" while '
-                             'ensuring export.', exc)
+                    LOG.info(_LI('Ignored target creation error "%s" while '
+                                 'ensuring export.'),
+                             exc)
                 else:
                     raise
         if not self._target_group_exists(target_group_name):
@@ -141,8 +142,9 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 self.nms.stmf.create_targetgroup(target_group_name)
             except nexenta.NexentaException as exc:
                 if ('already' in exc.args[0]):
-                    LOG.info('Ignored target group creation error "%s" '
-                             'while ensuring export.', exc)
+                    LOG.info(_LI('Ignored target group creation error "%s" '
+                                 'while ensuring export.'),
+                             exc)
                 else:
                     raise
         if not self._target_member_in_target_group(target_group_name,
@@ -152,8 +154,9 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                                                      target_name)
             except nexenta.NexentaException as exc:
                 if ('already' in exc.args[0]):
-                    LOG.info('Ignored target group member addition error '
-                             '"%s" while ensuring export.', exc)
+                    LOG.info(_LI('Ignored target group member addition error '
+                                 '"%s" while ensuring export.'),
+                             exc)
                 else:
                     raise
 
@@ -190,7 +193,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         """Return Nexenta iSCSI target group name for volume."""
         return target_name.replace(
             self.configuration.nexenta_target_prefix,
-            self.configuration.nexenta_target_group_prefix
+            ''
         )
 
     @staticmethod
@@ -389,6 +392,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def retype(self, context, volume, new_type, diff, host):
         """Convert the volume to be of the new type.
+
         :param ctxt: Context
         :param volume: A dictionary describing the volume to migrate
         :param new_type: A dictionary describing the volume type to convert to
@@ -408,7 +412,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             compression='compression',
             dedup='dedup',
             description='nms:description'
-            )
+        )
 
         retyped = False
         migrated = False
@@ -417,11 +421,12 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         src_backend = self.__class__.__name__
         dst_backend = capabilities['location_info'].split(':')[0]
         if src_backend != dst_backend:
-            LOG.warning('Cannot retype from %(src_backend)s to '
-                        '%(dst_backend)s.', {
+            LOG.warning(_LW('Cannot retype from %(src_backend)s to '
+                            '%(dst_backend)s.'),
+                        {
                             'src_backend': src_backend,
-                            'dst_backend': dst_backend
-                        })
+                            'dst_backend': dst_backend,
+            })
             return False
 
         hosts = (volume['host'], host['host'])
@@ -577,6 +582,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def create_export(self, _ctx, volume, connector):
         """Create new export for zvol.
+
         :param volume: reference of volume to be exported
         :return: iscsiadm-formatted provider location string
         """
@@ -588,6 +594,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def _do_export(self, _ctx, volume):
         """Recreate parts of export if necessary.
+
         :param volume: reference of volume to be exported
         """
         zvol_name = self._get_zvol_name(volume['name'])
