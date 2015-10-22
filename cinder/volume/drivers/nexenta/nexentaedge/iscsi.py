@@ -24,6 +24,7 @@ import json
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import units
 
 from cinder.i18n import _, _LE
 from cinder.volume import driver
@@ -181,7 +182,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         try:
             self.restapi.post('service/' + self.iscsi_service + '/iscsi', {
                 'objectPath': self.bucket_path + '/' + volume['name'],
-                'volSizeMB': int(volume['size']) * 1024,
+                'volSizeMB': int(volume['size']) * units.Ki,
                 'blockSize': self.LUN_BLOCKSIZE,
                 'chunkSize': self.LUN_CHUNKSIZE
             })
@@ -202,7 +203,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         try:
             self.restapi.put('service/' + self.iscsi_service + '/iscsi/resize',
                              {'objectPath': self.bucket_path + '/' +
-                              volume['name'], 'newSizeMB': new_size * 1024})
+                              volume['name'], 'newSizeMB': new_size * units.Ki})
         except Exception:
             LOG.exception(_LE('Error extending volume'))
             raise
@@ -259,7 +260,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             self.restapi.post(vol_url, clone_body)
             self.restapi.post('service/' + self.iscsi_service + '/iscsi', {
                 'objectPath': self.bucket_path + '/' + volume['name'],
-                'volSizeMB': int(src_vref['size']) * 1024,
+                'volSizeMB': int(src_vref['size']) * units.Ki,
                 'blockSize': self.LUN_BLOCKSIZE,
                 'chunkSize': self.LUN_CHUNKSIZE,
             })
