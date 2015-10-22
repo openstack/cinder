@@ -171,7 +171,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             if not(volume['name'] in self.targets[target_name]):
                 self.targets[target_name].append(volume['name'])
         elif not(target_names):
-            #create first target and target group
+            # create first target and target group
             target_name = self._create_target(0)
             self.targets[target_name].append(volume['name'])
         else:
@@ -180,7 +180,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 if len(self.targets[target]) < len(self.targets[target_name]):
                     target_name = target
             if len(self.targets[target_name]) >= 20:
-                #create new target and target group
+                # create new target and target group
                 target_name = self._create_target(len(target_names))
             if not(volume['name'] in self.targets[target_name]):
                 self.targets[target_name].append(volume['name'])
@@ -614,7 +614,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                              'while ensuring export.'), exc)
         model_update = {}
         if entry:
-            provider_location =  '%(host)s:%(port)s,1 %(name)s %(lun)s' % {
+            provider_location = '%(host)s:%(port)s,1 %(name)s %(lun)s' % {
                 'host': self.nms_host,
                 'port': self.configuration.nexenta_iscsi_target_portal_port,
                 'name': target_name,

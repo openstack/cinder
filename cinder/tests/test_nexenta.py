@@ -17,11 +17,7 @@
 Unit tests for OpenStack Cinder volume driver
 """
 
-import base64
-import requests
-
 from mox3 import mox as mox_lib
-from oslo_serialization import jsonutils
 from oslo_utils import units
 
 from cinder import context
@@ -60,6 +56,7 @@ class TestNexentaISCSIDriver(test.TestCase):
 
     def setUp(self):
         super(TestNexentaISCSIDriver, self).setUp()
+        self.ctxt = context.get_admin_context()
         self.configuration = mox_lib.MockObject(conf.Configuration)
         self.configuration.nexenta_volume_description = ''
         self.configuration.nexenta_host = '1.1.1.1'
@@ -87,6 +84,7 @@ class TestNexentaISCSIDriver(test.TestCase):
                        lambda *_, **__: self.nms_mock)
         self.drv = iscsi.NexentaISCSIDriver(
             configuration=self.configuration)
+        self.drv.db = db
         self.drv.nms = self.nms_mock
 
     def test_check_for_setup_error(self):
@@ -105,7 +103,6 @@ class TestNexentaISCSIDriver(test.TestCase):
 
     def test_create_volume(self):
         self.nms_mock.zvol.create('cinder/volume1', '1G', '8K', True)
-        self._stub_all_export_methods()
         self.mox.ReplayAll()
         self.drv.create_volume(self.TEST_VOLUME_REF)
 
@@ -120,6 +117,7 @@ class TestNexentaISCSIDriver(test.TestCase):
         c = self.nms_mock.zvol.get_child_props('cinder/volume1', 'origin')
         c.AndReturn({'origin': 'cinder/volume0@snapshot'})
         self.nms_mock.zvol.destroy('cinder/volume1', '')
+        self.nms_mock.volume.object_exists('cinder/volume0')
         self.mox.ReplayAll()
         self.drv.delete_volume(self.TEST_VOLUME_REF)
         self.mox.ResetAll()
@@ -129,6 +127,7 @@ class TestNexentaISCSIDriver(test.TestCase):
         self.nms_mock.zvol.destroy('cinder/volume1', '')
         self.nms_mock.snapshot.destroy(
             'cinder/volume0@cinder-clone-snapshot-1', '')
+        self.nms_mock.volume.object_exists('cinder/volume0')
         self.mox.ReplayAll()
         self.drv.delete_volume(self.TEST_VOLUME_REF)
         self.mox.ResetAll()
@@ -191,7 +190,7 @@ class TestNexentaISCSIDriver(test.TestCase):
             'volume': volume['name'],
             'snapshot': snapshot['name']
         }, '')
-
+        self.nms_mock.volume.object_exists(volume_name)
         self.mox.ReplayAll()
         self.drv.migrate_volume(None, volume, host)
 
@@ -207,7 +206,9 @@ class TestNexentaISCSIDriver(test.TestCase):
                                              self.TEST_SNAPSHOT_REF)
 
     def test_delete_snapshot(self):
+        self._create_volume_db_entry()
         self.nms_mock.snapshot.destroy('cinder/volume1@snapshot1', '')
+        self.nms_mock.volume.object_exists('cinder/volume1')
         self.mox.ReplayAll()
         self.drv.delete_snapshot(self.TEST_SNAPSHOT_REF)
         self.mox.ResetAll()
@@ -216,57 +217,52 @@ class TestNexentaISCSIDriver(test.TestCase):
         mock = self.nms_mock.snapshot.destroy('cinder/volume1@snapshot1', '')
         mock.AndRaise(jsonrpc.NexentaJSONException(
             'Snapshot cinder/volume1@snapshot1 does not exist'))
+        self.nms_mock.volume.object_exists('cinder/volume1')
         self.mox.ReplayAll()
         self.drv.delete_snapshot(self.TEST_SNAPSHOT_REF)
 
-    _CREATE_EXPORT_METHODS = [
-        ('scsidisk', 'lu_exists', ('cinder/volume1', ), 0, False, ),
-        ('scsidisk', 'create_lu', ('cinder/volume1', {}), 0, False),
-        ('scsidisk', 'lu_shared', ('cinder/volume1', ), 0, False, ),
-        ('scsidisk', 'add_lun_mapping_entry', ('cinder/volume1', {
-            'target_group': 'cinder/1.1.1.1'}), 0, False, ),
-        ('scsidisk', 'lu_shared', ('cinder/volume1', ), 1, False, ),
-        ('scsidisk', 'list_lun_mapping_entries', ('cinder/volume1', ),
-            [{
-                'zvol': 'cinder/volume1',
-                'target_group': 'cinder/1.1.1.1',
-                'lun': '0'
-            }], False, ),
-    ]
-
-    def _stub_export_method(self, module, method, args, error, raise_exception,
-                            fail=False):
-        m = getattr(self.nms_mock, module)
-        m = getattr(m, method)
-        mock = m(*args)
-        if raise_exception and fail:
-            mock.AndRaise(jsonrpc.NexentaJSONException(error))
-        else:
-            mock.AndReturn(error)
-
     def _stub_all_export_methods(self, fail=False):
-        for params in self._CREATE_EXPORT_METHODS:
-            self._stub_export_method(*params, fail=fail)
+        self.nms_mock.stmf.list_targets()
+        self.nms_mock.iscsitarget.create_target(
+            {'target_name': 'iqn:1.1.1.1-0'})
+        self.nms_mock.stmf.list_targetgroups()
+        zvol_name = 'cinder/volume1'
+        self.nms_mock.stmf.create_targetgroup(
+            'cinder/1.1.1.1-0')
+        self.nms_mock.stmf.list_targetgroup_members(
+            'cinder/1.1.1.1-0').AndReturn(['iqn:1.1.1.1-0'])
+        self.nms_mock.scsidisk.lu_exists(zvol_name)
+        self.nms_mock.scsidisk.create_lu(zvol_name, {})
+        self.nms_mock.scsidisk.lu_shared(zvol_name)
+        self.nms_mock.scsidisk.add_lun_mapping_entry(zvol_name, {
+                    'target_group': 'cinder/1.1.1.1-0'}).AndReturn({'lun': 0})
 
     def test_create_export(self):
         self._stub_all_export_methods()
         self.mox.ReplayAll()
-        retval = self.drv.create_export({}, self.TEST_VOLUME_REF)
+        retval = self.drv.create_export({}, self.TEST_VOLUME_REF, None)
         location = '%(host)s:%(port)s,1 %(name)s %(lun)s' % {
             'host': self.configuration.nexenta_host,
             'port': self.configuration.nexenta_iscsi_target_portal_port,
-            'name': 'iqn:1.1.1.1',
+            'name': 'iqn:1.1.1.1-0',
             'lun': '0'
         }
         self.assertEqual(retval, {'provider_location': location})
 
     def test_ensure_export(self):
-        self.nms_mock.scsidisk.lu_exists('cinder/volume1').AndReturn(1)
-        self.nms_mock.scsidisk.lu_shared('cinder/volume1').AndReturn(1)
+        self._stub_all_export_methods()
         self.mox.ReplayAll()
         self.drv.ensure_export({}, self.TEST_VOLUME_REF)
 
     def test_remove_export(self):
+        self.nms_mock.stmf.list_targets()
+        self.nms_mock.iscsitarget.create_target(
+            {'target_name': 'iqn:1.1.1.1-0'})
+        self.nms_mock.stmf.list_targetgroups()
+        self.nms_mock.stmf.create_targetgroup(
+            'cinder/1.1.1.1-0')
+        self.nms_mock.stmf.list_targetgroup_members(
+            'cinder/1.1.1.1-0').AndReturn(['iqn:1.1.1.1-0'])
         self.nms_mock.scsidisk.delete_lu('cinder/volume1')
         self.mox.ReplayAll()
         self.drv.remove_export({}, self.TEST_VOLUME_REF)
@@ -286,6 +282,15 @@ class TestNexentaISCSIDriver(test.TestCase):
         self.assertEqual(stats['free_capacity_gb'], 5368709120.0)
         self.assertEqual(stats['reserved_percentage'], 20)
         self.assertEqual(stats['QoS_support'], False)
+
+    def _create_volume_db_entry(self):
+        vol = {
+            'id': '1',
+            'size': 1,
+            'status': 'available',
+            'provider_location': self.TEST_VOLUME_NAME
+        }
+        return db.volume_create(self.ctxt, vol)['id']
 
 
 class TestNexentaNfsDriver(test.TestCase):
