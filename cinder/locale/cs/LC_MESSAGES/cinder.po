@@ -9,14 +9,13 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev51\n"
+"Project-Id-Version: cinder 8.0.0.dev66\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-10-21 06:04+0000\n"
-"PO-Revision-Date: 2015-10-20 02:33+0000\n"
+"POT-Creation-Date: 2015-10-22 06:07+0000\n"
+"PO-Revision-Date: 2015-10-21 03:22+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language: cs\n"
-"Language-Team: Czech (http://www.transifex.com/openstack/cinder/language/"
-"cs/)\n"
+"Language-Team: Czech\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
@@ -876,6 +875,10 @@ msgid "Cannot find source CG instance. consistencygroup_id: %s."
 msgstr ""
 "Nelze najít zdrojovou instanci skupiny jednotnosti. ID skupiny jednotnosti: "
 "%s."
+
+#, python-format
+msgid "Cannot get mcs_id by channel id: %(channel_id)s."
+msgstr "Nelze získat id mcs podle id kanálu: %(channel_id)s."
 
 msgid "Cannot get necessary pool or storage system information."
 msgstr "Nelze získat potřebné informace o systému zásoby nebo úložiště."
@@ -2147,6 +2150,9 @@ msgstr "Nelze vytvořit správu existujícího postupu."
 msgid "Failed to create manage_existing flow."
 msgstr "Nelze vytvořit postup pro správu existujících."
 
+msgid "Failed to create map on mcs, no channel can map."
+msgstr "Nelze vytvořit mapu na mcs, žádný kanál nemůže mapovat."
+
 msgid "Failed to create map."
 msgstr "Nelze vytvořit mapu."
 
@@ -2207,6 +2213,11 @@ msgid "Failed to create volume %s"
 msgstr "Nelze vytvořit svazek %s"
 
 #, python-format
+msgid "Failed to delete SI for volume_id: %(volume_id)s because it has pair."
+msgstr ""
+"Nelze smazat SI svazku s id: %(volume_id)s protože existují dva s tímto id."
+
+#, python-format
 msgid "Failed to delete a logical device. (LDEV: %(ldev)s, reason: %(reason)s)"
 msgstr ""
 "Nelze smazat logické zařízení. (Logické zařízení: %(ldev)s, důvod: "
@@ -2251,12 +2262,23 @@ msgstr "Nelze smazat snímek %s"
 msgid "Failed to delete snapshot for cg: %(cgId)s."
 msgstr "Nelze smazat snímek pro skupinu jednotnosti: %(cgId)s."
 
+#, python-format
+msgid "Failed to delete snapshot for snapshot_id: %s because it has pair."
+msgstr "Nelze smazat snímek s id %s protože existují dva s tímto id."
+
 msgid "Failed to delete snapshot."
 msgstr "Nelze smazat snímek."
 
 #, python-format
 msgid "Failed to delete volume %(volumeName)s."
 msgstr "Nelze smazat svazek %(volumeName)s."
+
+#, python-format
+msgid ""
+"Failed to delete volume for volume_id: %(volume_id)s because it has pair."
+msgstr ""
+"Nelze smazat svazek pro svazek s id: %(volume_id)s protože existují dva s "
+"tímto id."
 
 #, python-format
 msgid "Failed to detach iSCSI target for volume %(volume_id)s."
@@ -2282,6 +2304,9 @@ msgid ""
 msgstr ""
 "Nelze provést [%(cmd)s] CloudByte API. Stav http: %(status)s, chyba: "
 "%(error)s."
+
+msgid "Failed to execute common command."
+msgstr "Nelze provést běžný příkaz."
 
 #, python-format
 msgid "Failed to export for volume: %(reason)s"
@@ -2314,6 +2339,18 @@ msgid "Failed to get CloudByte account details for account [%s]."
 msgstr "Nelze získat údaje účtu CloudByte [%s]."
 
 #, python-format
+msgid "Failed to get Partition ID for volume %(volume_id)s."
+msgstr "Nelze získat ID oddílu pro svazek %(volume_id)s."
+
+#, python-format
+msgid "Failed to get Raid Snapshot ID from Snapshot %(snapshot_id)s."
+msgstr "Nelze získat ID Raid snímku %(snapshot_id)s."
+
+#, python-format
+msgid "Failed to get Raid Snapshot ID from snapshot: %(snapshot_id)s."
+msgstr "Nelze získat ID Raid snímku %(snapshot_id)s."
+
+#, python-format
 msgid ""
 "Failed to get a storage resource. The system will attempt to get the storage "
 "resource again. (resource: %(resource)s)"
@@ -2334,6 +2371,10 @@ msgstr "Nelze získat úroveň kódu (%s)."
 
 msgid "Failed to get device info."
 msgstr "Nelze získat informace o zařízení."
+
+#, python-format
+msgid "Failed to get ip on Channel %(channel_id)s with volume: %(volume_id)s."
+msgstr "Nelze získat ip na kanálu %(channel_id)s se svazkem: %(volume_id)s."
 
 msgid "Failed to get iqn info."
 msgstr "Nelze získat informace o iqn."
@@ -2358,6 +2399,10 @@ msgstr "Nelze získat rezervace kvót starého typu svazku"
 
 msgid "Failed to get partition info."
 msgstr "Nelze získat informace o oddílu."
+
+#, python-format
+msgid "Failed to get pool id with volume %(volume_id)s."
+msgstr "Nelze získat zásobu svazku s id %(volume_id)s."
 
 msgid "Failed to get replica info."
 msgstr "Nelze získat informace o replice."
@@ -2808,6 +2853,10 @@ msgstr ""
 "Velikost bloku kontrolního součtu byla od poslední zálohy změněna, Nová "
 "velikost bloku kontrolního součtu: %(new)s. Stará velikost bloku kontrolního "
 "součtu: %(old)s. Proveďte úplnou zálohu."
+
+#, python-format
+msgid "Have not created %(tier_levels)s tier(s)."
+msgstr "Vrstvy %(tier_levels)s nebyly vytvořeny."
 
 #, python-format
 msgid "Hint \"%s\" not supported."
@@ -3389,6 +3438,13 @@ msgstr ""
 #, python-format
 msgid "KeyError: %s"
 msgstr "Chyba klíče: %s"
+
+msgid "LUN map overflow on every channel."
+msgstr "Přetečení LUN mapy ve všech kanálech."
+
+#, python-format
+msgid "LUN number is out of bound on channel id: %(ch_id)s."
+msgstr "Číslo LUN je mimo rozsah v kanálu s id: %(ch_id)s."
 
 #, python-format
 msgid ""
@@ -4020,6 +4076,14 @@ msgstr ""
 msgid "Path to REST server's certificate must be specified."
 msgstr "Cesta k certifikátu serveru REST musí být zadána."
 
+#, python-format
+msgid "Please create %(pool_list)s pool in advance!"
+msgstr "Prosím předem vytvořte zásobu %(pool_list)s!"
+
+#, python-format
+msgid "Please create %(tier_levels)s tier in pool %(pool)s in advance!"
+msgstr "Prosím předem vytvořte vrstvu %(tier_levels)s v zásobě %(pool)s!"
+
 msgid "Please re-run cinder-manage as root."
 msgstr "Prosím spusťte znovu cinder-manage jako root."
 
@@ -4061,6 +4125,9 @@ msgstr ""
 #, python-format
 msgid "PoolName must be in the file %(fileName)s."
 msgstr "Název zásoby musí být v souboru %(fileName)s."
+
+msgid "Pools name is not set."
+msgstr "Název zásoby není nastaven."
 
 #, python-format
 msgid ""
@@ -4166,6 +4233,9 @@ msgstr "Heslo serveru REST musí být zadáno."
 
 msgid "REST server username must by specified."
 msgstr "Uživatelské jméno serveru REST musí být zadáno."
+
+msgid "Raid did not have MCS Channel."
+msgstr "RAID neměl kanál MCS."
 
 #, python-format
 msgid ""
@@ -5474,6 +5544,10 @@ msgid "Unknown or unsupported command %(cmd)s"
 msgstr "Neznámý nebo nepodporovaný příkaz %(cmd)s"
 
 #, python-format
+msgid "Unknown protocol: %(protocol)s."
+msgstr "Neznámý protokol: %(protocol)s."
+
+#, python-format
 msgid "Unknown quota resources %(unknown)s."
 msgstr "Neznámý zdroj kvóty %(unknown)s."
 
@@ -6711,6 +6785,9 @@ msgstr "kořenový prvek volí seznam"
 msgid "rtslib_fb is missing member %s: You may need a newer python-rtslib-fb."
 msgstr ""
 "rtslib_fb chybí člen %s: Možná budete potřebovat novější python-rtslib-fb."
+
+msgid "san_ip is not set."
+msgstr "san_ip není nastaveno."
 
 msgid "san_ip: Mandatory field configuration. san_ip is not set."
 msgstr "san_ip: Povinné pole nastavení san_ip není nastaveno."
