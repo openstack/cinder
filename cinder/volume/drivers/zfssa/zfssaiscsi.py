@@ -177,6 +177,15 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
         else:
             LOG.warning(_LW('zfssa_initiator_config not found. '
                             'Using deprecated configuration options.'))
+            if (not lcfg.zfssa_initiator and
+                (not lcfg.zfssa_initiator_group and
+                 lcfg.zfssa_initiator_group != 'default')):
+                LOG.error(_LE('zfssa_initiator cannot be empty when '
+                              'creating a zfssa_initiator_group.'))
+                raise exception.InvalidConfigurationValue(
+                    value='',
+                    option='zfssa_initiator')
+
             if (lcfg.zfssa_initiator != '' and
                 (lcfg.zfssa_initiator_group == '' or
                  lcfg.zfssa_initiator_group == 'default')):
@@ -191,6 +200,7 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
                lcfg.zfssa_initiator_group != '' and
                lcfg.zfssa_initiator_group != 'default'):
                 for initiator in lcfg.zfssa_initiator.split(','):
+                    initiator = initiator.strip()
                     self.zfssa.create_initiator(
                         initiator, lcfg.zfssa_initiator_group + '-' +
                         initiator, chapuser=lcfg.zfssa_initiator_user,
@@ -685,6 +695,15 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
         lcfg = self.configuration
         init_groups = self.zfssa.get_initiator_initiatorgroup(
             connector['initiator'])
+        if not init_groups:
+            if lcfg.zfssa_initiator_group == 'default':
+                init_groups.append('default')
+            else:
+                exception_msg = (_('Failed to find iSCSI initiator group '
+                                   'containing %(initiator)s.')
+                                 % {'initiator': connector['initiator']})
+                LOG.error(exception_msg)
+                raise exception.VolumeBackendAPIException(data=exception_msg)
         if ((lcfg.zfssa_enable_local_cache is True) and
                 (volume['name'].startswith('os-cache-vol-'))):
             project = lcfg.zfssa_cache_project

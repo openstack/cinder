@@ -953,10 +953,6 @@ class ZFSSAApi(object):
         for initiator_group in val['groups']:
             if initiator in initiator_group['initiators']:
                 groups.append(initiator_group["name"])
-        if len(groups) == 0:
-            LOG.debug("Initiator group not found. Attaching volume to "
-                      "default initiator group.")
-            groups.append('default')
         return groups
 
     def create_schema(self, schema):
