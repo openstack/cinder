@@ -96,6 +96,11 @@ class HttpClient(object):
         self.header['x-dell-api-version'] = '2.0'
         self.verify = verify
 
+        # Verify is a configurable option.  So if this is false do not
+        # spam the c-vol log.
+        if not verify:
+            requests.packages.urllib3.disable_warnings()
+
     def __enter__(self):
         return self
 
