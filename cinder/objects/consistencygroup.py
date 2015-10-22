@@ -19,11 +19,15 @@ from cinder import objects
 from cinder.objects import base
 from oslo_versionedobjects import fields
 
+OPTIONAL_FIELDS = ['cgsnapshots', 'volumes']
+
 
 @base.CinderObjectRegistry.register
 class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
                        base.CinderObjectDictCompat):
-    VERSION = '1.0'
+    # Version 1.0: Initial version
+    # Version 1.1: Added cgsnapshots and volumes relationships
+    VERSION = '1.1'
 
     fields = {
         'id': fields.UUIDField(),
@@ -37,13 +41,34 @@ class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
         'status': fields.StringField(nullable=True),
         'cgsnapshot_id': fields.UUIDField(nullable=True),
         'source_cgid': fields.UUIDField(nullable=True),
+        'cgsnapshots': fields.ObjectField('CGSnapshotList', nullable=True),
+        'volumes': fields.ObjectField('VolumeList', nullable=True),
     }
 
     @staticmethod
-    def _from_db_object(context, consistencygroup, db_consistencygroup):
+    def _from_db_object(context, consistencygroup, db_consistencygroup,
+                        expected_attrs=None):
+        if expected_attrs is None:
+            expected_attrs = []
         for name, field in consistencygroup.fields.items():
+            if name in OPTIONAL_FIELDS:
+                continue
             value = db_consistencygroup.get(name)
             setattr(consistencygroup, name, value)
+
+        if 'cgsnapshots' in expected_attrs:
+            cgsnapshots = base.obj_make_list(
+                context, objects.CGSnapshotsList(context),
+                objects.CGSnapshot,
+                db_consistencygroup['cgsnapshots'])
+            consistencygroup.cgsnapshots = cgsnapshots
+
+        if 'volumes' in expected_attrs:
+            volumes = base.obj_make_list(
+                context, objects.VolumeList(context),
+                objects.Volume,
+                db_consistencygroup['volumes'])
+            consistencygroup.cgsnapshots = volumes
 
         consistencygroup._context = context
         consistencygroup.obj_reset_changes()
@@ -55,14 +80,49 @@ class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
             raise exception.ObjectActionError(action='create',
                                               reason=_('already_created'))
         updates = self.cinder_obj_get_changes()
+
+        if 'cgsnapshots' in updates:
+            raise exception.ObjectActionError(action='create',
+                                              reason=_('cgsnapshots assigned'))
+
+        if 'volumes' in updates:
+            raise exception.ObjectActionError(action='create',
+                                              reason=_('volumes assigned'))
+
         db_consistencygroups = db.consistencygroup_create(self._context,
                                                           updates)
         self._from_db_object(self._context, self, db_consistencygroups)
+
+    def obj_load_attr(self, attrname):
+        if attrname not in OPTIONAL_FIELDS:
+            raise exception.ObjectActionError(
+                action='obj_load_attr',
+                reason=_('attribute %s not lazy-loadable') % attrname)
+        if not self._context:
+            raise exception.OrphanedObjectError(method='obj_load_attr',
+                                                objtype=self.obj_name())
+
+        if attrname == 'cgsnapshots':
+            self.cgsnapshots = objects.CGSnapshotList.get_all_by_group(
+                self._context, self.id)
+
+        if attrname == 'volumes':
+            self.volumes = objects.VolumeList.get_all_by_group(self._context,
+                                                               self.id)
+
+        self.obj_reset_changes(fields=[attrname])
 
     @base.remotable
     def save(self):
         updates = self.cinder_obj_get_changes()
         if updates:
+            if 'cgsnapshots' in updates:
+                raise exception.ObjectActionError(
+                    action='save', reason=_('cgsnapshots changed'))
+            if 'volumes' in updates:
+                raise exception.ObjectActionError(
+                    action='save', reason=_('volumes changed'))
+
             db.consistencygroup_update(self._context, self.id, updates)
             self.obj_reset_changes()
 
