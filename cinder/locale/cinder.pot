@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev51\n"
+"Project-Id-Version: cinder 8.0.0.dev66\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-10-21 06:04+0000\n"
+"POT-Creation-Date: 2015-10-22 06:07+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -1460,22 +1460,22 @@ msgid "Invalid value for 'bootable': '%s'"
 msgstr ""
 
 #: cinder/api/contrib/volume_image_metadata.py:46
-#: cinder/api/contrib/volume_image_metadata.py:127
+#: cinder/api/contrib/volume_image_metadata.py:132
 #, python-format
 msgid "Volume with volume id %s does not exist."
 msgstr ""
 
-#: cinder/api/contrib/volume_image_metadata.py:105
-#: cinder/api/contrib/volume_image_metadata.py:130
-#: cinder/api/contrib/volume_image_metadata.py:151
+#: cinder/api/contrib/volume_image_metadata.py:110
+#: cinder/api/contrib/volume_image_metadata.py:135
+#: cinder/api/contrib/volume_image_metadata.py:156
 msgid "Malformed request body."
 msgstr ""
 
-#: cinder/api/contrib/volume_image_metadata.py:157
+#: cinder/api/contrib/volume_image_metadata.py:162
 msgid "Metadata item was not found."
 msgstr ""
 
-#: cinder/api/contrib/volume_image_metadata.py:164
+#: cinder/api/contrib/volume_image_metadata.py:169
 msgid "The key cannot be None."
 msgstr ""
 
@@ -2495,38 +2495,38 @@ msgstr ""
 msgid "Sort direction array size exceeds sort key array size."
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:3569
+#: cinder/db/sqlalchemy/api.py:3580
 #, python-format
 msgid "No backup with id %s"
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:3653
+#: cinder/db/sqlalchemy/api.py:3664
 msgid "Volume must be available"
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:3700
+#: cinder/db/sqlalchemy/api.py:3711
 #, python-format
 msgid ""
 "Transfer %(transfer_id)s: Volume id %(volume_id)s in unexpected state "
 "%(status)s, expected awaiting-transfer"
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:3800
+#: cinder/db/sqlalchemy/api.py:3811
 #, python-format
 msgid "No consistency group with id %s"
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:3912
+#: cinder/db/sqlalchemy/api.py:3923
 #, python-format
 msgid "No cgsnapshot with id %s"
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:3937
+#: cinder/db/sqlalchemy/api.py:3948
 #, python-format
 msgid "Invalid value for age, %(age)s"
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:3941
+#: cinder/db/sqlalchemy/api.py:3952
 msgid "Must supply a positive value for age"
 msgstr ""
 
@@ -2743,6 +2743,10 @@ msgstr ""
 msgid "Exceeded max scheduling attempts %(max_attempts)d for volume %(volume_id)s"
 msgstr ""
 
+#: cinder/scheduler/filter_scheduler.py:276
+msgid "volume_type cannot be None"
+msgstr ""
+
 #: cinder/scheduler/manager.py:131
 msgid "Failed to create scheduler manager volume flow"
 msgstr ""
@@ -2842,7 +2846,7 @@ msgstr ""
 msgid "umount: %s: target is busy"
 msgstr ""
 
-#: cinder/tests/unit/test_ibm_xiv_ds8k.py:143
+#: cinder/tests/unit/test_ibm_xiv_ds8k.py:153
 #, python-format
 msgid "Volume not found for instance %(instance_id)s."
 msgstr ""
@@ -2953,11 +2957,11 @@ msgid ""
 " current status is: %s."
 msgstr ""
 
-#: cinder/tests/unit/api/contrib/test_consistencygroups.py:899
+#: cinder/tests/unit/api/contrib/test_consistencygroups.py:897
 msgid "Invalid ConsistencyGroup: No host to create consistency group"
 msgstr ""
 
-#: cinder/tests/unit/api/contrib/test_consistencygroups.py:1032
+#: cinder/tests/unit/api/contrib/test_consistencygroups.py:1029
 msgid "Create volume failed."
 msgstr ""
 
@@ -3184,134 +3188,134 @@ msgid ""
 "mode."
 msgstr ""
 
-#: cinder/volume/api.py:1188 cinder/volume/api.py:1303
+#: cinder/volume/api.py:1197 cinder/volume/api.py:1312
 #, python-format
 msgid ""
 "Volume %(vol_id)s status must be available or in-use, but current status "
 "is: %(vol_status)s."
 msgstr ""
 
-#: cinder/volume/api.py:1194
+#: cinder/volume/api.py:1203
 msgid "Volume status is in-use."
 msgstr ""
 
-#: cinder/volume/api.py:1251
+#: cinder/volume/api.py:1260
 #, python-format
 msgid ""
 "Volume %(vol_id)s status must be available to extend, but current status "
 "is: %(vol_status)s."
 msgstr ""
 
-#: cinder/volume/api.py:1259
+#: cinder/volume/api.py:1268
 #, python-format
 msgid ""
 "New size for extend must be greater than current size. (current: "
 "%(size)s, extended: %(new_size)s)."
 msgstr ""
 
-#: cinder/volume/api.py:1312 cinder/volume/api.py:1445
+#: cinder/volume/api.py:1321 cinder/volume/api.py:1454
 #, python-format
 msgid "Volume %s is already part of an active migration."
 msgstr ""
 
-#: cinder/volume/api.py:1320
+#: cinder/volume/api.py:1329
 #, python-format
 msgid "Volume %s must not have snapshots."
 msgstr ""
 
-#: cinder/volume/api.py:1327
+#: cinder/volume/api.py:1336
 #, python-format
 msgid "Volume %s must not be replicated."
 msgstr ""
 
-#: cinder/volume/api.py:1333
+#: cinder/volume/api.py:1342
 #, python-format
 msgid "Volume %s must not be part of a consistency group."
 msgstr ""
 
-#: cinder/volume/api.py:1349
+#: cinder/volume/api.py:1358
 #, python-format
 msgid "No available service named %s"
 msgstr ""
 
-#: cinder/volume/api.py:1355
+#: cinder/volume/api.py:1364
 msgid "Destination host must be different than the current host."
 msgstr ""
 
-#: cinder/volume/api.py:1399
+#: cinder/volume/api.py:1408
 msgid "Source volume not mid-migration."
 msgstr ""
 
-#: cinder/volume/api.py:1403
+#: cinder/volume/api.py:1412
 msgid "Destination volume not mid-migration."
 msgstr ""
 
-#: cinder/volume/api.py:1408
+#: cinder/volume/api.py:1417
 #, python-format
 msgid "Destination has migration_status %(stat)s, expected %(exp)s."
 msgstr ""
 
-#: cinder/volume/api.py:1421
+#: cinder/volume/api.py:1430
 #, python-format
 msgid ""
 "Volume %(vol_id)s status must be available to update readonly flag, but "
 "current status is: %(vol_status)s."
 msgstr ""
 
-#: cinder/volume/api.py:1436
+#: cinder/volume/api.py:1445
 #, python-format
 msgid ""
 "Unable to update type due to incorrect status: %(vol_status)s on volume: "
 "%(vol_id)s. Volume status must be available or in-use."
 msgstr ""
 
-#: cinder/volume/api.py:1451
+#: cinder/volume/api.py:1460
 #, python-format
 msgid "migration_policy must be 'on-demand' or 'never', passed: %s"
 msgstr ""
 
-#: cinder/volume/api.py:1458
+#: cinder/volume/api.py:1467
 msgid "Volume must not be part of a consistency group."
 msgstr ""
 
-#: cinder/volume/api.py:1471
+#: cinder/volume/api.py:1480
 #, python-format
 msgid "Invalid volume_type passed: %s."
 msgstr ""
 
-#: cinder/volume/api.py:1484
+#: cinder/volume/api.py:1493
 #, python-format
 msgid "New volume_type same as original: %s."
 msgstr ""
 
-#: cinder/volume/api.py:1499
+#: cinder/volume/api.py:1508
 msgid "Retype cannot change encryption requirements."
 msgstr ""
 
-#: cinder/volume/api.py:1511
+#: cinder/volume/api.py:1520
 #, python-format
 msgid "Retype cannot change front-end qos specs for in-use volume: %s."
 msgstr ""
 
-#: cinder/volume/api.py:1573
+#: cinder/volume/api.py:1582
 msgid "Failed to manage api volume flow."
 msgstr ""
 
-#: cinder/volume/api.py:1643
+#: cinder/volume/api.py:1652
 #, python-format
 msgid ""
 "Invalid status to enable replication. valid states are: %(valid_states)s,"
 " current replication-state is: %(curr_state)s."
 msgstr ""
 
-#: cinder/volume/api.py:1668
+#: cinder/volume/api.py:1677
 #, python-format
 msgid ""
 "Invalid status to disable replication. valid states are: "
 "%(valid_states)s, current replication-state is: %(curr_state)s."
 msgstr ""
 
-#: cinder/volume/api.py:1698
+#: cinder/volume/api.py:1707
 #, python-format
 msgid ""
 "Invalid status to failover replication. valid states are: "
@@ -4751,77 +4755,77 @@ msgid ""
 "OpenStack volume [%s]."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:370
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:375
 msgid "Failed to connect to Enterprise Manager"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:397
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:402
 msgid "Failed to find Storage Center"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:634
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:639
 #, python-format
 msgid "Storage Profile %s not found."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:749
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:754
 #, python-format
 msgid "Multiple copies of volume %s found."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:769
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:774
 #, python-format
 msgid "Error deleting volume %(ssn)s: %(volume)s: %(code)d %(reason)s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1374
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1379
 msgid "Unable to find iSCSI mappings."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1830
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1835
 msgid "Multiple profiles found."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1880
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1885
 msgid "Error deleting replay profile."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2122
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2127
 msgid "Dell API 2.1 or later required for Consistency Group support"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2145
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2150
 msgid "Error retrieving volume size"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2174
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2228
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2179
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2233
 msgid "Volume size must multiple of 1 GB."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2180
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2185
 #, python-format
 msgid "Volume is attached to a server.  (%s)"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2204
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2209
 #, python-format
 msgid "Unable to manage volume %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2207
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2232
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2212
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2237
 #, python-format
 msgid "Volume not unique.  (%s)"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2210
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2235
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2215
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2240
 #, python-format
 msgid "Volume not found.  (%s)"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2259
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2264
 #, python-format
 msgid "Unable to rename volume %(existing)s to %(newname)s"
 msgstr ""
