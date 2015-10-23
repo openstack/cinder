@@ -32,7 +32,7 @@ from cinder.volume.drivers.nexenta import jsonrpc
 from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 
-VERSION = '1.3.0.1'
+VERSION = '1.4.1'
 LOG = logging.getLogger(__name__)
 
 
@@ -54,6 +54,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 destroy snapshot on migration destination.
         1.3.0 - Added retype method.
         1.3.0.1 - Target creation on setup.
+        1.4 - Refactored create_export to be called on attachment instead of creation.
+        1.4.1 - Patch to support volumes created with old driver versions.
     """
 
     VERSION = VERSION
