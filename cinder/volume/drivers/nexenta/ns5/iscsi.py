@@ -101,9 +101,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             self.nef(url, data)
         except nexenta.NexentaException:
             pass
-        url = 'services/iscsit'
-        data = {'enabled': True}
-        self.nef(url, data, method='PUT')
+        url = 'services/iscsit/enable'
+        self.nef(url, method='POST')
 
     def check_for_setup_error(self):
         """Verify that the volume for our zvols exists.
@@ -119,8 +118,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                               self.volume)
         services = self.nef('services')
         for service in services['data']:
-            if service['id'] == 'iscsit':
-                if service['status'] == 'disabled':
+            if service['name'] == 'iscsit':
+                if service['status'] != 'online':
                     raise nexenta.NexentaException(
                         'iSCSI service is not running on NS appliance')
                 break
@@ -164,7 +163,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             'sparseVolume': self.configuration.nexenta_sparse
         }
         self.nef(url, data)
-        return self.create_export(None, volume)
+        return self.create_export(None, volume, None)
 
     def delete_volume(self, volume):
         """Destroy a zvol on appliance.
@@ -392,7 +391,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             data = {'volume': zvol_name}
             self.nef(url, data)
 
-    def create_export(self, _ctx, volume):
+    def create_export(self, _ctx, volume, connector):
         """Create new export for zvol.
 
         :param volume: reference of volume to be exported
