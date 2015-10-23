@@ -64,14 +64,15 @@ class NexentaJSONProxy(object):
 
     retry_exc_tuple = (requests.exceptions.ConnectionError,)
 
-    def __init__(self, scheme, host, port, path, user, password, obj=None,
-                 method=None):
+    def __init__(self, scheme, host, port, path, user, password, auto=False,
+                 obj=None, method=None):
         self.scheme = scheme.lower()
         self.host = host
         self.port = port
         self.path = path
         self.user = user
         self.password = password
+        self.auto = auto
         self.obj = obj
         self.method = method
 
@@ -83,7 +84,8 @@ class NexentaJSONProxy(object):
         else:
             obj, method = '%s.%s' % (self.obj, self.method), name
         return NexentaJSONProxy(self.scheme, self.host, self.port, self.path,
-                                self.user, self.password, obj, method)
+                                self.user, self.password, self.auto, obj,
+                                method)
 
     @property
     def url(self):
