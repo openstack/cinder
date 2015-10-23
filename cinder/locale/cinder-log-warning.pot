@@ -6,16 +6,16 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 7.0.0.0rc1\n"
+"Project-Id-Version: cinder 7.0.1.dev5\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-09-24 21:13+0200\n"
+"POT-Creation-Date: 2015-10-23 06:07+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.0\n"
+"Generated-By: Babel 2.1.1\n"
 
 #: cinder/context.py:205
 msgid "Unable to get internal tenant context: Missing required config parameters."
@@ -723,7 +723,7 @@ msgid "Volume initialization failure. (%s)"
 msgstr ""
 
 #: cinder/volume/drivers/dell/dell_storagecenter_api.py:628
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2171
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2187
 #, python-format
 msgid "Unable to create folder %s"
 msgstr ""
@@ -748,7 +748,6 @@ msgid "Unable to create snapshot %s"
 msgstr ""
 
 #: cinder/volume/drivers/dell/dell_storagecenter_api.py:1575
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2071
 #, python-format
 msgid "Unable to find snapshot %s"
 msgstr ""
@@ -809,33 +808,40 @@ msgstr ""
 msgid "Volume: %(volumeName)s is not currently belonging to any storage group."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:2145
+#: cinder/volume/drivers/emc/emc_vmax_common.py:1475
+#, python-format
+msgid ""
+"Volume is masked but not to host %(host)s as expected. Returning empty "
+"dictionary."
+msgstr ""
+
+#: cinder/volume/drivers/emc/emc_vmax_common.py:2158
 #, python-format
 msgid ""
 "Pre check for deletion. Volume: %(volumeName)s is part of a storage "
 "group. Attempting removal from %(storageGroupInstanceNames)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:3011
+#: cinder/volume/drivers/emc/emc_vmax_common.py:3024
 #, python-format
 msgid "Volume : %(volumeName)s is not currently belonging to any storage group."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:3284
+#: cinder/volume/drivers/emc/emc_vmax_common.py:3297
 #, python-format
 msgid ""
 "The volume: %(volumename)s. was not first part of the default storage "
 "group for FAST policy %(fastPolicyName)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:3725
+#: cinder/volume/drivers/emc/emc_vmax_common.py:3738
 #, python-format
 msgid ""
 "Clone failed on V3. Cleaning up the target volume. Clone name: "
 "%(cloneName)s "
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:3936
+#: cinder/volume/drivers/emc/emc_vmax_common.py:3949
 #, python-format
 msgid "FAST is enabled. Policy: %(fastPolicyName)s."
 msgstr ""
@@ -1368,8 +1374,8 @@ msgstr ""
 msgid "Lun is not in lungroup. Lun id: %(lun_id)s. Lungroup id: %(lungroup_id)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1224
-#: cinder/volume/drivers/huawei/rest_client.py:1233
+#: cinder/volume/drivers/huawei/rest_client.py:1225
+#: cinder/volume/drivers/huawei/rest_client.py:1234
 msgid "Can't find target iqn from rest."
 msgstr ""
 
@@ -1511,18 +1517,18 @@ msgstr ""
 msgid "The provisioning: %(provisioning)s is not valid."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/utils.py:67
+#: cinder/volume/drivers/netapp/utils.py:66
 msgid ""
 "It is not the recommended way to use drivers by NetApp. Please use "
 "NetAppDriver to achieve the functionality."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/utils.py:150
+#: cinder/volume/drivers/netapp/utils.py:141
 #, python-format
 msgid "Extra spec %(old)s is obsolete.  Use %(new)s instead."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/utils.py:155
+#: cinder/volume/drivers/netapp/utils.py:146
 #, python-format
 msgid "Extra spec %(old)s is deprecated.  Use %(new)s instead."
 msgstr ""
@@ -1548,7 +1554,7 @@ msgstr ""
 msgid "Error refreshing volume info. Message: %s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/block_base.py:132
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:128
 #, python-format
 msgid ""
 "The \"netapp_size_multiplier\" configuration option is deprecated and "
@@ -1556,12 +1562,12 @@ msgid ""
 " %d\" instead."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/block_base.py:238
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:234
 #, python-format
 msgid "No entry in LUN table for volume/snapshot %(name)s."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/block_base.py:366
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:362
 #, python-format
 msgid ""
 "LUN misalignment may occur for current initiator group %(ig_nm)s) with "
@@ -1598,42 +1604,42 @@ msgstr ""
 msgid "No shares found hence skipping ssc refresh."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/ssc_cmode.py:528
+#: cinder/volume/drivers/netapp/dataontap/ssc_cmode.py:524
 msgid "ssc job in progress. Returning... "
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/ssc_cmode.py:540
+#: cinder/volume/drivers/netapp/dataontap/ssc_cmode.py:536
 msgid "refresh stale ssc job in progress. Returning... "
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/ssc_cmode.py:645
+#: cinder/volume/drivers/netapp/dataontap/ssc_cmode.py:641
 #, python-format
 msgid ""
 "The user does not have access or sufficient privileges to use all netapp "
 "APIs. The following extra_specs will fail or be ignored: %s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/client/client_7mode.py:135
+#: cinder/volume/drivers/netapp/dataontap/client/client_7mode.py:131
 #, python-format
 msgid "Error finding LUNs for volume %s. Verify volume exists."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/client/client_base.py:129
+#: cinder/volume/drivers/netapp/dataontap/client/client_base.py:125
 #, python-format
 msgid "Error mapping LUN. Code :%(code)s, Message: %(message)s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/client/client_base.py:142
+#: cinder/volume/drivers/netapp/dataontap/client/client_base.py:138
 #, python-format
 msgid "Error unmapping LUN. Code :%(code)s, Message: %(message)s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/client/client_base.py:350
+#: cinder/volume/drivers/netapp/dataontap/client/client_base.py:346
 #, python-format
 msgid "Failed to invoke ems. Message : %s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/client/client_cmode.py:389
+#: cinder/volume/drivers/netapp/dataontap/client/client_cmode.py:384
 #, python-format
 msgid "Rename failure in cleanup of cDOT QOS policy group %(name)s: %(ex)s"
 msgstr ""

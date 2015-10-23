@@ -6,16 +6,16 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 7.0.0.0rc1\n"
+"Project-Id-Version: cinder 7.0.1.dev5\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-09-24 21:13+0200\n"
+"POT-Creation-Date: 2015-10-23 06:07+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.0\n"
+"Generated-By: Babel 2.1.1\n"
 
 #: cinder/service.py:143
 #, python-format
@@ -1392,7 +1392,7 @@ msgstr ""
 msgid "Removing volumes from cg %s."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2237
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2253
 #, python-format
 msgid "Volume %s unmanaged."
 msgstr ""
@@ -1491,7 +1491,7 @@ msgid "Migrating using retype Volume: %(volume)s."
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_vmax_common.py:859
-#: cinder/volume/drivers/emc/emc_vmax_common.py:2765
+#: cinder/volume/drivers/emc/emc_vmax_common.py:2778
 #, python-format
 msgid ""
 "Adding volume: %(volumeName)s to default storage group for FAST policy: "
@@ -1503,51 +1503,51 @@ msgstr ""
 msgid "Volume status is: %s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:1979
+#: cinder/volume/drivers/emc/emc_vmax_common.py:1992
 #, python-format
 msgid ""
 "Create a replica from Volume: Clone Volume: %(cloneName)s Source Volume: "
 "%(sourceName)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:2285
+#: cinder/volume/drivers/emc/emc_vmax_common.py:2298
 #, python-format
 msgid "Delete Snapshot: %(snapshot)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:2302
+#: cinder/volume/drivers/emc/emc_vmax_common.py:2315
 #, python-format
 msgid "Snapshot: %(snapshot)s: not found on the array."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:2337
+#: cinder/volume/drivers/emc/emc_vmax_common.py:2350
 #, python-format
 msgid "Create Consistency Group: %(group)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:2377
+#: cinder/volume/drivers/emc/emc_vmax_common.py:2390
 #, python-format
 msgid "Delete Consistency Group: %(group)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:2481
+#: cinder/volume/drivers/emc/emc_vmax_common.py:2494
 #, python-format
 msgid ""
 "Create snapshot for Consistency Group %(cgId)s cgsnapshotID: "
 "%(cgsnapshot)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:2519
+#: cinder/volume/drivers/emc/emc_vmax_common.py:2532
 #, python-format
 msgid "Create target consistency group %(targetCg)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:2621
+#: cinder/volume/drivers/emc/emc_vmax_common.py:2634
 #, python-format
 msgid "Delete snapshot for source CG %(cgId)s cgsnapshotID: %(cgsnapshot)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:3136
+#: cinder/volume/drivers/emc/emc_vmax_common.py:3149
 #, python-format
 msgid ""
 "FAST: capacity stats for policy %(fastPolicyName)s on array "
@@ -1555,7 +1555,7 @@ msgid ""
 "free_capacity_gb=%(free_capacity_gb)lu."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:3149
+#: cinder/volume/drivers/emc/emc_vmax_common.py:3162
 #, python-format
 msgid ""
 "NON-FAST: capacity stats for pool %(poolName)s on array %(arrayName)s "
@@ -1563,17 +1563,17 @@ msgid ""
 "free_capacity_gb=%(free_capacity_gb)lu."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:3597
+#: cinder/volume/drivers/emc/emc_vmax_common.py:3610
 #, python-format
 msgid "Snapshot creation %(cloneName)s completed. Source Volume: %(sourceName)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:3635
+#: cinder/volume/drivers/emc/emc_vmax_common.py:3648
 #, python-format
 msgid "Target wwns in masking view %(maskingView)s: %(targetWwns)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:4089
+#: cinder/volume/drivers/emc/emc_vmax_common.py:4102
 #, python-format
 msgid ""
 "Update Consistency Group: %(group)s. This adds and/or removes volumes "
@@ -1605,27 +1605,27 @@ msgstr ""
 msgid "smis_do_iscsi_discovery is: %(out)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_iscsi.py:225
+#: cinder/volume/drivers/emc/emc_vmax_iscsi.py:226
 #, python-format
 msgid "location is: %(location)s"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_iscsi.py:237
+#: cinder/volume/drivers/emc/emc_vmax_iscsi.py:238
 #, python-format
 msgid "ISCSI properties: %(properties)s"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_iscsi.py:239
+#: cinder/volume/drivers/emc/emc_vmax_iscsi.py:240
 #, python-format
 msgid "ISCSI volume is: %(volume)s"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_iscsi.py:244
+#: cinder/volume/drivers/emc/emc_vmax_iscsi.py:245
 #, python-format
 msgid "AUTH properties: %(authProps)s"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_iscsi.py:254
+#: cinder/volume/drivers/emc/emc_vmax_iscsi.py:255
 #, python-format
 msgid "AUTH properties: %s."
 msgstr ""
@@ -2068,7 +2068,7 @@ msgstr ""
 
 #: cinder/volume/drivers/emc/xtremio.py:533
 #, python-format
-msgid "Volume already mapped, retrieving %(ig)s, %(vol)d"
+msgid "Volume already mapped, retrieving %(ig)s, %(vol)s"
 msgstr ""
 
 #: cinder/volume/drivers/emc/xtremio.py:740
@@ -2474,80 +2474,80 @@ msgid ""
 "\n"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:248
+#: cinder/volume/drivers/huawei/rest_client.py:249
 #, python-format
 msgid "create_snapshot:snapshot name: %(snapshot)s, volume name: %(volume)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:384
+#: cinder/volume/drivers/huawei/rest_client.py:385
 #, python-format
 msgid ""
 "do_mapping, lun_group: %(lun_group)s, view_id: %(view_id)s, lun_id: "
 "%(lun_id)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:464
+#: cinder/volume/drivers/huawei/rest_client.py:465
 #, python-format
 msgid ""
 "create_hostgroup_with_check. hostgroup name: %(name)s, hostgroup id: "
 "%(id)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:475
+#: cinder/volume/drivers/huawei/rest_client.py:476
 #, python-format
 msgid ""
 "Failed to create hostgroup: %(name)s. Please check if it exists on the "
 "array."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:488
+#: cinder/volume/drivers/huawei/rest_client.py:489
 #, python-format
 msgid ""
 "create_hostgroup_with_check. Create hostgroup success. hostgroup name: "
 "%(name)s, hostgroup id: %(id)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:584
+#: cinder/volume/drivers/huawei/rest_client.py:585
 #, python-format
 msgid "add_host_with_check. host name: %(name)s, host id: %(id)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:595
+#: cinder/volume/drivers/huawei/rest_client.py:596
 #, python-format
 msgid "Failed to create host: %(name)s. Check if it exists on the array."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:608
+#: cinder/volume/drivers/huawei/rest_client.py:609
 #, python-format
 msgid ""
 "add_host_with_check. create host success. host name: %(name)s, host id: "
 "%(id)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:748
+#: cinder/volume/drivers/huawei/rest_client.py:749
 msgid "Use CHAP when adding initiator to host."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:754
+#: cinder/volume/drivers/huawei/rest_client.py:755
 msgid "Use ALUA when adding initiator to host."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1058
+#: cinder/volume/drivers/huawei/rest_client.py:1059
 #, python-format
 msgid "New str info is: %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1073
+#: cinder/volume/drivers/huawei/rest_client.py:1074
 #, python-format
 msgid "_get_tgt_iqn: iSCSI target iqn is: %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1169
+#: cinder/volume/drivers/huawei/rest_client.py:1170
 #, python-format
 msgid "_get_tgt_ip_from_portgroup: Get ip: %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1208
+#: cinder/volume/drivers/huawei/rest_client.py:1209
 #, python-format
 msgid "Get the default ip: %s."
 msgstr ""
@@ -2700,76 +2700,76 @@ msgstr ""
 msgid "Update migrated volume %(new_volume)s completed."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/common.py:79
+#: cinder/volume/drivers/netapp/common.py:78
 #, python-format
 msgid "OpenStack OS Version Info: %(info)s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/common.py:96
+#: cinder/volume/drivers/netapp/common.py:95
 #, python-format
 msgid "Requested unified config: %(storage_family)s and %(storage_protocol)s."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/common.py:114
+#: cinder/volume/drivers/netapp/common.py:113
 #, python-format
 msgid ""
 "NetApp driver of family %(storage_family)s and protocol "
 "%(storage_protocol)s loaded."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/utils.py:408
+#: cinder/volume/drivers/netapp/utils.py:399
 #, python-format
 msgid "No rpm info found for %(pkg)s package."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/utils.py:417
+#: cinder/volume/drivers/netapp/utils.py:408
 #, python-format
 msgid "Could not run rpm command: %(msg)s."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/utils.py:428
+#: cinder/volume/drivers/netapp/utils.py:419
 #, python-format
 msgid "No dpkg-query info found for %(pkg)s package."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/utils.py:446
+#: cinder/volume/drivers/netapp/utils.py:437
 #, python-format
 msgid "Could not run dpkg-query command: %(msg)s."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/block_base.py:507
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:503
 #, python-format
 msgid "No need to extend volume %s as it is already the requested new size."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/block_base.py:529
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:525
 #, python-format
 msgid "Resizing LUN %s to new size using clone operation."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/block_base.py:564
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:560
 #, python-format
 msgid "Post clone resize LUN %s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/block_base.py:631
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:627
 #, python-format
 msgid "LUN with given ref %s need not be renamed during manage operation."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/block_base.py:643
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:639
 #, python-format
 msgid ""
 "Manage operation completed for LUN with new path %(path)s and uuid "
 "%(uuid)s."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/block_base.py:696
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:692
 #, python-format
 msgid "Unmanaged LUN with current path %(path)s and uuid %(uuid)s."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/block_base.py:880
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:876
 #: cinder/volume/drivers/san/hp/hp_3par_fc.py:291
 msgid "Need to remove FC Zone, building initiator target map"
 msgstr ""
@@ -2809,27 +2809,27 @@ msgstr ""
 msgid "Copied image %(img)s to volume %(vol)s using copy offload workflow."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/ssc_cmode.py:444
+#: cinder/volume/drivers/netapp/dataontap/ssc_cmode.py:440
 #, python-format
 msgid "Running stale ssc refresh job for %(server)s and vserver %(vs)s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/ssc_cmode.py:478
+#: cinder/volume/drivers/netapp/dataontap/ssc_cmode.py:474
 #, python-format
 msgid "Successfully completed stale refresh job for %(server)s and vserver %(vs)s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/ssc_cmode.py:506
+#: cinder/volume/drivers/netapp/dataontap/ssc_cmode.py:502
 #, python-format
 msgid "Running cluster latest ssc job for %(server)s and vserver %(vs)s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/ssc_cmode.py:512
+#: cinder/volume/drivers/netapp/dataontap/ssc_cmode.py:508
 #, python-format
 msgid "Successfully completed ssc job for %(server)s and vserver %(vs)s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/client/client_base.py:171
+#: cinder/volume/drivers/netapp/dataontap/client/client_base.py:167
 #, python-format
 msgid "Resizing LUN %s directly to new size."
 msgstr ""
