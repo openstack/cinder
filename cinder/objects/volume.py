@@ -84,8 +84,8 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
         'metadata': fields.DictOfStringsField(nullable=True),
         'admin_metadata': fields.DictOfStringsField(nullable=True),
         'volume_type': fields.ObjectField('VolumeType', nullable=True),
-        'volume_attachment': fields.ListOfObjectsField('VolumeAttachment',
-                                                       nullable=True),
+        'volume_attachment': fields.ObjectField('VolumeAttachmentList',
+                                                nullable=True),
     }
 
     # NOTE(thangp): obj_extra_fields is used to hold properties that are not
@@ -176,7 +176,7 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
                 context, objects.VolumeAttachmentList(context),
                 objects.VolumeAttachment,
                 db_volume.get('volume_attachment'))
-            volume.volume_attachment = attachments.objects
+            volume.volume_attachment = attachments
 
         volume._context = context
         volume.obj_reset_changes()
@@ -242,10 +242,9 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
             self.volume_type = objects.VolumeType.get_by_id(
                 self._context, self.volume_type_id)
         elif attrname == 'volume_attachment':
-            attachments = (
-                objects.VolumeAttachmentList.get_all_by_volume_id(
-                    self._context, self.id))
-            self.volume_attachment = attachments.objects
+            attachments = objects.VolumeAttachmentList.get_all_by_volume_id(
+                self._context, self.id)
+            self.volume_attachment = attachments
 
         self.obj_reset_changes(fields=[attrname])
 

@@ -134,6 +134,53 @@ class TestVolume(test_objects.BaseObjectsTestCase):
         self.assertEqual({'key1': 'value1'}, volume.metadata)
         metadata_delete.assert_called_once_with(self.context, '1', 'key2')
 
+    @mock.patch('cinder.db.volume_metadata_get')
+    @mock.patch('cinder.db.volume_admin_metadata_get')
+    @mock.patch('cinder.objects.volume_type.VolumeType.get_by_id')
+    @mock.patch('cinder.objects.volume_attachment.VolumeAttachmentList.'
+                'get_all_by_volume_id')
+    def test_obj_load_attr(self, mock_va_get_all_by_vol, mock_vt_get_by_id,
+                           mock_admin_metadata_get, mock_metadata_get):
+        volume = objects.Volume._from_db_object(
+            self.context, objects.Volume(), fake_volume.fake_db_volume())
+
+        # Test metadata lazy-loaded field
+        metadata = {'foo': 'bar'}
+        mock_metadata_get.return_value = metadata
+        self.assertEqual(metadata, volume.metadata)
+        mock_metadata_get.assert_called_once_with(self.context, volume.id)
+
+        # Test volume_type lazy-loaded field
+        volume_type = objects.VolumeType(context=self.context, id=5)
+        mock_vt_get_by_id.return_value = volume_type
+        self.assertEqual(volume_type, volume.volume_type)
+        mock_vt_get_by_id.assert_called_once_with(self.context,
+                                                  volume.volume_type_id)
+
+        # Test volume_attachment lazy-loaded field
+        va_objs = [objects.VolumeAttachment(context=self.context, id=i)
+                   for i in [3, 4, 5]]
+        va_list = objects.VolumeAttachmentList(context=self.context,
+                                               objects=va_objs)
+        mock_va_get_all_by_vol.return_value = va_list
+        self.assertEqual(va_list, volume.volume_attachment)
+        mock_va_get_all_by_vol.assert_called_once_with(self.context, volume.id)
+
+        # Test admin_metadata lazy-loaded field - user context
+        adm_metadata = {'bar': 'foo'}
+        mock_admin_metadata_get.return_value = adm_metadata
+        self.assertEqual({}, volume.admin_metadata)
+        self.assertFalse(mock_admin_metadata_get.called)
+
+        # Test admin_metadata lazy-loaded field - admin context
+        adm_context = self.context.elevated()
+        volume = objects.Volume._from_db_object(adm_context, objects.Volume(),
+                                                fake_volume.fake_db_volume())
+        adm_metadata = {'bar': 'foo'}
+        mock_admin_metadata_get.return_value = adm_metadata
+        self.assertEqual(adm_metadata, volume.admin_metadata)
+        mock_admin_metadata_get.assert_called_once_with(adm_context, volume.id)
+
 
 class TestVolumeList(test_objects.BaseObjectsTestCase):
     @mock.patch('cinder.db.volume_glance_metadata_get', return_value={})
