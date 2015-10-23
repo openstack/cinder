@@ -18,6 +18,7 @@
 import copy
 
 import ddt
+import json
 import mock
 from simplejson import scanner
 
@@ -752,6 +753,159 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
                                                        **{'object-id':
                                                           fake_volume['id']})
 
+    def test_list_snapshot_group(self):
+        grp = copy.deepcopy(eseries_fake.SNAPSHOT_GROUP)
+        invoke = self.mock_object(self.my_client, '_invoke', mock.Mock(
+            return_value=grp))
+        fake_ref = 'fake'
+
+        result = self.my_client.list_snapshot_group(fake_ref)
+
+        self.assertEqual(grp, result)
+        invoke.assert_called_once_with(
+            'GET', self.my_client.RESOURCE_PATHS['snapshot_group'],
+            **{'object-id': fake_ref})
+
+    def test_list_snapshot_groups(self):
+        grps = [copy.deepcopy(eseries_fake.SNAPSHOT_GROUP)]
+        invoke = self.mock_object(self.my_client, '_invoke', mock.Mock(
+            return_value=grps))
+
+        result = self.my_client.list_snapshot_groups()
+
+        self.assertEqual(grps, result)
+        invoke.assert_called_once_with(
+            'GET', self.my_client.RESOURCE_PATHS['snapshot_groups'])
+
+    def test_delete_snapshot_group(self):
+        invoke = self.mock_object(self.my_client, '_invoke')
+        fake_ref = 'fake'
+
+        self.my_client.delete_snapshot_group(fake_ref)
+
+        invoke.assert_called_once_with(
+            'DELETE', self.my_client.RESOURCE_PATHS['snapshot_group'],
+            **{'object-id': fake_ref})
+
+    @ddt.data((None, None, None, None, None), ('1', 50, 75, 32, 'purgepit'))
+    @ddt.unpack
+    def test_create_snapshot_group(self, pool_id, repo, warn, limit, policy):
+        vol = copy.deepcopy(eseries_fake.SNAPSHOT_VOLUME)
+        invoke = self.mock_object(self.my_client, '_invoke', mock.Mock(
+            return_value=vol))
+        snap_grp = copy.deepcopy(eseries_fake.SNAPSHOT_GROUP)
+
+        result = self.my_client.create_snapshot_group(
+            snap_grp['label'], snap_grp['id'], pool_id, repo, warn, limit,
+            policy)
+
+        self.assertEqual(vol, result)
+        invoke.assert_called_once_with(
+            'POST', self.my_client.RESOURCE_PATHS['snapshot_groups'],
+            {'baseMappableObjectId': snap_grp['id'], 'name': snap_grp['label'],
+                'storagePoolId': pool_id, 'repositoryPercentage': repo,
+                'warningThreshold': warn, 'autoDeleteLimit': limit,
+             'fullPolicy': policy})
+
+    def test_list_snapshot_volumes(self):
+        vols = [copy.deepcopy(eseries_fake.SNAPSHOT_VOLUME)]
+        invoke = self.mock_object(self.my_client, '_invoke', mock.Mock(
+            return_value=vols))
+
+        result = self.my_client.list_snapshot_volumes()
+
+        self.assertEqual(vols, result)
+        invoke.assert_called_once_with(
+            'GET', self.my_client.RESOURCE_PATHS['snapshot_volumes'])
+
+    def test_delete_snapshot_volume(self):
+        invoke = self.mock_object(self.my_client, '_invoke')
+        fake_ref = 'fake'
+
+        self.my_client.delete_snapshot_volume(fake_ref)
+
+        invoke.assert_called_once_with(
+            'DELETE', self.my_client.RESOURCE_PATHS['snapshot_volume'],
+            **{'object-id': fake_ref})
+
+    @ddt.data((None, None, None, None), ('1', 50, 75, 'readWrite'))
+    @ddt.unpack
+    def test_create_snapshot_volume(self, pool_id, repo, warn, mode):
+        vol = copy.deepcopy(eseries_fake.SNAPSHOT_VOLUME)
+        invoke = self.mock_object(self.my_client, '_invoke', mock.Mock(
+            return_value=vol))
+
+        result = self.my_client.create_snapshot_volume(
+            vol['basePIT'], vol['label'], vol['id'], pool_id,
+            repo, warn, mode)
+
+        self.assertEqual(vol, result)
+        invoke.assert_called_once_with(
+            'POST', self.my_client.RESOURCE_PATHS['snapshot_volumes'],
+            mock.ANY)
+
+    def test_update_snapshot_volume(self):
+        snap_id = '1'
+        label = 'name'
+        pct = 99
+        vol = copy.deepcopy(eseries_fake.SNAPSHOT_VOLUME)
+        invoke = self.mock_object(self.my_client, '_invoke', mock.Mock(
+            return_value=vol))
+
+        result = self.my_client.update_snapshot_volume(snap_id, label, pct)
+
+        self.assertEqual(vol, result)
+        invoke.assert_called_once_with(
+            'POST', self.my_client.RESOURCE_PATHS['snapshot_volume'],
+            {'name': label, 'fullThreshold': pct}, **{'object-id': snap_id})
+
+    def test_create_snapshot_image(self):
+        img = copy.deepcopy(eseries_fake.SNAPSHOT_IMAGE)
+        invoke = self.mock_object(self.my_client, '_invoke', mock.Mock(
+            return_value=img))
+        grp_id = '1'
+
+        result = self.my_client.create_snapshot_image(grp_id)
+
+        self.assertEqual(img, result)
+        invoke.assert_called_once_with(
+            'POST', self.my_client.RESOURCE_PATHS['snapshot_images'],
+            {'groupId': grp_id})
+
+    def test_list_snapshot_image(self):
+        img = copy.deepcopy(eseries_fake.SNAPSHOT_IMAGE)
+        invoke = self.mock_object(self.my_client, '_invoke', mock.Mock(
+            return_value=img))
+        fake_ref = 'fake'
+
+        result = self.my_client.list_snapshot_image(fake_ref)
+
+        self.assertEqual(img, result)
+        invoke.assert_called_once_with(
+            'GET', self.my_client.RESOURCE_PATHS['snapshot_image'],
+            **{'object-id': fake_ref})
+
+    def test_list_snapshot_images(self):
+        imgs = [copy.deepcopy(eseries_fake.SNAPSHOT_IMAGE)]
+        invoke = self.mock_object(self.my_client, '_invoke', mock.Mock(
+            return_value=imgs))
+
+        result = self.my_client.list_snapshot_images()
+
+        self.assertEqual(imgs, result)
+        invoke.assert_called_once_with(
+            'GET', self.my_client.RESOURCE_PATHS['snapshot_images'])
+
+    def test_delete_snapshot_image(self):
+        invoke = self.mock_object(self.my_client, '_invoke')
+        fake_ref = 'fake'
+
+        self.my_client.delete_snapshot_image(fake_ref)
+
+        invoke.assert_called_once_with(
+            'DELETE', self.my_client.RESOURCE_PATHS['snapshot_image'],
+            **{'object-id': fake_ref})
+
     @ddt.data('00.00.00.00', '01.52.9000.2', '01.52.9001.2', '01.51.9000.3',
               '01.51.9001.3', '01.51.9010.5', '0.53.9000.3', '0.53.9001.4')
     def test_api_version_not_support_asup(self, api_version):
@@ -802,6 +956,31 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
 
         self.assertTrue(self.my_client.features.SSC_API_V2.supported)
 
+    @ddt.data('00.00.00.00', '01.52.9000.5', '01.52.9001.2', '00.53.9001.3',
+              '01.52.9090.1', '1.52.9010.7', '0.53.9011.7')
+    def test_api_version_not_support_1_3(self, api_version):
+
+        self.mock_object(client.RestClient,
+                         'get_eseries_api_info',
+                         mock.Mock(return_value=('proxy', api_version)))
+
+        client.RestClient._init_features(self.my_client)
+
+        self.assertFalse(self.my_client.features.REST_1_3_RELEASE.supported)
+
+    @ddt.data('01.53.9000.1', '01.53.9000.5', '01.53.8999.1',
+              '01.54.9010.20', '01.54.9000.1', '02.51.9000.3',
+              '02.52.8999.3', '02.51.8999.2')
+    def test_api_version_1_3(self, api_version):
+
+        self.mock_object(client.RestClient,
+                         'get_eseries_api_info',
+                         mock.Mock(return_value=('proxy', api_version)))
+
+        client.RestClient._init_features(self.my_client)
+
+        self.assertTrue(self.my_client.features.REST_1_3_RELEASE.supported)
+
     def test_invoke_bad_content_type(self):
         """Tests the invoke behavior with a non-JSON response"""
         fake_response = mock.Mock()
@@ -815,6 +994,31 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
         self.assertRaises(es_exception.WebServiceException,
                           self.my_client._invoke, 'GET',
                           eseries_fake.FAKE_ENDPOINT_HTTP)
+
+    def test_list_backend_store(self):
+        path = self.my_client.RESOURCE_PATHS.get('persistent-store')
+        fake_store = copy.deepcopy(eseries_fake.FAKE_BACKEND_STORE)
+        invoke = self.mock_object(
+            self.my_client, '_invoke', mock.Mock(
+                return_value=fake_store))
+        expected = json.loads(fake_store.get('value'))
+
+        result = self.my_client.list_backend_store('key')
+
+        self.assertEqual(expected, result)
+        invoke.assert_called_once_with('GET', path, key='key')
+
+    def test_save_backend_store(self):
+        path = self.my_client.RESOURCE_PATHS.get('persistent-stores')
+        fake_store = copy.deepcopy(eseries_fake.FAKE_BACKEND_STORE)
+        key = 'key'
+        invoke = self.mock_object(
+            self.my_client, '_invoke',
+            mock.Mock())
+
+        self.my_client.save_backend_store(key, fake_store)
+
+        invoke.assert_called_once_with('POST', path, mock.ANY)
 
 
 @ddt.ddt

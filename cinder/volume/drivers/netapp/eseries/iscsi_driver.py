@@ -62,7 +62,7 @@ class NetAppEseriesISCSIDriver(driver.BaseVD,
         self.library.delete_volume(volume)
 
     def create_snapshot(self, snapshot):
-        self.library.create_snapshot(snapshot)
+        return self.library.create_snapshot(snapshot)
 
     def delete_snapshot(self, snapshot):
         self.library.delete_snapshot(snapshot)

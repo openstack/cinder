@@ -2,6 +2,7 @@
 # Copyright (c) 2014 Navneet Singh.  All rights reserved.
 # Copyright (c) 2014 Clinton Knight.  All rights reserved.
 # Copyright (c) 2015 Tom Barron.  All rights reserved.
+# Copyright (c) 2016 Michael Price.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -505,3 +506,59 @@ class FeatureState(object):
         :returns: True if the feature is supported, otherwise False
         """
         return self.supported
+
+
+class BitSet(object):
+    def __init__(self, value=0):
+        self._value = value
+
+    def set(self, bit):
+        self._value |= 1 << bit
+        return self
+
+    def unset(self, bit):
+        self._value &= ~(1 << bit)
+        return self
+
+    def is_set(self, bit):
+        return self._value & 1 << bit
+
+    def __and__(self, other):
+        self._value &= other
+        return self
+
+    def __or__(self, other):
+        self._value |= other
+        return self
+
+    def __invert__(self):
+        self._value = ~self._value
+        return self
+
+    def __xor__(self, other):
+        self._value ^= other
+        return self
+
+    def __lshift__(self, other):
+        self._value <<= other
+        return self
+
+    def __rshift__(self, other):
+        self._value >>= other
+        return self
+
+    def __int__(self):
+        return self._value
+
+    def __str__(self):
+        return bin(self._value)
+
+    def __repr__(self):
+        return str(self._value)
+
+    def __eq__(self, other):
+        return (isinstance(other, self.__class__) and self._value ==
+                other._value) or self._value == int(other)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)

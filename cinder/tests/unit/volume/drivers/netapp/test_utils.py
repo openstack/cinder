@@ -1,5 +1,6 @@
 # Copyright (c) 2014 Clinton Knight.  All rights reserved.
 # Copyright (c) 2015 Tom Barron.  All rights reserved.
+# Copyright (c) 2016 Michael Price.  All rights reserved.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -810,3 +811,92 @@ class FeaturesTestCase(test.TestCase):
 
     def test_get_attr_missing(self):
         self.assertRaises(AttributeError, getattr, self.features, 'FEATURE_4')
+
+
+@ddt.ddt
+class BitSetTestCase(test.TestCase):
+
+    def setUp(self):
+        super(BitSetTestCase, self).setUp()
+
+    def test_default(self):
+        self.assertEqual(na_utils.BitSet(0), na_utils.BitSet())
+
+    def test_set(self):
+        bitset = na_utils.BitSet(0)
+        bitset.set(16)
+
+        self.assertEqual(na_utils.BitSet(1 << 16), bitset)
+
+    def test_unset(self):
+        bitset = na_utils.BitSet(1 << 16)
+        bitset.unset(16)
+
+        self.assertEqual(na_utils.BitSet(0), bitset)
+
+    def test_is_set(self):
+        bitset = na_utils.BitSet(1 << 16)
+
+        self.assertTrue(bitset.is_set(16))
+
+    def test_not_equal(self):
+        set1 = na_utils.BitSet(1 << 15)
+        set2 = na_utils.BitSet(1 << 16)
+
+        self.assertNotEqual(set1, set2)
+
+    def test_repr(self):
+        raw_val = 1 << 16
+        actual = repr(na_utils.BitSet(raw_val))
+        expected = str(raw_val)
+
+        self.assertEqual(actual, expected)
+
+    def test_str(self):
+        raw_val = 1 << 16
+        actual = str(na_utils.BitSet(raw_val))
+        expected = bin(raw_val)
+
+        self.assertEqual(actual, expected)
+
+    def test_int(self):
+        val = 1 << 16
+        actual = int(int(na_utils.BitSet(val)))
+
+        self.assertEqual(val, actual)
+
+    def test_and(self):
+        actual = na_utils.BitSet(1 << 16 | 1 << 15)
+        actual &= 1 << 16
+
+        self.assertEqual(na_utils.BitSet(1 << 16), actual)
+
+    def test_or(self):
+        actual = na_utils.BitSet()
+        actual |= 1 << 16
+
+        self.assertEqual(na_utils.BitSet(1 << 16), actual)
+
+    def test_invert(self):
+        actual = na_utils.BitSet(1 << 16)
+        actual = ~actual
+
+        self.assertEqual(~(1 << 16), actual)
+
+    def test_xor(self):
+        actual = na_utils.BitSet(1 << 16)
+        actual ^= 1 << 16
+
+        self.assertEqual(na_utils.BitSet(), actual)
+
+    def test_lshift(self):
+        actual = na_utils.BitSet(1)
+        actual <<= 16
+
+        self.assertEqual(na_utils.BitSet(1 << 16), actual)
+
+    def test_rshift(self):
+        actual = na_utils.BitSet(1 << 16)
+        actual >>= 16
+
+        self.assertEqual(na_utils.BitSet(1), actual)
