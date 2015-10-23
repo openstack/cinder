@@ -26,7 +26,7 @@ from cinder.objects import base
 CONF = cfg.CONF
 # NOTE(thangp): OPTIONAL_FIELDS are fields that would be lazy-loaded. They are
 # typically the relationship in the sqlalchemy object.
-OPTIONAL_FIELDS = ['volume', 'metadata']
+OPTIONAL_FIELDS = ['volume', 'metadata', 'cgsnapshot']
 LOG = logging.getLogger(__name__)
 
 
@@ -60,6 +60,7 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
         'provider_auth': fields.StringField(nullable=True),
 
         'volume': fields.ObjectField('Volume', nullable=True),
+        'cgsnapshot': fields.ObjectField('CGSnapshot', nullable=True),
     }
 
     # NOTE(thangp): obj_extra_fields is used to hold properties that are not
@@ -117,6 +118,11 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
             volume = objects.Volume(context)
             volume._from_db_object(context, volume, db_snapshot['volume'])
             snapshot.volume = volume
+        if 'cgsnapshot' in expected_attrs:
+            cgsnapshot = objects.CGSnapshot(context)
+            cgsnapshot._from_db_object(context, cgsnapshot,
+                                       db_snapshot['cgsnapshot'])
+            snapshot.cgsnapshot = cgsnapshot
         if 'metadata' in expected_attrs:
             metadata = db_snapshot.get('snapshot_metadata')
             if metadata is None:
@@ -143,6 +149,9 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
         if 'volume' in updates:
             raise exception.ObjectActionError(action='create',
                                               reason=_('volume assigned'))
+        if 'cgsnapshot' in updates:
+            raise exception.ObjectActionError(action='create',
+                                              reason=_('cgsnapshot assigned'))
 
         db_snapshot = db.snapshot_create(self._context, updates)
         self._from_db_object(self._context, self, db_snapshot)
@@ -154,6 +163,9 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
             if 'volume' in updates:
                 raise exception.ObjectActionError(action='save',
                                                   reason=_('volume changed'))
+            if 'cgsnapshot' in updates:
+                raise exception.ObjectActionError(
+                    action='save', reason=_('cgsnapshot changed'))
 
             if 'metadata' in updates:
                 # Metadata items that are not specified in the
@@ -183,6 +195,10 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
         if attrname == 'volume':
             self.volume = objects.Volume.get_by_id(self._context,
                                                    self.volume_id)
+
+        if attrname == 'cgsnapshot':
+            self.cgsnapshot = objects.CGSnapshot.get_by_id(self._context,
+                                                           self.cgsnapshot_id)
 
         self.obj_reset_changes(fields=[attrname])
 

@@ -27,7 +27,8 @@ from cinder.tests.unit import objects as test_objects
 LOG = logging.getLogger(__name__)
 
 
-fake_db_snapshot = fake_snapshot.fake_db_snapshot()
+fake_db_snapshot = fake_snapshot.fake_db_snapshot(
+    cgsnapshot_id='fake_cgsnap_id')
 del fake_db_snapshot['metadata']
 del fake_db_snapshot['volume']
 
@@ -133,14 +134,22 @@ class TestSnapshot(test_objects.BaseObjectsTestCase):
         self.assertEqual('volume-2', snapshot.volume_name)
 
     @mock.patch('cinder.objects.volume.Volume.get_by_id')
-    def test_obj_load_attr(self, volume_get_by_id):
+    @mock.patch('cinder.objects.cgsnapshot.CGSnapshot.get_by_id')
+    def test_obj_load_attr(self, cgsnapshot_get_by_id, volume_get_by_id):
         snapshot = objects.Snapshot._from_db_object(
             self.context, objects.Snapshot(), fake_db_snapshot)
+        # Test volume lazy-loaded field
         volume = objects.Volume(context=self.context, id=2)
         volume_get_by_id.return_value = volume
         self.assertEqual(volume, snapshot.volume)
         volume_get_by_id.assert_called_once_with(self.context,
                                                  snapshot.volume_id)
+        # Test cgsnapshot lazy-loaded field
+        cgsnapshot = objects.CGSnapshot(context=self.context, id=2)
+        cgsnapshot_get_by_id.return_value = cgsnapshot
+        self.assertEqual(cgsnapshot, snapshot.cgsnapshot)
+        cgsnapshot_get_by_id.assert_called_once_with(self.context,
+                                                     snapshot.cgsnapshot_id)
 
     @mock.patch('cinder.db.snapshot_data_get_for_project')
     def test_snapshot_data_get_for_project(self, snapshot_data_get):
