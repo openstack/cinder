@@ -14,6 +14,7 @@
 #    under the License.
 
 import base64
+import json
 import six
 import time
 import uuid
@@ -40,6 +41,7 @@ opts_capability = {
     'smartpartition': False,
     'thin_provisioning_support': False,
     'thick_provisioning_support': False,
+    'hypermetro': False,
 }
 
 
@@ -539,3 +541,29 @@ def get_pools(xml_file_path):
         LOG.error(msg)
         raise exception.InvalidInput(msg)
     return pool_names
+
+
+def get_remote_device_info(valid_hypermetro_devices):
+    remote_device_info = {}
+    try:
+        if valid_hypermetro_devices:
+            remote_device_info = json.loads(valid_hypermetro_devices)
+        else:
+            return
+
+    except ValueError as err:
+        msg = _("Get remote device info error. %s.") % err
+        LOG.error(msg)
+        raise exception.VolumeBackendAPIException(data=msg)
+
+    if len(remote_device_info) == 1:
+        for device_key, device_value in remote_device_info.items():
+            return remote_device_info.get(device_key)
+
+
+def get_volume_metadata(volume):
+    if 'volume_metadata' in volume:
+        metadata = volume.get('volume_metadata')
+        return {item['key']: item['value'] for item in metadata}
+
+    return {}

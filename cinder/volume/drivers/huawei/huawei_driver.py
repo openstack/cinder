@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import json
 import six
 import uuid
 
@@ -28,6 +29,7 @@ from cinder.volume import driver
 from cinder.volume.drivers.huawei import constants
 from cinder.volume.drivers.huawei import fc_zone_helper
 from cinder.volume.drivers.huawei import huawei_utils
+from cinder.volume.drivers.huawei import hypermetro
 from cinder.volume.drivers.huawei import rest_client
 from cinder.volume.drivers.huawei import smartx
 from cinder.volume import utils as volume_utils
@@ -39,8 +41,11 @@ LOG = logging.getLogger(__name__)
 huawei_opts = [
     cfg.StrOpt('cinder_huawei_conf_file',
                default='/etc/cinder/cinder_huawei_conf.xml',
-               help='The configuration file for the Cinder Huawei '
-                    'driver.')]
+               help='The configuration file for the Cinder Huawei driver.'),
+    cfg.StrOpt('hypermetro_devices',
+               default=None,
+               help='The remote device hypermetro will use.'),
+]
 
 CONF = cfg.CONF
 CONF.register_opts(huawei_opts)
@@ -57,6 +62,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
 
         self.configuration.append_config_values(huawei_opts)
         self.xml_file_path = self.configuration.cinder_huawei_conf_file
+        self.hypermetro_devices = self.configuration.hypermetro_devices
 
     def do_setup(self, context):
         """Instantiate common class and login storage system."""
@@ -127,9 +133,31 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             raise exception.InvalidInput(
                 reason=_('Create volume error. Because %s.') % err)
 
-        return {'provider_location': lun_info['ID'],
+        # Update the metadata.
+        LOG.info(_LI('Create volume option: %s.'), opts)
+        metadata = huawei_utils.get_volume_metadata(volume)
+        if opts.get('hypermetro'):
+            hyperm = hypermetro.HuaweiHyperMetro(self.restclient, None,
+                                                 self.configuration)
+            try:
+                metro_id, remote_lun_id = hyperm.create_hypermetro(lun_id,
+                                                                   lun_param)
+            except exception.VolumeBackendAPIException as err:
+                LOG.exception(_LE('Create hypermetro error: %s.'), err)
+                self._delete_lun_with_check(lun_id)
+                raise
+
+            LOG.info(_LI("Hypermetro id: %(metro_id)s. "
+                         "Remote lun id: %(remote_lun_id)s."),
+                     {'metro_id': metro_id,
+                      'remote_lun_id': remote_lun_id})
+
+            metadata.update({'hypermetro_id': metro_id,
+                             'remote_lun_id': remote_lun_id})
+
+        return {'provider_location': lun_id,
                 'ID': lun_id,
-                'lun_info': lun_info}
+                'metadata': metadata}
 
     @utils.synchronized('huawei', external=True)
     def delete_volume(self, volume):
@@ -149,6 +177,17 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                 qos_id = self.restclient.get_qosid_by_lunid(lun_id)
                 if qos_id:
                     self.remove_qos_lun(lun_id, qos_id)
+
+                metadata = huawei_utils.get_volume_metadata(volume)
+                if 'hypermetro_id' in metadata:
+                    hyperm = hypermetro.HuaweiHyperMetro(self.restclient, None,
+                                                         self.configuration)
+                    try:
+                        hyperm.delete_hypermetro(volume)
+                    except exception.VolumeBackendAPIException as err:
+                        LOG.exception(_LE('Delete hypermetro error: %s.'), err)
+                        self.restclient.delete_lun(lun_id)
+                        raise
 
                 self.restclient.delete_lun(lun_id)
         else:
@@ -188,11 +227,11 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                     if constants.MIGRATION_COMPLETE == item['RUNNINGSTATUS']:
                         return True
                     if constants.MIGRATION_FAULT == item['RUNNINGSTATUS']:
-                        err_msg = (_('Lun migration error.'))
+                        err_msg = _('Lun migration error.')
                         LOG.error(err_msg)
                         raise exception.VolumeBackendAPIException(data=err_msg)
         if not found_migration_task:
-            err_msg = (_("Cannot find migration task."))
+            err_msg = _("Cannot find migration task.")
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
@@ -1010,6 +1049,7 @@ class Huawei18000FCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
                 Volume migration support
                 Volume retype support
                 FC zone enhancement
+                Volume hypermetro support
     """
 
     VERSION = "1.1.1"
@@ -1090,23 +1130,82 @@ class Huawei18000FCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
 
         # Add host into hostgroup.
         hostgroup_id = self.restclient.add_host_into_hostgroup(host_id)
-        self.restclient.do_mapping(lun_id, hostgroup_id, host_id)
+        map_info = self.restclient.do_mapping(lun_id,
+                                              hostgroup_id,
+                                              host_id)
         host_lun_id = self.restclient.find_host_lun_id(host_id, lun_id)
 
         # Return FC properties.
-        info = {'driver_volume_type': 'fibre_channel',
-                'data': {'target_lun': int(host_lun_id),
-                         'target_discovered': True,
-                         'target_wwn': tgt_port_wwns,
-                         'volume_id': volume['id'],
-                         'initiator_target_map': init_targ_map}, }
+        fc_info = {'driver_volume_type': 'fibre_channel',
+                   'data': {'target_lun': int(host_lun_id),
+                            'target_discovered': True,
+                            'target_wwn': tgt_port_wwns,
+                            'volume_id': volume['id'],
+                            'initiator_target_map': init_targ_map,
+                            'map_info': map_info}, }
 
-        LOG.info(_LI("initialize_connection, return data is: %s."),
-                 info)
+        loc_tgt_wwn = fc_info['data']['target_wwn']
+        local_ini_tgt_map = fc_info['data']['initiator_target_map']
 
-        return info
+        # Deal with hypermetro connection.
+        metadata = huawei_utils.get_volume_metadata(volume)
+        LOG.info(_LI("initialize_connection, metadata is: %s."), metadata)
+        if 'hypermetro_id' in metadata:
+            hyperm = hypermetro.HuaweiHyperMetro(self.restclient, None,
+                                                 self.configuration)
+            rmt_fc_info = hyperm.connect_volume_fc(volume, connector)
 
-    @utils.synchronized('huawei', external=True)
+            rmt_tgt_wwn = rmt_fc_info['data']['target_wwn']
+            rmt_ini_tgt_map = rmt_fc_info['data']['initiator_target_map']
+            fc_info['data']['target_wwn'] = (loc_tgt_wwn + rmt_tgt_wwn)
+            wwns = connector['wwpns']
+            for wwn in wwns:
+                if (wwn in local_ini_tgt_map
+                        and wwn in rmt_ini_tgt_map):
+                    fc_info['data']['initiator_target_map'][wwn].extend(
+                        rmt_ini_tgt_map[wwn])
+
+                elif (wwn not in local_ini_tgt_map
+                        and wwn in rmt_ini_tgt_map):
+                    fc_info['data']['initiator_target_map'][wwn] = (
+                        rmt_ini_tgt_map[wwn])
+                # else, do nothing
+
+            loc_map_info = fc_info['data']['map_info']
+            rmt_map_info = rmt_fc_info['data']['map_info']
+            same_host_id = self._get_same_hostid(loc_map_info,
+                                                 rmt_map_info)
+
+            self.restclient.change_hostlun_id(loc_map_info, same_host_id)
+            hyperm.rmt_client.change_hostlun_id(rmt_map_info, same_host_id)
+
+            fc_info['data']['target_lun'] = same_host_id
+            hyperm.rmt_client.logout()
+
+        LOG.info(_LI("Return FC info is: %s."), fc_info)
+        return fc_info
+
+    def _get_same_hostid(self, loc_fc_info, rmt_fc_info):
+        loc_aval_luns = loc_fc_info['aval_luns']
+        loc_aval_luns = json.loads(loc_aval_luns)
+
+        rmt_aval_luns = rmt_fc_info['aval_luns']
+        rmt_aval_luns = json.loads(rmt_aval_luns)
+        same_host_id = None
+
+        for i in range(1, 512):
+            if i in rmt_aval_luns and i in loc_aval_luns:
+                same_host_id = i
+                break
+
+        LOG.info(_LI("The same hostid is: %s."), same_host_id)
+        if not same_host_id:
+            msg = _("Can't find the same host id from arrays.")
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        return same_host_id
+
     @fczm_utils.RemoveFCZone
     def terminate_connection(self, volume, connector, **kwargs):
         """Delete map between a volume and a host."""
@@ -1150,8 +1249,8 @@ class Huawei18000FCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
         if lungroup_id:
             left_lunnum = self.restclient.get_lunnum_from_lungroup(lungroup_id)
         if int(left_lunnum) > 0:
-            info = {'driver_volume_type': 'fibre_channel',
-                    'data': {}}
+            fc_info = {'driver_volume_type': 'fibre_channel',
+                       'data': {}}
         else:
             if not self.fcsan_lookup_service:
                 self.fcsan_lookup_service = fczm_utils.create_lookup_service()
@@ -1195,10 +1294,19 @@ class Huawei18000FCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
             if view_id:
                 self.restclient.delete_mapping_view(view_id)
 
-            info = {'driver_volume_type': 'fibre_channel',
-                    'data': {'target_wwn': tgt_port_wwns,
-                             'initiator_target_map': init_targ_map}}
-        LOG.info(_LI("terminate_connection, return data is: %s."),
-                 info)
+            fc_info = {'driver_volume_type': 'fibre_channel',
+                       'data': {'target_wwn': tgt_port_wwns,
+                                'initiator_target_map': init_targ_map}}
 
-        return info
+        # Deal with hypermetro connection.
+        metadata = huawei_utils.get_volume_metadata(volume)
+        LOG.info(_LI("Detach Volume, metadata is: %s."), metadata)
+        if 'hypermetro_id' in metadata:
+            hyperm = hypermetro.HuaweiHyperMetro(self.restclient, None,
+                                                 self.configuration)
+            hyperm.disconnect_volume_fc(volume, connector)
+
+        LOG.info(_LI("terminate_connection, return data is: %s."),
+                 fc_info)
+
+        return fc_info
