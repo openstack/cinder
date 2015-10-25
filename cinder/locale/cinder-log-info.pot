@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev51\n"
+"Project-Id-Version: cinder 8.0.0.dev74\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-10-21 06:04+0000\n"
+"POT-Creation-Date: 2015-10-25 06:05+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -373,12 +373,12 @@ msgid ""
 "lv_name=%(lv)s"
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:3961
+#: cinder/db/sqlalchemy/api.py:3992
 #, python-format
 msgid "Purging deleted rows older than age=%(age)d days from table=%(table)s"
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:3976
+#: cinder/db/sqlalchemy/api.py:4007
 #, python-format
 msgid "Deleted %(row)d rows from table=%(table)s"
 msgstr ""
@@ -614,35 +614,35 @@ msgstr ""
 msgid "Get volume image-metadata completed successfully."
 msgstr ""
 
-#: cinder/volume/api.py:1202
+#: cinder/volume/api.py:1211
 msgid "Force upload to image is disabled, Force option will be ignored."
 msgstr ""
 
-#: cinder/volume/api.py:1244
+#: cinder/volume/api.py:1253
 msgid "Copy image to volume completed successfully."
 msgstr ""
 
-#: cinder/volume/api.py:1294
+#: cinder/volume/api.py:1303
 msgid "Extend volume request issued successfully."
 msgstr ""
 
-#: cinder/volume/api.py:1388
+#: cinder/volume/api.py:1397
 msgid "Migrate volume request issued successfully."
 msgstr ""
 
-#: cinder/volume/api.py:1413
+#: cinder/volume/api.py:1422
 msgid "Migrate volume completion issued successfully."
 msgstr ""
 
-#: cinder/volume/api.py:1428
+#: cinder/volume/api.py:1437
 msgid "Update readonly setting on volume completed successfully."
 msgstr ""
 
-#: cinder/volume/api.py:1533
+#: cinder/volume/api.py:1542
 msgid "Retype volume request issued successfully."
 msgstr ""
 
-#: cinder/volume/api.py:1583
+#: cinder/volume/api.py:1592
 msgid "Manage volume request issued successfully."
 msgstr ""
 
@@ -1352,47 +1352,47 @@ msgid ""
 "[%(cb_vol)s] and parent OpenStack volume [%(stack_vol)s]."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:160
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:165
 #, python-format
 msgid "open_connection to %(ssn)s at %(ip)s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:656
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:661
 #, python-format
 msgid "Created volume %(instanceId)s: %(name)s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1747
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1752
 #, python-format
 msgid "Switching volume %(vol)s to profile %(prof)s."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1871
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1876
 #, python-format
 msgid "Profile %s has been deleted."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1946
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1951
 #, python-format
 msgid "Added %s to cg."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1964
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1969
 #, python-format
 msgid "Removed %s from cg."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1987
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1992
 #, python-format
 msgid "Adding volumes to cg %s."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1990
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1995
 #, python-format
 msgid "Removing volumes from cg %s."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2253
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2258
 #, python-format
 msgid "Volume %s unmanaged."
 msgstr ""
@@ -2328,150 +2328,192 @@ msgstr ""
 msgid "Cinder NFS volume with current path %(cr)s is no longer being managed."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:99
+#: cinder/volume/drivers/huawei/huawei_driver.py:105
 #, python-format
 msgid "Create volume: %(volume)s, size: %(size)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:145
+#: cinder/volume/drivers/huawei/huawei_driver.py:137
+#, python-format
+msgid "Create volume option: %s."
+msgstr ""
+
+#: cinder/volume/drivers/huawei/huawei_driver.py:150
+#, python-format
+msgid "Hypermetro id: %(metro_id)s. Remote lun id: %(remote_lun_id)s."
+msgstr ""
+
+#: cinder/volume/drivers/huawei/huawei_driver.py:173
 #, python-format
 msgid "Delete volume: %(name)s, array lun id: %(lun_id)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:351
+#: cinder/volume/drivers/huawei/huawei_driver.py:390
 #, python-format
 msgid "QoS: %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:370
+#: cinder/volume/drivers/huawei/huawei_driver.py:409
 #, python-format
 msgid "Create a new lun %s for migration."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:420
+#: cinder/volume/drivers/huawei/huawei_driver.py:459
 #, python-format
 msgid ""
 "create_volume_from_snapshot: src_lun_id: %(src_lun_id)s, tgt_lun_id: "
 "%(tgt_lun_id)s, copy_name: %(copy_name)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:485
+#: cinder/volume/drivers/huawei/huawei_driver.py:524
 #, python-format
 msgid "Extend volume: %(volumename)s, oldsize: %(oldsize)s  newsize: %(newsize)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:512
+#: cinder/volume/drivers/huawei/huawei_driver.py:551
 #, python-format
 msgid "stop_snapshot: snapshot name: %(snapshot)s, volume name: %(volume)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:576
+#: cinder/volume/drivers/huawei/huawei_driver.py:615
 #, python-format
 msgid ""
 "Retype LUN(id: %(lun_id)s) smartpartition from (name: %(old_name)s, id: "
 "%(old_id)s) to (name: %(new_name)s, id: %(new_id)s) success."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:593
+#: cinder/volume/drivers/huawei/huawei_driver.py:632
 #, python-format
 msgid ""
 "Retype LUN(id: %(lun_id)s) smartcache from (name: %(old_name)s, id: "
 "%(old_id)s) to (name: %(new_name)s, id: %(new_id)s) successfully."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:603
+#: cinder/volume/drivers/huawei/huawei_driver.py:642
 #, python-format
 msgid ""
 "Retype LUN(id: %(lun_id)s) smarttier policy from %(old_policy)s to "
 "%(new_policy)s success."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:618
+#: cinder/volume/drivers/huawei/huawei_driver.py:657
 #, python-format
 msgid ""
 "Retype LUN(id: %(lun_id)s) smartqos from %(old_qos_value)s to %(new_qos)s"
 " success."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:837
+#: cinder/volume/drivers/huawei/huawei_driver.py:876
 msgid "Enter initialize_connection."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:841
+#: cinder/volume/drivers/huawei/huawei_driver.py:880
 #, python-format
 msgid "initiator name: %(initiator_name)s, volume name: %(volume)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:851
+#: cinder/volume/drivers/huawei/huawei_driver.py:890
 #, python-format
 msgid ""
 "initialize_connection, iscsi_iqn: %(iscsi_iqn)s, target_ip: "
 "%(target_ip)s, portgroup_id: %(portgroup_id)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:881
+#: cinder/volume/drivers/huawei/huawei_driver.py:920
 #, python-format
 msgid "initialize_connection, host lun id is: %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:910
+#: cinder/volume/drivers/huawei/huawei_driver.py:949
 #, python-format
 msgid "initialize_connection success. Return data: %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:923
+#: cinder/volume/drivers/huawei/huawei_driver.py:962
 #, python-format
 msgid ""
 "terminate_connection: volume name: %(volume)s, initiator name: %(ini)s, "
 "lun_id: %(lunid)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1036
+#: cinder/volume/drivers/huawei/huawei_driver.py:1076
 #, python-format
 msgid "initialize_connection, initiator: %(wwpns)s, volume name: %(volume)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1104
+#: cinder/volume/drivers/huawei/huawei_driver.py:1152
 #, python-format
-msgid "initialize_connection, return data is: %s."
+msgid "initialize_connection, metadata is: %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1120
+#: cinder/volume/drivers/huawei/huawei_driver.py:1185
+#, python-format
+msgid "Return FC info is: %s."
+msgstr ""
+
+#: cinder/volume/drivers/huawei/huawei_driver.py:1201
+#, python-format
+msgid "The same hostid is: %s."
+msgstr ""
+
+#: cinder/volume/drivers/huawei/huawei_driver.py:1219
 #, python-format
 msgid ""
 "terminate_connection: volume name: %(volume)s, wwpns: %(wwns)s, lun_id: "
 "%(lunid)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1201
+#: cinder/volume/drivers/huawei/huawei_driver.py:1303
+#, python-format
+msgid "Detach Volume, metadata is: %s."
+msgstr ""
+
+#: cinder/volume/drivers/huawei/huawei_driver.py:1309
 #, python-format
 msgid "terminate_connection, return data is: %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_utils.py:219
+#: cinder/volume/drivers/huawei/huawei_utils.py:221
 #, python-format
 msgid "The QoS sepcs is: %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_utils.py:319
+#: cinder/volume/drivers/huawei/huawei_utils.py:321
 msgid "Use default PrefetchType. PrefetchType: Intelligent."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_utils.py:389
+#: cinder/volume/drivers/huawei/huawei_utils.py:391
 #, python-format
 msgid ""
 "Wait interval for %(event_type)s is not configured in huawei conf file. "
 "Use default: %(default_wait_interval)d."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_utils.py:404
+#: cinder/volume/drivers/huawei/huawei_utils.py:406
 #, python-format
 msgid ""
 "Timeout is not configured in huawei conf file. Use default: "
 "%(default_timeout)d."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:73
+#: cinder/volume/drivers/huawei/hypermetro.py:139
+#, python-format
+msgid "initialize_connection_fc, initiator: %(wwpns)s, volume name: %(volume)s."
+msgstr ""
+
+#: cinder/volume/drivers/huawei/hypermetro.py:212
+#, python-format
+msgid "Remote return FC info is: %s."
+msgstr ""
+
+#: cinder/volume/drivers/huawei/hypermetro.py:235
+#, python-format
+msgid ""
+"terminate_connection_fc: volume name: %(volume)s, wwpns: %(wwns)s, "
+"lun_id: %(lunid)s."
+msgstr ""
+
+#: cinder/volume/drivers/huawei/rest_client.py:75
 #, python-format
 msgid ""
 "\n"
@@ -2488,80 +2530,80 @@ msgid ""
 "\n"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:253
+#: cinder/volume/drivers/huawei/rest_client.py:294
 #, python-format
 msgid "create_snapshot:snapshot name: %(snapshot)s, volume name: %(volume)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:387
+#: cinder/volume/drivers/huawei/rest_client.py:429
 #, python-format
 msgid ""
 "do_mapping, lun_group: %(lun_group)s, view_id: %(view_id)s, lun_id: "
 "%(lun_id)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:467
+#: cinder/volume/drivers/huawei/rest_client.py:518
 #, python-format
 msgid ""
 "create_hostgroup_with_check. hostgroup name: %(name)s, hostgroup id: "
 "%(id)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:478
+#: cinder/volume/drivers/huawei/rest_client.py:529
 #, python-format
 msgid ""
 "Failed to create hostgroup: %(name)s. Please check if it exists on the "
 "array."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:491
+#: cinder/volume/drivers/huawei/rest_client.py:542
 #, python-format
 msgid ""
 "create_hostgroup_with_check. Create hostgroup success. hostgroup name: "
 "%(name)s, hostgroup id: %(id)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:583
+#: cinder/volume/drivers/huawei/rest_client.py:634
 #, python-format
 msgid "add_host_with_check. host name: %(name)s, host id: %(id)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:594
+#: cinder/volume/drivers/huawei/rest_client.py:645
 #, python-format
 msgid "Failed to create host: %(name)s. Check if it exists on the array."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:607
+#: cinder/volume/drivers/huawei/rest_client.py:658
 #, python-format
 msgid ""
 "add_host_with_check. create host success. host name: %(name)s, host id: "
 "%(id)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:743
+#: cinder/volume/drivers/huawei/rest_client.py:794
 msgid "Use CHAP when adding initiator to host."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:749
+#: cinder/volume/drivers/huawei/rest_client.py:800
 msgid "Use ALUA when adding initiator to host."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1053
+#: cinder/volume/drivers/huawei/rest_client.py:1104
 #, python-format
 msgid "New str info is: %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1068
+#: cinder/volume/drivers/huawei/rest_client.py:1119
 #, python-format
 msgid "_get_tgt_iqn: iSCSI target iqn is: %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1164
+#: cinder/volume/drivers/huawei/rest_client.py:1216
 #, python-format
 msgid "_get_tgt_ip_from_portgroup: Get ip: %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1203
+#: cinder/volume/drivers/huawei/rest_client.py:1258
 #, python-format
 msgid "Get the default ip: %s."
 msgstr ""
