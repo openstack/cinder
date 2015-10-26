@@ -55,16 +55,16 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         super(NexentaNfsDriver, self).__init__(*args, **kwargs)
         if self.configuration:
             self.configuration.append_config_values(
-                options.NEXENTA_CONNECTION_OPTIONS)
+                options.NEXENTA_CONNECTION_OPTS)
             self.configuration.append_config_values(
-                options.NEXENTA_NFS_OPTIONS)
+                options.NEXENTA_NFS_OPTS)
             self.configuration.append_config_values(
-                options.NEXENTA_VOLUME_OPTIONS)
+                options.NEXENTA_DATASET_OPTS)
 
         self.nfs_mount_point_base = self.configuration.nexenta_mount_point_base
-        self.volume_compression = self.configuration.nexenta_volume_compression
-        self.volume_deduplication = self.configuration.nexenta_volume_dedup
-        self.volume_description = self.configuration.nexenta_volume_description
+        self.dataset_compression = self.configuration.nexenta_dataset_compression
+        self.dataset_deduplication = self.configuration.nexenta_dataset_dedup
+        self.dataset_description = self.configuration.nexenta_dataset_description
         self.sparsed_volumes = self.configuration.nexenta_sparsed_volumes
         self._nef2volroot = {}
         self.share2nef = {}
@@ -141,8 +141,8 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             pool, dataset)
         data = {
             'name': volume['name'],
-            'compressionMode': self.volume_compression,
-            'dedupMode': self.volume_deduplication,
+            'compressionMode': self.dataset_compression,
+            'dedupMode': self.dataset_deduplication,
         }
         nef(url, data)
         try:
@@ -469,8 +469,8 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         nef_url = self.share2nef[share].url
         self._stats = {
             'vendor_name': 'Nexenta',
-            'dedup': self.volume_deduplication,
-            'compression': self.volume_compression,
+            'dedup': self.dataset_deduplication,
+            'compression': self.dataset_compression,
             'description': self.volume_description,
             'nef_url': nef_url,
             'ns_shares': shares_with_capacities,
