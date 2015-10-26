@@ -192,7 +192,38 @@ class TestCiscoFCZoneClientCLI(cli.CiscoFCZoneClientCLI, test.TestCase):
     def test__cfg_save(self, run_ssh_mock):
         cmd_list = ['copy', 'running-config', 'startup-config']
         self._cfg_save()
-        run_ssh_mock.assert_called_once_with(cmd_list, True, 1)
+        run_ssh_mock.assert_called_once_with(cmd_list, True)
+
+    @mock.patch.object(cli.CiscoFCZoneClientCLI, '_run_ssh')
+    def test__cfg_save_with_retry(self, run_ssh_mock):
+        cmd_list = ['copy', 'running-config', 'startup-config']
+        run_ssh_mock.side_effect = [
+            processutils.ProcessExecutionError,
+            ('', None)
+        ]
+
+        self._cfg_save()
+
+        self.assertEqual(2, run_ssh_mock.call_count)
+        run_ssh_mock.assert_has_calls([
+            mock.call(cmd_list, True),
+            mock.call(cmd_list, True)
+        ])
+
+    @mock.patch.object(cli.CiscoFCZoneClientCLI, '_run_ssh')
+    def test__cfg_save_with_error(self, run_ssh_mock):
+        cmd_list = ['copy', 'running-config', 'startup-config']
+        run_ssh_mock.side_effect = processutils.ProcessExecutionError
+
+        self.assertRaises(processutils.ProcessExecutionError, self._cfg_save)
+
+        expected_num_calls = 5
+        expected_calls = []
+        for i in xrange(expected_num_calls):
+            expected_calls.append(mock.call(cmd_list, True))
+
+        self.assertEqual(expected_num_calls, run_ssh_mock.call_count)
+        run_ssh_mock.assert_has_calls(expected_calls)
 
     @mock.patch.object(cli.CiscoFCZoneClientCLI, '_run_ssh')
     def test__get_switch_info(self, run_ssh_mock):
@@ -201,13 +232,38 @@ class TestCiscoFCZoneClientCLI(cli.CiscoFCZoneClientCLI, test.TestCase):
         run_ssh_mock.return_value = (Stream(nsshow), Stream())
         switch_data = self._get_switch_info(cmd_list)
         self.assertEqual(nsshow_list, switch_data)
-        run_ssh_mock.assert_called_once_with(cmd_list, True, 1)
+        run_ssh_mock.assert_called_once_with(cmd_list, True)
 
     def test__parse_ns_output(self):
         return_wwn_list = []
         expected_wwn_list = ['20:1a:00:05:1e:e8:e3:29']
         return_wwn_list = self._parse_ns_output(switch_data)
         self.assertEqual(expected_wwn_list, return_wwn_list)
+
+
+class TestCiscoFCZoneClientCLISSH(test.TestCase):
+
+    def setUp(self):
+        super(TestCiscoFCZoneClientCLISSH, self).setUp()
+        self.client = cli.CiscoFCZoneClientCLI(None, None, None, None, None)
+        self.client.sshpool = mock.MagicMock()
+        self.mock_ssh = self.client.sshpool.item().__enter__()
+
+    @mock.patch('oslo_concurrency.processutils.ssh_execute')
+    def test__run_ssh(self, mock_execute):
+        mock_execute.return_value = 'ssh output'
+        ret = self.client._run_ssh(['cat', 'foo'])
+        self.assertEqual('ssh output', ret)
+        mock_execute.assert_called_once_with(self.mock_ssh,
+                                             'cat foo',
+                                             check_exit_code=True)
+
+    @mock.patch('oslo_concurrency.processutils.ssh_execute')
+    def test__run_ssh_with_error(self, mock_execute):
+        mock_execute.side_effect = processutils.ProcessExecutionError()
+        self.assertRaises(processutils.ProcessExecutionError,
+                          self.client._run_ssh,
+                          ['cat', 'foo'])
 
 
 class Channel(object):

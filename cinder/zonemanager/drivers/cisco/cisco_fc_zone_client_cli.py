@@ -28,7 +28,7 @@ from oslo_utils import excutils
 import six
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LI
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder import ssh_utils
 from cinder import utils
 import cinder.zonemanager.drivers.cisco.fc_zone_constants as ZoneConstant
@@ -313,14 +313,15 @@ class CiscoFCZoneClientCLI(object):
 
         return return_list
 
+    @utils.retry(processutils.ProcessExecutionError, retries=5)
     def _cfg_save(self):
         cmd = ['copy', 'running-config', 'startup-config']
-        self._run_ssh(cmd, True, 1)
+        self._run_ssh(cmd, True)
 
     def _get_switch_info(self, cmd_list):
         stdout, stderr, sw_data = None, None, None
         try:
-            stdout, stderr = self._run_ssh(cmd_list, True, 1)
+            stdout, stderr = self._run_ssh(cmd_list, True)
             LOG.debug("CLI output from ssh - output: %s", stdout)
             if (stdout):
                 sw_data = stdout.splitlines()
@@ -353,7 +354,7 @@ class CiscoFCZoneClientCLI(object):
                 raise exception.InvalidParameterValue(err=msg)
         return return_list
 
-    def _run_ssh(self, cmd_list, check_exit_code=True, attempts=1):
+    def _run_ssh(self, cmd_list, check_exit_code=True):
 
         command = ' '.join(cmd_list)
 
@@ -365,36 +366,16 @@ class CiscoFCZoneClientCLI(object):
                                              self.switch_pwd,
                                              min_size=1,
                                              max_size=5)
-        last_exception = None
         try:
             with self.sshpool.item() as ssh:
-                while attempts > 0:
-                    attempts -= 1
-                    try:
-                        return processutils.ssh_execute(
-                            ssh,
-                            command,
-                            check_exit_code=check_exit_code)
-                    except Exception as e:
-                        msg = _("Exception: %s") % six.text_type(e)
-                        LOG.error(msg)
-                        last_exception = e
-                        greenthread.sleep(random.randint(20, 500) / 100.0)
-                try:
-                    raise processutils.ProcessExecutionError(
-                        exit_code=last_exception.exit_code,
-                        stdout=last_exception.stdout,
-                        stderr=last_exception.stderr,
-                        cmd=last_exception.cmd)
-                except AttributeError:
-                    raise processutils.ProcessExecutionError(
-                        exit_code=-1,
-                        stdout="",
-                        stderr="Error running SSH command",
-                        cmd=command)
+                return processutils.ssh_execute(
+                    ssh,
+                    command,
+                    check_exit_code=check_exit_code)
+
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Error running SSH command: %s"), command)
+                LOG.warning(_LW("Error running SSH command: %s"), command)
 
     def _ssh_execute(self, cmd_list, check_exit_code=True, attempts=1):
         """Execute cli with status update.
