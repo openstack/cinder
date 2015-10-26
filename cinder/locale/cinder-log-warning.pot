@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev41\n"
+"Project-Id-Version: cinder 8.0.0.dev74\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-10-20 06:08+0000\n"
+"POT-Creation-Date: 2015-10-25 06:05+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -178,7 +178,7 @@ msgstr ""
 msgid "Not deleting key %s"
 msgstr ""
 
-#: cinder/scheduler/filter_scheduler.py:410
+#: cinder/scheduler/filter_scheduler.py:414
 #, python-format
 msgid "No weighed hosts found for volume with properties: %s"
 msgstr ""
@@ -722,42 +722,42 @@ msgstr ""
 msgid "DELETE call failed for %s!"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:377
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:382
 #, python-format
 msgid "Logout error: %(code)d %(reason)s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:569
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:574
 #, python-format
 msgid "Volume initialization failure. (%s)"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:628
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2187
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:633
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2192
 #, python-format
 msgid "Unable to create folder %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:777
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:782
 #, python-format
 msgid "delete_volume: unable to find volume %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:854
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:859
 #, python-format
 msgid "ScServerOperatingSystem GetList return: %(code)d %(reason)s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1158
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1163
 msgid "Inconsistent Luns."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1537
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1542
 #, python-format
 msgid "Unable to create snapshot %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1575
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1580
 #, python-format
 msgid "Unable to find snapshot %s"
 msgstr ""
@@ -1164,7 +1164,7 @@ msgid ""
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_vnx_cli.py:2293
-#: cinder/volume/drivers/huawei/huawei_driver.py:554
+#: cinder/volume/drivers/huawei/huawei_driver.py:593
 msgid "Storage-assisted migration failed during retype."
 msgstr ""
 
@@ -1348,38 +1348,43 @@ msgstr ""
 msgid "terminate_conn: provider location empty."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:155
+#: cinder/volume/drivers/huawei/huawei_driver.py:194
 #, python-format
 msgid "Can't find lun %s on the array."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:469
+#: cinder/volume/drivers/huawei/huawei_driver.py:508
 #, python-format
 msgid "Failure deleting the snapshot %(snapshot_id)s of volume %(volume_id)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:527
-#: cinder/volume/drivers/huawei/huawei_driver.py:529
+#: cinder/volume/drivers/huawei/huawei_driver.py:566
+#: cinder/volume/drivers/huawei/huawei_driver.py:568
 msgid "Can't find snapshot on the array."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:962
+#: cinder/volume/drivers/huawei/huawei_driver.py:1001
 #, python-format
 msgid "Lun is not in lungroup. Lun id: %(lun_id)s. lungroup id: %(lungroup_id)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:968
-#: cinder/volume/drivers/huawei/huawei_driver.py:1149
+#: cinder/volume/drivers/huawei/huawei_driver.py:1007
+#: cinder/volume/drivers/huawei/huawei_driver.py:1248
 msgid "Can't find lun on the array."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1143
+#: cinder/volume/drivers/huawei/huawei_driver.py:1242
 #, python-format
 msgid "Lun is not in lungroup. Lun id: %(lun_id)s. Lungroup id: %(lungroup_id)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1219
-#: cinder/volume/drivers/huawei/rest_client.py:1228
+#: cinder/volume/drivers/huawei/hypermetro.py:262
+#, python-format
+msgid "Lun is not in lungroup. Lun id: %(lun_id)s, lungroup id: %(lungroup_id)s"
+msgstr ""
+
+#: cinder/volume/drivers/huawei/rest_client.py:1274
+#: cinder/volume/drivers/huawei/rest_client.py:1283
 msgid "Can't find target iqn from rest."
 msgstr ""
 

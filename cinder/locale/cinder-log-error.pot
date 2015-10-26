@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev41\n"
+"Project-Id-Version: cinder 8.0.0.dev74\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-10-20 06:08+0000\n"
+"POT-Creation-Date: 2015-10-25 06:05+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -317,81 +317,81 @@ msgstr ""
 msgid "Error occurred when creating consistency group %s."
 msgstr ""
 
-#: cinder/consistencygroup/api.py:174
+#: cinder/consistencygroup/api.py:175
 #, python-format
 msgid ""
 "CG snapshot %(cgsnap)s not found when creating consistency group %(cg)s "
 "from source."
 msgstr ""
 
-#: cinder/consistencygroup/api.py:188
+#: cinder/consistencygroup/api.py:189
 #, python-format
 msgid ""
 "Source CG %(source_cg)s not found when creating consistency group %(cg)s "
 "from source."
 msgstr ""
 
-#: cinder/consistencygroup/api.py:219
+#: cinder/consistencygroup/api.py:220
 #, python-format
 msgid ""
 "Error occurred when creating consistency group %(cg)s from cgsnapshot "
 "%(cgsnap)s."
 msgstr ""
 
-#: cinder/consistencygroup/api.py:272
+#: cinder/consistencygroup/api.py:273
 #, python-format
 msgid ""
 "Error occurred when creating volume entry from snapshot in the process of"
 " creating consistency group %(group)s from cgsnapshot %(cgsnap)s."
 msgstr ""
 
-#: cinder/consistencygroup/api.py:283
+#: cinder/consistencygroup/api.py:284
 #, python-format
 msgid ""
 "Error occurred when creating consistency group %(group)s from cgsnapshot "
 "%(cgsnap)s."
 msgstr ""
 
-#: cinder/consistencygroup/api.py:333
+#: cinder/consistencygroup/api.py:334
 #, python-format
 msgid ""
 "Error occurred when creating cloned volume in the process of creating "
 "consistency group %(group)s from source CG %(source_cg)s."
 msgstr ""
 
-#: cinder/consistencygroup/api.py:344
+#: cinder/consistencygroup/api.py:345
 #, python-format
 msgid ""
 "Error occurred when creating consistency group %(group)s from source CG "
 "%(source_cg)s."
 msgstr ""
 
-#: cinder/consistencygroup/api.py:402
+#: cinder/consistencygroup/api.py:403
 #, python-format
 msgid "Error occurred when building request spec list for consistency group %s."
 msgstr ""
 
-#: cinder/consistencygroup/api.py:428
+#: cinder/consistencygroup/api.py:429
 #, python-format
 msgid "Failed to update quota for consistency group %s."
 msgstr ""
 
-#: cinder/consistencygroup/api.py:749
+#: cinder/consistencygroup/api.py:748
 #, python-format
 msgid "Error occurred when creating cgsnapshot %s."
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:2720
+#: cinder/db/sqlalchemy/api.py:2740
 #, python-format
 msgid "VolumeType %s deletion failed, VolumeType in use."
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:3679
+#: cinder/db/sqlalchemy/api.py:3710
 #, python-format
 msgid "Volume in unexpected state %s, expected awaiting-transfer"
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:3971
+#: cinder/db/sqlalchemy/api.py:4002
 #, python-format
 msgid "DBError detected when purging from table=%(table)s"
 msgstr ""
@@ -503,14 +503,14 @@ msgid ""
 "must be available or error, not %(snap_status)s."
 msgstr ""
 
-#: cinder/volume/api.py:1279
+#: cinder/volume/api.py:1288
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to extend volume by %(s_size)sG, "
 "(%(d_consumed)dG of %(d_quota)dG already consumed)."
 msgstr ""
 
-#: cinder/volume/api.py:1551 cinder/volume/api.py:1596
+#: cinder/volume/api.py:1560 cinder/volume/api.py:1605
 #, python-format
 msgid "Unable to find service: %(service)s for given host: %(host)s."
 msgstr ""
@@ -757,105 +757,105 @@ msgstr ""
 msgid "Consistency group %s: create failed"
 msgstr ""
 
-#: cinder/volume/manager.py:2352
+#: cinder/volume/manager.py:2355
 #, python-format
 msgid "Create consistency group from snapshot-%(snap)s failed: SnapshotNotFound."
 msgstr ""
 
-#: cinder/volume/manager.py:2379
+#: cinder/volume/manager.py:2383
 #, python-format
 msgid ""
 "Create consistency group from source cg-%(cg)s failed: "
 "ConsistencyGroupNotFound."
 msgstr ""
 
-#: cinder/volume/manager.py:2443
+#: cinder/volume/manager.py:2442
 #, python-format
 msgid "Create consistency group from source %(source)s failed."
 msgstr ""
 
-#: cinder/volume/manager.py:2488
+#: cinder/volume/manager.py:2486
 #, python-format
 msgid "Source snapshot cannot be found for target volume %(volume_id)s."
 msgstr ""
 
-#: cinder/volume/manager.py:2511
+#: cinder/volume/manager.py:2509
 #, python-format
 msgid "Source volumes cannot be found for target volume %(volume_id)s."
 msgstr ""
 
-#: cinder/volume/manager.py:2532
+#: cinder/volume/manager.py:2530
 #, python-format
 msgid "Source snapshot %(snapshot_id)s cannot be found."
 msgstr ""
 
-#: cinder/volume/manager.py:2541
+#: cinder/volume/manager.py:2539
 #, python-format
 msgid "The source volume %(volume_id)s cannot be found."
 msgstr ""
 
-#: cinder/volume/manager.py:2551
+#: cinder/volume/manager.py:2549
 #, python-format
 msgid ""
 "Failed to update %(volume_id)s metadata using the provided snapshot "
 "%(snapshot_id)s metadata."
 msgstr ""
 
-#: cinder/volume/manager.py:2650 cinder/volume/manager.py:2669
+#: cinder/volume/manager.py:2648 cinder/volume/manager.py:2667
 msgid "Delete consistency group failed to update usages."
 msgstr ""
 
-#: cinder/volume/manager.py:2720
+#: cinder/volume/manager.py:2718
 #, python-format
 msgid ""
 "Update consistency group failed to add volume-%(volume_id)s: "
 "VolumeNotFound."
 msgstr ""
 
-#: cinder/volume/manager.py:2749
+#: cinder/volume/manager.py:2747
 #, python-format
 msgid ""
 "Update consistency group failed to remove volume-%(volume_id)s: "
 "VolumeNotFound."
 msgstr ""
 
-#: cinder/volume/manager.py:2789
+#: cinder/volume/manager.py:2787
 #, python-format
 msgid ""
 "Error occurred in the volume driver when updating consistency group "
 "%(group_id)s."
 msgstr ""
 
-#: cinder/volume/manager.py:2802
+#: cinder/volume/manager.py:2800
 #, python-format
 msgid "Error occurred when updating consistency group %(group_id)s."
 msgstr ""
 
-#: cinder/volume/manager.py:2901
+#: cinder/volume/manager.py:2898
 #, python-format
 msgid ""
 "Failed updating %(snapshot_id)s metadata using the provided volumes "
 "%(volume_id)s metadata"
 msgstr ""
 
-#: cinder/volume/manager.py:3008
+#: cinder/volume/manager.py:3001
 msgid "Failed to update usages deleting snapshot"
 msgstr ""
 
-#: cinder/volume/manager.py:3092
+#: cinder/volume/manager.py:3084
 msgid "Can't enable replication because the driver isn't initialized"
 msgstr ""
 
-#: cinder/volume/manager.py:3119 cinder/volume/manager.py:3167
-#: cinder/volume/manager.py:3242
+#: cinder/volume/manager.py:3111 cinder/volume/manager.py:3159
+#: cinder/volume/manager.py:3234
 msgid "Driver replication data update failed."
 msgstr ""
 
-#: cinder/volume/manager.py:3143
+#: cinder/volume/manager.py:3135
 msgid "Can't disable replication because the driver isn't initialized"
 msgstr ""
 
-#: cinder/volume/manager.py:3320
+#: cinder/volume/manager.py:3312
 #, python-format
 msgid "Failed to create manage_existing flow: %(object_type)s %(object_id)s."
 msgstr ""
@@ -1583,217 +1583,217 @@ msgstr ""
 msgid "CloudByte snapshot information is not available for OpenStack volume [%s]."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:301
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:306
 #, python-format
 msgid "Error invalid json: %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:315
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:320
 #, python-format
 msgid "Invalid API object: %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:356
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:361
 #, python-format
 msgid "Unrecognized Login Response: %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:359
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:364
 #, python-format
 msgid "Login error: %(code)d %(reason)s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:393
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:398
 #, python-format
 msgid "Failed to find %(s)s.  Result %(r)s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:469
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:474
 #, python-format
 msgid "Unable to create folder path %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:660
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:665
 msgid "ScVolume returned success with empty payload.  Attempting to locate volume"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:666
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:671
 #, python-format
 msgid "ScVolume create error %(name)s: %(code)d %(reason)s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:822
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:827
 #, python-format
 msgid "AddHba error: %(wwn)s to %(srvname)s : %(code)d %(reason)s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:917
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:922
 #, python-format
 msgid "ScPhysicalServer create error: %(wwn)s: %(code)d %(reason)s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:931
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:936
 msgid "Error adding HBA to server"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:963
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:968
 #, python-format
 msgid "ScServer error: %(code)d %(reason)s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1013
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1018
 msgid "Error getting FaultDomainList"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1036
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1041
 msgid "Unable to find FC initiators"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1070
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1075
 #, python-format
 msgid "Unable to find volume mappings: %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1073
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1078
 msgid "_find_mappings: volume is not active"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1110
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1115
 #, python-format
 msgid "Unable to find controller port: %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1169
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1174
 msgid "Volume appears unmapped"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1199
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1204
 #, python-format
 msgid "Unable to retrieve VolumeConfiguration: %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1249
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1254
 #, python-format
 msgid "Unable to find controller port iscsi configuration: %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1439
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1444
 #, python-format
 msgid "Unable to map %(vol)s to %(srv)s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1469
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1474
 #, python-format
 msgid "Unable to unmap Volume %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1529
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1534
 #, python-format
 msgid "CreateReplay error: %(code)d %(reason)s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1572
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1577
 #, python-format
 msgid "Invalid ReplayList return: %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1600
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2113
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1605
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2118
 #, python-format
 msgid "ScReplay Expire error: %(code)d %(reason)s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1629
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1634
 #, python-format
 msgid "ScReplay CreateView error: %(code)d %(reason)s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1634
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1639
 #, python-format
 msgid "Unable to create volume %s from replay"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1660
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1665
 msgid "Error: unable to snap replay"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1679
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1684
 #, python-format
 msgid "Error expanding volume %(name)s: %(code)d %(reason)s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1705
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1710
 #, python-format
 msgid "Error renaming volume %(original)s to %(name)s: %(code)d %(reason)s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1730
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1735
 msgid "User does not have permission to change Storage Profile selection."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1737
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1742
 #, python-format
 msgid "Storage Profile %s was not found."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1744
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1749
 msgid "Default Storage Profile was not found."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1757
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1762
 #, python-format
 msgid ""
 "Error changing Storage Profile for volume %(original)s to %(name)s: "
 "%(code)d %(reason)s %(text)s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1778
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1783
 #, python-format
 msgid "Error getting user preferences: %(code)d %(reason)s %(text)s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1827
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1832
 #, python-format
 msgid "Multiple replay profiles under name %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1833
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1838
 #, python-format
 msgid "find_replay_profile error %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1856
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1861
 #, python-format
 msgid "create_replay_profile failed %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1876
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1881
 #, python-format
 msgid "Unable to delete profile %(cg)s : %(reason)s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1948
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1953
 #, python-format
 msgid "Failed to add %s to cg."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1966
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1971
 #, python-format
 msgid "Failed to remove %s from cg."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2036
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2041
 #, python-format
 msgid "snap_cg error: %(code)d %(reason)s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2086
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2091
 #, python-format
 msgid "Unable to locate snapshot %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2200
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2255
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2205
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2260
 #, python-format
 msgid "ScVolume error on rename: %(code)d %(reason)s"
 msgstr ""
@@ -2545,59 +2545,73 @@ msgstr ""
 msgid "The NFS Volume %(cr)s does not exist."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:205
+#: cinder/volume/drivers/huawei/huawei_driver.py:146
+#, python-format
+msgid "Create hypermetro error: %s."
+msgstr ""
+
+#: cinder/volume/drivers/huawei/huawei_driver.py:188
+#, python-format
+msgid "Delete hypermetro error: %s."
+msgstr ""
+
+#: cinder/volume/drivers/huawei/huawei_driver.py:244
 msgid "Get LUN migration error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:268
+#: cinder/volume/drivers/huawei/huawei_driver.py:307
 #, python-format
 msgid "Unable to rename lun %s on array."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:562
+#: cinder/volume/drivers/huawei/huawei_driver.py:601
 msgid "Retype volume error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_utils.py:117
+#: cinder/volume/drivers/huawei/huawei_utils.py:119
 #, python-format
 msgid ""
 "Extra specs must be specified as capabilities:%s='<is> True' or '<is> "
 "true'."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_utils.py:153
+#: cinder/volume/drivers/huawei/huawei_utils.py:155
 #, python-format
 msgid "parse_xml_file: %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:82
+#: cinder/volume/drivers/huawei/rest_client.py:84
 #, python-format
 msgid "Bad response from server: %(url)s. Error: %(err)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:92
+#: cinder/volume/drivers/huawei/rest_client.py:94
 #, python-format
 msgid "JSON transfer error: %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:113
+#: cinder/volume/drivers/huawei/rest_client.py:115
 #, python-format
 msgid "Login error, reason is: %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:142
+#: cinder/volume/drivers/huawei/rest_client.py:144
 msgid "Can't open the recent url, relogin."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:423
+#: cinder/volume/drivers/huawei/rest_client.py:472
 msgid ""
 "Error occurred when adding hostgroup and lungroup to view. Remove lun "
 "from lungroup now."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:568
+#: cinder/volume/drivers/huawei/rest_client.py:619
 #, python-format
 msgid "JSON transfer data error. %s."
+msgstr ""
+
+#: cinder/volume/drivers/huawei/rest_client.py:1803
+msgid "Can not open the recent url, login again."
 msgstr ""
 
 #: cinder/volume/drivers/ibm/flashsystem_common.py:230
