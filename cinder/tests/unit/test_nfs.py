@@ -1283,13 +1283,13 @@ class NfsDriverDoSetupTestCase(test.TestCase):
             errno.ENOENT, 'No such file or directory.')
 
         with self.assertRaisesRegex(exception.NfsException,
-                                    'mount.nfs is not installed'):
+                                    '/sbin/mount.nfs is not installed'):
             drv.do_setup(self.context)
 
         mock_os_path_exists.assert_has_calls(
             [mock.call(self.configuration.nfs_shares_config)])
         mock_execute.assert_has_calls(
-            [mock.call('mount.nfs',
+            [mock.call('/sbin/mount.nfs',
                        check_exit_code=False,
                        run_as_root=False)])
 
@@ -1313,7 +1313,7 @@ class NfsDriverDoSetupTestCase(test.TestCase):
         mock_os_path_exists.assert_has_calls(
             [mock.call(self.configuration.nfs_shares_config)])
         mock_execute.assert_has_calls(
-            [mock.call('mount.nfs',
+            [mock.call('/sbin/mount.nfs',
                        check_exit_code=False,
                        run_as_root=False)])
 
