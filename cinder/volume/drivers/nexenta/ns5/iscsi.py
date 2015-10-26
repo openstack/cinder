@@ -119,7 +119,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             self.nef(url)
         except jsonrpc.NexentaJSONException:
             raise LookupError(_("Dataset group %s/%s not found at Nexenta SA"),
-                              self.nexenta_pool, self.)
+                              self.nexenta_pool, self.nexenta_dataset_group)
         services = self.nef('services')
         for service in services['data']:
             if service['name'] == 'iscsit':
