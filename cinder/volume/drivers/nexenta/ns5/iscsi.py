@@ -367,13 +367,13 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :return: True if LU exists, else False
         """
         try:
-            self._get_lun(volume_name)
+            self._get_lun_id(volume_name)
         except LookupError:
             return False
         return True
 
-    def _get_lun(self, volume_name):
-        """Get lu mapping number for zfs volume.
+    def _get_lun_id(self, volume_name):
+        """Get lun id for zfs volume.
 
         :param volume_name: zfs volume name
         :raises: LookupError if zfs volume does not exist or not mapped to LU
@@ -387,13 +387,19 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             raise LookupError(_("LU does not exist for volume: %s"),
                               volume_name)
         else:
-            lun_id = data[0]['guid']
-            url = 'san/targetgroups/%s/luns/%s/views' % (
-                volume_name, lun_id)
-            data = self.nef(url).get('data')
-            if not data:
-                raise LookupError(_("No views found for LUN: %s"), lun_id)
-            return data[0]['lunNumber']
+            return data[0]['guid']
+
+    def _get_lun(self, volume_name):
+        try:
+            lun_id = self._get_lun_id(volume_name)
+        except LookupError:
+            return None
+        url = 'san/targetgroups/%s/luns/%s/views' % (
+            volume_name, lun_id)
+        data = self.nef(url).get('data')
+        if not data:
+            raise LookupError(_("No views found for LUN: %s"), lun_id)
+        return data[0]['lunNumber']
 
     def _do_export(self, _ctx, volume):
         """Do all steps to get zfs volume exported at separate target.
@@ -443,10 +449,13 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :param volume: reference of volume to be unexported
         """
         volume_path = self._get_volume_path(volume['name'])
-        if self._lu_exists(volume['name']):
-            url = 'san/targetgroups/%s/luns' % volume['name']
-            data = {'volume': volume_path}
-            self.nef(url, data, method='DELETE')
+        try:
+            lun_id = self._get_lun_id(volume['name'])
+        except LookupError:
+            return
+        url = 'san/targetgroups/%s/luns/%s' % (
+            volume['name'], lun_id)
+        self.nef(url, method='DELETE')
 
     def get_volume_stats(self, refresh=False):
         """Get volume stats.
