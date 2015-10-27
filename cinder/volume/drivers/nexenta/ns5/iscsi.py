@@ -97,7 +97,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         data = {
             'name': self.nexenta_dataset_group,
             'defaultVolumeBlockSize': (
-                self.configuration.nexenta_ns5_blocksize * units.Ki)
+                self.configuration.nexenta_dataset_blocksize * units.Ki)
         }
         try:
             self.nef(url, data)
@@ -197,8 +197,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             'name': volume['name'],
             'volumeSize': volume['size'] * units.Gi,
             'volumeBlockSize': (
-                self.configuration.nexenta_ns5_blocksize * units.Ki),
-            'sparseVolume': self.configuration.nexenta_sparse
+                self.configuration.nexenta_dataset_blocksize * units.Ki),
+            'sparseVolume': self.configuration.nexenta_dataset_sparse
         }
         self.nef(url, data)
 
@@ -470,7 +470,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             'host': self.nef_host,
             'volume': self.volume
         }
-        reserve = 100 - self.configuration.nexenta_capacitycheck
+        reserve = 100 - self.configuration.nexenta_dataset_capacitycheck
         self._stats = {
             'vendor_name': 'Nexenta',
             'dedup': self.dataset_deduplication,
