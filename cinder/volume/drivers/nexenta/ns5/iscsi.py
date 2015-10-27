@@ -123,7 +123,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         services = self.nef('services')
         for service in services['data']:
             if service['name'] == 'iscsit':
-                if service['status'] != 'online':
+                if service['state'] != 'online':
                     raise nexenta.NexentaException(
                         'iSCSI service is not running on NS appliance')
                 break
