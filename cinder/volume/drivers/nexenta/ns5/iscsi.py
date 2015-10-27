@@ -134,23 +134,24 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                              volume_name)
 
     def _create_target(self, volume, target_idx):
-        target_name = '%s%s-%i' % (
-            self.configuration.nexenta_target_prefix,
-            self.nms_host,
+        target_alias = '%s-%i' % (
+            self.nef_host,
             target_idx
         )
 
-        if not self._target_exists(target_name):
+        target = self._get_target_by_alias(target_alias)
+        if not target:
             url = 'san/iscsi/targets'
-            data = {'alias': target_name}
+            data = {'alias': target_alias}
             self.nef(url, data)
+            target = self._get_target_by_alias(target_alias)
         if not self._target_group_exists(volume['name']):
             url = 'san/targetgroups'
-            data = {'name': volume['name'], 'targets': [volume['name']]}
+            data = {'name': volume['name'], 'targets': [target['name']]}
             self.nef(url, data)
 
-        self.targets[target_name] = []
-        return target_name
+        self.targets[target['name']] = []
+        return target['name']
 
     def _get_target_name(self, volume):
         """Return iSCSI target name with least LUs."""
@@ -169,6 +170,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         else:
             target_name = target_names[0]
             for target in target_names:
+                # find target with minimum number of volumes
                 if len(self.targets[target]) < len(self.targets[target_name]):
                     target_name = target
             if len(self.targets[target_name]) >= 20:
@@ -334,20 +336,17 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         ctxt = context.get_admin_context()
         return db.volume_get(ctxt, snapshot['volume_id'])
 
-    def _target_exists(self, target):
-        """Check if iSCSI target exist.
+    def _get_target_by_alias(self, alias):
+        """Get an iSCSI target by it's alias.
 
-        :param target: target name
-        :return: True if target exist, else False
+        :param alias: target alias
+        :return: First found target, else None
         """
-        url = 'san/iscsi/targets'
-        resp = self.nef(url).get('data')
-        if not resp:
-            return False
-        targets = []
-        for target in resp:
-            targets.append(target['name'])
-        return target in targets
+        url = 'san/iscsi/targets?alias=%s' % alias
+        targets = self.nef(url).get('data')
+        if not targets:
+            return None
+        return targets[0]
 
     def _target_group_exists(self, target_group):
         """Check if target group exist.
@@ -407,7 +406,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         model_update = {}
         if entry.get('lun'):
             provider_location = '%(host)s:%(port)s,1 %(name)s %(lun)s' % {
-                'host': self.nms_host,
+                'host': self.nef_host,
                 'port': self.configuration.nexenta_iscsi_target_portal_port,
                 'name': target_name,
                 'lun': entry['lun'],
