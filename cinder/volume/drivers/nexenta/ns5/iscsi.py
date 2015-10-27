@@ -107,7 +107,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         self.nef(url, method='POST')
 
     def check_for_setup_error(self):
-        """Verify that the volume for our zvols exists.
+        """Verify that the zfs volumes exist.
 
         :raise: :py:exc:`LookupError`
         """
@@ -129,7 +129,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 break
 
     def _get_volume_path(self, volume_name):
-        """Return zvol name that corresponds given volume name."""
+        """Return zfs volume name that corresponds given volume name."""
         return '%s/%s/%s' % (self.storage_pool, self.dataset_group,
                              volume_name)
 
@@ -186,7 +186,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         return 'cinder-clone-snapshot-%(id)s' % volume
 
     def create_volume(self, volume):
-        """Create a zvol on appliance.
+        """Create a zfs volume on appliance.
 
         :param volume: volume reference
         :return: model update dict for volume reference
@@ -205,7 +205,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         self.nef(url, data)
 
     def delete_volume(self, volume):
-        """Destroy a zvol on appliance.
+        """Destroy a zfs volume on appliance.
 
         :param volume: volume reference
         """
@@ -363,8 +363,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
     def _lu_exists(self, volume_name):
         """Check if LU exists on appliance.
 
-        :param zvol_name: Zvol name
-        :raises: NexentaException if zvol not exists
+        :param volume_name: zfs volume name
         :return: True if LU exists, else False
         """
         try:
@@ -374,22 +373,30 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         return True
 
     def _get_lun(self, volume_name):
-        """Get lu mapping number for Zvol.
+        """Get lu mapping number for zfs volume.
 
-        :param zvol_name: Zvol name
-        :raises: LookupError if Zvol not exist or not mapped to LU
+        :param volume_name: zfs volume name
+        :raises: LookupError if zfs volume does not exist or not mapped to LU
         :return: LUN
         """
         volume_path = self._get_volume_path(volume_name)
         url = 'san/targetgroups/%s/luns?volume=%s' % (
             volume_name, volume_path.replace('/', '%2F'))
-        if not self.nef(url)['data']:
-            raise LookupError(_("LU does not exist for ZVol: %s"), zvol_name)
+        data = self.nef(url).get('data')
+        if not data:
+            raise LookupError(_("LU does not exist for volume: %s"),
+                              volume_name)
         else:
-            return int(self.nef(url)['data'][0]['guid'], 16)
+            lun_id = data[0]['guid']
+            url = 'san/targetgroups/%s/luns/%s/views' % (
+                volume_name, lun_id)
+            data = self.nef(url).get('data')
+            if not data:
+                raise LookupError(_("No views found for LUN: %s"), lun_id)
+            return data[0]['lunNumber']
 
     def _do_export(self, _ctx, volume):
-        """Do all steps to get zvol exported at separate target.
+        """Do all steps to get zfs volume exported at separate target.
 
         :param volume: reference of volume to be exported
         """
@@ -415,7 +422,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         return model_update
 
     def create_export(self, _ctx, volume, connector):
-        """Create new export for zvol.
+        """Create new export for zfs volume.
 
         :param volume: reference of volume to be exported
         :return: iscsiadm-formatted provider location string
@@ -431,7 +438,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         self._do_export(_ctx, volume)
 
     def remove_export(self, _ctx, volume):
-        """Destroy all resources created to export zvol.
+        """Destroy all resources created to export zfs volume.
 
         :param volume: reference of volume to be unexported
         """
