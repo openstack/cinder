@@ -165,6 +165,11 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 self.targets[target_name] = []
             if not(volume['name'] in self.targets[target_name]):
                 self.targets[target_name].append(volume['name'])
+            if not(self.targetgroups.get(target_name)):
+                url = 'san/iscsi/targets'
+                data = self.nef(url, data).get('data')
+                target_alias = data[0]['alias']
+                self.targetgroups[target_name] = target_alias
         elif not(target_names):
             # create first target and target group
             target_name = self._create_target(volume, 0)
@@ -308,7 +313,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             'volume': snapshot_vol,
             'snapshot': snapshot['name']
         }
-        self.nef(url, {'name': volume['name']})
+        targetPath = self._get_volume_path(volume)
+        self.nef(url, {'targetPath': targetPath})
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume.
