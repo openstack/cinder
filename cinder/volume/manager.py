@@ -190,7 +190,7 @@ def locked_snapshot_operation(f):
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '1.31'
+    RPC_API_VERSION = '1.32'
 
     target = messaging.Target(version=RPC_API_VERSION)
 
@@ -476,9 +476,16 @@ class VolumeManager(manager.SchedulerDependentManager):
         return self.driver.initialized
 
     def create_volume(self, context, volume_id, request_spec=None,
-                      filter_properties=None, allow_reschedule=True):
+                      filter_properties=None, allow_reschedule=True,
+                      volume=None):
 
         """Creates the volume."""
+        # FIXME(thangp): Remove this in v2.0 of RPC API.
+        if volume is None:
+            # For older clients, mimic the old behavior and look up the volume
+            # by its volume_id.
+            volume = objects.Volume.get_by_id(context, volume_id)
+
         context_elevated = context.elevated()
         if filter_properties is None:
             filter_properties = {}
@@ -496,7 +503,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                 self.driver,
                 self.scheduler_rpcapi,
                 self.host,
-                volume_id,
+                volume.id,
                 allow_reschedule,
                 context,
                 request_spec,
@@ -505,7 +512,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             )
         except Exception:
             msg = _("Create manager volume flow failed.")
-            LOG.exception(msg, resource={'type': 'volume', 'id': volume_id})
+            LOG.exception(msg, resource={'type': 'volume', 'id': volume.id})
             raise exception.CinderException(msg)
 
         snapshot_id = request_spec.get('snapshot_id')
@@ -563,13 +570,13 @@ class VolumeManager(manager.SchedulerDependentManager):
                 if not vol_ref:
                     # Flow was reverted and not rescheduled, fetching
                     # volume_ref from the DB, because it will be needed.
-                    vol_ref = self.db.volume_get(context, volume_id)
+                    vol_ref = objects.Volume.get_by_id(context, volume.id)
                 # NOTE(dulek): Volume wasn't rescheduled so we need to update
                 # volume stats as these are decremented on delete.
                 self._update_allocated_capacity(vol_ref)
 
         LOG.info(_LI("Created volume successfully."), resource=vol_ref)
-        return vol_ref['id']
+        return vol_ref.id
 
     @locked_volume_operation
     def delete_volume(self, context, volume_id, unmanage_only=False):
@@ -1586,9 +1593,10 @@ class VolumeManager(manager.SchedulerDependentManager):
         new_vol_values = dict(volume)
         del new_vol_values['id']
         del new_vol_values['_name_id']
+        new_vol_values.pop('name', None)
         # We don't copy volume_type because the db sets that according to
         # volume_type_id, which we do copy
-        del new_vol_values['volume_type']
+        new_vol_values.pop('volume_type', None)
         if new_type_id:
             new_vol_values['volume_type_id'] = new_type_id
         new_vol_values['host'] = host['host']
@@ -1600,8 +1608,9 @@ class VolumeManager(manager.SchedulerDependentManager):
         # I think
         new_vol_values['migration_status'] = 'target:%s' % volume['id']
         new_vol_values['attach_status'] = 'detached'
-        new_vol_values['volume_attachment'] = []
-        new_volume = self.db.volume_create(ctxt, new_vol_values)
+        new_vol_values.pop('volume_attachment', None)
+        new_volume = objects.Volume(context=ctxt, **new_vol_values)
+        new_volume.create()
         rpcapi.create_volume(ctxt, new_volume, host['host'],
                              None, None, allow_reschedule=False)
 

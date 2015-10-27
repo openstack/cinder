@@ -23,8 +23,8 @@ from oslo_config import cfg
 from oslo_utils import importutils
 from oslo_utils import timeutils
 
-from cinder import db
 from cinder.i18n import _
+from cinder import objects
 from cinder.volume import rpcapi as volume_rpcapi
 
 
@@ -46,8 +46,14 @@ def volume_update_db(context, volume_id, host):
 
     :returns: A Volume with the updated fields set properly.
     """
-    values = {'host': host, 'scheduled_at': timeutils.utcnow()}
-    return db.volume_update(context, volume_id, values)
+    volume = objects.Volume.get_by_id(context, volume_id)
+    volume.host = host
+    volume.scheduled_at = timeutils.utcnow()
+    volume.save()
+
+    # A volume object is expected to be returned, as it is used by
+    # filter_scheduler.
+    return volume
 
 
 def group_update_db(context, group, host):

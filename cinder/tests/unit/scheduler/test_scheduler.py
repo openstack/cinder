@@ -28,6 +28,7 @@ from cinder.scheduler import filter_scheduler
 from cinder.scheduler import manager
 from cinder import test
 from cinder.tests.unit import fake_consistencygroup
+from cinder.tests.unit import fake_volume
 from cinder.tests.unit import utils as tests_utils
 
 CONF = cfg.CONF
@@ -100,15 +101,16 @@ class SchedulerManagerTestCase(test.TestCase):
         # Test NoValidHost exception behavior for create_volume.
         # Puts the volume in 'error' state and eats the exception.
         _mock_sched_create.side_effect = exception.NoValidHost(reason="")
-        fake_volume_id = 1
+        volume = fake_volume.fake_volume_obj(self.context)
         topic = 'fake_topic'
-        request_spec = {'volume_id': fake_volume_id}
+        request_spec = {'volume_id': volume.id}
 
-        self.manager.create_volume(self.context, topic, fake_volume_id,
+        self.manager.create_volume(self.context, topic, volume.id,
                                    request_spec=request_spec,
-                                   filter_properties={})
+                                   filter_properties={},
+                                   volume=volume)
         _mock_volume_update.assert_called_once_with(self.context,
-                                                    fake_volume_id,
+                                                    volume.id,
                                                     {'status': 'error'})
         _mock_sched_create.assert_called_once_with(self.context, request_spec,
                                                    {})
@@ -116,14 +118,15 @@ class SchedulerManagerTestCase(test.TestCase):
     @mock.patch('cinder.scheduler.driver.Scheduler.schedule_create_volume')
     @mock.patch('eventlet.sleep')
     def test_create_volume_no_delay(self, _mock_sleep, _mock_sched_create):
-        fake_volume_id = 1
+        volume = fake_volume.fake_volume_obj(self.context)
         topic = 'fake_topic'
 
-        request_spec = {'volume_id': fake_volume_id}
+        request_spec = {'volume_id': volume.id}
 
-        self.manager.create_volume(self.context, topic, fake_volume_id,
+        self.manager.create_volume(self.context, topic, volume.id,
                                    request_spec=request_spec,
-                                   filter_properties={})
+                                   filter_properties={},
+                                   volume=volume)
         _mock_sched_create.assert_called_once_with(self.context, request_spec,
                                                    {})
         self.assertFalse(_mock_sleep.called)
@@ -135,16 +138,17 @@ class SchedulerManagerTestCase(test.TestCase):
                                                          _mock_is_ready,
                                                          _mock_sched_create):
         self.manager._startup_delay = True
-        fake_volume_id = 1
+        volume = fake_volume.fake_volume_obj(self.context)
         topic = 'fake_topic'
 
-        request_spec = {'volume_id': fake_volume_id}
+        request_spec = {'volume_id': volume.id}
 
         _mock_is_ready.side_effect = [False, False, True]
 
-        self.manager.create_volume(self.context, topic, fake_volume_id,
+        self.manager.create_volume(self.context, topic, volume.id,
                                    request_spec=request_spec,
-                                   filter_properties={})
+                                   filter_properties={},
+                                   volume=volume)
         _mock_sched_create.assert_called_once_with(self.context, request_spec,
                                                    {})
         calls = [mock.call(1)] * 2
@@ -158,16 +162,17 @@ class SchedulerManagerTestCase(test.TestCase):
                                                     _mock_is_ready,
                                                     _mock_sched_create):
         self.manager._startup_delay = True
-        fake_volume_id = 1
+        volume = fake_volume.fake_volume_obj(self.context)
         topic = 'fake_topic'
 
-        request_spec = {'volume_id': fake_volume_id}
+        request_spec = {'volume_id': volume.id}
 
         _mock_is_ready.return_value = True
 
-        self.manager.create_volume(self.context, topic, fake_volume_id,
+        self.manager.create_volume(self.context, topic, volume.id,
                                    request_spec=request_spec,
-                                   filter_properties={})
+                                   filter_properties={},
+                                   volume=volume)
         _mock_sched_create.assert_called_once_with(self.context, request_spec,
                                                    {})
         self.assertFalse(_mock_sleep.called)
@@ -346,10 +351,13 @@ class SchedulerDriverModuleTestCase(test.TestCase):
         self.context = context.RequestContext('fake_user', 'fake_project')
 
     @mock.patch('cinder.db.volume_update')
-    @mock.patch('oslo_utils.timeutils.utcnow')
-    def test_volume_host_update_db(self, _mock_utcnow, _mock_vol_update):
-        _mock_utcnow.return_value = 'fake-now'
-        driver.volume_update_db(self.context, 31337, 'fake_host')
-        _mock_vol_update.assert_called_once_with(self.context, 31337,
-                                                 {'host': 'fake_host',
-                                                  'scheduled_at': 'fake-now'})
+    @mock.patch('cinder.objects.volume.Volume.get_by_id')
+    def test_volume_host_update_db(self, _mock_volume_get, _mock_vol_update):
+        volume = fake_volume.fake_volume_obj(self.context)
+        _mock_volume_get.return_value = volume
+
+        driver.volume_update_db(self.context, volume.id, 'fake_host')
+        scheduled_at = volume.scheduled_at.replace(tzinfo=None)
+        _mock_vol_update.assert_called_once_with(
+            self.context, volume.id, {'host': 'fake_host',
+                                      'scheduled_at': scheduled_at})

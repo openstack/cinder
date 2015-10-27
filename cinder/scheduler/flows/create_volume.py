@@ -17,7 +17,7 @@ from taskflow.patterns import linear_flow
 
 from cinder import exception
 from cinder import flow_utils
-from cinder.i18n import _, _LE
+from cinder.i18n import _LE
 from cinder import rpc
 from cinder import utils
 from cinder.volume.flows import common
@@ -40,39 +40,33 @@ class ExtractSchedulerSpecTask(flow_utils.CinderTask):
                                                        **kwargs)
         self.db_api = db_api
 
-    def _populate_request_spec(self, context, volume_id, snapshot_id,
+    def _populate_request_spec(self, context, volume, snapshot_id,
                                image_id):
-        # Create the full request spec using the volume_id.
+        # Create the full request spec using the volume object.
         #
-        # NOTE(harlowja): this will fetch the volume from the database, if
-        # the volume has been deleted before we got here then this should fail.
-        #
-        # In the future we might want to have a lock on the volume_id so that
-        # the volume can not be deleted while its still being created?
-        if not volume_id:
-            raise exception.InvalidInput(
-                reason=_("No volume_id provided to populate a "
-                         "request_spec from"))
-        volume_ref = self.db_api.volume_get(context, volume_id)
-        volume_type_id = volume_ref.get('volume_type_id')
-        vol_type = self.db_api.volume_type_get(context, volume_type_id)
+        # NOTE(dulek): At this point, a volume can be deleted before it gets
+        # scheduled.  If a delete API call is made, the volume gets instantly
+        # delete and scheduling will fail when it tries to update the DB entry
+        # (with the host) in ScheduleCreateVolumeTask below.
+        volume_type_id = volume.volume_type_id
+        vol_type = volume.volume_type
         return {
-            'volume_id': volume_id,
+            'volume_id': volume.id,
             'snapshot_id': snapshot_id,
             'image_id': image_id,
             'volume_properties': {
-                'size': utils.as_int(volume_ref.get('size'), quiet=False),
-                'availability_zone': volume_ref.get('availability_zone'),
+                'size': utils.as_int(volume.size, quiet=False),
+                'availability_zone': volume.availability_zone,
                 'volume_type_id': volume_type_id,
             },
             'volume_type': list(dict(vol_type).items()),
         }
 
-    def execute(self, context, request_spec, volume_id, snapshot_id,
+    def execute(self, context, request_spec, volume, snapshot_id,
                 image_id):
         # For RPC version < 1.2 backward compatibility
         if request_spec is None:
-            request_spec = self._populate_request_spec(context, volume_id,
+            request_spec = self._populate_request_spec(context, volume.id,
                                                        snapshot_id, image_id)
         return {
             'request_spec': request_spec,
@@ -143,7 +137,7 @@ class ScheduleCreateVolumeTask(flow_utils.CinderTask):
 
 def get_flow(context, db_api, driver_api, request_spec=None,
              filter_properties=None,
-             volume_id=None, snapshot_id=None, image_id=None):
+             volume=None, snapshot_id=None, image_id=None):
 
     """Constructs and returns the scheduler entrypoint flow.
 
@@ -158,7 +152,7 @@ def get_flow(context, db_api, driver_api, request_spec=None,
         'context': context,
         'raw_request_spec': request_spec,
         'filter_properties': filter_properties,
-        'volume_id': volume_id,
+        'volume': volume,
         'snapshot_id': snapshot_id,
         'image_id': image_id,
     }

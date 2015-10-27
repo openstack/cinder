@@ -107,7 +107,8 @@ def check_policy(context, action, target_obj=None):
 
     if isinstance(target_obj, objects_base.CinderObject):
         # Turn object into dict so target.update can work
-        target.update(target_obj.obj_to_primitive() or {})
+        target.update(
+            target_obj.obj_to_primitive()['versioned_object.data'] or {})
     else:
         target.update(target_obj or {})
 
@@ -310,7 +311,7 @@ class API(base.Base):
             'snapshot': snapshot,
             'image_id': image_id,
             'raw_volume_type': volume_type,
-            'metadata': metadata,
+            'metadata': metadata or {},
             'raw_availability_zone': availability_zone,
             'source_volume': source_volume,
             'scheduler_hints': scheduler_hints,
