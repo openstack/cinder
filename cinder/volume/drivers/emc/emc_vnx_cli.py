@@ -40,7 +40,6 @@ from taskflow.types import failure
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder import objects
 from cinder import utils
 from cinder.volume import configuration as config
 from cinder.volume.drivers.san import san
@@ -3043,12 +3042,12 @@ class EMCVnxCliBase(object):
 
         return model_update
 
-    def delete_consistencygroup(self, driver, context, group):
+    def delete_consistencygroup(self, context, group, volumes):
         """Deletes a consistency group."""
         cg_name = group['id']
-        volumes = driver.db.volume_get_all_by_group(context, group['id'])
 
         model_update = {}
+        volumes_model_update = []
         model_update['status'] = group['status']
         LOG.info(_LI('Start to delete consistency group: %(cg_name)s'),
                  {'cg_name': cg_name})
@@ -3061,12 +3060,13 @@ class EMCVnxCliBase(object):
         for volume_ref in volumes:
             try:
                 self._client.delete_lun(volume_ref['name'])
-                volume_ref['status'] = 'deleted'
+                volumes_model_update.append(
+                    {'id': volume_ref['id'], 'status': 'deleted'})
             except Exception:
-                volume_ref['status'] = 'error_deleting'
-                model_update['status'] = 'error_deleting'
+                volumes_model_update.append(
+                    {'id': volume_ref['id'], 'status': 'error_deleting'})
 
-        return model_update, volumes
+        return model_update, volumes_model_update
 
     def update_consistencygroup(self, context,
                                 group,
@@ -3103,13 +3103,12 @@ class EMCVnxCliBase(object):
                                                           ids_later)
         return model_update, None, None
 
-    def create_cgsnapshot(self, driver, context, cgsnapshot):
+    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Creates a cgsnapshot (snap group)."""
         cgsnapshot_id = cgsnapshot['id']
-        snapshots = objects.SnapshotList().get_all_for_cgsnapshot(
-            context, cgsnapshot_id)
 
         model_update = {}
+        snapshots_model_update = []
         LOG.info(_LI('Start to create cgsnapshot for consistency group'
                      ': %(group_name)s'),
                  {'group_name': cgsnapshot['consistencygroup_id']})
@@ -3118,7 +3117,8 @@ class EMCVnxCliBase(object):
             self._client.create_cgsnapshot(cgsnapshot['consistencygroup_id'],
                                            cgsnapshot['id'])
             for snapshot in snapshots:
-                snapshot['status'] = 'available'
+                snapshots_model_update.append(
+                    {'id': snapshot['id'], 'status': 'available'})
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE('Create cg snapshot %s failed.'),
@@ -3126,15 +3126,14 @@ class EMCVnxCliBase(object):
 
         model_update['status'] = 'available'
 
-        return model_update, snapshots
+        return model_update, snapshots_model_update
 
-    def delete_cgsnapshot(self, driver, context, cgsnapshot):
+    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Deletes a cgsnapshot (snap group)."""
         cgsnapshot_id = cgsnapshot['id']
-        snapshots = objects.SnapshotList().get_all_for_cgsnapshot(
-            context, cgsnapshot_id)
 
         model_update = {}
+        snapshots_model_update = []
         model_update['status'] = cgsnapshot['status']
         LOG.info(_LI('Delete cgsnapshot %(snap_name)s for consistency group: '
                      '%(group_name)s'), {'snap_name': cgsnapshot['id'],
@@ -3143,13 +3142,14 @@ class EMCVnxCliBase(object):
         try:
             self._client.delete_cgsnapshot(cgsnapshot['id'])
             for snapshot in snapshots:
-                snapshot['status'] = 'deleted'
+                snapshots_model_update.append(
+                    {'id': snapshot['id'], 'status': 'deleted'})
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE('Delete cgsnapshot %s failed.'),
                           cgsnapshot_id)
 
-        return model_update, snapshots
+        return model_update, snapshots_model_update
 
     def get_lun_id(self, volume):
         lun_id = None

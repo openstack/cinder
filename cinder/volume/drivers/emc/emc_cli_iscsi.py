@@ -212,16 +212,17 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
     def delete_consistencygroup(self, context, group, volumes):
         """Deletes a consistency group."""
         return self.cli.delete_consistencygroup(
-            self, context, group)
+            context, group, volumes)
 
     def create_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Creates a cgsnapshot."""
         return self.cli.create_cgsnapshot(
-            self, context, cgsnapshot)
+            context, cgsnapshot, snapshots)
 
     def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Deletes a cgsnapshot."""
-        return self.cli.delete_cgsnapshot(self, context, cgsnapshot)
+        return self.cli.delete_cgsnapshot(
+            context, cgsnapshot, snapshots)
 
     def get_pool(self, volume):
         """Returns the pool name of a volume."""

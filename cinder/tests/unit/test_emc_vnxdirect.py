@@ -3868,12 +3868,9 @@ Time Remaining:  0 second(s)
                     self.testData.LUN_DELETE_CMD('vol1')]
         results = [SUCCEED, SUCCEED]
         fake_cli = self.driverSetup(commands, results)
-        self.driver.db = mock.MagicMock()
-        self.driver.db.volume_get_all_by_group.return_value =\
-            self.testData.CONSISTENCY_GROUP_VOLUMES()
-        self.driver.delete_consistencygroup(None,
-                                            self.testData.test_cg,
-                                            [])
+        self.driver.delete_consistencygroup(
+            None, self.testData.test_cg,
+            self.testData.CONSISTENCY_GROUP_VOLUMES())
         expect_cmd = [
             mock.call(
                 *self.testData.DELETE_CONSISTENCYGROUP_CMD(
@@ -3882,9 +3879,7 @@ Time Remaining:  0 second(s)
             mock.call(*self.testData.LUN_DELETE_CMD('vol1'))]
         fake_cli.assert_has_calls(expect_cmd)
 
-    @mock.patch(
-        'cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
-    def test_create_cgsnapshot(self, get_all_for_cgsnapshot):
+    def test_create_cgsnapshot(self):
         cgsnapshot = self.testData.test_cgsnapshot['id']
         cg_name = self.testData.test_cgsnapshot['consistencygroup_id']
         commands = [self.testData.CREATE_CG_SNAPSHOT(cg_name, cgsnapshot)]
@@ -3893,17 +3888,15 @@ Time Remaining:  0 second(s)
         snapshot_obj = fake_snapshot.fake_snapshot_obj(
             self.testData.SNAPS_IN_SNAP_GROUP())
         snapshot_obj.consistencygroup_id = cg_name
-        get_all_for_cgsnapshot.return_value = [snapshot_obj]
-        self.driver.create_cgsnapshot(None, self.testData.test_cgsnapshot, [])
+        self.driver.create_cgsnapshot(None, self.testData.test_cgsnapshot,
+                                      [snapshot_obj])
         expect_cmd = [
             mock.call(
                 *self.testData.CREATE_CG_SNAPSHOT(
                     cg_name, cgsnapshot))]
         fake_cli.assert_has_calls(expect_cmd)
 
-    @mock.patch(
-        'cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
-    def test_delete_cgsnapshot(self, get_all_for_cgsnapshot):
+    def test_delete_cgsnapshot(self):
         snap_name = self.testData.test_cgsnapshot['id']
         commands = [self.testData.DELETE_CG_SNAPSHOT(snap_name)]
         results = [SUCCEED]
@@ -3912,10 +3905,9 @@ Time Remaining:  0 second(s)
             self.testData.SNAPS_IN_SNAP_GROUP())
         cg_name = self.testData.test_cgsnapshot['consistencygroup_id']
         snapshot_obj.consistencygroup_id = cg_name
-        get_all_for_cgsnapshot.return_value = [snapshot_obj]
         self.driver.delete_cgsnapshot(None,
                                       self.testData.test_cgsnapshot,
-                                      [])
+                                      [snapshot_obj])
         expect_cmd = [
             mock.call(
                 *self.testData.DELETE_CG_SNAPSHOT(
