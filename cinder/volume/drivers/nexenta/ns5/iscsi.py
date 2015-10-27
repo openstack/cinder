@@ -465,10 +465,11 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             stats['bytesAvailable'] + stats['bytesUsed'])
         free_amount = utils.str2gib_size(stats['bytesAvailable'])
 
-        location_info = '%(driver)s:%(host)s:%(volume)s' % {
+        location_info = '%(driver)s:%(host)s:%(pool)s/%(group)s' % {
             'driver': self.__class__.__name__,
             'host': self.nef_host,
-            'volume': self.volume
+            'pool': self.storage_pool,
+            'group': self.dataset_group,
         }
         reserve = 100 - self.configuration.nexenta_dataset_capacitycheck
         self._stats = {
