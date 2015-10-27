@@ -108,6 +108,12 @@ NEXENTA_VOLUME_OPTS = [
 ]
 
 NEXENTA_DATASET_OPTS = [
+    cfg.StrOpt('nexenta_pool',
+               default='cinder',
+               help='SA Pool'),
+    cfg.StrOpt('nexenta_dataset_group',
+               default='iscsi',
+               help='SA dataset group that holds all volumes'),
     cfg.StrOpt('nexenta_dataset_compression',
                default='on',
                choices=['on', 'off', 'gzip', 'gzip-1', 'gzip-2', 'gzip-3',

@@ -13,11 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """
-:mod:`ns4.jsonrpc` -- NexentStor 5 JSON RPC client
+:mod:`nexentaedge.jsonrpc` -- NexentaEdge-specific JSON RPC client
 =====================================================================
-.. automodule:: ns5.jsonrpc
-.. moduleauthor:: Alexey Khodos <alexey.khodos@nexenta.com>
-.. moduleauthor:: Mikhail Khodos <mikhail.khodos@nexenta.com>
+.. automodule:: nexentaedge.jsonrpc
+.. moduleauthor:: Zohar Mamedov <zohar.mamedov@nexenta.com>
+.. moduleauthor:: Kyle Schochenmaier <kyle.schochenmaier@nexenta.com>
 """
 
 import json
@@ -25,31 +25,12 @@ import requests
 import socket
 
 from oslo_log import log as logging
+
 from cinder.i18n import _
+from cinder.utils import retry
 
 LOG = logging.getLogger(__name__)
 socket.setdefaulttimeout(100)
-
-
-def retry(exc_tuple, tries=5, delay=1, backoff=2):
-    def retry_dec(f):
-        @wraps(f)
-        def func_retry(*args, **kwargs):
-            _tries, _delay = tries, delay
-            while _tries > 1:
-                try:
-                    return f(*args, **kwargs)
-                except exc_tuple:
-                    time.sleep(_delay)
-                    _tries -= 1
-                    _delay *= backoff
-                    LOG.debug('Retrying %s, (%s attempts remaining)...',
-                              args, _tries)
-            msg = (_LE('Retry count exceeded for command: %s'), args)
-            LOG.error(msg)
-            raise NexentaJSONException(msg)
-        return func_retry
-    return retry_dec
 
 
 class NexentaEdgeJSONProxy(object):
