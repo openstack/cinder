@@ -33,11 +33,9 @@ nfsbackup_service_opts = [
                default='$state_path/backup_mount',
                help='Base dir containing mount point for NFS share.'),
     cfg.StrOpt('backup_share',
-               default=None,
                help='NFS share in hostname:path, ipv4addr:path, '
                     'or "[ipv6addr]:path" format.'),
     cfg.StrOpt('backup_mount_options',
-               default=None,
                help=('Mount options passed to the NFS client. See NFS '
                      'man page for details.')),
 ]

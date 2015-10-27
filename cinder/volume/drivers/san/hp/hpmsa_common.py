@@ -35,7 +35,6 @@ common_opts = [
                 default=False,
                 help="Whether to verify HPMSA array SSL certificate."),
     cfg.StrOpt('hpmsa_verify_certificate_path',
-               default=None,
                help="HPMSA array SSL certificate path."),
 
 ]

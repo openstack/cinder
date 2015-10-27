@@ -25,23 +25,18 @@ FC_VOLUME_OPTS = [
 COMMON_VOLUME_OPTS = [
     cfg.StrOpt(
         'hpxp_storage_cli',
-        default=None,
         help='Type of storage command line interface'),
     cfg.StrOpt(
         'hpxp_storage_id',
-        default=None,
         help='ID of storage system'),
     cfg.StrOpt(
         'hpxp_pool',
-        default=None,
         help='Pool of storage system'),
     cfg.StrOpt(
         'hpxp_thin_pool',
-        default=None,
         help='Thin pool of storage system'),
     cfg.StrOpt(
         'hpxp_ldev_range',
-        default=None,
         help='Logical device range of storage system'),
     cfg.StrOpt(
         'hpxp_default_copy_method',
@@ -63,11 +58,9 @@ COMMON_VOLUME_OPTS = [
         help='Interval to check copy asynchronously'),
     cfg.ListOpt(
         'hpxp_target_ports',
-        default=None,
         help='Target port names for host group or iSCSI target'),
     cfg.ListOpt(
         'hpxp_compute_target_ports',
-        default=None,
         help=(
             'Target port names of compute node '
             'for host group or iSCSI target')),
@@ -84,7 +77,6 @@ HORCM_VOLUME_OPTS = [
         help='Instance numbers for HORCM'),
     cfg.StrOpt(
         'hpxp_horcm_user',
-        default=None,
         help='Username of storage system for HORCM'),
     cfg.BoolOpt(
         'hpxp_horcm_add_conf',

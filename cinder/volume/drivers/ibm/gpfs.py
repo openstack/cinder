@@ -46,15 +46,12 @@ LOG = logging.getLogger(__name__)
 
 gpfs_opts = [
     cfg.StrOpt('gpfs_mount_point_base',
-               default=None,
                help='Specifies the path of the GPFS directory where Block '
                     'Storage volume and snapshot files are stored.'),
     cfg.StrOpt('gpfs_images_dir',
-               default=None,
                help='Specifies the path of the Image service repository in '
                     'GPFS.  Leave undefined if not storing images in GPFS.'),
     cfg.StrOpt('gpfs_images_share_mode',
-               default=None,
                choices=['copy', 'copy_on_write', None],
                help='Specifies the type of image copy to be used.  Set this '
                     'when the Image service repository also uses GPFS so '

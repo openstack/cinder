@@ -61,10 +61,8 @@ LOG = logging.getLogger(__name__)
 
 swiftbackup_service_opts = [
     cfg.StrOpt('backup_swift_url',
-               default=None,
                help='The URL of the Swift endpoint'),
     cfg.StrOpt('backup_swift_auth_url',
-               default=None,
                help='The URL of the Keystone endpoint'),
     cfg.StrOpt('swift_catalog_info',
                default='object-store:swift:publicURL',
@@ -86,14 +84,11 @@ swiftbackup_service_opts = [
                help='Swift authentication version. Specify "1" for auth 1.0'
                     ', or "2" for auth 2.0'),
     cfg.StrOpt('backup_swift_tenant',
-               default=None,
                help='Swift tenant/account name. Required when connecting'
                     ' to an auth 2.0 system'),
     cfg.StrOpt('backup_swift_user',
-               default=None,
                help='Swift user name'),
     cfg.StrOpt('backup_swift_key',
-               default=None,
                help='Swift key for authentication'),
     cfg.StrOpt('backup_swift_container',
                default='volumebackups',
@@ -119,7 +114,6 @@ swiftbackup_service_opts = [
                      'up the volume to the Swift backend storage. The '
                      'default value is True to enable the timer.'),
     cfg.StrOpt('backup_swift_ca_cert_file',
-               default=None,
                help='Location of the CA certificate file to use for swift '
                     'client requests.'),
     cfg.BoolOpt('backup_swift_auth_insecure',

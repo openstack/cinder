@@ -43,7 +43,6 @@ huawei_opts = [
                default='/etc/cinder/cinder_huawei_conf.xml',
                help='The configuration file for the Cinder Huawei driver.'),
     cfg.StrOpt('hypermetro_devices',
-               default=None,
                help='The remote device hypermetro will use.'),
 ]
 

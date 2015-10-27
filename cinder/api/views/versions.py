@@ -20,7 +20,7 @@ from oslo_config import cfg
 
 
 versions_opts = [
-    cfg.StrOpt('public_endpoint', default=None,
+    cfg.StrOpt('public_endpoint',
                help="Public url to use for versions endpoint. The default "
                     "is None, which will use the request's host_url "
                     "attribute to populate the URL base. If Cinder is "

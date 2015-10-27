@@ -67,7 +67,6 @@ volume_opts = [
                help='The maximum number of times to rescan targets'
                     ' to find volume'),
     cfg.StrOpt('volume_backend_name',
-               default=None,
                help='The backend name for a given driver implementation'),
     cfg.BoolOpt('use_multipath_for_image_xfer',
                 default=False,
@@ -86,7 +85,6 @@ volume_opts = [
                default=0,
                help='Size in MiB to wipe at start of old volumes. 0 => all'),
     cfg.StrOpt('volume_clear_ionice',
-               default=None,
                help='The flag to pass to ionice to alter the i/o priority '
                     'of the process used to zero a volume after deletion, '
                     'for example "-c3" for idle only priority.'),
@@ -150,11 +148,9 @@ volume_opts = [
                     'with the value "iser". The supported iSCSI protocol '
                     'values are "iscsi" and "iser".'),
     cfg.StrOpt('driver_client_cert_key',
-               default=None,
                help='The path to the client certificate key for verification, '
                     'if the driver supports it.'),
     cfg.StrOpt('driver_client_cert',
-               default=None,
                help='The path to the client certificate for verification, '
                     'if the driver supports it.'),
     cfg.BoolOpt('driver_use_ssl',
@@ -173,7 +169,6 @@ volume_opts = [
                       'capacity. A ratio lower than 1.0 will be ignored and '
                       'the default value will be used instead.'),
     cfg.StrOpt('scst_target_iqn_name',
-               default=None,
                help='Certain ISCSI targets have predefined target names, '
                     'SCST target driver uses this name.'),
     cfg.StrOpt('scst_target_driver',
@@ -195,16 +190,13 @@ volume_opts = [
                deprecated_opts=deprecated_chap_password_opts,
                secret=True),
     cfg.StrOpt('driver_data_namespace',
-               default=None,
                help='Namespace for driver private data values to be '
                     'saved in.'),
     cfg.StrOpt('filter_function',
-               default=None,
                help='String representation for an equation that will be '
                     'used to filter hosts. Only used when the driver '
                     'filter is set to be used by the Cinder scheduler.'),
     cfg.StrOpt('goodness_function',
-               default=None,
                help='String representation for an equation that will be '
                     'used to determine the goodness of a host. Only used '
                     'when using the goodness weigher is set to be used by '
@@ -214,13 +206,11 @@ volume_opts = [
                 help='If set to True the http client will validate the SSL '
                      'certificate of the backend endpoint.'),
     cfg.ListOpt('trace_flags',
-                default=None,
                 help='List of options that control which trace info '
                      'is written to the DEBUG log level to assist '
                      'developers. Valid values are method and api.'),
     cfg.MultiOpt('replication_device',
                  item_type=types.Dict(),
-                 default=None,
                  help="Multi opt of dictionaries to represent a replication "
                       "target device.  This option may be specified multiple "
                       "times in a single config section to specify multiple "

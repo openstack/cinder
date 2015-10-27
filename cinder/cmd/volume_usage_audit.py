@@ -55,12 +55,10 @@ import cinder.volume.utils
 CONF = cfg.CONF
 script_opts = [
     cfg.StrOpt('start_time',
-               default=None,
                help="If this option is specified then the start time "
                     "specified is used instead of the start time of the "
                     "last completed audit period."),
     cfg.StrOpt('end_time',
-               default=None,
                help="If this option is specified then the end time "
                     "specified is used instead of the end time of the "
                     "last completed audit period."),

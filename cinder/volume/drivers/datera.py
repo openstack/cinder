@@ -35,7 +35,6 @@ LOG = logging.getLogger(__name__)
 
 d_opts = [
     cfg.StrOpt('datera_api_token',
-               default=None,
                help='DEPRECATED: This will be removed in the Liberty release. '
                     'Use san_login and san_password instead. This directly '
                     'sets the Datera API token.'),

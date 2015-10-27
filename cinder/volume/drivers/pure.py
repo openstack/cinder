@@ -46,7 +46,6 @@ LOG = logging.getLogger(__name__)
 
 PURE_OPTS = [
     cfg.StrOpt("pure_api_token",
-               default=None,
                help="REST API authorization token."),
 ]
 

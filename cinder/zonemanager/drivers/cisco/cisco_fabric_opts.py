@@ -39,10 +39,8 @@ cisco_zone_opts = [
                 default=True,
                 help='overridden zoning activation state'),
     cfg.StrOpt('cisco_zone_name_prefix',
-               default=None,
                help='overridden zone name prefix'),
     cfg.StrOpt('cisco_zoning_vsan',
-               default=None,
                help='VSAN of the Fabric'),
 ]
 

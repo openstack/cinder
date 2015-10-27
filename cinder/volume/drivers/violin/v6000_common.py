@@ -52,10 +52,8 @@ VMOS_SUPPORTED_VERSION_PATTERNS = ['V6.3.0.[4-9]', 'V6.3.[1-9].?[0-9]?']
 
 violin_opts = [
     cfg.StrOpt('gateway_mga',
-               default=None,
                help='IP address or hostname of mg-a'),
     cfg.StrOpt('gateway_mgb',
-               default=None,
                help='IP address or hostname of mg-b'),
     cfg.BoolOpt('use_igroups',
                 default=False,

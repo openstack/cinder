@@ -35,11 +35,9 @@ LOG = logging.getLogger(__name__)
 
 volume_opts = [
     cfg.StrOpt('quobyte_volume_url',
-               default=None,
                help=('URL to the Quobyte volume e.g.,'
                      ' quobyte://<DIR host>/<volume name>')),
     cfg.StrOpt('quobyte_client_cfg',
-               default=None,
                help=('Path to a Quobyte Client configuration file.')),
     cfg.BoolOpt('quobyte_sparsed_volumes',
                 default=True,

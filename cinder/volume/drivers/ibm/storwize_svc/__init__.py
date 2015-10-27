@@ -122,7 +122,6 @@ storwize_svc_opts = [
                 default=False,
                 help='Allow tenants to specify QOS on create'),
     cfg.StrOpt('storwize_svc_stretched_cluster_partner',
-               default=None,
                help='If operating in stretched cluster mode, specify the '
                     'name of the pool in which mirrored copies are stored.'
                     'Example: "pool2"'),

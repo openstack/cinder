@@ -64,19 +64,15 @@ EXTRA_CONFIG_VOLUME_ID_KEY = "cinder.volume.id"
 
 vmdk_opts = [
     cfg.StrOpt('vmware_host_ip',
-               default=None,
                help='IP address for connecting to VMware vCenter server.'),
     cfg.StrOpt('vmware_host_username',
-               default=None,
                help='Username for authenticating with VMware vCenter '
                     'server.'),
     cfg.StrOpt('vmware_host_password',
-               default=None,
                help='Password for authenticating with VMware vCenter '
                     'server.',
                secret=True),
     cfg.StrOpt('vmware_wsdl_location',
-               default=None,
                help='Optional VIM service WSDL Location '
                     'e.g http://<server>/vimService.wsdl. Optional over-ride '
                     'to default location for bug work-arounds.'),
@@ -115,7 +111,6 @@ vmdk_opts = [
                help='Directory where virtual disks are stored during volume '
                     'backup and restore.'),
     cfg.StrOpt('vmware_ca_file',
-               default=None,
                help='CA bundle file to use in verifying the vCenter server '
                     'certificate.'),
     cfg.BoolOpt('vmware_insecure',
@@ -125,7 +120,6 @@ vmdk_opts = [
                      'used for verification. This option is ignored if '
                      '"vmware_ca_file" is set.'),
     cfg.MultiStrOpt('vmware_cluster_name',
-                    default=None,
                     help='Name of a vCenter compute cluster where volumes '
                          'should be created.'),
 ]

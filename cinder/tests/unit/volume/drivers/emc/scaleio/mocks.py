@@ -29,7 +29,7 @@ class ScaleIODriver(scaleio.ScaleIODriver):
     def __init__(self, *args, **kwargs):
         configuration = conf.Configuration(
             [
-                cfg.StrOpt('fake', default=None),
+                cfg.StrOpt('fake'),
             ],
             None
         )
