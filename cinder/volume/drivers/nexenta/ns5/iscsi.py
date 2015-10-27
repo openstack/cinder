@@ -184,7 +184,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def _get_targetgroup_name(self, volume):
         target_name = self._get_target_name(volume)
-        return self.targetgroups[volume['name']]
+        return self.targetgroups[target_name]
 
     @staticmethod
     def _get_clone_snapshot_name(volume):
@@ -369,7 +369,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
     def _lu_exists(self, volume):
         """Check if LU exists on appliance.
 
-        :param volume_name: zfs volume name
+        :param volume: cinder volume
         :return: True if LU exists, else False
         """
         try:
@@ -381,7 +381,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
     def _get_lun_id(self, volume):
         """Get lun id for zfs volume.
 
-        :param volume_name: zfs volume name
+        :param volume: cinder volume
         :raises: LookupError if zfs volume does not exist or not mapped to LU
         :return: LUN
         """
@@ -392,7 +392,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         data = self.nef(url).get('data')
         if not data:
             raise LookupError(_("LU does not exist for volume: %s"),
-                              volume_name)
+                              volume['name'])
         else:
             return data[0]['guid']
 
@@ -419,7 +419,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         targetgroup_name = self._get_targetgroup_name(volume)
         entry = {}
 
-        if not self._lu_exists(volume['name']):
+        if not self._lu_exists(volume):
             url = 'san/targetgroups/%s/luns' % targetgroup_name
             data = {'volume': volume_path}
             self.nef(url, data)
