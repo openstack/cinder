@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev74\n"
+"Project-Id-Version: cinder 8.0.0.dev78\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-10-25 06:05+0000\n"
+"POT-Creation-Date: 2015-10-28 06:06+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -2042,5 +2042,10 @@ msgstr ""
 
 #: cinder/zonemanager/utils.py:104
 msgid "Driver didn't return connection info from terminate_connection call."
+msgstr ""
+
+#: cinder/zonemanager/drivers/cisco/cisco_fc_zone_client_cli.py:378
+#, python-format
+msgid "Error running SSH command: %s"
 msgstr ""
 
