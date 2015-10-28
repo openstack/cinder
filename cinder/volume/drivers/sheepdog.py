@@ -529,8 +529,13 @@ class SheepdogDriver(driver.VolumeDriver):
             # see volume/drivers/manager.py:_create_volume
             self.client.delete(volume.name)
             # convert and store into sheepdog
-            image_utils.convert_image(tmp, 'sheepdog:%s' % volume['name'],
-                                      'raw')
+            image_utils.convert_image(
+                tmp,
+                'sheepdog:%(addr)s:%(port)d:%(name)s' % {
+                    'addr': CONF.sheepdog_store_address,
+                    'port': CONF.sheepdog_store_port,
+                    'name': volume['name']},
+                'raw')
             self.client.resize(volume.name, volume.size)
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
