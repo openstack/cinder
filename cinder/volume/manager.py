@@ -122,7 +122,11 @@ MAPPING = {
     'cinder.volume.drivers.hds.nfs.HDSNFSDriver':
     'cinder.volume.drivers.hitachi.hnas_nfs.HDSNFSDriver',
     'cinder.volume.drivers.hds.iscsi.HDSISCSIDriver':
-    'cinder.volume.drivers.hitachi.hnas_iscsi.HDSISCSIDriver'}
+    'cinder.volume.drivers.hitachi.hnas_iscsi.HDSISCSIDriver',
+    'cinder.volume.drivers.san.hp.hp_3par_fc.HP3PARFCDriver':
+    'cinder.volume.drivers.hpe.hpe_3par_fc.HPE3PARFCDriver',
+    'cinder.volume.drivers.san.hp.hp_3par_iscsi.HP3PARISCSIDriver':
+    'cinder.volume.drivers.hpe.hpe_3par_iscsi.HPE3PARISCSIDriver', }
 
 
 def locked_volume_operation(f):

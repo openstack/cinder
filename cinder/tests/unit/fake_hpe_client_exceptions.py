@@ -1,4 +1,4 @@
-# (c) Copyright 2014 Hewlett-Packard Development Company, L.P.
+# (c) Copyright 2014-2015 Hewlett Packard Enterprise Development LP
 #    All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 #
-"""Fake HP client exceptions to use when mocking HP clients."""
+"""Fake HPE client exceptions to use when mocking HPE clients."""
 
 
 class UnsupportedVersion(Exception):

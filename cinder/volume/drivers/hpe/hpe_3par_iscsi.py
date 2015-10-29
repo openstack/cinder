@@ -1,4 +1,4 @@
-#    (c) Copyright 2012-2014 Hewlett-Packard Development Company, L.P.
+#    (c) Copyright 2012-2015 Hewlett Packard Enterprise Development LP
 #    All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -14,26 +14,26 @@
 #    under the License.
 #
 """
-Volume driver for HP 3PAR Storage array.
+Volume driver for HPE 3PAR Storage array.
 This driver requires 3.1.3 firmware on the 3PAR array, using
-the 3.x version of the hp3parclient.
+the 4.x version of the hpe3parclient.
 
-You will need to install the python hp3parclient.
-sudo pip install --upgrade "hp3parclient>=3.1"
+You will need to install the python hpe3parclient.
+sudo pip install --upgrade "hpe3parclient>=4.0"
 
 Set the following in the cinder.conf file to enable the
 3PAR iSCSI Driver along with the required flags:
 
-volume_driver=cinder.volume.drivers.san.hp.hp_3par_iscsi.HP3PARISCSIDriver
+volume_driver=cinder.volume.drivers.hpe.hpe_3par_iscsi.HPE3PARISCSIDriver
 """
 
 import re
 import sys
 
 try:
-    from hp3parclient import exceptions as hpexceptions
+    from hpe3parclient import exceptions as hpeexceptions
 except ImportError:
-    hpexceptions = None
+    hpeexceptions = None
 
 from oslo_log import log as logging
 import six
@@ -41,7 +41,7 @@ import six
 from cinder import exception
 from cinder.i18n import _, _LE, _LW
 from cinder.volume import driver
-from cinder.volume.drivers.san.hp import hp_3par_common as hpcommon
+from cinder.volume.drivers.hpe import hpe_3par_common as hpecommon
 from cinder.volume.drivers.san import san
 from cinder.volume import utils as volume_utils
 
@@ -51,13 +51,13 @@ CHAP_USER_KEY = "HPQ-cinder-CHAP-name"
 CHAP_PASS_KEY = "HPQ-cinder-CHAP-secret"
 
 
-class HP3PARISCSIDriver(driver.TransferVD,
-                        driver.ManageableVD,
-                        driver.ExtendVD,
-                        driver.SnapshotVD,
-                        driver.MigrateVD,
-                        driver.ConsistencyGroupVD,
-                        driver.BaseVD):
+class HPE3PARISCSIDriver(driver.TransferVD,
+                         driver.ManageableVD,
+                         driver.ExtendVD,
+                         driver.SnapshotVD,
+                         driver.MigrateVD,
+                         driver.ConsistencyGroupVD,
+                         driver.BaseVD):
     """OpenStack iSCSI driver to enable 3PAR storage array.
 
     Version history:
@@ -99,18 +99,19 @@ class HP3PARISCSIDriver(driver.TransferVD,
         2.0.21 - Adds consistency group support
         2.0.22 - Update driver to use ABC metaclasses
         2.0.23 - Added update_migrated_volume. bug # 1492023
+        3.0.0 - Rebranded HP to HPE.
 
     """
 
-    VERSION = "2.0.23"
+    VERSION = "3.0.0"
 
     def __init__(self, *args, **kwargs):
-        super(HP3PARISCSIDriver, self).__init__(*args, **kwargs)
-        self.configuration.append_config_values(hpcommon.hp3par_opts)
+        super(HPE3PARISCSIDriver, self).__init__(*args, **kwargs)
+        self.configuration.append_config_values(hpecommon.hpe3par_opts)
         self.configuration.append_config_values(san.san_opts)
 
     def _init_common(self):
-        return hpcommon.HP3PARCommon(self.configuration)
+        return hpecommon.HPE3PARCommon(self.configuration)
 
     def _login(self):
         common = self._init_common()
@@ -123,8 +124,8 @@ class HP3PARISCSIDriver(driver.TransferVD,
 
     def _check_flags(self, common):
         """Sanity check to ensure we have required options set."""
-        required_flags = ['hp3par_api_url', 'hp3par_username',
-                          'hp3par_password', 'san_ip', 'san_login',
+        required_flags = ['hpe3par_api_url', 'hpe3par_username',
+                          'hpe3par_password', 'san_ip', 'san_login',
                           'san_password']
         common.check_flags(self.configuration, required_flags)
 
@@ -164,9 +165,9 @@ class HP3PARISCSIDriver(driver.TransferVD,
         temp_iscsi_ip = {}
 
         # use the 3PAR ip_addr list for iSCSI configuration
-        if len(self.configuration.hp3par_iscsi_ips) > 0:
+        if len(self.configuration.hpe3par_iscsi_ips) > 0:
             # add port values to ip_addr, if necessary
-            for ip_addr in self.configuration.hp3par_iscsi_ips:
+            for ip_addr in self.configuration.hpe3par_iscsi_ips:
                 ip = ip_addr.split(':')
                 if len(ip) == 1:
                     temp_iscsi_ip[ip_addr] = {'ip_port': DEFAULT_ISCSI_PORT}
@@ -207,7 +208,7 @@ class HP3PARISCSIDriver(driver.TransferVD,
         # lets see if there are invalid iSCSI IPs left in the temp dict
         if len(temp_iscsi_ip) > 0:
             LOG.warning(_LW("Found invalid iSCSI IP address(s) in "
-                            "configuration option(s) hp3par_iscsi_ips or "
+                            "configuration option(s) hpe3par_iscsi_ips or "
                             "iscsi_ip_address '%s.'"),
                         (", ".join(temp_iscsi_ip)))
 
@@ -340,7 +341,7 @@ class HP3PARISCSIDriver(driver.TransferVD,
                         target_luns.append(vlun['lun'])
                     else:
                         LOG.warning(_LW("iSCSI IP: '%s' was not found in "
-                                        "hp3par_iscsi_ips list defined in "
+                                        "hpe3par_iscsi_ips list defined in "
                                         "cinder.conf."), iscsi_ip)
 
                 info = {'driver_volume_type': 'iscsi',
@@ -394,7 +395,7 @@ class HP3PARISCSIDriver(driver.TransferVD,
                                  }
                         }
 
-            if self.configuration.hp3par_iscsi_chap_enabled:
+            if self.configuration.hpe3par_iscsi_chap_enabled:
                 info['data']['auth_method'] = 'CHAP'
                 info['data']['auth_username'] = username
                 info['data']['auth_password'] = password
@@ -428,14 +429,14 @@ class HP3PARISCSIDriver(driver.TransferVD,
 
         try:
             common.client.removeVolumeMetaData(vol_name, CHAP_USER_KEY)
-        except hpexceptions.HTTPNotFound:
+        except hpeexceptions.HTTPNotFound:
             pass
         except Exception:
             raise
 
         try:
             common.client.removeVolumeMetaData(vol_name, CHAP_PASS_KEY)
-        except hpexceptions.HTTPNotFound:
+        except hpeexceptions.HTTPNotFound:
             pass
         except Exception:
             raise
@@ -476,7 +477,7 @@ class HP3PARISCSIDriver(driver.TransferVD,
 
     def _set_3par_chaps(self, common, hostname, volume, username, password):
         """Sets a 3PAR host's CHAP credentials."""
-        if not self.configuration.hp3par_iscsi_chap_enabled:
+        if not self.configuration.hpe3par_iscsi_chap_enabled:
             return
 
         mod_request = {'chapOperation': common.client.HOST_EDIT_ADD,
@@ -496,7 +497,7 @@ class HP3PARISCSIDriver(driver.TransferVD,
         domain = common.get_domain(cpg)
 
         # Get the CHAP secret if CHAP is enabled
-        if self.configuration.hp3par_iscsi_chap_enabled:
+        if self.configuration.hpe3par_iscsi_chap_enabled:
             vol_name = common._get_3par_vol_name(volume['id'])
             username = common.client.getVolumeMetaData(
                 vol_name, CHAP_USER_KEY)['value']
@@ -505,7 +506,7 @@ class HP3PARISCSIDriver(driver.TransferVD,
 
         try:
             host = common._get_3par_host(hostname)
-        except hpexceptions.HTTPNotFound:
+        except hpeexceptions.HTTPNotFound:
             # get persona from the volume type extra specs
             persona_id = common.get_persona_type(volume)
             # host doesn't exist, we have to create it
@@ -529,7 +530,7 @@ class HP3PARISCSIDriver(driver.TransferVD,
                     password)
                 host = common._get_3par_host(hostname)
             elif (not host['initiatorChapEnabled'] and
-                    self.configuration.hp3par_iscsi_chap_enabled):
+                    self.configuration.hpe3par_iscsi_chap_enabled):
                 LOG.warning(_LW("Host exists without CHAP credentials set and "
                                 "has iSCSI attachments but CHAP is enabled. "
                                 "Updating host with new CHAP credentials."))
@@ -546,7 +547,7 @@ class HP3PARISCSIDriver(driver.TransferVD,
         """Gets the associated account, generates CHAP info and updates."""
         model_update = {}
 
-        if not self.configuration.hp3par_iscsi_chap_enabled:
+        if not self.configuration.hpe3par_iscsi_chap_enabled:
             model_update['provider_auth'] = None
             return model_update
 
@@ -564,7 +565,7 @@ class HP3PARISCSIDriver(driver.TransferVD,
             if not host_info['initiatorChapEnabled']:
                 LOG.warning(_LW("Host has no CHAP key, but CHAP is enabled."))
 
-        except hpexceptions.HTTPNotFound:
+        except hpeexceptions.HTTPNotFound:
             chap_password = volume_utils.generate_password(16)
             LOG.warning(_LW("No host or VLUNs exist. Generating new "
                             "CHAP key."))
@@ -590,7 +591,7 @@ class HP3PARISCSIDriver(driver.TransferVD,
                             vlun['volumeName'], CHAP_PASS_KEY)['value']
                         chap_exists = True
                         break
-                    except hpexceptions.HTTPNotFound:
+                    except hpeexceptions.HTTPNotFound:
                         LOG.debug("The VLUN %s is missing CHAP credentials "
                                   "but CHAP is enabled. Skipping.",
                                   vlun['remoteName'])
@@ -630,7 +631,7 @@ class HP3PARISCSIDriver(driver.TransferVD,
         try:
             vol_name = common._get_3par_vol_name(volume['id'])
             common.client.getVolume(vol_name)
-        except hpexceptions.HTTPNotFound:
+        except hpeexceptions.HTTPNotFound:
             LOG.error(_LE("Volume %s doesn't exist on array."), vol_name)
         else:
             metadata = common.client.getAllVolumeMetaData(vol_name)
@@ -853,7 +854,7 @@ class HP3PARISCSIDriver(driver.TransferVD,
         common = self._login()
         try:
             return common.get_cpg(volume)
-        except hpexceptions.HTTPNotFound:
+        except hpeexceptions.HTTPNotFound:
             reason = (_("Volume %s doesn't exist on array.") % volume)
             LOG.error(reason)
             raise exception.InvalidVolume(reason)
