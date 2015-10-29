@@ -32,7 +32,7 @@ object_data = {
     'ServiceList': '1.0-d242d3384b68e5a5a534e090ff1d5161',
     'Snapshot': '1.0-a6c33eefeadefb324d79f72f66c54e9a',
     'SnapshotList': '1.0-71661e7180ef6cc51501704a9bea4bf1',
-    'Volume': '1.1-6037de222b09c330b33b419a0c1b10c6',
+    'Volume': '1.2-97c3977846dae6588381e7bd3e6e6558',
     'VolumeAttachment': '1.0-f14a7c03ffc5b93701d496251a5263aa',
     'VolumeAttachmentList': '1.0-307d2b6c8dd55ef854f6386898e9e98e',
     'VolumeList': '1.1-03ba6cb8c546683e64e15c50042cb1a3',

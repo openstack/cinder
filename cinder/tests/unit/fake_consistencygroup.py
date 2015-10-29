@@ -19,9 +19,9 @@ from cinder import objects
 
 def fake_db_consistencygroup(**updates):
     db_values = {
-        'id': 1,
-        'user_id': 2,
-        'project_id': 3,
+        'id': '1',
+        'user_id': '2',
+        'project_id': '3',
         'host': 'FakeHost',
     }
     for name, field in objects.ConsistencyGroup.fields.items():

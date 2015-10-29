@@ -17,15 +17,21 @@ import mock
 from cinder import context
 from cinder import exception
 from cinder import objects
+from cinder.tests.unit import fake_consistencygroup
+from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import objects as test_objects
 
 
 class TestVolume(test_objects.BaseObjectsTestCase):
+    @staticmethod
+    def _compare(test, db, obj):
+        db = {k: v for k, v in db.items()
+              if not k.endswith('metadata') or k.startswith('volume')}
+        test_objects.BaseObjectsTestCase._compare(test, db, obj)
 
-    @mock.patch('cinder.db.volume_glance_metadata_get', return_value={})
     @mock.patch('cinder.db.sqlalchemy.api.volume_get')
-    def test_get_by_id(self, volume_get, volume_glance_metadata_get):
+    def test_get_by_id(self, volume_get):
         db_volume = fake_volume.fake_db_volume()
         volume_get.return_value = db_volume
         volume = objects.Volume.get_by_id(self.context, 1)
@@ -98,6 +104,30 @@ class TestVolume(test_objects.BaseObjectsTestCase):
         admin_metadata_update.assert_called_once_with(
             admin_context, volume.id, {'key1': 'value1'}, True)
 
+    def test_save_with_glance_metadata(self):
+        db_volume = fake_volume.fake_db_volume()
+        volume = objects.Volume._from_db_object(self.context,
+                                                objects.Volume(), db_volume)
+        volume.display_name = 'foobar'
+        volume.glance_metadata = {'key1': 'value1'}
+        self.assertRaises(exception.ObjectActionError, volume.save)
+
+    def test_save_with_consistencygroup(self):
+        db_volume = fake_volume.fake_db_volume()
+        volume = objects.Volume._from_db_object(self.context,
+                                                objects.Volume(), db_volume)
+        volume.display_name = 'foobar'
+        volume.consistencygroup = objects.ConsistencyGroup()
+        self.assertRaises(exception.ObjectActionError, volume.save)
+
+    def test_save_with_snapshots(self):
+        db_volume = fake_volume.fake_db_volume()
+        volume = objects.Volume._from_db_object(self.context,
+                                                objects.Volume(), db_volume)
+        volume.display_name = 'foobar'
+        volume.snapshots = objects.SnapshotList()
+        self.assertRaises(exception.ObjectActionError, volume.save)
+
     @mock.patch('cinder.db.volume_destroy')
     def test_destroy(self, volume_destroy):
         db_volume = fake_volume.fake_db_volume()
@@ -129,12 +159,17 @@ class TestVolume(test_objects.BaseObjectsTestCase):
         metadata_delete.assert_called_once_with(self.context, '1', 'key2')
 
     @mock.patch('cinder.db.volume_metadata_get')
+    @mock.patch('cinder.db.volume_glance_metadata_get')
     @mock.patch('cinder.db.volume_admin_metadata_get')
     @mock.patch('cinder.objects.volume_type.VolumeType.get_by_id')
     @mock.patch('cinder.objects.volume_attachment.VolumeAttachmentList.'
                 'get_all_by_volume_id')
-    def test_obj_load_attr(self, mock_va_get_all_by_vol, mock_vt_get_by_id,
-                           mock_admin_metadata_get, mock_metadata_get):
+    @mock.patch('cinder.objects.consistencygroup.ConsistencyGroup.get_by_id')
+    @mock.patch('cinder.objects.snapshot.SnapshotList.get_all_for_volume')
+    def test_obj_load_attr(self, mock_sl_get_all_for_volume, mock_cg_get_by_id,
+                           mock_va_get_all_by_vol, mock_vt_get_by_id,
+                           mock_admin_metadata_get, mock_glance_metadata_get,
+                           mock_metadata_get):
         volume = objects.Volume._from_db_object(
             self.context, objects.Volume(), fake_volume.fake_db_volume())
 
@@ -144,12 +179,33 @@ class TestVolume(test_objects.BaseObjectsTestCase):
         self.assertEqual(metadata, volume.metadata)
         mock_metadata_get.assert_called_once_with(self.context, volume.id)
 
+        # Test glance_metadata lazy-loaded field
+        glance_metadata = {'foo': 'bar'}
+        mock_glance_metadata_get.return_value = glance_metadata
+        self.assertEqual(glance_metadata, volume.glance_metadata)
+        mock_glance_metadata_get.assert_called_once_with(
+            self.context, volume.id)
+
         # Test volume_type lazy-loaded field
         volume_type = objects.VolumeType(context=self.context, id=5)
         mock_vt_get_by_id.return_value = volume_type
         self.assertEqual(volume_type, volume.volume_type)
         mock_vt_get_by_id.assert_called_once_with(self.context,
                                                   volume.volume_type_id)
+
+        # Test consistencygroup lazy-loaded field
+        consistencygroup = objects.ConsistencyGroup(context=self.context, id=2)
+        mock_cg_get_by_id.return_value = consistencygroup
+        self.assertEqual(consistencygroup, volume.consistencygroup)
+        mock_cg_get_by_id.assert_called_once_with(self.context,
+                                                  volume.consistencygroup_id)
+
+        # Test snapshots lazy-loaded field
+        snapshots = objects.SnapshotList(context=self.context, id=2)
+        mock_sl_get_all_for_volume.return_value = snapshots
+        self.assertEqual(snapshots, volume.snapshots)
+        mock_sl_get_all_for_volume.assert_called_once_with(self.context,
+                                                           volume.id)
 
         # Test volume_attachment lazy-loaded field
         va_objs = [objects.VolumeAttachment(context=self.context, id=i)
@@ -175,11 +231,43 @@ class TestVolume(test_objects.BaseObjectsTestCase):
         self.assertEqual(adm_metadata, volume.admin_metadata)
         mock_admin_metadata_get.assert_called_once_with(adm_context, volume.id)
 
+    def test_from_db_object_with_all_expected_attributes(self):
+        expected_attrs = ['metadata', 'admin_metadata', 'glance_metadata',
+                          'volume_type', 'volume_attachment',
+                          'consistencygroup']
+
+        db_metadata = [{'key': 'foo', 'value': 'bar'}]
+        db_admin_metadata = [{'key': 'admin_foo', 'value': 'admin_bar'}]
+        db_glance_metadata = [{'key': 'glance_foo', 'value': 'glance_bar'}]
+        db_volume_type = fake_volume.fake_db_volume_type()
+        db_volume_attachments = fake_volume.fake_db_volume_attachment()
+        db_consistencygroup = fake_consistencygroup.fake_db_consistencygroup()
+        db_snapshots = fake_snapshot.fake_db_snapshot()
+
+        db_volume = fake_volume.fake_db_volume(
+            volume_metadata=db_metadata,
+            volume_admin_metadata=db_admin_metadata,
+            volume_glance_metadata=db_glance_metadata,
+            volume_type=db_volume_type,
+            volume_attachment=[db_volume_attachments],
+            consistencygroup=db_consistencygroup,
+            snapshots=[db_snapshots],
+        )
+        volume = objects.Volume._from_db_object(self.context, objects.Volume(),
+                                                db_volume, expected_attrs)
+
+        self.assertEqual({'foo': 'bar'}, volume.metadata)
+        self.assertEqual({'admin_foo': 'admin_bar'}, volume.admin_metadata)
+        self.assertEqual({'glance_foo': 'glance_bar'}, volume.glance_metadata)
+        self._compare(self, db_volume_type, volume.volume_type)
+        self._compare(self, db_volume_attachments, volume.volume_attachment)
+        self._compare(self, db_consistencygroup, volume.consistencygroup)
+        self._compare(self, db_snapshots, volume.snapshots)
+
 
 class TestVolumeList(test_objects.BaseObjectsTestCase):
-    @mock.patch('cinder.db.volume_glance_metadata_get', return_value={})
     @mock.patch('cinder.db.volume_get_all')
-    def test_get_all(self, volume_get_all, volume_glance_metadata_get):
+    def test_get_all(self, volume_get_all):
         db_volume = fake_volume.fake_db_volume()
         volume_get_all.return_value = [db_volume]
 

@@ -19,11 +19,11 @@ from cinder.objects import snapshot
 
 def fake_db_snapshot(**updates):
     db_snapshot = {
-        'id': 1,
+        'id': '1',
         'volume_id': 'fake_id',
         'status': "creating",
         'progress': '0%',
-        'volume_size': 1,
+        'volume_size': '1',
         'display_name': 'fake_name',
         'display_description': 'fake_description',
         'metadata': {},
