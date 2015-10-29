@@ -2263,6 +2263,8 @@ def snapshot_get_all_by_project(context, project_id, filters=None, marker=None,
     # No snapshots would match, return empty list
     if not query:
         return []
+
+    query = query.options(joinedload('snapshot_metadata'))
     return query.all()
 
 
@@ -2299,6 +2301,7 @@ def snapshot_get_active_by_window(context, begin, end=None, project_id=None):
     query = query.filter(or_(models.Snapshot.deleted_at == None,  # noqa
                              models.Snapshot.deleted_at > begin))
     query = query.options(joinedload(models.Snapshot.volume))
+    query = query.options(joinedload('snapshot_metadata'))
     if end:
         query = query.filter(models.Snapshot.created_at < end)
     if project_id:
