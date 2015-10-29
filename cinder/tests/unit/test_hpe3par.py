@@ -70,6 +70,14 @@ QUEUE_LENGTH = 'queue_length'
 # Average busy percentage
 AVG_BUSY_PERC = 'avg_busy_perc'
 
+# replication constants
+HPE3PAR_CPG_REMOTE = 'DestOpenStackCPG'
+HPE3PAR_CPG2_REMOTE = 'destfakepool'
+HPE3PAR_CPG_MAP = 'OpenStackCPG:DestOpenStackCPG fakepool:destfakepool'
+SYNC_MODE = 1
+PERIODIC_MODE = 2
+SYNC_PERIOD = 900
+
 
 class Comment(object):
     def __init__(self, expected):
@@ -83,6 +91,7 @@ class HPE3PARBaseDriver(object):
 
     VOLUME_ID = 'd03338a9-9115-48a3-8dfc-35cdfcdc15a7'
     CLONE_ID = 'd03338a9-9115-48a3-8dfc-000000000000'
+    VOLUME_TYPE_ID_REPLICATED = 'be9181f1-4040-46f2-8298-e7532f2bf9db'
     VOLUME_TYPE_ID_DEDUP = 'd03338a9-9115-48a3-8dfc-11111111111'
     VOLUME_TYPE_ID_FLASH_CACHE = 'd03338a9-9115-48a3-8dfc-22222222222'
     VOLUME_NAME = 'volume-' + VOLUME_ID
@@ -91,13 +100,17 @@ class HPE3PARBaseDriver(object):
     SNAPSHOT_NAME = 'snapshot-2f823bdc-e36e-4dc8-bd15-de1c7a28ff31'
     VOLUME_3PAR_NAME = 'osv-0DM4qZEVSKON-DXN-NwVpw'
     SNAPSHOT_3PAR_NAME = 'oss-L4I73ONuTci9Fd4ceij-MQ'
+    RCG_3PAR_NAME = 'rcg-0DM4qZEVSKON-DXN-N'
     CONSIS_GROUP_ID = '6044fedf-c889-4752-900f-2039d247a5df'
     CONSIS_GROUP_NAME = 'vvs-YET.38iJR1KQDyA50kel3w'
     CGSNAPSHOT_ID = 'e91c5ed5-daee-4e84-8724-1c9e31e7a1f2'
     CGSNAPSHOT_BASE_NAME = 'oss-6Rxe1druToSHJByeMeeh8g'
+    CLIENT_ID = "12345"
+    REPLICATION_CLIENT_ID = "54321"
     # fake host on the 3par
     FAKE_HOST = 'fakehost'
     FAKE_CINDER_HOST = 'fakehost@foo#' + HPE3PAR_CPG
+    FAKE_FAILOVER_HOST = 'fakefailover@foo#destfakepool'
     USER_ID = '2689d9a913974c008b1d859013f23607'
     PROJECT_ID = 'fac88235b9d64685a3530f73e490348f'
     VOLUME_ID_SNAP = '761fc5e5-5191-4ec7-aeba-33e36de44156'
@@ -133,6 +146,31 @@ class HPE3PARBaseDriver(object):
               'host': FAKE_CINDER_HOST,
               'volume_type': None,
               'volume_type_id': None}
+
+    volume_replicated = {'name': VOLUME_NAME,
+                         'id': VOLUME_ID,
+                         'display_name': 'Foo Volume',
+                         'replication_status': 'disabled',
+                         'provider_location': CLIENT_ID,
+                         'size': 2,
+                         'host': FAKE_CINDER_HOST,
+                         'volume_type': 'replicated',
+                         'volume_type_id': VOLUME_TYPE_ID_REPLICATED}
+
+    replication_targets = [{'target_device_id': 'target',
+                            'cpg_map': HPE3PAR_CPG_MAP,
+                            'hpe3par_api_url': 'https://1.1.1.1/api/v1',
+                            'hpe3par_username': HPE3PAR_USER_NAME,
+                            'hpe3par_password': HPE3PAR_USER_PASS,
+                            'san_ip': HPE3PAR_SAN_IP,
+                            'san_login': HPE3PAR_USER_NAME,
+                            'san_password': HPE3PAR_USER_PASS,
+                            'san_ssh_port': HPE3PAR_SAN_SSH_PORT,
+                            'ssh_conn_timeout': HPE3PAR_SAN_SSH_CON_TIMEOUT,
+                            'san_private_key': HPE3PAR_SAN_SSH_PRIVATE,
+                            'managed_backend_name': FAKE_FAILOVER_HOST}]
+
+    list_rep_targets = [{'target_device_id': 'target'}]
 
     volume_encrypted = {'name': VOLUME_NAME,
                         'id': VOLUME_ID,
@@ -217,6 +255,14 @@ class HPE3PARBaseDriver(object):
                                    'qos:priority': 'low'},
                    'deleted_at': None,
                    'id': 'gold'}
+
+    volume_type_replicated = {'name': 'replicated',
+                              'deleted': False,
+                              'updated_at': None,
+                              'extra_specs':
+                                  {'replication_enabled': '<is> True'},
+                              'deleted_at': None,
+                              'id': VOLUME_TYPE_ID_REPLICATED}
 
     volume_type_dedup = {'name': 'dedup',
                          'deleted': False,
@@ -460,7 +506,8 @@ class HPE3PARBaseDriver(object):
         'TASK_ACTIVE': TASK_ACTIVE,
         'TASK_DONE': TASK_DONE,
         'getTask.return_value': STATUS_DONE,
-        'getStorageSystemInfo.return_value': {'serialNumber': '1234567'},
+        'getStorageSystemInfo.return_value': {'id': CLIENT_ID,
+                                              'serialNumber': '1234567'},
         'getVolume.return_value': RETYPE_VOLUME_INFO_0,
         'modifyVolume.return_value': ("anyResponse", {'taskid': 1})
     }
@@ -500,6 +547,20 @@ class HPE3PARBaseDriver(object):
             port=HPE3PAR_SAN_SSH_PORT,
             conn_timeout=HPE3PAR_SAN_SSH_CON_TIMEOUT)]
 
+    get_id_login = [
+        mock.call.getWsApiVersion(),
+        mock.call.login(HPE3PAR_USER_NAME, HPE3PAR_USER_PASS),
+        mock.call.setSSHOptions(
+            HPE3PAR_SAN_IP,
+            HPE3PAR_USER_NAME,
+            HPE3PAR_USER_PASS,
+            missing_key_policy='AutoAddPolicy',
+            privatekey=HPE3PAR_SAN_SSH_PRIVATE,
+            known_hosts_file=mock.ANY,
+            port=HPE3PAR_SAN_SSH_PORT,
+            conn_timeout=HPE3PAR_SAN_SSH_CON_TIMEOUT),
+        mock.call.getStorageSystemInfo()]
+
     standard_logout = [
         mock.call.logout()]
 
@@ -518,7 +579,7 @@ class HPE3PARBaseDriver(object):
         readOnly = False
 
     def setup_configuration(self):
-        configuration = mock.Mock()
+        configuration = mock.MagicMock()
         configuration.hpe3par_debug = False
         configuration.hpe3par_username = HPE3PAR_USER_NAME
         configuration.hpe3par_password = HPE3PAR_USER_PASS
@@ -540,6 +601,7 @@ class HPE3PARBaseDriver(object):
         configuration.goodness_function = GOODNESS_FUNCTION
         configuration.filter_function = FILTER_FUNCTION
         configuration.image_volume_cache_enabled = False
+        configuration.replication_device = None
         return configuration
 
     @mock.patch(
@@ -879,6 +941,175 @@ class HPE3PARBaseDriver(object):
                 self.standard_logout)
             self.assertIsNone(return_model)
 
+    @mock.patch('hpe3parclient.version', "4.0.2")
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_create_volume_replicated_managed_periodic(self,
+                                                       _mock_volume_types):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        conf = self.setup_configuration()
+        self.replication_targets[0]['replication_mode'] = 'periodic'
+        conf.replication_device = self.replication_targets
+        mock_client = self.setup_driver(config=conf)
+        mock_client.getStorageSystemInfo.return_value = (
+            {'id': self.CLIENT_ID})
+        mock_client.getRemoteCopyGroup.side_effect = (
+            hpeexceptions.HTTPNotFound)
+        mock_client.getCPG.return_value = {'domain': None}
+        mock_replicated_client = self.setup_driver(config=conf)
+        mock_replicated_client.getStorageSystemInfo.return_value = (
+            {'id': self.REPLICATION_CLIENT_ID})
+
+        _mock_volume_types.return_value = {
+            'name': 'replicated',
+            'extra_specs': {
+                'replication_enabled': '<is> True',
+                'replication:mode': 'periodic',
+                'replication:sync_period': '900',
+                'volume_type': self.volume_type_replicated}}
+
+        with mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_client') as mock_create_client, \
+            mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_replication_client') as mock_replication_client:
+            mock_create_client.return_value = mock_client
+            mock_replication_client.return_value = mock_replicated_client
+
+            return_model = self.driver.create_volume(self.volume_replicated)
+            comment = Comment({
+                "volume_type_name": "replicated",
+                "display_name": "Foo Volume",
+                "name": "volume-d03338a9-9115-48a3-8dfc-35cdfcdc15a7",
+                "volume_type_id": "be9181f1-4040-46f2-8298-e7532f2bf9db",
+                "volume_id": "d03338a9-9115-48a3-8dfc-35cdfcdc15a7",
+                "qos": {},
+                "type": "OpenStack"})
+
+            target_device_id = self.replication_targets[0]['target_device_id']
+            expected = [
+                mock.call.createVolume(
+                    self.VOLUME_3PAR_NAME,
+                    HPE3PAR_CPG,
+                    2048, {
+                        'comment': comment,
+                        'tpvv': True,
+                        'tdvv': False,
+                        'snapCPG': HPE3PAR_CPG_SNAP}),
+                mock.call.getRemoteCopyGroup(self.RCG_3PAR_NAME),
+                mock.call.getCPG(HPE3PAR_CPG),
+                mock.call.createRemoteCopyGroup(
+                    self.RCG_3PAR_NAME,
+                    [{'userCPG': HPE3PAR_CPG_REMOTE,
+                      'targetName': target_device_id,
+                      'mode': PERIODIC_MODE,
+                      'snapCPG': HPE3PAR_CPG_REMOTE}],
+                    {'localUserCPG': HPE3PAR_CPG,
+                     'localSnapCPG': HPE3PAR_CPG_SNAP}),
+                mock.call.addVolumeToRemoteCopyGroup(
+                    self.RCG_3PAR_NAME,
+                    self.VOLUME_3PAR_NAME,
+                    [{'secVolumeName': self.VOLUME_3PAR_NAME,
+                      'targetName': target_device_id}],
+                    optional={'volumeAutoCreation': True}),
+                mock.call.modifyRemoteCopyGroup(
+                    self.RCG_3PAR_NAME,
+                    {'targets': [{'syncPeriod': SYNC_PERIOD,
+                                  'targetName': target_device_id}]}),
+                mock.call.startRemoteCopy(self.RCG_3PAR_NAME)]
+            mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+            self.assertEqual({'replication_status': 'enabled',
+                              'provider_location': self.CLIENT_ID},
+                             return_model)
+
+    @mock.patch('hpe3parclient.version', "4.0.2")
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_create_volume_replicated_managed_sync(self,
+                                                   _mock_volume_types):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        conf = self.setup_configuration()
+        self.replication_targets[0]['replication_mode'] = 'sync'
+        conf.replication_device = self.replication_targets
+        mock_client = self.setup_driver(config=conf)
+        mock_client.getStorageSystemInfo.return_value = (
+            {'id': self.CLIENT_ID})
+        mock_client.getRemoteCopyGroup.side_effect = (
+            hpeexceptions.HTTPNotFound)
+        mock_client.getCPG.return_value = {'domain': None}
+        mock_replicated_client = self.setup_driver(config=conf)
+        mock_replicated_client.getStorageSystemInfo.return_value = (
+            {'id': self.REPLICATION_CLIENT_ID})
+
+        _mock_volume_types.return_value = {
+            'name': 'replicated',
+            'extra_specs': {
+                'replication_enabled': '<is> True',
+                'replication:mode': 'sync',
+                'volume_type': self.volume_type_replicated}}
+
+        with mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_client') as mock_create_client, \
+            mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_replication_client') as mock_replication_client:
+            mock_create_client.return_value = mock_client
+            mock_replication_client.return_value = mock_replicated_client
+
+            return_model = self.driver.create_volume(self.volume_replicated)
+            comment = Comment({
+                "volume_type_name": "replicated",
+                "display_name": "Foo Volume",
+                "name": "volume-d03338a9-9115-48a3-8dfc-35cdfcdc15a7",
+                "volume_type_id": "be9181f1-4040-46f2-8298-e7532f2bf9db",
+                "volume_id": "d03338a9-9115-48a3-8dfc-35cdfcdc15a7",
+                "qos": {},
+                "type": "OpenStack"})
+
+            target_device_id = self.replication_targets[0]['target_device_id']
+            expected = [
+                mock.call.createVolume(
+                    self.VOLUME_3PAR_NAME,
+                    HPE3PAR_CPG,
+                    2048, {
+                        'comment': comment,
+                        'tpvv': True,
+                        'tdvv': False,
+                        'snapCPG': HPE3PAR_CPG_SNAP}),
+                mock.call.getRemoteCopyGroup(self.RCG_3PAR_NAME),
+                mock.call.getCPG(HPE3PAR_CPG),
+                mock.call.createRemoteCopyGroup(
+                    self.RCG_3PAR_NAME,
+                    [{'userCPG': HPE3PAR_CPG_REMOTE,
+                      'targetName': target_device_id,
+                      'mode': SYNC_MODE,
+                      'snapCPG': HPE3PAR_CPG_REMOTE}],
+                    {'localUserCPG': HPE3PAR_CPG,
+                     'localSnapCPG': HPE3PAR_CPG_SNAP}),
+                mock.call.addVolumeToRemoteCopyGroup(
+                    self.RCG_3PAR_NAME,
+                    self.VOLUME_3PAR_NAME,
+                    [{'secVolumeName': self.VOLUME_3PAR_NAME,
+                      'targetName': target_device_id}],
+                    optional={'volumeAutoCreation': True}),
+                mock.call.startRemoteCopy(self.RCG_3PAR_NAME)]
+            mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+            self.assertEqual({'replication_status': 'enabled',
+                              'provider_location': self.CLIENT_ID},
+                             return_model)
+
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_create_volume_dedup(self, _mock_volume_types):
         # setup_mock_client drive with default configuration
@@ -930,6 +1161,7 @@ class HPE3PARBaseDriver(object):
         # Setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
+        mock_client.getStorageSystemInfo.return_value = {'id': self.CLIENT_ID}
 
         _mock_volume_types.return_value = {
             'name': 'flash-cache-on',
@@ -982,7 +1214,8 @@ class HPE3PARBaseDriver(object):
                     'osv-0DM4qZEVSKON-DXN-NwVpw')]
 
             mock_client.assert_has_calls(
-                [mock.call.getWsApiVersion()] +
+                self.get_id_login +
+                self.standard_logout +
                 self.standard_login +
                 expected +
                 self.standard_logout)
@@ -1132,6 +1365,7 @@ class HPE3PARBaseDriver(object):
         mock_client = self.setup_driver(mock_conf=self.RETYPE_CONF)
 
         mock_client.getStorageSystemInfo.return_value = {
+            'id': self.CLIENT_ID,
             'serialNumber': 'XXXXXXX'}
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
@@ -1372,6 +1606,45 @@ class HPE3PARBaseDriver(object):
                 expected +
                 self.standard_logout)
 
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_delete_volume_replicated(self, _mock_volume_types):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        mock_client = self.setup_driver()
+        mock_client.getStorageSystemInfo.return_value = {'id': self.CLIENT_ID}
+
+        _mock_volume_types.return_value = {
+            'name': 'replicated',
+            'extra_specs': {
+                'cpg': HPE3PAR_CPG_QOS,
+                'snap_cpg': HPE3PAR_CPG_SNAP,
+                'vvs_name': self.VVS_NAME,
+                'qos': self.QOS,
+                'replication_enabled': '<is> True',
+                'replication:mode': 'periodic',
+                'replication:sync_period': '900',
+                'volume_type': self.volume_type_replicated}}
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            self.driver.delete_volume(self.volume_replicated)
+
+            expected = [
+                mock.call.stopRemoteCopy(self.RCG_3PAR_NAME),
+                mock.call.removeVolumeFromRemoteCopyGroup(
+                    self.RCG_3PAR_NAME,
+                    self.VOLUME_3PAR_NAME,
+                    removeFromTarget=True),
+                mock.call.removeRemoteCopyGroup(self.RCG_3PAR_NAME),
+                mock.call.deleteVolume(self.VOLUME_3PAR_NAME)]
+
+            mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
     def test_create_cloned_volume(self):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
@@ -1444,6 +1717,7 @@ class HPE3PARBaseDriver(object):
 
         conf = {
             'getStorageSystemInfo.return_value': {
+                'id': self.CLIENT_ID,
                 'serialNumber': '1234'},
             'getTask.return_value': {
                 'status': 1},
@@ -1507,6 +1781,7 @@ class HPE3PARBaseDriver(object):
 
         conf = {
             'getStorageSystemInfo.return_value': {
+                'id': self.CLIENT_ID,
                 'serialNumber': '1234'},
             'getTask.return_value': {
                 'status': 1},
@@ -1580,6 +1855,7 @@ class HPE3PARBaseDriver(object):
     def test_migrate_volume_diff_host(self):
         conf = {
             'getStorageSystemInfo.return_value': {
+                'id': self.CLIENT_ID,
                 'serialNumber': 'different'},
         }
 
@@ -1612,6 +1888,7 @@ class HPE3PARBaseDriver(object):
 
         conf = {
             'getStorageSystemInfo.return_value': {
+                'id': self.CLIENT_ID,
                 'serialNumber': '1234'},
             'getTask.return_value': {
                 'status': 1},
@@ -1943,7 +2220,7 @@ class HPE3PARBaseDriver(object):
             model_update = self.driver.create_volume_from_snapshot(
                 self.volume,
                 self.snapshot)
-            self.assertIsNone(model_update)
+            self.assertEqual({}, model_update)
 
             comment = Comment({
                 "snapshot_id": "2f823bdc-e36e-4dc8-bd15-de1c7a28ff31",
@@ -2318,6 +2595,74 @@ class HPE3PARBaseDriver(object):
                               self.driver.extend_volume,
                               self.volume,
                               str(new_size))
+
+    @mock.patch('hpe3parclient.version', "4.0.2")
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_extend_volume_replicated(self, _mock_volume_types):
+        # Managed vs. unmanaged and periodic vs. sync are not relevant when
+        # extending a replicated volume type.
+        # We will use managed and periodic as the default.
+        conf = self.setup_configuration()
+        self.replication_targets[0]['replication_mode'] = 'periodic'
+        conf.replication_device = self.replication_targets
+        mock_client = self.setup_driver(config=conf)
+        mock_client.getStorageSystemInfo.return_value = (
+            {'id': self.CLIENT_ID})
+
+        _mock_volume_types.return_value = {
+            'name': 'replicated',
+            'extra_specs': {
+                'cpg': HPE3PAR_CPG,
+                'snap_cpg': HPE3PAR_CPG_SNAP,
+                'replication_enabled': '<is> True',
+                'replication:mode': 'periodic',
+                'replication:sync_period': '900',
+                'volume_type': self.volume_type_replicated}}
+
+        with mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+
+            grow_size = 3
+            old_size = self.volume_replicated['size']
+            new_size = old_size + grow_size
+
+            # Test a successful extend.
+            self.driver.extend_volume(
+                self.volume_replicated,
+                new_size)
+            expected = [
+                mock.call.stopRemoteCopy(self.RCG_3PAR_NAME),
+                mock.call.growVolume(self.VOLUME_3PAR_NAME, grow_size * 1024),
+                mock.call.startRemoteCopy(self.RCG_3PAR_NAME)]
+            mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
+            # Test an unsuccessful extend. growVolume will fail but remote
+            # copy should still be started again.
+            mock_client.growVolume.side_effect = (
+                hpeexceptions.HTTPForbidden("Error: The volume cannot be "
+                                            "extended."))
+            self.assertRaises(
+                hpeexceptions.HTTPForbidden,
+                self.driver.extend_volume,
+                self.volume_replicated,
+                new_size)
+            expected = [
+                mock.call.stopRemoteCopy(self.RCG_3PAR_NAME),
+                mock.call.growVolume(self.VOLUME_3PAR_NAME, grow_size * 1024),
+                mock.call.startRemoteCopy(self.RCG_3PAR_NAME)]
+            mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
+                self.standard_login +
+                expected +
+                self.standard_logout)
 
     def test_get_ports(self):
         # setup_mock_client drive with default configuration
@@ -3016,6 +3361,7 @@ class HPE3PARBaseDriver(object):
 
     def test_create_consistency_group(self):
         mock_client = self.setup_driver()
+        mock_client.getStorageSystemInfo.return_value = {'id': self.CLIENT_ID}
 
         comment = Comment({
             'display_name': 'cg_name',
@@ -3040,13 +3386,15 @@ class HPE3PARBaseDriver(object):
                     comment=comment)]
 
             mock_client.assert_has_calls(
-                [mock.call.getWsApiVersion()] +
+                self.get_id_login +
+                self.standard_logout +
                 self.standard_login +
                 expected +
                 self.standard_logout)
 
     def test_create_consistency_group_from_src(self):
         mock_client = self.setup_driver()
+        mock_client.getStorageSystemInfo.return_value = {'id': self.CLIENT_ID}
         volume = self.volume
 
         cgsnap_comment = Comment({
@@ -3082,7 +3430,8 @@ class HPE3PARBaseDriver(object):
                     comment=cg_comment)]
 
             mock_client.assert_has_calls(
-                [mock.call.getWsApiVersion()] +
+                self.get_id_login +
+                self.standard_logout +
                 self.standard_login +
                 expected +
                 self.standard_logout)
@@ -3100,7 +3449,8 @@ class HPE3PARBaseDriver(object):
                     self.VOLUME_NAME_3PAR)]
 
             mock_client.assert_has_calls(
-                [mock.call.getWsApiVersion()] +
+                self.get_id_login +
+                self.standard_logout +
                 self.standard_login +
                 expected +
                 self.standard_logout)
@@ -3124,13 +3474,15 @@ class HPE3PARBaseDriver(object):
                 snapshots=[self.snapshot])
 
             mock_client.assert_has_calls(
-                [mock.call.getWsApiVersion()] +
+                self.get_id_login +
+                self.standard_logout +
                 self.standard_login +
                 expected +
                 self.standard_logout)
 
     def test_delete_consistency_group(self):
         mock_client = self.setup_driver()
+        mock_client.getStorageSystemInfo.return_value = {'id': self.CLIENT_ID}
 
         comment = Comment({
             'display_name': 'cg_name',
@@ -3155,7 +3507,8 @@ class HPE3PARBaseDriver(object):
                     comment=comment)]
 
             mock_client.assert_has_calls(
-                [mock.call.getWsApiVersion()] +
+                self.get_id_login +
+                self.standard_logout +
                 self.standard_login +
                 expected +
                 self.standard_logout)
@@ -3171,13 +3524,15 @@ class HPE3PARBaseDriver(object):
                     self.CONSIS_GROUP_NAME)]
 
             mock_client.assert_has_calls(
-                [mock.call.getWsApiVersion()] +
+                self.get_id_login +
+                self.standard_logout +
                 self.standard_login +
                 expected +
                 self.standard_logout)
 
     def test_update_consistency_group_add_vol(self):
         mock_client = self.setup_driver()
+        mock_client.getStorageSystemInfo.return_value = {'id': self.CLIENT_ID}
         volume = self.volume
 
         comment = Comment({
@@ -3203,7 +3558,8 @@ class HPE3PARBaseDriver(object):
                     comment=comment)]
 
             mock_client.assert_has_calls(
-                [mock.call.getWsApiVersion()] +
+                self.get_id_login +
+                self.standard_logout +
                 self.standard_login +
                 expected +
                 self.standard_logout)
@@ -3221,13 +3577,15 @@ class HPE3PARBaseDriver(object):
                     self.VOLUME_NAME_3PAR)]
 
             mock_client.assert_has_calls(
-                [mock.call.getWsApiVersion()] +
+                self.get_id_login +
+                self.standard_logout +
                 self.standard_login +
                 expected +
                 self.standard_logout)
 
     def test_update_consistency_group_remove_vol(self):
         mock_client = self.setup_driver()
+        mock_client.getStorageSystemInfo.return_value = {'id': self.CLIENT_ID}
         volume = self.volume
 
         comment = Comment({
@@ -3253,7 +3611,8 @@ class HPE3PARBaseDriver(object):
                     comment=comment)]
 
             mock_client.assert_has_calls(
-                [mock.call.getWsApiVersion()] +
+                self.get_id_login +
+                self.standard_logout +
                 self.standard_login +
                 expected +
                 self.standard_logout)
@@ -3271,7 +3630,8 @@ class HPE3PARBaseDriver(object):
                     self.VOLUME_NAME_3PAR)]
 
             mock_client.assert_has_calls(
-                [mock.call.getWsApiVersion()] +
+                self.get_id_login +
+                self.standard_logout +
                 self.standard_login +
                 expected +
                 self.standard_logout)
@@ -3289,13 +3649,15 @@ class HPE3PARBaseDriver(object):
                     self.VOLUME_NAME_3PAR)]
 
             mock_client.assert_has_calls(
-                [mock.call.getWsApiVersion()] +
+                self.get_id_login +
+                self.standard_logout +
                 self.standard_login +
                 expected +
                 self.standard_logout)
 
     def test_create_cgsnapshot(self):
         mock_client = self.setup_driver()
+        mock_client.getStorageSystemInfo.return_value = {'id': self.CLIENT_ID}
         volume = self.volume
 
         cg_comment = Comment({
@@ -3330,7 +3692,8 @@ class HPE3PARBaseDriver(object):
                     comment=cg_comment)]
 
             mock_client.assert_has_calls(
-                [mock.call.getWsApiVersion()] +
+                self.get_id_login +
+                self.standard_logout +
                 self.standard_login +
                 expected +
                 self.standard_logout)
@@ -3348,7 +3711,8 @@ class HPE3PARBaseDriver(object):
                     self.VOLUME_NAME_3PAR)]
 
             mock_client.assert_has_calls(
-                [mock.call.getWsApiVersion()] +
+                self.get_id_login +
+                self.standard_logout +
                 self.standard_login +
                 expected +
                 self.standard_logout)
@@ -3366,13 +3730,15 @@ class HPE3PARBaseDriver(object):
                     optional=cgsnap_optional)]
 
             mock_client.assert_has_calls(
-                [mock.call.getWsApiVersion()] +
+                self.get_id_login +
+                self.standard_logout +
                 self.standard_login +
                 expected +
                 self.standard_logout)
 
     def test_delete_cgsnapshot(self):
         mock_client = self.setup_driver()
+        mock_client.getStorageSystemInfo.return_value = {'id': self.CLIENT_ID}
         volume = self.volume
         cgsnapshot = self.fake_cgsnapshot_object()
 
@@ -3407,7 +3773,8 @@ class HPE3PARBaseDriver(object):
                     comment=cg_comment)]
 
             mock_client.assert_has_calls(
-                [mock.call.getWsApiVersion()] +
+                self.get_id_login +
+                self.standard_logout +
                 self.standard_login +
                 expected +
                 self.standard_logout)
@@ -3425,7 +3792,8 @@ class HPE3PARBaseDriver(object):
                     self.VOLUME_NAME_3PAR)]
 
             mock_client.assert_has_calls(
-                [mock.call.getWsApiVersion()] +
+                self.get_id_login +
+                self.standard_logout +
                 self.standard_login +
                 expected +
                 self.standard_logout)
@@ -3447,10 +3815,464 @@ class HPE3PARBaseDriver(object):
                                           cgsnapshot, [])
 
             mock_client.assert_has_calls(
-                [mock.call.getWsApiVersion()] +
+                self.get_id_login +
+                self.standard_logout +
                 self.standard_login +
                 expected +
                 self.standard_logout)
+
+    @mock.patch('hpe3parclient.version', "4.0.2")
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_replication_enable_not_in_rcopy(self, _mock_volume_types):
+        # Managed vs. unmanaged and periodic vs. sync are not relevant when
+        # enabling/disabling replication and listing replication targets.
+        # We will use managed and periodic as the default.
+        conf = self.setup_configuration()
+        self.replication_targets[0]['replication_mode'] = 'periodic'
+        conf.replication_device = self.replication_targets
+        mock_client = self.setup_driver(config=conf)
+        mock_client.getStorageSystemInfo.return_value = (
+            {'id': self.CLIENT_ID})
+        mock_client.getRemoteCopyGroup.side_effect = (
+            hpeexceptions.HTTPNotFound)
+        mock_client.getCPG.return_value = {'domain': None}
+        mock_replicated_client = self.setup_driver(config=conf)
+        mock_replicated_client.getStorageSystemInfo.return_value = (
+            {'id': self.REPLICATION_CLIENT_ID})
+
+        _mock_volume_types.return_value = {
+            'name': 'replicated',
+            'extra_specs': {
+                'cpg': HPE3PAR_CPG,
+                'snap_cpg': HPE3PAR_CPG_SNAP,
+                'replication_enabled': '<is> True',
+                'replication:mode': 'periodic',
+                'replication:sync_period': '900',
+                'volume_type': self.volume_type_replicated}}
+
+        with mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_client') as mock_create_client, \
+            mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_replication_client') as mock_replication_client:
+            mock_create_client.return_value = mock_client
+            mock_replication_client.return_value = mock_replicated_client
+
+            return_model = self.driver.replication_enable(
+                context.get_admin_context(),
+                self.volume_replicated)
+
+            target_device_id = self.replication_targets[0]['target_device_id']
+            expected = [
+                mock.call.getRemoteCopyGroup(self.RCG_3PAR_NAME),
+                mock.call.getCPG(HPE3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG),
+                mock.call.createRemoteCopyGroup(
+                    self.RCG_3PAR_NAME,
+                    [{'userCPG': HPE3PAR_CPG_REMOTE,
+                      'targetName': target_device_id,
+                      'mode': PERIODIC_MODE,
+                      'snapCPG': HPE3PAR_CPG_REMOTE}],
+                    {'localUserCPG': HPE3PAR_CPG,
+                     'localSnapCPG': HPE3PAR_CPG_SNAP}),
+                mock.call.addVolumeToRemoteCopyGroup(
+                    self.RCG_3PAR_NAME,
+                    self.VOLUME_3PAR_NAME,
+                    [{'secVolumeName': self.VOLUME_3PAR_NAME,
+                      'targetName': target_device_id}],
+                    optional={'volumeAutoCreation': True}),
+                mock.call.modifyRemoteCopyGroup(
+                    self.RCG_3PAR_NAME,
+                    {'targets': [{'syncPeriod': SYNC_PERIOD,
+                                  'targetName': target_device_id}]}),
+                mock.call.startRemoteCopy(self.RCG_3PAR_NAME)]
+            mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+            self.assertEqual({'replication_status': 'enabled',
+                              'provider_location': self.CLIENT_ID},
+                             return_model)
+
+    @mock.patch('hpe3parclient.version', "4.0.2")
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_replication_enable_in_rcopy(self, _mock_volume_types):
+        # Managed vs. unmanaged and periodic vs. sync are not relevant when
+        # enabling/disabling replication and listing replication targets.
+        # We will use managed and periodic as the default.
+        conf = self.setup_configuration()
+        self.replication_targets[0]['replication_mode'] = 'periodic'
+        conf.replication_device = self.replication_targets
+        mock_client = self.setup_driver(config=conf)
+        mock_client.getStorageSystemInfo.return_value = (
+            {'id': self.CLIENT_ID})
+        mock_replicated_client = self.setup_driver(config=conf)
+        mock_replicated_client.getStorageSystemInfo.return_value = (
+            {'id': self.REPLICATION_CLIENT_ID})
+
+        _mock_volume_types.return_value = {
+            'name': 'replicated',
+            'extra_specs': {
+                'replication_enabled': '<is> True',
+                'replication:mode': 'periodic',
+                'replication:sync_period': '900',
+                'volume_type': self.volume_type_replicated}}
+
+        with mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_client') as mock_create_client, \
+            mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_replication_client') as mock_replication_client:
+            mock_create_client.return_value = mock_client
+            mock_replication_client.return_value = mock_replicated_client
+
+            return_model = self.driver.replication_enable(
+                context.get_admin_context(),
+                self.volume_replicated)
+
+            expected = [
+                mock.call.getRemoteCopyGroup(self.RCG_3PAR_NAME),
+                mock.call.startRemoteCopy(self.RCG_3PAR_NAME)]
+            mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+            self.assertEqual({'replication_status': 'enabled',
+                              'provider_location': self.CLIENT_ID},
+                             return_model)
+
+    @mock.patch('hpe3parclient.version', "4.0.2")
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_replication_enable_non_replicated_type(self, _mock_volume_types):
+        # Managed vs. unmanaged and periodic vs. sync are not relevant when
+        # enabling/disabling replication and listing replication targets.
+        # We will use managed and periodic as the default.
+        conf = self.setup_configuration()
+        self.replication_targets[0]['replication_mode'] = 'periodic'
+        conf.replication_device = self.replication_targets
+        mock_client = self.setup_driver(config=conf)
+
+        _mock_volume_types.return_value = {
+            'name': 'NOT_replicated',
+            'extra_specs': {
+                'volume_type': self.volume_type}}
+
+        with mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+
+            self.assertRaises(
+                exception.VolumeBackendAPIException,
+                self.driver.replication_enable,
+                context.get_admin_context(),
+                self.volume_replicated)
+
+    @mock.patch('hpe3parclient.version', "4.0.2")
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_replication_disable(self, _mock_volume_types):
+        # Managed vs. unmanaged and periodic vs. sync are not relevant when
+        # enabling/disabling replication and listing replication targets.
+        # We will use managed and periodic as the default.
+        conf = self.setup_configuration()
+        self.replication_targets[0]['replication_mode'] = 'periodic'
+        conf.replication_device = self.replication_targets
+        mock_client = self.setup_driver(config=conf)
+        mock_client.getStorageSystemInfo.return_value = (
+            {'id': self.CLIENT_ID})
+        mock_replicated_client = self.setup_driver(config=conf)
+        mock_replicated_client.getStorageSystemInfo.return_value = (
+            {'id': self.REPLICATION_CLIENT_ID})
+
+        _mock_volume_types.return_value = {
+            'name': 'replicated',
+            'extra_specs': {
+                'replication_enabled': '<is> True',
+                'replication:mode': 'periodic',
+                'replication:sync_period': '900',
+                'volume_type': self.volume_type_replicated}}
+
+        with mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_client') as mock_create_client, \
+            mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_replication_client') as mock_replication_client:
+            mock_create_client.return_value = mock_client
+            mock_replication_client.return_value = mock_replicated_client
+
+            return_model = self.driver.replication_disable(
+                context.get_admin_context(),
+                self.volume_replicated)
+
+            expected = [
+                mock.call.stopRemoteCopy(self.RCG_3PAR_NAME)]
+            mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+            self.assertEqual({'replication_status': 'disabled'},
+                             return_model)
+
+    @mock.patch('hpe3parclient.version', "4.0.2")
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_replication_disable_fail(self, _mock_volume_types):
+        # Managed vs. unmanaged and periodic vs. sync are not relevant when
+        # enabling/disabling replication and listing replication targets.
+        # We will use managed and periodic as the default.
+        conf = self.setup_configuration()
+        self.replication_targets[0]['replication_mode'] = 'periodic'
+        conf.replication_device = self.replication_targets
+        mock_client = self.setup_driver(config=conf)
+        mock_client.stopRemoteCopy.side_effect = (
+            Exception("Error: Remote Copy could not be stopped."))
+        mock_client.getStorageSystemInfo.return_value = (
+            {'id': self.CLIENT_ID})
+        mock_replicated_client = self.setup_driver(config=conf)
+        mock_replicated_client.getStorageSystemInfo.return_value = (
+            {'id': self.REPLICATION_CLIENT_ID})
+
+        _mock_volume_types.return_value = {
+            'name': 'replicated',
+            'extra_specs': {
+                'replication_enabled': '<is> True',
+                'replication:mode': 'periodic',
+                'replication:sync_period': '900',
+                'volume_type': self.volume_type_replicated}}
+
+        with mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_client') as mock_create_client, \
+            mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_replication_client') as mock_replication_client:
+            mock_create_client.return_value = mock_client
+            mock_replication_client.return_value = mock_replicated_client
+
+            return_model = self.driver.replication_disable(
+                context.get_admin_context(),
+                self.volume_replicated)
+
+            expected = [
+                mock.call.stopRemoteCopy(self.RCG_3PAR_NAME)]
+            mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+            self.assertEqual({'replication_status': 'disable_failed'},
+                             return_model)
+
+    @mock.patch('hpe3parclient.version', "4.0.2")
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_replication_disable_non_replicated_type(self, _mock_volume_types):
+        # Managed vs. unmanaged and periodic vs. sync are not relevant when
+        # enabling/disabling replication and listing replication targets.
+        # We will use managed and periodic as the default.
+        conf = self.setup_configuration()
+        self.replication_targets[0]['replication_mode'] = 'periodic'
+        conf.replication_device = self.replication_targets
+        mock_client = self.setup_driver(config=conf)
+
+        _mock_volume_types.return_value = {
+            'name': 'NOT_replicated',
+            'extra_specs': {
+                'volume_type': self.volume_type}}
+
+        with mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+
+            self.assertRaises(
+                exception.VolumeBackendAPIException,
+                self.driver.replication_disable,
+                context.get_admin_context(),
+                self.volume_replicated)
+
+    @mock.patch('hpe3parclient.version', "4.0.2")
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_list_replication_targets(self, _mock_volume_types):
+        # Managed vs. unmanaged and periodic vs. sync are not relevant when
+        # enabling/disabling replication and listing replication targets.
+        # We will use managed and periodic as the default.
+        target_device_id = self.replication_targets[0]['target_device_id']
+        conf = self.setup_configuration()
+        self.replication_targets[0]['replication_mode'] = 'periodic'
+        conf.replication_device = self.replication_targets
+        mock_client = self.setup_driver(config=conf)
+        mock_client.getRemoteCopyGroup.return_value = (
+            {'targets': [{'targetName': target_device_id}]})
+        mock_client.getStorageSystemInfo.return_value = (
+            {'id': self.CLIENT_ID})
+        mock_client.getCPG.return_value = {'domain': None}
+        mock_replicated_client = self.setup_driver(config=conf)
+        mock_replicated_client.getStorageSystemInfo.return_value = (
+            {'id': self.REPLICATION_CLIENT_ID})
+
+        _mock_volume_types.return_value = {
+            'name': 'replicated',
+            'extra_specs': {
+                'replication_enabled': '<is> True',
+                'replication:mode': 'periodic',
+                'replication:sync_period': '900',
+                'volume_type': self.volume_type_replicated}}
+
+        with mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_client') as mock_create_client, \
+            mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_replication_client') as mock_replication_client:
+            mock_create_client.return_value = mock_client
+            mock_replication_client.return_value = mock_replicated_client
+
+            return_model = self.driver.list_replication_targets(
+                context.get_admin_context(),
+                self.volume_replicated)
+
+            expected = [
+                mock.call.getRemoteCopyGroup(self.RCG_3PAR_NAME)]
+            mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
+            targets = self.list_rep_targets
+            self.assertEqual({'volume_id': self.volume_replicated['id'],
+                              'targets': targets},
+                             return_model)
+
+    @mock.patch('hpe3parclient.version', "4.0.2")
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_list_replication_targets_non_replicated_type(self,
+                                                          _mock_volume_types):
+        # Managed vs. unmanaged and periodic vs. sync are not relevant when
+        # enabling/disabling replication and listing replication targets.
+        # We will use managed and periodic as the default.
+        conf = self.setup_configuration()
+        self.replication_targets[0]['replication_mode'] = 'periodic'
+        conf.replication_device = self.replication_targets
+        mock_client = self.setup_driver(config=conf)
+        mock_client.getStorageSystemInfo.return_value = (
+            {'id': self.CLIENT_ID})
+
+        _mock_volume_types.return_value = {
+            'name': 'NOT_replicated',
+            'extra_specs': {
+                'volume_type': self.volume_type}}
+
+        with mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+
+            return_model = self.driver.list_replication_targets(
+                context.get_admin_context(),
+                self.volume_replicated)
+
+            mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
+                self.standard_login +
+                self.standard_logout)
+
+            self.assertEqual([], return_model)
+
+    @mock.patch('hpe3parclient.version', "4.0.2")
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_replication_failover_managed(self, _mock_volume_types):
+        # periodic vs. sync is not relevant when conducting a failover. We
+        # will just use periodic.
+        provider_location = self.CLIENT_ID + ":" + self.REPLICATION_CLIENT_ID
+        conf = self.setup_configuration()
+        self.replication_targets[0]['replication_mode'] = 'periodic'
+        conf.replication_device = self.replication_targets
+        mock_client = self.setup_driver(config=conf)
+        mock_client.getStorageSystemInfo.return_value = (
+            {'id': self.CLIENT_ID})
+        mock_replicated_client = self.setup_driver(config=conf)
+        mock_replicated_client.getStorageSystemInfo.return_value = (
+            {'id': self.REPLICATION_CLIENT_ID})
+
+        _mock_volume_types.return_value = {
+            'name': 'replicated',
+            'extra_specs': {
+                'replication_enabled': '<is> True',
+                'replication:mode': 'periodic',
+                'replication:sync_period': '900',
+                'volume_type': self.volume_type_replicated}}
+
+        with mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_client') as mock_create_client, \
+            mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_replication_client') as mock_replication_client:
+            mock_create_client.return_value = mock_client
+            mock_replication_client.return_value = mock_replicated_client
+            valid_target_device_id = (
+                self.replication_targets[0]['target_device_id'])
+            invalid_target_device_id = 'INVALID'
+
+            # test invalid secondary target
+            self.assertRaises(
+                exception.VolumeBackendAPIException,
+                self.driver.replication_failover,
+                context.get_admin_context(),
+                self.volume_replicated,
+                invalid_target_device_id)
+
+            # test no secondary target
+            self.assertRaises(
+                exception.VolumeBackendAPIException,
+                self.driver.replication_failover,
+                context.get_admin_context(),
+                self.volume_replicated,
+                None)
+
+            # test a successful failover
+            volume = self.volume_replicated
+            volume['provider_location'] = self.CLIENT_ID
+            return_model = self.driver.replication_failover(
+                context.get_admin_context(),
+                volume,
+                valid_target_device_id)
+            expected = [
+                mock.call.stopRemoteCopy(self.RCG_3PAR_NAME)]
+            mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+            self.assertEqual({'replication_status': 'inactive',
+                              'provider_location': provider_location,
+                              'host': self.FAKE_FAILOVER_HOST},
+                             return_model)
+
+            # test a unsuccessful failover
+            mock_replicated_client.recoverRemoteCopyGroupFromDisaster.\
+                side_effect = (
+                    exception.VolumeBackendAPIException(
+                        "Error: Failover was unsuccessful."))
+            self.assertRaises(
+                exception.VolumeBackendAPIException,
+                self.driver.replication_failover,
+                context.get_admin_context(),
+                self.volume_replicated,
+                valid_target_device_id)
 
 
 class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
@@ -3934,6 +4756,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
         mock_client = self.setup_driver(config=config)
         mock_client.getCPG.return_value = self.cpgs[0]
         mock_client.getStorageSystemInfo.return_value = {
+            'id': self.CLIENT_ID,
             'serialNumber': '1234'
         }
 
@@ -3997,6 +4820,8 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
                 mock.call.getCPGAvailableSpace(HPE3PAR_CPG2)]
 
             mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
                 self.standard_login +
                 expected +
                 self.standard_logout)
@@ -4084,6 +4909,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
         mock_client = self.setup_driver(config=config, wsapi_version=wsapi)
         mock_client.getCPG.return_value = self.cpgs[0]
         mock_client.getStorageSystemInfo.return_value = {
+            'id': self.CLIENT_ID,
             'serialNumber': '1234'
         }
 
@@ -4124,6 +4950,8 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
                 mock.call.getCPGAvailableSpace(HPE3PAR_CPG2)]
 
             mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
                 self.standard_login +
                 expected +
                 self.standard_logout)
@@ -4139,6 +4967,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
                                         wsapi_version=self.wsapi_version_312)
         mock_client.getCPG.return_value = self.cpgs[0]
         mock_client.getStorageSystemInfo.return_value = {
+            'id': self.CLIENT_ID,
             'serialNumber': '1234'
         }
 
@@ -4179,6 +5008,8 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
                 mock.call.getCPGAvailableSpace(HPE3PAR_CPG2)]
 
             mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
                 self.standard_login +
                 expected +
                 self.standard_logout)
@@ -4677,6 +5508,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver, test.TestCase):
         mock_client = self.setup_driver(config=config)
         mock_client.getCPG.return_value = self.cpgs[0]
         mock_client.getStorageSystemInfo.return_value = {
+            'id': self.CLIENT_ID,
             'serialNumber': '1234'
         }
         # cpg has no limit
@@ -4737,6 +5569,8 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver, test.TestCase):
                 mock.call.getCPGAvailableSpace(HPE3PAR_CPG2)]
 
             mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
                 self.standard_login +
                 expected +
                 self.standard_logout)
@@ -4796,6 +5630,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver, test.TestCase):
         mock_client = self.setup_driver(config=config, wsapi_version=wsapi)
         mock_client.getCPG.return_value = self.cpgs[0]
         mock_client.getStorageSystemInfo.return_value = {
+            'id': self.CLIENT_ID,
             'serialNumber': '1234'
         }
 
@@ -4836,6 +5671,8 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver, test.TestCase):
                 mock.call.getCPGAvailableSpace(HPE3PAR_CPG2)]
 
             mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
                 self.standard_login +
                 expected +
                 self.standard_logout)
@@ -4851,6 +5688,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver, test.TestCase):
                                         wsapi_version=self.wsapi_version_312)
         mock_client.getCPG.return_value = self.cpgs[0]
         mock_client.getStorageSystemInfo.return_value = {
+            'id': self.CLIENT_ID,
             'serialNumber': '1234'
         }
 
@@ -4891,6 +5729,8 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver, test.TestCase):
                 mock.call.getCPGAvailableSpace(HPE3PAR_CPG2)]
 
             mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
                 self.standard_login +
                 expected +
                 self.standard_logout)
