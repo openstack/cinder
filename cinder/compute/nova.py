@@ -163,7 +163,7 @@ class API(base.Base):
     def has_extension(self, context, extension, timeout=None):
         try:
             nova_exts = nova_client.discover_extensions(NOVA_API_VERSION)
-        except (nova_exceptions.RequestTimeout, request_exceptions.Timeout):
+        except request_exceptions.Timeout:
             raise exception.APITimeout(service='Nova')
         return extension in [e.name for e in nova_exts]
 
@@ -196,5 +196,5 @@ class API(base.Base):
                               timeout=timeout).servers.get(server_id)
         except nova_exceptions.NotFound:
             raise exception.ServerNotFound(uuid=server_id)
-        except (nova_exceptions.RequestTimeout, request_exceptions.Timeout):
+        except request_exceptions.Timeout:
             raise exception.APITimeout(service='Nova')
