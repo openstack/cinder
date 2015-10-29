@@ -104,10 +104,11 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         3.0.2 - Remove db access for consistency groups
         3.0.3 - Fix multipath dictionary key error. bug #1522062
         3.0.4 - Adds v2 managed replication support
+        3.0.5 - Adds v2 unmanaged replication support
 
     """
 
-    VERSION = "3.0.4"
+    VERSION = "3.0.5"
 
     def __init__(self, *args, **kwargs):
         super(HPE3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -117,12 +118,12 @@ class HPE3PARISCSIDriver(driver.TransferVD,
     def _init_common(self):
         return hpecommon.HPE3PARCommon(self.configuration)
 
-    def _login(self, timeout=None):
+    def _login(self, volume=None, timeout=None):
         common = self._init_common()
-        common.do_setup(None, timeout=timeout)
         # If replication is enabled and we cannot login, we do not want to
         # raise an exception so a failover can still be executed.
         try:
+            common.do_setup(None, volume, timeout=timeout)
             common.client_login()
         except Exception:
             if common._replication_enabled:
@@ -171,6 +172,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         self._check_flags(common)
         common.check_for_setup_error()
 
+        self.iscsi_ips = {}
         common.client_login()
         try:
             self.initialize_iscsi_ports(common)
@@ -181,13 +183,13 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         # map iscsi_ip-> ip_port
         #             -> iqn
         #             -> nsp
-        self.iscsi_ips = {}
+        iscsi_ip_list = {}
         temp_iscsi_ip = {}
 
         # use the 3PAR ip_addr list for iSCSI configuration
-        if len(self.configuration.hpe3par_iscsi_ips) > 0:
+        if len(common._client_conf['hpe3par_iscsi_ips']) > 0:
             # add port values to ip_addr, if necessary
-            for ip_addr in self.configuration.hpe3par_iscsi_ips:
+            for ip_addr in common._client_conf['hpe3par_iscsi_ips']:
                 ip = ip_addr.split(':')
                 if len(ip) == 1:
                     temp_iscsi_ip[ip_addr] = {'ip_port': DEFAULT_ISCSI_PORT}
@@ -199,9 +201,9 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         # add the single value iscsi_ip_address option to the IP dictionary.
         # This way we can see if it's a valid iSCSI IP. If it's not valid,
         # we won't use it and won't bother to report it, see below
-        if (self.configuration.iscsi_ip_address not in temp_iscsi_ip):
-            ip = self.configuration.iscsi_ip_address
-            ip_port = self.configuration.iscsi_port
+        if (common._client_conf['iscsi_ip_address'] not in temp_iscsi_ip):
+            ip = common._client_conf['iscsi_ip_address']
+            ip_port = common._client_conf['iscsi_port']
             temp_iscsi_ip[ip] = {'ip_port': ip_port}
 
         # get all the valid iSCSI ports from 3PAR
@@ -213,17 +215,16 @@ class HPE3PARISCSIDriver(driver.TransferVD,
             ip = port['IPAddr']
             if ip in temp_iscsi_ip:
                 ip_port = temp_iscsi_ip[ip]['ip_port']
-                self.iscsi_ips[ip] = {'ip_port': ip_port,
-                                      'nsp': port['nsp'],
-                                      'iqn': port['iSCSIName']
-                                      }
+                iscsi_ip_list[ip] = {'ip_port': ip_port,
+                                     'nsp': port['nsp'],
+                                     'iqn': port['iSCSIName']}
                 del temp_iscsi_ip[ip]
 
         # if the single value iscsi_ip_address option is still in the
         # temp dictionary it's because it defaults to $my_ip which doesn't
         # make sense in this context. So, if present, remove it and move on.
-        if (self.configuration.iscsi_ip_address in temp_iscsi_ip):
-            del temp_iscsi_ip[self.configuration.iscsi_ip_address]
+        if common._client_conf['iscsi_ip_address'] in temp_iscsi_ip:
+            del temp_iscsi_ip[common._client_conf['iscsi_ip_address']]
 
         # lets see if there are invalid iSCSI IPs left in the temp dict
         if len(temp_iscsi_ip) > 0:
@@ -232,17 +233,18 @@ class HPE3PARISCSIDriver(driver.TransferVD,
                             "iscsi_ip_address '%s.'"),
                         (", ".join(temp_iscsi_ip)))
 
-        if not len(self.iscsi_ips) > 0:
+        if not len(iscsi_ip_list) > 0:
             msg = _('At least one valid iSCSI IP address must be set.')
             LOG.error(msg)
             raise exception.InvalidInput(reason=msg)
+        self.iscsi_ips[common._client_conf['hpe3par_api_url']] = iscsi_ip_list
 
     def check_for_setup_error(self):
         """Setup errors are already checked for in do_setup so return pass."""
         pass
 
     def create_volume(self, volume):
-        common = self._login()
+        common = self._login(volume)
         try:
             return common.create_volume(volume)
         finally:
@@ -250,14 +252,14 @@ class HPE3PARISCSIDriver(driver.TransferVD,
 
     def create_cloned_volume(self, volume, src_vref):
         """Clone an existing volume."""
-        common = self._login()
+        common = self._login(volume)
         try:
             return common.create_cloned_volume(volume, src_vref)
         finally:
             self._logout(common)
 
     def delete_volume(self, volume):
-        common = self._login()
+        common = self._login(volume)
         try:
             common.delete_volume(volume)
         finally:
@@ -268,21 +270,21 @@ class HPE3PARISCSIDriver(driver.TransferVD,
 
         TODO: support using the size from the user.
         """
-        common = self._login()
+        common = self._login(volume)
         try:
             return common.create_volume_from_snapshot(volume, snapshot)
         finally:
             self._logout(common)
 
     def create_snapshot(self, snapshot):
-        common = self._login()
+        common = self._login(snapshot['volume'])
         try:
             common.create_snapshot(snapshot)
         finally:
             self._logout(common)
 
     def delete_snapshot(self, snapshot):
-        common = self._login()
+        common = self._login(snapshot['volume'])
         try:
             common.delete_snapshot(snapshot)
         finally:
@@ -314,8 +316,17 @@ class HPE3PARISCSIDriver(driver.TransferVD,
           * Create a host on the 3par
           * create vlun on the 3par
         """
-        common = self._login()
+        common = self._login(volume)
         try:
+            # If the volume has been failed over, we need to reinitialize
+            # iSCSI ports so they represent the new array.
+            if volume.get('replication_status') == 'failed-over' and (
+               common._client_conf['hpe3par_api_url'] not in self.iscsi_ips):
+                self.initialize_iscsi_ports(common)
+
+            # Grab the correct iSCSI ports
+            iscsi_ips = self.iscsi_ips[common._client_conf['hpe3par_api_url']]
+
             # we have to make sure we have a host
             host, username, password = self._create_host(
                 common,
@@ -331,7 +342,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
                 target_luns = []
 
                 # Target portal ips are defined in cinder.conf.
-                target_portal_ips = self.iscsi_ips.keys()
+                target_portal_ips = iscsi_ips.keys()
 
                 # Collect all existing VLUNs for this volume/host combination.
                 existing_vluns = common.find_existing_vluns(volume, host)
@@ -347,15 +358,15 @@ class HPE3PARISCSIDriver(driver.TransferVD,
                         # instead of creating a new VLUN.
                         for v in existing_vluns:
                             portPos = common.build_portPos(
-                                self.iscsi_ips[iscsi_ip]['nsp'])
+                                iscsi_ips[iscsi_ip]['nsp'])
                             if v['portPos'] == portPos:
                                 vlun = v
                                 break
                         else:
                             vlun = common.create_vlun(
-                                volume, host, self.iscsi_ips[iscsi_ip]['nsp'])
+                                volume, host, iscsi_ips[iscsi_ip]['nsp'])
                         iscsi_ip_port = "%s:%s" % (
-                            iscsi_ip, self.iscsi_ips[iscsi_ip]['ip_port'])
+                            iscsi_ip, iscsi_ips[iscsi_ip]['ip_port'])
                         target_portals.append(iscsi_ip_port)
                         target_iqns.append(port['iSCSIName'])
                         target_luns.append(vlun['lun'])
@@ -400,12 +411,12 @@ class HPE3PARISCSIDriver(driver.TransferVD,
                 if least_used_nsp is None:
                     LOG.warning(_LW("Least busy iSCSI port not found, "
                                     "using first iSCSI port in list."))
-                    iscsi_ip = self.iscsi_ips.keys()[0]
+                    iscsi_ip = iscsi_ips.keys()[0]
                 else:
-                    iscsi_ip = self._get_ip_using_nsp(least_used_nsp)
+                    iscsi_ip = self._get_ip_using_nsp(least_used_nsp, common)
 
-                iscsi_ip_port = self.iscsi_ips[iscsi_ip]['ip_port']
-                iscsi_target_iqn = self.iscsi_ips[iscsi_ip]['iqn']
+                iscsi_ip_port = iscsi_ips[iscsi_ip]['ip_port']
+                iscsi_target_iqn = iscsi_ips[iscsi_ip]['iqn']
                 info = {'driver_volume_type': 'iscsi',
                         'data': {'target_portal': "%s:%s" %
                                  (iscsi_ip, iscsi_ip_port),
@@ -415,7 +426,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
                                  }
                         }
 
-            if self.configuration.hpe3par_iscsi_chap_enabled:
+            if common._client_conf['hpe3par_iscsi_chap_enabled']:
                 info['data']['auth_method'] = 'CHAP'
                 info['data']['auth_username'] = username
                 info['data']['auth_password'] = password
@@ -429,7 +440,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
 
     def terminate_connection(self, volume, connector, **kwargs):
         """Driver entry point to unattach a volume from an instance."""
-        common = self._login()
+        common = self._login(volume)
         try:
             hostname = common._safe_hostname(connector['host'])
             common.terminate_connection(
@@ -497,7 +508,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
 
     def _set_3par_chaps(self, common, hostname, volume, username, password):
         """Sets a 3PAR host's CHAP credentials."""
-        if not self.configuration.hpe3par_iscsi_chap_enabled:
+        if not common._client_conf['hpe3par_iscsi_chap_enabled']:
             return
 
         mod_request = {'chapOperation': common.client.HOST_EDIT_ADD,
@@ -517,7 +528,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         domain = common.get_domain(cpg)
 
         # Get the CHAP secret if CHAP is enabled
-        if self.configuration.hpe3par_iscsi_chap_enabled:
+        if common._client_conf['hpe3par_iscsi_chap_enabled']:
             vol_name = common._get_3par_vol_name(volume['id'])
             username = common.client.getVolumeMetaData(
                 vol_name, CHAP_USER_KEY)['value']
@@ -550,7 +561,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
                     password)
                 host = common._get_3par_host(hostname)
             elif (not host['initiatorChapEnabled'] and
-                    self.configuration.hpe3par_iscsi_chap_enabled):
+                    common._client_conf['hpe3par_iscsi_chap_enabled']):
                 LOG.warning(_LW("Host exists without CHAP credentials set and "
                                 "has iSCSI attachments but CHAP is enabled. "
                                 "Updating host with new CHAP credentials."))
@@ -567,7 +578,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         """Gets the associated account, generates CHAP info and updates."""
         model_update = {}
 
-        if not self.configuration.hpe3par_iscsi_chap_enabled:
+        if not common._client_conf['hpe3par_iscsi_chap_enabled']:
             model_update['provider_auth'] = None
             return model_update
 
@@ -636,7 +647,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         return model_update
 
     def create_export(self, context, volume, connector):
-        common = self._login()
+        common = self._login(volume)
         try:
             return self._do_export(common, volume)
         finally:
@@ -647,7 +658,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
 
         Also retrieves CHAP credentials, if present on the volume
         """
-        common = self._login()
+        common = self._login(volume)
         try:
             vol_name = common._get_3par_vol_name(volume['id'])
             common.client.getVolume(vol_name)
@@ -687,7 +698,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
             * Return NSP with fewest active vluns
         """
 
-        iscsi_nsps = self._get_iscsi_nsps()
+        iscsi_nsps = self._get_iscsi_nsps(common)
         # If there's only one path, use it
         if len(iscsi_nsps) == 1:
             return iscsi_nsps[0]
@@ -705,19 +716,21 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         # Calculate the least used iscsi nsp
         least_used_nsp = self._get_least_used_nsp(common,
                                                   vluns['members'],
-                                                  self._get_iscsi_nsps())
+                                                  self._get_iscsi_nsps(common))
         return least_used_nsp
 
-    def _get_iscsi_nsps(self):
+    def _get_iscsi_nsps(self, common):
         """Return the list of candidate nsps."""
         nsps = []
-        for value in self.iscsi_ips.values():
+        iscsi_ips = self.iscsi_ips[common._client_conf['hpe3par_api_url']]
+        for value in iscsi_ips.values():
             nsps.append(value['nsp'])
         return nsps
 
-    def _get_ip_using_nsp(self, nsp):
+    def _get_ip_using_nsp(self, nsp, common):
         """Return IP associated with given nsp."""
-        for (key, value) in self.iscsi_ips.items():
+        iscsi_ips = self.iscsi_ips[common._client_conf['hpe3par_api_url']]
+        for (key, value) in iscsi_ips.items():
             if value['nsp'] == nsp:
                 return key
 
@@ -748,7 +761,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         return current_least_used_nsp
 
     def extend_volume(self, volume, new_size):
-        common = self._login()
+        common = self._login(volume)
         try:
             common.extend_volume(volume, new_size)
         finally:
@@ -803,21 +816,21 @@ class HPE3PARISCSIDriver(driver.TransferVD,
             self._logout(common)
 
     def manage_existing(self, volume, existing_ref):
-        common = self._login()
+        common = self._login(volume)
         try:
             return common.manage_existing(volume, existing_ref)
         finally:
             self._logout(common)
 
     def manage_existing_get_size(self, volume, existing_ref):
-        common = self._login()
+        common = self._login(volume)
         try:
             return common.manage_existing_get_size(volume, existing_ref)
         finally:
             self._logout(common)
 
     def unmanage(self, volume):
-        common = self._login()
+        common = self._login(volume)
         try:
             common.unmanage(volume)
         finally:
@@ -825,14 +838,14 @@ class HPE3PARISCSIDriver(driver.TransferVD,
 
     def attach_volume(self, context, volume, instance_uuid, host_name,
                       mountpoint):
-        common = self._login()
+        common = self._login(volume)
         try:
             common.attach_volume(volume, instance_uuid)
         finally:
             self._logout(common)
 
     def detach_volume(self, context, volume, attachment=None):
-        common = self._login()
+        common = self._login(volume)
         try:
             common.detach_volume(volume, attachment)
         finally:
@@ -840,7 +853,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
 
     def retype(self, context, volume, new_type, diff, host):
         """Convert the volume to be of the new type."""
-        common = self._login()
+        common = self._login(volume)
         try:
             return common.retype(volume, new_type, diff, host)
         finally:
@@ -854,7 +867,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
                           "to a host with storage_protocol=%s.", protocol)
                 return False, None
 
-        common = self._login()
+        common = self._login(volume)
         try:
             return common.migrate_volume(volume, host)
         finally:
@@ -863,7 +876,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
     def update_migrated_volume(self, context, volume, new_volume,
                                original_volume_status):
         """Update the name of the migrated volume to it's new ID."""
-        common = self._login()
+        common = self._login(volume)
         try:
             return common.update_migrated_volume(context, volume, new_volume,
                                                  original_volume_status)
@@ -871,7 +884,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
             self._logout(common)
 
     def get_pool(self, volume):
-        common = self._login()
+        common = self._login(volume)
         try:
             return common.get_cpg(volume)
         except hpeexceptions.HTTPNotFound:
@@ -890,7 +903,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
 
     def replication_enable(self, context, volume):
         """Enable replication on a replication capable volume."""
-        common = self._login()
+        common = self._login(volume)
         try:
             return common.replication_enable(context, volume)
         finally:
@@ -898,7 +911,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
 
     def replication_disable(self, context, volume):
         """Disable replication on the specified volume."""
-        common = self._login()
+        common = self._login(volume)
         try:
             return common.replication_disable(context, volume)
         finally:
@@ -906,7 +919,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
 
     def replication_failover(self, context, volume, secondary):
         """Force failover to a secondary replication target."""
-        common = self._login(timeout=30)
+        common = self._login(volume, timeout=30)
         try:
             return common.replication_failover(context, volume, secondary)
         finally:
@@ -914,7 +927,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
 
     def list_replication_targets(self, context, volume):
         """Provides a means to obtain replication targets for a volume."""
-        common = self._login(timeout=30)
+        common = self._login(volume, timeout=30)
         try:
             return common.list_replication_targets(context, volume)
         finally:

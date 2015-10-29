@@ -216,10 +216,11 @@ class HPE3PARCommon(object):
         3.0.2 - Python 3 support
         3.0.3 - Remove db access for consistency groups
         3.0.4 - Adds v2 managed replication support
+        3.0.5 - Adds v2 unmanaged replication support
 
     """
 
-    VERSION = "3.0.4"
+    VERSION = "3.0.5"
 
     stats = {}
 
@@ -241,6 +242,7 @@ class HPE3PARCommon(object):
     PERIODIC = 2
     EXTRA_SPEC_REP_MODE = "replication:mode"
     EXTRA_SPEC_REP_SYNC_PERIOD = "replication:sync_period"
+    RC_ACTION_CHANGE_TO_PRIMARY = 7
 
     # Valid values for volume type extra specs
     # The first value in the list is the default value
@@ -266,6 +268,7 @@ class HPE3PARCommon(object):
         self.config = config
         self.client = None
         self.uuid = uuid.uuid4()
+        self._client_conf = {}
         self._replication_targets = []
         self._replication_enabled = False
 
@@ -279,14 +282,22 @@ class HPE3PARCommon(object):
                 LOG.error(msg)
                 raise exception.InvalidInput(reason=msg)
 
+    def check_replication_flags(self, options, required_flags):
+        for flag in required_flags:
+            if not options.get(flag, None):
+                msg = (_('%s is not set and is required for the replicaiton '
+                         'device to be valid.') % flag)
+                LOG.error(msg)
+                raise exception.InvalidInput(reason=msg)
+
     def _create_client(self, timeout=None):
+        hpe3par_api_url = self._client_conf['hpe3par_api_url']
         # Timeout is only supported in version 4.0.2 and greater of the
         # python-3parclient.
         if hpe3parclient.version >= MIN_REP_CLIENT_VERSION:
-            cl = client.HPE3ParClient(self.config.hpe3par_api_url,
-                                      timeout=timeout)
+            cl = client.HPE3ParClient(hpe3par_api_url, timeout=timeout)
         else:
-            cl = client.HPE3ParClient(self.config.hpe3par_api_url)
+            cl = client.HPE3ParClient(hpe3par_api_url)
         client_version = hpe3parclient.version
 
         if client_version < MIN_CLIENT_VERSION:
@@ -304,11 +315,11 @@ class HPE3PARCommon(object):
     def client_login(self):
         try:
             LOG.debug("Connecting to 3PAR")
-            self.client.login(self.config.hpe3par_username,
-                              self.config.hpe3par_password)
+            self.client.login(self._client_conf['hpe3par_username'],
+                              self._client_conf['hpe3par_password'])
         except hpeexceptions.HTTPUnauthorized as ex:
             msg = (_("Failed to Login to 3PAR (%(url)s) because %(err)s") %
-                   {'url': self.config.hpe3par_api_url, 'err': ex})
+                   {'url': self._client_conf['hpe3par_api_url'], 'err': ex})
             LOG.error(msg)
             raise exception.InvalidInput(reason=msg)
 
@@ -317,12 +328,12 @@ class HPE3PARCommon(object):
         if CONF.strict_ssh_host_key_policy:
             policy = "RejectPolicy"
         self.client.setSSHOptions(
-            self.config.san_ip,
-            self.config.san_login,
-            self.config.san_password,
-            port=self.config.san_ssh_port,
-            conn_timeout=self.config.ssh_conn_timeout,
-            privatekey=self.config.san_private_key,
+            self._client_conf['san_ip'],
+            self._client_conf['san_login'],
+            self._client_conf['san_password'],
+            port=self._client_conf['san_ssh_port'],
+            conn_timeout=self._client_conf['ssh_conn_timeout'],
+            privatekey=self._client_conf['san_private_key'],
             missing_key_policy=policy,
             known_hosts_file=known_hosts_file)
 
@@ -357,9 +368,10 @@ class HPE3PARCommon(object):
         return cl
 
     def _destroy_replication_client(self, client):
-        client.logout()
+        if client is not None:
+            client.logout()
 
-    def do_setup(self, context, timeout=None):
+    def do_setup(self, context, volume=None, timeout=None):
         if hpe3parclient is None:
             msg = _('You must install hpe3parclient before using 3PAR'
                     ' drivers. Run "pip install python-3parclient" to'
@@ -367,6 +379,11 @@ class HPE3PARCommon(object):
             raise exception.VolumeBackendAPIException(data=msg)
 
         try:
+            # This will set self._client_conf with the proper credentials
+            # to communicate with the 3PAR array. It will contain either
+            # the values for the primary array or secondary array in the
+            # case of a fail-over.
+            self._get_3par_config(volume)
             self.client = self._create_client(timeout=timeout)
             wsapi_version = self.client.getWsApiVersion()
             self.API_VERSION = wsapi_version['build']
@@ -415,11 +432,6 @@ class HPE3PARCommon(object):
             self.client.id = 0
         finally:
             self.client_logout()
-
-        # v2 replication setup
-        if not self._replication_enabled and (
-           hpe3parclient.version >= MIN_REP_CLIENT_VERSION):
-            self._do_replication_setup()
 
     def check_for_setup_error(self):
         if self.client:
@@ -943,6 +955,9 @@ class HPE3PARCommon(object):
             if 'must be in the same domain' in e.get_description():
                 LOG.error(e.get_description())
                 raise exception.Invalid3PARDomain(err=e.get_description())
+            else:
+                raise exception.VolumeBackendAPIException(
+                    data=e.get_description())
 
     def _safe_hostname(self, hostname):
         """We have to use a safe hostname length for 3PAR host names."""
@@ -2693,7 +2708,7 @@ class HPE3PARCommon(object):
                 volume['id'], volume['provider_location'])
             cl = self._create_replication_client(failover_target)
             cl.recoverRemoteCopyGroupFromDisaster(
-                remote_rcg_name, self.client.RC_ACTION_CHANGE_TO_PRIMARY)
+                remote_rcg_name, self.RC_ACTION_CHANGE_TO_PRIMARY)
             new_location = volume['provider_location'] + ":" + (
                 failover_target['id'])
 
@@ -2740,9 +2755,16 @@ class HPE3PARCommon(object):
                             "not be verified with the primary array."))
 
         replication_targets = []
+        volume_type = self._get_volume_type(volume["volume_type_id"])
+        extra_specs = volume_type.get("extra_specs")
+        replication_mode = extra_specs.get(self.EXTRA_SPEC_REP_MODE)
+        replication_mode_num = self._get_remote_copy_mode_num(
+            replication_mode)
+
         for target in self._replication_targets:
-            if not allowed_names or (
-               target['target_device_id'] in allowed_names):
+            if not allowed_names and replication_mode_num == (
+                target['replication_mode']) or (
+                    target['target_device_id'] in allowed_names):
                 list_vals = {'target_device_id': target['target_device_id']}
                 replication_targets.append(list_vals)
 
@@ -2750,49 +2772,36 @@ class HPE3PARCommon(object):
                 'targets': replication_targets}
 
     def _do_replication_setup(self):
+        replication_targets = []
         replication_devices = self.config.replication_device
         if replication_devices:
             for dev in replication_devices:
-                remote_array = {}
-                is_managed = dev.get('managed_backend_name')
-                if not is_managed:
-                    msg = _("Unmanaged replication is not supported at this "
-                            "time. Please configure cinder.conf for managed "
-                            "replication.")
-                    LOG.error(msg)
-                    raise exception.VolumeBackendAPIException(data=msg)
-
-                remote_array['managed_backend_name'] = is_managed
+                remote_array = dict(dev.items())
+                # Override and set defaults for certain entries
+                remote_array['managed_backend_name'] = (
+                    dev.get('managed_backend_name'))
                 remote_array['replication_mode'] = (
                     self._get_remote_copy_mode_num(
                         dev.get('replication_mode')))
-                remote_array['target_device_id'] = (
-                    dev.get('target_device_id'))
-                remote_array['cpg_map'] = (
-                    dev.get('cpg_map'))
-                remote_array['hpe3par_api_url'] = (
-                    dev.get('hpe3par_api_url'))
-                remote_array['hpe3par_username'] = (
-                    dev.get('hpe3par_username'))
-                remote_array['hpe3par_password'] = (
-                    dev.get('hpe3par_password'))
-                remote_array['san_ip'] = (
-                    dev.get('san_ip'))
-                remote_array['san_login'] = (
-                    dev.get('san_login'))
-                remote_array['san_password'] = (
-                    dev.get('san_password'))
                 remote_array['san_ssh_port'] = (
                     dev.get('san_ssh_port', self.config.san_ssh_port))
                 remote_array['ssh_conn_timeout'] = (
                     dev.get('ssh_conn_timeout', self.config.ssh_conn_timeout))
                 remote_array['san_private_key'] = (
                     dev.get('san_private_key', self.config.san_private_key))
+                # Format iscsi IPs correctly
+                iscsi_ips = dev.get('hpe3par_iscsi_ips')
+                if iscsi_ips:
+                    remote_array['hpe3par_iscsi_ips'] = iscsi_ips.split(' ')
+                # Format hpe3par_iscsi_chap_enabled as a bool
+                remote_array['hpe3par_iscsi_chap_enabled'] = (
+                    dev.get('hpe3par_iscsi_chap_enabled') == 'True')
                 array_name = remote_array['target_device_id']
 
                 # Make sure we can log into the client, that it has been
                 # correctly configured, and it its version matches the
                 # primary arrarys version.
+                cl = None
                 try:
                     cl = self._create_replication_client(remote_array)
                     array_id = six.text_type(cl.getStorageSystemInfo()['id'])
@@ -2816,13 +2825,14 @@ class HPE3PARCommon(object):
                                    "In order to be valid, target_device_id, "
                                    "replication_mode, "
                                    "hpe3par_api_url, hpe3par_username, "
-                                   "hpe3par_password, cpg_map, and "
+                                   "hpe3par_password, cpg_map, san_ip, "
+                                   "san_login, and san_password "
                                    "must be specified. If the target is "
                                    "managed, managed_backend_name must be set "
                                    "as well.") % array_name)
                         LOG.warning(msg)
                     else:
-                        self._replication_targets.append(remote_array)
+                        replication_targets.append(remote_array)
                 except Exception:
                     msg = (_LE("Could not log in to 3PAR array (%s) with the "
                                "provided credentials.") % array_name)
@@ -2830,14 +2840,20 @@ class HPE3PARCommon(object):
                 finally:
                     self._destroy_replication_client(cl)
 
+            self._replication_targets = replication_targets
             if self._is_replication_configured_correct():
                 self._replication_enabled = True
 
     def _is_valid_replication_array(self, target):
-        for k, v in target.items():
-            if v is None:
-                return False
-        return True
+        required_flags = ['hpe3par_api_url', 'hpe3par_username',
+                          'hpe3par_password', 'san_ip', 'san_login',
+                          'san_password', 'target_device_id',
+                          'replication_mode', 'cpg_map']
+        try:
+            self.check_replication_flags(target, required_flags)
+            return True
+        except Exception:
+            return False
 
     def _is_replication_configured_correct(self):
         rep_flag = True
@@ -2895,6 +2911,73 @@ class HPE3PARCommon(object):
         if mode == "periodic":
             ret_mode = self.PERIODIC
         return ret_mode
+
+    def _get_3par_config(self, volume):
+        if hpe3parclient.version >= MIN_REP_CLIENT_VERSION:
+            self._do_replication_setup()
+        conf = None
+        if self._replication_enabled and volume:
+            provider_location = volume.get('provider_location')
+            if provider_location:
+                if volume.get('replication_status') == 'failed-over':
+                    _, provider_location = provider_location.split(':')
+
+                for target in self._replication_targets:
+                    if target['id'] == provider_location:
+                        conf = target
+                        break
+        self._build_3par_config(conf)
+
+    def _build_3par_config(self, conf=None):
+        """Build 3PAR client config dictionary.
+
+        self._client_conf will contain values from self.config if the volume
+        is located on the primary array in order to properly contact it. If
+        the volume has been failed over and therefore on a secondary array,
+        self._client_conf will contain values on how to contact that array.
+        The only time we will return with entries from a secondary array is
+        with unmanaged replication.
+        """
+        if conf:
+            self._client_conf['hpe3par_username'] = (
+                conf.get('hpe3par_username'))
+            self._client_conf['hpe3par_password'] = (
+                conf.get('hpe3par_password'))
+            self._client_conf['san_ip'] = conf.get('san_ip')
+            self._client_conf['san_login'] = conf.get('san_login')
+            self._client_conf['san_password'] = conf.get('san_password')
+            self._client_conf['san_ssh_port'] = conf.get('san_ssh_port')
+            self._client_conf['ssh_conn_timeout'] = (
+                conf.get('ssh_conn_timeout'))
+            self._client_conf['san_private_key'] = conf.get('san_private_key')
+            self._client_conf['hpe3par_api_url'] = conf.get('hpe3par_api_url')
+            self._client_conf['hpe3par_iscsi_ips'] = (
+                conf.get('hpe3par_iscsi_ips'))
+            self._client_conf['hpe3par_iscsi_chap_enabled'] = (
+                conf.get('hpe3par_iscsi_chap_enabled'))
+            self._client_conf['iscsi_ip_address'] = (
+                conf.get('iscsi_ip_address'))
+            self._client_conf['iscsi_port'] = conf.get('iscsi_port')
+        else:
+            self._client_conf['hpe3par_username'] = (
+                self.config.hpe3par_username)
+            self._client_conf['hpe3par_password'] = (
+                self.config.hpe3par_password)
+            self._client_conf['san_ip'] = self.config.san_ip
+            self._client_conf['san_login'] = self.config.san_login
+            self._client_conf['san_password'] = self.config.san_password
+            self._client_conf['san_ssh_port'] = self.config.san_ssh_port
+            self._client_conf['ssh_conn_timeout'] = (
+                self.config.ssh_conn_timeout)
+            self._client_conf['san_private_key'] = self.config.san_private_key
+            self._client_conf['hpe3par_api_url'] = self.config.hpe3par_api_url
+            self._client_conf['hpe3par_iscsi_ips'] = (
+                self.config.hpe3par_iscsi_ips)
+            self._client_conf['hpe3par_iscsi_chap_enabled'] = (
+                self.config.hpe3par_iscsi_chap_enabled)
+            self._client_conf['iscsi_ip_address'] = (
+                self.config.iscsi_ip_address)
+            self._client_conf['iscsi_port'] = self.config.iscsi_port
 
     def _get_cpg_from_cpg_map(self, cpg_map, target_cpg):
         ret_target_cpg = None
@@ -3096,8 +3179,9 @@ class HPE3PARCommon(object):
         # Do regular volume replication destroy now config mirroring is off
         try:
             self._do_volume_replication_destroy(volume, rcg_name)
-        except Exception:
-            msg = (_("The failed-over volume could not be deleted."))
+        except Exception as ex:
+            msg = (_("The failed-over volume could not be deleted: %s") %
+                   six.text_type(ex))
             LOG.error(msg)
             raise exception.VolumeIsBusy(message=msg)
         finally:
