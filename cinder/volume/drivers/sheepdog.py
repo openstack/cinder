@@ -338,7 +338,9 @@ class SheepdogClient(object):
 class SheepdogIOWrapper(io.RawIOBase):
     """File-like object with Sheepdog backend."""
 
-    def __init__(self, volume, snapshot_name=None):
+    def __init__(self, addr, port, volume, snapshot_name=None):
+        self._addr = addr
+        self._port = port
         self._vdiname = volume['name']
         self._snapshot_name = snapshot_name
         self._offset = 0
@@ -369,7 +371,7 @@ class SheepdogIOWrapper(io.RawIOBase):
                     ) % self._vdiname
             raise exception.VolumeDriverException(message=msg)
 
-        cmd = ['dog', 'vdi', 'read']
+        cmd = ['dog', 'vdi', 'read', '-a', self._addr, '-p', self._port]
         if self._snapshot_name:
             cmd.extend(('-s', self._snapshot_name))
         cmd.extend((self._vdiname, self._offset))
@@ -386,7 +388,8 @@ class SheepdogIOWrapper(io.RawIOBase):
             raise exception.VolumeDriverException(message=msg)
 
         length = len(data)
-        cmd = ('dog', 'vdi', 'write', self._vdiname, self._offset, length)
+        cmd = ('dog', 'vdi', 'write', '-a', self._addr, '-p', self._port,
+               self._vdiname, self._offset, length)
         self._execute(cmd, data)
         self._offset += length
         return length
@@ -437,8 +440,10 @@ class SheepdogDriver(driver.VolumeDriver):
 
     def __init__(self, *args, **kwargs):
         super(SheepdogDriver, self).__init__(*args, **kwargs)
-        self.client = SheepdogClient(CONF.sheepdog_store_address,
-                                     CONF.sheepdog_store_port)
+        self.configuration.append_config_values(sheepdog_opts)
+        self.addr = self.configuration.sheepdog_store_address
+        self.port = self.configuration.sheepdog_store_port
+        self.client = SheepdogClient(self.addr, self.port)
         self.stats_pattern = re.compile(r'[\w\s%]*Total\s(\d+)\s(\d+)*')
         self._stats = {}
 
@@ -543,13 +548,7 @@ class SheepdogDriver(driver.VolumeDriver):
             # see volume/drivers/manager.py:_create_volume
             self.client.delete(volume.name)
             # convert and store into sheepdog
-            image_utils.convert_image(
-                tmp,
-                'sheepdog:%(addr)s:%(port)d:%(name)s' % {
-                    'addr': CONF.sheepdog_store_address,
-                    'port': CONF.sheepdog_store_port,
-                    'name': volume['name']},
-                'raw')
+            image_utils.convert_image(tmp, self.local_path(volume), 'raw')
             self.client.resize(volume.name, volume.size)
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
@@ -564,7 +563,7 @@ class SheepdogDriver(driver.VolumeDriver):
                    '-f', 'raw',
                    '-t', 'none',
                    '-O', 'raw',
-                   'sheepdog:%s' % volume['name'],
+                   self.local_path(volume),
                    tmp)
             self._try_execute(*cmd)
 
@@ -580,7 +579,10 @@ class SheepdogDriver(driver.VolumeDriver):
         self.client.delete_snapshot(snapshot.volume_name, snapshot.name)
 
     def local_path(self, volume):
-        return "sheepdog:%s" % volume['name']
+        return "sheepdog:%(addr)s:%(port)s:%(name)s" % {
+            'addr': self.addr,
+            'port': self.port,
+            'name': volume['name']}
 
     def ensure_export(self, context, volume):
         """Safely and synchronously recreate an export for a logical volume."""
@@ -598,7 +600,9 @@ class SheepdogDriver(driver.VolumeDriver):
         return {
             'driver_volume_type': 'sheepdog',
             'data': {
-                'name': volume['name']
+                'name': volume['name'],
+                'hosts': [self.addr],
+                'ports': ["%d" % self.port],
             }
         }
 
@@ -667,12 +671,13 @@ class SheepdogDriver(driver.VolumeDriver):
             raise exception.SheepdogError(reason=msg)
 
         try:
-            sheepdog_fd = SheepdogIOWrapper(src_volume, temp_snapshot_name)
+            sheepdog_fd = SheepdogIOWrapper(self.addr, self.port,
+                                            src_volume, temp_snapshot_name)
             backup_service.backup(backup, sheepdog_fd)
         finally:
             self.client.delete_snapshot(src_volume.name, temp_snapshot_name)
 
     def restore_backup(self, context, backup, volume, backup_service):
         """Restore an existing backup to a new or existing volume."""
-        sheepdog_fd = SheepdogIOWrapper(volume)
+        sheepdog_fd = SheepdogIOWrapper(self.addr, self.port, volume)
         backup_service.restore(backup, volume['id'], sheepdog_fd)
