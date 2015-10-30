@@ -5,13 +5,14 @@
 # Translators:
 # Andreas Jaeger <jaegerandi@gmail.com>, 2015. #zanata
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
+# evgin <evgind@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 7.0.1.dev5\n"
+"Project-Id-Version: cinder 7.0.1.dev8\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-10-23 06:06+0000\n"
-"PO-Revision-Date: 2015-09-16 08:16+0000\n"
-"Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
+"POT-Creation-Date: 2015-10-29 06:05+0000\n"
+"PO-Revision-Date: 2015-10-28 09:04+0000\n"
+"Last-Translator: evgin <evgind@gmail.com>\n"
 "Language: tr_TR\n"
 "Language-Team: Turkish (Turkey)\n"
 "Plural-Forms: nplurals=1; plural=0\n"
@@ -221,6 +222,10 @@ msgid "%s must be an absolute path."
 msgstr "%s mutlak yol olmalı."
 
 #, python-format
+msgid "%s must be an integer."
+msgstr "%s bir tam sayı olmalıdır."
+
+#, python-format
 msgid "%s not set in cinder.conf"
 msgstr "%s cinder.conf'da ayarlanmamış"
 
@@ -339,6 +344,10 @@ msgid ""
 msgstr ""
 "Belirtilen yönetilecek depolama havuzlarından hepsi mevcut değil. Lütfen "
 "yapılandırmanızı kontrol edin. Mevcut olmayan havuzlar: %s"
+
+#, python-format
+msgid "An error has occured in SheepdogDriver. (Reason: %(reason)s)"
+msgstr "SheepdogDriver'da bir sorun oluştu.(Reason: %(reason)s)"
 
 msgid "An error has occurred during backup operation"
 msgstr "Yedekleme işlemi sırasında bir hata oluştu"
@@ -860,6 +869,14 @@ msgstr "DRBDmanage art alanda çalışan uygulamasına ping atılamıyor"
 #, python-format
 msgid "Cannot place volume %(id)s on %(host)s"
 msgstr "%(host)s üzerine %(id)s mantıksal sürücüsü yerleştirilemiyor"
+
+#, python-format
+msgid ""
+"Cannot provide both 'cgsnapshot_id' and 'source_cgid' to create consistency "
+"group %(name)s from source."
+msgstr ""
+"Kaynak tutarlılık grubundan bir tutarlılık grubu %(name)s oluşturma işlemi "
+"için 'cgsnapshot_id' ve 'source_cgid' sağlanamıyor."
 
 msgid "Cannot register resource"
 msgstr "Kaynak kaydedilemez"
@@ -1462,6 +1479,14 @@ msgid ""
 msgstr ""
 "EMC VNX Cinder Sürücü CLI istisnası: %(cmd)s (Dönüş Kodu: %(rc)s)(Çıktı: "
 "%(out)s)."
+
+#, python-format
+msgid ""
+"Either 'cgsnapshot_id' or 'source_cgid' must be provided to create "
+"consistency group %(name)s from source."
+msgstr ""
+"Kaynak tutarlılık grubundan bir tutarlılık grubu %(name)s oluşturmak için  "
+"'cgsnapshot_id' veya 'source_cgid'  ikilisinden biri mutlaka sağlanmalıdır."
 
 #, python-format
 msgid ""
@@ -3160,6 +3185,10 @@ msgstr ""
 "Flexvisor mantıksal sürücüsü %(id)s %(vgid)s grubuna katılmada başarısız."
 
 #, python-format
+msgid "Free quota available is %s."
+msgstr "Kullanılabilir kota alanı %s'dir."
+
+#, python-format
 msgid "GPFS is not running, state: %s."
 msgstr "GPFS çalışmıyor, durum: %s."
 
@@ -3640,6 +3669,12 @@ msgid "Invalid value '%s' for force. "
 msgstr "Zorlama için geçersiz değer '%s'.  "
 
 #, python-format
+msgid "Invalid value '%s' for is_public. Accepted values: True or False."
+msgstr ""
+"is_public için %s yanlış bir değerdir. Kabul edilebilir değerler: True yada "
+"False. "
+
+#, python-format
 msgid "Invalid value for 'bootable': '%s'"
 msgstr "'bootable' için geçersiz değer: '%s'"
 
@@ -3833,6 +3868,9 @@ msgstr "Bozuk isim sunucusu karakter dizisi: %s"
 msgid "Malformed request body"
 msgstr "Kusurlu istek gövdesi"
 
+msgid "Malformed request body."
+msgstr "Bozuk biçimli istek gövdesi."
+
 msgid "Malformed request url"
 msgstr "Bozuk istel adresi"
 
@@ -3938,6 +3976,9 @@ msgstr "Metadata yedek nesnesi '%s' zaten var"
 
 msgid "Metadata item was not found"
 msgstr "İçerik özelliği bilgisi bulunamadı"
+
+msgid "Metadata item was not found."
+msgstr "Metadata öğesi bulunamadı."
 
 #, python-format
 msgid "Metadata property key %s greater than 255 characters"
@@ -4047,6 +4088,12 @@ msgstr "lsfabric'e wwpn veya istemci geçirilmeli."
 
 msgid "Must specify 'connector'"
 msgstr "'connector' belirtilmelidir"
+
+msgid "Must specify 'connector'."
+msgstr "Belirtilmelidir 'connector'."
+
+msgid "Must specify 'host'."
+msgstr "Belirtilmelidir 'host'."
 
 msgid "Must specify 'new_volume'"
 msgstr "'new_volume' belirtilmelidir"
@@ -4453,6 +4500,10 @@ msgstr "QoS özelliğinde yalnızca bir sınır ayarlanabilir."
 #, python-format
 msgid "Operation failed with status=%(status)s. Full dump: %(data)s"
 msgstr "İşlem şu durum ile başarısız oldu=%(status)s. Tam dökümü: %(data)s"
+
+#, python-format
+msgid "Operation not supported: %(operation)s."
+msgstr "İşlem desteklenmiyor: %(operation)s."
 
 msgid "Option gpfs_images_dir is not set correctly."
 msgstr "gpfs_images_dir seçeneği doğru ayarlanmamış."
@@ -5169,6 +5220,9 @@ msgstr "Kötü durumda sistem %(id)s bulundu - %(status)s."
 msgid "System does not support compression."
 msgstr "Sistem sıkıştırmayı desteklemiyor."
 
+msgid "System is busy, retry operation."
+msgstr "Sistem meşgul, işlemi yeniden deneyin."
+
 #, python-format
 msgid ""
 "TSM [%(tsm)s] was not found in CloudByte storage for account [%(account)s]."
@@ -5184,6 +5238,10 @@ msgid ""
 msgstr ""
 "Şablon ağacı uyumsuz; %(mastertag)s ana kaydına %(slavetag)s bağımlı birimi "
 "ekleniyor"
+
+#, python-format
+msgid "Tenant ID: %s does not exist."
+msgstr "Tenant ID: %s  bulunmuyor."
 
 msgid "Terminate connection failed"
 msgstr "Bağlantı sonlandırma başarısız oldu"
@@ -5307,6 +5365,9 @@ msgid ""
 msgstr ""
 "İçe aktarılan lun %(lun_id)s %(host)s istemcisi tarafından yönetilmeyen "
 "%(lun_pool)s havuzunda."
+
+msgid "The key cannot be None."
+msgstr "Anahtar boş olamaz."
 
 #, python-format
 msgid "The logical device for specified %(type)s %(id)s was already deleted."
@@ -6021,6 +6082,13 @@ msgstr "Desteklenmeyen sanal disk uzantısı: %s"
 msgid "Unsupported volume format: %s "
 msgstr "Desteklenmeyen mantıksal sürücü biçimi: %s "
 
+msgid ""
+"Update and delete quota operations can only be made by an admin of immediate "
+"parent or by the CLOUD admin."
+msgstr ""
+"Kota güncelleme ve kota silme gibi işlemler ancak bir üst yönetici veya "
+"CLOUD yöneticisi tarafindan yapilabilir."
+
 msgid "Updated At"
 msgstr "Güncelleme saati"
 
@@ -6529,6 +6597,10 @@ msgid "Volume type with name %(volume_type_name)s could not be found."
 msgstr "%(volume_type_name)s adında mantıksal sürücü türü bulunamadı."
 
 #, python-format
+msgid "Volume with volume id %s does not exist."
+msgstr "%s numaralı disk bölümü mevcut değildir."
+
+#, python-format
 msgid ""
 "Volume: %(volumeName)s is not a concatenated volume. You can only perform "
 "extend on concatenated volume. Exiting..."
@@ -6566,6 +6638,9 @@ msgid ""
 msgstr ""
 "Sunucu SSL kipinde çalışırken, yapılandırma dosyanızda cert_file ve key_file "
 "seçenek değerlerinin her ikisinide belirtmelisiniz."
+
+msgid "X-IO Volume Driver exception!"
+msgstr "kural dışı X-IO disk dürücüsü!"
 
 msgid "XtremIO not configured correctly, no iscsi portals found"
 msgstr "XtremIO düzgün yapılandırılmamış, iscsi portalı bulunamadı"
