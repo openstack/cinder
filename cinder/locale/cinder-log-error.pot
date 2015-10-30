@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 7.0.0.0rc2.dev11\n"
+"Project-Id-Version: cinder 7.0.1.dev13\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-10-03 06:22+0000\n"
+"POT-Creation-Date: 2015-10-30 06:07+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -552,28 +552,39 @@ msgid ""
 "%(model)s"
 msgstr ""
 
-#: cinder/volume/driver.py:978
+#: cinder/volume/driver.py:981
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1875
+#, python-format
+msgid "Error detaching volume %s"
+msgstr ""
+
+#: cinder/volume/driver.py:997
 msgid "Attaching snapshot from a remote node is not supported."
 msgstr ""
 
-#: cinder/volume/driver.py:999
+#: cinder/volume/driver.py:1018
 #, python-format
 msgid ""
 "Failed updating model of snapshot %(snapshot_id)s with driver provided "
 "model %(model)s."
 msgstr ""
 
-#: cinder/volume/driver.py:2166 cinder/volume/targets/iscsi.py:171
+#: cinder/volume/driver.py:1067
+#, python-format
+msgid "Could not validate device %s"
+msgstr ""
+
+#: cinder/volume/driver.py:2194 cinder/volume/targets/iscsi.py:171
 #, python-format
 msgid "ISCSI discovery attempt failed for:%s"
 msgstr ""
 
-#: cinder/volume/driver.py:2362
+#: cinder/volume/driver.py:2390
 #, python-format
 msgid "The volume driver requires %(data)s in the connector."
 msgstr ""
 
-#: cinder/volume/driver.py:2638
+#: cinder/volume/driver.py:2666
 #, python-format
 msgid ""
 "FibreChannelDriver validate_connector failed. No '%(setting)s'. Make sure"
@@ -1939,49 +1950,49 @@ msgstr ""
 msgid "Only available volumes can be migrated between different protocols."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:1518
+#: cinder/volume/drivers/emc/emc_vmax_common.py:1531
 #, python-format
 msgid "Target end points do not exist for hardware Id: %(hardwareIdInstance)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:1929
+#: cinder/volume/drivers/emc/emc_vmax_common.py:1942
 #, python-format
 msgid "Unable to determine whether %(volumeName)s is composite or not."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:2104
+#: cinder/volume/drivers/emc/emc_vmax_common.py:2117
 #, python-format
 msgid "Volume %(name)s not found on the array. No volume to delete."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:2962
-#: cinder/volume/drivers/emc/emc_vmax_common.py:3085
+#: cinder/volume/drivers/emc/emc_vmax_common.py:2975
+#: cinder/volume/drivers/emc/emc_vmax_common.py:3098
 #, python-format
 msgid ""
 "Volume %(name)s is not suitable for storage assisted migration using "
 "retype."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:3027
+#: cinder/volume/drivers/emc/emc_vmax_common.py:3040
 #, python-format
 msgid ""
 "Volume : %(volumeName)s has not been removed from source storage group "
 "%(storageGroup)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:3041
+#: cinder/volume/drivers/emc/emc_vmax_common.py:3054
 #, python-format
 msgid "Failed to get or create storage group %(storageGroupName)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:3054
+#: cinder/volume/drivers/emc/emc_vmax_common.py:3067
 #, python-format
 msgid ""
 "Volume : %(volumeName)s has not been added to target storage group "
 "%(storageGroup)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:3326
+#: cinder/volume/drivers/emc/emc_vmax_common.py:3339
 #, python-format
 msgid ""
 "Failed to Roll back to re-add volume %(volumeName)s to default storage "
@@ -1989,17 +2000,17 @@ msgid ""
 " get the volume returned to the default storage group."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:4131
+#: cinder/volume/drivers/emc/emc_vmax_common.py:4144
 #, python-format
 msgid "Exception: %(ex)s"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:4150
+#: cinder/volume/drivers/emc/emc_vmax_common.py:4163
 #, python-format
 msgid "Volume %(name)s not found on the array."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:4281
+#: cinder/volume/drivers/emc/emc_vmax_common.py:4294
 #, python-format
 msgid "Exception: %(ex)s."
 msgstr ""
@@ -2974,11 +2985,6 @@ msgstr ""
 #: cinder/volume/drivers/san/hp/hp_3par_common.py:1862
 #, python-format
 msgid "Error attaching volume %s"
-msgstr ""
-
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1875
-#, python-format
-msgid "Error detaching volume %s"
 msgstr ""
 
 #: cinder/volume/drivers/san/hp/hp_3par_common.py:1937

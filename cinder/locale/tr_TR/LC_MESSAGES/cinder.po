@@ -8,10 +8,10 @@
 # evgin <evgind@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 7.0.1.dev8\n"
+"Project-Id-Version: cinder 7.0.1.dev13\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-10-29 06:05+0000\n"
-"PO-Revision-Date: 2015-10-28 09:04+0000\n"
+"POT-Creation-Date: 2015-10-30 06:06+0000\n"
+"PO-Revision-Date: 2015-10-29 06:22+0000\n"
 "Last-Translator: evgin <evgind@gmail.com>\n"
 "Language: tr_TR\n"
 "Language-Team: Turkish (Turkey)\n"
@@ -333,6 +333,13 @@ msgstr "API yanıtı: %s"
 msgid "API version could not be determined."
 msgstr "API sürümü belirlenemedi."
 
+msgid ""
+"About to delete child projects having non-zero quota. This should not be "
+"performed"
+msgstr ""
+"Kotası boş olmayan bir çocuk projeyi silmeye calisiyorsunuz. Bu işlem "
+"gerçekleştirilemez."
+
 msgid "Access list not available for public volume types."
 msgstr ""
 "Ortak mantıksal sürücü türleri için erişim listesi kullanılabilir değil."
@@ -453,6 +460,9 @@ msgstr "%(backup_id)s yedekleme bulunamadı."
 
 msgid "Backup RBD operation failed"
 msgstr "RBD Yedekleme işlemi başarısız oldu"
+
+msgid "Backup already exists in database."
+msgstr "Yedek veritabanında zaten mevcut."
 
 #, python-format
 msgid "Backup driver reported an error: %(message)s"
@@ -1471,6 +1481,14 @@ msgstr "Sürücü bağlantı başlatamadı (hata: %(err)s)."
 
 msgid "Driver must implement initialize_connection"
 msgstr "Sürücü initialize_connection gerçekleştirmelidir"
+
+#, python-format
+msgid ""
+"Driver successfully decoded imported backup data, but there are missing "
+"fields (%s)."
+msgstr ""
+"İçeri aktarımı yapılan yedek datanın, sürücü tarafından başarılı olarak kodu "
+"çözüldü ancak hatalı alanlar mevcut (%s)."
 
 #, python-format
 msgid ""
@@ -3290,6 +3308,10 @@ msgid "Host not found"
 msgstr "İstemci bulunamadı"
 
 #, python-format
+msgid "Host not found. Failed to remove %(service)s on %(host)s."
+msgstr "Host bulunamadı.%(host)s uzerindeki %(service)s silinemiyor."
+
+#, python-format
 msgid "Host type %s not supported."
 msgstr "İstemci türü %s desteklenmiyor."
 
@@ -3952,6 +3974,13 @@ msgstr "İzin verilen yedeklemelerin azami sayısı (%(allowed)d) aşıldı"
 msgid "Maximum number of snapshots allowed (%(allowed)d) exceeded"
 msgstr ""
 "İzin verilen anlık sistem görüntülerinin azami sayısı (%(allowed)d) aşıldı"
+
+#, python-format
+msgid ""
+"Maximum number of volumes allowed (%(allowed)d) exceeded for quota "
+"'%(name)s'."
+msgstr ""
+"İzin verilen maksimum disk bölümü  (%(allowed)d) kota aşıldı '%(name)s'."
 
 #, python-format
 msgid "May specify only one of %s"
@@ -4983,6 +5012,10 @@ msgstr ""
 msgid "Service %(service_id)s could not be found."
 msgstr "%(service_id)s servisi bulunamadı."
 
+#, python-format
+msgid "Service %s not found."
+msgstr "Servis %s bulunamadı."
+
 msgid "Service is unavailable at this time."
 msgstr "Şu anda servis kullanılamıyor."
 
@@ -5476,6 +5509,12 @@ msgid ""
 msgstr ""
 "%(memberCount)s biçimlenmiş meta sayısı %(volumeSize)s boyutundaki "
 "%(volumeName)s mantıksal sürücüsü için çok küçük."
+
+#, python-format
+msgid ""
+"The type of metadata: %(metadata_type)s for volume/snapshot %(id)s is "
+"invalid."
+msgstr "volume/snapshot %(id)s için geçersiz metadata tipi %(metadata_type)s "
 
 #, python-format
 msgid ""
@@ -6615,6 +6654,10 @@ msgstr ""
 "Mantıksal sürücü: %(volumeName)s %(sgGroupName)s depolama grubuna "
 "eklenmemiş. "
 
+#, python-format
+msgid "Volume: %s could not be found."
+msgstr "Disk bölümü:  %s bulunamadı."
+
 msgid "Volumes will be chunked into objects of this size (in megabytes)."
 msgstr "Mantıksal sürücüler bu boyutta nesnelere bölünecek (megabayt olarak)."
 
@@ -7099,6 +7142,9 @@ msgstr "fmt=%(fmt)s şununla desteklenir: %(backing_file)s"
 msgid "fmt=%(fmt)s backed by:%(backing_file)s"
 msgstr "fmt=%(fmt)s şununla desteklenir:%(backing_file)s"
 
+msgid "force delete"
+msgstr "silmeye zorla"
+
 #, python-format
 msgid ""
 "get_host_information: the ISCSI target information could not be retrieved. "
@@ -7531,6 +7577,10 @@ msgid ""
 msgstr ""
 "%(volume_size)d mantıksal sürücü boyutu %(size)d boyutundaki yedeği geri "
 "yüklemek için çok küçük."
+
+#, python-format
+msgid "volume size %d is invalid."
+msgstr "Hatalı disk bölümü boyutu %d"
 
 msgid ""
 "volume_type must be provided when creating a volume in a consistency group."
