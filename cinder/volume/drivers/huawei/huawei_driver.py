@@ -14,6 +14,7 @@
 #    under the License.
 
 import json
+import re
 import six
 import uuid
 
@@ -576,7 +577,6 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                                                     'new_type': new_type,
                                                     'diff': diff,
                                                     'host': host})
-
         # Check what changes are needed
         migration, change_opts, lun_id = self.determine_changes_when_retype(
             volume, new_type, host)
@@ -668,45 +668,18 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         }
 
         lun_info = self.restclient.get_lun_info(lun_id)
-        lun_opts['LUNType'] = int(lun_info['ALLOCTYPE'])
-        if lun_info['DATATRANSFERPOLICY']:
+        lun_opts['LUNType'] = int(lun_info.get('ALLOCTYPE'))
+        if lun_info.get('DATATRANSFERPOLICY'):
             lun_opts['policy'] = lun_info['DATATRANSFERPOLICY']
-        if lun_info['SMARTCACHEPARTITIONID']:
+        if lun_info.get('SMARTCACHEPARTITIONID'):
             lun_opts['cacheid'] = lun_info['SMARTCACHEPARTITIONID']
-        if lun_info['CACHEPARTITIONID']:
+        if lun_info.get('CACHEPARTITIONID'):
             lun_opts['partitionid'] = lun_info['CACHEPARTITIONID']
 
         return lun_opts
 
-    def determine_changes_when_retype(self, volume, new_type, host):
-        migration = False
-        change_opts = {
-            'policy': None,
-            'partitionid': None,
-            'cacheid': None,
-            'qos': None,
-            'host': None,
-            'LUNType': None,
-        }
-
-        lun_id = volume.get('provider_location')
-        old_opts = self.get_lun_specs(lun_id)
-
-        new_specs = new_type['extra_specs']
-        new_opts = huawei_utils._get_extra_spec_value(new_specs)
-        new_opts = smartx.SmartX().get_smartx_specs_opts(new_opts)
-
-        if 'LUNType' not in new_opts:
-            new_opts['LUNType'] = huawei_utils.find_luntype_in_xml(
-                self.xml_file_path)
-
-        if volume['host'] != host['host']:
-            migration = True
-            change_opts['host'] = (volume['host'], host['host'])
-        if old_opts['LUNType'] != new_opts['LUNType']:
-            migration = True
-            change_opts['LUNType'] = (old_opts['LUNType'], new_opts['LUNType'])
-
+    def _check_needed_changes(self, lun_id, old_opts, new_opts,
+                              change_opts, new_type):
         new_cache_id = None
         new_cache_name = new_opts['cachename']
         if new_cache_name:
@@ -763,6 +736,40 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         old_qos = self._get_qos_specs_from_array(old_qos_id)
         if old_qos != new_qos:
             change_opts['qos'] = ([old_qos_id, old_qos], new_qos)
+
+        return change_opts
+
+    def determine_changes_when_retype(self, volume, new_type, host):
+        migration = False
+        change_opts = {
+            'policy': None,
+            'partitionid': None,
+            'cacheid': None,
+            'qos': None,
+            'host': None,
+            'LUNType': None,
+        }
+
+        lun_id = volume.get('provider_location')
+        old_opts = self.get_lun_specs(lun_id)
+
+        new_specs = new_type['extra_specs']
+        new_opts = huawei_utils._get_extra_spec_value(new_specs)
+        new_opts = smartx.SmartX().get_smartx_specs_opts(new_opts)
+
+        if 'LUNType' not in new_opts:
+            new_opts['LUNType'] = huawei_utils.find_luntype_in_xml(
+                self.xml_file_path)
+
+        if volume['host'] != host['host']:
+            migration = True
+            change_opts['host'] = (volume['host'], host['host'])
+        if old_opts['LUNType'] != new_opts['LUNType']:
+            migration = True
+            change_opts['LUNType'] = (old_opts['LUNType'], new_opts['LUNType'])
+
+        change_opts = self._check_needed_changes(lun_id, old_opts, new_opts,
+                                                 change_opts, new_type)
 
         LOG.debug("Determine changes when retype. Migration: "
                   "%(migration)s, change_opts: %(change_opts)s.",
@@ -838,6 +845,210 @@ class HuaweiBaseDriver(driver.VolumeDriver):
 
         self.restclient.delete_luncopy(luncopy_id)
 
+    def _check_lun_valid_for_manage(self, lun_info, external_ref):
+        lun_id = lun_info.get('ID')
+        # Check whether the LUN is Normal.
+        if lun_info.get('HEALTHSTATUS') != constants.STATUS_HEALTH:
+            msg = _("Can't import LUN %s to Cinder. LUN status is not "
+                    "normal.") % lun_id
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=external_ref, reason=msg)
+
+        # Check whether the LUN exists in a HyperMetroPair.
+        try:
+            hypermetro_pairs = self.restclient.get_hypermetro_pairs()
+        except exception.VolumeBackendAPIException:
+            msg = _("Failed to get HyperMetroPair.")
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=external_ref, reason=msg)
+
+        for pair in hypermetro_pairs:
+            if pair.get('LOCALOBJID') == lun_id:
+                msg = (_("Can't import LUN %s to Cinder. Already exists in a "
+                         "HyperMetroPair.") % lun_id)
+                raise exception.ManageExistingInvalidReference(
+                    existing_ref=external_ref, reason=msg)
+
+        # Check whether the LUN exists in a SplitMirror.
+        try:
+            split_mirrors = self.restclient.get_split_mirrors()
+        except exception.VolumeBackendAPIException as ex:
+            if re.search('License is unavailable', ex.msg):
+                # Can't check whether the LUN has SplitMirror with it,
+                # just pass the check and log it.
+                split_mirrors = []
+                LOG.warning(_LW('No license for SplitMirror.'))
+            else:
+                msg = _("Failed to get SplitMirror.")
+                raise exception.VolumeBackendAPIException(data=msg)
+
+        for mirror in split_mirrors:
+            try:
+                target_luns = self.restclient.get_target_luns(mirror.get('ID'))
+            except exception.VolumeBackendAPIException:
+                msg = _("Failed to get target LUN of SplitMirror.")
+                raise exception.VolumeBackendAPIException(data=msg)
+
+            if (mirror.get('PRILUNID') == lun_id) or (lun_id in target_luns):
+                msg = (_("Can't import LUN %s to Cinder. Already exists in a "
+                         "SplitMirror.") % lun_id)
+                raise exception.ManageExistingInvalidReference(
+                    existing_ref=external_ref, reason=msg)
+
+        # Check whether the LUN exists in a migration task.
+        try:
+            migration_tasks = self.restclient.get_migration_task()
+        except exception.VolumeBackendAPIException as ex:
+            if re.search('License is unavailable', ex.msg):
+                # Can't check whether the LUN has migration task with it,
+                # just pass the check and log it.
+                migration_tasks = []
+                LOG.warning(_LW('No license for migration.'))
+            else:
+                msg = _("Failed to get migration task.")
+                raise exception.VolumeBackendAPIException(data=msg)
+
+        for migration in migration_tasks:
+            if lun_id in (migration.get('PARENTID'),
+                          migration.get('TARGETLUNID')):
+                msg = (_("Can't import LUN %s to Cinder. Already exists in a "
+                         "migration task.") % lun_id)
+                raise exception.ManageExistingInvalidReference(
+                    existing_ref=external_ref, reason=msg)
+
+        # Check whether the LUN exists in a LUN copy task.
+        lun_copy = lun_info.get('LUNCOPYIDS')
+        if lun_copy and lun_copy[1:-1]:
+            msg = (_("Can't import LUN %s to Cinder. Already exists in "
+                     "a LUN copy task.") % lun_id)
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=external_ref, reason=msg)
+
+        # Check whether the LUN exists in a remote replication task.
+        rmt_replication = lun_info.get('REMOTEREPLICATIONIDS')
+        if rmt_replication and rmt_replication[1:-1]:
+            msg = (_("Can't import LUN %s to Cinder. Already exists in "
+                     "a remote replication task.") % lun_id)
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=external_ref, reason=msg)
+
+        # Check whether the LUN exists in a LUN mirror.
+        if self.restclient.is_lun_in_mirror(lun_id):
+            msg = (_("Can't import LUN %s to Cinder. Already exists in "
+                     "a LUN mirror.") % lun_id)
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=external_ref, reason=msg)
+
+        # Check whether the LUN has already in LUN group.
+        if lun_info.get('ISADD2LUNGROUP') == 'true':
+            msg = (_("Can't import LUN %s to Cinder. Already exists in a LUN "
+                     "group.") % lun_id)
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=external_ref, reason=msg)
+
+    def manage_existing(self, volume, external_ref):
+        """Manage an existing volume on the backend storage."""
+        # Check whether the LUN is belonged to the specified pool.
+        pool = volume_utils.extract_host(volume['host'], 'pool')
+        LOG.debug("Pool specified is: %s.", pool)
+        lun_info = self._get_lun_by_ref(external_ref)
+        lun_id = lun_info.get('ID')
+        description = lun_info.get('DESCRIPTION', '')
+        if len(description) <= (
+                constants.MAX_VOL_DESCRIPTION - len(volume['name']) - 1):
+            description = volume['name'] + ' ' + description
+
+        lun_pool = lun_info.get('PARENTNAME')
+        LOG.debug("Storage pool of existing LUN %(lun)s is %(pool)s.",
+                  {"lun": lun_id, "pool": lun_pool})
+        if pool != lun_pool:
+            msg = (_("The specified LUN does not belong to the given "
+                     "pool: %s.") % pool)
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=external_ref, reason=msg)
+
+        # Check other stuffs to determine whether this LUN can be imported.
+        self._check_lun_valid_for_manage(lun_info, external_ref)
+        type_id = volume.get('volume_type_id')
+        if type_id:
+            # Handle volume type if specified.
+            old_opts = self.get_lun_specs(lun_id)
+            volume_type = volume_types.get_volume_type(None, type_id)
+            new_specs = volume_type.get('extra_specs')
+            new_opts = huawei_utils._get_extra_spec_value(new_specs)
+            new_opts = smartx.SmartX().get_smartx_specs_opts(new_opts)
+            if ('LUNType' in new_opts and
+                    old_opts['LUNType'] != new_opts['LUNType']):
+                msg = (_("Can't import LUN %(lun_id)s to Cinder. "
+                         "LUN type mismatched.") % lun_id)
+                raise exception.ManageExistingVolumeTypeMismatch(reason=msg)
+            if volume_type:
+                change_opts = {'policy': None, 'partitionid': None,
+                               'cacheid': None, 'qos': None}
+                change_opts = self._check_needed_changes(lun_id, old_opts,
+                                                         new_opts, change_opts,
+                                                         volume_type)
+                self.modify_lun(lun_id, change_opts)
+
+        # Rename the LUN to make it manageable for Cinder.
+        new_name = huawei_utils.encode_name(volume['id'])
+        LOG.debug("Rename LUN %(old_name)s to %(new_name)s.",
+                  {'old_name': lun_info.get('NAME'),
+                   'new_name': new_name})
+        self.restclient.rename_lun(lun_id, new_name, description)
+
+        return {'provider_location': lun_id}
+
+    def _get_lun_by_ref(self, external_ref):
+        LOG.debug("Get external_ref: %s", external_ref)
+        name = external_ref.get('source-name')
+        id = external_ref.get('source-id')
+        if not (name or id):
+            msg = _('Must specify source-name or source-id.')
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=external_ref, reason=msg)
+
+        lun_id = id or self.restclient.get_volume_by_name(name)
+        if not lun_id:
+            msg = _("Can't find LUN on the array, please check the "
+                    "source-name or source-id.")
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=external_ref, reason=msg)
+
+        lun_info = self.restclient.get_lun_info(lun_id)
+        return lun_info
+
+    def unmanage(self, volume):
+        """Export Huawei volume from Cinder."""
+        volume_id = volume['id']
+        LOG.debug("Unmanage volume: %s.", volume_id)
+        lun_name = huawei_utils.encode_name(volume_id)
+        lun_id = self.restclient.get_volume_by_name(lun_name)
+        if not lun_id:
+            LOG.error(_LE("Can't find LUN on the array for volume: %s."),
+                      volume_id)
+            return
+        new_name = 'unmged_' + lun_name
+        LOG.debug("Rename LUN %(lun_name)s to %(new_name)s.",
+                  {'lun_name': lun_name,
+                   'new_name': new_name})
+        try:
+            self.restclient.rename_lun(lun_id, new_name)
+        except Exception:
+            LOG.warning(_LW("Rename lun %(lun_id)s fails when "
+                            "unmanaging volume %(volume)s."),
+                        {"lun_id": lun_id, "volume": volume['id']})
+
+    def manage_existing_get_size(self, volume, external_ref):
+        """Get the size of the existing volume."""
+        lun_info = self._get_lun_by_ref(external_ref)
+        size = float(lun_info.get('CAPACITY')) // constants.CAPACITY_UNIT
+        remainder = float(lun_info.get('CAPACITY')) % constants.CAPACITY_UNIT
+        if int(remainder) > 0:
+            msg = _("Volume size must be multiple of 1 GB.")
+            raise exception.VolumeBackendAPIException(data=msg)
+        return int(size)
+
 
 class HuaweiISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
     """ISCSI driver for Huawei storage arrays.
@@ -853,9 +1064,10 @@ class HuaweiISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
                 Volume migration support
                 Volume retype support
         2.0.0 - Rename to HuaweiISCSIDriver
+        2.0.1 - Manage/unmanage volume support
     """
 
-    VERSION = "2.0.0"
+    VERSION = "2.0.1"
 
     def __init__(self, *args, **kwargs):
         super(HuaweiISCSIDriver, self).__init__(*args, **kwargs)
@@ -1051,9 +1263,10 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
                 FC zone enhancement
                 Volume hypermetro support
         2.0.0 - Rename to HuaweiFCDriver
+        2.0.1 - Manage/unmanage volume support
     """
 
-    VERSION = "2.0.0"
+    VERSION = "2.0.1"
 
     def __init__(self, *args, **kwargs):
         super(HuaweiFCDriver, self).__init__(*args, **kwargs)

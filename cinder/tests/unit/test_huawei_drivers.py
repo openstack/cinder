@@ -13,9 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """Tests for huawei drivers."""
+import ddt
 import json
 import mock
 import os
+import re
 import shutil
 import tempfile
 import time
@@ -1363,9 +1365,6 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/fc_initiator?range=[0-100]&PARENTID=1/GET'] = (
 MAP_COMMAND_TO_FAKE_RESPONSE['/fc_initiator?PARENTTYPE=21&PARENTID=1/GET'] = (
     FAKE_GET_FC_PORT_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['/system/'] = (
-    FAKE_SYSTEM_VERSION_RESPONSE)
-
 MAP_COMMAND_TO_FAKE_RESPONSE['/SMARTCACHEPARTITION/0/GET'] = (
     FAKE_SMARTCACHEPARTITION_RESPONSE)
 
@@ -1388,6 +1387,12 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/HyperMetroPair/disable_hcpair/PUT'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/HyperMetroPair/11/DELETE'] = (
+    FAKE_COMMON_SUCCESS_RESPONSE)
+
+MAP_COMMAND_TO_FAKE_RESPONSE['/HyperMetroPair?range=[0-100]/GET'] = (
+    FAKE_COMMON_SUCCESS_RESPONSE)
+
+MAP_COMMAND_TO_FAKE_RESPONSE['/splitmirror?range=[0-100]/GET'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
 
@@ -1499,6 +1504,7 @@ class FakeFCStorage(huawei_driver.HuaweiFCDriver):
         self.restclient = FakeClient(configuration=self.configuration)
 
 
+@ddt.ddt
 class HuaweiISCSIDriverTestCase(test.TestCase):
 
     def setUp(self):
@@ -1516,6 +1522,7 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         driver = FakeISCSIStorage(configuration=self.configuration)
         self.driver = driver
         self.driver.do_setup()
+        self.device_id = self.driver.restclient.login()
         self.portgroup = 'portgroup-test'
         self.iscsi_iqns = ['iqn.2006-08.com.huawei:oceanstor:21000022a:'
                            ':20503:192.168.1.1',
@@ -1526,12 +1533,9 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         self.portgroup_id = 11
 
     def test_login_success(self):
-        device_id = self.driver.restclient.login()
-        self.assertEqual('210235G7J20000000000', device_id)
+        self.assertEqual('210235G7J20000000000', self.device_id)
 
     def test_create_volume_success(self):
-        self.driver.restclient.login()
-
         # Have pool info in the volume.
         test_volume = {'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0635',
                        'size': 2,
@@ -1567,12 +1571,10 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         self.assertEqual('1', lun_info['provider_location'])
 
     def test_delete_volume_success(self):
-        self.driver.restclient.login()
         delete_flag = self.driver.delete_volume(test_volume)
         self.assertTrue(delete_flag)
 
     def test_create_snapshot_success(self):
-        self.driver.restclient.login()
         lun_info = self.driver.create_snapshot(test_snap)
         self.assertEqual(11, lun_info['provider_location'])
 
@@ -1585,35 +1587,29 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         self.assertEqual(11, lun_info['provider_location'])
 
     def test_delete_snapshot_success(self):
-        self.driver.restclient.login()
         delete_flag = self.driver.delete_snapshot(test_snap)
         self.assertTrue(delete_flag)
 
     def test_create_volume_from_snapsuccess(self):
-        self.driver.restclient.login()
         lun_info = self.driver.create_volume_from_snapshot(test_volume,
                                                            test_volume)
         self.assertEqual('1', lun_info['ID'])
 
     def test_initialize_connection_success(self):
-        self.driver.restclient.login()
         iscsi_properties = self.driver.initialize_connection(test_volume,
                                                              FakeConnector)
         self.assertEqual(1, iscsi_properties['data']['target_lun'])
 
     def test_terminate_connection_success(self):
-        self.driver.restclient.login()
         self.driver.restclient.terminateFlag = True
         self.driver.terminate_connection(test_volume, FakeConnector)
         self.assertTrue(self.driver.restclient.terminateFlag)
 
     def test_get_volume_status(self):
-        self.driver.restclient.login()
         data = self.driver.get_volume_stats()
-        self.assertEqual('2.0.0', data['driver_version'])
+        self.assertEqual('2.0.1', data['driver_version'])
 
     def test_extend_volume(self):
-        self.driver.restclient.login()
         lun_info = self.driver.extend_volume(test_volume, 3)
         self.assertEqual('1', lun_info['provider_location'])
 
@@ -1623,31 +1619,26 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
                           self.driver.restclient.login)
 
     def test_create_snapshot_fail(self):
-        self.driver.restclient.login()
         self.driver.restclient.test_fail = True
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_snapshot, test_snap)
 
     def test_create_volume_fail(self):
-        self.driver.restclient.login()
         self.driver.restclient.test_fail = True
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_volume, test_volume)
 
     def test_delete_volume_fail(self):
-        self.driver.restclient.login()
         self.driver.restclient.test_fail = True
         delete_flag = self.driver.delete_volume(test_volume)
         self.assertTrue(delete_flag)
 
     def test_delete_snapshot_fail(self):
-        self.driver.restclient.login()
         self.driver.restclient.test_fail = True
         delete_flag = self.driver.delete_volume(test_snap)
         self.assertTrue(delete_flag)
 
     def test_initialize_connection_fail(self):
-        self.driver.restclient.login()
         self.driver.restclient.test_fail = True
 
         self.assertRaises(exception.VolumeBackendAPIException,
@@ -1664,14 +1655,12 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         self.assertEqual(2, result)
 
     def test_lun_is_associated_to_lungroup(self):
-        self.driver.restclient.login()
         self.driver.restclient.associate_lun_to_lungroup('11', '11')
         result = self.driver.restclient._is_lun_associated_to_lungroup('11',
                                                                        '11')
         self.assertTrue(result)
 
     def test_lun_is_not_associated_to_lun_group(self):
-        self.driver.restclient.login()
         self.driver.restclient.associate_lun_to_lungroup('12', '12')
         self.driver.restclient.remove_lun_from_lungroup('12', '12')
         result = self.driver.restclient._is_lun_associated_to_lungroup('12',
@@ -1679,13 +1668,11 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         self.assertFalse(result)
 
     def test_get_tgtip(self):
-        self.driver.restclient.login()
         portg_id = self.driver.restclient.find_tgt_port_group(self.portgroup)
         target_ip = self.driver.restclient._get_tgt_ip_from_portgroup(portg_id)
         self.assertEqual(self.target_ips, target_ip)
 
     def test_get_iscsi_params(self):
-        self.driver.restclient.login()
         (iscsi_iqns, target_ips, portgroup_id) = (
             self.driver.restclient.get_iscsi_params(self.xml_file_path,
                                                     FakeConnector))
@@ -1694,7 +1681,6 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         self.assertEqual(self.portgroup_id, portgroup_id)
 
     def test_get_lun_conf_params(self):
-        self.driver.restclient.login()
         luninfo = huawei_utils.get_lun_conf_params(self.xml_file_path)
         luninfo['pool_id'] = '0'
         luninfo['volume_size'] = 2
@@ -1704,25 +1690,21 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         self.assertEqual('5mFHcBv4RkCcD+JyrWc0SA', luninfo['NAME'])
 
     def tset_get_iscsi_conf(self):
-        self.driver.restclient.login()
         iscsiinfo = huawei_utils.get_iscsi_conf(self.xml_file_path)
         self.assertEqual('iqn.1993-08.debian:01:ec2bff7ac3a3',
                          iscsiinfo['Initiator'])
 
     def test_check_conf_file(self):
-        self.driver.restclient.login()
         self.driver.restclient.checkFlag = True
         huawei_utils.check_conf_file(self.xml_file_path)
         self.assertTrue(self.driver.restclient.checkFlag)
 
     def test_get_conf_host_os_type(self):
-        self.driver.restclient.login()
         host_os = huawei_utils.get_conf_host_os_type('100.97.10.30',
                                                      self.configuration)
         self.assertEqual('0', host_os)
 
     def test_find_chap_info(self):
-        self.driver.restclient.login()
         tmp_dict = {}
         iscsi_info = {}
         tmp_dict['Name'] = 'iqn.1993-08.debian:01:ec2bff7ac3a3'
@@ -1737,7 +1719,6 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         self.assertEqual('mm-user@storage', chap_password)
 
     def test_find_alua_info(self):
-        self.driver.restclient.login()
         tmp_dict = {}
         iscsi_info = {}
         tmp_dict['Name'] = 'iqn.1993-08.debian:01:ec2bff7ac3a3'
@@ -1750,7 +1731,6 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         self.assertEqual('1', type)
 
     def test_find_pool_info(self):
-        self.driver.restclient.login()
         pools = {
             "error": {"code": 0},
             "data": [{
@@ -1791,7 +1771,6 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         self.assertEqual(test_info, pool_info)
 
     def test_get_smartx_specs_opts(self):
-        self.driver.restclient.login()
         smartx_opts = smartx.SmartX().get_smartx_specs_opts(smarttier_opts)
         self.assertEqual('3', smartx_opts['policy'])
 
@@ -1799,7 +1778,6 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
                        return_value={'MAXIOPS': '100',
                                      'IOType': '2'})
     def test_create_smartqos(self, mock_qos_value):
-        self.driver.restclient.login()
         lun_info = self.driver.create_volume(test_volume)
         self.assertEqual('1', lun_info['provider_location'])
 
@@ -1814,12 +1792,10 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
                                      'cachename': 'cache-test',
                                      'partitionname': 'partition-test'})
     def test_creat_smartx(self, mock_volume_types, mock_add_lun_to_partition):
-        self.driver.restclient.login()
         lun_info = self.driver.create_volume(test_volume)
         self.assertEqual('1', lun_info['provider_location'])
 
     def test_find_available_qos(self):
-        self.driver.restclient.login()
         qos = {'MAXIOPS': '100', 'IOType': '2'}
         fake_qos_info_response_equal = {
             "error": {
@@ -1890,7 +1866,6 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
                                        mock_all_pool_info,
                                        mock_login_return,
                                        mock_hypermetro_opts):
-        self.driver.restclient.login()
         metadata = {"hypermetro_id": '11',
                     "remote_lun_id": '1'}
         lun_info = self.driver.create_volume(hyper_volume)
@@ -1927,7 +1902,6 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
                                     mock_all_pool_info,
                                     mock_login_return,
                                     mock_hypermetro_opts):
-        self.driver.restclient.login()
         mock_hyper_pair_info.side_effect = exception.VolumeBackendAPIException(
             data='Create hypermetro error.')
         self.assertRaises(exception.VolumeBackendAPIException,
@@ -1956,7 +1930,6 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
                                        mock_check_hyermetro,
                                        mock_lun_exit,
                                        mock_login_info):
-        self.driver.restclient.login()
         result = self.driver.delete_volume(hyper_volume)
         mock_logout.assert_called_with()
         self.assertTrue(result)
@@ -1981,13 +1954,227 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
                                     mock_check_hyermetro,
                                     mock_lun_exit,
                                     mock_login_info):
-        self.driver.restclient.login()
         mock_delete_hypermetro.side_effect = (
             exception.VolumeBackendAPIException(data='Delete hypermetro '
                                                 'error.'))
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.delete_volume, hyper_volume)
         mock_delete_lun.assert_called_with('11')
+
+    def test_manage_existing_get_size_invalid_reference(self):
+        # Can't find LUN by source-name.
+        external_ref = {'source-name': 'LUN1'}
+        with mock.patch.object(rest_client.RestClient, 'get_volume_by_name',
+                               return_value=None):
+            ex = self.assertRaises(exception.ManageExistingInvalidReference,
+                                   self.driver.manage_existing_get_size,
+                                   test_volume, external_ref)
+            self.assertIsNotNone(re.search('please check the source-name '
+                                           'or source-id', ex.msg))
+
+        # Can't find LUN by source-id.
+        external_ref = {'source-id': 'ID1'}
+        with mock.patch.object(rest_client.RestClient, 'get_lun_info') as m_gt:
+            m_gt.side_effect = exception.VolumeBackendAPIException(
+                data='Error')
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.driver.manage_existing_get_size,
+                              test_volume, external_ref)
+            self.assertIsNotNone(re.search('please check the source-name '
+                                           'or source-id', ex.msg))
+
+    def test_manage_existing_get_size_improper_lunsize(self):
+        # LUN size is not multiple of 1 GB.
+        external_ref = {'source-id': 'ID1'}
+        with mock.patch.object(rest_client.RestClient, 'get_lun_info',
+                               return_value={'CAPACITY': 2097150}):
+            ex = self.assertRaises(exception.VolumeBackendAPIException,
+                                   self.driver.manage_existing_get_size,
+                                   test_volume, external_ref)
+            self.assertIsNotNone(
+                re.search('Volume size must be multiple of 1 GB', ex.msg))
+
+    @ddt.data({'source-id': 'ID1'}, {'source-name': 'LUN1'},
+              {'source-name': 'LUN1', 'source-id': 'ID1'})
+    @mock.patch.object(rest_client.RestClient, 'get_lun_info',
+                       return_value={'CAPACITY': 2097152})
+    @mock.patch.object(rest_client.RestClient, 'get_volume_by_name',
+                       return_value='ID1')
+    def test_manage_existing_get_size_success(self, mock_get_volume_by_name,
+                                              mock_get_lun_info, external_ref):
+        size = self.driver.manage_existing_get_size(test_volume,
+                                                    external_ref)
+        self.assertEqual(1, size)
+
+    @mock.patch.object(rest_client.RestClient, 'get_lun_info',
+                       return_value={'CAPACITY': 2097152,
+                                     'ID': 'ID1',
+                                     'PARENTNAME': 'StoragePool001'})
+    @mock.patch.object(rest_client.RestClient, 'get_volume_by_name',
+                       return_value='ID1')
+    def test_manage_existing_pool_mismatch(self, mock_get_by_name,
+                                           mock_get_info):
+        # LUN does not belong to the specified pool.
+        with mock.patch.object(huawei_driver.HuaweiBaseDriver,
+                               '_get_lun_by_ref',
+                               return_value={'PARENTNAME': 'StoragePool001'}):
+            test_volume = {'host': 'ubuntu-204@v3r3#StoragePool002',
+                           'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf'}
+            external_ref = {'source-name': 'LUN1'}
+            ex = self.assertRaises(exception.ManageExistingInvalidReference,
+                                   self.driver.manage_existing,
+                                   test_volume, external_ref)
+            self.assertIsNotNone(re.search('The specified LUN does not belong'
+                                           ' to the given pool', ex.msg))
+
+    @mock.patch.object(rest_client.RestClient, 'get_lun_info',
+                       return_value={'CAPACITY': 2097152,
+                                     'ID': 'ID1',
+                                     'PARENTNAME': 'StoragePool001'})
+    @mock.patch.object(rest_client.RestClient, 'get_volume_by_name',
+                       return_value='ID1')
+    def test_manage_existing_lun_abnormal(self, mock_get_by_name,
+                                          mock_get_info):
+        # Has snapshot.
+        ret = {'PARENTNAME': "StoragePool001",
+               'HEALTHSTATUS': '2'}
+        with mock.patch.object(huawei_driver.HuaweiBaseDriver,
+                               '_get_lun_by_ref',
+                               return_value=ret):
+            test_volume = {'host': 'ubuntu-204@v3r3#StoragePool001',
+                           'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf'}
+            external_ref = {'source-name': 'LUN1'}
+            ex = self.assertRaises(exception.ManageExistingInvalidReference,
+                                   self.driver.manage_existing,
+                                   test_volume, external_ref)
+            self.assertIsNotNone(re.search('LUN status is not normal', ex.msg))
+
+    @mock.patch.object(rest_client.RestClient, 'get_hypermetro_pairs',
+                       return_value=[{'LOCALOBJID': 'ID1'}])
+    @mock.patch.object(rest_client.RestClient, 'get_lun_info',
+                       return_value={'CAPACITY': 2097152,
+                                     'ID': 'ID1',
+                                     'PARENTNAME': 'StoragePool001',
+                                     'HEALTHSTATUS': constants.STATUS_HEALTH})
+    @mock.patch.object(rest_client.RestClient, 'get_volume_by_name',
+                       return_value='ID1')
+    def test_manage_existing_with_hypermetro(self, mock_get_by_name,
+                                             mock_get_info,
+                                             mock_get_hyper_pairs):
+        test_volume = {'host': 'ubuntu-204@v3r3#StoragePool001',
+                       'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf'}
+        # Exists in a HyperMetroPair.
+        with mock.patch.object(rest_client.RestClient,
+                               'get_hypermetro_pairs',
+                               return_value=[{'LOCALOBJID': 'ID1'}]):
+            external_ref = {'source-name': 'LUN1'}
+            ex = self.assertRaises(exception.ManageExistingInvalidReference,
+                                   self.driver.manage_existing,
+                                   test_volume, external_ref)
+            self.assertIsNotNone(re.search('HyperMetroPair', ex.msg))
+
+    @ddt.data([[{'PRILUNID': 'ID1'}], []],
+              [[{'PRILUNID': 'ID2'}], ['ID1', 'ID2']])
+    @mock.patch.object(rest_client.RestClient, 'get_lun_info',
+                       return_value={'CAPACITY': 2097152,
+                                     'ID': 'ID1',
+                                     'PARENTNAME': 'StoragePool001',
+                                     'HEALTHSTATUS': constants.STATUS_HEALTH})
+    @mock.patch.object(rest_client.RestClient, 'get_volume_by_name',
+                       return_value='ID1')
+    def test_manage_existing_with_splitmirror(self, ddt_data, mock_get_by_name,
+                                              mock_get_info):
+        test_volume = {'host': 'ubuntu-204@v3r3#StoragePool001',
+                       'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf',
+                       'id': '21ec7341-9256-497b-97d9-ef48edcf'}
+        # Exists in a SplitMirror.
+        with mock.patch.object(rest_client.RestClient, 'get_split_mirrors',
+                               return_value=ddt_data[0]), \
+            mock.patch.object(rest_client.RestClient, 'get_target_luns',
+                              return_value=ddt_data[1]):
+            external_ref = {'source-name': 'LUN1'}
+            ex = self.assertRaises(exception.ManageExistingInvalidReference,
+                                   self.driver.manage_existing,
+                                   test_volume, external_ref)
+            self.assertIsNotNone(re.search('SplitMirror', ex.msg))
+
+    @ddt.data([{'PARENTID': 'ID1'}], [{'TARGETLUNID': 'ID1'}])
+    @mock.patch.object(rest_client.RestClient, 'get_lun_info',
+                       return_value={'CAPACITY': 2097152,
+                                     'ID': 'ID1',
+                                     'PARENTNAME': 'StoragePool001',
+                                     'HEALTHSTATUS': constants.STATUS_HEALTH})
+    @mock.patch.object(rest_client.RestClient, 'get_volume_by_name',
+                       return_value='ID1')
+    def test_manage_existing_under_migration(self, ddt_data, mock_get_by_name,
+                                             mock_get_info):
+        test_volume = {'host': 'ubuntu-204@v3r3#StoragePool001',
+                       'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf',
+                       'id': '21ec7341-9256-497b-97d9-ef48edcf'}
+        # Exists in a migration task.
+        with mock.patch.object(rest_client.RestClient, 'get_migration_task',
+                               return_value=ddt_data):
+            external_ref = {'source-name': 'LUN1'}
+            ex = self.assertRaises(exception.ManageExistingInvalidReference,
+                                   self.driver.manage_existing,
+                                   test_volume, external_ref)
+            self.assertIsNotNone(re.search('migration', ex.msg))
+
+    @mock.patch.object(rest_client.RestClient, 'get_lun_info',
+                       return_value={'CAPACITY': 2097152,
+                                     'ID': 'ID1',
+                                     'PARENTNAME': 'StoragePool001',
+                                     'SNAPSHOTIDS': [],
+                                     'EXPOSEDTOINITIATOR': 'false',
+                                     'ISADD2LUNGROUP': 'true',
+                                     'HEALTHSTATUS': constants.STATUS_HEALTH})
+    @mock.patch.object(rest_client.RestClient, 'get_volume_by_name',
+                       return_value='ID1')
+    def test_manage_existing_with_lungroup(self, mock_get_by_name,
+                                           mock_get_info):
+        # Already in LUN group.
+        test_volume = {'host': 'ubuntu-204@v3r3#StoragePool001',
+                       'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf'}
+        external_ref = {'source-name': 'LUN1'}
+        ex = self.assertRaises(exception.ManageExistingInvalidReference,
+                               self.driver.manage_existing,
+                               test_volume, external_ref)
+        self.assertIsNotNone(re.search('Already exists in a LUN group',
+                                       ex.msg))
+
+    @ddt.data({'source-name': 'LUN1'}, {'source-id': 'ID1'})
+    @mock.patch.object(rest_client.RestClient, 'rename_lun')
+    @mock.patch.object(huawei_driver.HuaweiBaseDriver,
+                       '_get_lun_by_ref',
+                       return_value={'PARENTNAME': 'StoragePool001',
+                                     'SNAPSHOTIDS': [],
+                                     'EXPOSEDTOINITIATOR': 'false',
+                                     'ID': 'ID1',
+                                     'HEALTHSTATUS': constants.STATUS_HEALTH})
+    @mock.patch.object(rest_client.RestClient, 'get_lun_info',
+                       return_value={'CAPACITY': 2097152,
+                                     'ALLOCTYPE': 1})
+    @mock.patch.object(rest_client.RestClient, 'get_volume_by_name',
+                       return_value='ID1')
+    def test_manage_existing_success(self, mock_get_by_name, mock_get_info,
+                                     mock_check_lun, mock_rename,
+                                     external_ref):
+        test_volume = {'host': 'ubuntu-204@v3r3#StoragePool001',
+                       'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
+                       'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf'}
+        model_update = self.driver.manage_existing(test_volume,
+                                                   external_ref)
+        self.assertEqual({'provider_location': 'ID1'}, model_update)
+
+    @ddt.data([None, 0], ['ID1', 1])
+    @mock.patch.object(rest_client.RestClient, 'rename_lun')
+    def test_unmanage(self, ddt_data, mock_rename):
+        test_volume = {'host': 'ubuntu-204@v3r3#StoragePool001',
+                       'id': '21ec7341-9256-497b-97d9-ef48edcf0635'}
+        with mock.patch.object(rest_client.RestClient, 'get_volume_by_name',
+                               return_value=ddt_data[0]):
+            self.driver.unmanage(test_volume)
+            self.assertEqual(ddt_data[1], mock_rename.call_count)
 
     def create_fake_conf_file(self):
         """Create a fake Config file.
@@ -2099,23 +2286,20 @@ class HuaweiFCDriverTestCase(test.TestCase):
         driver = FakeFCStorage(configuration=self.configuration)
         self.driver = driver
         self.driver.do_setup()
+        self.device_id = self.driver.restclient.login()
 
     def test_login_success(self):
-        device_id = self.driver.restclient.login()
-        self.assertEqual('210235G7J20000000000', device_id)
+        self.assertEqual('210235G7J20000000000', self.device_id)
 
     def test_create_volume_success(self):
-        self.driver.restclient.login()
         lun_info = self.driver.create_volume(test_volume)
         self.assertEqual('1', lun_info['provider_location'])
 
     def test_delete_volume_success(self):
-        self.driver.restclient.login()
         delete_flag = self.driver.delete_volume(test_volume)
         self.assertTrue(delete_flag)
 
     def test_create_snapshot_success(self):
-        self.driver.restclient.login()
         lun_info = self.driver.create_snapshot(test_snap)
         self.assertEqual(11, lun_info['provider_location'])
 
@@ -2128,35 +2312,29 @@ class HuaweiFCDriverTestCase(test.TestCase):
         self.assertEqual(11, lun_info['provider_location'])
 
     def test_delete_snapshot_success(self):
-        self.driver.restclient.login()
         delete_flag = self.driver.delete_snapshot(test_snap)
         self.assertTrue(delete_flag)
 
     def test_create_volume_from_snapsuccess(self):
-        self.driver.restclient.login()
         lun_info = self.driver.create_volume_from_snapshot(test_volume,
                                                            test_volume)
         self.assertEqual('1', lun_info['ID'])
 
     def test_initialize_connection_success(self):
-        self.driver.restclient.login()
         iscsi_properties = self.driver.initialize_connection(test_volume,
                                                              FakeConnector)
         self.assertEqual(1, iscsi_properties['data']['target_lun'])
 
     def test_terminate_connection_success(self):
-        self.driver.restclient.login()
         self.driver.restclient.terminateFlag = True
         self.driver.terminate_connection(test_volume, FakeConnector)
         self.assertTrue(self.driver.restclient.terminateFlag)
 
     def test_get_volume_status(self):
-        self.driver.restclient.login()
         data = self.driver.get_volume_stats()
-        self.assertEqual('2.0.0', data['driver_version'])
+        self.assertEqual('2.0.1', data['driver_version'])
 
     def test_extend_volume(self):
-        self.driver.restclient.login()
         lun_info = self.driver.extend_volume(test_volume, 3)
         self.assertEqual('1', lun_info['provider_location'])
 
@@ -2166,31 +2344,26 @@ class HuaweiFCDriverTestCase(test.TestCase):
                           self.driver.restclient.login)
 
     def test_create_snapshot_fail(self):
-        self.driver.restclient.login()
         self.driver.restclient.test_fail = True
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_snapshot, test_snap)
 
     def test_create_volume_fail(self):
-        self.driver.restclient.login()
         self.driver.restclient.test_fail = True
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_volume, test_volume)
 
     def test_delete_volume_fail(self):
-        self.driver.restclient.login()
         self.driver.restclient.test_fail = True
         delete_flag = self.driver.delete_volume(test_volume)
         self.assertTrue(delete_flag)
 
     def test_delete_snapshot_fail(self):
-        self.driver.restclient.login()
         self.driver.restclient.test_fail = True
         delete_flag = self.driver.delete_snapshot(test_snap)
         self.assertTrue(delete_flag)
 
     def test_initialize_connection_fail(self):
-        self.driver.restclient.login()
         self.driver.restclient.test_fail = True
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.initialize_connection,
@@ -2206,14 +2379,12 @@ class HuaweiFCDriverTestCase(test.TestCase):
         self.assertEqual(2, result)
 
     def test_lun_is_associated_to_lungroup(self):
-        self.driver.restclient.login()
         self.driver.restclient.associate_lun_to_lungroup('11', '11')
         result = self.driver.restclient._is_lun_associated_to_lungroup('11',
                                                                        '11')
         self.assertTrue(result)
 
     def test_lun_is_not_associated_to_lun_group(self):
-        self.driver.restclient.login()
         self.driver.restclient.associate_lun_to_lungroup('12', '12')
         self.driver.restclient.remove_lun_from_lungroup('12', '12')
         result = self.driver.restclient._is_lun_associated_to_lungroup('12',
@@ -2221,7 +2392,6 @@ class HuaweiFCDriverTestCase(test.TestCase):
         self.assertFalse(result)
 
     def test_get_lun_conf_params(self):
-        self.driver.restclient.login()
         luninfo = huawei_utils.get_lun_conf_params(self.xml_file_path)
         luninfo['pool_id'] = '0'
         luninfo['volume_size'] = 2
@@ -2231,21 +2401,17 @@ class HuaweiFCDriverTestCase(test.TestCase):
         self.assertEqual('5mFHcBv4RkCcD+JyrWc0SA', luninfo['NAME'])
 
     def test_check_conf_file(self):
-        self.driver.restclient.login()
         self.driver.restclient.checkFlag = True
         huawei_utils.check_conf_file(self.xml_file_path)
         self.assertTrue(self.driver.restclient.checkFlag)
 
     def test_get_conf_host_os_type(self):
-        self.driver.restclient.login()
         host_os = huawei_utils.get_conf_host_os_type('100.97.10.30',
                                                      self.configuration)
         self.assertEqual('0', host_os)
 
     @mock.patch.object(rest_client.RestClient, 'add_lun_to_partition')
     def test_migrate_volume_success(self, mock_add_lun_to_partition):
-        self.driver.restclient.login()
-
         # Migrate volume without new type.
         model_update = None
         moved = False
@@ -2278,7 +2444,6 @@ class HuaweiFCDriverTestCase(test.TestCase):
         self.assertEqual(empty_dict, model_update)
 
     def test_migrate_volume_fail(self):
-        self.driver.restclient.login()
         self.driver.restclient.test_fail = True
 
         # Migrate volume without new type.
@@ -2301,7 +2466,6 @@ class HuaweiFCDriverTestCase(test.TestCase):
                           test_volume, test_host, new_type)
 
     def test_check_migration_valid(self):
-        self.driver.restclient.login()
         is_valid = self.driver._check_migration_valid(test_host,
                                                       test_volume)
         self.assertTrue(is_valid)
@@ -2359,7 +2523,6 @@ class HuaweiFCDriverTestCase(test.TestCase):
 
     @mock.patch.object(rest_client.RestClient, 'rename_lun')
     def test_update_migrated_volume_success(self, mock_rename_lun):
-        self.driver.restclient.login()
         original_volume = {'id': '21ec7341-9256-497b-97d9-ef48edcf0635'}
         current_volume = {'id': '21ec7341-9256-497b-97d9-ef48edcf0636'}
         model_update = self.driver.update_migrated_volume(None,
@@ -2370,7 +2533,6 @@ class HuaweiFCDriverTestCase(test.TestCase):
 
     @mock.patch.object(rest_client.RestClient, 'rename_lun')
     def test_update_migrated_volume_fail(self, mock_rename_lun):
-        self.driver.restclient.login()
         mock_rename_lun.side_effect = exception.VolumeBackendAPIException(
             data='Error occurred.')
         original_volume = {'id': '21ec7341-9256-497b-97d9-ef48edcf0635'}
@@ -2385,28 +2547,24 @@ class HuaweiFCDriverTestCase(test.TestCase):
 
     @mock.patch.object(rest_client.RestClient, 'add_lun_to_partition')
     def test_retype_volume_success(self, mock_add_lun_to_partition):
-        self.driver.restclient.login()
         retype = self.driver.retype(None, test_volume,
                                     test_new_type, None, test_host)
         self.assertTrue(retype)
 
     def test_retype_volume_cache_fail(self):
         self.driver.restclient.cache_not_exist = True
-        self.driver.restclient.login()
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.retype, None,
                           test_volume, test_new_type, None, test_host)
 
     def test_retype_volume_partition_fail(self):
         self.driver.restclient.partition_not_exist = True
-        self.driver.restclient.login()
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.retype, None,
                           test_volume, test_new_type, None, test_host)
 
     @mock.patch.object(rest_client.RestClient, 'add_lun_to_partition')
     def test_retype_volume_fail(self, mock_add_lun_to_partition):
-        self.driver.restclient.login()
         mock_add_lun_to_partition.side_effect = (
             exception.VolumeBackendAPIException(data='Error occurred.'))
         retype = self.driver.retype(None, test_volume,
@@ -2414,7 +2572,6 @@ class HuaweiFCDriverTestCase(test.TestCase):
         self.assertFalse(retype)
 
     def test_build_ini_targ_map(self):
-        self.driver.restclient.login()
         fake_lookup_service = FCSanLookupService()
         fake_lookup_service.get_device_mapping_from_network = mock.Mock(
             return_value=fake_fabric_mapping)
@@ -2430,7 +2587,6 @@ class HuaweiFCDriverTestCase(test.TestCase):
         self.assertEqual(ini_target_map, init_targ_map)
 
     def test_filter_port_by_contr(self):
-        self.driver.restclient.login()
         # Six ports in one fabric.
         ports_in_fabric = ['1', '2', '3', '4', '5', '6']
         # Ports 1,3,4,7 belonged to controller A
@@ -2446,13 +2602,11 @@ class HuaweiFCDriverTestCase(test.TestCase):
         self.assertEqual(expected_filtered_ports, filtered_ports)
 
     def test_multi_resturls_success(self):
-        self.driver.restclient.login()
         self.driver.restclient.test_multi_url_flag = True
         lun_info = self.driver.create_volume(test_volume)
         self.assertEqual('1', lun_info['provider_location'])
 
     def test_get_id_from_result(self):
-        self.driver.restclient.login()
         result = {}
         name = 'test_name'
         key = 'NAME'
@@ -2519,7 +2673,6 @@ class HuaweiFCDriverTestCase(test.TestCase):
                                        mock_volume_ready,
                                        mock_pair_info,
                                        mock_logout):
-        self.driver.restclient.login()
         metadata = {"hypermetro_id": '11',
                     "remote_lun_id": '1'}
         lun_info = self.driver.create_volume(hyper_volume)
