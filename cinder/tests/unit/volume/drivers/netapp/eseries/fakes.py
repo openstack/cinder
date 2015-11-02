@@ -36,6 +36,8 @@ FOREIGN_HOST_GROUP = {
     'label': 'FOREIGN HOST GROUP',
 }
 
+HOST_GROUPS = [MULTIATTACH_HOST_GROUP, FOREIGN_HOST_GROUP]
+
 SSC_POOLS = [
     {
         "poolId": "0400000060080E5000290D8000009C9955828DD2",
@@ -927,6 +929,7 @@ def deepcopy_return_value_class_decorator(cls):
 
 @deepcopy_return_value_class_decorator
 class FakeEseriesClient(object):
+    features = mock.Mock()
 
     def __init__(self, *args, **kwargs):
         pass
@@ -977,7 +980,7 @@ class FakeEseriesClient(object):
         return MULTIATTACH_HOST_GROUP
 
     def list_host_groups(self):
-        return [MULTIATTACH_HOST_GROUP]
+        return [MULTIATTACH_HOST_GROUP, FOREIGN_HOST_GROUP]
 
     def get_host_group_by_name(self, name, *args, **kwargs):
         host_groups = self.list_host_groups()
@@ -1057,14 +1060,15 @@ class FakeEseriesClient(object):
     def get_eseries_api_info(self, verify=False):
         return 'Proxy', '1.53.9010.0005'
 
-    def set_counter(self, key):
+    def set_counter(self, key, value):
         pass
 
     def add_autosupport_data(self, *args):
         pass
 
     def get_serial_numbers(self):
-        pass
+        return FAKE_ASUP_DATA.get('controller1-serial'), FAKE_ASUP_DATA.get(
+            'controller2-serial')
 
     def get_model_name(self):
         pass
@@ -1073,7 +1077,7 @@ class FakeEseriesClient(object):
         pass
 
     def get_firmware_version(self):
-        return FAKE_POST_INVOKE_DATA["system-version"]
+        return FAKE_ASUP_DATA['system-version']
 
     def create_volume_copy_job(self, *args, **kwargs):
         return VOLUME_COPY_JOB

@@ -63,6 +63,10 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
                   eseries_fake.create_configuration_eseries()}
 
         self.library = library.NetAppESeriesLibrary('FAKE', **kwargs)
+
+        # We don't want the looping calls to run
+        self.mock_object(self.library, '_start_periodic_tasks',
+                         new_attr=mock.Mock())
         # Deprecated Option
         self.library.configuration.netapp_storage_pools = None
         self.library._client = eseries_fake.FakeEseriesClient()
@@ -1072,6 +1076,11 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
 
         self.library = library.NetAppESeriesLibrary("FAKE", **kwargs)
         self.library._client = eseries_fake.FakeEseriesClient()
+
+        # We don't want the looping calls to run
+        self.mock_object(self.library, '_start_periodic_tasks',
+                         new_attr=mock.Mock())
+
         with mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                         new = cinder_utils.ZeroIntervalLoopingCall):
             self.library.check_for_setup_error()

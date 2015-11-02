@@ -1356,6 +1356,10 @@ class NetAppESeriesLibrary(object):
         try:
             vol_id = existing_ref.get('source-name') or existing_ref.get(
                 'source-id')
+            if vol_id is None:
+                raise exception.InvalidInput(message='No valid identifier '
+                                                     'was available for the '
+                                                     'volume.')
             return self._client.list_volume(vol_id)
         except exception.InvalidInput:
             reason = _('Reference must contain either source-name'

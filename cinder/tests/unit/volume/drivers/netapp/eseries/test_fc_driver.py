@@ -17,11 +17,16 @@
 import mock
 
 from cinder import test
+from cinder.tests.unit.volume.drivers.netapp.eseries import test_driver
 import cinder.volume.drivers.netapp.eseries.fc_driver as fc
 from cinder.volume.drivers.netapp import utils as na_utils
 
 
-class NetAppESeriesFibreChannelDriverTestCase(test.TestCase):
+class NetAppESeriesFibreChannelDriverTestCase(test_driver
+                                              .NetAppESeriesDriverTestCase,
+                                              test.TestCase):
+
+    PROTOCOL = 'fc'
 
     @mock.patch.object(na_utils, 'validate_instantiation')
     def test_instantiation(self, mock_validate_instantiation):
