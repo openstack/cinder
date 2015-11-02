@@ -106,6 +106,10 @@ class SheepdogDriverTestDataGenerator(object):
         return ('env', 'LC_ALL=C', 'LANG=C', 'dog', 'vdi', 'resize', name,
                 size, '-a', SHEEP_ADDR, '-p', SHEEP_PORT)
 
+    def cmd_dog_node_info(self):
+        return ('env', 'LC_ALL=C', 'LANG=C', 'dog', 'node', 'info',
+                '-a', SHEEP_ADDR, '-p', SHEEP_PORT, '-r')
+
     CMD_DOG_CLUSTER_INFO = ('env', 'LC_ALL=C', 'LANG=C', 'dog', 'cluster',
                             'info', '-a', SHEEP_ADDR, '-p', SHEEP_PORT)
 
@@ -1137,6 +1141,51 @@ class SheepdogClientTestCase(test.TestCase):
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
 
+    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
+    def test_get_volume_stats_success(self, fake_execute):
+        expected_cmd = ('node', 'info', '-r')
+        fake_execute.return_value = (self.test_data.COLLIE_NODE_INFO, '')
+        self.client.get_volume_stats()
+        fake_execute.assert_called_once_with(*expected_cmd)
+
+    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
+    @mock.patch.object(sheepdog, 'LOG')
+    def test_get_volume_stats_fail_to_connect(self, fake_logger, fake_execute):
+        cmd = self.test_data.cmd_dog_node_info()
+        exit_code = 2
+        stdout = 'stdout_dummy'
+        stderr = self.test_data.DOG_COMMAND_ERROR_FAIL_TO_CONNECT
+        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
+                                                         exit_code=exit_code,
+                                                         stdout=stdout,
+                                                         stderr=stderr)
+        fake_execute.side_effect = exception.SheepdogCmdError(
+            cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
+            stderr=stderr.replace('\n', '\\n'))
+        ex = self.assertRaises(exception.SheepdogCmdError,
+                               self.client.get_volume_stats)
+        self.assertTrue(fake_logger.error.called)
+        self.assertEqual(expected_msg, ex.msg)
+
+    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
+    @mock.patch.object(sheepdog, 'LOG')
+    def test_get_volume_stats_unknown_error(self, fake_logger, fake_execute):
+        cmd = self.test_data.cmd_dog_node_info()
+        exit_code = 2
+        stdout = 'stdout_dummy'
+        stderr = 'stderr_dummy'
+        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
+                                                         exit_code=exit_code,
+                                                         stdout=stdout,
+                                                         stderr=stderr)
+        fake_execute.side_effect = exception.SheepdogCmdError(
+            cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
+            stderr=stderr.replace('\n', '\\n'))
+        ex = self.assertRaises(exception.SheepdogCmdError,
+                               self.client.get_volume_stats)
+        self.assertTrue(fake_logger.error.called)
+        self.assertEqual(expected_msg, ex.msg)
+
 
 class SheepdogDriverTestCase(test.TestCase):
     def setUp(self):
@@ -1173,10 +1222,9 @@ class SheepdogDriverTestCase(test.TestCase):
         self.driver.delete_volume(self.test_data.TEST_VOLUME)
         fake_execute.assert_called_once_with(self._vdiname)
 
-    def test_update_volume_stats(self):
-        def fake_stats(*args):
-            return self.test_data.COLLIE_NODE_INFO, ''
-        self.stubs.Set(self.driver, '_execute', fake_stats)
+    @mock.patch.object(sheepdog.SheepdogClient, 'get_volume_stats')
+    def test_update_volume_stats(self, fake_execute):
+        fake_execute.return_value = self.test_data.COLLIE_NODE_INFO
         expected = dict(
             volume_backend_name='sheepdog',
             vendor_name='Open Source',
@@ -1184,22 +1232,6 @@ class SheepdogDriverTestCase(test.TestCase):
             storage_protocol='sheepdog',
             total_capacity_gb=float(107287605248) / units.Gi,
             free_capacity_gb=float(107287605248 - 3623897354) / units.Gi,
-            reserved_percentage=0,
-            QoS_support=False)
-        actual = self.driver.get_volume_stats(True)
-        self.assertDictMatch(expected, actual)
-
-    def test_update_volume_stats_error(self):
-        def fake_stats(*args):
-            raise processutils.ProcessExecutionError()
-        self.stubs.Set(self.driver, '_execute', fake_stats)
-        expected = dict(
-            volume_backend_name='sheepdog',
-            vendor_name='Open Source',
-            driver_version=self.driver.VERSION,
-            storage_protocol='sheepdog',
-            total_capacity_gb='unknown',
-            free_capacity_gb='unknown',
             reserved_percentage=0,
             QoS_support=False)
         actual = self.driver.get_volume_stats(True)

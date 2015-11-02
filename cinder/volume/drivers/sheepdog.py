@@ -320,6 +320,20 @@ class SheepdogClient(object):
                                   'vdi: %(vdiname)s new size: %(size)s'),
                               {'vdiname': vdiname, 'size': size})
 
+    def get_volume_stats(self):
+        try:
+            (_stdout, _stderr) = self._run_dog('node', 'info', '-r')
+        except exception.SheepdogCmdError as e:
+            _stderr = e.kwargs['stderr']
+            with excutils.save_and_reraise_exception():
+                if _stderr.startswith(self.DOG_RESP_CONNECTION_ERROR):
+                    LOG.error(_LE('Failed to connect to sheep daemon. '
+                                  'addr: %(addr)s, port: %(port)s'),
+                              {'addr': self.addr, 'port': self.port})
+                else:
+                    LOG.error(_LE('Failed to get volume status. '))
+        return _stdout
+
 
 class SheepdogIOWrapper(io.RawIOBase):
     """File-like object with Sheepdog backend."""
@@ -606,15 +620,12 @@ class SheepdogDriver(driver.VolumeDriver):
         stats['reserved_percentage'] = 0
         stats['QoS_support'] = False
 
-        try:
-            stdout, _err = self._execute('collie', 'node', 'info', '-r')
-            m = self.stats_pattern.match(stdout)
-            total = float(m.group(1))
-            used = float(m.group(2))
-            stats['total_capacity_gb'] = total / units.Gi
-            stats['free_capacity_gb'] = (total - used) / units.Gi
-        except processutils.ProcessExecutionError:
-            LOG.exception(_LE('error refreshing volume stats'))
+        stdout = self.client.get_volume_stats()
+        m = self.stats_pattern.match(stdout)
+        total = float(m.group(1))
+        used = float(m.group(2))
+        stats['total_capacity_gb'] = total / units.Gi
+        stats['free_capacity_gb'] = (total - used) / units.Gi
 
         self._stats = stats
 
