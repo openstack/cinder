@@ -23,10 +23,13 @@ import six
 from six.moves import http_client
 from six.moves import urllib
 
+from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI
 from cinder.volume.drivers.cloudbyte import options
 from cinder.volume.drivers.san import san
+from cinder.volume import qos_specs
+from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
 
@@ -39,9 +42,10 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
         1.1.0 - Add chap support and minor bug fixes
         1.1.1 - Add wait logic for delete volumes
         1.1.2 - Update ig to None before delete volume
+        1.2.0 - Add retype support
     """
 
-    VERSION = '1.1.2'
+    VERSION = '1.2.0'
     volume_stats = {}
 
     def __init__(self, *args, **kwargs):
@@ -50,6 +54,8 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
             options.cloudbyte_add_qosgroup_opts)
         self.configuration.append_config_values(
             options.cloudbyte_create_volume_opts)
+        self.configuration.append_config_values(
+            options.cloudbyte_update_volume_opts)
         self.configuration.append_config_values(
             options.cloudbyte_connection_opts)
         self.cb_use_chap = self.configuration.use_chap_auth
@@ -182,35 +188,25 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
         data = self._api_request_for_cloudbyte("listTsm", params)
         return data
 
-    def _override_params(self, default_dict, filtered_user_dict):
-        """Override the default config values with user provided values."""
-
-        if filtered_user_dict is None:
-            # Nothing to override
-            return default_dict
-
-        for key, value in default_dict.items():
-            # Fill the user dict with default options based on condition
-            if filtered_user_dict.get(key) is None and value is not None:
-                filtered_user_dict[key] = value
-
-        return filtered_user_dict
-
-    def _add_qos_group_request(self, volume, tsmid, volume_name):
+    def _add_qos_group_request(self, volume, tsmid, volume_name,
+                               qos_group_params):
+        # Prepare the user input params
+        params = {
+            "name": "QoS_" + volume_name,
+            "tsmid": tsmid
+        }
         # Get qos related params from configuration
-        params = self.configuration.cb_add_qosgroup
+        params.update(self.configuration.cb_add_qosgroup)
 
-        if params is None:
-            params = {}
-
-        params['name'] = "QoS_" + volume_name
-        params['tsmid'] = tsmid
+        # Override the default configuration by qos specs
+        if qos_group_params:
+            params.update(qos_group_params)
 
         data = self._api_request_for_cloudbyte("addQosGroup", params)
         return data
 
     def _create_volume_request(self, volume, datasetid, qosgroupid,
-                               tsmid, volume_name):
+                               tsmid, volume_name, file_system_params):
 
         size = volume.get('size')
         quotasize = six.text_type(size) + "G"
@@ -225,8 +221,11 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
         }
 
         # Get the additional params from configuration
-        params = self._override_params(self.configuration.cb_create_volume,
-                                       params)
+        params.update(self.configuration.cb_create_volume)
+
+        # Override the default configuration by qos specs
+        if file_system_params:
+            params.update(file_system_params)
 
         data = self._api_request_for_cloudbyte("createVolume", params)
         return data
@@ -756,8 +755,40 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
                   {'vol': volume_id,
                    'ig': ig_name})
 
+    def _get_qos_by_volume_type(self, ctxt, type_id):
+        """Get the properties which can be QoS or file system related."""
+
+        update_qos_group_params = {}
+        update_file_system_params = {}
+
+        volume_type = volume_types.get_volume_type(ctxt, type_id)
+        qos_specs_id = volume_type.get('qos_specs_id')
+        extra_specs = volume_type.get('extra_specs')
+
+        if qos_specs_id is not None:
+            specs = qos_specs.get_qos_specs(ctxt, qos_specs_id)['specs']
+
+            # Override extra specs with specs
+            # Hence specs will prefer QoS than extra specs
+            extra_specs.update(specs)
+
+        for key, value in extra_specs.items():
+            if ':' in key:
+                fields = key.split(':')
+                key = fields[1]
+
+            if key in self.configuration.cb_update_qos_group:
+                update_qos_group_params[key] = value
+
+            elif key in self.configuration.cb_update_file_system:
+                update_file_system_params[key] = value
+
+        return update_qos_group_params, update_file_system_params
+
     def create_volume(self, volume):
 
+        qos_group_params = {}
+        file_system_params = {}
         tsm_name = self.configuration.cb_tsm_name
         account_name = self.configuration.cb_account_name
 
@@ -766,6 +797,13 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
 
         # Set backend storage volume name using OpenStack volume id
         cb_volume_name = volume['id'].replace("-", "")
+
+        ctxt = context.get_admin_context()
+        type_id = volume['volume_type_id']
+
+        if type_id is not None:
+            qos_group_params, file_system_params = (
+                self._get_qos_by_volume_type(ctxt, type_id))
 
         LOG.debug("Will create a volume [%(cb_vol)s] in TSM [%(tsm)s] "
                   "at CloudByte storage w.r.t "
@@ -781,7 +819,7 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
         LOG.debug("Creating qos group for CloudByte volume [%s].",
                   cb_volume_name)
         qos_data = self._add_qos_group_request(
-            volume, tsm_details.get('tsmid'), cb_volume_name)
+            volume, tsm_details.get('tsmid'), cb_volume_name, qos_group_params)
 
         # Extract the qos group id from response
         qosgroupid = qos_data['addqosgroupresponse']['qosgroup']['id']
@@ -792,7 +830,7 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
         # Send a create volume request to CloudByte API
         vol_data = self._create_volume_request(
             volume, tsm_details.get('datasetid'), qosgroupid,
-            tsm_details.get('tsmid'), cb_volume_name)
+            tsm_details.get('tsmid'), cb_volume_name, file_system_params)
 
         # Since create volume is an async call;
         # need to confirm the creation before proceeding further
@@ -1134,3 +1172,51 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
             self.volume_stats = data
 
         return self.volume_stats
+
+    def retype(self, ctxt, volume, new_type, diff, host):
+        """Retypes a volume, QoS and file system update is only done."""
+
+        cb_volume_id = volume.get('provider_id')
+
+        if cb_volume_id is None:
+            message = _("Provider information w.r.t CloudByte storage "
+                        "was not found for OpenStack "
+                        "volume [%s].") % volume['id']
+
+            raise exception.VolumeBackendAPIException(message)
+
+        update_qos_group_params, update_file_system_params = (
+            self._get_qos_by_volume_type(ctxt, new_type['id']))
+
+        if update_qos_group_params:
+            list_file_sys_params = {'id': cb_volume_id}
+            response = self._api_request_for_cloudbyte(
+                'listFileSystem', list_file_sys_params)
+
+            response = response['listFilesystemResponse']
+            cb_volume_list = response['filesystem']
+            cb_volume = cb_volume_list[0]
+
+            if not cb_volume:
+                msg = (_("Volume [%(cb_vol)s] was not found at "
+                         "CloudByte storage corresponding to OpenStack "
+                         "volume [%(ops_vol)s].") %
+                       {'cb_vol': cb_volume_id, 'ops_vol': volume['id']})
+
+                raise exception.VolumeBackendAPIException(data=msg)
+
+            update_qos_group_params['id'] = cb_volume.get('groupid')
+
+            self._api_request_for_cloudbyte(
+                'updateQosGroup', update_qos_group_params)
+
+        if update_file_system_params:
+            update_file_system_params['id'] = cb_volume_id
+            self._api_request_for_cloudbyte(
+                'updateFileSystem', update_file_system_params)
+
+        LOG.info(_LI("Successfully updated CloudByte volume [%(cb_vol)s] "
+                     "corresponding to OpenStack volume [%(ops_vol)s]."),
+                 {'cb_vol': cb_volume_id, 'ops_vol': volume['id']})
+
+        return True

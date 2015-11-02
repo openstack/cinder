@@ -85,7 +85,18 @@ cloudbyte_create_volume_opts = [
                 help="These values will be used for CloudByte storage's "
                      "createVolume API call."), ]
 
+cloudbyte_update_volume_opts = [
+    cfg.ListOpt('cb_update_qos_group',
+                default=["iops", "latency", "graceallowed"],
+                help="These values will be used for CloudByte storage's "
+                     "updateQosGroup API call."),
+    cfg.ListOpt('cb_update_file_system',
+                default=["compression", "sync", "noofcopies", "readonly"],
+                help="These values will be used for CloudByte storage's "
+                     "updateFileSystem API call."), ]
+
 CONF = cfg.CONF
 CONF.register_opts(cloudbyte_add_qosgroup_opts)
 CONF.register_opts(cloudbyte_create_volume_opts)
 CONF.register_opts(cloudbyte_connection_opts)
+CONF.register_opts(cloudbyte_update_volume_opts)
