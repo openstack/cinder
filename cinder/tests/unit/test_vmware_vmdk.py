@@ -19,6 +19,7 @@ Test suite for VMware vCenter VMDK driver.
 
 from distutils import version as ver
 
+import ddt
 import mock
 from mox3 import mox
 from oslo_utils import units
@@ -78,6 +79,7 @@ class FakeObject(object):
 
 # TODO(vbala) Split test methods handling multiple cases into multiple methods,
 # each handling a specific case.
+@ddt.ddt
 class VMwareVcVmdkDriverTestCase(test.TestCase):
     """Unit tests for VMwareVcVmdkDriver."""
 
@@ -1498,24 +1500,18 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         version = self._driver._get_vc_version()
         self.assertEqual(ver.LooseVersion('6.0.1'), version)
 
-    @mock.patch('cinder.volume.drivers.vmware.vmdk.LOG')
-    def test_validate_vcenter_version(self, log):
-        vc_version = ver.LooseVersion('5.5')
-        self._driver._validate_vcenter_version(vc_version)
-        self.assertFalse(log.warning.called)
+    @ddt.data('5.1', '5.5')
+    def test_validate_vcenter_version(self, version):
+        # vCenter versions 5.1 and above should pass validation.
+        self._driver._validate_vcenter_version(ver.LooseVersion(version))
 
-    @mock.patch('cinder.volume.drivers.vmware.vmdk.LOG')
-    def test_validate_vcenter_version_with_min_supported_version(self, log):
-        vc_version = self._driver.MIN_SUPPORTED_VC_VERSION
-        self._driver._validate_vcenter_version(vc_version)
-        self.assertFalse(log.warning.called)
-
-    @mock.patch('cinder.volume.drivers.vmware.vmdk.LOG')
     def test_validate_vcenter_version_with_less_than_min_supported_version(
-            self, log):
+            self):
         vc_version = ver.LooseVersion('5.0')
-        self._driver._validate_vcenter_version(vc_version)
-        self.assertTrue(log.warning.called)
+        # Validation should fail for vCenter version less than 5.1.
+        self.assertRaises(exceptions.VMwareDriverException,
+                          self._driver._validate_vcenter_version,
+                          vc_version)
 
     @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
                 '_validate_vcenter_version')

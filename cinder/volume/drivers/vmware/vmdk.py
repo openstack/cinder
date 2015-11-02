@@ -1712,13 +1712,10 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
     def _validate_vcenter_version(self, vc_version):
         if vc_version < self.MIN_SUPPORTED_VC_VERSION:
-            # TODO(vbala): enforce vCenter version in M release.
-            LOG.warning(
-                _LW('Running Cinder with a VMware vCenter version less than '
-                    '%(min_version)s is deprecated. The minimum required '
-                    'version of vCenter server will be raised to '
-                    '%(min_version)s in the 8.0.0 release.'),
-                {'min_version': self.MIN_SUPPORTED_VC_VERSION})
+            msg = _('Running Cinder with a VMware vCenter version less than '
+                    '%s is not allowed.') % self.MIN_SUPPORTED_VC_VERSION
+            LOG.error(msg)
+            raise exceptions.VMwareDriverException(message=msg)
 
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
