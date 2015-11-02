@@ -640,16 +640,6 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         zvol_name = self._get_zvol_name(volume['name'])
         self.nms.scsidisk.delete_lu(zvol_name)
 
-    def get_volume_stats(self, refresh=False):
-        """Get volume stats.
-
-        If 'refresh' is True, run update the stats first.
-        """
-        if refresh:
-            self._update_volume_stats()
-
-        return self._stats
-
     def _update_volume_stats(self):
         """Retrieve stats info for NexentaStor appliance."""
         LOG.debug('Updating volume stats')
