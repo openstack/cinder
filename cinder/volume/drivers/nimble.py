@@ -38,7 +38,7 @@ from cinder.volume.drivers.san import san
 from cinder.volume import volume_types
 
 
-DRIVER_VERSION = '2.0.0'
+DRIVER_VERSION = '2.0.2'
 AES_256_XTS_CIPHER = 2
 DEFAULT_CIPHER = 3
 EXTRA_SPEC_ENCRYPTION = 'nimble:encryption'
@@ -95,6 +95,8 @@ class NimbleISCSIDriver(san.SanISCSIDriver):
         2.0.0 - Added Extra Spec Capability
                 Correct capacity reporting
                 Added Manage/Unmanage volume support
+        2.0.1 - Added multi-initiator support through extra-specs
+        2.0.2 - Fixed supporting extra specs while cloning vols
     """
 
     VERSION = DRIVER_VERSION
@@ -827,27 +829,47 @@ class NimbleAPIExecutor(object):
         clone_name = volume['name']
         snap_size = snapshot['volume_size']
         reserve_size = snap_size * units.Gi if reserve else 0
+
+        specs = self._get_volumetype_extraspecs(volume)
+        extra_specs_map = self._get_extra_spec_values(specs)
+        perf_policy_name = extra_specs_map.get(EXTRA_SPEC_PERF_POLICY)
+        encrypt = extra_specs_map.get(EXTRA_SPEC_ENCRYPTION)
+        multi_initiator = extra_specs_map.get(EXTRA_SPEC_MULTI_INITIATOR)
+        # default value of cipher for encryption
+        cipher = DEFAULT_CIPHER
+        if encrypt.lower() == 'yes':
+            cipher = AES_256_XTS_CIPHER
+
         LOG.info(_LI('Cloning volume from snapshot volume=%(vol)s '
-                     'snapshot=%(snap)s clone=%(clone)s snap_size=%(size)s'
-                     'reserve=%(reserve)s' 'agent-type=%(agent-type)s'),
+                     'snapshot=%(snap)s clone=%(clone)s snap_size=%(size)s '
+                     'reserve=%(reserve)s' 'agent-type=%(agent-type)s '
+                     'perfpol-name=%(perfpol-name)s '
+                     'encryption=%(encryption)s cipher=%(cipher)s '
+                     'multi-initiator=%(multi-initiator)s'),
                  {'vol': volume_name,
                   'snap': snap_name,
                   'clone': clone_name,
                   'size': snap_size,
                   'reserve': reserve,
-                  'agent-type': AGENT_TYPE_OPENSTACK})
+                  'agent-type': AGENT_TYPE_OPENSTACK,
+                  'perfpol-name': perf_policy_name,
+                  'encryption': encrypt,
+                  'cipher': cipher,
+                  'multi-initiator': multi_initiator})
         clone_size = snap_size * units.Gi
         return self.client.service.cloneVol(
             request={'sid': self.sid,
                      'name': volume_name,
                      'attr': {'name': clone_name,
-                              'perfpol-name': 'default',
                               'reserve': reserve_size,
                               'warn-level': int(clone_size * WARN_LEVEL),
                               'quota': clone_size,
                               'snap-quota': DEFAULT_SNAP_QUOTA,
                               'online': True,
-                              'agent-type': AGENT_TYPE_OPENSTACK},
+                              'agent-type': AGENT_TYPE_OPENSTACK,
+                              'perfpol-name': perf_policy_name,
+                              'encryptionAttr': {'cipher': cipher},
+                              'multi-initiator': multi_initiator},
                      'snap-name': snap_name})
 
     @_connection_checker
