@@ -19,7 +19,7 @@ from oslo_utils import strutils
 from webob import exc
 
 from cinder.api.openstack import wsgi
-from cinder.api.views import types as views_types
+from cinder.api.v2.views import types as views_types
 from cinder.api import xmlutil
 from cinder import exception
 from cinder.i18n import _
@@ -31,6 +31,7 @@ def make_voltype(elem):
     elem.set('id')
     elem.set('name')
     elem.set('description')
+    elem.set('qos_specs_id')
     extra_specs = xmlutil.make_flat_dict('extra_specs', selector='extra_specs')
     elem.append(extra_specs)
 
