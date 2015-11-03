@@ -378,6 +378,45 @@ class NfsDriver(driver.ExtendVD, remotefs.RemoteFSDriver):
                             "for information on a secure NAS configuration."),
                         doc_html)
 
+    def update_migrated_volume(self, ctxt, volume, new_volume,
+                               original_volume_status):
+        """Return the keys and values updated from NFS for migrated volume.
+
+        This method should rename the back-end volume name(id) on the
+        destination host back to its original name(id) on the source host.
+
+        :param ctxt: The context used to run the method update_migrated_volume
+        :param volume: The original volume that was migrated to this backend
+        :param new_volume: The migration volume object that was created on
+                           this backend as part of the migration process
+        :param original_volume_status: The status of the original volume
+        :return model_update to update DB with any needed changes
+        """
+        # TODO(vhou) This method may need to be updated after
+        # NFS snapshots are introduced.
+        name_id = None
+        if original_volume_status == 'available':
+            current_name = CONF.volume_name_template % new_volume['id']
+            original_volume_name = CONF.volume_name_template % volume['id']
+            current_path = self.local_path(new_volume)
+            # Replace the volume name with the original volume name
+            original_path = current_path.replace(current_name,
+                                                 original_volume_name)
+            try:
+                os.rename(current_path, original_path)
+            except OSError:
+                LOG.error(_LE('Unable to rename the logical volume '
+                              'for volume: %s'), volume['id'])
+                # If the rename fails, _name_id should be set to the new
+                # volume id and provider_location should be set to the
+                # one from the new volume as well.
+                name_id = new_volume['_name_id'] or new_volume['id']
+        else:
+            # The back-end will not be renamed.
+            name_id = new_volume['_name_id'] or new_volume['id']
+        return {'_name_id': name_id,
+                'provider_location': new_volume['provider_location']}
+
     def _update_volume_stats(self):
         """Retrieve stats info from volume group."""
 
