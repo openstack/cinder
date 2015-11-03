@@ -16,7 +16,6 @@
 import errno
 import os
 import stat
-import warnings
 
 from os_brick.remotefs import remotefs as remotefs_brick
 from oslo_concurrency import processutils
@@ -348,8 +347,9 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver, driver.CloneableVD,
                 self._fallocate(volume_path, volume_size)
             except processutils.ProcessExecutionError as exc:
                 if 'Operation not supported' in exc.stderr:
-                    warnings.warn('Fallocate not supported by current version '
-                                  'of glusterfs. So falling back to dd.')
+                    LOG.warning(_LW('Fallocate not supported by current '
+                                    'version of glusterfs. So falling '
+                                    'back to dd.'))
                     self._create_regular_file(volume_path, volume_size)
                 else:
                     fileutils.delete_if_exists(volume_path)
