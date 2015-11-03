@@ -41,7 +41,7 @@ CONF = cfg.CONF
 CONF.register_opts(volume_opts)
 
 
-class BlockDeviceDriver(driver.BaseVD, driver.LocalVD, driver.CloneableVD,
+class BlockDeviceDriver(driver.BaseVD, driver.LocalVD,
                         driver.CloneableImageVD, driver.TransferVD):
     VERSION = '2.1.0'
 

@@ -31,7 +31,6 @@ LOG = logging.getLogger(__name__)
 class NetAppEseriesISCSIDriver(driver.BaseVD,
                                driver.ManageableVD,
                                driver.ExtendVD,
-                               driver.CloneableVD,
                                driver.TransferVD,
                                driver.SnapshotVD):
     """NetApp E-Series iSCSI volume driver."""

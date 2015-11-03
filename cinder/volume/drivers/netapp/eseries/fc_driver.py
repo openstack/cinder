@@ -29,7 +29,6 @@ LOG = logging.getLogger(__name__)
 class NetAppEseriesFibreChannelDriver(driver.BaseVD,
                                       driver.ManageableVD,
                                       driver.ExtendVD,
-                                      driver.CloneableVD,
                                       driver.TransferVD,
                                       driver.SnapshotVD):
     """NetApp E-Series FibreChannel volume driver."""

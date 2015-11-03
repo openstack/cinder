@@ -27,7 +27,6 @@ LOG = logging.getLogger(__name__)
 class NetApp7modeISCSIDriver(driver.BaseVD,
                              driver.ManageableVD,
                              driver.ExtendVD,
-                             driver.CloneableVD,
                              driver.TransferVD,
                              driver.SnapshotVD):
     """NetApp 7-mode iSCSI volume driver."""

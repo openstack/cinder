@@ -265,7 +265,7 @@ class RADOSClient(object):
 
 
 class RBDDriver(driver.TransferVD, driver.ExtendVD,
-                driver.CloneableVD, driver.CloneableImageVD, driver.SnapshotVD,
+                driver.CloneableImageVD, driver.SnapshotVD,
                 driver.MigrateVD, driver.BaseVD):
     """Implements RADOS block device (RBD) volume commands."""
 

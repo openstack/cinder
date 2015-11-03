@@ -48,7 +48,6 @@ MIN_CLIENT_VERSION = '1.0.4'
 class HPLeftHandISCSIDriver(driver.TransferVD,
                             driver.ManageableVD,
                             driver.ExtendVD,
-                            driver.CloneableVD,
                             driver.SnapshotVD,
                             driver.MigrateVD,
                             driver.BaseVD,

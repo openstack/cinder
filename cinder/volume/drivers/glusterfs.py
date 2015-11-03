@@ -47,7 +47,7 @@ CONF = cfg.CONF
 CONF.register_opts(volume_opts)
 
 
-class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver, driver.CloneableVD,
+class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver,
                       driver.ExtendVD):
     """Gluster based cinder driver.
 

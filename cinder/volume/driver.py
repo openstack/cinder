@@ -1326,6 +1326,16 @@ class BaseVD(object):
     def retype(self, context, volume, new_type, diff, host):
         return False, None
 
+    def create_cloned_volume(self, volume, src_vref):
+        """Creates a clone of the specified volume.
+
+        If volume_type extra specs includes 'replication: <is> True' the
+        driver needs to create a volume replica (secondary)
+        and setup replication between the newly created volume
+        and the secondary volume.
+        """
+        raise NotImplementedError()
+
     # #######  Interface methods for DataPath (Connector) ########
     @abc.abstractmethod
     def ensure_export(self, context, volume):
@@ -1501,21 +1511,6 @@ class ConsistencyGroupVD(object):
     @abc.abstractmethod
     def delete_consistencygroup(self, context, group):
         """Deletes a consistency group."""
-        return
-
-
-@six.add_metaclass(abc.ABCMeta)
-class CloneableVD(object):
-    @abc.abstractmethod
-    def create_cloned_volume(self, volume, src_vref):
-        """Creates a clone of the specified volume.
-
-        If volume_type extra specs includes 'replication: <is> True' the
-        driver needs to create a volume replica (secondary)
-        and setup replication between the newly created volume
-        and the secondary volume.
-        """
-
         return
 
 
@@ -1964,7 +1959,7 @@ class ReplicaVD(object):
 
 
 class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
-                   CloneableVD, CloneableImageVD, ManageableSnapshotsVD,
+                   CloneableImageVD, ManageableSnapshotsVD,
                    SnapshotVD, ReplicaVD, LocalVD, MigrateVD, BaseVD):
     """This class will be deprecated soon.
 
@@ -1977,9 +1972,6 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
         raise NotImplementedError()
 
     def create_volume_from_snapshot(self, volume, snapshot):
-        raise NotImplementedError()
-
-    def create_cloned_volume(self, volume, src_vref):
         raise NotImplementedError()
 
     def create_replica_test_volume(self, volume, src_vref):

@@ -141,8 +141,7 @@ class StorwizeSVCDriver(san.SanDriver,
                         driver.ExtendVD, driver.SnapshotVD,
                         driver.MigrateVD, driver.ReplicaVD,
                         driver.ConsistencyGroupVD,
-                        driver.CloneableVD, driver.CloneableImageVD,
-                        driver.TransferVD):
+                        driver.CloneableImageVD, driver.TransferVD):
     """IBM Storwize V7000 and SVC iSCSI/FC volume driver.
 
     Version history:

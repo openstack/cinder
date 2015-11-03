@@ -108,7 +108,7 @@ def _sizestr(size_in_g):
 
 
 class GPFSDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
-                 driver.LocalVD, driver.TransferVD, driver.CloneableVD,
+                 driver.LocalVD, driver.TransferVD,
                  driver.CloneableImageVD, driver.SnapshotVD,
                  driver.MigrateVD,
                  driver.BaseVD):

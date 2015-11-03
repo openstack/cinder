@@ -49,7 +49,6 @@ LOG = logging.getLogger(__name__)
 class HP3PARFCDriver(driver.TransferVD,
                      driver.ManageableVD,
                      driver.ExtendVD,
-                     driver.CloneableVD,
                      driver.SnapshotVD,
                      driver.MigrateVD,
                      driver.ConsistencyGroupVD,
