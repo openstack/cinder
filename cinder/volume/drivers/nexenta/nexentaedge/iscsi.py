@@ -190,9 +190,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
             self.restapi.delete('service/' + self.iscsi_service +
                                 '/iscsi', {'objectPath': self.bucket_path +
                                            '/' + volume['name']})
-        except exception.VolumeBackendAPIException as exc:
-            if str(exc).find('NOT_FOUND') > -1:
-                return
+        except exception.VolumeBackendAPIException:
             LOG.exception(_LE('Error deleting volume'))
             raise
 
@@ -242,9 +240,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
                     snapshot['volume_name'],
                     'snapName': snapshot['name']
                 })
-        except exception.VolumeBackendAPIException as exc:
-            if str(exc).find('NOT_FOUND') > -1:
-                return
+        except exception.VolumeBackendAPIException:
             LOG.exception(_LE('Error deleting snapshot'))
             raise
 

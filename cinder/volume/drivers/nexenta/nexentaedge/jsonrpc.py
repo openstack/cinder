@@ -54,7 +54,8 @@ class NexentaEdgeJSONProxy(object):
         if not self.method:
             method = name
         else:
-            raise exception.VolumeDriverException(_("Wrong resource call syntax"))
+            raise exception.VolumeDriverException(
+                _("Wrong resource call syntax"))
         return NexentaEdgeJSONProxy(
             self.protocol, self.host, self.port, self.path,
             self.user, self.password, self.auto, method)
@@ -94,5 +95,6 @@ class NexentaEdgeJSONProxy(object):
 
         LOG.debug('Got response: %s', rsp)
         if rsp.get('response') is None:
-            raise exception.VolumeBackendException(_('Error response: %s') % rsp)
+            raise exception.VolumeBackendException(
+                _('Error response: %s') % rsp)
         return rsp.get('response')
