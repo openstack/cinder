@@ -87,6 +87,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         self.sparsed_volumes = self.configuration.nexenta_sparsed_volumes
         self._nms2volroot = {}
         self.share2nms = {}
+        self.nfs_versions = {}
 
     @property
     def backend_name(self):
