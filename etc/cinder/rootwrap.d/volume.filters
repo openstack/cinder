@@ -61,6 +61,9 @@ lvextend: CommandFilter, lvextend, root
 # cinder/brick/local_dev/lvm.py: 'lvchange -a y -K <lv>'
 lvchange: CommandFilter, lvchange, root
 
+# cinder/brick/local_dev/lvm.py: 'lvconvert', '--merge', snapshot_name
+lvconvert: CommandFilter, lvconvert, root
+
 # cinder/volume/driver.py: 'iscsiadm', '-m', 'discovery', '-t',...
 # cinder/volume/driver.py: 'iscsiadm', '-m', 'node', '-T', ...
 iscsiadm: CommandFilter, iscsiadm, root
