@@ -79,7 +79,11 @@ class QuotaIntegrationTestCase(test.TestCase):
         vol['status'] = 'available'
         vol['volume_type_id'] = self.volume_type['id']
         vol['host'] = 'fake_host'
-        return db.volume_create(self.context, vol)
+        vol['availability_zone'] = 'fake_zone'
+        vol['attach_status'] = 'detached'
+        volume = objects.Volume(context=self.context, **vol)
+        volume.create()
+        return volume
 
     def _create_snapshot(self, volume):
         snapshot = objects.Snapshot(self.context)
@@ -145,7 +149,7 @@ class QuotaIntegrationTestCase(test.TestCase):
         msg = ("Maximum number of volumes allowed (1) exceeded for"
                " quota '%s'." % resource)
         self.assertEqual(msg, six.text_type(ex))
-        db.volume_destroy(self.context, vol_ref['id'])
+        vol_ref.destroy()
 
     def test_too_many_snapshots_of_type(self):
         resource = 'snapshots_%s' % self.volume_type_name
@@ -161,7 +165,7 @@ class QuotaIntegrationTestCase(test.TestCase):
                           volume.API().create_snapshot,
                           self.context, vol_ref, '', '')
         snap_ref.destroy()
-        db.volume_destroy(self.context, vol_ref['id'])
+        vol_ref.destroy()
 
     def test_too_many_backups(self):
         resource = 'backups'
@@ -211,7 +215,7 @@ class QuotaIntegrationTestCase(test.TestCase):
                                                    self.project_id)
         self.assertEqual(20, usages['gigabytes']['in_use'])
         snap_ref.destroy()
-        db.volume_destroy(self.context, vol_ref['id'])
+        vol_ref.destroy()
 
     def test_too_many_combined_backup_gigabytes(self):
         vol_ref = self._create_volume(size=10000)
@@ -229,7 +233,7 @@ class QuotaIntegrationTestCase(test.TestCase):
                 container='container',
                 incremental=False)
             db.backup_destroy(self.context, backup_ref['id'])
-            db.volume_destroy(self.context, vol_ref['id'])
+            vol_ref.destroy()
 
     def test_no_snapshot_gb_quota_flag(self):
         self.flags(quota_volumes=2,
@@ -250,8 +254,8 @@ class QuotaIntegrationTestCase(test.TestCase):
 
         snap_ref.destroy()
         snap_ref2.destroy()
-        db.volume_destroy(self.context, vol_ref['id'])
-        db.volume_destroy(self.context, vol_ref2['id'])
+        vol_ref.destroy()
+        vol_ref2.destroy()
 
     def test_backup_gb_quota_flag(self):
         self.flags(quota_volumes=2,
@@ -281,8 +285,8 @@ class QuotaIntegrationTestCase(test.TestCase):
 
             db.backup_destroy(self.context, backup_ref['id'])
             db.backup_destroy(self.context, backup_ref2['id'])
-            db.volume_destroy(self.context, vol_ref['id'])
-            db.volume_destroy(self.context, vol_ref2['id'])
+            vol_ref.destroy()
+            vol_ref2.destroy()
 
     def test_too_many_gigabytes_of_type(self):
         resource = 'gigabytes_%s' % self.volume_type_name
@@ -299,7 +303,7 @@ class QuotaIntegrationTestCase(test.TestCase):
         expected = exception.VolumeSizeExceedsAvailableQuota(
             requested=1, quota=10, consumed=10, name=resource)
         self.assertEqual(str(expected), str(raised_exc))
-        db.volume_destroy(self.context, vol_ref['id'])
+        vol_ref.destroy()
 
 
 class FakeContext(object):

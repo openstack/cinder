@@ -20,12 +20,14 @@ from oslo_utils import timeutils
 import webob
 
 from cinder import context
+from cinder import objects
 from cinder import test
 from cinder.tests.unit.api import fakes
+from cinder.tests.unit import fake_volume
 from cinder import volume
 
 
-def fake_volume_get(*args, **kwargs):
+def fake_db_volume_get(*args, **kwargs):
     return {
         'id': 'fake',
         'host': 'host001',
@@ -33,7 +35,7 @@ def fake_volume_get(*args, **kwargs):
         'size': 5,
         'availability_zone': 'somewhere',
         'created_at': timeutils.utcnow(),
-        'attach_status': None,
+        'attach_status': 'detached',
         'display_name': 'anothervolume',
         'display_description': 'Just another volume!',
         'volume_type_id': None,
@@ -44,8 +46,14 @@ def fake_volume_get(*args, **kwargs):
     }
 
 
+def fake_volume_api_get(*args, **kwargs):
+    ctx = context.RequestContext('admin', 'fake', True)
+    db_volume = fake_db_volume_get()
+    return fake_volume.fake_volume_obj(ctx, **db_volume)
+
+
 def fake_volume_get_all(*args, **kwargs):
-    return [fake_volume_get()]
+    return objects.VolumeList(objects=[fake_volume_api_get()])
 
 
 def app():
@@ -60,7 +68,7 @@ class VolumeMigStatusAttributeTest(test.TestCase):
 
     def setUp(self):
         super(VolumeMigStatusAttributeTest, self).setUp()
-        self.stubs.Set(volume.API, 'get', fake_volume_get)
+        self.stubs.Set(volume.API, 'get', fake_volume_api_get)
         self.stubs.Set(volume.API, 'get_all', fake_volume_get_all)
         self.UUID = uuid.uuid4()
 

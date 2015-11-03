@@ -63,7 +63,6 @@ from oslo_db.sqlalchemy import migration
 from oslo_log import log as logging
 import oslo_messaging as messaging
 from oslo_utils import timeutils
-from oslo_utils import uuidutils
 
 from cinder import i18n
 i18n.enable_lazy()
@@ -92,23 +91,6 @@ def args(*args, **kwargs):
         func.__dict__.setdefault('args', []).insert(0, (args, kwargs))
         return func
     return _decorator
-
-
-def param2id(object_id):
-    """Helper function to convert various id types to internal id.
-
-    :param object_id: e.g. 'vol-0000000a' or 'volume-0000000a' or '10'
-    """
-    if uuidutils.is_uuid_like(object_id):
-        return object_id
-    elif '-' in object_id:
-        # FIXME(ja): mapping occurs in nova?
-        pass
-    else:
-        try:
-            return int(object_id)
-        except ValueError:
-            return object_id
 
 
 class ShellCommands(object):
@@ -283,22 +265,22 @@ class VolumeCommands(object):
     def delete(self, volume_id):
         """Delete a volume, bypassing the check that it must be available."""
         ctxt = context.get_admin_context()
-        volume = db.volume_get(ctxt, param2id(volume_id))
-        host = vutils.extract_host(volume['host']) if volume['host'] else None
+        volume = objects.Volume.get_by_id(ctxt, volume_id)
+        host = vutils.extract_host(volume.host) if volume.host else None
 
         if not host:
             print(_("Volume not yet assigned to host."))
             print(_("Deleting volume from database and skipping rpc."))
-            db.volume_destroy(ctxt, param2id(volume_id))
+            volume.destroy()
             return
 
-        if volume['status'] == 'in-use':
+        if volume.status == 'in-use':
             print(_("Volume is in-use."))
             print(_("Detach volume from instance and then try again."))
             return
 
         cctxt = self._rpc_client().prepare(server=host)
-        cctxt.cast(ctxt, "delete_volume", volume_id=volume['id'])
+        cctxt.cast(ctxt, "delete_volume", volume_id=volume.id, volume=volume)
 
     @args('--currenthost', required=True, help='Existing volume host name')
     @args('--newhost', required=True, help='New volume host name')

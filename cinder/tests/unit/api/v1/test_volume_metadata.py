@@ -28,6 +28,8 @@ from cinder import exception
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v1 import stubs
+from cinder.tests.unit import fake_volume
+from cinder import volume
 
 
 CONF = cfg.CONF
@@ -54,9 +56,6 @@ def return_create_volume_metadata_insensitive(context, snapshot_id,
 
 
 def return_volume_metadata(context, volume_id):
-    if not isinstance(volume_id, str) or not len(volume_id) == 36:
-        msg = 'id %s must be a uuid in return volume metadata' % volume_id
-        raise Exception(msg)
     return stub_volume_metadata()
 
 
@@ -108,11 +107,18 @@ def stub_max_volume_metadata():
     return metadata
 
 
-def return_volume(context, volume_id):
-    return {'id': '0cc3346e-9fef-4445-abe6-5d2b2690ec64',
-            'name': 'fake',
-            'metadata': {},
-            'project_id': context.project_id}
+def get_volume(*args, **kwargs):
+    vol = {'id': args[1],
+           'size': 100,
+           'name': 'fake',
+           'host': 'fake-host',
+           'status': 'available',
+           'encryption_key_id': None,
+           'volume_type_id': None,
+           'migration_status': None,
+           'availability_zone': 'zone1:host1',
+           'attach_status': 'detached'}
+    return fake_volume.fake_volume_obj(args[0], **vol)
 
 
 def return_volume_nonexistent(*args, **kwargs):
@@ -128,7 +134,7 @@ class volumeMetaDataTest(test.TestCase):
     def setUp(self):
         super(volumeMetaDataTest, self).setUp()
         self.volume_api = cinder.volume.api.API()
-        self.stubs.Set(cinder.db, 'volume_get', return_volume)
+        self.stubs.Set(volume.API, 'get', get_volume)
         self.stubs.Set(cinder.db, 'volume_metadata_get',
                        return_volume_metadata)
         self.stubs.Set(cinder.db, 'service_get_all_by_topic',
@@ -337,8 +343,7 @@ class volumeMetaDataTest(test.TestCase):
                           req, self.req_id, body)
 
     def test_create_nonexistent_volume(self):
-        self.stubs.Set(cinder.db, 'volume_get',
-                       return_volume_nonexistent)
+        self.stubs.Set(volume.API, 'get', return_volume_nonexistent)
         self.stubs.Set(cinder.db, 'volume_metadata_get',
                        return_volume_metadata)
         self.stubs.Set(cinder.db, 'volume_metadata_update',

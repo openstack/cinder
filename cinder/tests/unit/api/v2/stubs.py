@@ -14,8 +14,11 @@
 #    under the License.
 
 import datetime
+import iso8601
 
 from cinder import exception as exc
+from cinder import objects
+from cinder.tests.unit import fake_volume
 
 
 FAKE_UUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
@@ -49,8 +52,10 @@ def stub_volume(id, **kwargs):
         'name': 'vol name',
         'display_name': DEFAULT_VOL_NAME,
         'display_description': DEFAULT_VOL_DESCRIPTION,
-        'updated_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
-        'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
+        'updated_at': datetime.datetime(1900, 1, 1, 1, 1, 1,
+                                        tzinfo=iso8601.iso8601.Utc()),
+        'created_at': datetime.datetime(1900, 1, 1, 1, 1, 1,
+                                        tzinfo=iso8601.iso8601.Utc()),
         'snapshot_id': None,
         'source_volid': None,
         'volume_type_id': '3e196c20-3c06-11e2-81c1-0800200c9a66',
@@ -58,7 +63,8 @@ def stub_volume(id, **kwargs):
         'volume_admin_metadata': [{'key': 'attached_mode', 'value': 'rw'},
                                   {'key': 'readonly', 'value': 'False'}],
         'bootable': False,
-        'launched_at': datetime.datetime(1900, 1, 1, 1, 1, 1),
+        'launched_at': datetime.datetime(1900, 1, 1, 1, 1, 1,
+                                         tzinfo=iso8601.iso8601.Utc()),
         'volume_type': {'name': DEFAULT_VOL_TYPE},
         'replication_status': 'disabled',
         'replication_extended_status': None,
@@ -84,12 +90,18 @@ def stub_volume_create(self, context, size, name, description, snapshot=None,
     source_volume = param.get('source_volume') or {}
     vol['source_volid'] = source_volume.get('id')
     vol['bootable'] = False
+    vol['volume_attachment'] = []
     try:
         vol['snapshot_id'] = snapshot['id']
     except (KeyError, TypeError):
         vol['snapshot_id'] = None
     vol['availability_zone'] = param.get('availability_zone', 'fakeaz')
     return vol
+
+
+def stub_volume_api_create(self, context, *args, **kwargs):
+    vol = stub_volume_create(self, context, *args, **kwargs)
+    return fake_volume.fake_volume_obj(context, **vol)
 
 
 def stub_image_service_detail(self, context, **kwargs):
@@ -146,6 +158,11 @@ def stub_volume_get_db(context, volume_id):
         return volume
 
 
+def stub_volume_api_get(self, context, volume_id, viewable_admin_meta=False):
+    vol = stub_volume(volume_id)
+    return fake_volume.fake_volume_obj(context, **vol)
+
+
 def stub_volume_get_all(context, search_opts=None, marker=None, limit=None,
                         sort_keys=None, sort_dirs=None, filters=None,
                         viewable_admin_meta=False, offset=None):
@@ -160,6 +177,18 @@ def stub_volume_get_all_by_project(self, context, marker, limit,
                                    viewable_admin_meta=False, offset=None):
     filters = filters or {}
     return [stub_volume_get(self, context, '1', viewable_admin_meta=True)]
+
+
+def stub_volume_api_get_all_by_project(self, context, marker, limit,
+                                       sort_keys=None, sort_dirs=None,
+                                       filters=None,
+                                       viewable_admin_meta=False,
+                                       offset=None):
+    filters = filters or {}
+    vol = stub_volume_get(self, context, '1',
+                          viewable_admin_meta=viewable_admin_meta)
+    vol_obj = fake_volume.fake_volume_obj(context, **vol)
+    return objects.VolumeList(objects=[vol_obj])
 
 
 def stub_snapshot(id, **kwargs):
@@ -207,3 +236,24 @@ def stub_snapshot_get(self, context, snapshot_id):
 
 def stub_consistencygroup_get_notfound(self, context, cg_id):
     raise exc.ConsistencyGroupNotFound(consistencygroup_id=cg_id)
+
+
+def stub_volume_type_get(context, id, *args, **kwargs):
+    return {'id': id,
+            'name': 'vol_type_name',
+            'description': 'A fake volume type',
+            'is_public': True,
+            'projects': [],
+            'extra_specs': {},
+            'created_at': None,
+            'deleted_at': None,
+            'updated_at': None,
+            'deleted': False}
+
+
+def stub_volume_admin_metadata_get(context, volume_id, **kwargs):
+    admin_meta = {'attached_mode': 'rw', 'readonly': 'False'}
+    if kwargs.get('attach_status') == 'detached':
+        del admin_meta['attached_mode']
+
+    return admin_meta

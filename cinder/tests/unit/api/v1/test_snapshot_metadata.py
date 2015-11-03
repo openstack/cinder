@@ -30,6 +30,7 @@ from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
+from cinder import volume
 
 
 CONF = cfg.CONF
@@ -87,17 +88,18 @@ def return_snapshot(context, snapshot_id):
             'metadata': {}}
 
 
-def return_volume(context, volume_id):
-    return {'id': 'fake-vol-id',
-            'size': 100,
-            'name': 'fake',
-            'host': 'fake-host',
-            'status': 'available',
-            'encryption_key_id': None,
-            'volume_type_id': None,
-            'migration_status': None,
-            'metadata': {},
-            'project_id': context.project_id}
+def stub_get(context, volume_id, *args, **kwargs):
+    vol = {'id': volume_id,
+           'size': 100,
+           'name': 'fake',
+           'host': 'fake-host',
+           'status': 'available',
+           'encryption_key_id': None,
+           'volume_type_id': None,
+           'migration_status': None,
+           'availability_zone': 'zone1:host1',
+           'attach_status': 'detached'}
+    return fake_volume.fake_volume_obj(context, **vol)
 
 
 def return_snapshot_nonexistent(context, snapshot_id):
@@ -113,7 +115,7 @@ class SnapshotMetaDataTest(test.TestCase):
     def setUp(self):
         super(SnapshotMetaDataTest, self).setUp()
         self.volume_api = cinder.volume.api.API()
-        self.stubs.Set(cinder.db, 'volume_get', return_volume)
+        self.stubs.Set(volume.API, 'get', stub_get)
         self.stubs.Set(cinder.db, 'snapshot_get', return_snapshot)
 
         self.stubs.Set(self.volume_api, 'update_snapshot_metadata',

@@ -21,6 +21,7 @@ from cinder import exception
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_snapshot
+from cinder.tests.unit import fake_volume
 
 
 # This list of fake volumes is used by our tests.  Each is configured in a
@@ -78,7 +79,7 @@ def api_get(self, context, volume_id):
     if not vol:
         raise exception.VolumeNotFound(volume_id)
 
-    return vol
+    return fake_volume.fake_volume_obj(context, **vol)
 
 
 def db_snapshot_get_all_for_volume(context, volume_id):

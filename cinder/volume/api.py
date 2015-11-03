@@ -372,7 +372,7 @@ class API(base.Base):
                 reservations = None
                 LOG.exception(_LE("Failed to update quota while "
                                   "deleting volume."))
-            self.db.volume_destroy(context.elevated(), volume_id)
+            volume.destroy()
 
             if reservations:
                 QUOTAS.commit(context, reservations, project_id=project_id)
@@ -440,15 +440,13 @@ class API(base.Base):
                 msg = _("Unable to delete encrypted volume: %s.") % e.msg
                 raise exception.InvalidVolume(reason=msg)
 
-        now = timeutils.utcnow()
-        vref = self.db.volume_update(context,
-                                     volume_id,
-                                     {'status': 'deleting',
-                                      'terminated_at': now})
+        volume.status = 'deleting'
+        volume.terminated_at = timeutils.utcnow()
+        volume.save()
 
         self.volume_rpcapi.delete_volume(context, volume, unmanage_only)
         LOG.info(_LI("Delete volume request issued successfully."),
-                 resource=vref)
+                 resource=volume)
 
     @wrap_check_policy
     def update(self, context, volume, fields):
@@ -462,15 +460,14 @@ class API(base.Base):
         LOG.info(_LI("Volume updated successfully."), resource=vref)
 
     def get(self, context, volume_id, viewable_admin_meta=False):
-        rv = self.db.volume_get(context, volume_id)
-
-        volume = dict(rv)
+        volume = objects.Volume.get_by_id(context, volume_id)
 
         if viewable_admin_meta:
             ctxt = context.elevated()
             admin_metadata = self.db.volume_admin_metadata_get(ctxt,
                                                                volume_id)
-            volume['volume_admin_metadata'] = admin_metadata
+            volume.admin_metadata = admin_metadata
+            volume.obj_reset_changes()
 
         try:
             check_policy(context, 'get', volume)
@@ -478,7 +475,7 @@ class API(base.Base):
             # raise VolumeNotFound instead to make sure Cinder behaves
             # as it used to
             raise exception.VolumeNotFound(volume_id=volume_id)
-        LOG.info(_LI("Volume info retrieved successfully."), resource=rv)
+        LOG.info(_LI("Volume info retrieved successfully."), resource=volume)
         return volume
 
     def get_all(self, context, marker=None, limit=None, sort_keys=None,
@@ -514,21 +511,18 @@ class API(base.Base):
         if context.is_admin and allTenants:
             # Need to remove all_tenants to pass the filtering below.
             del filters['all_tenants']
-            volumes = self.db.volume_get_all(context, marker, limit,
-                                             sort_keys=sort_keys,
-                                             sort_dirs=sort_dirs,
-                                             filters=filters,
-                                             offset=offset)
+            volumes = objects.VolumeList.get_all(context, marker, limit,
+                                                 sort_keys=sort_keys,
+                                                 sort_dirs=sort_dirs,
+                                                 filters=filters,
+                                                 offset=offset)
         else:
             if viewable_admin_meta:
                 context = context.elevated()
-            volumes = self.db.volume_get_all_by_project(context,
-                                                        context.project_id,
-                                                        marker, limit,
-                                                        sort_keys=sort_keys,
-                                                        sort_dirs=sort_dirs,
-                                                        filters=filters,
-                                                        offset=offset)
+            volumes = objects.VolumeList.get_all_by_project(
+                context, context.project_id, marker, limit,
+                sort_keys=sort_keys, sort_dirs=sort_dirs, filters=filters,
+                offset=offset)
 
         LOG.info(_LI("Get all volumes completed successfully."))
         return volumes
@@ -545,9 +539,9 @@ class API(base.Base):
 
     def get_volume(self, context, volume_id):
         check_policy(context, 'get_volume')
-        vref = self.db.volume_get(context, volume_id)
-        LOG.info(_LI("Volume retrieved successfully."), resource=vref)
-        return dict(vref)
+        volume = objects.Volume.get_by_id(context, volume_id)
+        LOG.info(_LI("Volume retrieved successfully."), resource=volume)
+        return volume
 
     def get_all_snapshots(self, context, search_opts=None, marker=None,
                           limit=None, sort_keys=None, sort_dirs=None,
