@@ -25,10 +25,10 @@ class ViewBuilder(common.ViewBuilder):
         trimmed = dict(id=volume_type.get('id'),
                        name=volume_type.get('name'),
                        is_public=volume_type.get('is_public'),
-                       extra_specs=volume_type.get('extra_specs'),
                        description=volume_type.get('description'))
         if context.is_admin:
             trimmed['qos_specs_id'] = volume_type.get('qos_specs_id')
+            trimmed['extra_specs'] = volume_type.get('extra_specs')
         return trimmed if brief else dict(volume_type=trimmed)
 
     def index(self, request, volume_types):
