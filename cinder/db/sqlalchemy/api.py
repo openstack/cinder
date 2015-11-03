@@ -25,7 +25,6 @@ import sys
 import threading
 import time
 import uuid
-import warnings
 
 from oslo_config import cfg
 from oslo_db import exception as db_exc
@@ -109,8 +108,8 @@ def get_backend():
 def is_admin_context(context):
     """Indicates if the request context is an administrator."""
     if not context:
-        warnings.warn(_('Use of empty request context is deprecated'),
-                      DeprecationWarning)
+        LOG.warning(_LW('Use of empty request context is deprecated'),
+                    DeprecationWarning)
         raise Exception('die')
     return context.is_admin
 
