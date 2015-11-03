@@ -1,4 +1,4 @@
-# Copyright 2011 Nexenta Systems, Inc.
+# Copyright 2015 Nexenta Systems, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -12,13 +12,6 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-:mod:`nexentaedge.jsonrpc` -- NexentaEdge-specific JSON RPC client
-=====================================================================
-.. automodule:: nexentaedge.jsonrpc
-.. moduleauthor:: Zohar Mamedov <zohar.mamedov@nexenta.com>
-.. moduleauthor:: Kyle Schochenmaier <kyle.schochenmaier@nexenta.com>
-"""
 
 import json
 import requests
@@ -26,6 +19,7 @@ import socket
 
 from oslo_log import log as logging
 
+from cinder import exception
 from cinder.i18n import _
 from cinder.utils import retry
 
@@ -60,7 +54,7 @@ class NexentaEdgeJSONProxy(object):
         if not self.method:
             method = name
         else:
-            raise Exception(_("Wrong resource call syntax"))
+            raise exception.VolumeDriverException(_("Wrong resource call syntax"))
         return NexentaEdgeJSONProxy(
             self.protocol, self.host, self.port, self.path,
             self.user, self.password, self.auto, method)
@@ -100,5 +94,5 @@ class NexentaEdgeJSONProxy(object):
 
         LOG.debug('Got response: %s', rsp)
         if rsp.get('response') is None:
-            raise Exception(_('Bad response: %s') % rsp)
+            raise exception.VolumeBackendException(_('Error response: %s') % rsp)
         return rsp.get('response')
