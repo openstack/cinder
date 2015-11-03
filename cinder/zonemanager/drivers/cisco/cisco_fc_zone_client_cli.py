@@ -169,7 +169,7 @@ class CiscoFCZoneClientCLI(object):
 
                 if current_zone != new_zone:
                     try:
-                        self.delete_zones([zone], activate, fabric_vsan,
+                        self.delete_zones(zone, activate, fabric_vsan,
                                           active_zone_set, zone_status)
                     except exception.CiscoZoningCliException:
                         with excutils.save_and_reraise_exception():
