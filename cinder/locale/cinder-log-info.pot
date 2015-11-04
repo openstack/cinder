@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev74\n"
+"Project-Id-Version: cinder 8.0.0.dev112\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-10-25 06:05+0000\n"
+"POT-Creation-Date: 2015-11-04 06:06+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -373,12 +373,12 @@ msgid ""
 "lv_name=%(lv)s"
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:3992
+#: cinder/db/sqlalchemy/api.py:3994
 #, python-format
 msgid "Purging deleted rows older than age=%(age)d days from table=%(table)s"
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:4007
+#: cinder/db/sqlalchemy/api.py:4009
 #, python-format
 msgid "Deleted %(row)d rows from table=%(table)s"
 msgstr ""
@@ -865,12 +865,12 @@ msgstr ""
 msgid "EQL-driver: Setup is complete, group IP is \"%s\"."
 msgstr ""
 
-#: cinder/volume/drivers/glusterfs.py:123
+#: cinder/volume/drivers/glusterfs.py:122
 #, python-format
 msgid "%s is already umounted"
 msgstr ""
 
-#: cinder/volume/drivers/glusterfs.py:191 cinder/volume/drivers/remotefs.py:237
+#: cinder/volume/drivers/glusterfs.py:190 cinder/volume/drivers/remotefs.py:237
 #, python-format
 msgid "casted to %s"
 msgstr ""
@@ -890,7 +890,7 @@ msgstr ""
 
 #: cinder/volume/drivers/nfs.py:303 cinder/volume/drivers/smbfs.py:402
 #: cinder/volume/drivers/vzstorage.py:232
-#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:695
+#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:694
 #, python-format
 msgid "Extending volume %s."
 msgstr ""
@@ -1200,69 +1200,69 @@ msgstr ""
 msgid "Error detaching Volume"
 msgstr ""
 
-#: cinder/volume/drivers/tintri.py:135
+#: cinder/volume/drivers/tintri.py:134
 #, python-format
 msgid "Snapshot %s not found"
 msgstr ""
 
-#: cinder/volume/drivers/tintri.py:301
-#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:302
+#: cinder/volume/drivers/tintri.py:300
+#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:301
 #, python-format
 msgid "Copied image to volume %s using regular download."
 msgstr ""
 
-#: cinder/volume/drivers/tintri.py:310
+#: cinder/volume/drivers/tintri.py:309
 #, python-format
 msgid "Creating image snapshot %s"
 msgstr ""
 
-#: cinder/volume/drivers/tintri.py:339
+#: cinder/volume/drivers/tintri.py:338
 #, python-format
 msgid "Cloning from snapshot to destination %s"
 msgstr ""
 
-#: cinder/volume/drivers/tintri.py:399
-#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:475
+#: cinder/volume/drivers/tintri.py:398
+#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:474
 #, python-format
 msgid "Image cloning unsuccessful for image %(image_id)s. Message: %(msg)s"
 msgstr ""
 
-#: cinder/volume/drivers/tintri.py:415
+#: cinder/volume/drivers/tintri.py:414
 #, python-format
 msgid "Cloning image %s from snapshot."
 msgstr ""
 
-#: cinder/volume/drivers/tintri.py:434
-#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:507
+#: cinder/volume/drivers/tintri.py:433
+#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:506
 #, python-format
 msgid "Checking image clone %s from glance share."
 msgstr ""
 
-#: cinder/volume/drivers/tintri.py:455
-#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:530
+#: cinder/volume/drivers/tintri.py:454
+#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:529
 #, python-format
 msgid "Image will locally be converted to raw %s"
 msgstr ""
 
-#: cinder/volume/drivers/tintri.py:474
-#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:550
+#: cinder/volume/drivers/tintri.py:473
+#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:549
 #, python-format
 msgid "Performing post clone for %s"
 msgstr ""
 
-#: cinder/volume/drivers/tintri.py:486
+#: cinder/volume/drivers/tintri.py:485
 #: cinder/volume/drivers/hitachi/hnas_nfs.py:242
-#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:565
+#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:564
 #, python-format
 msgid "Resizing file to %sG"
 msgstr ""
 
-#: cinder/volume/drivers/tintri.py:641
+#: cinder/volume/drivers/tintri.py:640
 #, python-format
 msgid "Manage volume %s"
 msgstr ""
 
-#: cinder/volume/drivers/tintri.py:674
+#: cinder/volume/drivers/tintri.py:673
 #, python-format
 msgid "Unmanage volume %s"
 msgstr ""
@@ -1307,49 +1307,56 @@ msgstr ""
 msgid "Volume %s converted."
 msgstr ""
 
-#: cinder/volume/drivers/cloudbyte/cloudbyte.py:173
+#: cinder/volume/drivers/cloudbyte/cloudbyte.py:179
 #, python-format
 msgid "CloudByte API executed successfully for command [%s]."
 msgstr ""
 
-#: cinder/volume/drivers/cloudbyte/cloudbyte.py:285
+#: cinder/volume/drivers/cloudbyte/cloudbyte.py:284
 #, python-format
 msgid "CloudByte operation [%(operation)s] succeeded for volume [%(cb_volume)s]."
 msgstr ""
 
-#: cinder/volume/drivers/cloudbyte/cloudbyte.py:845
+#: cinder/volume/drivers/cloudbyte/cloudbyte.py:883
 #, python-format
 msgid ""
 "Successfully created a CloudByte volume [%(cb_vol)s] w.r.t OpenStack "
 "volume [%(stack_vol)s]."
 msgstr ""
 
-#: cinder/volume/drivers/cloudbyte/cloudbyte.py:887
+#: cinder/volume/drivers/cloudbyte/cloudbyte.py:925
 #, python-format
 msgid ""
 "Successfully deleted volume [%(cb_vol)s] at CloudByte corresponding to "
 "OpenStack volume [%(stack_vol)s]."
 msgstr ""
 
-#: cinder/volume/drivers/cloudbyte/cloudbyte.py:934
+#: cinder/volume/drivers/cloudbyte/cloudbyte.py:972
 #, python-format
 msgid ""
 "Created CloudByte snapshot [%(cb_snap)s] w.r.t CloudByte volume "
 "[%(cb_vol)s] and OpenStack volume [%(stack_vol)s]."
 msgstr ""
 
-#: cinder/volume/drivers/cloudbyte/cloudbyte.py:1025
+#: cinder/volume/drivers/cloudbyte/cloudbyte.py:1063
 #, python-format
 msgid ""
 "Created a clone [%(cb_clone)s] at CloudByte snapshot path [%(cb_snap)s] "
 "w.r.t parent OpenStack volume [%(stack_vol)s]."
 msgstr ""
 
-#: cinder/volume/drivers/cloudbyte/cloudbyte.py:1078
+#: cinder/volume/drivers/cloudbyte/cloudbyte.py:1116
 #, python-format
 msgid ""
 "Deleted CloudByte snapshot [%(snap)s] w.r.t parent CloudByte volume "
 "[%(cb_vol)s] and parent OpenStack volume [%(stack_vol)s]."
+msgstr ""
+
+#: cinder/volume/drivers/cloudbyte/cloudbyte.py:1218
+#, python-format
+msgid ""
+"Successfully updated CloudByte volume [%(cb_vol)s] corresponding to "
+"OpenStack volume [%(ops_vol)s]."
 msgstr ""
 
 #: cinder/volume/drivers/dell/dell_storagecenter_api.py:165
@@ -1397,22 +1404,22 @@ msgstr ""
 msgid "Volume %s unmanaged."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_common.py:429
+#: cinder/volume/drivers/dell/dell_storagecenter_common.py:428
 #, python-format
 msgid "Created Consistency Group %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_common.py:494
+#: cinder/volume/drivers/dell/dell_storagecenter_common.py:493
 #, python-format
 msgid "Updated Consistency Group %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_common.py:551
+#: cinder/volume/drivers/dell/dell_storagecenter_common.py:550
 #, python-format
 msgid "Deleting snapshot %(ss)s from %(pro)s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_common.py:686
+#: cinder/volume/drivers/dell/dell_storagecenter_common.py:685
 msgid "Retype was to same Storage Profile."
 msgstr ""
 
@@ -2637,12 +2644,12 @@ msgstr ""
 msgid "Initialized driver for IBMNAS Platform: %s."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/__init__.py:583
+#: cinder/volume/drivers/ibm/storwize_svc/__init__.py:582
 #: cinder/volume/drivers/netapp/eseries/library.py:705
 msgid "Need to remove FC Zone, building initiator target map."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/__init__.py:820
+#: cinder/volume/drivers/ibm/storwize_svc/__init__.py:819
 #, python-format
 msgid ""
 "_check_volume_copy_ops: Volume %(vol)s does not have the specified vdisk "
@@ -2826,31 +2833,31 @@ msgid "Unmanaged LUN with current path %(path)s and uuid %(uuid)s."
 msgstr ""
 
 #: cinder/volume/drivers/netapp/dataontap/block_base.py:876
-#: cinder/volume/drivers/san/hp/hp_3par_fc.py:291
+#: cinder/volume/drivers/san/hp/hp_3par_fc.py:290
 msgid "Need to remove FC Zone, building initiator target map"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:309
+#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:308
 #, python-format
 msgid "Registering image in cache %s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:341
+#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:340
 #, python-format
 msgid "Cloning from cache to destination %s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:372
+#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:371
 #, python-format
 msgid "Cleaning cache for share %s."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:487
+#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:486
 #, python-format
 msgid "Cloning image %s from cache"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:951
+#: cinder/volume/drivers/netapp/dataontap/nfs_base.py:950
 #, python-format
 msgid "Cinder NFS volume with current path \"%(cr)s\" is no longer being managed."
 msgstr ""
@@ -3211,7 +3218,7 @@ msgid ""
 "%(old_snap_cpg)s."
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_lefthand_iscsi.py:93
+#: cinder/volume/drivers/san/hp/hp_lefthand_iscsi.py:92
 #, python-format
 msgid "HPLeftHand driver %(driver_ver)s, proxy %(proxy_ver)s"
 msgstr ""
@@ -3389,37 +3396,37 @@ msgstr ""
 msgid "Fetched vCenter server version: %s"
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1754
+#: cinder/volume/drivers/vmware/vmdk.py:1751
 #, python-format
 msgid "Using compute cluster(s): %s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1756
+#: cinder/volume/drivers/vmware/vmdk.py:1753
 #, python-format
 msgid "Successfully setup driver: %(driver)s for server: %(ip)s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1873
+#: cinder/volume/drivers/vmware/vmdk.py:1870
 #: cinder/volume/drivers/vmware/volumeops.py:1187
 #, python-format
 msgid "Successfully created clone: %s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1887
+#: cinder/volume/drivers/vmware/vmdk.py:1884
 #, python-format
 msgid ""
 "There is no backing for the snapshotted volume: %(snap)s. Not creating "
 "any backing for the volume: %(vol)s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1895
+#: cinder/volume/drivers/vmware/vmdk.py:1892
 #, python-format
 msgid ""
 "There is no snapshot point for the snapshotted volume: %(snap)s. Not "
 "creating any backing for the volume: %(vol)s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1924
+#: cinder/volume/drivers/vmware/vmdk.py:1921
 #, python-format
 msgid ""
 "There is no backing for the source volume: %(src)s. Not creating any "
