@@ -17,6 +17,7 @@ import json
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import excutils
 from oslo_utils import units
 
 from cinder import exception
@@ -135,18 +136,18 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
                         _('No service VIP configured and '
                           'no nexenta_client_address'))
         except exception.VolumeBackendAPIException:
-            LOG.exception(_LE('Error verifying iSCSI service %(serv)s on '
-                          'host %(hst)s'), {'serv': self.iscsi_service,
-                          'hst': self.restapi_host})
-            raise
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_LE('Error verifying iSCSI service %(serv)s on '
+                              'host %(hst)s'), {'serv': self.iscsi_service,
+                              'hst': self.restapi_host})
 
     def check_for_setup_error(self):
         try:
             self.restapi.get(self.bucket_url + '/objects/')
         except exception.VolumeBackendAPIException:
-            LOG.exception(_LE('Error verifying LUN container %(bkt)s'),
-                          {'bkt': self.bucket_path})
-            raise
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_LE('Error verifying LUN container %(bkt)s'),
+                              {'bkt': self.bucket_path})
 
     def _get_lun_number(self, volname):
         try:
@@ -156,9 +157,9 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
                     'objectPath': self.bucket_path + '/' + volname
                 })
         except exception.VolumeBackendAPIException:
-            LOG.exception(_LE('Error retrieving LUN %(vol)s number'),
-                          {'vol': volname})
-            raise
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_LE('Error retrieving LUN %(vol)s number'),
+                              {'vol': volname})
 
         return rsp['data']
 
@@ -182,8 +183,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
                 'chunkSize': self.LUN_CHUNKSIZE
             })
         except exception.VolumeBackendAPIException:
-            LOG.exception(_LE('Error creating volume'))
-            raise
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_LE('Error creating volume'))
 
     def delete_volume(self, volume):
         try:
@@ -191,8 +192,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
                                 '/iscsi', {'objectPath': self.bucket_path +
                                            '/' + volume['name']})
         except exception.VolumeBackendAPIException:
-            LOG.exception(_LE('Error deleting volume'))
-            raise
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_LE('Error deleting volume'))
 
     def extend_volume(self, volume, new_size):
         try:
@@ -201,8 +202,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
                               '/' + volume['name'],
                               'newSizeMB': new_size * units.Ki})
         except exception.VolumeBackendAPIException:
-            LOG.exception(_LE('Error extending volume'))
-            raise
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_LE('Error extending volume'))
 
     def create_volume_from_snapshot(self, volume, snapshot):
         try:
@@ -215,8 +216,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
                     'snapName': snapshot['name']
                 })
         except exception.VolumeBackendAPIException:
-            LOG.exception(_LE('Error cloning volume'))
-            raise
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_LE('Error cloning volume'))
 
     def create_snapshot(self, snapshot):
         try:
@@ -228,8 +229,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
                     'snapName': snapshot['name']
                 })
         except exception.VolumeBackendAPIException:
-            LOG.exception(_LE('Error creating snapshot'))
-            raise
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_LE('Error creating snapshot'))
 
     def delete_snapshot(self, snapshot):
         try:
@@ -241,8 +242,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
                     'snapName': snapshot['name']
                 })
         except exception.VolumeBackendAPIException:
-            LOG.exception(_LE('Error deleting snapshot'))
-            raise
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_LE('Error deleting snapshot'))
 
     def create_cloned_volume(self, volume, src_vref):
         vol_url = (self.bucket_url + '/objects/' +
@@ -261,8 +262,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
                 'chunkSize': self.LUN_CHUNKSIZE,
             })
         except exception.VolumeBackendAPIException:
-            LOG.exception(_LE('Error creating cloned volume'))
-            raise
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_LE('Error creating cloned volume'))
 
     def create_export(self, context, volume, connector=None):
         return {'provider_location': self._get_provider_location(volume)}
