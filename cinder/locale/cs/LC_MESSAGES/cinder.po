@@ -9,10 +9,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev78\n"
+"Project-Id-Version: cinder 8.0.0.dev112\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-10-28 06:05+0000\n"
-"PO-Revision-Date: 2015-10-26 09:19+0000\n"
+"POT-Creation-Date: 2015-11-04 06:05+0000\n"
+"PO-Revision-Date: 2015-11-03 09:29+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language: cs\n"
 "Language-Team: Czech\n"
@@ -1272,7 +1272,7 @@ msgstr "Konektor nepodporuje: %s"
 
 #, python-format
 msgid "Connector doesn't have required information: %(missing)s"
-msgstr "Lonektor nemá požadované informace: %(missing)s"
+msgstr "Konektor nemá požadované informace: %(missing)s"
 
 #, python-format
 msgid ""
@@ -2988,7 +2988,7 @@ msgid ""
 "Failed to create snapshot. CloudByte volume information not found for "
 "OpenStack volume [%s]."
 msgstr ""
-"Nelze vytvořit snímek. Informace o svazku CloudByte nrnaůezeny ve svazku "
+"Nelze vytvořit snímek. Informace o svazku CloudByte nenalezeny ve svazku "
 "Openstack [%s]."
 
 #, python-format
@@ -4404,7 +4404,9 @@ msgstr "Neplatná základna bodu připojení: %s."
 
 #, python-format
 msgid "Invalid new snapCPG name for retype.  new_snap_cpg='%s'."
-msgstr "Neplatný nový název snapCPG pro přetypování.  Nový název snapCPG='%s'."
+msgstr ""
+"Neplatný nový název snímku společné skupiny poskytování pro přetypování.  "
+"Nový název='%s'."
 
 #, python-format
 msgid "Invalid qos specs: %(reason)s"
@@ -5598,6 +5600,14 @@ msgstr ""
 "%(current)s."
 
 #, python-format
+msgid ""
+"Provider information w.r.t CloudByte storage was not found for OpenStack "
+"volume [%s]."
+msgstr ""
+"Informace poskytovatele s ohledem na úložiště Cloudbyte nebyly nalezeny pro "
+"svazek OpenStack [%s]."
+
+#, python-format
 msgid "Pure Storage Cinder driver failure: %(reason)s"
 msgstr "Selhání ovladače Pure Storage Cinder: %(reason)s"
 
@@ -5944,6 +5954,12 @@ msgstr ""
 #, python-format
 msgid "Rolling back %(volumeName)s by deleting it."
 msgstr "Vrácení %(volumeName)s zpět jeho vymazáním."
+
+#, python-format
+msgid ""
+"Running Cinder with a VMware vCenter version less than %s is not allowed."
+msgstr ""
+"Spouštět Cinder pomocí VMware vCenter s verzí starší než %s není povoleno."
 
 #, python-format
 msgid "SMBFS config 'smbfs_oversub_ratio' invalid.  Must be > 0: %s"
@@ -7307,9 +7323,6 @@ msgstr ""
 "Chyba při použití CHAP k přidružení zavaděče k hostiteli. Zkontrolujte "
 "prosím uživatelské jméno a heslo CHAP."
 
-msgid "Use of empty request context is deprecated"
-msgstr "Použití kontextu prázdné žádosti je zastaralé"
-
 msgid "User ID"
 msgstr "ID uživatele"
 
@@ -7568,6 +7581,14 @@ msgstr ""
 
 msgid "Volume Type id must not be None."
 msgstr "ID typu svazku nesmí být None."
+
+#, python-format
+msgid ""
+"Volume [%(cb_vol)s] was not found at CloudByte storage corresponding to "
+"OpenStack volume [%(ops_vol)s]."
+msgstr ""
+"Svazek  [%(cb_vol)s] nebyl nalezen v úložišti CloudByte odpovídající svazku "
+"Openstack [%(ops_vol)s]."
 
 #, python-format
 msgid "Volume [%s] not found in CloudByte storage."

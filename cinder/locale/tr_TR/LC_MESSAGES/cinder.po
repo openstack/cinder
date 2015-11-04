@@ -7,9 +7,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev74\n"
+"Project-Id-Version: cinder 8.0.0.dev112\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-10-25 06:04+0000\n"
+"POT-Creation-Date: 2015-11-04 06:05+0000\n"
 "PO-Revision-Date: 2015-09-16 08:16+0000\n"
 "Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
 "Language: tr_TR\n"
@@ -6004,9 +6004,6 @@ msgstr "Güncelleme saati"
 
 msgid "Upload to glance of attached volume is not supported."
 msgstr "Eklenti mantıksal sürücüsü glance'ine yükleme desteklenmiyor."
-
-msgid "Use of empty request context is deprecated"
-msgstr "Boş istek içeriği kullanımı önerilmiyor"
 
 msgid "User ID"
 msgstr "Kullanıcı ID"
