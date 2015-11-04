@@ -95,6 +95,6 @@ class NexentaEdgeJSONProxy(object):
 
         LOG.debug('Got response: %s', rsp)
         if rsp.get('response') is None:
-            raise exception.VolumeBackendException(
+            raise exception.VolumeBackendAPIException(
                 _('Error response: %s') % rsp)
         return rsp.get('response')
