@@ -26,9 +26,14 @@ class ViewBuilder(common.ViewBuilder):
                        name=volume_type.get('name'),
                        is_public=volume_type.get('is_public'),
                        description=volume_type.get('description'))
-        if context.is_admin:
-            trimmed['qos_specs_id'] = volume_type.get('qos_specs_id')
+        if common.validate_policy(
+           context,
+           'volume_extension:access_types_extra_specs'):
             trimmed['extra_specs'] = volume_type.get('extra_specs')
+        if common.validate_policy(
+           context,
+           'volume_extension:access_types_qos_specs_id'):
+            trimmed['qos_specs_id'] = volume_type.get('qos_specs_id')
         return trimmed if brief else dict(volume_type=trimmed)
 
     def index(self, request, volume_types):

@@ -16,10 +16,12 @@
 import uuid
 
 from lxml import etree
+import mock
 from oslo_utils import timeutils
 import six
 import webob
 
+import cinder.api.common as common
 from cinder.api.v2 import types
 from cinder.api.v2.views import types as views_types
 from cinder import context
@@ -321,6 +323,103 @@ class VolumeTypesApiTest(test.TestCase):
             id=42,
         )
         self.assertDictMatch(expected_volume_type, output['volume_type'])
+
+    def test_view_builder_show_qos_specs_id_policy(self):
+        with mock.patch.object(common,
+                               'validate_policy',
+                               side_effect=[False, True]):
+            view_builder = views_types.ViewBuilder()
+            now = timeutils.utcnow().isoformat()
+            raw_volume_type = dict(
+                name='new_type',
+                description='new_type_desc',
+                qos_specs_id='new_id',
+                is_public=True,
+                deleted=False,
+                created_at=now,
+                updated_at=now,
+                extra_specs={},
+                deleted_at=None,
+                id=42,
+            )
+
+            request = fakes.HTTPRequest.blank("/v2")
+            output = view_builder.show(request, raw_volume_type)
+
+            self.assertIn('volume_type', output)
+            expected_volume_type = dict(
+                name='new_type',
+                description='new_type_desc',
+                qos_specs_id='new_id',
+                is_public=True,
+                id=42,
+            )
+            self.assertDictMatch(expected_volume_type, output['volume_type'])
+
+    def test_view_builder_show_extra_specs_policy(self):
+        with mock.patch.object(common,
+                               'validate_policy',
+                               side_effect=[True, False]):
+            view_builder = views_types.ViewBuilder()
+            now = timeutils.utcnow().isoformat()
+            raw_volume_type = dict(
+                name='new_type',
+                description='new_type_desc',
+                qos_specs_id='new_id',
+                is_public=True,
+                deleted=False,
+                created_at=now,
+                updated_at=now,
+                extra_specs={},
+                deleted_at=None,
+                id=42,
+            )
+
+            request = fakes.HTTPRequest.blank("/v2")
+            output = view_builder.show(request, raw_volume_type)
+
+            self.assertIn('volume_type', output)
+            expected_volume_type = dict(
+                name='new_type',
+                description='new_type_desc',
+                extra_specs={},
+                is_public=True,
+                id=42,
+            )
+            self.assertDictMatch(expected_volume_type, output['volume_type'])
+
+    def test_view_builder_show_pass_all_policy(self):
+        with mock.patch.object(common,
+                               'validate_policy',
+                               side_effect=[True, True]):
+            view_builder = views_types.ViewBuilder()
+            now = timeutils.utcnow().isoformat()
+            raw_volume_type = dict(
+                name='new_type',
+                description='new_type_desc',
+                qos_specs_id='new_id',
+                is_public=True,
+                deleted=False,
+                created_at=now,
+                updated_at=now,
+                extra_specs={},
+                deleted_at=None,
+                id=42,
+            )
+
+            request = fakes.HTTPRequest.blank("/v2")
+            output = view_builder.show(request, raw_volume_type)
+
+            self.assertIn('volume_type', output)
+            expected_volume_type = dict(
+                name='new_type',
+                description='new_type_desc',
+                qos_specs_id='new_id',
+                extra_specs={},
+                is_public=True,
+                id=42,
+            )
+            self.assertDictMatch(expected_volume_type, output['volume_type'])
 
     def test_view_builder_list(self):
         view_builder = views_types.ViewBuilder()

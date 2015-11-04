@@ -25,7 +25,9 @@ import webob
 
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
+from cinder import exception
 from cinder.i18n import _
+import cinder.policy
 from cinder import utils
 
 
@@ -76,6 +78,14 @@ def validate_key_names(key_names_list):
         if not VALID_KEY_NAME_REGEX.match(key_name):
             return False
     return True
+
+
+def validate_policy(context, action):
+    try:
+        cinder.policy.enforce_action(context, action)
+        return True
+    except exception.PolicyNotAuthorized:
+        return False
 
 
 def get_pagination_params(params, max_limit=None):
