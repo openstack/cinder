@@ -126,6 +126,7 @@ class TestCinderAllCmd(test.TestCase):
     @mock.patch('oslo_log.log.setup')
     def test_main(self, log_setup, get_logger, monkey_patch, process_launcher,
                   wsgi_service, service_create, rpc_init):
+        CONF.set_override('enabled_backends', None)
         launcher = process_launcher.return_value
         server = wsgi_service.return_value
         server.workers = mock.sentinel.worker_count
@@ -146,6 +147,46 @@ class TestCinderAllCmd(test.TestCase):
         service_create.assert_has_calls([mock.call(binary='cinder-scheduler'),
                                          mock.call(binary='cinder-backup'),
                                          mock.call(binary='cinder-volume')])
+        self.assertEqual(3, service_create.call_count)
+        launcher.launch_service.assert_has_calls([mock.call(service)] * 3)
+        self.assertEqual(4, launcher.launch_service.call_count)
+
+        launcher.wait.assert_called_once_with()
+
+    @mock.patch('cinder.rpc.init')
+    @mock.patch('cinder.service.Service.create')
+    @mock.patch('cinder.service.WSGIService')
+    @mock.patch('cinder.service.process_launcher')
+    @mock.patch('cinder.utils.monkey_patch')
+    @mock.patch('oslo_log.log.getLogger')
+    @mock.patch('oslo_log.log.setup')
+    def test_main_with_backend(self, log_setup, get_logger, monkey_patch,
+                               process_launcher, wsgi_service, service_create,
+                               rpc_init):
+        CONF.set_override('enabled_backends', ['backend1'])
+        CONF.set_override('host', 'host')
+        launcher = process_launcher.return_value
+        server = wsgi_service.return_value
+        server.workers = mock.sentinel.worker_count
+        service = service_create.return_value
+
+        cinder_all.main()
+
+        self.assertEqual('cinder', CONF.project)
+        self.assertEqual(CONF.version, version.version_string())
+        log_setup.assert_called_once_with(CONF, "cinder")
+        get_logger.assert_called_once_with('cinder.all')
+        monkey_patch.assert_called_once_with()
+        rpc_init.assert_called_once_with(CONF)
+        process_launcher.assert_called_once_with()
+        wsgi_service.assert_called_once_with('osapi_volume')
+        launcher.launch_service.assert_any_call(server, workers=server.workers)
+
+        service_create.assert_has_calls([mock.call(binary='cinder-scheduler'),
+                                         mock.call(binary='cinder-backup'),
+                                         mock.call(binary='cinder-volume',
+                                                   host='host@backend1',
+                                                   service_name='backend1')])
         self.assertEqual(3, service_create.call_count)
         launcher.launch_service.assert_has_calls([mock.call(service)] * 3)
         self.assertEqual(4, launcher.launch_service.call_count)
@@ -204,6 +245,7 @@ class TestCinderAllCmd(test.TestCase):
                                         monkey_patch, process_launcher,
                                         wsgi_service, service_create,
                                         rpc_init):
+        CONF.set_override('enabled_backends', None)
         launcher = process_launcher.return_value
         server = wsgi_service.return_value
         server.workers = mock.sentinel.worker_count
