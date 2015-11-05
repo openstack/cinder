@@ -55,7 +55,13 @@ nexenta_edge_opts = [
     cfg.StrOpt('nexenta_client_address',
                default='',
                help='NexentaEdge iSCSI Gateway client '
-               'address for non-VIP service')
+               'address for non-VIP service'),
+    cfg.StrOpt('nexenta_blocksize',
+               default=4096,
+               help='NexentaEdge iSCSI LUN block size'),
+    cfg.StrOpt('nexenta_chunksize',
+               default=16384,
+               help='NexentaEdge iSCSI LUN object chunk size')
 ]
 
 CONF = cfg.CONF
@@ -73,9 +79,6 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
 
     VERSION = '1.0.0'
 
-    LUN_BLOCKSIZE = 4096
-    LUN_CHUNKSIZE = 16384
-
     def __init__(self, *args, **kwargs):
         super(NexentaEdgeISCSIDriver, self).__init__(*args, **kwargs)
         if self.configuration:
@@ -87,6 +90,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
         self.restapi_password = self.configuration.nexenta_rest_password
         self.iscsi_service = self.configuration.nexenta_iscsi_service
         self.bucket_path = self.configuration.nexenta_lun_container
+        self.blocksize = self.configuration.nexenta_blocksize
+        self.chunksize = self.configuration.nexenta_chunksize
         self.cluster, self.tenant, self.bucket = self.bucket_path.split('/')
         self.bucket_url = ('clusters/' + self.cluster + '/tenants/' +
                            self.tenant + '/buckets/' + self.bucket)
@@ -179,8 +184,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
             self.restapi.post('service/' + self.iscsi_service + '/iscsi', {
                 'objectPath': self.bucket_path + '/' + volume['name'],
                 'volSizeMB': int(volume['size']) * units.Ki,
-                'blockSize': self.LUN_BLOCKSIZE,
-                'chunkSize': self.LUN_CHUNKSIZE
+                'blockSize': self.blocksize,
+                'chunkSize': self.self.chunksize
             })
         except exception.VolumeBackendAPIException:
             with excutils.save_and_reraise_exception():
@@ -258,8 +263,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
             self.restapi.post('service/' + self.iscsi_service + '/iscsi', {
                 'objectPath': self.bucket_path + '/' + volume['name'],
                 'volSizeMB': int(src_vref['size']) * units.Ki,
-                'blockSize': self.LUN_BLOCKSIZE,
-                'chunkSize': self.LUN_CHUNKSIZE,
+                'blockSize': self.blocksize,
+                'chunkSize': self.chunksize
             })
         except exception.VolumeBackendAPIException:
             with excutils.save_and_reraise_exception():
