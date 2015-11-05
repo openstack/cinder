@@ -100,10 +100,11 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         2.0.22 - Update driver to use ABC metaclasses
         2.0.23 - Added update_migrated_volume. bug # 1492023
         3.0.0 - Rebranded HP to HPE.
+        3.0.1 - Python 3 support
 
     """
 
-    VERSION = "3.0.0"
+    VERSION = "3.0.1"
 
     def __init__(self, *args, **kwargs):
         super(HPE3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -719,7 +720,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
                     nsp_counts[nsp] = nsp_counts[nsp] + 1
 
         # identify key (nsp) of least used nsp
-        current_smallest_count = sys.maxint
+        current_smallest_count = sys.maxsize
         for (nsp, count) in nsp_counts.items():
             if count < current_smallest_count:
                 current_least_used_nsp = nsp

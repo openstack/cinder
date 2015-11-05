@@ -69,6 +69,7 @@ cinder.tests.unit.test_hitachi_hbsd_snm2_iscsi
 cinder.tests.unit.test_hitachi_hnas_backend
 cinder.tests.unit.test_hitachi_hnas_iscsi
 cinder.tests.unit.test_hitachi_hnas_nfs
+cinder.tests.unit.test_hpe3par
 cinder.tests.unit.test_hp_xp_fc
 cinder.tests.unit.test_hplefthand
 cinder.tests.unit.test_huawei_drivers
