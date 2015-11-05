@@ -9,10 +9,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev112\n"
+"Project-Id-Version: cinder 8.0.0.dev116\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-04 06:05+0000\n"
-"PO-Revision-Date: 2015-11-03 09:29+0000\n"
+"POT-Creation-Date: 2015-11-05 06:05+0000\n"
+"PO-Revision-Date: 2015-11-04 01:41+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language: cs\n"
 "Language-Team: Czech\n"
@@ -3208,7 +3208,7 @@ msgid "Failed to get model update from clone"
 msgstr "Nelze získat aktualizaci modelu z klona"
 
 msgid "Failed to get name server info."
-msgstr "Nelze získat informace o názvu serveru."
+msgstr "Nelze získat informace o jmenném serveru."
 
 msgid "Failed to get network info."
 msgstr "Nelze získat informace o síti."
