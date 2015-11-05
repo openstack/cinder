@@ -124,6 +124,7 @@ cinder.tests.unit.test_volume_types
 cinder.tests.unit.test_volume_types_extra_specs
 cinder.tests.unit.test_volume_utils
 cinder.tests.unit.test_vzstorage
+cinder.tests.unit.test_xio
 cinder.tests.unit.test_zfssa
 cinder.tests.unit.volume.drivers.emc.scaleio
 cinder.tests.unit.volume.flows.test_create_volume_flow

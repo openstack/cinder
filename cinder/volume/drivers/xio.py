@@ -13,12 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import base64
-import string
-
 from lxml import etree
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_serialization import base64
 from oslo_service import loopingcall
 from six.moves import urllib
 
@@ -276,7 +274,7 @@ class XIOISEDriver(object):
             if 'content' in resp:
                 reason = etree.fromstring(resp['content'])
                 if reason is not None:
-                    reason = string.upper(reason.text)
+                    reason = reason.text.upper()
             if INVALID_STATUS in reason:
                 # Request failed with an invalid state. This can be because
                 # source volume is in a temporary unavailable state.
@@ -366,10 +364,10 @@ class XIOISEDriver(object):
         url += uri
         # set up headers for XML and Auth
         header = {'Content-Type': 'application/xml; charset=utf-8'}
-        auth_key =\
-            base64.encodestring('%s:%s' %
-                                (self.configuration.san_login,
-                                 self.configuration.san_password))[:-1]
+        auth_key = ('%s:%s'
+                    % (self.configuration.san_login,
+                       self.configuration.san_password))
+        auth_key = base64.encode_as_text(auth_key)[:-1]
         header['Authorization'] = 'Basic %s' % auth_key
         # We allow 5 retries on each IP address. If connection to primary
         # fails, secondary will be tried. If connection to secondary is
@@ -412,7 +410,7 @@ class XIOISEDriver(object):
                               primary_ip)
                     RaiseXIODriverException()
                 # swap primary for secondary ip in URL
-                url = string.replace(url, primary_ip, secondary_ip)
+                url = url.replace(primary_ip, secondary_ip)
                 LOG.debug('Trying secondary IP URL: %s', url)
                 using_secondary = 1
                 continue
@@ -605,13 +603,13 @@ class XIOISEDriver(object):
             return vol_info
         # Fill in value and string from status tag attributes.
         vol_info['value'] = status.attrib['value']
-        vol_info['string'] = string.upper(status.attrib['string'])
+        vol_info['string'] = status.attrib['string'].upper()
         # Detailed status has it's own list of tags.
         details = status.find('details')
         if details is not None:
             detail = details.find('detail')
             if detail is not None:
-                vol_info['details'] = string.upper(detail.text)
+                vol_info['details'] = detail.text.upper()
         # Get volume size
         size_tag = volume_node.find('size')
         if size_tag is not None:
@@ -657,7 +655,7 @@ class XIOISEDriver(object):
                     hname_tag = endpoint.find('hostname')
                     if hname_tag is None:
                         continue
-                    if string.upper(hname_tag.text) != string.upper(hostname):
+                    if hname_tag.text.upper() != hostname.upper():
                         continue
                 # Found hostname match. Location string is an attribute in
                 # allocation tag.
@@ -769,7 +767,7 @@ class XIOISEDriver(object):
                 gid = endpoint_node.find('globalid')
                 if gid is None:
                     continue
-                if string.upper(gid.text) != string.upper(ep):
+                if gid.text.upper() != ep.upper():
                     continue
                 # We have a match. Fill in host name, type and locator
                 host['locator'] = host_node.attrib['self']
@@ -1081,20 +1079,20 @@ class XIOISEDriver(object):
                     fields = key.split(':')
                     key = fields[0]
                     subkey = fields[1]
-                if string.upper(key) == string.upper('Feature'):
-                    if string.upper(subkey) == string.upper('Raid'):
+                if key.upper() == 'Feature'.upper():
+                    if subkey.upper() == 'Raid'.upper():
                         specs['raid'] = value
-                    elif string.upper(subkey) == string.upper('Pool'):
+                    elif subkey.upper() == 'Pool'.upper():
                         specs['pool'] = value
-                elif string.upper(key) == string.upper('Affinity'):
+                elif key.upper() == 'Affinity'.upper():
                     # Only fill this in if ISE FW supports volume affinity
                     if self.configuration.ise_affinity:
-                        if string.upper(subkey) == string.upper('Type'):
+                        if subkey.upper() == 'Type'.upper():
                             specs['affinity'] = value
-                elif string.upper(key) == string.upper('Alloc'):
+                elif key.upper() == 'Alloc'.upper():
                     # Only fill this in if ISE FW supports thin provisioning
                     if self.configuration.san_thin_provision:
-                        if string.upper(subkey) == string.upper('Type'):
+                        if subkey.upper() == 'Type'.upper():
                             specs['alloctype'] = value
         return specs
 
@@ -1116,11 +1114,11 @@ class XIOISEDriver(object):
                 if ':' in key:
                     fields = key.split(':')
                     key = fields[1]
-                if string.upper(key) == string.upper('minIOPS'):
+                if key.upper() == 'minIOPS'.upper():
                     specs['minIOPS'] = value
-                elif string.upper(key) == string.upper('maxIOPS'):
+                elif key.upper() == 'maxIOPS'.upper():
                     specs['maxIOPS'] = value
-                elif string.upper(key) == string.upper('burstIOPS'):
+                elif key.upper() == 'burstIOPS'.upper():
                     specs['burstIOPS'] = value
         return specs
 
@@ -1334,7 +1332,7 @@ class XIOISEDriver(object):
                 # host still not found, this is fatal.
                 LOG.error(_LE("Host could not be found!"))
                 RaiseXIODriverException()
-        elif string.upper(host['type']) != 'OPENSTACK':
+        elif host['type'].upper() != 'OPENSTACK':
             # Make sure host type is marked as OpenStack host
             params = {'os': 'openstack'}
             resp = self._send_cmd('PUT', host['locator'], params)
