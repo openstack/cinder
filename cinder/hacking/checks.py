@@ -184,6 +184,7 @@ class CheckForStrUnicodeExc(BaseASTChecker):
         self.name = []
         self.already_checked = []
 
+    # Python 2
     def visit_TryExcept(self, node):
         for handler in node.handlers:
             if handler.name:
@@ -192,6 +193,15 @@ class CheckForStrUnicodeExc(BaseASTChecker):
                 self.name = self.name[:-1]
             else:
                 super(CheckForStrUnicodeExc, self).generic_visit(node)
+
+    # Python 3
+    def visit_ExceptHandler(self, node):
+        if node.name:
+            self.name.append(node.name)
+            super(CheckForStrUnicodeExc, self).generic_visit(node)
+            self.name = self.name[:-1]
+        else:
+            super(CheckForStrUnicodeExc, self).generic_visit(node)
 
     def visit_Call(self, node):
         if self._check_call_names(node, ['str', 'unicode']):

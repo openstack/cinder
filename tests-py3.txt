@@ -62,6 +62,7 @@ cinder.tests.unit.test_evaluator
 cinder.tests.unit.test_exception
 cinder.tests.unit.test_glusterfs
 cinder.tests.unit.test_gpfs
+cinder.tests.unit.test_hacking
 cinder.tests.unit.test_hitachi_hbsd_horcm_fc
 cinder.tests.unit.test_hitachi_hbsd_snm2_fc
 cinder.tests.unit.test_hitachi_hbsd_snm2_iscsi
