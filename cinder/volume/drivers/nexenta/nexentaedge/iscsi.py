@@ -185,7 +185,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
                 'objectPath': self.bucket_path + '/' + volume['name'],
                 'volSizeMB': int(volume['size']) * units.Ki,
                 'blockSize': self.blocksize,
-                'chunkSize': self.self.chunksize
+                'chunkSize': self.chunksize
             })
         except exception.VolumeBackendAPIException:
             with excutils.save_and_reraise_exception():
