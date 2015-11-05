@@ -54,6 +54,7 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
               - Fix for randomly choosing port group. (bug #1501919)
               - get_short_host_name needs to be called in find_device_number
                 (bug #1520635)
+              - Proper error handling for invalid SLOs (bug #1512795)
     """
 
     VERSION = "2.3.0"

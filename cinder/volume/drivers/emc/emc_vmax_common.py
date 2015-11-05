@@ -2838,6 +2838,19 @@ class EMCVMAXCommon(object):
         poolInstanceName, storageSystemName = (
             self._get_pool_and_storage_system(extraSpecs))
 
+        # Check to see if SLO and Workload are configured on the array.
+        storagePoolCapability = self.provisionv3.get_storage_pool_capability(
+            self.conn, poolInstanceName)
+        if storagePoolCapability:
+            self.provisionv3.get_storage_pool_setting(
+                self.conn, storagePoolCapability, extraSpecs[SLO],
+                extraSpecs[WORKLOAD])
+        else:
+            exceptionMessage = (_(
+                "Cannot determine storage pool settings."))
+            LOG.error(exceptionMessage)
+            raise exception.VolumeBackendAPIException(data=exceptionMessage)
+
         LOG.debug("Create Volume: %(volume)s  Pool: %(pool)s "
                   "Storage System: %(storageSystem)s "
                   "Size: %(size)lu.",

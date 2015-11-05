@@ -316,7 +316,7 @@ class EMCVMAXProvisionV3(object):
 
         return foundStorageGroupInstanceName
 
-    def _get_storage_pool_capability(self, conn, poolInstanceName):
+    def get_storage_pool_capability(self, conn, poolInstanceName):
         """Get the pool capability.
 
         :param conn: the connection information to the ecom server
@@ -334,7 +334,7 @@ class EMCVMAXProvisionV3(object):
 
         return storagePoolCapability
 
-    def _get_storage_pool_setting(
+    def get_storage_pool_setting(
             self, conn, storagePoolCapability, slo, workload):
         """Get the pool setting for pool capability.
 
@@ -358,6 +358,16 @@ class EMCVMAXProvisionV3(object):
             if matchString in settingInstanceID:
                 foundStoragePoolSetting = storagePoolSetting
                 break
+        if foundStoragePoolSetting is None:
+            exceptionMessage = (_(
+                "The array does not support the storage pool setting "
+                "for SLO %(slo)s and workload %(workload)s.  Please "
+                "check the array for valid SLOs and workloads.")
+                % {'slo': slo,
+                   'workload': workload})
+            LOG.error(exceptionMessage)
+            raise exception.VolumeBackendAPIException(
+                data=exceptionMessage)
         return foundStoragePoolSetting
 
     def _get_supported_size_range_for_SLO(
@@ -416,15 +426,14 @@ class EMCVMAXProvisionV3(object):
         :returns: supportedSizeDict
         """
         supportedSizeDict = {}
-        storagePoolCapabilityInstanceName = self._get_storage_pool_capability(
+        storagePoolCapabilityInstanceName = self.get_storage_pool_capability(
             conn, poolInstanceName)
         if storagePoolCapabilityInstanceName:
-            storagePoolSettingInstanceName = self._get_storage_pool_setting(
+            storagePoolSettingInstanceName = self.get_storage_pool_setting(
                 conn, storagePoolCapabilityInstanceName, slo, workload)
-            if storagePoolCapabilityInstanceName:
-                supportedSizeDict = self._get_supported_size_range_for_SLO(
-                    conn, storageConfigService, poolInstanceName,
-                    storagePoolSettingInstanceName, extraSpecs)
+            supportedSizeDict = self._get_supported_size_range_for_SLO(
+                conn, storageConfigService, poolInstanceName,
+                storagePoolSettingInstanceName, extraSpecs)
         return supportedSizeDict
 
     def activate_snap_relationship(
