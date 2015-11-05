@@ -389,12 +389,14 @@ def monkey_patch():
             # set the decorator for the class methods
             if isinstance(module_data[key], pyclbr.Class):
                 clz = importutils.import_class("%s.%s" % (module, key))
-                for method, func in inspect.getmembers(clz, inspect.ismethod):
+                # On Python 3, unbound methods are regular functions
+                predicate = inspect.isfunction if six.PY3 else inspect.ismethod
+                for method, func in inspect.getmembers(clz, predicate):
                     setattr(
                         clz, method,
                         decorator("%s.%s.%s" % (module, key, method), func))
             # set the decorator for the function
-            if isinstance(module_data[key], pyclbr.Function):
+            elif isinstance(module_data[key], pyclbr.Function):
                 func = importutils.import_class("%s.%s" % (module, key))
                 setattr(sys.modules[module], key,
                         decorator("%s.%s" % (module, key), func))
