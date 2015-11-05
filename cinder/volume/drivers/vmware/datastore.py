@@ -113,12 +113,10 @@ class DatastoreSelector(object):
         filtered_summaries = [self._vops.get_summary(ds) for ds in
                               filtered_datastores]
 
-        def _filter(summary):
-            return (summary.freeSpace > size_bytes and
+        return [summary for summary in filtered_summaries
+                if (summary.freeSpace > size_bytes and
                     (hard_affinity_ds_types is None or
-                     summary.type.lower() in hard_affinity_ds_types))
-
-        return filter(_filter, filtered_summaries)
+                     summary.type.lower() in hard_affinity_ds_types))]
 
     def _get_all_hosts(self):
         """Get all ESX hosts managed by vCenter."""
