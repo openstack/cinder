@@ -20,6 +20,7 @@ from cinder import context
 from cinder import exception
 from cinder import test
 from cinder.tests.unit.api import fakes
+from cinder.tests.unit import fake_service
 
 
 def app():
@@ -77,6 +78,9 @@ class SnapshotManageTest(test.TestCase):
         called with the correct arguments, and that we return the correct HTTP
         code to the caller.
         """
+        ctxt = context.RequestContext('admin', 'fake', True)
+        mock_db.return_value = fake_service.fake_service_obj(ctxt)
+
         body = {'snapshot': {'volume_id': 'fake_volume_id', 'ref': 'fake_ref'}}
         res = self._get_resp(body)
         self.assertEqual(202, res.status_int, res)
