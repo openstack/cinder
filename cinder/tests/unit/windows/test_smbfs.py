@@ -30,8 +30,6 @@ class WindowsSmbFsTestCase(test.TestCase):
     _FAKE_MNT_POINT = os.path.join(_FAKE_MNT_BASE, 'fake_hash')
     _FAKE_VOLUME_NAME = 'volume-4f711859-4928-4cb7-801a-a50c37ceaccc'
     _FAKE_SNAPSHOT_NAME = _FAKE_VOLUME_NAME + '-snapshot.vhdx'
-    _FAKE_VOLUME_PATH = os.path.join(_FAKE_MNT_POINT,
-                                     _FAKE_VOLUME_NAME)
     _FAKE_SNAPSHOT_PATH = os.path.join(_FAKE_MNT_POINT,
                                        _FAKE_SNAPSHOT_NAME)
     _FAKE_TOTAL_SIZE = '2048'
@@ -46,8 +44,6 @@ class WindowsSmbFsTestCase(test.TestCase):
     _FAKE_SHARE_OPTS = '-o username=Administrator,password=12345'
     _FAKE_VOLUME_PATH = os.path.join(_FAKE_MNT_POINT,
                                      _FAKE_VOLUME_NAME + '.vhdx')
-    _FAKE_LISTDIR = [_FAKE_VOLUME_NAME + '.vhd',
-                     _FAKE_VOLUME_NAME + '.vhdx', 'fake_folder']
 
     def setUp(self):
         super(WindowsSmbFsTestCase, self).setUp()
@@ -104,24 +100,6 @@ class WindowsSmbFsTestCase(test.TestCase):
                             self._FAKE_TOTAL_AVAILABLE,
                             self._FAKE_TOTAL_ALLOCATED]]
         self.assertEqual(expected_ret_val, ret_val)
-
-    def test_get_total_allocated(self):
-        fake_listdir = mock.Mock(side_effect=[self._FAKE_LISTDIR,
-                                              self._FAKE_LISTDIR[:-1]])
-        fake_folder_path = os.path.join(self._FAKE_SHARE, 'fake_folder')
-        fake_isdir = lambda x: x == fake_folder_path
-        self._smbfs_driver._remotefsclient.is_symlink = mock.Mock(
-            return_value=False)
-        fake_getsize = mock.Mock(return_value=self._FAKE_VOLUME['size'])
-        self._smbfs_driver.vhdutils.get_vhd_size = mock.Mock(
-            return_value={'VirtualSize': 1})
-
-        with mock.patch.multiple('os.path', isdir=fake_isdir,
-                                 getsize=fake_getsize):
-            with mock.patch('os.listdir', fake_listdir):
-                ret_val = self._smbfs_driver._get_total_allocated(
-                    self._FAKE_SHARE)
-                self.assertEqual(4, ret_val)
 
     def _test_get_img_info(self, backing_file=None):
         self._smbfs_driver.vhdutils.get_vhd_parent_path.return_value = (

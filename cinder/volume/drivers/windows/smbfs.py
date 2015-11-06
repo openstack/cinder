@@ -15,7 +15,6 @@
 
 
 import os
-import re
 import sys
 
 from oslo_config import cfg
@@ -26,7 +25,7 @@ from oslo_utils import units
 from cinder import exception
 from cinder.i18n import _, _LI
 from cinder.image import image_utils
-from cinder import utils
+from cinder.volume.drivers import remotefs as remotefs_drv
 from cinder.volume.drivers import smbfs
 from cinder.volume.drivers.windows import remotefs
 from cinder.volume.drivers.windows import vhdutils
@@ -38,6 +37,8 @@ LOG = logging.getLogger(__name__)
 
 CONF = cfg.CONF
 CONF.set_default('smbfs_shares_config', r'C:\OpenStack\smbfs_shares.txt')
+CONF.set_default('smbfs_allocation_info_file_path',
+                 r'C:\OpenStack\allocation_data.txt')
 CONF.set_default('smbfs_mount_point_base', r'C:\OpenStack\_mnt')
 CONF.set_default('smbfs_default_volume_format', 'vhd')
 
@@ -111,25 +112,6 @@ class WindowsSmbfsDriver(smbfs.SmbfsDriver):
                   'allocated': total_allocated})
         return [float(x) for x in return_value]
 
-    def _get_total_allocated(self, smbfs_share):
-        elements = os.listdir(smbfs_share)
-        total_allocated = 0
-        for element in elements:
-            element_path = os.path.join(smbfs_share, element)
-            if not self._remotefsclient.is_symlink(element_path):
-                if "snapshot" in element:
-                    continue
-                if re.search(r'\.vhdx?$', element):
-                    total_allocated += self.vhdutils.get_vhd_size(
-                        element_path)['VirtualSize']
-                    continue
-                if os.path.isdir(element_path):
-                    total_allocated += self._get_total_allocated(element_path)
-                    continue
-            total_allocated += os.path.getsize(element_path)
-
-        return total_allocated
-
     def _img_commit(self, snapshot_path):
         self.vhdutils.merge_vhd(snapshot_path)
         self._delete(snapshot_path)
@@ -172,7 +154,7 @@ class WindowsSmbfsDriver(smbfs.SmbfsDriver):
     def _do_extend_volume(self, volume_path, size_gb, volume_name=None):
         self.vhdutils.resize_vhd(volume_path, size_gb * units.Gi)
 
-    @utils.synchronized('smbfs', external=False)
+    @remotefs_drv.locked_volume_id_operation
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
 
