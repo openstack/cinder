@@ -201,11 +201,12 @@ class HP3PARCommon(object):
         2.0.49 - Added client CPG stats to driver volume stats. bug #1482741
         2.0.50 - Add over subscription support
         2.0.51 - Adds consistency group support
-        2.0.52 - Added update_migrated_volume. bug # 1492023
+        2.0.52 - Added update_migrated_volume. bug #1492023
+        2.0.53 - Fix volume size conversion. bug #1513158
 
     """
 
-    VERSION = "2.0.52"
+    VERSION = "2.0.53"
 
     stats = {}
 
@@ -789,18 +790,13 @@ class HP3PARCommon(object):
         return vol_encoded
 
     def _capacity_from_size(self, vol_size):
-
-        # because 3PAR volume sizes are in
-        # Mebibytes, Gigibytes, not Megabytes.
-        MB = 1000
-        MiB = 1.048576
-
+        # because 3PAR volume sizes are in Mebibytes.
         if int(vol_size) == 0:
-            capacity = MB  # default: 1GB
+            capacity = units.Gi  # default: 1GiB
         else:
-            capacity = vol_size * MB
+            capacity = vol_size * units.Gi
 
-        capacity = int(round(capacity / MiB))
+        capacity = int(math.ceil(capacity / units.Mi))
         return capacity
 
     def _delete_3par_host(self, hostname):
