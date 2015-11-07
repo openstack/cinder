@@ -388,7 +388,7 @@ class QuotaSetsController(wsgi.Controller):
         try:
             project_quotas = QUOTAS.get_project_quotas(
                 context, target_project.id, usages=True,
-                parent_project_id=parent_id)
+                parent_project_id=parent_id, defaults=False)
         except exception.NotAuthorized:
             raise webob.exc.HTTPForbidden()
 
