@@ -9,10 +9,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev116\n"
+"Project-Id-Version: cinder 8.0.0.dev134\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-05 06:05+0000\n"
-"PO-Revision-Date: 2015-11-04 01:41+0000\n"
+"POT-Creation-Date: 2015-11-07 06:36+0000\n"
+"PO-Revision-Date: 2015-11-06 05:27+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language: cs\n"
 "Language-Team: Czech\n"
@@ -2356,7 +2356,7 @@ msgstr "Chyba při provádění příkazu pomocí ssh: %s"
 
 #, python-format
 msgid "Error extending volume %(vol)s: %(err)s."
-msgstr "Chyba při rozšiřování svazek %(vol)s: %(err)s."
+msgstr "Chyba při rozšiřování svazku %(vol)s: %(err)s."
 
 #, python-format
 msgid "Error extending volume: %(reason)s"

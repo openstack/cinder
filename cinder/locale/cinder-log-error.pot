@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev112\n"
+"Project-Id-Version: cinder 8.0.0.dev134\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-04 06:06+0000\n"
+"POT-Creation-Date: 2015-11-07 06:37+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -1015,7 +1015,7 @@ msgstr ""
 msgid "VGC-CLUSTER command blocked and cancelled."
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:358 cinder/volume/drivers/nfs.py:408
+#: cinder/volume/drivers/lvm.py:358 cinder/volume/drivers/nfs.py:413
 #: cinder/volume/drivers/dell/dell_storagecenter_common.py:411
 #: cinder/volume/drivers/ibm/storwize_svc/__init__.py:1000
 #, python-format
@@ -1037,18 +1037,18 @@ msgstr ""
 msgid "Volume migration failed due to exception: %(reason)s."
 msgstr ""
 
-#: cinder/volume/drivers/nfs.py:174
+#: cinder/volume/drivers/nfs.py:179
 #, python-format
 msgid "Mount failure for %(share)s after %(count)d attempts."
 msgstr ""
 
-#: cinder/volume/drivers/nimble.py:180
+#: cinder/volume/drivers/nimble.py:182
 msgid ""
 "Failed to create SOAP client.Check san_ip, username, password and make "
 "sure the array version is compatible"
 msgstr ""
 
-#: cinder/volume/drivers/nimble.py:537
+#: cinder/volume/drivers/nimble.py:539
 #, python-format
 msgid "Re-throwing Exception %s"
 msgstr ""
@@ -2938,17 +2938,22 @@ msgid "Error resolving host %(host)s. Error - %(e)s."
 msgstr ""
 
 #: cinder/volume/drivers/netapp/eseries/library.py:425
-#: cinder/volume/drivers/netapp/eseries/library.py:443
+#: cinder/volume/drivers/netapp/eseries/library.py:463
 #, python-format
 msgid "Error creating volume. Msg - %s."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/eseries/library.py:465
+#: cinder/volume/drivers/netapp/eseries/library.py:443
+#, python-format
+msgid "Error cleaning up failed volume creation.  Msg - %s."
+msgstr ""
+
+#: cinder/volume/drivers/netapp/eseries/library.py:485
 #, python-format
 msgid "Failure deleting snap vol. Error: %s."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/eseries/library.py:496
+#: cinder/volume/drivers/netapp/eseries/library.py:516
 #, python-format
 msgid "Vol copy job status %s."
 msgstr ""
@@ -3058,7 +3063,7 @@ msgid "Flexvisor failed to get pool %(id)s info."
 msgstr ""
 
 #: cinder/volume/drivers/san/san.py:151
-#: cinder/zonemanager/drivers/brocade/brcd_fc_zone_client_cli.py:419
+#: cinder/zonemanager/drivers/brocade/brcd_fc_zone_client_cli.py:425
 #: cinder/zonemanager/drivers/cisco/cisco_fc_san_lookup_service.py:269
 #, python-format
 msgid "Error running SSH command: %s"
@@ -3284,7 +3289,7 @@ msgstr ""
 msgid "Storage profile: %s cannot be found in vCenter."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/datastore.py:222
+#: cinder/volume/drivers/vmware/datastore.py:220
 msgid "Error occurred while selecting datastore."
 msgstr ""
 
@@ -3830,33 +3835,33 @@ msgstr ""
 msgid "Failed getting active zone set from fabric %s"
 msgstr ""
 
-#: cinder/zonemanager/drivers/brocade/brcd_fc_zone_client_cli.py:150
+#: cinder/zonemanager/drivers/brocade/brcd_fc_zone_client_cli.py:154
 #: cinder/zonemanager/drivers/cisco/cisco_fc_zone_client_cli.py:176
 #, python-format
 msgid "Deleting zone failed %s"
 msgstr ""
 
-#: cinder/zonemanager/drivers/brocade/brcd_fc_zone_client_cli.py:262
+#: cinder/zonemanager/drivers/brocade/brcd_fc_zone_client_cli.py:268
 #, python-format
 msgid "Failed collecting nsshow info for fabric %s"
 msgstr ""
 
-#: cinder/zonemanager/drivers/brocade/brcd_fc_zone_client_cli.py:334
+#: cinder/zonemanager/drivers/brocade/brcd_fc_zone_client_cli.py:340
 msgid "No CLI output for firmware version check"
 msgstr ""
 
-#: cinder/zonemanager/drivers/brocade/brcd_fc_zone_client_cli.py:402
-#: cinder/zonemanager/drivers/brocade/brcd_fc_zone_client_cli.py:464
+#: cinder/zonemanager/drivers/brocade/brcd_fc_zone_client_cli.py:408
+#: cinder/zonemanager/drivers/brocade/brcd_fc_zone_client_cli.py:470
 #: cinder/zonemanager/drivers/cisco/cisco_fc_zone_client_cli.py:431
 msgid "Error executing SSH command."
 msgstr ""
 
-#: cinder/zonemanager/drivers/brocade/brcd_fc_zone_client_cli.py:483
+#: cinder/zonemanager/drivers/brocade/brcd_fc_zone_client_cli.py:489
 #, python-format
 msgid "Error executing command via ssh: %s"
 msgstr ""
 
-#: cinder/zonemanager/drivers/brocade/brcd_fc_zone_client_cli.py:541
+#: cinder/zonemanager/drivers/brocade/brcd_fc_zone_client_cli.py:547
 msgid "Error closing channel."
 msgstr ""
 
