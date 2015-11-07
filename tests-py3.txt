@@ -108,6 +108,7 @@ cinder.tests.unit.test_v6000_fcp
 cinder.tests.unit.test_v6000_iscsi
 cinder.tests.unit.test_v7000_common
 cinder.tests.unit.test_v7000_fcp
+cinder.tests.unit.test_vmware_datastore
 cinder.tests.unit.test_vmware_vmdk
 cinder.tests.unit.test_vmware_volumeops
 cinder.tests.unit.test_volume
