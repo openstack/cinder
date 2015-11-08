@@ -466,8 +466,8 @@ class ServiceCommands(object):
         """Completely removes a service."""
         ctxt = context.get_admin_context()
         try:
-            svc = db.service_get_by_args(ctxt, host_name, binary)
-            db.service_destroy(ctxt, svc['id'])
+            svc = objects.Service.get_by_args(ctxt, host_name, binary)
+            svc.destroy()
         except exception.HostBinaryNotFound as e:
             print(_("Host not found. Failed to remove %(service)s"
                     " on %(host)s.") %

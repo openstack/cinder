@@ -1598,8 +1598,8 @@ class API(base.Base):
                                  metadata=None):
         host = volume_utils.extract_host(volume['host'])
         try:
-            self.db.service_get_by_host_and_topic(
-                context.elevated(), host, CONF.volume_topic)
+            objects.Service.get_by_host_and_topic(context.elevated(), host,
+                                                  CONF.volume_topic)
         except exception.ServiceNotFound:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE('Unable to find service: %(service)s for '

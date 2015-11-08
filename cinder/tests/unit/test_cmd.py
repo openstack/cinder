@@ -802,7 +802,7 @@ class TestCinderManageCmd(test.TestCase):
 
     @mock.patch('cinder.db.service_destroy')
     @mock.patch('cinder.db.service_get_by_args',
-                return_value = {'id': 'volID'})
+                return_value = {'id': '12'})
     def test_remove_service_success(self, mock_get_by_args,
                                     mock_service_destroy):
         service_commands = cinder_manage.ServiceCommands()
