@@ -1899,6 +1899,84 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
             self.data.test_volume, connector, extraSpecs)
         self.assertLessEqual(64, len(maskingViewDict['sgGroupName']))
 
+    def test_filter_list(self):
+        portgroupnames = ['pg3', 'pg1', 'pg4', 'pg2']
+        portgroupnames = (
+            self.driver.common.utils._filter_list(portgroupnames))
+        self.assertEqual(4, len(portgroupnames))
+        self.assertEqual(['pg1', 'pg2', 'pg3', 'pg4'], sorted(portgroupnames))
+
+        portgroupnames = ['pg1']
+        portgroupnames = (
+            self.driver.common.utils._filter_list(portgroupnames))
+        self.assertEqual(1, len(portgroupnames))
+        self.assertEqual(['pg1'], portgroupnames)
+
+        portgroupnames = ['only_pg', '', '', '', '', '']
+        portgroupnames = (
+            self.driver.common.utils._filter_list(portgroupnames))
+        self.assertEqual(1, len(portgroupnames))
+        self.assertEqual(['only_pg'], portgroupnames)
+
+    def test_get_random_pg_from_list(self):
+        portGroupNames = ['pg1', 'pg2', 'pg3', 'pg4']
+        portGroupName = (
+            self.driver.common.utils._get_random_pg_from_list(portGroupNames))
+        self.assertTrue('pg' in portGroupName)
+
+        portGroupNames = ['pg1']
+        portGroupName = (
+            self.driver.common.utils._get_random_pg_from_list(portGroupNames))
+        self.assertEqual('pg1', portGroupName)
+
+    def test_get_random_portgroup(self):
+        # 4 portgroups
+        data = ("<?xml version='1.0' encoding='UTF-8'?>\n<EMC>\n"
+                "<PortGroups>"
+                "<PortGroup>OS-PG1</PortGroup>\n"
+                "<PortGroup>OS-PG2</PortGroup>\n"
+                "<PortGroup>OS-PG3</PortGroup>\n"
+                "<PortGroup>OS-PG4</PortGroup>\n"
+                "</PortGroups>"
+                "</EMC>")
+        dom = minidom.parseString(data)
+        portgroup = self.driver.common.utils._get_random_portgroup(dom)
+        self.assertTrue('OS-PG' in portgroup)
+
+        # Duplicate portgroups
+        data = ("<?xml version='1.0' encoding='UTF-8'?>\n<EMC>\n"
+                "<PortGroups>"
+                "<PortGroup>OS-PG1</PortGroup>\n"
+                "<PortGroup>OS-PG1</PortGroup>\n"
+                "<PortGroup>OS-PG1</PortGroup>\n"
+                "<PortGroup>OS-PG2</PortGroup>\n"
+                "</PortGroups>"
+                "</EMC>")
+        dom = minidom.parseString(data)
+        portgroup = self.driver.common.utils._get_random_portgroup(dom)
+        self.assertTrue('OS-PG' in portgroup)
+
+    def test_get_random_portgroup_exception(self):
+        # Missing PortGroup values
+        data = ("<?xml version='1.0' encoding='UTF-8'?>\n<EMC>\n"
+                "<PortGroups>"
+                "<PortGroup></PortGroup>\n"
+                "<PortGroup></PortGroup>\n"
+                "</PortGroups>"
+                "</EMC>")
+        dom = minidom.parseString(data)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.common.utils._get_random_portgroup, dom)
+
+        # Missing portgroups
+        data = ("<?xml version='1.0' encoding='UTF-8'?>\n<EMC>\n"
+                "<PortGroups>"
+                "</PortGroups>"
+                "</EMC>")
+        dom = minidom.parseString(data)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.common.utils._get_random_portgroup, dom)
+
     def test_generate_unique_trunc_pool(self):
         pool_under_16_chars = 'pool_under_16'
         pool1 = self.driver.utils.generate_unique_trunc_pool(
