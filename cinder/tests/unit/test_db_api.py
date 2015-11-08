@@ -17,6 +17,7 @@
 import datetime
 
 import enum
+import mock
 from oslo_config import cfg
 from oslo_utils import uuidutils
 import six
@@ -225,6 +226,48 @@ class DBAPIServiceTestCase(BaseTest):
         self.assertRaises(exception.HostBinaryNotFound,
                           db.service_get_by_args,
                           self.ctxt, 'non-exists-host', 'a')
+
+    @mock.patch('cinder.db.sqlalchemy.api.model_query')
+    def test_service_get_by_args_with_case_insensitive(self, model_query):
+        class case_insensitive_filter(object):
+            def __init__(self, records):
+                self.records = records
+
+            def filter_by(self, **kwargs):
+                ret = mock.Mock()
+                ret.all = mock.Mock()
+
+                results = []
+                for record in self.records:
+                    for key, value in kwargs.items():
+                        if record[key].lower() != value.lower():
+                            break
+                    else:
+                        results.append(record)
+
+                ret.filter_by = case_insensitive_filter(results).filter_by
+                ret.all.return_value = results
+                return ret
+
+        values = [
+            {'host': 'host', 'binary': 'a'},
+            {'host': 'HOST', 'binary': 'a'}
+        ]
+        services = [self._create_service(vals) for vals in values]
+
+        query = mock.Mock()
+        query.filter_by = case_insensitive_filter(services).filter_by
+        model_query.return_value = query
+
+        service1 = db.service_get_by_args(self.ctxt, 'host', 'a')
+        self._assertEqualObjects(services[0], service1)
+
+        service2 = db.service_get_by_args(self.ctxt, 'HOST', 'a')
+        self._assertEqualObjects(services[1], service2)
+
+        self.assertRaises(exception.HostBinaryNotFound,
+                          db.service_get_by_args,
+                          self.ctxt, 'Host', 'a')
 
 
 class DBAPIVolumeTestCase(BaseTest):

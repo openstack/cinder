@@ -410,15 +410,16 @@ def _service_get_all_topic_subquery(context, session, topic, subq, label):
 
 @require_admin_context
 def service_get_by_args(context, host, binary):
-    result = model_query(context, models.Service).\
+    results = model_query(context, models.Service).\
         filter_by(host=host).\
         filter_by(binary=binary).\
-        first()
+        all()
 
-    if not result:
-        raise exception.HostBinaryNotFound(host=host, binary=binary)
+    for result in results:
+        if host == result['host']:
+            return result
 
-    return result
+    raise exception.HostBinaryNotFound(host=host, binary=binary)
 
 
 @require_admin_context
