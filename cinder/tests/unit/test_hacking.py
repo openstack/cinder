@@ -179,6 +179,7 @@ class HackingTestCase(test.TestCase):
         checker = checks.CheckOptRegistrationArgs
         code = """
                CONF.register_opts([opt1, opt2, opt3])
+               CONF.register_opts((opt4, opt5))
                CONF.register_opt(lonely_opt)
                CONF.register_opts([OPT1, OPT2], group="group_of_opts")
                CONF.register_opt(single_opt, group=blah)
@@ -187,14 +188,15 @@ class HackingTestCase(test.TestCase):
 
         code = """
                CONF.register_opt([opt4, opt5, opt6])
+               CONF.register_opt((opt7, opt8))
                CONF.register_opts(lonely_opt)
                CONF.register_opt((an_opt, another_opt))
                """
-        for method in checker.register_methods:
-            self._assert_has_errors(code.format(method), checker,
-                                    expected_errors=[(1, 18, 'C311'),
-                                                     (2, 19, 'C311'),
-                                                     (3, 19, 'C311')])
+        self._assert_has_errors(code, checker,
+                                expected_errors=[(1, 18, 'C311'),
+                                                 (2, 19, 'C311'),
+                                                 (3, 19, 'C311'),
+                                                 (4, 19, 'C311')])
 
         code = """
                CONF.register_opt(single_opt)
