@@ -18,7 +18,7 @@ from cinder import quota
 
 QUOTAS = quota.QUOTAS
 
-authorize = extensions.extension_authorizer('limits', 'used_limits')
+authorize = extensions.soft_extension_authorizer('limits', 'used_limits')
 
 
 class UsedLimitsController(wsgi.Controller):
@@ -26,25 +26,24 @@ class UsedLimitsController(wsgi.Controller):
     @wsgi.extends
     def index(self, req, resp_obj):
         context = req.environ['cinder.context']
-        authorize(context)
+        if authorize(context):
+            quotas = QUOTAS.get_project_quotas(context, context.project_id,
+                                               usages=True)
 
-        quotas = QUOTAS.get_project_quotas(context, context.project_id,
-                                           usages=True)
+            quota_map = {
+                'totalVolumesUsed': 'volumes',
+                'totalGigabytesUsed': 'gigabytes',
+                'totalSnapshotsUsed': 'snapshots',
+                'totalBackupsUsed': 'backups',
+                'totalBackupGigabytesUsed': 'backup_gigabytes'
+            }
 
-        quota_map = {
-            'totalVolumesUsed': 'volumes',
-            'totalGigabytesUsed': 'gigabytes',
-            'totalSnapshotsUsed': 'snapshots',
-            'totalBackupsUsed': 'backups',
-            'totalBackupGigabytesUsed': 'backup_gigabytes'
-        }
+            used_limits = {}
+            for display_name, single_quota in quota_map.items():
+                if single_quota in quotas:
+                    used_limits[display_name] = quotas[single_quota]['in_use']
 
-        used_limits = {}
-        for display_name, single_quota in quota_map.items():
-            if single_quota in quotas:
-                used_limits[display_name] = quotas[single_quota]['in_use']
-
-        resp_obj.obj['limits']['absolute'].update(used_limits)
+            resp_obj.obj['limits']['absolute'].update(used_limits)
 
 
 class Used_limits(extensions.ExtensionDescriptor):
