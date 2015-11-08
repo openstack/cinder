@@ -65,8 +65,9 @@ global_opts = [
                help='Default glance port'),
     cfg.ListOpt('glance_api_servers',
                 default=['$glance_host:$glance_port'],
-                help='A list of the glance API servers available to cinder '
-                     '([hostname|ip]:port)'),
+                help='A list of the URLs of glance API servers available to '
+                     'cinder ([http[s]://][hostname|ip]:port). If protocol '
+                     'is not specified it defaults to http.'),
     cfg.IntOpt('glance_api_version',
                default=1,
                help='Version of the glance API to use'),
