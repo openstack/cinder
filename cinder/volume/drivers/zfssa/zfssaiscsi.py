@@ -15,11 +15,11 @@
 ZFS Storage Appliance Cinder Volume Driver
 """
 import ast
-import base64
 import math
 
 from oslo_config import cfg
 from oslo_log import log
+from oslo_serialization import base64
 from oslo_utils import units
 import six
 
@@ -135,9 +135,8 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
         self.zfssa = factory_zfssa()
         self.tgt_zfssa = factory_zfssa()
         self.zfssa.set_host(lcfg.san_ip, timeout=lcfg.zfssa_rest_timeout)
-        auth_str = base64.encodestring('%s:%s' %
-                                       (lcfg.san_login,
-                                        lcfg.san_password))[:-1]
+        auth_str = '%s:%s' % (lcfg.san_login, lcfg.san_password)
+        auth_str = base64.encode_as_text(auth_str)[:-1]
         self.zfssa.login(auth_str)
 
         self.zfssa.create_project(lcfg.zfssa_pool, lcfg.zfssa_project,
@@ -401,9 +400,8 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
         host = lcfg.san_ip
         pool = lcfg.zfssa_pool
         project = lcfg.zfssa_project
-        auth_str = base64.encodestring('%s:%s' %
-                                       (lcfg.san_login,
-                                        lcfg.san_password))[:-1]
+        auth_str = '%s:%s' % (lcfg.san_login, lcfg.san_password)
+        auth_str = base64.encode_as_text(auth_str)[:-1]
         zfssa_tgt_group = lcfg.zfssa_target_group
         repl_ip = lcfg.zfssa_replication_ip
 

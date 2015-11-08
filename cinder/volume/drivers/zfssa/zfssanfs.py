@@ -14,13 +14,13 @@
 """
 ZFS Storage Appliance NFS Cinder Volume Driver
 """
-import base64
 import datetime as dt
 import errno
 import math
 
 from oslo_config import cfg
 from oslo_log import log
+from oslo_serialization import base64
 from oslo_utils import excutils
 from oslo_utils import units
 import six
@@ -133,7 +133,7 @@ class ZFSSANFSDriver(nfs.NfsDriver):
         self.zfssa = factory_zfssa()
         self.zfssa.set_host(host, timeout=lcfg.zfssa_rest_timeout)
 
-        auth_str = base64.encodestring('%s:%s' % (user, password))[:-1]
+        auth_str = base64.encode_as_text('%s:%s' % (user, password))[:-1]
         self.zfssa.login(auth_str)
 
         self.zfssa.create_project(lcfg.zfssa_nfs_pool, lcfg.zfssa_nfs_project,
