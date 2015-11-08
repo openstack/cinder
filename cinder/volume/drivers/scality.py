@@ -40,7 +40,6 @@ LOG = logging.getLogger(__name__)
 
 volume_opts = [
     cfg.StrOpt('scality_sofs_config',
-               default=None,
                help='Path or URL to Scality SOFS configuration file'),
     cfg.StrOpt('scality_sofs_mount_point',
                default='$state_path/scality',

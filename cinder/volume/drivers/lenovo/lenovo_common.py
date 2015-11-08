@@ -35,7 +35,6 @@ common_opts = [
                 default=False,
                 help="Whether to verify Lenovo array SSL certificate."),
     cfg.StrOpt('lenovo_verify_certificate_path',
-               default=None,
                help="Lenovo array SSL certificate path.")
 ]
 

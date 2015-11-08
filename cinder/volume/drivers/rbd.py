@@ -51,7 +51,6 @@ rbd_opts = [
                default='rbd',
                help='The RADOS pool where rbd volumes are stored'),
     cfg.StrOpt('rbd_user',
-               default=None,
                help='The RADOS client name for accessing rbd volumes '
                     '- only set when using cephx authentication'),
     cfg.StrOpt('rbd_ceph_conf',
@@ -62,11 +61,9 @@ rbd_opts = [
                 help='Flatten volumes created from snapshots to remove '
                      'dependency from volume to snapshot'),
     cfg.StrOpt('rbd_secret_uuid',
-               default=None,
                help='The libvirt uuid of the secret for the rbd_user '
                     'volumes'),
     cfg.StrOpt('volume_tmp_dir',
-               default=None,
                help='Directory where temporary image files are stored '
                     'when the volume driver does not write them directly '
                     'to the volume.  Warning: this option is now deprecated, '

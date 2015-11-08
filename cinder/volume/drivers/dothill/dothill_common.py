@@ -46,7 +46,6 @@ common_opts = [
                 default=False,
                 help="Whether to verify DotHill array SSL certificate."),
     cfg.StrOpt('dothill_verify_certificate_path',
-               default=None,
                help="DotHill array SSL certificate path."),
 ]
 

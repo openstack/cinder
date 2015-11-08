@@ -39,7 +39,6 @@ volume_opts = [
                 default=False,
                 help='Add CHAP user'),
     cfg.StrOpt('hitachi_auth_method',
-               default=None,
                help='iSCSI authentication method'),
     cfg.StrOpt('hitachi_auth_user',
                default='%sCHAP-user' % basic_lib.NAME_PREFIX,

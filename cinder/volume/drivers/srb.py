@@ -47,7 +47,6 @@ LOG = logging.getLogger(__name__)
 
 srb_opts = [
     cfg.StrOpt('srb_base_urls',
-               default=None,
                help='Comma-separated list of REST servers IP to connect to. '
                     '(eg http://IP1/,http://IP2:81/path'),
 ]

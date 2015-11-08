@@ -50,7 +50,6 @@ sf_opts = [
                 help='Allow tenants to specify QOS on create'),
 
     cfg.StrOpt('sf_account_prefix',
-               default=None,
                help='Create SolidFire accounts with this prefix. Any string '
                     'can be used here, but the string \"hostname\" is special '
                     'and will create a prefix using the cinder node hostname '
@@ -74,7 +73,6 @@ sf_opts = [
                      'glance and qemu-conversion on subsequent calls.'),
 
     cfg.StrOpt('sf_svip',
-               default=None,
                help='Overrides default cluster SVIP with the one specified. '
                     'This is required or deployments that have implemented '
                     'the use of VLANs for iSCSI networks in their cloud.'),

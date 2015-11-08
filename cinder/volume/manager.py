@@ -94,7 +94,6 @@ volume_manager_opts = [
                 help='Offload pending volume delete during '
                      'volume service startup'),
     cfg.StrOpt('zoning_mode',
-               default='none',
                help='FC Zoning mode configured'),
     cfg.StrOpt('extra_capabilities',
                default='{}',

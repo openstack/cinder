@@ -43,11 +43,9 @@ netapp_proxy_opts = [
 
 netapp_connection_opts = [
     cfg.StrOpt('netapp_server_hostname',
-               default=None,
                help='The hostname (or IP address) for the storage system or '
                     'proxy server.'),
     cfg.IntOpt('netapp_server_port',
-               default=None,
                help=('The TCP port to use for communication with the storage '
                      'system or proxy server. If not specified, Data ONTAP '
                      'drivers will use 80 for HTTP and 443 for HTTPS; '
@@ -62,11 +60,9 @@ netapp_transport_opts = [
 
 netapp_basicauth_opts = [
     cfg.StrOpt('netapp_login',
-               default=None,
                help=('Administrative user account name used to access the '
                      'storage system or proxy server.')),
     cfg.StrOpt('netapp_password',
-               default=None,
                help=('Password for the administrative user account '
                      'specified in the netapp_login option.'),
                secret=True), ]
@@ -90,14 +86,12 @@ netapp_provisioning_opts = [
 
 netapp_cluster_opts = [
     cfg.StrOpt('netapp_vserver',
-               default=None,
                help=('This option specifies the virtual storage server '
                      '(Vserver) name on the storage cluster on which '
                      'provisioning of block storage volumes should occur.')), ]
 
 netapp_7mode_opts = [
     cfg.StrOpt('netapp_vfiler',
-               default=None,
                help=('The vFiler unit on which provisioning of block storage '
                      'volumes will be done. This option is only used by the '
                      'driver when connecting to an instance with a storage '
@@ -105,7 +99,6 @@ netapp_7mode_opts = [
                      'option when utilizing the MultiStore feature on the '
                      'NetApp storage system.')),
     cfg.StrOpt('netapp_partner_backend_name',
-               default=None,
                help=('The name of the config.conf stanza for a Data ONTAP '
                      '(7-mode) HA partner.  This option is only used by the '
                      'driver when connecting to an instance with a storage '
@@ -145,7 +138,6 @@ netapp_eseries_opts = [
                      'to create the URL used by the driver to connect to the '
                      'proxy application.')),
     cfg.StrOpt('netapp_controller_ips',
-               default=None,
                help=('This option is only utilized when the storage family '
                      'is configured to eseries. This option is used to '
                      'restrict provisioning to the specified controllers. '
@@ -153,7 +145,6 @@ netapp_eseries_opts = [
                      'separated list of controller hostnames or IP addresses '
                      'to be used for provisioning.')),
     cfg.StrOpt('netapp_sa_password',
-               default=None,
                help=('Password for the NetApp E-Series storage array.'),
                secret=True),
     cfg.BoolOpt('netapp_enable_multiattach',
@@ -168,20 +159,17 @@ netapp_eseries_opts = [
 ]
 netapp_nfs_extra_opts = [
     cfg.StrOpt('netapp_copyoffload_tool_path',
-               default=None,
                help=('This option specifies the path of the NetApp copy '
                      'offload tool binary. Ensure that the binary has execute '
                      'permissions set which allow the effective user of the '
                      'cinder-volume process to execute the file.')), ]
 netapp_san_opts = [
     cfg.StrOpt('netapp_lun_ostype',
-               default=None,
                help=('This option defines the type of operating system that'
                      ' will access a LUN exported from Data ONTAP; it is'
                      ' assigned to the LUN at the time it is created.')),
     cfg.StrOpt('netapp_host_type',
                deprecated_name='netapp_eseries_host_type',
-               default=None,
                help=('This option defines the type of operating system for'
                      ' all initiators that can access a LUN. This information'
                      ' is used when mapping LUNs to individual hosts or'

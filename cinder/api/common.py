@@ -35,7 +35,6 @@ api_common_opts = [
                help='The maximum number of items that a collection '
                     'resource returns in a single response'),
     cfg.StrOpt('osapi_volume_base_URL',
-               default=None,
                help='Base URL that will be presented to users in links '
                     'to the OpenStack Volume API',
                deprecated_name='osapi_compute_link_prefix'),

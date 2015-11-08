@@ -89,7 +89,6 @@ global_opts = [
                help='Location of ca certificates file to use for glance '
                     'client requests.'),
     cfg.IntOpt('glance_request_timeout',
-               default=None,
                help='http/https timeout value for glance operations. If no '
                     'value (None) is supplied here, the glanceclient default '
                     'value is used.'),
@@ -137,7 +136,6 @@ global_opts = [
                default='nova',
                help='Availability zone of this node'),
     cfg.StrOpt('default_availability_zone',
-               default=None,
                help='Default availability zone for new volumes. If not set, '
                     'the storage_availability_zone option value is used as '
                     'the default for new volumes.'),
@@ -148,7 +146,6 @@ global_opts = [
                      'default_availability_zone, then '
                      'storage_availability_zone, instead of failing.'),
     cfg.StrOpt('default_volume_type',
-               default=None,
                help='Default volume type to use'),
     cfg.StrOpt('volume_usage_audit_period',
                default='month',
@@ -179,7 +176,6 @@ global_opts = [
                choices=['noauth', 'keystone'],
                help='The strategy to use for auth. Supports noauth or keystone.'),
     cfg.ListOpt('enabled_backends',
-                default=None,
                 help='A list of backend names to use. These backend names '
                      'should be backed by a unique [CONFIG] group '
                      'with its options'),
@@ -196,21 +192,17 @@ global_opts = [
                default='cinder.consistencygroup.api.API',
                help='The full class name of the consistencygroup API class'),
     cfg.StrOpt('os_privileged_user_name',
-               default=None,
                help='OpenStack privileged account username. Used for requests '
                     'to other services (such as Nova) that require an account '
                     'with special rights.'),
     cfg.StrOpt('os_privileged_user_password',
-               default=None,
                help='Password associated with the OpenStack privileged '
                     'account.',
                secret=True),
     cfg.StrOpt('os_privileged_user_tenant',
-               default=None,
                help='Tenant name associated with the OpenStack privileged '
                     'account.'),
     cfg.StrOpt('os_privileged_user_auth_url',
-               default=None,
                help='Auth URL associated with the OpenStack privileged '
                     'account.'),
 ]

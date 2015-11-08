@@ -32,7 +32,6 @@ glusterfsbackup_service_opts = [
                default='$state_path/backup_mount',
                help='Base dir containing mount point for gluster share.'),
     cfg.StrOpt('glusterfs_backup_share',
-               default=None,
                help='GlusterFS share in '
                     '<hostname|ipv4addr|ipv6addr>:<gluster_vol_name> format. '
                     'Eg: 1.2.3.4:backup_vol'),

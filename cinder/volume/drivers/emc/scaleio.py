@@ -49,7 +49,6 @@ scaleio_opts = [
                 default=False,
                 help='Whether to verify server certificate.'),
     cfg.StrOpt('sio_server_certificate_path',
-               default=None,
                help='Server certificate path.'),
     cfg.BoolOpt('sio_round_volume_capacity',
                 default=True,
@@ -61,19 +60,14 @@ scaleio_opts = [
                 default=False,
                 help='Whether to unmap volume before deletion.'),
     cfg.StrOpt('sio_protection_domain_id',
-               default=None,
                help='Protection domain id.'),
     cfg.StrOpt('sio_protection_domain_name',
-               default=None,
                help='Protection domain name.'),
     cfg.StrOpt('sio_storage_pools',
-               default=None,
                help='Storage pools.'),
     cfg.StrOpt('sio_storage_pool_name',
-               default=None,
                help='Storage pool name.'),
     cfg.StrOpt('sio_storage_pool_id',
-               default=None,
                help='Storage pool id.')
 ]
 

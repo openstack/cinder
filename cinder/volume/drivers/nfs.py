@@ -69,7 +69,6 @@ nfs_opts = [
                default='$state_path/mnt',
                help=('Base dir containing mount points for nfs shares.')),
     cfg.StrOpt('nfs_mount_options',
-               default=None,
                help=('Mount options passed to the nfs client. See section '
                      'of the nfs man page for details.')),
     cfg.IntOpt('nfs_mount_attempts',

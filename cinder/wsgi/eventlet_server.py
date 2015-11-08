@@ -50,15 +50,12 @@ socket_opts = [
                help="Sets the value of TCP_KEEPCNT for each "
                     "server socket. Not supported on OS X."),
     cfg.StrOpt('ssl_ca_file',
-               default=None,
                help="CA certificate file to use to verify "
                     "connecting clients"),
     cfg.StrOpt('ssl_cert_file',
-               default=None,
                help="Certificate file to use when starting "
                     "the server securely"),
     cfg.StrOpt('ssl_key_file',
-               default=None,
                help="Private key file to use when starting "
                     "the server securely"),
 ]

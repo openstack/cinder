@@ -43,13 +43,10 @@ tintri_path = '/tintri/'
 
 tintri_opts = [
     cfg.StrOpt('tintri_server_hostname',
-               default=None,
                help='The hostname (or IP address) for the storage system'),
     cfg.StrOpt('tintri_server_username',
-               default=None,
                help='User name for the storage system'),
     cfg.StrOpt('tintri_server_password',
-               default=None,
                help='Password for the storage system',
                secret=True),
     cfg.StrOpt('tintri_api_version',

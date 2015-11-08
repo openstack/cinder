@@ -43,18 +43,14 @@ if hplefthandclient:
 
 hplefthand_opts = [
     cfg.StrOpt('hplefthand_api_url',
-               default=None,
                help="HP LeftHand WSAPI Server Url like "
                     "https://<LeftHand ip>:8081/lhos"),
     cfg.StrOpt('hplefthand_username',
-               default=None,
                help="HP LeftHand Super user username"),
     cfg.StrOpt('hplefthand_password',
-               default=None,
                help="HP LeftHand Super user password",
                secret=True),
     cfg.StrOpt('hplefthand_clustername',
-               default=None,
                help="HP LeftHand cluster name"),
     cfg.BoolOpt('hplefthand_iscsi_chap_enabled',
                 default=False,

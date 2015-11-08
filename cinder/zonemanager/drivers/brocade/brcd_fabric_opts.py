@@ -42,10 +42,8 @@ brcd_zone_opts = [
                 default=True,
                 help='overridden zoning activation state'),
     cfg.StrOpt('zone_name_prefix',
-               default=None,
                help='overridden zone name prefix'),
     cfg.StrOpt('principal_switch_wwn',
-               default=None,
                help='Principal switch WWN of the fabric'),
 ]
 

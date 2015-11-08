@@ -53,7 +53,6 @@ vzstorage_opts = [
                help=('Base dir containing mount points for '
                      'vzstorage shares.')),
     cfg.ListOpt('vzstorage_mount_options',
-                default=None,
                 help=('Mount options passed to the vzstorage client. '
                       'See section of the pstorage-mount man page '
                       'for details.')),

@@ -39,17 +39,13 @@ nova_opts = [
                default='compute:Compute Service:adminURL',
                help='Same as nova_catalog_info, but for admin endpoint.'),
     cfg.StrOpt('nova_endpoint_template',
-               default=None,
                help='Override service catalog lookup with template for nova '
                     'endpoint e.g. http://localhost:8774/v2/%(project_id)s'),
     cfg.StrOpt('nova_endpoint_admin_template',
-               default=None,
                help='Same as nova_endpoint_template, but for admin endpoint.'),
     cfg.StrOpt('os_region_name',
-               default=None,
                help='Region name of this node'),
     cfg.StrOpt('nova_ca_certificates_file',
-               default=None,
                help='Location of ca certificates file to use for nova client '
                     'requests.'),
     cfg.BoolOpt('nova_api_insecure',
