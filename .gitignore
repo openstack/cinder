@@ -31,3 +31,5 @@ tags
 # Files created by Sphinx build
 doc/build
 
+# Files created by releasenotes build
+releasenotes/build
