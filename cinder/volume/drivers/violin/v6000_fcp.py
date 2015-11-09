@@ -14,7 +14,7 @@
 #    under the License.
 
 """
-Violin Memory Fibre Channel Driver for Openstack Cinder
+Violin Memory Fibre Channel Driver for OpenStack Cinder
 
 Provides fibre channel specific LUN services for V6000 series flash
 arrays.
@@ -494,13 +494,13 @@ class V6000FCDriver(driver.FibreChannelDriver):
         return self._convert_wwns_vmem_to_openstack(active_gw_fcp_wwns)
 
     def _convert_wwns_openstack_to_vmem(self, wwns):
-        """Convert a list of Openstack WWNs to VMEM compatible WWN strings.
+        """Convert a list of OpenStack WWNs to VMEM compatible WWN strings.
 
         Input format is '50014380186b3f65', output format is
         'wwn.50:01:43:80:18:6b:3f:65'.
 
         Arguments:
-            wwns -- list of Openstack-based WWN strings.
+            wwns -- list of OpenStack-based WWN strings.
 
         Returns:
             output -- list of VMEM-based WWN strings.
@@ -512,7 +512,7 @@ class V6000FCDriver(driver.FibreChannelDriver):
         return output
 
     def _convert_wwns_vmem_to_openstack(self, wwns):
-        """Convert a list of VMEM WWNs to Openstack compatible WWN strings.
+        """Convert a list of VMEM WWNs to OpenStack compatible WWN strings.
 
         Input format is 'wwn.50:01:43:80:18:6b:3f:65', output format
         is '50014380186b3f65'.
@@ -521,7 +521,7 @@ class V6000FCDriver(driver.FibreChannelDriver):
             wwns -- list of VMEM-based WWN strings.
 
         Returns:
-            output -- list of Openstack-based WWN strings.
+            output -- list of OpenStack-based WWN strings.
         """
         output = []
         for w in wwns:

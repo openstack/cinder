@@ -867,7 +867,7 @@ class EMCVMAXMasking(object):
                 name = 'world wide port names'
             else:
                 msg = (_("FC is the protocol but wwpns are "
-                         "not supplied by Openstack."))
+                         "not supplied by OpenStack."))
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
 

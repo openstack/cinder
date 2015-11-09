@@ -150,7 +150,7 @@ class XIOISEDriver(object):
                 support['thin-clones'] = True
         # Make sure ISE support necessary features
         if not support['clones']:
-            LOG.error(_LE("ISE FW version is not compatible with Openstack!"))
+            LOG.error(_LE("ISE FW version is not compatible with OpenStack!"))
             RaiseXIODriverException()
         # set up thin provisioning support
         self.configuration.san_thin_provision = support['thin-clones']
@@ -802,7 +802,7 @@ class XIOISEDriver(object):
         # Log host creation.
         LOG.debug("Create host %(host)s; %(endpoint)s",
                   {'host': hostname, 'endpoint': endpoint_str})
-        # Issue REST call to create host entry of Openstack type.
+        # Issue REST call to create host entry of OpenStack type.
         params = {}
         params = {'name': hostname, 'endpoint': endpoint_str,
                   'os': 'openstack'}
@@ -1335,7 +1335,7 @@ class XIOISEDriver(object):
                 LOG.error(_LE("Host could not be found!"))
                 RaiseXIODriverException()
         elif string.upper(host['type']) != 'OPENSTACK':
-            # Make sure host type is marked as Openstack host
+            # Make sure host type is marked as OpenStack host
             params = {'os': 'openstack'}
             resp = self._send_cmd('PUT', host['locator'], params)
             status = resp['status']

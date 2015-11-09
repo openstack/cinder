@@ -14,7 +14,7 @@
 #    under the License.
 
 """
-Violin Memory 6000 Series All-Flash Array Common Driver for Openstack Cinder
+Violin Memory 6000 Series All-Flash Array Common Driver for OpenStack Cinder
 
 Provides common (ie., non-protocol specific) management functions for
 V6000 series flash arrays.
