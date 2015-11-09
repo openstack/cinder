@@ -617,18 +617,18 @@ class VMwareVolumeOps(object):
                    'folder': folder})
         return folder
 
-    def extend_virtual_disk(self, requested_size_in_gb, name, dc_ref,
+    def extend_virtual_disk(self, requested_size_in_gb, path, dc_ref,
                             eager_zero=False):
         """Extend the virtual disk to the requested size.
 
         :param requested_size_in_gb: Size of the volume in GB
-        :param name: Name of the backing
+        :param path: Datastore path of the virtual disk to extend
         :param dc_ref: Reference to datacenter
         :param eager_zero: Boolean determining if the free space
         is zeroed out
         """
-        LOG.debug("Extending the volume %(name)s to %(size)s GB.",
-                  {'name': name, 'size': requested_size_in_gb})
+        LOG.debug("Extending virtual disk: %(path)s to %(size)s GB.",
+                  {'path': path, 'size': requested_size_in_gb})
         diskMgr = self._session.vim.service_content.virtualDiskManager
 
         # VMWare API needs the capacity unit to be in KB, so convert the
@@ -637,14 +637,14 @@ class VMwareVolumeOps(object):
         task = self._session.invoke_api(self._session.vim,
                                         "ExtendVirtualDisk_Task",
                                         diskMgr,
-                                        name=name,
+                                        name=path,
                                         datacenter=dc_ref,
                                         newCapacityKb=size_in_kb,
                                         eagerZero=eager_zero)
         self._session.wait_for_task(task)
-        LOG.info(_LI("Successfully extended the volume %(name)s to "
+        LOG.info(_LI("Successfully extended virtual disk: %(path)s to "
                      "%(size)s GB."),
-                 {'name': name, 'size': requested_size_in_gb})
+                 {'path': path, 'size': requested_size_in_gb})
 
     def _create_controller_config_spec(self, adapter_type):
         """Returns config spec for adding a disk controller."""

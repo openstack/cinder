@@ -294,90 +294,6 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         self.assertRaises(cinder_exceptions.InvalidVolume,
                           self._driver.delete_snapshot, snapshot)
 
-    @mock.patch.object(VMDK_DRIVER, '_select_ds_for_volume')
-    @mock.patch.object(VMDK_DRIVER, '_extend_vmdk_virtual_disk')
-    @mock.patch.object(VMDK_DRIVER, 'volumeops')
-    def test_extend_volume(self, volume_ops, _extend_virtual_disk,
-                           _select_ds_for_volume):
-        """Test extend_volume."""
-        self._test_extend_volume(volume_ops, _extend_virtual_disk,
-                                 _select_ds_for_volume)
-
-    def _test_extend_volume(self, volume_ops, _extend_virtual_disk,
-                            _select_ds_for_volume):
-        fake_name = u'volume-00000001'
-        new_size = '21'
-        fake_size = '20'
-        fake_vol = {'project_id': 'testprjid', 'name': fake_name,
-                    'size': fake_size,
-                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'}
-        fake_host = mock.sentinel.host
-        fake_rp = mock.sentinel.rp
-        fake_folder = mock.sentinel.folder
-        fake_summary = mock.Mock(spec=object)
-        fake_summary.datastore = mock.sentinel.datastore
-        fake_summary.name = 'fake_name'
-        fake_backing = mock.sentinel.backing
-        volume_ops.get_backing.return_value = fake_backing
-
-        # If there is enough space in the datastore, where the volume is
-        # located, then the rest of this method will not be called.
-        self._driver.extend_volume(fake_vol, new_size)
-        _extend_virtual_disk.assert_called_with(fake_name, new_size)
-        self.assertFalse(_select_ds_for_volume.called)
-        self.assertFalse(volume_ops.get_backing.called)
-        self.assertFalse(volume_ops.relocate_backing.called)
-        self.assertFalse(volume_ops.move_backing_to_folder.called)
-
-        # If there is not enough space in the datastore, where the volume is
-        # located, then the rest of this method will be called. The first time
-        # _extend_virtual_disk is called, VimFaultException is raised. The
-        # second time it is called, there is no exception.
-        _extend_virtual_disk.reset_mock()
-        _extend_virtual_disk.side_effect = [exceptions.
-                                            VimFaultException([],
-                                                              'Error'), None]
-        # When _select_ds_for_volume raises no exception.
-        _select_ds_for_volume.return_value = (fake_host, fake_rp,
-                                              fake_folder, fake_summary)
-        self._driver.extend_volume(fake_vol, new_size)
-        _select_ds_for_volume.assert_called_with(new_size)
-        volume_ops.get_backing.assert_called_with(fake_name)
-        volume_ops.relocate_backing.assert_called_with(fake_backing,
-                                                       fake_summary.datastore,
-                                                       fake_rp,
-                                                       fake_host)
-        _extend_virtual_disk.assert_called_with(fake_name, new_size)
-        volume_ops.move_backing_to_folder.assert_called_with(fake_backing,
-                                                             fake_folder)
-
-        # If get_backing raises error_util.VimException,
-        # this exception will be caught for volume extend.
-        _extend_virtual_disk.reset_mock()
-        _extend_virtual_disk.side_effect = [exceptions.
-                                            VimFaultException([],
-                                                              'Error'), None]
-        volume_ops.get_backing.side_effect = exceptions.VimException('Error')
-        self.assertRaises(exceptions.VimException, self._driver.extend_volume,
-                          fake_vol, new_size)
-
-        # If _select_ds_for_volume raised an exception, the rest code will
-        # not be called.
-        _extend_virtual_disk.reset_mock()
-        volume_ops.get_backing.reset_mock()
-        volume_ops.relocate_backing.reset_mock()
-        volume_ops.move_backing_to_folder.reset_mock()
-        _extend_virtual_disk.side_effect = [exceptions.
-                                            VimFaultException([],
-                                                              'Error'), None]
-        _select_ds_for_volume.side_effect = exceptions.VimException('Error')
-        self.assertRaises(exceptions.VimException, self._driver.extend_volume,
-                          fake_vol, new_size)
-        _extend_virtual_disk.assert_called_once_with(fake_name, new_size)
-        self.assertFalse(volume_ops.get_backing.called)
-        self.assertFalse(volume_ops.relocate_backing.called)
-        self.assertFalse(volume_ops.move_backing_to_folder.called)
-
     def test_copy_image_to_volume_non_vmdk(self):
         """Test copy_image_to_volume for a non-vmdk disk format."""
         fake_context = mock.sentinel.context
@@ -391,7 +307,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                           fake_context, fake_volume,
                           image_service, fake_image_id)
 
-    @mock.patch.object(VMDK_DRIVER, '_extend_vmdk_virtual_disk')
+    @mock.patch.object(VMDK_DRIVER, '_extend_backing')
     @mock.patch('oslo_utils.uuidutils.generate_uuid')
     @mock.patch.object(VMDK_DRIVER, '_select_ds_for_volume')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
@@ -405,7 +321,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     def test_copy_image_to_volume_non_stream_optimized(
             self, create_backing, get_ds_name_folder_path, get_disk_type,
             create_disk_from_sparse_image, create_disk_from_preallocated_image,
-            vops, select_ds_for_volume, generate_uuid, extend_disk):
+            vops, select_ds_for_volume, generate_uuid, extend_backing):
         self._test_copy_image_to_volume_non_stream_optimized(
             create_backing,
             get_ds_name_folder_path,
@@ -415,12 +331,12 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             vops,
             select_ds_for_volume,
             generate_uuid,
-            extend_disk)
+            extend_backing)
 
     def _test_copy_image_to_volume_non_stream_optimized(
             self, create_backing, get_ds_name_folder_path, get_disk_type,
             create_disk_from_sparse_image, create_disk_from_preallocated_image,
-            vops, select_ds_for_volume, generate_uuid, extend_disk):
+            vops, select_ds_for_volume, generate_uuid, extend_backing):
         image_size_in_bytes = 2 * units.Gi
         adapter_type = 'lsiLogic'
         image_meta = {'disk_format': 'vmdk',
@@ -494,8 +410,9 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         vops.delete_backing.assert_called_once_with(backing)
         vops.update_backing_disk_uuid.assert_called_once_with(clone,
                                                               volume['id'])
-        self.assertFalse(extend_disk.called)
+        self.assertFalse(extend_backing.called)
 
+        vops.get_backing.return_value = backing
         vops.get_disk_size.return_value = 1 * units.Gi
         create_backing.reset_mock()
         vops.attach_disk_to_backing.reset_mock()
@@ -517,9 +434,9 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             adapter_type, path.get_descriptor_ds_file_path())
         vops.update_backing_disk_uuid.assert_called_once_with(backing,
                                                               volume['id'])
-        extend_disk.assert_called_once_with(volume['name'], volume['size'])
+        extend_backing.assert_called_once_with(backing, volume['size'])
 
-        extend_disk.reset_mock()
+        extend_backing.reset_mock()
         create_disk_from_preallocated_image.side_effect = (
             exceptions.VimException("Error"))
 
@@ -527,7 +444,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                           self._driver.copy_image_to_volume,
                           context, volume, image_service, image_id)
         vops.delete_backing.assert_called_once_with(backing)
-        self.assertFalse(extend_disk.called)
+        self.assertFalse(extend_backing.called)
 
     @mock.patch.object(VMDK_DRIVER, '_copy_temp_virtual_disk')
     @mock.patch.object(VMDK_DRIVER, '_get_temp_image_folder')
@@ -724,7 +641,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         self.assertEqual(dest_path, ret)
 
     @mock.patch.object(image_transfer, 'download_stream_optimized_image')
-    @mock.patch.object(VMDK_DRIVER, '_extend_vmdk_virtual_disk')
+    @mock.patch.object(VMDK_DRIVER, '_extend_backing')
     @mock.patch.object(VMDK_DRIVER, '_select_ds_for_volume')
     @mock.patch.object(VMDK_DRIVER, '_get_storage_profile_id')
     @mock.patch.object(VMDK_DRIVER, 'session')
@@ -734,7 +651,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                                                    session,
                                                    get_profile_id,
                                                    _select_ds_for_volume,
-                                                   _extend_virtual_disk,
+                                                   extend_backing,
                                                    download_image):
         """Test copy_image_to_volume.
 
@@ -744,14 +661,14 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                                                          session,
                                                          get_profile_id,
                                                          _select_ds_for_volume,
-                                                         _extend_virtual_disk,
+                                                         extend_backing,
                                                          download_image)
 
     def _test_copy_image_to_volume_stream_optimized(self, volumeops,
                                                     session,
                                                     get_profile_id,
                                                     _select_ds_for_volume,
-                                                    _extend_virtual_disk,
+                                                    extend_backing,
                                                     download_image):
         fake_context = mock.Mock()
         fake_backing = mock.sentinel.backing
@@ -797,7 +714,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         self.assertFalse(volumeops.get_create_spec.called)
 
         # If the volume size is greater then than the backing's disk size,
-        # _extend_vmdk_virtual_disk will be called.
+        # _extend_backing will be called.
         _select_ds_for_volume.side_effect = None
         _select_ds_for_volume.return_value = (fake_host, fake_rp,
                                               fake_folder, fake_summary)
@@ -836,18 +753,17 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                                           image_size=size)
         volumeops.update_backing_disk_uuid.assert_called_once_with(
             backing, fake_volume['id'])
-        _extend_virtual_disk.assert_called_once_with(fake_volume['name'],
-                                                     fake_volume_size)
+        extend_backing.assert_called_once_with(backing, fake_volume_size)
 
         # If the volume size is not greater then than backing's disk size,
-        # _extend_vmdk_virtual_disk will not be called.
+        # _extend_backing will not be called.
         volumeops.get_disk_size.return_value = fake_volume_size * units.Gi
-        _extend_virtual_disk.reset_mock()
+        extend_backing.reset_mock()
 
         self._driver.copy_image_to_volume(fake_context, fake_volume,
                                           image_service, fake_image_id)
 
-        self.assertFalse(_extend_virtual_disk.called)
+        self.assertFalse(extend_backing.called)
 
         # If fetch_stream_optimized_image raises an exception,
         # get_backing and delete_backing will be called.
@@ -859,7 +775,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                           image_service, fake_image_id)
         volumeops.get_backing.assert_called_with(fake_volume['name'])
         volumeops.delete_backing.assert_called_with(fake_backing)
-        self.assertFalse(_extend_virtual_disk.called)
+        self.assertFalse(extend_backing.called)
 
     def test_copy_volume_to_image_non_vmdk(self):
         """Test copy_volume_to_image for a non-vmdk disk format."""
@@ -1152,45 +1068,21 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         self.assertFalse(vops.change_backing_profile.called)
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
-    def test_extend_vmdk_virtual_disk(self, volume_ops):
-        """Test vmdk._extend_vmdk_virtual_disk."""
-        self._test_extend_vmdk_virtual_disk(volume_ops)
+    def test_extend_backing(self, vops):
+        vmdk_path = mock.sentinel.vmdk_path
+        vops.get_vmdk_path.return_value = vmdk_path
+        dc = mock.sentinel.datacenter
+        vops.get_dc.return_value = dc
 
-    def _test_extend_vmdk_virtual_disk(self, volume_ops):
-        fake_backing = mock.sentinel.backing
-        fake_vmdk_path = "[datastore] dest_vm/dest_vm.vmdk"
-        fake_dc = mock.sentinel.datacenter
-        fake_name = 'fake_name'
-        fake_size = 7
+        backing = mock.sentinel.backing
+        new_size = 1
+        self._driver._extend_backing(backing, new_size)
 
-        # If the backing is None, get_vmdk_path and get_dc
-        # will not be called
-        volume_ops.get_backing.return_value = None
-        volume_ops.get_vmdk_path.return_value = fake_vmdk_path
-        volume_ops.get_dc.return_value = fake_dc
-        self._driver._extend_vmdk_virtual_disk(fake_name, fake_size)
-        volume_ops.get_backing.assert_called_once_with(fake_name)
-        self.assertFalse(volume_ops.get_vmdk_path.called)
-        self.assertFalse(volume_ops.get_dc.called)
-        self.assertFalse(volume_ops.extend_virtual_disk.called)
-
-        # Reset the mock and set the backing with a fake,
-        # all the mocks should be called.
-        volume_ops.get_backing.reset_mock()
-        volume_ops.get_backing.return_value = fake_backing
-        self._driver._extend_vmdk_virtual_disk(fake_name, fake_size)
-        volume_ops.get_vmdk_path.assert_called_once_with(fake_backing)
-        volume_ops.get_dc.assert_called_once_with(fake_backing)
-        volume_ops.extend_virtual_disk.assert_called_once_with(fake_size,
-                                                               fake_vmdk_path,
-                                                               fake_dc)
-
-        # Test the exceptional case for extend_virtual_disk
-        volume_ops.extend_virtual_disk.side_effect = exceptions.VimException(
-            'VimException raised.')
-        self.assertRaises(exceptions.VimException,
-                          self._driver._extend_vmdk_virtual_disk,
-                          fake_name, fake_size)
+        vops.get_vmdk_path.assert_called_once_with(backing)
+        vops.get_dc.assert_called_once_with(backing)
+        vops.extend_virtual_disk.assert_called_once_with(new_size,
+                                                         vmdk_path,
+                                                         dc)
 
     @mock.patch.object(image_transfer, 'copy_stream_optimized_disk')
     @mock.patch('cinder.volume.drivers.vmware.vmdk.open', create=True)
@@ -1790,9 +1682,9 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         vops.create_vm_inventory_folder.assert_called_once_with(
             datacenter, ['OpenStack', project_folder_name, self.VOLUME_FOLDER])
 
-    @mock.patch.object(VMDK_DRIVER, '_extend_vmdk_virtual_disk')
+    @mock.patch.object(VMDK_DRIVER, '_extend_backing')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
-    def test_clone_backing_linked(self, volume_ops, _extend_vmdk_virtual_disk):
+    def test_clone_backing_linked(self, volume_ops, extend_backing):
         """Test _clone_backing with clone type - linked."""
         clone = mock.sentinel.clone
         volume_ops.clone_backing.return_value = clone
@@ -1823,25 +1715,24 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             clone, fake_volume['id'])
 
         # If the volume size is greater than the original snapshot size,
-        # _extend_vmdk_virtual_disk will be called.
-        _extend_vmdk_virtual_disk.assert_called_with(fake_volume['name'],
-                                                     fake_volume['size'])
+        # _extend_backing will be called.
+        extend_backing.assert_called_with(clone, fake_volume['size'])
 
         # If the volume size is not greater than the original snapshot size,
-        # _extend_vmdk_virtual_disk will not be called.
+        # _extend_backing will not be called.
         fake_size = 2
         fake_volume['size'] = fake_size
-        _extend_vmdk_virtual_disk.reset_mock()
+        extend_backing.reset_mock()
         self._driver._clone_backing(fake_volume, fake_backing, fake_snapshot,
                                     volumeops.LINKED_CLONE_TYPE,
                                     fake_snapshot['volume_size'])
-        self.assertFalse(_extend_vmdk_virtual_disk.called)
+        self.assertFalse(extend_backing.called)
 
-    @mock.patch.object(VMDK_DRIVER, '_extend_vmdk_virtual_disk')
+    @mock.patch.object(VMDK_DRIVER, '_extend_backing')
     @mock.patch.object(VMDK_DRIVER, '_select_ds_for_volume')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     def test_clone_backing_full(self, volume_ops, _select_ds_for_volume,
-                                _extend_vmdk_virtual_disk):
+                                extend_backing):
         """Test _clone_backing with clone type - full."""
         fake_host = mock.sentinel.host
         fake_folder = mock.sentinel.folder
@@ -1882,19 +1773,18 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             clone, fake_volume['id'])
 
         # If the volume size is greater than the original snapshot size,
-        # _extend_vmdk_virtual_disk will be called.
-        _extend_vmdk_virtual_disk.assert_called_with(fake_volume['name'],
-                                                     fake_volume['size'])
+        # _extend_backing will be called.
+        extend_backing.assert_called_with(clone, fake_volume['size'])
 
         # If the volume size is not greater than the original snapshot size,
-        # _extend_vmdk_virtual_disk will not be called.
+        # _extend_backing will not be called.
         fake_size = 2
         fake_volume['size'] = fake_size
-        _extend_vmdk_virtual_disk.reset_mock()
+        extend_backing.reset_mock()
         self._driver._clone_backing(fake_volume, fake_backing, fake_snapshot,
                                     volumeops.FULL_CLONE_TYPE,
                                     fake_snapshot['volume_size'])
-        self.assertFalse(_extend_vmdk_virtual_disk.called)
+        self.assertFalse(extend_backing.called)
 
     @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
                 'volumeops', new_callable=mock.PropertyMock)
@@ -2491,6 +2381,88 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             pbm_wsdl_loc=None,
             cacert=self._config.vmware_ca_file,
             insecure=self._config.vmware_insecure)
+
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, '_extend_backing')
+    def test_extend_volume_with_no_backing(self, extend_backing, vops):
+        vops.get_backing.return_value = None
+
+        volume = {'name': 'volume-51e47214-8e3c-475d-b44b-aea6cd3eef53',
+                  'volume_type_id': None, 'size': 1,
+                  'id': '51e47214-8e3c-475d-b44b-aea6cd3eef53',
+                  'display_name': 'foo'}
+        self._driver.extend_volume(volume, 2)
+
+        self.assertFalse(extend_backing.called)
+
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, '_extend_backing')
+    def test_extend_volume(self, extend_backing, vops):
+        backing = mock.sentinel.backing
+        vops.get_backing.return_value = backing
+
+        volume = {'name': 'volume-51e47214-8e3c-475d-b44b-aea6cd3eef53',
+                  'volume_type_id': None, 'size': 1,
+                  'id': '51e47214-8e3c-475d-b44b-aea6cd3eef53',
+                  'display_name': 'foo'}
+        new_size = 2
+        self._driver.extend_volume(volume, new_size)
+
+        extend_backing.assert_called_once_with(backing, new_size)
+
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, '_extend_backing')
+    @mock.patch.object(VMDK_DRIVER, '_select_ds_for_volume')
+    def test_extend_volume_with_no_disk_space(self, select_ds_for_volume,
+                                              extend_backing, vops):
+        backing = mock.sentinel.backing
+        vops.get_backing.return_value = backing
+
+        extend_backing.side_effect = [exceptions.NoDiskSpaceException, None]
+
+        host = mock.sentinel.host
+        rp = mock.sentinel.rp
+        folder = mock.sentinel.folder
+        datastore = mock.sentinel.datastore
+        summary = mock.Mock(datastore=datastore)
+        select_ds_for_volume.return_value = (host, rp, folder, summary)
+
+        volume = {'name': 'volume-51e47214-8e3c-475d-b44b-aea6cd3eef53',
+                  'volume_type_id': None, 'size': 1,
+                  'id': '51e47214-8e3c-475d-b44b-aea6cd3eef53',
+                  'display_name': 'foo'}
+        new_size = 2
+        self._driver.extend_volume(volume, new_size)
+
+        create_params = {vmdk.CREATE_PARAM_DISK_SIZE: new_size}
+        select_ds_for_volume.assert_called_once_with(
+            volume, create_params=create_params)
+
+        vops.relocate_backing.assert_called_once_with(backing, datastore, rp,
+                                                      host)
+        vops.move_backing_to_folder(backing, folder)
+
+        extend_backing_calls = [mock.call(backing, new_size),
+                                mock.call(backing, new_size)]
+        self.assertEqual(extend_backing_calls, extend_backing.call_args_list)
+
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, '_extend_backing')
+    def test_extend_volume_with_extend_backing_error(
+            self, extend_backing, vops):
+        backing = mock.sentinel.backing
+        vops.get_backing.return_value = backing
+
+        extend_backing.side_effect = exceptions.VimException("Error")
+
+        volume = {'name': 'volume-51e47214-8e3c-475d-b44b-aea6cd3eef53',
+                  'volume_type_id': None, 'size': 1,
+                  'id': '51e47214-8e3c-475d-b44b-aea6cd3eef53',
+                  'display_name': 'foo'}
+        new_size = 2
+        self.assertRaises(exceptions.VimException, self._driver.extend_volume,
+                          volume, new_size)
+        extend_backing.assert_called_once_with(backing, new_size)
 
 
 class ImageDiskTypeTest(test.TestCase):
