@@ -33,15 +33,18 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import importutils
 import six
+import string
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI
 from cinder.zonemanager.drivers.cisco import cisco_fabric_opts as fabric_opts
+from cinder.zonemanager.drivers import driver_utils
 from cinder.zonemanager.drivers import fc_zone_driver
 from cinder.zonemanager import utils as zm_utils
 
 LOG = logging.getLogger(__name__)
 
+SUPPORTED_CHARS = string.ascii_letters + string.digits + '$' + '-' + '^' + '_'
 cisco_opts = [
     cfg.StrOpt('cisco_sb_connector',
                default='cinder.zonemanager.drivers.cisco'
@@ -61,9 +64,10 @@ class CiscoFCZoneDriver(fc_zone_driver.FCZoneDriver):
 
     Version history:
         1.0 - Initial Cisco FC zone driver
+        1.1 - Added friendly zone name support
     """
 
-    VERSION = "1.0.0"
+    VERSION = "1.1.0"
 
     def __init__(self, **kwargs):
         super(CiscoFCZoneDriver, self).__init__(**kwargs)
@@ -109,7 +113,8 @@ class CiscoFCZoneDriver(fc_zone_driver.FCZoneDriver):
                     fabric_names)
 
     @lockutils.synchronized('cisco', 'fcfabric-', True)
-    def add_connection(self, fabric, initiator_target_map):
+    def add_connection(self, fabric, initiator_target_map, host_name=None,
+                       storage_system=None):
         """Concrete implementation of add_connection.
 
         Based on zoning policy and state of each I-T pair, list of zone
@@ -165,10 +170,15 @@ class CiscoFCZoneDriver(fc_zone_driver.FCZoneDriver):
                             zone_members = [
                                 zm_utils.get_formatted_wwn(initiator),
                                 zm_utils.get_formatted_wwn(target)]
-                            zone_name = (self.
-                                         configuration.cisco_zone_name_prefix
-                                         + initiator.replace(':', '')
-                                         + target.replace(':', ''))
+                            zone_name = (
+                                driver_utils.get_friendly_zone_name(
+                                    zoning_policy,
+                                    initiator,
+                                    target,
+                                    host_name,
+                                    storage_system,
+                                    self.configuration.cisco_zone_name_prefix,
+                                    SUPPORTED_CHARS))
                             if (len(cfgmap_from_fabric) == 0 or (
                                     zone_name not in zone_names)):
                                 zone_map[zone_name] = zone_members
@@ -185,8 +195,15 @@ class CiscoFCZoneDriver(fc_zone_driver.FCZoneDriver):
                             zone_members.append(
                                 zm_utils.get_formatted_wwn(target))
 
-                        zone_name = self.configuration.cisco_zone_name_prefix \
-                            + initiator.replace(':', '')
+                        zone_name = (
+                            driver_utils.get_friendly_zone_name(
+                                zoning_policy,
+                                initiator,
+                                target,
+                                host_name,
+                                storage_system,
+                                self.configuration.cisco_zone_name_prefix,
+                                SUPPORTED_CHARS))
 
                         if len(zone_names) > 0 and (zone_name in zone_names):
                             zone_members = zone_members + filter(
@@ -228,7 +245,8 @@ class CiscoFCZoneDriver(fc_zone_driver.FCZoneDriver):
                 LOG.debug("Zoning session exists VSAN: %s", zoning_vsan)
 
     @lockutils.synchronized('cisco', 'fcfabric-', True)
-    def delete_connection(self, fabric, initiator_target_map):
+    def delete_connection(self, fabric, initiator_target_map, host_name=None,
+                          storage_system=None):
         """Concrete implementation of delete_connection.
 
         Based on zoning policy and state of each I-T pair, list of zones
@@ -288,9 +306,14 @@ class CiscoFCZoneDriver(fc_zone_driver.FCZoneDriver):
                     for t in t_list:
                         target = t.lower()
                         zone_name = (
-                            self.configuration.cisco_zone_name_prefix
-                            + initiator.replace(':', '')
-                            + target.replace(':', ''))
+                            driver_utils.get_friendly_zone_name(
+                                zoning_policy,
+                                initiator,
+                                target,
+                                host_name,
+                                storage_system,
+                                self.configuration.cisco_zone_name_prefix,
+                                SUPPORTED_CHARS))
                         LOG.debug("Zone name to del: %s", zone_name)
                         if (len(zone_names) > 0 and (zone_name in zone_names)):
                             # delete zone.
@@ -305,8 +328,14 @@ class CiscoFCZoneDriver(fc_zone_driver.FCZoneDriver):
                         zone_members.append(
                             zm_utils.get_formatted_wwn(target))
 
-                    zone_name = self.configuration.cisco_zone_name_prefix \
-                        + initiator.replace(':', '')
+                    zone_name = driver_utils.get_friendly_zone_name(
+                        zoning_policy,
+                        initiator,
+                        target,
+                        host_name,
+                        storage_system,
+                        self.configuration.cisco_zone_name_prefix,
+                        SUPPORTED_CHARS)
 
                     if (zone_names and (zone_name in zone_names)):
                         filtered_members = filter(

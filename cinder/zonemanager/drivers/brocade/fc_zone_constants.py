@@ -16,7 +16,6 @@
 #    under the License.
 #
 
-
 """
 Common constants used by Brocade FC Zone Driver.
 """
