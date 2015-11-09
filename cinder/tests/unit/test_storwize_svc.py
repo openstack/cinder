@@ -2392,34 +2392,15 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                                       self.driver.initialize_connection,
                                       volume2, self._connector)
 
-                # with storwize_svc_npiv_compatibility_mode set to True,
-                # lsfabric can return [] and initilize_connection will still
-                # complete successfully
-
                 with mock.patch.object(storwize_svc_common.StorwizeHelpers,
                                        'get_conn_fc_wwpns') as conn_fc_wwpns:
                     conn_fc_wwpns.return_value = []
-                    self._set_flag('storwize_svc_npiv_compatibility_mode',
-                                   True)
-                    expected_fc_npiv = {
-                        'driver_volume_type': 'fibre_channel',
-                        'data': {'target_lun': 1,
-                                 'target_wwn': '5005076802432ADE',
-                                 'target_discovered': False}}
+
                     ret = self.driver.initialize_connection(volume2,
                                                             self._connector)
-                    self.assertEqual(
-                        expected_fc_npiv['driver_volume_type'],
-                        ret['driver_volume_type'])
-                    for k, v in expected_fc_npiv['data'].items():
-                        self.assertEqual(v, ret['data'][k])
-                    self._set_flag('storwize_svc_npiv_compatibility_mode',
-                                   False)
 
             ret = self.driver.terminate_connection(volume1, self._connector)
-            # For npiv compatibility test case, we need to terminate connection
-            # to the 2nd volume
-            # Return the fc info only when last volume detached
+
             if protocol == 'FC' and self.USESIM:
                 # For the first volume detach, ret['data'] should be empty
                 # only ret['driver_volume_type'] returned
@@ -3497,76 +3478,6 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         model_update = self.driver.get_replication_status(self.ctxt, volume)
         self.assertIs('copying', model_update['replication_status'])
         self.driver.delete_volume(volume)
-
-    def test_storwize_initiator_target_map_npiv(self):
-        # Create two volumes to be used in mappings
-        ctxt = context.get_admin_context()
-        self._set_flag('storwize_svc_npiv_compatibility_mode', True)
-
-        # Generate us a test volume
-        volume = self._generate_vol_info(None, None)
-        self.driver.create_volume(volume)
-
-        # FIbre Channel volume type
-        vol_type = volume_types.create(ctxt, 'FC', {'protocol': 'FC'})
-
-        volume['volume_type_id'] = vol_type['id']
-
-        # Make sure that the volumes have been created
-        self._assert_vol_exists(volume['name'], True)
-
-        wwpns = ['ff00000000000000', 'ff00000000000001']
-        connector = {'host': 'storwize-svc-test', 'wwpns': wwpns}
-
-        # Initialise the connection
-        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
-                               'get_conn_fc_wwpns') as conn_fc_wwpns:
-            conn_fc_wwpns.return_value = []
-            init_ret = self.driver.initialize_connection(volume, connector)
-
-        # Check that the initiator_target_map is as expected
-        init_data = {'driver_volume_type': 'fibre_channel',
-                     'data': {'initiator_target_map':
-                              {'ff00000000000000': ['5005076802432ADE',
-                                                    '5005076802332ADE',
-                                                    '5005076802532ADE',
-                                                    '5005076802232ADE',
-                                                    '5005076802132ADE',
-                                                    '5005086802132ADE',
-                                                    '5005086802332ADE',
-                                                    '5005086802532ADE',
-                                                    '5005086802232ADE',
-                                                    '5005086802432ADE'],
-                               'ff00000000000001': ['5005076802432ADE',
-                                                    '5005076802332ADE',
-                                                    '5005076802532ADE',
-                                                    '5005076802232ADE',
-                                                    '5005076802132ADE',
-                                                    '5005086802132ADE',
-                                                    '5005086802332ADE',
-                                                    '5005086802532ADE',
-                                                    '5005086802232ADE',
-                                                    '5005086802432ADE']},
-                              'target_discovered': False,
-                              'target_lun': 0,
-                              'target_wwn': '5005076802432ADE',
-                              'volume_id': volume['id']
-                              }
-                     }
-
-        self.assertEqual(init_data, init_ret)
-
-        # Terminate connection
-        term_ret = self.driver.terminate_connection(volume, connector)
-        # Check that the initiator_target_map is as expected
-        term_data = {'driver_volume_type': 'fibre_channel',
-                     'data': {'initiator_target_map':
-                              {'ff00000000000000': ['AABBCCDDEEFF0011'],
-                               'ff00000000000001': ['AABBCCDDEEFF0011']}
-                              }
-                     }
-
-        self.assertEqual(term_data, term_ret)
 
     def test_storwize_consistency_group_snapshot(self):
         cg_type = self._create_consistency_group_volume_type()
