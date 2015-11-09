@@ -121,7 +121,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
 
             rsp = self.restapi.get('service/'
                                    + self.iscsi_service + '/iscsi/status')
-            data_keys = rsp['data'][rsp['data'].keys()[0]]
+            data_keys = rsp['data'][list(rsp['data'].keys())[0]]
             self.target_name = data_keys.split('\n', 1)[0].split(' ')[2]
 
             rsp = self.restapi.get('service/' + self.iscsi_service)
