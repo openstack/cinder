@@ -157,8 +157,7 @@ class LimitsControllerTest(BaseLimitTestSuite):
                     },
 
                 ],
-                "absolute": {"maxTotalVolumeGigabytes": 512,
-                             "maxTotalVolumes": 5, },
+                "absolute": {"maxTotalVolumes": 5, },
             },
         }
         body = jsonutils.loads(response.body)
