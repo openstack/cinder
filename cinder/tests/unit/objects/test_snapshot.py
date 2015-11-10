@@ -47,11 +47,6 @@ fake_snapshot_obj = {
 
 
 class TestSnapshot(test_objects.BaseObjectsTestCase):
-    @staticmethod
-    def _compare(test, expected, actual):
-        for field, value in expected.items():
-            test.assertEqual(expected[field], actual[field],
-                             "Field '%s' is not equal" % field)
 
     @mock.patch('cinder.db.snapshot_get', return_value=fake_db_snapshot)
     def test_get_by_id(self, snapshot_get):

@@ -14,25 +14,12 @@
 
 import mock
 
-from cinder import context
 from cinder import objects
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import objects as test_objects
 
 
 class TestVolumeType(test_objects.BaseObjectsTestCase):
-    def setUp(self):
-        super(TestVolumeType, self).setUp()
-        # NOTE (e0ne): base tests contains original RequestContext from
-        # oslo_context. We change it to our RequestContext implementation
-        # to have 'elevated' method
-        self.context = context.RequestContext(self.user_id, self.project_id,
-                                              is_admin=False)
-
-    @staticmethod
-    def _compare(test, db, obj):
-        for field, value in db.items():
-            test.assertEqual(db[field], obj[field])
 
     @mock.patch('cinder.db.volume_type_get')
     def test_get_by_id(self, volume_type_get):

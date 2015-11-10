@@ -14,32 +14,12 @@
 
 import mock
 
-from oslo_utils import timeutils
-
-from cinder import context
 from cinder import objects
 from cinder.tests.unit import fake_service
 from cinder.tests.unit import objects as test_objects
 
 
 class TestService(test_objects.BaseObjectsTestCase):
-    def setUp(self):
-        super(TestService, self).setUp()
-        # NOTE (e0ne): base tests contains original RequestContext from
-        # oslo_context. We change it to our RequestContext implementation
-        # to have 'elevated' method
-        self.context = context.RequestContext(self.user_id, self.project_id,
-                                              is_admin=False)
-
-    @staticmethod
-    def _compare(test, db, obj):
-        for field, value in db.items():
-            if field in ('modified_at', 'created_at',
-                         'updated_at', 'deleted_at') and db[field]:
-                test.assertEqual(db[field],
-                                 timeutils.normalize_time(obj[field]))
-            else:
-                test.assertEqual(db[field], obj[field])
 
     @mock.patch('cinder.db.service_get')
     def test_get_by_id(self, service_get):

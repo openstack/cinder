@@ -21,21 +21,6 @@ from cinder.tests.unit import objects as test_objects
 
 
 class TestVolume(test_objects.BaseObjectsTestCase):
-    def setUp(self):
-        super(TestVolume, self).setUp()
-        # NOTE (e0ne): base tests contains original RequestContext from
-        # oslo_context. We change it to our RequestContext implementation
-        # to have 'elevated' method
-        self.context = context.RequestContext(self.user_id, self.project_id,
-                                              is_admin=False)
-
-    @staticmethod
-    def _compare(test, db, obj):
-        for field, value in db.items():
-            if not hasattr(obj, field):
-                continue
-
-            test.assertEqual(db[field], obj[field])
 
     @mock.patch('cinder.db.volume_glance_metadata_get', return_value={})
     @mock.patch('cinder.db.volume_get')

@@ -14,7 +14,6 @@
 
 import mock
 
-from cinder import context
 from cinder import exception
 from cinder import objects
 from cinder.tests.unit import fake_volume
@@ -37,18 +36,6 @@ fake_backup = {
 
 
 class TestBackup(test_objects.BaseObjectsTestCase):
-    def setUp(self):
-        super(TestBackup, self).setUp()
-        # NOTE (e0ne): base tests contains original RequestContext from
-        # oslo_context. We change it to our RequestContext implementation
-        # to have 'elevated' method
-        self.context = context.RequestContext(self.user_id, self.project_id,
-                                              is_admin=False)
-
-    @staticmethod
-    def _compare(test, db, obj):
-        for field, value in db.items():
-            test.assertEqual(db[field], obj[field])
 
     @mock.patch('cinder.db.backup_get', return_value=fake_backup)
     def test_get_by_id(self, backup_get):

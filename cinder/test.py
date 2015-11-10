@@ -42,7 +42,6 @@ from cinder.common import config  # noqa Need to register global_opts
 from cinder.db import migration
 from cinder.db.sqlalchemy import api as sqla_api
 from cinder import i18n
-from cinder import objects
 from cinder import rpc
 from cinder import service
 from cinder.tests.unit import conf_fixture
@@ -148,9 +147,6 @@ class TestCase(testtools.TestCase):
         p = mock.patch('cinder.rpc.get_notifier',
                        side_effect=self._get_joined_notifier)
         p.start()
-
-        # Import cinder objects for test cases
-        objects.register_all()
 
         # Unit tests do not need to use lazy gettext
         i18n.enable_lazy(False)
