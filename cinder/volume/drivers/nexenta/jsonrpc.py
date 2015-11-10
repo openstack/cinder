@@ -1,4 +1,4 @@
-# Copyright 2011-2015 Nexenta Systems, Inc.
+# Copyright 2015 Nexenta Systems, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -17,47 +17,19 @@
 =====================================================================
 
 .. automodule:: nexenta.jsonrpc
-.. moduleauthor:: Nexenta OpenStack Developers <openstack.team@nexenta.com>
 """
 
 import socket
-import time
 
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
 import requests
-from six import wraps
 
-from cinder.i18n import _LE
-from cinder.volume.drivers import nexenta
+from cinder import exception
+from cinder.utils import retry
 
 LOG = logging.getLogger(__name__)
 socket.setdefaulttimeout(100)
-
-
-def retry(exc_tuple, tries=5, delay=1, backoff=2):
-    def retry_dec(f):
-        @wraps(f)
-        def func_retry(*args, **kwargs):
-            _tries, _delay = tries, delay
-            while _tries > 1:
-                try:
-                    return f(*args, **kwargs)
-                except exc_tuple:
-                    time.sleep(_delay)
-                    _tries -= 1
-                    _delay *= backoff
-                    LOG.debug('Retrying %s, (%s attempts remaining)...',
-                              args, _tries)
-            msg = (_LE('Retry count exceeded for command: %s'), args)
-            LOG.error(msg)
-            raise NexentaJSONException(msg)
-        return func_retry
-    return retry_dec
-
-
-class NexentaJSONException(nexenta.NexentaException):
-    pass
 
 
 class NexentaJSONProxy(object):
@@ -97,7 +69,7 @@ class NexentaJSONProxy(object):
     def __repr__(self):
         return 'NMS proxy: %s' % self.url
 
-    @retry(retry_exc_tuple, tries=6)
+    @retry(retry_exc_tuple, retries=6)
     def __call__(self, *args):
         data = jsonutils.dumps({
             'object': self.obj,
@@ -116,5 +88,6 @@ class NexentaJSONProxy(object):
 
         LOG.debug('Got response: %s', response)
         if response.get('error') is not None:
-            raise NexentaJSONException(response['error'].get('message', ''))
+            message = response['error'].get('message', '')
+            raise exception.NexentaException(message)
         return response.get('result')

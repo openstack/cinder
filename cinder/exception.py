@@ -25,11 +25,14 @@ SHOULD include dedicated exception logging.
 import sys
 
 from oslo_config import cfg
+from oslo_log import log as logging
+from oslo_versionedobjects import exception as obj_exc
 import six
 import webob.exc
+from webob.util import status_generic_reasons
+from webob.util import status_reasons
 
 from cinder.i18n import _, _LE
-from cinder.openstack.common import log as logging
 
 
 LOG = logging.getLogger(__name__)
@@ -45,9 +48,23 @@ CONF.register_opts(exc_log_opts)
 
 
 class ConvertedException(webob.exc.WSGIHTTPException):
-    def __init__(self, code=0, title="", explanation=""):
+    def __init__(self, code=500, title="", explanation=""):
         self.code = code
-        self.title = title
+        # There is a strict rule about constructing status line for HTTP:
+        # '...Status-Line, consisting of the protocol version followed by a
+        # numeric status code and its associated textual phrase, with each
+        # element separated by SP characters'
+        # (http://www.faqs.org/rfcs/rfc2616.html)
+        # 'code' and 'title' can not be empty because they correspond
+        # to numeric status code and its associated text
+        if title:
+            self.title = title
+        else:
+            try:
+                self.title = status_reasons[self.code]
+            except KeyError:
+                generic_code = self.code // 100
+                self.title = status_generic_reasons[generic_code]
         self.explanation = explanation
         super(ConvertedException, self).__init__()
 
@@ -79,7 +96,7 @@ class CinderException(Exception):
             except AttributeError:
                 pass
 
-        for k, v in self.kwargs.iteritems():
+        for k, v in self.kwargs.items():
             if isinstance(v, Exception):
                 self.kwargs[k] = six.text_type(v)
 
@@ -92,10 +109,11 @@ class CinderException(Exception):
                 # kwargs doesn't match a variable in the message
                 # log the issue and the kwargs
                 LOG.exception(_LE('Exception in string format operation'))
-                for name, value in kwargs.iteritems():
-                    LOG.error("%s: %s" % (name, value))
+                for name, value in kwargs.items():
+                    LOG.error(_LE("%(name)s: %(value)s"),
+                              {'name': name, 'value': value})
                 if CONF.fatal_exception_format_errors:
-                    raise exc_info[0], exc_info[1], exc_info[2]
+                    six.reraise(*exc_info)
                 # at least get the core message out if something happened
                 message = self.message
         elif isinstance(message, Exception):
@@ -111,7 +129,7 @@ class CinderException(Exception):
         return self.kwargs['message'] is None or '%(message)' in self.message
 
     def __unicode__(self):
-        return unicode(self.msg)
+        return six.text_type(self.msg)
 
 
 class VolumeBackendAPIException(CinderException):
@@ -168,10 +186,6 @@ class InvalidVolumeAttachMode(Invalid):
 
 class VolumeAttached(Invalid):
     message = _("Volume %(volume_id)s is still attached, detach volume first.")
-
-
-class SfJsonEncodeFailure(CinderException):
-    message = _("Failed to load data into json format")
 
 
 class InvalidResults(Invalid):
@@ -250,6 +264,11 @@ class NotFound(CinderException):
 
 class VolumeNotFound(NotFound):
     message = _("Volume %(volume_id)s could not be found.")
+
+
+class VolumeAttachmentNotFound(NotFound):
+    message = _("Volume attachment could not be found with "
+                "filter: %(filter)s .")
 
 
 class VolumeMetadataNotFound(NotFound):
@@ -389,7 +408,6 @@ class FileNotFound(NotFound):
     message = _("File %(file_path)s could not be found.")
 
 
-#TODO(bcwaldon): EOL this exception!
 class Duplicate(CinderException):
     pass
 
@@ -439,14 +457,24 @@ class NoMoreTargets(CinderException):
 class QuotaError(CinderException):
     message = _("Quota exceeded: code=%(code)s")
     code = 413
-    headers = {'Retry-After': 0}
+    headers = {'Retry-After': '0'}
     safe = True
 
 
 class VolumeSizeExceedsAvailableQuota(QuotaError):
-    message = _("Requested volume or snapshot exceeds allowed gigabytes "
+    message = _("Requested volume or snapshot exceeds allowed %(name)s "
                 "quota. Requested %(requested)sG, quota is %(quota)sG and "
                 "%(consumed)sG has been consumed.")
+
+    def __init__(self, message=None, **kwargs):
+        kwargs.setdefault('name', 'gigabytes')
+        super(VolumeSizeExceedsAvailableQuota, self).__init__(
+            message, **kwargs)
+
+
+class VolumeSizeExceedsLimit(QuotaError):
+    message = _("Requested volume size %(size)d is larger than "
+                "maximum allowed limit %(limit)d.")
 
 
 class VolumeBackupSizeExceedsAvailableQuota(QuotaError):
@@ -456,7 +484,12 @@ class VolumeBackupSizeExceedsAvailableQuota(QuotaError):
 
 
 class VolumeLimitExceeded(QuotaError):
-    message = _("Maximum number of volumes allowed (%(allowed)d) exceeded")
+    message = _("Maximum number of volumes allowed (%(allowed)d) exceeded for "
+                "quota '%(name)s'.")
+
+    def __init__(self, message=None, **kwargs):
+        kwargs.setdefault('name', 'volumes')
+        super(VolumeLimitExceeded, self).__init__(message, **kwargs)
 
 
 class SnapshotLimitExceeded(QuotaError):
@@ -523,6 +556,11 @@ class MetadataUpdateFailure(Invalid):
 
 class MetadataCopyFailure(Invalid):
     message = _("Failed to copy metadata to volume: %(reason)s")
+
+
+class InvalidMetadataType(Invalid):
+    message = _("The type of metadata: %(metadata_type)s for volume/snapshot "
+                "%(id)s is invalid.")
 
 
 class ImageCopyFailure(Invalid):
@@ -627,12 +665,17 @@ class QoSSpecsInUse(CinderException):
 
 
 class KeyManagerError(CinderException):
-    msg_fmt = _("key manager error: %(reason)s")
+    message = _("key manager error: %(reason)s")
 
 
 class ManageExistingInvalidReference(CinderException):
     message = _("Manage existing volume failed due to invalid backend "
                 "reference %(existing_ref)s: %(reason)s")
+
+
+class ManageExistingAlreadyManaged(CinderException):
+    message = _("Unable to manage existing volume. "
+                "Volume %(volume_ref)s already managed.")
 
 
 class ReplicationError(CinderException):
@@ -658,71 +701,33 @@ class EvaluatorParseException(Exception):
     message = _("Error during evaluator parsing: %(reason)s")
 
 
+UnsupportedObjectError = obj_exc.UnsupportedObjectError
+OrphanedObjectError = obj_exc.OrphanedObjectError
+IncompatibleObjectVersion = obj_exc.IncompatibleObjectVersion
+ReadOnlyFieldError = obj_exc.ReadOnlyFieldError
+ObjectActionError = obj_exc.ObjectActionError
+ObjectFieldInvalid = obj_exc.ObjectFieldInvalid
+
+
+class VolumeGroupNotFound(CinderException):
+    message = _('Unable to find Volume Group: %(vg_name)s')
+
+
+class VolumeGroupCreationFailed(CinderException):
+    message = _('Failed to create Volume Group: %(vg_name)s')
+
+
+class VolumeDeviceNotFound(CinderException):
+    message = _('Volume device not found at %(device)s.')
+
+
 # Driver specific exceptions
-# Coraid
-class CoraidException(VolumeDriverException):
-    message = _('Coraid Cinder Driver exception.')
-
-
-class CoraidJsonEncodeFailure(CoraidException):
-    message = _('Failed to encode json data.')
-
-
-class CoraidESMBadCredentials(CoraidException):
-    message = _('Login on ESM failed.')
-
-
-class CoraidESMReloginFailed(CoraidException):
-    message = _('Relogin on ESM failed.')
-
-
-class CoraidESMBadGroup(CoraidException):
-    message = _('Group with name "%(group_name)s" not found.')
-
-
-class CoraidESMConfigureError(CoraidException):
-    message = _('ESM configure request failed: %(reason)s')
-
-
-class CoraidESMNotAvailable(CoraidException):
-    message = _('Coraid ESM not available with reason: %(reason)s')
-
-
 # Pure Storage
 class PureDriverException(VolumeDriverException):
     message = _("Pure Storage Cinder driver failure: %(reason)s")
 
 
-# Zadara
-class ZadaraException(VolumeDriverException):
-    message = _('Zadara Cinder Driver exception.')
-
-
-class ZadaraServerCreateFailure(ZadaraException):
-    message = _("Unable to create server object for initiator %(name)s")
-
-
-class ZadaraServerNotFound(ZadaraException):
-    message = _("Unable to find server object for initiator %(name)s")
-
-
-class ZadaraVPSANoActiveController(ZadaraException):
-    message = _("Unable to find any active VPSA controller")
-
-
-class ZadaraAttachmentsNotFound(ZadaraException):
-    message = _("Failed to retrieve attachments for volume %(name)s")
-
-
-class ZadaraInvalidAttachmentInfo(ZadaraException):
-    message = _("Invalid attachment info for volume %(name)s: %(reason)s")
-
-
-class BadHTTPResponseStatus(ZadaraException):
-    message = _("Bad HTTP response status %(status)s")
-
-
-#SolidFire
+# SolidFire
 class SolidFireAPIException(VolumeBackendAPIException):
     message = _("Bad response from SolidFire API")
 
@@ -801,21 +806,18 @@ class GlusterfsNoSuitableShareFound(RemoteFSNoSuitableShareFound):
     message = _("There is no share which can host %(volume_size)sG")
 
 
-# HP MSA
-class HPMSAVolumeDriverException(VolumeDriverException):
-    message = _("HP MSA Volume Driver exception")
+# Virtuozzo Storage Driver
+
+class VzStorageException(RemoteFSException):
+    message = _("Unknown Virtuozzo Storage exception")
 
 
-class HPMSAInvalidVDisk(HPMSAVolumeDriverException):
-    message = _("VDisk doesn't exist (%(vdisk)s)")
+class VzStorageNoSharesMounted(RemoteFSNoSharesMounted):
+    message = _("No mounted Virtuozzo Storage shares found")
 
 
-class HPMSAConnectionError(HPMSAVolumeDriverException):
-    message = _("Unable to connect to MSA array")
-
-
-class HPMSANotEnoughSpace(HPMSAVolumeDriverException):
-    message = _("Not enough space on VDisk (%(vdisk)s)")
+class VzStorageNoSuitableShareFound(RemoteFSNoSuitableShareFound):
+    message = _("There is no share which can host %(volume_size)sG")
 
 
 # Fibre Channel Zone Manager
@@ -914,6 +916,10 @@ class ISCSITargetDetachFailed(CinderException):
     message = _("Failed to detach iSCSI target for volume %(volume_id)s.")
 
 
+class ISCSITargetHelperCommandFailed(CinderException):
+    message = _("%(error_message)s")
+
+
 # X-IO driver exception.
 class XIODriverException(VolumeDriverException):
     message = _("X-IO Volume Driver exception!")
@@ -942,6 +948,77 @@ class ViolinBackendErrNotFound(CinderException):
 
 # ZFSSA NFS driver exception.
 class WebDAVClientError(CinderException):
-        message = _("The WebDAV request failed. Reason: %(msg)s, "
-                    "Return code/reason: %(code)s, Source Volume: %(src)s, "
-                    "Destination Volume: %(dst)s, Method: %(method)s.")
+    message = _("The WebDAV request failed. Reason: %(msg)s, "
+                "Return code/reason: %(code)s, Source Volume: %(src)s, "
+                "Destination Volume: %(dst)s, Method: %(method)s.")
+
+
+# XtremIO Drivers
+class XtremIOAlreadyMappedError(CinderException):
+    message = _("Volume to Initiator Group mapping already exists")
+
+
+class XtremIOArrayBusy(CinderException):
+    message = _("System is busy, retry operation.")
+
+
+# Infortrend EonStor DS Driver
+class InfortrendCliException(CinderException):
+    message = _("Infortrend CLI exception: %(err)s Param: %(param)s "
+                "(Return Code: %(rc)s) (Output: %(out)s)")
+
+
+# DOTHILL drivers
+class DotHillInvalidBackend(CinderException):
+    message = _("Backend doesn't exist (%(backend)s)")
+
+
+class DotHillConnectionError(CinderException):
+    message = _("%(message)s")
+
+
+class DotHillAuthenticationError(CinderException):
+    message = _("%(message)s")
+
+
+class DotHillNotEnoughSpace(CinderException):
+    message = _("Not enough space on backend (%(backend)s)")
+
+
+class DotHillRequestError(CinderException):
+    message = _("%(message)s")
+
+
+class DotHillNotTargetPortal(CinderException):
+    message = _("No active iSCSI portals with supplied iSCSI IPs")
+
+
+# Sheepdog
+class SheepdogError(VolumeBackendAPIException):
+    message = _("An error has occured in SheepdogDriver. (Reason: %(reason)s)")
+
+
+class SheepdogCmdError(SheepdogError):
+    message = _("(Command: %(cmd)s) "
+                "(Return Code: %(exit_code)s) "
+                "(Stdout: %(stdout)s) "
+                "(Stderr: %(stderr)s)")
+
+
+class MetadataAbsent(CinderException):
+    message = _("There is no metadata in DB object.")
+
+
+class NotSupportedOperation(Invalid):
+    message = _("Operation not supported: %(operation)s.")
+    code = 405
+
+
+# Hitachi HNAS drivers
+class HNASConnError(CinderException):
+    message = _("%(message)s")
+
+
+# NexentaStor driver exception
+class NexentaException(CinderException):
+    message = _("%(message)s")

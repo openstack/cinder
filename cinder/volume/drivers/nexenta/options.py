@@ -107,38 +107,6 @@ NEXENTA_VOLUME_OPTS = [
                      '80 is recommened')),
 ]
 
-NEXENTA_DATASET_OPTS = [
-    cfg.StrOpt('nexenta_pool',
-               default='cinder',
-               help='SA Pool'),
-    cfg.StrOpt('nexenta_dataset_group',
-               default='iscsi',
-               help='SA dataset group that holds all volumes'),
-    cfg.StrOpt('nexenta_dataset_compression',
-               default='on',
-               choices=['on', 'off', 'gzip', 'gzip-1', 'gzip-2', 'gzip-3',
-                        'gzip-4', 'gzip-5', 'gzip-6', 'gzip-7', 'gzip-8',
-                        'gzip-9', 'lzjb', 'zle', 'lz4'],
-               help='Compression value for new ZFS folders.'),
-    cfg.StrOpt('nexenta_dataset_dedup',
-               default='off',
-               choices=['on', 'off', 'sha256', 'verify', 'sha256, verify'],
-               help='Deduplication value for new ZFS folders.'),
-    cfg.StrOpt('nexenta_dataset_description',
-               default='',
-               help='Human-readable description for the folder.'),
-    cfg.IntOpt('nexenta_dataset_blocksize',
-               default=32,
-               help='Block size for volumes'),
-    cfg.BoolOpt('nexenta_dataset_sparse',
-                default=False,
-                help='Enables or disables the creation of sparse volumes'),
-    cfg.IntOpt('nexenta_dataset_capacitycheck',
-               default=80,
-               help=('Percentage of real disc capacity for cinder to use. '
-                     '80 is recommened')),
-]
-
 NEXENTA_RRMGR_OPTS = [
     cfg.IntOpt('nexenta_rrmgr_compression',
                default=0,
@@ -156,6 +124,5 @@ CONF = cfg.CONF
 CONF.register_opts(NEXENTA_CONNECTION_OPTS)
 CONF.register_opts(NEXENTA_ISCSI_OPTS)
 CONF.register_opts(NEXENTA_VOLUME_OPTS)
-CONF.register_opts(NEXENTA_DATASET_OPTS)
 CONF.register_opts(NEXENTA_NFS_OPTS)
 CONF.register_opts(NEXENTA_RRMGR_OPTS)

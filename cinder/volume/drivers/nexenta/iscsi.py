@@ -1,5 +1,4 @@
-# Copyright 2011 Nexenta Systems, Inc.
-# All Rights Reserved.
+# Copyright 2015 Nexenta Systems, Inc. All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -16,10 +15,7 @@
 :mod:`nexenta.iscsi` -- Driver to store volumes on Nexenta Appliance
 =====================================================================
 
-.. automodule:: nexenta.volume
-.. moduleauthor:: Victor Rodionov <victor.rodionov@nexenta.com>
-.. moduleauthor:: Mikhail Khodos <mikhail.khodos@nexenta.com>
-.. moduleauthor:: Yuriy Taraday <yorik.sar@gmail.com>
+.. automodule:: nexenta.iscsi
 """
 
 from oslo_log import log as logging
@@ -28,7 +24,6 @@ from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.volume import driver
-from cinder.volume.drivers import nexenta
 from cinder.volume.drivers.nexenta import jsonrpc
 from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
@@ -37,7 +32,7 @@ VERSION = '1.3.0.1'
 LOG = logging.getLogger(__name__)
 
 
-class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
+class NexentaISCSIDriver(driver.ISCSIDriver):
     """Executes volume driver commands on Nexenta Appliance.
 
     Version history:
@@ -84,8 +79,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         self.rrmgr_compression = self.configuration.nexenta_rrmgr_compression
         self.rrmgr_tcp_buf_size = self.configuration.nexenta_rrmgr_tcp_buf_size
         self.rrmgr_connections = self.configuration.nexenta_rrmgr_connections
-        self.iscsi_target_portal_port = \
-            self.configuration.nexenta_iscsi_target_portal_port
+        self.iscsi_target_portal_port = (
+            self.configuration.nexenta_iscsi_target_portal_port)
 
     @property
     def backend_name(self):
@@ -111,7 +106,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :raise: :py:exc:`LookupError`
         """
         if not self.nms.volume.object_exists(self.volume):
-            raise LookupError(_("Volume %s does not exist in Nexenta SA"),
+            raise LookupError(_("Volume %s does not exist in Nexenta SA") %
                               self.volume)
 
     def _get_zvol_name(self, volume_name):
@@ -130,7 +125,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             try:
                 self.nms.iscsitarget.create_target({
                     'target_name': target_name})
-            except nexenta.NexentaException as exc:
+            except exception.NexentaException as exc:
                 if 'already' in exc.args[0]:
                     LOG.info(_LI('Ignored target creation error "%s" while '
                                  'ensuring export.'),
@@ -140,7 +135,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         if not self._target_group_exists(target_group_name):
             try:
                 self.nms.stmf.create_targetgroup(target_group_name)
-            except nexenta.NexentaException as exc:
+            except exception.NexentaException as exc:
                 if ('already' in exc.args[0]):
                     LOG.info(_LI('Ignored target group creation error "%s" '
                                  'while ensuring export.'),
@@ -152,7 +147,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             try:
                 self.nms.stmf.add_targetgroup_member(target_group_name,
                                                      target_name)
-            except nexenta.NexentaException as exc:
+            except exception.NexentaException as exc:
                 if ('already' in exc.args[0]):
                     LOG.info(_LI('Ignored target group member addition error '
                                  '"%s" while ensuring export.'),
@@ -239,7 +234,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         try:
             props = self.nms.zvol.get_child_props(volume_name, 'origin') or {}
             self.nms.zvol.destroy(volume_name, '')
-        except nexenta.NexentaException as exc:
+        except exception.NexentaException as exc:
             if 'does not exist' in exc.args[0]:
                 LOG.info(_LI('Volume %s does not exist, it '
                              'seems it was already deleted.'), volume_name)
@@ -254,7 +249,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             volume = volume.lstrip('%s/' % self.configuration.nexenta_volume)
             try:
                 self.delete_snapshot({'volume_name': volume, 'name': snapshot})
-            except nexenta.NexentaException as exc:
+            except exception.NexentaException as exc:
                 LOG.warning(_LW('Cannot delete snapshot %(origin)s: %(exc)s'),
                             {'origin': origin, 'exc': exc})
 
@@ -275,12 +270,12 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         self.create_snapshot(snapshot)
         try:
             self.create_volume_from_snapshot(volume, snapshot)
-        except nexenta.NexentaException:
+        except exception.NexentaException:
             LOG.error(_LE('Volume creation failed, deleting created snapshot '
                           '%(volume_name)s@%(name)s'), snapshot)
             try:
                 self.delete_snapshot(snapshot)
-            except (nexenta.NexentaException, exception.SnapshotIsBusy):
+            except (exception.NexentaException, exception.SnapshotIsBusy):
                 LOG.warning(_LW('Failed to delete zfs snapshot '
                                 '%(volume_name)s@%(name)s'), snapshot)
             raise
@@ -295,8 +290,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
     @staticmethod
     def get_nms_for_url(url):
         """Returns initialized nms object for url."""
-        auto, scheme, user, password, host, port, path =\
-            utils.parse_nms_url(url)
+        auto, scheme, user, password, host, port, path = (
+            utils.parse_nms_url(url))
         return jsonrpc.NexentaJSONProxy(scheme, host, port, path, user,
                                         password, auto=auto)
 
@@ -307,7 +302,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :param volume: a dictionary describing the volume to migrate
         :param host: a dictionary describing the host to migrate to
         """
-        LOG.debug('Enter: migrate_volume: id=%(id)s, host=%(host)s' %
+        LOG.debug('Enter: migrate_volume: id=%(id)s, host=%(host)s',
                   {'id': volume['id'], 'host': host})
         false_ret = (False, None)
 
@@ -319,17 +314,17 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
         capabilities = host['capabilities']
 
-        if 'location_info' not in capabilities or \
-                'iscsi_target_portal_port' not in capabilities or \
-                'nms_url' not in capabilities:
+        if ('location_info' not in capabilities or
+                'iscsi_target_portal_port' not in capabilities or
+                'nms_url' not in capabilities):
             return false_ret
 
         nms_url = capabilities['nms_url']
         dst_parts = capabilities['location_info'].split(':')
 
-        if capabilities.get('vendor_name') != 'Nexenta' or \
-                dst_parts[0] != self.__class__.__name__ or \
-                capabilities['free_capacity_gb'] < volume['size']:
+        if (capabilities.get('vendor_name') != 'Nexenta' or
+                dst_parts[0] != self.__class__.__name__ or
+                capabilities['free_capacity_gb'] < volume['size']):
             return false_ret
 
         dst_host, dst_volume = dst_parts[1:]
@@ -360,7 +355,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
         try:
             self.nms.appliance.execute(self._get_zfs_send_recv_cmd(src, dst))
-        except nexenta.NexentaException as exc:
+        except exception.NexentaException as exc:
             LOG.warning(_LW("Cannot send source snapshot %(src)s to "
                             "destination %(dst)s. Reason: %(exc)s"),
                         {'src': src, 'dst': dst, 'exc': exc})
@@ -368,13 +363,13 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         finally:
             try:
                 self.delete_snapshot(snapshot)
-            except nexenta.NexentaException as exc:
+            except exception.NexentaException as exc:
                 LOG.warning(_LW("Cannot delete temporary source snapshot "
                                 "%(src)s on NexentaStor Appliance: %(exc)s"),
                             {'src': src, 'exc': exc})
         try:
             self.delete_volume(volume)
-        except nexenta.NexentaException as exc:
+        except exception.NexentaException as exc:
             LOG.warning(_LW("Cannot delete source volume %(volume)s on "
                             "NexentaStor Appliance: %(exc)s"),
                         {'volume': volume['name'], 'exc': exc})
@@ -384,7 +379,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                                      snapshot['name'])
         try:
             dst_nms.snapshot.destroy(dst_snapshot, '')
-        except nexenta.NexentaException as exc:
+        except exception.NexentaException as exc:
             LOG.warning(_LW("Cannot delete temporary destination snapshot "
                             "%(dst)s on NexentaStor Appliance: %(exc)s"),
                         {'dst': dst_snapshot, 'exc': exc})
@@ -453,7 +448,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                     nms.zvol.set_child_prop(
                         zvol, options[opt], new)
                     retyped = True
-                except nexenta.NexentaException:
+                except exception.NexentaException:
                     LOG.error(_LE('Error trying to change %(opt)s'
                                   ' from %(old)s to %(new)s'),
                               {'opt': opt, 'old': old, 'new': new})
@@ -489,7 +484,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         snapshot_name = '%s@%s' % (volume_name, snapshot['name'])
         try:
             self.nms.snapshot.destroy(snapshot_name, '')
-        except nexenta.NexentaException as exc:
+        except exception.NexentaException as exc:
             if "does not exist" in exc.args[0]:
                 LOG.info(_LI('Snapshot %s does not exist, it seems it was '
                              'already deleted.'), snapshot_name)
@@ -560,7 +555,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         """
         try:
             return bool(self.nms.scsidisk.lu_exists(zvol_name))
-        except nexenta.NexentaException as exc:
+        except exception.NexentaException as exc:
             if 'does not exist' not in exc.args[0]:
                 raise
             return False
@@ -574,7 +569,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         """
         try:
             shared = self.nms.scsidisk.lu_shared(zvol_name) > 0
-        except nexenta.NexentaException as exc:
+        except exception.NexentaException as exc:
             if 'does not exist for zvol' not in exc.args[0]:
                 raise  # Zvol does not exists
             shared = False  # LU does not exist
@@ -605,7 +600,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         if not self._lu_exists(zvol_name):
             try:
                 entry = self.nms.scsidisk.create_lu(zvol_name, {})
-            except nexenta.NexentaException as exc:
+            except exception.NexentaException as exc:
                 if 'in use' not in exc.args[0]:
                     raise
                 LOG.info(_LI('Ignored LU creation error "%s" while ensuring '
@@ -614,7 +609,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             try:
                 entry = self.nms.scsidisk.add_lun_mapping_entry(zvol_name, {
                     'target_group': target_group_name})
-            except nexenta.NexentaException as exc:
+            except exception.NexentaException as exc:
                 if 'view entry exists' not in exc.args[0]:
                     raise
                 LOG.info(_LI('Ignored LUN mapping entry addition error "%s" '
@@ -639,6 +634,16 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         self.targets[target_name].remove(volume['name'])
         zvol_name = self._get_zvol_name(volume['name'])
         self.nms.scsidisk.delete_lu(zvol_name)
+
+    def get_volume_stats(self, refresh=False):
+        """Get volume stats.
+
+        If 'refresh' is True, run update the stats first.
+        """
+        if refresh:
+            self._update_volume_stats()
+
+        return self._stats
 
     def _update_volume_stats(self):
         """Retrieve stats info for NexentaStor appliance."""
