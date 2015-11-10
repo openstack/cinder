@@ -521,6 +521,20 @@ class EMCXIODriverISCSITestCase(test.TestCase):
                                                      [new_vol1],
                                                      d.cgsnapshot, [snapshot1])
 
+        new_cg_obj = fake_cg.fake_consistencyobject_obj(d.context, id=5)
+        snapset2_name = new_cg_obj.id
+        new_vol1.id = '192eb39b-6c2f-420c-bae3-3cfd117f0001'
+        new_vol2 = fake_volume.fake_volume_obj(d.context)
+        snapset2 = {'vol-list': [xms_data['volumes'][2]['vol-id']],
+                    'name': snapset2_name,
+                    'index': 1}
+        xms_data['snapshot-sets'].update({5: snapset2,
+                                          snapset2_name: snapset2})
+        self.driver.create_consistencygroup_from_src(d.context, new_cg_obj,
+                                                     [new_vol2],
+                                                     None, None,
+                                                     cg_obj, [new_vol1])
+
 
 @mock.patch('requests.request')
 class EMCXIODriverTestCase(test.TestCase):

@@ -395,7 +395,7 @@ class XtremIOVolumeDriver(san.SanDriver):
         """Creates a volume from a snapshot."""
         if snapshot.get('cgsnapshot_id'):
             # get array snapshot id from CG snapshot
-            snap_by_anc = self.get_snapset_ancestors(snapshot.cgsnapshot)
+            snap_by_anc = self._get_snapset_ancestors(snapshot.cgsnapshot)
             snapshot_id = snap_by_anc[snapshot['volume_id']]
         else:
             snapshot_id = snapshot['id']
@@ -595,8 +595,7 @@ class XtremIOVolumeDriver(san.SanDriver):
 
         return model_update, volumes
 
-    def get_snapset_ancestors(self, cgsnapshot):
-        snapset_name = self._get_cgsnap_name(cgsnapshot)
+    def _get_snapset_ancestors(self, snapset_name):
         snapset = self.client.req('snapshot-sets',
                                   name=snapset_name)['content']
         volume_ids = [s[XTREMIO_OID_INDEX] for s in snapset['vol-list']]
@@ -617,21 +616,38 @@ class XtremIOVolumeDriver(san.SanDriver):
         :param volumes: a list of volume dictionaries in the group.
         :param cgsnapshot: the dictionary of the cgsnapshot as source.
         :param snapshots: a list of snapshot dictionaries in the cgsnapshot.
-        :returns: model_update, volumes_model_update
+        :param source_cg: the dictionary of a consistency group as source.
+        :param source_vols: a list of volume dictionaries in the source_cg.
+        :returns model_update, volumes_model_update
         """
-        if cgsnapshot and snapshots:
-            snap_by_anc = self.get_snapset_ancestors(cgsnapshot)
+        if not (cgsnapshot and snapshots and not source_cg or
+                source_cg and source_vols and not cgsnapshot):
+            msg = _("create_consistencygroup_from_src only supports a "
+                    "cgsnapshot source or a consistency group source. "
+                    "Multiple sources cannot be used.")
+            raise exception.InvalidInput(msg)
+
+        if cgsnapshot:
+            snap_name = self._get_cgsnap_name(cgsnapshot)
+            snap_by_anc = self._get_snapset_ancestors(snap_name)
             for volume, snapshot in zip(volumes, snapshots):
                 real_snap = snap_by_anc[snapshot['volume_id']]
                 self.create_volume_from_snapshot(volume, {'id': real_snap})
-            create_data = {'consistency-group-name': group['id'],
-                           'vol-list': [v['id'] for v in volumes]}
-            self.client.req('consistency-groups', 'POST', data=create_data,
-                            ver='v2')
-        else:
-            msg = _("create_consistencygroup_from_src only supports a"
-                    " cgsnapshot source, other sources cannot be used.")
-            raise exception.InvalidInput(msg)
+
+        elif source_cg:
+            data = {'consistency-group-id': source_cg['id'],
+                    'snapshot-set-name': group['id']}
+            self.client.req('snapshots', 'POST', data, ver='v2')
+            snap_by_anc = self._get_snapset_ancestors(group['id'])
+            for volume, src_vol in zip(volumes, source_vols):
+                snap_vol_name = snap_by_anc[src_vol['id']]
+                self.client.req('volumes', 'PUT', {'name': volume['id']},
+                                name=snap_vol_name)
+
+        create_data = {'consistency-group-name': group['id'],
+                       'vol-list': [v['id'] for v in volumes]}
+        self.client.req('consistency-groups', 'POST', data=create_data,
+                        ver='v2')
 
         return None, None
 
