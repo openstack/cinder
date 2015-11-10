@@ -62,10 +62,9 @@ service_opts = [
     cfg.StrOpt('osapi_volume_listen',
                default="0.0.0.0",
                help='IP address on which OpenStack Volume API listens'),
-    cfg.IntOpt('osapi_volume_listen_port',
-               default=8776,
-               min=1, max=65535,
-               help='Port on which OpenStack Volume API listens'),
+    cfg.PortOpt('osapi_volume_listen_port',
+                default=8776,
+                help='Port on which OpenStack Volume API listens'),
     cfg.IntOpt('osapi_volume_workers',
                help='Number of workers for OpenStack Volume API service. '
                     'The default is equal to the number of CPUs available.'), ]
