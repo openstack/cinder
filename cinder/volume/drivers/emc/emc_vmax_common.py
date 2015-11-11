@@ -1576,9 +1576,9 @@ class EMCVMAXCommon(object):
             LOG.debug("HardwareID instance is: %(hardwareIdInstance)s.",
                       {'hardwareIdInstance': hardwareIdInstance})
             try:
-                _rc, targetEndpoints = (
-                    self.provision.get_target_endpoints(
-                        self.conn, storageHardwareService, hardwareIdInstance))
+                targetEndpoints = (
+                    self.utils.get_target_endpoints(
+                        self.conn, hardwareIdInstance))
             except Exception:
                 errorMessage = (_(
                     "Unable to get target endpoints for hardwareId "
@@ -1588,11 +1588,10 @@ class EMCVMAXCommon(object):
                 raise exception.VolumeBackendAPIException(data=errorMessage)
 
             if targetEndpoints:
-                endpoints = targetEndpoints['TargetEndpoints']
 
                 LOG.debug("There are %(len)lu endpoints.",
-                          {'len': len(endpoints)})
-                for targetendpoint in endpoints:
+                          {'len': len(targetEndpoints)})
+                for targetendpoint in targetEndpoints:
                     wwn = targetendpoint['Name']
                     # Add target wwn to the list if it is not already there.
                     if not any(d == wwn for d in targetWwns):

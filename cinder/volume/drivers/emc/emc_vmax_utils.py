@@ -2436,3 +2436,43 @@ class EMCVMAXUtils(object):
                 cimProperties = properties[1]
                 foundIpAddress = cimProperties.value
         return foundIpAddress
+
+    def get_target_endpoints(self, conn, hardwareId):
+        """Given the hardwareId get the target endpoints.
+
+        :param conn: the connection to the ecom server
+        :param hardwareId: the hardware Id
+        :returns: targetEndpoints
+        :raises: VolumeBackendAPIException
+        """
+        protocolControllerInstanceName = self.get_protocol_controller(
+            conn, hardwareId)
+
+        targetEndpoints = conn.AssociatorNames(
+            protocolControllerInstanceName,
+            ResultClass='EMC_FCSCSIProtocolEndpoint')
+
+        return targetEndpoints
+
+    def get_protocol_controller(self, conn, hardwareinstancename):
+        """Get the front end protocol endpoints of a hardware instance
+
+        :param conn: the ecom connection
+        :param hardwareinstancename: the hardware instance name
+        :returns: protocolControllerInstanceName
+        :raises: VolumeBackendAPIException
+        """
+        protocolControllerInstanceName = None
+        protocol_controllers = conn.AssociatorNames(
+            hardwareinstancename,
+            ResultClass='EMC_FrontEndSCSIProtocolController')
+        if len(protocol_controllers) > 0:
+            protocolControllerInstanceName = protocol_controllers[0]
+        if protocolControllerInstanceName is None:
+            exceptionMessage = (_(
+                "Unable to get target endpoints for hardwareId "
+                "%(hardwareIdInstance)s.")
+                % {'hardwareIdInstance': hardwareinstancename})
+            LOG.error(exceptionMessage)
+            raise exception.VolumeBackendAPIException(data=exceptionMessage)
+        return protocolControllerInstanceName
