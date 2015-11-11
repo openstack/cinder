@@ -52,17 +52,19 @@ class MockKeyManager(key_mgr.KeyManager):
     def __init__(self):
         self.keys = {}
 
-    def _generate_hex_key(self, **kwargs):
-        key_length = kwargs.get('key_length', 256)
+    def _generate_hex_key(self, length):
+        if not length:
+            length = 256
         # hex digit => 4 bits
-        hex_encoded = utils.generate_password(length=key_length // 4,
+        hex_encoded = utils.generate_password(length=length // 4,
                                               symbolgroups='0123456789ABCDEF')
         return hex_encoded
 
     def _generate_key(self, **kwargs):
-        _hex = self._generate_hex_key(**kwargs)
+        _hex = self._generate_hex_key(kwargs.get('key_length'))
         key_bytes = array.array('B', binascii.unhexlify(_hex)).tolist()
-        return key.SymmetricKey('AES', key_bytes)
+        algorithm = kwargs.get('algorithm', 'AES')
+        return key.SymmetricKey(algorithm, key_bytes)
 
     def create_key(self, ctxt, **kwargs):
         """Creates a key.
