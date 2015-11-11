@@ -99,6 +99,10 @@ class StorwizeSSH(object):
         ssh_cmd = ['svcinfo', 'lslicense', '-delim', '!']
         return self.run_ssh_info(ssh_cmd)[0]
 
+    def lsguicapabilities(self):
+        ssh_cmd = ['svcinfo', 'lsguicapabilities', '-delim', '!']
+        return self.run_ssh_info(ssh_cmd)[0]
+
     def lssystem(self):
         ssh_cmd = ['svcinfo', 'lssystem', '-delim', '!']
         return self.run_ssh_info(ssh_cmd)[0]
@@ -411,6 +415,18 @@ class StorwizeHelpers(object):
         for key in keys:
             if resp.get(key, '0') != '0':
                 return True
+
+        # lslicense is not used for V9000 compression check
+        # compression_enclosures and compression_capacity are
+        # always 0. V9000 uses license_scheme 9846 as an
+        # indicator and can always do compression
+        try:
+            resp = self.ssh.lsguicapabilities()
+            if resp.get('license_scheme', '0') == '9846':
+                return True
+        except exception.VolumeBackendAPIException as war:
+            LOG.warning(_LW("Failed to run lsguicapability. "
+                            "Exception: %s."), war)
         return False
 
     def get_system_info(self):
