@@ -9,10 +9,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev134\n"
+"Project-Id-Version: cinder 8.0.0.dev167\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-07 06:36+0000\n"
-"PO-Revision-Date: 2015-11-06 05:27+0000\n"
+"POT-Creation-Date: 2015-11-11 06:36+0000\n"
+"PO-Revision-Date: 2015-11-07 09:04+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language: cs\n"
 "Language-Team: Czech\n"
@@ -1018,7 +1018,7 @@ msgstr ""
 
 #, python-format
 msgid "Cannot get or create initiator group: %(igGroupName)s. "
-msgstr "Nelze získat nebo vytvořit zaváděcí skupinu: %(igGroupName)s. "
+msgstr "Nelze získat nebo vytvořit skupinu zavaděče: %(igGroupName)s. "
 
 #, python-format
 msgid "Cannot get port group: %(pgGroupName)s. "
@@ -1460,13 +1460,6 @@ msgstr "Nelze najít parametr %(param)s"
 #, python-format
 msgid "Could not find target %s"
 msgstr "Nelze najít cíl %s"
-
-msgid ""
-"Could not get FC connection information for the host-volume connection. Is "
-"the host configured properly for FC connections?"
-msgstr ""
-"Nelze získat informace o připojení FC pro připojení svazek-hostitel. Je "
-"hostitel správně nastaven pro připojení FC?"
 
 msgid "Could not get system name."
 msgstr "Nelze získat název systému."
@@ -5202,7 +5195,7 @@ msgstr "V žádosti nebyl zadán název obrazu."
 
 #, python-format
 msgid "No initiator group found for initiator %s"
-msgstr "Pro zavaděče %s nebyla nalezena žádná zaváděcí skupina"
+msgstr "Pro zavaděče %s nebyla nalezena žádná skupina zavaděče"
 
 msgid "No initiators found, cannot proceed"
 msgstr "Nebyly nalezeny žádné zavaděče, nelze pokračovat"
@@ -7817,7 +7810,7 @@ msgid "Volume still has %d dependent snapshots."
 msgstr "Svazek má stále %d na sobě závislých snímků."
 
 msgid "Volume to Initiator Group mapping already exists"
-msgstr "Mapování svazku ke zaváděcí skupině již existuje"
+msgstr "Mapování svazku ke skupině zavaděče již existuje"
 
 #, python-format
 msgid ""

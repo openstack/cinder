@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev134\n"
+"Project-Id-Version: cinder 8.0.0.dev167\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-07 06:37+0000\n"
+"POT-Creation-Date: 2015-11-11 06:36+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -59,7 +59,7 @@ msgstr ""
 msgid "Exception encountered: "
 msgstr ""
 
-#: cinder/utils.py:553
+#: cinder/utils.py:555
 #, python-format
 msgid "Volume driver %s not initialized"
 msgstr ""
@@ -162,7 +162,7 @@ msgstr ""
 msgid "Restore to volume %(volume)s finished with error - %(error)s."
 msgstr ""
 
-#: cinder/backup/drivers/swift.py:209
+#: cinder/backup/drivers/swift.py:203
 #, python-format
 msgid "single_user auth mode enabled, but %(param)s not set"
 msgstr ""
@@ -191,9 +191,9 @@ msgstr ""
 #: cinder/brick/local_dev/lvm.py:555 cinder/brick/local_dev/lvm.py:586
 #: cinder/brick/local_dev/lvm.py:608 cinder/brick/local_dev/lvm.py:650
 #: cinder/brick/local_dev/lvm.py:739 cinder/brick/local_dev/lvm.py:777
-#: cinder/volume/drivers/srb.py:131 cinder/volume/drivers/srb.py:151
-#: cinder/volume/drivers/srb.py:169 cinder/volume/drivers/srb.py:187
-#: cinder/volume/drivers/srb.py:213
+#: cinder/volume/drivers/srb.py:130 cinder/volume/drivers/srb.py:150
+#: cinder/volume/drivers/srb.py:168 cinder/volume/drivers/srb.py:186
+#: cinder/volume/drivers/srb.py:212
 #, python-format
 msgid "Cmd     :%s"
 msgstr ""
@@ -202,9 +202,9 @@ msgstr ""
 #: cinder/brick/local_dev/lvm.py:556 cinder/brick/local_dev/lvm.py:587
 #: cinder/brick/local_dev/lvm.py:609 cinder/brick/local_dev/lvm.py:651
 #: cinder/brick/local_dev/lvm.py:740 cinder/brick/local_dev/lvm.py:778
-#: cinder/volume/drivers/srb.py:132 cinder/volume/drivers/srb.py:152
-#: cinder/volume/drivers/srb.py:170 cinder/volume/drivers/srb.py:188
-#: cinder/volume/drivers/srb.py:214
+#: cinder/volume/drivers/srb.py:131 cinder/volume/drivers/srb.py:151
+#: cinder/volume/drivers/srb.py:169 cinder/volume/drivers/srb.py:187
+#: cinder/volume/drivers/srb.py:213
 #, python-format
 msgid "StdOut  :%s"
 msgstr ""
@@ -213,9 +213,9 @@ msgstr ""
 #: cinder/brick/local_dev/lvm.py:557 cinder/brick/local_dev/lvm.py:588
 #: cinder/brick/local_dev/lvm.py:610 cinder/brick/local_dev/lvm.py:652
 #: cinder/brick/local_dev/lvm.py:741 cinder/brick/local_dev/lvm.py:779
-#: cinder/volume/drivers/srb.py:133 cinder/volume/drivers/srb.py:153
-#: cinder/volume/drivers/srb.py:171 cinder/volume/drivers/srb.py:189
-#: cinder/volume/drivers/srb.py:215
+#: cinder/volume/drivers/srb.py:132 cinder/volume/drivers/srb.py:152
+#: cinder/volume/drivers/srb.py:170 cinder/volume/drivers/srb.py:188
+#: cinder/volume/drivers/srb.py:214
 #, python-format
 msgid "StdErr  :%s"
 msgstr ""
@@ -282,32 +282,32 @@ msgstr ""
 msgid "Failed to load conder-volume"
 msgstr ""
 
-#: cinder/cmd/volume_usage_audit.py:122
+#: cinder/cmd/volume_usage_audit.py:120
 #, python-format
 msgid "Exists volume notification failed: %s"
 msgstr ""
 
-#: cinder/cmd/volume_usage_audit.py:148
+#: cinder/cmd/volume_usage_audit.py:146
 #, python-format
 msgid "Create volume notification failed: %s"
 msgstr ""
 
-#: cinder/cmd/volume_usage_audit.py:174
+#: cinder/cmd/volume_usage_audit.py:172
 #, python-format
 msgid "Delete volume notification failed: %s"
 msgstr ""
 
-#: cinder/cmd/volume_usage_audit.py:192
+#: cinder/cmd/volume_usage_audit.py:190
 #, python-format
 msgid "Exists snapshot notification failed: %s"
 msgstr ""
 
-#: cinder/cmd/volume_usage_audit.py:218
+#: cinder/cmd/volume_usage_audit.py:216
 #, python-format
 msgid "Create snapshot notification failed: %s"
 msgstr ""
 
-#: cinder/cmd/volume_usage_audit.py:244
+#: cinder/cmd/volume_usage_audit.py:242
 #, python-format
 msgid "Delete snapshot notification failed: %s"
 msgstr ""
@@ -381,17 +381,17 @@ msgstr ""
 msgid "Error occurred when creating cgsnapshot %s."
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:2742
+#: cinder/db/sqlalchemy/api.py:2743
 #, python-format
 msgid "VolumeType %s deletion failed, VolumeType in use."
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:3712
+#: cinder/db/sqlalchemy/api.py:3713
 #, python-format
 msgid "Volume in unexpected state %s, expected awaiting-transfer"
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:4004
+#: cinder/db/sqlalchemy/api.py:4005
 #, python-format
 msgid "DBError detected when purging from table=%(table)s"
 msgstr ""
@@ -515,347 +515,347 @@ msgstr ""
 msgid "Unable to find service: %(service)s for given host: %(host)s."
 msgstr ""
 
-#: cinder/volume/driver.py:372 cinder/volume/drivers/hitachi/hnas_nfs.py:378
+#: cinder/volume/driver.py:362 cinder/volume/drivers/hitachi/hnas_nfs.py:378
 #: cinder/volume/drivers/netapp/dataontap/nfs_base.py:276
 #, python-format
 msgid "Recovering from a failed execute.  Try number %s"
 msgstr ""
 
-#: cinder/volume/driver.py:406
+#: cinder/volume/driver.py:396
 #, python-format
 msgid "Error detaching volume %(volume)s, due to remove export failure."
 msgstr ""
 
-#: cinder/volume/driver.py:428
+#: cinder/volume/driver.py:418
 msgid "Detaching snapshot from a remote node is not supported."
 msgstr ""
 
-#: cinder/volume/driver.py:449
+#: cinder/volume/driver.py:439
 #, python-format
 msgid "Error detaching snapshot %(snapshot)s, due to remove export failure."
 msgstr ""
 
-#: cinder/volume/driver.py:761 cinder/volume/driver.py:775
+#: cinder/volume/driver.py:751 cinder/volume/driver.py:765
 #, python-format
 msgid "Failed to attach volume %(vol)s"
 msgstr ""
 
-#: cinder/volume/driver.py:803 cinder/volume/manager.py:1571
+#: cinder/volume/driver.py:793 cinder/volume/manager.py:1570
 #, python-format
 msgid "Failed to copy volume %(src)s to %(dest)s."
 msgstr ""
 
-#: cinder/volume/driver.py:941
+#: cinder/volume/driver.py:931
 #, python-format
 msgid ""
 "Failed updating model of volume %(volume_id)s with driver provided model "
 "%(model)s"
 msgstr ""
 
-#: cinder/volume/driver.py:980
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1875
+#: cinder/volume/driver.py:970
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1871
 #, python-format
 msgid "Error detaching volume %s"
 msgstr ""
 
-#: cinder/volume/driver.py:996
+#: cinder/volume/driver.py:986
 msgid "Attaching snapshot from a remote node is not supported."
 msgstr ""
 
-#: cinder/volume/driver.py:1017
+#: cinder/volume/driver.py:1007
 #, python-format
 msgid ""
 "Failed updating model of snapshot %(snapshot_id)s with driver provided "
 "model %(model)s."
 msgstr ""
 
-#: cinder/volume/driver.py:1066
+#: cinder/volume/driver.py:1056
 #, python-format
 msgid "Could not validate device %s"
 msgstr ""
 
-#: cinder/volume/driver.py:2202 cinder/volume/targets/iscsi.py:171
+#: cinder/volume/driver.py:2192 cinder/volume/targets/iscsi.py:171
 #, python-format
 msgid "ISCSI discovery attempt failed for:%s"
 msgstr ""
 
-#: cinder/volume/driver.py:2398
+#: cinder/volume/driver.py:2388
 #, python-format
 msgid "The volume driver requires %(data)s in the connector."
 msgstr ""
 
-#: cinder/volume/driver.py:2674
+#: cinder/volume/driver.py:2664
 #, python-format
 msgid ""
 "FibreChannelDriver validate_connector failed. No '%(setting)s'. Make sure"
 " HBA state is Online."
 msgstr ""
 
-#: cinder/volume/manager.py:236
+#: cinder/volume/manager.py:235
 #, python-format
 msgid "Invalid JSON: %s"
 msgstr ""
 
-#: cinder/volume/manager.py:273
+#: cinder/volume/manager.py:272
 msgid "Fetch volume pool name failed."
 msgstr ""
 
-#: cinder/volume/manager.py:370
+#: cinder/volume/manager.py:369
 msgid "Failed to initialize driver."
 msgstr ""
 
-#: cinder/volume/manager.py:398
+#: cinder/volume/manager.py:397
 msgid "Failed to re-export volume, setting to ERROR."
 msgstr ""
 
-#: cinder/volume/manager.py:426
+#: cinder/volume/manager.py:425
 msgid "Error during re-export on driver init."
 msgstr ""
 
-#: cinder/volume/manager.py:631
+#: cinder/volume/manager.py:630
 msgid "Unable to delete busy volume."
 msgstr ""
 
-#: cinder/volume/manager.py:660
+#: cinder/volume/manager.py:659
 msgid "Failed to update usages deleting volume."
 msgstr ""
 
-#: cinder/volume/manager.py:702
+#: cinder/volume/manager.py:701
 msgid ""
 "Unable to delete the destination volume during volume migration, (NOTE: "
 "database record needs to be deleted)."
 msgstr ""
 
-#: cinder/volume/manager.py:748
+#: cinder/volume/manager.py:747
 #, python-format
 msgid ""
 "Failed updating snapshot metadata using the provided volumes "
 "%(volume_id)s metadata"
 msgstr ""
 
-#: cinder/volume/manager.py:791
+#: cinder/volume/manager.py:790
 msgid "Delete snapshot failed, due to snapshot busy."
 msgstr ""
 
-#: cinder/volume/manager.py:819
+#: cinder/volume/manager.py:818
 msgid "Update snapshot usages failed."
 msgstr ""
 
-#: cinder/volume/manager.py:1003
+#: cinder/volume/manager.py:1002
 msgid "Detach volume failed, due to uninitialized driver."
 msgstr ""
 
-#: cinder/volume/manager.py:1007
+#: cinder/volume/manager.py:1006
 msgid "Detach volume failed, due to remove-export failure."
 msgstr ""
 
-#: cinder/volume/manager.py:1098
+#: cinder/volume/manager.py:1097
 #, python-format
 msgid "Failed to clone volume %(volume_id)s for image %(image_id)s."
 msgstr ""
 
-#: cinder/volume/manager.py:1105
+#: cinder/volume/manager.py:1104
 #, python-format
 msgid "Could not delete the image volume %(id)s."
 msgstr ""
 
-#: cinder/volume/manager.py:1135
+#: cinder/volume/manager.py:1134
 #, python-format
 msgid "Failed to register image volume location %(uri)s."
 msgstr ""
 
-#: cinder/volume/manager.py:1145
+#: cinder/volume/manager.py:1144
 #, python-format
 msgid "Could not delete failed image volume %(id)s."
 msgstr ""
 
-#: cinder/volume/manager.py:1190
+#: cinder/volume/manager.py:1189
 #, python-format
 msgid "Upload volume to image encountered an error (image-id: %(image_id)s)."
 msgstr ""
 
-#: cinder/volume/manager.py:1239
+#: cinder/volume/manager.py:1238
 #, python-format
 msgid ""
 "Failed to get driver initiator data for initiator %(initiator)s and "
 "namespace %(namespace)s"
 msgstr ""
 
-#: cinder/volume/manager.py:1256
+#: cinder/volume/manager.py:1255
 #, python-format
 msgid ""
 "Failed to update initiator data for initiator %(initiator)s and backend "
 "%(backend)s"
 msgstr ""
 
-#: cinder/volume/manager.py:1330
+#: cinder/volume/manager.py:1329
 msgid "Model update failed."
 msgstr ""
 
-#: cinder/volume/manager.py:1453
+#: cinder/volume/manager.py:1452
 msgid "Update volume model for transfer operation failed."
 msgstr ""
 
-#: cinder/volume/manager.py:1501
+#: cinder/volume/manager.py:1500
 #, python-format
 msgid "Failed to attach volume %(vol)s."
 msgstr ""
 
-#: cinder/volume/manager.py:1527
+#: cinder/volume/manager.py:1526
 #, python-format
 msgid "Unable to terminate volume connection: %(err)s."
 msgstr ""
 
-#: cinder/volume/manager.py:1548
+#: cinder/volume/manager.py:1547
 msgid "Failed to attach source volume for copy."
 msgstr ""
 
-#: cinder/volume/manager.py:1653
+#: cinder/volume/manager.py:1652
 #, python-format
 msgid "Failed to copy volume %(vol1)s to %(vol2)s"
 msgstr ""
 
-#: cinder/volume/manager.py:1740
+#: cinder/volume/manager.py:1739
 #, python-format
 msgid "Detach migration source volume failed:  %(err)s"
 msgstr ""
 
-#: cinder/volume/manager.py:1773
+#: cinder/volume/manager.py:1772
 #, python-format
 msgid "Failed to request async delete of migration source vol %(vol)s: %(err)s"
 msgstr ""
 
-#: cinder/volume/manager.py:1994
+#: cinder/volume/manager.py:1993
 msgid "Extend volume failed."
 msgstr ""
 
-#: cinder/volume/manager.py:2074
+#: cinder/volume/manager.py:2073
 msgid "Failed to update usages while retyping volume."
 msgstr ""
 
-#: cinder/volume/manager.py:2120
+#: cinder/volume/manager.py:2119
 #, python-format
 msgid ""
 "Volume %s: driver error when trying to retype, falling back to generic "
 "mechanism."
 msgstr ""
 
-#: cinder/volume/manager.py:2224
+#: cinder/volume/manager.py:2223
 msgid "Promote volume replica failed."
 msgstr ""
 
-#: cinder/volume/manager.py:2257
+#: cinder/volume/manager.py:2256
 msgid "Sync volume replica failed."
 msgstr ""
 
-#: cinder/volume/manager.py:2293
+#: cinder/volume/manager.py:2292
 msgid "Get replication status for volume failed."
 msgstr ""
 
-#: cinder/volume/manager.py:2320
+#: cinder/volume/manager.py:2319
 #, python-format
 msgid "Consistency group %s: create failed"
 msgstr ""
 
-#: cinder/volume/manager.py:2355
+#: cinder/volume/manager.py:2354
 #, python-format
 msgid "Create consistency group from snapshot-%(snap)s failed: SnapshotNotFound."
 msgstr ""
 
-#: cinder/volume/manager.py:2383
+#: cinder/volume/manager.py:2382
 #, python-format
 msgid ""
 "Create consistency group from source cg-%(cg)s failed: "
 "ConsistencyGroupNotFound."
 msgstr ""
 
-#: cinder/volume/manager.py:2442
+#: cinder/volume/manager.py:2441
 #, python-format
 msgid "Create consistency group from source %(source)s failed."
 msgstr ""
 
-#: cinder/volume/manager.py:2486
+#: cinder/volume/manager.py:2485
 #, python-format
 msgid "Source snapshot cannot be found for target volume %(volume_id)s."
 msgstr ""
 
-#: cinder/volume/manager.py:2509
+#: cinder/volume/manager.py:2508
 #, python-format
 msgid "Source volumes cannot be found for target volume %(volume_id)s."
 msgstr ""
 
-#: cinder/volume/manager.py:2530
+#: cinder/volume/manager.py:2529
 #, python-format
 msgid "Source snapshot %(snapshot_id)s cannot be found."
 msgstr ""
 
-#: cinder/volume/manager.py:2539
+#: cinder/volume/manager.py:2538
 #, python-format
 msgid "The source volume %(volume_id)s cannot be found."
 msgstr ""
 
-#: cinder/volume/manager.py:2549
+#: cinder/volume/manager.py:2548
 #, python-format
 msgid ""
 "Failed to update %(volume_id)s metadata using the provided snapshot "
 "%(snapshot_id)s metadata."
 msgstr ""
 
-#: cinder/volume/manager.py:2648 cinder/volume/manager.py:2667
+#: cinder/volume/manager.py:2647 cinder/volume/manager.py:2666
 msgid "Delete consistency group failed to update usages."
 msgstr ""
 
-#: cinder/volume/manager.py:2718
+#: cinder/volume/manager.py:2717
 #, python-format
 msgid ""
 "Update consistency group failed to add volume-%(volume_id)s: "
 "VolumeNotFound."
 msgstr ""
 
-#: cinder/volume/manager.py:2747
+#: cinder/volume/manager.py:2746
 #, python-format
 msgid ""
 "Update consistency group failed to remove volume-%(volume_id)s: "
 "VolumeNotFound."
 msgstr ""
 
-#: cinder/volume/manager.py:2787
+#: cinder/volume/manager.py:2786
 #, python-format
 msgid ""
 "Error occurred in the volume driver when updating consistency group "
 "%(group_id)s."
 msgstr ""
 
-#: cinder/volume/manager.py:2800
+#: cinder/volume/manager.py:2799
 #, python-format
 msgid "Error occurred when updating consistency group %(group_id)s."
 msgstr ""
 
-#: cinder/volume/manager.py:2898
+#: cinder/volume/manager.py:2897
 #, python-format
 msgid ""
 "Failed updating %(snapshot_id)s metadata using the provided volumes "
 "%(volume_id)s metadata"
 msgstr ""
 
-#: cinder/volume/manager.py:3001
+#: cinder/volume/manager.py:3000
 msgid "Failed to update usages deleting snapshot"
 msgstr ""
 
-#: cinder/volume/manager.py:3084
+#: cinder/volume/manager.py:3083
 msgid "Can't enable replication because the driver isn't initialized"
 msgstr ""
 
-#: cinder/volume/manager.py:3111 cinder/volume/manager.py:3159
-#: cinder/volume/manager.py:3234
+#: cinder/volume/manager.py:3110 cinder/volume/manager.py:3158
+#: cinder/volume/manager.py:3233
 msgid "Driver replication data update failed."
 msgstr ""
 
-#: cinder/volume/manager.py:3135
+#: cinder/volume/manager.py:3134
 msgid "Can't disable replication because the driver isn't initialized"
 msgstr ""
 
-#: cinder/volume/manager.py:3312
+#: cinder/volume/manager.py:3311
 #, python-format
 msgid "Failed to create manage_existing flow: %(object_type)s %(object_id)s."
 msgstr ""
@@ -886,21 +886,21 @@ msgstr ""
 msgid "Default volume type is not found. Please check default_volume_type config:"
 msgstr ""
 
-#: cinder/volume/drivers/datera.py:151
+#: cinder/volume/drivers/datera.py:150
 msgid ""
 "Creation request failed. Please verify the extra-specs set for your "
 "volume types are entered correctly."
 msgstr ""
 
-#: cinder/volume/drivers/datera.py:263
+#: cinder/volume/drivers/datera.py:262
 msgid "Failed to get updated stats from Datera cluster."
 msgstr ""
 
-#: cinder/volume/drivers/datera.py:282
+#: cinder/volume/drivers/datera.py:281
 msgid "Failed to get updated stats from Datera Cluster."
 msgstr ""
 
-#: cinder/volume/drivers/datera.py:315
+#: cinder/volume/drivers/datera.py:314
 msgid ""
 "Logging into the Datera cluster failed. Please check your username and "
 "password set in the cinder.conf and start the cinder-volumeservice again."
@@ -986,7 +986,7 @@ msgstr ""
 msgid "Failed to umount %(share)s, reason=%(stderr)s"
 msgstr ""
 
-#: cinder/volume/drivers/glusterfs.py:372 cinder/volume/drivers/remotefs.py:272
+#: cinder/volume/drivers/glusterfs.py:372 cinder/volume/drivers/remotefs.py:271
 #, python-format
 msgid "Exception during mounting %s"
 msgstr ""
@@ -1015,9 +1015,9 @@ msgstr ""
 msgid "VGC-CLUSTER command blocked and cancelled."
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:358 cinder/volume/drivers/nfs.py:413
+#: cinder/volume/drivers/lvm.py:358 cinder/volume/drivers/nfs.py:412
 #: cinder/volume/drivers/dell/dell_storagecenter_common.py:411
-#: cinder/volume/drivers/ibm/storwize_svc/__init__.py:1000
+#: cinder/volume/drivers/ibm/storwize_svc/__init__.py:967
 #, python-format
 msgid "Unable to rename the logical volume for volume: %s"
 msgstr ""
@@ -1037,7 +1037,7 @@ msgstr ""
 msgid "Volume migration failed due to exception: %(reason)s."
 msgstr ""
 
-#: cinder/volume/drivers/nfs.py:179
+#: cinder/volume/drivers/nfs.py:178
 #, python-format
 msgid "Mount failure for %(share)s after %(count)d attempts."
 msgstr ""
@@ -1053,21 +1053,21 @@ msgstr ""
 msgid "Re-throwing Exception %s"
 msgstr ""
 
-#: cinder/volume/drivers/pure.py:211
+#: cinder/volume/drivers/pure.py:210
 #, python-format
 msgid "Snapshot deletion failed with message: %s"
 msgstr ""
 
-#: cinder/volume/drivers/pure.py:235
+#: cinder/volume/drivers/pure.py:234
 msgid "Unable to disconnect host from volume."
 msgstr ""
 
-#: cinder/volume/drivers/pure.py:255
+#: cinder/volume/drivers/pure.py:254
 #, python-format
 msgid "Disconnection failed with message: %(msg)s."
 msgstr ""
 
-#: cinder/volume/drivers/pure.py:886
+#: cinder/volume/drivers/pure.py:885
 #, python-format
 msgid ""
 "Purity host %(host_name)s is not managed by Cinder and can't have CHAP "
@@ -1075,54 +1075,54 @@ msgid ""
 "issue."
 msgstr ""
 
-#: cinder/volume/drivers/pure.py:896
+#: cinder/volume/drivers/pure.py:895
 #, python-format
 msgid ""
 "Purity host %(host_name)s is managed by Cinder but CHAP credentials could"
 " not be retrieved from the Cinder database."
 msgstr ""
 
-#: cinder/volume/drivers/rbd.py:227
+#: cinder/volume/drivers/rbd.py:224
 #, python-format
 msgid "error opening rbd image %s"
 msgstr ""
 
-#: cinder/volume/drivers/rbd.py:411
+#: cinder/volume/drivers/rbd.py:408
 msgid "error refreshing volume stats"
 msgstr ""
 
-#: cinder/volume/drivers/rbd.py:780
+#: cinder/volume/drivers/rbd.py:777
 msgid "Retype with host migration not supported."
 msgstr ""
 
-#: cinder/volume/drivers/rbd.py:784
+#: cinder/volume/drivers/rbd.py:781
 msgid "Retype of encryption type not supported."
 msgstr ""
 
-#: cinder/volume/drivers/rbd.py:788
+#: cinder/volume/drivers/rbd.py:785
 msgid "Retype of extra_specs not supported."
 msgstr ""
 
-#: cinder/volume/drivers/rbd.py:1086
+#: cinder/volume/drivers/rbd.py:1083
 #, python-format
 msgid "Unable to rename the logical volume for volume %s."
 msgstr ""
 
-#: cinder/volume/drivers/remotefs.py:484
+#: cinder/volume/drivers/remotefs.py:483
 #, python-format
 msgid "Share %s ignored due to invalid format. Must be of form address:/export."
 msgstr ""
 
-#: cinder/volume/drivers/remotefs.py:618
+#: cinder/volume/drivers/remotefs.py:617
 #, python-format
 msgid "Failed to created Cinder secure environment indicator file: %s"
 msgstr ""
 
-#: cinder/volume/drivers/remotefs.py:1280
+#: cinder/volume/drivers/remotefs.py:1279
 msgid "Call to Nova to create snapshot failed"
 msgstr ""
 
-#: cinder/volume/drivers/remotefs.py:1365
+#: cinder/volume/drivers/remotefs.py:1364
 msgid "Call to Nova delete snapshot failed"
 msgstr ""
 
@@ -1254,131 +1254,131 @@ msgstr ""
 msgid "Failed to create cloned volume %s."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:424
+#: cinder/volume/drivers/solidfire.py:422
 #, python-format
 msgid "Failed to retrieve volume SolidFire-ID: %s in get_by_account!"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:630
+#: cinder/volume/drivers/solidfire.py:628
 #, python-format
 msgid "Volume %s, not found on SF Cluster."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:633
+#: cinder/volume/drivers/solidfire.py:631
 #, python-format
 msgid "Found %(count)s volumes mapped to id: %(uuid)s."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:715
+#: cinder/volume/drivers/solidfire.py:713
 #, python-format
 msgid "Failed image conversion during cache creation: %s"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:955
+#: cinder/volume/drivers/solidfire.py:953
 #, python-format
 msgid ""
 "Account for Volume ID %s was not found on the SolidFire Cluster while "
 "attempting delete_volume operation!"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:958
+#: cinder/volume/drivers/solidfire.py:956
 msgid "This usually means the volume was never successfully created."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:973
+#: cinder/volume/drivers/solidfire.py:971
 #, python-format
 msgid ""
 "Volume ID %s was not found on the SolidFire Cluster while attempting "
 "delete_volume operation!"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1003
+#: cinder/volume/drivers/solidfire.py:1001
 #, python-format
 msgid ""
 "Account for Volume ID %s was not found on the SolidFire Cluster while "
 "attempting create_snapshot operation!"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1050
+#: cinder/volume/drivers/solidfire.py:1048
 #, python-format
 msgid ""
 "Volume ID %s was not found on the SolidFire Cluster while attempting "
 "extend_volume operation!"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1104
+#: cinder/volume/drivers/solidfire.py:1102
 #, python-format
 msgid ""
 "Volume ID %s was not found on the SolidFire Cluster while attempting "
 "attach_volume operation!"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1125
+#: cinder/volume/drivers/solidfire.py:1123
 #, python-format
 msgid ""
 "Volume ID %s was not found on the SolidFire Cluster while attempting "
 "detach_volume operation!"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1147
+#: cinder/volume/drivers/solidfire.py:1145
 #, python-format
 msgid ""
 "Volume ID %s was not found on the SolidFire Cluster while attempting "
 "accept_transfer operation!"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1282
+#: cinder/volume/drivers/solidfire.py:1280
 #, python-format
 msgid ""
 "Account for Volume ID %s was not found on the SolidFire Cluster while "
 "attempting unmanage operation!"
 msgstr ""
 
-#: cinder/volume/drivers/srb.py:130
+#: cinder/volume/drivers/srb.py:129
 msgid "Error activating Volume Group"
 msgstr ""
 
-#: cinder/volume/drivers/srb.py:150
+#: cinder/volume/drivers/srb.py:149
 msgid "Error deactivating Volume Group"
 msgstr ""
 
-#: cinder/volume/drivers/srb.py:168
+#: cinder/volume/drivers/srb.py:167
 msgid "Error destroying Volume Group"
 msgstr ""
 
-#: cinder/volume/drivers/srb.py:186
+#: cinder/volume/drivers/srb.py:185
 msgid "Error resizing Physical Volume"
 msgstr ""
 
-#: cinder/volume/drivers/srb.py:212
+#: cinder/volume/drivers/srb.py:211
 msgid "Error extending thin provisioning pool"
 msgstr ""
 
-#: cinder/volume/drivers/srb.py:347
+#: cinder/volume/drivers/srb.py:346
 msgid "Cound not setup urls on the Block Driver."
 msgstr ""
 
-#: cinder/volume/drivers/srb.py:655
+#: cinder/volume/drivers/srb.py:654
 #, python-format
 msgid "Could not deactivate volume group %s"
 msgstr ""
 
-#: cinder/volume/drivers/srb.py:662
+#: cinder/volume/drivers/srb.py:661
 #, python-format
 msgid "Could not detach volume %(vol)s from device %(dev)s."
 msgstr ""
 
-#: cinder/volume/drivers/srb.py:678
+#: cinder/volume/drivers/srb.py:677
 #, python-format
 msgid "Unable to delete due to existing snapshot for volume: %s."
 msgstr ""
 
-#: cinder/volume/drivers/tintri.py:140
+#: cinder/volume/drivers/tintri.py:137
 #, python-format
 msgid "Configuration value %s is not set."
 msgstr ""
 
-#: cinder/volume/drivers/tintri.py:160 cinder/volume/drivers/tintri.py:289
+#: cinder/volume/drivers/tintri.py:157 cinder/volume/drivers/tintri.py:286
 #: cinder/volume/drivers/netapp/dataontap/block_base.py:314
 #: cinder/volume/drivers/netapp/dataontap/nfs_base.py:190
 #, python-format
@@ -1856,86 +1856,86 @@ msgstr ""
 msgid "Error in copying volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/dothill/dothill_common.py:180
+#: cinder/volume/drivers/dothill/dothill_common.py:179
 #, python-format
 msgid "Creation of volume %s failed."
 msgstr ""
 
-#: cinder/volume/drivers/dothill/dothill_common.py:205
+#: cinder/volume/drivers/dothill/dothill_common.py:204
 msgid "Volume must be detached for clone operation."
 msgstr ""
 
-#: cinder/volume/drivers/dothill/dothill_common.py:227
+#: cinder/volume/drivers/dothill/dothill_common.py:226
 #, python-format
 msgid "Cloning of volume %s failed."
 msgstr ""
 
-#: cinder/volume/drivers/dothill/dothill_common.py:247
+#: cinder/volume/drivers/dothill/dothill_common.py:246
 #, python-format
 msgid "Create volume failed from snapshot: %s"
 msgstr ""
 
-#: cinder/volume/drivers/dothill/dothill_common.py:267
+#: cinder/volume/drivers/dothill/dothill_common.py:266
 #, python-format
 msgid "Deletion of volume %s failed."
 msgstr ""
 
-#: cinder/volume/drivers/dothill/dothill_common.py:329
+#: cinder/volume/drivers/dothill/dothill_common.py:328
 #, python-format
 msgid "Error mapping volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/dothill/dothill_common.py:345
+#: cinder/volume/drivers/dothill/dothill_common.py:344
 #, python-format
 msgid "Error unmapping volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/dothill/dothill_common.py:354
+#: cinder/volume/drivers/dothill/dothill_common.py:353
 msgid "Error getting active FC target ports."
 msgstr ""
 
-#: cinder/volume/drivers/dothill/dothill_common.py:361
+#: cinder/volume/drivers/dothill/dothill_common.py:360
 msgid "Error getting active ISCSI target iqns."
 msgstr ""
 
-#: cinder/volume/drivers/dothill/dothill_common.py:368
+#: cinder/volume/drivers/dothill/dothill_common.py:367
 msgid "Error getting active ISCSI target portals."
 msgstr ""
 
-#: cinder/volume/drivers/dothill/dothill_common.py:385
+#: cinder/volume/drivers/dothill/dothill_common.py:384
 #, python-format
 msgid "Creation of snapshot failed for volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/dothill/dothill_common.py:402
+#: cinder/volume/drivers/dothill/dothill_common.py:401
 #, python-format
 msgid "Deleting snapshot %s failed"
 msgstr ""
 
-#: cinder/volume/drivers/dothill/dothill_common.py:424
+#: cinder/volume/drivers/dothill/dothill_common.py:423
 #, python-format
 msgid "Extension of volume %s failed."
 msgstr ""
 
-#: cinder/volume/drivers/dothill/dothill_common.py:433
+#: cinder/volume/drivers/dothill/dothill_common.py:432
 msgid "Error getting chap record."
 msgstr ""
 
-#: cinder/volume/drivers/dothill/dothill_common.py:440
+#: cinder/volume/drivers/dothill/dothill_common.py:439
 msgid "Error creating chap record."
 msgstr ""
 
-#: cinder/volume/drivers/dothill/dothill_common.py:485
+#: cinder/volume/drivers/dothill/dothill_common.py:484
 #: cinder/volume/drivers/zfssa/zfssaiscsi.py:886
 #, python-format
 msgid "Error migrating volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/dothill/dothill_common.py:508
+#: cinder/volume/drivers/dothill/dothill_common.py:507
 msgid "Error manage existing volume."
 msgstr ""
 
-#: cinder/volume/drivers/dothill/dothill_common.py:526
+#: cinder/volume/drivers/dothill/dothill_common.py:525
 msgid "Error manage existing get volume size."
 msgstr ""
 
@@ -2180,8 +2180,8 @@ msgid "Error disassociating storage group from policy: %s."
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_vmax_fast.py:667
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:536
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:545
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:537
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:546
 #, python-format
 msgid "Exception: %s."
 msgstr ""
@@ -2313,33 +2313,33 @@ msgid ""
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_vmax_utils.py:1667
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1506
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1513
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1516
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1519
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1522
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1606
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1627
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1630
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1661
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1671
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1674
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1677
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1756
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1759
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1762
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1765
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1803
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1806
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:2016
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:2019
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:2022
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:2025
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:2038
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:2047
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1502
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1509
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1512
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1515
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1518
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1602
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1623
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1626
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1657
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1667
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1670
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1673
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1752
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1755
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1758
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1761
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1799
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1802
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:2012
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:2015
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:2018
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:2021
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:2034
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:2043
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:2090
 #: cinder/volume/drivers/san/hp/hp_3par_common.py:2094
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:2098
-#: cinder/volume/drivers/san/hp/hp_lefthand_rest_proxy.py:802
+#: cinder/volume/drivers/san/hp/hp_lefthand_rest_proxy.py:798
 #, python-format
 msgid "Exception: %s"
 msgstr ""
@@ -2360,75 +2360,75 @@ msgstr ""
 msgid "PoolName must be in the file %(fileName)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:476
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:473
 #, python-format
 msgid "Error on enable compression on lun %s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:487
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:484
 #, python-format
 msgid "Error on adding lun to consistency group. %s"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:711
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:708
 #, python-format
 msgid "Can not add the lun %(lun)s to consistency group %(cg_name)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:724
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:721
 #, python-format
 msgid "Can not remove LUNs %(luns)s in consistency group %(cg_name)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:737
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:734
 #, python-format
 msgid "Can not place new LUNs %(luns)s in consistency group %(cg_name)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:1026
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:1023
 msgid "Failed to query migration status of LUN."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:1042
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:1039
 #, python-format
 msgid "Migration of LUN %s failed to complete."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:1299
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:1296
 #, python-format
 msgid "Invalid value for %(key)s, value is %(value)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:1339
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:1336
 #, python-format
 msgid "Error happened during storage pool querying, %s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2019
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2016
 msgid "The given extra_spec or valid_values is None."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2690
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2687
 #, python-format
 msgid "Create consistency group %s failed."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2708
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2705
 #, python-format
 msgid "Delete consistency group %s failed."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2773
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2770
 #, python-format
 msgid "Create cg snapshot %s failed."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2798
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2795
 #, python-format
 msgid "Delete cgsnapshot %s failed."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3214
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3211
 #, python-format
 msgid "Failed to find available iSCSI targets for %s."
 msgstr ""
@@ -2452,32 +2452,32 @@ msgstr ""
 msgid "MSGID%(id)04d-E: %(msg)s"
 msgstr ""
 
-#: cinder/volume/drivers/hitachi/hbsd_common.py:734
+#: cinder/volume/drivers/hitachi/hbsd_common.py:727
 #, python-format
 msgid "Failed to update volume status: %s"
 msgstr ""
 
-#: cinder/volume/drivers/hitachi/hbsd_horcm.py:231
+#: cinder/volume/drivers/hitachi/hbsd_horcm.py:229
 msgid "Failed to shutdown horcm."
 msgstr ""
 
-#: cinder/volume/drivers/hitachi/hbsd_horcm.py:299
+#: cinder/volume/drivers/hitachi/hbsd_horcm.py:297
 msgid "horcm command timeout."
 msgstr ""
 
-#: cinder/volume/drivers/hitachi/hbsd_horcm.py:306
+#: cinder/volume/drivers/hitachi/hbsd_horcm.py:304
 msgid "Failed to authenticate user."
 msgstr ""
 
-#: cinder/volume/drivers/hitachi/hbsd_horcm.py:315
+#: cinder/volume/drivers/hitachi/hbsd_horcm.py:313
 msgid "Failed to start horcm."
 msgstr ""
 
-#: cinder/volume/drivers/hitachi/hbsd_horcm.py:319
+#: cinder/volume/drivers/hitachi/hbsd_horcm.py:317
 msgid "Unexpected error occurs in horcm."
 msgstr ""
 
-#: cinder/volume/drivers/hitachi/hbsd_iscsi.py:183
+#: cinder/volume/drivers/hitachi/hbsd_iscsi.py:182
 #, python-format
 msgid "Failed to add target(port: %s)"
 msgstr ""
@@ -2549,26 +2549,26 @@ msgstr ""
 msgid "The NFS Volume %(cr)s does not exist."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:146
+#: cinder/volume/drivers/huawei/huawei_driver.py:145
 #, python-format
 msgid "Create hypermetro error: %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:188
+#: cinder/volume/drivers/huawei/huawei_driver.py:187
 #, python-format
 msgid "Delete hypermetro error: %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:244
+#: cinder/volume/drivers/huawei/huawei_driver.py:243
 msgid "Get LUN migration error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:307
+#: cinder/volume/drivers/huawei/huawei_driver.py:306
 #, python-format
 msgid "Unable to rename lun %s on array."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:601
+#: cinder/volume/drivers/huawei/huawei_driver.py:600
 msgid "Retype volume error."
 msgstr ""
 
@@ -2663,113 +2663,113 @@ msgid ""
 "missing"
 msgstr ""
 
-#: cinder/volume/drivers/ibm/gpfs.py:145
+#: cinder/volume/drivers/ibm/gpfs.py:142
 #, python-format
 msgid "Failed to issue mmgetstate command, error: %s."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/gpfs.py:156
+#: cinder/volume/drivers/ibm/gpfs.py:153
 #, python-format
 msgid "GPFS is not active.  Detailed output: %s."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/gpfs.py:168
+#: cinder/volume/drivers/ibm/gpfs.py:165
 #, python-format
 msgid "Failed to issue df command for path %(path)s, error: %(error)s."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/gpfs.py:183 cinder/volume/drivers/ibm/gpfs.py:269
+#: cinder/volume/drivers/ibm/gpfs.py:180 cinder/volume/drivers/ibm/gpfs.py:266
 #, python-format
 msgid "Failed to issue mmlsconfig command, error: %s."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/gpfs.py:193
+#: cinder/volume/drivers/ibm/gpfs.py:190
 #, python-format
 msgid "Failed to issue mmlsattr command on path %(path)s, error: %(error)s"
 msgstr ""
 
-#: cinder/volume/drivers/ibm/gpfs.py:248
+#: cinder/volume/drivers/ibm/gpfs.py:245
 #, python-format
 msgid "Failed to issue mmlsfs command for path %(path)s, error: %(error)s."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/gpfs.py:286
+#: cinder/volume/drivers/ibm/gpfs.py:283
 #, python-format
 msgid "Failed to issue mmlsattr command for path %(path)s, error: %(error)s."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/gpfs.py:763
+#: cinder/volume/drivers/ibm/gpfs.py:760
 #, python-format
 msgid "Failed to issue mmlsfs command, error: %s."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/gpfs.py:928
+#: cinder/volume/drivers/ibm/gpfs.py:925
 #, python-format
 msgid "Failed to resize volume %(volume_id)s, error: %(error)s."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/gpfs.py:1009
+#: cinder/volume/drivers/ibm/gpfs.py:1006
 #, python-format
 msgid ""
 "Driver-based migration of volume %(vol)s failed. Move from %(src)s to "
 "%(dst)s failed with error: %(error)s."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/__init__.py:313
+#: cinder/volume/drivers/ibm/storwize_svc/__init__.py:293
 #, python-format
 msgid "ensure_export: Volume %s not found on storage."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/__init__.py:332
+#: cinder/volume/drivers/ibm/storwize_svc/__init__.py:312
 msgid "The connector does not contain the required information."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/__init__.py:406
+#: cinder/volume/drivers/ibm/storwize_svc/__init__.py:386
 #, python-format
 msgid "Did not find expected column name in lsvdisk: %s."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/__init__.py:511
+#: cinder/volume/drivers/ibm/storwize_svc/__init__.py:478
 #, python-format
 msgid ""
 "initialize_connection: Failed to collect return properties for volume "
 "%(vol)s and connector %(conn)s.\n"
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/__init__.py:738
+#: cinder/volume/drivers/ibm/storwize_svc/__init__.py:705
 #, python-format
 msgid ""
 "_rm_vdisk_copy_op: Volume %s does not have any registered vdisk copy "
 "operations."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/__init__.py:742
+#: cinder/volume/drivers/ibm/storwize_svc/__init__.py:709
 #, python-format
 msgid ""
 "_rm_vdisk_copy_op: Volume %(vol)s does not have the specified vdisk copy "
 "operation: orig=%(orig)s new=%(new)s."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/__init__.py:753
+#: cinder/volume/drivers/ibm/storwize_svc/__init__.py:720
 #, python-format
 msgid ""
 "_rm_vdisk_copy_op: Volume metadata %s does not have any registered vdisk "
 "copy operations."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/__init__.py:761
+#: cinder/volume/drivers/ibm/storwize_svc/__init__.py:728
 #, python-format
 msgid ""
 "_rm_vdisk_copy_op: Volume %(vol)s metadata does not have the specified "
 "vdisk copy operation: orig=%(orig)s new=%(new)s."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/__init__.py:1107
+#: cinder/volume/drivers/ibm/storwize_svc/__init__.py:1074
 #, python-format
 msgid "Failed to delete the volume %(vol)s of CG. Exception: %(exception)s."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/__init__.py:1172
+#: cinder/volume/drivers/ibm/storwize_svc/__init__.py:1139
 msgid "Could not get pool data from the storage."
 msgstr ""
 
@@ -3069,66 +3069,66 @@ msgstr ""
 msgid "Error running SSH command: %s"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:445
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:446
 #, python-format
 msgid "Conflict detected in Virtual Volume Set %(volume_set)s: %(error)s"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:470
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:481
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:471
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:482
 #, python-format
 msgid "Virtual Volume Set %s does not exist."
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:744
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:745
 #, python-format
 msgid "Error extending volume: %(vol)s. Exception: %(ex)s"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1212
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1208
 #, python-format
 msgid "Error creating QOS rule %s"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1245
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1241
 #, python-format
 msgid "Error setting Flash Cache policy to %s - exception"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1736
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1732
 #, python-format
 msgid "Error extending volume %(id)s. Ex: %(ex)s"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1862
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1858
 #, python-format
 msgid "Error attaching volume %s"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:1937
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:1933
 #, python-format
 msgid ""
 "Changing the volume name from %(tmp)s to %(orig)s failed because "
 "%(reason)s"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:2546
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:2542
 #, python-format
 msgid "Exception during snapCPG revert: %s"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:2618
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:2614
 #, python-format
 msgid "Unexpected error when retype() tried to deleteVolumeSet(%s)"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:2640
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:2643
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:2636
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:2639
 #, python-format
 msgid "Unexpected error when retype() revert tried to deleteVolumeSet(%s)"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:2651
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:2647
 #, python-format
 msgid ""
 "%(exception)s: Exception during revert of retype for volume "
@@ -3136,7 +3136,7 @@ msgid ""
 " restored."
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_3par_common.py:2662
+#: cinder/volume/drivers/san/hp/hp_3par_common.py:2658
 #, python-format
 msgid ""
 "%(exception)s: Exception during revert of retype for volume "
@@ -3149,62 +3149,62 @@ msgid "Volume %s doesn't exist on array."
 msgstr ""
 
 #: cinder/volume/drivers/san/hp/hp_lefthand_cliq_proxy.py:323
-#: cinder/volume/drivers/san/hp/hp_lefthand_rest_proxy.py:236
+#: cinder/volume/drivers/san/hp/hp_lefthand_rest_proxy.py:232
 msgid "Volume did not exist. It will not be deleted"
 msgstr ""
 
 #: cinder/volume/drivers/san/hp/hp_lefthand_cliq_proxy.py:335
-#: cinder/volume/drivers/san/hp/hp_lefthand_rest_proxy.py:411
+#: cinder/volume/drivers/san/hp/hp_lefthand_rest_proxy.py:407
 msgid "Snapshot did not exist. It will not be deleted"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_lefthand_rest_proxy.py:265
+#: cinder/volume/drivers/san/hp/hp_lefthand_rest_proxy.py:261
 msgid "Creating a consistency group from a source is not currently supported."
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_lefthand_rest_proxy.py:312
+#: cinder/volume/drivers/san/hp/hp_lefthand_rest_proxy.py:308
 #, python-format
 msgid "Could not find volume with name %(name)s. Error: %(error)s"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_lefthand_rest_proxy.py:336
+#: cinder/volume/drivers/san/hp/hp_lefthand_rest_proxy.py:332
 #, python-format
 msgid "Could not create snapshot set. Error: '%s'"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_lefthand_rest_proxy.py:368
+#: cinder/volume/drivers/san/hp/hp_lefthand_rest_proxy.py:364
 msgid "Snapshot did not exist. It will not be deleted."
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_lefthand_rest_proxy.py:609
+#: cinder/volume/drivers/san/hp/hp_lefthand_rest_proxy.py:605
 #, python-format
 msgid "'%(value)s' is an invalid value for extra spec '%(key)s'"
 msgstr ""
 
-#: cinder/volume/drivers/san/hp/hp_lefthand_rest_proxy.py:833
+#: cinder/volume/drivers/san/hp/hp_lefthand_rest_proxy.py:829
 #, python-format
 msgid ""
 "Changing the volume name from %(tmp)s to %(orig)s failed because "
 "%(reason)s."
 msgstr ""
 
-#: cinder/volume/drivers/violin/v6000_common.py:222
+#: cinder/volume/drivers/violin/v6000_common.py:220
 #: cinder/volume/drivers/violin/v7000_common.py:205
 #, python-format
 msgid "Lun delete for %s failed!"
 msgstr ""
 
-#: cinder/volume/drivers/violin/v6000_common.py:245
+#: cinder/volume/drivers/violin/v6000_common.py:243
 #, python-format
 msgid "LUN extend for %s failed!"
 msgstr ""
 
-#: cinder/volume/drivers/violin/v6000_common.py:271
+#: cinder/volume/drivers/violin/v6000_common.py:269
 #, python-format
 msgid "LUN snapshot create for %s failed!"
 msgstr ""
 
-#: cinder/volume/drivers/violin/v6000_common.py:298
+#: cinder/volume/drivers/violin/v6000_common.py:296
 #, python-format
 msgid "LUN snapshot delete for %s failed!"
 msgstr ""
@@ -3293,67 +3293,57 @@ msgstr ""
 msgid "Error occurred while selecting datastore."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:463
+#: cinder/volume/drivers/vmware/vmdk.py:458
 #, python-format
 msgid "There are no valid hosts available in configured cluster(s): %s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:469
+#: cinder/volume/drivers/vmware/vmdk.py:464
 #, python-format
 msgid "There is no valid datastore satisfying requirements: %s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:722
+#: cinder/volume/drivers/vmware/vmdk.py:720
 #, python-format
 msgid "Error occurred while copying %(src)s to %(dst)s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:829
+#: cinder/volume/drivers/vmware/vmdk.py:827
 #, python-format
 msgid "Error occurred while copying image: %(image_id)s to %(path)s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:960
+#: cinder/volume/drivers/vmware/vmdk.py:958
 #, python-format
 msgid "Error occurred while creating volume: %(id)s from image: %(image_id)s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1035
-#: cinder/volume/drivers/vmware/vmdk.py:1135
+#: cinder/volume/drivers/vmware/vmdk.py:1033
+#: cinder/volume/drivers/vmware/vmdk.py:1110
 #, python-format
 msgid "Error occurred while copying image: %(id)s to volume: %(vol)s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1076
-#, python-format
-msgid "Unable to extend the size of the vmdk virtual disk at the path %s."
-msgstr ""
-
-#: cinder/volume/drivers/vmware/vmdk.py:1347
+#: cinder/volume/drivers/vmware/vmdk.py:1322
 #, python-format
 msgid "Error occurred while cloning backing: %s during retype."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1412
+#: cinder/volume/drivers/vmware/vmdk.py:1407
 #, python-format
-msgid "Not able to find a different datastore to place the extended volume %s."
+msgid "Failed to extend volume: %(vol)s to size: %(size)s GB."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1427
-#, python-format
-msgid "Not able to relocate volume %s for extending."
-msgstr ""
-
-#: cinder/volume/drivers/vmware/vmdk.py:1543
+#: cinder/volume/drivers/vmware/vmdk.py:1526
 msgid "Error occurred while creating temporary backing."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1709
+#: cinder/volume/drivers/vmware/vmdk.py:1692
 #, python-format
 msgid "Version string '%s' is not parseable"
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1733
+#: cinder/volume/drivers/vmware/vmdk.py:1716
 #, python-format
 msgid "Not able to configure PBM for vCenter server: %s"
 msgstr ""
@@ -3807,7 +3797,7 @@ msgstr ""
 msgid "Error loading app %s"
 msgstr ""
 
-#: cinder/wsgi/eventlet_server.py:224
+#: cinder/wsgi/eventlet_server.py:221
 #, python-format
 msgid "Failed to start %(name)s on %(_host)s: %(_port)s with SSL support."
 msgstr ""

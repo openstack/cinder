@@ -8,9 +8,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev66\n"
+"Project-Id-Version: cinder 8.0.0.dev167\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-10-22 06:07+0000\n"
+"POT-Creation-Date: 2015-11-11 06:36+0000\n"
 "PO-Revision-Date: 2015-09-16 08:22+0000\n"
 "Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
 "Language-Team: Turkish (Turkey)\n"
@@ -1784,16 +1784,6 @@ msgstr ""
 "yolunda destek dosyaları %(backing_file)s var!"
 
 #, python-format
-msgid "Not able to find a different datastore to place the extended volume %s."
-msgstr ""
-"%s genişletilmiş mantıksal sürücüsünü yerleştirmek için farklı bir "
-"verideposu bulunması mümkün değil."
-
-#, python-format
-msgid "Not able to relocate volume %s for extending."
-msgstr "%s mantıksal sürücüsünün genişletmek için taşınması mümkün değil."
-
-#, python-format
 msgid ""
 "One of the components of the original masking view %(maskingViewName)s "
 "cannot be retrieved so please contact your system administrator to check "
@@ -2127,10 +2117,6 @@ msgstr ""
 
 msgid "Unable to disconnect host from volume."
 msgstr "Disk bölümünden istemci bağlantısı kesilemedi."
-
-#, python-format
-msgid "Unable to extend the size of the vmdk virtual disk at the path %s."
-msgstr "%s yolundaki vmdk sanal diskin boyutu genişletilemedi."
 
 msgid "Unable to find FC initiators"
 msgstr "FC başlatıcısı bulunamadı"
