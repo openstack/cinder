@@ -519,6 +519,26 @@ class SnapshotApiTest(test.TestCase):
         self.assertIn('snapshots', res)
         self.assertEqual(3, len(res['snapshots']))
 
+    @mock.patch.object(db, 'snapshot_get_all')
+    @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
+    def test_admin_list_snapshots_by_tenant_id(self, snapshot_metadata_get,
+                                               snapshot_get_all):
+        def get_all(context, filters=None, marker=None, limit=None,
+                    sort_keys=None, sort_dirs=None, offset=None):
+            if 'project_id' in filters and 'tenant1' in filters['project_id']:
+                return [stubs.stub_snapshot(1, tenant_id='tenant1')]
+            else:
+                return []
+
+        snapshot_get_all.side_effect = get_all
+
+        req = fakes.HTTPRequest.blank('/v2/fake/snapshots?all_tenants=1'
+                                      '&project_id=tenant1',
+                                      use_admin_context=True)
+        res = self.controller.index(req)
+        self.assertIn('snapshots', res)
+        self.assertEqual(1, len(res['snapshots']))
+
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
     def test_all_tenants_non_admin_gets_all_tenants(self,
                                                     snapshot_metadata_get):
