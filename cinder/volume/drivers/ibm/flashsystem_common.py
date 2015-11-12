@@ -122,8 +122,7 @@ class FlashSystemDriver(san.SanDriver):
                                 'err': six.text_type(err)}))
 
     def _build_default_params(self):
-        return {'protocol': self.configuration.flashsystem_connection_protocol,
-                'multipath': self.configuration.flashsystem_multipath_enabled}
+        return {'protocol': self.configuration.flashsystem_connection_protocol}
 
     def _build_initiator_target_map(self, initiator_wwpns, target_wwpns):
         map = {}

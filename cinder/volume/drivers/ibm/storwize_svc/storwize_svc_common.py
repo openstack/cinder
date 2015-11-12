@@ -737,7 +737,6 @@ class StorwizeHelpers(object):
                'compression': config.storwize_svc_vol_compression,
                'easytier': config.storwize_svc_vol_easytier,
                'protocol': protocol,
-               'multipath': config.storwize_svc_multipath_enabled,
                'iogrp': config.storwize_svc_vol_iogrp,
                'qos': None,
                'stretched_cluster': cluster_partner,

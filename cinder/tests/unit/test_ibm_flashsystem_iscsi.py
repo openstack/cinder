@@ -116,7 +116,6 @@ class FlashSystemISCSIDriverTestCase(test.TestCase):
                            'san_login': 'username',
                            'san_password': 'password',
                            'flashsystem_connection_protocol': 'iSCSI',
-                           'flashsystem_multipath_enabled': False,
                            'flashsystem_multihostmap_enabled': True,
                            'iscsi_ip_address': '192.168.1.10',
                            'flashsystem_iscsi_portid': 1}

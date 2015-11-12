@@ -723,7 +723,6 @@ class FlashSystemDriverTestCase(test.TestCase):
                            'san_login': 'username',
                            'san_password': 'password',
                            'flashsystem_connection_protocol': 'FC',
-                           'flashsystem_multipath_enabled': False,
                            'flashsystem_multihostmap_enabled': True}
 
         self.connector = {
