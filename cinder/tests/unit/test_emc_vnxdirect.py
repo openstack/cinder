@@ -509,6 +509,40 @@ class EMCVNXCLIDriverTestData(object):
         Percent Complete:  60
         Time Remaining:  0 second(s)
         """
+    LIST_LUN_1_SPECS = """
+        LOGICAL UNIT NUMBER 1
+        Name:  os-044e89e9-3aeb-46eb-a1b0-946f0a13545c
+        Pool Name:  unit_test_pool
+        Is Thin LUN:  No
+        Is Compressed:  No
+        Deduplication State:  Off
+        Deduplication Status:  OK(0x0)
+        Tiering Policy:  Auto Tier
+        Initial Tier:  Highest Available
+    """
+    LIST_LUN_1_ALL = """
+        LOGICAL UNIT NUMBER 1
+        Name:  os-044e89e9-3aeb-46eb-a1b0-946f0a13545c
+        Current Owner:  SP A
+        User Capacity (Blocks):  46137344
+        User Capacity (GBs):  1.000
+        Pool Name:  unit_test_pool
+        Current State:  Ready
+        Status:  OK(0x0)
+        Is Faulted:  false
+        Is Transitioning:  false
+        Current Operation:  None
+        Current Operation State:  N/A
+        Current Operation Status:  N/A
+        Current Operation Percent Completed:  0
+        Is Thin LUN:  No
+        Is Compressed:  No
+        Deduplication State:  Off
+        Deduplication Status:  OK(0x0)
+        Tiering Policy:  Auto Tier
+        Initial Tier:  Highest Available
+        Attached Snapshot:  N/A
+    """
 
     def SNAP_MP_CREATE_CMD(self, name='vol1', source='vol1'):
         return ('lun', '-create', '-type', 'snap', '-primaryLunName',
@@ -547,6 +581,36 @@ class EMCVNXCLIDriverTestData(object):
         return ('lun', '-list', '-name', lunname,
                 '-state', '-status', '-opDetails', '-userCap', '-owner',
                 '-attachedSnapshot')
+
+    @staticmethod
+    def LUN_RENAME_CMD(lun_id):
+        return ('lun', '-modify', '-l', lun_id,
+                '-newName', 'vol_with_type', '-o')
+
+    @staticmethod
+    def LUN_LIST_ALL_CMD(lun_id):
+        return ('lun', '-list', '-l', lun_id,
+                '-attachedSnapshot', '-userCap',
+                '-dedupState', '-initialTier',
+                '-isCompressed', '-isThinLUN',
+                '-opDetails', '-owner', '-poolName',
+                '-state', '-status', '-tieringPolicy')
+
+    @staticmethod
+    def LUN_LIST_SPECS_CMD(lun_id):
+        return ('lun', '-list', '-l', lun_id,
+                '-poolName', '-isThinLUN', '-isCompressed',
+                '-dedupState', '-initialTier', '-tieringPolicy')
+
+    @staticmethod
+    def LUN_MODIFY_TIER(lun_id, tier=None, policy=None):
+        if tier is None:
+            tier = 'highestAvailable'
+        if policy is None:
+            policy = 'highestAvailable'
+        return ('lun', '-modify', '-l', lun_id, '-o',
+                '-initialTier', tier,
+                '-tieringPolicy', policy)
 
     def MIGRATION_CMD(self, src_id=1, dest_id=1):
         cmd = ("migrate", "-start", "-source", src_id, "-dest", dest_id,
@@ -623,7 +687,8 @@ class EMCVNXCLIDriverTestData(object):
             '-initialTier', 'optimizePool',
             '-tieringPolicy', 'noMovement']}
 
-    def LUN_CREATION_CMD(self, name, size, pool, provisioning, tiering,
+    def LUN_CREATION_CMD(self, name, size, pool,
+                         provisioning=None, tiering=None,
                          ignore_thresholds=False, poll=True):
         initial = ['lun', '-create',
                    '-capacity', size,
@@ -1657,7 +1722,7 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
             'max_over_subscription_ratio': 20.0,
             'consistencygroup_support': 'True',
             'pool_name': 'unit_test_pool',
-            'fast_cache_enabled': 'True',
+            'fast_cache_enabled': True,
             'fast_support': 'True'}
 
         self.assertEqual(expected_pool_stats, pool_stats)
@@ -2877,12 +2942,18 @@ Time Remaining:  0 second(s)
                               poll=False)]
         fake_cli.assert_has_calls(expected)
 
+    @mock.patch(
+        "cinder.volume.volume_types."
+        "get_volume_type_extra_specs",
+        mock.Mock(return_value={}))
     def test_manage_existing(self):
-        lun_rename_cmd = ('lun', '-modify', '-l', self.testData.test_lun_id,
-                          '-newName', 'vol_with_type', '-o')
-        commands = [lun_rename_cmd]
+        data = self.testData
+        lun_rename_cmd = data.LUN_RENAME_CMD(data.test_lun_id)
+        lun_list_cmd = data.LUN_LIST_ALL_CMD(data.test_lun_id)
 
-        results = [SUCCEED]
+        commands = (lun_rename_cmd, lun_list_cmd)
+        results = (SUCCEED, (data.LIST_LUN_1_ALL, 0))
+
         self.configuration.storage_vnx_pool_name = \
             self.testData.test_pool_name
         fake_cli = self.driverSetup(commands, results)
@@ -2892,27 +2963,138 @@ Time Remaining:  0 second(s)
         expected = [mock.call(*lun_rename_cmd, poll=False)]
         fake_cli.assert_has_calls(expected)
 
+    @mock.patch(
+        "cinder.volume.volume_types."
+        "get_volume_type_extra_specs",
+        mock.Mock(return_value={}))
     def test_manage_existing_source_name(self):
-        lun_rename_cmd = ('lun', '-modify', '-l', self.testData.test_lun_id,
-                          '-newName', 'vol_with_type', '-o')
-        commands = [lun_rename_cmd]
+        data = self.testData
+        lun_rename_cmd = data.LUN_RENAME_CMD(data.test_lun_id)
+        lun_list_cmd = data.LUN_LIST_ALL_CMD(data.test_lun_id)
 
-        results = [SUCCEED]
+        commands = (lun_rename_cmd, lun_list_cmd)
+        results = (SUCCEED, (data.LIST_LUN_1_ALL, 0))
+
         fake_cli = self.driverSetup(commands, results)
         self.driver.manage_existing(
-            self.testData.test_volume_with_type,
-            self.testData.test_existing_ref_source_name)
+            data.test_volume_with_type,
+            data.test_existing_ref_source_name)
         expected = [mock.call(*lun_rename_cmd, poll=False)]
         fake_cli.assert_has_calls(expected)
 
+    @mock.patch(
+        "cinder.volume.volume_types."
+        "get_volume_type_extra_specs",
+        mock.Mock(return_value={
+            'storagetype:provisioning': 'compressed',
+            'compression_support': 'True'}))
+    @mock.patch("time.time", mock.Mock(return_value=1))
+    def test_manage_existing_success_retype_with_migration(self):
+        data = self.testData
+        lun_rename_cmd = data.LUN_RENAME_CMD(data.test_lun_id)
+        lun_list_cmd = data.LUN_LIST_ALL_CMD(data.test_lun_id)
+        snap_existing_cmd = data.SNAP_LIST_CMD(data.test_lun_id)
+        lun_create_cmd = data.LUN_CREATION_CMD(
+            'vol_with_type-1',
+            1,
+            'unit_test_pool',
+            'compressed')
+        lun3_status_cmd = data.LUN_PROPERTY_ALL_CMD('vol_with_type-1')
+        compression_cmd = data.ENABLE_COMPRESSION_CMD(3)
+        lun1_status_cmd = data.LUN_PROPERTY_ALL_CMD('vol_with_type')
+        migration_cmd = data.MIGRATION_CMD(1, 3)
+        migration_verify_cmd = data.MIGRATION_VERIFY_CMD(1)
+        commands = (lun_list_cmd,
+                    snap_existing_cmd,
+                    lun_create_cmd,
+                    lun3_status_cmd,
+                    compression_cmd,
+                    lun1_status_cmd,
+                    migration_cmd,
+                    migration_verify_cmd,
+                    lun_rename_cmd)
+
+        cmd_success = ('', 0)
+        migrate_verify = ('The specified source LUN '
+                          'is not currently migrating', 23)
+        lun3_status = data.LUN_PROPERTY('vol_with_type-1', lunid=3)
+        lun1_status = data.LUN_PROPERTY('vol_with_type', lunid=1)
+        results = ((data.LIST_LUN_1_ALL, 0),
+                   ('no snap', 1023),
+                   cmd_success,
+                   lun3_status,
+                   cmd_success,
+                   lun1_status,
+                   cmd_success,
+                   migrate_verify,
+                   cmd_success)
+        fake_cli = self.driverSetup(commands, results)
+        self.driver.manage_existing(
+            data.test_volume_with_type,
+            {'source-id': 1})
+
+        expected = [mock.call(*lun_list_cmd, poll=False),
+                    mock.call(*snap_existing_cmd, poll=False),
+                    mock.call(*lun_create_cmd),
+                    mock.call(*lun3_status_cmd, poll=False),
+                    mock.call(*lun3_status_cmd, poll=False),
+                    mock.call(*lun3_status_cmd, poll=True),
+                    mock.call(*compression_cmd),
+                    mock.call(*migration_cmd, poll=True, retry_disable=True),
+                    mock.call(*migration_verify_cmd, poll=True),
+                    mock.call(*lun_rename_cmd, poll=False)]
+        fake_cli.assert_has_calls(expected)
+
+    @mock.patch(
+        "cinder.volume.volume_types."
+        "get_volume_type_extra_specs",
+        mock.Mock(return_value={
+            'storagetype:provisioning': 'thick',
+            'storagetype:tiering': 'nomovement'}))
+    @mock.patch("time.time", mock.Mock(return_value=1))
+    def test_manage_existing_success_retype_change_tier(self):
+        data = self.testData
+        lun_rename_cmd = data.LUN_RENAME_CMD(data.test_lun_id)
+        lun_list_cmd = data.LUN_LIST_ALL_CMD(data.test_lun_id)
+        lun_tier_cmd = data.LUN_MODIFY_TIER(data.test_lun_id,
+                                            'optimizePool',
+                                            'noMovement')
+
+        commands = (lun_rename_cmd,
+                    lun_list_cmd,
+                    lun_tier_cmd)
+
+        cmd_success = ('', 0)
+
+        results = (cmd_success,
+                   (data.LIST_LUN_1_ALL, 0),
+                   cmd_success)
+        fake_cli = self.driverSetup(commands, results)
+        self.driver.manage_existing(
+            data.test_volume_with_type,
+            {'source-id': 1})
+
+        expected = [mock.call(*lun_list_cmd, poll=False),
+                    mock.call(*lun_tier_cmd),
+                    mock.call(*lun_rename_cmd, poll=False)]
+        fake_cli.assert_has_calls(expected)
+
+    @mock.patch(
+        "cinder.volume.volume_types."
+        "get_volume_type_extra_specs",
+        mock.Mock(return_value={}))
     def test_manage_existing_lun_in_another_pool(self):
-        get_lun_cmd = ('lun', '-list', '-l', self.testData.test_lun_id,
+        data = self.testData
+        get_lun_cmd = ('lun', '-list', '-l', data.test_lun_id,
                        '-state', '-userCap', '-owner',
                        '-attachedSnapshot', '-poolName')
+        lun_list_cmd = data.LUN_LIST_SPECS_CMD(data.test_lun_id)
         invalid_pool_name = "fake_pool"
-        commands = [get_lun_cmd]
-        results = [self.testData.LUN_PROPERTY('lun_name',
-                                              pool_name=invalid_pool_name)]
+        commands = (get_lun_cmd, lun_list_cmd)
+        lun_properties = data.LUN_PROPERTY('lun_name',
+                                           pool_name=invalid_pool_name)
+        results = (lun_properties, (data.LIST_LUN_1_SPECS, 0))
+
         self.configuration.storage_vnx_pool_name = invalid_pool_name
         fake_cli = self.driverSetup(commands, results)
         # mock the command executor
@@ -4503,7 +4685,7 @@ class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
             'consistencygroup_support': 'True',
             'pool_name': 'unit_test_pool',
             'max_over_subscription_ratio': 20.0,
-            'fast_cache_enabled': 'True',
+            'fast_cache_enabled': True,
             'fast_support': 'True'}
         self.assertEqual(expected_pool_stats1, pool_stats1)
 
@@ -4521,15 +4703,15 @@ class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
             'consistencygroup_support': 'True',
             'pool_name': 'unit_test_pool2',
             'max_over_subscription_ratio': 20.0,
-            'fast_cache_enabled': 'False',
+            'fast_cache_enabled': False,
             'fast_support': 'True'}
         self.assertEqual(expected_pool_stats2, pool_stats2)
 
     def test_get_volume_stats_wo_fastcache(self):
-        commands = [self.testData.NDU_LIST_CMD,
-                    self.testData.POOL_GET_ALL_CMD(False)]
-        results = [self.testData.NDU_LIST_RESULT_WO_LICENSE,
-                   self.testData.POOL_GET_ALL_RESULT(False)]
+        commands = (self.testData.NDU_LIST_CMD,
+                    self.testData.POOL_GET_ALL_CMD(False))
+        results = (self.testData.NDU_LIST_RESULT_WO_LICENSE,
+                   self.testData.POOL_GET_ALL_RESULT(False))
         self.driverSetup(commands, results)
 
         stats = self.driver.get_volume_stats(True)
@@ -4572,10 +4754,10 @@ class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
         self.assertEqual(expected_pool_stats2, pool_stats2)
 
     def test_get_volume_stats_storagepool_states(self):
-        commands = [self.testData.POOL_GET_ALL_CMD(False)]
-        results = [self.testData.POOL_GET_ALL_STATES_TEST
+        commands = (self.testData.POOL_GET_ALL_CMD(False),)
+        results = (self.testData.POOL_GET_ALL_STATES_TEST
                    (['Initializing', 'Ready', 'Faulted',
-                     'Offline', 'Deleting'])]
+                     'Offline', 'Deleting']),)
         self.driverSetup(commands, results)
 
         stats = self.driver.get_volume_stats(True)
@@ -4696,11 +4878,16 @@ class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
         expected = [mock.call(*get_lun_cmd, poll=True)]
         fake_cli.assert_has_calls(expected)
 
+    @mock.patch(
+        "cinder.volume.volume_types."
+        "get_volume_type_extra_specs",
+        mock.Mock(return_value={}))
     def test_manage_existing(self):
-        lun_rename_cmd = ('lun', '-modify', '-l', self.testData.test_lun_id,
-                          '-newName', 'vol_with_type', '-o')
-        commands = [lun_rename_cmd]
-        results = [SUCCEED]
+        data = self.testData
+        lun_rename_cmd = data.LUN_RENAME_CMD(data.test_lun_id)
+        lun_list_cmd = data.LUN_LIST_ALL_CMD(data.test_lun_id)
+        commands = lun_rename_cmd, lun_list_cmd
+        results = SUCCEED, (data.LIST_LUN_1_SPECS, 0)
         fake_cli = self.driverSetup(commands, results)
         self.driver.manage_existing(
             self.testData.test_volume_with_type,
@@ -5087,18 +5274,18 @@ class EMCVNXCLIDriverFCTestCase(DriverTestCaseBase):
             'max_over_subscription_ratio': 20.0,
             'consistencygroup_support': 'True',
             'pool_name': 'unit_test_pool',
-            'fast_cache_enabled': 'True',
+            'fast_cache_enabled': True,
             'fast_support': 'True'}
 
         self.assertEqual(expected_pool_stats, pool_stats)
 
     def test_get_volume_stats_too_many_luns(self):
-        commands = [self.testData.NDU_LIST_CMD,
+        commands = (self.testData.NDU_LIST_CMD,
                     self.testData.POOL_GET_ALL_CMD(True),
-                    self.testData.POOL_FEATURE_INFO_POOL_LUNS_CMD()]
-        results = [self.testData.NDU_LIST_RESULT,
+                    self.testData.POOL_FEATURE_INFO_POOL_LUNS_CMD())
+        results = (self.testData.NDU_LIST_RESULT,
                    self.testData.POOL_GET_ALL_RESULT(True),
-                   self.testData.POOL_FEATURE_INFO_POOL_LUNS(1000, 1000)]
+                   self.testData.POOL_FEATURE_INFO_POOL_LUNS(1000, 1000))
         fake_cli = self.driverSetup(commands, results)
         self.driver.cli.check_max_pool_luns_threshold = True
         stats = self.driver.get_volume_stats(True)
@@ -5486,3 +5673,273 @@ class VNXErrorTest(test.TestCase):
                                        VNXError.LUN_ALREADY_EXPANDED,
                                        VNXError.LUN_NOT_MIGRATING)
         self.assertFalse(has_error)
+
+
+VNXProvisionEnum = emc_vnx_cli.VNXProvisionEnum
+
+
+class VNXProvisionEnumTest(test.TestCase):
+    def test_get_opt(self):
+        opt = VNXProvisionEnum.get_opt(VNXProvisionEnum.DEDUPED)
+        self.assertEqual('-type Thin -deduplication on',
+                         ' '.join(opt))
+
+    def test_get_opt_not_available(self):
+        self.assertRaises(ValueError, VNXProvisionEnum.get_opt, 'na')
+
+
+VNXTieringEnum = emc_vnx_cli.VNXTieringEnum
+
+
+class VNXTieringEnumTest(test.TestCase):
+    def test_get_opt(self):
+        opt = VNXTieringEnum.get_opt(VNXTieringEnum.HIGH_AUTO)
+        self.assertEqual(
+            '-initialTier highestAvailable -tieringPolicy autoTier',
+            ' '.join(opt))
+
+    def test_get_opt_not_available(self):
+        self.assertRaises(ValueError, VNXTieringEnum.get_opt, 'na')
+
+
+VNXLun = emc_vnx_cli.VNXLun
+
+
+class VNXLunTest(test.TestCase):
+    def test_lun_id_setter_str_input(self):
+        lun = VNXLun()
+        lun.lun_id = '5'
+        self.assertEqual(5, lun.lun_id)
+
+    def test_lun_id_setter_dict_input(self):
+        lun = VNXLun()
+        lun.lun_id = {'lun_id': 12}
+        self.assertEqual(12, lun.lun_id)
+
+    def test_lun_id_setter_str_error(self):
+        lun = VNXLun()
+        self.assertRaises(ValueError, setattr, lun, 'lun_id', '12a')
+
+    def test_lun_provision_default(self):
+        lun = VNXLun()
+        lun.provision = {}
+        self.assertEqual(VNXProvisionEnum.THICK, lun.provision)
+
+    def test_lun_provision_thin(self):
+        lun = VNXLun()
+        lun.provision = {'is_thin_lun': True,
+                         'is_compressed': False,
+                         'dedup_state': False}
+        self.assertEqual(VNXProvisionEnum.THIN, lun.provision)
+
+    def test_lun_provision_compressed(self):
+        lun = VNXLun()
+        lun.provision = {'is_thin_lun': True,
+                         'is_compressed': True,
+                         'dedup_state': False}
+        self.assertEqual(VNXProvisionEnum.COMPRESSED, lun.provision)
+
+    def test_lun_provision_dedup(self):
+        lun = VNXLun()
+        lun.provision = {'is_thin_lun': True,
+                         'is_compressed': False,
+                         'dedup_state': True}
+        self.assertEqual(VNXProvisionEnum.DEDUPED, lun.provision)
+
+    def test_lun_provision_str_not_valid(self):
+        lun = VNXLun()
+        self.assertRaises(ValueError, setattr, lun, 'provision', 'invalid')
+
+    def test_lun_provision_plain_str(self):
+        lun = VNXLun()
+        lun.provision = VNXProvisionEnum.DEDUPED
+        self.assertEqual(VNXProvisionEnum.DEDUPED, lun.provision)
+
+    def test_lun_tier_default(self):
+        lun = VNXLun()
+        self.assertEqual(VNXTieringEnum.HIGH_AUTO, lun.tier)
+
+    def test_lun_tier_invalid_str(self):
+        lun = VNXLun()
+        self.assertRaises(ValueError, setattr, lun, 'tier', 'invalid')
+
+    def test_lun_tier_plain_str(self):
+        lun = VNXLun()
+        lun.tier = VNXTieringEnum.NO_MOVE
+        self.assertEqual(VNXTieringEnum.NO_MOVE, lun.tier)
+
+    def test_lun_tier_highest_available(self):
+        lun = VNXLun()
+        lun.tier = {'tiering_policy': 'Auto Tier',
+                    'initial_tier': 'Highest Available'}
+        self.assertEqual(VNXTieringEnum.HIGH_AUTO, lun.tier)
+
+    def test_lun_tier_auto(self):
+        lun = VNXLun()
+        lun.tier = {'tiering_policy': 'Auto Tier',
+                    'initial_tier': 'Optimize Pool'}
+        self.assertEqual(VNXTieringEnum.AUTO, lun.tier)
+
+    def test_lun_tier_high(self):
+        lun = VNXLun()
+        lun.tier = {'tiering_policy': 'Highest Available',
+                    'initial_tier': 'Highest Available'}
+        self.assertEqual(VNXTieringEnum.HIGH, lun.tier)
+
+    def test_lun_tier_low(self):
+        lun = VNXLun()
+        lun.tier = {'tiering_policy': 'Lowest Available',
+                    'initial_tier': 'Lowest Available'}
+        self.assertEqual(VNXTieringEnum.LOW, lun.tier)
+
+    def test_lun_tier_no_move_high_tier(self):
+        lun = VNXLun()
+        lun.tier = {'tiering_policy': 'No Movement',
+                    'initial_tier': 'Highest Available'}
+        self.assertEqual(VNXTieringEnum.NO_MOVE, lun.tier)
+
+    def test_lun_tier_no_move_optimize_pool(self):
+        lun = VNXLun()
+        lun.tier = {'tiering_policy': 'No Movement',
+                    'initial_tier': 'Optimize Pool'}
+        self.assertEqual(VNXTieringEnum.NO_MOVE, lun.tier)
+
+    def test_update(self):
+        lun = VNXLun()
+        lun.lun_id = 19
+        lun.update({
+            'lun_name': 'test_lun',
+            'lun_id': 19,
+            'total_capacity_gb': 1.0,
+            'is_thin_lun': True,
+            'is_compressed': False,
+            'dedup_state': True,
+            'tiering_policy': 'No Movement',
+            'initial_tier': 'Optimize Pool'})
+        self.assertEqual(1.0, lun.capacity)
+        self.assertEqual(VNXProvisionEnum.DEDUPED, lun.provision)
+        self.assertEqual(VNXTieringEnum.NO_MOVE, lun.tier)
+
+
+Dict = emc_vnx_cli.Dict
+
+
+class DictTest(test.TestCase):
+    def test_get_attr(self):
+        result = Dict()
+        result['a'] = 'A'
+        self.assertEqual('A', result.a)
+        self.assertEqual('A', result['a'])
+
+    def test_get_attr_not_exists(self):
+        result = Dict()
+        self.assertRaises(AttributeError, getattr, result, 'a')
+
+
+VNXCliParser = emc_vnx_cli.VNXCliParser
+PropertyDescriptor = emc_vnx_cli.PropertyDescriptor
+
+
+class DemoParser(VNXCliParser):
+    A = PropertyDescriptor('-a', 'Prop A (name)', 'prop_a')
+    B = PropertyDescriptor('-b', 'Prop B:')
+    C = PropertyDescriptor('-c', 'Prop C')
+    ID = PropertyDescriptor(None, 'ID:')
+
+
+class VNXCliParserTest(test.TestCase):
+    def test_get_property_options(self):
+        options = DemoParser.get_property_options()
+        self.assertEqual('-a -b -c', ' '.join(options))
+
+    def test_parse(self):
+        output = """
+                ID: test
+                Prop A (Name): ab (c)
+                Prop B: d ef
+                """
+        parsed = DemoParser.parse(
+            output,
+            [DemoParser.A, DemoParser.ID, DemoParser.C])
+
+        self.assertEqual('ab (c)', parsed.prop_a)
+        self.assertIsNone(parsed.prop_c)
+        self.assertEqual('test', parsed.id)
+        self.assertRaises(AttributeError, getattr, parsed, 'prop_b')
+
+
+VNXLunProperties = emc_vnx_cli.VNXLunProperties
+
+
+class VNXLunPropertiesTest(test.TestCase):
+
+    def test_parse(self):
+        output = """
+                LOGICAL UNIT NUMBER 19
+                Name:  test_lun
+                User Capacity (Blocks):  2097152
+                User Capacity (GBs):  1.000
+                Pool Name:  Pool4File
+                Is Thin LUN:  Yes
+                Is Compressed:  No
+                Deduplication State:  Off
+                Deduplication Status:  OK(0x0)
+                Tiering Policy:  No Movement
+                Initial Tier:  Optimize Pool
+                """
+        parser = VNXLunProperties()
+        parsed = parser.parse(output)
+        self.assertEqual('test_lun', parsed.lun_name)
+        self.assertEqual(19, parsed.lun_id)
+        self.assertEqual(1.0, parsed.total_capacity_gb)
+        self.assertTrue(parsed.is_thin_lun)
+        self.assertFalse(parsed.is_compressed)
+        self.assertFalse(parsed.dedup_state)
+        self.assertEqual('No Movement', parsed.tiering_policy)
+        self.assertEqual('Optimize Pool', parsed.initial_tier)
+        self.assertIsNone(parsed['state'])
+
+
+VNXPoolProperties = emc_vnx_cli.VNXPoolProperties
+
+
+class VNXPoolPropertiesTest(test.TestCase):
+    def test_parse(self):
+        output = """
+                Pool Name:  Pool4File
+                Pool ID:  1
+                Raid Type:  Mixed
+                Percent Full Threshold:  70
+                Description:
+                Disk Type:  Mixed
+                State:  Ready
+                Status:  OK(0x0)
+                Current Operation:  None
+                Current Operation State:  N/A
+                Current Operation Status:  N/A
+                Current Operation Percent Completed:  0
+                Raw Capacity (Blocks):  6398264602
+                Raw Capacity (GBs):  3050.930
+                User Capacity (Blocks):  4885926912
+                User Capacity (GBs):  2329.792
+                Consumed Capacity (Blocks):  1795516416
+                Consumed Capacity (GBs):  856.169
+                Available Capacity (Blocks):  3090410496
+                Available Capacity (GBs):  1473.623
+                Percent Full:  36.749
+                Total Subscribed Capacity (Blocks):  5666015232
+                Total Subscribed Capacity (GBs):  2701.767
+                Percent Subscribed:  115.966
+                Oversubscribed by (Blocks):  780088320
+                Oversubscribed by (GBs):  371.975
+                """
+        parser = VNXPoolProperties()
+        pool = parser.parse(output)
+        self.assertEqual('Ready', pool.state)
+        self.assertEqual(1, pool.pool_id)
+        self.assertEqual(2329.792, pool.total_capacity_gb)
+        self.assertEqual(1473.623, pool.free_capacity_gb)
+        self.assertIsNone(pool.fast_cache_enabled)
+        self.assertEqual('Pool4File', pool.pool_name)
+        self.assertEqual(2701.767, pool.provisioned_capacity_gb)
+        self.assertEqual(70, pool.pool_full_threshold)

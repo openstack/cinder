@@ -220,7 +220,7 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
             'source-name':<lun name in VNX>
         }
         """
-        self.cli.manage_existing(volume, existing_ref)
+        return self.cli.manage_existing(volume, existing_ref)
 
     def manage_existing_get_size(self, volume, existing_ref):
         """Return size of volume to be managed by manage_existing."""

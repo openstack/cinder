@@ -170,14 +170,58 @@ def log_enter_exit(func):
 
 
 class PropertyDescriptor(object):
-    def __init__(self, option, label, key, converter=None):
+    def __init__(self, option, label, key=None, converter=None):
         self.option = option
-        self.label = label
-        self.key = key
+        self._label = None
+        self._key = key
         self.converter = converter
 
+        self.label = label
 
-class VNXError(object):
+    @property
+    def label(self):
+        return self._label
+
+    @label.setter
+    def label(self, value):
+        value = value.strip()
+        if value[-1] == ':':
+            value = value[:-1]
+        self._label = value
+
+    @property
+    def key(self):
+        if self._key is None:
+            self._key = '_'.join(self.label.lower().split())
+        return self._key
+
+
+class _Enum(object):
+    @classmethod
+    def get_all(cls):
+        return [getattr(cls, member) for member in dir(cls)
+                if cls._is_enum(member)]
+
+    @classmethod
+    def _is_enum(cls, name):
+        return (isinstance(name, str)
+                and hasattr(cls, name)
+                and name.isupper())
+
+    @classmethod
+    def get_opt(cls, tier):
+        option_map = getattr(cls, '_map', None)
+        if option_map is None:
+            raise NotImplementedError(
+                _('Option map (cls._map) is not defined.'))
+
+        ret = option_map.get(tier)
+        if ret is None:
+            raise ValueError(_("{} is not a valid option.").format(tier))
+        return ret
+
+
+class VNXError(_Enum):
 
     GENERAL_NOT_FOUND = 'cannot find|may not exist|does not exist'
 
@@ -200,18 +244,6 @@ class VNXError(object):
     SNAP_ALREADY_MOUNTED = 0x716d8055
     SNAP_NOT_ATTACHED = ('The specified Snapshot mount point '
                          'is not currently attached.')
-
-    @classmethod
-    def get_all(cls):
-        return (member for member in dir(cls)
-                if cls._is_enum(member))
-
-    @classmethod
-    def _is_enum(cls, name):
-        return (isinstance(name, str)
-                and hasattr(cls, name)
-                and not callable(name)
-                and name.isupper())
 
     @staticmethod
     def _match(output, error_code):
@@ -237,105 +269,411 @@ class VNXError(object):
                     for error_code in error_codes])
 
 
-@decorate_all_methods(log_enter_exit)
-class CommandLineHelper(object):
+class VNXProvisionEnum(_Enum):
+    THIN = 'thin'
+    THICK = 'thick'
+    COMPRESSED = 'compressed'
+    DEDUPED = 'deduplicated'
 
+    _map = {
+        THIN: ['-type', 'Thin'],
+        THICK: ['-type', 'NonThin'],
+        COMPRESSED: ['-type', 'Thin'],
+        DEDUPED: ['-type', 'Thin', '-deduplication', 'on']}
+
+
+class VNXTieringEnum(_Enum):
+    NONE = 'none'
+    HIGH_AUTO = 'starthighthenauto'
+    AUTO = 'auto'
+    HIGH = 'highestavailable'
+    LOW = 'lowestavailable'
+    NO_MOVE = 'nomovement'
+
+    _map = {
+        NONE: ['', ''],
+        HIGH_AUTO: [
+            '-initialTier', 'highestAvailable',
+            '-tieringPolicy', 'autoTier'],
+        AUTO: [
+            '-initialTier', 'optimizePool',
+            '-tieringPolicy', 'autoTier'],
+        HIGH: [
+            '-initialTier', 'highestAvailable',
+            '-tieringPolicy', 'highestAvailable'],
+        LOW: [
+            '-initialTier', 'lowestAvailable',
+            '-tieringPolicy', 'lowestAvailable'],
+        NO_MOVE: [
+            '-initialTier', 'optimizePool',
+            '-tieringPolicy', 'noMovement']
+    }
+
+    @classmethod
+    def get_tier(cls, initial, policy):
+        ret = None
+        for k, v in cls._map.items():
+            if len(v) >= 4:
+                v_initial, v_policy = v[1], v[3]
+                if (cls.match_option(initial, v_initial) and
+                        cls.match_option(policy, v_policy)):
+                    ret = k
+                    break
+                elif cls.match_option(policy, 'noMovement'):
+                    # no movement could have different initial tier
+                    ret = cls.NO_MOVE
+                    break
+        if ret is None:
+            raise ValueError(_('Initial tier: {}, policy: {} is not valid.')
+                             .format(initial, policy))
+        return ret
+
+    @staticmethod
+    def match_option(output, option):
+        return output.replace(' ', '').lower() == option.lower()
+
+
+class VNXLun(object):
+
+    DEFAULT_TIER = VNXTieringEnum.HIGH_AUTO
+    DEFAULT_PROVISION = VNXProvisionEnum.THICK
+
+    def __init__(self):
+        self._lun_id = -1
+        self._capacity = 0.0
+        self._pool_name = ''
+        self._tier = self.DEFAULT_TIER
+        self._provision = self.DEFAULT_PROVISION
+
+        self._const = VNXLunProperties
+
+    @property
+    def lun_id(self):
+        return self._lun_id
+
+    @lun_id.setter
+    def lun_id(self, data):
+        if isinstance(data, dict):
+            self._lun_id = self._get(data, self._const.LUN_ID)
+        elif isinstance(data, int):
+            self._lun_id = data
+        elif isinstance(data, str):
+            try:
+                self._lun_id = int(data)
+            except ValueError:
+                raise ValueError(
+                    _('LUN number ({}) is not an integer.').format(data))
+        else:
+            self._raise_type_error(data)
+
+        if self.lun_id < 0:
+            raise ValueError(_('LUN id({}) is not valid.')
+                             .format(self.lun_id))
+
+    @property
+    def pool_name(self):
+        return self._pool_name
+
+    @pool_name.setter
+    def pool_name(self, data):
+        if isinstance(data, dict):
+            self._pool_name = self._get(data, self._const.LUN_POOL)
+        elif isinstance(data, str):
+            self._pool_name = data
+        else:
+            self._raise_type_error(data)
+
+    @property
+    def capacity(self):
+        return self._capacity
+
+    @capacity.setter
+    def capacity(self, data):
+        if isinstance(data, dict):
+            self._capacity = self._get(data, self._const.LUN_CAPACITY)
+        elif isinstance(data, float):
+            self._capacity = data
+        elif isinstance(data, int):
+            self._capacity = float(data)
+        else:
+            self._raise_type_error(data)
+
+    @property
+    def tier(self):
+        return self._tier
+
+    @tier.setter
+    def tier(self, data):
+        if isinstance(data, dict):
+            initial = self._get(data, self._const.LUN_INITIAL_TIER)
+            policy = self._get(data, self._const.LUN_TIERING_POLICY)
+
+            self._tier = VNXTieringEnum.get_tier(initial, policy)
+        elif isinstance(data, str) and data in VNXTieringEnum.get_all():
+            self._tier = data
+        else:
+            self._raise_type_error(data)
+
+    @property
+    def provision(self):
+        return self._provision
+
+    @provision.setter
+    def provision(self, data):
+        self._provision = VNXProvisionEnum.THICK
+        if isinstance(data, dict):
+            is_thin = self._get(data, self._const.LUN_IS_THIN_LUN)
+            is_compressed = self._get(data, self._const.LUN_IS_COMPRESSED)
+            is_dedup = self._get(data, self._const.LUN_DEDUP_STATE)
+
+            if is_compressed:
+                self._provision = VNXProvisionEnum.COMPRESSED
+            elif is_dedup:
+                self._provision = VNXProvisionEnum.DEDUPED
+            elif is_thin:
+                self._provision = VNXProvisionEnum.THIN
+        elif isinstance(data, str) and data in VNXProvisionEnum.get_all():
+            self._provision = data
+        else:
+            self._raise_type_error(data)
+
+    @staticmethod
+    def _raise_type_error(data):
+        raise ValueError(_('Input type {} is not supported.')
+                         .format(type(data)))
+
+    def update(self, data):
+        self.lun_id = data
+        self.pool_name = data
+        self.capacity = data
+        self.provision = data
+        self.tier = data
+
+    @staticmethod
+    def get_lun_by_id(client, lun_id):
+        lun = VNXLun()
+        lun.lun_id = lun_id
+        lun.update(client)
+        return lun
+
+    @staticmethod
+    def _get(data, key):
+        if isinstance(key, PropertyDescriptor):
+            key = key.key
+        return data.get(key)
+
+    def __repr__(self):
+        return ('VNXLun ['
+                'lun_id: {}, '
+                'pool_name: {}, '
+                'capacity: {}, '
+                'provision: {}, '
+                'tier: {}]'
+                .format(self.lun_id,
+                        self.pool_name,
+                        self.capacity,
+                        self.provision,
+                        self.tier))
+
+
+class Converter(object):
+    @staticmethod
+    def str_to_boolean(str_input):
+        ret = False
+        if str_input.strip().lower() in ('yes', 'true', 'enabled', 'on'):
+            ret = True
+        return ret
+
+
+class Dict(dict):
+    def __getattr__(self, item):
+        try:
+            ret = super(Dict, self).__getattr__(item)
+        except AttributeError:
+            if item in self:
+                value = self.get(item)
+            else:
+                raise AttributeError(
+                    _("'{}' object has no attribute '{}'")
+                    .format(__name__, item))
+            ret = value
+        return ret
+
+
+class VNXCliParser(_Enum):
+    @classmethod
+    def get_all_property_descriptor(cls):
+        return (p for p in cls.get_all()
+                if isinstance(p, PropertyDescriptor))
+
+    @classmethod
+    def get_property_options(cls):
+        properties = cls.get_all_property_descriptor()
+        return [p.option for p in properties if p.option is not None]
+
+    @classmethod
+    def parse(cls, output, properties=None):
+        ret = Dict()
+        output = output.strip()
+
+        if properties is None:
+            properties = cls.get_all_property_descriptor()
+
+        for p in properties:
+            pattern = re.compile(
+                '^\s*{}\s*[:]?\s*(?P<value>.*)\s*$'.format(
+                    re.escape(p.label)),
+                re.MULTILINE | re.IGNORECASE)
+            matched = re.search(pattern, output)
+
+            if matched is not None:
+                value = matched.group('value')
+                if p.converter is not None and callable(p.converter):
+                    value = p.converter(value)
+                ret[p.key] = value
+            else:
+                ret[p.key] = None
+        return ret
+
+
+class VNXLunProperties(VNXCliParser):
     LUN_STATE = PropertyDescriptor(
         '-state',
-        'Current State:\s*(.*)\s*',
+        'Current State',
         'state')
     LUN_STATUS = PropertyDescriptor(
         '-status',
-        'Status:\s*(.*)\s*',
-        'status')
+        'Status')
     LUN_OPERATION = PropertyDescriptor(
         '-opDetails',
-        'Current Operation:\s*(.*)\s*',
+        'Current Operation',
         'operation')
     LUN_CAPACITY = PropertyDescriptor(
         '-userCap',
-        'User Capacity \(GBs\):\s*(.*)\s*',
+        'User Capacity (GBs)',
         'total_capacity_gb',
         float)
     LUN_OWNER = PropertyDescriptor(
         '-owner',
-        'Current Owner:\s*SP\s*(.*)\s*',
+        'Current Owner',
         'owner')
     LUN_ATTACHEDSNAP = PropertyDescriptor(
         '-attachedSnapshot',
-        'Attached Snapshot:\s*(.*)\s*',
-        'attached_snapshot')
+        'Attached Snapshot')
     LUN_NAME = PropertyDescriptor(
-        '-name',
-        'Name:\s*(.*)\s*',
+        None,
+        'Name',
         'lun_name')
     LUN_ID = PropertyDescriptor(
-        '-id',
-        'LOGICAL UNIT NUMBER\s*(\d+)\s*',
+        None,
+        'LOGICAL UNIT NUMBER',
         'lun_id',
         int)
     LUN_POOL = PropertyDescriptor(
         '-poolName',
-        'Pool Name:\s*(.*)\s*',
+        'Pool Name',
         'pool')
+    LUN_IS_THIN_LUN = PropertyDescriptor(
+        '-isThinLUN',
+        'Is Thin LUN',
+        converter=Converter.str_to_boolean)
+    LUN_IS_COMPRESSED = PropertyDescriptor(
+        '-isCompressed',
+        'Is Compressed',
+        converter=Converter.str_to_boolean)
+    LUN_DEDUP_STATE = PropertyDescriptor(
+        '-dedupState',
+        'Deduplication State',
+        'dedup_state',
+        Converter.str_to_boolean)
+    LUN_INITIAL_TIER = PropertyDescriptor(
+        '-initialTier',
+        'Initial Tier')
+    LUN_TIERING_POLICY = PropertyDescriptor(
+        '-tieringPolicy',
+        'Tiering Policy')
 
-    LUN_ALL = [LUN_STATE, LUN_STATUS, LUN_OPERATION,
-               LUN_CAPACITY, LUN_OWNER, LUN_ATTACHEDSNAP]
+    lun_all = [LUN_STATE,
+               LUN_STATUS,
+               LUN_OPERATION,
+               LUN_CAPACITY,
+               LUN_OWNER,
+               LUN_ATTACHEDSNAP]
 
-    LUN_WITH_POOL = [LUN_STATE, LUN_CAPACITY, LUN_OWNER,
-                     LUN_ATTACHEDSNAP, LUN_POOL]
+    lun_with_pool = [LUN_STATE,
+                     LUN_CAPACITY,
+                     LUN_OWNER,
+                     LUN_ATTACHEDSNAP,
+                     LUN_POOL]
 
+
+class VNXPoolProperties(VNXCliParser):
+    POOL_ID = PropertyDescriptor(
+        None,
+        'Pool ID',
+        'pool_id',
+        int)
     POOL_STATE = PropertyDescriptor(
         '-state',
-        'State:\s*(.*)\s*',
-        'state')
+        'State')
     POOL_TOTAL_CAPACITY = PropertyDescriptor(
         '-userCap',
-        'User Capacity \(GBs\):\s*(.*)\s*',
+        'User Capacity (GBs)',
         'total_capacity_gb',
         float)
     POOL_FREE_CAPACITY = PropertyDescriptor(
         '-availableCap',
-        'Available Capacity *\(GBs\) *:\s*(.*)\s*',
+        'Available Capacity (GBs)',
         'free_capacity_gb',
         float)
     POOL_FAST_CACHE = PropertyDescriptor(
         '-fastcache',
-        'FAST Cache:\s*(.*)\s*',
+        'FAST Cache',
         'fast_cache_enabled',
-        lambda value: 'True' if value == 'Enabled' else 'False')
+        Converter.str_to_boolean)
     POOL_NAME = PropertyDescriptor(
-        '-name',
-        'Pool Name:\s*(.*)\s*',
-        'pool_name')
+        None,
+        'Pool Name')
     POOL_SUBSCRIBED_CAPACITY = PropertyDescriptor(
         '-subscribedCap',
-        'Total Subscribed Capacity *\(GBs\) *:\s*(.*)\s*',
+        'Total Subscribed Capacity (GBs)',
         'provisioned_capacity_gb',
         float)
     POOL_FULL_THRESHOLD = PropertyDescriptor(
         '-prcntFullThreshold',
-        'Percent Full Threshold:\s*(.*)\s*',
+        'Percent Full Threshold',
         'pool_full_threshold',
-        lambda value: int(value))
+        int)
 
-    POOL_ALL = [POOL_TOTAL_CAPACITY,
+    pool_all = [POOL_TOTAL_CAPACITY,
                 POOL_FREE_CAPACITY,
                 POOL_STATE,
                 POOL_FULL_THRESHOLD]
 
+
+class VNXPoolFeatureProperties(VNXCliParser):
     MAX_POOL_LUNS = PropertyDescriptor(
         '-maxPoolLUNs',
-        'Max. Pool LUNs:\s*(.*)\s*',
+        'Max. Pool LUNs',
         'max_pool_luns',
         int)
     TOTAL_POOL_LUNS = PropertyDescriptor(
         '-numPoolLUNs',
-        'Total Number of Pool LUNs:\s*(.*)\s*',
+        'Total Number of Pool LUNs',
         'total_pool_luns',
         int)
 
-    POOL_FEATURE_DEFAULT = (MAX_POOL_LUNS, TOTAL_POOL_LUNS)
+    default = [MAX_POOL_LUNS, TOTAL_POOL_LUNS]
+
+
+@decorate_all_methods(log_enter_exit)
+class CommandLineHelper(object):
+    # extra spec constants
+    tiering_spec = 'storagetype:tiering'
+    provisioning_specs = [
+        'provisioning:type',
+        'storagetype:provisioning']
+    copytype_spec = 'copytype:snap'
 
     def __init__(self, configuration):
         configuration.append_config_values(san.san_opts)
@@ -403,35 +741,6 @@ class CommandLineHelper(object):
                 json.loads(configuration.iscsi_initiators)
             LOG.info(_LI("iscsi_initiators: %s"), self.iscsi_initiator_map)
 
-        # extra spec constants
-        self.tiering_spec = 'storagetype:tiering'
-        self.provisioning_specs = [
-            'provisioning:type',
-            'storagetype:provisioning']
-        self.copytype_spec = 'copytype:snap'
-        self.provisioning_values = {
-            'thin': ['-type', 'Thin'],
-            'thick': ['-type', 'NonThin'],
-            'compressed': ['-type', 'Thin'],
-            'deduplicated': ['-type', 'Thin', '-deduplication', 'on']}
-        self.tiering_values = {
-            'none': None,
-            'starthighthenauto': [
-                '-initialTier', 'highestAvailable',
-                '-tieringPolicy', 'autoTier'],
-            'auto': [
-                '-initialTier', 'optimizePool',
-                '-tieringPolicy', 'autoTier'],
-            'highestavailable': [
-                '-initialTier', 'highestAvailable',
-                '-tieringPolicy', 'highestAvailable'],
-            'lowestavailable': [
-                '-initialTier', 'lowestAvailable',
-                '-tieringPolicy', 'lowestAvailable'],
-            'nomovement': [
-                '-initialTier', 'optimizePool',
-                '-tieringPolicy', 'noMovement']}
-
     def _raise_cli_error(self, cmd=None, rc=None, out='', **kwargs):
         raise exception.EMCVnxCLICmdError(cmd=cmd,
                                           rc=rc,
@@ -444,7 +753,7 @@ class CommandLineHelper(object):
                                         ignore_thresholds=False,
                                         poll=True):
         command_create_lun = ['lun', '-create',
-                              '-capacity', size,
+                              '-capacity', int(size),
                               '-sq', 'gb',
                               '-poolName', pool,
                               '-name', name]
@@ -452,10 +761,10 @@ class CommandLineHelper(object):
             command_create_lun = ['-np'] + command_create_lun
         # provisioning
         if provisioning:
-            command_create_lun.extend(self.provisioning_values[provisioning])
+            command_create_lun.extend(VNXProvisionEnum.get_opt(provisioning))
         # tiering
-        if tiering != 'none':
-            command_create_lun.extend(self.tiering_values[tiering])
+        if tiering and tiering != 'none':
+            command_create_lun.extend(VNXTieringEnum.get_opt(tiering))
         if ignore_thresholds:
             command_create_lun.append('-ignoreThresholds')
 
@@ -497,25 +806,27 @@ class CommandLineHelper(object):
                 self._raise_cli_error(cmd, rc, out)
 
         def _lun_state_validation(lun_data):
-            lun_state = lun_data[self.LUN_STATE.key]
+            lun_state = lun_data[VNXLunProperties.LUN_STATE.key]
             if lun_state == 'Initializing':
                 return False
             # Lun in Ready or Faulted state is eligible for IO access,
             # so if no lun operation, return success.
             elif lun_state in ['Ready', 'Faulted']:
-                return lun_data[self.LUN_OPERATION.key] == 'None'
+                return lun_data[VNXLunProperties.LUN_OPERATION.key] == 'None'
             # Raise exception if lun state is Offline, Invalid, Destroying
             # or other unexpected states.
             else:
-                msg = _("Volume %(lun_name)s was created in VNX, but in"
-                        " %(lun_state)s state."
-                        ) % {'lun_name': lun_data[self.LUN_NAME.key],
-                             'lun_state': lun_state}
+                msg = (_("Volume %(name)s was created in VNX, "
+                         "but in %(state)s state.")
+                       % {'name': lun_data[VNXLunProperties.LUN_NAME.key],
+                          'state': lun_state})
                 raise exception.VolumeBackendAPIException(data=msg)
 
         def lun_is_ready():
             try:
-                data = self.get_lun_by_name(name, self.LUN_ALL, False)
+                data = self.get_lun_by_name(name,
+                                            VNXLunProperties.lun_all,
+                                            False)
             except exception.EMCVnxCLICmdError as ex:
                 orig_out = "\n".join(ex.kwargs["out"])
                 if VNXError.has_error(orig_out, VNXError.GENERAL_NOT_FOUND):
@@ -529,7 +840,7 @@ class CommandLineHelper(object):
                                    INTERVAL_5_SEC,
                                    lambda ex:
                                    isinstance(ex, exception.EMCVnxCLICmdError))
-        lun = self.get_lun_by_name(name, self.LUN_ALL, False)
+        lun = self.get_lun_by_name(name, VNXLunProperties.lun_all, False)
         return lun
 
     def delete_lun(self, name):
@@ -627,7 +938,7 @@ class CommandLineHelper(object):
 
         def lun_is_extented():
             data = self.get_lun_by_name(name, poll=False)
-            return new_size == data[self.LUN_CAPACITY.key]
+            return new_size == data[VNXLunProperties.LUN_CAPACITY.key]
 
         self._wait_for_a_condition(lun_is_extented)
 
@@ -641,14 +952,19 @@ class CommandLineHelper(object):
         if rc != 0:
             self._raise_cli_error(command_lun_rename, rc, out)
 
-    def modify_lun_tiering(self, name, tiering):
-        """This function used to modify a lun's tiering policy."""
-        command_modify_lun = ['lun', '-modify',
-                              '-name', name,
-                              '-o']
-        if tiering != 'none':
-            command_modify_lun.extend(self.tiering_values[tiering])
+    def modify_lun_tiering_by_id(self, lun_id, tiering):
+        """Modify the tiering policy of the LUN."""
+        command_modify_lun = ['lun', '-modify', '-l', lun_id, '-o']
+        self._modify_lun_tiering(command_modify_lun, tiering)
 
+    def modify_lun_tiering_by_name(self, name, tiering):
+        """This function used to modify a lun's tiering policy."""
+        command_modify_lun = ['lun', '-modify', '-name', name, '-o']
+        self._modify_lun_tiering(command_modify_lun, tiering)
+
+    def _modify_lun_tiering(self, command_modify_lun, tiering):
+        if tiering and tiering != 'none':
+            command_modify_lun.extend(VNXTieringEnum.get_opt(tiering))
             out, rc = self.command_execute(*command_modify_lun)
             if rc != 0:
                 self._raise_cli_error(command_modify_lun, rc, out)
@@ -987,6 +1303,8 @@ class CommandLineHelper(object):
                 # parse the percentage
                 state = re.search(r'Current State:\s*([^\n]+)', out)
                 percentage = re.search(r'Percent Complete:\s*([^\n]+)', out)
+                percentage_complete = 'N/A'
+                current_state = 'N/A'
                 if state is not None:
                     current_state = state.group(1)
                     percentage_complete = percentage.group(1)
@@ -1200,20 +1518,26 @@ class CommandLineHelper(object):
             else:
                 self._raise_cli_error(command_remove_hlu, rc, out)
 
-    def get_lun_by_name(self, name, properties=LUN_ALL, poll=True):
+    def get_lun_by_name(self,
+                        name,
+                        properties=VNXLunProperties.lun_all,
+                        poll=True):
         data = self.get_lun_properties(('-name', name),
                                        properties,
                                        poll=poll)
         return data
 
-    def get_lun_by_id(self, lunid, properties=LUN_ALL, poll=True):
+    def get_lun_by_id(self,
+                      lunid,
+                      properties=VNXLunProperties.lun_all,
+                      poll=True):
         data = self.get_lun_properties(('-l', lunid),
                                        properties, poll=poll)
         return data
 
     def get_lun_current_ops_state(self, name, poll=False):
         data = self.get_lun_by_name(name, poll=poll)
-        return data[self.LUN_OPERATION.key]
+        return data[VNXLunProperties.LUN_OPERATION.key]
 
     def wait_until_lun_ready_for_ops(self, name):
         def is_lun_ready_for_ops():
@@ -1225,39 +1549,49 @@ class CommandLineHelper(object):
         if ops != 'None':
             self._wait_for_a_condition(is_lun_ready_for_ops)
 
-    def get_pool(self, name, properties=POOL_ALL, poll=True):
+    def get_pool(self,
+                 name,
+                 properties=VNXPoolProperties.pool_all,
+                 poll=True):
         data = self.get_pool_properties(('-name', name),
                                         properties=properties,
                                         poll=poll)
         return data
 
-    def get_pool_properties(self, filter_option, properties=POOL_ALL,
+    def get_pool_properties(self,
+                            filter_option,
+                            properties=VNXPoolProperties.pool_all,
                             poll=True):
         module_list = ('storagepool', '-list')
         data = self._get_obj_properties(
             module_list, filter_option,
-            base_properties=[self.POOL_NAME],
-            adv_properties=properties,
+            base_properties=(VNXPoolProperties.POOL_NAME,),
+            adv_properties=tuple(properties),
             poll=poll)
         return data
 
-    def get_lun_properties(self, filter_option, properties=LUN_ALL,
+    def get_lun_properties(self,
+                           filter_option,
+                           properties=VNXLunProperties.lun_all,
                            poll=True):
         module_list = ('lun', '-list')
         data = self._get_obj_properties(
             module_list, filter_option,
-            base_properties=[self.LUN_NAME, self.LUN_ID],
-            adv_properties=properties,
+            base_properties=(VNXLunProperties.LUN_NAME,
+                             VNXLunProperties.LUN_ID),
+            adv_properties=tuple(properties),
             poll=poll)
         return data
 
-    def get_pool_feature_properties(self, properties=POOL_FEATURE_DEFAULT,
-                                    poll=True):
+    def get_pool_feature_properties(
+            self,
+            properties=VNXPoolFeatureProperties.default,
+            poll=True):
         module_list = ("storagepool", '-feature', '-info')
         data = self._get_obj_properties(
             module_list, tuple(),
-            base_properties=[],
-            adv_properties=properties,
+            base_properties=(),
+            adv_properties=tuple(properties),
             poll=poll)
         return data
 
@@ -1268,20 +1602,19 @@ class CommandLineHelper(object):
                             poll=True):
         # to do instance check
         command_get = module_list + filter_option
+        options = []
         for prop in adv_properties:
-            command_get += (prop.option, )
+            option = prop.option
+            if option and option not in options:
+                options.append(option)
+        command_get += tuple(options)
         out, rc = self.command_execute(*command_get, poll=poll)
 
         if rc != 0:
             self._raise_cli_error(command_get, rc, out)
 
-        data = {}
-        for baseprop in base_properties:
-            data[baseprop.key] = self._get_property_value(out, baseprop)
-
-        for prop in adv_properties:
-            data[prop.key] = self._get_property_value(out, prop)
-
+        data = VNXCliParser.parse(out,
+                                  list(base_properties) + list(adv_properties))
         LOG.debug('Return Object properties. Data: %s', data)
         return data
 
@@ -1291,7 +1624,10 @@ class CommandLineHelper(object):
         if m:
             if (propertyDescriptor.converter is not None):
                 try:
-                    return propertyDescriptor.converter(m.group(1))
+                    converter = propertyDescriptor.converter
+                    if isinstance(converter, staticmethod):
+                        converter = converter.__func__
+                    return converter(m.group(1))
                 except ValueError:
                     LOG.error(_LE("Invalid value for %(key)s, "
                                   "value is %(value)s."),
@@ -1309,29 +1645,28 @@ class CommandLineHelper(object):
         cmd = ('snap', '-list', '-res', lun_id)
         rc = self.command_execute(*cmd, poll=False)[1]
         if rc == 0:
-            LOG.debug("Find snapshots for %s.", lun_id)
+            LOG.debug("Found snapshots for %s.", lun_id)
             return True
         else:
             return False
 
-    def get_pool_list(self, properties=POOL_ALL, poll=True):
+    def get_pool_list(self,
+                      properties=VNXPoolProperties.pool_all,
+                      poll=True):
         temp_cache = []
         list_cmd = ('storagepool', '-list')
         for prop in properties:
             list_cmd += (prop.option,)
-        output_properties = [self.POOL_NAME] + properties
+        output_properties = [VNXPoolProperties.POOL_NAME] + properties
         out, rc = self.command_execute(*list_cmd, poll=poll)
         if rc != 0:
             self._raise_cli_error(list_cmd, rc, out)
 
         try:
-            for pool in out.split('\n\n'):
-                if len(pool.strip()) == 0:
-                    continue
-                obj = {}
-                for prop in output_properties:
-                    obj[prop.key] = self._get_property_value(pool, prop)
-                temp_cache.append(obj)
+            for pool in out.strip().split('\n\n'):
+                pool_data = VNXPoolProperties.parse(
+                    pool, output_properties)
+                temp_cache.append(pool_data)
         except Exception as ex:
             LOG.error(_LE("Error happened during storage pool querying, %s."),
                       ex)
@@ -1818,7 +2153,7 @@ class EMCVnxCliBase(object):
         if pools:
             storage_pools = set([po.strip() for po in pools.split(",")])
             array_pools = self._client.get_pool_list(
-                [self._client.POOL_STATE], False)
+                [VNXPoolProperties.POOL_STATE], False)
             array_pools = set([po['pool_name'] for po in array_pools])
             un_exist_pools = storage_pools.difference(array_pools)
             storage_pools.difference_update(un_exist_pools)
@@ -1996,18 +2331,23 @@ class EMCVnxCliBase(object):
                             "since driver version 5.1.0. This key will be "
                             "ignored."))
 
-        provisioning, tiering, snapcopy = self._get_extra_spec_value(specs)
+        provisioning, tiering, snap_copy = self._get_extra_spec_value(specs)
         # step 1: check extra spec value
-        self._check_extra_spec_value(
-            provisioning,
-            self._client.provisioning_values.keys())
-        self._check_extra_spec_value(
-            tiering,
-            self._client.tiering_values.keys())
-        self._check_extra_spec_value(
-            snapcopy, ['true', 'false'])
-        self._check_extra_spec_combination([provisioning, tiering, snapcopy])
-        return provisioning, tiering, snapcopy
+        if provisioning:
+            self._check_extra_spec_value(
+                provisioning,
+                VNXProvisionEnum.get_all())
+        if tiering:
+            self._check_extra_spec_value(
+                tiering,
+                VNXTieringEnum.get_all())
+        if snap_copy:
+            self._check_extra_spec_value(
+                snap_copy, ['true', 'false'])
+
+        # step 2: check extra spec combination
+        self._check_extra_spec_combination([provisioning, tiering, snap_copy])
+        return provisioning, tiering, snap_copy
 
     def _check_extra_spec_value(self, extra_spec, valid_values):
         """Checks whether an extra spec's value is valid."""
@@ -2199,23 +2539,29 @@ class EMCVnxCliBase(object):
         if not is_valid:
             return false_ret
 
-        return self._migrate_volume(volume, target_pool_name, new_type)
+        specs = None
+        if new_type is not None:
+            specs = new_type.get('extra_specs')
 
-    def _migrate_volume(self, volume, target_pool_name, new_type=None):
+        return self._migrate_volume(volume, target_pool_name, specs)
+
+    def _migrate_volume(self,
+                        volume,
+                        target_pool_name,
+                        type_specs=None,
+                        src_id=None):
         LOG.debug("Starting real storage-assisted migration...")
         # first create a new volume with same name and size of source volume
         volume_name = volume['name']
         new_volume_name = "%(src)s-%(ts)s" % {'src': volume_name,
                                               'ts': int(time.time())}
-        src_id = self.get_lun_id(volume)
 
-        provisioning = 'thick'
-        # because the value of tiering is a string, so change its defalut
-        # value from None to 'none'
-        tiering = 'none'
-        if new_type:
+        if src_id is None:
+            src_id = self.get_lun_id(volume)
+
+        if type_specs is not None:
             provisioning, tiering, snapcopy = self._get_extra_spec_value(
-                new_type['extra_specs'])
+                type_specs)
         else:
             provisioning, tiering, snapcopy = self._get_extra_spec_value(
                 self.get_volumetype_extraspecs(volume))
@@ -2282,8 +2628,11 @@ class EMCVnxCliBase(object):
                 self._is_valid_for_storage_assisted_migration(
                     volume, host, new_type))
             if is_valid:
+                specs = None
+                if new_type is not None:
+                    specs = new_type.get('extra_specs')
                 moved, model_update = self._migrate_volume(
-                    volume, target_pool_name, new_type)
+                    volume, target_pool_name, specs)
                 if moved:
                     return moved, model_update
                 else:
@@ -2302,7 +2651,8 @@ class EMCVnxCliBase(object):
                 volume['name'], 'on')
         if changes['tiering']:
             # Modify lun to change tiering policy
-            self._client.modify_lun_tiering(volume['name'], new_tiering)
+            self._client.modify_lun_tiering_by_name(volume['name'],
+                                                    new_tiering)
         return True
 
     def determine_changes_when_retype(self, volume, new_type, host):
@@ -2350,11 +2700,11 @@ class EMCVnxCliBase(object):
         return True
 
     def _build_pool_stats(self, pool, pool_feature=None):
-        pool_stats = {}
-        pool_stats['pool_name'] = pool['pool_name']
-        pool_stats['total_capacity_gb'] = pool['total_capacity_gb']
-        pool_stats['provisioned_capacity_gb'] = (
-            pool['provisioned_capacity_gb'])
+        pool_stats = {
+            'pool_name': pool['pool_name'],
+            'total_capacity_gb': pool['total_capacity_gb'],
+            'provisioned_capacity_gb': (pool['provisioned_capacity_gb'])
+        }
 
         # Handle pool state Initializing, Ready, Faulted, Offline or Deleting.
         if pool['state'] in ('Initializing', 'Offline', 'Deleting'):
@@ -3239,6 +3589,7 @@ class EMCVnxCliBase(object):
             return self.assure_host_access(
                 volume, connector)
 
+        data = {}
         if self.protocol == 'iSCSI':
             (device_number, sg_data) = do_initialize_connection()
             iscsi_properties = self.vnx_get_iscsi_properties(
@@ -3359,11 +3710,11 @@ class EMCVnxCliBase(object):
         if 'source-id' in existing_ref:
             data = self._client.get_lun_by_id(
                 existing_ref['source-id'],
-                properties=self._client.LUN_WITH_POOL)
+                properties=VNXLunProperties.lun_with_pool)
         elif 'source-name' in existing_ref:
             data = self._client.get_lun_by_name(
                 existing_ref['source-name'],
-                properties=self._client.LUN_WITH_POOL)
+                properties=VNXLunProperties.lun_with_pool)
         else:
             reason = _('Reference must contain source-id or source-name key.')
             raise exception.ManageExistingInvalidReference(
@@ -3390,6 +3741,73 @@ class EMCVnxCliBase(object):
             'source-name':<lun name in VNX>
         }
         """
+        client = self._client
+
+        lun_id = self._get_lun_id(manage_existing_ref)
+
+        specs = self.get_volumetype_extraspecs(volume)
+        LOG.debug('Specs of the volume is: %s.', specs)
+
+        host = volume['host']
+        LOG.debug('Host of the volume is: %s.', host)
+
+        tar_pool = vol_utils.extract_host(volume['host'], 'pool')
+        LOG.debug("Target pool of LUN to manage is: %s.", tar_pool)
+
+        tar_type, tar_tier, snap_copy = self._get_extra_spec_value(specs)
+        vnx_lun = self._get_lun_pool_and_type(lun_id)
+        LOG.debug("LUN to manage: %s.", vnx_lun)
+        LOG.debug("Target info: pool: %(pool)s, type: %(type)s, "
+                  "tier: %(tier)s.", {'pool': tar_pool,
+                                      'type': tar_type,
+                                      'tier': tar_tier})
+
+        do_migration = (tar_type is not None
+                        and tar_type != vnx_lun.provision
+                        or tar_pool != vnx_lun.pool_name)
+        change_tier = (tar_tier is not None
+                       and not do_migration
+                       and tar_tier != vnx_lun.tier)
+
+        reason = None
+        if do_migration:
+            LOG.debug("Need migration during manage.")
+            if client.check_lun_has_snap(lun_id):
+                reason = _('Driver is not able to do retype because'
+                           ' the volume (LUN {}) has snapshot which is '
+                           'forbidden to migrate.').format(lun_id)
+            else:
+                volume['size'] = vnx_lun.capacity
+                moved, empty = self._migrate_volume(volume,
+                                                    tar_pool,
+                                                    specs,
+                                                    src_id=lun_id)
+                if not moved:
+                    reason = _('Storage-assisted migration failed during '
+                               'manage volume.')
+
+        if reason is None and change_tier:
+            LOG.debug('Change LUN tier policy to: %s.', tar_tier)
+            client.modify_lun_tiering_by_id(lun_id, tar_tier)
+
+        if reason is not None:
+            raise exception.ManageExistingVolumeTypeMismatch(reason=reason)
+        else:
+            client.rename_lun(lun_id, volume['name'])
+
+        location = self._build_provider_location(lun_id)
+        return {'provider_location': location}
+
+    def _get_lun_pool_and_type(self, lun_id):
+        client = self._client
+        data = client.get_lun_by_id(lun_id,
+                                    VNXLunProperties.get_all(),
+                                    poll=False)
+        lun = VNXLun()
+        lun.update(data)
+        return lun
+
+    def _get_lun_id(self, manage_existing_ref):
         if 'source-id' in manage_existing_ref:
             lun_id = manage_existing_ref['source-id']
         elif 'source-name' in manage_existing_ref:
@@ -3399,10 +3817,7 @@ class EMCVnxCliBase(object):
             reason = _('Reference must contain source-id or source-name key.')
             raise exception.ManageExistingInvalidReference(
                 existing_ref=manage_existing_ref, reason=reason)
-        self._client.rename_lun(lun_id, volume['name'])
-        model_update = {'provider_location':
-                        self._build_provider_location(lun_id)}
-        return model_update
+        return lun_id
 
     def get_login_ports(self, connector, io_ports=None):
         return self._client.get_login_ports(connector['host'],
@@ -3441,9 +3856,9 @@ class EMCVnxCliBase(object):
         """Returns the pool name of a volume."""
 
         data = self._client.get_lun_by_name(volume['name'],
-                                            [self._client.LUN_POOL],
+                                            [VNXLunProperties.LUN_POOL],
                                             poll=False)
-        return data.get(self._client.LUN_POOL.key)
+        return data.get(VNXLunProperties.LUN_POOL.key)
 
     def unmanage(self, volume):
         """Unmanages a volume"""
@@ -3609,14 +4024,14 @@ class EMCVnxCliBase(object):
                             "volume %s is created."),
                         source_volume['name'])
             data = self._client.get_lun_by_name(source_volume['name'],
-                                                [self._client.LUN_POOL],
+                                                [VNXLunProperties.LUN_POOL],
                                                 poll=False)
             if data is None:
                 msg = (_("Failed to find storage pool for source volume %s.")
                        % source_volume['name'])
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
-            pool = data[self._client.LUN_POOL.key]
+            pool = data[VNXLunProperties.LUN_POOL.key]
 
         if self.storage_pools and pool not in self.storage_pools:
             msg = (_("The source volume %s is not in the pool which "
@@ -3633,13 +4048,13 @@ class EMCVnxCliBase(object):
             self.iscsi_targets = self._client.get_iscsi_targets(
                 poll=False, io_ports=self.io_ports)
 
-        properties = [self._client.POOL_FREE_CAPACITY,
-                      self._client.POOL_TOTAL_CAPACITY,
-                      self._client.POOL_STATE,
-                      self._client.POOL_SUBSCRIBED_CAPACITY,
-                      self._client.POOL_FULL_THRESHOLD]
+        properties = [VNXPoolProperties.POOL_FREE_CAPACITY,
+                      VNXPoolProperties.POOL_TOTAL_CAPACITY,
+                      VNXPoolProperties.POOL_STATE,
+                      VNXPoolProperties.POOL_SUBSCRIBED_CAPACITY,
+                      VNXPoolProperties.POOL_FULL_THRESHOLD]
         if '-FASTCache' in self.enablers:
-            properties.append(self._client.POOL_FAST_CACHE)
+            properties.append(VNXPoolProperties.POOL_FAST_CACHE)
 
         pool_list = self._client.get_pool_list(properties, False)
 
