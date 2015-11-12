@@ -479,7 +479,8 @@ class EntryCreateTask(flow_utils.CinderTask):
         # Merge in the other required arguments which should provide the rest
         # of the volume property fields (if applicable).
         volume_properties.update(kwargs)
-        volume = self.db.volume_create(context, volume_properties)
+        volume = objects.Volume(context=context, **volume_properties)
+        volume.create()
 
         return {
             'volume_id': volume['id'],
@@ -505,16 +506,16 @@ class EntryCreateTask(flow_utils.CinderTask):
             # already been created and the quota has already been absorbed.
             return
 
-        vol_id = result['volume_id']
+        volume = result['volume']
         try:
-            self.db.volume_destroy(context.elevated(), vol_id)
+            volume.destroy()
         except exception.CinderException:
             # We are already reverting, therefore we should silence this
             # exception since a second exception being active will be bad.
             #
             # NOTE(harlowja): Being unable to destroy a volume is pretty
             # bad though!!
-            LOG.exception(_LE("Failed destroying volume entry %s"), vol_id)
+            LOG.exception(_LE("Failed destroying volume entry %s"), volume.id)
 
 
 class QuotaReserveTask(flow_utils.CinderTask):
@@ -678,7 +679,7 @@ class VolumeCastTask(flow_utils.CinderTask):
 
     def __init__(self, scheduler_rpcapi, volume_rpcapi, db):
         requires = ['image_id', 'scheduler_hints', 'snapshot_id',
-                    'source_volid', 'volume_id', 'volume_type',
+                    'source_volid', 'volume_id', 'volume', 'volume_type',
                     'volume_properties', 'source_replicaid',
                     'consistencygroup_id', 'cgsnapshot_id', ]
         super(VolumeCastTask, self).__init__(addons=[ACTION],
@@ -691,6 +692,7 @@ class VolumeCastTask(flow_utils.CinderTask):
         source_volid = request_spec['source_volid']
         source_replicaid = request_spec['source_replicaid']
         volume_id = request_spec['volume_id']
+        volume = request_spec['volume']
         snapshot_id = request_spec['snapshot_id']
         image_id = request_spec['image_id']
         cgroup_id = request_spec['consistencygroup_id']
@@ -714,14 +716,17 @@ class VolumeCastTask(flow_utils.CinderTask):
             # snapshot resides instead of passing it through the scheduler, so
             # snapshot can be copied to the new volume.
             snapshot = objects.Snapshot.get_by_id(context, snapshot_id)
-            source_volume_ref = self.db.volume_get(context, snapshot.volume_id)
-            host = source_volume_ref['host']
+            source_volume_ref = objects.Volume.get_by_id(context,
+                                                         snapshot.volume_id)
+            host = source_volume_ref.host
         elif source_volid:
-            source_volume_ref = self.db.volume_get(context, source_volid)
-            host = source_volume_ref['host']
+            source_volume_ref = objects.Volume.get_by_id(context,
+                                                         source_volid)
+            host = source_volume_ref.host
         elif source_replicaid:
-            source_volume_ref = self.db.volume_get(context, source_replicaid)
-            host = source_volume_ref['host']
+            source_volume_ref = objects.Volume.get_by_id(context,
+                                                         source_replicaid)
+            host = source_volume_ref.host
 
         if not host:
             # Cast to the scheduler and let it handle whatever is needed
@@ -733,18 +738,19 @@ class VolumeCastTask(flow_utils.CinderTask):
                 snapshot_id=snapshot_id,
                 image_id=image_id,
                 request_spec=request_spec,
-                filter_properties=filter_properties)
+                filter_properties=filter_properties,
+                volume=volume)
         else:
             # Bypass the scheduler and send the request directly to the volume
             # manager.
-            now = timeutils.utcnow()
-            values = {'host': host, 'scheduled_at': now}
-            volume_ref = self.db.volume_update(context, volume_id, values)
+            volume.host = host
+            volume.scheduled_at = timeutils.utcnow()
+            volume.save()
             if not cgsnapshot_id:
                 self.volume_rpcapi.create_volume(
                     context,
-                    volume_ref,
-                    volume_ref['host'],
+                    volume,
+                    volume.host,
                     request_spec,
                     filter_properties,
                     allow_reschedule=False)

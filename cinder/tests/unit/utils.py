@@ -52,7 +52,8 @@ def create_volume(ctxt,
     vol['user_id'] = ctxt.user_id
     vol['project_id'] = ctxt.project_id
     vol['status'] = status
-    vol['migration_status'] = migration_status
+    if migration_status:
+        vol['migration_status'] = migration_status
     vol['display_name'] = display_name
     vol['display_description'] = display_description
     vol['attach_status'] = 'detached'
@@ -64,11 +65,16 @@ def create_volume(ctxt,
     for key in kwargs:
         vol[key] = kwargs[key]
     vol['replication_status'] = replication_status
-    vol['replication_extended_status'] = replication_extended_status
-    vol['replication_driver_data'] = replication_driver_data
-    vol['previous_status'] = previous_status
+    if replication_extended_status:
+        vol['replication_extended_status'] = replication_extended_status
+    if replication_driver_data:
+        vol['replication_driver_data'] = replication_driver_data
+    if previous_status:
+        vol['previous_status'] = previous_status
 
-    return db.volume_create(ctxt, vol)
+    volume = objects.Volume(ctxt, **vol)
+    volume.create()
+    return volume
 
 
 def attach_volume(ctxt, volume_id, instance_uuid, attached_host,

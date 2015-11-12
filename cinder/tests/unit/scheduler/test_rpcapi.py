@@ -87,7 +87,25 @@ class SchedulerRpcAPITestCase(test.TestCase):
                                  capabilities='fake_capabilities',
                                  fanout=True)
 
-    def test_create_volume(self):
+    @mock.patch('oslo_messaging.RPCClient.can_send_version',
+                return_value=True)
+    def test_create_volume(self, can_send_version):
+        self._test_scheduler_api('create_volume',
+                                 rpc_method='cast',
+                                 topic='topic',
+                                 volume_id='volume_id',
+                                 snapshot_id='snapshot_id',
+                                 image_id='image_id',
+                                 request_spec='fake_request_spec',
+                                 filter_properties='filter_properties',
+                                 volume='volume',
+                                 version='1.9')
+        can_send_version.assert_called_once_with('1.9')
+
+    @mock.patch('oslo_messaging.RPCClient.can_send_version',
+                return_value=False)
+    def test_create_volume_old(self, can_send_version):
+        # Tests backwards compatibility with older clients
         self._test_scheduler_api('create_volume',
                                  rpc_method='cast',
                                  topic='topic',
@@ -97,6 +115,7 @@ class SchedulerRpcAPITestCase(test.TestCase):
                                  request_spec='fake_request_spec',
                                  filter_properties='filter_properties',
                                  version='1.2')
+        can_send_version.assert_called_once_with('1.9')
 
     def test_migrate_volume_to_host(self):
         self._test_scheduler_api('migrate_volume_to_host',

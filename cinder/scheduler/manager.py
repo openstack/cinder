@@ -33,6 +33,7 @@ from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _, _LE
 from cinder import manager
+from cinder import objects
 from cinder import quota
 from cinder import rpc
 from cinder.scheduler.flows import create_volume
@@ -55,7 +56,7 @@ LOG = logging.getLogger(__name__)
 class SchedulerManager(manager.Manager):
     """Chooses a host to create volumes."""
 
-    RPC_API_VERSION = '1.8'
+    RPC_API_VERSION = '1.9'
 
     target = messaging.Target(version=RPC_API_VERSION)
 
@@ -116,15 +117,22 @@ class SchedulerManager(manager.Manager):
 
     def create_volume(self, context, topic, volume_id, snapshot_id=None,
                       image_id=None, request_spec=None,
-                      filter_properties=None):
+                      filter_properties=None, volume=None):
 
         self._wait_for_scheduler()
+
+        # FIXME(thangp): Remove this in v2.0 of RPC API.
+        if volume is None:
+            # For older clients, mimic the old behavior and look up the
+            # volume by its volume_id.
+            volume = objects.Volume.get_by_id(context, volume_id)
+
         try:
             flow_engine = create_volume.get_flow(context,
                                                  db, self.driver,
                                                  request_spec,
                                                  filter_properties,
-                                                 volume_id,
+                                                 volume,
                                                  snapshot_id,
                                                  image_id)
         except Exception:

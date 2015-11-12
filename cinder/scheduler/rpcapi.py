@@ -42,6 +42,7 @@ class SchedulerAPI(object):
         1.6 - Add create_consistencygroup method
         1.7 - Add get_active_pools method
         1.8 - Add sending object over RPC in create_consistencygroup method
+        1.9 - Adds support for sending objects over RPC in create_volume()
     """
 
     RPC_API_VERSION = '1.0'
@@ -51,7 +52,10 @@ class SchedulerAPI(object):
         target = messaging.Target(topic=CONF.scheduler_topic,
                                   version=self.RPC_API_VERSION)
         serializer = objects_base.CinderObjectSerializer()
-        self.client = rpc.get_client(target, version_cap='1.8',
+
+        # NOTE(thangp): Until version pinning is impletemented, set the client
+        # version_cap to None
+        self.client = rpc.get_client(target, version_cap=None,
                                      serializer=serializer)
 
     def create_consistencygroup(self, ctxt, topic, group,
@@ -72,17 +76,21 @@ class SchedulerAPI(object):
 
     def create_volume(self, ctxt, topic, volume_id, snapshot_id=None,
                       image_id=None, request_spec=None,
-                      filter_properties=None):
+                      filter_properties=None, volume=None):
 
-        cctxt = self.client.prepare(version='1.2')
         request_spec_p = jsonutils.to_primitive(request_spec)
-        return cctxt.cast(ctxt, 'create_volume',
-                          topic=topic,
-                          volume_id=volume_id,
-                          snapshot_id=snapshot_id,
-                          image_id=image_id,
-                          request_spec=request_spec_p,
-                          filter_properties=filter_properties)
+        msg_args = {'topic': topic, 'volume_id': volume_id,
+                    'snapshot_id': snapshot_id, 'image_id': image_id,
+                    'request_spec': request_spec_p,
+                    'filter_properties': filter_properties}
+        if self.client.can_send_version('1.9'):
+            version = '1.9'
+            msg_args['volume'] = volume
+        else:
+            version = '1.2'
+
+        cctxt = self.client.prepare(version=version)
+        return cctxt.cast(ctxt, 'create_volume', **msg_args)
 
     def migrate_volume_to_host(self, ctxt, topic, volume_id, host,
                                force_host_copy=False, request_spec=None,

@@ -62,7 +62,7 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
 
     def __init__(self, reschedule_context, db, scheduler_rpcapi,
                  do_reschedule):
-        requires = ['filter_properties', 'request_spec', 'volume_id',
+        requires = ['filter_properties', 'request_spec', 'volume_ref',
                     'context']
         super(OnFailureRescheduleTask, self).__init__(addons=[ACTION],
                                                       requires=requires)
@@ -94,7 +94,7 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
     def execute(self, **kwargs):
         pass
 
-    def _pre_reschedule(self, context, volume_id):
+    def _pre_reschedule(self, context, volume):
         """Actions that happen before the rescheduling attempt occur here."""
 
         try:
@@ -112,15 +112,16 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
                 'host': None,
             }
             LOG.debug("Updating volume %(volume_id)s with %(update)s.",
-                      {'update': update, 'volume_id': volume_id})
-            self.db.volume_update(context, volume_id, update)
+                      {'update': update, 'volume_id': volume.id})
+            volume.update(update)
+            volume.save()
         except exception.CinderException:
             # Don't let updating the state cause the rescheduling to fail.
             LOG.exception(_LE("Volume %s: update volume state failed."),
-                          volume_id)
+                          volume.id)
 
     def _reschedule(self, context, cause, request_spec, filter_properties,
-                    volume_id):
+                    volume):
         """Actions that happen during the rescheduling attempt occur here."""
 
         create_volume = self.scheduler_rpcapi.create_volume
@@ -131,11 +132,11 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
 
         retry_info = filter_properties['retry']
         num_attempts = retry_info.get('num_attempts', 0)
-        request_spec['volume_id'] = volume_id
+        request_spec['volume_id'] = volume.id
 
         LOG.debug("Volume %(volume_id)s: re-scheduling %(method)s "
                   "attempt %(num)d due to %(reason)s",
-                  {'volume_id': volume_id,
+                  {'volume_id': volume.id,
                    'method': common.make_pretty_name(create_volume),
                    'num': num_attempts,
                    'reason': cause.exception_str})
@@ -144,16 +145,17 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
             # Stringify to avoid circular ref problem in json serialization
             retry_info['exc'] = traceback.format_exception(*cause.exc_info)
 
-        return create_volume(context, CONF.volume_topic, volume_id,
+        return create_volume(context, CONF.volume_topic, volume.id,
                              request_spec=request_spec,
-                             filter_properties=filter_properties)
+                             filter_properties=filter_properties,
+                             volume=volume)
 
-    def _post_reschedule(self, volume_id):
+    def _post_reschedule(self, volume):
         """Actions that happen after the rescheduling attempt occur here."""
 
-        LOG.debug("Volume %s: re-scheduled", volume_id)
+        LOG.debug("Volume %s: re-scheduled", volume.id)
 
-    def revert(self, context, result, flow_failures, volume_id, **kwargs):
+    def revert(self, context, result, flow_failures, volume_ref, **kwargs):
         # NOTE(dulek): Revert is occurring and manager need to know if
         # rescheduling happened. We're returning boolean flag that will
         # indicate that. It which will be available in flow engine store
@@ -162,16 +164,16 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
         # If do not want to be rescheduled, just set the volume's status to
         # error and return.
         if not self.do_reschedule:
-            common.error_out_volume(context, self.db, volume_id)
-            LOG.error(_LE("Volume %s: create failed"), volume_id)
+            common.error_out_volume(context, self.db, volume_ref.id)
+            LOG.error(_LE("Volume %s: create failed"), volume_ref.id)
             return False
 
         # Check if we have a cause which can tell us not to reschedule and
         # set the volume's status to error.
         for failure in flow_failures.values():
             if failure.check(*self.no_reschedule_types):
-                common.error_out_volume(context, self.db, volume_id)
-                LOG.error(_LE("Volume %s: create failed"), volume_id)
+                common.error_out_volume(context, self.db, volume_ref.id)
+                LOG.error(_LE("Volume %s: create failed"), volume_ref.id)
                 return False
 
         # Use a different context when rescheduling.
@@ -179,12 +181,13 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
             cause = list(flow_failures.values())[0]
             context = self.reschedule_context
             try:
-                self._pre_reschedule(context, volume_id)
-                self._reschedule(context, cause, volume_id=volume_id, **kwargs)
-                self._post_reschedule(volume_id)
+                self._pre_reschedule(context, volume_ref)
+                self._reschedule(context, cause, volume=volume_ref, **kwargs)
+                self._post_reschedule(volume_ref)
                 return True
             except exception.CinderException:
-                LOG.exception(_LE("Volume %s: rescheduling failed"), volume_id)
+                LOG.exception(_LE("Volume %s: rescheduling failed"),
+                              volume_ref.id)
 
         return False
 
@@ -206,8 +209,7 @@ class ExtractVolumeRefTask(flow_utils.CinderTask):
         #
         # In the future we might want to have a lock on the volume_id so that
         # the volume can not be deleted while its still being created?
-        volume_ref = self.db.volume_get(context, volume_id)
-        return volume_ref
+        return objects.Volume.get_by_id(context, volume_id)
 
     def revert(self, context, volume_id, result, **kwargs):
         if isinstance(result, ft.Failure) or not self.set_error:
@@ -269,7 +271,8 @@ class ExtractVolumeSpecTask(flow_utils.CinderTask):
             # NOTE(harlowja): This will likely fail if the source volume
             # disappeared by the time this call occurred.
             source_volid = volume_ref.get('source_volid')
-            source_volume_ref = self.db.volume_get(context, source_volid)
+            source_volume_ref = objects.Volume.get_by_id(context,
+                                                         source_volid)
             specs.update({
                 'source_volid': source_volid,
                 # This is captured incase we have to revert and we want to set
@@ -284,7 +287,8 @@ class ExtractVolumeSpecTask(flow_utils.CinderTask):
             # NOTE(harlowja): This will likely fail if the replica
             # disappeared by the time this call occurred.
             source_volid = request_spec['source_replicaid']
-            source_volume_ref = self.db.volume_get(context, source_volid)
+            source_volume_ref = objects.Volume.get_by_id(context,
+                                                         source_volid)
             specs.update({
                 'source_replicaid': source_volid,
                 'source_replicastatus': source_volume_ref['status'],
@@ -443,8 +447,8 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         # will not destroy the volume (although they could in the future).
         make_bootable = False
         try:
-            originating_vref = self.db.volume_get(context,
-                                                  snapshot.volume_id)
+            originating_vref = objects.Volume.get_by_id(context,
+                                                        snapshot.volume_id)
             make_bootable = originating_vref.bootable
         except exception.CinderException as ex:
             LOG.exception(_LE("Failed fetching snapshot %(snapshot_id)s "
@@ -476,14 +480,14 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         # NOTE(harlowja): likely this is not the best place for this to happen
         # and we should have proper locks on the source volume while actions
         # that use the source volume are underway.
-        srcvol_ref = self.db.volume_get(context, source_volid)
+        srcvol_ref = objects.Volume.get_by_id(context, source_volid)
         model_update = self.driver.create_cloned_volume(volume_ref, srcvol_ref)
         # NOTE(harlowja): Subtasks would be useful here since after this
         # point the volume has already been created and further failures
         # will not destroy the volume (although they could in the future).
         if srcvol_ref.bootable:
-            self._handle_bootable_volume_glance_meta(context, volume_ref['id'],
-                                                     source_volid=source_volid)
+            self._handle_bootable_volume_glance_meta(
+                context, volume_ref.id, source_volid=volume_ref.id)
         return model_update
 
     def _create_from_source_replica(self, context, volume_ref,
@@ -494,7 +498,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         # NOTE(harlowja): likely this is not the best place for this to happen
         # and we should have proper locks on the source volume while actions
         # that use the source volume are underway.
-        srcvol_ref = self.db.volume_get(context, source_replicaid)
+        srcvol_ref = objects.Volume.get_by_id(context, source_replicaid)
         model_update = self.driver.create_replica_test_volume(volume_ref,
                                                               srcvol_ref)
         # NOTE(harlowja): Subtasks would be useful here since after this
@@ -754,12 +758,8 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                                 image_id=image_id, reason=reason)
 
                         if virtual_size and virtual_size != original_size:
-                            updates = {'size': virtual_size}
-                            volume_ref = self.db.volume_update(
-                                context,
-                                volume_ref['id'],
-                                updates
-                            )
+                            volume_ref.size = virtual_size
+                            volume_ref.save()
 
                     model_update = self._create_from_image_download(
                         context,
@@ -773,9 +773,8 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                 # Update the newly created volume db entry before we clone it
                 # for the image-volume creation.
                 if model_update:
-                    volume_ref = self.db.volume_update(context,
-                                                       volume_ref['id'],
-                                                       model_update)
+                    volume_ref.update(model_update)
+                    volume_ref.save()
                 self.manager._create_image_cache_volume_entry(internal_context,
                                                               volume_ref,
                                                               image_id,
@@ -785,12 +784,12 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
             # what was originally requested. If an exception has occurred we
             # still need to put this back before letting it be raised further
             # up the stack.
-            if volume_ref['size'] != original_size:
+            if volume_ref.size != original_size:
                 self.driver.extend_volume(volume_ref, original_size)
-                updates = {'size': original_size}
-                self.db.volume_update(context, volume_ref['id'], updates)
+                volume_ref.size = original_size
+                volume_ref.save()
 
-        self._handle_bootable_volume_glance_meta(context, volume_ref['id'],
+        self._handle_bootable_volume_glance_meta(context, volume_ref.id,
                                                  image_id=image_id,
                                                  image_meta=image_meta)
         return model_update
@@ -839,8 +838,8 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         # Persist any model information provided on creation.
         try:
             if model_update:
-                volume_ref = self.db.volume_update(context, volume_ref['id'],
-                                                   model_update)
+                volume_ref.update(model_update)
+                volume_ref.save()
         except exception.CinderException:
             # If somehow the update failed we want to ensure that the
             # failure is logged (but not try rescheduling since the volume at
@@ -872,7 +871,6 @@ class CreateVolumeOnFinishTask(NotifyVolumeActionTask):
         }
 
     def execute(self, context, volume, volume_spec):
-        volume_id = volume['id']
         new_status = self.status_translation.get(volume_spec.get('status'),
                                                  'available')
         update = {
@@ -884,18 +882,19 @@ class CreateVolumeOnFinishTask(NotifyVolumeActionTask):
             # or are there other side-effects that this will cause if the
             # status isn't updated correctly (aka it will likely be stuck in
             # 'creating' if this fails)??
-            volume_ref = self.db.volume_update(context, volume_id, update)
+            volume.update(update)
+            volume.save()
             # Now use the parent to notify.
-            super(CreateVolumeOnFinishTask, self).execute(context, volume_ref)
+            super(CreateVolumeOnFinishTask, self).execute(context, volume)
         except exception.CinderException:
             LOG.exception(_LE("Failed updating volume %(volume_id)s with "
-                              "%(update)s"), {'volume_id': volume_id,
+                              "%(update)s"), {'volume_id': volume.id,
                                               'update': update})
         # Even if the update fails, the volume is ready.
         LOG.info(_LI("Volume %(volume_name)s (%(volume_id)s): "
                      "created successfully"),
                  {'volume_name': volume_spec['volume_name'],
-                  'volume_id': volume_id})
+                  'volume_id': volume.id})
 
 
 def get_flow(context, manager, db, driver, scheduler_rpcapi, host, volume_id,

@@ -54,6 +54,7 @@ from cinder.tests.unit.brick import fake_lvm
 from cinder.tests.unit import conf_fixture
 from cinder.tests.unit import fake_driver
 from cinder.tests.unit import fake_snapshot
+from cinder.tests.unit import fake_volume
 from cinder.tests.unit.image import fake as fake_image
 from cinder.tests.unit.keymgr import fake as fake_keymgr
 from cinder.tests.unit import utils as tests_utils
@@ -516,17 +517,16 @@ class VolumeTestCase(BaseVolumeTestCase):
             availability_zone=CONF.storage_availability_zone,
             **self.volume_params)
 
-        volume_id = volume['id']
         self.assertIsNone(volume['encryption_key_id'])
         self.assertEqual(0, len(self.notifier.notifications),
                          self.notifier.notifications)
         self.assertRaises(exception.DriverNotInitialized,
                           self.volume.delete_volume,
-                          self.context, volume_id)
+                          self.context, volume.id)
 
-        volume = db.volume_get(context.get_admin_context(), volume_id)
+        volume = objects.Volume.get_by_id(self.context, volume.id)
         self.assertEqual("error_deleting", volume.status)
-        db.volume_destroy(context.get_admin_context(), volume_id)
+        volume.destroy()
 
     @mock.patch('cinder.quota.QUOTAS.rollback', new=mock.Mock())
     @mock.patch('cinder.quota.QUOTAS.commit', new=mock.Mock())
@@ -562,7 +562,7 @@ class VolumeTestCase(BaseVolumeTestCase):
             'replication_status': 'disabled',
             'replication_extended_status': None,
             'replication_driver_data': None,
-            'metadata': [],
+            'metadata': None,
             'volume_attachment': [],
         }
         self.assertDictMatch(expected, msg['payload'])
@@ -580,6 +580,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertEqual(4, len(self.notifier.notifications),
                          self.notifier.notifications)
         msg = self.notifier.notifications[2]
+        expected['metadata'] = []
         self.assertEqual('volume.delete.start', msg['event_type'])
         self.assertDictMatch(expected, msg['payload'])
         msg = self.notifier.notifications[3]
@@ -597,9 +598,7 @@ class VolumeTestCase(BaseVolumeTestCase):
                                            **self.volume_params)
         volume_id = volume['id']
         self.volume.create_volume(self.context, volume_id)
-        result_meta = {
-            volume.volume_metadata[0].key: volume.volume_metadata[0].value}
-        self.assertEqual(test_meta, result_meta)
+        self.assertEqual(test_meta, volume.metadata)
 
         self.volume.delete_volume(self.context, volume_id)
         self.assertRaises(exception.NotFound,
@@ -629,8 +628,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         FAKE_METADATA_TYPE = enum.Enum('METADATA_TYPES', 'fake_type')
         volume = tests_utils.create_volume(self.context, metadata=test_meta1,
                                            **self.volume_params)
-        volume_id = volume['id']
-        self.volume.create_volume(self.context, volume_id)
+        self.volume.create_volume(self.context, volume.id, volume=volume)
 
         volume_api = cinder.volume.api.API()
 
@@ -1558,7 +1556,6 @@ class VolumeTestCase(BaseVolumeTestCase):
         dst_vol = tests_utils.create_volume(self.context,
                                             source_volid=src_vol_id,
                                             **self.volume_params)
-        dst_vol_id = dst_vol['id']
 
         orig_elevated = self.context.elevated
 
@@ -1571,7 +1568,7 @@ class VolumeTestCase(BaseVolumeTestCase):
             # we expect this to block and then fail
             t = eventlet.spawn(self.volume.create_volume,
                                self.context,
-                               volume_id=dst_vol_id,
+                               volume_id=dst_vol.id,
                                request_spec={'source_volid': src_vol_id})
             gthreads.append(t)
 
@@ -1747,8 +1744,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         dst_vol = tests_utils.create_volume(self.context,
                                             snapshot_id=snapshot_id,
                                             **self.volume_params)
-        self.volume.create_volume(self.context,
-                                  dst_vol['id'])
+        self.volume.create_volume(self.context, dst_vol.id, volume=dst_vol)
 
         self.assertRaises(exception.GlanceMetadataNotFound,
                           db.volume_glance_metadata_copy_to_volume,
@@ -3548,8 +3544,7 @@ class VolumeTestCase(BaseVolumeTestCase):
             spec=tests_utils.get_file_spec())
 
         image_id = 'c905cedb-7281-47e4-8a62-f26bc5fc4c77'
-        volume_id = tests_utils.create_volume(self.context,
-                                              **self.volume_params)['id']
+        volume = tests_utils.create_volume(self.context, **self.volume_params)
         # creating volume testdata
         try:
             request_spec = {
@@ -3557,12 +3552,13 @@ class VolumeTestCase(BaseVolumeTestCase):
                 'image_id': image_id,
             }
             self.volume.create_volume(self.context,
-                                      volume_id,
-                                      request_spec)
+                                      volume.id,
+                                      request_spec,
+                                      volume=volume)
         finally:
             # cleanup
             os.unlink(dst_path)
-            volume = db.volume_get(self.context, volume_id)
+            volume = objects.Volume.get_by_id(self.context, volume.id)
 
         return volume
 
@@ -3600,25 +3596,25 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.stubs.Set(self.volume.driver, 'local_path', lambda x: dst_path)
 
         # creating volume testdata
-        volume_id = 1
-        db.volume_create(self.context,
-                         {'id': volume_id,
-                          'updated_at': datetime.datetime(1, 1, 1, 1, 1, 1),
-                          'display_description': 'Test Desc',
-                          'size': 20,
-                          'status': 'creating',
-                          'host': 'dummy'})
+        kwargs = {'display_description': 'Test Desc',
+                  'size': 20,
+                  'availability_zone': 'fake_availability_zone',
+                  'status': 'creating',
+                  'attach_status': 'detached',
+                  'host': 'dummy'}
+        volume = objects.Volume(context=self.context, **kwargs)
+        volume.create()
 
         self.assertRaises(exception.ImageNotFound,
                           self.volume.create_volume,
                           self.context,
-                          volume_id,
+                          volume.id,
                           {'image_id': self.FAKE_UUID})
-        volume = db.volume_get(self.context, volume_id)
+        volume = objects.Volume.get_by_id(self.context, volume.id)
         self.assertEqual("error", volume['status'])
         self.assertFalse(volume['bootable'])
         # cleanup
-        db.volume_destroy(self.context, volume_id)
+        volume.destroy()
         os.unlink(dst_path)
 
     def test_create_volume_from_image_copy_exception_rescheduling(self):
@@ -4389,20 +4385,20 @@ class VolumeMigrationTestCase(VolumeTestCase):
                                                     nova_api):
         attached_host = 'some-host'
         fake_volume_id = 'fake_volume_id'
-        fake_new_volume = {'status': 'available', 'id': fake_volume_id}
+        fake_db_new_volume = {'status': 'available', 'id': fake_volume_id}
+        fake_new_volume = fake_volume.fake_db_volume(**fake_db_new_volume)
         host_obj = {'host': 'newhost', 'capabilities': {}}
         fake_uuid = fakes.get_fake_uuid()
         update_server_volume = nova_api.return_value.update_server_volume
         volume_get.return_value = fake_new_volume
         volume = tests_utils.create_volume(self.context, size=1,
                                            host=CONF.host)
-        volume = tests_utils.attach_volume(self.context, volume['id'],
-                                           fake_uuid, attached_host,
-                                           '/dev/vda')
-        self.assertIsNotNone(volume['volume_attachment'][0]['id'])
-        self.assertEqual(fake_uuid,
-                         volume['volume_attachment'][0]['instance_uuid'])
-        self.assertEqual('in-use', volume['status'])
+        volume_attach = tests_utils.attach_volume(
+            self.context, volume['id'], fake_uuid, attached_host, '/dev/vda')
+        self.assertIsNotNone(volume_attach['volume_attachment'][0]['id'])
+        self.assertEqual(
+            fake_uuid, volume_attach['volume_attachment'][0]['instance_uuid'])
+        self.assertEqual('in-use', volume_attach['status'])
         self.volume._migrate_volume_generic(self.context, volume,
                                             host_obj, None)
         self.assertFalse(migrate_volume_completion.called)
@@ -5118,8 +5114,7 @@ class ConsistencyGroupTestCase(BaseVolumeTestCase):
             consistencygroup_id=group2.id,
             snapshot_id=snapshot_id,
             **self.volume_params)
-        volume2_id = volume2['id']
-        self.volume.create_volume(self.context, volume2_id)
+        self.volume.create_volume(self.context, volume2.id, volume=volume2)
         self.volume.create_consistencygroup_from_src(
             self.context, group2, cgsnapshot=cgsnapshot)
         cg2 = objects.ConsistencyGroup.get_by_id(self.context, group2.id)
@@ -5186,8 +5181,7 @@ class ConsistencyGroupTestCase(BaseVolumeTestCase):
             consistencygroup_id=group3.id,
             source_volid=volume_id,
             **self.volume_params)
-        volume3_id = volume3['id']
-        self.volume.create_volume(self.context, volume3_id)
+        self.volume.create_volume(self.context, volume3.id, volume=volume3)
         self.volume.create_consistencygroup_from_src(
             self.context, group3, source_cg=group)
 
@@ -5444,8 +5438,7 @@ class ConsistencyGroupTestCase(BaseVolumeTestCase):
             status='creating',
             size=1)
         self.volume.host = 'host1@backend1'
-        volume_id = volume['id']
-        self.volume.create_volume(self.context, volume_id)
+        self.volume.create_volume(self.context, volume.id, volume=volume)
 
         self.volume.delete_consistencygroup(self.context, group)
         cg = objects.ConsistencyGroup.get_by_id(
@@ -5480,8 +5473,7 @@ class ConsistencyGroupTestCase(BaseVolumeTestCase):
             status='creating',
             size=1)
         self.volume.host = 'host1@backend2'
-        volume_id = volume['id']
-        self.volume.create_volume(self.context, volume_id)
+        self.volume.create_volume(self.context, volume.id, volume=volume)
 
         self.assertRaises(exception.InvalidVolume,
                           self.volume.delete_consistencygroup,
