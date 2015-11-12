@@ -36,7 +36,6 @@ class CinderObjectRegistry(base.VersionedObjectRegistry):
         setattr(objects, cls.obj_name(), cls)
 
 
-@CinderObjectRegistry.register
 class CinderObject(base.VersionedObject):
     # NOTE(thangp): OBJ_PROJECT_NAMESPACE needs to be set so that nova,
     # cinder, and other objects can exist on the same bus and be distinguished

@@ -22,7 +22,7 @@ from cinder.objects import base
 from cinder.tests.unit import objects as test_objects
 
 
-@base.CinderObjectRegistry.register
+@base.CinderObjectRegistry.register_if(False)
 class TestObject(base.CinderObject):
     fields = {
         'scheduled_at': base.fields.DateTimeField(nullable=True),
