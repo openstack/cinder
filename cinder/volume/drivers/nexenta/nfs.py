@@ -589,6 +589,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
 
         :param nfs_share: example 172.18.194.100:/var/nfs
         """
+        nfs_share = nfs_share.encode('utf-8')
         return os.path.join(self.configuration.nexenta_mount_point_base,
                             hashlib.md5(nfs_share).hexdigest())
 
@@ -638,7 +639,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
 
             share_info = re.split(r'\s+', share, 2)
 
-            share_address = share_info[0].strip().decode('unicode_escape')
+            share_address = share_info[0].strip()
             nms_url = share_info[1].strip()
             share_opts = share_info[2].strip() if len(share_info) > 2 else None
 

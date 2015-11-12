@@ -39,7 +39,7 @@ def str2size(s, scale=1024):
     if not s:
         return 0
 
-    if isinstance(s, (int, long)):
+    if isinstance(s, int):
         return s
 
     match = re.match(r'^([\.\d]+)\s*([BbKkMmGgTtPpEeZzYy]?)', s)
@@ -59,7 +59,7 @@ def str2size(s, scale=1024):
 def str2gib_size(s):
     """Covert size-string to size in gigabytes."""
     size_in_bytes = str2size(s)
-    return size_in_bytes / units.Gi
+    return size_in_bytes // units.Gi
 
 
 def get_rrmgr_cmd(src, dst, compression=None, tcp_buf_size=None,

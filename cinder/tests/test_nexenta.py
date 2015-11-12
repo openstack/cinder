@@ -22,6 +22,7 @@ from oslo_utils import units
 
 from cinder import context
 from cinder import db
+from cinder import exception
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.nexenta import iscsi
@@ -215,7 +216,7 @@ class TestNexentaISCSIDriver(test.TestCase):
 
         # Check that exception not raised if snapshot does not exist
         mock = self.nms_mock.snapshot.destroy('cinder/volume1@snapshot1', '')
-        mock.AndRaise(jsonrpc.NexentaJSONException(
+        mock.AndRaise(exception.NexentaException(
             'Snapshot cinder/volume1@snapshot1 does not exist'))
         self.nms_mock.volume.object_exists('cinder/volume1')
         self.mox.ReplayAll()
@@ -233,7 +234,7 @@ class TestNexentaISCSIDriver(test.TestCase):
             'cinder/1.1.1.1-0').AndReturn(['iqn:1.1.1.1-0'])
         self.nms_mock.scsidisk.lu_exists(zvol_name)
         self.nms_mock.scsidisk.create_lu(zvol_name, {})
-        self.nms_mock.scsidisk.lu_shared(zvol_name)
+        self.nms_mock.scsidisk.lu_shared(zvol_name).AndReturn(0)
         self.nms_mock.scsidisk.add_lun_mapping_entry(zvol_name, {
             'target_group': 'cinder/1.1.1.1-0'}).AndReturn({'lun': 0})
 
@@ -451,12 +452,12 @@ class TestNexentaNfsDriver(test.TestCase):
         self.nms_mock.netstorsvc.share_folder(
             self.TEST_SHARE_SVC, 'stack/share/volume-1',
             self.TEST_SHARE_OPTS).AndRaise(
-                jsonrpc.NexentaJSONException('-'))
+                exception.NexentaException('-'))
         self.nms_mock.folder.destroy('stack/share/volume-1')
 
         self.mox.ReplayAll()
 
-        self.assertRaises(jsonrpc.NexentaJSONException,
+        self.assertRaises(exception.NexentaException,
                           self.drv._do_create_volume, volume)
 
     def test_create_sparsed_file(self):
@@ -572,7 +573,7 @@ class TestNexentaNfsDriver(test.TestCase):
         self.nms_mock.server.get_prop('volroot').AndReturn('/volumes')
         mock = self.nms_mock.snapshot.destroy('stack/share/volume-1@snapshot1',
                                               '')
-        mock.AndRaise(jsonrpc.NexentaJSONException("Snapshot does not exist"))
+        mock.AndRaise(exception.NexentaException("Snapshot does not exist"))
         self.mox.ReplayAll()
         self.drv.delete_snapshot({'volume_id': '1', 'name': 'snapshot1'})
         self.mox.ResetAll()
@@ -602,7 +603,7 @@ class TestNexentaNfsDriver(test.TestCase):
         self.nms_mock.folder.get_child_props('stack/share/volume-1',
                                              'origin').AndReturn(None)
         mock = self.nms_mock.folder.destroy('stack/share/volume-1', '-r')
-        mock.AndRaise(jsonrpc.NexentaJSONException("Folder does not exist"))
+        mock.AndRaise(exception.NexentaException("Folder does not exist"))
         self.mox.ReplayAll()
         self.drv.delete_volume({
             'id': '1',
@@ -621,9 +622,8 @@ class TestNexentaUtils(test.TestCase):
             ('', 0),
             ('0', 0),
             ('12', 12),
-            # Test int and long values
+            # Test int values
             (10, 10),
-            (long(10), 10),
             # Test bytes string
             ('1b', 1),
             ('1B', 1),
