@@ -192,6 +192,37 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         self.assertIsNotNone(weighed_host.obj)
         self.assertTrue(_mock_service_get_all_by_topic.called)
 
+    @mock.patch('cinder.db.service_get_all_by_topic')
+    def test_create_volume_clear_host_different_with_cg(self,
+                                                        _mock_service_get_all):
+        # Ensure we clear those hosts whose backend is not same as
+        # consistencygroup's backend.
+        sched = fakes.FakeFilterScheduler()
+        sched.host_manager = fakes.FakeHostManager()
+        fakes.mock_host_manager_db_calls(_mock_service_get_all)
+        fake_context = context.RequestContext('user', 'project')
+        request_spec = {'volume_properties': {'project_id': 1,
+                                              'size': 1},
+                        'volume_type': {'name': 'LVM_iSCSI'},
+                        'CG_backend': 'host@lvmdriver'}
+        weighed_host = sched._schedule(fake_context, request_spec, {})
+        self.assertIsNone(weighed_host)
+
+    @mock.patch('cinder.db.service_get_all_by_topic')
+    def test_create_volume_host_same_as_cg(self, _mock_service_get_all):
+        # Ensure we don't clear the host whose backend is same as
+        # consistencygroup's backend.
+        sched = fakes.FakeFilterScheduler()
+        sched.host_manager = fakes.FakeHostManager()
+        fakes.mock_host_manager_db_calls(_mock_service_get_all)
+        fake_context = context.RequestContext('user', 'project')
+        request_spec = {'volume_properties': {'project_id': 1,
+                                              'size': 1},
+                        'volume_type': {'name': 'LVM_iSCSI'},
+                        'CG_backend': 'host1'}
+        weighed_host = sched._schedule(fake_context, request_spec, {})
+        self.assertEqual('host1#lvm1', weighed_host.obj.host)
+
     def test_max_attempts(self):
         self.flags(scheduler_max_attempts=4)
 
