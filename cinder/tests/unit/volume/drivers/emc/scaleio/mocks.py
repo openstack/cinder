@@ -65,7 +65,7 @@ class ScaleIODriver(scaleio.ScaleIODriver):
     def promote_replica(self, context, volume):
         pass
 
-    def delete_consistencygroup(self, context, group):
+    def delete_consistencygroup(self, context, group, volumes):
         pass
 
     def create_consistencygroup_from_src(self, context, group, volumes,
@@ -84,10 +84,10 @@ class ScaleIODriver(scaleio.ScaleIODriver):
     def unmanage(self, volume):
         pass
 
-    def create_cgsnapshot(self, context, cgsnapshot):
+    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
         pass
 
-    def delete_cgsnapshot(self, context, cgsnapshot):
+    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
         pass
 
 

@@ -1482,12 +1482,12 @@ class SnapshotVD(object):
 @six.add_metaclass(abc.ABCMeta)
 class ConsistencyGroupVD(object):
     @abc.abstractmethod
-    def create_cgsnapshot(self, context, cgsnapshot):
+    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Creates a cgsnapshot."""
         return
 
     @abc.abstractmethod
-    def delete_cgsnapshot(self, context, cgsnapshot):
+    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Deletes a cgsnapshot."""
         return
 
@@ -1497,7 +1497,7 @@ class ConsistencyGroupVD(object):
         return
 
     @abc.abstractmethod
-    def delete_consistencygroup(self, context, group):
+    def delete_consistencygroup(self, context, group, volumes):
         """Deletes a consistency group."""
         return
 
@@ -2046,7 +2046,24 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
         """Disallow connection from connector for a snapshot."""
 
     def create_consistencygroup(self, context, group):
-        """Creates a consistencygroup."""
+        """Creates a consistencygroup.
+
+        :param context: the context of the caller.
+        :param group: the dictionary of the consistency group to be created.
+        :return model_update
+
+        model_update will be in this format: {'status': xxx, ......}.
+
+        If the status in model_update is 'error', the manager will throw
+        an exception and it will be caught in the try-except block in the
+        manager. If the driver throws an exception, the manager will also
+        catch it in the try-except block. The group status in the db will
+        be changed to 'error'.
+
+        For a successful operation, the driver can either build the
+        model_update and return it or return None. The group status will
+        be set to 'available'.
+        """
         raise NotImplementedError()
 
     def create_consistencygroup_from_src(self, context, group, volumes,
@@ -2069,8 +2086,8 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
         cinder.db.sqlalchemy.models.Volume to be precise. It cannot be
         assigned to volumes_model_update. volumes_model_update is a list of
         dictionaries. It has to be built by the driver. An entry will be
-        in this format: ['id': xxx, 'status': xxx, ......]. model_update
-        will be in this format: ['status': xxx, ......].
+        in this format: {'id': xxx, 'status': xxx, ......}. model_update
+        will be in this format: {'status': xxx, ......}.
 
         To be consistent with other volume operations, the manager will
         assume the operation is successful if no exception is thrown by
@@ -2080,8 +2097,48 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
         """
         raise NotImplementedError()
 
-    def delete_consistencygroup(self, context, group):
-        """Deletes a consistency group."""
+    def delete_consistencygroup(self, context, group, volumes):
+        """Deletes a consistency group.
+
+        :param context: the context of the caller.
+        :param group: the dictionary of the consistency group to be deleted.
+        :param volumes: a list of volume dictionaries in the group.
+        :return model_update, volumes_model_update
+
+        param volumes is retrieved directly from the db. It is a list of
+        cinder.db.sqlalchemy.models.Volume to be precise. It cannot be
+        assigned to volumes_model_update. volumes_model_update is a list of
+        dictionaries. It has to be built by the driver. An entry will be
+        in this format: {'id': xxx, 'status': xxx, ......}. model_update
+        will be in this format: {'status': xxx, ......}.
+
+        The driver should populate volumes_model_update and model_update
+        and return them.
+
+        The manager will check volumes_model_update and update db accordingly
+        for each volume. If the driver successfully deleted some volumes
+        but failed to delete others, it should set statuses of the volumes
+        accordingly so that the manager can update db correctly.
+
+        If the status in any entry of volumes_model_update is 'error_deleting'
+        or 'error', the status in model_update will be set to the same if it
+        is not already 'error_deleting' or 'error'.
+
+        If the status in model_update is 'error_deleting' or 'error', the
+        manager will raise an exception and the status of the group will be
+        set to 'error' in the db. If volumes_model_update is not returned by
+        the driver, the manager will set the status of every volume in the
+        group to 'error' in the except block.
+
+        If the driver raises an exception during the operation, it will be
+        caught by the try-except block in the manager. The statuses of the
+        group and all volumes in it will be set to 'error'.
+
+        For a successful operation, the driver can either build the
+        model_update and volumes_model_update and return them or
+        return None, None. The statuses of the group and all volumes
+        will be set to 'deleted' after the manager deletes them from db.
+        """
         raise NotImplementedError()
 
     def update_consistencygroup(self, context, group,
@@ -2112,12 +2169,92 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
         """
         raise NotImplementedError()
 
-    def create_cgsnapshot(self, context, cgsnapshot):
-        """Creates a cgsnapshot."""
+    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
+        """Creates a cgsnapshot.
+
+        :param context: the context of the caller.
+        :param cgsnapshot: the dictionary of the cgsnapshot to be created.
+        :param snapshots: a list of snapshot dictionaries in the cgsnapshot.
+        :return model_update, snapshots_model_update
+
+        param snapshots is retrieved directly from the db. It is a list of
+        cinder.db.sqlalchemy.models.Snapshot to be precise. It cannot be
+        assigned to snapshots_model_update. snapshots_model_update is a list
+        of dictionaries. It has to be built by the driver. An entry will be
+        in this format: {'id': xxx, 'status': xxx, ......}. model_update
+        will be in this format: {'status': xxx, ......}.
+
+        The driver should populate snapshots_model_update and model_update
+        and return them.
+
+        The manager will check snapshots_model_update and update db accordingly
+        for each snapshot. If the driver successfully deleted some snapshots
+        but failed to delete others, it should set statuses of the snapshots
+        accordingly so that the manager can update db correctly.
+
+        If the status in any entry of snapshots_model_update is 'error', the
+        status in model_update will be set to the same if it is not already
+        'error'.
+
+        If the status in model_update is 'error', the manager will raise an
+        exception and the status of cgsnapshot will be set to 'error' in the
+        db. If snapshots_model_update is not returned by the driver, the
+        manager will set the status of every snapshot to 'error' in the except
+        block.
+
+        If the driver raises an exception during the operation, it will be
+        caught by the try-except block in the manager and the statuses of
+        cgsnapshot and all snapshots will be set to 'error'.
+
+        For a successful operation, the driver can either build the
+        model_update and snapshots_model_update and return them or
+        return None, None. The statuses of cgsnapshot and all snapshots
+        will be set to 'available' at the end of the manager function.
+        """
         raise NotImplementedError()
 
-    def delete_cgsnapshot(self, context, cgsnapshot):
-        """Deletes a cgsnapshot."""
+    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
+        """Deletes a cgsnapshot.
+
+        :param context: the context of the caller.
+        :param cgsnapshot: the dictionary of the cgsnapshot to be deleted.
+        :param snapshots: a list of snapshot dictionaries in the cgsnapshot.
+        :return model_update, snapshots_model_update
+
+        param snapshots is retrieved directly from the db. It is a list of
+        cinder.db.sqlalchemy.models.Snapshot to be precise. It cannot be
+        assigned to snapshots_model_update. snapshots_model_update is a list
+        of dictionaries. It has to be built by the driver. An entry will be
+        in this format: {'id': xxx, 'status': xxx, ......}. model_update
+        will be in this format: {'status': xxx, ......}.
+
+        The driver should populate snapshots_model_update and model_update
+        and return them.
+
+        The manager will check snapshots_model_update and update db accordingly
+        for each snapshot. If the driver successfully deleted some snapshots
+        but failed to delete others, it should set statuses of the snapshots
+        accordingly so that the manager can update db correctly.
+
+        If the status in any entry of snapshots_model_update is
+        'error_deleting' or 'error', the status in model_update will be set to
+        the same if it is not already 'error_deleting' or 'error'.
+
+        If the status in model_update is 'error_deleting' or 'error', the
+        manager will raise an exception and the status of cgsnapshot will be
+        set to 'error' in the db. If snapshots_model_update is not returned by
+        the driver, the manager will set the status of every snapshot to
+        'error' in the except block.
+
+        If the driver raises an exception during the operation, it will be
+        caught by the try-except block in the manager and the statuses of
+        cgsnapshot and all snapshots will be set to 'error'.
+
+        For a successful operation, the driver can either build the
+        model_update and snapshots_model_update and return them or
+        return None, None. The statuses of cgsnapshot and all snapshots
+        will be set to 'deleted' after the manager deletes them from db.
+        """
         raise NotImplementedError()
 
     def clone_image(self, volume, image_location, image_id, image_meta,

@@ -399,7 +399,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         return None, None
 
     @log_debug_trace
-    def delete_consistencygroup(self, context, group):
+    def delete_consistencygroup(self, context, group, volumes):
         """Deletes a consistency group."""
 
         try:
@@ -446,7 +446,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         return None, None, None
 
     @log_debug_trace
-    def create_cgsnapshot(self, context, cgsnapshot):
+    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Creates a cgsnapshot."""
 
         cg_id = cgsnapshot.consistencygroup_id
@@ -481,7 +481,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                                     "Snapshot: %s"), err.text)
 
     @log_debug_trace
-    def delete_cgsnapshot(self, context, cgsnapshot):
+    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Deletes a cgsnapshot."""
 
         pgsnap_name = self._get_pgroup_snap_name(cgsnapshot)

@@ -129,7 +129,7 @@ class HPLeftHandISCSIDriver(driver.TransferVD,
             context, group, volumes, cgsnapshot, snapshots, source_cg,
             source_vols)
 
-    def delete_consistencygroup(self, context, group):
+    def delete_consistencygroup(self, context, group, volumes):
         """Deletes a consistency group."""
         return self.proxy.delete_consistencygroup(context, group)
 
@@ -139,11 +139,11 @@ class HPLeftHandISCSIDriver(driver.TransferVD,
         return self.proxy.update_consistencygroup(context, group, add_volumes,
                                                   remove_volumes)
 
-    def create_cgsnapshot(self, context, cgsnapshot):
+    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Creates a consistency group snapshot."""
         return self.proxy.create_cgsnapshot(context, cgsnapshot)
 
-    def delete_cgsnapshot(self, context, cgsnapshot):
+    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Deletes a consistency group snapshot."""
         return self.proxy.delete_cgsnapshot(context, cgsnapshot)
 

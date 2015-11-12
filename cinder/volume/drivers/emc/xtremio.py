@@ -565,7 +565,7 @@ class XtremIOVolumeDriver(san.SanDriver):
                         ver='v2')
         return {'status': 'available'}
 
-    def delete_consistencygroup(self, context, group):
+    def delete_consistencygroup(self, context, group, volumes):
         """Deletes a consistency group."""
         self.client.req('consistency-groups', 'DELETE', name=group['id'],
                         ver='v2')
@@ -647,7 +647,7 @@ class XtremIOVolumeDriver(san.SanDriver):
                                    .replace('-', ''),
                                    'snap': cgsnapshot['id'].replace('-', '')}
 
-    def create_cgsnapshot(self, context, cgsnapshot):
+    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Creates a cgsnapshot."""
         data = {'consistency-group-id': cgsnapshot['consistencygroup_id'],
                 'snapshot-set-name': self._get_cgsnap_name(cgsnapshot)}
@@ -663,7 +663,7 @@ class XtremIOVolumeDriver(san.SanDriver):
 
         return model_update, snapshots
 
-    def delete_cgsnapshot(self, context, cgsnapshot):
+    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Deletes a cgsnapshot."""
         self.client.req('snapshot-sets', 'DELETE',
                         name=self._get_cgsnap_name(cgsnapshot), ver='v2')

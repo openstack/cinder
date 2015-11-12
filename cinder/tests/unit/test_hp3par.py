@@ -3106,7 +3106,7 @@ class HP3PARBaseDriver(object):
 
             # create a snapshot of the consistency group
             self.driver.create_cgsnapshot(context.get_admin_context(),
-                                          self.cgsnapshot)
+                                          self.cgsnapshot, [])
 
             expected = [
                 mock.call.createSnapshotOfVolumeSet(
@@ -3171,7 +3171,7 @@ class HP3PARBaseDriver(object):
             # remove the consistency group
             group.status = 'deleting'
             self.driver.delete_consistencygroup(context.get_admin_context(),
-                                                group)
+                                                group, [])
 
             expected = [
                 mock.call.deleteVolumeSet(
@@ -3391,7 +3391,7 @@ class HP3PARBaseDriver(object):
 
             # create a snapshot of the consistency group
             self.driver.create_cgsnapshot(context.get_admin_context(),
-                                          self.cgsnapshot)
+                                          self.cgsnapshot, [])
 
             expected = [
                 mock.call.createSnapshotOfVolumeSet(
@@ -3476,7 +3476,7 @@ class HP3PARBaseDriver(object):
 
             # create a snapshot of the consistency group
             self.driver.create_cgsnapshot(context.get_admin_context(),
-                                          cgsnapshot)
+                                          cgsnapshot, [])
 
             expected = [
                 mock.call.createSnapshotOfVolumeSet(
@@ -3487,7 +3487,7 @@ class HP3PARBaseDriver(object):
             # delete the snapshot of the consistency group
             cgsnapshot['status'] = 'deleting'
             self.driver.delete_cgsnapshot(context.get_admin_context(),
-                                          cgsnapshot)
+                                          cgsnapshot, [])
 
             mock_client.assert_has_calls(
                 [mock.call.getWsApiVersion()] +

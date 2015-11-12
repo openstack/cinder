@@ -230,17 +230,17 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
         """Creates a consistencygroup."""
         return self.cli.create_consistencygroup(context, group)
 
-    def delete_consistencygroup(self, context, group):
+    def delete_consistencygroup(self, context, group, volumes):
         """Deletes a consistency group."""
         return self.cli.delete_consistencygroup(
             self, context, group)
 
-    def create_cgsnapshot(self, context, cgsnapshot):
+    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Creates a cgsnapshot."""
         return self.cli.create_cgsnapshot(
             self, context, cgsnapshot)
 
-    def delete_cgsnapshot(self, context, cgsnapshot):
+    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Deletes a cgsnapshot."""
         return self.cli.delete_cgsnapshot(self, context, cgsnapshot)
 

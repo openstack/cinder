@@ -2186,7 +2186,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
 
             # delete the consistency group
             group.status = 'deleting'
-            cg, vols = self.driver.delete_consistencygroup(ctxt, group)
+            cg, vols = self.driver.delete_consistencygroup(ctxt, group, [])
             self.assertEqual('deleting', cg['status'])
 
     @mock.patch('hplefthandclient.version', "1.0.6")
@@ -2228,7 +2228,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
 
             # delete the consistency group
             group.status = 'deleting'
-            cg, vols = self.driver.delete_consistencygroup(ctxt, group)
+            cg, vols = self.driver.delete_consistencygroup(ctxt, group, [])
             self.assertEqual('deleting', cg['status'])
 
     @mock.patch('hplefthandclient.version', "1.0.6")
@@ -2274,7 +2274,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
 
             # delete the consistency group
             group.status = 'deleting'
-            cg, vols = self.driver.delete_consistencygroup(ctxt, group)
+            cg, vols = self.driver.delete_consistencygroup(ctxt, group, [])
             self.assertEqual('deleting', cg['status'])
 
     @mock.patch('cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
@@ -2315,7 +2315,7 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
 
             # create the conistency group snapshot
             cgsnap, snaps = self.driver.create_cgsnapshot(
-                ctxt, self.cgsnapshot)
+                ctxt, self.cgsnapshot, [])
             self.assertEqual('available', cgsnap['status'])
 
     @mock.patch('cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
@@ -2357,5 +2357,5 @@ class TestHPLeftHandRESTISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             # delete the consistency group snapshot
             self.cgsnapshot['status'] = 'deleting'
             cgsnap, snaps = self.driver.delete_cgsnapshot(
-                ctxt, self.cgsnapshot)
+                ctxt, self.cgsnapshot, [])
             self.assertEqual('deleting', cgsnap['status'])

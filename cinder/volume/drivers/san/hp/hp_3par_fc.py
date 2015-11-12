@@ -454,7 +454,7 @@ class HP3PARFCDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
-    def delete_consistencygroup(self, context, group):
+    def delete_consistencygroup(self, context, group, volumes):
         common = self._login()
         try:
             return common.delete_consistencygroup(context, group)
@@ -470,14 +470,14 @@ class HP3PARFCDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
-    def create_cgsnapshot(self, context, cgsnapshot):
+    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
         common = self._login()
         try:
             return common.create_cgsnapshot(context, cgsnapshot)
         finally:
             self._logout(common)
 
-    def delete_cgsnapshot(self, context, cgsnapshot):
+    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
         common = self._login()
         try:
             return common.delete_cgsnapshot(context, cgsnapshot)
