@@ -629,6 +629,19 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
                                                        )
         self.assertDictMatch(expected_volume, updated_volume)
 
+    def test_get_pool_operation_progress(self):
+        fake_pool = copy.deepcopy(eseries_fake.STORAGE_POOL)
+        fake_response = copy.deepcopy(eseries_fake.FAKE_POOL_ACTION_PROGRESS)
+        self.my_client._invoke = mock.Mock(return_value=fake_response)
+
+        response = self.my_client.get_pool_operation_progress(fake_pool['id'])
+
+        url = self.my_client.RESOURCE_PATHS.get('pool_operation_progress')
+        self.my_client._invoke.assert_called_once_with('GET', url,
+                                                       **{'object-id':
+                                                          fake_pool['id']})
+        self.assertEqual(fake_response, response)
+
     def test_extend_volume(self):
         new_capacity = 10
         fake_volume = copy.deepcopy(eseries_fake.VOLUME)
@@ -638,27 +651,33 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
         self.my_client._invoke = mock.Mock(return_value=fake_volume)
 
         expanded_volume = self.my_client.expand_volume(fake_volume['id'],
-                                                       new_capacity)
+                                                       new_capacity, False)
 
-        url = self.my_client.RESOURCE_PATHS.get('ssc_volume')
-        body = {'newSize': new_capacity, 'sizeUnit': 'gb'}
+        url = self.my_client.RESOURCE_PATHS.get('volume_expand')
+        body = {'expansionSize': new_capacity, 'sizeUnit': 'gb'}
         self.my_client._invoke.assert_called_once_with('POST', url, body,
                                                        **{'object-id':
                                                           fake_volume['id']})
         self.assertEqual(fake_volume, expanded_volume)
 
-    def test_extend_volume_unsupported(self):
+    def test_extend_volume_thin(self):
         new_capacity = 10
-        min_version = 1
         fake_volume = copy.deepcopy(eseries_fake.VOLUME)
         self.my_client.features = mock.Mock()
         self.my_client.features.SSC_API_V2 = na_utils.FeatureState(
-            supported=False, minimum_version=min_version)
+            supported=True)
         self.my_client._invoke = mock.Mock(return_value=fake_volume)
 
-        self.assertRaises(exception.NetAppDriverException,
-                          self.my_client.expand_volume, fake_volume['id'],
-                          new_capacity)
+        expanded_volume = self.my_client.expand_volume(fake_volume['id'],
+                                                       new_capacity, True)
+
+        url = self.my_client.RESOURCE_PATHS.get('thin_volume_expand')
+        body = {'newVirtualSize': new_capacity, 'sizeUnit': 'gb',
+                'newRepositorySize': new_capacity}
+        self.my_client._invoke.assert_called_once_with('POST', url, body,
+                                                       **{'object-id':
+                                                          fake_volume['id']})
+        self.assertEqual(fake_volume, expanded_volume)
 
     @ddt.data(True, False)
     def test_delete_volume(self, ssc_api_enabled):
