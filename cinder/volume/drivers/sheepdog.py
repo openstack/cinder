@@ -43,10 +43,9 @@ sheepdog_opts = [
     cfg.StrOpt('sheepdog_store_address',
                default='127.0.0.1',
                help=('IP address of sheep daemon.')),
-    cfg.IntOpt('sheepdog_store_port',
-               min=1, max=65535,
-               default=7000,
-               help=('Port of sheep daemon.'))
+    cfg.PortOpt('sheepdog_store_port',
+                default=7000,
+                help=('Port of sheep daemon.'))
 ]
 
 CONF = cfg.CONF

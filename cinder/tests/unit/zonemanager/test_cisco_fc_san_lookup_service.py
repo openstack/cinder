@@ -70,8 +70,8 @@ class TestCiscoFCSanLookupService(cisco_lookup.CiscoFCSanLookupService,
         fc_fabric_opts.append(cfg.StrOpt('cisco_fc_fabric_password',
                                          default='admin1234', help='',
                                          secret=True))
-        fc_fabric_opts.append(cfg.IntOpt('cisco_fc_fabric_port',
-                                         default=22, help=''))
+        fc_fabric_opts.append(cfg.PortOpt('cisco_fc_fabric_port',
+                                          default=22, help=''))
         fc_fabric_opts.append(cfg.StrOpt('cisco_zoning_vsan',
                                          default='304', help=''))
         config = conf.Configuration(fc_fabric_opts, 'CISCO_FAB_2')

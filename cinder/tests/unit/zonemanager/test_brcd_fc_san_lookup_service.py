@@ -93,8 +93,8 @@ class TestBrcdFCSanLookupService(brcd_lookup.BrcdFCSanLookupService,
         fc_fabric_opts.append(cfg.StrOpt('fc_fabric_password',
                                          default='password', help='',
                                          secret=True))
-        fc_fabric_opts.append(cfg.IntOpt('fc_fabric_port',
-                                         default=22, help=''))
+        fc_fabric_opts.append(cfg.PortOpt('fc_fabric_port',
+                                          default=22, help=''))
         fc_fabric_opts.append(cfg.StrOpt('principal_switch_wwn',
                                          default='100000051e55a100', help=''))
         config = conf.Configuration(fc_fabric_opts, 'BRCD_FAB_2')

@@ -84,12 +84,10 @@ sf_opts = [
                      'memory, very large deployments may want to consider '
                      'setting to False.'),
 
-    cfg.IntOpt('sf_api_port',
-               default=443,
-               min=1, max=65535,
-               help='SolidFire API port. Useful if the device api is behind '
-                    'a proxy on a different port.')]
-
+    cfg.PortOpt('sf_api_port',
+                default=443,
+                help='SolidFire API port. Useful if the device api is behind '
+                     'a proxy on a different port.')]
 
 CONF = cfg.CONF
 CONF.register_opts(sf_opts)
