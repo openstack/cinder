@@ -8,10 +8,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev116\n"
+"Project-Id-Version: cinder 8.0.0.dev167\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-05 06:05+0000\n"
-"PO-Revision-Date: 2015-11-04 01:48+0000\n"
+"POT-Creation-Date: 2015-11-11 06:36+0000\n"
+"PO-Revision-Date: 2015-11-10 08:50+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language-Team: Czech\n"
 "Language: cs\n"
@@ -587,7 +587,7 @@ msgstr "Oznámení o smazáni svazku selhalo: %s"
 
 #, python-format
 msgid "Deleting snapshot %s failed"
-msgstr "Mazání snímku %s serhalo"
+msgstr "Mazání snímku %s selhalo"
 
 #, python-format
 msgid "Deleting zone failed %s"
@@ -690,6 +690,10 @@ msgid ""
 msgstr ""
 "Chyba při změně profilu úložiště pro svazek %(original)s na %(name)s: "
 "%(code)d %(reason)s %(text)s"
+
+#, python-format
+msgid "Error cleaning up failed volume creation.  Msg - %s."
+msgstr "Chyba při čištění selhaného vytváření svazku. Zpráva - %s"
 
 msgid "Error closing channel."
 msgstr "Chyba při uzavírání kanálu."
@@ -1581,6 +1585,10 @@ msgid "Failed to export fiber channel target due to %s"
 msgstr "Nelze exportovat cíl fiber channel z důvodu %s"
 
 #, python-format
+msgid "Failed to extend volume: %(vol)s to size: %(size)s GB."
+msgstr "Nelze rozšířit svazek: %(vol)s na velikost %(size)s GB."
+
+#, python-format
 msgid ""
 "Failed to extend_volume %(name)s from %(current_size)sGB to %(new_size)sGB."
 msgstr "Nelze rozšířit svazek %(name)s z %(current_size)sGB na %(new_size)sGB."
@@ -2307,14 +2315,6 @@ msgid "Not able to configure PBM for vCenter server: %s"
 msgstr "Nelze nastavit PBM pro server vCenter: %s"
 
 #, python-format
-msgid "Not able to find a different datastore to place the extended volume %s."
-msgstr "Nelze najít jiné datové úložiště pro umístění rozšířeného svazku %s."
-
-#, python-format
-msgid "Not able to relocate volume %s for extending."
-msgstr "Nelze přemístit svazek %s pro rozšíření."
-
-#, python-format
 msgid "OSError: command is %(cmd)s."
 msgstr "Chyba OS: příkaz je %(cmd)s."
 
@@ -2774,10 +2774,6 @@ msgstr "Nelze zjistit zda %(volumeName)s je složený nebo ne."
 
 msgid "Unable to disconnect host from volume."
 msgstr "Nelze odpojit hostitele od svazku."
-
-#, python-format
-msgid "Unable to extend the size of the vmdk virtual disk at the path %s."
-msgstr "Nelze rozšířit velikost virtuálního disku vmdk umístěného do %s."
 
 msgid "Unable to find FC initiators"
 msgstr "Nelze najít zavaděče FC"

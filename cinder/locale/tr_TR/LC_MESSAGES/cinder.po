@@ -7,9 +7,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev112\n"
+"Project-Id-Version: cinder 8.0.0.dev167\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-04 06:05+0000\n"
+"POT-Creation-Date: 2015-11-11 06:36+0000\n"
 "PO-Revision-Date: 2015-09-16 08:16+0000\n"
 "Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
 "Language: tr_TR\n"
@@ -1195,13 +1195,6 @@ msgstr "%(param)s parametresi bulunamadı"
 #, python-format
 msgid "Could not find target %s"
 msgstr "%s hedefi bulunamadı"
-
-msgid ""
-"Could not get FC connection information for the host-volume connection. Is "
-"the host configured properly for FC connections?"
-msgstr ""
-"İstemci-mantıksal sürücü bağlantısı için FC bağlantı bilgisi alınamadı. "
-"İstemci FC bağlantıları için düzgün yapılandırılmış mı?"
 
 msgid "Could not get system name."
 msgstr "Sistem ismi alınamadı."

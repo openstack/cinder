@@ -7,9 +7,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev66\n"
+"Project-Id-Version: cinder 8.0.0.dev167\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-10-22 06:07+0000\n"
+"POT-Creation-Date: 2015-11-11 06:36+0000\n"
 "PO-Revision-Date: 2015-09-16 08:22+0000\n"
 "Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
 "Language-Team: Turkish (Turkey)\n"
@@ -876,10 +876,6 @@ msgstr "İmaj %(id)s nin mantıksal sürücü: %(vol)s e kopyalanması bitti."
 msgid "Done copying volume %(vol)s to a new image %(img)s"
 msgstr "%(vol)s mantıksal sürücüsünün %(img)s yeni imajına kopyalanması bitti"
 
-#, python-format
-msgid "Done extending volume %(vol)s to size %(size)s GB."
-msgstr "%(vol)s mantıksal sürücüsünün %(size)s GB olarak büyütülmesi bitti."
-
 msgid "Driver initialization completed successfully."
 msgstr "Sürücü ilklendirme başarıyla tamamlandı."
 
@@ -1506,14 +1502,6 @@ msgid "Registering image in cache %s"
 msgstr "%s zulasında imaj kaydediliyor"
 
 #, python-format
-msgid ""
-"Relocating volume %s vmdk to a different datastore since trying to extend "
-"vmdk file in place failed."
-msgstr ""
-"Mantıksal sürücü %s vmdk başka bir veri deposuna konumlandırılıyor çünkü "
-"aynı yerde vmdk dosyasının büyütülmesi başarısız oldu."
-
-#, python-format
 msgid "Removed %s from cg."
 msgstr "%s cg'den silindi."
 
@@ -1745,12 +1733,6 @@ msgstr ""
 "İkincil ssh istemci anahtarı %(kwargs)s /etc/cinder.conf'dan gelen %(conf)s "
 "ile birlikte yüklenecek."
 
-#, python-format
-msgid "Selected datastore %(ds)s to place extended volume of size %(size)s GB."
-msgstr ""
-"%(size)s GB boyutundaki büyütülmüş mantıksal sürücüyü koymak için %(ds)s "
-"veri deposu seçildi."
-
 msgid "Session might have expired. Trying to relogin"
 msgstr "Oturum sona ermiş olabilir. Tekrar giriş deneniyor"
 
@@ -1953,10 +1935,6 @@ msgid "Successfully deleted volume: %s"
 msgstr "Mantıksal sürücü başarıyla silindi: %s"
 
 #, python-format
-msgid "Successfully extended the volume %(name)s to %(size)s GB."
-msgstr "Mantıksal sürücü %(name)s başarıyla %(size)s GB boyutuna büyütüldü."
-
-#, python-format
 msgid "Successfully extended volume %(volume_id)s to size %(size)s."
 msgstr "Mantıksal sürücü %(volume_id)s başarıyla %(size)s boyutuna büyütüldü."
 
@@ -2034,14 +2012,6 @@ msgstr "Mantıksal sürücü bağlantısını sonlandırma başarıyla tamamland
 #, python-format
 msgid "The QoS sepcs is: %s."
 msgstr "QoS özelliği: %s."
-
-#, python-format
-msgid ""
-"The backing is not found, so there is no need to extend the vmdk virtual "
-"disk for the volume %s."
-msgstr ""
-"Destek bulunamadı, bu yüzden %s mantıksal sürücüsü için vmdk sanal diskini "
-"büyütmeye gerek yok."
 
 #, python-format
 msgid "The iSCSI target %(target_name)s already exists."
