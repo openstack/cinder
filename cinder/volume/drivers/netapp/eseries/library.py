@@ -173,8 +173,11 @@ class NetAppESeriesLibrary(object):
     def check_for_setup_error(self):
         self._check_host_type()
         self._check_multipath()
-        self._check_pools()
+        # It is important that this be called before any other methods that
+        # interact with the storage-system. It blocks until the
+        # storage-system comes online.
         self._check_storage_system()
+        self._check_pools()
         self._start_periodic_tasks()
 
     def _check_host_type(self):

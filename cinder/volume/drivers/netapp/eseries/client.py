@@ -27,6 +27,7 @@ import uuid
 
 from oslo_log import log as logging
 import requests
+from simplejson import scanner
 import six
 from six.moves import urllib
 
@@ -219,7 +220,13 @@ class RestClient(WebserviceClient):
             res = self.invoke_service(method, url, data=data,
                                       headers=headers,
                                       timeout=timeout, verify=verify)
-            res_dict = res.json() if res.text else None
+
+            try:
+                res_dict = res.json() if res.text else None
+            # This should only occur if we expected JSON, but were sent
+            # something else
+            except scanner.JSONDecodeError:
+                res_dict = None
 
             if cinder_utils.TRACE_API:
                 self._log_http_response(res.status_code, dict(res.headers),
@@ -281,6 +288,8 @@ class RestClient(WebserviceClient):
                         msg = _("The storage array password for %s is "
                                 "incorrect, please update the configured "
                                 "password.") % self._system_id
+            elif status_code == 424:
+                msg = _("Response error - The storage-system is offline.")
             else:
                 msg = _("Response error code - %s.") % status_code
             raise es_exception.WebServiceException(msg,

@@ -19,6 +19,7 @@ import copy
 
 import ddt
 import mock
+from simplejson import scanner
 
 from cinder import exception
 from cinder import test
@@ -85,6 +86,18 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
         with self.assertRaisesRegexp(es_exception.WebServiceException,
                                      exc_regex) as exc:
             self.my_client._eval_response(fake_resp)
+            self.assertEqual(status_code, exc.status_code)
+
+    def test_eval_response_424(self):
+        status_code = 424
+        fake_resp = mock.Mock()
+        fake_resp.status_code = status_code
+        fake_resp.text = "Fake Error Message"
+
+        with self.assertRaisesRegex(es_exception.WebServiceException,
+                                    "The storage-system is offline") as exc:
+            self.my_client._eval_response(fake_resp)
+
             self.assertEqual(status_code, exc.status_code)
 
     def test_register_storage_system_does_not_log_password(self):
@@ -751,6 +764,20 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
         client.RestClient._init_features(self.my_client)
 
         self.assertTrue(self.my_client.features.SSC_API_V2.supported)
+
+    def test_invoke_bad_content_type(self):
+        """Tests the invoke behavior with a non-JSON response"""
+        fake_response = mock.Mock()
+        fake_response.json = mock.Mock(side_effect=scanner.JSONDecodeError(
+            '', '{}', 1))
+        fake_response.status_code = 424
+        fake_response.text = "Fake Response"
+        self.mock_object(self.my_client, 'invoke_service',
+                         mock.Mock(return_value=fake_response))
+
+        self.assertRaises(es_exception.WebServiceException,
+                          self.my_client._invoke, 'GET',
+                          eseries_fake.FAKE_ENDPOINT_HTTP)
 
 
 @ddt.ddt
