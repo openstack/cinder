@@ -365,9 +365,9 @@ class NimbleISCSIDriver(san.SanISCSIDriver):
         # Get vol info from the volume name obtained from the reference
         vol_info = self.APIExecutor.get_vol_info(target_vol_name)
 
-        # Check if volume is already managed by Openstack
+        # Check if volume is already managed by OpenStack
         if vol_info['agent-type'] == AGENT_TYPE_OPENSTACK:
-            msg = (_('Volume %s is already managed by Openstack.')
+            msg = (_('Volume %s is already managed by OpenStack.')
                    % target_vol_name)
             raise exception.ManageExistingAlreadyManaged(
                 volume_ref=volume['id'])
@@ -381,7 +381,7 @@ class NimbleISCSIDriver(san.SanISCSIDriver):
 
         if vol_info['online']:
             msg = (_('Volume %s is online. Set volume to offline for '
-                     'managing using Openstack.') % target_vol_name)
+                     'managing using OpenStack.') % target_vol_name)
             raise exception.InvalidVolume(reason=msg)
 
         # edit the volume
@@ -421,7 +421,7 @@ class NimbleISCSIDriver(san.SanISCSIDriver):
         # check agent type
         vol_info = self.APIExecutor.get_vol_info(vol_name)
         if vol_info['agent-type'] != AGENT_TYPE_OPENSTACK:
-            msg = (_('Only volumes managed by Openstack can be unmanaged.'))
+            msg = (_('Only volumes managed by OpenStack can be unmanaged.'))
             raise exception.InvalidVolume(reason=msg)
 
         # update the agent-type to None

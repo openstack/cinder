@@ -25,7 +25,7 @@ LOG = logging.getLogger(__name__)
 
 
 class DotHillFCDriver(cinder.volume.driver.FibreChannelDriver):
-    """Openstack Fibre Channel cinder drivers for DotHill Arrays.
+    """OpenStack Fibre Channel cinder drivers for DotHill Arrays.
 
     Version history:
         0.1    - Base version developed for HPMSA FC drivers:

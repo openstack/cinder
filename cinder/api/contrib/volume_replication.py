@@ -32,7 +32,7 @@ authorize = extensions.soft_extension_authorizer('volume',
 
 
 class VolumeReplicationController(wsgi.Controller):
-    """The Volume Replication API controller for the Openstack API."""
+    """The Volume Replication API controller for the OpenStack API."""
 
     def __init__(self, *args, **kwargs):
         super(VolumeReplicationController, self).__init__(*args, **kwargs)

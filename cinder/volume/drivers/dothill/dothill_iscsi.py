@@ -28,7 +28,7 @@ LOG = logging.getLogger(__name__)
 
 
 class DotHillISCSIDriver(cinder.volume.driver.ISCSIDriver):
-    """Openstack iSCSI cinder drivers for DotHill Arrays.
+    """OpenStack iSCSI cinder drivers for DotHill Arrays.
 
     Version history:
         0.1    - Base structure for DotHill iSCSI drivers based on HPMSA FC

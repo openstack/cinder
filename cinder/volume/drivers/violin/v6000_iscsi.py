@@ -14,7 +14,7 @@
 #    under the License.
 
 """
-Violin Memory iSCSI Driver for Openstack Cinder
+Violin Memory iSCSI Driver for OpenStack Cinder
 
 Provides iSCSI specific LUN services for V6000 series flash arrays.
 
@@ -266,7 +266,7 @@ class V6000ISCSIDriver(driver.ISCSIDriver):
         """Get a random target IP for OpenStack to connect to.
 
         For the non-multipath case we pick a single random target for
-        the Openstack infrastructure to use.  This at least allows us
+        the OpenStack infrastructure to use.  This at least allows us
         to evenly distribute LUN connections across the storage
         cluster.
         """
