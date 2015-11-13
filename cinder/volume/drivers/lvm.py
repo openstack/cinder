@@ -625,6 +625,14 @@ class LVMVolumeDriver(driver.VolumeDriver):
             existing_ref = {"source-name": existing_ref}
         return self.manage_existing(snapshot_temp, existing_ref)
 
+    def retype(self, context, volume, new_type, diff, host):
+        """Retypes a volume, allow QoS and extra_specs change."""
+
+        LOG.debug('LVM retype called for volume %s. No action '
+                  'required for LVM volumes.',
+                  volume['id'])
+        return True
+
     def migrate_volume(self, ctxt, volume, host, thin=False, mirror_count=0):
         """Optimize the migration if the destination is on the same server.
 
