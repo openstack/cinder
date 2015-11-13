@@ -93,7 +93,7 @@ class QemuImgInfo(object):
                 real_details = backing_match.group(2).strip()
         elif root_cmd in ['virtual_size', 'cluster_size', 'disk_size']:
             # Replace it with the byte amount (if we can convert it)
-            if root_details == 'None':
+            if root_details in ('None', 'unavailable'):
                 real_details = 0
             else:
                 real_details = self._extract_bytes(root_details)
