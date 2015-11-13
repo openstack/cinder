@@ -70,18 +70,21 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
 
             self.assertEqual(status_code, exc.status_code)
 
-    def test_eval_response_422(self):
+    @ddt.data(('30', 'storage array password.*?incorrect'),
+              ('authFailPassword', 'storage array password.*?incorrect'),
+              ('unknown', None))
+    @ddt.unpack
+    def test_eval_response_422(self, ret_code, exc_regex):
         status_code = 422
-        resp_text = "Fake Error Message"
         fake_resp = mock.Mock()
+        fake_resp.text = "fakeError"
+        fake_resp.json = mock.Mock(return_value={'retcode': ret_code})
         fake_resp.status_code = status_code
-        fake_resp.text = resp_text
-        expected_msg = "Response error - %s." % resp_text
+        exc_regex = exc_regex if exc_regex is not None else fake_resp.text
 
-        with self.assertRaisesRegex(es_exception.WebServiceException,
-                                    expected_msg) as exc:
+        with self.assertRaisesRegexp(es_exception.WebServiceException,
+                                     exc_regex) as exc:
             self.my_client._eval_response(fake_resp)
-
             self.assertEqual(status_code, exc.status_code)
 
     def test_register_storage_system_does_not_log_password(self):

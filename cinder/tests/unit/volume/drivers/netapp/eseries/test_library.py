@@ -19,6 +19,7 @@
 
 import copy
 import ddt
+import time
 
 import mock
 from oslo_utils import units
@@ -26,7 +27,9 @@ import six
 
 from cinder import exception
 from cinder import test
+
 from cinder.tests.unit import fake_snapshot
+from cinder.tests.unit import utils as cinder_utils
 from cinder.tests.unit.volume.drivers.netapp.eseries import fakes as \
     eseries_fake
 from cinder.volume.drivers.netapp.eseries import client as es_client
@@ -63,7 +66,9 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         # Deprecated Option
         self.library.configuration.netapp_storage_pools = None
         self.library._client = eseries_fake.FakeEseriesClient()
-        self.library.check_for_setup_error()
+        with mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                        new = cinder_utils.ZeroIntervalLoopingCall):
+            self.library.check_for_setup_error()
 
     def test_do_setup(self):
         self.mock_object(self.library,
@@ -75,12 +80,111 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
 
         self.assertTrue(mock_check_flags.called)
 
+    @ddt.data(('optimal', True), ('offline', False), ('needsAttn', True),
+              ('neverContacted', False), ('newKey', True), (None, True))
+    @ddt.unpack
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall', new=
+                cinder_utils.ZeroIntervalLoopingCall)
+    def test_check_storage_system_status(self, status, status_valid):
+        system = copy.deepcopy(eseries_fake.STORAGE_SYSTEM)
+        system['status'] = status
+        status = status.lower() if status is not None else ''
+
+        actual_status, actual_valid = (
+            self.library._check_storage_system_status(system))
+
+        self.assertEqual(status, actual_status)
+        self.assertEqual(status_valid, actual_valid)
+
+    @ddt.data(('valid', True), ('invalid', False), ('unknown', False),
+              ('newKey', True), (None, True))
+    @ddt.unpack
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall', new=
+                cinder_utils.ZeroIntervalLoopingCall)
+    def test_check_password_status(self, status, status_valid):
+        system = copy.deepcopy(eseries_fake.STORAGE_SYSTEM)
+        system['passwordStatus'] = status
+        status = status.lower() if status is not None else ''
+
+        actual_status, actual_valid = (
+            self.library._check_password_status(system))
+
+        self.assertEqual(status, actual_status)
+        self.assertEqual(status_valid, actual_valid)
+
+    def test_check_storage_system_bad_system(self):
+        exc_str = "bad_system"
+        controller_ips = self.library.configuration.netapp_controller_ips
+        self.library._client.list_storage_system = mock.Mock(
+            side_effect=exception.NetAppDriverException(message=exc_str))
+        info_log = self.mock_object(library.LOG, 'info', mock.Mock())
+
+        self.assertRaisesRegexp(exception.NetAppDriverException, exc_str,
+                                self.library._check_storage_system)
+
+        info_log.assert_called_once_with(mock.ANY, controller_ips)
+
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall', new=
+                cinder_utils.ZeroIntervalLoopingCall)
+    def test_check_storage_system(self):
+        system = copy.deepcopy(eseries_fake.STORAGE_SYSTEM)
+        self.mock_object(self.library._client, 'list_storage_system',
+                         new_attr=mock.Mock(return_value=system))
+        update_password = self.mock_object(self.library._client,
+                                           'update_stored_system_password')
+        info_log = self.mock_object(library.LOG, 'info', mock.Mock())
+
+        self.library._check_storage_system()
+
+        self.assertTrue(update_password.called)
+        self.assertTrue(info_log.called)
+
+    @ddt.data({'status': 'optimal', 'passwordStatus': 'invalid'},
+              {'status': 'offline', 'passwordStatus': 'valid'})
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall', new=
+                cinder_utils.ZeroIntervalLoopingCall)
+    def test_check_storage_system_bad_status(self, system):
+        self.mock_object(self.library._client, 'list_storage_system',
+                         new_attr=mock.Mock(return_value=system))
+        self.mock_object(self.library._client, 'update_stored_system_password')
+        self.mock_object(time, 'time', new_attr = mock.Mock(
+            side_effect=xrange(0, 60, 5)))
+
+        self.assertRaisesRegexp(exception.NetAppDriverException,
+                                'bad.*?status',
+                                self.library._check_storage_system)
+
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall', new=
+                cinder_utils.ZeroIntervalLoopingCall)
+    def test_check_storage_system_update_password(self):
+        self.library.configuration.netapp_sa_password = 'password'
+
+        def get_system_iter():
+            key = 'passwordStatus'
+            system = copy.deepcopy(eseries_fake.STORAGE_SYSTEM)
+            system[key] = 'invalid'
+            yield system
+            yield system
+
+            system[key] = 'valid'
+            yield system
+
+        self.mock_object(self.library._client, 'list_storage_system',
+                         new_attr=mock.Mock(side_effect=get_system_iter()))
+        update_password = self.mock_object(self.library._client,
+                                           'update_stored_system_password',
+                                           new_attr=mock.Mock())
+        info_log = self.mock_object(library.LOG, 'info', mock.Mock())
+
+        self.library._check_storage_system()
+
+        update_password.assert_called_once_with(
+            self.library.configuration.netapp_sa_password)
+        self.assertTrue(info_log.called)
+
     def test_get_storage_pools_empty_result(self):
         """Verify an exception is raised if no pools are returned."""
         self.library.configuration.netapp_pool_name_search_pattern = '$'
-
-        self.assertRaises(exception.NetAppDriverException,
-                          self.library.check_for_setup_error)
 
     def test_get_storage_pools_invalid_conf(self):
         """Verify an exception is raised if the regex pattern is invalid."""
@@ -968,7 +1072,9 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
 
         self.library = library.NetAppESeriesLibrary("FAKE", **kwargs)
         self.library._client = eseries_fake.FakeEseriesClient()
-        self.library.check_for_setup_error()
+        with mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                        new = cinder_utils.ZeroIntervalLoopingCall):
+            self.library.check_for_setup_error()
 
     def test_do_setup_host_group_already_exists(self):
         mock_check_flags = self.mock_object(na_utils, 'check_flags')
