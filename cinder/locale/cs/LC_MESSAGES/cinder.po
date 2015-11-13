@@ -9,10 +9,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev167\n"
+"Project-Id-Version: cinder 8.0.0.dev200\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-11 06:36+0000\n"
-"PO-Revision-Date: 2015-11-07 09:04+0000\n"
+"POT-Creation-Date: 2015-11-13 06:37+0000\n"
+"PO-Revision-Date: 2015-11-12 04:05+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language: cs\n"
 "Language-Team: Czech\n"
@@ -256,6 +256,9 @@ msgstr "'status' musí být zadáno."
 
 msgid "'volume_id' must be specified"
 msgstr "'volume_id' svazku musí být zadáno."
+
+msgid "'{}' object has no attribute '{}'"
+msgstr "Objekt '{}' nemá vlastnost '{}'"
 
 #, python-format
 msgid ""
@@ -505,7 +508,7 @@ msgstr "Chyba oprávnění"
 
 #, python-format
 msgid "Availability zone '%(s_az)s' is invalid."
-msgstr "Zóna dostupnosti '%(s_az)s je neplatná."
+msgstr "Zóna dostupnosti '%(s_az)s' je neplatná."
 
 msgid "Available categories:"
 msgstr "Dostupné kategorie:"
@@ -1782,6 +1785,13 @@ msgstr ""
 msgid "Driver initialize connection failed (error: %(err)s)."
 msgstr "Zavedení připojení ovladačem selhalo (chyba: %(err)s)."
 
+msgid ""
+"Driver is not able to do retype because the volume (LUN {}) has snapshot "
+"which is forbidden to migrate."
+msgstr ""
+"Ovladač není schopen provést přetypování protože svazek (LUN {}) má snímek, "
+"který má přesunování zakázáno."
+
 msgid "Driver must implement initialize_connection"
 msgstr "Ovladač musí zavést initialize_connection"
 
@@ -1800,14 +1810,6 @@ msgid ""
 msgstr ""
 "Verze API E-series proxy %(current_version)s nepodporuje úplnou sadu "
 "dodatečných specifikací SSC. Verze proxy musí být alespoň %(min_version)s."
-
-#, python-format
-msgid ""
-"E-series proxy API version %(current_version)s does not support this "
-"expansion API. The proxy version must be at at least %(min_version)s"
-msgstr ""
-"Verze API E-series proxy %(current_version)s nepodporuje toto rozšíření API. "
-"Verze proxy musí být alespoň %(min_version)s."
 
 #, python-format
 msgid ""
@@ -2668,9 +2670,6 @@ msgstr ""
 
 msgid "FAST is not supported on this array."
 msgstr "FAST není podporován v tomto poli."
-
-msgid "FC is the protocol but wwpns are not supplied by Openstack."
-msgstr "FC je protokol, ale Openstack nepředal wwpn."
 
 #, python-format
 msgid "Faield to unassign %(volume)s"
@@ -4152,6 +4151,12 @@ msgstr ""
 "Výjimka CLI Infortrend: %(err)s, parametr: %(param)s (Návratový kód: %(rc)s) "
 "(Výstup: %(out)s)"
 
+msgid "Initial tier: {}, policy: {} is not valid."
+msgstr "Původní vrstva: {}, zásada: {} není platné."
+
+msgid "Input type {} is not supported."
+msgstr "Typ vstupu {} není podporován."
+
 msgid "Input volumes or snapshots are invalid."
 msgstr "Vstupní svazky nebo snímky jsou neplatné."
 
@@ -4655,12 +4660,18 @@ msgstr "Chyba klíče: %s"
 msgid "LUN export failed!"
 msgstr "Export LUN selhal!"
 
+msgid "LUN id({}) is not valid."
+msgstr "LUN id({}) není platné."
+
 msgid "LUN map overflow on every channel."
 msgstr "Přetečení LUN mapy ve všech kanálech."
 
 #, python-format
 msgid "LUN not found with given ref %s."
 msgstr "LUN nenalezena pomocí zadaného odkazu %s."
+
+msgid "LUN number ({}) is not an integer."
+msgstr "LUN číslo ({}) není celé číslo."
 
 #, python-format
 msgid "LUN number is out of bound on channel id: %(ch_id)s."
@@ -5331,9 +5342,6 @@ msgstr "Žádné služby svazku nebyly úspěšně spuštěny, ukončování."
 msgid "No volume was found at CloudByte storage."
 msgstr "V úložišti CloudByte nebyl nalezen žádný svazek."
 
-msgid "No volume_id provided to populate a request_spec from"
-msgstr "Nebylo zadáno id svazku pro vyplnění specifikace žádosti"
-
 msgid "No volume_type should be provided when creating test replica."
 msgstr "Při vytváření zkušební repliky by neměl být zadán žádný typ svazku."
 
@@ -5341,7 +5349,7 @@ msgid "No volumes found in CloudByte storage."
 msgstr "V úložišti Cloudbyte nebyly nalezeny žádné svazky."
 
 msgid "No weighed hosts available"
-msgstr "Źádní vážení hostitelé nejsou dostupní"
+msgstr "Žádní vážení hostitelé nejsou dostupní"
 
 msgid "Not a valid value for NaElement."
 msgstr "Neplatná hodnota pro NaElement."
@@ -5443,9 +5451,6 @@ msgstr ""
 "Pouze uživatelé mající příznak z nadřazených nebo kořenových projektů mají "
 "povoleno zobrazit kvóty podřazených projektů"
 
-msgid "Only volumes managed by Openstack can be unmanaged."
-msgstr "Zrušit správu lze pouze u svazků, jenž spravuje Openstack."
-
 #, python-format
 msgid "Operation failed with status=%(status)s. Full dump: %(data)s"
 msgstr "Operace selhala se stavem=%(status)s. Úplný výpis: %(data)s"
@@ -5462,6 +5467,9 @@ msgstr "Volba gpfs_images_share_mode není správně nastavena."
 
 msgid "Option gpfs_mount_point_base is not set correctly."
 msgstr "Volba gpfs_mount_point_base není správně nastavena."
+
+msgid "Option map (cls._map) is not defined."
+msgstr "Mapa voleb (cls._map) není zadána."
 
 #, python-format
 msgid "Originating %(res)s %(prop)s must be one of '%(vals)s' values"
@@ -6276,6 +6284,9 @@ msgstr "ID úložného systému nebylo nastaveno."
 #, python-format
 msgid "Storage system not found for pool %(poolNameInStr)s."
 msgstr "Systém úložiště nebyl nalezen pro zásobu %(poolNameInStr)s."
+
+msgid "Storage-assisted migration failed during manage volume."
+msgstr "Přesun za pomocí úložiště selhal během správy svazku."
 
 #, python-format
 msgid "StorageSystem %(array)s is not found."
@@ -7391,17 +7402,16 @@ msgid "Volume %(deviceID)s not found."
 msgstr "Svazek %(deviceID)s nenalezen."
 
 #, python-format
-msgid "Volume %(lun_name)s was created in VNX, but in %(lun_state)s state."
-msgstr ""
-"Svazek %(lun_name)s byl vytvořen ve VNX, ale je ve stavu %(lun_state)s."
-
-#, python-format
 msgid ""
 "Volume %(name)s not found on the array. Cannot determine if there are "
 "volumes mapped."
 msgstr ""
 "Svazek %(name)s nebyl nalezen v poli. Nelze zjistit zda jsou svazky "
 "namapovány."
+
+#, python-format
+msgid "Volume %(name)s was created in VNX, but in %(state)s state."
+msgstr "Svazek %(name)s byl vytvořen ve VNX, ale je ve stavu %(state)s."
 
 #, python-format
 msgid "Volume %(vol)s could not be created in pool %(pool)s."
@@ -7499,18 +7509,8 @@ msgid "Volume %s doesn't exist on array."
 msgstr "Svazek %s neexistuje v poli."
 
 #, python-format
-msgid "Volume %s is already managed by Openstack."
-msgstr "Svazek %s již je spravován Openstack."
-
-#, python-format
 msgid "Volume %s is already part of an active migration."
 msgstr "Svazek %s již je součástí aktivního přesunu."
-
-#, python-format
-msgid ""
-"Volume %s is online. Set volume to offline for managing using Openstack."
-msgstr ""
-"Svazek %s je online. Pro správu pomocí Openstack ho nastavte na offline."
 
 #, python-format
 msgid "Volume %s must not be part of a consistency group."
@@ -8301,7 +8301,7 @@ msgid ""
 "create_volume_from_snapshot: Snapshot status must be \"available\" for "
 "creating volume. The invalid status is: %s."
 msgstr ""
-"Vytvoření svazku ze snímku: Pro vytboření svazku musí být stav snímku "
+"Vytvoření svazku ze snímku: Pro vytvoření svazku musí být stav snímku "
 "\"dostupný\". Neplatný stav je: %s."
 
 msgid "create_volume_from_snapshot: Source and destination size differ."
@@ -8939,3 +8939,6 @@ msgstr "svazky/účty překročeny na hlavních i druhotných účtech SolidFire
 #, python-format
 msgid "wait_for_condition: %s timed out."
 msgstr "Čekání na podmínku: %s vypršel časový limit."
+
+msgid "{} is not a valid option."
+msgstr "{} není platná volba."

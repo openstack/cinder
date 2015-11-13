@@ -7,10 +7,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev167\n"
+"Project-Id-Version: cinder 8.0.0.dev200\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-11 06:36+0000\n"
-"PO-Revision-Date: 2015-11-10 08:40+0000\n"
+"POT-Creation-Date: 2015-11-13 06:37+0000\n"
+"PO-Revision-Date: 2015-11-11 10:47+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language-Team: Czech\n"
 "Language: cs\n"
@@ -74,6 +74,10 @@ msgid "%(method)s %(url)s"
 msgstr "%(method)s %(url)s"
 
 #, python-format
+msgid "%(name)s listening on %(_host)s:%(_port)s"
+msgstr "%(name)s poslouchá na %(_host)s:%(_port)s"
+
+#, python-format
 msgid "%(url)s returned a fault: %(e)s"
 msgstr "%(url)s vrátilo chybu: %(e)s"
 
@@ -119,6 +123,9 @@ msgstr "Přijímání přenosu %s"
 
 msgid "Activate Flexvisor cinder volume driver."
 msgstr "Aktivovat ovladač Flexvisor pro svazek cinder."
+
+msgid "Add Connection: Finished iterating over all target list"
+msgstr "Přidání připojení: Dokončena iterace seznamem cílů"
 
 #, python-format
 msgid "Add volume response: %s"
@@ -186,6 +193,17 @@ msgid "Backend type: %s"
 msgstr "Typ podpůrné vrstvy: %s"
 
 #, python-format
+msgid "Backing VM: %(backing)s renamed to %(new_name)s."
+msgstr "Záloha virtuálního stroje %(backing)s přejmenována na %(new_name)s."
+
+msgid "Backing not available, no operation to be performed."
+msgstr "Zálohování není dostupné, nebude provedena žádná operace."
+
+#, python-format
+msgid "Backing not found, creating for volume: %s"
+msgstr "Záloha nenalezena, vytváření zálohy pro svazek %s"
+
+#, python-format
 msgid ""
 "Backup base image of volume %(volume)s still has %(snapshots)s snapshots so "
 "skipping base image delete."
@@ -220,8 +238,20 @@ msgstr "Zahájení odpojení svazku úspěšně dokončeno."
 msgid "Body: %s"
 msgstr "Tělo: %s"
 
+#, python-format
+msgid "BrcdFCZoneDriver - Add connection for I-T map: %s"
+msgstr "BrcdFCZoneDriver - Přidáno připojení pro mapu I-T: %s"
+
+#, python-format
+msgid "BrcdFCZoneDriver - Delete connection for I-T map: %s"
+msgstr "BrcdFCZoneDriver - Smazáno připojení pro mapu I-T: %s"
+
 msgid "CHAP authentication disabled."
 msgstr "Ověření pomocí CHAP zakázáno."
+
+#, python-format
+msgid "CONCERTO version: %s"
+msgstr "Verze CONCERTO: %s"
 
 msgid "Calling os-brick to detach ScaleIO volume."
 msgstr "Volání os-brick pro odpojení svazku ScaleIO."
@@ -229,6 +259,46 @@ msgstr "Volání os-brick pro odpojení svazku ScaleIO."
 #, python-format
 msgid "Cancelling Migration from LUN %s."
 msgstr "Rušení přesunu z LUN %s."
+
+#, python-format
+msgid ""
+"Cannot provide backend assisted migration for volume: %s because cluster "
+"exists in different management group."
+msgstr ""
+"Nelze poskytnout přesun za pomocí podpůrné vrstvy pro svazek: %s, protože "
+"cluster existuje v jiné správní skupině."
+
+#, python-format
+msgid ""
+"Cannot provide backend assisted migration for volume: %s because the volume "
+"has been exported."
+msgstr ""
+"Nelze poskytnout přesun za pomocí podpůrné vrstvy pro svazek: %s, protože "
+"svazek byl exportován."
+
+#, python-format
+msgid ""
+"Cannot provide backend assisted migration for volume: %s because the volume "
+"has snapshots."
+msgstr ""
+"Nelze poskytnout přesun za pomocí podpůrné vrstvy pro svazek: %s, protože "
+"svazek má snímky."
+
+#, python-format
+msgid ""
+"Cannot provide backend assisted migration for volume: %s because volume does "
+"not exist in this management group."
+msgstr ""
+"Nelze poskytnout přesun za pomocí podpůrné vrstvy pro svazek: %s, protože "
+"svazek není v této správní skupině."
+
+#, python-format
+msgid ""
+"Cannot provide backend assisted migration for volume: %s because volume is "
+"from a different backend."
+msgstr ""
+"Nelze poskytnout přesun za pomocí podpůrné vrstvy pro svazek: %s, protože je "
+"z jiné podpůrné vrstvy."
 
 #, python-format
 msgid ""
@@ -253,6 +323,10 @@ msgid "Checking image clone %s from glance share."
 msgstr "Kontrolování klona obrazu %s ze sdílení glance."
 
 #, python-format
+msgid "Checking origin %(origin)s of volume %(volume)s."
+msgstr "Kontrola původu %(origin)s svazku %(volume)s."
+
+#, python-format
 msgid ""
 "Cinder ISCSI volume with current path %(path)s is no longer being managed. "
 "The new name is %(unm)s."
@@ -271,6 +345,14 @@ msgstr "Svazek NFS Cinder se současnou cestou %(cr)s již není spravován."
 
 msgid "Cinder secure environment indicator file exists."
 msgstr "Soubor indikující bezpečné prostředí Cinder existuje."
+
+#, python-format
+msgid "CiscoFCZoneDriver - Add connection for I-T map: %s"
+msgstr "CiscoFCZoneDriver - Přidáno připojení pro mapu I-T: %s"
+
+#, python-format
+msgid "CiscoFCZoneDriver - Delete connection for I-T map: %s"
+msgstr "CiscoFCZoneDriver - Smazáno připojení pro mapu I-T: %s"
 
 #, python-format
 msgid "Cleaning cache for share %s."
@@ -337,6 +419,10 @@ msgid "Complete-Migrate volume completed successfully."
 msgstr "Dokončení přenosu svazku úspěšně provedeno."
 
 #, python-format
+msgid "Completed: convert_to_base_volume: id=%s."
+msgstr "Dokončeno: Převod na základní svazek: id=%s."
+
+#, python-format
 msgid "Configured pools: %s"
 msgstr "Nastavené zásoby: %s"
 
@@ -347,6 +433,19 @@ msgid ""
 msgstr ""
 "informace o zavedení připojení: {typ ovladače svazku: kanál fibre, data: "
 "%(properties)s"
+
+#, python-format
+msgid "Connecting to host: %s."
+msgstr "Připojování k hostiteli %s."
+
+#, python-format
+msgid "Connecting to target host: %s for backend enabled migration."
+msgstr ""
+"Připojování k cílovému hostiteli %s pro přesun za pomoci podpůrné vrstvy."
+
+#, python-format
+msgid "Connector returning fcnsinfo-%s"
+msgstr "Konektor vrací fcnsinfo-%s"
 
 #, python-format
 msgid "Consistency group %(cg)s is created successfully."
@@ -367,6 +466,28 @@ msgstr "Skupina jednotnosti %s: vytváření"
 #, python-format
 msgid "Converted %(sz).2f MB image at %(mbps).2f MB/s"
 msgstr "Převeden obraz o velikosti %(sz).2f MB rychlostí %(mbps).2f MB/s"
+
+#, python-format
+msgid ""
+"Converting %(volume_name)s to full provisioning with userCPG=%(new_cpg)s"
+msgstr ""
+"Převádění %(volume_name)s na úplné poskytování pomocí uživatele společné "
+"skupiny poskytování %(new_cpg)s"
+
+#, python-format
+msgid ""
+"Converting %(volume_name)s to thin dedup provisioning with userCPG="
+"%(new_cpg)s"
+msgstr ""
+"Převádění %(volume_name)s na mělké deduplikované poskytování pomocí "
+"uživatele společné skupiny poskytování %(new_cpg)s"
+
+#, python-format
+msgid ""
+"Converting %(volume_name)s to thin provisioning with userCPG=%(new_cpg)s"
+msgstr ""
+"Převádění %(volume_name)s na mělké poskytování pomocí uživatele společné "
+"skupiny poskytování %(new_cpg)s"
 
 #, python-format
 msgid "Copied image %(img)s to volume %(vol)s using copy offload workflow."
@@ -556,6 +677,10 @@ msgstr ""
 "ohledem na nadřazený svazek OpenStack [%(stack_vol)s]."
 
 #, python-format
+msgid "Created datastore folder: %s."
+msgstr "Vytvořena složka datového úložiště %s."
+
+#, python-format
 msgid ""
 "Created lun-map:\n"
 "%s"
@@ -655,12 +780,20 @@ msgid "Creating initiator group %(igrp)s with one initiator %(iname)s"
 msgstr "Vytváření skupiny zavaděče %(igrp)s s jedním zavaděčem %(iname)s"
 
 #, python-format
+msgid "Creating iscsi_target for volume: %s"
+msgstr "Vytváření cíle iscsi pro svazek %s"
+
+#, python-format
 msgid ""
 "Creating snapshot for volume_name=%(vol)s snap_name=%(name)s "
 "snap_description=%(desc)s"
 msgstr ""
 "Vytváření snímku pro svazek %(vol)s, název snímku: %(name)s, popis snímku "
 "%(desc)s"
+
+#, python-format
+msgid "Creating snapshot: %s"
+msgstr "Vytváření snímku: %s"
 
 #, python-format
 msgid "Creating transfer of volume %s"
@@ -670,6 +803,10 @@ msgstr "Vytváření přenosu pro svazek %s"
 msgid "Creating volume of %(size)s GB for restore of backup %(backup_id)s."
 msgstr ""
 "Vytváření svazku s velikostí %(size)s GB pro obnovu zálohy %(backup_id)s."
+
+#, python-format
+msgid "Creatng volume from snapshot. volume: %s"
+msgstr "Vytváření svazku ze snímku. Svazek: %s"
 
 #, python-format
 msgid "Delete Consistency Group: %(group)s."
@@ -714,6 +851,10 @@ msgstr "Mazání snímku %(snap_name)s skupiny jednotnosti: %(group_name)s"
 #, python-format
 msgid "Delete cgsnapshot with id: %s"
 msgstr "Smazání snímku skupiny jednotnosti s id: %s"
+
+#, python-format
+msgid "Delete connection Target List: %s"
+msgstr "Seznam cílů připojení %s smazán"
 
 msgid "Delete consistency group completed successfully."
 msgstr "Smazání skupiny jednotnosti úspěšně dokončeno."
@@ -774,6 +915,14 @@ msgstr ""
 "Snímek CloudByte úspěšně smazán [%(snap)s] s ohledem na nadřazené svazky "
 "CloudByte [%(cb_vol)s] a OpenStack [%(stack_vol)s]."
 
+#, python-format
+msgid "Deleted the VM backing: %s."
+msgstr "Záloha virtuálního stroje %s smazána."
+
+#, python-format
+msgid "Deleted vmdk file: %s."
+msgstr "Smazán soubor vmdk %s."
+
 msgid "Deleted volume successfully."
 msgstr "Svazek úspěšně smazán."
 
@@ -796,6 +945,10 @@ msgstr "Mazání snímku %(ss)s z %(pro)s"
 #, python-format
 msgid "Deleting snapshot %s "
 msgstr "Mazání snímku %s"
+
+#, python-format
+msgid "Deleting snapshot: %s"
+msgstr "Mazání snímku: %s"
 
 #, python-format
 msgid "Deleting stale snapshot: %s"
@@ -821,6 +974,13 @@ msgstr "Databáze určeného svazku byla při spuštění prázdná."
 
 msgid "Determined volume DB was not empty at startup."
 msgstr "Databáze určeného svazku nebyla při spuštění prázdná."
+
+#, python-format
+msgid ""
+"Did not find the snapshot: %(name)s for backing: %(backing)s. Need not "
+"delete anything."
+msgstr ""
+"Snímek %(name)s nenalezen pro zálohu %(backing)s. Není třeba nic mazat."
 
 #, python-format
 msgid "Discovery ip %(disc_ip)s is found on mgmt+data subnet %(net_label)s"
@@ -852,6 +1012,14 @@ msgstr "Provádění %(method)s na %(relative_url)s"
 #, python-format
 msgid "Domain id is %s."
 msgstr "ID domény je %s."
+
+#, python-format
+msgid "Done copying image: %(id)s to volume: %(vol)s."
+msgstr "Kopírování obrazu dokončeno: %(id)s do svazku: %(vol)s."
+
+#, python-format
+msgid "Done copying volume %(vol)s to a new image %(img)s"
+msgstr "Svazek %(vol)s zkopírován do nového obrazu %(img)s"
 
 #, python-format
 msgid ""
@@ -968,6 +1136,10 @@ msgstr "Exportování záznamu bylo dokončeno: záloha: %s exportována."
 msgid "Export record started, backup: %s."
 msgstr "Exportování záznamu bylo zahájeno: záloha: %s."
 
+#, python-format
+msgid "Exported lun %(vol_id)s on lun_id %(lun_id)s."
+msgstr "Exportován lun %(vol_id)s s id %(lun_id)s."
+
 msgid "Extend volume completed successfully."
 msgstr "Rozšíření svazku úspěšně dokončeno."
 
@@ -980,10 +1152,6 @@ msgid ""
 msgstr ""
 "Rozšíření svazku: %(volumename)s, stará velikost: %(oldsize)s, nová "
 "velikost: %(newsize)s."
-
-#, python-format
-msgid "Extended volume with label %s."
-msgstr "Rozšířen svazek se jmenovkou %s."
 
 #, python-format
 msgid "Extending volume %s."
@@ -1015,12 +1183,32 @@ msgstr ""
 "v poli."
 
 #, python-format
+msgid "Failed to open iet session list for %(vol_id)s: %(e)s"
+msgstr "Nelze otevřít seznam sezení iet pro %(vol_id)s: %(e)s"
+
+#, python-format
 msgid "Fault thrown: %s"
 msgstr "Vyvolána chyba: %s"
 
 #, python-format
+msgid "Fetched vCenter server version: %s"
+msgstr "Získaná verze serveru vCenter: %s"
+
+#, python-format
 msgid "Filter %(cls_name)s returned %(obj_len)d host(s)"
 msgstr "Filtr %(cls_name)s vrátil %(obj_len)d hostitelů"
+
+#, python-format
+msgid "Filtered targets for SAN is: %s"
+msgstr "Filtrované cíle pro SAN jsou: %s"
+
+#, python-format
+msgid "Final filtered map for delete connection: %s"
+msgstr "Konečná filtrovaná mapa pro smazání připojení: %s"
+
+#, python-format
+msgid "Final filtered map for fabric: %s"
+msgstr "Konečná filtrovaná mapa pro fabric: %s"
 
 #, python-format
 msgid "Fixing previous mount %s which was not unmounted correctly."
@@ -1154,6 +1342,14 @@ msgid "HP3PARCommon %(common_ver)s,hp3parclient %(rest_ver)s"
 msgstr "Společné části HP3PAR %(common_ver)s, klient hp3par %(rest_ver)s"
 
 #, python-format
+msgid "HPLeftHand API version %s"
+msgstr "Verze API HPLeftHand: %s"
+
+#, python-format
+msgid "HPLeftHand driver %(driver_ver)s, proxy %(proxy_ver)s"
+msgstr "Ovladač HPLeftHand %(driver_ver)s, proxy %(proxy_ver)s"
+
+#, python-format
 msgid "HTTP exception thrown: %s"
 msgstr "Vyvolána výjimka HTTP: %s"
 
@@ -1210,6 +1406,14 @@ msgstr "Zavedení spojení: %(volume)s."
 
 msgid "Initialize volume connection completed successfully."
 msgstr "Zavedení spojení se svazkem úspěšně dokončeno."
+
+#, python-format
+msgid "Initialized driver %(name)s version: %(vers)s"
+msgstr "Zaveden ovladač %(name)s s verzí: %(vers)s"
+
+#, python-format
+msgid "Initialized driver %(name)s version: %(vers)s."
+msgstr "Zaveden ovladač %(name)s s verzí: %(vers)s."
 
 #, python-format
 msgid "Initialized driver for IBMNAS Platform: %s."
@@ -1324,6 +1528,23 @@ msgstr "Žádost o přesun svazku úspěšně vytvořena."
 msgid "Migrating using retype Volume: %(volume)s."
 msgstr "Přesunování pomocí přetypování svazku: %(volume)s."
 
+#, python-format
+msgid ""
+"Modifying %(volume_name)s snap_cpg from %(old_snap_cpg)s to %(new_snap_cpg)s."
+msgstr ""
+"Změna snímku společné skupiny poskytování svazku %(volume_name)s z "
+"%(old_snap_cpg)s na %(new_snap_cpg)s."
+
+#, python-format
+msgid "Modifying %(volume_name)s userCPG from %(old_cpg)s to %(new_cpg)s"
+msgstr ""
+"Změna uživatele společné skupiny poskytování svazku %(volume_name)s z "
+"%(old_cpg)s na %(new_cpg)s"
+
+#, python-format
+msgid "Modifying %s comments."
+msgstr "Měnění komentářů svazku %s"
+
 msgid ""
 "Module PyWBEM not installed.  Install PyWBEM using the python-pywbem package."
 msgstr ""
@@ -1334,6 +1555,10 @@ msgid ""
 "Module PyWBEM not installed. Install PyWBEM using the python-pywbem package."
 msgstr ""
 "Modul PyWBEM není nainstalován. Nainstalujte ho pomocí balíčku python-pywbem."
+
+#, python-format
+msgid "Mounting share: %s"
+msgstr "Připojování sdílení %s"
 
 #, python-format
 msgid "Mounting volume: %s ..."
@@ -1391,6 +1616,10 @@ msgid "No igroup found for initiator %s"
 msgstr "Pro zavaděče %s nebyla nalezena žádná zaváděcí skupina"
 
 #, python-format
+msgid "No iscsi target present for volume id:%(vol_id)s: %(e)s"
+msgstr "Není přítomen žádný cíl iscsi pro svazek s id %(vol_id)s: %(e)s"
+
+#, python-format
 msgid "No need to extend volume %s as it is already the requested new size."
 msgstr ""
 "Není třeba rozšiřovat svazek %s protože již má požadovanou novou velikost."
@@ -1418,6 +1647,10 @@ msgstr "Nenalezeny žádné informace balíčku %(pkg)s pomocí rpm."
 #, python-format
 msgid "No snapshot found for %(cgsnapshot)s."
 msgstr "Pro %(cgsnapshot)s nebyl nalezen žádný snímek."
+
+#, python-format
+msgid "No targets to add or remove connection for I: %s"
+msgstr "Žádné cíle pro přidání nebo odstranění připojení pro zavaděč %s"
 
 #, python-format
 msgid "No volume found for CG: %(cg)s."
@@ -1532,6 +1765,14 @@ msgid "Registering image in cache %s"
 msgstr "Registrování obrazu v mezipaměti %s"
 
 #, python-format
+msgid ""
+"Relocating volume: %s to a different datastore due to insufficient disk "
+"space on current datastore."
+msgstr ""
+"Přemisťování svazku %s do jiného datového úložiště z důvodu nedostatečného "
+"místa na disku v současném úložišti."
+
+#, python-format
 msgid "Remote return FC info is: %s."
 msgstr "Informace o vzdálené FC vrátily: %s."
 
@@ -1547,6 +1788,22 @@ msgid "Removing ACL from volume=%(vol)s for initiator group %(igrp)s"
 msgstr "Odstraňování ACL ze svazku %(vol)s pro skupinu zavaděče %(igrp)s"
 
 #, python-format
+msgid "Removing iscsi_target for Volume ID: %s"
+msgstr "Odstraňování cíle iscsi pro svazek s ID %s"
+
+#, python-format
+msgid "Removing iscsi_target for volume: %s"
+msgstr "Odstraňování cíle iscsi pro svazek %s"
+
+#, python-format
+msgid "Removing iscsi_target for: %s"
+msgstr "Odstraňování cíle iscsi pro %s"
+
+#, python-format
+msgid "Removing iscsi_target: %s"
+msgstr "Odstraňování cíle iscsi %s"
+
+#, python-format
 msgid "Removing non-active host: %(host)s from scheduler cache."
 msgstr "Odstraňování neaktivního hostitele: %(host)s z mezipaměti plánovače."
 
@@ -1559,12 +1816,20 @@ msgid "Rename Volume %(volume_id)s completed."
 msgstr "Přejmenování svazku %(volume_id)s dokončeno."
 
 #, python-format
+msgid "Renaming backing VM: %(backing)s to %(new_name)s."
+msgstr "Přejmenovávání zálohy virtuálního stroje %(backing)s na %(new_name)s."
+
+#, python-format
 msgid "Renaming existing snapshot %(ref_name)s to %(new_name)s"
 msgstr "Přejmenovávání existujícího snímku %(ref_name)s na %(new_name)s"
 
 #, python-format
 msgid "Renaming existing volume %(ref_name)s to %(new_name)s"
 msgstr "Přejmenovávání existujícího svazku %(ref_name)s na %(new_name)s"
+
+#, python-format
+msgid "Requested image %(id)s is not in raw format."
+msgstr "Požadovaný obraz %(id)s není v prostém formátu."
 
 #, python-format
 msgid "Requested unified config: %(storage_family)s and %(storage_protocol)s."
@@ -1654,6 +1919,14 @@ msgstr "Informace o FC vrátily: %s."
 
 #, python-format
 msgid ""
+"Returning connection_info: %(info)s for volume: %(volume)s with connector: "
+"%(connector)s."
+msgstr ""
+"Předané informace o připojení: %(info)s pro svazek: %(volume)s s konektorem: "
+"%(connector)s."
+
+#, python-format
+msgid ""
 "Retype LUN(id: %(lun_id)s) smartcache from (name: %(old_name)s, id: "
 "%(old_id)s) to (name: %(new_name)s, id: %(new_id)s) successfully."
 msgstr ""
@@ -1695,6 +1968,14 @@ msgstr ""
 "Přetypování svazku %(volume_id)s bylo provedeno a svazek byl přesunut do "
 "zásoby %(pool_id)s."
 
+#, python-format
+msgid ""
+"Retype revert %(volume_name)s snap_cpg from %(new_snap_cpg)s back to "
+"%(old_snap_cpg)s."
+msgstr ""
+"Přetypování společné skupiny poskytování svazku %(volume_name)s vráceno z "
+"%(new_snap_cpg)s zpět na %(old_snap_cpg)s."
+
 msgid "Retype volume completed successfully."
 msgstr "Přetypování svazku úspěšně dokončeno."
 
@@ -1722,6 +2003,14 @@ msgid "Running stale ssc refresh job for %(server)s and vserver %(vs)s"
 msgstr ""
 "Spouštění úkolu obnovy zastaralého ssc pro %(server)s a virtuálního serveru "
 "%(vs)s"
+
+#, python-format
+msgid "Running with vmemclient version: %s"
+msgstr "Spuštěno s vmemclient verze %s"
+
+#, python-format
+msgid "Running with vmemclient version: %s."
+msgstr "Spuštěno s vmemclient verze %s."
 
 #, python-format
 msgid "Save service info for %(svc)s -> %(hdp)s, %(path)s"
@@ -1809,6 +2098,40 @@ msgid "Skipping deletion of volume %s as it does not exist."
 msgstr "Přeskakování mazání svazku %s protože neexistuje."
 
 #, python-format
+msgid "Skipping ensure_export. No iscsi_target provision for volume: %s"
+msgstr ""
+"Zajištění exportu přeskočeno. Svazku %s není poskytnut žádný cíl iscsi."
+
+#, python-format
+msgid ""
+"Skipping image volume %(id)s because it is not accessible by current Tenant."
+msgstr ""
+"Přeskakování svazku obrazu %(id)s protože pro současného nájemníka není "
+"dostupný."
+
+#, python-format
+msgid ""
+"Skipping remove_export. No iscsi_target is presently exported for volume: %s"
+msgstr ""
+"Odstranění exportu přeskočeno. Žádný cíl iscsi není v současnosti exportován "
+"pro svazek: %s"
+
+#, python-format
+msgid "Skipping remove_export. No iscsi_target provisioned for volume: %s"
+msgstr ""
+"Odstranění exportu přeskočeno. Svazku %s není poskytnut žádný cíl iscsi."
+
+#, python-format
+msgid "Smb share %(share)s Total size %(size)s Total allocated %(allocated)s"
+msgstr ""
+"Sdílení SMB %(share)s. Celková velikost %(size)s, celkem přiděleno "
+"%(allocated)s"
+
+#, python-format
+msgid "Snapshot %s created successfully."
+msgstr "Snímek %s úspěšně vytvořen."
+
+#, python-format
 msgid "Snapshot %s not found"
 msgstr "Snímek %s nenalezen"
 
@@ -1850,6 +2173,16 @@ msgstr "Odpověď svazku snímku: %s."
 #, python-format
 msgid "Snapshot: %(snapshot)s: not found on the array."
 msgstr "Snímek: %(snapshot)s: nenalezen v poli."
+
+#, python-format
+msgid "Source Snapshot: %s"
+msgstr "Zdrojový snímek: %s"
+
+#, python-format
+msgid ""
+"Source and destination ZFSSA shares are the same. Do nothing. volume: %s"
+msgstr ""
+"Zdroj a cíl sdílení ZFSAA jsou stejné. Nebude nic provedeno, svazek: %s"
 
 #, python-format
 msgid "Start to create cgsnapshot for consistency group: %(group_name)s"
@@ -1918,6 +2251,10 @@ msgstr ""
 "server %(vs)s"
 
 #, python-format
+msgid "Successfully copied disk at: %(src)s to: %(dest)s."
+msgstr "Úspěšně zkopírován disk %(src)s do %(dest)s."
+
+#, python-format
 msgid "Successfully create volume %s"
 msgstr "Svazek %s úspěšně vytvořen"
 
@@ -1930,12 +2267,41 @@ msgstr ""
 "[%(stack_vol)s]."
 
 #, python-format
+msgid "Successfully created clone: %s."
+msgstr "Úspěšně vytvořen klon: %s."
+
+#, python-format
+msgid ""
+"Successfully created snapshot: %(snap)s for volume backing: %(backing)s."
+msgstr "Snímek %(snap)s pro zálohu svazku %(backing)s úspěšně vytvořen."
+
+#, python-format
+msgid "Successfully created snapshot: %s."
+msgstr "Snímek %s úspěšně vytvořen."
+
+#, python-format
+msgid "Successfully created volume backing: %s."
+msgstr "Záloha svazku %s úspěšně vytvořena."
+
+#, python-format
 msgid "Successfully deleted %s."
 msgstr "%s úspěšně smazáno."
 
 #, python-format
+msgid "Successfully deleted file: %s."
+msgstr "Soubor %s úspěšně smazán."
+
+#, python-format
+msgid "Successfully deleted snapshot: %(name)s of backing: %(backing)s."
+msgstr "Snímek %(name)s pro zálohu %(backing)s byl úspěšně smazán."
+
+#, python-format
 msgid "Successfully deleted snapshot: %s"
 msgstr "Snímek %s úspěšně smazán"
+
+#, python-format
+msgid "Successfully deleted snapshot: %s."
+msgstr "Snímek %s úspěšně smazán."
 
 #, python-format
 msgid ""
@@ -1950,8 +2316,16 @@ msgid "Successfully deleted volume: %s"
 msgstr "Svazek %s úspěšně smazán"
 
 #, python-format
+msgid "Successfully extended virtual disk: %(path)s to %(size)s GB."
+msgstr "Virtuální disk pěněně rozšířen: %(path)s na %(size)s GB."
+
+#, python-format
 msgid "Successfully extended volume %(volume_id)s to size %(size)s."
 msgstr "Svazek %(volume_id)s úspěšně rozšířen na velikost %(size)s."
+
+#, python-format
+msgid "Successfully extended volume: %(vol)s to size: %(size)s GB."
+msgstr "Svazek %(vol)s úspěšně rozšířen na velikost %(size)s GB."
 
 #, python-format
 msgid "Successfully got volume information for volume %s"
@@ -1969,8 +2343,25 @@ msgstr ""
 "Připojení úspěšně zavedeno. Cílové wwn: %(target_wwn)s, mapa cílů zavaděče: "
 "%(initiator_target_map)s, lun: %(target_lun)s."
 
+#, python-format
+msgid ""
+"Successfully moved volume backing: %(backing)s into the folder: %(fol)s."
+msgstr "Záloha svazku %(backing)s úspěšně přesunuta do složky %(fol)s."
+
+#, python-format
+msgid ""
+"Successfully relocated volume backing: %(backing)s to datastore: %(ds)s and "
+"resource pool: %(rp)s."
+msgstr ""
+"Záloha svazku %(backing)s úspěšně přemístěna do datového úložiště %(ds)s a "
+"zásoby zdrojů %(rp)s."
+
 msgid "Successfully retrieved InitiatorGrpList"
 msgstr "Seznam skupin zavaděče úspěšně získán"
+
+#, python-format
+msgid "Successfully setup driver: %(driver)s for server: %(ip)s."
+msgstr "Ovladač %(driver)s úspěšně nastaven pro server %(ip)s."
 
 #, python-format
 msgid "Successfully terminated connection for volume: %(volume_id)s."
@@ -2028,6 +2419,10 @@ msgid "The QoS sepcs is: %s."
 msgstr "Specifikace QoS jsou %s."
 
 #, python-format
+msgid "The iSCSI target %(target_name)s already exists."
+msgstr "Cíl iSCSI %(target_name)s již existuje."
+
+#, python-format
 msgid ""
 "The multi-attach E-Series host group '%(label)s' already exists with "
 "clusterRef %(clusterRef)s"
@@ -2054,6 +2449,46 @@ msgid ""
 msgstr ""
 "Svazek patří do více než jedné skupině úložiště. Předána skupina úložiště "
 "%(sgName)s."
+
+#, python-format
+msgid ""
+"There is no backing for the snapshotted volume: %(snap)s. Not creating any "
+"backing for the volume: %(vol)s."
+msgstr ""
+"Pro snímek svazku %(snap)s neexistuje záloha. Nebude vytvořena žádná záloha "
+"pro svazek: %(vol)s."
+
+#, python-format
+msgid ""
+"There is no backing for the source volume: %(src)s. Not creating any backing "
+"for volume: %(vol)s."
+msgstr ""
+"Pro zdrojový svazek %(src)s neexistuje záloha. Nebude vytvořena žádná záloha "
+"pro svazek: %(vol)s."
+
+#, python-format
+msgid "There is no backing for the volume: %s. Need to create one."
+msgstr "Svazek %s nemá žádnou zálohu. Je třeba ji vytvořit."
+
+#, python-format
+msgid "There is no backing for volume: %s; no need to extend the virtual disk."
+msgstr "Svazek %s nemá žádnou zálohu; není třeba rozšiřovat virtuální disk."
+
+#, python-format
+msgid "There is no backing, and so there is no snapshot: %s."
+msgstr "Záloha neexistuje, tím pádem ani snímek %s neexistuje."
+
+#, python-format
+msgid "There is no backing, so will not create snapshot: %s."
+msgstr "Záloha neexistuje, snímek %s nebude vytvořen."
+
+#, python-format
+msgid ""
+"There is no snapshot point for the snapshotted volume: %(snap)s. Not "
+"creating any backing for the volume: %(vol)s."
+msgstr ""
+"Pro snímek svazku %(snap)s neexistuje žádný bod snímku. Záloha pro svazek "
+"%(vol)s nebude vytvořena."
 
 #, python-format
 msgid ""
@@ -2164,6 +2599,10 @@ msgid "Unable to update volume, because it is in maintenance."
 msgstr "Nelze aktualizovat svazek, protože je v údržbě."
 
 #, python-format
+msgid "Unexporting lun %s."
+msgstr "Rušení exportu lun %s."
+
+#, python-format
 msgid "Unmanage snapshot with id: %s"
 msgstr "Zrušit správu snímku s id: %s"
 
@@ -2258,8 +2697,27 @@ msgstr ""
 "Použít výchozí typ předběžného načtení. Typ předběžného načtení: Intelligent."
 
 #, python-format
+msgid ""
+"Using FC Zone Manager %(zm_version)s, Driver %(drv_name)s %(drv_version)s."
+msgstr ""
+"Používán správce zóny FC %(zm_version)s, ovladač %(drv_name)s "
+"%(drv_version)s."
+
+#, python-format
+msgid "Using FC lookup service %s"
+msgstr "Použita služba vyhledávání FC %s"
+
+#, python-format
+msgid "Using compute cluster(s): %s."
+msgstr "Použit výpočtové clustery: %s."
+
+#, python-format
 msgid "Using existing initiator group name: %(igGroupName)s."
 msgstr "Použit existující název skupiny zavaděče: %(igGroupName)s."
+
+#, python-format
+msgid "Using overridden vmware_host_version from config: %s"
+msgstr "Použita potlačena verze hostitele vmware z nastavení: %s"
 
 #, python-format
 msgid "Using pool %(pool)s instead of %(cpg)s"
@@ -2280,6 +2738,10 @@ msgstr "Použita jmenovka cíle: %s."
 #, python-format
 msgid "Value with type=%s is not serializable"
 msgstr "Hodnota typ=%s není serializovatelná"
+
+#, python-format
+msgid "Verified VMOS version %s is supported."
+msgstr "Ověřena podpora VMOS s verzí %s."
 
 #, python-format
 msgid "Virtual volume %(disp)s '%(new)s' is being retyped."
@@ -2330,6 +2792,18 @@ msgstr ""
 #, python-format
 msgid "Volume %(volumeName)s not in any storage group."
 msgstr "Svazek %(volumeName)s není v žádné skupině úložiště."
+
+#, python-format
+msgid ""
+"Volume %(volume_id)s: being created as %(create_type)s with specification: "
+"%(volume_spec)s"
+msgstr ""
+"Svazek %(volume_id)s je vytvářen jako %(create_type)s se specifikací: "
+"%(volume_spec)s"
+
+#, python-format
+msgid "Volume %(volume_name)s (%(volume_id)s): created successfully"
+msgstr "Svazek %(volume_name)s (%(volume_id)s) úspěšně vytvořen"
 
 #, python-format
 msgid "Volume %s converted."
@@ -2389,6 +2863,14 @@ msgstr "Zavoláno odpojení svazku, ale svazek není připojen."
 
 msgid "Volume info retrieved successfully."
 msgstr "Informace o svazku úspěšně získány."
+
+#, python-format
+msgid "Volume name changed from %(tmp)s to %(orig)s"
+msgstr "Název svazku změněn z %(tmp)s na %(orig)s"
+
+#, python-format
+msgid "Volume name changed from %(tmp)s to %(orig)s."
+msgstr "Název svazku změněn z %(tmp)s na %(orig)s."
 
 msgid "Volume retrieved successfully."
 msgstr "Svazek úspěšně získán."
@@ -2454,12 +2936,40 @@ msgid "Waiting for web service array communication."
 msgstr "Čeká se na komunikaci s polem internetové služby."
 
 #, python-format
+msgid "Will clone a volume from the image volume %(id)s."
+msgstr "Svazek bude klonován ze svazku obrazu %(id)s."
+
+#, python-format
 msgid "XML exception reading parameter: %s"
 msgstr "Při čtení parametru se vyskytla výjimka XML: %s"
 
 #, python-format
 msgid "XtremIO SW version %s"
 msgstr "Verze softwaru XtremIO: %s"
+
+#, python-format
+msgid "ZFSSA version: %s"
+msgstr "Verze ZFSSA: %s"
+
+#, python-format
+msgid "Zone exists in I-T mode. Skipping zone creation %s"
+msgstr "Zóna existuje v režimu I-T. Vytváření zóny %s přeskočeno"
+
+#, python-format
+msgid "Zone map to add: %s"
+msgstr "Mapa zóny pro přidání: %s"
+
+#, python-format
+msgid "Zoning Policy: %s, not recognized"
+msgstr "Zásada zónování: %s nebylo rozpoznáno"
+
+#, python-format
+msgid "Zoning policy for Fabric %s"
+msgstr "Zásady zónování pro Fabric %s"
+
+#, python-format
+msgid "Zoning policy for fabric %s"
+msgstr "Zásady zónování pro Fabric %s"
 
 #, python-format
 msgid ""
@@ -2663,6 +3173,10 @@ msgstr ""
 "%(vol2)s"
 
 #, python-format
+msgid "new cloned volume: %s"
+msgstr "Nový klonovaný svazek: %s"
+
+#, python-format
 msgid "nfs_info: %(key)s: %(path)s, HDP: %(fslabel)s FSID: %(hdp)s"
 msgstr "Informace NFS: %(key)s: %(path)s, HDP: %(fslabel)s FSID: %(hdp)s"
 
@@ -2689,6 +3203,10 @@ msgstr "Provedení zjištění iSCSI pomocí SMI-S předalo: %(out)s."
 #, python-format
 msgid "snapshot %s doesn't exist"
 msgstr "snímek %s neexistuje"
+
+#, python-format
+msgid "source volume for cloning: %s"
+msgstr "Zdrojový svazek pro klonování: %s"
 
 #, python-format
 msgid "stats: stats: %s."
@@ -2738,6 +3256,10 @@ msgid ""
 msgstr ""
 "Ukončení spojení s fc: Název svazku %(volume)s, wwpns: %(wwns)s, id lun: "
 "%(lunid)s."
+
+#, python-format
+msgid "tunevv failed because the volume '%s' has snapshots."
+msgstr "tunevv selhalo protože svazek '%s' má snímky."
 
 #, python-format
 msgid "username: %(username)s, verify_cert: %(verify)s."
