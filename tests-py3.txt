@@ -86,6 +86,7 @@ cinder.tests.unit.test_netapp_nfs
 cinder.tests.unit.test_netapp_ssc
 cinder.tests.unit.test_nfs
 cinder.tests.unit.test_nimble
+cinder.tests.unit.test_prophetstor_dpl
 cinder.tests.unit.test_pure
 cinder.tests.unit.test_qos_specs
 cinder.tests.unit.test_quobyte

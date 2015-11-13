@@ -993,7 +993,7 @@ class DPLCOMMONDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
                 if self._conver_uuid2hex(vid) in group_members:
                     continue
                 self._join_volume_group(volume, cgid)
-        except exception as e:
+        except Exception as e:
             msg = _("Fexvisor failed to join the volume %(vol)s in the "
                     "group %(group)s due to "
                     "%(ret)s.") % {"vol": vid, "group": cgid,
@@ -1005,7 +1005,7 @@ class DPLCOMMONDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
                 vid = volume['id']
                 if self._conver_uuid2hex(vid) in group_members:
                     self._leave_volume_group(volume, cgid)
-        except exception as e:
+        except Exception as e:
             msg = _("Fexvisor failed to remove the volume %(vol)s in the "
                     "group %(group)s due to "
                     "%(ret)s.") % {"vol": vid, "group": cgid,
