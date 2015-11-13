@@ -2158,6 +2158,19 @@ class EMCVMAXMasking(object):
             portGroupInstanceName, ResultClass='Symm_LunMaskingView')
         return mvInstanceNames
 
+    def get_masking_views_by_initiator_group(
+            self, conn, initiatorGroupInstanceName):
+        """Given initiator group, retrieve the masking view instance name.
+
+        :param conn: the ecom connection
+        :param initiatorGroupInstanceName: the instance name of the
+                                           initiator group
+        :returns: masking view instance names
+        """
+        mvInstanceNames = conn.AssociatorNames(
+            initiatorGroupInstanceName, ResultClass='Symm_LunMaskingView')
+        return mvInstanceNames
+
     def get_port_group_from_masking_view(self, conn, maskingViewInstanceName):
         """Get the port group in a masking view.
 

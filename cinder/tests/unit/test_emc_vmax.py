@@ -7238,3 +7238,117 @@ class EMCVMAXMaskingTest(test.TestCase):
                 maskingviewdict,
                 controllerConfigService, maskingviewdict['volumeName']))
         self.assertIsNone(result)
+
+
+class EMCVMAXFCTest(test.TestCase):
+    def setUp(self):
+        self.data = EMCVMAXCommonData()
+
+        super(EMCVMAXFCTest, self).setUp()
+
+        configuration = mock.Mock()
+        configuration.safe_get.return_value = 'FCTests'
+        configuration.config_group = 'FCTests'
+        emc_vmax_common.EMCVMAXCommon._gather_info = mock.Mock()
+        driver = emc_vmax_fc.EMCVMAXFCDriver(configuration=configuration)
+        driver.db = FakeDB()
+        self.driver = driver
+
+    def test_terminate_connection(self):
+        common = self.driver.common
+        common.conn = FakeEcomConnection()
+        common._unmap_lun = mock.Mock()
+        common.get_masking_view_by_volume = mock.Mock(
+            return_value='testMV')
+        common.get_masking_views_by_port_group = mock.Mock(
+            return_value=[])
+        common.get_target_wwns = mock.Mock(
+            return_value=EMCVMAXCommonData.target_wwns)
+        data = self.driver.terminate_connection(self.data.test_volume_v3,
+                                                self.data.connector)
+        common.get_target_wwns.assert_called_once_with(
+            EMCVMAXCommonData.storage_system, EMCVMAXCommonData.connector)
+        numTargetWwns = len(EMCVMAXCommonData.target_wwns)
+        self.assertEqual(numTargetWwns, len(data['data']))
+
+    def test_get_common_masking_views_two_exist(self):
+        common = self.driver.common
+        common.conn = FakeEcomConnection()
+        maskingviews = [{'CreationClassName': 'Symm_LunMaskingView',
+                         'ElementName': 'MV1'},
+                        {'CreationClassName': 'Symm_LunMaskingView',
+                         'ElementName': 'MV2'}]
+
+        portGroupInstanceName = (
+            self.driver.common.masking._get_port_group_from_masking_view(
+                common.conn, self.data.lunmaskctrl_name,
+                self.data.storage_system))
+
+        initiatorGroupInstanceName = (
+            self.driver.common.masking._get_initiator_group_from_masking_view(
+                common.conn, self.data.lunmaskctrl_name,
+                self.data.storage_system))
+        common.get_masking_views_by_port_group = mock.Mock(
+            return_value=maskingviews)
+        common.get_masking_views_by_initiator_group = mock.Mock(
+            return_value=maskingviews)
+
+        mvInstances = self.driver._get_common_masking_views(
+            portGroupInstanceName, initiatorGroupInstanceName)
+        self.assertTrue(len(mvInstances) == 2)
+
+    def test_get_common_masking_views_one_overlap(self):
+        common = self.driver.common
+        common.conn = FakeEcomConnection()
+        maskingviewsPG = [{'CreationClassName': 'Symm_LunMaskingView',
+                           'ElementName': 'MV1'},
+                          {'CreationClassName': 'Symm_LunMaskingView',
+                           'ElementName': 'MV2'}]
+
+        maskingviewsIG = [{'CreationClassName': 'Symm_LunMaskingView',
+                           'ElementName': 'MV1'}]
+
+        portGroupInstanceName = (
+            self.driver.common.masking._get_port_group_from_masking_view(
+                common.conn, self.data.lunmaskctrl_name,
+                self.data.storage_system))
+
+        initiatorGroupInstanceName = (
+            self.driver.common.masking._get_initiator_group_from_masking_view(
+                common.conn, self.data.lunmaskctrl_name,
+                self.data.storage_system))
+        common.get_masking_views_by_port_group = mock.Mock(
+            return_value=maskingviewsPG)
+        common.get_masking_views_by_initiator_group = mock.Mock(
+            return_value=maskingviewsIG)
+
+        mvInstances = self.driver._get_common_masking_views(
+            portGroupInstanceName, initiatorGroupInstanceName)
+        self.assertTrue(len(mvInstances) == 1)
+
+    def test_get_common_masking_views_no_overlap(self):
+        common = self.driver.common
+        common.conn = FakeEcomConnection()
+        maskingviewsPG = [{'CreationClassName': 'Symm_LunMaskingView',
+                           'ElementName': 'MV2'}]
+
+        maskingviewsIG = [{'CreationClassName': 'Symm_LunMaskingView',
+                           'ElementName': 'MV1'}]
+
+        portGroupInstanceName = (
+            self.driver.common.masking._get_port_group_from_masking_view(
+                common.conn, self.data.lunmaskctrl_name,
+                self.data.storage_system))
+
+        initiatorGroupInstanceName = (
+            self.driver.common.masking._get_initiator_group_from_masking_view(
+                common.conn, self.data.lunmaskctrl_name,
+                self.data.storage_system))
+        common.get_masking_views_by_port_group = mock.Mock(
+            return_value=maskingviewsPG)
+        common.get_masking_views_by_initiator_group = mock.Mock(
+            return_value=maskingviewsIG)
+
+        mvInstances = self.driver._get_common_masking_views(
+            portGroupInstanceName, initiatorGroupInstanceName)
+        self.assertTrue(len(mvInstances) == 0)

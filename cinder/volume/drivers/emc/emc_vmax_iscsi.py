@@ -58,6 +58,7 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
               - Extend Volume for VMAX3, SE8.1.0.3
               https://blueprints.launchpad.net/cinder/+spec/vmax3-extend-volume
               - Incorrect SG selected on an attach (#1515176)
+              - Cleanup Zoning (bug #1501938)  NOTE: FC only
     """
 
     VERSION = "2.3.0"
