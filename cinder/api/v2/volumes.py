@@ -249,12 +249,10 @@ class VolumeController(wsgi.Controller):
                                           viewable_admin_meta=True,
                                           offset=offset)
 
-        volumes = [dict(vol) for vol in volumes]
-
         for volume in volumes:
             utils.add_visible_admin_metadata(volume)
 
-        req.cache_db_volumes(volumes)
+        req.cache_db_volumes(volumes.objects)
 
         if is_detail:
             volumes = self._view_builder.detail_list(req, volumes)

@@ -26,12 +26,14 @@ from cinder.api.openstack import wsgi
 from cinder import context
 from cinder import db
 from cinder import exception
+from cinder import objects
 from cinder import test
 from cinder.tests.unit.api import fakes
+from cinder.tests.unit import fake_volume
 from cinder import volume
 
 
-def fake_volume_get(*args, **kwargs):
+def fake_db_volume_get(*args, **kwargs):
     return {
         'id': 'fake',
         'host': 'host001',
@@ -45,11 +47,20 @@ def fake_volume_get(*args, **kwargs):
         'volume_type_id': None,
         'snapshot_id': None,
         'project_id': 'fake',
+        'migration_status': None,
+        '_name_id': 'fake2',
+        'attach_status': 'detached',
     }
 
 
+def fake_volume_api_get(*args, **kwargs):
+    ctx = context.RequestContext('admin', 'fake', True)
+    db_volume = fake_db_volume_get()
+    return fake_volume.fake_volume_obj(ctx, **db_volume)
+
+
 def fake_volume_get_all(*args, **kwargs):
-    return [fake_volume_get()]
+    return objects.VolumeList(objects=[fake_volume_api_get()])
 
 
 fake_image_metadata = {
@@ -90,13 +101,12 @@ class VolumeImageMetadataTest(test.TestCase):
 
     def setUp(self):
         super(VolumeImageMetadataTest, self).setUp()
-        self.stubs.Set(volume.API, 'get', fake_volume_get)
+        self.stubs.Set(volume.API, 'get', fake_volume_api_get)
         self.stubs.Set(volume.API, 'get_all', fake_volume_get_all)
         self.stubs.Set(volume.API, 'get_volume_image_metadata',
                        fake_get_volume_image_metadata)
         self.stubs.Set(volume.API, 'get_volumes_image_metadata',
                        fake_get_volumes_image_metadata)
-        self.stubs.Set(db, 'volume_get', fake_volume_get)
         self.UUID = uuid.uuid4()
         self.controller = (volume_image_metadata.
                            VolumeImageMetadataController())

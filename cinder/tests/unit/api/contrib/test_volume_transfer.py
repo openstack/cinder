@@ -63,6 +63,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         vol['display_name'] = display_name
         vol['display_description'] = display_description
         vol['attach_status'] = status
+        vol['availability_zone'] = 'fake_zone'
         return db.volume_create(context.get_admin_context(), vol)['id']
 
     def test_show_transfer(self):

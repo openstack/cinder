@@ -13,6 +13,7 @@
 #   under the License.
 
 import datetime
+import iso8601
 import json
 import uuid
 
@@ -23,11 +24,13 @@ from oslo_serialization import jsonutils
 import webob
 
 from cinder.api.contrib import volume_actions
+from cinder import context
 from cinder import exception
 from cinder.image import glance
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v2 import stubs
+from cinder.tests.unit import fake_volume
 from cinder import volume
 from cinder.volume import api as volume_api
 from cinder.volume import rpcapi as volume_rpcapi
@@ -43,6 +46,7 @@ class VolumeActionsTest(test.TestCase):
 
     def setUp(self):
         super(VolumeActionsTest, self).setUp()
+        self.context = context.RequestContext('fake', 'fake', is_admin=False)
         self.UUID = uuid.uuid4()
         self.controller = volume_actions.VolumeActionsController()
         self.api_patchers = {}
@@ -52,9 +56,10 @@ class VolumeActionsTest(test.TestCase):
             self.addCleanup(self.api_patchers[_meth].stop)
             self.api_patchers[_meth].return_value = True
 
-        vol = {'id': 'fake', 'host': 'fake', 'status': 'available', 'size': 1,
-               'migration_status': None, 'volume_type_id': 'fake',
-               'project_id': 'project_id'}
+        db_vol = {'id': 'fake', 'host': 'fake', 'status': 'available',
+                  'size': 1, 'migration_status': None,
+                  'volume_type_id': 'fake', 'project_id': 'project_id'}
+        vol = fake_volume.fake_volume_obj(self.context, **db_vol)
         self.get_patcher = mock.patch('cinder.volume.API.get')
         self.mock_volume_get = self.get_patcher.start()
         self.addCleanup(self.get_patcher.stop)
@@ -789,8 +794,9 @@ class VolumeImageActionsTest(test.TestCase):
                         expected_res = {
                             'os-volume_upload_image': {
                                 'id': id,
-                                'updated_at': datetime.datetime(1900, 1, 1,
-                                                                1, 1, 1),
+                                'updated_at': datetime.datetime(
+                                    1900, 1, 1, 1, 1, 1,
+                                    tzinfo=iso8601.iso8601.Utc()),
                                 'status': 'uploading',
                                 'display_description': 'displaydesc',
                                 'size': 1,
@@ -845,8 +851,9 @@ class VolumeImageActionsTest(test.TestCase):
                         expected_res = {
                             'os-volume_upload_image': {
                                 'id': id,
-                                'updated_at': datetime.datetime(1900, 1, 1,
-                                                                1, 1, 1),
+                                'updated_at': datetime.datetime(
+                                    1900, 1, 1, 1, 1, 1,
+                                    tzinfo=iso8601.iso8601.Utc()),
                                 'status': 'uploading',
                                 'display_description': 'displaydesc',
                                 'size': 1,
@@ -898,8 +905,9 @@ class VolumeImageActionsTest(test.TestCase):
                         expected_res = {
                             'os-volume_upload_image': {
                                 'id': id,
-                                'updated_at': datetime.datetime(1900, 1, 1,
-                                                                1, 1, 1),
+                                'updated_at': datetime.datetime(
+                                    1900, 1, 1, 1, 1, 1,
+                                    tzinfo=iso8601.iso8601.Utc()),
                                 'status': 'uploading',
                                 'display_description': 'displaydesc',
                                 'size': 1,
@@ -944,8 +952,9 @@ class VolumeImageActionsTest(test.TestCase):
                     expected_res = {
                         'os-volume_upload_image': {
                             'id': id,
-                            'updated_at': datetime.datetime(1900, 1, 1,
-                                                            1, 1, 1),
+                            'updated_at': datetime.datetime(
+                                1900, 1, 1, 1, 1, 1,
+                                tzinfo=iso8601.iso8601.Utc()),
                             'status': 'uploading',
                             'display_description': 'displaydesc',
                             'size': 1,

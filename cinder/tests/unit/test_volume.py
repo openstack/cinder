@@ -580,7 +580,6 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertEqual(4, len(self.notifier.notifications),
                          self.notifier.notifications)
         msg = self.notifier.notifications[2]
-        expected['metadata'] = []
         self.assertEqual('volume.delete.start', msg['event_type'])
         self.assertDictMatch(expected, msg['payload'])
         msg = self.notifier.notifications[3]
@@ -1086,15 +1085,14 @@ class VolumeTestCase(BaseVolumeTestCase):
                                'volume_get_all_by_project') as by_project:
             with mock.patch.object(volume_api.db,
                                    'volume_get_all') as get_all:
-                fake_volume = {'volume_type_id': 'fake_type_id',
-                               'name': 'fake_name',
-                               'host': 'fake_host',
-                               'id': 'fake_volume_id'}
+                db_volume = {'volume_type_id': 'fake_type_id',
+                             'name': 'fake_name',
+                             'host': 'fake_host',
+                             'id': 'fake_volume_id'}
 
-                fake_volume_list = []
-                fake_volume_list.append([fake_volume])
-                by_project.return_value = fake_volume_list
-                get_all.return_value = fake_volume_list
+                volume = fake_volume.fake_db_volume(**db_volume)
+                by_project.return_value = [volume]
+                get_all.return_value = [volume]
 
                 volume_api.get_all(self.context, filters={'all_tenants': '0'})
                 self.assertTrue(by_project.called)
@@ -3205,7 +3203,6 @@ class VolumeTestCase(BaseVolumeTestCase):
         volume = tests_utils.create_volume(self.context, **self.volume_params)
         self.volume.create_volume(self.context, volume['id'])
         volume['status'] = 'error_deleting'
-        volume['host'] = 'fakehost'
 
         volume_api = cinder.volume.api.API()
 
@@ -3219,11 +3216,12 @@ class VolumeTestCase(BaseVolumeTestCase):
         volume_api.delete(self.context, volume, force=True)
 
         # status is deleting
-        volume = db.volume_get(context.get_admin_context(), volume['id'])
-        self.assertEqual('deleting', volume['status'])
+        volume = objects.Volume.get_by_id(context.get_admin_context(),
+                                          volume.id)
+        self.assertEqual('deleting', volume.status)
 
         # clean up
-        self.volume.delete_volume(self.context, volume['id'])
+        self.volume.delete_volume(self.context, volume.id)
 
     def test_cannot_force_delete_attached_volume(self):
         """Test volume can't be force delete in attached state."""
@@ -7664,8 +7662,8 @@ class ImageVolumeCacheTestCase(BaseVolumeTestCase):
         }
         volume_api = cinder.volume.api.API()
         volume = tests_utils.create_volume(self.context, **volume_params)
-        volume = db.volume_update(self.context, volume['id'],
-                                  {'status': 'available'})
+        volume.status = 'available'
+        volume.save()
         image_id = '70a599e0-31e7-49b7-b260-868f441e862b'
         db.image_volume_cache_create(self.context,
                                      volume['host'],

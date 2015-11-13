@@ -16,12 +16,13 @@ import json
 import uuid
 
 from lxml import etree
-from oslo_utils import timeutils
 import webob
 
 from cinder import context
+from cinder import objects
 from cinder import test
 from cinder.tests.unit.api import fakes
+from cinder.tests.unit import fake_volume
 from cinder import volume
 
 
@@ -29,26 +30,16 @@ PROJECT_ID = '88fd1da4-f464-4a87-9ce5-26f2f40743b9'
 
 
 def fake_volume_get(*args, **kwargs):
-    return {
+    ctx = context.RequestContext('non-admin', 'fake', False)
+    vol = {
         'id': 'fake',
-        'host': 'host001',
-        'status': 'available',
-        'size': 5,
-        'availability_zone': 'somewhere',
-        'created_at': timeutils.utcnow(),
-        'attach_status': None,
-        'display_name': 'anothervolume',
-        'display_description': 'Just another volume!',
-        'volume_type_id': None,
-        'snapshot_id': None,
         'project_id': PROJECT_ID,
-        'migration_status': None,
-        '_name_id': 'fake2',
     }
+    return fake_volume.fake_volume_obj(ctx, **vol)
 
 
 def fake_volume_get_all(*args, **kwargs):
-    return [fake_volume_get()]
+    return objects.VolumeList(objects=[fake_volume_get()])
 
 
 def app():

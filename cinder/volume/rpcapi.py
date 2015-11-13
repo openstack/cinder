@@ -80,6 +80,7 @@ class VolumeAPI(object):
                and delete_cgsnapshot() to cast method only with necessary
                args. Forwarding CGSnapshot object instead of CGSnapshot_id.
         1.32 - Adds support for sending objects over RPC in create_volume().
+        1.33 - Adds support for sending objects over RPC in delete_volume().
     """
 
     BASE_RPC_API_VERSION = '1.0'
@@ -153,11 +154,16 @@ class VolumeAPI(object):
         cctxt.cast(ctxt, 'create_volume', **msg_args)
 
     def delete_volume(self, ctxt, volume, unmanage_only=False):
-        new_host = utils.extract_host(volume['host'])
-        cctxt = self.client.prepare(server=new_host, version='1.15')
-        cctxt.cast(ctxt, 'delete_volume',
-                   volume_id=volume['id'],
-                   unmanage_only=unmanage_only)
+        msg_args = {'volume_id': volume.id, 'unmanage_only': unmanage_only}
+        if self.client.can_send_version('1.33'):
+            version = '1.33'
+            msg_args['volume'] = volume
+        else:
+            version = '1.15'
+
+        new_host = utils.extract_host(volume.host)
+        cctxt = self.client.prepare(server=new_host, version=version)
+        cctxt.cast(ctxt, 'delete_volume', **msg_args)
 
     def create_snapshot(self, ctxt, volume, snapshot):
         new_host = utils.extract_host(volume['host'])

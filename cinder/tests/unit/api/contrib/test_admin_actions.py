@@ -99,6 +99,18 @@ class AdminActionsTest(test.TestCase):
         resp = req.get_response(app())
         return resp
 
+    def _create_volume(self, context, updates=None):
+        db_volume = {'status': 'available',
+                     'host': 'test',
+                     'availability_zone': 'fake_zone',
+                     'attach_status': 'detached'}
+        if updates:
+            db_volume.update(updates)
+
+        volume = objects.Volume(context=context, **db_volume)
+        volume.create()
+        return volume
+
     def test_valid_updates(self):
         vac = admin_actions.VolumeAdminController()
 
@@ -375,7 +387,7 @@ class AdminActionsTest(test.TestCase):
         # admin context
         ctx = context.RequestContext('admin', 'fake', True)
         # current status is creating
-        volume = db.volume_create(ctx, {'size': 1})
+        volume = self._create_volume(ctx, {'size': 1, 'host': None})
         req = webob.Request.blank('/v2/fake/volumes/%s/action' % volume['id'])
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
@@ -386,7 +398,8 @@ class AdminActionsTest(test.TestCase):
         # request is accepted
         self.assertEqual(202, resp.status_int)
         # volume is deleted
-        self.assertRaises(exception.NotFound, db.volume_get, ctx, volume['id'])
+        self.assertRaises(exception.NotFound, objects.Volume.get_by_id, ctx,
+                          volume.id)
 
     @mock.patch.object(volume_api.API, 'delete_snapshot', return_value=True)
     @mock.patch('cinder.objects.Snapshot.get_by_id')
@@ -416,8 +429,8 @@ class AdminActionsTest(test.TestCase):
         # admin context
         ctx = context.RequestContext('admin', 'fake', True)
         # current status is available
-        volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
-                                        'provider_location': '', 'size': 1})
+        volume = self._create_volume(ctx, {'provider_location': '',
+                                           'size': 1})
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         # start service to handle rpc messages for attach requests
         svc = self.start_service('volume', host='test')
@@ -473,8 +486,8 @@ class AdminActionsTest(test.TestCase):
         # admin context
         ctx = context.RequestContext('admin', 'fake', True)
         # current status is available
-        volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
-                                        'provider_location': '', 'size': 1})
+        volume = self._create_volume(ctx, {'provider_location': '',
+                                           'size': 1})
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         # start service to handle rpc messages for attach requests
         svc = self.start_service('volume', host='test')
@@ -530,8 +543,8 @@ class AdminActionsTest(test.TestCase):
         # admin context
         ctx = context.RequestContext('admin', 'fake', True)
         # current status is available
-        volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
-                                        'provider_location': '', 'size': 1})
+        volume = self._create_volume(ctx, {'provider_location': '',
+                                           'size': 1})
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         # start service to handle rpc messages for attach requests
         svc = self.start_service('volume', host='test')
@@ -617,8 +630,8 @@ class AdminActionsTest(test.TestCase):
         # admin context
         ctx = context.RequestContext('admin', 'fake', True)
         # current status is available
-        volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
-                                        'provider_location': '', 'size': 1})
+        volume = self._create_volume(ctx, {'provider_location': '',
+                                           'size': 1})
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         # start service to handle rpc messages for attach requests
         svc = self.start_service('volume', host='test')
@@ -668,8 +681,8 @@ class AdminActionsTest(test.TestCase):
         # admin context
         ctx = context.RequestContext('admin', 'fake', True)
         # current status is available
-        volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
-                                        'provider_location': '', 'size': 1})
+        volume = self._create_volume(ctx, {'provider_location': '',
+                                           'size': 1})
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         # start service to handle rpc messages for attach requests
         svc = self.start_service('volume', host='test')
@@ -695,8 +708,8 @@ class AdminActionsTest(test.TestCase):
         # admin context
         ctx = context.RequestContext('admin', 'fake', True)
         # current status is available
-        volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
-                                        'provider_location': '', 'size': 1})
+        volume = self._create_volume(ctx, {'provider_location': '',
+                                           'size': 1})
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         # start service to handle rpc messages for attach requests
         svc = self.start_service('volume', host='test')
@@ -723,8 +736,8 @@ class AdminActionsTest(test.TestCase):
         # admin context
         ctx = context.RequestContext('admin', 'fake', True)
         # current status is available
-        volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
-                                        'provider_location': '', 'size': 1})
+        volume = self._create_volume(ctx, {'provider_location': '',
+                                           'size': 1})
         connector = {}
         # start service to handle rpc messages for attach requests
         svc = self.start_service('volume', host='test')
@@ -738,8 +751,8 @@ class AdminActionsTest(test.TestCase):
         """Test that attaching volume reserved for another instance fails."""
         ctx = context.RequestContext('admin', 'fake', True)
         # current status is available
-        volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
-                                        'provider_location': '', 'size': 1})
+        volume = self._create_volume(ctx, {'provider_location': '',
+                                           'size': 1})
         # start service to handle rpc messages for attach requests
         svc = self.start_service('volume', host='test')
         self.volume_api.reserve_volume(ctx, volume)
@@ -766,8 +779,8 @@ class AdminActionsTest(test.TestCase):
         # admin context
         ctx = context.RequestContext('admin', 'fake', True)
         # current status is available
-        volume = db.volume_create(ctx, {'status': 'available', 'host': 'test',
-                                        'provider_location': '', 'size': 1})
+        volume = self._create_volume(ctx, {'provider_location': '',
+                                           'size': 1})
         # start service to handle rpc messages for attach requests
         svc = self.start_service('volume', host='test')
         values = {'status': 'attaching',
@@ -799,11 +812,7 @@ class AdminActionsTest(test.TestCase):
                            'topic': CONF.volume_topic,
                            'created_at': timeutils.utcnow()})
         # current status is available
-        volume = db.volume_create(admin_ctx,
-                                  {'status': 'available',
-                                   'host': 'test',
-                                   'provider_location': '',
-                                   'attach_status': ''})
+        volume = self._create_volume(admin_ctx)
         return volume
 
     def _migrate_volume_exec(self, ctx, volume, host, expected_status,
@@ -837,12 +846,9 @@ class AdminActionsTest(test.TestCase):
         ctx = context.RequestContext('admin', 'fake', True)
         volume = self._migrate_volume_prep()
         # current status is available
-        volume = db.volume_create(ctx,
-                                  {'status': 'available',
-                                   'host': 'test',
-                                   'provider_location': '',
-                                   'attach_status': '',
-                                   'replication_status': 'active'})
+        volume = self._create_volume(ctx, {'provider_location': '',
+                                           'attach_status': '',
+                                           'replication_status': 'active'})
         volume = self._migrate_volume_exec(ctx, volume, host, expected_status)
 
     def test_migrate_volume_as_non_admin(self):
@@ -943,10 +949,9 @@ class AdminActionsTest(test.TestCase):
 
     def test_migrate_volume_comp_no_mig_status(self):
         admin_ctx = context.get_admin_context()
-        volume1 = db.volume_create(admin_ctx, {'id': 'fake1',
-                                               'migration_status': 'foo'})
-        volume2 = db.volume_create(admin_ctx, {'id': 'fake2',
-                                               'migration_status': None})
+        volume1 = self._create_volume(admin_ctx, {'migration_status': 'foo'})
+        volume2 = self._create_volume(admin_ctx, {'migration_status': None})
+
         expected_status = 400
         expected_id = None
         ctx = context.RequestContext('admin', 'fake', True)
@@ -957,12 +962,10 @@ class AdminActionsTest(test.TestCase):
 
     def test_migrate_volume_comp_bad_mig_status(self):
         admin_ctx = context.get_admin_context()
-        volume1 = db.volume_create(admin_ctx,
-                                   {'id': 'fake1',
-                                    'migration_status': 'migrating'})
-        volume2 = db.volume_create(admin_ctx,
-                                   {'id': 'fake2',
-                                    'migration_status': 'target:foo'})
+        volume1 = self._create_volume(admin_ctx,
+                                      {'migration_status': 'migrating'})
+        volume2 = self._create_volume(admin_ctx,
+                                      {'migration_status': 'target:foo'})
         expected_status = 400
         expected_id = None
         ctx = context.RequestContext('admin', 'fake', True)
@@ -981,20 +984,14 @@ class AdminActionsTest(test.TestCase):
 
     def test_migrate_volume_comp_from_nova(self):
         admin_ctx = context.get_admin_context()
-        volume = db.volume_create(admin_ctx,
-                                  {'id': 'fake1',
-                                   'status': 'in-use',
-                                   'host': 'test',
-                                   'migration_status': None,
-                                   'attach_status': 'attached'})
-        new_volume = db.volume_create(admin_ctx,
-                                      {'id': 'fake2',
-                                       'status': 'available',
-                                       'host': 'test',
-                                       'migration_status': None,
-                                       'attach_status': 'detached'})
+        volume = self._create_volume(admin_ctx, {'status': 'in-use',
+                                                 'migration_status': None,
+                                                 'attach_status': 'attached'})
+        new_volume = self._create_volume(admin_ctx,
+                                         {'migration_status': None,
+                                          'attach_status': 'detached'})
         expected_status = 200
-        expected_id = 'fake2'
+        expected_id = new_volume.id
         ctx = context.RequestContext('admin', 'fake', True)
         self._migrate_volume_comp_exec(ctx, volume, new_volume, False,
                                        expected_status, expected_id)
