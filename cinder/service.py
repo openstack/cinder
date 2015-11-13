@@ -73,7 +73,9 @@ profiler_opts = [
     cfg.BoolOpt("profiler_enabled", default=False,
                 help=_('If False fully disable profiling feature.')),
     cfg.BoolOpt("trace_sqlalchemy", default=False,
-                help=_("If False doesn't trace SQL requests."))
+                help=_("If False doesn't trace SQL requests.")),
+    cfg.StrOpt("hmac_keys", default="SECRET_KEY",
+               help=_("Secret key to use to sign tracing messages."))
 ]
 
 CONF = cfg.CONF
@@ -87,16 +89,17 @@ def setup_profiler(binary, host):
             "Messaging", messaging, context.get_admin_context().to_dict(),
             rpc.TRANSPORT, "cinder", binary, host)
         osprofiler.notifier.set(_notifier)
+        osprofiler.web.enable(CONF.profiler.hmac_keys)
         LOG.warning(
             _LW("OSProfiler is enabled.\nIt means that person who knows "
                 "any of hmac_keys that are specified in "
-                "/etc/cinder/api-paste.ini can trace his requests. \n"
+                "/etc/cinder/cinder.conf can trace his requests. \n"
                 "In real life only operator can read this file so there "
                 "is no security issue. Note that even if person can "
                 "trigger profiler, only admin user can retrieve trace "
                 "information.\n"
                 "To disable OSprofiler set in cinder.conf:\n"
-                "[profiler]\nenabled=false"))
+                "[profiler]\nprofiler_enabled=false"))
     else:
         osprofiler.web.disable()
 
