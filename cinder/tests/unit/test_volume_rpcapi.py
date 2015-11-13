@@ -399,7 +399,9 @@ class VolumeRpcAPITestCase(test.TestCase):
                               error=False,
                               version='1.10')
 
-    def test_retype(self):
+    @mock.patch('oslo_messaging.RPCClient.can_send_version',
+                return_value=True)
+    def test_retype(self, can_send_version):
         class FakeHost(object):
             def __init__(self):
                 self.host = 'host'
@@ -407,12 +409,31 @@ class VolumeRpcAPITestCase(test.TestCase):
         dest_host = FakeHost()
         self._test_volume_api('retype',
                               rpc_method='cast',
-                              volume=self.fake_volume,
+                              volume=self.fake_volume_obj,
+                              new_type_id='fake',
+                              dest_host=dest_host,
+                              migration_policy='never',
+                              reservations=None,
+                              version='1.34')
+        can_send_version.assert_called_once_with('1.34')
+
+    @mock.patch('oslo_messaging.RPCClient.can_send_version',
+                return_value=False)
+    def test_retype_old(self, can_send_version):
+        class FakeHost(object):
+            def __init__(self):
+                self.host = 'host'
+                self.capabilities = {}
+        dest_host = FakeHost()
+        self._test_volume_api('retype',
+                              rpc_method='cast',
+                              volume=self.fake_volume_obj,
                               new_type_id='fake',
                               dest_host=dest_host,
                               migration_policy='never',
                               reservations=None,
                               version='1.12')
+        can_send_version.assert_called_once_with('1.34')
 
     def test_manage_existing(self):
         self._test_volume_api('manage_existing',

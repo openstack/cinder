@@ -190,7 +190,7 @@ def locked_snapshot_operation(f):
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '1.33'
+    RPC_API_VERSION = '1.34'
 
     target = messaging.Target(version=RPC_API_VERSION)
 
@@ -2039,22 +2039,28 @@ class VolumeManager(manager.SchedulerDependentManager):
                  resource=volume)
 
     def retype(self, ctxt, volume_id, new_type_id, host,
-               migration_policy='never', reservations=None):
+               migration_policy='never', reservations=None, volume=None):
 
-        def _retype_error(context, volume_id, old_reservations,
+        def _retype_error(context, volume, old_reservations,
                           new_reservations, status_update):
             try:
-                self.db.volume_update(context, volume_id, status_update)
+                volume.update(status_update)
+                volume.save()
             finally:
                 QUOTAS.rollback(context, old_reservations)
                 QUOTAS.rollback(context, new_reservations)
 
         context = ctxt.elevated()
 
-        volume_ref = self.db.volume_get(ctxt, volume_id)
-        status_update = {'status': volume_ref['previous_status']}
-        if context.project_id != volume_ref['project_id']:
-            project_id = volume_ref['project_id']
+        # FIXME(thangp): Remove this in v2.0 of RPC API.
+        if volume is None:
+            # For older clients, mimic the old behavior and look up the volume
+            # by its volume_id.
+            volume = objects.Volume.get_by_id(context, volume_id)
+
+        status_update = {'status': volume.previous_status}
+        if context.project_id != volume.project_id:
+            project_id = volume.project_id
         else:
             project_id = context.project_id
 
@@ -2069,19 +2075,21 @@ class VolumeManager(manager.SchedulerDependentManager):
                 # set the volume status to error. Should that be done
                 # here? Setting the volume back to it's original status
                 # for now.
-                self.db.volume_update(context, volume_id, status_update)
+                volume.update(status_update)
+                volume.save()
 
         # Get old reservations
         try:
-            reserve_opts = {'volumes': -1, 'gigabytes': -volume_ref['size']}
+            reserve_opts = {'volumes': -1, 'gigabytes': -volume.size}
             QUOTAS.add_volume_type_opts(context,
                                         reserve_opts,
-                                        volume_ref.get('volume_type_id'))
+                                        volume.volume_type_id)
             old_reservations = QUOTAS.reserve(context,
                                               project_id=project_id,
                                               **reserve_opts)
         except Exception:
-            self.db.volume_update(context, volume_id, status_update)
+            volume.update(status_update)
+            volume.save()
             LOG.exception(_LE("Failed to update usages "
                               "while retyping volume."))
             raise exception.CinderException(_("Failed to get old volume type"
@@ -2093,7 +2101,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         # If volume types have the same contents, no need to do anything
         retyped = False
         diff, all_equal = volume_types.volume_types_diff(
-            context, volume_ref.get('volume_type_id'), new_type_id)
+            context, volume.volume_type_id, new_type_id)
         if all_equal:
             retyped = True
 
@@ -2113,7 +2121,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             try:
                 new_type = volume_types.get_volume_type(context, new_type_id)
                 ret = self.driver.retype(context,
-                                         volume_ref,
+                                         volume,
                                          new_type,
                                          diff,
                                          host)
@@ -2125,49 +2133,49 @@ class VolumeManager(manager.SchedulerDependentManager):
                     retyped = ret
 
                 if retyped:
-                    LOG.info(_LI("Volume %s: retyped successfully"), volume_id)
+                    LOG.info(_LI("Volume %s: retyped successfully"), volume.id)
             except Exception:
                 retyped = False
                 LOG.exception(_LE("Volume %s: driver error when trying to "
                                   "retype, falling back to generic "
-                                  "mechanism."), volume_ref['id'])
+                                  "mechanism."), volume.id)
 
         # We could not change the type, so we need to migrate the volume, where
         # the destination volume will be of the new type
         if not retyped:
             if migration_policy == 'never':
-                _retype_error(context, volume_id, old_reservations,
+                _retype_error(context, volume, old_reservations,
                               new_reservations, status_update)
                 msg = _("Retype requires migration but is not allowed.")
                 raise exception.VolumeMigrationFailed(reason=msg)
 
             snaps = objects.SnapshotList.get_all_for_volume(context,
-                                                            volume_ref['id'])
+                                                            volume.id)
             if snaps:
-                _retype_error(context, volume_id, old_reservations,
+                _retype_error(context, volume, old_reservations,
                               new_reservations, status_update)
                 msg = _("Volume must not have snapshots.")
                 LOG.error(msg)
                 raise exception.InvalidVolume(reason=msg)
 
             # Don't allow volume with replicas to be migrated
-            rep_status = volume_ref['replication_status']
+            rep_status = volume.replication_status
             if rep_status is not None and rep_status != 'disabled':
-                _retype_error(context, volume_id, old_reservations,
+                _retype_error(context, volume, old_reservations,
                               new_reservations, status_update)
                 msg = _("Volume must not be replicated.")
                 LOG.error(msg)
                 raise exception.InvalidVolume(reason=msg)
 
-            self.db.volume_update(context, volume_ref['id'],
-                                  {'migration_status': 'starting'})
+            volume.migration_status = 'starting'
+            volume.save()
 
             try:
-                self.migrate_volume(context, volume_id, host,
+                self.migrate_volume(context, volume.id, host,
                                     new_type_id=new_type_id)
             except Exception:
                 with excutils.save_and_reraise_exception():
-                    _retype_error(context, volume_id, old_reservations,
+                    _retype_error(context, volume, old_reservations,
                                   new_reservations, status_update)
         else:
             model_update = {'volume_type_id': new_type_id,
@@ -2175,7 +2183,8 @@ class VolumeManager(manager.SchedulerDependentManager):
                             'status': status_update['status']}
             if retype_model_update:
                 model_update.update(retype_model_update)
-            self.db.volume_update(context, volume_id, model_update)
+            volume.update(model_update)
+            volume.save()
 
         if old_reservations:
             QUOTAS.commit(context, old_reservations, project_id=project_id)
@@ -2183,7 +2192,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             QUOTAS.commit(context, new_reservations, project_id=project_id)
         self.publish_service_capabilities(context)
         LOG.info(_LI("Retype volume completed successfully."),
-                 resource=volume_ref)
+                 resource=volume)
 
     def manage_existing(self, ctxt, volume_id, ref=None):
         try:

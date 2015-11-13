@@ -128,14 +128,31 @@ class SchedulerRpcAPITestCase(test.TestCase):
                                  filter_properties='filter_properties',
                                  version='1.3')
 
-    def test_retype(self):
+    @mock.patch('oslo_messaging.RPCClient.can_send_version',
+                return_value=True)
+    def test_retype(self, can_send_version):
         self._test_scheduler_api('retype',
                                  rpc_method='cast',
                                  topic='topic',
                                  volume_id='volume_id',
                                  request_spec='fake_request_spec',
                                  filter_properties='filter_properties',
+                                 volume='volume',
+                                 version='1.10')
+        can_send_version.assert_called_with('1.10')
+
+    @mock.patch('oslo_messaging.RPCClient.can_send_version',
+                return_value=False)
+    def test_retype_old(self, can_send_version):
+        self._test_scheduler_api('retype',
+                                 rpc_method='cast',
+                                 topic='topic',
+                                 volume_id='volume_id',
+                                 request_spec='fake_request_spec',
+                                 filter_properties='filter_properties',
+                                 volume='volume',
                                  version='1.4')
+        can_send_version.assert_called_with('1.10')
 
     def test_manage_existing(self):
         self._test_scheduler_api('manage_existing',
