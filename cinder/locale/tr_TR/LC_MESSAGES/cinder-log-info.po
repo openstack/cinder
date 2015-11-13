@@ -7,9 +7,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev167\n"
+"Project-Id-Version: cinder 8.0.0.dev200\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-11 06:36+0000\n"
+"POT-Creation-Date: 2015-11-13 06:37+0000\n"
 "PO-Revision-Date: 2015-09-16 08:22+0000\n"
 "Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
 "Language-Team: Turkish (Turkey)\n"
@@ -964,10 +964,6 @@ msgstr "Mantıksal sürücü büyütme başarıyla tamamlandı."
 
 msgid "Extend volume request issued successfully."
 msgstr "Mantıksal sürücü büyütme isteği başarıyla yapıldı."
-
-#, python-format
-msgid "Extended volume with label %s."
-msgstr "%s etiketli mantıksal sürücü büyütüldü."
 
 #, python-format
 msgid "Extending volume %s."

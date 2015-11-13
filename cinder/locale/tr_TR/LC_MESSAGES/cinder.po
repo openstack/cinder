@@ -7,9 +7,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev167\n"
+"Project-Id-Version: cinder 8.0.0.dev200\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-11 06:36+0000\n"
+"POT-Creation-Date: 2015-11-13 06:37+0000\n"
 "PO-Revision-Date: 2015-09-16 08:16+0000\n"
 "Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
 "Language: tr_TR\n"
@@ -2085,9 +2085,6 @@ msgstr ""
 
 msgid "FAST is not supported on this array."
 msgstr "FAST bu dizi üzerinde desteklenmiyor."
-
-msgid "FC is the protocol but wwpns are not supplied by Openstack."
-msgstr "İletişim kuralı FC ama wwpn'ler OpenStack tarafından sağlanmamış."
 
 #, python-format
 msgid "Faield to unassign %(volume)s"
@@ -4335,9 +4332,6 @@ msgstr ""
 msgid "No volume was found at CloudByte storage."
 msgstr "CloudByte depolamada hiçbir mantıksal sürücü bulunamadı."
 
-msgid "No volume_id provided to populate a request_spec from"
-msgstr "request_spec doldurmak için bir volume_id sağlanmadı"
-
 msgid "No volume_type should be provided when creating test replica."
 msgstr "Test kopyası oluşturulurken volume_type verilmesi gerekmez."
 
@@ -6065,12 +6059,6 @@ msgstr "%s hedefi için mantıksal sürücü kopyalama işi başarısız."
 #, python-format
 msgid "Volume %(deviceID)s not found."
 msgstr "%(deviceID)s mantıksal sürücüsü bulunamadı."
-
-#, python-format
-msgid "Volume %(lun_name)s was created in VNX, but in %(lun_state)s state."
-msgstr ""
-"Mantıksal sürücü %(lun_name)s VNX'de oluşturulmuş, ama %(lun_state)s "
-"durumunda."
 
 #, python-format
 msgid ""
