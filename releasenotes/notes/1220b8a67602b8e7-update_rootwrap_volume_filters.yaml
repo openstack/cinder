@@ -1,0 +1,5 @@
+---
+upgrade:
+  - It is required to copy new rootwrap.d/volume.filters file into /etc/cinder/rootwrap.d directory.
+fixes:
+  - Fixed bug causing snapshot creation to fail on systems with LC_NUMERIC set to locale using ',' as decimal separator.

@@ -176,10 +176,10 @@ class LVM(lvm.LVM):
         :raises: putils.ProcessExecutionError
         """
         try:
-            self._execute('pvresize',
-                          '--setphysicalvolumesize', new_size_str,
-                          pv_name,
-                          root_helper=self._root_helper,
+            cmd = lvm.LVM.LVM_CMD_PREFIX + ['pvresize',
+                                            '--setphysicalvolumesize',
+                                            new_size_str, pv_name]
+            self._execute(*cmd, root_helper=self._root_helper,
                           run_as_root=True)
         except putils.ProcessExecutionError as err:
             LOG.exception(_LE('Error resizing Physical Volume'))
@@ -202,9 +202,10 @@ class LVM(lvm.LVM):
 
         new_size_str = self._calculate_thin_pool_size()
         try:
-            self._execute('lvextend',
-                          '-L', new_size_str,
-                          "%s/%s-pool" % (self.vg_name, self.vg_name),
+            cmd = lvm.LVM.LVM_CMD_PREFIX + ['lvextend', '-L', new_size_str,
+                                            "%s/%s-pool" % (self.vg_name,
+                                                            self.vg_name)]
+            self._execute(*cmd,
                           root_helper=self._root_helper,
                           run_as_root=True)
         except putils.ProcessExecutionError as err:
