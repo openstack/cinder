@@ -976,18 +976,15 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
 
     def test_get_exist_vol_source_name_missing(self):
         self.library._client.list_volume = mock.Mock(
-            side_effect=exception.InvalidInput)
+            side_effect=exception.InvalidInput(message=""))
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.library._get_existing_vol_with_manage_ref,
                           {'id': '1234'})
 
     @ddt.data('source-id', 'source-name')
     def test_get_exist_vol_source_not_found(self, attr_name):
-        def _get_volume(v_id):
-            d = {'id': '1', 'name': 'volume1', 'worldWideName': '0'}
-            return d[v_id]
-
-        self.library._client.list_volume = mock.Mock(wraps=_get_volume)
+        self.library._client.list_volume = mock.Mock(
+            side_effect=exception.VolumeNotFound(message='Not Found'))
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.library._get_existing_vol_with_manage_ref,
                           {attr_name: 'name2'})
