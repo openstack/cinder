@@ -379,7 +379,7 @@ class QoSSpecManageApiTest(test.TestCase):
             body = {'qos_specs': {'key1': 'value1',
                                   'key2': 'value2'}}
             res = self.controller.update(req, '555', body)
-            self.assertDictMatch(res, body)
+            self.assertDictMatch(body, res)
             self.assertEqual(1, notifier.get_notification_count())
 
     @mock.patch('cinder.volume.qos_specs.update',
@@ -677,7 +677,7 @@ class TestQoSSpecsTemplate(test.TestCase):
                     continue
                 new_dict.update({element.tag: element.text})
 
-            self.assertDictMatch(new_dict, qos_dict['specs'])
+            self.assertDictMatch(qos_dict['specs'], new_dict)
 
 
 class TestAssociationsTemplate(test.TestCase):

@@ -696,7 +696,7 @@ class TestProphetStorDPLDriver(test.TestCase):
             self._conver_uuid2hex(DATA_IN_GROUP['id']))
         self.DPL_MOCK.delete_vdev.assert_called_once_with(
             self._conver_uuid2hex((DATA_IN_VOLUME_VG['id'])))
-        self.assertDictMatch({'status': 'deleted'}, model_update, )
+        self.assertDictMatch({'status': 'deleted'}, model_update)
 
     def test_update_consistencygroup(self):
         self.DPL_MOCK.get_vg.return_value = (0, DATA_OUT_CG)

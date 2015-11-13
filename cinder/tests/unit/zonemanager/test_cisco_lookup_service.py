@@ -55,7 +55,7 @@ class TestFCSanLookupService(san_service.FCSanLookupService, test.TestCase):
         target_list = ['20240002ac000a50', '20240002ac000a40']
         device_map = self.get_device_mapping_from_network(
             initiator_list, target_list)
-        self.assertDictMatch(device_map, _device_map_to_verify)
+        self.assertDictMatch(_device_map_to_verify, device_map)
 
     def test_get_device_mapping_from_network_for_invalid_config(self):
         GlobalParams._is_normal_test = False

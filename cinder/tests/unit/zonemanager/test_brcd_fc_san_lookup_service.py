@@ -111,7 +111,7 @@ class TestBrcdFCSanLookupService(brcd_lookup.BrcdFCSanLookupService,
         get_nameserver_info_mock.return_value = parsed_switch_port_wwns
         device_map = self.get_device_mapping_from_network(
             initiator_list, target_list)
-        self.assertDictMatch(device_map, _device_map_to_verify)
+        self.assertDictMatch(_device_map_to_verify, device_map)
 
     @mock.patch.object(brcd_lookup.BrcdFCSanLookupService, '_get_switch_data')
     def test_get_nameserver_info(self, get_switch_data_mock):

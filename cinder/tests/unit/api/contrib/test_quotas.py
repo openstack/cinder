@@ -176,13 +176,13 @@ class QuotaSetsControllerTest(test.TestCase):
         self.req.environ['cinder.context'].project_id = self.A.id
         result = self.controller.show(self.req, self.D.id)
         expected = make_subproject_body(tenant_id=self.D.id)
-        self.assertDictMatch(result, expected)
+        self.assertDictMatch(expected, result)
         # An user scoped to a parent project can see its immediate children
         # quotas.
         self.req.environ['cinder.context'].project_id = self.B.id
         result = self.controller.show(self.req, self.D.id)
         expected = make_subproject_body(tenant_id=self.D.id)
-        self.assertDictMatch(result, expected)
+        self.assertDictMatch(expected, result)
 
     def test_subproject_show_target_project_equals_to_context_project(self):
         self.controller._get_project = mock.Mock()
@@ -190,7 +190,7 @@ class QuotaSetsControllerTest(test.TestCase):
         self.req.environ['cinder.context'].project_id = self.B.id
         result = self.controller.show(self.req, self.B.id)
         expected = make_subproject_body(tenant_id=self.B.id)
-        self.assertDictMatch(result, expected)
+        self.assertDictMatch(expected, result)
 
     def test_show_not_authorized(self):
         self.controller._get_project = mock.Mock()
@@ -231,13 +231,13 @@ class QuotaSetsControllerTest(test.TestCase):
         body = make_body(gigabytes=2000, snapshots=15,
                          volumes=5, backups=5, tenant_id=None)
         result = self.controller.update(self.req, self.A.id, body)
-        self.assertDictMatch(result, body)
+        self.assertDictMatch(body, result)
         # Update the quota of B to be equal to its parent quota
         self.req.environ['cinder.context'].project_id = self.A.id
         body = make_body(gigabytes=2000, snapshots=15,
                          volumes=5, backups=5, tenant_id=None)
         result = self.controller.update(self.req, self.B.id, body)
-        self.assertDictMatch(result, body)
+        self.assertDictMatch(body, result)
         # Try to update the quota of C, it will not be allowed, since the
         # project A doesn't have free quota available.
         self.req.environ['cinder.context'].project_id = self.A.id
@@ -250,7 +250,7 @@ class QuotaSetsControllerTest(test.TestCase):
         body = make_body(gigabytes=1000, snapshots=7,
                          volumes=3, backups=3, tenant_id=None)
         result = self.controller.update(self.req, self.D.id, body)
-        self.assertDictMatch(result, body)
+        self.assertDictMatch(body, result)
         # An admin of B can also update the quota of D, since D is its an
         # immediate child.
         self.req.environ['cinder.context'].project_id = self.B.id
@@ -274,7 +274,7 @@ class QuotaSetsControllerTest(test.TestCase):
         body = make_body(gigabytes=2000, snapshots=15,
                          volumes=5, backups=5, tenant_id=None)
         result = self.controller.update(self.req, self.A.id, body)
-        self.assertDictMatch(result, body)
+        self.assertDictMatch(body, result)
         # Try to update the quota of F, it will not be allowed, since the
         # project E doesn't belongs to the project hierarchy of A.
         self.req.environ['cinder.context'].project_id = self.A.id
@@ -291,7 +291,7 @@ class QuotaSetsControllerTest(test.TestCase):
         body = make_body(gigabytes=2000, snapshots=15,
                          volumes=5, backups=5, tenant_id=None)
         result = self.controller.update(self.req, self.A.id, body)
-        self.assertDictMatch(result, body)
+        self.assertDictMatch(body, result)
         # Try to update the quota of B, it will not be allowed, since the
         # project in the context (B) is not a root project.
         self.req.environ['cinder.context'].project_id = self.B.id
@@ -436,13 +436,13 @@ class QuotaSetsControllerTest(test.TestCase):
         self.controller._get_project = mock.Mock()
         self.controller._get_project.side_effect = self._get_project
         result_show = self.controller.show(self.req, 'foo')
-        self.assertDictMatch(result_show, make_body())
+        self.assertDictMatch(make_body(), result_show)
 
         body = make_body(gigabytes=2000, snapshots=15,
                          volumes=5, backups=5,
                          backup_gigabytes=1000, tenant_id=None)
         result_update = self.controller.update(self.req, 'foo', body)
-        self.assertDictMatch(result_update, body)
+        self.assertDictMatch(body, result_update)
 
         self.controller.delete(self.req, 'foo')
 
@@ -458,14 +458,14 @@ class QuotaSetsControllerTest(test.TestCase):
                          volumes=5, backups=5,
                          backup_gigabytes=1000, tenant_id=None)
         result_update = self.controller.update(self.req, self.A.id, body)
-        self.assertDictMatch(result_update, body)
+        self.assertDictMatch(body, result_update)
 
         # Set usage param to True in order to see get allocated values.
         self.req.params = {'usage': 'True'}
         result_show = self.controller.show(self.req, self.A.id)
 
         result_update = self.controller.update(self.req, self.B.id, body)
-        self.assertDictMatch(result_update, body)
+        self.assertDictMatch(body, result_update)
 
         self.controller.delete(self.req, self.B.id)
 
@@ -509,14 +509,14 @@ class QuotaSetsControllerTest(test.TestCase):
                          volumes=5, backups=5,
                          backup_gigabytes=1000, tenant_id=None)
         result_update = self.controller.update(self.req, self.A.id, body)
-        self.assertDictMatch(result_update, body)
+        self.assertDictMatch(body, result_update)
 
         # Set usage param to True in order to see get allocated values.
         self.req.params = {'usage': 'True'}
         result_show = self.controller.show(self.req, self.A.id)
 
         result_update = self.controller.update(self.req, self.B.id, body)
-        self.assertDictMatch(result_update, body)
+        self.assertDictMatch(body, result_update)
 
         self.controller.delete(self.req, self.B.id)
 

@@ -69,7 +69,7 @@ class SchedulerStatsAPITest(test.TestCase):
             ]
         }
 
-        self.assertDictMatch(res, expected)
+        self.assertDictMatch(expected, res)
 
     def test_get_pools_detail(self):
         req = fakes.HTTPRequest.blank('/v2/fake/scheduler_stats?detail=True')
@@ -107,4 +107,4 @@ class SchedulerStatsAPITest(test.TestCase):
             ]
         }
 
-        self.assertDictMatch(res, expected)
+        self.assertDictMatch(expected, res)

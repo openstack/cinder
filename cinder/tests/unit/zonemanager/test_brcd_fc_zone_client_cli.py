@@ -82,7 +82,7 @@ class TestBrcdFCZoneClientCLI(client_cli.BrcdFCZoneClientCLI, test.TestCase):
         get_switch_info_mock.return_value = cfgactvshow
         active_zoneset_returned = self.get_active_zone_set()
         get_switch_info_mock.assert_called_once_with(cmd_list)
-        self.assertDictMatch(active_zoneset_returned, active_zoneset)
+        self.assertDictMatch(active_zoneset, active_zoneset_returned)
 
     @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_run_ssh')
     def test_get_active_zone_set_ssh_error(self, run_ssh_mock):

@@ -621,7 +621,7 @@ class VolumeImageActionsTest(test.TestCase):
                      'container_format': 'bare',
                      'disk_format': 'raw',
                      'image_name': 'image_name'}}
-        self.assertDictMatch(res_dict, expected)
+        self.assertDictMatch(expected, res_dict)
 
     def test_copy_volume_to_image_volumenotfound(self):
         def stub_volume_get_raise_exc(self, context, volume_id):
@@ -808,7 +808,7 @@ class VolumeImageActionsTest(test.TestCase):
                             }
                         }
 
-                        self.assertDictMatch(res_dict, expected_res)
+                        self.assertDictMatch(expected_res, res_dict)
 
     def test_copy_volume_to_image_without_glance_metadata(self):
         """Test create image from volume if volume is created without image.
@@ -865,7 +865,7 @@ class VolumeImageActionsTest(test.TestCase):
                             }
                         }
 
-                        self.assertDictMatch(res_dict, expected_res)
+                        self.assertDictMatch(expected_res, res_dict)
 
     def test_copy_volume_to_image_without_protected_prop(self):
         """Test protected property is not defined with the root image."""
@@ -919,7 +919,7 @@ class VolumeImageActionsTest(test.TestCase):
                             }
                         }
 
-                        self.assertDictMatch(res_dict, expected_res)
+                        self.assertDictMatch(expected_res, res_dict)
 
     def test_copy_volume_to_image_without_core_prop(self):
         """Test glance_core_properties defined in cinder.conf is empty."""
@@ -966,4 +966,4 @@ class VolumeImageActionsTest(test.TestCase):
                         }
                     }
 
-                    self.assertDictMatch(res_dict, expected_res)
+                    self.assertDictMatch(expected_res, res_dict)

@@ -130,7 +130,7 @@ class VolumeTypesApiTest(test.TestCase):
                                     description=None,
                                     is_public=None,
                                     id=42)
-        self.assertDictMatch(output['volume_type'], expected_volume_type)
+        self.assertDictMatch(expected_volume_type, output['volume_type'])
 
     def test_view_builder_list(self):
         view_builder = views_types.ViewBuilder()
@@ -157,8 +157,8 @@ class VolumeTypesApiTest(test.TestCase):
                                         id=42 + i,
                                         is_public=None,
                                         description=None)
-            self.assertDictMatch(output['volume_types'][i],
-                                 expected_volume_type)
+            self.assertDictMatch(expected_volume_type,
+                                 output['volume_types'][i])
 
 
 class VolumeTypesSerializerTest(test.TestCase):

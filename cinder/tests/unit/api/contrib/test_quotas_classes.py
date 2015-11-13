@@ -93,7 +93,7 @@ class QuotaClassSetsControllerTest(test.TestCase):
     def test_show(self):
         volume_types.create(self.ctxt, 'fake_type')
         result = self.controller.show(self.req, 'foo')
-        self.assertDictMatch(result, make_body())
+        self.assertDictMatch(make_body(), result)
 
     def test_show_not_authorized(self):
         self.req.environ['cinder.context'].is_admin = False
@@ -107,7 +107,7 @@ class QuotaClassSetsControllerTest(test.TestCase):
         body = make_body(gigabytes=2000, snapshots=15,
                          volumes=5, tenant_id=None)
         result = self.controller.update(self.req, 'foo', body)
-        self.assertDictMatch(result, body)
+        self.assertDictMatch(body, result)
 
     @mock.patch('cinder.api.openstack.wsgi.Controller.validate_string_length')
     @mock.patch('cinder.api.openstack.wsgi.Controller.validate_integer')
@@ -124,7 +124,7 @@ class QuotaClassSetsControllerTest(test.TestCase):
         volume_types.create(self.ctxt, 'fake_type')
         body = {'quota_class_set': {'bad': 'bad'}}
         result = self.controller.update(self.req, 'foo', body)
-        self.assertDictMatch(result, make_body(tenant_id=None))
+        self.assertDictMatch(make_body(tenant_id=None), result)
 
     def test_update_invalid_key_value(self):
         body = {'quota_class_set': {'gigabytes': "should_be_int"}}
@@ -147,10 +147,11 @@ class QuotaClassSetsControllerTest(test.TestCase):
         body = {'quota_class_set': {'gigabytes_fake_type_1': 1111,
                                     'volumes_fake_type_2': 2222}}
         result = self.controller.update(self.req, 'foo', body)
-        self.assertDictMatch(result, make_response_body(ctxt=self.ctxt,
-                                                        quota_class='foo',
-                                                        request_body=body,
-                                                        tenant_id=None))
+        self.assertDictMatch(make_response_body(ctxt=self.ctxt,
+                                                quota_class='foo',
+                                                request_body=body,
+                                                tenant_id=None),
+                             result)
 
 
 class QuotaClassesSerializerTest(test.TestCase):

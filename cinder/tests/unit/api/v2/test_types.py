@@ -173,7 +173,7 @@ class VolumeTypesApiTest(test.TestCase):
             is_public=True,
             id=42,
         )
-        self.assertDictMatch(output['volume_type'], expected_volume_type)
+        self.assertDictMatch(expected_volume_type, output['volume_type'])
 
     def test_view_builder_show_admin(self):
         view_builder = views_types.ViewBuilder()
@@ -238,8 +238,8 @@ class VolumeTypesApiTest(test.TestCase):
                 is_public=True,
                 id=42 + i
             )
-            self.assertDictMatch(output['volume_types'][i],
-                                 expected_volume_type)
+            self.assertDictMatch(expected_volume_type,
+                                 output['volume_types'][i])
 
     def test_view_builder_list_admin(self):
         view_builder = views_types.ViewBuilder()

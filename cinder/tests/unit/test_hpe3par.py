@@ -3599,7 +3599,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
                 expected +
                 self.standard_logout)
 
-            self.assertDictMatch(result, self.properties)
+            self.assertDictMatch(self.properties, result)
 
     @mock.patch('cinder.zonemanager.utils.create_lookup_service')
     def test_initialize_connection_with_lookup_single_nsp(self, mock_lookup):
@@ -3692,7 +3692,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
                 expected +
                 self.standard_logout)
 
-            self.assertDictMatch(result, expected_properties)
+            self.assertDictMatch(expected_properties, result)
 
     def test_initialize_connection_encrypted(self):
         # setup_mock_client drive with default configuration
@@ -3767,7 +3767,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
 
             expected_properties = self.properties
             expected_properties['data']['encrypted'] = True
-            self.assertDictMatch(result, expected_properties)
+            self.assertDictMatch(expected_properties, result)
 
     def test_terminate_connection(self):
         # setup_mock_client drive with default configuration
@@ -4527,7 +4527,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver, test.TestCase):
                 expected +
                 self.standard_logout)
 
-            self.assertDictMatch(result, self.properties)
+            self.assertDictMatch(self.properties, result)
 
     def test_initialize_connection_multipath(self):
         # setup_mock_client drive with default configuration
@@ -4699,7 +4699,7 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver, test.TestCase):
 
             expected_properties = self.properties
             expected_properties['data']['encrypted'] = True
-            self.assertDictMatch(result, self.properties)
+            self.assertDictMatch(self.properties, result)
 
     def test_get_volume_stats(self):
         # setup_mock_client drive with the configuration
