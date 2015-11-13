@@ -1,5 +1,4 @@
-#
-#    (c) Copyright 2013 Hewlett-Packard Development Company, L.P.
+#    (c) Copyright 2013-2015 Hewlett Packard Enterprise Development LP
 #    All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -25,28 +24,28 @@ from oslo_utils import units
 from cinder import context
 from cinder import exception
 from cinder import test
-from cinder.tests.unit import fake_hp_3par_client as hp3parclient
-from cinder.volume.drivers.san.hp import hp_3par_common as hpcommon
-from cinder.volume.drivers.san.hp import hp_3par_fc as hpfcdriver
-from cinder.volume.drivers.san.hp import hp_3par_iscsi as hpdriver
+from cinder.tests.unit import fake_hpe_3par_client as hpe3parclient
+from cinder.volume.drivers.hpe import hpe_3par_common as hpecommon
+from cinder.volume.drivers.hpe import hpe_3par_fc as hpefcdriver
+from cinder.volume.drivers.hpe import hpe_3par_iscsi as hpedriver
 from cinder.volume import qos_specs
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
 
-hpexceptions = hp3parclient.hpexceptions
+hpeexceptions = hpe3parclient.hpeexceptions
 
 CONF = cfg.CONF
 
-HP3PAR_CPG = 'OpenStackCPG'
-HP3PAR_CPG2 = 'fakepool'
-HP3PAR_CPG_QOS = 'qospool'
-HP3PAR_CPG_SNAP = 'OpenStackCPGSnap'
-HP3PAR_USER_NAME = 'testUser'
-HP3PAR_USER_PASS = 'testPassword'
-HP3PAR_SAN_IP = '2.2.2.2'
-HP3PAR_SAN_SSH_PORT = 999
-HP3PAR_SAN_SSH_CON_TIMEOUT = 44
-HP3PAR_SAN_SSH_PRIVATE = 'foobar'
+HPE3PAR_CPG = 'OpenStackCPG'
+HPE3PAR_CPG2 = 'fakepool'
+HPE3PAR_CPG_QOS = 'qospool'
+HPE3PAR_CPG_SNAP = 'OpenStackCPGSnap'
+HPE3PAR_USER_NAME = 'testUser'
+HPE3PAR_USER_PASS = 'testPassword'
+HPE3PAR_SAN_IP = '2.2.2.2'
+HPE3PAR_SAN_SSH_PORT = 999
+HPE3PAR_SAN_SSH_CON_TIMEOUT = 44
+HPE3PAR_SAN_SSH_PRIVATE = 'foobar'
 GOODNESS_FUNCTION = \
     "stats.capacity_utilization < 0.6? 100:25"
 FILTER_FUNCTION = \
@@ -72,7 +71,7 @@ QUEUE_LENGTH = 'queue_length'
 AVG_BUSY_PERC = 'avg_busy_perc'
 
 
-class HP3PARBaseDriver(object):
+class HPE3PARBaseDriver(object):
 
     class CommentMatcher(object):
         def __init__(self, f, expect):
@@ -100,7 +99,7 @@ class HP3PARBaseDriver(object):
     CGSNAPSHOT_BASE_NAME = 'oss-6Rxe1druToSHJByeMeeh8g'
     # fake host on the 3par
     FAKE_HOST = 'fakehost'
-    FAKE_CINDER_HOST = 'fakehost@foo#' + HP3PAR_CPG
+    FAKE_CINDER_HOST = 'fakehost@foo#' + HPE3PAR_CPG
     USER_ID = '2689d9a913974c008b1d859013f23607'
     PROJECT_ID = 'fac88235b9d64685a3530f73e490348f'
     VOLUME_ID_SNAP = '761fc5e5-5191-4ec7-aeba-33e36de44156'
@@ -158,7 +157,7 @@ class HP3PARBaseDriver(object):
                    'id': VOLUME_ID,
                    'display_name': 'Foo Volume',
                    'size': 2,
-                   'host': volume_utils.append_host(FAKE_HOST, HP3PAR_CPG2),
+                   'host': volume_utils.append_host(FAKE_HOST, HPE3PAR_CPG2),
                    'volume_type': None,
                    'volume_type_id': None}
 
@@ -211,7 +210,7 @@ class HP3PARBaseDriver(object):
     volume_type = {'name': 'gold',
                    'deleted': False,
                    'updated_at': None,
-                   'extra_specs': {'cpg': HP3PAR_CPG2,
+                   'extra_specs': {'cpg': HPE3PAR_CPG2,
                                    'qos:maxIOPS': '1000',
                                    'qos:maxBWS': '50',
                                    'qos:minIOPS': '100',
@@ -224,7 +223,7 @@ class HP3PARBaseDriver(object):
     volume_type_dedup = {'name': 'dedup',
                          'deleted': False,
                          'updated_at': None,
-                         'extra_specs': {'cpg': HP3PAR_CPG2,
+                         'extra_specs': {'cpg': HPE3PAR_CPG2,
                                          'provisioning': 'dedup'},
                          'deleted_at': None,
                          'id': VOLUME_TYPE_ID_DEDUP}
@@ -232,8 +231,8 @@ class HP3PARBaseDriver(object):
     volume_type_flash_cache = {'name': 'flash-cache-on',
                                'deleted': False,
                                'updated_at': None,
-                               'extra_specs': {'cpg': HP3PAR_CPG2,
-                                               'hp3par:flash_cache': 'true'},
+                               'extra_specs': {'cpg': HPE3PAR_CPG2,
+                                               'hpe3par:flash_cache': 'true'},
                                'deleted_at': None,
                                'id': VOLUME_TYPE_ID_FLASH_CACHE}
 
@@ -261,7 +260,7 @@ class HP3PARBaseDriver(object):
          'degradedStates': [],
          'failedStates': [],
          'id': 5,
-         'name': HP3PAR_CPG,
+         'name': HPE3PAR_CPG,
          'numFPVVs': 2,
          'numTPVVs': 0,
          'numTDVVs': 1,
@@ -299,15 +298,15 @@ class HP3PARBaseDriver(object):
         u'host': u'mark-stack1@3parfc',
         u'capabilities': {
             'QoS_support': True,
-            u'location_info': u'HP3PARDriver:1234567:MARK_TEST_CPG',
+            u'location_info': u'HPE3PARDriver:1234567:MARK_TEST_CPG',
             u'timestamp': u'2014-06-04T19:03:32.485540',
             u'allocated_capacity_gb': 0,
             u'volume_backend_name': u'3parfc',
             u'free_capacity_gb': u'infinite',
-            u'driver_version': u'2.0.3',
+            u'driver_version': u'3.0.0',
             u'total_capacity_gb': u'infinite',
             u'reserved_percentage': 0,
-            u'vendor_name': u'Hewlett-Packard',
+            u'vendor_name': u'Hewlett Packard Enterprise',
             u'storage_protocol': u'FC'
         }
     }
@@ -329,8 +328,8 @@ class HP3PARBaseDriver(object):
         'name': 'red',
         'id': RETYPE_VOLUME_TYPE_ID,
         'extra_specs': {
-            'cpg': HP3PAR_CPG,
-            'snap_cpg': HP3PAR_CPG_SNAP,
+            'cpg': HPE3PAR_CPG,
+            'snap_cpg': HPE3PAR_CPG_SNAP,
             'vvs': RETYPE_VVS_NAME,
             'qos': RETYPE_QOS_SPECS,
             'tpvv': True,
@@ -343,8 +342,8 @@ class HP3PARBaseDriver(object):
         'name': 'white',
         'id': RETYPE_VOLUME_TYPE_ID,
         'extra_specs': {
-            'cpg': HP3PAR_CPG,
-            'snap_cpg': HP3PAR_CPG_SNAP,
+            'cpg': HPE3PAR_CPG,
+            'snap_cpg': HPE3PAR_CPG_SNAP,
             'vvs': VVS_NAME,
             'qos': QOS,
             'tpvv': True,
@@ -357,8 +356,8 @@ class HP3PARBaseDriver(object):
         'name': 'blue',
         'id': RETYPE_VOLUME_TYPE_ID,
         'extra_specs': {
-            'cpg': HP3PAR_CPG_QOS,
-            'snap_cpg': HP3PAR_CPG_SNAP,
+            'cpg': HPE3PAR_CPG_QOS,
+            'snap_cpg': HPE3PAR_CPG_SNAP,
             'vvs': RETYPE_VVS_NAME,
             'qos': RETYPE_QOS_SPECS,
             'tpvv': True,
@@ -371,8 +370,8 @@ class HP3PARBaseDriver(object):
         'name': 'purple',
         'id': RETYPE_VOLUME_TYPE_ID,
         'extra_specs': {
-            'cpg': HP3PAR_CPG_QOS,
-            'snap_cpg': HP3PAR_CPG_SNAP,
+            'cpg': HPE3PAR_CPG_QOS,
+            'snap_cpg': HPE3PAR_CPG_SNAP,
             'vvs': RETYPE_VVS_NAME,
             'qos': RETYPE_QOS_SPECS,
             'tpvv': False,
@@ -384,7 +383,7 @@ class HP3PARBaseDriver(object):
         'name': 'bad_persona',
         'id': 'any_id',
         'extra_specs': {
-            'hp3par:persona': '99 - invalid'
+            'hpe3par:persona': '99 - invalid'
         }
     }
 
@@ -394,7 +393,7 @@ class HP3PARBaseDriver(object):
         'extra_specs': {
             'cpg': 'bogus',
             'snap_cpg': 'bogus',
-            'hp3par:persona': '2 - Generic-ALUA'
+            'hpe3par:persona': '2 - Generic-ALUA'
         }
     }
 
@@ -433,8 +432,8 @@ class HP3PARBaseDriver(object):
         'display_name': 'Retype Vol1',
         'size': 1,
         'host': RETYPE_HOST,
-        'userCPG': HP3PAR_CPG,
-        'snapCPG': HP3PAR_CPG_SNAP,
+        'userCPG': HPE3PAR_CPG,
+        'snapCPG': HPE3PAR_CPG_SNAP,
         'provisioningType': 1,
         'comment': RETYPE_TEST_COMMENT
     }
@@ -447,8 +446,8 @@ class HP3PARBaseDriver(object):
         'display_name': 'Retype Vol2',
         'size': 1,
         'host': RETYPE_HOST,
-        'userCPG': HP3PAR_CPG,
-        'snapCPG': HP3PAR_CPG_SNAP,
+        'userCPG': HPE3PAR_CPG,
+        'snapCPG': HPE3PAR_CPG_SNAP,
         'provisioningType': 3,
         'comment': RETYPE_TEST_COMMENT
     }
@@ -497,47 +496,47 @@ class HP3PARBaseDriver(object):
     wsapi_version_latest = wsapi_version_for_flash_cache
 
     standard_login = [
-        mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+        mock.call.login(HPE3PAR_USER_NAME, HPE3PAR_USER_PASS),
         mock.call.setSSHOptions(
-            HP3PAR_SAN_IP,
-            HP3PAR_USER_NAME,
-            HP3PAR_USER_PASS,
+            HPE3PAR_SAN_IP,
+            HPE3PAR_USER_NAME,
+            HPE3PAR_USER_PASS,
             missing_key_policy='AutoAddPolicy',
-            privatekey=HP3PAR_SAN_SSH_PRIVATE,
+            privatekey=HPE3PAR_SAN_SSH_PRIVATE,
             known_hosts_file=mock.ANY,
-            port=HP3PAR_SAN_SSH_PORT,
-            conn_timeout=HP3PAR_SAN_SSH_CON_TIMEOUT)]
+            port=HPE3PAR_SAN_SSH_PORT,
+            conn_timeout=HPE3PAR_SAN_SSH_CON_TIMEOUT)]
 
     standard_logout = [
         mock.call.logout()]
 
     def setup_configuration(self):
         configuration = mock.Mock()
-        configuration.hp3par_debug = False
-        configuration.hp3par_username = HP3PAR_USER_NAME
-        configuration.hp3par_password = HP3PAR_USER_PASS
-        configuration.hp3par_api_url = 'https://1.1.1.1/api/v1'
-        configuration.hp3par_cpg = [HP3PAR_CPG, HP3PAR_CPG2]
-        configuration.hp3par_cpg_snap = HP3PAR_CPG_SNAP
+        configuration.hpe3par_debug = False
+        configuration.hpe3par_username = HPE3PAR_USER_NAME
+        configuration.hpe3par_password = HPE3PAR_USER_PASS
+        configuration.hpe3par_api_url = 'https://1.1.1.1/api/v1'
+        configuration.hpe3par_cpg = [HPE3PAR_CPG, HPE3PAR_CPG2]
+        configuration.hpe3par_cpg_snap = HPE3PAR_CPG_SNAP
         configuration.iscsi_ip_address = '1.1.1.2'
         configuration.iscsi_port = '1234'
-        configuration.san_ip = HP3PAR_SAN_IP
-        configuration.san_login = HP3PAR_USER_NAME
-        configuration.san_password = HP3PAR_USER_PASS
-        configuration.san_ssh_port = HP3PAR_SAN_SSH_PORT
-        configuration.ssh_conn_timeout = HP3PAR_SAN_SSH_CON_TIMEOUT
-        configuration.san_private_key = HP3PAR_SAN_SSH_PRIVATE
-        configuration.hp3par_snapshot_expiration = ""
-        configuration.hp3par_snapshot_retention = ""
-        configuration.hp3par_iscsi_ips = []
-        configuration.hp3par_iscsi_chap_enabled = False
+        configuration.san_ip = HPE3PAR_SAN_IP
+        configuration.san_login = HPE3PAR_USER_NAME
+        configuration.san_password = HPE3PAR_USER_PASS
+        configuration.san_ssh_port = HPE3PAR_SAN_SSH_PORT
+        configuration.ssh_conn_timeout = HPE3PAR_SAN_SSH_CON_TIMEOUT
+        configuration.san_private_key = HPE3PAR_SAN_SSH_PRIVATE
+        configuration.hpe3par_snapshot_expiration = ""
+        configuration.hpe3par_snapshot_retention = ""
+        configuration.hpe3par_iscsi_ips = []
+        configuration.hpe3par_iscsi_chap_enabled = False
         configuration.goodness_function = GOODNESS_FUNCTION
         configuration.filter_function = FILTER_FUNCTION
         configuration.image_volume_cache_enabled = False
         return configuration
 
     @mock.patch(
-        'hp3parclient.client.HP3ParClient',
+        'hpe3parclient.client.HPE3ParClient',
         spec=True,
     )
     def setup_mock_client(self, _m_client, driver, conf=None, m_conf=None):
@@ -557,13 +556,12 @@ class HP3PARBaseDriver(object):
         self.driver.do_setup(None)
         return _m_client
 
-    @mock.patch('hp3parclient.version', "3.0.9")
+    @mock.patch('hpe3parclient.version', "3.0.9")
     def test_unsupported_client_version(self):
 
         self.assertRaises(exception.InvalidInput,
                           self.setup_driver)
 
-    @mock.patch('hp3parclient.version', "3.1.2")
     def test_ssh_options(self):
 
         expected_hosts_key_file = "test_hosts_key_file"
@@ -573,29 +571,29 @@ class HP3PARBaseDriver(object):
         CONF.strict_ssh_host_key_policy = False
 
         self.ctxt = context.get_admin_context()
-        mock_client = self.setup_mock_client(driver=hpfcdriver.HP3PARFCDriver)
+        mock_client = self.setup_mock_client(
+            driver=hpefcdriver.HPE3PARFCDriver)
 
         CONF.ssh_hosts_key_file = orig_ssh_hosts_key_file
         CONF.strict_ssh_host_key_policy = orig_strict_ssh_host_key_policy
 
         expected = [
-            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.login(HPE3PAR_USER_NAME, HPE3PAR_USER_PASS),
             mock.call.setSSHOptions(
-                HP3PAR_SAN_IP,
-                HP3PAR_USER_NAME,
-                HP3PAR_USER_PASS,
-                privatekey=HP3PAR_SAN_SSH_PRIVATE,
+                HPE3PAR_SAN_IP,
+                HPE3PAR_USER_NAME,
+                HPE3PAR_USER_PASS,
+                privatekey=HPE3PAR_SAN_SSH_PRIVATE,
                 known_hosts_file=expected_hosts_key_file,
                 missing_key_policy="AutoAddPolicy",
-                port=HP3PAR_SAN_SSH_PORT,
-                conn_timeout=HP3PAR_SAN_SSH_CON_TIMEOUT),
-            mock.call.getCPG(HP3PAR_CPG),
-            mock.call.getCPG(HP3PAR_CPG2)]
+                port=HPE3PAR_SAN_SSH_PORT,
+                conn_timeout=HPE3PAR_SAN_SSH_CON_TIMEOUT),
+            mock.call.getCPG(HPE3PAR_CPG),
+            mock.call.getCPG(HPE3PAR_CPG2)]
         mock_client.assert_has_calls(
             expected +
             self.standard_logout)
 
-    @mock.patch('hp3parclient.version', "3.1.2")
     def test_ssh_options_strict(self):
 
         expected_hosts_key_file = "test_hosts_key_file"
@@ -605,24 +603,25 @@ class HP3PARBaseDriver(object):
         CONF.strict_ssh_host_key_policy = True
 
         self.ctxt = context.get_admin_context()
-        mock_client = self.setup_mock_client(driver=hpfcdriver.HP3PARFCDriver)
+        mock_client = self.setup_mock_client(
+            driver=hpefcdriver.HPE3PARFCDriver)
 
         CONF.ssh_hosts_key_file = orig_ssh_hosts_key_file
         CONF.strict_ssh_host_key_policy = orig_strict_ssh_host_key_policy
 
         expected = [
-            mock.call.login(HP3PAR_USER_NAME, HP3PAR_USER_PASS),
+            mock.call.login(HPE3PAR_USER_NAME, HPE3PAR_USER_PASS),
             mock.call.setSSHOptions(
-                HP3PAR_SAN_IP,
-                HP3PAR_USER_NAME,
-                HP3PAR_USER_PASS,
-                privatekey=HP3PAR_SAN_SSH_PRIVATE,
+                HPE3PAR_SAN_IP,
+                HPE3PAR_USER_NAME,
+                HPE3PAR_USER_PASS,
+                privatekey=HPE3PAR_SAN_SSH_PRIVATE,
                 known_hosts_file=expected_hosts_key_file,
                 missing_key_policy="RejectPolicy",
-                port=HP3PAR_SAN_SSH_PORT,
-                conn_timeout=HP3PAR_SAN_SSH_CON_TIMEOUT),
-            mock.call.getCPG(HP3PAR_CPG),
-            mock.call.getCPG(HP3PAR_CPG2)]
+                port=HPE3PAR_SAN_SSH_PORT,
+                conn_timeout=HPE3PAR_SAN_SSH_CON_TIMEOUT),
+            mock.call.getCPG(HPE3PAR_CPG),
+            mock.call.getCPG(HPE3PAR_CPG2)]
         mock_client.assert_has_calls(expected + self.standard_logout)
 
     def test_task_waiter(self):
@@ -638,7 +637,7 @@ class HP3PARBaseDriver(object):
         task_id = 1234
         interval = .001
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -657,7 +656,7 @@ class HP3PARBaseDriver(object):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             self.driver.create_volume(self.volume)
@@ -668,12 +667,12 @@ class HP3PARBaseDriver(object):
             expected = [
                 mock.call.createVolume(
                     self.VOLUME_3PAR_NAME,
-                    HP3PAR_CPG,
+                    HPE3PAR_CPG,
                     2048, {
                         'comment': comment,
                         'tpvv': True,
                         'tdvv': False,
-                        'snapCPG': HP3PAR_CPG_SNAP})]
+                        'snapCPG': HPE3PAR_CPG_SNAP})]
 
             mock_client.assert_has_calls(
                 self.standard_login +
@@ -685,7 +684,7 @@ class HP3PARBaseDriver(object):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
 
@@ -697,12 +696,12 @@ class HP3PARBaseDriver(object):
             expected = [
                 mock.call.createVolume(
                     self.VOLUME_3PAR_NAME,
-                    HP3PAR_CPG2,
+                    HPE3PAR_CPG2,
                     2048, {
                         'comment': comment,
                         'tpvv': True,
                         'tdvv': False,
-                        'snapCPG': HP3PAR_CPG_SNAP})]
+                        'snapCPG': HPE3PAR_CPG_SNAP})]
 
             mock_client.assert_has_calls(
                 self.standard_login +
@@ -717,14 +716,14 @@ class HP3PARBaseDriver(object):
         _mock_volume_types.return_value = {
             'name': 'dedup',
             'extra_specs': {
-                'cpg': HP3PAR_CPG_QOS,
-                'snap_cpg': HP3PAR_CPG_SNAP,
+                'cpg': HPE3PAR_CPG_QOS,
+                'snap_cpg': HPE3PAR_CPG_SNAP,
                 'vvs_name': self.VVS_NAME,
                 'qos': self.QOS,
                 'provisioning': 'dedup',
                 'volume_type': self.volume_type_dedup}}
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -742,17 +741,17 @@ class HP3PARBaseDriver(object):
         _mock_volume_types.return_value = {
             'name': 'gold',
             'extra_specs': {
-                'cpg': HP3PAR_CPG,
+                'cpg': HPE3PAR_CPG,
                 'snap_cpg': expected_type_snap_cpg,
                 'volume_type': self.volume_type}}
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
 
             result = common.get_volume_settings_from_type_id(
-                "mock", self.driver.configuration.hp3par_cpg)
+                "mock", self.driver.configuration.hpe3par_cpg)
 
             self.assertEqual(expected_type_snap_cpg, result['snap_cpg'])
 
@@ -767,15 +766,15 @@ class HP3PARBaseDriver(object):
                 'cpg': expected_cpg,
                 'volume_type': self.volume_type}}
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
 
             result = common.get_volume_settings_from_type_id(
-                "mock", self.driver.configuration.hp3par_cpg)
+                "mock", self.driver.configuration.hpe3par_cpg)
 
-            self.assertEqual(self.driver.configuration.hp3par_cpg_snap,
+            self.assertEqual(self.driver.configuration.hpe3par_cpg_snap,
                              result['snap_cpg'])
 
     @mock.patch.object(volume_types, 'get_volume_type')
@@ -787,15 +786,15 @@ class HP3PARBaseDriver(object):
                 'volume_type': self.volume_type}}
 
         conf = self.setup_configuration()
-        expected_snap_cpg = conf.hp3par_cpg_snap
+        expected_snap_cpg = conf.hpe3par_cpg_snap
         mock_client = self.setup_driver(config=conf)
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
 
             result = common.get_volume_settings_from_type_id(
-                "mock", self.driver.configuration.hp3par_cpg)
+                "mock", self.driver.configuration.hpe3par_cpg)
 
         self.assertEqual(expected_snap_cpg, result['snap_cpg'])
 
@@ -808,16 +807,16 @@ class HP3PARBaseDriver(object):
                 'volume_type': self.volume_type}}
 
         conf = self.setup_configuration()
-        conf.hp3par_cpg_snap = None
-        expected_cpg = conf.hp3par_cpg
+        conf.hpe3par_cpg_snap = None
+        expected_cpg = conf.hpe3par_cpg
         mock_client = self.setup_driver(config=conf)
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
 
             result = common.get_volume_settings_from_type_id(
-                "mock", self.driver.configuration.hp3par_cpg)
+                "mock", self.driver.configuration.hpe3par_cpg)
 
             self.assertEqual(expected_cpg, result['snap_cpg'])
 
@@ -830,15 +829,15 @@ class HP3PARBaseDriver(object):
         _mock_volume_types.return_value = {
             'name': 'gold',
             'extra_specs': {
-                'cpg': HP3PAR_CPG_QOS,
-                'snap_cpg': HP3PAR_CPG_SNAP,
+                'cpg': HPE3PAR_CPG_QOS,
+                'snap_cpg': HPE3PAR_CPG_SNAP,
                 'vvs_name': self.VVS_NAME,
                 'qos': self.QOS,
                 'tpvv': True,
                 'tdvv': False,
                 'volume_type': self.volume_type}}
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
 
@@ -850,15 +849,15 @@ class HP3PARBaseDriver(object):
                 '15-48a3-8dfc-35cdfcdc15a7", "qos": {}, "type": "OpenStack"}')
 
             expected = [
-                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.createVolume(
                     self.VOLUME_3PAR_NAME,
-                    HP3PAR_CPG,
+                    HPE3PAR_CPG,
                     2048, {
                         'comment': comment,
                         'tpvv': True,
                         'tdvv': False,
-                        'snapCPG': HP3PAR_CPG_SNAP})]
+                        'snapCPG': HPE3PAR_CPG_SNAP})]
 
             mock_client.assert_has_calls(
                 self.standard_login +
@@ -875,14 +874,14 @@ class HP3PARBaseDriver(object):
         _mock_volume_types.return_value = {
             'name': 'dedup',
             'extra_specs': {
-                'cpg': HP3PAR_CPG_QOS,
-                'snap_cpg': HP3PAR_CPG_SNAP,
+                'cpg': HPE3PAR_CPG_QOS,
+                'snap_cpg': HPE3PAR_CPG_SNAP,
                 'vvs_name': self.VVS_NAME,
                 'qos': self.QOS,
                 'provisioning': 'dedup',
                 'volume_type': self.volume_type_dedup}}
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
 
@@ -895,15 +894,15 @@ class HP3PARBaseDriver(object):
                 ', "qos": {}, "type": "OpenStack"}')
 
             expected = [
-                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.createVolume(
                     self.VOLUME_3PAR_NAME,
-                    HP3PAR_CPG,
+                    HPE3PAR_CPG,
                     2048, {
                         'comment': comment,
                         'tpvv': False,
                         'tdvv': True,
-                        'snapCPG': HP3PAR_CPG_SNAP})]
+                        'snapCPG': HPE3PAR_CPG_SNAP})]
             mock_client.assert_has_calls(
                 self.standard_login +
                 expected +
@@ -919,16 +918,16 @@ class HP3PARBaseDriver(object):
         _mock_volume_types.return_value = {
             'name': 'flash-cache-on',
             'extra_specs': {
-                'cpg': HP3PAR_CPG2,
-                'snap_cpg': HP3PAR_CPG_SNAP,
+                'cpg': HPE3PAR_CPG2,
+                'snap_cpg': HPE3PAR_CPG_SNAP,
                 'vvs_name': self.VVS_NAME,
                 'qos': self.QOS,
                 'tpvv': True,
                 'tdvv': False,
-                'hp3par:flash_cache': 'true',
+                'hpe3par:flash_cache': 'true',
                 'volume_type': self.volume_type_flash_cache}}
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             mock_client.getCPG.return_value = {'domain': None}
@@ -945,16 +944,16 @@ class HP3PARBaseDriver(object):
                 '"qos": {}, "type": "OpenStack"}')
 
             expected = [
-                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.createVolume(
                     self.VOLUME_3PAR_NAME,
-                    HP3PAR_CPG,
+                    HPE3PAR_CPG,
                     2048, {
                         'comment': comment,
                         'tpvv': True,
                         'tdvv': False,
-                        'snapCPG': HP3PAR_CPG_SNAP}),
-                mock.call.getCPG(HP3PAR_CPG),
+                        'snapCPG': HPE3PAR_CPG_SNAP}),
+                mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.createVolumeSet('vvs-0DM4qZEVSKON-DXN-NwVpw', None),
                 mock.call.createQoSRules(
                     'vvs-0DM4qZEVSKON-DXN-NwVpw',
@@ -980,16 +979,16 @@ class HP3PARBaseDriver(object):
         _mock_volume_types.return_value = {
             'name': 'flash-cache-on',
             'extra_specs': {
-                'cpg': HP3PAR_CPG2,
-                'snap_cpg': HP3PAR_CPG_SNAP,
+                'cpg': HPE3PAR_CPG2,
+                'snap_cpg': HPE3PAR_CPG_SNAP,
                 'vvs_name': self.VVS_NAME,
                 'qos': self.QOS,
                 'tpvv': True,
                 'tdvv': False,
-                'hp3par:flash_cache': 'true',
+                'hpe3par:flash_cache': 'true',
                 'volume_type': self.volume_type_flash_cache}}
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -1003,7 +1002,7 @@ class HP3PARBaseDriver(object):
         _mock_volume_types.return_value = self.RETYPE_VOLUME_TYPE_1
         mock_client = self.setup_driver(mock_conf=self.RETYPE_CONF)
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             self.assertRaises(exception.InvalidHost,
@@ -1024,12 +1023,12 @@ class HP3PARBaseDriver(object):
     def test_retype_volume_not_found(self, _mock_volume_types):
         _mock_volume_types.return_value = self.RETYPE_VOLUME_TYPE_1
         mock_client = self.setup_driver(mock_conf=self.RETYPE_CONF)
-        mock_client.getVolume.side_effect = hpexceptions.HTTPNotFound
+        mock_client.getVolume.side_effect = hpeexceptions.HTTPNotFound
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
-            self.assertRaises(hpexceptions.HTTPNotFound,
+            self.assertRaises(hpeexceptions.HTTPNotFound,
                               self.driver.retype,
                               self.ctxt,
                               self.RETYPE_VOLUME_INFO_0,
@@ -1052,12 +1051,12 @@ class HP3PARBaseDriver(object):
 
         # Fail the QOS setting to test the revert of the snap CPG rename.
         mock_client.addVolumeToVolumeSet.side_effect = \
-            hpexceptions.HTTPForbidden
+            hpeexceptions.HTTPForbidden
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
-            self.assertRaises(hpexceptions.HTTPForbidden,
+            self.assertRaises(hpeexceptions.HTTPForbidden,
                               self.driver.retype,
                               self.ctxt,
                               {'id': self.VOLUME_ID},
@@ -1090,12 +1089,12 @@ class HP3PARBaseDriver(object):
         mock_client.getVolume.return_value = self.RETYPE_VOLUME_INFO_1
 
         # Fail the QOS setting to test the revert of the snap CPG rename.
-        mock_client.deleteVolumeSet.side_effect = hpexceptions.HTTPForbidden
+        mock_client.deleteVolumeSet.side_effect = hpeexceptions.HTTPForbidden
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
-            self.assertRaises(hpexceptions.HTTPForbidden,
+            self.assertRaises(hpeexceptions.HTTPForbidden,
                               self.driver.retype,
                               self.ctxt,
                               {'id': self.VOLUME_ID},
@@ -1119,7 +1118,7 @@ class HP3PARBaseDriver(object):
         mock_client.getStorageSystemInfo.return_value = {
             'serialNumber': 'XXXXXXX'}
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             self.assertRaises(exception.InvalidHost,
@@ -1149,7 +1148,7 @@ class HP3PARBaseDriver(object):
             {'domain': 'domain2'},
         ]
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             self.assertRaises(exception.Invalid3PARDomain,
@@ -1183,7 +1182,7 @@ class HP3PARBaseDriver(object):
             {'domain': 'snap_cpg_domain_1'},
         ]
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             self.assertRaises(exception.Invalid3PARDomain,
@@ -1213,7 +1212,7 @@ class HP3PARBaseDriver(object):
         _mock_volume_types.return_value = self.RETYPE_VOLUME_TYPE_BAD_PERSONA
         mock_client = self.setup_driver(mock_conf=self.RETYPE_CONF)
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             self.assertRaises(exception.InvalidInput,
@@ -1249,9 +1248,9 @@ class HP3PARBaseDriver(object):
 
         type_ref = volume_types.get_volume_type(self.ctxt, type_ref['id'])
 
-        volume = {'id': HP3PARBaseDriver.CLONE_ID}
+        volume = {'id': HPE3PARBaseDriver.CLONE_ID}
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
 
@@ -1283,14 +1282,14 @@ class HP3PARBaseDriver(object):
         cpg = "any_cpg"
         snap_cpg = "any_cpg"
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
             common._retype(self.volume,
-                           HP3PARBaseDriver.VOLUME_3PAR_NAME,
+                           HPE3PARBaseDriver.VOLUME_3PAR_NAME,
                            "old_type", "old_type_id",
-                           HP3PARBaseDriver.RETYPE_HOST,
+                           HPE3PARBaseDriver.RETYPE_HOST,
                            None, cpg, cpg, snap_cpg, snap_cpg,
                            True, False, False, True, None, None,
                            self.QOS_SPECS, self.RETYPE_QOS_SPECS,
@@ -1318,14 +1317,14 @@ class HP3PARBaseDriver(object):
 
         cpg = "any_cpg"
         snap_cpg = "any_cpg"
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
             common._retype(self.volume,
-                           HP3PARBaseDriver.VOLUME_3PAR_NAME,
+                           HPE3PARBaseDriver.VOLUME_3PAR_NAME,
                            "old_type", "old_type_id",
-                           HP3PARBaseDriver.RETYPE_HOST,
+                           HPE3PARBaseDriver.RETYPE_HOST,
                            None, cpg, cpg, snap_cpg, snap_cpg,
                            True, False, False, True, None, None,
                            self.QOS_SPECS, self.RETYPE_QOS_SPECS,
@@ -1345,7 +1344,7 @@ class HP3PARBaseDriver(object):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             self.driver.delete_volume(self.volume)
@@ -1362,18 +1361,18 @@ class HP3PARBaseDriver(object):
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
         mock_client.copyVolume.return_value = {'taskid': 1}
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
 
-            volume = {'name': HP3PARBaseDriver.VOLUME_NAME,
-                      'id': HP3PARBaseDriver.CLONE_ID,
+            volume = {'name': HPE3PARBaseDriver.VOLUME_NAME,
+                      'id': HPE3PARBaseDriver.CLONE_ID,
                       'display_name': 'Foo Volume',
                       'size': 2,
                       'host': volume_utils.append_host(self.FAKE_HOST,
-                                                       HP3PAR_CPG2),
-                      'source_volid': HP3PARBaseDriver.VOLUME_ID}
-            src_vref = {'id': HP3PARBaseDriver.VOLUME_ID}
+                                                       HPE3PAR_CPG2),
+                      'source_volid': HPE3PARBaseDriver.VOLUME_ID}
+            src_vref = {'id': HPE3PARBaseDriver.VOLUME_ID}
             model_update = self.driver.create_cloned_volume(volume, src_vref)
             self.assertIsNone(model_update)
 
@@ -1381,7 +1380,7 @@ class HP3PARBaseDriver(object):
                 mock.call.copyVolume(
                     self.VOLUME_3PAR_NAME,
                     'osv-0DM4qZEVSKON-AAAAAAAAA',
-                    HP3PAR_CPG2,
+                    HPE3PAR_CPG2,
                     {'snapCPG': 'OpenStackCPGSnap', 'tpvv': True,
                      'tdvv': False, 'online': True})]
 
@@ -1395,19 +1394,19 @@ class HP3PARBaseDriver(object):
         _mock_volume_types.return_value = self.RETYPE_VOLUME_TYPE_2
         mock_client = self.setup_driver()
         mock_client.copyVolume.return_value = {'taskid': 1}
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
 
-            src_vref = {'id': HP3PARBaseDriver.CLONE_ID}
+            src_vref = {'id': HPE3PARBaseDriver.CLONE_ID}
             volume = self.volume_qos.copy()
             host = "TEST_HOST"
             pool = "TEST_POOL"
             volume_host = volume_utils.append_host(host, pool)
             expected_cpg = pool
-            volume['id'] = HP3PARBaseDriver.VOLUME_ID
+            volume['id'] = HPE3PARBaseDriver.VOLUME_ID
             volume['host'] = volume_host
-            volume['source_volid'] = HP3PARBaseDriver.CLONE_ID
+            volume['source_volid'] = HPE3PARBaseDriver.CLONE_ID
             model_update = self.driver.create_cloned_volume(volume, src_vref)
             self.assertEqual(None, model_update)
 
@@ -1443,22 +1442,22 @@ class HP3PARBaseDriver(object):
         mock_client.modifyVolume.return_value = ("anyResponse", {'taskid': 1})
         mock_client.getTask.return_value = self.STATUS_DONE
 
-        volume = {'name': HP3PARBaseDriver.VOLUME_NAME,
-                  'id': HP3PARBaseDriver.CLONE_ID,
+        volume = {'name': HPE3PARBaseDriver.VOLUME_NAME,
+                  'id': HPE3PARBaseDriver.CLONE_ID,
                   'display_name': 'Foo Volume',
                   'volume_type_id': None,
                   'size': 2,
                   'status': 'available',
-                  'host': HP3PARBaseDriver.FAKE_HOST,
-                  'source_volid': HP3PARBaseDriver.VOLUME_ID}
-        with mock.patch.object(hpcommon.HP3PARCommon,
+                  'host': HPE3PARBaseDriver.FAKE_HOST,
+                  'source_volid': HPE3PARBaseDriver.VOLUME_ID}
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
 
             volume_name_3par = common._encode_name(volume['id'])
 
-            loc_info = 'HP3PARDriver:1234:CPG-FC1'
+            loc_info = 'HPE3PARDriver:1234:CPG-FC1'
             host = {'host': 'stack@3parfc1#CPG-FC1',
                     'capabilities': {'location_info': loc_info}}
 
@@ -1473,7 +1472,7 @@ class HP3PARBaseDriver(object):
                 mock.call.modifyVolume(
                     osv_matcher,
                     {'comment': '{"qos": {}, "display_name": "Foo Volume"}',
-                     'snapCPG': HP3PAR_CPG_SNAP}),
+                     'snapCPG': HPE3PAR_CPG_SNAP}),
                 mock.call.modifyVolume(osv_matcher,
                                        {'action': 6,
                                         'userCPG': 'CPG-FC1',
@@ -1505,23 +1504,23 @@ class HP3PARBaseDriver(object):
         mock_client.getTask.return_value = self.STATUS_DONE
 
         display_name = 'Foo Volume'
-        volume = {'name': HP3PARBaseDriver.VOLUME_NAME,
-                  'id': HP3PARBaseDriver.CLONE_ID,
+        volume = {'name': HPE3PARBaseDriver.VOLUME_NAME,
+                  'id': HPE3PARBaseDriver.CLONE_ID,
                   'display_name': display_name,
                   "volume_type_id": self.RETYPE_VOLUME_TYPE_2['id'],
                   'size': 2,
                   'status': 'available',
-                  'host': HP3PARBaseDriver.FAKE_HOST,
-                  'source_volid': HP3PARBaseDriver.VOLUME_ID}
+                  'host': HPE3PARBaseDriver.FAKE_HOST,
+                  'source_volid': HPE3PARBaseDriver.VOLUME_ID}
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
 
             volume_name_3par = common._encode_name(volume['id'])
 
-            loc_info = 'HP3PARDriver:1234:CPG-FC1'
+            loc_info = 'HPE3PARDriver:1234:CPG-FC1'
             instance_host = 'stack@3parfc1#CPG-FC1'
             host = {'host': instance_host,
                     'capabilities': {'location_info': loc_info}}
@@ -1568,20 +1567,20 @@ class HP3PARBaseDriver(object):
 
         mock_client = self.setup_driver(mock_conf=conf)
 
-        volume = {'name': HP3PARBaseDriver.VOLUME_NAME,
-                  'id': HP3PARBaseDriver.CLONE_ID,
+        volume = {'name': HPE3PARBaseDriver.VOLUME_NAME,
+                  'id': HPE3PARBaseDriver.CLONE_ID,
                   'display_name': 'Foo Volume',
                   'volume_type_id': None,
                   'size': 2,
                   'status': 'available',
-                  'host': HP3PARBaseDriver.FAKE_HOST,
-                  'source_volid': HP3PARBaseDriver.VOLUME_ID}
+                  'host': HPE3PARBaseDriver.FAKE_HOST,
+                  'source_volid': HPE3PARBaseDriver.VOLUME_ID}
 
-        loc_info = 'HP3PARDriver:1234:CPG-FC1'
+        loc_info = 'HPE3PARDriver:1234:CPG-FC1'
         host = {'host': 'stack@3parfc1',
                 'capabilities': {'location_info': loc_info}}
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             result = self.driver.migrate_volume(context.get_admin_context(),
@@ -1609,23 +1608,23 @@ class HP3PARBaseDriver(object):
         mock_client.modifyVolume.return_value = ("anyResponse", {'taskid': 1})
         mock_client.getTask.return_value = self.STATUS_DONE
 
-        volume = {'name': HP3PARBaseDriver.VOLUME_NAME,
-                  'id': HP3PARBaseDriver.CLONE_ID,
+        volume = {'name': HPE3PARBaseDriver.VOLUME_NAME,
+                  'id': HPE3PARBaseDriver.CLONE_ID,
                   'display_name': 'Foo Volume',
                   'volume_type_id': None,
                   'size': 2,
                   'status': 'available',
-                  'host': HP3PARBaseDriver.FAKE_HOST,
-                  'source_volid': HP3PARBaseDriver.VOLUME_ID}
+                  'host': HPE3PARBaseDriver.FAKE_HOST,
+                  'source_volid': HPE3PARBaseDriver.VOLUME_ID}
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
 
             volume_name_3par = common._encode_name(volume['id'])
 
-            loc_info = 'HP3PARDriver:1234:CPG-FC1'
+            loc_info = 'HPE3PARDriver:1234:CPG-FC1'
             host = {'host': 'stack@3parfc1#CPG-FC1',
                     'capabilities': {'location_info': loc_info}}
 
@@ -1640,7 +1639,7 @@ class HP3PARBaseDriver(object):
                 mock.call.modifyVolume(
                     osv_matcher,
                     {'comment': '{"qos": {}, "display_name": "Foo Volume"}',
-                     'snapCPG': HP3PAR_CPG_SNAP}),
+                     'snapCPG': HPE3PAR_CPG_SNAP}),
                 mock.call.modifyVolume(osv_matcher,
                                        {'action': 6,
                                         'userCPG': 'CPG-FC1',
@@ -1656,16 +1655,16 @@ class HP3PARBaseDriver(object):
         _mock_volume_types.return_value = self.RETYPE_VOLUME_TYPE_1
         mock_client = self.setup_driver(mock_conf=self.RETYPE_CONF)
 
-        volume = {'name': HP3PARBaseDriver.VOLUME_NAME,
+        volume = {'name': HPE3PARBaseDriver.VOLUME_NAME,
                   'volume_type_id': None,
-                  'id': HP3PARBaseDriver.CLONE_ID,
+                  'id': HPE3PARBaseDriver.CLONE_ID,
                   'display_name': 'Foo Volume',
                   'size': 2,
                   'status': 'in-use',
-                  'host': HP3PARBaseDriver.FAKE_HOST,
-                  'source_volid': HP3PARBaseDriver.VOLUME_ID}
+                  'host': HPE3PARBaseDriver.FAKE_HOST,
+                  'source_volid': HPE3PARBaseDriver.VOLUME_ID}
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -1673,7 +1672,7 @@ class HP3PARBaseDriver(object):
             volume_name_3par = common._encode_name(volume['id'])
             osv_matcher = 'osv-' + volume_name_3par
 
-            loc_info = 'HP3PARDriver:1234567:CPG-FC1'
+            loc_info = 'HPE3PARDriver:1234567:CPG-FC1'
 
             protocol = "FC"
             if self.properties['driver_volume_type'] == "iscsi":
@@ -1714,16 +1713,16 @@ class HP3PARBaseDriver(object):
 
         protocol = "OTHER"
 
-        volume = {'name': HP3PARBaseDriver.VOLUME_NAME,
+        volume = {'name': HPE3PARBaseDriver.VOLUME_NAME,
                   'volume_type_id': None,
-                  'id': HP3PARBaseDriver.CLONE_ID,
+                  'id': HPE3PARBaseDriver.CLONE_ID,
                   'display_name': 'Foo Volume',
                   'size': 2,
                   'status': 'in-use',
-                  'host': HP3PARBaseDriver.FAKE_HOST,
-                  'source_volid': HP3PARBaseDriver.VOLUME_ID}
+                  'host': HPE3PARBaseDriver.FAKE_HOST,
+                  'source_volid': HPE3PARBaseDriver.VOLUME_ID}
 
-        loc_info = 'HP3PARDriver:1234567:CPG-FC1'
+        loc_info = 'HPE3PARDriver:1234567:CPG-FC1'
         host = {'host': 'stack@3parfc1',
                 'capabilities': {'location_info': loc_info,
                                  'storage_protocol': protocol}}
@@ -1744,7 +1743,7 @@ class HP3PARBaseDriver(object):
                            '_name_id': self.CLONE_ID,
                            'provider_location': provider_location}
         original_volume_status = 'available'
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             actual_update = self.driver.update_migrated_volume(
@@ -1764,7 +1763,7 @@ class HP3PARBaseDriver(object):
                            'provider_location': provider_location}
         original_volume_status = 'in-use'
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             actual_update = self.driver.update_migrated_volume(
@@ -1779,7 +1778,7 @@ class HP3PARBaseDriver(object):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             self.driver.attach_volume(context.get_admin_context(),
@@ -1810,7 +1809,7 @@ class HP3PARBaseDriver(object):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             self.driver.detach_volume(context.get_admin_context(), self.volume,
@@ -1834,7 +1833,7 @@ class HP3PARBaseDriver(object):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             self.driver.create_snapshot(self.snapshot)
@@ -1863,7 +1862,7 @@ class HP3PARBaseDriver(object):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             self.driver.delete_snapshot(self.snapshot)
@@ -1880,13 +1879,13 @@ class HP3PARBaseDriver(object):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             self.driver.create_snapshot(self.snapshot)
             self.driver.create_volume_from_snapshot(self.volume, self.snapshot)
 
-            ex = hpexceptions.HTTPConflict("In use")
+            ex = hpeexceptions.HTTPConflict("In use")
             mock_client.deleteVolume = mock.Mock(side_effect=ex)
 
             # Deleting the snapshot that a volume is dependent on should fail
@@ -1899,13 +1898,13 @@ class HP3PARBaseDriver(object):
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             self.driver.create_snapshot(self.snapshot)
 
             try:
-                ex = hpexceptions.HTTPNotFound("not found")
+                ex = hpeexceptions.HTTPNotFound("not found")
                 mock_client.deleteVolume = mock.Mock(side_effect=ex)
                 self.driver.delete_snapshot(self.snapshot)
             except Exception:
@@ -1916,7 +1915,7 @@ class HP3PARBaseDriver(object):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
 
@@ -1960,7 +1959,7 @@ class HP3PARBaseDriver(object):
         }
 
         mock_client = self.setup_driver(mock_conf=conf)
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -1989,7 +1988,7 @@ class HP3PARBaseDriver(object):
                         'comment': comment,
                         'readOnly': False}),
                 mock.call.copyVolume(
-                    osv_matcher, omv_matcher, HP3PAR_CPG, mock.ANY),
+                    osv_matcher, omv_matcher, HPE3PAR_CPG, mock.ANY),
                 mock.call.getTask(mock.ANY),
                 mock.call.getVolume(osv_matcher),
                 mock.call.deleteVolume(osv_matcher),
@@ -2017,15 +2016,15 @@ class HP3PARBaseDriver(object):
         _mock_volume_types.return_value = {
             'name': 'gold',
             'extra_specs': {
-                'cpg': HP3PAR_CPG_QOS,
-                'snap_cpg': HP3PAR_CPG_SNAP,
+                'cpg': HPE3PAR_CPG_QOS,
+                'snap_cpg': HPE3PAR_CPG_SNAP,
                 'vvs_name': self.VVS_NAME,
                 'qos': self.QOS,
                 'tpvv': True,
                 'tdvv': False,
                 'volume_type': self.volume_type}}
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -2053,9 +2052,9 @@ class HP3PARBaseDriver(object):
                     {
                         'comment': comment,
                         'readOnly': False}),
-                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.copyVolume(
-                    osv_matcher, omv_matcher, HP3PAR_CPG, mock.ANY),
+                    osv_matcher, omv_matcher, HPE3PAR_CPG, mock.ANY),
                 mock.call.getTask(mock.ANY),
                 mock.call.getVolume(osv_matcher),
                 mock.call.deleteVolume(osv_matcher),
@@ -2080,7 +2079,7 @@ class HP3PARBaseDriver(object):
 
         mock_client = self.setup_driver(mock_conf=conf)
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             volume = self.volume.copy()
@@ -2095,14 +2094,14 @@ class HP3PARBaseDriver(object):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             _mock_volume_types.return_value = {
                 'name': 'gold',
                 'extra_specs': {
-                    'cpg': HP3PAR_CPG,
-                    'snap_cpg': HP3PAR_CPG_SNAP,
+                    'cpg': HPE3PAR_CPG,
+                    'snap_cpg': HPE3PAR_CPG_SNAP,
                     'vvs_name': self.VVS_NAME,
                     'qos': self.QOS,
                     'tpvv': True,
@@ -2150,7 +2149,7 @@ class HP3PARBaseDriver(object):
             }]
         }
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             self.driver.terminate_connection(
@@ -2185,7 +2184,7 @@ class HP3PARBaseDriver(object):
         key = 'a'
         value = 'b'
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -2212,7 +2211,7 @@ class HP3PARBaseDriver(object):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             key = 'a'
@@ -2235,7 +2234,7 @@ class HP3PARBaseDriver(object):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             grow_size = 3
@@ -2250,7 +2249,7 @@ class HP3PARBaseDriver(object):
             mock_client.assert_has_calls(expected)
 
     def test_extend_volume_non_base(self):
-        extend_ex = hpexceptions.HTTPForbidden(error={'code': 150})
+        extend_ex = hpeexceptions.HTTPForbidden(error={'code': 150})
         conf = {
             'getTask.return_value': {
                 'status': 1},
@@ -2263,7 +2262,7 @@ class HP3PARBaseDriver(object):
         }
 
         mock_client = self.setup_driver(mock_conf=conf)
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             grow_size = 3
@@ -2274,7 +2273,7 @@ class HP3PARBaseDriver(object):
             self.assertEqual(2, mock_client.growVolume.call_count)
 
     def test_extend_volume_non_base_failure(self):
-        extend_ex = hpexceptions.HTTPForbidden(error={'code': 150})
+        extend_ex = hpeexceptions.HTTPForbidden(error={'code': 150})
         conf = {
             'getTask.return_value': {
                 'status': 1},
@@ -2286,13 +2285,13 @@ class HP3PARBaseDriver(object):
         }
 
         mock_client = self.setup_driver(mock_conf=conf)
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             grow_size = 3
             old_size = self.volume['size']
             new_size = old_size + grow_size
-            self.assertRaises(hpexceptions.HTTPForbidden,
+            self.assertRaises(hpeexceptions.HTTPForbidden,
                               self.driver.extend_volume,
                               self.volume,
                               str(new_size))
@@ -2330,7 +2329,7 @@ class HP3PARBaseDriver(object):
                  'type': 2,
                  'portPos': {'node': 0, 'slot': 6, 'cardPort': 3}}]}
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -2339,7 +2338,7 @@ class HP3PARBaseDriver(object):
 
     def test_get_by_qos_spec_with_scoping(self):
         mock_client = self.setup_driver()
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -2362,7 +2361,7 @@ class HP3PARBaseDriver(object):
 
     def test_get_by_qos_spec(self):
         mock_client = self.setup_driver()
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -2388,7 +2387,7 @@ class HP3PARBaseDriver(object):
 
     def test_get_by_qos_by_type_only(self):
         mock_client = self.setup_driver()
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -2410,7 +2409,7 @@ class HP3PARBaseDriver(object):
         lun_id = 11
         nsp = '1:2:3'
         mock_client = self.setup_driver()
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             location = ("%(name)s,%(lunid)s,%(host)s,%(nsp)s" %
@@ -2447,7 +2446,7 @@ class HP3PARBaseDriver(object):
 
     def test__get_existing_volume_ref_name(self):
         mock_client = self.setup_driver()
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -2488,7 +2487,7 @@ class HP3PARBaseDriver(object):
         mock_client.modifyVolume.return_value = ("anyResponse", {'taskid': 1})
         mock_client.getTask.return_value = self.STATUS_DONE
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -2524,7 +2523,7 @@ class HP3PARBaseDriver(object):
                 }
             }
 
-            expected_snap_cpg = HP3PAR_CPG_SNAP
+            expected_snap_cpg = HPE3PAR_CPG_SNAP
             expected_retype_modify = [
                 mock.call.modifyVolume(osv_matcher,
                                        {'comment': self.CommentMatcher(
@@ -2545,7 +2544,7 @@ class HP3PARBaseDriver(object):
                 mock.call.modifyVolume(
                     osv_matcher,
                     {'action': 6,
-                     'userCPG': HP3PAR_CPG,
+                     'userCPG': HPE3PAR_CPG,
                      'conversionOperation': 1, 'tuneOperation': 1}),
                 mock.call.getTask(1)
             ]
@@ -2577,7 +2576,7 @@ class HP3PARBaseDriver(object):
         mock_client.modifyVolume.return_value = ("anyResponse", {'taskid': 1})
         mock_client.getTask.return_value = self.STATUS_DONE
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -2628,7 +2627,7 @@ class HP3PARBaseDriver(object):
                   'volume_type_id': 'acfa9fa4-54a0-4340-a3d8-bfcf19aea65e',
                   'id': id}
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -2697,7 +2696,7 @@ class HP3PARBaseDriver(object):
         mock_client.getVolume.return_value = {'comment': comment,
                                               'userCPG': 'testUserCpg0'}
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -2775,9 +2774,9 @@ class HP3PARBaseDriver(object):
                   'volume_type': None,
                   'id': '007dbfce-7579-40bc-8f90-a20b3902283e'}
 
-        mock_client.getVolume.side_effect = hpexceptions.HTTPNotFound('fake')
+        mock_client.getVolume.side_effect = hpeexceptions.HTTPNotFound('fake')
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -2808,7 +2807,7 @@ class HP3PARBaseDriver(object):
 
         mock_client.getVolume.return_value = {'comment': comment}
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -2834,8 +2833,8 @@ class HP3PARBaseDriver(object):
             'name': 'gold',
             'id': 'gold-id',
             'extra_specs': {
-                'cpg': HP3PAR_CPG,
-                'snap_cpg': HP3PAR_CPG_SNAP,
+                'cpg': HPE3PAR_CPG,
+                'snap_cpg': HPE3PAR_CPG_SNAP,
                 'vvs_name': self.VVS_NAME,
                 'qos': self.QOS,
                 'tpvv': True,
@@ -2857,7 +2856,7 @@ class HP3PARBaseDriver(object):
             {'domain': 'domain3'},
         ]
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -2898,7 +2897,7 @@ class HP3PARBaseDriver(object):
         mock_client = self.setup_driver()
         mock_client.getVolume.return_value = {'sizeMiB': 2048}
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -2919,7 +2918,7 @@ class HP3PARBaseDriver(object):
 
     def test_manage_existing_get_size_invalid_reference(self):
         mock_client = self.setup_driver()
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             volume = {}
@@ -2947,9 +2946,9 @@ class HP3PARBaseDriver(object):
 
     def test_manage_existing_get_size_invalid_input(self):
         mock_client = self.setup_driver()
-        mock_client.getVolume.side_effect = hpexceptions.HTTPNotFound('fake')
+        mock_client.getVolume.side_effect = hpeexceptions.HTTPNotFound('fake')
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -2971,7 +2970,7 @@ class HP3PARBaseDriver(object):
 
     def test_unmanage(self):
         mock_client = self.setup_driver()
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -2992,11 +2991,10 @@ class HP3PARBaseDriver(object):
     def test__safe_hostname(self):
         long_hostname = "abc123abc123abc123abc123abc123abc123"
         fixed_hostname = "abc123abc123abc123abc123abc123a"
-        common = hpcommon.HP3PARCommon(None)
+        common = hpecommon.HPE3PARCommon(None)
         safe_host = common._safe_hostname(long_hostname)
         self.assertEqual(fixed_hostname, safe_host)
 
-    @mock.patch('hp3parclient.version', "3.2.2")
     def test_create_consistency_group(self):
         class fake_consitencygroup_object(object):
             volume_type_id = '49fa96b5-828e-4653-b622-873a1b7e6f1c'
@@ -3014,7 +3012,7 @@ class HP3PARBaseDriver(object):
             " '" + self.CONSIS_GROUP_ID + "',"
             " 'description': 'consistency group'}")
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             mock_client.getCPG.return_value = {'domain': None}
@@ -3024,7 +3022,7 @@ class HP3PARBaseDriver(object):
                                                 group)
 
             expected = [
-                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.createVolumeSet(
                     self.CONSIS_GROUP_NAME,
                     domain=None,
@@ -3036,7 +3034,6 @@ class HP3PARBaseDriver(object):
                 expected +
                 self.standard_logout)
 
-    @mock.patch('hp3parclient.version', "3.2.2")
     def test_create_consistency_group_from_src(self):
         class fake_consitencygroup_object(object):
             volume_type_id = '49fa96b5-828e-4653-b622-873a1b7e6f1c'
@@ -3062,7 +3059,7 @@ class HP3PARBaseDriver(object):
             " '" + self.CONSIS_GROUP_ID + "',"
             " 'description': 'consistency group'}")
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             mock_client.getCPG.return_value = {'domain': None}
@@ -3073,7 +3070,7 @@ class HP3PARBaseDriver(object):
                                                 group)
 
             expected = [
-                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.createVolumeSet(
                     self.CONSIS_GROUP_NAME,
                     domain=None,
@@ -3126,7 +3123,6 @@ class HP3PARBaseDriver(object):
                 expected +
                 self.standard_logout)
 
-    @mock.patch('hp3parclient.version', "3.2.2")
     def test_delete_consistency_group(self):
         class fake_consitencygroup_object(object):
             volume_type_id = '49fa96b5-828e-4653-b622-873a1b7e6f1c'
@@ -3144,7 +3140,7 @@ class HP3PARBaseDriver(object):
             " '" + self.CONSIS_GROUP_ID + "',"
             " 'description': 'consistency group'}")
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             mock_client.getCPG.return_value = {'domain': None}
@@ -3155,7 +3151,7 @@ class HP3PARBaseDriver(object):
                                                 group)
 
             expected = [
-                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.createVolumeSet(
                     self.CONSIS_GROUP_NAME,
                     domain=None,
@@ -3183,7 +3179,6 @@ class HP3PARBaseDriver(object):
                 expected +
                 self.standard_logout)
 
-    @mock.patch('hp3parclient.version', "3.2.2")
     def test_update_consistency_group_add_vol(self):
         class fake_consitencygroup_object(object):
             volume_type_id = '49fa96b5-828e-4653-b622-873a1b7e6f1c'
@@ -3202,7 +3197,7 @@ class HP3PARBaseDriver(object):
             " '" + self.CONSIS_GROUP_ID + "',"
             " 'description': 'consistency group'}")
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             mock_client.getCPG.return_value = {'domain': None}
@@ -3213,7 +3208,7 @@ class HP3PARBaseDriver(object):
                                                 group)
 
             expected = [
-                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.createVolumeSet(
                     self.CONSIS_GROUP_NAME,
                     domain=None,
@@ -3243,7 +3238,6 @@ class HP3PARBaseDriver(object):
                 expected +
                 self.standard_logout)
 
-    @mock.patch('hp3parclient.version', "3.2.2")
     def test_update_consistency_group_remove_vol(self):
         class fake_consitencygroup_object(object):
             volume_type_id = '49fa96b5-828e-4653-b622-873a1b7e6f1c'
@@ -3262,7 +3256,7 @@ class HP3PARBaseDriver(object):
             " '" + self.CONSIS_GROUP_ID + "',"
             " 'description': 'consistency group'}")
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             mock_client.getCPG.return_value = {'domain': None}
@@ -3273,7 +3267,7 @@ class HP3PARBaseDriver(object):
                                                 group)
 
             expected = [
-                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.createVolumeSet(
                     self.CONSIS_GROUP_NAME,
                     domain=None,
@@ -3321,7 +3315,6 @@ class HP3PARBaseDriver(object):
                 expected +
                 self.standard_logout)
 
-    @mock.patch('hp3parclient.version', "3.2.2")
     def test_create_cgsnapshot(self):
         class fake_consitencygroup_object(object):
             volume_type_id = '49fa96b5-828e-4653-b622-873a1b7e6f1c'
@@ -3347,7 +3340,7 @@ class HP3PARBaseDriver(object):
              ' "cgsnapshot_id": "e91c5ed5-daee-4e84-8724-1c9e31e7a1f2"}',
              'readOnly': False})
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             mock_client.getCPG.return_value = {'domain': None}
@@ -3358,7 +3351,7 @@ class HP3PARBaseDriver(object):
                                                 group)
 
             expected = [
-                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.createVolumeSet(
                     self.CONSIS_GROUP_NAME,
                     domain=None,
@@ -3405,7 +3398,6 @@ class HP3PARBaseDriver(object):
                 expected +
                 self.standard_logout)
 
-    @mock.patch('hp3parclient.version', "3.2.2")
     def test_delete_cgsnapshot(self):
         class fake_consitencygroup_object(object):
             volume_type_id = '49fa96b5-828e-4653-b622-873a1b7e6f1c'
@@ -3432,7 +3424,7 @@ class HP3PARBaseDriver(object):
              ' "cgsnapshot_id": "e91c5ed5-daee-4e84-8724-1c9e31e7a1f2"}',
              'readOnly': False})
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             mock_client.getCPG.return_value = {'domain': None}
@@ -3443,7 +3435,7 @@ class HP3PARBaseDriver(object):
                                                 group)
 
             expected = [
-                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.createVolumeSet(
                     self.CONSIS_GROUP_NAME,
                     domain=None,
@@ -3496,7 +3488,7 @@ class HP3PARBaseDriver(object):
                 self.standard_logout)
 
 
-class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
+class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
 
     properties = {
         'driver_volume_type': 'fibre_channel',
@@ -3517,7 +3509,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         mock_client = self.setup_mock_client(
             conf=config,
             m_conf=mock_conf,
-            driver=hpfcdriver.HP3PARFCDriver)
+            driver=hpefcdriver.HPE3PARFCDriver)
 
         if wsapi_version:
             mock_client.getWsApiVersion.return_value = (
@@ -3527,8 +3519,8 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                 self.wsapi_version_latest)
 
         expected = [
-            mock.call.getCPG(HP3PAR_CPG),
-            mock.call.getCPG(HP3PAR_CPG2)]
+            mock.call.getCPG(HPE3PAR_CPG),
+            mock.call.getCPG(HPE3PAR_CPG2)]
         mock_client.assert_has_calls(
             self.standard_login +
             expected +
@@ -3540,10 +3532,10 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
-        mock_client.getVolume.return_value = {'userCPG': HP3PAR_CPG}
+        mock_client.getVolume.return_value = {'userCPG': HPE3PAR_CPG}
         mock_client.getCPG.return_value = {}
         mock_client.getHost.side_effect = [
-            hpexceptions.HTTPNotFound('fake'),
+            hpeexceptions.HTTPNotFound('fake'),
             {'name': self.FAKE_HOST,
                 'FCPaths': [{'driverVersion': None,
                              'firmwareVersion': None,
@@ -3568,7 +3560,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         }
 
         mock_client.getHostVLUNs.side_effect = [
-            hpexceptions.HTTPNotFound('fake'),
+            hpeexceptions.HTTPNotFound('fake'),
             [{'active': True,
               'volumeName': self.VOLUME_3PAR_NAME,
               'lun': 90, 'type': 0}]]
@@ -3580,7 +3572,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                      'nsp': 'something'})
         mock_client.createVLUN.return_value = location
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             result = self.driver.initialize_connection(
@@ -3589,7 +3581,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 
             expected = [
                 mock.call.getVolume(self.VOLUME_3PAR_NAME),
-                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.getHost(self.FAKE_HOST),
                 mock.call.queryHost(wwns=['123456789012345',
                                           '123456789054321']),
@@ -3624,10 +3616,10 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                 return fake_map
         mock_lookup.return_value = fake_lookup_object()
         mock_client = self.setup_driver()
-        mock_client.getVolume.return_value = {'userCPG': HP3PAR_CPG}
+        mock_client.getVolume.return_value = {'userCPG': HPE3PAR_CPG}
         mock_client.getCPG.return_value = {}
         mock_client.getHost.side_effect = [
-            hpexceptions.HTTPNotFound('fake'),
+            hpeexceptions.HTTPNotFound('fake'),
             {'name': self.FAKE_HOST,
                 'FCPaths': [{'driverVersion': None,
                              'firmwareVersion': None,
@@ -3644,7 +3636,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         }
 
         mock_client.getHostVLUNs.side_effect = [
-            hpexceptions.HTTPNotFound('fake'),
+            hpeexceptions.HTTPNotFound('fake'),
             [{'active': True,
               'volumeName': self.VOLUME_3PAR_NAME,
               'lun': 90, 'type': 0,
@@ -3674,14 +3666,14 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                                          ['0987654321234']
                                          }}}
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             result = self.driver.initialize_connection(self.volume, connector)
 
             expected = [
                 mock.call.getVolume(self.VOLUME_3PAR_NAME),
-                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.getHost(self.FAKE_HOST),
                 mock.ANY,
                 mock.call.getHost(self.FAKE_HOST),
@@ -3706,10 +3698,10 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
-        mock_client.getVolume.return_value = {'userCPG': HP3PAR_CPG}
+        mock_client.getVolume.return_value = {'userCPG': HPE3PAR_CPG}
         mock_client.getCPG.return_value = {}
         mock_client.getHost.side_effect = [
-            hpexceptions.HTTPNotFound('fake'),
+            hpeexceptions.HTTPNotFound('fake'),
             {'name': self.FAKE_HOST,
                 'FCPaths': [{'driverVersion': None,
                              'firmwareVersion': None,
@@ -3734,7 +3726,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         }
 
         mock_client.getHostVLUNs.side_effect = [
-            hpexceptions.HTTPNotFound('fake'),
+            hpeexceptions.HTTPNotFound('fake'),
             [{'active': True,
               'volumeName': self.VOLUME_3PAR_NAME,
               'lun': 90, 'type': 0}]]
@@ -3746,7 +3738,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                      'nsp': 'something'})
         mock_client.createVLUN.return_value = location
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             result = self.driver.initialize_connection(
@@ -3755,7 +3747,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 
             expected = [
                 mock.call.getVolume(self.VOLUME_3PAR_NAME),
-                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.getHost(self.FAKE_HOST),
                 mock.call.queryHost(wwns=['123456789012345',
                                           '123456789054321']),
@@ -3785,8 +3777,8 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         effects = [
             [{'active': True, 'volumeName': self.VOLUME_3PAR_NAME,
               'lun': None, 'type': 0}],
-            hpexceptions.HTTPNotFound,
-            hpexceptions.HTTPNotFound]
+            hpeexceptions.HTTPNotFound,
+            hpeexceptions.HTTPNotFound]
 
         mock_client.getHostVLUNs.side_effect = effects
 
@@ -3808,7 +3800,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
             mock.call.getHostVLUNs(self.FAKE_HOST),
             mock.call.getPorts()]
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             conn_info = self.driver.terminate_connection(self.volume,
@@ -3824,9 +3816,9 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
             mock_client.getHostVLUNs.side_effect = effects
 
             # mock some deleteHost exceptions that are handled
-            delete_with_vlun = hpexceptions.HTTPConflict(
+            delete_with_vlun = hpeexceptions.HTTPConflict(
                 error={'message': "has exported VLUN"})
-            delete_with_hostset = hpexceptions.HTTPConflict(
+            delete_with_hostset = hpeexceptions.HTTPConflict(
                 error={'message': "host is a member of a set"})
             mock_client.deleteHost = mock.Mock(
                 side_effect=[delete_with_vlun, delete_with_hostset])
@@ -3866,8 +3858,8 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         effects = [
             [{'active': True, 'volumeName': self.VOLUME_3PAR_NAME,
               'lun': None, 'type': 0}],
-            hpexceptions.HTTPNotFound,
-            hpexceptions.HTTPNotFound]
+            hpeexceptions.HTTPNotFound,
+            hpeexceptions.HTTPNotFound]
 
         mock_client.queryHost.return_value = {
             'members': [{
@@ -3889,7 +3881,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
             mock.call.getHostVLUNs(self.FAKE_HOST),
             mock.call.getPorts()]
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             conn_info = self.driver.terminate_connection(self.volume,
@@ -3905,9 +3897,9 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
             mock_client.getHostVLUNs.side_effect = effects
 
             # mock some deleteHost exceptions that are handled
-            delete_with_vlun = hpexceptions.HTTPConflict(
+            delete_with_vlun = hpeexceptions.HTTPConflict(
                 error={'message': "has exported VLUN"})
-            delete_with_hostset = hpexceptions.HTTPConflict(
+            delete_with_hostset = hpeexceptions.HTTPConflict(
                 error={'message': "host is a member of a set"})
             mock_client.deleteHost = mock.Mock(
                 side_effect=[delete_with_vlun, delete_with_hostset])
@@ -3957,7 +3949,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
             mock.call.getHostVLUNs(self.FAKE_HOST),
             mock.call.getHostVLUNs(self.FAKE_HOST)]
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             conn_info = self.driver.terminate_connection(self.volume,
@@ -3968,7 +3960,6 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                 self.standard_logout)
             self.assertNotIn('initiator_target_map', conn_info['data'])
 
-    @mock.patch('hp3parclient.version', "3.2.2")
     def test_get_volume_stats1(self):
         # setup_mock_client drive with the configuration
         # and return the mock HTTP 3PAR client
@@ -3998,7 +3989,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 
         mock_client.getCPGStatData.return_value = stat_capabilities
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -4033,12 +4024,12 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 
             expected = [
                 mock.call.getStorageSystemInfo(),
-                mock.call.getCPG(HP3PAR_CPG),
-                mock.call.getCPGStatData(HP3PAR_CPG, 'daily', '7d'),
-                mock.call.getCPGAvailableSpace(HP3PAR_CPG),
-                mock.call.getCPG(HP3PAR_CPG2),
-                mock.call.getCPGStatData(HP3PAR_CPG2, 'daily', '7d'),
-                mock.call.getCPGAvailableSpace(HP3PAR_CPG2)]
+                mock.call.getCPG(HPE3PAR_CPG),
+                mock.call.getCPGStatData(HPE3PAR_CPG, 'daily', '7d'),
+                mock.call.getCPGAvailableSpace(HPE3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG2),
+                mock.call.getCPGStatData(HPE3PAR_CPG2, 'daily', '7d'),
+                mock.call.getCPGAvailableSpace(HPE3PAR_CPG2)]
 
             mock_client.assert_has_calls(
                 self.standard_login +
@@ -4114,10 +4105,9 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                              stats['pools'][0][QUEUE_LENGTH])
             self.assertEqual(stat_capabilities[AVG_BUSY_PERC],
                              stats['pools'][0][AVG_BUSY_PERC])
-            common.client.deleteCPG(HP3PAR_CPG)
-            common.client.createCPG(HP3PAR_CPG, {})
+            common.client.deleteCPG(HPE3PAR_CPG)
+            common.client.createCPG(HPE3PAR_CPG, {})
 
-    @mock.patch('hp3parclient.version', "3.2.2")
     def test_get_volume_stats2(self):
         # Testing when the API_VERSION is incompatible with getCPGStatData
         srstatld_api_version = 30201200
@@ -4139,7 +4129,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
             "usableFreeMiB": 1024.0 * 3
         }
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             self.driver._login()
@@ -4163,17 +4153,16 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 
             expected = [
                 mock.call.getStorageSystemInfo(),
-                mock.call.getCPG(HP3PAR_CPG),
-                mock.call.getCPGAvailableSpace(HP3PAR_CPG),
-                mock.call.getCPG(HP3PAR_CPG2),
-                mock.call.getCPGAvailableSpace(HP3PAR_CPG2)]
+                mock.call.getCPG(HPE3PAR_CPG),
+                mock.call.getCPGAvailableSpace(HPE3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG2),
+                mock.call.getCPGAvailableSpace(HPE3PAR_CPG2)]
 
             mock_client.assert_has_calls(
                 self.standard_login +
                 expected +
                 self.standard_logout)
 
-    @mock.patch('hp3parclient.version', "3.2.1")
     def test_get_volume_stats3(self):
         # Testing when the client version is incompatible with getCPGStatData
         # setup_mock_client drive with the configuration
@@ -4181,7 +4170,8 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         config = self.setup_configuration()
         config.filter_function = FILTER_FUNCTION
         config.goodness_function = GOODNESS_FUNCTION
-        mock_client = self.setup_driver(config=config)
+        mock_client = self.setup_driver(config=config,
+                                        wsapi_version=self.wsapi_version_312)
         mock_client.getCPG.return_value = self.cpgs[0]
         mock_client.getStorageSystemInfo.return_value = {
             'serialNumber': '1234'
@@ -4194,7 +4184,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
             "usableFreeMiB": 1024.0 * 3
         }
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             self.driver._login()
@@ -4218,10 +4208,10 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 
             expected = [
                 mock.call.getStorageSystemInfo(),
-                mock.call.getCPG(HP3PAR_CPG),
-                mock.call.getCPGAvailableSpace(HP3PAR_CPG),
-                mock.call.getCPG(HP3PAR_CPG2),
-                mock.call.getCPGAvailableSpace(HP3PAR_CPG2)]
+                mock.call.getCPG(HPE3PAR_CPG),
+                mock.call.getCPGAvailableSpace(HPE3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG2),
+                mock.call.getCPGAvailableSpace(HPE3PAR_CPG2)]
 
             mock_client.assert_has_calls(
                 self.standard_login +
@@ -4232,10 +4222,10 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
-        mock_client.getVolume.return_value = {'userCPG': HP3PAR_CPG}
+        mock_client.getVolume.return_value = {'userCPG': HPE3PAR_CPG}
         mock_client.getCPG.return_value = {}
         mock_client.getHost.side_effect = [
-            hpexceptions.HTTPNotFound('fake'),
+            hpeexceptions.HTTPNotFound('fake'),
             {'name': self.FAKE_HOST,
                 'FCPaths': [{'driverVersion': None,
                              'firmwareVersion': None,
@@ -4255,7 +4245,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                              'wwn': self.wwn[1]}]}]
         mock_client.queryHost.return_value = None
         mock_client.getVLUN.return_value = {'lun': 186}
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -4265,7 +4255,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                 self.connector)
             expected = [
                 mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
-                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.getHost(self.FAKE_HOST),
                 mock.call.queryHost(wwns=['123456789012345',
                                           '123456789054321']),
@@ -4284,10 +4274,10 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
 
-        mock_client.getVolume.return_value = {'userCPG': HP3PAR_CPG}
+        mock_client.getVolume.return_value = {'userCPG': HPE3PAR_CPG}
         mock_client.getCPG.return_value = {}
         mock_client.getHost.side_effect = [
-            hpexceptions.HTTPNotFound('Host not found.'), {
+            hpeexceptions.HTTPNotFound('Host not found.'), {
                 'name': 'fakehost.foo',
                 'FCPaths': [{'wwn': '123456789012345'}, {
                     'wwn': '123456789054321'}]}]
@@ -4297,7 +4287,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
             }]
         }
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -4308,7 +4298,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 
             expected = [
                 mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
-                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.getHost('fakehost'),
                 mock.call.queryHost(wwns=['123456789012345',
                                           '123456789054321']),
@@ -4322,7 +4312,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
-        mock_client.getVolume.return_value = {'userCPG': HP3PAR_CPG}
+        mock_client.getVolume.return_value = {'userCPG': HPE3PAR_CPG}
         mock_client.getCPG.return_value = {}
         mock_client.getHost.side_effect = [{
             'name': self.FAKE_HOST, 'FCPaths': []},
@@ -4330,7 +4320,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                 'FCPaths': [{'wwn': '123456789012345'}, {
                     'wwn': '123456789054321'}]}]
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -4340,7 +4330,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                 self.connector)
             expected = [
                 mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
-                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.getHost('fakehost'),
                 mock.call.modifyHost(
                     'fakehost', {
@@ -4357,7 +4347,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
-        mock_client.getVolume.return_value = {'userCPG': HP3PAR_CPG}
+        mock_client.getVolume.return_value = {'userCPG': HPE3PAR_CPG}
         mock_client.getCPG.return_value = {}
         getHost_ret1 = {
             'name': self.FAKE_HOST,
@@ -4368,7 +4358,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                         {'wwn': '123456789054321'}]}
         mock_client.getHost.side_effect = [getHost_ret1, getHost_ret2]
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -4379,7 +4369,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 
             expected = [
                 mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
-                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.getHost('fakehost'),
                 mock.call.modifyHost(
                     'fakehost', {
@@ -4395,7 +4385,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
-        mock_client.getVolume.return_value = {'userCPG': HP3PAR_CPG}
+        mock_client.getVolume.return_value = {'userCPG': HPE3PAR_CPG}
         mock_client.getCPG.return_value = {}
         getHost_ret1 = {
             'name': self.FAKE_HOST,
@@ -4408,7 +4398,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                         {'wwn': 'xxxxxxxxxxxxxxx'}]}
         mock_client.getHost.side_effect = [getHost_ret1, getHost_ret2]
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -4419,7 +4409,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
 
             expected = [
                 mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
-                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.getHost('fakehost'),
                 mock.call.modifyHost(
                     'fakehost', {
@@ -4432,7 +4422,7 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
             self.assertEqual(3, len(host['FCPaths']))
 
 
-class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
+class TestHPE3PARISCSIDriver(HPE3PARBaseDriver, test.TestCase):
 
     TARGET_IQN = 'iqn.2000-05.com.3pardata:21810002ac00383d'
     TARGET_LUN = 186
@@ -4462,7 +4452,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         mock_client = self.setup_mock_client(
             conf=config,
             m_conf=mock_conf,
-            driver=hpdriver.HP3PARISCSIDriver)
+            driver=hpedriver.HPE3PARISCSIDriver)
 
         if wsapi_version:
             mock_client.getWsApiVersion.return_value = (
@@ -4472,8 +4462,8 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
                 self.wsapi_version_latest)
 
         expected_get_cpgs = [
-            mock.call.getCPG(HP3PAR_CPG),
-            mock.call.getCPG(HP3PAR_CPG2)]
+            mock.call.getCPG(HPE3PAR_CPG),
+            mock.call.getCPG(HPE3PAR_CPG2)]
         expected_get_ports = [mock.call.getPorts()]
         mock_client.assert_has_calls(
             self.standard_login +
@@ -4490,10 +4480,10 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
-        mock_client.getVolume.return_value = {'userCPG': HP3PAR_CPG}
+        mock_client.getVolume.return_value = {'userCPG': HPE3PAR_CPG}
         mock_client.getCPG.return_value = {}
         mock_client.getHost.side_effect = [
-            hpexceptions.HTTPNotFound('fake'),
+            hpeexceptions.HTTPNotFound('fake'),
             {'name': self.FAKE_HOST}]
         mock_client.queryHost.return_value = {
             'members': [{
@@ -4517,7 +4507,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
                      'nsp': 'something'})
         mock_client.createVLUN.return_value = location
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             result = self.driver.initialize_connection(
@@ -4526,7 +4516,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
             expected = [
                 mock.call.getVolume(self.VOLUME_3PAR_NAME),
-                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.getHost(self.FAKE_HOST),
                 mock.call.queryHost(iqns=['iqn.1993-08.org.debian:01:222']),
                 mock.call.getHost(self.FAKE_HOST),
@@ -4543,10 +4533,10 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
-        mock_client.getVolume.return_value = {'userCPG': HP3PAR_CPG}
+        mock_client.getVolume.return_value = {'userCPG': HPE3PAR_CPG}
         mock_client.getCPG.return_value = {}
         mock_client.getHost.side_effect = [
-            hpexceptions.HTTPNotFound('fake'),
+            hpeexceptions.HTTPNotFound('fake'),
             {'name': self.FAKE_HOST}]
         mock_client.queryHost.return_value = {
             'members': [{
@@ -4555,7 +4545,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         }
 
         mock_client.getHostVLUNs.side_effect = [
-            hpexceptions.HTTPNotFound('fake'),
+            hpeexceptions.HTTPNotFound('fake'),
             [{'active': True,
               'volumeName': self.VOLUME_3PAR_NAME,
               'lun': self.TARGET_LUN, 'type': 0,
@@ -4573,7 +4563,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
             'iSCSIName': self.TARGET_IQN,
         }]
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             result = self.driver.initialize_connection(
@@ -4582,7 +4572,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
             expected = [
                 mock.call.getVolume(self.VOLUME_3PAR_NAME),
-                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.getHost(self.FAKE_HOST),
                 mock.call.queryHost(iqns=['iqn.1993-08.org.debian:01:222']),
                 mock.call.getHost(self.FAKE_HOST),
@@ -4607,10 +4597,10 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
-        mock_client.getVolume.return_value = {'userCPG': HP3PAR_CPG}
+        mock_client.getVolume.return_value = {'userCPG': HPE3PAR_CPG}
         mock_client.getCPG.return_value = {}
         mock_client.getHost.side_effect = [
-            hpexceptions.HTTPNotFound('fake'),
+            hpeexceptions.HTTPNotFound('fake'),
             {'name': self.FAKE_HOST}]
         mock_client.queryHost.return_value = {
             'members': [{
@@ -4632,7 +4622,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
             'iSCSIName': self.TARGET_IQN,
         }]
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             result = self.driver.initialize_connection(
@@ -4641,7 +4631,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
             expected = [
                 mock.call.getVolume(self.VOLUME_3PAR_NAME),
-                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.getHost(self.FAKE_HOST),
                 mock.call.queryHost(iqns=['iqn.1993-08.org.debian:01:222']),
                 mock.call.getHost(self.FAKE_HOST),
@@ -4660,10 +4650,10 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
-        mock_client.getVolume.return_value = {'userCPG': HP3PAR_CPG}
+        mock_client.getVolume.return_value = {'userCPG': HPE3PAR_CPG}
         mock_client.getCPG.return_value = {}
         mock_client.getHost.side_effect = [
-            hpexceptions.HTTPNotFound('fake'),
+            hpeexceptions.HTTPNotFound('fake'),
             {'name': self.FAKE_HOST}]
         mock_client.queryHost.return_value = {
             'members': [{
@@ -4687,7 +4677,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
                      'nsp': 'something'})
         mock_client.createVLUN.return_value = location
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             result = self.driver.initialize_connection(
@@ -4696,7 +4686,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
             expected = [
                 mock.call.getVolume(self.VOLUME_3PAR_NAME),
-                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.getHost(self.FAKE_HOST),
                 mock.call.queryHost(iqns=['iqn.1993-08.org.debian:01:222']),
                 mock.call.getHost(self.FAKE_HOST),
@@ -4711,7 +4701,6 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
             expected_properties['data']['encrypted'] = True
             self.assertDictMatch(result, self.properties)
 
-    @mock.patch('hp3parclient.version', "3.2.2")
     def test_get_volume_stats(self):
         # setup_mock_client drive with the configuration
         # and return the mock HTTP 3PAR client
@@ -4739,7 +4728,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         }
         mock_client.getCPGStatData.return_value = stat_capabilities
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
 
@@ -4773,12 +4762,12 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
             expected = [
                 mock.call.getStorageSystemInfo(),
-                mock.call.getCPG(HP3PAR_CPG),
-                mock.call.getCPGStatData(HP3PAR_CPG, 'daily', '7d'),
-                mock.call.getCPGAvailableSpace(HP3PAR_CPG),
-                mock.call.getCPG(HP3PAR_CPG2),
-                mock.call.getCPGStatData(HP3PAR_CPG2, 'daily', '7d'),
-                mock.call.getCPGAvailableSpace(HP3PAR_CPG2)]
+                mock.call.getCPG(HPE3PAR_CPG),
+                mock.call.getCPGStatData(HPE3PAR_CPG, 'daily', '7d'),
+                mock.call.getCPGAvailableSpace(HPE3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG2),
+                mock.call.getCPGStatData(HPE3PAR_CPG2, 'daily', '7d'),
+                mock.call.getCPGAvailableSpace(HPE3PAR_CPG2)]
 
             mock_client.assert_has_calls(
                 self.standard_login +
@@ -4829,7 +4818,6 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
             self.assertEqual(stat_capabilities[AVG_BUSY_PERC],
                              stats['pools'][0][AVG_BUSY_PERC])
 
-    @mock.patch('hp3parclient.version', "3.2.2")
     def test_get_volume_stats2(self):
         # Testing when the API_VERSION is incompatible with getCPGStatData
         srstatld_api_version = 30201200
@@ -4851,7 +4839,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
             "usableFreeMiB": 1024.0 * 3
         }
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             self.driver._login()
@@ -4875,17 +4863,16 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
             expected = [
                 mock.call.getStorageSystemInfo(),
-                mock.call.getCPG(HP3PAR_CPG),
-                mock.call.getCPGAvailableSpace(HP3PAR_CPG),
-                mock.call.getCPG(HP3PAR_CPG2),
-                mock.call.getCPGAvailableSpace(HP3PAR_CPG2)]
+                mock.call.getCPG(HPE3PAR_CPG),
+                mock.call.getCPGAvailableSpace(HPE3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG2),
+                mock.call.getCPGAvailableSpace(HPE3PAR_CPG2)]
 
             mock_client.assert_has_calls(
                 self.standard_login +
                 expected +
                 self.standard_logout)
 
-    @mock.patch('hp3parclient.version', "3.2.1")
     def test_get_volume_stats3(self):
         # Testing when the client version is incompatible with getCPGStatData
         # setup_mock_client drive with the configuration
@@ -4893,7 +4880,8 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         config = self.setup_configuration()
         config.filter_function = FILTER_FUNCTION
         config.goodness_function = GOODNESS_FUNCTION
-        mock_client = self.setup_driver(config=config)
+        mock_client = self.setup_driver(config=config,
+                                        wsapi_version=self.wsapi_version_312)
         mock_client.getCPG.return_value = self.cpgs[0]
         mock_client.getStorageSystemInfo.return_value = {
             'serialNumber': '1234'
@@ -4906,7 +4894,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
             "usableFreeMiB": 1024.0 * 3
         }
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             self.driver._login()
@@ -4930,10 +4918,10 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
             expected = [
                 mock.call.getStorageSystemInfo(),
-                mock.call.getCPG(HP3PAR_CPG),
-                mock.call.getCPGAvailableSpace(HP3PAR_CPG),
-                mock.call.getCPG(HP3PAR_CPG2),
-                mock.call.getCPGAvailableSpace(HP3PAR_CPG2)]
+                mock.call.getCPG(HPE3PAR_CPG),
+                mock.call.getCPGAvailableSpace(HPE3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG2),
+                mock.call.getCPGAvailableSpace(HPE3PAR_CPG2)]
 
             mock_client.assert_has_calls(
                 self.standard_login +
@@ -4945,15 +4933,15 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
 
-        mock_client.getVolume.return_value = {'userCPG': HP3PAR_CPG}
+        mock_client.getVolume.return_value = {'userCPG': HPE3PAR_CPG}
         mock_client.getCPG.return_value = {}
         mock_client.getHost.side_effect = [
-            hpexceptions.HTTPNotFound('fake'),
+            hpeexceptions.HTTPNotFound('fake'),
             {'name': self.FAKE_HOST}]
         mock_client.queryHost.return_value = None
         mock_client.getVLUN.return_value = {'lun': self.TARGET_LUN}
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -4961,7 +4949,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
                 common, self.volume, self.connector)
             expected = [
                 mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
-                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.getHost(self.FAKE_HOST),
                 mock.call.queryHost(iqns=['iqn.1993-08.org.debian:01:222']),
                 mock.call.createHost(
@@ -4980,13 +4968,13 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         # setup_mock_client drive with CHAP enabled configuration
         # and return the mock HTTP 3PAR client
         config = self.setup_configuration()
-        config.hp3par_iscsi_chap_enabled = True
+        config.hpe3par_iscsi_chap_enabled = True
         mock_client = self.setup_driver(config=config)
 
-        mock_client.getVolume.return_value = {'userCPG': HP3PAR_CPG}
+        mock_client.getVolume.return_value = {'userCPG': HPE3PAR_CPG}
         mock_client.getCPG.return_value = {}
         mock_client.getHost.side_effect = [
-            hpexceptions.HTTPNotFound('fake'),
+            hpeexceptions.HTTPNotFound('fake'),
             {'name': self.FAKE_HOST}]
         mock_client.queryHost.return_value = None
         mock_client.getVLUN.return_value = {'lun': self.TARGET_LUN}
@@ -5008,7 +4996,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
         mock_client.getVolumeMetaData.side_effect = get_side_effect
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -5016,7 +5004,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
                 common, self.volume, self.connector)
             expected = [
                 mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
-                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.getVolumeMetaData(
                     'osv-0DM4qZEVSKON-DXN-NwVpw', CHAP_USER_KEY),
                 mock.call.getVolumeMetaData(
@@ -5043,10 +5031,10 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
-        mock_client.getVolume.return_value = {'userCPG': HP3PAR_CPG}
+        mock_client.getVolume.return_value = {'userCPG': HPE3PAR_CPG}
         mock_client.getCPG.return_value = {}
         mock_client.getHost.side_effect = [
-            hpexceptions.HTTPNotFound('Host not found.'),
+            hpeexceptions.HTTPNotFound('Host not found.'),
             {'name': 'fakehost.foo'}]
         mock_client.queryHost.return_value = {
             'members': [{
@@ -5054,7 +5042,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
             }]
         }
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -5063,7 +5051,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
             expected = [
                 mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
-                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.getHost(self.FAKE_HOST),
                 mock.call.queryHost(iqns=['iqn.1993-08.org.debian:01:222']),
                 mock.call.getHost('fakehost.foo')]
@@ -5078,13 +5066,13 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         # setup_mock_client drive with CHAP enabled configuration
         # and return the mock HTTP 3PAR client
         config = self.setup_configuration()
-        config.hp3par_iscsi_chap_enabled = True
+        config.hpe3par_iscsi_chap_enabled = True
         mock_client = self.setup_driver(config=config)
 
-        mock_client.getVolume.return_value = {'userCPG': HP3PAR_CPG}
+        mock_client.getVolume.return_value = {'userCPG': HPE3PAR_CPG}
         mock_client.getCPG.return_value = {}
         mock_client.getHost.side_effect = [
-            hpexceptions.HTTPNotFound('Host not found.'),
+            hpeexceptions.HTTPNotFound('Host not found.'),
             {'name': 'fakehost.foo'}]
         mock_client.queryHost.return_value = {
             'members': [{
@@ -5109,7 +5097,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
             'chapSecret': 'test-pass'
         }
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -5118,7 +5106,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
             expected = [
                 mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
-                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.getVolumeMetaData(
                     'osv-0DM4qZEVSKON-DXN-NwVpw', CHAP_USER_KEY),
                 mock.call.getVolumeMetaData(
@@ -5141,7 +5129,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
-        mock_client.getVolume.return_value = {'userCPG': HP3PAR_CPG}
+        mock_client.getVolume.return_value = {'userCPG': HPE3PAR_CPG}
         mock_client.getCPG.return_value = {}
         mock_client.getHost.side_effect = [
             {'name': self.FAKE_HOST, 'FCPaths': []},
@@ -5149,7 +5137,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
              'FCPaths': [{'wwn': '123456789012345'},
                          {'wwn': '123456789054321'}]}]
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -5158,7 +5146,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
             expected = [
                 mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
-                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.getHost(self.FAKE_HOST),
                 mock.call.modifyHost(
                     self.FAKE_HOST,
@@ -5177,10 +5165,10 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         # setup_mock_client drive with CHAP enabled configuration
         # and return the mock HTTP 3PAR client
         config = self.setup_configuration()
-        config.hp3par_iscsi_chap_enabled = True
+        config.hpe3par_iscsi_chap_enabled = True
         mock_client = self.setup_driver(config=config)
 
-        mock_client.getVolume.return_value = {'userCPG': HP3PAR_CPG}
+        mock_client.getVolume.return_value = {'userCPG': HPE3PAR_CPG}
         mock_client.getCPG.return_value = {}
         mock_client.getHost.side_effect = [
             {'name': self.FAKE_HOST, 'FCPaths': []},
@@ -5205,7 +5193,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
             'chapSecret': 'test-pass'
         }
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -5214,7 +5202,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
             expected = [
                 mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
-                mock.call.getCPG(HP3PAR_CPG),
+                mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.getVolumeMetaData(
                     'osv-0DM4qZEVSKON-DXN-NwVpw', CHAP_USER_KEY),
                 mock.call.getVolumeMetaData(
@@ -5245,14 +5233,14 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         mock_client.getPorts.return_value = PORTS_RET
         mock_client.getVLUNs.return_value = VLUNS1_RET
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
 
             # Setup a single ISCSI IP
             iscsi_ips = ["10.10.220.253"]
-            self.driver.configuration.hp3par_iscsi_ips = iscsi_ips
+            self.driver.configuration.hpe3par_iscsi_ips = iscsi_ips
 
             self.driver.initialize_iscsi_ports(common)
 
@@ -5267,14 +5255,14 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         mock_client.getPorts.return_value = PORTS_RET
         mock_client.getVLUNs.return_value = VLUNS1_RET
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
 
             # Setup two ISCSI IPs
             iscsi_ips = ["10.10.220.252", "10.10.220.253"]
-            self.driver.configuration.hp3par_iscsi_ips = iscsi_ips
+            self.driver.configuration.hpe3par_iscsi_ips = iscsi_ips
 
             self.driver.initialize_iscsi_ports(common)
 
@@ -5291,14 +5279,14 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         mock_client.getPorts.return_value = PORTS_RET
         mock_client.getVLUNs.return_value = VLUNS1_RET
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
 
             # Setup two ISCSI IPs
             iscsi_ips = ["10.10.220.252", "10.10.220.253"]
-            self.driver.configuration.hp3par_iscsi_ips = iscsi_ips
+            self.driver.configuration.hpe3par_iscsi_ips = iscsi_ips
 
             self.driver.initialize_iscsi_ports(common)
 
@@ -5320,9 +5308,9 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
         # Setup two ISCSI IPs
         iscsi_ips = ["10.10.220.252", "10.10.220.253"]
-        self.driver.configuration.hp3par_iscsi_ips = iscsi_ips
+        self.driver.configuration.hpe3par_iscsi_ips = iscsi_ips
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -5334,7 +5322,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
     def test_invalid_iscsi_ip(self):
         config = self.setup_configuration()
-        config.hp3par_iscsi_ips = ['10.10.220.250', '10.10.220.251']
+        config.hpe3par_iscsi_ips = ['10.10.220.250', '10.10.220.251']
         config.iscsi_ip_address = '10.10.10.10'
         mock_conf = {
             'getPorts.return_value': {
@@ -5379,7 +5367,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
             {'portPos': {'node': 0, 'slot': 2, 'cardPort': 1}, 'active': True}]
         mock_client.getVLUNs.return_value = {'members': ports}
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -5452,7 +5440,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -5464,10 +5452,10 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         # setup_mock_client drive with CHAP enabled configuration
         # and return the mock HTTP 3PAR client
         config = self.setup_configuration()
-        config.hp3par_iscsi_chap_enabled = True
+        config.hpe3par_iscsi_chap_enabled = True
         mock_client = self.setup_driver(config=config)
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -5511,7 +5499,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         expected = []
         expected_model = {'provider_auth': None}
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -5525,7 +5513,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         # setup_mock_client drive with CHAP enabled configuration
         # and return the mock HTTP 3PAR client
         config = self.setup_configuration()
-        config.hp3par_iscsi_chap_enabled = True
+        config.hpe3par_iscsi_chap_enabled = True
         mock_client = self.setup_driver(config=config)
 
         volume = {'host': 'test-host@3pariscsi',
@@ -5557,7 +5545,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         ]
         expected_model = {'provider_auth': 'CHAP test-host random-pass'}
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -5570,13 +5558,13 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         # setup_mock_client drive with CHAP enabled configuration
         # and return the mock HTTP 3PAR client
         config = self.setup_configuration()
-        config.hp3par_iscsi_chap_enabled = True
+        config.hpe3par_iscsi_chap_enabled = True
         mock_client = self.setup_driver(config=config)
 
         volume = {'host': 'test-host@3pariscsi',
                   'id': 'd03338a9-9115-48a3-8dfc-35cdfcdc15a7'}
         mock_utils.return_value = "random-pass"
-        mock_client.getHostVLUNs.side_effect = hpexceptions.HTTPNotFound(
+        mock_client.getHostVLUNs.side_effect = hpeexceptions.HTTPNotFound(
             'fake')
 
         mock_client.getVolumeMetaData.return_value = {
@@ -5592,7 +5580,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         ]
         expected_model = {'provider_auth': 'CHAP test-host random-pass'}
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -5605,7 +5593,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         # setup_mock_client drive with CHAP enabled configuration
         # and return the mock HTTP 3PAR client
         config = self.setup_configuration()
-        config.hp3par_iscsi_chap_enabled = True
+        config.hpe3par_iscsi_chap_enabled = True
         mock_client = self.setup_driver(config=config)
 
         volume = {'host': 'test-host@3pariscsi',
@@ -5637,7 +5625,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         ]
         expected_model = {'provider_auth': 'CHAP test-host random-pass'}
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -5650,7 +5638,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         # setup_mock_client drive with CHAP enabled configuration
         # and return the mock HTTP 3PAR client
         config = self.setup_configuration()
-        config.hp3par_iscsi_chap_enabled = True
+        config.hpe3par_iscsi_chap_enabled = True
         mock_client = self.setup_driver(config=config)
 
         volume = {'host': 'test-host@3pariscsi',
@@ -5680,7 +5668,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         ]
         expected_model = {'provider_auth': 'CHAP test-host random-pass'}
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -5701,7 +5689,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
             'members': []
         }
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             model = self.driver.ensure_export(None, volume)
@@ -5760,10 +5748,10 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
         volume = {'host': 'test-host@3pariscsi',
                   'id': 'd03338a9-9115-48a3-8dfc-35cdfcdc15a7'}
 
-        mock_client.getVolume.side_effect = hpexceptions.HTTPNotFound(
+        mock_client.getVolume.side_effect = hpeexceptions.HTTPNotFound(
             'fake')
 
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             model = self.driver.ensure_export(None, volume)
@@ -5785,7 +5773,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
             'id': 'gold-id',
             'extra_specs': {}}
         mock_client = self.setup_driver()
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()
@@ -5798,7 +5786,7 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
 
     def test_get_model_update(self):
         mock_client = self.setup_driver()
-        with mock.patch.object(hpcommon.HP3PARCommon,
+        with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
             common = self.driver._login()

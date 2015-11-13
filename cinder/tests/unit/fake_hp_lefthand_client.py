@@ -19,7 +19,7 @@ import sys
 
 import mock
 
-from cinder.tests.unit import fake_hp_client_exceptions as hpexceptions
+from cinder.tests.unit import fake_hpe_client_exceptions as hpexceptions
 
 hplefthand = mock.Mock()
 hplefthand.version = "1.0.4"

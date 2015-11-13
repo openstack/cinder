@@ -1,4 +1,4 @@
-# (c) Copyright 2014 Hewlett-Packard Development Company, L.P.
+# (c) Copyright 2014-2015 Hewlett Packard Enterprise Development LP
 #    All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -13,16 +13,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 #
-"""Fake HP client for testing 3PAR without installing the client."""
+"""Fake HPE client for testing 3PAR without installing the client."""
 
 import sys
 
 import mock
 
-from cinder.tests.unit import fake_hp_client_exceptions as hpexceptions
+from cinder.tests.unit import fake_hpe_client_exceptions as hpeexceptions
 
-hp3par = mock.Mock()
-hp3par.version = "3.1.2"
-hp3par.exceptions = hpexceptions
+hpe3par = mock.Mock()
+hpe3par.version = "4.0.0"
+hpe3par.exceptions = hpeexceptions
 
-sys.modules['hp3parclient'] = hp3par
+sys.modules['hpe3parclient'] = hpe3par

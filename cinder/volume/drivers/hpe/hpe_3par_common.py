@@ -1,4 +1,4 @@
-#    (c) Copyright 2012-2015 Hewlett-Packard Development Company, L.P.
+#    (c) Copyright 2012-2015 Hewlett Packard Enterprise Development LP
 #    All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -14,12 +14,12 @@
 #    under the License.
 #
 """
-Volume driver common utilities for HP 3PAR Storage array
+Volume driver common utilities for HPE 3PAR Storage array
 
 The 3PAR drivers requires 3.1.3 firmware on the 3PAR array.
 
-You will need to install the python hp3parclient.
-sudo pip install hp3parclient
+You will need to install the python hpe3parclient module.
+sudo pip install python-3parclient
 
 The drivers uses both the REST service and the SSH
 command line to correctly operate.  Since the
@@ -29,7 +29,7 @@ we need to have settings for both.
 The drivers requires the use of the san_ip, san_login,
 san_password settings for ssh connections into the 3PAR
 array.   It also requires the setting of
-hp3par_api_url, hp3par_username, hp3par_password
+hpe3par_api_url, hpe3par_username, hpe3par_password
 for credentials to talk to the REST service on the 3PAR
 array.
 """
@@ -45,10 +45,10 @@ import uuid
 
 from oslo_utils import importutils
 
-hp3parclient = importutils.try_import("hp3parclient")
-if hp3parclient:
-    from hp3parclient import client
-    from hp3parclient import exceptions as hpexceptions
+hpe3parclient = importutils.try_import("hpe3parclient")
+if hpe3parclient:
+    from hpe3parclient import client
+    from hpe3parclient import exceptions as hpeexceptions
 
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -71,54 +71,62 @@ from taskflow.patterns import linear_flow
 
 LOG = logging.getLogger(__name__)
 
-MIN_CLIENT_VERSION = '3.1.2'
-GETCPGSTATDATA_VERSION = '3.2.2'
-MIN_CG_CLIENT_VERSION = '3.2.2'
+MIN_CLIENT_VERSION = '4.0.0'
 DEDUP_API_VERSION = 30201120
 FLASH_CACHE_API_VERSION = 30201200
 SRSTATLD_API_VERSION = 30201200
 
-hp3par_opts = [
-    cfg.StrOpt('hp3par_api_url',
+hpe3par_opts = [
+    cfg.StrOpt('hpe3par_api_url',
                default='',
                help="3PAR WSAPI Server Url like "
-                    "https://<3par ip>:8080/api/v1"),
-    cfg.StrOpt('hp3par_username',
+                    "https://<3par ip>:8080/api/v1",
+               deprecated_name='hp3par_api_url'),
+    cfg.StrOpt('hpe3par_username',
                default='',
-               help="3PAR username with the 'edit' role"),
-    cfg.StrOpt('hp3par_password',
+               help="3PAR username with the 'edit' role",
+               deprecated_name='hp3par_username'),
+    cfg.StrOpt('hpe3par_password',
                default='',
-               help="3PAR password for the user specified in hp3par_username",
-               secret=True),
-    cfg.ListOpt('hp3par_cpg',
+               help="3PAR password for the user specified in hpe3par_username",
+               secret=True,
+               deprecated_name='hp3par_password'),
+    cfg.ListOpt('hpe3par_cpg',
                 default=["OpenStack"],
-                help="List of the CPG(s) to use for volume creation"),
-    cfg.StrOpt('hp3par_cpg_snap',
+                help="List of the CPG(s) to use for volume creation",
+                deprecated_name='hp3par_cpg'),
+    cfg.StrOpt('hpe3par_cpg_snap',
                default="",
                help="The CPG to use for Snapshots for volumes. "
-                    "If empty the userCPG will be used."),
-    cfg.StrOpt('hp3par_snapshot_retention',
+                    "If empty the userCPG will be used.",
+               deprecated_name='hp3par_cpg_snap'),
+    cfg.StrOpt('hpe3par_snapshot_retention',
                default="",
                help="The time in hours to retain a snapshot.  "
-                    "You can't delete it before this expires."),
-    cfg.StrOpt('hp3par_snapshot_expiration',
+                    "You can't delete it before this expires.",
+               deprecated_name='hp3par_snapshot_retention'),
+    cfg.StrOpt('hpe3par_snapshot_expiration',
                default="",
                help="The time in hours when a snapshot expires "
-                    " and is deleted.  This must be larger than expiration"),
-    cfg.BoolOpt('hp3par_debug',
+                    " and is deleted.  This must be larger than expiration",
+               deprecated_name='hp3par_snapshot_expiration'),
+    cfg.BoolOpt('hpe3par_debug',
                 default=False,
-                help="Enable HTTP debugging to 3PAR"),
-    cfg.ListOpt('hp3par_iscsi_ips',
+                help="Enable HTTP debugging to 3PAR",
+                deprecated_name='hp3par_debug'),
+    cfg.ListOpt('hpe3par_iscsi_ips',
                 default=[],
-                help="List of target iSCSI addresses to use."),
-    cfg.BoolOpt('hp3par_iscsi_chap_enabled',
+                help="List of target iSCSI addresses to use.",
+                deprecated_name='hp3par_iscsi_ips'),
+    cfg.BoolOpt('hpe3par_iscsi_chap_enabled',
                 default=False,
-                help="Enable CHAP authentication for iSCSI connections."),
+                help="Enable CHAP authentication for iSCSI connections.",
+                deprecated_name='hp3par_iscsi_chap_enabled'),
 ]
 
 
 CONF = cfg.CONF
-CONF.register_opts(hp3par_opts)
+CONF.register_opts(hpe3par_opts)
 
 # Input/output (total read/write) operations per second.
 THROUGHPUT = 'throughput'
@@ -134,7 +142,7 @@ QUEUE_LENGTH = 'queue_length'
 AVG_BUSY_PERC = 'avg_busy_perc'
 
 
-class HP3PARCommon(object):
+class HPE3PARCommon(object):
     """Class that contains common code for the 3PAR drivers.
 
     Version history:
@@ -203,10 +211,11 @@ class HP3PARCommon(object):
         2.0.51 - Adds consistency group support
         2.0.52 - Added update_migrated_volume. bug #1492023
         2.0.53 - Fix volume size conversion. bug #1513158
+        3.0.0 - Rebranded HP to HPE.
 
     """
 
-    VERSION = "2.0.53"
+    VERSION = "3.0.0"
 
     stats = {}
 
@@ -237,11 +246,11 @@ class HP3PARCommon(object):
                             '9 - OpenVMS',
                             '10 - HPUX',
                             '11 - WindowsServer']
-    hp_qos_keys = ['minIOPS', 'maxIOPS', 'minBWS', 'maxBWS', 'latency',
-                   'priority']
+    hpe_qos_keys = ['minIOPS', 'maxIOPS', 'minBWS', 'maxBWS', 'latency',
+                    'priority']
     qos_priority_level = {'low': 1, 'normal': 2, 'high': 3}
-    hp3par_valid_keys = ['cpg', 'snap_cpg', 'provisioning', 'persona', 'vvs',
-                         'flash_cache']
+    hpe3par_valid_keys = ['cpg', 'snap_cpg', 'provisioning', 'persona', 'vvs',
+                          'flash_cache']
 
     def __init__(self, config):
         self.config = config
@@ -260,35 +269,29 @@ class HP3PARCommon(object):
                 raise exception.InvalidInput(reason=msg)
 
     def _create_client(self):
-        cl = client.HP3ParClient(self.config.hp3par_api_url)
-        client_version = hp3parclient.version
+        cl = client.HPE3ParClient(self.config.hpe3par_api_url)
+        client_version = hpe3parclient.version
 
         if client_version < MIN_CLIENT_VERSION:
-            ex_msg = (_('Invalid hp3parclient version found (%(found)s). '
-                        'Version %(minimum)s or greater required.')
+            ex_msg = (_('Invalid hpe3parclient version found (%(found)s). '
+                        'Version %(minimum)s or greater required. Run "pip'
+                        ' install --upgrade python-3parclient" to upgrade'
+                        ' the hpe3parclient.')
                       % {'found': client_version,
                          'minimum': MIN_CLIENT_VERSION})
             LOG.error(ex_msg)
             raise exception.InvalidInput(reason=ex_msg)
-        if client_version < GETCPGSTATDATA_VERSION:
-            # getCPGStatData is only found in client version 3.2.2 or later
-            LOG.warning(_LW("getCPGStatData requires "
-                            "hp3parclient version "
-                            "'%(getcpgstatdata_version)s' "
-                            "version '%(version)s' is installed.") %
-                        {'getcpgstatdata_version': GETCPGSTATDATA_VERSION,
-                         'version': client_version})
 
         return cl
 
     def client_login(self):
         try:
             LOG.debug("Connecting to 3PAR")
-            self.client.login(self.config.hp3par_username,
-                              self.config.hp3par_password)
-        except hpexceptions.HTTPUnauthorized as ex:
+            self.client.login(self.config.hpe3par_username,
+                              self.config.hpe3par_password)
+        except hpeexceptions.HTTPUnauthorized as ex:
             msg = (_("Failed to Login to 3PAR (%(url)s) because %(err)s") %
-                   {'url': self.config.hp3par_api_url, 'err': ex})
+                   {'url': self.config.hpe3par_api_url, 'err': ex})
             LOG.error(msg)
             raise exception.InvalidInput(reason=msg)
 
@@ -311,23 +314,25 @@ class HP3PARCommon(object):
         self.client.logout()
 
     def do_setup(self, context):
-        if hp3parclient is None:
-            msg = _('You must install hp3parclient before using 3PAR drivers.')
+        if hpe3parclient is None:
+            msg = _('You must install hpe3parclient before using 3PAR'
+                    ' drivers. Run "pip install python-3parclient" to'
+                    ' install the hpe3parclient.')
             raise exception.VolumeBackendAPIException(data=msg)
         try:
             self.client = self._create_client()
             wsapi_version = self.client.getWsApiVersion()
             self.API_VERSION = wsapi_version['build']
-        except hpexceptions.UnsupportedVersion as ex:
+        except hpeexceptions.UnsupportedVersion as ex:
             raise exception.InvalidInput(ex)
 
         if context:
             # The context is None except at driver startup.
-            LOG.info(_LI("HP3PARCommon %(common_ver)s,"
-                         "hp3parclient %(rest_ver)s"),
+            LOG.info(_LI("HPE3PARCommon %(common_ver)s,"
+                         "hpe3parclient %(rest_ver)s"),
                      {"common_ver": self.VERSION,
-                      "rest_ver": hp3parclient.get_version_string()})
-        if self.config.hp3par_debug:
+                      "rest_ver": hpe3parclient.get_version_string()})
+        if self.config.hpe3par_debug:
             self.client.debug_rest(True)
         if self.API_VERSION < SRSTATLD_API_VERSION:
             # Firmware version not compatible with srstatld
@@ -351,7 +356,7 @@ class HP3PARCommon(object):
     def check_for_setup_error(self):
         self.client_login()
         try:
-            cpg_names = self.config.hp3par_cpg
+            cpg_names = self.config.hpe3par_cpg
             for cpg_name in cpg_names:
                 self.validate_cpg(cpg_name)
 
@@ -361,7 +366,7 @@ class HP3PARCommon(object):
     def validate_cpg(self, cpg_name):
         try:
             self.client.getCPG(cpg_name)
-        except hpexceptions.HTTPNotFound:
+        except hpeexceptions.HTTPNotFound:
             err = (_("CPG (%s) doesn't exist on array") % cpg_name)
             LOG.error(err)
             raise exception.InvalidInput(reason=err)
@@ -369,7 +374,7 @@ class HP3PARCommon(object):
     def get_domain(self, cpg_name):
         try:
             cpg = self.client.getCPG(cpg_name)
-        except hpexceptions.HTTPNotFound:
+        except hpeexceptions.HTTPNotFound:
             err = (_("Failed to get domain because CPG (%s) doesn't "
                      "exist on array.") % cpg_name)
             LOG.error(err)
@@ -438,11 +443,11 @@ class HP3PARCommon(object):
         try:
             cg_name = self._get_3par_vvs_name(group.id)
             self.client.deleteVolumeSet(cg_name)
-        except hpexceptions.HTTPNotFound:
+        except hpeexceptions.HTTPNotFound:
             err = (_LW("Virtual Volume Set '%s' doesn't exist on array.") %
                    cg_name)
             LOG.warning(err)
-        except hpexceptions.HTTPConflict as e:
+        except hpeexceptions.HTTPConflict as e:
             err = (_LE("Conflict detected in Virtual Volume Set"
                        " %(volume_set)s: %(error)s"))
             LOG.error(err,
@@ -467,7 +472,7 @@ class HP3PARCommon(object):
             volume_name = self._get_3par_vol_name(volume['id'])
             try:
                 self.client.addVolumeToVolumeSet(volume_set_name, volume_name)
-            except hpexceptions.HTTPNotFound:
+            except hpeexceptions.HTTPNotFound:
                 msg = (_LE('Virtual Volume Set %s does not exist.') %
                        volume_set_name)
                 LOG.error(msg)
@@ -478,7 +483,7 @@ class HP3PARCommon(object):
             try:
                 self.client.removeVolumeFromVolumeSet(
                     volume_set_name, volume_name)
-            except hpexceptions.HTTPNotFound:
+            except hpeexceptions.HTTPNotFound:
                 msg = (_LE('Virtual Volume Set %s does not exist.') %
                        volume_set_name)
                 LOG.error(msg)
@@ -500,13 +505,13 @@ class HP3PARCommon(object):
 
         optional = {'comment': json.dumps(extra),
                     'readOnly': False}
-        if self.config.hp3par_snapshot_expiration:
+        if self.config.hpe3par_snapshot_expiration:
             optional['expirationHours'] = (
-                int(self.config.hp3par_snapshot_expiration))
+                int(self.config.hpe3par_snapshot_expiration))
 
-        if self.config.hp3par_snapshot_retention:
+        if self.config.hpe3par_snapshot_retention:
             optional['retentionHours'] = (
-                int(self.config.hp3par_snapshot_retention))
+                int(self.config.hpe3par_snapshot_retention))
 
         self.client.createSnapshotOfVolumeSet(snap_shot_name, copy_of_name,
                                               optional=optional)
@@ -533,16 +538,16 @@ class HP3PARCommon(object):
             try:
                 snap_name = cgsnap_name + "-" + six.text_type(i)
                 self.client.deleteVolume(snap_name)
-            except hpexceptions.HTTPForbidden as ex:
+            except hpeexceptions.HTTPForbidden as ex:
                 LOG.error(_LE("Exception: %s."), ex)
                 raise exception.NotAuthorized()
-            except hpexceptions.HTTPNotFound as ex:
+            except hpeexceptions.HTTPNotFound as ex:
                 # We'll let this act as if it worked
                 # it helps clean up the cinder entries.
                 LOG.warning(_LW("Delete Snapshot id not found. Removing from "
                                 "cinder: %(id)s Ex: %(msg)s"),
                             {'id': snapshot['id'], 'msg': ex})
-            except hpexceptions.HTTPConflict as ex:
+            except hpeexceptions.HTTPConflict as ex:
                 LOG.error(_LE("Exception: %s."), ex)
                 raise exception.SnapshotIsBusy(snapshot_name=snapshot['id'])
             snapshot['status'] = 'deleted'
@@ -565,7 +570,7 @@ class HP3PARCommon(object):
             vol = self.client.getVolume(target_vol_name)
             if 'comment' in vol:
                 old_comment_str = vol['comment']
-        except hpexceptions.HTTPNotFound:
+        except hpeexceptions.HTTPNotFound:
             err = (_("Virtual volume '%s' doesn't exist on array.") %
                    target_vol_name)
             LOG.error(err)
@@ -675,7 +680,7 @@ class HP3PARCommon(object):
         # Check for the existence of the virtual volume.
         try:
             vol = self.client.getVolume(target_vol_name)
-        except hpexceptions.HTTPNotFound:
+        except hpeexceptions.HTTPNotFound:
             err = (_("Virtual volume '%s' doesn't exist on array.") %
                    target_vol_name)
             LOG.error(err)
@@ -728,7 +733,7 @@ class HP3PARCommon(object):
         except Exception as ex:
             with excutils.save_and_reraise_exception() as ex_ctxt:
                 if (not _convert_to_base and
-                    isinstance(ex, hpexceptions.HTTPForbidden) and
+                    isinstance(ex, hpeexceptions.HTTPForbidden) and
                         ex.get_code() == 150):
                     # Error code 150 means 'invalid operation: Cannot grow
                     # this type of volume'.
@@ -826,7 +831,7 @@ class HP3PARCommon(object):
 
             return vlun_info
 
-        except hpexceptions.HTTPBadRequest as e:
+        except hpeexceptions.HTTPBadRequest as e:
             if 'must be in the same domain' in e.get_description():
                 LOG.error(e.get_description())
                 raise exception.Invalid3PARDomain(err=e.get_description())
@@ -905,11 +910,10 @@ class HP3PARCommon(object):
         pools = []
         info = self.client.getStorageSystemInfo()
 
-        for cpg_name in self.config.hp3par_cpg:
+        for cpg_name in self.config.hpe3par_cpg:
             try:
                 cpg = self.client.getCPG(cpg_name)
-                if (self.API_VERSION >= SRSTATLD_API_VERSION
-                        and hp3parclient.version >= GETCPGSTATDATA_VERSION):
+                if (self.API_VERSION >= SRSTATLD_API_VERSION):
                     interval = 'daily'
                     history = '7d'
                     stat_capabilities = self.client.getCPGStatData(cpg_name,
@@ -957,7 +961,7 @@ class HP3PARCommon(object):
                                             cpg['SDUsage']['totalMiB']) *
                                            const)
 
-            except hpexceptions.HTTPNotFound:
+            except hpeexceptions.HTTPNotFound:
                 err = (_("CPG (%s) doesn't exist on array")
                        % cpg_name)
                 LOG.error(err)
@@ -974,7 +978,7 @@ class HP3PARCommon(object):
                         self.config.safe_get('max_over_subscription_ratio')),
                     'reserved_percentage': (
                         self.config.safe_get('reserved_percentage')),
-                    'location_info': ('HP3PARDriver:%(sys_id)s:%(dest_cpg)s' %
+                    'location_info': ('HPE3PARDriver:%(sys_id)s:%(dest_cpg)s' %
                                       {'sys_id': info['serialNumber'],
                                        'dest_cpg': cpg_name}),
                     'total_volumes': total_volumes,
@@ -988,16 +992,14 @@ class HP3PARCommon(object):
                     'filter_function': filter_function,
                     'goodness_function': goodness_function,
                     'multiattach': True,
+                    'consistencygroup_support': True,
                     }
-
-            if hp3parclient.version >= MIN_CG_CLIENT_VERSION:
-                pool['consistencygroup_support'] = True
 
             pools.append(pool)
 
-        self.stats = {'driver_version': '1.0',
+        self.stats = {'driver_version': '3.0',
                       'storage_protocol': None,
-                      'vendor_name': 'Hewlett-Packard',
+                      'vendor_name': 'Hewlett Packard Enterprise',
                       'volume_backend_name': None,
                       'pools': pools}
 
@@ -1089,7 +1091,7 @@ class HP3PARCommon(object):
         vluns = []
         try:
             vluns = self.client.getHostVLUNs(hostname)
-        except hpexceptions.HTTPNotFound:
+        except hpeexceptions.HTTPNotFound:
             LOG.debug("All VLUNs removed from host %s", hostname)
             pass
 
@@ -1126,9 +1128,9 @@ class HP3PARCommon(object):
         ctxt = context.get_admin_context()
         return volume_types.get_volume_type(ctxt, type_id)
 
-    def _get_key_value(self, hp3par_keys, key, default=None):
-        if hp3par_keys is not None and key in hp3par_keys:
-            return hp3par_keys[key]
+    def _get_key_value(self, hpe3par_keys, key, default=None):
+        if hpe3par_keys is not None and key in hpe3par_keys:
+            return hpe3par_keys[key]
         else:
             return default
 
@@ -1156,20 +1158,20 @@ class HP3PARCommon(object):
             if 'qos:' in key:
                 fields = key.split(':')
                 key = fields[1]
-            if key in self.hp_qos_keys:
+            if key in self.hpe_qos_keys:
                 qos[key] = value
         return qos
 
     def _get_keys_by_volume_type(self, volume_type):
-        hp3par_keys = {}
+        hpe3par_keys = {}
         specs = volume_type.get('extra_specs')
         for key, value in specs.items():
             if ':' in key:
                 fields = key.split(':')
                 key = fields[1]
-            if key in self.hp3par_valid_keys:
-                hp3par_keys[key] = value
-        return hp3par_keys
+            if key in self.hpe3par_valid_keys:
+                hpe3par_keys[key] = value
+        return hpe3par_keys
 
     def _set_qos_rule(self, qos, vvs_name):
         min_io = self._get_qos_value(qos, 'minIOPS')
@@ -1207,10 +1209,10 @@ class HP3PARCommon(object):
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE("Error creating QOS rule %s"), qosRule)
 
-    def get_flash_cache_policy(self, hp3par_keys):
-        if hp3par_keys is not None:
+    def get_flash_cache_policy(self, hpe3par_keys):
+        if hpe3par_keys is not None:
             # First check list of extra spec keys
-            val = self._get_key_value(hp3par_keys, 'flash_cache', None)
+            val = self._get_key_value(hpe3par_keys, 'flash_cache', None)
             if val is not None:
                 # If requested, see if supported on back end
                 if self.API_VERSION < FLASH_CACHE_API_VERSION:
@@ -1247,7 +1249,7 @@ class HP3PARCommon(object):
             # Admin has set a volume set name to add the volume to
             try:
                 self.client.addVolumeToVolumeSet(vvs_name, volume_name)
-            except hpexceptions.HTTPNotFound:
+            except hpeexceptions.HTTPNotFound:
                 msg = _('VV Set %s does not exist.') % vvs_name
                 LOG.error(msg)
                 raise exception.InvalidInput(reason=msg)
@@ -1302,14 +1304,14 @@ class HP3PARCommon(object):
         persona_id = persona_value.split(' ')
         return persona_id[0]
 
-    def get_persona_type(self, volume, hp3par_keys=None):
+    def get_persona_type(self, volume, hpe3par_keys=None):
         default_persona = self.valid_persona_values[0]
         type_id = volume.get('volume_type_id', None)
         if type_id is not None:
             volume_type = self._get_volume_type(type_id)
-            if hp3par_keys is None:
-                hp3par_keys = self._get_keys_by_volume_type(volume_type)
-        persona_value = self._get_key_value(hp3par_keys, 'persona',
+            if hpe3par_keys is None:
+                hpe3par_keys = self._get_keys_by_volume_type(volume_type)
+        persona_value = self._get_key_value(hpe3par_keys, 'persona',
                                             default_persona)
         return self.validate_persona(persona_value)
 
@@ -1319,19 +1321,19 @@ class HP3PARCommon(object):
         Reconciles VV Set, old-style extra-specs, and QOS specs
         and returns commonly used info about the type.
 
-        :returns: hp3par_keys, qos, volume_type, vvs_name
+        :returns: hpe3par_keys, qos, volume_type, vvs_name
         """
         volume_type = None
         vvs_name = None
-        hp3par_keys = {}
+        hpe3par_keys = {}
         qos = {}
         if type_id is not None:
             volume_type = self._get_volume_type(type_id)
-            hp3par_keys = self._get_keys_by_volume_type(volume_type)
-            vvs_name = self._get_key_value(hp3par_keys, 'vvs')
+            hpe3par_keys = self._get_keys_by_volume_type(volume_type)
+            vvs_name = self._get_key_value(hpe3par_keys, 'vvs')
             if vvs_name is None:
                 qos = self._get_qos_by_volume_type(volume_type)
-        return hp3par_keys, qos, volume_type, vvs_name
+        return hpe3par_keys, qos, volume_type, vvs_name
 
     def get_volume_settings_from_type_id(self, type_id, pool):
         """Get 3PAR volume settings given a type_id.
@@ -1345,21 +1347,21 @@ class HP3PARCommon(object):
         :return: dict
         """
 
-        hp3par_keys, qos, volume_type, vvs_name = self.get_type_info(type_id)
+        hpe3par_keys, qos, volume_type, vvs_name = self.get_type_info(type_id)
 
         # Default to pool extracted from host.
         # If that doesn't work use the 1st CPG in the config as the default.
-        default_cpg = pool or self.config.hp3par_cpg[0]
+        default_cpg = pool or self.config.hpe3par_cpg[0]
 
-        cpg = self._get_key_value(hp3par_keys, 'cpg', default_cpg)
+        cpg = self._get_key_value(hpe3par_keys, 'cpg', default_cpg)
         if cpg is not default_cpg:
             # The cpg was specified in a volume type extra spec so it
             # needs to be validated that it's in the correct domain.
             # log warning here
-            msg = _LW("'hp3par:cpg' is not supported as an extra spec "
+            msg = _LW("'hpe3par:cpg' is not supported as an extra spec "
                       "in a volume type.  CPG's are chosen by "
                       "the cinder scheduler, as a pool, from the "
-                      "cinder.conf entry 'hp3par_cpg', which can "
+                      "cinder.conf entry 'hpe3par_cpg', which can "
                       "be a list of CPGs.")
             versionutils.report_deprecated_feature(LOG, msg)
             LOG.info(_LI("Using pool %(pool)s instead of %(cpg)s"),
@@ -1368,17 +1370,17 @@ class HP3PARCommon(object):
             cpg = pool
             self.validate_cpg(cpg)
         # Look to see if the snap_cpg was specified in volume type
-        # extra spec, if not use hp3par_cpg_snap from config as the
+        # extra spec, if not use hpe3par_cpg_snap from config as the
         # default.
-        snap_cpg = self.config.hp3par_cpg_snap
-        snap_cpg = self._get_key_value(hp3par_keys, 'snap_cpg', snap_cpg)
+        snap_cpg = self.config.hpe3par_cpg_snap
+        snap_cpg = self._get_key_value(hpe3par_keys, 'snap_cpg', snap_cpg)
         # If it's still not set or empty then set it to the cpg.
         if not snap_cpg:
             snap_cpg = cpg
 
         # if provisioning is not set use thin
         default_prov = self.valid_prov_values[0]
-        prov_value = self._get_key_value(hp3par_keys, 'provisioning',
+        prov_value = self._get_key_value(hpe3par_keys, 'provisioning',
                                          default_prov)
         # check for valid provisioning type
         if prov_value not in self.valid_prov_values:
@@ -1406,7 +1408,7 @@ class HP3PARCommon(object):
             LOG.error(err)
             raise exception.InvalidInput(reason=err)
 
-        return {'hp3par_keys': hp3par_keys,
+        return {'hpe3par_keys': hpe3par_keys,
                 'cpg': cpg, 'snap_cpg': snap_cpg,
                 'vvs_name': vvs_name, 'qos': qos,
                 'tpvv': tpvv, 'tdvv': tdvv, 'volume_type': volume_type}
@@ -1436,7 +1438,7 @@ class HP3PARCommon(object):
         # check for valid persona even if we don't use it until
         # attach time, this will give the end user notice that the
         # persona type is invalid at volume creation time
-        self.get_persona_type(volume, volume_settings['hp3par_keys'])
+        self.get_persona_type(volume, volume_settings['hpe3par_keys'])
 
         return volume_settings
 
@@ -1465,7 +1467,8 @@ class HP3PARCommon(object):
             snap_cpg = type_info['snap_cpg']
             tpvv = type_info['tpvv']
             tdvv = type_info['tdvv']
-            flash_cache = self.get_flash_cache_policy(type_info['hp3par_keys'])
+            flash_cache = self.get_flash_cache_policy(
+                type_info['hpe3par_keys'])
 
             cg_id = volume.get('consistencygroup_id', None)
             if cg_id:
@@ -1501,11 +1504,11 @@ class HP3PARCommon(object):
                     self.client.deleteVolume(volume_name)
                     LOG.error(_LE("Exception: %s"), ex)
                     raise exception.CinderException(ex)
-        except hpexceptions.HTTPConflict:
+        except hpeexceptions.HTTPConflict:
             msg = _("Volume (%s) already exists on array") % volume_name
             LOG.error(msg)
             raise exception.Duplicate(msg)
-        except hpexceptions.HTTPBadRequest as ex:
+        except hpeexceptions.HTTPBadRequest as ex:
             LOG.error(_LE("Exception: %s"), ex)
             raise exception.Invalid(ex.get_description())
         except exception.InvalidInput as ex:
@@ -1594,9 +1597,9 @@ class HP3PARCommon(object):
 
             return self._get_model_update(volume['host'], cpg)
 
-        except hpexceptions.HTTPForbidden:
+        except hpeexceptions.HTTPForbidden:
             raise exception.NotAuthorized()
-        except hpexceptions.HTTPNotFound:
+        except hpeexceptions.HTTPNotFound:
             raise exception.NotFound()
         except Exception as ex:
             LOG.error(_LE("Exception: %s"), ex)
@@ -1610,7 +1613,7 @@ class HP3PARCommon(object):
             # volume set name in the error.
             try:
                 self.client.deleteVolume(volume_name)
-            except hpexceptions.HTTPBadRequest as ex:
+            except hpeexceptions.HTTPBadRequest as ex:
                 if ex.get_code() == 29:
                     if self.client.isOnlinePhysicalCopy(volume_name):
                         LOG.debug("Found an online copy for %(volume)s",
@@ -1625,7 +1628,7 @@ class HP3PARCommon(object):
                 else:
                     LOG.error(_LE("Exception: %s"), ex)
                     raise
-            except hpexceptions.HTTPConflict as ex:
+            except hpeexceptions.HTTPConflict as ex:
                 if ex.get_code() == 34:
                     # This is a special case which means the
                     # volume is part of a volume set.
@@ -1657,16 +1660,16 @@ class HP3PARCommon(object):
                     LOG.error(_LE("Exception: %s"), ex)
                     raise exception.VolumeIsBusy(message=ex.get_description())
 
-        except hpexceptions.HTTPNotFound as ex:
+        except hpeexceptions.HTTPNotFound as ex:
             # We'll let this act as if it worked
             # it helps clean up the cinder entries.
             LOG.warning(_LW("Delete volume id not found. Removing from "
                             "cinder: %(id)s Ex: %(msg)s"),
                         {'id': volume['id'], 'msg': ex})
-        except hpexceptions.HTTPForbidden as ex:
+        except hpeexceptions.HTTPForbidden as ex:
             LOG.error(_LE("Exception: %s"), ex)
             raise exception.NotAuthorized(ex.get_description())
-        except hpexceptions.HTTPConflict as ex:
+        except hpeexceptions.HTTPConflict as ex:
             LOG.error(_LE("Exception: %s"), ex)
             raise exception.VolumeIsBusy(message=ex.get_description())
         except Exception as ex:
@@ -1699,7 +1702,7 @@ class HP3PARCommon(object):
 
             type_id = volume.get('volume_type_id', None)
 
-            hp3par_keys, qos, _volume_type, vvs = self.get_type_info(
+            hpe3par_keys, qos, _volume_type, vvs = self.get_type_info(
                 type_id)
             if vvs:
                 vvs_name = vvs
@@ -1737,11 +1740,11 @@ class HP3PARCommon(object):
                     raise exception.CinderException(ex)
 
             # Check for flash cache setting in extra specs
-            flash_cache = self.get_flash_cache_policy(hp3par_keys)
+            flash_cache = self.get_flash_cache_policy(hpe3par_keys)
 
             if qos or vvs_name or flash_cache is not None:
-                cpg_names = self._get_key_value(hp3par_keys, 'cpg',
-                                                self.config.hp3par_cpg)
+                cpg_names = self._get_key_value(hpe3par_keys, 'cpg',
+                                                self.config.hpe3par_cpg)
                 try:
                     self._add_volume_to_volume_set(volume, volume_name,
                                                    cpg_names[0], vvs_name,
@@ -1751,10 +1754,10 @@ class HP3PARCommon(object):
                     self.client.deleteVolume(volume_name)
                     LOG.error(_LE("Exception: %s"), ex)
                     raise exception.CinderException(ex)
-        except hpexceptions.HTTPForbidden as ex:
+        except hpeexceptions.HTTPForbidden as ex:
             LOG.error(_LE("Exception: %s"), ex)
             raise exception.NotAuthorized()
-        except hpexceptions.HTTPNotFound as ex:
+        except hpeexceptions.HTTPNotFound as ex:
             LOG.error(_LE("Exception: %s"), ex)
             raise exception.NotFound()
         except Exception as ex:
@@ -1786,19 +1789,19 @@ class HP3PARCommon(object):
 
             optional = {'comment': json.dumps(extra),
                         'readOnly': True}
-            if self.config.hp3par_snapshot_expiration:
+            if self.config.hpe3par_snapshot_expiration:
                 optional['expirationHours'] = (
-                    int(self.config.hp3par_snapshot_expiration))
+                    int(self.config.hpe3par_snapshot_expiration))
 
-            if self.config.hp3par_snapshot_retention:
+            if self.config.hpe3par_snapshot_retention:
                 optional['retentionHours'] = (
-                    int(self.config.hp3par_snapshot_retention))
+                    int(self.config.hpe3par_snapshot_retention))
 
             self.client.createSnapshot(snap_name, vol_name, optional)
-        except hpexceptions.HTTPForbidden as ex:
+        except hpeexceptions.HTTPForbidden as ex:
             LOG.error(_LE("Exception: %s"), ex)
             raise exception.NotAuthorized()
-        except hpexceptions.HTTPNotFound as ex:
+        except hpeexceptions.HTTPNotFound as ex:
             LOG.error(_LE("Exception: %s"), ex)
             raise exception.NotFound()
 
@@ -2004,11 +2007,11 @@ class HP3PARCommon(object):
 
             LOG.info(_LI('Completed: convert_to_base_volume: '
                          'id=%s.'), volume['id'])
-        except hpexceptions.HTTPConflict:
+        except hpeexceptions.HTTPConflict:
             msg = _("Volume (%s) already exists on array.") % volume_name
             LOG.error(msg)
             raise exception.Duplicate(msg)
-        except hpexceptions.HTTPBadRequest as ex:
+        except hpeexceptions.HTTPBadRequest as ex:
             LOG.error(_LE("Exception: %s"), ex)
             raise exception.Invalid(ex.get_description())
         except exception.InvalidInput as ex:
@@ -2030,16 +2033,16 @@ class HP3PARCommon(object):
         try:
             snap_name = self._get_3par_snap_name(snapshot['id'])
             self.client.deleteVolume(snap_name)
-        except hpexceptions.HTTPForbidden as ex:
+        except hpeexceptions.HTTPForbidden as ex:
             LOG.error(_LE("Exception: %s"), ex)
             raise exception.NotAuthorized()
-        except hpexceptions.HTTPNotFound as ex:
+        except hpeexceptions.HTTPNotFound as ex:
             # We'll let this act as if it worked
             # it helps clean up the cinder entries.
             LOG.warning(_LW("Delete Snapshot id not found. Removing from "
                             "cinder: %(id)s Ex: %(msg)s"),
                         {'id': snapshot['id'], 'msg': ex})
-        except hpexceptions.HTTPConflict as ex:
+        except hpeexceptions.HTTPConflict as ex:
             LOG.error(_LE("Exception: %s"), ex)
             raise exception.SnapshotIsBusy(snapshot_name=snapshot['id'])
 
@@ -2081,7 +2084,7 @@ class HP3PARCommon(object):
         try:
             self.delete_vlun(volume, hostname)
             return
-        except hpexceptions.HTTPNotFound as e:
+        except hpeexceptions.HTTPNotFound as e:
             if 'host does not exist' in e.get_description():
                 # use the wwn to see if we can find the hostname
                 hostname = self._get_3par_hostname_from_wwn_iqn(wwn, iqn)
@@ -2166,7 +2169,7 @@ class HP3PARCommon(object):
                      'tuneOperation': 1,
                      'userCPG': new_cpg,
                      'conversionOperation': cop})
-            except hpexceptions.HTTPBadRequest as ex:
+            except hpeexceptions.HTTPBadRequest as ex:
                 if ex.get_code() == 40 and "keepVV" in six.text_type(ex):
                     # Cannot retype with snapshots because we don't want to
                     # use keepVV and have straggling volumes.  Log additional
@@ -2200,8 +2203,8 @@ class HP3PARCommon(object):
             (host_type, host_id, _host_cpg) = (
                 host['capabilities']['location_info']).split(':')
 
-            if not (host_type == 'HP3PARDriver'):
-                reason = (_("Cannot retype from HP3PARDriver to %s.") %
+            if not (host_type == 'HPE3PARDriver'):
+                reason = (_("Cannot retype from HPE3PARDriver to %s.") %
                           host_type)
                 raise exception.InvalidHost(reason)
 
@@ -2302,15 +2305,15 @@ class HP3PARCommon(object):
         new_qos = new_volume_settings['qos']
         new_vvs = new_volume_settings['vvs_name']
         new_persona = None
-        new_hp3par_keys = new_volume_settings['hp3par_keys']
-        if 'persona' in new_hp3par_keys:
-            new_persona = new_hp3par_keys['persona']
-        new_flash_cache = self.get_flash_cache_policy(new_hp3par_keys)
+        new_hpe3par_keys = new_volume_settings['hpe3par_keys']
+        if 'persona' in new_hpe3par_keys:
+            new_persona = new_hpe3par_keys['persona']
+        new_flash_cache = self.get_flash_cache_policy(new_hpe3par_keys)
 
         old_qos = old_volume_settings['qos']
         old_vvs = old_volume_settings['vvs_name']
-        old_hp3par_keys = old_volume_settings['hp3par_keys']
-        old_flash_cache = self.get_flash_cache_policy(old_hp3par_keys)
+        old_hpe3par_keys = old_volume_settings['hpe3par_keys']
+        old_flash_cache = self.get_flash_cache_policy(old_hpe3par_keys)
 
         # Get the current volume info because we can get in a bad state
         # if we trust that all the volume type settings are still the
@@ -2397,7 +2400,7 @@ class HP3PARCommon(object):
                 if vlun['volumeName'] == vol_name:
                     existing_vlun = vlun
                     break
-        except hpexceptions.HTTPNotFound:
+        except hpeexceptions.HTTPNotFound:
             # ignore, no existing VLUNs were found
             LOG.debug("No existing VLUNs were found for host/volume "
                       "combination: %(host)s, %(vol)s",
@@ -2417,7 +2420,7 @@ class HP3PARCommon(object):
                 if vlun['volumeName'] == vol_name:
                     existing_vluns.append(vlun)
                     break
-        except hpexceptions.HTTPNotFound:
+        except hpeexceptions.HTTPNotFound:
             # ignore, no existing VLUNs were found
             LOG.debug("No existing VLUNs were found for host/volume "
                       "combination: %(host)s, %(vol)s",
@@ -2608,7 +2611,7 @@ class ModifySpecsTask(flow_utils.CinderTask):
             try:
                 common.client.deleteVolumeSet(vvs_name)
                 self.needs_revert = True
-            except hpexceptions.HTTPNotFound as ex:
+            except hpeexceptions.HTTPNotFound as ex:
                 # HTTPNotFound(code=102) is OK.  Set does not exist.
                 if ex.get_code() != 102:
                     LOG.error(_LE("Unexpected error when retype() tried to "
@@ -2630,7 +2633,7 @@ class ModifySpecsTask(flow_utils.CinderTask):
             vvs_name = common._get_3par_vvs_name(volume['id'])
             try:
                 common.client.deleteVolumeSet(vvs_name)
-            except hpexceptions.HTTPNotFound as ex:
+            except hpeexceptions.HTTPNotFound as ex:
                 # HTTPNotFound(code=102) is OK.  Set does not exist.
                 if ex.get_code() != 102:
                     LOG.error(_LE("Unexpected error when retype() revert "

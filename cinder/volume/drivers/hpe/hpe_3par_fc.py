@@ -1,4 +1,4 @@
-#    (c) Copyright 2013 Hewlett-Packard Development Company, L.P.
+#    (c) Copyright 2013-2015 Hewlett Packard Enterprise Development LP
 #    All Rights Reserved.
 #
 #    Copyright 2012 OpenStack Foundation
@@ -16,43 +16,43 @@
 #    under the License.
 #
 """
-Volume driver for HP 3PAR Storage array.
+Volume driver for HPE 3PAR Storage array.
 This driver requires 3.1.3 firmware on the 3PAR array, using
-the 3.x version of the hp3parclient.
+the 4.x version of the hpe3parclient.
 
-You will need to install the python hp3parclient.
-sudo pip install --upgrade "hp3parclient>=3.0"
+You will need to install the python hpe3parclient.
+sudo pip install --upgrade "hpe3parclient>=4.0"
 
 Set the following in the cinder.conf file to enable the
 3PAR Fibre Channel Driver along with the required flags:
 
-volume_driver=cinder.volume.drivers.san.hp.hp_3par_fc.HP3PARFCDriver
+volume_driver=cinder.volume.drivers.hpe.hpe_3par_fc.HPE3PARFCDriver
 """
 
 try:
-    from hp3parclient import exceptions as hpexceptions
+    from hpe3parclient import exceptions as hpeexceptions
 except ImportError:
-    hpexceptions = None
+    hpeexceptions = None
 
 from oslo_log import log as logging
 
 from cinder import exception
 from cinder.i18n import _, _LI
 from cinder.volume import driver
-from cinder.volume.drivers.san.hp import hp_3par_common as hpcommon
+from cinder.volume.drivers.hpe import hpe_3par_common as hpecommon
 from cinder.volume.drivers.san import san
 from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)
 
 
-class HP3PARFCDriver(driver.TransferVD,
-                     driver.ManageableVD,
-                     driver.ExtendVD,
-                     driver.SnapshotVD,
-                     driver.MigrateVD,
-                     driver.ConsistencyGroupVD,
-                     driver.BaseVD):
+class HPE3PARFCDriver(driver.TransferVD,
+                      driver.ManageableVD,
+                      driver.ExtendVD,
+                      driver.SnapshotVD,
+                      driver.MigrateVD,
+                      driver.ConsistencyGroupVD,
+                      driver.BaseVD):
     """OpenStack Fibre Channel driver to enable 3PAR storage array.
 
     Version history:
@@ -89,19 +89,20 @@ class HP3PARFCDriver(driver.TransferVD,
         2.0.19 - Adds consistency group support
         2.0.20 - Update driver to use ABC metaclasses
         2.0.21 - Added update_migrated_volume. bug # 1492023
+        3.0.0 - Rebranded HP to HPE.
 
     """
 
-    VERSION = "2.0.21"
+    VERSION = "3.0.0"
 
     def __init__(self, *args, **kwargs):
-        super(HP3PARFCDriver, self).__init__(*args, **kwargs)
-        self.configuration.append_config_values(hpcommon.hp3par_opts)
+        super(HPE3PARFCDriver, self).__init__(*args, **kwargs)
+        self.configuration.append_config_values(hpecommon.hpe3par_opts)
         self.configuration.append_config_values(san.san_opts)
         self.lookup_service = fczm_utils.create_lookup_service()
 
     def _init_common(self):
-        return hpcommon.HP3PARCommon(self.configuration)
+        return hpecommon.HPE3PARCommon(self.configuration)
 
     def _login(self):
         common = self._init_common()
@@ -114,8 +115,8 @@ class HP3PARFCDriver(driver.TransferVD,
 
     def _check_flags(self, common):
         """Sanity check to ensure we have required options set."""
-        required_flags = ['hp3par_api_url', 'hp3par_username',
-                          'hp3par_password',
+        required_flags = ['hpe3par_api_url', 'hpe3par_username',
+                          'hpe3par_password',
                           'san_ip', 'san_login', 'san_password']
         common.check_flags(self.configuration, required_flags)
 
@@ -285,7 +286,7 @@ class HP3PARFCDriver(driver.TransferVD,
 
             try:
                 common.client.getHostVLUNs(hostname)
-            except hpexceptions.HTTPNotFound:
+            except hpeexceptions.HTTPNotFound:
                 # No more exports for this host.
                 LOG.info(_LI("Need to remove FC Zone, building initiator "
                              "target map"))
@@ -378,7 +379,7 @@ class HP3PARFCDriver(driver.TransferVD,
         domain = common.get_domain(cpg)
         try:
             host = common._get_3par_host(hostname)
-        except hpexceptions.HTTPNotFound:
+        except hpeexceptions.HTTPNotFound:
             # get persona from the volume type extra specs
             persona_id = common.get_persona_type(volume)
             # host doesn't exist, we have to create it
@@ -556,7 +557,7 @@ class HP3PARFCDriver(driver.TransferVD,
         common = self._login()
         try:
             return common.get_cpg(volume)
-        except hpexceptions.HTTPNotFound:
+        except hpeexceptions.HTTPNotFound:
             reason = (_("Volume %s doesn't exist on array.") % volume)
             LOG.error(reason)
             raise exception.InvalidVolume(reason)
