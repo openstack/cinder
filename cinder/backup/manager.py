@@ -386,7 +386,7 @@ class BackupManager(manager.SchedulerDependentManager):
             # before going forward. The exception will be caught,
             # the volume status will be set back to available and
             # the backup status to 'error'
-            utils.require_driver_initialized(self.driver)
+            utils.require_driver_initialized(self._get_driver(backend))
 
             backup_service = self.service.get_backup_driver(context)
             self._get_driver(backend).backup_volume(context, backup,
@@ -481,7 +481,7 @@ class BackupManager(manager.SchedulerDependentManager):
             # before going forward. The exception will be caught,
             # the volume status will be set back to available and
             # the backup status to 'error'
-            utils.require_driver_initialized(self.driver)
+            utils.require_driver_initialized(self._get_driver(backend))
 
             backup_service = self.service.get_backup_driver(context)
             self._get_driver(backend).restore_backup(context, backup,
