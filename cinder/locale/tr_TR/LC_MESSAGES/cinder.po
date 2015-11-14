@@ -7,9 +7,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev200\n"
+"Project-Id-Version: cinder 8.0.0.dev220\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-13 06:37+0000\n"
+"POT-Creation-Date: 2015-11-14 06:38+0000\n"
 "PO-Revision-Date: 2015-09-16 08:16+0000\n"
 "Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
 "Language: tr_TR\n"
@@ -612,10 +612,6 @@ msgstr ""
 " stdout: %(out)s\n"
 " stderr: %(err)s."
 
-#, python-format
-msgid "CLIQ %(proxy_ver)s"
-msgstr "CLIQ %(proxy_ver)s"
-
 msgid ""
 "CMMVC6071E The VDisk-to-host mapping was not created because the VDisk is "
 "already mapped to a host.\n"
@@ -882,10 +878,6 @@ msgid ""
 msgstr ""
 "%(vhd_path)s imajı küçük bir boyuta yeniden boyutlandırılamıyor. İmaj "
 "boyutu: %(old_size)s, İstenen boyut: %(new_size)s"
-
-#, python-format
-msgid "Cannot retype from HP3PARDriver to %s."
-msgstr "HP3PARDriver'den %s'e retype yapılamaz."
 
 msgid "Cannot retype from one 3PAR array to another."
 msgstr "Bir 3PAR dizisinden diğerine retype yapılamaz."
@@ -1964,10 +1956,6 @@ msgid "Error removing volume %(vol)s. %(error)s."
 msgstr "%(vol)s mantıksal sürücüsü kaldırılırken hata. %(error)s."
 
 #, python-format
-msgid "Error running CLIQ command %(verb)s %(cliq_args)s.  Result=%(out)s"
-msgstr "CLIQ komutunu çalıştırmada hata %(verb)s %(cliq_args)s.  Sonuç=%(out)s"
-
-#, python-format
 msgid "Error unbinding volume %(vol)s from pool. %(error)s."
 msgstr ""
 "%(vol)s mantıksal sürücüsünün havuz bağlantısını ayırmada hata. %(error)s."
@@ -2861,14 +2849,6 @@ msgid "Failure in clear_volume_key_value_pair: %s"
 msgstr "clear_volume_key_value_pair başarısız: %s"
 
 #, python-format
-msgid ""
-"Failure in communication between web service and array. Waited %s seconds. "
-"Verify array configuration parameters."
-msgstr ""
-"Web servis ve dizi arasında iletişim başarısız. %s saniye beklendi. Dizi "
-"yapılandırma parametrelerini doğrulayın."
-
-#, python-format
 msgid "Failure in update_volume_key_value_pair:%s"
 msgstr "update_volume_key_value_pair başarısız: %s"
 
@@ -3493,14 +3473,6 @@ msgstr "Geçersiz istemci: %(reason)s"
 
 #, python-format
 msgid ""
-"Invalid hp3parclient version found (%(found)s). Version %(minimum)s or "
-"greater required."
-msgstr ""
-"Geçersiz hp3parclient sürümü bulundu (%(found)s). Sürüm %(minimum)s veya "
-"daha yükseği gerekli."
-
-#, python-format
-msgid ""
 "Invalid hplefthandclient version found (%(found)s). Version %(minimum)s or "
 "greater required."
 msgstr ""
@@ -3813,11 +3785,6 @@ msgstr "Kusurlu istek gövdesi"
 
 msgid "Malformed request url"
 msgstr "Bozuk istel adresi"
-
-#, python-format
-msgid ""
-"Malformed response to CLIQ command %(verb)s %(cliq_args)s. Result=%(out)s"
-msgstr "CLIQ komutuna bozuk yanıt %(verb)s %(cliq_args)s. Sonuç=%(out)s"
 
 #, python-format
 msgid "Malformed response to command %(cmd)s: %(reason)s"
@@ -5873,13 +5840,6 @@ msgstr ""
 "%(id)s eşleştirmesi için beklenmeyen eşleştirme durumu %(status)s. "
 "Öznitelikler: %(attr)s."
 
-#, python-format
-msgid ""
-"Unexpected number of virtual ips for cluster  %(cluster_name)s. Result="
-"%(_xml)s"
-msgstr ""
-"%(cluster_name)s kümesi için beklenmeyen sayıda sanal ip.  Sonuç=%(_xml)s"
-
 msgid "Unexpected response from Nimble API"
 msgstr "Nimble API'sinden beklenmeyen yanıt"
 
@@ -6532,9 +6492,6 @@ msgstr "XtremIO düzgün ilklendirilmemiş, küme bulunamadı"
 msgid "You must implement __call__"
 msgstr "__call__ fonksiyonunu uygulamalısınız."
 
-msgid "You must install hp3parclient before using 3PAR drivers."
-msgstr "3PAR sürücülerini kullanmadan hp3parclient kurmalısınız."
-
 msgid "You must supply an array in your EMC configuration file."
 msgstr "EMC yapılandırma dosyasında bir dizi sağlamalısınız."
 
@@ -7103,9 +7060,6 @@ msgstr "Sınır parametresi tam sayı olmak zorunda"
 
 msgid "limit param must be positive"
 msgstr "Sınır parametresi pozitif olmak zorunda"
-
-msgid "local_path not supported"
-msgstr "local_path desteklenmiyor"
 
 msgid "manage_existing requires a 'name' key to identify an existing volume."
 msgstr ""

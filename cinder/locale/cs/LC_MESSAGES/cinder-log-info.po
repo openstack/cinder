@@ -7,10 +7,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev200\n"
+"Project-Id-Version: cinder 8.0.0.dev220\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-13 06:37+0000\n"
-"PO-Revision-Date: 2015-11-11 10:47+0000\n"
+"POT-Creation-Date: 2015-11-14 06:38+0000\n"
+"PO-Revision-Date: 2015-11-13 05:11+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language-Team: Czech\n"
 "Language: cs\n"
@@ -1338,16 +1338,12 @@ msgid "HDP list: %s"
 msgstr "Seznam HDP: %s"
 
 #, python-format
-msgid "HP3PARCommon %(common_ver)s,hp3parclient %(rest_ver)s"
-msgstr "Společné části HP3PAR %(common_ver)s, klient hp3par %(rest_ver)s"
+msgid "HPE3PARCommon %(common_ver)s,hpe3parclient %(rest_ver)s"
+msgstr "Společné části HPE3PAR %(common_ver)s, klient hp3par %(rest_ver)s"
 
 #, python-format
 msgid "HPLeftHand API version %s"
 msgstr "Verze API HPLeftHand: %s"
-
-#, python-format
-msgid "HPLeftHand driver %(driver_ver)s, proxy %(proxy_ver)s"
-msgstr "Ovladač HPLeftHand %(driver_ver)s, proxy %(proxy_ver)s"
 
 #, python-format
 msgid "HTTP exception thrown: %s"
@@ -2931,6 +2927,14 @@ msgid ""
 msgstr ""
 "Interval čekání pro %(event_type)s není v souboru huawei.conf nastaven. "
 "Použit výchozí: %(default_wait_interval)d."
+
+#, python-format
+msgid ""
+"Waiting for volume expansion of %(vol)s to complete, current remaining "
+"actions are %(action)s. ETA: %(eta)s mins."
+msgstr ""
+"Čekání na dokončení rozšíření svazku %(vol)s. Činnosti které je třeba ještě "
+"provést: %(action)s. Předpokládaný čas dokončení: %(eta)s min."
 
 msgid "Waiting for web service array communication."
 msgstr "Čeká se na komunikaci s polem internetové služby."

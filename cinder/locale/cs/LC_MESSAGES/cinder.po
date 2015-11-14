@@ -9,10 +9,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev200\n"
+"Project-Id-Version: cinder 8.0.0.dev220\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-13 06:37+0000\n"
-"PO-Revision-Date: 2015-11-12 04:05+0000\n"
+"POT-Creation-Date: 2015-11-14 06:38+0000\n"
+"PO-Revision-Date: 2015-11-13 05:10+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language: cs\n"
 "Language-Team: Czech\n"
@@ -720,10 +720,6 @@ msgstr ""
 "standardní výstup: %(out)s\n"
 "chybový výstup: %(err)s."
 
-#, python-format
-msgid "CLIQ %(proxy_ver)s"
-msgstr "CLIQ %(proxy_ver)s"
-
 msgid ""
 "CMMVC6071E The VDisk-to-host mapping was not created because the VDisk is "
 "already mapped to a host.\n"
@@ -738,7 +734,7 @@ msgstr "Verze CONCERTO není podporována"
 
 #, python-format
 msgid "CPG (%s) doesn't exist on array"
-msgstr "CPG (%s) neexistuje v poli"
+msgstr "Společná skupiny poskytování (%s) neexistuje v poli"
 
 msgid "Cache name is None, please set smartcache:cachename in key."
 msgstr ""
@@ -1101,17 +1097,17 @@ msgstr ""
 "požadovaná velikost: %(new_size)s"
 
 #, python-format
-msgid "Cannot retype from HP3PARDriver to %s."
-msgstr "Nelze přetypovat z HP3PARDriver na %s."
+msgid "Cannot retype from HPE3PARDriver to %s."
+msgstr "Nelze přetypovat z HPE3PARDriver na %s."
 
 msgid "Cannot retype from one 3PAR array to another."
 msgstr "Nelze přetypovat z jednoho pole 3PAR na jiné."
 
 msgid "Cannot retype to a CPG in a different domain."
-msgstr "Nelze přetypovat do CPG v jiné doméně."
+msgstr "Nelze přetypovat do společné skupiny poskytování v jiné doméně."
 
 msgid "Cannot retype to a snap CPG in a different domain."
-msgstr "Nelze přetypovat do snap CPG v jiné doméně."
+msgstr "Nelze přetypovat do snímku společné skupiny poskytování v jiné doméně."
 
 msgid ""
 "Cannot run vgc-cluster command, please ensure software is installed and "
@@ -1500,6 +1496,9 @@ msgid ""
 msgstr ""
 "Vytvoření zálohy zrušeno, očekávaný stav svazku je %(expected_status)s ale "
 "zjištěný stav je %(actual_status)s."
+
+msgid "Create consistency group failed."
+msgstr "Vytvoření skupiny jednotnosti selhalo."
 
 #, python-format
 msgid ""
@@ -2505,11 +2504,6 @@ msgid "Error retrieving volume size"
 msgstr "Chyba při získávání velikosti svazku"
 
 #, python-format
-msgid "Error running CLIQ command %(verb)s %(cliq_args)s.  Result=%(out)s"
-msgstr ""
-"Chyba při provádění příkazu CLIQ %(verb)s %(cliq_args)s. Výsledek=%(out)s"
-
-#, python-format
 msgid ""
 "Error sending replication update for action id: %(id)s . Return code: "
 "%(ret.status)d Message: %(ret.data)s ."
@@ -2670,6 +2664,9 @@ msgstr ""
 
 msgid "FAST is not supported on this array."
 msgstr "FAST není podporován v tomto poli."
+
+msgid "FC is the protocol but wwpns are not supplied by OpenStack."
+msgstr "FC je protokol, ale OpenStack nedodává wwpn."
 
 #, python-format
 msgid "Faield to unassign %(volume)s"
@@ -3105,7 +3102,7 @@ msgid "Failed to export for volume: %(reason)s"
 msgstr "Nelze exportovat pro svazek: %(reason)s"
 
 msgid "Failed to find Storage Center"
-msgstr "Nelze najít Storage Center"
+msgstr "Nelze najít centrum úložiště"
 
 msgid "Failed to find a vdisk copy in the expected pool."
 msgstr "V zadané zásobě nelze najít kopii virtuálního disku."
@@ -3178,7 +3175,9 @@ msgstr "Nelze získat informace o zařízení."
 
 #, python-format
 msgid "Failed to get domain because CPG (%s) doesn't exist on array."
-msgstr "Nelze získat doménu protože CPG (%s) neexistuje v poli."
+msgstr ""
+"Nelze získat doménu protože společná skupiny poskytování (%s) neexistuje v "
+"poli."
 
 #, python-format
 msgid "Failed to get ip on Channel %(channel_id)s with volume: %(volume_id)s."
@@ -3558,14 +3557,6 @@ msgstr "Nelze získat informace LUN pro %s."
 #, python-format
 msgid "Failure in clear_volume_key_value_pair: %s"
 msgstr "Selhání ve vyčištění páru klíč-hodnota svazku: %s"
-
-#, python-format
-msgid ""
-"Failure in communication between web service and array. Waited %s seconds. "
-"Verify array configuration parameters."
-msgstr ""
-"Selhání komunikace mezi internetovou službou a polem. Čekalo se %s vteřin. "
-"Ověřte parametry nastavení pole."
 
 #, python-format
 msgid "Failure in update_volume_key_value_pair:%s"
@@ -4343,11 +4334,13 @@ msgstr "Neplatný hostitel: %(reason)s"
 
 #, python-format
 msgid ""
-"Invalid hp3parclient version found (%(found)s). Version %(minimum)s or "
-"greater required."
+"Invalid hpe3parclient version found (%(found)s). Version %(minimum)s or "
+"greater required. Run \"pip install --upgrade python-3parclient\" to upgrade "
+"the hpe3parclient."
 msgstr ""
-"Nalezena neplatná verze hp3parclient (%(found)s). Je vyžadována verze "
-"%(minimum)s a vyšší."
+"Nalezena neplatná verze hpe3parclient (%(found)s). Je vyžadována verze "
+"%(minimum)s a vyšší. Spusťte \"pip install --upgrade python-3parclient\" pro "
+"aktualizaci klienta."
 
 #, python-format
 msgid ""
@@ -4751,12 +4744,6 @@ msgstr "Poškozené tělo požadavku."
 
 msgid "Malformed request url"
 msgstr "Poškozená url požadavku"
-
-#, python-format
-msgid ""
-"Malformed response to CLIQ command %(verb)s %(cliq_args)s. Result=%(out)s"
-msgstr ""
-"Poškozená odpověď na příkaz CLIQ %(verb)s %(cliq_args)s. Výsledek=%(out)s"
 
 #, python-format
 msgid "Malformed response to command %(cmd)s: %(reason)s"
@@ -5450,6 +5437,9 @@ msgid ""
 msgstr ""
 "Pouze uživatelé mající příznak z nadřazených nebo kořenových projektů mají "
 "povoleno zobrazit kvóty podřazených projektů"
+
+msgid "Only volumes managed by OpenStack can be unmanaged."
+msgstr "Zrušit správu lze pouze u svazků, jenž spravuje OpenStack."
 
 #, python-format
 msgid "Operation failed with status=%(status)s. Full dump: %(data)s"
@@ -7178,14 +7168,6 @@ msgid ""
 "Unexpected mapping status %(status)s for mapping%(id)s. Attributes: %(attr)s."
 msgstr "Neočekávaný stav mapování %(status)s pro %(id)s. Vlastnosti: %(attr)s."
 
-#, python-format
-msgid ""
-"Unexpected number of virtual ips for cluster  %(cluster_name)s. Result="
-"%(_xml)s"
-msgstr ""
-"Neočekávaný počet virtuálních ip adres v clusteru  %(cluster_name)s. "
-"Výsledek=%(_xml)s"
-
 msgid "Unexpected response from Nimble API"
 msgstr "Neočekávaná odpověď od Nimble API"
 
@@ -7509,8 +7491,18 @@ msgid "Volume %s doesn't exist on array."
 msgstr "Svazek %s neexistuje v poli."
 
 #, python-format
+msgid "Volume %s is already managed by OpenStack."
+msgstr "Svazek %s již je spravován OpenStack."
+
+#, python-format
 msgid "Volume %s is already part of an active migration."
 msgstr "Svazek %s již je součástí aktivního přesunu."
+
+#, python-format
+msgid ""
+"Volume %s is online. Set volume to offline for managing using OpenStack."
+msgstr ""
+"Svazek %s je online. Pro správu pomocí OpenStack ho nastavte na offline."
 
 #, python-format
 msgid "Volume %s must not be part of a consistency group."
@@ -7936,8 +7928,12 @@ msgstr "XtremIO nebyl zaveden správně, žádné clustery nenalezeny"
 msgid "You must implement __call__"
 msgstr "Musíte zavést __call__"
 
-msgid "You must install hp3parclient before using 3PAR drivers."
-msgstr "Před použitím ovladačů 3PAR musíte nainstalovat hp3parclient."
+msgid ""
+"You must install hpe3parclient before using 3PAR drivers. Run \"pip install "
+"python-3parclient\" to install the hpe3parclient."
+msgstr ""
+"Před použitím ovladačů 3PAR musíte nainstalovat hpe3parclient. Spusťte \"pip "
+"install python-3parclient\" pro instalaci klienta."
 
 msgid "You must supply an array in your EMC configuration file."
 msgstr "Ve vašem souboru s nastavením musíte zadat pole EMC."
@@ -8592,9 +8588,6 @@ msgstr "parametr limit musí být celé číslo"
 
 msgid "limit param must be positive"
 msgstr "parametr limit musí být kladný"
-
-msgid "local_path not supported"
-msgstr "local_path není podporováno"
 
 msgid "manage_existing requires a 'name' key to identify an existing volume."
 msgstr ""

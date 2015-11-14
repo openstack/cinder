@@ -8,10 +8,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev200\n"
+"Project-Id-Version: cinder 8.0.0.dev220\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-13 06:37+0000\n"
-"PO-Revision-Date: 2015-11-10 08:50+0000\n"
+"POT-Creation-Date: 2015-11-14 06:39+0000\n"
+"PO-Revision-Date: 2015-11-13 11:32+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language-Team: Czech\n"
 "Language: cs\n"
@@ -520,10 +520,6 @@ msgstr "Oznámení o vytvoření svazku selhalo: %s"
 #, python-format
 msgid "CreateReplay error: %(code)d %(reason)s"
 msgstr "Chyba vytváření zpětného načtení: %(code)d %(reason)s"
-
-msgid "Creating a consistency group from a source is not currently supported."
-msgstr ""
-"Vytváření skupiny jednotnosti ze zdroje není v současnosti podporováno."
 
 #, python-format
 msgid "Creation of snapshot failed for volume: %s"
@@ -2090,6 +2086,9 @@ msgstr "Hostitel nemohl být nalezen!"
 #, python-format
 msgid "ISCSI discovery attempt failed for:%s"
 msgstr "Pokus o zjištění ISCSI selhal pro: %s"
+
+msgid "ISE FW version is not compatible with OpenStack!"
+msgstr "Verze ISE FW není kompatibilní s OpenStack!"
 
 msgid "ISE globalid not set!"
 msgstr "ISE globalid není nastaveno!"

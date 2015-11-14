@@ -7,9 +7,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev66\n"
+"Project-Id-Version: cinder 8.0.0.dev220\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-10-22 06:07+0000\n"
+"POT-Creation-Date: 2015-11-14 06:38+0000\n"
 "PO-Revision-Date: 2015-08-26 03:31+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: Turkish (Turkey)\n"
@@ -32,15 +32,6 @@ msgstr "%s"
 #, python-format
 msgid "%s is not an accepted REST server IP address"
 msgstr "%s kabul edilen REST sunucusu IP adresi değil"
-
-msgid ""
-"'hp3par:cpg' is not supported as an extra spec in a volume type.  CPG's are "
-"chosen by the cinder scheduler, as a pool, from the cinder.conf entry "
-"'hp3par_cpg', which can be a list of CPGs."
-msgstr ""
-"'hp3par:cpg' mantıksal sürücü türü içinde ek özellik olarak desteklenmiyor.  "
-"CPG'ler cinder zamanlayıcı tarafından, havuz olarak, CPG listesi olabilen "
-"cinder.conf 'hp3par_cpg' girdisinden seçilir."
 
 #, python-format
 msgid "All attempts to recover failed detach of %(volume)s failed."
@@ -573,14 +564,6 @@ msgstr ""
 #, python-format
 msgid "Flexvisor failed to delete volume %(id)s from the group %(vgid)s."
 msgstr "Flexvisor %(id)s mantıksal sürücüsünü %(vgid)s grubundan silemedi."
-
-#, python-format
-msgid ""
-"Found invalid iSCSI IP address(s) in configuration option(s) "
-"hp3par_iscsi_ips or iscsi_ip_address '%s.'"
-msgstr ""
-"Yapılandırma seçenek(ler)i içinde geçersiz iSCSI IP adres(ler)i bulundu "
-"hp3par_iscsi_ips veya iscsi_ip_address '%s.'"
 
 msgid "Goodness function not set :: defaulting to minimal goodness rating of 0"
 msgstr ""
@@ -1149,15 +1132,6 @@ msgstr ""
 
 msgid "Storage-assisted migration failed during retype."
 msgstr "Depolama-destekli göç retype sırasında başarısız oldu."
-
-msgid ""
-"The HPLeftHandISCSIDriver CLIQ driver has been DEPRECATED as of the 2015.2 "
-"release. This driver will be removed in the 2016.1 release. Please use the "
-"HPLeftHandISCSIDriver REST based driver instead."
-msgstr ""
-"HPLeftHandISCSIDriver CLIQ sürücüsü 2015.2 sürümünde sonra "
-"kullanılmamaktadır. Bu sürücü 2016.1 sürümünde kaldırılacak. Lütfen bunu "
-"yerine HPLeftHandISCSIDriver REST tabanlı sürücüyü kullanın."
 
 msgid "The MCS Channel is grouped."
 msgstr "MCS Kanalı gruplandırılmış."

@@ -7,9 +7,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev200\n"
+"Project-Id-Version: cinder 8.0.0.dev220\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-13 06:37+0000\n"
+"POT-Creation-Date: 2015-11-14 06:38+0000\n"
 "PO-Revision-Date: 2015-09-16 08:22+0000\n"
 "Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
 "Language-Team: Turkish (Turkey)\n"
@@ -1119,16 +1119,8 @@ msgid "HDP list: %s"
 msgstr "HDP listesi: %s"
 
 #, python-format
-msgid "HP3PARCommon %(common_ver)s,hp3parclient %(rest_ver)s"
-msgstr "HP3PARCommon %(common_ver)s,hp3parclient %(rest_ver)s"
-
-#, python-format
 msgid "HPLeftHand API version %s"
 msgstr "HPLeftHand API sürümü %s"
-
-#, python-format
-msgid "HPLeftHand driver %(driver_ver)s, proxy %(proxy_ver)s"
-msgstr "HPLeftHand sürücüsü %(driver_ver)s, proxy %(proxy_ver)s"
 
 #, python-format
 msgid "HTTP exception thrown: %s"
