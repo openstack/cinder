@@ -394,6 +394,7 @@ class EMCXIODriverISCSITestCase(test.TestCase):
         self.driver.create_volume(self.data.test_volume)
         map_data = self.driver.initialize_connection(self.data.test_volume,
                                                      self.data.connector)
+        self.assertIsNone(map_data['data'].get('access_mode'))
         c1 = xms_data['clusters'][1]
         c1['chap-authentication-mode'] = 'initiator'
         c1['chap-discovery-mode'] = 'initiator'

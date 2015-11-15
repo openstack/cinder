@@ -830,7 +830,6 @@ class XtremIOISCSIDriver(XtremIOVolumeDriver, driver.ISCSIDriver):
                       'target_iqn': portal['port-address'],
                       'target_lun': lunmap['lun'],
                       'target_portal': portal_addr,
-                      'access_mode': 'rw',
                       'target_iqns': [p['port-address'] for p in portals],
                       'target_portals': tg_portals,
                       'target_luns': [lunmap['lun']] * len(portals)}
@@ -917,7 +916,6 @@ class XtremIOFibreChannelDriver(XtremIOVolumeDriver,
                     'target_discovered': False,
                     'target_lun': lun_num,
                     'target_wwn': self.get_targets(),
-                    'access_mode': 'rw',
                     'initiator_target_map': i_t_map}}
 
     @fczm_utils.RemoveFCZone
