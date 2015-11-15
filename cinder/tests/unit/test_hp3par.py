@@ -669,7 +669,7 @@ class HP3PARBaseDriver(object):
                 mock.call.createVolume(
                     self.VOLUME_3PAR_NAME,
                     HP3PAR_CPG,
-                    1907, {
+                    2048, {
                         'comment': comment,
                         'tpvv': True,
                         'tdvv': False,
@@ -698,7 +698,7 @@ class HP3PARBaseDriver(object):
                 mock.call.createVolume(
                     self.VOLUME_3PAR_NAME,
                     HP3PAR_CPG2,
-                    1907, {
+                    2048, {
                         'comment': comment,
                         'tpvv': True,
                         'tdvv': False,
@@ -854,7 +854,7 @@ class HP3PARBaseDriver(object):
                 mock.call.createVolume(
                     self.VOLUME_3PAR_NAME,
                     HP3PAR_CPG,
-                    1907, {
+                    2048, {
                         'comment': comment,
                         'tpvv': True,
                         'tdvv': False,
@@ -899,7 +899,7 @@ class HP3PARBaseDriver(object):
                 mock.call.createVolume(
                     self.VOLUME_3PAR_NAME,
                     HP3PAR_CPG,
-                    1907, {
+                    2048, {
                         'comment': comment,
                         'tpvv': False,
                         'tdvv': True,
@@ -949,7 +949,7 @@ class HP3PARBaseDriver(object):
                 mock.call.createVolume(
                     self.VOLUME_3PAR_NAME,
                     HP3PAR_CPG,
-                    1907, {
+                    2048, {
                         'comment': comment,
                         'tpvv': True,
                         'tdvv': False,
