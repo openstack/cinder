@@ -94,6 +94,12 @@ class SheepdogClient(object):
                     msg = _LE('OSError: command is %s.')
                 LOG.error(msg, cmd)
         except processutils.ProcessExecutionError as e:
+            _stderr = e.stderr
+            if _stderr.startswith(self.DOG_RESP_CONNECTION_ERROR):
+                reason = (_('Failed to connect to sheep daemon. '
+                          'addr: %(addr)s, port: %(port)s'),
+                          {'addr': self.addr, 'port': self.port})
+                raise exception.SheepdogError(reason=reason)
             raise exception.SheepdogCmdError(
                 cmd=e.cmd,
                 exit_code=e.exit_code,
@@ -135,15 +141,9 @@ class SheepdogClient(object):
             (_stdout, _stderr) = self._run_dog('cluster', 'info')
         except exception.SheepdogCmdError as e:
             cmd = e.kwargs['cmd']
-            _stderr = e.kwargs['stderr']
             with excutils.save_and_reraise_exception():
-                if _stderr.startswith(self.DOG_RESP_CONNECTION_ERROR):
-                    msg = _LE('Failed to connect to sheep daemon. '
-                              'addr: %(addr)s, port: %(port)s')
-                    LOG.error(msg, {'addr': self.addr, 'port': self.port})
-                else:
-                    LOG.error(_LE('Failed to check cluster status.'
-                                  '(command: %s)'), cmd)
+                LOG.error(_LE('Failed to check cluster status.'
+                              '(command: %s)'), cmd)
 
         if _stdout.startswith(self.DOG_RESP_CLUSTER_RUNNING):
             LOG.debug('Sheepdog cluster is running.')
@@ -164,11 +164,7 @@ class SheepdogClient(object):
         except exception.SheepdogCmdError as e:
             _stderr = e.kwargs['stderr']
             with excutils.save_and_reraise_exception():
-                if _stderr.startswith(self.DOG_RESP_CONNECTION_ERROR):
-                    LOG.error(_LE("Failed to connect to sheep daemon. "
-                              "addr: %(addr)s, port: %(port)s"),
-                              {'addr': self.addr, 'port': self.port})
-                elif _stderr.rstrip('\\n').endswith(
+                if _stderr.rstrip('\\n').endswith(
                         self.DOG_RESP_VDI_ALREADY_EXISTS):
                     LOG.error(_LE('Volume already exists. %s'), vdiname)
                 else:
@@ -194,12 +190,7 @@ class SheepdogClient(object):
         except exception.SheepdogCmdError as e:
             _stderr = e.kwargs['stderr']
             with excutils.save_and_reraise_exception():
-                if _stderr.startswith(self.DOG_RESP_CONNECTION_ERROR):
-                    LOG.error(_LE('Failed to connect to sheep daemon. '
-                              'addr: %(addr)s, port: %(port)s'),
-                              {'addr': self.addr, 'port': self.port})
-                else:
-                    LOG.error(_LE('Failed to delete volume. %s'), vdiname)
+                LOG.error(_LE('Failed to delete volume. %s'), vdiname)
 
     def create_snapshot(self, vdiname, snapname):
         try:
@@ -208,11 +199,7 @@ class SheepdogClient(object):
             cmd = e.kwargs['cmd']
             _stderr = e.kwargs['stderr']
             with excutils.save_and_reraise_exception():
-                if _stderr.startswith(self.DOG_RESP_CONNECTION_ERROR):
-                    LOG.error(_LE('Failed to connect to sheep daemon. '
-                              'addr: %(addr)s, port: %(port)s'),
-                              {'addr': self.addr, 'port': self.port})
-                elif _stderr.rstrip('\\n').endswith(
+                if _stderr.rstrip('\\n').endswith(
                         self.DOG_RESP_SNAPSHOT_VDI_NOT_FOUND):
                     LOG.error(_LE('Volume "%s" not found. Please check the '
                                   'results of "dog vdi list".'),
@@ -249,13 +236,8 @@ class SheepdogClient(object):
             cmd = e.kwargs['cmd']
             _stderr = e.kwargs['stderr']
             with excutils.save_and_reraise_exception():
-                if _stderr.startswith(self.DOG_RESP_CONNECTION_ERROR):
-                    msg = _LE('Failed to connect to sheep daemon. '
-                              'addr: %(addr)s, port: %(port)s')
-                    LOG.error(msg, {'addr': self.addr, 'port': self.port})
-                else:
-                    LOG.error(_LE('Failed to delete snapshot. (command: %s)'),
-                              cmd)
+                LOG.error(_LE('Failed to delete snapshot. (command: %s)'),
+                          cmd)
 
     def clone(self, src_vdiname, src_snapname, dst_vdiname, size):
         try:
@@ -296,11 +278,7 @@ class SheepdogClient(object):
         except exception.SheepdogCmdError as e:
             _stderr = e.kwargs['stderr']
             with excutils.save_and_reraise_exception():
-                if _stderr.startswith(self.DOG_RESP_CONNECTION_ERROR):
-                    LOG.error(_LE('Failed to connect to sheep daemon. '
-                                  'addr: %(addr)s, port: %(port)s'),
-                              {'addr': self.addr, 'port': self.port})
-                elif _stderr.rstrip('\\n').endswith(
+                if _stderr.rstrip('\\n').endswith(
                         self.DOG_RESP_VDI_NOT_FOUND):
                     LOG.error(_LE('Failed to resize vdi. vdi not found. %s'),
                               vdiname)
@@ -323,14 +301,8 @@ class SheepdogClient(object):
         try:
             (_stdout, _stderr) = self._run_dog('node', 'info', '-r')
         except exception.SheepdogCmdError as e:
-            _stderr = e.kwargs['stderr']
             with excutils.save_and_reraise_exception():
-                if _stderr.startswith(self.DOG_RESP_CONNECTION_ERROR):
-                    LOG.error(_LE('Failed to connect to sheep daemon. '
-                                  'addr: %(addr)s, port: %(port)s'),
-                              {'addr': self.addr, 'port': self.port})
-                else:
-                    LOG.error(_LE('Failed to get volume status. '))
+                LOG.error(_LE('Failed to get volume status. %s'), e)
         return _stdout
 
 
