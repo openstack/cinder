@@ -84,6 +84,12 @@ class TestMisc(scaleio.TestScaleIODriver):
         self.assertRaises(exception.InvalidInput,
                           self.driver.check_for_setup_error)
 
+    def test_no_storage_pools(self):
+        """No storage pools."""
+        self.driver.storage_pools = None
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.check_for_setup_error)
+
     def test_volume_size_round_true(self):
         self.driver._check_volume_size(1)
 

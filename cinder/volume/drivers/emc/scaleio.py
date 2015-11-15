@@ -122,8 +122,13 @@ class ScaleIODriver(driver.VolumeDriver):
              'user': self.server_username,
              'verify_cert': self.verify_server_certificate})
 
-        self.storage_pools = [e.strip() for e in
-                              self.configuration.sio_storage_pools.split(',')]
+        self.storage_pools = None
+        if self.configuration.sio_storage_pools:
+            self.storage_pools = [
+                e.strip() for e in
+                self.configuration.sio_storage_pools.split(',')
+            ]
+
         self.storage_pool_name = self.configuration.sio_storage_pool_name
         self.storage_pool_id = self.configuration.sio_storage_pool_id
         if self.storage_pool_name is None and self.storage_pool_id is None:
@@ -203,6 +208,12 @@ class ScaleIODriver(driver.VolumeDriver):
 
         if not self.storage_pool_name and not self.storage_pool_id:
             msg = _("Must specify storage pool name or id.")
+            raise exception.InvalidInput(reason=msg)
+
+        if not self.storage_pools:
+            msg = _(
+                "Must specify storage pools. Option: sio_storage_pools."
+            )
             raise exception.InvalidInput(reason=msg)
 
     def _find_storage_pool_id_from_storage_type(self, storage_type):
