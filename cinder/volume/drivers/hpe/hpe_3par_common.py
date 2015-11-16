@@ -212,10 +212,11 @@ class HPE3PARCommon(object):
         2.0.52 - Added update_migrated_volume. bug #1492023
         2.0.53 - Fix volume size conversion. bug #1513158
         3.0.0 - Rebranded HP to HPE.
+        3.0.1 - Fixed find_existing_vluns bug #1515033
 
     """
 
-    VERSION = "3.0.0"
+    VERSION = "3.0.1"
 
     stats = {}
 
@@ -2415,11 +2416,9 @@ class HPE3PARCommon(object):
             vol_name = self._get_3par_vol_name(volume['id'])
             host_vluns = self.client.getHostVLUNs(host['name'])
 
-            # The first existing VLUN found will be returned.
             for vlun in host_vluns:
                 if vlun['volumeName'] == vol_name:
                     existing_vluns.append(vlun)
-                    break
         except hpeexceptions.HTTPNotFound:
             # ignore, no existing VLUNs were found
             LOG.debug("No existing VLUNs were found for host/volume "
