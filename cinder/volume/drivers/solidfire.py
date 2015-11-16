@@ -16,6 +16,7 @@
 import json
 import math
 import random
+import re
 import socket
 import string
 import time
@@ -87,7 +88,11 @@ sf_opts = [
     cfg.PortOpt('sf_api_port',
                 default=443,
                 help='SolidFire API port. Useful if the device api is behind '
-                     'a proxy on a different port.')]
+                     'a proxy on a different port.'),
+
+    cfg.BoolOpt('sf_enable_vag',
+                default=False,
+                help='Utilize volume access groups on a per-tenant basis.')]
 
 CONF = cfg.CONF
 CONF.register_opts(sf_opts)
@@ -814,6 +819,45 @@ class SolidFireDriver(san.SanISCSIDriver):
         vlist = sorted(vlist, key=lambda k: k['volumeID'])
         return vlist
 
+    def _create_vag(self, vag_name):
+        """Create a volume access group(vag).
+
+           Returns the vag_id.
+        """
+        params = {'name': vag_name}
+        result = self._issue_api_request('CreateVolumeAccessGroup',
+                                         params,
+                                         version='7.0')
+        return result['result']['volumeAccessGroupID']
+
+    def _get_vags(self, vag_name):
+        """Retrieve SolidFire volume access group objects by name.
+
+           Returns an array of vags with a matching name value.
+           Returns an empty array if there are no matches.
+        """
+        params = {}
+        vags = self._issue_api_request(
+            'ListVolumeAccessGroups',
+            params,
+            version='7.0')['result']['volumeAccessGroups']
+        matching_vags = [vag for vag in vags if vag['name'] == vag_name]
+        return matching_vags
+
+    def _add_initiator_to_vag(self, iqn, vag_id):
+        params = {"initiators": [iqn],
+                  "volumeAccessGroupID": vag_id}
+        self._issue_api_request('AddInitiatorsToVolumeAccessGroup',
+                                params,
+                                version='7.0')
+
+    def _add_volume_to_vag(self, vol_id, vag_id):
+        params = {"volumeAccessGroupID": vag_id,
+                  "volumes": [vol_id]}
+        self._issue_api_request('AddVolumesToVolumeAccessGroup',
+                                params,
+                                version='7.0')
+
     def clone_image(self, context,
                     volume, image_location,
                     image_meta, image_service):
@@ -1088,6 +1132,15 @@ class SolidFireDriver(san.SanISCSIDriver):
             results['thinProvisioningPercent'])
         self.cluster_stats = data
 
+    def initialize_connection(self, volume, connector, initiator_data=None):
+        """Initialize the connection and return connection info.
+
+           Optionally checks and utilizes volume access groups.
+        """
+        return self._sf_initialize_connection(volume,
+                                              connector,
+                                              initiator_data)
+
     def attach_volume(self, context, volume,
                       instance_uuid, host_name,
                       mountpoint):
@@ -1330,3 +1383,35 @@ class SolidFireISCSI(iscsi_driver.SanISCSITarget):
 
     def terminate_connection(self, volume, connector, **kwargs):
         pass
+
+    def _sf_initialize_connection(self, volume, connector,
+                                  initiator_data=None):
+        """Initialize the connection and return connection info.
+
+           Optionally checks and utilizes volume access groups.
+        """
+        if self.configuration.sf_enable_vag:
+            raw_iqn = connector['initiator']
+            vag_name = re.sub('[^0-9a-zA-Z]+', '-', raw_iqn)
+            vag = self._get_vags(vag_name)
+            provider_id = volume['provider_id']
+            vol_id = int(self._parse_provider_id_string(provider_id)[0])
+
+            if vag:
+                vag_id = vag[0]['volumeAccessGroupID']
+                vag = vag[0]
+            else:
+                vag_id = self._create_vag(vag_name)
+                vag = self._get_vags(vag_name)[0]
+
+            # Verify IQN matches.
+            if raw_iqn not in vag['initiators']:
+                self._add_initiator_to_vag(raw_iqn,
+                                           vag_id)
+            # Add volume to vag if not already.
+            if vol_id not in vag['volumes']:
+                self._add_volume_to_vag(vol_id, vag_id)
+
+        # Continue along with default behavior
+        return super(SolidFireISCSI, self).initialize_connection(volume,
+                                                                 connector)

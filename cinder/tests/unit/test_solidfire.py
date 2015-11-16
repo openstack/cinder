@@ -52,6 +52,7 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.configuration.sf_svip = None
         self.configuration.sf_enable_volume_mapping = True
         self.configuration.sf_volume_prefix = 'UUID-'
+        self.configuration.sf_enable_vag = False
 
         super(SolidFireVolumeTestCase, self).setUp()
         self.stubs.Set(solidfire.SolidFireDriver,
@@ -1110,3 +1111,62 @@ class SolidFireVolumeTestCase(test.TestCase):
         with mock.patch.object(
                 sfv, '_issue_api_request', side_effect=_fake_issue_api_req):
             self.assertEqual(5, sfv._get_sf_volume(test_name, 8)['volumeID'])
+
+    def test_create_vag(self):
+        global counter
+        counter = 0
+
+        def _trick_get_vag(vag_name):
+            # On the second call to get_vag we want to return a fake VAG
+            # result as required by logic of _sf_initialize_connection.
+            global counter
+            vag = {'attributes': {},
+                   'deletedVolumes': [],
+                   'initiators': [],
+                   'name': 'TESTIQN',
+                   'volumeAccessGroupID': 1,
+                   'volumes': [],
+                   'virtualNetworkIDs': []}
+
+            if counter == 1:
+                return [vag]
+            counter += 1
+
+        mod_conf = self.configuration
+        mod_conf.sf_enable_vag = True
+        sfv = solidfire.SolidFireDriver(configuration=mod_conf)
+
+        testvol = {'project_id': 'testprjid',
+                   'name': 'testvol',
+                   'size': 1,
+                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+                   'volume_type_id': None,
+                   'provider_location': '10.10.7.1:3260 iqn.2010-01.com.'
+                                        'solidfire:87hg.uuid-2cc06226-cc'
+                                        '74-4cb7-bd55-14aed659a0cc.4060 0',
+                   'provider_auth': 'CHAP stack-1-a60e2611875f40199931f2'
+                                    'c76370d66b 2FE0CQ8J196R',
+                   'provider_geometry': '4096 4096',
+                   'created_at': timeutils.utcnow(),
+                   'provider_id': "1 1 1"
+                   }
+
+        connector = {'initiator': 'iqn.2012-07.org.fake:01'}
+
+        def add_volume_to_vag_check(vol_id, vag_id):
+            self.assertEqual(1, vol_id)
+            self.assertEqual(1, vag_id)
+
+        with mock.patch.object(sfv,
+                               '_create_vag',
+                               return_value=1), \
+            mock.patch.object(sfv,
+                              '_get_vags',
+                              side_effect=_trick_get_vag), \
+            mock.patch.object(sfv,
+                              '_add_initiator_to_vag'), \
+            mock.patch.object(sfv,
+                              '_add_volume_to_vag',
+                              side_effect=add_volume_to_vag_check):
+
+            sfv.initialize_connection(testvol, connector)
