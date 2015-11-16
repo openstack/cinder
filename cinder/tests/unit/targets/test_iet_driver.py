@@ -82,7 +82,8 @@ class TestIetAdmDriver(tf.TargetDriverFixture):
     @mock.patch('cinder.utils.execute')
     @mock.patch('os.path.exists', return_value=True)
     @mock.patch('cinder.utils.temporary_chown')
-    def test_create_iscsi_target(self, mock_chown, mock_exists,
+    @mock.patch.object(iet, 'LOG')
+    def test_create_iscsi_target(self, mock_log, mock_chown, mock_exists,
                                  mock_execute, mock_get_targ):
         mock_execute.return_value = ('', '')
         tmp_file = six.StringIO()
