@@ -2483,7 +2483,7 @@ class EMCVnxCliBase(object):
                     # Reraise the original exception
                     pass
         if volume['provider_location']:
-            lun_type = self._extract_provider_location(
+            lun_type = self.extract_provider_location(
                 volume['provider_location'], 'type')
             if lun_type == 'smp':
                 self._client.delete_snapshot(
@@ -2615,7 +2615,7 @@ class EMCVnxCliBase(object):
         moved = self._client.migrate_lun_with_verification(
             src_id, dst_id, new_volume_name)
 
-        lun_type = self._extract_provider_location(
+        lun_type = self.extract_provider_location(
             volume['provider_location'], 'type')
         # A smp will become a LUN after migration
         if lun_type == 'smp':
@@ -2633,7 +2633,8 @@ class EMCVnxCliBase(object):
     def update_migrated_volume(self, context, volume, new_volume,
                                original_volume_status):
         """Updates metadata after host-assisted migration."""
-        lun_type = self._extract_provider_location(
+
+        lun_type = self.extract_provider_location(
             new_volume['provider_location'], 'type')
         volume_metadata = self._get_volume_metadata(volume)
         model_update = {'provider_location':
@@ -2716,7 +2717,7 @@ class EMCVnxCliBase(object):
         new_provisioning, new_tiering = (
             self._get_extra_spec_value(new_specs))
 
-        lun_type = self._extract_provider_location(
+        lun_type = self.extract_provider_location(
             volume['provider_location'], 'type')
 
         if volume['host'] != host['host']:
@@ -3038,7 +3039,8 @@ class EMCVnxCliBase(object):
 
         return model_update
 
-    def _get_volume_metadata(self, volume):
+    @staticmethod
+    def _get_volume_metadata(volume):
         # Since versionedobjects is partially merged, metadata
         # may come from 'volume_metadata' or 'metadata', here
         # we need to take care both of them.
@@ -3055,7 +3057,7 @@ class EMCVnxCliBase(object):
 
     def _get_base_lun_name(self, volume):
         """Returns base LUN name for SMP or LUN."""
-        base_name = self._extract_provider_location(
+        base_name = self.extract_provider_location(
             volume['provider_location'], 'base_lun_name')
         if base_name is None or base_name == 'None':
             return volume['name']
@@ -3086,7 +3088,8 @@ class EMCVnxCliBase(object):
         pl_dict[key] = value
         return self.dumps_provider_location(pl_dict)
 
-    def _extract_provider_location(self, provider_location, key='id'):
+    @staticmethod
+    def extract_provider_location(provider_location, key='id'):
         """Extracts value of the specified field from provider_location string.
 
         :param provider_location: provider_location string
@@ -3094,12 +3097,14 @@ class EMCVnxCliBase(object):
         :return: value of the specified field if it exists, otherwise,
                  None is returned
         """
-
-        kvps = provider_location.split('|')
-        for kvp in kvps:
-            fields = kvp.split('^')
-            if len(fields) == 2 and fields[0] == key:
-                return fields[1]
+        ret = None
+        if provider_location is not None:
+            kvps = provider_location.split('|')
+            for kvp in kvps:
+                fields = kvp.split('^')
+                if len(fields) == 2 and fields[0] == key:
+                    ret = fields[1]
+        return ret
 
     def _consistencygroup_creation_check(self, group):
         """Check extra spec for consistency group."""
@@ -3249,7 +3254,7 @@ class EMCVnxCliBase(object):
         try:
             provider_location = volume.get('provider_location')
             if provider_location:
-                lun_id = self._extract_provider_location(
+                lun_id = self.extract_provider_location(
                     provider_location,
                     'id')
             if lun_id:
@@ -3857,12 +3862,12 @@ class EMCVnxCliBase(object):
                                       'type': tar_type,
                                       'tier': tar_tier})
 
-        do_migration = (tar_type is not None
-                        and tar_type != vnx_lun.provision
-                        or tar_pool != vnx_lun.pool_name)
-        change_tier = (tar_tier is not None
-                       and not do_migration
-                       and tar_tier != vnx_lun.tier)
+        do_migration = (tar_type is not None and
+                        tar_type != vnx_lun.provision or
+                        tar_pool != vnx_lun.pool_name)
+        change_tier = (tar_tier is not None and
+                       not do_migration and
+                       tar_tier != vnx_lun.tier)
 
         reason = None
         if do_migration:
@@ -4311,8 +4316,8 @@ class EMCVnxCliBase(object):
         provider_location = source_volume.get('provider_location')
 
         if (not provider_location or
-                not self._extract_provider_location(provider_location,
-                                                    'version')):
+                not self.extract_provider_location(provider_location,
+                                                   'version')):
             LOG.warning(_LW("The source volume is a legacy volume. "
                             "Create volume in the pool where the source "
                             "volume %s is created."),

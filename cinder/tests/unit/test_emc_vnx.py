@@ -6257,6 +6257,33 @@ class EMCVNXCLIDriverReplicationV2TestCase(DriverTestCaseBase):
         data = self.driver.list_replication_targets(None, rep_volume)
         self.assertDictMatch(expect_targets, data)
 
+    def test_extract_provider_location_type(self):
+        self.assertEqual(
+            'lun',
+            emc_vnx_cli.EMCVnxCliBase.extract_provider_location(
+                'system^FNM11111|type^lun|id^1|version^05.03.00', 'type'))
+
+    def test_extract_provider_location_type_none(self):
+        self.assertIsNone(
+            emc_vnx_cli.EMCVnxCliBase.extract_provider_location(
+                None, 'type'))
+
+    def test_extract_provider_location_type_empty_str(self):
+        self.assertIsNone(
+            emc_vnx_cli.EMCVnxCliBase.extract_provider_location(
+                '', 'type'))
+
+    def test_extract_provider_location_type_not_available(self):
+        self.assertIsNone(
+            emc_vnx_cli.EMCVnxCliBase.extract_provider_location(
+                'system^FNM11111|id^1', 'type'))
+
+    def test_extract_provider_location_type_error_format(self):
+        self.assertIsNone(
+            emc_vnx_cli.EMCVnxCliBase.extract_provider_location(
+                'abc^|def|^gh|^^|^|', 'type'))
+
+
 VNXError = emc_vnx_cli.VNXError
 
 
