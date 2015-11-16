@@ -7,10 +7,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev220\n"
+"Project-Id-Version: cinder 8.0.0.dev221\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-14 06:38+0000\n"
-"PO-Revision-Date: 2015-11-13 05:11+0000\n"
+"POT-Creation-Date: 2015-11-16 06:40+0000\n"
+"PO-Revision-Date: 2015-11-15 09:26+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language-Team: Czech\n"
 "Language: cs\n"
@@ -2938,6 +2938,9 @@ msgstr ""
 
 msgid "Waiting for web service array communication."
 msgstr "Čeká se na komunikaci s polem internetové služby."
+
+msgid "Waiting for web service to validate the configured password."
+msgstr "Čeká se na ověření nastaveného hesla internetovou službou."
 
 #, python-format
 msgid "Will clone a volume from the image volume %(id)s."

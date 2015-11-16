@@ -9,10 +9,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev220\n"
+"Project-Id-Version: cinder 8.0.0.dev221\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-14 06:38+0000\n"
-"PO-Revision-Date: 2015-11-13 05:10+0000\n"
+"POT-Creation-Date: 2015-11-16 06:40+0000\n"
+"PO-Revision-Date: 2015-11-15 09:25+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language: cs\n"
 "Language-Team: Czech\n"
@@ -1546,6 +1546,10 @@ msgstr "Chyba při vytváření svazku: Protože %s."
 
 msgid "Create volume failed."
 msgstr "Vytvoření svazku selhalo."
+
+msgid "Creating a consistency group from a source is not currently supported."
+msgstr ""
+"Vytváření skupiny jednotnosti ze zdroje není v současnosti podporováno."
 
 #, python-format
 msgid ""
@@ -6290,6 +6294,10 @@ msgid "Synchronizing secondary volume to primary failed."
 msgstr "Synchronizace druhotného svazku na hlavní selhala."
 
 #, python-format
+msgid "System %(id)s found with bad password status - %(pass_status)s."
+msgstr "Systém %(id)s nalezen se stavem špatného hesla - %(pass_status)s."
+
+#, python-format
 msgid "System %(id)s found with bad status - %(status)s."
 msgstr "Byl nalezen systém %(id)s se špatným stavem - %(status)s."
 
@@ -6559,6 +6567,13 @@ msgstr "Zadaný virtuální disk je mapován k hostiteli."
 
 msgid "The specified volume is mapped to a host."
 msgstr "Zadaný svazek je namapován k hostiteli."
+
+#, python-format
+msgid ""
+"The storage array password for %s is incorrect, please update the configured "
+"password."
+msgstr ""
+"Heslo pole úložiště pro %s není správné, prosím aktualizujte nastavené heslo."
 
 #, python-format
 msgid "The storage backend can be used. (config_group: %(config_group)s)"
