@@ -77,7 +77,7 @@ STORAGE_POOL_NAME = 'sio:sp_name'
 STORAGE_POOL_ID = 'sio:sp_id'
 PROTECTION_DOMAIN_NAME = 'sio:pd_name'
 PROTECTION_DOMAIN_ID = 'sio:pd_id'
-PROVISIONING_KEY = 'sio:provisioning'
+PROVISIONING_KEY = 'sio:provisioning_type'
 IOPS_LIMIT_KEY = 'sio:iops_limit'
 BANDWIDTH_LIMIT = 'sio:bandwidth_limit'
 
