@@ -89,6 +89,7 @@ class EMCVMAXMasking(object):
         defaultStorageGroupInstanceName = None
         fastPolicyName = None
         assocStorageGroupName = None
+        storageGroupInstanceName = None
         if isLiveMigration is False:
             if isV3:
                 defaultStorageGroupInstanceName = (
@@ -126,6 +127,11 @@ class EMCVMAXMasking(object):
                 "Attempting rollback."),
                 {'maskingViewName': maskingViewDict['maskingViewName']})
             errorMessage = e
+
+        rollbackDict['pgGroupName'], errorMessage = (
+            self._get_port_group_name_from_mv(
+                conn, maskingViewDict['maskingViewName'],
+                maskingViewDict['storageSystemName']))
 
         if not errorMessage:
             # Only after the masking view has been validated, add the
@@ -2618,3 +2624,34 @@ class EMCVMAXMasking(object):
             foundHardwareIDsInstanceNames.append(hardwareIdInstanceName)
 
         return foundHardwareIDsInstanceNames
+
+    def _get_port_group_name_from_mv(self, conn, maskingViewName,
+                                     storageSystemName):
+        """Get the port group name from the masking view.
+
+        :param conn: the connection to the ecom server
+        :param maskingViewName: the masking view name
+        :param storageSystemName: the storage system name
+        :returns: String - port group name
+                  String - error message
+        """
+        errorMessage = None
+        portGroupName = None
+        portGroupInstanceName = (
+            self._get_port_group_from_masking_view(
+                conn, maskingViewName, storageSystemName))
+        if portGroupInstanceName is None:
+            LOG.error(_LE(
+                "Cannot get port group from masking view: "
+                "%(maskingViewName)s. "),
+                {'maskingViewName': maskingViewName})
+        else:
+            try:
+                portGroupInstance = (
+                    conn.GetInstance(portGroupInstanceName))
+                portGroupName = (
+                    portGroupInstance['ElementName'])
+            except Exception:
+                LOG.error(_LE(
+                    "Cannot get port group name."))
+        return portGroupName, errorMessage
