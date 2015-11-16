@@ -93,10 +93,7 @@ class TestExtendVolume(scaleio.TestScaleIODriver):
         self.driver.configuration.set_override('sio_round_volume_capacity',
                                                override=False)
         self.set_https_response_mode(self.RESPONSE_MODE.Valid)
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.extend_volume,
-                          self.volume,
-                          self.BAD_SIZE)
+        self.driver.extend_volume(self.volume, self.BAD_SIZE)
 
     def test_extend_volume_bad_size_round(self):
         self.driver.configuration.set_override('sio_round_volume_capacity',

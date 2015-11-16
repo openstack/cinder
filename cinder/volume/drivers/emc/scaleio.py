@@ -522,10 +522,11 @@ class ScaleIODriver(driver.VolumeDriver):
         return verify_cert
 
     def extend_volume(self, volume, new_size):
-        """Extends the size of an existing available ScaleIO volume."""
+        """Extends the size of an existing available ScaleIO volume.
 
-        self._check_volume_size(new_size)
-
+        This action will round up the volume to the nearest size that is
+        a granularity of 8 GBs.
+        """
         vol_id = volume['provider_id']
         LOG.info(_LI(
             "ScaleIO extend volume: volume %(volname)s to size %(new_size)s."),
@@ -539,7 +540,20 @@ class ScaleIODriver(driver.VolumeDriver):
                    "/api/instances/Volume::%(vol_id)s"
                    "/action/setVolumeSize") % req_vars
         LOG.info(_LI("Change volume capacity request: %s."), request)
-        volume_new_size = new_size
+
+        # Round up the volume size so that it is a granularity of 8 GBs
+        # because ScaleIO only supports volumes with a granularity of 8 GBs.
+        if new_size % 8 == 0:
+            volume_new_size = new_size
+        else:
+            volume_new_size = new_size + 8 - (new_size % 8)
+
+        round_volume_capacity = self.configuration.sio_round_volume_capacity
+        if (not round_volume_capacity and not new_size % 8 == 0):
+            LOG.warning(_LW("ScaleIO only supports volumes with a granularity "
+                            "of 8 GBs. The new volume size is: %d."),
+                        volume_new_size)
+
         params = {'sizeInGB': six.text_type(volume_new_size)}
         r = requests.post(
             request,
