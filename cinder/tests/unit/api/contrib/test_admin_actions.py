@@ -989,8 +989,13 @@ class AdminActionsTest(test.TestCase):
                           vac.validate_update,
                           {'status': 'creating'})
 
+    @mock.patch('cinder.db.service_get_all_by_topic')
     @mock.patch('cinder.backup.api.API._check_support_to_force_delete')
-    def _force_delete_backup_util(self, test_status, mock_check_support):
+    def _force_delete_backup_util(self, test_status, mock_check_support,
+                                  _mock_service_get_all_by_topic):
+        _mock_service_get_all_by_topic.return_value = [
+            {'availability_zone': "az1", 'host': 'testhost',
+             'disabled': 0, 'updated_at': timeutils.utcnow()}]
         # admin context
         ctx = context.RequestContext('admin', 'fake', True)
         mock_check_support.return_value = True
