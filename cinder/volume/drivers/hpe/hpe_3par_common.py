@@ -35,7 +35,6 @@ array.
 """
 
 import ast
-import base64
 import json
 import math
 import pprint
@@ -43,6 +42,7 @@ import re
 import six
 import uuid
 
+from oslo_serialization import base64
 from oslo_utils import importutils
 
 hpe3parclient = importutils.try_import("hpe3parclient")
@@ -213,10 +213,11 @@ class HPE3PARCommon(object):
         2.0.53 - Fix volume size conversion. bug #1513158
         3.0.0 - Rebranded HP to HPE.
         3.0.1 - Fixed find_existing_vluns bug #1515033
+        3.0.2 - Python 3 support
 
     """
 
-    VERSION = "3.0.1"
+    VERSION = "3.0.2"
 
     stats = {}
 
@@ -786,7 +787,7 @@ class HPE3PARCommon(object):
     def _encode_name(self, name):
         uuid_str = name.replace("-", "")
         vol_uuid = uuid.UUID('urn:uuid:%s' % uuid_str)
-        vol_encoded = base64.b64encode(vol_uuid.bytes)
+        vol_encoded = base64.encode_as_text(vol_uuid.bytes)
 
         # 3par doesn't allow +, nor /
         vol_encoded = vol_encoded.replace('+', '.')

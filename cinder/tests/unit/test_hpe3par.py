@@ -544,6 +544,8 @@ class HPE3PARBaseDriver(object):
         # Configure the base constants, defaults etc...
         _m_client.configure_mock(**self.mock_client_conf)
 
+        _m_client.getWsApiVersion.return_value = self.wsapi_version_latest
+
         # If m_conf, drop those over the top of the base_conf.
         if m_conf is not None:
             _m_client.configure_mock(**m_conf)
@@ -4336,14 +4338,16 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
                 common,
                 self.volume,
                 self.connector)
+            # On Python 3, hash is randomized, and so set() is used to get
+            # the expected order
+            fcwwns = list(set(('123456789054321', '123456789012345')))
             expected = [
                 mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
                 mock.call.getCPG(HPE3PAR_CPG),
                 mock.call.getHost('fakehost'),
-                mock.call.modifyHost(
-                    'fakehost', {
-                        'FCWWNs': ['123456789012345', '123456789054321'],
-                        'pathOperation': 1}),
+                mock.call.modifyHost('fakehost',
+                                     {'FCWWNs': fcwwns,
+                                      'pathOperation': 1}),
                 mock.call.getHost('fakehost')]
 
             mock_client.assert_has_calls(expected)
