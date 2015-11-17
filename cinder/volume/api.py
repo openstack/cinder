@@ -569,7 +569,7 @@ class API(base.Base):
                 context, context.project_id, search_opts, marker, limit,
                 sort_keys, sort_dirs, offset)
 
-        LOG.info(_LI("Get all snaphsots completed successfully."))
+        LOG.info(_LI("Get all snapshots completed successfully."))
         return snapshots
 
     @wrap_check_policy
