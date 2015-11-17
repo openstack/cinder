@@ -707,7 +707,7 @@ class HPE3PARBaseDriver(object):
                 self.standard_login +
                 expected +
                 self.standard_logout)
-            self.assertEqual(None, return_model)
+            self.assertIsNone(return_model)
 
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_unsupported_dedup_volume_type(self, _mock_volume_types):
@@ -863,7 +863,7 @@ class HPE3PARBaseDriver(object):
                 self.standard_login +
                 expected +
                 self.standard_logout)
-            self.assertEqual(None, return_model)
+            self.assertIsNone(return_model)
 
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_create_volume_dedup(self, _mock_volume_types):
@@ -907,7 +907,7 @@ class HPE3PARBaseDriver(object):
                 self.standard_login +
                 expected +
                 self.standard_logout)
-            self.assertEqual(None, return_model)
+            self.assertIsNone(return_model)
 
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_create_volume_flash_cache(self, _mock_volume_types):
@@ -970,7 +970,7 @@ class HPE3PARBaseDriver(object):
                 self.standard_login +
                 expected +
                 self.standard_logout)
-            self.assertEqual(None, return_model)
+            self.assertIsNone(return_model)
 
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_unsupported_flash_cache_volume(self, _mock_volume_types):
@@ -1408,7 +1408,7 @@ class HPE3PARBaseDriver(object):
             volume['host'] = volume_host
             volume['source_volid'] = HPE3PARBaseDriver.CLONE_ID
             model_update = self.driver.create_cloned_volume(volume, src_vref)
-            self.assertEqual(None, model_update)
+            self.assertIsNone(model_update)
 
             expected = [
                 mock.call.getCPG(expected_cpg),
@@ -1969,7 +1969,7 @@ class HPE3PARBaseDriver(object):
             model_update = self.driver.create_volume_from_snapshot(
                 volume,
                 self.snapshot)
-            self.assertEqual(None, model_update)
+            self.assertIsNone(model_update)
 
             comment = (
                 '{"snapshot_id": "2f823bdc-e36e-4dc8-bd15-de1c7a28ff31",'
@@ -2034,7 +2034,7 @@ class HPE3PARBaseDriver(object):
             model_update = self.driver.create_volume_from_snapshot(
                 volume,
                 self.snapshot)
-            self.assertEqual(None, model_update)
+            self.assertIsNone(model_update)
 
             comment = (
                 '{"snapshot_id": "2f823bdc-e36e-4dc8-bd15-de1c7a28ff31",'
@@ -4144,12 +4144,12 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
                              stats['pools'][0]['goodness_function'])
             self.assertEqual(FILTER_FUNCTION,
                              stats['pools'][0]['filter_function'])
-            self.assertEqual(None, stats['pools'][0][THROUGHPUT])
-            self.assertEqual(None, stats['pools'][0][BANDWIDTH])
-            self.assertEqual(None, stats['pools'][0][LATENCY])
-            self.assertEqual(None, stats['pools'][0][IO_SIZE])
-            self.assertEqual(None, stats['pools'][0][QUEUE_LENGTH])
-            self.assertEqual(None, stats['pools'][0][AVG_BUSY_PERC])
+            self.assertIsNone(stats['pools'][0][THROUGHPUT])
+            self.assertIsNone(stats['pools'][0][BANDWIDTH])
+            self.assertIsNone(stats['pools'][0][LATENCY])
+            self.assertIsNone(stats['pools'][0][IO_SIZE])
+            self.assertIsNone(stats['pools'][0][QUEUE_LENGTH])
+            self.assertIsNone(stats['pools'][0][AVG_BUSY_PERC])
 
             expected = [
                 mock.call.getStorageSystemInfo(),
@@ -4199,12 +4199,12 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
                              stats['pools'][0]['goodness_function'])
             self.assertEqual(FILTER_FUNCTION,
                              stats['pools'][0]['filter_function'])
-            self.assertEqual(None, stats['pools'][0][THROUGHPUT])
-            self.assertEqual(None, stats['pools'][0][BANDWIDTH])
-            self.assertEqual(None, stats['pools'][0][LATENCY])
-            self.assertEqual(None, stats['pools'][0][IO_SIZE])
-            self.assertEqual(None, stats['pools'][0][QUEUE_LENGTH])
-            self.assertEqual(None, stats['pools'][0][AVG_BUSY_PERC])
+            self.assertIsNone(stats['pools'][0][THROUGHPUT])
+            self.assertIsNone(stats['pools'][0][BANDWIDTH])
+            self.assertIsNone(stats['pools'][0][LATENCY])
+            self.assertIsNone(stats['pools'][0][IO_SIZE])
+            self.assertIsNone(stats['pools'][0][QUEUE_LENGTH])
+            self.assertIsNone(stats['pools'][0][AVG_BUSY_PERC])
 
             expected = [
                 mock.call.getStorageSystemInfo(),
@@ -4854,12 +4854,12 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver, test.TestCase):
                              stats['pools'][0]['goodness_function'])
             self.assertEqual(FILTER_FUNCTION,
                              stats['pools'][0]['filter_function'])
-            self.assertEqual(None, stats['pools'][0][THROUGHPUT])
-            self.assertEqual(None, stats['pools'][0][BANDWIDTH])
-            self.assertEqual(None, stats['pools'][0][LATENCY])
-            self.assertEqual(None, stats['pools'][0][IO_SIZE])
-            self.assertEqual(None, stats['pools'][0][QUEUE_LENGTH])
-            self.assertEqual(None, stats['pools'][0][AVG_BUSY_PERC])
+            self.assertIsNone(stats['pools'][0][THROUGHPUT])
+            self.assertIsNone(stats['pools'][0][BANDWIDTH])
+            self.assertIsNone(stats['pools'][0][LATENCY])
+            self.assertIsNone(stats['pools'][0][IO_SIZE])
+            self.assertIsNone(stats['pools'][0][QUEUE_LENGTH])
+            self.assertIsNone(stats['pools'][0][AVG_BUSY_PERC])
 
             expected = [
                 mock.call.getStorageSystemInfo(),
@@ -4909,12 +4909,12 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver, test.TestCase):
                              stats['pools'][0]['goodness_function'])
             self.assertEqual(FILTER_FUNCTION,
                              stats['pools'][0]['filter_function'])
-            self.assertEqual(None, stats['pools'][0][THROUGHPUT])
-            self.assertEqual(None, stats['pools'][0][BANDWIDTH])
-            self.assertEqual(None, stats['pools'][0][LATENCY])
-            self.assertEqual(None, stats['pools'][0][IO_SIZE])
-            self.assertEqual(None, stats['pools'][0][QUEUE_LENGTH])
-            self.assertEqual(None, stats['pools'][0][AVG_BUSY_PERC])
+            self.assertIsNone(stats['pools'][0][THROUGHPUT])
+            self.assertIsNone(stats['pools'][0][BANDWIDTH])
+            self.assertIsNone(stats['pools'][0][LATENCY])
+            self.assertIsNone(stats['pools'][0][IO_SIZE])
+            self.assertIsNone(stats['pools'][0][QUEUE_LENGTH])
+            self.assertIsNone(stats['pools'][0][AVG_BUSY_PERC])
 
             expected = [
                 mock.call.getStorageSystemInfo(),
@@ -4961,8 +4961,8 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver, test.TestCase):
             mock_client.assert_has_calls(expected)
 
             self.assertEqual(self.FAKE_HOST, host['name'])
-            self.assertEqual(None, auth_username)
-            self.assertEqual(None, auth_password)
+            self.assertIsNone(auth_username)
+            self.assertIsNone(auth_password)
 
     def test_create_host_chap_enabled(self):
         # setup_mock_client drive with CHAP enabled configuration
@@ -5059,8 +5059,8 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver, test.TestCase):
             mock_client.assert_has_calls(expected)
 
             self.assertEqual('fakehost.foo', host['name'])
-            self.assertEqual(None, auth_username)
-            self.assertEqual(None, auth_password)
+            self.assertIsNone(auth_username)
+            self.assertIsNone(auth_password)
 
     def test_create_invalid_host_chap_enabled(self):
         # setup_mock_client drive with CHAP enabled configuration
@@ -5157,8 +5157,8 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver, test.TestCase):
             mock_client.assert_has_calls(expected)
 
             self.assertEqual(self.FAKE_HOST, host['name'])
-            self.assertEqual(None, auth_username)
-            self.assertEqual(None, auth_password)
+            self.assertIsNone(auth_username)
+            self.assertIsNone(auth_password)
             self.assertEqual(2, len(host['FCPaths']))
 
     def test_create_modify_host_chap_enabled(self):

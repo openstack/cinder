@@ -392,22 +392,22 @@ class GPFSDriverTestCase(test.TestCase):
     @mock.patch('cinder.utils.execute')
     def test_can_migrate_locally(self, mock_exec):
         host = {'host': 'foo', 'capabilities': ''}
-        self.assertEqual(None, self.driver._can_migrate_locally(host))
+        self.assertIsNone(self.driver._can_migrate_locally(host))
 
         loc = 'GPFSDriver:%s' % self.driver._cluster_id
         cap = {'location_info': loc}
         host = {'host': 'foo', 'capabilities': cap}
-        self.assertEqual(None, self.driver._can_migrate_locally(host))
+        self.assertIsNone(self.driver._can_migrate_locally(host))
 
         loc = 'GPFSDriver_:%s:testpath' % self.driver._cluster_id
         cap = {'location_info': loc}
         host = {'host': 'foo', 'capabilities': cap}
-        self.assertEqual(None, self.driver._can_migrate_locally(host))
+        self.assertIsNone(self.driver._can_migrate_locally(host))
 
         loc = 'GPFSDriver:%s:testpath' % (self.driver._cluster_id + '_')
         cap = {'location_info': loc}
         host = {'host': 'foo', 'capabilities': cap}
-        self.assertEqual(None, self.driver._can_migrate_locally(host))
+        self.assertIsNone(self.driver._can_migrate_locally(host))
 
         loc = 'GPFSDriver:%s:testpath' % self.driver._cluster_id
         cap = {'location_info': loc}
@@ -1112,13 +1112,13 @@ class GPFSDriverTestCase(test.TestCase):
                                   check_exit_code=False)
 
     def test_ensure_export(self):
-        self.assertEqual(None, self.driver.ensure_export('', ''))
+        self.assertIsNone(self.driver.ensure_export('', ''))
 
     def test_create_export(self):
-        self.assertEqual(None, self.driver.create_export('', '', {}))
+        self.assertIsNone(self.driver.create_export('', '', {}))
 
     def test_remove_export(self):
-        self.assertEqual(None, self.driver.remove_export('', ''))
+        self.assertIsNone(self.driver.remove_export('', ''))
 
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.local_path')
     def test_initialize_connection(self, mock_local_path):
@@ -1130,7 +1130,7 @@ class GPFSDriverTestCase(test.TestCase):
         self.assertEqual('gpfs', data['driver_volume_type'])
 
     def test_terminate_connection(self):
-        self.assertEqual(None, self.driver.terminate_connection('', ''))
+        self.assertIsNone(self.driver.terminate_connection('', ''))
 
     def test_get_volume_stats(self):
         fake_avail = 80 * units.Gi

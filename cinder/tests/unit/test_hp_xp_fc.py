@@ -693,7 +693,7 @@ class HPXPFCDriverTest(test.TestCase):
         volume = fake_volume.fake_db_volume(**self._VOLUME)
         rc = self.driver.manage_existing(volume, existing_ref)
 
-        self.assertEqual(None, rc['provider_location'])
+        self.assertIsNone(rc['provider_location'])
 
     def test_manage_existing_get_size(self):
         """Test manage_existing_get_size."""

@@ -28,6 +28,8 @@ Cinder Specific Commandments
 - [C309] Unit tests should not perform logging.
 - [C310] Check for improper use of logging format arguments.
 - [C311] Check for proper naming and usage in option registration.
+- [C312] Check that assertIsNone(value) is used and not assertEqual(None, value).
+- [C313] Check that assertTrue(value) is used and not assertEqual(True, value).
 
 General
 -------

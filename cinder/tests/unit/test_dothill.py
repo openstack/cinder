@@ -199,7 +199,7 @@ class TestDotHillClient(test.TestCase):
         not_ok_tree = etree.XML(response_not_ok)
         invalid_tree = etree.XML(invalid_xml)
         ret = self.client._assert_response_ok(ok_tree)
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)
         self.assertRaises(exception.DotHillRequestError,
                           self.client._assert_response_ok,
                           not_ok_tree)
@@ -312,7 +312,7 @@ class TestFCDotHillCommon(test.TestCase):
         mock_serial_number.return_value = "xxxxx"
         self.assertRaises(exception.DotHillInvalidBackend,
                           self.common.do_setup, None)
-        self.assertEqual(None, self.common.do_setup(None))
+        self.assertIsNone(self.common.do_setup(None))
         mock_backend_exists.assert_called_with(self.common.backend_name,
                                                self.common.backend_type)
         mock_owner_info.assert_called_with(self.common.backend_name,
@@ -331,7 +331,7 @@ class TestFCDotHillCommon(test.TestCase):
         options = FakeOptions({'opt1': 'val1', 'opt2': 'val2'})
         required_flags = ['opt1', 'opt2']
         ret = self.common.check_flags(options, required_flags)
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)
 
         options = FakeOptions({'opt1': 'val1', 'opt2': 'val2'})
         required_flags = ['opt1', 'opt2', 'opt3']
@@ -356,7 +356,7 @@ class TestFCDotHillCommon(test.TestCase):
                                       self.common.backend_type)
         ret = self.common._update_volume_stats()
 
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)
         self.assertEqual({'driver_version': self.common.VERSION,
                           'pools': [{'QoS_support': False,
                                      'free_capacity_gb': 90,
@@ -375,7 +375,7 @@ class TestFCDotHillCommon(test.TestCase):
         self.assertRaises(exception.Invalid, self.common.create_volume,
                           test_volume)
         ret = self.common.create_volume(test_volume)
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)
         mock_create.assert_called_with(encoded_volid,
                                        "%sGB" % test_volume['size'],
                                        self.common.backend_name,
@@ -387,10 +387,10 @@ class TestFCDotHillCommon(test.TestCase):
             'The volume was not found on this system.')
         mock_delete.side_effect = [not_found_e, exception.DotHillRequestError,
                                    None]
-        self.assertEqual(None, self.common.delete_volume(test_volume))
+        self.assertIsNone(self.common.delete_volume(test_volume))
         self.assertRaises(exception.Invalid, self.common.delete_volume,
                           test_volume)
-        self.assertEqual(None, self.common.delete_volume(test_volume))
+        self.assertIsNone(self.common.delete_volume(test_volume))
         mock_delete.assert_called_with(encoded_volid)
 
     @mock.patch.object(dothill.DotHillClient, 'copy_volume')
@@ -410,7 +410,7 @@ class TestFCDotHillCommon(test.TestCase):
                           dest_volume, detached_volume)
 
         ret = self.common.create_cloned_volume(dest_volume, detached_volume)
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)
 
         mock_copy.assert_called_with(encoded_volid,
                                      'vqqqqqqqqqqqqqqqqqqq',
@@ -433,7 +433,7 @@ class TestFCDotHillCommon(test.TestCase):
                           dest_volume, test_snap)
 
         ret = self.common.create_volume_from_snapshot(dest_volume, test_snap)
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)
         mock_copy.assert_called_with('sqqqqqqqqqqqqqqqqqqq',
                                      'vqqqqqqqqqqqqqqqqqqq',
                                      self.common.backend_name,
@@ -446,7 +446,7 @@ class TestFCDotHillCommon(test.TestCase):
         self.assertRaises(exception.Invalid, self.common.extend_volume,
                           test_volume, 20)
         ret = self.common.extend_volume(test_volume, 20)
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)
         mock_extend.assert_called_with(encoded_volid, '10GB')
 
     @mock.patch.object(dothill.DotHillClient, 'create_snapshot')
@@ -456,7 +456,7 @@ class TestFCDotHillCommon(test.TestCase):
         self.assertRaises(exception.Invalid, self.common.create_snapshot,
                           test_snap)
         ret = self.common.create_snapshot(test_snap)
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)
         mock_create.assert_called_with(encoded_volid, 'sqqqqqqqqqqqqqqqqqqq')
 
     @mock.patch.object(dothill.DotHillClient, 'delete_snapshot')
@@ -466,10 +466,10 @@ class TestFCDotHillCommon(test.TestCase):
         mock_delete.side_effect = [not_found_e, exception.DotHillRequestError,
                                    None]
 
-        self.assertEqual(None, self.common.delete_snapshot(test_snap))
+        self.assertIsNone(self.common.delete_snapshot(test_snap))
         self.assertRaises(exception.Invalid, self.common.delete_snapshot,
                           test_snap)
-        self.assertEqual(None, self.common.delete_snapshot(test_snap))
+        self.assertIsNone(self.common.delete_snapshot(test_snap))
         mock_delete.assert_called_with('sqqqqqqqqqqqqqqqqqqq')
 
     @mock.patch.object(dothill.DotHillClient, 'map_volume')
@@ -492,7 +492,7 @@ class TestFCDotHillCommon(test.TestCase):
                           test_volume, connector, self.connector_element)
         ret = self.common.unmap_volume(test_volume, connector,
                                        self.connector_element)
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)
         mock_unmap.assert_called_with(encoded_volid, connector,
                                       self.connector_element)
 
@@ -517,7 +517,7 @@ class TestFCDotHillCommon(test.TestCase):
         self.assertRaises(exception.Invalid, self.common.manage_existing,
                           test_volume, existing_ref)
         ret = self.common.manage_existing(test_volume, existing_ref)
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)
 
     @mock.patch.object(dothill.DotHillClient, 'get_volume_size')
     def test_manage_existing_get_size(self, mock_volume):
@@ -733,4 +733,4 @@ class TestDotHillISCSI(TestDotHillFC):
         mock_unmap.assert_called_with(test_volume, connector, 'initiator')
 
         ret = self.driver.terminate_connection(test_volume, connector)
-        self.assertEqual(None, ret)
+        self.assertIsNone(ret)

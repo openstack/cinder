@@ -1968,8 +1968,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         volume = FakeObject()
         volume['volume_type_id'] = None
         sp = self._driver._get_storage_profile(volume)
-        self.assertEqual(None, sp, "Without a volume_type_id no storage "
-                         "profile should be returned.")
+        self.assertIsNone(sp, "Without a volume_type_id no storage "
+                          "profile should be returned.")
 
         # profile associated with the volume type should be returned
         fake_id = 'fake_volume_id'

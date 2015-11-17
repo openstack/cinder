@@ -754,7 +754,7 @@ class NetAppEseriesISCSIDriverTestCase(test.TestCase):
 
         pool = self.driver.get_pool({'name_id': 'fake-uuid'})
 
-        self.assertEqual(None, pool)
+        self.assertIsNone(pool)
 
     @mock.patch.object(library.NetAppESeriesLibrary, '_create_volume',
                        mock.Mock())

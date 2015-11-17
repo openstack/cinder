@@ -925,34 +925,28 @@ class BackupsAPITestCase(test.TestCase):
         volume = self.volume_api.get(context.get_admin_context(), volume_id)
 
         # test empty service
-        self.assertEqual(False,
-                         self.backup_api._is_backup_service_enabled(volume,
-                                                                    test_host))
+        self.assertEqual(False, self.backup_api._is_backup_service_enabled(
+            volume, test_host))
 
         # test host not match service
-        self.assertEqual(False,
-                         self.backup_api._is_backup_service_enabled(volume,
-                                                                    test_host))
+        self.assertEqual(False, self.backup_api._is_backup_service_enabled(
+            volume, test_host))
 
         # test az not match service
-        self.assertEqual(False,
-                         self.backup_api._is_backup_service_enabled(volume,
-                                                                    test_host))
+        self.assertEqual(False, self.backup_api._is_backup_service_enabled(
+            volume, test_host))
 
         # test disabled service
-        self.assertEqual(False,
-                         self.backup_api._is_backup_service_enabled(volume,
-                                                                    test_host))
+        self.assertEqual(False, self.backup_api._is_backup_service_enabled(
+            volume, test_host))
 
         # test dead service
-        self.assertEqual(False,
-                         self.backup_api._is_backup_service_enabled(volume,
-                                                                    test_host))
+        self.assertEqual(False, self.backup_api._is_backup_service_enabled(
+            volume, test_host))
 
         # test multi services and the last service matches
-        self.assertEqual(True,
-                         self.backup_api._is_backup_service_enabled(volume,
-                                                                    test_host))
+        self.assertTrue(self.backup_api._is_backup_service_enabled(volume,
+                                                                   test_host))
 
     def test_delete_backup_available(self):
         backup_id = self._create_backup(status='available')

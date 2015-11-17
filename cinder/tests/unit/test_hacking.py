@@ -62,7 +62,7 @@ class HackingTestCase(test.TestCase):
                  'Line 6\n', 'Line 7\n', 'Line 8\n', 'Line 9\n', 'Line 10\n',
                  'Line 11\n']
 
-        self.assertEqual(None, checks.no_vi_headers(
+        self.assertIsNone(checks.no_vi_headers(
             "Test string foo", 1, lines))
         self.assertEqual(2, len(list(checks.no_vi_headers(
             "# vim: et tabstop=4 shiftwidth=4 softtabstop=4",
@@ -70,11 +70,11 @@ class HackingTestCase(test.TestCase):
         self.assertEqual(2, len(list(checks.no_vi_headers(
             "# vim: et tabstop=4 shiftwidth=4 softtabstop=4",
             8, lines))))
-        self.assertEqual(None, checks.no_vi_headers(
+        self.assertIsNone(checks.no_vi_headers(
             "Test end string for vi",
             9, lines))
         # vim header outside of boundary (first/last 5 lines)
-        self.assertEqual(None, checks.no_vi_headers(
+        self.assertIsNone(checks.no_vi_headers(
             "# vim: et tabstop=4 shiftwidth=4 softtabstop=4",
             6, lines))
 
@@ -413,6 +413,20 @@ class HackingTestCase(test.TestCase):
 
         self.assertEqual(0, len(list(checks.dict_constructor_with_list_copy(
             "      self._render_dict(xml, data_el, data.__dict__)"))))
+
+    def test_validate_assertIsNone(self):
+        test_value = None
+        self.assertEqual(0, len(list(checks.validate_assertIsNone(
+            "assertIsNone(None)"))))
+        self.assertEqual(1, len(list(checks.validate_assertIsNone(
+            "assertEqual(None, %s)" % test_value))))
+
+    def test_validate_assertTrue(self):
+        test_value = True
+        self.assertEqual(0, len(list(checks.validate_assertTrue(
+            "assertTrue(True)"))))
+        self.assertEqual(1, len(list(checks.validate_assertTrue(
+            "assertEqual(True, %s)" % test_value))))
 
     @ddt.unpack
     @ddt.data(

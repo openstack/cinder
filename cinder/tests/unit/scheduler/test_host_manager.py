@@ -414,7 +414,7 @@ class HostStateTestCase(test.TestCase):
         fake_host.update_from_volume_capability(volume_capability)
         # Backend level stats remain uninitialized
         self.assertEqual(0, fake_host.total_capacity_gb)
-        self.assertEqual(None, fake_host.free_capacity_gb)
+        self.assertIsNone(fake_host.free_capacity_gb)
         # Pool stats has been updated
         self.assertEqual(1024, fake_host.pools['_pool0'].total_capacity_gb)
         self.assertEqual(512, fake_host.pools['_pool0'].free_capacity_gb)
@@ -481,7 +481,7 @@ class HostStateTestCase(test.TestCase):
 
         # Backend level stats remain uninitialized
         self.assertEqual(0, fake_host.total_capacity_gb)
-        self.assertEqual(None, fake_host.free_capacity_gb)
+        self.assertIsNone(fake_host.free_capacity_gb)
         # Pool stats has been updated
         self.assertEqual(2, len(fake_host.pools))
 
@@ -540,7 +540,7 @@ class HostStateTestCase(test.TestCase):
         fake_host.update_from_volume_capability(volume_capability)
         # Backend level stats remain uninitialized
         self.assertEqual(0, fake_host.total_capacity_gb)
-        self.assertEqual(None, fake_host.free_capacity_gb)
+        self.assertIsNone(fake_host.free_capacity_gb)
         # Pool stats has been updated
         self.assertEqual(
             'infinite',
@@ -561,7 +561,7 @@ class HostStateTestCase(test.TestCase):
         fake_host.update_from_volume_capability(volume_capability)
         # Backend level stats remain uninitialized
         self.assertEqual(0, fake_host.total_capacity_gb)
-        self.assertEqual(None, fake_host.free_capacity_gb)
+        self.assertIsNone(fake_host.free_capacity_gb)
         # Pool stats has been updated
         self.assertEqual(
             'infinite',
@@ -577,7 +577,7 @@ class HostStateTestCase(test.TestCase):
 
         fake_host.update_from_volume_capability(vol_cap)
         self.assertEqual(0, fake_host.total_capacity_gb)
-        self.assertEqual(None, fake_host.free_capacity_gb)
+        self.assertIsNone(fake_host.free_capacity_gb)
         # Pool stats has been updated
         self.assertEqual(0,
                          fake_host.pools['_pool0'].total_capacity_gb)

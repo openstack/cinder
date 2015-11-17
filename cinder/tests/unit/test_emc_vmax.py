@@ -2071,9 +2071,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         self.assertIsNone(rc)
         self.driver.utils._is_job_finished.assert_called_once_with(
             conn, myjob)
-        self.assertEqual(
-            True,
-            self.driver.utils._is_job_finished.return_value)
+        self.assertTrue(self.driver.utils._is_job_finished.return_value)
         self.driver.utils._is_job_finished.reset_mock()
 
         # Save the original state and restore it after this test
@@ -2096,9 +2094,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         self.assertIsNone(rc)
         self.driver.utils._is_sync_complete.assert_called_once_with(
             conn, mysync)
-        self.assertEqual(
-            True,
-            self.driver.utils._is_sync_complete.return_value)
+        self.assertTrue(self.driver.utils._is_sync_complete.return_value)
         self.driver.utils._is_sync_complete.reset_mock()
 
         # Save the original state and restore it after this test
@@ -2130,9 +2126,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         self.assertIsNone(rc)
         self.driver.utils._is_sync_complete.assert_called_once_with(
             conn, mysync)
-        self.assertEqual(
-            True,
-            self.driver.utils._is_sync_complete.return_value)
+        self.assertTrue(self.driver.utils._is_sync_complete.return_value)
         self.assertEqual(40,
                          self.driver.utils._get_max_job_retries(extraSpecs))
         self.assertEqual(5,
@@ -6733,7 +6727,7 @@ class EMCV2MultiPoolDriverMultipleEcomsTestCase(test.TestCase):
         self.assertEqual(self.data.poolname, poolRec['PoolName'])
         self.assertEqual('user', poolRec['EcomUserName'])
         self.assertEqual('pass', poolRec['EcomPassword'])
-        self.assertEqual(None, poolRec['FastPolicy'])
+        self.assertIsNone(poolRec['FastPolicy'])
         self.assertFalse(poolRec['EcomUseSSL'])
 
     def test_array_info_multi_ecom_fast(self):

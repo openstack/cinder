@@ -554,7 +554,7 @@ class TestGlanceImageService(test.TestCase):
         self.flags(allowed_direct_url_schemes=['file'])
         self.flags(glance_api_version=2)
         self.service.download(self.context, image_id, writer)
-        self.assertEqual(None, mock_copyfileobj.call_args)
+        self.assertIsNone(mock_copyfileobj.call_args)
 
     def test_glance_client_image_id(self):
         fixture = self._make_fixture(name='test image')

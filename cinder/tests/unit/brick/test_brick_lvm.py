@@ -153,8 +153,7 @@ class BrickLvmTestCase(test.TestCase):
         return (data, "")
 
     def test_create_lv_snapshot(self):
-        self.assertEqual(None,
-                         self.vg.create_lv_snapshot('snapshot-1', 'fake-1'))
+        self.assertIsNone(self.vg.create_lv_snapshot('snapshot-1', 'fake-1'))
 
         self.mox.StubOutWithMock(self.vg, 'get_volume')
         self.vg.get_volume('fake-non-existent').AndReturn(None)
@@ -167,7 +166,7 @@ class BrickLvmTestCase(test.TestCase):
             self.fail("Exception not raised")
 
     def test_vg_exists(self):
-        self.assertEqual(True, self.vg._vg_exists())
+        self.assertTrue(self.vg._vg_exists())
 
     def test_get_vg_uuid(self):
         self.assertEqual('kVxztV-dKpG-Rz7E-xtKY-jeju-QsYU-SLG6Z1',
@@ -184,7 +183,7 @@ class BrickLvmTestCase(test.TestCase):
         self.assertEqual('fake-1', self.vg.get_volume('fake-1')['name'])
 
     def test_get_volume_none(self):
-        self.assertEqual(None, self.vg.get_volume('fake-unknown'))
+        self.assertIsNone(self.vg.get_volume('fake-unknown'))
 
     def test_get_lv_info_notfound(self):
         # lv-nothere will raise lvm < 2.102.112 exception

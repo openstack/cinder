@@ -223,7 +223,7 @@ class NetAppDriverUtilsTestCase(test.TestCase):
 
         result = na_utils.map_qos_spec(qos_spec, fake.VOLUME)
 
-        self.assertEqual(None, result)
+        self.assertIsNone(result)
 
     def test_map_qos_spec_maxiops(self):
         qos_spec = {'maxIOPs': 33000}
@@ -285,7 +285,7 @@ class NetAppDriverUtilsTestCase(test.TestCase):
 
         result = na_utils.get_qos_policy_group_name(volume)
 
-        self.assertEqual(None, result)
+        self.assertIsNone(result)
 
     def test_get_qos_policy_group_name_from_info(self):
         expected = 'openstack-%s' % fake.VOLUME_ID
@@ -298,7 +298,7 @@ class NetAppDriverUtilsTestCase(test.TestCase):
 
         result = na_utils.get_qos_policy_group_name_from_info(None)
 
-        self.assertEqual(None, result)
+        self.assertIsNone(result)
 
     def test_get_qos_policy_group_name_from_legacy_info(self):
         expected = fake.QOS_POLICY_GROUP_NAME
@@ -404,7 +404,7 @@ class NetAppDriverUtilsTestCase(test.TestCase):
         result = na_utils.get_valid_backend_qos_spec_from_volume_type(
             fake.VOLUME, fake.VOLUME_TYPE)
 
-        self.assertEqual(None, result)
+        self.assertIsNone(result)
         self.assertEqual(0, mock_validate.call_count)
 
     def test_get_valid_backend_qos_spec_from_volume_type(self):
@@ -426,7 +426,7 @@ class NetAppDriverUtilsTestCase(test.TestCase):
 
         result = na_utils.get_backend_qos_spec_from_volume_type(volume_type)
 
-        self.assertEqual(None, result)
+        self.assertIsNone(result)
         self.assertEqual(0, mock_get_context.call_count)
 
     def test_get_backend_qos_spec_from_volume_type_no_qos_spec(self):
@@ -437,7 +437,7 @@ class NetAppDriverUtilsTestCase(test.TestCase):
 
         result = na_utils.get_backend_qos_spec_from_volume_type(volume_type)
 
-        self.assertEqual(None, result)
+        self.assertIsNone(result)
 
     def test_get_backend_qos_spec_from_volume_type_with_frontend_spec(self):
         volume_type = fake.VOLUME_TYPE
@@ -447,7 +447,7 @@ class NetAppDriverUtilsTestCase(test.TestCase):
 
         result = na_utils.get_backend_qos_spec_from_volume_type(volume_type)
 
-        self.assertEqual(None, result)
+        self.assertIsNone(result)
 
     def test_get_backend_qos_spec_from_volume_type_with_backend_spec(self):
         volume_type = fake.VOLUME_TYPE
@@ -489,7 +489,7 @@ class NetAppDriverUtilsTestCase(test.TestCase):
 
         result = na_utils.get_legacy_qos_policy(extra_specs)
 
-        self.assertEqual(None, result)
+        self.assertIsNone(result)
 
 
 class OpenStackInfoTestCase(test.TestCase):
@@ -760,7 +760,7 @@ class FeaturesTestCase(test.TestCase):
 
         self.assertEqual(value, bool(self.features.FEATURE_2))
         self.assertEqual(value, self.features.FEATURE_2.supported)
-        self.assertEqual(None, self.features.FEATURE_2.minimum_version)
+        self.assertIsNone(self.features.FEATURE_2.minimum_version)
         self.assertIn('FEATURE_2', self.features.defined_features)
 
     @ddt.data((True, '1'), (False, 2), (False, None), (True, None))

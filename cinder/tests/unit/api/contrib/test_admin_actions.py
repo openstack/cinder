@@ -163,7 +163,7 @@ class AdminActionsTest(test.TestCase):
 
         self.assertEqual(400, resp.status_int)
         volume = db.volume_get(ctx, volume['id'])
-        self.assertEqual(None, volume['migration_status'])
+        self.assertIsNone(volume['migration_status'])
 
     def test_reset_migration_status(self):
         ctx = context.RequestContext('admin', 'fake', True)

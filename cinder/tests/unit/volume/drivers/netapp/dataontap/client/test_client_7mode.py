@@ -95,7 +95,7 @@ class NetApp7modeClientTestCase(test.TestCase):
 
         iqn = self.client.get_iscsi_service_details()
 
-        self.assertEqual(None, iqn)
+        self.assertIsNone(iqn)
 
     def test_get_iscsi_service_details(self):
         expected_iqn = 'iqn.1998-01.org.openstack.iscsi:name1'

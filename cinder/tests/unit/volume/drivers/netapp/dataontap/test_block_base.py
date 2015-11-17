@@ -94,14 +94,14 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
                        mock.Mock(return_value=None))
     def test_get_pool_no_metadata(self):
         pool = self.library.get_pool({'name': 'volume-fake-uuid'})
-        self.assertEqual(None, pool)
+        self.assertIsNone(pool)
 
     @mock.patch.object(block_base.NetAppBlockStorageLibrary,
                        '_get_lun_attr',
                        mock.Mock(return_value=dict()))
     def test_get_pool_volume_unknown(self):
         pool = self.library.get_pool({'name': 'volume-fake-uuid'})
-        self.assertEqual(None, pool)
+        self.assertIsNone(pool)
 
     def test_create_volume(self):
         volume_size_in_bytes = int(fake.SIZE) * units.Gi
@@ -617,7 +617,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         result = self.library._get_preferred_target_from_list(
             target_details_list)
 
-        self.assertEqual(None, result)
+        self.assertIsNone(result)
 
     def test_get_preferred_target_from_list_with_one_interface_disabled(self):
         target_details_list = copy.deepcopy(fake.ISCSI_TARGET_DETAILS_LIST)
