@@ -36,7 +36,6 @@ def fake_db_volume_get(*args, **kwargs):
         'size': 5,
         'availability_zone': 'somewhere',
         'created_at': timeutils.utcnow(),
-        'attach_status': None,
         'display_name': 'anothervolume',
         'display_description': 'Just another volume!',
         'volume_type_id': None,
