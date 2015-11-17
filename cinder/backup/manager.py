@@ -276,6 +276,15 @@ class BackupManager(manager.SchedulerDependentManager):
                 # By default, delete backups sequentially
                 self.delete_backup(ctxt, backup)
 
+    def is_working(self):
+        """Return if Manager is ready to accept requests.
+
+        This is to inform Service class that in case of volume manager(s)
+        initialization failure the manager is actually down and
+        may not accept some or all requests.
+        """
+        return all(mgr.is_working() for mgr in self.volume_managers.values())
+
     def _detach_all_attachments(self, ctxt, mgr, volume):
         attachments = volume['volume_attachment'] or []
         for attachment in attachments:
