@@ -130,7 +130,7 @@ class EMCVNXCLIDriverTestData(object):
         'display_description': 'test volume',
         'volume_type_id': None,
         'provider_location': 'system^FNM11111|type^lun|id^1|version^05.03.00',
-        'volume_metadata': [{'key': 'lun_type', 'value': 'lun'}]}
+        'metadata': {'key': 'lun_type', 'value': 'lun'}}
 
     volume_in_cg = {
         'name': 'vol2',
@@ -279,7 +279,7 @@ class EMCVNXCLIDriverTestData(object):
         'volume_attachment': [],
         'provider_location':
         'system^FNM11111|type^lun|id^1|version^05.03.00',
-        '_name_id': None, 'volume_metadata': []}
+        '_name_id': None, 'metadata': {}}
 
     test_new_type = {'name': 'voltype0', 'qos_specs_id': None,
                      'deleted': False,
@@ -312,7 +312,7 @@ class EMCVNXCLIDriverTestData(object):
                     'volume_attachment': [],
                     'attach_status': 'detached',
                     'volume_type': [],
-                    '_name_id': None, 'volume_metadata': []}
+                    '_name_id': None, 'metadata': {}}
 
     test_volume5 = {'migration_status': None, 'availability_zone': 'nova',
                     'id': '1181d1b2-cea3-4f55-8fa8-3360d026ce25',
@@ -330,7 +330,7 @@ class EMCVNXCLIDriverTestData(object):
                     'volume_attachment': [],
                     'attach_status': 'detached',
                     'volume_type': [],
-                    '_name_id': None, 'volume_metadata': []}
+                    '_name_id': None, 'metadata': {}}
 
     test_new_type2 = {'name': 'voltype0', 'qos_specs_id': None,
                       'deleted': False,
@@ -3182,7 +3182,6 @@ Time Remaining:  0 second(s)
                                     '-FAST']
         emc_vnx_cli.CommandLineHelper.get_array_serial = mock.Mock(
             return_value={'array_serial': "FNM00124500890"})
-
         self.driver.retype(None, self.testData.test_volume3,
                            new_type_data,
                            diff_data,
