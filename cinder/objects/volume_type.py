@@ -65,7 +65,7 @@ class VolumeType(base.CinderPersistentObject, base.CinderObject,
     @staticmethod
     def _from_db_object(context, type, db_type, expected_attrs=None):
         if expected_attrs is None:
-            expected_attrs = []
+            expected_attrs = ['extra_specs', 'projects']
         for name, field in type.fields.items():
             if name in OPTIONAL_FIELDS:
                 continue

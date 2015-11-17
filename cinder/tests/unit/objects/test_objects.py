@@ -34,6 +34,7 @@ object_data = {
     'ConsistencyGroupList': '1.1-15ecf022a68ddbb8c2a6739cfc9f8f5e',
     'QualityOfServiceSpecs': '1.0-0b212e0a86ee99092229874e03207fe8',
     'QualityOfServiceSpecsList': '1.0-1b54e51ad0fc1f3a8878f5010e7e16dc',
+    'RequestSpec': '1.0-42685a616bd27c2a4d75cba93a81ed8c',
     'Service': '1.4-c7d011989d1718ca0496ccf640b42712',
     'ServiceList': '1.1-15ecf022a68ddbb8c2a6739cfc9f8f5e',
     'Snapshot': '1.1-37966f7141646eb29e9ad5298ff2ca8a',
@@ -42,6 +43,7 @@ object_data = {
     'VolumeList': '1.1-15ecf022a68ddbb8c2a6739cfc9f8f5e',
     'VolumeAttachment': '1.0-b30dacf62b2030dd83d8a1603f1064ff',
     'VolumeAttachmentList': '1.0-15ecf022a68ddbb8c2a6739cfc9f8f5e',
+    'VolumeProperties': '1.0-42f00cf1f6c657377a3e2a7efbed0bca',
     'VolumeType': '1.2-02ecb0baac87528d041f4ddd95b95579',
     'VolumeTypeList': '1.1-15ecf022a68ddbb8c2a6739cfc9f8f5e',
 }
@@ -90,7 +92,7 @@ class TestObjectVersions(test.TestCase):
 
         classes = base.CinderObjectRegistry.obj_classes()
         for name, cls in classes.items():
-            if not issubclass(cls[0], base.ObjectListBase):
+            if issubclass(cls[0], base.CinderPersistentObject):
                 db_model = db.get_model_for_versioned_object(cls[0])
                 _check_table_matched(db_model, cls[0])
 

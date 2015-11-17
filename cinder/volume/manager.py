@@ -526,12 +526,17 @@ class VolumeManager(manager.SchedulerDependentManager):
             # by its volume_id.
             volume = objects.Volume.get_by_id(context, volume_id)
 
+        # FIXME(dulek): Remove this in v3.0 of RPC API.
+        if isinstance(request_spec, dict):
+            # We may receive request_spec as dict from older clients.
+            request_spec = objects.RequestSpec.from_primitives(request_spec)
+
         context_elevated = context.elevated()
         if filter_properties is None:
             filter_properties = {}
 
         if request_spec is None:
-            request_spec = {}
+            request_spec = objects.RequestSpec()
 
         try:
             # NOTE(flaper87): Driver initialization is

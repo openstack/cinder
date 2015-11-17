@@ -20,8 +20,10 @@ import mock
 
 from cinder import context
 from cinder import exception
+from cinder import objects
 from cinder.scheduler import filter_scheduler
 from cinder.scheduler import host_manager
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit.scheduler import fakes
 from cinder.tests.unit.scheduler import test_scheduler
 from cinder.volume import utils
@@ -114,7 +116,8 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         request_spec = {'volume_properties': {'project_id': 1,
                                               'size': 1},
                         'volume_type': {'name': 'LVM_iSCSI'},
-                        'volume_id': ['fake-id1']}
+                        'volume_id': fake.VOLUME_ID}
+        request_spec = objects.RequestSpec.from_primitives(request_spec)
         self.assertRaises(exception.NoValidHost, sched.schedule_create_volume,
                           fake_context, request_spec, {})
 
@@ -127,6 +130,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         request_spec = {'volume_properties': {'project_id': 1,
                                               'size': 1},
                         'volume_type': {'name': 'LVM_iSCSI'}}
+        request_spec = objects.RequestSpec.from_primitives(request_spec)
         self.assertRaises(exception.NoValidHost,
                           sched.schedule_create_volume,
                           fake_context,
@@ -141,7 +145,8 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         # request_spec is missing 'volume_type'
         request_spec = {'volume_properties': {'project_id': 1,
                                               'size': 1},
-                        'volume_id': ['fake-id1']}
+                        'volume_id': fake.VOLUME_ID}
+        request_spec = objects.RequestSpec.from_primitives(request_spec)
         self.assertRaises(exception.InvalidVolumeType,
                           sched.schedule_create_volume,
                           fake_context,
@@ -169,7 +174,8 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         request_spec = {'volume_properties': {'project_id': 1,
                                               'size': 1},
                         'volume_type': {'name': 'LVM_iSCSI'},
-                        'volume_id': ['fake-id1']}
+                        'volume_id': fake.VOLUME_ID}
+        request_spec = objects.RequestSpec.from_primitives(request_spec)
         self.assertRaises(exception.NoValidHost, sched.schedule_create_volume,
                           fake_context, request_spec, {})
         self.assertTrue(self.was_admin)
@@ -188,6 +194,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         request_spec = {'volume_type': {'name': 'LVM_iSCSI'},
                         'volume_properties': {'project_id': 1,
                                               'size': 1}}
+        request_spec = objects.RequestSpec.from_primitives(request_spec)
         weighed_host = sched._schedule(fake_context, request_spec, {})
         self.assertIsNotNone(weighed_host.obj)
         self.assertTrue(_mock_service_get_all.called)
@@ -205,6 +212,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
                                               'size': 1},
                         'volume_type': {'name': 'LVM_iSCSI'},
                         'CG_backend': 'host@lvmdriver'}
+        request_spec = objects.RequestSpec.from_primitives(request_spec)
         weighed_host = sched._schedule(fake_context, request_spec, {})
         self.assertIsNone(weighed_host)
 
@@ -220,6 +228,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
                                               'size': 1},
                         'volume_type': {'name': 'LVM_iSCSI'},
                         'CG_backend': 'host1'}
+        request_spec = objects.RequestSpec.from_primitives(request_spec)
         weighed_host = sched._schedule(fake_context, request_spec, {})
         self.assertEqual('host1#lvm1', weighed_host.obj.host)
 
@@ -243,6 +252,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         request_spec = {'volume_type': {'name': 'LVM_iSCSI'},
                         'volume_properties': {'project_id': 1,
                                               'size': 1}}
+        request_spec = objects.RequestSpec.from_primitives(request_spec)
         filter_properties = {}
 
         sched._schedule(self.context, request_spec,
@@ -259,6 +269,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         request_spec = {'volume_type': {'name': 'LVM_iSCSI'},
                         'volume_properties': {'project_id': 1,
                                               'size': 1}}
+        request_spec = objects.RequestSpec.from_primitives(request_spec)
         filter_properties = {}
 
         sched._schedule(self.context, request_spec,
@@ -275,6 +286,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         request_spec = {'volume_type': {'name': 'LVM_iSCSI'},
                         'volume_properties': {'project_id': 1,
                                               'size': 1}}
+        request_spec = objects.RequestSpec.from_primitives(request_spec)
 
         retry = dict(num_attempts=1)
         filter_properties = dict(retry=retry)
@@ -293,6 +305,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         request_spec = {'volume_type': {'name': 'LVM_iSCSI'},
                         'volume_properties': {'project_id': 1,
                                               'size': 1}}
+        request_spec = objects.RequestSpec.from_primitives(request_spec)
 
         retry = dict(num_attempts=2)
         filter_properties = dict(retry=retry)
@@ -343,10 +356,11 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         """Do a successful pass through of with host_passes_filters()."""
         sched, ctx = self._host_passes_filters_setup(
             _mock_service_get_topic)
-        request_spec = {'volume_id': 1,
+        request_spec = {'volume_id': fake.VOLUME_ID,
                         'volume_type': {'name': 'LVM_iSCSI'},
                         'volume_properties': {'project_id': 1,
                                               'size': 1}}
+        request_spec = objects.RequestSpec.from_primitives(request_spec)
         ret_host = sched.host_passes_filters(ctx, 'host1#lvm1',
                                              request_spec, {})
         self.assertEqual('host1', utils.extract_host(ret_host.host))
@@ -358,10 +372,11 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         """Do a successful pass through of with host_passes_filters()."""
         sched, ctx = self._host_passes_filters_setup(
             _mock_service_get_topic)
-        request_spec = {'volume_id': 1,
+        request_spec = {'volume_id': fake.VOLUME_ID,
                         'volume_type': {'name': 'LVM_iSCSI'},
                         'volume_properties': {'project_id': 1,
                                               'size': 1}}
+        request_spec = objects.RequestSpec.from_primitives(request_spec)
         ret_host = sched.host_passes_filters(ctx, 'host5#_pool0',
                                              request_spec, {})
         self.assertEqual('host5', utils.extract_host(ret_host.host))
@@ -372,10 +387,11 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         """Fail the host due to insufficient capacity."""
         sched, ctx = self._host_passes_filters_setup(
             _mock_service_get_topic)
-        request_spec = {'volume_id': 1,
+        request_spec = {'volume_id': fake.VOLUME_ID,
                         'volume_type': {'name': 'LVM_iSCSI'},
                         'volume_properties': {'project_id': 1,
                                               'size': 1024}}
+        request_spec = objects.RequestSpec.from_primitives(request_spec)
         self.assertRaises(exception.NoValidHost,
                           sched.host_passes_filters,
                           ctx, 'host1#lvm1', request_spec, {})
@@ -390,12 +406,13 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         sched, ctx = self._host_passes_filters_setup(
             _mock_service_get_topic)
         extra_specs = {'volume_backend_name': 'lvm4'}
-        request_spec = {'volume_id': 1,
+        request_spec = {'volume_id': fake.VOLUME_ID,
                         'volume_type': {'name': 'LVM_iSCSI',
                                         'extra_specs': extra_specs},
                         'volume_properties': {'project_id': 1,
                                               'size': 200,
                                               'host': 'host4#lvm4'}}
+        request_spec = objects.RequestSpec.from_primitives(request_spec)
         host_state = sched.find_retype_host(ctx, request_spec,
                                             filter_properties={},
                                             migration_policy='never')
@@ -411,12 +428,13 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         sched, ctx = self._host_passes_filters_setup(
             _mock_service_get_topic)
         extra_specs = {'volume_backend_name': 'lvm3'}
-        request_spec = {'volume_id': 1,
+        request_spec = {'volume_id': fake.VOLUME_ID,
                         'volume_type': {'name': 'LVM_iSCSI',
                                         'extra_specs': extra_specs},
                         'volume_properties': {'project_id': 1,
                                               'size': 200,
                                               'host': 'host3#lvm3'}}
+        request_spec = objects.RequestSpec.from_primitives(request_spec)
         host_state = sched.find_retype_host(ctx, request_spec,
                                             filter_properties={},
                                             migration_policy='never')
@@ -429,12 +447,13 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         sched, ctx = self._host_passes_filters_setup(
             _mock_service_get_topic)
         extra_specs = {'volume_backend_name': 'lvm1'}
-        request_spec = {'volume_id': 1,
+        request_spec = {'volume_id': fake.VOLUME_ID,
                         'volume_type': {'name': 'LVM_iSCSI',
                                         'extra_specs': extra_specs},
                         'volume_properties': {'project_id': 1,
                                               'size': 200,
                                               'host': 'host4'}}
+        request_spec = objects.RequestSpec.from_primitives(request_spec)
         self.assertRaises(exception.NoValidHost, sched.find_retype_host, ctx,
                           request_spec, filter_properties={},
                           migration_policy='never')
@@ -446,12 +465,13 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         sched, ctx = self._host_passes_filters_setup(
             _mock_service_get_topic)
         extra_specs = {'volume_backend_name': 'lvm1'}
-        request_spec = {'volume_id': 1,
+        request_spec = {'volume_id': fake.VOLUME_ID,
                         'volume_type': {'name': 'LVM_iSCSI',
                                         'extra_specs': extra_specs},
                         'volume_properties': {'project_id': 1,
                                               'size': 200,
                                               'host': 'host4'}}
+        request_spec = objects.RequestSpec.from_primitives(request_spec)
         host_state = sched.find_retype_host(ctx, request_spec,
                                             filter_properties={},
                                             migration_policy='on-demand')
@@ -464,12 +484,13 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         sched, ctx = self._host_passes_filters_setup(
             _mock_service_get_topic)
         extra_specs = {'volume_backend_name': 'lvm1'}
-        request_spec = {'volume_id': 1,
+        request_spec = {'volume_id': fake.VOLUME_ID,
                         'volume_type': {'name': 'LVM_iSCSI',
                                         'extra_specs': extra_specs},
                         'volume_properties': {'project_id': 1,
                                               'size': 2048,
                                               'host': 'host4'}}
+        request_spec = objects.RequestSpec.from_primitives(request_spec)
         self.assertRaises(exception.NoValidHost, sched.find_retype_host, ctx,
                           request_spec, filter_properties={},
                           migration_policy='on-demand')

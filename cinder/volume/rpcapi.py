@@ -103,9 +103,10 @@ class VolumeAPI(rpc.RPCAPI):
         2.2 - Adds support for sending objects over RPC in manage_existing().
         2.3  - Adds support for sending objects over RPC in
                initialize_connection().
+        2.4 - Sends request_spec as object in create_volume().
     """
 
-    RPC_API_VERSION = '2.3'
+    RPC_API_VERSION = '2.4'
     TOPIC = CONF.volume_topic
     BINARY = 'cinder-volume'
 
@@ -156,12 +157,19 @@ class VolumeAPI(rpc.RPCAPI):
 
     def create_volume(self, ctxt, volume, host, request_spec,
                       filter_properties, allow_reschedule=True):
-        request_spec_p = jsonutils.to_primitive(request_spec)
-        cctxt = self._get_cctxt(host, '2.0')
-        cctxt.cast(ctxt, 'create_volume', volume_id=volume.id,
-                   request_spec=request_spec_p,
-                   filter_properties=filter_properties,
-                   allow_reschedule=allow_reschedule, volume=volume)
+        msg_args = {'volume_id': volume.id, 'request_spec': request_spec,
+                    'filter_properties': filter_properties,
+                    'allow_reschedule': allow_reschedule,
+                    'volume': volume,
+                    }
+        version = '2.4'
+        if not self.client.can_send_version('2.4'):
+            # Send request_spec as dict
+            version = '2.0'
+            msg_args['request_spec'] = jsonutils.to_primitive(request_spec)
+
+        cctxt = self._get_cctxt(host, version)
+        cctxt.cast(ctxt, 'create_volume', **msg_args)
 
     def delete_volume(self, ctxt, volume, unmanage_only=False, cascade=False):
         cctxt = self._get_cctxt(volume.host, '2.0')

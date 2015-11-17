@@ -506,6 +506,16 @@ class EntryCreateTask(flow_utils.CinderTask):
         volume = objects.Volume(context=context, **volume_properties)
         volume.create()
 
+        # FIXME(dulek): We're passing this volume_properties dict through RPC
+        # in request_spec. This shouldn't be needed, most data is replicated
+        # in both volume and other places. We should make Newton read data
+        # from just one correct place and leave just compatibility code.
+        #
+        # Right now - let's move it to versioned objects to be able to make
+        # non-backward compatible changes.
+
+        volume_properties = objects.VolumeProperties(**volume_properties)
+
         return {
             'volume_id': volume['id'],
             'volume_properties': volume_properties,
@@ -687,10 +697,6 @@ class VolumeCastTask(flow_utils.CinderTask):
             # If cgroup_id existed, we should cast volume to the scheduler
             # to choose a proper pool whose backend is same as CG's backend.
             cgroup = objects.ConsistencyGroup.get_by_id(context, cgroup_id)
-            # FIXME(wanghao): CG_backend got added before request_spec was
-            # converted to versioned objects. We should make sure that this
-            # will be handled by object version translations once we add
-            # RequestSpec object.
             request_spec['CG_backend'] = vol_utils.extract_host(cgroup.host)
         elif snapshot_id and CONF.snapshot_same_host:
             # NOTE(Rongze Zhu): A simple solution for bug 1008866.
@@ -741,7 +747,13 @@ class VolumeCastTask(flow_utils.CinderTask):
 
     def execute(self, context, **kwargs):
         scheduler_hints = kwargs.pop('scheduler_hints', None)
-        request_spec = kwargs.copy()
+        db_vt = kwargs.pop('volume_type')
+        kwargs['volume_type'] = None
+        if db_vt:
+            kwargs['volume_type'] = objects.VolumeType()
+            objects.VolumeType()._from_db_object(context,
+                                                 kwargs['volume_type'], db_vt)
+        request_spec = objects.RequestSpec(**kwargs)
         filter_properties = {}
         if scheduler_hints:
             filter_properties['scheduler_hints'] = scheduler_hints
