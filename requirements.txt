@@ -32,7 +32,7 @@ python-barbicanclient<3.1.0,>=3.0.1
 python-glanceclient<0.18.0,>=0.15.0
 python-novaclient<2.24.0,>=2.22.0
 python-swiftclient<2.5.0,>=2.2.0
-requests!=2.4.0,>=2.2.0
+requests!=2.4.0,<2.8.0,>=2.2.0
 retrying!=1.3.0,>=1.2.3 # Apache-2.0
 Routes!=2.0,>=1.12.3
 taskflow<0.8.0,>=0.7.1
