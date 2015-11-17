@@ -76,6 +76,71 @@ HNAS_WRONG_CONF2 = """<?xml version="1.0" encoding="UTF-8" ?>
 </config>
 """
 
+HNAS_WRONG_CONF3 = """<?xml version="1.0" encoding="UTF-8" ?>
+<config>
+  <hnas_cmd>ssc</hnas_cmd>
+  <mgmt_ip0>172.17.44.15</mgmt_ip0>
+  <username> </username>
+  <password>supervisor</password>
+  <svc_0>
+    <volume_type>default</volume_type>
+    <hdp>172.17.39.132:/cinder</hdp>
+  </svc_0>
+  <svc_1>
+    <volume_type>silver</volume_type>
+    <hdp>172.17.39.133:/cinder</hdp>
+  </svc_1>
+</config>
+"""
+
+HNAS_WRONG_CONF4 = """<?xml version="1.0" encoding="UTF-8" ?>
+<config>
+  <hnas_cmd>ssc</hnas_cmd>
+  <mgmt_ip0>172.17.44.15</mgmt_ip0>
+  <username>super</username>
+  <password>supervisor</password>
+  <svc_0>
+    <volume_type>default</volume_type>
+    <hdp>172.17.39.132:/cinder</hdp>
+  </svc_0>
+  <svc_4>
+    <volume_type>silver</volume_type>
+    <hdp>172.17.39.133:/cinder</hdp>
+  </svc_4>
+</config>
+"""
+
+HNAS_FULL_CONF = """<?xml version="1.0" encoding="UTF-8" ?>
+<config>
+  <hnas_cmd>ssc</hnas_cmd>
+  <mgmt_ip0>172.17.44.15</mgmt_ip0>
+  <username>super</username>
+  <password>supervisor</password>
+  <ssh_enabled>True</ssh_enabled>
+  <ssh_port>2222</ssh_port>
+  <chap_enabled>True</chap_enabled>
+  <ssh_private_key>/etc/cinder/ssh_priv</ssh_private_key>
+  <cluster_admin_ip0>10.0.0.1</cluster_admin_ip0>
+  <svc_0>
+    <volume_type>default</volume_type>
+    <hdp>172.17.39.132:/cinder</hdp>
+  </svc_0>
+  <svc_1>
+    <volume_type>silver</volume_type>
+    <hdp>172.17.39.133:/cinder/silver </hdp>
+  </svc_1>
+  <svc_2>
+    <volume_type>gold</volume_type>
+    <hdp>172.17.39.133:/cinder/gold</hdp>
+  </svc_2>
+  <svc_3>
+    <volume_type>platinum</volume_type>
+    <hdp>172.17.39.133:/cinder/platinum</hdp>
+  </svc_3>
+</config>
+"""
+
+
 # The following information is passed on to tests, when creating a volume
 _SERVICE = ('Test_hdp', 'Test_path', 'Test_label')
 _SHARE = '172.17.39.132:/cinder'
@@ -216,6 +281,25 @@ class HDSNFSDriverTest(test.TestCase):
         m_open.return_value = six.StringIO(HNAS_WRONG_CONF2)
         self.configuration.hds_hnas_iscsi_config_file = ''
         self.assertRaises(exception.ParameterNotFound, nfs._read_config, '')
+
+        # Test exception when config file has parsing errors
+        # due to blank tag
+        m_open.return_value = six.StringIO(HNAS_WRONG_CONF3)
+        self.configuration.hds_hnas_iscsi_config_file = ''
+        self.assertRaises(exception.ParameterNotFound, nfs._read_config, '')
+
+        # Test when config file has parsing errors due invalid svc_number
+        m_open.return_value = six.StringIO(HNAS_WRONG_CONF4)
+        self.configuration.hds_hnas_iscsi_config_file = ''
+        config = nfs._read_config('')
+        self.assertEqual(1, len(config['services']))
+
+        # Test config with full options
+        # due invalid svc_number
+        m_open.return_value = six.StringIO(HNAS_FULL_CONF)
+        self.configuration.hds_hnas_iscsi_config_file = ''
+        config = nfs._read_config('')
+        self.assertEqual(4, len(config['services']))
 
     @mock.patch.object(nfs.HDSNFSDriver, '_id_to_vol')
     @mock.patch.object(nfs.HDSNFSDriver, '_get_provider_location')
