@@ -57,6 +57,7 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
               - _remove_last_vol_and_delete_sg is not being called
                 for VMAX3 (bug #1520549)
               - necessary updates for CG changes (#1534616)
+              - Changing PercentSynced to CopyState (bug #1517103)
     """
 
     VERSION = "2.3.0"
