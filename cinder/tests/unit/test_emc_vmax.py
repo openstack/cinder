@@ -1840,6 +1840,65 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
     def fake_is_v3(self, conn, serialNumber):
         return False
 
+    def populate_masking_dict_setup(self):
+        extraSpecs = {'storagetype:pool': u'gold_pool',
+                      'volume_backend_name': 'GOLD_POOL_BE',
+                      'storagetype:array': u'1234567891011',
+                      'isV3': False,
+                      'portgroupname': u'OS-portgroup-PG',
+                      'storagetype:fastpolicy': u'GOLD'}
+        vol = {'SystemName': self.data.storage_system}
+        self.driver.common._find_lun = mock.Mock(
+            return_value=vol)
+        self.driver.common.utils.find_controller_configuration_service = (
+            mock.Mock(return_value=None))
+        return extraSpecs
+
+    def test_populate_masking_dict_fast(self):
+        extraSpecs = self.populate_masking_dict_setup()
+        # If fast is enabled it will uniquely determine the SG and MV
+        # on the host along with the protocol(iSCSI) e.g. I
+        maskingViewDict = self.driver.common._populate_masking_dict(
+            self.data.test_volume, self.data.connector, extraSpecs)
+        self.assertEqual(
+            'OS-fakehost-GOLD-FP-I-SG', maskingViewDict['sgGroupName'])
+        self.assertEqual(
+            'OS-fakehost-GOLD-FP-I-MV', maskingViewDict['maskingViewName'])
+
+    def test_populate_masking_dict_fast_more_than_14chars(self):
+        # If the length of the FAST policy name is greater than 14 chars
+        extraSpecs = self.populate_masking_dict_setup()
+        extraSpecs['storagetype:fastpolicy'] = 'GOLD_MORE_THAN_FOURTEEN_CHARS'
+        maskingViewDict = self.driver.common._populate_masking_dict(
+            self.data.test_volume, self.data.connector, extraSpecs)
+        self.assertEqual(
+            'OS-fakehost-GOLD_MO__CHARS-FP-I-SG',
+            maskingViewDict['sgGroupName'])
+        self.assertEqual(
+            'OS-fakehost-GOLD_MO__CHARS-FP-I-MV',
+            maskingViewDict['maskingViewName'])
+
+    def test_populate_masking_dict_no_fast(self):
+        # If fast isn't enabled the pool will uniquely determine the SG and MV
+        # on the host along with the protocol(iSCSI) e.g. I
+        extraSpecs = self.populate_masking_dict_setup()
+        extraSpecs['storagetype:fastpolicy'] = None
+        maskingViewDict = self.driver.common._populate_masking_dict(
+            self.data.test_volume, self.data.connector, extraSpecs)
+        self.assertEqual(
+            'OS-fakehost-gold_pool-I-SG', maskingViewDict['sgGroupName'])
+        self.assertEqual(
+            'OS-fakehost-gold_pool-I-MV', maskingViewDict['maskingViewName'])
+
+        # If the length of the FAST policy name is greater than 14 chars and
+        # the length of the short host is more than 38 characters
+        connector = {'host': 'SHORT_HOST_MORE_THEN THIRTY_EIGHT_CHARACTERS'}
+        extraSpecs['storagetype:fastpolicy'] = (
+            'GOLD_MORE_THAN_FOURTEEN_CHARACTERS')
+        maskingViewDict = self.driver.common._populate_masking_dict(
+            self.data.test_volume, connector, extraSpecs)
+        self.assertLessEqual(64, len(maskingViewDict['sgGroupName']))
+
     def test_generate_unique_trunc_pool(self):
         pool_under_16_chars = 'pool_under_16'
         pool1 = self.driver.utils.generate_unique_trunc_pool(
