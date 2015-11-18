@@ -194,7 +194,7 @@ def locked_snapshot_operation(f):
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '1.34'
+    RPC_API_VERSION = '1.35'
 
     target = messaging.Target(version=RPC_API_VERSION)
 
@@ -1988,7 +1988,14 @@ class VolumeManager(manager.SchedulerDependentManager):
                     context, snapshot, event_suffix,
                     extra_usage_info=extra_usage_info, host=self.host)
 
-    def extend_volume(self, context, volume_id, new_size, reservations):
+    def extend_volume(self, context, volume_id, new_size, reservations,
+                      volume=None):
+        # FIXME(thangp): Remove this in v2.0 of RPC API.
+        if volume is None:
+            # For older clients, mimic the old behavior and look up the volume
+            # by its volume_id.
+            volume = objects.Volume.get_by_id(context, volume_id)
+
         try:
             # NOTE(flaper87): Verify the driver is enabled
             # before going forward. The exception will be caught
@@ -1996,12 +2003,11 @@ class VolumeManager(manager.SchedulerDependentManager):
             utils.require_driver_initialized(self.driver)
         except exception.DriverNotInitialized:
             with excutils.save_and_reraise_exception():
-                self.db.volume_update(context, volume_id,
-                                      {'status': 'error_extending'})
+                volume.status = 'error_extending'
+                volume.save()
 
-        volume = self.db.volume_get(context, volume_id)
-        project_id = volume['project_id']
-        size_increase = (int(new_size)) - volume['size']
+        project_id = volume.project_id
+        size_increase = (int(new_size)) - volume.size
         self._notify_about_volume_usage(context, volume, "resize.start")
         try:
             self.driver.extend_volume(volume, new_size)
@@ -2009,26 +2015,24 @@ class VolumeManager(manager.SchedulerDependentManager):
             LOG.exception(_LE("Extend volume failed."),
                           resource=volume)
             try:
-                self.db.volume_update(context, volume['id'],
+                self.db.volume_update(context, volume.id,
                                       {'status': 'error_extending'})
                 raise exception.CinderException(_("Volume %s: Error trying "
                                                   "to extend volume") %
-                                                volume_id)
+                                                volume.id)
             finally:
                 QUOTAS.rollback(context, reservations, project_id=project_id)
                 return
 
         QUOTAS.commit(context, reservations, project_id=project_id)
-        volume = self.db.volume_update(context,
-                                       volume['id'],
-                                       {'size': int(new_size),
-                                        'status': 'available'})
-        pool = vol_utils.extract_host(volume['host'], 'pool')
+        volume.update({'size': int(new_size), 'status': 'available'})
+        volume.save()
+        pool = vol_utils.extract_host(volume.host, 'pool')
         if pool is None:
             # Legacy volume, put them into default pool
             pool = self.driver.configuration.safe_get(
                 'volume_backend_name') or vol_utils.extract_host(
-                    volume['host'], 'pool', True)
+                    volume.host, 'pool', True)
 
         try:
             self.stats['pools'][pool]['allocated_capacity_gb'] += size_increase

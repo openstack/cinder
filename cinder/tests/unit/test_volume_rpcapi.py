@@ -370,13 +370,27 @@ class VolumeRpcAPITestCase(test.TestCase):
                                           '-8ffd-0800200c9a66',
                               version='1.9')
 
-    def test_extend_volume(self):
+    @mock.patch('oslo_messaging.RPCClient.can_send_version',
+                return_value=True)
+    def test_extend_volume(self, can_send_version):
         self._test_volume_api('extend_volume',
                               rpc_method='cast',
-                              volume=self.fake_volume,
+                              volume=self.fake_volume_obj,
+                              new_size=1,
+                              reservations=self.fake_reservations,
+                              version='1.35')
+        can_send_version.assert_called_once_with('1.35')
+
+    @mock.patch('oslo_messaging.RPCClient.can_send_version',
+                return_value=False)
+    def test_extend_volume_old(self, can_send_version):
+        self._test_volume_api('extend_volume',
+                              rpc_method='cast',
+                              volume=self.fake_volume_obj,
                               new_size=1,
                               reservations=self.fake_reservations,
                               version='1.14')
+        can_send_version.assert_called_once_with('1.35')
 
     def test_migrate_volume(self):
         class FakeHost(object):
