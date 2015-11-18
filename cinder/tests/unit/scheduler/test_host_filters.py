@@ -907,7 +907,7 @@ class InstanceLocalityFilterTestCase(HostFiltersTestCase):
     def test_same_host(self, _mock_novaclient, fake_extensions):
         _mock_novaclient.return_value = fakes.FakeNovaClient()
         fake_extensions.return_value = (
-            fakes.FakeNovaClient().discover_extensions.show_all())
+            fakes.FakeNovaClient().list_extensions.show_all())
         filt_cls = self.class_map['InstanceLocalityFilter']()
         host = fakes.FakeHostState('host1', {})
         uuid = nova.novaclient().servers.create('host1')
@@ -921,7 +921,7 @@ class InstanceLocalityFilterTestCase(HostFiltersTestCase):
     def test_different_host(self, _mock_novaclient, fake_extensions):
         _mock_novaclient.return_value = fakes.FakeNovaClient()
         fake_extensions.return_value = (
-            fakes.FakeNovaClient().discover_extensions.show_all())
+            fakes.FakeNovaClient().list_extensions.show_all())
         filt_cls = self.class_map['InstanceLocalityFilter']()
         host = fakes.FakeHostState('host1', {})
         uuid = nova.novaclient().servers.create('host2')
@@ -978,7 +978,7 @@ class InstanceLocalityFilterTestCase(HostFiltersTestCase):
         # Simulate a HTTP timeout
         _mock_request.side_effect = request_exceptions.Timeout
         fake_extensions.return_value = (
-            fakes.FakeNovaClient().discover_extensions.show_all())
+            fakes.FakeNovaClient().list_extensions.show_all())
 
         filt_cls = self.class_map['InstanceLocalityFilter']()
         host = fakes.FakeHostState('host1', {})
