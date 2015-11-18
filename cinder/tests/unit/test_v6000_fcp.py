@@ -21,8 +21,9 @@ import mock
 from oslo_utils import units
 
 from cinder import context
-from cinder.db.sqlalchemy import models
 from cinder import exception
+from cinder.objects import snapshot as csnap
+from cinder.objects import volume as cvol
 from cinder import test
 from cinder.tests.unit import fake_vmem_client as vmemclient
 from cinder.volume import configuration as conf
@@ -210,7 +211,7 @@ class V6000FCPDriverTestCase(test.TestCase):
         igroup = None
         target_wwns = self.driver.gateway_fc_wwns
         init_targ_map = {}
-        volume = mock.Mock(spec=models.Volume)
+        volume = mock.Mock(spec=cvol.Volume)
 
         self.driver.common.vip = self.setup_mock_vshare()
         self.driver._export_lun = mock.Mock(return_value=lun_id)
@@ -234,7 +235,7 @@ class V6000FCPDriverTestCase(test.TestCase):
         igroup = None
         target_wwns = self.driver.gateway_fc_wwns
         init_targ_map = {}
-        snapshot = mock.Mock(spec=models.Snapshot)
+        snapshot = mock.Mock(spec=csnap.Snapshot)
 
         self.driver.common.vip = self.setup_mock_vshare()
         self.driver._export_snapshot = mock.Mock(return_value=lun_id)
@@ -257,7 +258,7 @@ class V6000FCPDriverTestCase(test.TestCase):
     def test_terminate_connection(self):
         target_wwns = self.driver.gateway_fc_wwns
         init_targ_map = {}
-        volume = mock.Mock(spec=models.Volume)
+        volume = mock.Mock(spec=cvol.Volume)
 
         self.driver.common.vip = self.setup_mock_vshare()
         self.driver._unexport_lun = mock.Mock()
@@ -281,7 +282,7 @@ class V6000FCPDriverTestCase(test.TestCase):
     def test_terminate_connection_snapshot_object(self):
         target_wwns = self.driver.gateway_fc_wwns
         init_targ_map = {}
-        snapshot = mock.Mock(spec=models.Snapshot)
+        snapshot = mock.Mock(spec=csnap.Snapshot)
 
         self.driver.common.vip = self.setup_mock_vshare()
         self.driver._unexport_snapshot = mock.Mock()
