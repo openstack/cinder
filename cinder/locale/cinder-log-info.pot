@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev220\n"
+"Project-Id-Version: cinder 8.0.0.dev243\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-14 06:38+0000\n"
+"POT-Creation-Date: 2015-11-18 06:39+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -258,71 +258,71 @@ msgstr ""
 msgid "Resuming delete on backup: %s."
 msgstr ""
 
-#: cinder/backup/manager.py:349
+#: cinder/backup/manager.py:358
 #, python-format
 msgid "Create backup started, backup: %(backup_id)s volume: %(volume_id)s."
 msgstr ""
 
-#: cinder/backup/manager.py:416
+#: cinder/backup/manager.py:425
 #, python-format
 msgid "Create backup finished. backup: %s."
 msgstr ""
 
-#: cinder/backup/manager.py:421
+#: cinder/backup/manager.py:430
 #, python-format
 msgid "Restore backup started, backup: %(backup_id)s volume: %(volume_id)s."
 msgstr ""
 
-#: cinder/backup/manager.py:456
+#: cinder/backup/manager.py:465
 #, python-format
 msgid ""
 "Volume: %(vol_id)s, size: %(vol_size)d is larger than backup: "
 "%(backup_id)s, size: %(backup_size)d, continuing with restore."
 msgstr ""
 
-#: cinder/backup/manager.py:500
+#: cinder/backup/manager.py:509
 #, python-format
 msgid ""
 "Restore backup finished, backup %(backup_id)s restored to volume "
 "%(volume_id)s."
 msgstr ""
 
-#: cinder/backup/manager.py:507
+#: cinder/backup/manager.py:516
 #, python-format
 msgid "Delete backup started, backup: %s."
 msgstr ""
 
-#: cinder/backup/manager.py:581
+#: cinder/backup/manager.py:590
 #, python-format
 msgid "Delete backup finished, backup %s deleted."
 msgstr ""
 
-#: cinder/backup/manager.py:607
+#: cinder/backup/manager.py:616
 #, python-format
 msgid "Export record started, backup: %s."
 msgstr ""
 
-#: cinder/backup/manager.py:642
+#: cinder/backup/manager.py:651
 #, python-format
 msgid "Export record finished, backup %s exported."
 msgstr ""
 
-#: cinder/backup/manager.py:661
+#: cinder/backup/manager.py:670
 #, python-format
 msgid "Import record started, backup_url: %s."
 msgstr ""
 
-#: cinder/backup/manager.py:757
+#: cinder/backup/manager.py:766
 #, python-format
 msgid "Import record id %s metadata from driver finished."
 msgstr ""
 
-#: cinder/backup/manager.py:770
+#: cinder/backup/manager.py:779
 #, python-format
 msgid "Reset backup status started, backup_id: %(backup_id)s, status: %(status)s."
 msgstr ""
 
-#: cinder/backup/manager.py:785
+#: cinder/backup/manager.py:794
 #, python-format
 msgid "Backup service: %s."
 msgstr ""
@@ -489,7 +489,7 @@ msgid "Volume retrieved successfully."
 msgstr ""
 
 #: cinder/volume/api.py:572
-msgid "Get all snaphsots completed successfully."
+msgid "Get all snapshots completed successfully."
 msgstr ""
 
 #: cinder/volume/api.py:593
@@ -734,66 +734,66 @@ msgstr ""
 msgid "Migrate volume completed successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:2042
+#: cinder/volume/manager.py:2046
 msgid "Extend volume completed successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:2140
+#: cinder/volume/manager.py:2144
 #, python-format
 msgid "Volume %s: retyped successfully"
 msgstr ""
 
-#: cinder/volume/manager.py:2198
+#: cinder/volume/manager.py:2202
 msgid "Retype volume completed successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:2235
+#: cinder/volume/manager.py:2239
 msgid "Manage existing volume completed successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:2269
+#: cinder/volume/manager.py:2273
 msgid "Promote volume replica completed successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:2333
+#: cinder/volume/manager.py:2337
 #, python-format
 msgid "Consistency group %s: creating"
 msgstr ""
 
-#: cinder/volume/manager.py:2357
+#: cinder/volume/manager.py:2361
 #, python-format
 msgid "Consistency group %s: created successfully"
 msgstr ""
 
-#: cinder/volume/manager.py:2363
+#: cinder/volume/manager.py:2367
 msgid "Create consistency group completed successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:2496
+#: cinder/volume/manager.py:2500
 #, python-format
 msgid "Create consistency group from source-%(source)s completed successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:2730 cinder/volume/manager.py:2866
+#: cinder/volume/manager.py:2734 cinder/volume/manager.py:2870
 msgid "Delete consistency group completed successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:2878
+#: cinder/volume/manager.py:2882
 #, python-format
 msgid "Cgsnapshot %s: creating."
 msgstr ""
 
-#: cinder/volume/manager.py:2968
+#: cinder/volume/manager.py:2972
 #, python-format
 msgid "cgsnapshot %s: created successfully"
 msgstr ""
 
-#: cinder/volume/manager.py:2980
+#: cinder/volume/manager.py:2984
 #, python-format
 msgid "cgsnapshot %s: deleting"
 msgstr ""
 
-#: cinder/volume/manager.py:3076
+#: cinder/volume/manager.py:3080
 #, python-format
 msgid "cgsnapshot %s: deleted successfully"
 msgstr ""
@@ -2336,43 +2336,43 @@ msgstr ""
 msgid "Cinder NFS volume with current path %(cr)s is no longer being managed."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:331
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:333
 #, python-format
 msgid "HPE3PARCommon %(common_ver)s,hpe3parclient %(rest_ver)s"
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:617
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:619
 #, python-format
 msgid ""
 "Virtual volume %(disp)s '%(new)s' snapCPG is empty so it will be set to: "
 "%(cpg)s"
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:625
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:627
 #: cinder/volume/drivers/san/hp/hp_lefthand_iscsi.py:897
 #, python-format
 msgid "Virtual volume '%(ref)s' renamed to '%(new)s'."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:631
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:633
 #: cinder/volume/drivers/san/hp/hp_lefthand_iscsi.py:905
 #, python-format
 msgid "Virtual volume %(disp)s '%(new)s' is being retyped."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:638
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:640
 #: cinder/volume/drivers/san/hp/hp_lefthand_iscsi.py:915
 #, python-format
 msgid "Virtual volume %(disp)s successfully retyped to %(new_type)s."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:657
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:659
 #: cinder/volume/drivers/san/hp/hp_lefthand_iscsi.py:935
 #, python-format
 msgid "Virtual volume %(disp)s '%(new)s' is now being managed."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:699
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:701
 #: cinder/volume/drivers/san/hp/hp_lefthand_iscsi.py:992
 #, python-format
 msgid ""
@@ -2380,66 +2380,66 @@ msgid ""
 " '%(new)s'."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:1027
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:1029
 #, python-format
 msgid "3PAR vlun %(name)s not found on host %(host)s"
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:1121
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:1123
 #, python-format
 msgid ""
 "3PAR vlun for volume '%(name)s' was deleted, but the host '%(host)s' was "
 "not deleted because: %(reason)s"
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:1240
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:1242
 #, python-format
 msgid "Flash Cache policy set to %s"
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:1367
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:1369
 #, python-format
 msgid "Using pool %(pool)s instead of %(cpg)s"
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:1904
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:1906
 #, python-format
 msgid "3PAR driver cannot perform migration. Retype exception: %s"
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:1933
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:1935
 #, python-format
 msgid "Volume name changed from %(tmp)s to %(orig)s"
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:2008
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:2010
 #, python-format
 msgid "Completed: convert_to_base_volume: id=%s."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:2130
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:2132
 #, python-format
 msgid "Modifying %(volume_name)s userCPG from %(old_cpg)s to %(new_cpg)s"
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:2151
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:2153
 #, python-format
 msgid "Converting %(volume_name)s to thin provisioning with userCPG=%(new_cpg)s"
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:2156
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:2158
 #, python-format
 msgid ""
 "Converting %(volume_name)s to thin dedup provisioning with "
 "userCPG=%(new_cpg)s"
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:2161
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:2163
 #, python-format
 msgid "Converting %(volume_name)s to full provisioning with userCPG=%(new_cpg)s"
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:2177
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:2179
 #, python-format
 msgid "tunevv failed because the volume '%s' has snapshots."
 msgstr ""

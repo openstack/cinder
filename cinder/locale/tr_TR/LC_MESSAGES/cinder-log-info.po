@@ -7,9 +7,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev220\n"
+"Project-Id-Version: cinder 8.0.0.dev243\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-14 06:38+0000\n"
+"POT-Creation-Date: 2015-11-18 06:39+0000\n"
 "PO-Revision-Date: 2015-09-16 08:22+0000\n"
 "Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
 "Language-Team: Turkish (Turkey)\n"
@@ -1070,9 +1070,6 @@ msgstr "%(in)s başlatıcısını kaydetmek için FC hedeflerini %(tg)s getir."
 #, python-format
 msgid "Get ISCSI targets %(tg)s to register initiator %(in)s."
 msgstr "%(in)s başlatıcısını kaydetmek için ISCSI hedefleri %(tg)s'yi getir."
-
-msgid "Get all snaphsots completed successfully."
-msgstr "Tüm anlık görüntülerin alınması başarıyla bitti."
 
 msgid "Get all volumes completed successfully."
 msgstr "Tüm mantıksal sürücülerin getirilmesi başarıyla bitti."
