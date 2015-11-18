@@ -48,6 +48,7 @@ CONF.register_opts(exc_log_opts)
 
 
 class ConvertedException(webob.exc.WSGIHTTPException):
+
     def __init__(self, code=500, title="", explanation=""):
         self.code = code
         # There is a strict rule about constructing status line for HTTP:
@@ -1017,3 +1018,8 @@ class NotSupportedOperation(Invalid):
 # Hitachi HNAS drivers
 class HNASConnError(CinderException):
     message = _("%(message)s")
+
+
+# Coho drivers
+class CohoException(VolumeDriverException):
+    message = _("Coho Data Cinder driver failure: %(message)s")
