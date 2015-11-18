@@ -145,6 +145,7 @@ from cinder.volume.drivers import scality as cinder_volume_drivers_scality
 from cinder.volume.drivers import sheepdog as cinder_volume_drivers_sheepdog
 from cinder.volume.drivers import smbfs as cinder_volume_drivers_smbfs
 from cinder.volume.drivers import solidfire as cinder_volume_drivers_solidfire
+from cinder.volume.drivers import tegile as cinder_volume_drivers_tegile
 from cinder.volume.drivers import tintri as cinder_volume_drivers_tintri
 from cinder.volume.drivers.violin import v6000_common as \
     cinder_volume_drivers_violin_v6000common
@@ -315,6 +316,7 @@ def list_opts():
                 nexenta_edge_opts,
                 cinder_volume_drivers_ibm_flashsystemiscsi.
                 flashsystem_iscsi_opts,
+                cinder_volume_drivers_tegile.tegile_opts,
                 cinder_volume_drivers_ibm_flashsystemcommon.flashsystem_opts,
                 [cinder_volume_api.allow_force_upload_opt],
                 [cinder_volume_api.volume_host_opt],

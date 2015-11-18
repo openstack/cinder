@@ -1035,3 +1035,8 @@ class HNASConnError(CinderException):
 # Coho drivers
 class CohoException(VolumeDriverException):
     message = _("Coho Data Cinder driver failure: %(message)s")
+
+
+# Tegile Storage drivers
+class TegileAPIException(VolumeBackendAPIException):
+    message = _("Unexpected response from Tegile IntelliFlash API")
