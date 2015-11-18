@@ -126,7 +126,10 @@ MAPPING = {
     'cinder.volume.drivers.san.hp.hp_3par_fc.HP3PARFCDriver':
     'cinder.volume.drivers.hpe.hpe_3par_fc.HPE3PARFCDriver',
     'cinder.volume.drivers.san.hp.hp_3par_iscsi.HP3PARISCSIDriver':
-    'cinder.volume.drivers.hpe.hpe_3par_iscsi.HPE3PARISCSIDriver', }
+    'cinder.volume.drivers.hpe.hpe_3par_iscsi.HPE3PARISCSIDriver',
+    'cinder.volume.drivers.san.hp.hp_lefthand_iscsi.HPLeftHandISCSIDriver':
+    'cinder.volume.drivers.hpe.hpe_lefthand_iscsi.HPELeftHandISCSIDriver',
+}
 
 
 def locked_volume_operation(f):

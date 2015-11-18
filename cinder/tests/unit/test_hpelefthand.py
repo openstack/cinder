@@ -1,4 +1,4 @@
-#    (c) Copyright 2014 Hewlett-Packard Development Company, L.P.
+#    (c) Copyright 2014-2015 Hewlett Packard Enterprise Development LP
 #    All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -21,11 +21,11 @@ from oslo_utils import units
 from cinder import context
 from cinder import exception
 from cinder import test
-from cinder.tests.unit import fake_hp_lefthand_client as hplefthandclient
-from cinder.volume.drivers.san.hp import hp_lefthand_iscsi
+from cinder.tests.unit import fake_hpe_lefthand_client as hpelefthandclient
+from cinder.volume.drivers.hpe import hpe_lefthand_iscsi
 from cinder.volume import volume_types
 
-hpexceptions = hplefthandclient.hpexceptions
+hpeexceptions = hpelefthandclient.hpeexceptions
 
 GOODNESS_FUNCTION = \
     "capabilities.capacity_utilization < 0.6? 100 : 25"
@@ -33,7 +33,7 @@ FILTER_FUNCTION = \
     "capabilities.total_volumes < 400 && capabilities.capacity_utilization"
 
 
-class HPLeftHandBaseDriver(object):
+class HPELeftHandBaseDriver(object):
 
     cluster_id = 1
 
@@ -73,11 +73,19 @@ class HPLeftHandBaseDriver(object):
     volume_type = {'name': 'gold',
                    'deleted': False,
                    'updated_at': None,
-                   'extra_specs': {'hplh:provisioning': 'thin',
-                                   'hplh:ao': 'true',
-                                   'hplh:data_pl': 'r-0'},
+                   'extra_specs': {'hpelh:provisioning': 'thin',
+                                   'hpelh:ao': 'true',
+                                   'hpelh:data_pl': 'r-0'},
                    'deleted_at': None,
                    'id': 'gold'}
+    old_volume_type = {'name': 'gold',
+                       'deleted': False,
+                       'updated_at': None,
+                       'extra_specs': {'hplh:provisioning': 'thin',
+                                       'hplh:ao': 'true',
+                                       'hplh:data_pl': 'r-0'},
+                       'deleted_at': None,
+                       'id': 'gold'}
 
     connector = {
         'ip': '10.0.0.2',
@@ -90,7 +98,7 @@ class HPLeftHandBaseDriver(object):
     ]
 
 
-class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
+class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
 
     CONSIS_GROUP_ID = '3470cc4c-63b3-4c7a-8120-8a0693b45838'
     CGSNAPSHOT_ID = '5351d914-6c90-43e7-9a8e-7e84610927da'
@@ -103,12 +111,12 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
     def default_mock_conf(self):
 
         mock_conf = mock.Mock()
-        mock_conf.hplefthand_api_url = 'http://fake.foo:8080/lhos'
-        mock_conf.hplefthand_username = 'foo1'
-        mock_conf.hplefthand_password = 'bar2'
-        mock_conf.hplefthand_iscsi_chap_enabled = False
-        mock_conf.hplefthand_debug = False
-        mock_conf.hplefthand_clustername = "CloudCluster1"
+        mock_conf.hpelefthand_api_url = 'http://fake.foo:8080/lhos'
+        mock_conf.hpelefthand_username = 'foo1'
+        mock_conf.hpelefthand_password = 'bar2'
+        mock_conf.hpelefthand_iscsi_chap_enabled = False
+        mock_conf.hpelefthand_debug = False
+        mock_conf.hpelefthand_clustername = "CloudCluster1"
         mock_conf.goodness_function = GOODNESS_FUNCTION
         mock_conf.filter_function = FILTER_FUNCTION
         mock_conf.reserved_percentage = 25
@@ -122,7 +130,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
 
         return mock_conf
 
-    @mock.patch('hplefthandclient.client.HPLeftHandClient', spec=True)
+    @mock.patch('hpelefthandclient.client.HPELeftHandClient', spec=True)
     def setup_driver(self, _mock_client, config=None):
         if config is None:
             config = self.default_mock_conf()
@@ -133,19 +141,19 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             'spaceTotal': units.Gi * 500,
             'spaceAvailable': units.Gi * 250}
         db = mock.Mock()
-        self.driver = hp_lefthand_iscsi.HPLeftHandISCSIDriver(
+        self.driver = hpe_lefthand_iscsi.HPELeftHandISCSIDriver(
             configuration=config, db=db)
         self.driver.do_setup(None)
-        self.cluster_name = config.hplefthand_clustername
+        self.cluster_name = config.hpelefthand_clustername
         return _mock_client.return_value
 
-    @mock.patch('hplefthandclient.version', "1.0.0")
+    @mock.patch('hpelefthandclient.version', "1.0.0")
     def test_unsupported_client_version(self):
 
         self.assertRaises(exception.InvalidInput,
                           self.setup_driver)
 
-    @mock.patch('hplefthandclient.version', "3.0.0")
+    @mock.patch('hpelefthandclient.version', "3.0.0")
     def test_supported_client_version(self):
 
         self.setup_driver()
@@ -162,7 +170,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         mock_client.createVolume.return_value = {
             'iscsiIqn': self.connector['initiator']}
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
@@ -185,7 +193,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
 
             # mock HTTPServerError
             mock_client.createVolume.side_effect =\
-                hpexceptions.HTTPServerError()
+                hpeexceptions.HTTPServerError()
             # ensure the raised exception is a cinder exception
             self.assertRaises(exception.VolumeBackendAPIException,
                               self.driver.create_volume, self.volume)
@@ -193,7 +201,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
     @mock.patch.object(
         volume_types,
         'get_volume_type',
-        return_value={'extra_specs': {'hplh:provisioning': 'full'}})
+        return_value={'extra_specs': {'hpelh:provisioning': 'full'}})
     def test_create_volume_with_es(self, _mock_volume_type):
 
         # setup drive with default configuration
@@ -208,7 +216,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             'iscsiIqn': self.connector['initiator']}
         mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
@@ -229,6 +237,51 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
 
             mock_client.assert_has_calls(expected)
 
+    @mock.patch.object(
+        volume_types,
+        'get_volume_type',
+        return_value={'extra_specs': (HPELeftHandBaseDriver.
+                                      old_volume_type['extra_specs'])})
+    def test_create_volume_old_volume_type(self, _mock_volume_type):
+
+        # setup drive with default configuration
+        # and return the mock HTTP LeftHand client
+        mock_client = self.setup_driver()
+
+        mock_client.getVolumes.return_value = {'total': 1, 'members': []}
+
+        # mock return value of createVolume
+        mock_client.createVolume.return_value = {
+            'iscsiIqn': self.connector['initiator']}
+
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
+                               '_create_client') as mock_do_setup:
+            mock_do_setup.return_value = mock_client
+
+            # execute driver
+            volume_info = self.driver.create_volume(self.volume)
+
+            self.assertEqual('10.0.1.6:3260,1 iqn.1993-08.org.debian:01:222 0',
+                             volume_info['provider_location'])
+
+            expected = self.driver_startup_call_stack + [
+                mock.call.createVolume(
+                    'fakevolume',
+                    1,
+                    units.Gi,
+                    {'isThinProvisioned': True,
+                     'clusterName': 'CloudCluster1'}),
+                mock.call.logout()]
+
+            mock_client.assert_has_calls(expected)
+
+            # mock HTTPServerError
+            mock_client.createVolume.side_effect =\
+                hpeexceptions.HTTPServerError()
+            # ensure the raised exception is a cinder exception
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.driver.create_volume, self.volume)
+
     def test_delete_volume(self):
 
         # setup drive with default configuration
@@ -239,7 +292,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         mock_client.getVolumeByName.return_value = {'id': self.volume_id}
         mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
@@ -255,12 +308,12 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
 
             # mock HTTPNotFound (volume not found)
             mock_client.getVolumeByName.side_effect =\
-                hpexceptions.HTTPNotFound()
+                hpeexceptions.HTTPNotFound()
             # no exception should escape method
             self.driver.delete_volume(self.volume)
 
             # mock HTTPConflict
-            mock_client.deleteVolume.side_effect = hpexceptions.HTTPConflict()
+            mock_client.deleteVolume.side_effect = hpeexceptions.HTTPConflict()
             # ensure the raised exception is a cinder exception
             self.assertRaises(exception.VolumeBackendAPIException,
                               self.driver.delete_volume, self.volume_id)
@@ -275,7 +328,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         mock_client.getVolumeByName.return_value = {'id': self.volume_id}
         mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
@@ -292,7 +345,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
 
             # mock HTTPServerError (array failure)
             mock_client.modifyVolume.side_effect =\
-                hpexceptions.HTTPServerError()
+                hpeexceptions.HTTPServerError()
             # ensure the raised exception is a cinder exception
             self.assertRaises(exception.VolumeBackendAPIException,
                               self.driver.extend_volume, self.volume, 2)
@@ -304,7 +357,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         mock_client = self.setup_driver()
 
         # mock return value of getVolumeByName
-        mock_client.getServerByName.side_effect = hpexceptions.HTTPNotFound()
+        mock_client.getServerByName.side_effect = hpeexceptions.HTTPNotFound()
         mock_client.createServer.return_value = {'id': self.server_id}
         mock_client.getVolumeByName.return_value = {
             'id': self.volume_id,
@@ -312,7 +365,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         }
         mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
@@ -344,7 +397,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
 
             # mock HTTPServerError (array failure)
             mock_client.createServer.side_effect =\
-                hpexceptions.HTTPServerError()
+                hpeexceptions.HTTPServerError()
             # ensure the raised exception is a cinder exception
             self.assertRaises(
                 exception.VolumeBackendAPIException,
@@ -357,7 +410,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         mock_client = self.setup_driver()
 
         # mock return value of getVolumeByName
-        mock_client.getServerByName.side_effect = hpexceptions.HTTPNotFound()
+        mock_client.getServerByName.side_effect = hpeexceptions.HTTPNotFound()
         mock_client.createServer.return_value = {'id': self.server_id}
         mock_client.getVolumeByName.return_value = {
             'id': self.volume_id,
@@ -365,7 +418,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         }
         mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
@@ -401,7 +454,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         mock_client = self.setup_driver()
 
         # mock return value of getVolumeByName
-        mock_client.getServerByName.side_effect = hpexceptions.HTTPNotFound()
+        mock_client.getServerByName.side_effect = hpeexceptions.HTTPNotFound()
         mock_client.createServer.return_value = {
             'id': self.server_id,
             'chapAuthenticationRequired': True,
@@ -412,7 +465,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         }
         mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
@@ -455,7 +508,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         mock_client.findServerVolumes.return_value = [{'id': self.volume_id}]
         mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
@@ -473,7 +526,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             mock_client.assert_has_calls(expected)
 
             mock_client.getVolumeByName.side_effect = (
-                hpexceptions.HTTPNotFound())
+                hpeexceptions.HTTPNotFound())
             # ensure the raised exception is a cinder exception
             self.assertRaises(
                 exception.VolumeBackendAPIException,
@@ -496,7 +549,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             {'id': 99999}]
         mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
@@ -514,7 +567,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             self.assertFalse(mock_client.deleteServer.called)
 
             mock_client.getVolumeByName.side_effect = (
-                hpexceptions.HTTPNotFound())
+                hpeexceptions.HTTPNotFound())
             # ensure the raised exception is a cinder exception
             self.assertRaises(
                 exception.VolumeBackendAPIException,
@@ -531,7 +584,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         mock_client.getVolumeByName.return_value = {'id': self.volume_id}
         mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
@@ -552,7 +605,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
 
             # mock HTTPServerError (array failure)
             mock_client.getVolumeByName.side_effect =\
-                hpexceptions.HTTPNotFound()
+                hpeexceptions.HTTPNotFound()
             # ensure the raised exception is a cinder exception
             self.assertRaises(
                 exception.VolumeBackendAPIException,
@@ -567,7 +620,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         mock_client.getSnapshotByName.return_value = {'id': self.snapshot_id}
         mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
@@ -583,12 +636,12 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             mock_client.assert_has_calls(expected)
 
             mock_client.getSnapshotByName.side_effect =\
-                hpexceptions.HTTPNotFound()
+                hpeexceptions.HTTPNotFound()
             # no exception is thrown, just error msg is logged
             self.driver.delete_snapshot(self.snapshot)
 
             # mock HTTPServerError (array failure)
-            ex = hpexceptions.HTTPServerError({'message': 'Some message.'})
+            ex = hpeexceptions.HTTPServerError({'message': 'Some message.'})
             mock_client.getSnapshotByName.side_effect = ex
             # ensure the raised exception is a cinder exception
             self.assertRaises(
@@ -597,7 +650,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
                 self.snapshot)
 
             # mock HTTPServerError because the snap is in use
-            ex = hpexceptions.HTTPServerError({
+            ex = hpeexceptions.HTTPServerError({
                 'message':
                 'Hey, dude cannot be deleted because it is a clone point'
                 ' duh.'})
@@ -619,7 +672,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             'iscsiIqn': self.connector['initiator']}
         mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
@@ -651,7 +704,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             'iscsiIqn': self.connector['initiator']}
         mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
@@ -684,7 +737,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             'extra_specs': {
                 'foo:bar': 'fake',
                 'bar:foo': 1234,
-                'hplh:provisioning': 'full'}}
+                'hpelh:provisioning': 'full'}}
 
         volume_with_vt = self.volume
         volume_with_vt['volume_type_id'] = self.volume_type_id
@@ -694,7 +747,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             volume_with_vt)
         extra_specs = self.driver._get_lh_extra_specs(
             volume_extra_specs,
-            hp_lefthand_iscsi.extra_specs_key_map.keys())
+            hpe_lefthand_iscsi.extra_specs_key_map.keys())
 
         # map the extra specs key/value pairs to key/value pairs
         # used as optional configuration values by the LeftHand backend
@@ -713,24 +766,24 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
 
         _mock_get_volume_type.return_value = {
             'extra_specs': {
-                # r-07 is an invalid value for hplh:ao
-                'hplh:data_pl': 'r-07',
-                'hplh:ao': 'true'}}
+                # r-07 is an invalid value for hpelh:ao
+                'hpelh:data_pl': 'r-07',
+                'hpelh:ao': 'true'}}
 
         # get the extra specs of interest from this volume's volume type
         volume_extra_specs = self.driver._get_volume_extra_specs(
             volume_with_vt)
         extra_specs = self.driver._get_lh_extra_specs(
             volume_extra_specs,
-            hp_lefthand_iscsi.extra_specs_key_map.keys())
+            hpe_lefthand_iscsi.extra_specs_key_map.keys())
 
         # map the extra specs key/value pairs to key/value pairs
         # used as optional configuration values by the LeftHand backend
         optional = self.driver._map_extra_specs(extra_specs)
 
-        # {'hplh:ao': 'true'} should map to
+        # {'hpelh:ao': 'true'} should map to
         # {'isAdaptiveOptimizationEnabled': True}
-        # without hplh:data_pl since r-07 is an invalid value
+        # without hpelh:data_pl since r-07 is an invalid value
         self.assertDictMatch({'isAdaptiveOptimizationEnabled': True}, optional)
 
     def test_retype_with_no_LH_extra_specs(self):
@@ -756,7 +809,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         volume['host'] = host
         new_type = volume_types.get_volume_type(ctxt, new_type_ref['id'])
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
@@ -779,8 +832,8 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         ctxt = context.get_admin_context()
 
         host = {'host': self.serverName}
-        key_specs_old = {'hplh:provisioning': 'thin'}
-        key_specs_new = {'hplh:provisioning': 'full', 'hplh:ao': 'true'}
+        key_specs_old = {'hpelh:provisioning': 'thin'}
+        key_specs_new = {'hpelh:provisioning': 'full', 'hpelh:ao': 'true'}
         old_type_ref = volume_types.create(ctxt, 'old', key_specs_old)
         new_type_ref = volume_types.create(ctxt, 'new', key_specs_new)
 
@@ -793,7 +846,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         volume['host'] = host
         new_type = volume_types.get_volume_type(ctxt, new_type_ref['id'])
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
@@ -820,8 +873,8 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         ctxt = context.get_admin_context()
 
         host = {'host': self.serverName}
-        key_specs_old = {'hplh:provisioning': 'full', 'foo': 'bar'}
-        key_specs_new = {'hplh:provisioning': 'thin', 'foo': 'foobar'}
+        key_specs_old = {'hpelh:provisioning': 'full', 'foo': 'bar'}
+        key_specs_new = {'hpelh:provisioning': 'thin', 'foo': 'foobar'}
         old_type_ref = volume_types.create(ctxt, 'old', key_specs_old)
         new_type_ref = volume_types.create(ctxt, 'new', key_specs_new)
 
@@ -834,7 +887,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         volume['host'] = host
         new_type = volume_types.get_volume_type(ctxt, new_type_ref['id'])
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
@@ -858,8 +911,8 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         ctxt = context.get_admin_context()
 
         host = {'host': self.serverName}
-        key_specs_old = {'hplh:provisioning': 'full', 'hplh:ao': 'true'}
-        key_specs_new = {'hplh:provisioning': 'full', 'hplh:ao': 'false'}
+        key_specs_old = {'hpelh:provisioning': 'full', 'hpelh:ao': 'true'}
+        key_specs_new = {'hpelh:provisioning': 'full', 'hpelh:ao': 'false'}
         old_type_ref = volume_types.create(ctxt, 'old', key_specs_old)
         new_type_ref = volume_types.create(ctxt, 'new', key_specs_new)
 
@@ -872,7 +925,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         volume['host'] = host
         new_type = volume_types.get_volume_type(ctxt, new_type_ref['id'])
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
@@ -895,7 +948,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
 
         host = {'host': self.serverName, 'capabilities': {}}
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
@@ -929,7 +982,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             'host': self.serverName,
             'capabilities': {'location_info': location}}
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
@@ -973,7 +1026,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             'host': self.serverName,
             'capabilities': {'location_info': location}}
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
@@ -1024,7 +1077,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             'host': self.serverName,
             'capabilities': {'location_info': location}}
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
@@ -1059,7 +1112,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
                            '_name_id': clone_id,
                            'provider_location': provider_location}
         original_volume_status = 'available'
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
             actual_update = self.driver.update_migrated_volume(
@@ -1081,7 +1134,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
                            'provider_location': provider_location}
         original_volume_status = 'in-use'
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
             actual_update = self.driver.update_migrated_volume(
@@ -1093,7 +1146,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             self.assertEqual(expected_update, actual_update)
 
     @mock.patch.object(volume_types, 'get_volume_type',
-                       return_value={'extra_specs': {'hplh:ao': 'true'}})
+                       return_value={'extra_specs': {'hpelh:ao': 'true'}})
     def test_create_volume_with_ao_true(self, _mock_volume_type):
 
         # setup drive with default configuration
@@ -1108,7 +1161,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             'iscsiIqn': self.connector['initiator']}
         mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
@@ -1131,7 +1184,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             mock_client.assert_has_calls(expected)
 
     @mock.patch.object(volume_types, 'get_volume_type',
-                       return_value={'extra_specs': {'hplh:ao': 'false'}})
+                       return_value={'extra_specs': {'hpelh:ao': 'false'}})
     def test_create_volume_with_ao_false(self, _mock_volume_type):
 
         # setup drive with default configuration
@@ -1146,7 +1199,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             'iscsiIqn': self.connector['initiator']}
         mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
@@ -1193,7 +1246,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
                   'volume_type_id': None,
                   'id': '12345'}
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
             mock_client.getVolumeByName.return_value = {'id': self.volume_id}
@@ -1231,9 +1284,9 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             'name': 'gold',
             'id': 'gold-id',
             'extra_specs': {
-                'hplh:provisioning': 'thin',
-                'hplh:ao': 'true',
-                'hplh:data_pl': 'r-0',
+                'hpelh:provisioning': 'thin',
+                'hpelh:ao': 'true',
+                'hpelh:data_pl': 'r-0',
                 'volume_type': self.volume_type}}
 
         self.driver.api_version = "1.1"
@@ -1244,7 +1297,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
                   'volume_type_id': 'bcfa9fa4-54a0-4340-a3d8-bfcf19aea65e',
                   'id': '12345'}
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
             mock_client.getVolumeByName.return_value = {'id': self.volume_id}
@@ -1282,9 +1335,9 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             'name': 'gold',
             'id': 'gold-id',
             'extra_specs': {
-                'hplh:provisioning': 'thin',
-                'hplh:ao': 'true',
-                'hplh:data_pl': 'r-0',
+                'hpelh:provisioning': 'thin',
+                'hpelh:ao': 'true',
+                'hpelh:data_pl': 'r-0',
                 'volume_type': self.volume_type}}
 
         self.driver.retype = mock.Mock(
@@ -1298,7 +1351,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
                   'volume_type_id': 'bcfa9fa4-54a0-4340-a3d8-bfcf19aea65e',
                   'id': '12345'}
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
             mock_client.getVolumeByName.return_value = {'id': self.volume_id}
@@ -1342,7 +1395,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
                   'volume_type_id': 'bcfa9fa4-54a0-4340-a3d8-bfcf19aea65e',
                   'id': '12345'}
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
             mock_client.getVolumeByName.return_value = {'id': self.volume_id}
@@ -1374,7 +1427,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
 
         self.driver.api_version = "1.1"
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
             mock_client.getVolumes.return_value = {
@@ -1407,7 +1460,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
 
         self.driver.api_version = "1.1"
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
@@ -1433,11 +1486,11 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
     def test_manage_existing_get_size_invalid_input(self):
         mock_client = self.setup_driver()
         mock_client.getVolumeByName.side_effect = (
-            hpexceptions.HTTPNotFound('fake'))
+            hpeexceptions.HTTPNotFound('fake'))
 
         self.driver.api_version = "1.1"
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
             mock_client.getVolumes.return_value = {
@@ -1481,7 +1534,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
 
         self.driver.api_version = "1.1"
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
             self.driver.unmanage(self.volume)
@@ -1523,7 +1576,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             }]
         }
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
@@ -1555,7 +1608,6 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
 
             mock_client.assert_has_calls(expected)
 
-    @mock.patch('hplefthandclient.version', "1.0.6")
     def test_create_consistencygroup(self):
         class fake_consitencygroup_object(object):
             volume_type_id = '371c64d5-b92a-488c-bc14-1e63cef40e08'
@@ -1568,7 +1620,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         # set up driver with default config
         mock_client = self.setup_driver()
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
@@ -1578,7 +1630,6 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
 
             self.assertEqual('available', cg['status'])
 
-    @mock.patch('hplefthandclient.version', "1.0.6")
     def test_delete_consistencygroup(self):
         class fake_consitencygroup_object(object):
             volume_type_id = '371c64d5-b92a-488c-bc14-1e63cef40e08'
@@ -1595,7 +1646,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         expected_volumes = [mock_volume]
         self.driver.db.volume_get_all_by_group.return_value = expected_volumes
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
@@ -1609,7 +1660,6 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             cg, vols = self.driver.delete_consistencygroup(ctxt, group, [])
             self.assertEqual('deleting', cg['status'])
 
-    @mock.patch('hplefthandclient.version', "1.0.6")
     def test_update_consistencygroup_add_vol_delete_cg(self):
         class fake_consitencygroup_object(object):
             volume_type_id = '371c64d5-b92a-488c-bc14-1e63cef40e08'
@@ -1633,7 +1683,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         mock_client.createVolume.return_value = {
             'iscsiIqn': self.connector['initiator']}
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
@@ -1651,7 +1701,6 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             cg, vols = self.driver.delete_consistencygroup(ctxt, group, [])
             self.assertEqual('deleting', cg['status'])
 
-    @mock.patch('hplefthandclient.version', "1.0.6")
     def test_update_consistencygroup_remove_vol_delete_cg(self):
         class fake_consitencygroup_object(object):
             volume_type_id = '371c64d5-b92a-488c-bc14-1e63cef40e08'
@@ -1675,7 +1724,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         mock_client.createVolume.return_value = {
             'iscsiIqn': self.connector['initiator']}
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
@@ -1698,7 +1747,6 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             self.assertEqual('deleting', cg['status'])
 
     @mock.patch('cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
-    @mock.patch('hplefthandclient.version', "1.0.6")
     def test_create_cgsnapshot(self, mock_snap_list):
         class fake_consitencygroup_object(object):
             volume_type_id = '371c64d5-b92a-488c-bc14-1e63cef40e08'
@@ -1720,7 +1768,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         expected_snaps = [mock_snap]
         mock_snap_list.return_value = expected_snaps
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
@@ -1739,7 +1787,6 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
             self.assertEqual('available', cgsnap['status'])
 
     @mock.patch('cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
-    @mock.patch('hplefthandclient.version', "1.0.6")
     def test_delete_cgsnapshot(self, mock_snap_list):
         class fake_consitencygroup_object(object):
             volume_type_id = '371c64d5-b92a-488c-bc14-1e63cef40e08'
@@ -1761,7 +1808,7 @@ class TestHPLeftHandISCSIDriver(HPLeftHandBaseDriver, test.TestCase):
         expected_snaps = [mock_snap]
         mock_snap_list.return_value = expected_snaps
 
-        with mock.patch.object(hp_lefthand_iscsi.HPLeftHandISCSIDriver,
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 

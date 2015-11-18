@@ -1,4 +1,4 @@
-# (c) Copyright 2014 Hewlett-Packard Development Company, L.P.
+# (c) Copyright 2014-2015 Hewlett Packard Enterprise Development LP
 #    All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -13,16 +13,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 #
-"""Fake HP client for testing LeftHand without installing the client."""
+"""Fake HPE client for testing LeftHand without installing the client."""
 
 import sys
 
 import mock
 
-from cinder.tests.unit import fake_hpe_client_exceptions as hpexceptions
+from cinder.tests.unit import fake_hpe_client_exceptions as hpeexceptions
 
-hplefthand = mock.Mock()
-hplefthand.version = "1.0.4"
-hplefthand.exceptions = hpexceptions
+hpelefthand = mock.Mock()
+hpelefthand.version = "2.0.0"
+hpelefthand.exceptions = hpeexceptions
 
-sys.modules['hplefthandclient'] = hplefthand
+sys.modules['hpelefthandclient'] = hpelefthand
