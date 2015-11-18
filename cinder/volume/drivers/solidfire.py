@@ -858,6 +858,19 @@ class SolidFireDriver(san.SanISCSIDriver):
                                 params,
                                 version='7.0')
 
+    def _remove_volume_from_vag(self, vol_id, vag_id):
+        params = {"volumeAccessGroupID": vag_id,
+                  "volumes": [vol_id]}
+        self._issue_api_request('RemoveVolumesFromVolumeAccessGroup',
+                                params,
+                                version='7.0')
+
+    def _remove_vag(self, vag_id):
+        params = {"volumeAccessGroupID": vag_id}
+        self._issue_api_request('DeleteVolumeAccessGroup',
+                                params,
+                                version='7.0')
+
     def clone_image(self, context,
                     volume, image_location,
                     image_meta, image_service):
@@ -1165,6 +1178,11 @@ class SolidFireDriver(san.SanISCSIDriver):
 
         self._issue_api_request('ModifyVolume', params)
 
+    def terminate_connection(self, volume, properties, force):
+        return self._sf_terminate_connection(volume,
+                                             properties,
+                                             force)
+
     def detach_volume(self, context, volume, attachment=None):
         sfaccount = self._get_sfaccount(volume['project_id'])
         params = {'accountID': sfaccount['accountID']}
@@ -1404,6 +1422,13 @@ class SolidFireISCSI(iscsi_driver.SanISCSITarget):
                 vag_id = self._create_vag(vag_name)
                 vag = self._get_vags(vag_name)[0]
 
+            # TODO(chrismorrell): There is a potential race condition if a
+            # volume is attached and another is detached on the same
+            # host/initiator. The detach may purge the VAG before the attach
+            # has a chance to add the volume to the VAG. Propose combining
+            # add_initiator_to_vag and add_volume_to_vag with a retry on
+            # SFAPI exception regarding nonexistent VAG.
+
             # Verify IQN matches.
             if raw_iqn not in vag['initiators']:
                 self._add_initiator_to_vag(raw_iqn,
@@ -1415,3 +1440,28 @@ class SolidFireISCSI(iscsi_driver.SanISCSITarget):
         # Continue along with default behavior
         return super(SolidFireISCSI, self).initialize_connection(volume,
                                                                  connector)
+
+    def _sf_terminate_connection(self, volume, properties, force):
+        """Terminate the volume connection.
+
+           Optionally remove volume from volume access group.
+           If the VAG is empty then the VAG is also removed.
+        """
+        if self.configuration.sf_enable_vag:
+            raw_iqn = properties['initiator']
+            vag_name = re.sub('[^0-9a-zA-Z]+', '-', raw_iqn)
+            vag = self._get_vags(vag_name)
+            provider_id = volume['provider_id']
+            vol_id = int(self._parse_provider_id_string(provider_id)[0])
+
+            if vag:
+                vag = vag[0]
+                vag_id = vag['volumeAccessGroupID']
+                if [vol_id] == vag['volumes']:
+                    self._remove_vag(vag_id)
+                elif vol_id in vag['volumes']:
+                    self._remove_volume_from_vag(vol_id, vag_id)
+
+        return super(SolidFireISCSI, self).terminate_connection(volume,
+                                                                properties,
+                                                                force=force)
