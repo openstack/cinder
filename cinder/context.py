@@ -75,7 +75,8 @@ class RequestContext(context.RequestContext):
                                              user_domain=user_domain,
                                              project_domain=project_domain,
                                              is_admin=is_admin,
-                                             request_id=request_id)
+                                             request_id=request_id,
+                                             overwrite=overwrite)
         self.roles = roles or []
         self.project_name = project_name
         self.read_deleted = read_deleted
