@@ -855,6 +855,15 @@ class BackupManager(manager.SchedulerDependentManager):
                 raise exception.BackupVerifyUnsupportedDriver(
                     reason=msg)
 
+            # Needs to clean temporary volumes and snapshots.
+            try:
+                self._cleanup_temp_volumes_snapshots_for_one_backup(
+                    context, backup)
+            except Exception:
+                LOG.exception(_LE("Problem cleaning temp volumes and "
+                                  "snapshots for backup %(bkup)s."),
+                              {'bkup': backup.id})
+
             # send notification to ceilometer
             notifier_info = {'id': backup.id, 'update': {'status': status}}
             notifier = rpc.get_notifier('backupStatusUpdate')
