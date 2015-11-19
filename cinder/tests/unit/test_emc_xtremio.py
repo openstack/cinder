@@ -411,6 +411,12 @@ class EMCXIODriverISCSITestCase(test.TestCase):
         i1['chap-discovery-initiator-password'] = None
         map_data = self.driver.initialize_connection(self.data.test_volume2,
                                                      self.data.connector)
+        data = {}
+        self.driver._add_auth(data, True, True)
+        self.assertIn('initiator-discovery-user-name', data,
+                      'Missing discovery user in data')
+        self.assertIn('initiator-discovery-password', data,
+                      'Missing discovery password in data')
 
     def test_initialize_connection_bad_ig(self, req):
         req.side_effect = xms_bad_request
