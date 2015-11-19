@@ -1202,6 +1202,13 @@ class FlashSystemDriverTestCase(test.TestCase):
         self.assertIsNone(self.driver._find_host_exhaustive(conn3,
                                                             [host1, host2]))
 
+        # case 2: hosts contains non-existent host info
+        with mock.patch.object(FlashSystemFakeDriver,
+                               '_ssh') as mock_ssh:
+            mock_ssh.return_value = ("pass", "")
+            self.driver._find_host_exhaustive(conn1, [host2])
+            self.assertFalse(mock_ssh.called)
+
         # clear environment
         self.driver._delete_host(host1)
         self.driver._delete_host(host2)

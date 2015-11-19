@@ -75,10 +75,12 @@ class FlashSystemDriver(san.SanDriver):
     1.0.5 - Report capability of volume multiattach
     1.0.6 - Fix bug #1469581, add I/T mapping check in
             terminate_connection
+    1.0.7 - Fix bug #1505477, add host name check in
+            _find_host_exhaustive for FC
 
     """
 
-    VERSION = "1.0.6"
+    VERSION = "1.0.7"
 
     def __init__(self, *args, **kwargs):
         super(FlashSystemDriver, self).__init__(*args, **kwargs)
@@ -419,7 +421,7 @@ class FlashSystemDriver(san.SanDriver):
             'name' in header,
             '_get_host_from_connector', ssh_cmd, out, err)
         name_index = header.index('name')
-        hosts = map(lambda x: x.split('!')[name_index], host_lines)
+        hosts = [x.split('!')[name_index] for x in host_lines]
         hostname = self._find_host_exhaustive(connector, hosts)
 
         LOG.debug('leave: _get_host_from_connector: host %s.', hostname)

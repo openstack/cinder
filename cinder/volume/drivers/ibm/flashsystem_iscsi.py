@@ -65,10 +65,12 @@ class FlashSystemISCSIDriver(fscommon.FlashSystemDriver,
     1.0.5 - Report capability of volume multiattach
     1.0.6 - Fix bug #1469581, add I/T mapping check in
             terminate_connection
+    1.0.7 - Fix bug #1505477, add host name check in
+            _find_host_exhaustive for FC
 
     """
 
-    VERSION = "1.0.6"
+    VERSION = "1.0.7"
 
     def __init__(self, *args, **kwargs):
         super(FlashSystemISCSIDriver, self).__init__(*args, **kwargs)
