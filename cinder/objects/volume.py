@@ -27,6 +27,27 @@ CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 
+class MetadataObject(dict):
+    # This is a wrapper class that simulates SQLAlchemy (.*)Metadata objects to
+    # maintain compatibility with older representations of Volume that some
+    # drivers rely on. This is helpful in transition period while some driver
+    # methods are invoked with volume versioned object and some SQLAlchemy
+    # object or dict.
+    def __init__(self, key=None, value=None):
+        super(MetadataObject, self).__init__()
+        self.key = key
+        self.value = value
+
+    def __getattr__(self, name):
+        if name in self:
+            return self[name]
+        else:
+            raise AttributeError("No such attribute: " + name)
+
+    def __setattr__(self, name, value):
+        self[name] = value
+
+
 @base.CinderObjectRegistry.register
 class Volume(base.CinderPersistentObject, base.CinderObject,
              base.CinderObjectDictCompat, base.CinderComparableObject):
@@ -99,7 +120,8 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
 
     # NOTE(thangp): obj_extra_fields is used to hold properties that are not
     # usually part of the model
-    obj_extra_fields = ['name', 'name_id']
+    obj_extra_fields = ['name', 'name_id', 'volume_metadata',
+                        'volume_admin_metadata', 'volume_glance_metadata']
 
     @property
     def name_id(self):
@@ -112,6 +134,40 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
     @property
     def name(self):
         return CONF.volume_name_template % self.name_id
+
+    # TODO(dulek): Three properties below are for compatibility with dict
+    # representation of volume. The format there is different (list of
+    # SQLAlchemy models) so we need a conversion. Anyway - these should be
+    # removed when we stop this class from deriving from DictObjectCompat.
+    @property
+    def volume_metadata(self):
+        md = [MetadataObject(k, v) for k, v in self.metadata.items()]
+        return md
+
+    @volume_metadata.setter
+    def volume_metadata(self, value):
+        md = {d['key']: d['value'] for d in value}
+        self.metadata = md
+
+    @property
+    def volume_admin_metadata(self):
+        md = [MetadataObject(k, v) for k, v in self.admin_metadata.items()]
+        return md
+
+    @volume_admin_metadata.setter
+    def volume_admin_metadata(self, value):
+        md = {d['key']: d['value'] for d in value}
+        self.admin_metadata = md
+
+    @property
+    def volume_glance_metadata(self):
+        md = [MetadataObject(k, v) for k, v in self.glance_metadata.items()]
+        return md
+
+    @volume_glance_metadata.setter
+    def volume_glance_metadata(self, value):
+        md = {d['key']: d['value'] for d in value}
+        self.glance_metadata = md
 
     def __init__(self, *args, **kwargs):
         super(Volume, self).__init__(*args, **kwargs)
@@ -171,23 +227,16 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
         # Get data from db_volume object that was queried by joined query
         # from DB
         if 'metadata' in expected_attrs:
-            volume.metadata = {}
             metadata = db_volume.get('volume_metadata', [])
-            if metadata:
-                volume.metadata = {item['key']: item['value']
-                                   for item in metadata}
+            volume.metadata = {item['key']: item['value'] for item in metadata}
         if 'admin_metadata' in expected_attrs:
-            volume.admin_metadata = {}
             metadata = db_volume.get('volume_admin_metadata', [])
-            if metadata:
-                volume.admin_metadata = {item['key']: item['value']
-                                         for item in metadata}
+            volume.admin_metadata = {item['key']: item['value']
+                                     for item in metadata}
         if 'glance_metadata' in expected_attrs:
-            volume.glance_metadata = {}
             metadata = db_volume.get('volume_glance_metadata', [])
-            if metadata:
-                volume.glance_metadata = {item['key']: item['value']
-                                          for item in metadata}
+            volume.glance_metadata = {item['key']: item['value']
+                                      for item in metadata}
         if 'volume_type' in expected_attrs:
             db_volume_type = db_volume.get('volume_type')
             if db_volume_type:
@@ -227,9 +276,6 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
         if 'consistencygroup' in updates:
             raise exception.ObjectActionError(
                 action='create', reason=_('consistencygroup assigned'))
-        if 'glance_metadata' in updates:
-                raise exception.ObjectActionError(
-                    action='create', reason=_('glance_metadata assigned'))
         if 'snapshots' in updates:
             raise exception.ObjectActionError(
                 action='create', reason=_('snapshots assigned'))
@@ -287,8 +333,16 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
                 self.admin_metadata = db.volume_admin_metadata_get(
                     self._context, self.id)
         elif attrname == 'glance_metadata':
-            self.glance_metadata = db.volume_glance_metadata_get(
-                self._context, self.id)
+            try:
+                # NOTE(dulek): We're using alias here to have conversion from
+                # list to dict done there.
+                self.volume_glance_metadata = db.volume_glance_metadata_get(
+                    self._context, self.id)
+            except exception.GlanceMetadataNotFound:
+                # NOTE(dulek): DB API raises when volume has no
+                # glance_metadata. Silencing this because at this level no
+                # metadata is a completely valid result.
+                self.glance_metadata = {}
         elif attrname == 'volume_type':
             # If the volume doesn't have volume_type, VolumeType.get_by_id
             # would trigger a db call which raise VolumeTypeNotFound exception.

@@ -2073,7 +2073,7 @@ Time Remaining:  0 second(s)
             self.testData.test_volume)
         vol['provider_location'] = 'system^FNM11111|type^smp|id^1'
         vol['volume_metadata'] = [{'key': 'snapcopy', 'value': 'True'}]
-        tmp_snap = "tmp-snap-%s" % vol['id']
+        tmp_snap = "snap-as-vol-%s" % vol['id']
         ret = self.driver.migrate_volume(None,
                                          vol,
                                          fake_host)
@@ -3839,7 +3839,7 @@ Time Remaining:  0 second(s)
             self.testData.test_volume3)
         vol['provider_location'] = 'system^FNM11111|type^smp|id^1'
         vol['volume_metadata'] = [{'key': 'snapcopy', 'value': 'True'}]
-        tmp_snap = 'tmp-snap-%s' % vol['id']
+        tmp_snap = 'snap-as-vol-%s' % vol['id']
         ret = self.driver.retype(None, vol,
                                  new_type_data,
                                  diff_data,

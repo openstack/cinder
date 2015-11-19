@@ -566,7 +566,7 @@ class VolumeTestCase(BaseVolumeTestCase):
             'replication_status': 'disabled',
             'replication_extended_status': None,
             'replication_driver_data': None,
-            'metadata': None,
+            'metadata': [],
             'volume_attachment': [],
         }
         self.assertDictMatch(expected, msg['payload'])
