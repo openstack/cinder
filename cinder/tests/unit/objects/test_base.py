@@ -538,3 +538,31 @@ class TestCinderObjectConditionalUpdate(test.TestCase):
 
         # Check that the volume in the DB has also been updated
         self._check_volume(volume, 'deleting', expected_size, True)
+
+
+class TestCinderDictObject(test_objects.BaseObjectsTestCase):
+    @objects.base.CinderObjectRegistry.register_if(False)
+    class TestDictObject(objects.base.CinderObjectDictCompat,
+                         objects.base.CinderObject):
+        obj_extra_fields = ['foo']
+
+        fields = {
+            'abc': fields.StringField(nullable=True),
+            'def': fields.IntegerField(nullable=True),
+        }
+
+        @property
+        def foo(self):
+            return 42
+
+    def test_dict_objects(self):
+        obj = self.TestDictObject()
+        self.assertIsNone(obj.get('non_existing'))
+        self.assertEqual('val', obj.get('abc', 'val'))
+        obj.abc = 'val2'
+        self.assertEqual('val2', obj.get('abc', 'val'))
+        self.assertEqual(42, obj.get('foo'))
+
+        self.assertTrue('foo' in obj)
+        self.assertTrue('abc' in obj)
+        self.assertFalse('def' in obj)
