@@ -43,7 +43,6 @@ from oslo_utils import units
 from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder import objects
 from cinder.volume import driver
 from cinder.volume import utils
 from cinder.volume import volume_types
@@ -140,9 +139,10 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         1.0.13 - Added update_migrated_volume #1493546
         1.0.14 - Removed the old CLIQ based driver
         2.0.0 - Rebranded HP to HPE
+        2.0.1 - Remove db access for consistency groups
     """
 
-    VERSION = "2.0.0"
+    VERSION = "2.0.1"
 
     device_stats = {}
 
@@ -306,16 +306,23 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
 
     def delete_consistencygroup(self, context, group, volumes):
         """Deletes a consistency group."""
-        # TODO(aorourke): Can't eliminate the DB calls here due to CG API.
-        # Will fix in M release
-        volumes = self.db.volume_get_all_by_group(context, group.id)
+        volume_model_updates = []
         for volume in volumes:
-            self.delete_volume(volume)
-            volume.status = 'deleted'
+            volume_update = {'id': volume.id}
+            try:
+                self.delete_volume(volume)
+                volume_update['status'] = 'deleted'
+            except Exception as ex:
+                LOG.error(_LE("There was an error deleting volume %(id)s: "
+                              "%(error)."),
+                          {'id': volume.id,
+                           'error': six.text_type(ex)})
+                volume_update['status'] = 'error'
+            volume_model_updates.append(volume_update)
 
         model_update = {'status': group.status}
 
-        return model_update, volumes
+        return model_update, volume_model_updates
 
     def update_consistencygroup(self, context, group,
                                 add_volumes=None, remove_volumes=None):
@@ -333,13 +340,9 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         """Creates a consistency group snapshot."""
         client = self._login()
         try:
-            # TODO(aorourke): Can't eliminate the DB calls here due to CG API.
-            # Will fix in M release
-            snapshots = objects.SnapshotList().get_all_for_cgsnapshot(
-                context, cgsnapshot['id'])
-
             snap_set = []
-            snapshot_base_name = "snapshot-" + cgsnapshot['id']
+            snapshot_base_name = "snapshot-" + cgsnapshot.id
+            snapshot_model_updates = []
             for i, snapshot in enumerate(snapshots):
                 volume = snapshot.volume
                 volume_name = volume['name']
@@ -359,11 +362,13 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
                                    'volumeId': volume_id,
                                    'snapshotName': snapshot_name}
                 snap_set.append(snap_set_member)
-                snapshot.status = 'available'
+                snapshot_update = {'id': snapshot['id'],
+                                   'status': 'available'}
+                snapshot_model_updates.append(snapshot_update)
 
             source_volume_id = snap_set[0]['volumeId']
             optional = {'inheritAccess': True}
-            description = cgsnapshot.get('description', None)
+            description = cgsnapshot.description
             if description:
                 optional['description'] = description
 
@@ -383,46 +388,42 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
 
         model_update = {'status': 'available'}
 
-        return model_update, snapshots
+        return model_update, snapshot_model_updates
 
     def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Deletes a consistency group snapshot."""
 
         client = self._login()
-        try:
-            snap_name_base = "snapshot-" + cgsnapshot['id']
+        snap_name_base = "snapshot-" + cgsnapshot.id
 
-            # TODO(aorourke): Can't eliminate the DB calls here due to CG API.
-            # Will fix in M release
-            snapshots = objects.SnapshotList().get_all_for_cgsnapshot(
-                context, cgsnapshot['id'])
+        snapshot_model_updates = []
+        for i, snapshot in enumerate(snapshots):
+            snapshot_update = {'id': snapshot['id']}
+            try:
+                snap_name = snap_name_base + "-" + six.text_type(i)
+                snap_info = client.getSnapshotByName(snap_name)
+                client.deleteSnapshot(snap_info['id'])
+                snapshot_update['status'] = 'deleted'
+            except hpeexceptions.HTTPServerError as ex:
+                in_use_msg = ('cannot be deleted because it is a clone '
+                              'point')
+                if in_use_msg in ex.get_description():
+                    LOG.error(_LE("The snapshot cannot be deleted because "
+                                  "it is a clone point."))
+                snapshot_update['status'] = 'error'
+            except Exception as ex:
+                LOG.error(_LE("There was an error deleting snapshot %(id)s: "
+                              "%(error)."),
+                          {'id': snapshot['id'],
+                           'error': six.text_type(ex)})
+                snapshot_update['status'] = 'error'
+            snapshot_model_updates.append(snapshot_update)
 
-            for i, snapshot in enumerate(snapshots):
-                try:
-                    snap_name = snap_name_base + "-" + six.text_type(i)
-                    snap_info = client.getSnapshotByName(snap_name)
-                    client.deleteSnapshot(snap_info['id'])
-                except hpeexceptions.HTTPNotFound:
-                    LOG.error(_LE("Snapshot did not exist. It will not be "
-                              "deleted."))
-                except hpeexceptions.HTTPServerError as ex:
-                    in_use_msg = ('cannot be deleted because it is a clone '
-                                  'point')
-                    if in_use_msg in ex.get_description():
-                        raise exception.SnapshotIsBusy(snapshot_name=snap_name)
+        self._logout(client)
 
-                    raise exception.VolumeBackendAPIException(
-                        data=six.text_type(ex))
+        model_update = {'status': cgsnapshot.status}
 
-        except Exception as ex:
-            raise exception.VolumeBackendAPIException(
-                data=six.text_type(ex))
-        finally:
-            self._logout(client)
-
-        model_update = {'status': cgsnapshot['status']}
-
-        return model_update, snapshots
+        return model_update, snapshot_model_updates
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""

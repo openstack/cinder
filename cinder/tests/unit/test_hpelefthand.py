@@ -103,10 +103,18 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
     CONSIS_GROUP_ID = '3470cc4c-63b3-4c7a-8120-8a0693b45838'
     CGSNAPSHOT_ID = '5351d914-6c90-43e7-9a8e-7e84610927da'
 
-    cgsnapshot = {'consistencygroup_id': CONSIS_GROUP_ID,
-                  'description': 'cgsnapshot',
-                  'id': CGSNAPSHOT_ID,
-                  'readOnly': False}
+    class fake_consistencygroup_object(object):
+        volume_type_id = '371c64d5-b92a-488c-bc14-1e63cef40e08'
+        name = 'cg_name'
+        cgsnapshot_id = None
+        id = '3470cc4c-63b3-4c7a-8120-8a0693b45838'
+        description = 'consistency group'
+
+    class fake_cgsnapshot_object(object):
+        consistencygroup_id = '3470cc4c-63b3-4c7a-8120-8a0693b45838'
+        description = 'cgsnapshot'
+        id = '5351d914-6c90-43e7-9a8e-7e84610927da'
+        readOnly = False
 
     def default_mock_conf(self):
 
@@ -140,9 +148,8 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
         _mock_client.return_value.getCluster.return_value = {
             'spaceTotal': units.Gi * 500,
             'spaceAvailable': units.Gi * 250}
-        db = mock.Mock()
         self.driver = hpe_lefthand_iscsi.HPELeftHandISCSIDriver(
-            configuration=config, db=db)
+            configuration=config)
         self.driver.do_setup(None)
         self.cluster_name = config.hpelefthand_clustername
         return _mock_client.return_value
@@ -1609,13 +1616,6 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
             mock_client.assert_has_calls(expected)
 
     def test_create_consistencygroup(self):
-        class fake_consitencygroup_object(object):
-            volume_type_id = '371c64d5-b92a-488c-bc14-1e63cef40e08'
-            name = 'cg_name'
-            cgsnapshot_id = None
-            id = self.CONSIS_GROUP_ID
-            description = 'consistency group'
-
         ctxt = context.get_admin_context()
         # set up driver with default config
         mock_client = self.setup_driver()
@@ -1625,57 +1625,42 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
             mock_do_setup.return_value = mock_client
 
             # create a consistency group
-            group = fake_consitencygroup_object()
+            group = self.fake_consistencygroup_object()
             cg = self.driver.create_consistencygroup(ctxt, group)
 
             self.assertEqual('available', cg['status'])
 
     def test_delete_consistencygroup(self):
-        class fake_consitencygroup_object(object):
-            volume_type_id = '371c64d5-b92a-488c-bc14-1e63cef40e08'
-            name = 'cg_name'
-            cgsnapshot_id = None
-            id = self.CONSIS_GROUP_ID
-            description = 'consistency group'
-
         ctxt = context.get_admin_context()
         # set up driver with default config
         mock_client = self.setup_driver()
 
         mock_volume = mock.MagicMock()
-        expected_volumes = [mock_volume]
-        self.driver.db.volume_get_all_by_group.return_value = expected_volumes
+        volumes = [mock_volume]
 
         with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
             # create a consistency group
-            group = fake_consitencygroup_object()
+            group = self.fake_consistencygroup_object()
             cg = self.driver.create_consistencygroup(ctxt, group)
             self.assertEqual('available', cg['status'])
 
             # delete the consistency group
             group.status = 'deleting'
-            cg, vols = self.driver.delete_consistencygroup(ctxt, group, [])
+            cg, vols = self.driver.delete_consistencygroup(ctxt, group,
+                                                           volumes)
             self.assertEqual('deleting', cg['status'])
 
     def test_update_consistencygroup_add_vol_delete_cg(self):
-        class fake_consitencygroup_object(object):
-            volume_type_id = '371c64d5-b92a-488c-bc14-1e63cef40e08'
-            name = 'cg_name'
-            cgsnapshot_id = None
-            id = self.CONSIS_GROUP_ID
-            description = 'consistency group'
-
         ctxt = context.get_admin_context()
 
         # set up driver with default config
         mock_client = self.setup_driver()
 
         mock_volume = mock.MagicMock()
-        expected_volumes = [mock_volume]
-        self.driver.db.volume_get_all_by_group.return_value = expected_volumes
+        volumes = [mock_volume]
 
         mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
@@ -1688,7 +1673,7 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
             mock_do_setup.return_value = mock_client
 
             # create a consistency group
-            group = fake_consitencygroup_object()
+            group = self.fake_consistencygroup_object()
             cg = self.driver.create_consistencygroup(ctxt, group)
             self.assertEqual('available', cg['status'])
 
@@ -1698,25 +1683,18 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
 
             # delete the consistency group
             group.status = 'deleting'
-            cg, vols = self.driver.delete_consistencygroup(ctxt, group, [])
+            cg, vols = self.driver.delete_consistencygroup(ctxt, group,
+                                                           volumes)
             self.assertEqual('deleting', cg['status'])
 
     def test_update_consistencygroup_remove_vol_delete_cg(self):
-        class fake_consitencygroup_object(object):
-            volume_type_id = '371c64d5-b92a-488c-bc14-1e63cef40e08'
-            name = 'cg_name'
-            cgsnapshot_id = None
-            id = self.CONSIS_GROUP_ID
-            description = 'consistency group'
-
         ctxt = context.get_admin_context()
 
         # set up driver with default config
         mock_client = self.setup_driver()
 
         mock_volume = mock.MagicMock()
-        expected_volumes = [mock_volume]
-        self.driver.db.volume_get_all_by_group.return_value = expected_volumes
+        volumes = [mock_volume]
 
         mock_client.getVolumes.return_value = {'total': 1, 'members': []}
 
@@ -1729,7 +1707,7 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
             mock_do_setup.return_value = mock_client
 
             # create a consistency group
-            group = fake_consitencygroup_object()
+            group = self.fake_consistencygroup_object()
             cg = self.driver.create_consistencygroup(ctxt, group)
             self.assertEqual('available', cg['status'])
 
@@ -1743,18 +1721,11 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
 
             # delete the consistency group
             group.status = 'deleting'
-            cg, vols = self.driver.delete_consistencygroup(ctxt, group, [])
+            cg, vols = self.driver.delete_consistencygroup(ctxt, group,
+                                                           volumes)
             self.assertEqual('deleting', cg['status'])
 
-    @mock.patch('cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
-    def test_create_cgsnapshot(self, mock_snap_list):
-        class fake_consitencygroup_object(object):
-            volume_type_id = '371c64d5-b92a-488c-bc14-1e63cef40e08'
-            name = 'cg_name'
-            cgsnapshot_id = None
-            id = self.CONSIS_GROUP_ID
-            description = 'consistency group'
-
+    def test_create_cgsnapshot(self):
         ctxt = context.get_admin_context()
 
         # set up driver with default config
@@ -1766,14 +1737,13 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
         mock_snap = mock.MagicMock()
         mock_snap.volumeName = self.volume_name
         expected_snaps = [mock_snap]
-        mock_snap_list.return_value = expected_snaps
 
         with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
             # create a consistency group
-            group = fake_consitencygroup_object()
+            group = self.fake_consistencygroup_object()
             cg = self.driver.create_consistencygroup(ctxt, group)
             self.assertEqual('available', cg['status'])
 
@@ -1782,19 +1752,12 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                 ctxt, group, add_volumes=[self.volume], remove_volumes=None)
 
             # create the conistency group snapshot
+            cgsnapshot = self.fake_cgsnapshot_object()
             cgsnap, snaps = self.driver.create_cgsnapshot(
-                ctxt, self.cgsnapshot, [])
+                ctxt, cgsnapshot, expected_snaps)
             self.assertEqual('available', cgsnap['status'])
 
-    @mock.patch('cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
-    def test_delete_cgsnapshot(self, mock_snap_list):
-        class fake_consitencygroup_object(object):
-            volume_type_id = '371c64d5-b92a-488c-bc14-1e63cef40e08'
-            name = 'cg_name'
-            cgsnapshot_id = None
-            id = self.CONSIS_GROUP_ID
-            description = 'consistency group'
-
+    def test_delete_cgsnapshot(self):
         ctxt = context.get_admin_context()
 
         # set up driver with default config
@@ -1806,14 +1769,13 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
         mock_snap = mock.MagicMock()
         mock_snap.volumeName = self.volume_name
         expected_snaps = [mock_snap]
-        mock_snap_list.return_value = expected_snaps
 
         with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
                                '_create_client') as mock_do_setup:
             mock_do_setup.return_value = mock_client
 
             # create a consistency group
-            group = fake_consitencygroup_object()
+            group = self.fake_consistencygroup_object()
             cg = self.driver.create_consistencygroup(ctxt, group)
             self.assertEqual('available', cg['status'])
 
@@ -1822,7 +1784,8 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                 ctxt, group, add_volumes=[self.volume], remove_volumes=None)
 
             # delete the consistency group snapshot
-            self.cgsnapshot['status'] = 'deleting'
+            cgsnapshot = self.fake_cgsnapshot_object()
+            cgsnapshot.status = 'deleting'
             cgsnap, snaps = self.driver.delete_cgsnapshot(
-                ctxt, self.cgsnapshot, [])
+                ctxt, cgsnapshot, expected_snaps)
             self.assertEqual('deleting', cgsnap['status'])
