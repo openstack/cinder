@@ -963,6 +963,10 @@ class XtremIOArrayBusy(CinderException):
     message = _("System is busy, retry operation.")
 
 
+class XtremIOSnapshotsLimitExceeded(CinderException):
+    message = _("Exceeded the limit of snapshots per volume")
+
+
 # Infortrend EonStor DS Driver
 class InfortrendCliException(CinderException):
     message = _("Infortrend CLI exception: %(err)s Param: %(param)s "
