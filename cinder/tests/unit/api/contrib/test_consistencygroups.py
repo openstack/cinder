@@ -86,6 +86,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                          res_dict['consistencygroup']['name'])
         self.assertEqual('creating',
                          res_dict['consistencygroup']['status'])
+        self.assertEqual(['123456'],
+                         res_dict['consistencygroup']['volume_types'])
 
         consistencygroup.destroy()
 
@@ -115,6 +117,28 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         self.assertEqual(404, res_dict['itemNotFound']['code'])
         self.assertEqual('ConsistencyGroup 9999 could not be found.',
                          res_dict['itemNotFound']['message'])
+
+    def test_show_consistencygroup_with_null_volume_type(self):
+        consistencygroup = self._create_consistencygroup(volume_type_id=None)
+        req = webob.Request.blank('/v2/fake/consistencygroups/%s' %
+                                  consistencygroup.id)
+        req.method = 'GET'
+        req.headers['Content-Type'] = 'application/json'
+        res = req.get_response(fakes.wsgi_app())
+        res_dict = json.loads(res.body)
+
+        self.assertEqual(200, res.status_int)
+        self.assertEqual('az1',
+                         res_dict['consistencygroup']['availability_zone'])
+        self.assertEqual('this is a test consistency group',
+                         res_dict['consistencygroup']['description'])
+        self.assertEqual('test_consistencygroup',
+                         res_dict['consistencygroup']['name'])
+        self.assertEqual('creating',
+                         res_dict['consistencygroup']['status'])
+        self.assertEqual([], res_dict['consistencygroup']['volume_types'])
+
+        consistencygroup.destroy()
 
     def test_list_consistencygroups_json(self):
         consistencygroup1 = self._create_consistencygroup()
@@ -174,7 +198,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
     def test_list_consistencygroups_detail_json(self):
         consistencygroup1 = self._create_consistencygroup()
         consistencygroup2 = self._create_consistencygroup()
-        consistencygroup3 = self._create_consistencygroup()
+        consistencygroup3 = self._create_consistencygroup(volume_type_id=(
+                                                          'uuid1,uuid2'))
 
         req = webob.Request.blank('/v2/fake/consistencygroups/detail')
         req.method = 'GET'
@@ -194,6 +219,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                          res_dict['consistencygroups'][0]['id'])
         self.assertEqual('creating',
                          res_dict['consistencygroups'][0]['status'])
+        self.assertEqual(['123456'],
+                         res_dict['consistencygroups'][0]['volume_types'])
 
         self.assertEqual('az1',
                          res_dict['consistencygroups'][1]['availability_zone'])
@@ -205,6 +232,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                          res_dict['consistencygroups'][1]['id'])
         self.assertEqual('creating',
                          res_dict['consistencygroups'][1]['status'])
+        self.assertEqual(['123456'],
+                         res_dict['consistencygroups'][1]['volume_types'])
 
         self.assertEqual('az1',
                          res_dict['consistencygroups'][2]['availability_zone'])
@@ -216,6 +245,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                          res_dict['consistencygroups'][2]['id'])
         self.assertEqual('creating',
                          res_dict['consistencygroups'][2]['status'])
+        self.assertEqual(['uuid1', 'uuid2'],
+                         res_dict['consistencygroups'][2]['volume_types'])
 
         consistencygroup1.destroy()
         consistencygroup2.destroy()
