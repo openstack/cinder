@@ -2967,11 +2967,15 @@ class EMCVnxCliBase(object):
         return model_update
 
     def _get_volume_metadata(self, volume):
+        # Since versionedobjects is partially merged, metadata
+        # may come from 'volume_metadata' or 'metadata', here
+        # we need to take care both of them.
         volume_metadata = {}
         if 'volume_metadata' in volume:
             for metadata in volume['volume_metadata']:
                 volume_metadata[metadata['key']] = metadata['value']
-        return volume_metadata
+            return volume_metadata
+        return volume['metadata'] if 'metadata' in volume else {}
 
     def dumps_provider_location(self, pl_dict):
         return '|'.join([k + '^' + pl_dict[k] for k in pl_dict])
