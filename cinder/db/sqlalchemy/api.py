@@ -2770,6 +2770,14 @@ def volume_get_active_by_window(context,
     if project_id:
         query = query.filter_by(project_id=project_id)
 
+    query = (query.options(joinedload('volume_metadata')).
+             options(joinedload('volume_type')).
+             options(joinedload('volume_attachment')).
+             options(joinedload('consistencygroup')))
+
+    if is_admin_context(context):
+        query = query.options(joinedload('volume_admin_metadata'))
+
     return query.all()
 
 
