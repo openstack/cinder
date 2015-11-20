@@ -216,6 +216,7 @@ class BackupSwiftTestCase(test.TestCase):
                                                     tenant_name=ANY,
                                                     user=ANY,
                                                     key=ANY,
+                                                    os_options={},
                                                     retries=ANY,
                                                     starting_backoff=ANY,
                                                     cacert=ANY)
@@ -226,6 +227,49 @@ class BackupSwiftTestCase(test.TestCase):
                                                     preauthtoken=ANY,
                                                     starting_backoff=ANY,
                                                     cacert=ANY)
+
+    @ddt.data(
+        {'auth_version': '3', 'user_domain': 'UserDomain',
+            'project': 'Project', 'project_domain': 'ProjectDomain'},
+        {'auth_version': '3', 'user_domain': None,
+            'project': 'Project', 'project_domain': 'ProjectDomain'},
+        {'auth_version': '3', 'user_domain': 'UserDomain',
+            'project': None, 'project_domain': 'ProjectDomain'},
+        {'auth_version': '3', 'user_domain': 'UserDomain',
+            'project': 'Project', 'project_domain': None},
+        {'auth_version': '3', 'user_domain': None,
+            'project': None, 'project_domain': None},
+    )
+    @ddt.unpack
+    def test_backup_swift_auth_v3_single_user(self, auth_version, user_domain,
+                                              project, project_domain):
+        self.override_config('backup_swift_auth', 'single_user')
+        self.override_config('backup_swift_user', 'swift-user')
+        self.override_config('backup_swift_auth_version', auth_version)
+        self.override_config('backup_swift_user_domain', user_domain)
+        self.override_config('backup_swift_project', project)
+        self.override_config('backup_swift_project_domain', project_domain)
+
+        os_options = {}
+        if user_domain is not None:
+            os_options['user_domain_name'] = user_domain
+        if project is not None:
+            os_options['project_name'] = project
+        if project_domain is not None:
+            os_options['project_domain_name'] = project_domain
+
+        mock_connection = self.mock_object(swift, 'Connection')
+        swift_dr.SwiftBackupDriver(self.ctxt)
+        mock_connection.assert_called_once_with(insecure=ANY,
+                                                authurl=ANY,
+                                                auth_version=auth_version,
+                                                tenant_name=ANY,
+                                                user=ANY,
+                                                key=ANY,
+                                                os_options=os_options,
+                                                retries=ANY,
+                                                starting_backoff=ANY,
+                                                cacert=ANY)
 
     def test_backup_uncompressed(self):
         volume_id = '2b9f10a3-42b4-4fdf-b316-000000ceb039'
