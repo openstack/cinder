@@ -155,7 +155,6 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         # blank is the only invalid character for cluster names
         # so we need to use it as a separator
         self.DRIVER_LOCATION = self.__class__.__name__ + ' %(cluster)s %(vip)s'
-        self.db = kwargs.get('db')
 
     def _login(self):
         client = self._create_client()
