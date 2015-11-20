@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev220\n"
+"Project-Id-Version: cinder 8.0.0.dev262\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-14 06:38+0000\n"
+"POT-Creation-Date: 2015-11-20 06:38+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -119,7 +119,7 @@ msgid ""
 "encrypted volume. Encrypted backup restore has failed."
 msgstr ""
 
-#: cinder/backup/manager.py:747
+#: cinder/backup/manager.py:756
 #, python-format
 msgid ""
 "Backup service %(service)s does not support verify. Backup id %(id)s is "
@@ -302,61 +302,61 @@ msgstr ""
 msgid "ISCSI provider_location not stored, using discovery"
 msgstr ""
 
-#: cinder/volume/manager.py:216
+#: cinder/volume/manager.py:219
 #, python-format
 msgid "Driver path %s is deprecated, update your configuration to the new path."
 msgstr ""
 
-#: cinder/volume/manager.py:407
+#: cinder/volume/manager.py:410
 #, python-format
 msgid "Detected volume stuck in %(curr_status)s status, setting to ERROR."
 msgstr ""
 
-#: cinder/volume/manager.py:422
+#: cinder/volume/manager.py:425
 msgid "Detected snapshot stuck in creating status, setting to ERROR."
 msgstr ""
 
-#: cinder/volume/manager.py:1042
+#: cinder/volume/manager.py:1045
 #, python-format
 msgid ""
 "Unable to ensure space for image-volume in cache. Will skip creating "
 "entry for image %(image)s on host %(host)s."
 msgstr ""
 
-#: cinder/volume/manager.py:1052
+#: cinder/volume/manager.py:1055
 #, python-format
 msgid ""
 "Unable to clone image_volume for image %(image_id)s will not create cache"
 " entry."
 msgstr ""
 
-#: cinder/volume/manager.py:1064
+#: cinder/volume/manager.py:1067
 #, python-format
 msgid "Failed to create new image-volume cache entry. Error: %(exception)s"
 msgstr ""
 
-#: cinder/volume/manager.py:1152
+#: cinder/volume/manager.py:1155
 #, python-format
 msgid "Registration of image volume URI %(uri)s to image %(image_id)s failed."
 msgstr ""
 
-#: cinder/volume/manager.py:1225
+#: cinder/volume/manager.py:1228
 #, python-format
 msgid "Deleting image in unexpected status: %(image_status)s."
 msgstr ""
 
-#: cinder/volume/manager.py:1231
+#: cinder/volume/manager.py:1234
 msgid "Image delete encountered an error."
 msgstr ""
 
-#: cinder/volume/manager.py:1709
+#: cinder/volume/manager.py:1712
 #, python-format
 msgid ""
 "Failed to migrate volume. The destination volume %(vol)s is not deleted "
 "since the source volume may have been deleted."
 msgstr ""
 
-#: cinder/volume/manager.py:1864
+#: cinder/volume/manager.py:1867
 #, python-format
 msgid "Update driver status failed: %(config_group)s is uninitialized."
 msgstr ""
@@ -618,12 +618,12 @@ msgstr ""
 msgid "Volume %s does not have provider_location specified, skipping."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:564
+#: cinder/volume/drivers/solidfire.py:569
 #, python-format
 msgid "More than one valid preset was detected, using %s"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:840
+#: cinder/volume/drivers/solidfire.py:897
 msgid "Requested image is not accessible by current Tenant."
 msgstr ""
 
@@ -1195,91 +1195,91 @@ msgstr ""
 msgid "LUN %(name)s is not ready for snapshot: %(out)s"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3090
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3094
 #, python-format
 msgid "LUN with id %(remove_id)s is not present in cg %(cg_name)s, skip it."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3185
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3189
 #, python-format
 msgid "Storage Group %s is not found. Create it."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3250
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3254
 #, python-format
 msgid "Failed to register %(itor)s to SP%(sp)s port %(portid)s because: %(msg)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3369
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3373
 #, python-format
 msgid "Failed to extract initiators of %s, so ignore deregistration operation."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3376
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3380
 #, python-format
 msgid "Failed to deregister %(itor)s because: %(msg)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3637
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3641
 #, python-format
 msgid "Storage Group %s is not found. terminate_connection() is unnecessary."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3646
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3650
 #, python-format
 msgid "Volume %(vol)s was not in Storage Group %(sg)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3668
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3672
 #, python-format
 msgid "Failed to destroy Storage Group %s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3674
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3678
 #, python-format
 msgid "Fail to connect host %(host)s back to storage group %(sg)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3937
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3941
 #, python-format
 msgid ""
 "Delete the temporary cgsnapshot %(name)s failed. This temporary "
 "cgsnapshot can be deleted manually. Message: %(msg)s"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:4022
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:4026
 #, python-format
 msgid ""
 "The source volume is a legacy volume. Create volume in the pool where the"
 " source volume %s is created."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:4097
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:4101
 #, python-format
 msgid "CreateSMPTask.revert: delete mount point %s"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:4117
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:4121
 #, python-format
 msgid "AttachSnapTask.revert: detach mount point %s"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:4155
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:4159
 #, python-format
 msgid "CreateDestLunTask.revert: delete temp lun %s"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:4223
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:4227
 #, python-format
 msgid "CreateSnapshotTask.revert: delete temp cgsnapshot %s"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:4228
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:4232
 #, python-format
 msgid "CreateSnapshotTask.revert: delete temp snapshot %s"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:4250
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:4254
 #, python-format
 msgid ""
 "CopySnapshotTask.revert: delete the copied snapshot %(new_name)s of "
@@ -1290,15 +1290,15 @@ msgstr ""
 msgid "No storage pool name or id was found."
 msgstr ""
 
-#: cinder/volume/drivers/emc/scaleio.py:171
+#: cinder/volume/drivers/emc/scaleio.py:169
 msgid "No protection domain name or id was specified in configuration."
 msgstr ""
 
-#: cinder/volume/drivers/emc/scaleio.py:192
+#: cinder/volume/drivers/emc/scaleio.py:190
 msgid "Verify certificate is not set, using default of False."
 msgstr ""
 
-#: cinder/volume/drivers/emc/scaleio.py:631
+#: cinder/volume/drivers/emc/scaleio.py:629
 #, python-format
 msgid ""
 "Ignoring error in delete volume %s: volume not found due to force delete "
@@ -1358,90 +1358,116 @@ msgstr ""
 msgid "terminate_conn: provider location empty."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:339
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:340
 #, python-format
 msgid ""
 "srstatld requires WSAPI version '%(srstatld_version)s' version "
 "'%(version)s' is installed."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:447
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:448
 #, python-format
 msgid "Virtual Volume Set '%s' doesn't exist on array."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:547
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:2042
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:560
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:2059
 #, python-format
 msgid "Delete Snapshot id not found. Removing from cinder: %(id)s Ex: %(msg)s"
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:644
-#: cinder/volume/drivers/san/hp/hp_lefthand_iscsi.py:921
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:661
+#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:959
 #, python-format
 msgid "Failed to manage virtual volume %(disp)s due to error during retype."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:1070
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:1087
 #, python-format
 msgid "3PAR vlun for volume %(name)s not found on host %(host)s"
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:1361
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:1378
 msgid ""
 "'hpe3par:cpg' is not supported as an extra spec in a volume type.  CPG's "
 "are chosen by the cinder scheduler, as a pool, from the cinder.conf entry"
 " 'hpe3par_cpg', which can be a list of CPGs."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:1666
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:1683
 #, python-format
 msgid "Delete volume id not found. Removing from cinder: %(id)s Ex: %(msg)s"
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:177
+#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:179
 #, python-format
 msgid "Invalid IP address format '%s'"
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:210
+#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:212
 #, python-format
 msgid ""
 "Found invalid iSCSI IP address(s) in configuration option(s) "
 "hpe3par_iscsi_ips or iscsi_ip_address '%s.'"
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:343
+#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:345
 #, python-format
 msgid ""
 "iSCSI IP: '%s' was not found in hpe3par_iscsi_ips list defined in "
 "cinder.conf."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:381
+#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:383
 msgid "Least busy iSCSI port not found, using first iSCSI port in list."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:534
+#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:536
 msgid ""
 "Host exists without CHAP credentials set and has iSCSI attachments but "
 "CHAP is enabled. Updating host with new CHAP credentials."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:566
+#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:568
 msgid "Host has no CHAP key, but CHAP is enabled."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:570
+#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:572
 msgid "No host or VLUNs exist. Generating new CHAP key."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:599
+#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:601
 msgid "Non-iSCSI VLUN detected."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:603
+#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:605
 msgid "No VLUN contained CHAP credentials. Generating new CHAP key."
+msgstr ""
+
+#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:212
+#, python-format
+msgid ""
+"HPELeftHand API is version %(current)s. A minimum version of %(min)s is "
+"needed for manage/unmanage support."
+msgstr ""
+
+#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:634
+msgid "The 'hplh' prefix is deprecated. Use 'hpelh' instead."
+msgstr ""
+
+#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:672
+#, python-format
+msgid "CHAP secret exists for host %s but CHAP is disabled"
+msgstr ""
+
+#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:675
+#, python-format
+msgid "CHAP is enabled, but server secret not configured on server %s"
+msgstr ""
+
+#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:749
+#, python-format
+msgid "%s"
 msgstr ""
 
 #: cinder/volume/drivers/huawei/huawei_driver.py:193
@@ -1826,28 +1852,6 @@ msgstr ""
 #: cinder/volume/drivers/prophetstor/dplcommon.py:1426
 #, python-format
 msgid "Failed to query pool %(id)s status %(ret)d."
-msgstr ""
-
-#: cinder/volume/drivers/san/hp/hp_lefthand_iscsi.py:178
-#, python-format
-msgid ""
-"HPLeftHand API is version %(current)s. A minimum version of %(min)s is "
-"needed for manage/unmanage support."
-msgstr ""
-
-#: cinder/volume/drivers/san/hp/hp_lefthand_iscsi.py:634
-#, python-format
-msgid "CHAP secret exists for host %s but CHAP is disabled"
-msgstr ""
-
-#: cinder/volume/drivers/san/hp/hp_lefthand_iscsi.py:637
-#, python-format
-msgid "CHAP is enabled, but server secret not configured on server %s"
-msgstr ""
-
-#: cinder/volume/drivers/san/hp/hp_lefthand_iscsi.py:711
-#, python-format
-msgid "%s"
 msgstr ""
 
 #: cinder/volume/drivers/violin/v6000_common.py:190

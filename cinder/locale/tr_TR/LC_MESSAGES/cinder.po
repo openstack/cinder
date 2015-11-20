@@ -7,9 +7,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev220\n"
+"Project-Id-Version: cinder 8.0.0.dev260\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-14 06:38+0000\n"
+"POT-Creation-Date: 2015-11-20 06:38+0000\n"
 "PO-Revision-Date: 2015-09-16 08:16+0000\n"
 "Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
 "Language: tr_TR\n"
@@ -3157,9 +3157,6 @@ msgstr "DRBDmanage'den kötü yol bilgisi alındı! (%s)"
 msgid "HBSD error occurs."
 msgstr "HBSD hatası oluşur."
 
-msgid "HPLeftHand url not found"
-msgstr "HPLefHand url bulunamadı"
-
 #, python-format
 msgid ""
 "Hash block size has changed since the last backup. New hash block size: "
@@ -3370,14 +3367,6 @@ msgid "Invalid ConsistencyGroup: No host to create consistency group"
 msgstr "Geçersiz TutarlılıkGrubu: Tutarlılık grubu oluşturmak için istemci yok"
 
 #, python-format
-msgid ""
-"Invalid HPLeftHand API version found: %(found)s. Version %(minimum)s or "
-"greater required for manage/unmanage support."
-msgstr ""
-"Geçersiz HPLeftHand API sürümü bulundu: %(found)s. Yönet/yönetmeyi bırak "
-"desteği için sürüm %(minimum)s veya yükseği gerekli."
-
-#, python-format
 msgid "Invalid IP address format: '%s'"
 msgstr "Geçersiz IP adres biçimi: '%s'"
 
@@ -3470,14 +3459,6 @@ msgstr "Geçersiz disk türü: %s."
 #, python-format
 msgid "Invalid host: %(reason)s"
 msgstr "Geçersiz istemci: %(reason)s"
-
-#, python-format
-msgid ""
-"Invalid hplefthandclient version found (%(found)s). Version %(minimum)s or "
-"greater required."
-msgstr ""
-"Geçersiz hplefthandclient sürümü bulundu (%(found)s). Sürüm %(minimum)s veya "
-"büyüğü gerekli."
 
 #, python-format
 msgid "Invalid image href %(image_href)s."
@@ -4564,10 +4545,6 @@ msgstr "%(project_id)s projesi için kota kullanımı bulunamadı."
 #, python-format
 msgid "RBD diff op failed - (ret=%(ret)s stderr=%(stderr)s)"
 msgstr "RBD diff işlemi başarısız oldu - (ret=%(ret)s stderr=%(stderr)s)"
-
-#, python-format
-msgid "REST %(proxy_ver)s hplefthandclient %(rest_ver)s"
-msgstr "REST %(proxy_ver)s hplefthandclient %(rest_ver)s"
 
 msgid "REST server IP must by specified."
 msgstr "REST sunucu IP'si belirtilmelidir."

@@ -7,10 +7,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev243\n"
+"Project-Id-Version: cinder 8.0.0.dev260\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-18 06:39+0000\n"
-"PO-Revision-Date: 2015-11-17 04:38+0000\n"
+"POT-Creation-Date: 2015-11-20 06:38+0000\n"
+"PO-Revision-Date: 2015-11-19 08:34+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language-Team: Czech\n"
 "Language: cs\n"
@@ -19,7 +19,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
 "Generated-By: Babel 2.0\n"
-"X-Generator: Zanata 3.7.1\n"
+"X-Generator: Zanata 3.7.3\n"
 
 #, python-format
 msgid "\t%(name)-35s : %(value)s"
@@ -1342,8 +1342,8 @@ msgid "HPE3PARCommon %(common_ver)s,hpe3parclient %(rest_ver)s"
 msgstr "Společné části HPE3PAR %(common_ver)s, klient hp3par %(rest_ver)s"
 
 #, python-format
-msgid "HPLeftHand API version %s"
-msgstr "Verze API HPLeftHand: %s"
+msgid "HPELeftHand API version %s"
+msgstr "Verze API HPELeftHand: %s"
 
 #, python-format
 msgid "HTTP exception thrown: %s"
@@ -1812,6 +1812,10 @@ msgid "Rename Volume %(volume_id)s completed."
 msgstr "Přejmenování svazku %(volume_id)s dokončeno."
 
 #, python-format
+msgid "Renaming %(id)s from %(current_name)s to %(new_name)s."
+msgstr "Přejmenovávání %(id)s z %(current_name)s na %(new_name)s."
+
+#, python-format
 msgid "Renaming backing VM: %(backing)s to %(new_name)s."
 msgstr "Přejmenovávání zálohy virtuálního stroje %(backing)s na %(new_name)s."
 
@@ -2057,6 +2061,14 @@ msgstr "ScaleIO získání id domény pomocí zažádání o název: %s."
 #, python-format
 msgid "ScaleIO get pool id by name request: %s."
 msgstr "ScaleIO získání id zásoby pomocí zažádání o název: %s."
+
+#, python-format
+msgid "ScaleIO rename volume request: %s."
+msgstr "Žádost o přejmenování svazku ScaleIO: %s."
+
+#, python-format
+msgid "ScaleIO volume %(vol)s was renamed to %(new_name)s."
+msgstr "Svazek ScaleIO %(vol)s byl přejmenován na %(new_name)s."
 
 #, python-format
 msgid ""

@@ -9,10 +9,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev221\n"
+"Project-Id-Version: cinder 8.0.0.dev260\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-16 06:40+0000\n"
-"PO-Revision-Date: 2015-11-15 09:25+0000\n"
+"POT-Creation-Date: 2015-11-20 06:38+0000\n"
+"PO-Revision-Date: 2015-11-19 08:32+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language: cs\n"
 "Language-Team: Czech\n"
@@ -2504,6 +2504,10 @@ msgstr "Chyba při propagování druhotného svazku na hlavní"
 msgid "Error removing volume %(vol)s. %(error)s."
 msgstr "Chyba při mazání svazku: %(vol)s. %(error)s."
 
+#, python-format
+msgid "Error renaming volume %(vol)s: %(err)s."
+msgstr "Chyba při přejmenování svazku %(vol)s: %(err)s."
+
 msgid "Error retrieving volume size"
 msgstr "Chyba při získávání velikosti svazku"
 
@@ -3954,8 +3958,8 @@ msgstr "Získány špatné informace o cestě z DRBDmanage! (%s)"
 msgid "HBSD error occurs."
 msgstr "Objevena chyba HBSD."
 
-msgid "HPLeftHand url not found"
-msgstr "HPLeftHand URL nenalezena"
+msgid "HPELeftHand url not found"
+msgstr "HPELeftHand URL nenalezena"
 
 #, python-format
 msgid ""
@@ -4223,11 +4227,11 @@ msgstr ""
 
 #, python-format
 msgid ""
-"Invalid HPLeftHand API version found: %(found)s. Version %(minimum)s or "
+"Invalid HPELeftHand API version found: %(found)s. Version %(minimum)s or "
 "greater required for manage/unmanage support."
 msgstr ""
-"Nalezena neplatná verze API HPLeftHand: %(found)s. Pro podporu spravování je "
-"vyžadována verze %(minimum)s nebo vyšší."
+"Nalezena neplatná verze API HPELeftHand: %(found)s. Pro podporu spravování "
+"je vyžadována verze %(minimum)s nebo vyšší."
 
 #, python-format
 msgid "Invalid IP address format: '%s'"
@@ -4348,11 +4352,13 @@ msgstr ""
 
 #, python-format
 msgid ""
-"Invalid hplefthandclient version found (%(found)s). Version %(minimum)s or "
-"greater required."
+"Invalid hpelefthandclient version found (%(found)s). Version %(minimum)s or "
+"greater required. Run 'pip install --upgrade python-lefthandclient' to "
+"upgrade the hpelefthandclient."
 msgstr ""
-"Nalezena neplatná verze hplefthandclient (%(found)s). Je vyžadována verze "
-"%(minimum)s a vyšší."
+"Nalezena neplatná verze hpelefthandclient (%(found)s). Je vyžadována verze "
+"%(minimum)s a vyšší. Spusťte \"pip install --upgrade python-lefthandclient\" "
+"pro aktualizaci klienta."
 
 #, python-format
 msgid "Invalid image href %(image_href)s."
@@ -5677,8 +5683,8 @@ msgstr ""
 "RBD operace porovnání selhala - (ret=%(ret)s chybový výstup=%(stderr)s)"
 
 #, python-format
-msgid "REST %(proxy_ver)s hplefthandclient %(rest_ver)s"
-msgstr "REST %(proxy_ver)s, hplefthandclient %(rest_ver)s"
+msgid "REST %(proxy_ver)s hpelefthandclient %(rest_ver)s"
+msgstr "REST %(proxy_ver)s, hpelefthandclient %(rest_ver)s"
 
 msgid "REST server IP must by specified."
 msgstr "IP serveru REST musí být zadáno."

@@ -7,10 +7,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev231\n"
+"Project-Id-Version: cinder 8.0.0.dev260\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-17 06:35+0000\n"
-"PO-Revision-Date: 2015-11-16 08:59+0000\n"
+"POT-Creation-Date: 2015-11-20 06:38+0000\n"
+"PO-Revision-Date: 2015-11-19 08:34+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language-Team: Czech\n"
 "Language: cs\n"
@@ -19,7 +19,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
 "Generated-By: Babel 2.0\n"
-"X-Generator: Zanata 3.7.1\n"
+"X-Generator: Zanata 3.7.3\n"
 
 #, python-format
 msgid "%(path)s is being set with open permissions: %(perm)s"
@@ -694,10 +694,10 @@ msgstr "HLU %(hlu)s již bylo odstraněno z %(sgname)s. Zpráva: %(msg)s"
 
 #, python-format
 msgid ""
-"HPLeftHand API is version %(current)s. A minimum version of %(min)s is "
+"HPELeftHand API is version %(current)s. A minimum version of %(min)s is "
 "needed for manage/unmanage support."
 msgstr ""
-"Verze API HPLeftHand: %(current)s. Pro podporu vytváření/rušení spravování "
+"Verze API HPELeftHand: %(current)s. Pro podporu vytváření/rušení spravování "
 "je vyžadována verze %(min)s nebo vyšší."
 
 #, python-format
@@ -1318,6 +1318,9 @@ msgid ""
 msgstr ""
 "Volba nastavení  \"netapp_size_multiplier\" je zastaralá a bude odstraněna "
 "ve verzi Mitaka. Místo toho prosím nastavte \"reserved_percentage = %d\"."
+
+msgid "The 'hplh' prefix is deprecated. Use 'hpelh' instead."
+msgstr "Předpona 'hplh' je zastaralá. Místo toho použijte 'hpelh'."
 
 msgid "The MCS Channel is grouped."
 msgstr "Kanál MCS je seskupen."

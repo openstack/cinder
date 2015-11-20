@@ -8,9 +8,9 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev220\n"
+"Project-Id-Version: cinder 8.0.0.dev260\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-14 06:39+0000\n"
+"POT-Creation-Date: 2015-11-20 06:38+0000\n"
 "PO-Revision-Date: 2015-11-13 11:32+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language-Team: Czech\n"
@@ -20,7 +20,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
 "Generated-By: Babel 2.0\n"
-"X-Generator: Zanata 3.7.1\n"
+"X-Generator: Zanata 3.7.3\n"
 
 #, python-format
 msgid ""
@@ -2566,9 +2566,6 @@ msgstr "Smazání snímku selhalo se zprávou: %s"
 
 msgid "Snapshot did not exist. It will not be deleted"
 msgstr "Snímek neexistuje. Nebude smazán"
-
-msgid "Snapshot did not exist. It will not be deleted."
-msgstr "Snímek neexistuje. Nebude smazán."
 
 #, python-format
 msgid "Snapshot export for %s failed!"
