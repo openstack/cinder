@@ -35,6 +35,7 @@ from cinder.image import image_utils
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
+from cinder.volume import qos_specs
 from cinder.volume import volume_types
 
 CONF = cfg.CONF
@@ -80,6 +81,8 @@ PROTECTION_DOMAIN_ID = 'sio:pd_id'
 PROVISIONING_KEY = 'sio:provisioning_type'
 IOPS_LIMIT_KEY = 'sio:iops_limit'
 BANDWIDTH_LIMIT = 'sio:bandwidth_limit'
+QOS_IOPS_LIMIT_KEY = 'maxIOPS'
+QOS_BANDWIDTH_LIMIT = 'maxBWS'
 
 BLOCK_SIZE = 8
 OK_STATUS_CODE = 200
@@ -92,6 +95,7 @@ class ScaleIODriver(driver.VolumeDriver):
     """EMC ScaleIO Driver."""
 
     VERSION = "2.0"
+    scaleio_qos_keys = (QOS_IOPS_LIMIT_KEY, QOS_BANDWIDTH_LIMIT)
 
     def __init__(self, *args, **kwargs):
         super(ScaleIODriver, self).__init__(*args, **kwargs)
@@ -110,12 +114,13 @@ class ScaleIODriver(driver.VolumeDriver):
             self.server_certificate_path = (
                 self.configuration.sio_server_certificate_path)
         LOG.info(_LI(
-            "REST server IP: %(ip)s, port: %(port)s, username: %(user)s. "
-            "Verify server's certificate: %(verify_cert)s."),
-            {'ip': self.server_ip,
-             'port': self.server_port,
-             'user': self.server_username,
-             'verify_cert': self.verify_server_certificate})
+                 "REST server IP: %(ip)s, port: %(port)s, username: %("
+                 "user)s. "
+                 "Verify server's certificate: %(verify_cert)s."),
+                 {'ip': self.server_ip,
+                  'port': self.server_port,
+                  'user': self.server_username,
+                  'verify_cert': self.verify_server_certificate})
 
         self.storage_pools = None
         if self.configuration.sio_storage_pools:
@@ -130,21 +135,21 @@ class ScaleIODriver(driver.VolumeDriver):
             LOG.warning(_LW("No storage pool name or id was found."))
         else:
             LOG.info(_LI(
-                "Storage pools names: %(pools)s, "
-                "storage pool name: %(pool)s, pool id: %(pool_id)s."),
-                {'pools': self.storage_pools,
-                 'pool': self.storage_pool_name,
-                 'pool_id': self.storage_pool_id})
+                     "Storage pools names: %(pools)s, "
+                     "storage pool name: %(pool)s, pool id: %(pool_id)s."),
+                     {'pools': self.storage_pools,
+                      'pool': self.storage_pool_name,
+                      'pool_id': self.storage_pool_id})
 
         self.protection_domain_name = (
             self.configuration.sio_protection_domain_name)
         LOG.info(_LI(
-            "Protection domain name: %(domain_name)s."),
-            {'domain_name': self.protection_domain_name})
+                 "Protection domain name: %(domain_name)s."),
+                 {'domain_name': self.protection_domain_name})
         self.protection_domain_id = self.configuration.sio_protection_domain_id
         LOG.info(_LI(
-            "Protection domain id: %(domain_id)s."),
-            {'domain_id': self.protection_domain_id})
+                 "Protection domain id: %(domain_id)s."),
+                 {'domain_id': self.protection_domain_id})
 
         self.connector = connector.InitiatorConnector.factory(
             connector.SCALEIO, utils.get_root_helper(),
@@ -204,9 +209,8 @@ class ScaleIODriver(driver.VolumeDriver):
             raise exception.InvalidInput(reason=msg)
 
         if not self.storage_pools:
-            msg = _(
-                "Must specify storage pools. Option: sio_storage_pools."
-            )
+            msg = (_("Must specify storage pools. Option: "
+                     "sio_storage_pools."))
             raise exception.InvalidInput(reason=msg)
 
     def _find_storage_pool_id_from_storage_type(self, storage_type):
@@ -231,11 +235,17 @@ class ScaleIODriver(driver.VolumeDriver):
     def _find_provisioning_type(self, storage_type):
         return storage_type.get(PROVISIONING_KEY)
 
-    def _find_iops_limit(self, storage_type):
-        return storage_type.get(IOPS_LIMIT_KEY)
-
-    def _find_bandwidth_limit(self, storage_type):
-        return storage_type.get(BANDWIDTH_LIMIT)
+    def _find_limit(self, storage_type, qos_key, extraspecs_key):
+        qos_limit = storage_type.get(qos_key)
+        extraspecs_limit = storage_type.get(extraspecs_key)
+        if extraspecs_limit is not None:
+            if qos_limit is not None:
+                LOG.warning(_LW("QoS specs are overriding extra_specs."))
+            else:
+                LOG.info(_LI("Using extra_specs for defining QoS specs "
+                             "will be deprecated in the N release "
+                             "of OpenStack. Please use QoS specs."))
+        return qos_limit if qos_limit is not None else extraspecs_limit
 
     def _id_to_base64(self, id):
         # Base64 encode the id to get a volume name less than 32 characters due
@@ -274,14 +284,15 @@ class ScaleIODriver(driver.VolumeDriver):
         provisioning_type = self._find_provisioning_type(storage_type)
 
         LOG.info(_LI(
-            "Volume type: %(volume_type)s, storage pool name: %(pool_name)s, "
-            "storage pool id: %(pool_id)s, protection domain id: "
-            "%(domain_id)s, protection domain name: %(domain_name)s."),
-            {'volume_type': storage_type,
-             'pool_name': storage_pool_name,
-             'pool_id': storage_pool_id,
-             'domain_id': protection_domain_id,
-             'domain_name': protection_domain_name})
+                 "Volume type: %(volume_type)s, "
+                 "storage pool name: %(pool_name)s, "
+                 "storage pool id: %(pool_id)s, protection domain id: "
+                 "%(domain_id)s, protection domain name: %(domain_name)s."),
+                 {'volume_type': storage_type,
+                  'pool_name': storage_pool_name,
+                  'pool_id': storage_pool_id,
+                  'domain_id': protection_domain_id,
+                  'domain_name': protection_domain_name})
 
         verify_cert = self._get_verify_cert()
 
@@ -418,8 +429,9 @@ class ScaleIODriver(driver.VolumeDriver):
                 self.configuration.sio_round_volume_capacity)
             if not round_volume_capacity:
                 exception_msg = (_(
-                    "Cannot create volume of size %s: not multiple of 8GB.") %
-                    size)
+                                 "Cannot create volume of size %s: "
+                                 "not multiple of 8GB.") %
+                                 size)
                 LOG.error(exception_msg)
                 raise exception.VolumeBackendAPIException(data=exception_msg)
 
@@ -478,8 +490,8 @@ class ScaleIODriver(driver.VolumeDriver):
             self.server_token = token
             # Repeat request with valid token.
             LOG.info(_LI(
-                "Going to perform request again %s with valid token."),
-                request)
+                     "Going to perform request again %s with valid token."),
+                     request)
             if is_get_request:
                 res = requests.get(request,
                                    auth=(self.server_username,
@@ -505,10 +517,10 @@ class ScaleIODriver(driver.VolumeDriver):
         volume_id = snapshot.provider_id
         snapname = self._id_to_base64(volume.id)
         LOG.info(_LI(
-            "ScaleIO create volume from snapshot: snapshot %(snapname)s "
-            "to volume %(volname)s."),
-            {'volname': volume_id,
-             'snapname': snapname})
+                 "ScaleIO create volume from snapshot: snapshot %(snapname)s "
+                 "to volume %(volname)s."),
+                 {'volname': volume_id,
+                  'snapname': snapname})
 
         return self._snapshot_volume(volume_id, snapname)
 
@@ -529,9 +541,10 @@ class ScaleIODriver(driver.VolumeDriver):
         """
         vol_id = volume['provider_id']
         LOG.info(_LI(
-            "ScaleIO extend volume: volume %(volname)s to size %(new_size)s."),
-            {'volname': vol_id,
-             'new_size': new_size})
+                 "ScaleIO extend volume:"
+                 " volume %(volname)s to size %(new_size)s."),
+                 {'volname': vol_id,
+                  'new_size': new_size})
 
         req_vars = {'server_ip': self.server_ip,
                     'server_port': self.server_port,
@@ -577,10 +590,10 @@ class ScaleIODriver(driver.VolumeDriver):
         volume_id = src_vref['provider_id']
         snapname = self._id_to_base64(volume.id)
         LOG.info(_LI(
-            "ScaleIO create cloned volume: source volume %(src)s to target "
-            "volume %(tgt)s."),
-            {'src': volume_id,
-             'tgt': snapname})
+                 "ScaleIO create cloned volume: source volume %(src)s to "
+                 "target volume %(tgt)s."),
+                 {'src': volume_id,
+                  'tgt': snapname})
 
         return self._snapshot_volume(volume_id, snapname)
 
@@ -606,8 +619,9 @@ class ScaleIODriver(driver.VolumeDriver):
                        "/api/instances/Volume::%(vol_id)s"
                        "/action/removeMappedSdc") % req_vars
             LOG.info(_LI(
-                "Trying to unmap volume from all sdcs before deletion: %s."),
-                request)
+                     "Trying to unmap volume from all sdcs"
+                     " before deletion: %s."),
+                     request)
             r = requests.post(
                 request,
                 data=json.dumps(params),
@@ -641,8 +655,9 @@ class ScaleIODriver(driver.VolumeDriver):
                 force_delete = self.configuration.sio_force_delete
                 if force_delete:
                     LOG.warning(_LW(
-                        "Ignoring error in delete volume %s: volume not found "
-                        "due to force delete settings."), vol_id)
+                                "Ignoring error in delete volume %s:"
+                                " volume not found "
+                                "due to force delete settings."), vol_id)
                 else:
                     msg = (_("Error deleting volume %s: volume not found.") %
                            vol_id)
@@ -672,11 +687,16 @@ class ScaleIODriver(driver.VolumeDriver):
 
         volname = self._id_to_base64(volume.id)
         connection_properties['scaleIO_volname'] = volname
-        storage_type = self._get_volumetype_extraspecs(volume)
+        extra_specs = self._get_volumetype_extraspecs(volume)
+        qos_specs = self._get_volumetype_qos(volume)
+        storage_type = extra_specs.copy()
+        storage_type.update(qos_specs)
         LOG.info(_LI("Volume type is %s."), storage_type)
-        iops_limit = self._find_iops_limit(storage_type)
+        iops_limit = self._find_limit(storage_type, QOS_IOPS_LIMIT_KEY,
+                                      IOPS_LIMIT_KEY)
         LOG.info(_LI("iops limit is: %s."), iops_limit)
-        bandwidth_limit = self._find_bandwidth_limit(storage_type)
+        bandwidth_limit = self._find_limit(storage_type, QOS_BANDWIDTH_LIMIT,
+                                           BANDWIDTH_LIMIT)
         LOG.info(_LI("Bandwidth limit is: %s."), bandwidth_limit)
         connection_properties['iopsLimit'] = iops_limit
         connection_properties['bandwidthLimit'] = bandwidth_limit
@@ -698,7 +718,7 @@ class ScaleIODriver(driver.VolumeDriver):
         stats['total_capacity_gb'] = 'unknown'
         stats['free_capacity_gb'] = 'unknown'
         stats['reserved_percentage'] = 0
-        stats['QoS_support'] = False
+        stats['QoS_support'] = True
 
         pools = []
 
@@ -806,15 +826,15 @@ class ScaleIODriver(driver.VolumeDriver):
                 used_capacity_gb = capacityInUse / units.Mi
                 free_capacity_gb = total_capacity_gb - used_capacity_gb
                 LOG.info(_LI(
-                    "free capacity of pool %(pool)s is: %(free)s, "
-                    "total capacity: %(total)s."),
-                    {'pool': pool_name,
-                     'free': free_capacity_gb,
-                     'total': total_capacity_gb})
+                         "free capacity of pool %(pool)s is: %(free)s, "
+                         "total capacity: %(total)s."),
+                         {'pool': pool_name,
+                          'free': free_capacity_gb,
+                          'total': total_capacity_gb})
             pool = {'pool_name': sp_name,
                     'total_capacity_gb': total_capacity_gb,
                     'free_capacity_gb': free_capacity_gb,
-                    'QoS_support': False,
+                    'QoS_support': True,
                     'reserved_percentage': 0
                     }
 
@@ -823,21 +843,15 @@ class ScaleIODriver(driver.VolumeDriver):
                 max_free_capacity = free_capacity_gb
             total_capacity = total_capacity + total_capacity_gb
 
-        stats['volume_backend_name'] = backend_name or 'scaleio'
-        stats['vendor_name'] = 'EMC'
-        stats['driver_version'] = self.VERSION
-        stats['storage_protocol'] = 'scaleio'
         # Use zero capacities here so we always use a pool.
         stats['total_capacity_gb'] = total_capacity
         stats['free_capacity_gb'] = max_free_capacity
         LOG.info(_LI(
-            "Free capacity for backend is: %(free)s, total capacity: "
-            "%(total)s."),
-            {'free': max_free_capacity,
-             'total': total_capacity})
+                 "Free capacity for backend is: %(free)s, total capacity: "
+                 "%(total)s."),
+                 {'free': max_free_capacity,
+                  'total': total_capacity})
 
-        stats['reserved_percentage'] = 0
-        stats['QoS_support'] = False
         stats['pools'] = pools
 
         LOG.info(_LI("Backend name is %s."), stats["volume_backend_name"])
@@ -866,6 +880,22 @@ class ScaleIODriver(driver.VolumeDriver):
 
         return specs
 
+    def _get_volumetype_qos(self, volume):
+        qos = {}
+        ctxt = context.get_admin_context()
+        type_id = volume['volume_type_id']
+        if type_id:
+            volume_type = volume_types.get_volume_type(ctxt, type_id)
+            qos_specs_id = volume_type.get('qos_specs_id')
+            if qos_specs_id is not None:
+                specs = qos_specs.get_qos_specs(ctxt, qos_specs_id)['specs']
+            else:
+                specs = {}
+            for key, value in specs.items():
+                if key in self.scaleio_qos_keys:
+                    qos[key] = value
+        return qos
+
     def _sio_attach_volume(self, volume):
         """Call connector.connect_volume() and return the path. """
         LOG.debug("Calling os-brick to attach ScaleIO volume.")
@@ -887,11 +917,11 @@ class ScaleIODriver(driver.VolumeDriver):
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Fetch the image from image_service and write it to the volume."""
         LOG.info(_LI(
-            "ScaleIO copy_image_to_volume volume: %(vol)s image service: "
-            "%(service)s image id: %(id)s."),
-            {'vol': volume,
-             'service': six.text_type(image_service),
-             'id': six.text_type(image_id)})
+                 "ScaleIO copy_image_to_volume volume: %(vol)s image service: "
+                 "%(service)s image id: %(id)s."),
+                 {'vol': volume,
+                  'service': six.text_type(image_service),
+                  'id': six.text_type(image_id)})
 
         try:
             image_utils.fetch_to_raw(context,
@@ -907,11 +937,11 @@ class ScaleIODriver(driver.VolumeDriver):
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
         LOG.info(_LI(
-            "ScaleIO copy_volume_to_image volume: %(vol)s image service: "
-            "%(service)s image meta: %(meta)s."),
-            {'vol': volume,
-             'service': six.text_type(image_service),
-             'meta': six.text_type(image_meta)})
+                 "ScaleIO copy_volume_to_image volume: %(vol)s image service: "
+                 "%(service)s image meta: %(meta)s."),
+                 {'vol': volume,
+                  'service': six.text_type(image_service),
+                  'meta': six.text_type(image_meta)})
         try:
             image_utils.upload_volume(context,
                                       image_service,
