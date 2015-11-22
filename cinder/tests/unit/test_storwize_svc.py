@@ -1745,7 +1745,6 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                                'storwize_svc_flashcopy_timeout': 20,
                                # Test ignore capitalization
                                'storwize_svc_connection_protocol': 'iScSi',
-                               'storwize_svc_multipath_enabled': False,
                                'storwize_svc_allow_tenant_qos': True}
             wwpns = [str(random.randint(0, 9999999999999999)).zfill(16),
                      str(random.randint(0, 9999999999999999)).zfill(16)]
@@ -1767,7 +1766,6 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                                'storwize_svc_volpool_name': 'openstack',
                                # Test ignore capitalization
                                'storwize_svc_connection_protocol': 'iScSi',
-                               'storwize_svc_multipath_enabled': False,
                                'storwize_svc_allow_tenant_qos': True,
                                'ssh_conn_timeout': 0}
             config_group = self.driver.configuration.config_group
@@ -1947,7 +1945,6 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                'compression': False,
                'easytier': True,
                'protocol': 'iSCSI',
-               'multipath': False,
                'iogrp': 0,
                'qos': None,
                'replication': False,
@@ -2340,7 +2337,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
 
         expected = {'FC': {'driver_volume_type': 'fibre_channel',
                            'data': {'target_lun': 0,
-                                    'target_wwn': 'AABBCCDDEEFF0011',
+                                    'target_wwn': ['AABBCCDDEEFF0011'],
                                     'target_discovered': False}},
                     'iSCSI': {'driver_volume_type': 'iscsi',
                               'data': {'target_discovered': False,
@@ -3087,7 +3084,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
 
         self.assertIsNotNone(host_name)
 
-    def test_storwize_initiator_multiple_preferred_nodes_matching(self):
+    def test_storwize_initiator_multiple_wwpns_connected(self):
 
         # Generate us a test volume
         volume = self._create_volume()
@@ -3110,83 +3107,16 @@ class StorwizeSVCDriverTestCase(test.TestCase):
 
         with mock.patch.object(storwize_svc_common.StorwizeHelpers,
                                'get_conn_fc_wwpns') as get_mappings:
-            get_mappings.return_value = ['AABBCCDDEEFF0001',
-                                         'AABBCCDDEEFF0002',
-                                         'AABBCCDDEEFF0010',
-                                         'AABBCCDDEEFF0012']
+            mapped_wwpns = ['AABBCCDDEEFF0001', 'AABBCCDDEEFF0002',
+                            'AABBCCDDEEFF0010', 'AABBCCDDEEFF0012']
+            get_mappings.return_value = mapped_wwpns
 
             # Initialize the connection
             init_ret = self.driver.initialize_connection(volume, connector)
 
-            # Make sure we use the preferred WWPN.
-            self.assertEqual('AABBCCDDEEFF0010',
-                             init_ret['data']['target_wwn'])
-
-    def test_storwize_initiator_multiple_preferred_nodes_no_matching(self):
-        # Generate us a test volume
-        volume = self._create_volume()
-
-        # Fibre Channel volume type
-        extra_spec = {'capabilities:storage_protocol': '<in> FC'}
-        vol_type = volume_types.create(self.ctxt, 'FC', extra_spec)
-
-        volume['volume_type_id'] = vol_type['id']
-
-        # Make sure that the volumes have been created
-        self._assert_vol_exists(volume['name'], True)
-
-        # Set up WWPNs that will not match what is available.
-        self.driver._state['storage_nodes']['1']['WWPN'] = ['123456789ABCDEF0',
-                                                            '123456789ABCDEF1']
-
-        wwpns = ['ff00000000000000', 'ff00000000000001']
-        connector = {'host': 'storwize-svc-test', 'wwpns': wwpns}
-
-        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
-                               'get_conn_fc_wwpns') as get_mappings:
-            get_mappings.return_value = ['AABBCCDDEEFF0001',
-                                         'AABBCCDDEEFF0002',
-                                         'AABBCCDDEEFF0010',
-                                         'AABBCCDDEEFF0012']
-
-            # Initialize the connection
-            init_ret = self.driver.initialize_connection(volume, connector)
-
-            # Make sure we use the first available WWPN.
-            self.assertEqual('AABBCCDDEEFF0001',
-                             init_ret['data']['target_wwn'])
-
-    def test_storwize_initiator_single_preferred_node_matching(self):
-        # Generate us a test volume
-        volume = self._create_volume()
-
-        # Fibre Channel volume type
-        extra_spec = {'capabilities:storage_protocol': '<in> FC'}
-        vol_type = volume_types.create(self.ctxt, 'FC', extra_spec)
-
-        volume['volume_type_id'] = vol_type['id']
-
-        # Make sure that the volumes have been created
-        self._assert_vol_exists(volume['name'], True)
-
-        # Set up one WWPN.
-        self.driver._state['storage_nodes']['1']['WWPN'] = ['AABBCCDDEEFF0012']
-
-        wwpns = ['ff00000000000000', 'ff00000000000001']
-        connector = {'host': 'storwize-svc-test', 'wwpns': wwpns}
-
-        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
-                               'get_conn_fc_wwpns') as get_mappings:
-            get_mappings.return_value = ['AABBCCDDEEFF0001',
-                                         'AABBCCDDEEFF0002',
-                                         'AABBCCDDEEFF0010',
-                                         'AABBCCDDEEFF0012']
-
-            # Initialize the connection
-            init_ret = self.driver.initialize_connection(volume, connector)
-
-            # Make sure we use the preferred WWPN.
-            self.assertEqual('AABBCCDDEEFF0012',
+            # Make sure we return all wwpns which where mapped as part of the
+            # connection
+            self.assertEqual(mapped_wwpns,
                              init_ret['data']['target_wwn'])
 
     def test_storwize_terminate_connection(self):
@@ -3238,7 +3168,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                                'ff00000000000001': ['AABBCCDDEEFF0011']},
                               'target_discovered': False,
                               'target_lun': 0,
-                              'target_wwn': 'AABBCCDDEEFF0011',
+                              'target_wwn': ['AABBCCDDEEFF0011'],
                               'volume_id': volume['id']
                               }
                      }

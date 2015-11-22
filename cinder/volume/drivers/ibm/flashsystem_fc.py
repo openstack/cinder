@@ -32,7 +32,7 @@ from oslo_utils import excutils
 import six
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _, _LE, _LI
 from cinder import utils
 import cinder.volume.driver
 from cinder.volume.drivers.ibm import flashsystem_common as fscommon
@@ -44,8 +44,9 @@ LOG = logging.getLogger(__name__)
 flashsystem_fc_opts = [
     cfg.BoolOpt('flashsystem_multipath_enabled',
                 default=False,
-                help='Connect with multipath (FC only).'
-                     '(Default is false.)')
+                help='This option no longer has any affect. It is deprecated '
+                     'and will be removed in the next release.',
+                deprecated_for_removal=True)
 ]
 
 CONF = cfg.CONF
@@ -187,17 +188,12 @@ class FlashSystemFCDriver(fscommon.FlashSystemDriver,
             'enter: _get_vdisk_map_properties: vdisk '
             '%(vdisk_name)s.', {'vdisk_name': vdisk_name})
 
-        preferred_node = '0'
         IO_group = '0'
 
-        # Get preferred node and other nodes in I/O group
-        preferred_node_entry = None
         io_group_nodes = []
         for k, node in self._storage_nodes.items():
             if vdisk_params['protocol'] != node['protocol']:
                 continue
-            if node['id'] == preferred_node:
-                preferred_node_entry = node
             if node['IO_group'] == IO_group:
                 io_group_nodes.append(node)
 
@@ -208,11 +204,6 @@ class FlashSystemFCDriver(fscommon.FlashSystemDriver,
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-        if not preferred_node_entry and not vdisk_params['multipath']:
-            # Get 1st node in I/O group
-            preferred_node_entry = io_group_nodes[0]
-            LOG.warning(_LW('_get_vdisk_map_properties: Did not find a '
-                            'preferred node for vdisk %s.'), vdisk_name)
         properties = {}
         properties['target_discovered'] = False
         properties['target_lun'] = lun_id

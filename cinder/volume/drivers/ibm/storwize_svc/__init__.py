@@ -103,8 +103,9 @@ storwize_svc_opts = [
                      '(Default: Enabled)'),
     cfg.BoolOpt('storwize_svc_multipath_enabled',
                 default=False,
-                help='Connect with multipath (FC only; iSCSI multipath is '
-                     'controlled by Nova)'),
+                help='This option no longer has any affect. It is deprecated '
+                     'and will be removed in the next release.',
+                deprecated_for_removal=True),
     cfg.BoolOpt('storwize_svc_multihostmap_enabled',
                 default=True,
                 help='Allows vdisk to multi host mapping'),
@@ -408,7 +409,7 @@ class StorwizeSVCDriver(san.SanDriver,
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
 
-            if not preferred_node_entry and not vol_opts['multipath']:
+            if not preferred_node_entry:
                 # Get 1st node in I/O group
                 preferred_node_entry = io_group_nodes[0]
                 LOG.warning(_LW('initialize_connection: Did not find a '
@@ -445,25 +446,7 @@ class StorwizeSVCDriver(san.SanDriver,
                     for node in self._state['storage_nodes'].values():
                         conn_wwpns.extend(node['WWPN'])
 
-                if not vol_opts['multipath']:
-                    # preferred_node_entry can have a list of WWPNs while only
-                    # one WWPN may be available on the storage host.  Here we
-                    # walk through the nodes until we find one that works,
-                    # default to the first WWPN otherwise.
-                    for WWPN in preferred_node_entry['WWPN']:
-                        if WWPN in conn_wwpns:
-                            properties['target_wwn'] = WWPN
-                            break
-                    else:
-                        LOG.warning(_LW('Unable to find a preferred node match'
-                                        ' for node %(node)s in the list of '
-                                        'available WWPNs on %(host)s. '
-                                        'Using first available.'),
-                                    {'node': preferred_node,
-                                     'host': host_name})
-                        properties['target_wwn'] = conn_wwpns[0]
-                else:
-                    properties['target_wwn'] = conn_wwpns
+                properties['target_wwn'] = conn_wwpns
 
                 i_t_map = self._make_initiator_target_map(connector['wwpns'],
                                                           conn_wwpns)
@@ -854,7 +837,7 @@ class StorwizeSVCDriver(san.SanDriver,
                                                    'diff': diff,
                                                    'host': host})
 
-        ignore_keys = ['protocol', 'multipath']
+        ignore_keys = ['protocol']
         no_copy_keys = ['warning', 'autoexpand', 'easytier']
         copy_keys = ['rsize', 'grainsize', 'compression']
         all_keys = ignore_keys + no_copy_keys + copy_keys
