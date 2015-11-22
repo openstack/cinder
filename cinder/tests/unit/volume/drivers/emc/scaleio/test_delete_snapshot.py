@@ -84,7 +84,7 @@ class TestDeleteSnapShot(scaleio.TestScaleIODriver):
     def test_delete_invalid_snapshot_force_delete(self):
         self.driver.configuration.set_override('sio_force_delete',
                                                override=True)
-        self.set_https_response_mode(self.RESPONSE_MODE.Invalid)
+        self.set_https_response_mode(self.RESPONSE_MODE.Valid)
         self.driver.delete_snapshot(self.snapshot)
 
     def test_delete_invalid_snapshot(self):

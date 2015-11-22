@@ -59,9 +59,6 @@ class ScaleIODriver(scaleio.ScaleIODriver):
     def reenable_replication(self, context, volume):
         pass
 
-    def manage_existing(self, volume, existing_ref):
-        pass
-
     def promote_replica(self, context, volume):
         pass
 
@@ -76,9 +73,6 @@ class ScaleIODriver(scaleio.ScaleIODriver):
         pass
 
     def create_consistencygroup(self, context, group):
-        pass
-
-    def manage_existing_get_size(self, volume, existing_ref):
         pass
 
     def unmanage(self, volume):

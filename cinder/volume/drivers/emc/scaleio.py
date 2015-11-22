@@ -86,7 +86,7 @@ QOS_BANDWIDTH_LIMIT = 'maxBWS'
 
 BLOCK_SIZE = 8
 OK_STATUS_CODE = 200
-VOLUME_NOT_FOUND_ERROR = 78
+VOLUME_NOT_FOUND_ERROR = 79
 VOLUME_NOT_MAPPED_ERROR = 84
 VOLUME_ALREADY_MAPPED_ERROR = 81
 
@@ -126,8 +126,7 @@ class ScaleIODriver(driver.VolumeDriver):
         if self.configuration.sio_storage_pools:
             self.storage_pools = [
                 e.strip() for e in
-                self.configuration.sio_storage_pools.split(',')
-            ]
+                self.configuration.sio_storage_pools.split(',')]
 
         self.storage_pool_name = self.configuration.sio_storage_pool_name
         self.storage_pool_id = self.configuration.sio_storage_pool_id
@@ -240,11 +239,11 @@ class ScaleIODriver(driver.VolumeDriver):
         extraspecs_limit = storage_type.get(extraspecs_key)
         if extraspecs_limit is not None:
             if qos_limit is not None:
-                LOG.warning(_LW("QoS specs are overriding extra_specs."))
+                LOG.warning(_LW("QoS specs are overriding extraspecs"))
             else:
-                LOG.info(_LI("Using extra_specs for defining QoS specs "
-                             "will be deprecated in the N release "
-                             "of OpenStack. Please use QoS specs."))
+                LOG.info(_LI("Using extraspecs for defining QoS specs "
+                             "will be deprecated in the next "
+                             "version of OpenStack, please use QoS specs"))
         return qos_limit if qos_limit is not None else extraspecs_limit
 
     def _id_to_base64(self, id):
@@ -261,9 +260,8 @@ class ScaleIODriver(driver.VolumeDriver):
         encoded_name = base64.b64encode(encoded_name)
         if six.PY3:
             encoded_name = encoded_name.decode('ascii')
-        LOG.debug(
-            "Converted id %(id)s to scaleio name %(name)s.",
-            {'id': id, 'name': encoded_name})
+        LOG.debug("Converted id %(id)s to scaleio name %(name)s.",
+                  {'id': id, 'name': encoded_name})
         return encoded_name
 
     def create_volume(self, volume):
@@ -430,8 +428,7 @@ class ScaleIODriver(driver.VolumeDriver):
             if not round_volume_capacity:
                 exception_msg = (_(
                                  "Cannot create volume of size %s: "
-                                 "not multiple of 8GB.") %
-                                 size)
+                                 "not multiple of 8GB.") % size)
                 LOG.error(exception_msg)
                 raise exception.VolumeBackendAPIException(data=exception_msg)
 
@@ -651,18 +648,15 @@ class ScaleIODriver(driver.VolumeDriver):
         if r.status_code != OK_STATUS_CODE:
             response = r.json()
             error_code = response['errorCode']
-            if error_code == 78:
-                force_delete = self.configuration.sio_force_delete
-                if force_delete:
-                    LOG.warning(_LW(
-                                "Ignoring error in delete volume %s:"
-                                " volume not found "
-                                "due to force delete settings."), vol_id)
-                else:
-                    msg = (_("Error deleting volume %s: volume not found.") %
-                           vol_id)
-                    LOG.error(msg)
-                    raise exception.VolumeBackendAPIException(data=msg)
+            if error_code == VOLUME_NOT_FOUND_ERROR:
+                LOG.warning(_LW(
+                            "Ignoring error in delete volume %s:"
+                            " Volume not found."), vol_id)
+            elif vol_id is None:
+                LOG.warning(_LW(
+                            "Volume does not have provider_id thus does not "
+                            "map to a ScaleIO volume. "
+                            "Allowing deletion to proceed."))
             else:
                 msg = (_("Error deleting volume %(vol)s: %(err)s.") %
                        {'vol': vol_id,
@@ -1018,6 +1012,80 @@ class ScaleIODriver(driver.VolumeDriver):
             LOG.info(_LI("ScaleIO volume %(vol)s was renamed to "
                          "%(new_name)s."),
                      {'vol': vol_id, 'new_name': new_name})
+
+    def manage_existing(self, volume, existing_ref):
+        """Manage an existing ScaleIO volume.
+
+        existing_ref is a dictionary of the form:
+        {'source-id': <id of ScaleIO volume>}
+        """
+        request = self._create_scaleio_get_volume_request(volume, existing_ref)
+        r, response = self._execute_scaleio_get_request(request)
+        LOG.info(_LI("Get Volume response: %s"), response)
+        self._manage_existing_check_legal_response(r, existing_ref)
+        if response['mappedSdcInfo'] is not None:
+            reason = ("manage_existing cannot manage a volume "
+                      "connected to hosts. Please disconnect this volume "
+                      "from existing hosts before importing")
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref,
+                reason=reason
+            )
+        return {'provider_id': response['id']}
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        request = self._create_scaleio_get_volume_request(volume, existing_ref)
+        r, response = self._execute_scaleio_get_request(request)
+        LOG.info(_LI("Get Volume response: %s"), response)
+        self._manage_existing_check_legal_response(r, existing_ref)
+        return int(response['sizeInKb'] / units.Mi)
+
+    def _execute_scaleio_get_request(self, request):
+        r = requests.get(
+            request,
+            auth=(
+                self.server_username,
+                self.server_token),
+            verify=self._get_verify_cert())
+        r = self._check_response(r, request)
+        response = r.json()
+        return r, response
+
+    def _create_scaleio_get_volume_request(self, volume, existing_ref):
+        """Throws an exception if the input is invalid for manage existing.
+
+        if the input is valid - return a request.
+        """
+        type_id = volume.get('volume_type_id')
+        if 'source-id' not in existing_ref:
+            reason = _("Reference must contain source-id.")
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref,
+                reason=reason
+            )
+        if type_id is None:
+            reason = _("Volume must have a volume type")
+            raise exception.ManageExistingVolumeTypeMismatch(
+                existing_ref=existing_ref,
+                reason=reason
+            )
+        vol_id = existing_ref['source-id']
+        req_vars = {'server_ip': self.server_ip,
+                    'server_port': self.server_port,
+                    'id': vol_id}
+        request = ("https://%(server_ip)s:%(server_port)s"
+                   "/api/instances/Volume::%(id)s" % req_vars)
+        LOG.info(_LI("ScaleIO get volume by id request: %s."), request)
+        return request
+
+    def _manage_existing_check_legal_response(self, response, existing_ref):
+        if response.status_code != OK_STATUS_CODE:
+            reason = (_("Error managing volume: %s.") % response.json()[
+                'message'])
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref,
+                reason=reason
+            )
 
     def ensure_export(self, context, volume):
         """Driver entry point to get the export info for an existing volume."""
