@@ -2970,15 +2970,12 @@ class VolumeManager(manager.SchedulerDependentManager):
 
             if snapshots_model_update:
                 for snap_model in snapshots_model_update:
-                    # Update db if status is error
-                    if snap_model['status'] == 'error':
-                        # NOTE(xyang): snapshots is a list of snapshot objects.
-                        # snapshots_model_update should be a list of dicts.
-                        snap = next((item for item in snapshots if
-                                     item.id == snap_model['id']), None)
-                        if snap:
-                            snap.status = snap_model['status']
-                            snap.save()
+                    # Update db for snapshot.
+                    # NOTE(xyang): snapshots is a list of snapshot objects.
+                    # snapshots_model_update should be a list of dicts.
+                    self.db.snapshot_update(context,
+                                            snap_model['id'],
+                                            snap_model)
 
                     if (snap_model['status'] in ['error_deleting', 'error'] and
                             model_update['status'] not in
@@ -2991,6 +2988,9 @@ class VolumeManager(manager.SchedulerDependentManager):
                              '%s.') % cgsnapshot.id)
                     LOG.error(msg)
                     raise exception.VolumeDriverException(message=msg)
+
+                cgsnapshot.update(model_update)
+                cgsnapshot.save()
 
         except exception.CinderException:
             with excutils.save_and_reraise_exception():
