@@ -21,23 +21,23 @@ from cinder import test
 # NOTE: The hashes in this list should only be changed if they come with a
 # corresponding version bump in the affected objects.
 object_data = {
-    'Backup': '1.1-f2e7befd20d3bb388700f17c4f386b28',
-    'BackupImport': '1.1-f2e7befd20d3bb388700f17c4f386b28',
-    'BackupList': '1.0-db44728c8d21bb23bba601a5499550f8',
-    'CGSnapshot': '1.0-d50e9480cee2abcb2222997f2bb85656',
-    'CGSnapshotList': '1.0-3361be608f396c5ae045b6d94f901346',
-    'ConsistencyGroup': '1.0-98714c3d8f83914fd7a17317c3c29e01',
-    'ConsistencyGroupList': '1.0-a906318d3e69d847f31df561d12540b3',
-    'Service': '1.0-b81a04373ce0ad2d07de525eb534afd6',
-    'ServiceList': '1.0-1911175eadd43fb6eafbefd18c802f2c',
-    'Snapshot': '1.0-54a2726a282cbdb47ddd326107e821ce',
-    'SnapshotList': '1.0-46abf2a1e65ef55dad4f36fe787f9a78',
-    'Volume': '1.1-adc26d52b646723bd0633b0771ad2598',
-    'VolumeAttachment': '1.0-4fd93dbfa57d048a4859f5bb1ca66bed',
-    'VolumeAttachmentList': '1.0-829c18b1d929ea1f8a451b3c4e0a0289',
-    'VolumeList': '1.1-d41f3a850be5fbaa94eb4cc955c7ca60',
-    'VolumeType': '1.0-8cb7daad27570133543c2c359d85c658',
-    'VolumeTypeList': '1.0-980f0b518aed9df0beb55cc533eff632'
+    'Backup': '1.1-cd077ec037f5ad1f5409fd660bd59f53',
+    'BackupImport': '1.1-cd077ec037f5ad1f5409fd660bd59f53',
+    'BackupList': '1.0-24591dabe26d920ce0756fe64cd5f3aa',
+    'CGSnapshot': '1.0-190da2a2aa9457edc771d888f7d225c4',
+    'CGSnapshotList': '1.0-e8c3f4078cd0ee23487b34d173eec776',
+    'ConsistencyGroup': '1.0-b9bad093daee0b259edddb3993c60c31',
+    'ConsistencyGroupList': '1.0-09d0aad5491e762ecfdf66bef02ceb8d',
+    'Service': '1.0-64baeb4911dbab1153064dd1c87edb9f',
+    'ServiceList': '1.0-d242d3384b68e5a5a534e090ff1d5161',
+    'Snapshot': '1.0-a6c33eefeadefb324d79f72f66c54e9a',
+    'SnapshotList': '1.0-71661e7180ef6cc51501704a9bea4bf1',
+    'Volume': '1.1-6037de222b09c330b33b419a0c1b10c6',
+    'VolumeAttachment': '1.0-f14a7c03ffc5b93701d496251a5263aa',
+    'VolumeAttachmentList': '1.0-307d2b6c8dd55ef854f6386898e9e98e',
+    'VolumeList': '1.1-03ba6cb8c546683e64e15c50042cb1a3',
+    'VolumeType': '1.0-bf8abbbea2e852ed2e9bac5a9f5f70f2',
+    'VolumeTypeList': '1.0-09b01f4526266c1a58cb206ba509d6d2',
 }
 
 

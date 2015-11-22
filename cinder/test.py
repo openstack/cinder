@@ -252,6 +252,12 @@ class TestCase(testtools.TestCase):
 
         self._disable_osprofiler()
 
+        # NOTE(geguileo): This is required because common get_by_id method in
+        # cinder.db.sqlalchemy.api caches get methods and if we use a mocked
+        # get method in one test it would carry on to the next test.  So we
+        # clear out the cache.
+        sqla_api._GET_METHODS = {}
+
     def _restore_obj_registry(self):
         objects_base.CinderObjectRegistry._registry._obj_classes = \
             self._base_test_obj_backup

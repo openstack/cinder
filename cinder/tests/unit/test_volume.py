@@ -1131,8 +1131,9 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertRaises(exception.NotFound, db.volume_get,
                           self.context, volume['id'])
 
-    @mock.patch.object(db, 'volume_get', side_effect=exception.VolumeNotFound(
-                       volume_id='12345678-1234-5678-1234-567812345678'))
+    @mock.patch.object(db.sqlalchemy.api, 'volume_get',
+                       side_effect=exception.VolumeNotFound(
+                           volume_id='12345678-1234-5678-1234-567812345678'))
     def test_delete_volume_not_found(self, mock_get_volume):
         """Test delete volume moves on if the volume does not exist."""
         volume_id = '12345678-1234-5678-1234-567812345678'
@@ -2026,7 +2027,7 @@ class VolumeTestCase(BaseVolumeTestCase):
     @mock.patch.object(cinder.volume.targets.iscsi.ISCSITarget,
                        '_get_target_chap_auth')
     @mock.patch.object(db, 'volume_admin_metadata_get')
-    @mock.patch.object(db, 'volume_get')
+    @mock.patch.object(db.sqlalchemy.api, 'volume_get')
     @mock.patch.object(db, 'volume_update')
     def test_initialize_connection_fetchqos(self,
                                             _mock_volume_update,
@@ -2085,7 +2086,7 @@ class VolumeTestCase(BaseVolumeTestCase):
             self.assertIsNone(conn_info['data']['qos_specs'])
 
     @mock.patch.object(fake_driver.FakeISCSIDriver, 'create_export')
-    @mock.patch.object(db, 'volume_get')
+    @mock.patch.object(db.sqlalchemy.api, 'volume_get')
     @mock.patch.object(db, 'volume_update')
     def test_initialize_connection_export_failure(self,
                                                   _mock_volume_update,
@@ -2115,7 +2116,7 @@ class VolumeTestCase(BaseVolumeTestCase):
                        '_get_target_chap_auth')
     @mock.patch.object(db, 'volume_admin_metadata_get')
     @mock.patch.object(db, 'volume_update')
-    @mock.patch.object(db, 'volume_get')
+    @mock.patch.object(db.sqlalchemy.api, 'volume_get')
     @mock.patch.object(fake_driver.FakeISCSIDriver, 'initialize_connection')
     @mock.patch.object(db, 'driver_initiator_data_get')
     @mock.patch.object(db, 'driver_initiator_data_update')
@@ -2918,7 +2919,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertEqual("detached", vol['attach_status'])
 
     @mock.patch.object(cinder.volume.api.API, 'update')
-    @mock.patch.object(db, 'volume_get')
+    @mock.patch.object(db.sqlalchemy.api, 'volume_get')
     def test_reserve_volume_success(self, volume_get, volume_update):
         fake_volume = {
             'id': self.FAKE_UUID,
@@ -2948,15 +2949,15 @@ class VolumeTestCase(BaseVolumeTestCase):
             'status': status
         }
 
-        with mock.patch.object(db, 'volume_get') as mock_volume_get:
-            mock_volume_get.return_value = fake_volume
+        with mock.patch.object(db.sqlalchemy.api, 'volume_get') as mock_get:
+            mock_get.return_value = fake_volume
             self.assertRaises(exception.InvalidVolume,
                               cinder.volume.api.API().reserve_volume,
                               self.context,
                               fake_volume)
-            self.assertTrue(mock_volume_get.called)
+            self.assertTrue(mock_get.called)
 
-    @mock.patch.object(db, 'volume_get')
+    @mock.patch.object(db.sqlalchemy.api, 'volume_get')
     @mock.patch.object(db, 'volume_attachment_get_used_by_volume_id')
     @mock.patch.object(cinder.volume.api.API, 'update')
     def test_unreserve_volume_success(self, volume_get,
@@ -3807,7 +3808,7 @@ class VolumeTestCase(BaseVolumeTestCase):
                           'name',
                           'description')
 
-    @mock.patch.object(db, 'volume_get')
+    @mock.patch.object(db.sqlalchemy.api, 'volume_get')
     def test_begin_detaching_fails_available(self, volume_get):
         volume_api = cinder.volume.api.API()
         volume = tests_utils.create_volume(self.context, **self.volume_params)
@@ -4360,7 +4361,7 @@ class VolumeMigrationTestCase(VolumeTestCase):
     @mock.patch('cinder.compute.API')
     @mock.patch('cinder.volume.manager.VolumeManager.'
                 'migrate_volume_completion')
-    @mock.patch('cinder.db.volume_get')
+    @mock.patch('cinder.db.sqlalchemy.api.volume_get')
     def test_migrate_volume_generic(self, volume_get,
                                     migrate_volume_completion,
                                     nova_api):
@@ -4387,7 +4388,7 @@ class VolumeMigrationTestCase(VolumeTestCase):
     @mock.patch('cinder.compute.API')
     @mock.patch('cinder.volume.manager.VolumeManager.'
                 'migrate_volume_completion')
-    @mock.patch('cinder.db.volume_get')
+    @mock.patch('cinder.db.sqlalchemy.api.volume_get')
     def test_migrate_volume_generic_attached_volume(self, volume_get,
                                                     migrate_volume_completion,
                                                     nova_api):
@@ -4783,8 +4784,8 @@ class VolumeMigrationTestCase(VolumeTestCase):
         with mock.patch.object(self.volume.driver, 'retype') as _retype,\
                 mock.patch.object(volume_types, 'volume_types_diff') as _diff,\
                 mock.patch.object(self.volume, 'migrate_volume') as _mig,\
-                mock.patch.object(db, 'volume_get') as get_volume:
-            get_volume.return_value = volume
+                mock.patch.object(db.sqlalchemy.api, 'volume_get') as mock_get:
+            mock_get.return_value = volume
             _retype.return_value = driver
             _diff.return_value = ({}, diff_equal)
             if migrate_exc:
@@ -6114,7 +6115,7 @@ class GenericVolumeDriverTestCase(DriverTestCase):
     @mock.patch('six.moves.builtins.open')
     @mock.patch.object(os_brick.initiator.connector,
                        'get_connector_properties')
-    @mock.patch.object(db, 'volume_get')
+    @mock.patch.object(db.sqlalchemy.api, 'volume_get')
     def test_backup_volume_available(self, mock_volume_get,
                                      mock_get_connector_properties,
                                      mock_file_open,
@@ -6151,7 +6152,7 @@ class GenericVolumeDriverTestCase(DriverTestCase):
     @mock.patch('six.moves.builtins.open')
     @mock.patch.object(os_brick.initiator.connector,
                        'get_connector_properties')
-    @mock.patch.object(db, 'volume_get')
+    @mock.patch.object(db.sqlalchemy.api, 'volume_get')
     def test_backup_volume_inuse_temp_volume(self, mock_volume_get,
                                              mock_get_connector_properties,
                                              mock_file_open,
@@ -6205,7 +6206,7 @@ class GenericVolumeDriverTestCase(DriverTestCase):
     @mock.patch.object(os_brick.initiator.connector,
                        'get_connector_properties',
                        return_value={})
-    @mock.patch.object(db, 'volume_get')
+    @mock.patch.object(db.sqlalchemy.api, 'volume_get')
     def test_backup_volume_inuse_temp_snapshot(self, mock_volume_get,
                                                mock_get_connector_properties,
                                                mock_check_device,
@@ -6809,8 +6810,9 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
         self.stubs.Set(self.volume.driver.vg, 'get_volume',
                        self._get_manage_existing_lvs)
 
-    @mock.patch.object(db, 'volume_get', side_effect=exception.VolumeNotFound(
-                       volume_id='d8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'))
+    @mock.patch.object(db.sqlalchemy.api, 'volume_get',
+                       side_effect=exception.VolumeNotFound(
+                           volume_id='d8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'))
     def test_lvm_manage_existing_not_found(self, mock_vol_get):
         self._setup_stubs_for_manage_existing()
 
@@ -6822,7 +6824,7 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
             model_update = self.volume.driver.manage_existing(vol, ref)
             self.assertIsNone(model_update)
 
-    @mock.patch.object(db, 'volume_get')
+    @mock.patch.object(db.sqlalchemy.api, 'volume_get')
     def test_lvm_manage_existing_already_managed(self, mock_conf):
         self._setup_stubs_for_manage_existing()
 
@@ -7070,7 +7072,7 @@ class LVMVolumeDriverTestCase(DriverTestCase):
     @mock.patch('six.moves.builtins.open')
     @mock.patch.object(os_brick.initiator.connector,
                        'get_connector_properties')
-    @mock.patch.object(db, 'volume_get')
+    @mock.patch.object(db.sqlalchemy.api, 'volume_get')
     def test_backup_volume(self, mock_volume_get,
                            mock_get_connector_properties,
                            mock_file_open,
@@ -7143,7 +7145,7 @@ class LVMVolumeDriverTestCase(DriverTestCase):
     @mock.patch('six.moves.builtins.open')
     @mock.patch.object(os_brick.initiator.connector,
                        'get_connector_properties')
-    @mock.patch.object(db, 'volume_get')
+    @mock.patch.object(db.sqlalchemy.api, 'volume_get')
     def test_backup_volume_inuse(self, mock_volume_get,
                                  mock_get_connector_properties,
                                  mock_file_open,

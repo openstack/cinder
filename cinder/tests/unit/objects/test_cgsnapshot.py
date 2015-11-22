@@ -33,7 +33,7 @@ fake_cgsnapshot = {
 
 class TestCGSnapshot(test_objects.BaseObjectsTestCase):
 
-    @mock.patch('cinder.db.cgsnapshot_get',
+    @mock.patch('cinder.db.sqlalchemy.api.cgsnapshot_get',
                 return_value=fake_cgsnapshot)
     def test_get_by_id(self, cgsnapshot_get):
         cgsnapshot = objects.CGSnapshot.get_by_id(self.context, 1)

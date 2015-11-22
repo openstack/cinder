@@ -17,6 +17,7 @@ import mock
 
 from oslo_log import log as logging
 
+from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder import objects
 from cinder.tests.unit import fake_snapshot
@@ -48,10 +49,18 @@ fake_snapshot_obj = {
 
 class TestSnapshot(test_objects.BaseObjectsTestCase):
 
-    @mock.patch('cinder.db.snapshot_get', return_value=fake_db_snapshot)
+    @mock.patch('cinder.db.get_by_id', return_value=fake_db_snapshot)
     def test_get_by_id(self, snapshot_get):
         snapshot = objects.Snapshot.get_by_id(self.context, 1)
         self._compare(self, fake_snapshot_obj, snapshot)
+        snapshot_get.assert_called_once_with(self.context, models.Snapshot, 1)
+
+    @mock.patch('cinder.db.sqlalchemy.api.model_query')
+    def test_get_by_id_no_existing_id(self, model_query):
+        query = model_query().options().options().filter_by().first
+        query.return_value = None
+        self.assertRaises(exception.SnapshotNotFound,
+                          objects.Snapshot.get_by_id, self.context, 123)
 
     def test_reset_changes(self):
         snapshot = objects.Snapshot()

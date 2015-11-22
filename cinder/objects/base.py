@@ -21,7 +21,9 @@ from oslo_log import log as logging
 from oslo_versionedobjects import base
 from oslo_versionedobjects import fields
 
+from cinder import db
 from cinder import exception
+from cinder.i18n import _
 from cinder import objects
 
 
@@ -68,6 +70,22 @@ class CinderObject(base.VersionedObject):
 
         # Return modified dict
         return changes
+
+    @base.remotable_classmethod
+    def get_by_id(cls, context, id, *args, **kwargs):
+        # To get by id we need to have a model and for the model to
+        # have an id field
+        if 'id' not in cls.fields:
+            msg = (_('VersionedObject %s cannot retrieve object by id.') %
+                   (cls.obj_name()))
+            raise NotImplementedError(msg)
+
+        model = db.get_model_for_versioned_object(cls)
+        orm_obj = db.get_by_id(context, model, id, *args, **kwargs)
+        kargs = {}
+        if hasattr(cls, 'DEFAULT_EXPECTED_ATTR'):
+            kargs = {'expected_attrs': getattr(cls, 'DEFAULT_EXPECTED_ATTR')}
+        return cls._from_db_object(context, cls(context), orm_obj, **kargs)
 
 
 class CinderObjectDictCompat(base.VersionedObjectDictCompat):

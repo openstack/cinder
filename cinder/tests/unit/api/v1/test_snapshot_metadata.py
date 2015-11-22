@@ -483,9 +483,10 @@ class SnapshotMetaDataTest(test.TestCase):
                           self.controller.update_all, req, self.req_id,
                           expected)
 
-    def test_update_all_malformed_data(self):
-        self.stubs.Set(cinder.db, 'snapshot_metadata_update',
-                       return_create_snapshot_metadata)
+    @mock.patch('cinder.db.sqlalchemy.api._snapshot_get')
+    @mock.patch('cinder.db.snapshot_metadata_update', autospec=True)
+    def test_update_all_malformed_data(self, metadata_update, snapshot_get):
+        snapshot_get.return_value = stub_get
         req = fakes.HTTPRequest.blank(self.url)
         req.method = 'PUT'
         req.content_type = "application/json"
@@ -554,9 +555,10 @@ class SnapshotMetaDataTest(test.TestCase):
                           self.controller.update, req, self.req_id, 'key1',
                           None)
 
-    def test_update_item_empty_key(self):
-        self.stubs.Set(cinder.db, 'snapshot_metadata_update',
-                       return_create_snapshot_metadata)
+    @mock.patch('cinder.db.sqlalchemy.api._snapshot_get')
+    @mock.patch('cinder.db.snapshot_metadata_update', autospec=True)
+    def test_update_item_empty_key(self, metadata_update, snapshot_get):
+        snapshot_get.return_value = stub_get
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'PUT'
         body = {"meta": {"": "value1"}}

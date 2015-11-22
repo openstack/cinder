@@ -45,7 +45,8 @@ class TestCreateSnapShot(scaleio.TestScaleIODriver):
         self.snapshot = fake_snapshot.fake_snapshot_obj(
             ctx, **{'volume': self.fake_volume})
 
-        self.mock_object(db, 'volume_get', self.return_fake_volume)
+        self.mock_object(db.sqlalchemy.api, 'volume_get',
+                         self.return_fake_volume)
 
         snap_vol_id = self.snapshot.volume_id
         self.volume_name_2x_enc = urllib.parse.quote(

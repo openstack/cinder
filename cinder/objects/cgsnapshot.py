@@ -68,11 +68,6 @@ class CGSnapshot(base.CinderPersistentObject, base.CinderObject,
         cgsnapshot.obj_reset_changes()
         return cgsnapshot
 
-    @base.remotable_classmethod
-    def get_by_id(cls, context, id):
-        db_cgsnapshots = db.cgsnapshot_get(context, id)
-        return cls._from_db_object(context, cls(context), db_cgsnapshots)
-
     @base.remotable
     def create(self):
         if self.obj_attr_is_set('id'):

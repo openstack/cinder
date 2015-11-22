@@ -14,6 +14,7 @@
 
 import mock
 
+from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder import objects
 from cinder.tests.unit import fake_volume
@@ -37,10 +38,21 @@ fake_backup = {
 
 class TestBackup(test_objects.BaseObjectsTestCase):
 
-    @mock.patch('cinder.db.backup_get', return_value=fake_backup)
+    @mock.patch('cinder.db.get_by_id', return_value=fake_backup)
     def test_get_by_id(self, backup_get):
         backup = objects.Backup.get_by_id(self.context, 1)
         self._compare(self, fake_backup, backup)
+        backup_get.assert_called_once_with(self.context, models.Backup, 1)
+
+    @mock.patch('cinder.db.sqlalchemy.api.model_query')
+    def test_get_by_id_no_existing_id(self, model_query):
+        query = mock.Mock()
+        filter_by = mock.Mock()
+        filter_by.first.return_value = None
+        query.filter_by.return_value = filter_by
+        model_query.return_value = query
+        self.assertRaises(exception.BackupNotFound, objects.Backup.get_by_id,
+                          self.context, 123)
 
     @mock.patch('cinder.db.backup_create', return_value=fake_backup)
     def test_create(self, backup_create):

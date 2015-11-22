@@ -21,7 +21,7 @@ from cinder.tests.unit import objects as test_objects
 
 class TestVolumeType(test_objects.BaseObjectsTestCase):
 
-    @mock.patch('cinder.db.volume_type_get')
+    @mock.patch('cinder.db.sqlalchemy.api._volume_type_get_full')
     def test_get_by_id(self, volume_type_get):
         db_volume_type = fake_volume.fake_db_volume_type()
         volume_type_get.return_value = db_volume_type

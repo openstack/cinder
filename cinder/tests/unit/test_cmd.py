@@ -462,7 +462,7 @@ class TestCinderManageCmd(test.TestCase):
                                            serializer=object_serializer())
         self.assertEqual(mock_rpc_client, rpc_client)
 
-    @mock.patch('cinder.db.volume_get')
+    @mock.patch('cinder.db.sqlalchemy.api.volume_get')
     @mock.patch('cinder.context.get_admin_context')
     @mock.patch('cinder.rpc.get_client')
     @mock.patch('cinder.rpc.init')
@@ -492,7 +492,7 @@ class TestCinderManageCmd(test.TestCase):
                                            volume=volume_obj)
 
     @mock.patch('cinder.db.volume_destroy')
-    @mock.patch('cinder.db.volume_get')
+    @mock.patch('cinder.db.sqlalchemy.api.volume_get')
     @mock.patch('cinder.context.get_admin_context')
     @mock.patch('cinder.rpc.init')
     def test_volume_commands_delete_no_host(self, rpc_init, get_admin_context,
@@ -519,7 +519,7 @@ class TestCinderManageCmd(test.TestCase):
             self.assertEqual(expected_out, fake_out.getvalue())
 
     @mock.patch('cinder.db.volume_destroy')
-    @mock.patch('cinder.db.volume_get')
+    @mock.patch('cinder.db.sqlalchemy.api.volume_get')
     @mock.patch('cinder.context.get_admin_context')
     @mock.patch('cinder.rpc.init')
     def test_volume_commands_delete_volume_in_use(self, rpc_init,
