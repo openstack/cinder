@@ -8,10 +8,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev260\n"
+"Project-Id-Version: cinder 8.0.0.dev269\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-20 06:38+0000\n"
-"PO-Revision-Date: 2015-11-13 11:32+0000\n"
+"POT-Creation-Date: 2015-11-22 06:39+0000\n"
+"PO-Revision-Date: 2015-11-21 07:19+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language-Team: Czech\n"
 "Language: cs\n"
@@ -2658,6 +2658,9 @@ msgstr "Zadané dodatečné specifikace, nebo platné hodnoty jsou None."
 msgid "The list of iscsi_ip_addresses is empty"
 msgstr "Seznam ip adres iscsi je prázdný."
 
+msgid "The snapshot cannot be deleted because it is a clone point."
+msgstr "Snímek nemůže být smazán protože je to bod klonování."
+
 #, python-format
 msgid ""
 "The source array : %(sourceArraySerialNumber)s does not match the target "
@@ -2692,6 +2695,14 @@ msgstr "V nastaveném clusteru nejsou dostupní žádní platní hostitele: %s."
 #, python-format
 msgid "There is no valid datastore satisfying requirements: %s."
 msgstr "Žádné platné datové úložiště splňující požadavky: %s."
+
+#, python-format
+msgid "There was an error deleting snapshot %(id)s: %(error)."
+msgstr "Při mazání snímku %(id)s nastala chyba: %(error)."
+
+#, python-format
+msgid "There was an error deleting volume %(id)s: %(error)."
+msgstr "Při mazání svazku %(id)s nastala chyba: %(error)."
 
 msgid "This usually means the volume was never successfully created."
 msgstr "To většinou znamená, že svazek nikdy nebyl úspěšně vytvořen."
