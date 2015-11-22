@@ -1405,6 +1405,19 @@ class API(base.Base):
         # This is a volume swap initiated by Nova, not Cinder. Nova expects
         # us to return the new_volume_id.
         if not (volume['migration_status'] or new_volume['migration_status']):
+            # Don't need to do migration, but still need to finish the
+            # volume attach and detach so volumes don't end in 'attaching'
+            # and 'detaching' state
+            attachments = volume['volume_attachment']
+            for attachment in attachments:
+                self.detach(context, volume, attachment['id'])
+
+                self.attach(context, new_volume,
+                            attachment['instance_uuid'],
+                            attachment['attached_host'],
+                            attachment['mountpoint'],
+                            'rw')
+
             return new_volume['id']
 
         if not volume['migration_status']:
