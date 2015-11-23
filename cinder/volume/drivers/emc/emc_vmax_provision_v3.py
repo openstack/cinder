@@ -676,3 +676,52 @@ class EMCVMAXProvisionV3(object):
         except KeyError:
             pass
         return remainingCapacityGb
+
+    def extend_volume_in_SG(
+            self, conn, storageConfigService, volumeInstanceName,
+            volumeName, volumeSize, extraSpecs):
+        """Extend a volume instance.
+
+        :param conn: connection the the ecom server
+        :param storageConfigservice: the storage configuration service
+        :param volumeInstanceName: the volume instance name
+        :param volumeName: the volume name (String)
+        :param volumeSize: the volume size
+        :param extraSpecs: additional info
+        :returns: volumeDict
+        :returns: int -- return code
+        :raises: VolumeBackendAPIException
+        """
+        startTime = time.time()
+
+        rc, job = conn.InvokeMethod(
+            'CreateOrModifyElementFromStoragePool',
+            storageConfigService, TheElement=volumeInstanceName,
+            Size=self.utils.get_num(volumeSize, '64'))
+
+        LOG.debug("Extend Volume: %(volumename)s. Return code: %(rc)lu.",
+                  {'volumename': volumeName,
+                   'rc': rc})
+
+        if rc != 0:
+            rc, error_desc = self.utils.wait_for_job_complete(conn, job,
+                                                              extraSpecs)
+            if rc != 0:
+                exceptionMessage = (_(
+                    "Error Extend Volume: %(volumeName)s. "
+                    "Return code: %(rc)lu.  Error: %(error)s.")
+                    % {'volumeName': volumeName,
+                       'rc': rc,
+                       'error': error_desc})
+                LOG.error(exceptionMessage)
+                raise exception.VolumeBackendAPIException(
+                    data=exceptionMessage)
+
+        LOG.debug("InvokeMethod CreateOrModifyElementFromStoragePool "
+                  "took: %(delta)s H:MM:SS.",
+                  {'delta': self.utils.get_time_delta(startTime,
+                                                      time.time())})
+
+        # Find the newly created volume.
+        volumeDict = self.get_volume_dict_from_job(conn, job['Job'])
+        return volumeDict, rc
