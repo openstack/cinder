@@ -3229,11 +3229,9 @@ class EMCVnxCliBase(object):
         wwnns = connector['wwnns']
         wwpns = connector['wwpns']
         wwns = [(node + port).upper() for node, port in zip(wwnns, wwpns)]
-        return map(lambda wwn: re.sub(r'\S\S',
-                                      lambda m: m.group(0) + ':',
-                                      wwn,
-                                      len(wwn) / 2 - 1),
-                   wwns)
+        return [re.sub(r'\S\S', lambda m: m.group(0) + ':',
+                       wwn, len(wwn) // 2 - 1)
+                for wwn in wwns]
 
     def _exec_command_setpath(self, initiator_uid, sp, port_id,
                               ip, host, vport_id=None):
@@ -4067,8 +4065,8 @@ class EMCVnxCliBase(object):
                                pool_list)
         pool_feature = (self._client.get_pool_feature_properties(poll=False)
                         if self.check_max_pool_luns_threshold else None)
-        self.stats['pools'] = map(
-            lambda pool: self._build_pool_stats(pool, pool_feature), pool_list)
+        self.stats['pools'] = [self._build_pool_stats(pool, pool_feature)
+                               for pool in pool_list]
 
         return self.stats
 
@@ -4269,8 +4267,8 @@ class AllowReadWriteOnSnapshotTask(task.Task):
 class CreateConsistencyGroupTask(task.Task):
     """Task to create a consistency group."""
     def __init__(self, lun_id_key_template, num_of_members):
-        self.lun_id_keys = set(
-            [lun_id_key_template % i for i in range(num_of_members)])
+        self.lun_id_keys = sorted(set(
+            [lun_id_key_template % i for i in range(num_of_members)]))
         super(CreateConsistencyGroupTask, self).__init__(
             requires=self.lun_id_keys)
 
@@ -4284,8 +4282,8 @@ class CreateConsistencyGroupTask(task.Task):
 class WaitMigrationsCompleteTask(task.Task):
     """Task to wait migrations to be completed."""
     def __init__(self, lun_id_key_template, num_of_members):
-        self.lun_id_keys = set(
-            [lun_id_key_template % i for i in range(num_of_members)])
+        self.lun_id_keys = sorted(set(
+            [lun_id_key_template % i for i in range(num_of_members)]))
         super(WaitMigrationsCompleteTask, self).__init__(
             requires=self.lun_id_keys)
 

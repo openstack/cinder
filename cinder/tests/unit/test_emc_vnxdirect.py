@@ -2026,8 +2026,7 @@ Time Remaining:  0 second(s)
                                          vol,
                                          fake_host)
         self.assertTrue(ret[0])
-        self.assertTrue(
-            ret[1]['provider_location'].find('type^lun') > 0)
+        self.assertIn('type^lun', ret[1]['provider_location'])
         # verification
         expect_cmd = [mock.call(*self.testData.MIGRATION_CMD(),
                                 retry_disable=True,
@@ -2597,8 +2596,7 @@ Time Remaining:  0 second(s)
         vol = self.driver.create_volume_from_snapshot(
             self.testData.test_volume_with_type,
             self.testData.test_snapshot)
-        self.assertTrue(
-            vol['provider_location'].find('type^smp') > 0)
+        self.assertIn('type^smp', vol['provider_location'])
         expect_cmd = [
             mock.call(
                 *self.testData.SNAP_COPY_CMD(
@@ -2768,8 +2766,7 @@ Time Remaining:  0 second(s)
         vol = self.driver.create_cloned_volume(
             self.testData.test_clone,
             self.testData.test_volume_with_type)
-        self.assertTrue(
-            vol['provider_location'].find('type^smp') > 0)
+        self.assertIn('type^smp', vol['provider_location'])
         expect_cmd = [
             mock.call(
                 *self.testData.SNAP_CREATE_CMD(
@@ -3737,8 +3734,7 @@ Time Remaining:  0 second(s)
                                  host_test_data)
         self.assertTrue(type(ret) == tuple)
         self.assertTrue(ret[0])
-        self.assertTrue(
-            ret[1]['provider_location'].find('type^lun') > 0)
+        self.assertIn('type^lun', ret[1]['provider_location'])
         expect_cmd = [
             mock.call(*self.testData.SNAP_LIST_CMD(), poll=False),
             mock.call(*self.testData.SNAP_DELETE_CMD(tmp_snap),
@@ -4227,10 +4223,10 @@ Time Remaining:  0 second(s)
                       vol2_in_new_cg['name'] + '_dest'), poll=False),
             mock.call(*td.MIGRATION_CMD(6232, 2),
                       poll=True, retry_disable=True),
-            mock.call(*td.MIGRATION_VERIFY_CMD(6232), poll=True),
             mock.call(*td.MIGRATION_VERIFY_CMD(6231), poll=True),
+            mock.call(*td.MIGRATION_VERIFY_CMD(6232), poll=True),
             mock.call(*td.CREATE_CONSISTENCYGROUP_CMD(
-                      new_cg['id'], [6232, 6231]), poll=True),
+                      new_cg['id'], [6231, 6232]), poll=True),
             mock.call(*td.DELETE_CG_SNAPSHOT(copied_snap_name))]
         self.assertEqual(expect_cmd, fake_cli.call_args_list)
 
@@ -5149,8 +5145,8 @@ class EMCVNXCLIDriverFCTestCase(DriverTestCaseBase):
                               poll=False),
                     mock.call('port', '-list', '-gname', 'fakehost')]
         fake_cli.assert_has_calls(expected)
-        self.assertEqual(['5006016A0860080F', '5006016008600195'],
-                         data['data']['target_wwn'])
+        self.assertEqual(set(['5006016A0860080F', '5006016008600195']),
+                         set(data['data']['target_wwn']))
 
     @mock.patch('random.randint',
                 mock.Mock(return_value=0))
@@ -5186,8 +5182,8 @@ class EMCVNXCLIDriverFCTestCase(DriverTestCaseBase):
                               poll=False),
                     mock.call('port', '-list', '-gname', 'fakehost')]
         fake_cli.assert_has_calls(expected)
-        self.assertEqual(['5006016A0860080F', '5006016008600195'],
-                         data['data']['target_wwn'])
+        self.assertEqual(set(['5006016A0860080F', '5006016008600195']),
+                         set(data['data']['target_wwn']))
 
     @mock.patch(
         "cinder.zonemanager.fc_san_lookup_service.FCSanLookupService." +
