@@ -7,9 +7,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev260\n"
+"Project-Id-Version: cinder 8.0.0.dev282\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-20 06:38+0000\n"
+"POT-Creation-Date: 2015-11-23 06:41+0000\n"
 "PO-Revision-Date: 2015-08-26 03:31+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: Turkish (Turkey)\n"
@@ -1251,15 +1251,6 @@ msgstr "%s istemcisine bağlı veri depoları getirilemedi."
 #, python-format
 msgid "Unable to find Masking view: %(view)s."
 msgstr "Maskeleme görünümü bulunamadı: %(view)s."
-
-#, python-format
-msgid ""
-"Unable to find a preferred node match for node %(node)s in the list of "
-"available WWPNs on %(host)s. Using first available."
-msgstr ""
-"%(node)s istemcisi için %(host)s üzerindeki kullanılabilir WWPN listesinde "
-"tercih edilen bir düğün eşleşmesi bulunamadı. İlk kullanılabilen "
-"kullanılıyor."
 
 #, python-format
 msgid "Unable to find snapshot %s"
