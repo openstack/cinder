@@ -9,10 +9,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev269\n"
+"Project-Id-Version: cinder 8.0.0.dev282\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-22 06:38+0000\n"
-"PO-Revision-Date: 2015-11-21 06:30+0000\n"
+"POT-Creation-Date: 2015-11-23 06:41+0000\n"
+"PO-Revision-Date: 2015-11-22 08:28+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language: cs\n"
 "Language-Team: Czech\n"
@@ -6721,7 +6721,7 @@ msgstr "Neexistuje žádné zařízení virtuálního disku."
 
 #, python-format
 msgid "There was an error creating the cgsnapshot: %s"
-msgstr "Při vytváření snímku skupiny jednotnosti nastal chyba: %s"
+msgstr "Při vytváření snímku skupiny jednotnosti nastala chyba: %s"
 
 #, python-format
 msgid "There's no Gluster config file configured (%s)"
