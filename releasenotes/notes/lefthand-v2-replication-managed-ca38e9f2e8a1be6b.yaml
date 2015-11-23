@@ -1,0 +1,3 @@
+---
+features:
+  - Added managed v2 replication support to the HPE LeftHand driver.
