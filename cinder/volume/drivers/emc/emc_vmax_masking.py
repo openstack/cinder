@@ -1096,7 +1096,7 @@ class EMCVMAXMasking(object):
         groups = conn.AssociatorNames(
             maskingViewInstance,
             ResultClass='CIM_DeviceMaskingGroup')
-        if groups[0] > 0:
+        if len(groups) > 0:
             foundStorageGroupInstanceName = groups[0]
 
         return foundStorageGroupInstanceName
