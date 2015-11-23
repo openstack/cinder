@@ -209,6 +209,7 @@ def get_volume_type_encryption(context, volume_type_id):
 
 
 def get_volume_type_qos_specs(volume_type_id):
+    """Get all qos specs for given volume type."""
     ctxt = context.get_admin_context()
     res = db.volume_type_qos_specs_get(ctxt,
                                        volume_type_id)

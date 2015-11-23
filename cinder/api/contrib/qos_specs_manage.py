@@ -88,10 +88,10 @@ class QoSSpecsController(wsgi.Controller):
         self.validate_string_length(name, 'name', min_length=1,
                                     max_length=255, remove_whitespaces=True)
         name = name.strip()
-
+        # Remove name from 'specs' since passing it in as separate param
+        del specs['name']
         try:
-            qos_specs.create(context, name, specs)
-            spec = qos_specs.get_qos_specs_by_name(context, name)
+            spec = qos_specs.create(context, name, specs)
             notifier_info = dict(name=name, specs=specs)
             rpc.get_notifier('QoSSpecs').info(context,
                                               'qos_specs.create',

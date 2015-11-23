@@ -573,13 +573,13 @@ class VolumeRetypeActionsTest(test.TestCase):
         self.retype_mocks['reserve'].side_effect = exc
         self._retype_volume_exec(413, vol_type_new.id, vol.id)
 
-    def _retype_volume_qos(self, vol_status, consumer, expected_status,
+    def _retype_volume_qos(self, vol_status, consumer_pass, expected_status,
                            same_qos=False, has_qos=True, has_type=True):
         admin_ctxt = context.get_admin_context()
         if has_qos:
             qos_old = utils.create_qos(admin_ctxt, self,
                                        name='old',
-                                       qos_specs={'consumer': consumer})['id']
+                                       consumer=consumer_pass)['id']
         else:
             qos_old = None
 
@@ -588,7 +588,7 @@ class VolumeRetypeActionsTest(test.TestCase):
         else:
             qos_new = utils.create_qos(admin_ctxt, self,
                                        name='new',
-                                       qos_specs={'consumer': consumer})['id']
+                                       consumer=consumer_pass)['id']
 
         if has_type:
             vol_type_old = utils.create_volume_type(admin_ctxt, self,
