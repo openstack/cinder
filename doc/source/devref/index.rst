@@ -53,6 +53,7 @@ Other Resources
    launchpad
    gerrit
    jenkins
+   releasenotes
 
 API Reference
 -------------
