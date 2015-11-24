@@ -115,6 +115,7 @@ class DatastoreSelector(object):
 
         return [summary for summary in filtered_summaries
                 if (summary.freeSpace > size_bytes and
+                    summary.type.lower() in DatastoreType.get_all_types() and
                     (hard_affinity_ds_types is None or
                      summary.type.lower() in hard_affinity_ds_types))]
 

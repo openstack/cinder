@@ -71,6 +71,21 @@ class DatastoreTest(test.TestCase):
         host.value = value
         return host
 
+    def test_filter_datastores_with_unsupported_type(self):
+        ds_1 = self._create_datastore('ds-1')
+        ds_2 = self._create_datastore('ds-2')
+        datastores = [ds_1, ds_2]
+
+        self._vops.get_summary.side_effect = [
+            self._create_summary(ds_1),
+            self._create_summary(ds_2, _type='foo')]
+
+        res = self._ds_sel._filter_datastores(
+            datastores, units.Ki, None, None, None)
+
+        self.assertEqual(1, len(res))
+        self.assertEqual(ds_1, res[0].datastore)
+
     @mock.patch('cinder.volume.drivers.vmware.datastore.DatastoreSelector.'
                 '_filter_by_profile')
     def test_filter_datastores(self, filter_by_profile):
