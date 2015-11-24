@@ -721,7 +721,8 @@ class RBDTestCase(test.TestCase):
             storage_protocol='ceph',
             total_capacity_gb=27,
             free_capacity_gb=26,
-            reserved_percentage=0)
+            reserved_percentage=0,
+            multiattach=True)
 
         actual = self.driver.get_volume_stats(True)
         client.cluster.mon_command.assert_called_once_with(
@@ -746,7 +747,8 @@ class RBDTestCase(test.TestCase):
                         storage_protocol='ceph',
                         total_capacity_gb='unknown',
                         free_capacity_gb='unknown',
-                        reserved_percentage=0)
+                        reserved_percentage=0,
+                        multiattach=True)
 
         actual = self.driver.get_volume_stats(True)
         client.cluster.mon_command.assert_called_once_with(
