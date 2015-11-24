@@ -215,7 +215,7 @@ volume_opts = [
                       "times in a single config section to specify multiple "
                       "replication target devices.  Each entry takes the "
                       "standard dict config form: replication_device = "
-                      "device_target_id:<required>,"
+                      "target_device_id:<required>,"
                       "managed_backend_name:<host@backend_name>,"
                       "key1:value1,key2:value2..."),
     cfg.BoolOpt('image_upload_use_cinder_backend',

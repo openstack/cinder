@@ -3323,28 +3323,22 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         This method is used to query a backend to get the current
         replication config info for the specified volume.
-
         In the case of a volume that isn't being replicated,
         the driver should return an empty list.
 
+        There is one required field for configuration of
+        replication, (target_device_id).  As such we
+        use that for the response in list_replication_targets.
 
-        Example response for replicating to a managed backend:
+        Internal methods can be added to extract additional
+        details if needed, but the only detail that should be
+        exposed to an end user is the identifier.  In the case
+        of an Admin, (s)he can always cross check the cinder.conf
+        file that they have configured for additional info.
+
+        Example response:
             {'volume_id': volume['id'],
-             'targets':[{'remote_device_id': 'vendor-id-for-target-device',
-                         'managed_host': 'backend_name'}...]
-
-        Example response for replicating to an unmanaged backend:
-            {'volume_id': volume['id'], 'targets':[
-                {'remote_device_id': 'vendor-id-for-target-device',
-                                      'san_ip': '1.1.1.1',
-                                      'san_login': 'admin'},
-                                      ....]}
-
-        NOTE: It's the responsibility of the driver to mask out any
-        passwords or sensitive information.
-
-        `remote_device_id` is required and is used for drivers to identify
-        the devices they have in use.
+             'targets':[<target-device-id>,...]'
 
         """
         # NOTE(hemna) We intentionally don't enforce the driver being

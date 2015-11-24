@@ -31,8 +31,11 @@ like to configure.
 There are two standardized keys in the config
 entry, all others are vendor-unique:
 
-* device_target_id:<vendor-identifier-for-rep-target>
+* target_device_id:<vendor-identifier-for-rep-target>
 * managed_backend_name:<cinder-backend-host-entry>,"
+
+target_device_id is REQUIRED in all configurations
+
 
 
 An example config entry for a managed replication device
@@ -209,17 +212,14 @@ act as a toggle, allowing to switch back and forth betweeen primary and secondar
 
 **list_replication_targets**
 
-Used by the admin to query a volume for a list of configured replication targets
-The expected return for this call is expected to mimic the form used in the config file.
+Used by the admin to query a volume for a list of configured replication targets.
 
-For a volume replicating to managed replication targets::
+The expected response is simply the single required field in replication-device
+configuration.  It's possible that in the future we may want to add a show
+command that provides all the various details about a target replication
+device.  This would be of the form:
+`show_replication_target <target_device_id>`
 
-    {'volume_id': volume['id'], 'targets':[{'type': 'managed',
-                                            'backend_name': 'backend_name'}...]
-
-For a volume replicating to external/unmanaged targets::
-
-    {'volume_id': volume['id'], 'targets':[{'type': 'unmanaged',
-                                            'san_ip': '127.0.0.1',
-                                            'san_login': 'admin'...}...]
-
+Example response:
+    {'volume_id': volume['id'],
+     'targets':[<target-device-id>,...]'
