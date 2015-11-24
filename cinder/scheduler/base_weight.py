@@ -21,7 +21,7 @@ import abc
 
 import six
 
-from cinder.openstack.common.scheduler import base_handler
+from cinder.scheduler import base_handler
 
 
 def normalize(weight_list, minval=None, maxval=None):
@@ -87,9 +87,7 @@ class BaseWeigher(object):
 
     @abc.abstractmethod
     def _weigh_object(self, obj, weight_properties):
-        """Override in a subclass to specify a weight for a specific
-        object.
-        """
+        """Override in a subclass to specify a weight for a specific object."""
 
     def weigh_objects(self, weighed_obj_list, weight_properties):
         """Weigh multiple objects.

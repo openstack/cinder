@@ -17,8 +17,8 @@ import logging
 
 import six
 
-from cinder.openstack.common.scheduler import filters
-from cinder.openstack.common.scheduler.filters import extra_specs_ops
+from cinder.scheduler import filters
+from cinder.scheduler.filters import extra_specs_ops
 
 LOG = logging.getLogger(__name__)
 
@@ -27,7 +27,9 @@ class CapabilitiesFilter(filters.BaseHostFilter):
     """HostFilter to work with resource (instance & volume) type records."""
 
     def _satisfies_extra_specs(self, capabilities, resource_type):
-        """Check that the capabilities provided by the services satisfy
+        """Check if capabilities satisfy resource type requirements.
+
+        Check that the capabilities provided by the services satisfy
         the extra specs associated with the resource type.
         """
         extra_specs = resource_type.get('extra_specs', [])

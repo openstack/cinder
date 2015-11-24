@@ -25,11 +25,11 @@ from oslo_utils import timeutils
 
 from cinder import context as cinder_context
 from cinder import exception
-from cinder.i18n import _LI, _LW
 from cinder import objects
-from cinder.openstack.common.scheduler import filters
-from cinder.openstack.common.scheduler import weights
 from cinder import utils
+from cinder.i18n import _LI, _LW
+from cinder.scheduler import filters
+from cinder.scheduler import weights
 from cinder.volume import utils as vol_utils
 
 

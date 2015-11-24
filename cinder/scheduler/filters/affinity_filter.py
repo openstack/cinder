@@ -17,7 +17,7 @@
 from oslo_log import log as logging
 from oslo_utils import uuidutils
 
-from cinder.openstack.common.scheduler import filters
+from cinder.scheduler import filters
 from cinder.volume import api as volume
 
 LOG = logging.getLogger(__name__)

@@ -20,7 +20,7 @@ Used to spread volumes randomly across a list of equally suitable hosts.
 
 import random
 
-from cinder.openstack.common.scheduler import weights
+from cinder.scheduler import weights
 
 
 class ChanceWeigher(weights.BaseHostWeigher):

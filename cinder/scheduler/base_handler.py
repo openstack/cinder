@@ -32,8 +32,9 @@ class BaseHandler(object):
         self.extension_manager = extension.ExtensionManager(modifier_namespace)
 
     def _is_correct_class(self, cls):
-        """Return whether an object is a class of the correct type and
-        is not prefixed with an underscore.
+        """Return whether an object is a class of the correct type.
+
+        (or is not prefixed with an underscore)
         """
         return (inspect.isclass(cls) and
                 not cls.__name__.startswith('_') and

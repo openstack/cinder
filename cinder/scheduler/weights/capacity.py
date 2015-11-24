@@ -44,7 +44,7 @@ import math
 
 from oslo_config import cfg
 
-from cinder.openstack.common.scheduler import weights
+from cinder.scheduler import weights
 
 
 capacity_weight_opts = [

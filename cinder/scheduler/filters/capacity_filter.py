@@ -22,7 +22,7 @@ import math
 from oslo_log import log as logging
 
 from cinder.i18n import _LE, _LW
-from cinder.openstack.common.scheduler import filters
+from cinder.scheduler import filters
 
 
 LOG = logging.getLogger(__name__)

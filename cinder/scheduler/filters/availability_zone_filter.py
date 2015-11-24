@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from cinder.openstack.common.scheduler import filters
+from cinder.scheduler import filters
 
 
 class AvailabilityZoneFilter(filters.BaseHostFilter):

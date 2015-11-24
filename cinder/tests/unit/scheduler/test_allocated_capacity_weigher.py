@@ -21,8 +21,7 @@ import mock
 from oslo_config import cfg
 
 from cinder import context
-from cinder.openstack.common.scheduler import weights
-from cinder.scheduler.weights import capacity
+from cinder.scheduler import weights
 from cinder import test
 from cinder.tests.unit.scheduler import fakes
 from cinder.volume import utils
@@ -41,7 +40,7 @@ class AllocatedCapacityWeigherTestCase(test.TestCase):
         if weight_properties is None:
             weight_properties = {}
         return self.weight_handler.get_weighed_objects(
-            [capacity.AllocatedCapacityWeigher], hosts,
+            [weights.capacity.AllocatedCapacityWeigher], hosts,
             weight_properties)[0]
 
     @mock.patch('cinder.db.sqlalchemy.api.service_get_all_by_topic')

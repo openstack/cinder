@@ -26,7 +26,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 
 from cinder import db
-from cinder.openstack.common.scheduler import weights
+from cinder.scheduler import weights
 
 
 LOG = logging.getLogger(__name__)
