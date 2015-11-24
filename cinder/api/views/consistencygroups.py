@@ -49,6 +49,12 @@ class ViewBuilder(common.ViewBuilder):
 
     def detail(self, request, consistencygroup):
         """Detailed view of a single consistency group."""
+        if consistencygroup.volume_type_id:
+            volume_types = consistencygroup.volume_type_id.split(",")
+            volume_types = [type_id for type_id in volume_types if type_id]
+        else:
+            volume_types = []
+
         return {
             'consistencygroup': {
                 'id': consistencygroup.id,
@@ -56,7 +62,8 @@ class ViewBuilder(common.ViewBuilder):
                 'availability_zone': consistencygroup.availability_zone,
                 'created_at': consistencygroup.created_at,
                 'name': consistencygroup.name,
-                'description': consistencygroup.description
+                'description': consistencygroup.description,
+                'volume_types': volume_types,
             }
         }
 
