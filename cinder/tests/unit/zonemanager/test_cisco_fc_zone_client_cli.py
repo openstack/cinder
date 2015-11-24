@@ -19,6 +19,7 @@
 
 import mock
 from oslo_concurrency import processutils
+from six.moves import range
 
 from cinder import exception
 from cinder import test
@@ -219,7 +220,7 @@ class TestCiscoFCZoneClientCLI(cli.CiscoFCZoneClientCLI, test.TestCase):
 
         expected_num_calls = 5
         expected_calls = []
-        for i in xrange(expected_num_calls):
+        for i in range(expected_num_calls):
             expected_calls.append(mock.call(cmd_list, True))
 
         self.assertEqual(expected_num_calls, run_ssh_mock.call_count)

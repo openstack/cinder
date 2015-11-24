@@ -105,7 +105,7 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
         if len(wwn_str) != 16:
             return wwn_str
         else:
-            return ':'.join(
+            return b':'.join(
                 [wwn_str[i:i + 2] for i in range(0, len(wwn_str), 2)])
 
     @lockutils.synchronized('brcd', 'fcfabric-', True)
