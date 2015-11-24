@@ -126,7 +126,17 @@ def _convert_image(prefix, source, dest, out_format, run_as_root=True):
     # some incredible event this is 0 (cirros image?) don't barf
     if duration < 1:
         duration = 1
-    fsz_mb = os.stat(source).st_size / units.Mi
+    try:
+        image_size = qemu_img_info(source, run_as_root=True).virtual_size
+    except ValueError as e:
+        msg = _LI("The image was successfully converted, but image size "
+                  "is unavailable. src %(src)s, dest %(dest)s. %(error)s")
+        LOG.info(msg, {"src": source,
+                       "dest": dest,
+                       "error": e})
+        return
+
+    fsz_mb = image_size / units.Mi
     mbps = (fsz_mb / duration)
     msg = ("Image conversion details: src %(src)s, size %(sz).2f MB, "
            "duration %(duration).2f sec, destination %(dest)s")
