@@ -15,7 +15,7 @@
 
 import logging
 
-from cinder.openstack.common.scheduler import filters
+from cinder.scheduler import filters
 
 LOG = logging.getLogger(__name__)
 

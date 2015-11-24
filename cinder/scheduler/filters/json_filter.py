@@ -18,15 +18,15 @@ import operator
 from oslo_serialization import jsonutils
 import six
 
-from cinder.openstack.common.scheduler import filters
+from cinder.scheduler import filters
 
 
 class JsonFilter(filters.BaseHostFilter):
-    """Host Filter to allow simple JSON-based grammar for
-    selecting hosts.
-    """
+    """Host Filter to allow simple JSON-based grammar for selecting hosts."""
     def _op_compare(self, args, op):
-        """Returns True if the specified operator can successfully
+        """Compare first item of args with the rest using specified operator.
+
+        Returns True if the specified operator can successfully
         compare the first item in the args with all the rest. Will
         return False if only one item is in the list.
         """
@@ -88,7 +88,9 @@ class JsonFilter(filters.BaseHostFilter):
     }
 
     def _parse_string(self, string, host_state):
-        """Strings prefixed with $ are capability lookups in the
+        """Parse capability lookup strings.
+
+        Strings prefixed with $ are capability lookups in the
         form '$variable' where 'variable' is an attribute in the
         HostState class.  If $variable is a dictionary, you may
         use: $variable.dictkey
@@ -126,9 +128,7 @@ class JsonFilter(filters.BaseHostFilter):
         return result
 
     def host_passes(self, host_state, filter_properties):
-        """Return a list of hosts that can fulfill the requirements
-        specified in the query.
-        """
+        """Return a list of hosts that can fulfill query requirements."""
         # TODO(zhiteng) Add description for filter_properties structure
         # and scheduler_hints.
         try:

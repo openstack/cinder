@@ -24,7 +24,7 @@ from oslo_utils import timeutils
 
 from cinder import exception
 from cinder import objects
-from cinder.openstack.common.scheduler import filters
+from cinder.scheduler import filters
 from cinder.scheduler import host_manager
 from cinder import test
 from cinder.tests.unit.objects import test_service

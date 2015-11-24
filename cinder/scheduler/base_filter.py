@@ -19,7 +19,7 @@ Filter support
 import logging
 
 from cinder.openstack.common._i18n import _LI
-from cinder.openstack.common.scheduler import base_handler
+from cinder.scheduler import base_handler
 
 LOG = logging.getLogger(__name__)
 
@@ -28,6 +28,7 @@ class BaseFilter(object):
     """Base class for all filter classes."""
     def _filter_one(self, obj, filter_properties):
         """Return True if it passes the filter, False otherwise.
+
         Override this in a subclass.
         """
         return True
@@ -48,9 +49,10 @@ class BaseFilter(object):
     run_filter_once_per_request = False
 
     def run_filter_for_index(self, index):
-        """Return True if the filter needs to be run for the "index-th"
-        instance in a request.  Only need to override this if a filter
-        needs anything other than "first only" or "all" behaviour.
+        """Return True if the filter needs to be run for n-th instances.
+
+        Only need to override this if a filter needs anything other than
+        "first only" or "all" behaviour.
         """
         return not (self.run_filter_once_per_request and index > 0)
 

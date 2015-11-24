@@ -20,8 +20,7 @@ import mock
 from oslo_config import cfg
 
 from cinder import context
-from cinder.openstack.common.scheduler import weights
-from cinder.scheduler.weights import capacity
+from cinder.scheduler import weights
 from cinder import test
 from cinder.tests.unit.scheduler import fakes
 from cinder.volume import utils
@@ -40,7 +39,7 @@ class CapacityWeigherTestCase(test.TestCase):
         if weight_properties is None:
             weight_properties = {'size': 1}
         return self.weight_handler.get_weighed_objects(
-            [capacity.CapacityWeigher],
+            [weights.capacity.CapacityWeigher],
             hosts,
             weight_properties)
 
