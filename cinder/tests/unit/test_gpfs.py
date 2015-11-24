@@ -688,23 +688,23 @@ class GPFSDriverTestCase(test.TestCase):
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.'
                 '_gpfs_change_attributes')
     def test_set_volume_attributes(self, mock_change_attributes, mock_mkfs):
-        metadata = [{'key': 'data_pool_name', 'value': 'test'},
-                    {'key': 'replicas', 'value': 'test'},
-                    {'key': 'dio', 'value': 'test'},
-                    {'key': 'write_affinity_depth', 'value': 'test'},
-                    {'key': 'block_group_factor', 'value': 'test'},
-                    {'key': 'write_affinity_failure_group', 'value': 'test'},
-                    {'key': 'test', 'value': 'test'},
-                    {'key': 'fstype', 'value': 'test'},
-                    {'key': 'fslabel', 'value': 'test'},
-                    {'key': 'test', 'value': 'test'}]
+        metadata = {'data_pool_name': 'test',
+                    'replicas': 'test',
+                    'dio': 'test',
+                    'write_affinity_depth': 'test',
+                    'block_group_factor': 'test',
+                    'write_affinity_failure_group': 'test',
+                    'test': 'test',
+                    'fstype': 'test',
+                    'fslabel': 'test',
+                    'test': 'test'}
 
         self.driver._set_volume_attributes('', '', metadata)
 
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.'
                 '_gpfs_change_attributes')
     def test_set_volume_attributes_no_attributes(self, mock_change_attributes):
-        metadata = []
+        metadata = {}
         org_value = self.driver.configuration.gpfs_storage_pool
         self.flags(volume_driver=self.driver_name, gpfs_storage_pool='system')
         self.driver._set_volume_attributes('', '', metadata)
@@ -714,12 +714,25 @@ class GPFSDriverTestCase(test.TestCase):
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.'
                 '_gpfs_change_attributes')
     def test_set_volume_attributes_no_options(self, mock_change_attributes):
-        metadata = []
+        metadata = {}
         org_value = self.driver.configuration.gpfs_storage_pool
         self.flags(volume_driver=self.driver_name, gpfs_storage_pool='')
         self.driver._set_volume_attributes('', '', metadata)
         self.flags(volume_driver=self.driver_name,
                    gpfs_storage_pool=org_value)
+
+    def test_get_volume_metadata(self):
+        volume = self._fake_volume()
+        volume['volume_metadata'] = [{'key': 'fake_key',
+                                      'value': 'fake_value'}]
+        expected_metadata = {'fake_key': 'fake_value'}
+        v_metadata = self.driver._get_volume_metadata(volume)
+        self.assertEqual(expected_metadata, v_metadata)
+        volume.pop('volume_metadata')
+        volume['metadata'] = {'key': 'value'}
+        expected_metadata = {'key': 'value'}
+        v_metadata = self.driver._get_volume_metadata(volume)
+        self.assertEqual(expected_metadata, v_metadata)
 
     @mock.patch('cinder.utils.execute')
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.'
@@ -808,7 +821,7 @@ class GPFSDriverTestCase(test.TestCase):
         value = {}
         value['value'] = 'test'
         mock_set_volume_attributes.return_value = True
-        metadata = [{'key': 'fake_key', 'value': 'fake_value'}]
+        metadata = {'fake_key': 'fake_value'}
 
         org_value = self.driver.configuration.gpfs_sparse_volumes
         self.flags(volume_driver=self.driver_name, gpfs_sparse_volumes=False)
@@ -875,7 +888,7 @@ class GPFSDriverTestCase(test.TestCase):
         snapshot = self._fake_snapshot()
         mock_snapshot_path.return_value = "/tmp/fakepath"
         mock_set_volume_attributes.return_value = True
-        metadata = [{'key': 'fake_key', 'value': 'fake_value'}]
+        metadata = {'fake_key': 'fake_value'}
 
         self.assertTrue(self.driver._set_volume_attributes(volume, 'test',
                                                            metadata))
@@ -927,7 +940,7 @@ class GPFSDriverTestCase(test.TestCase):
         volume = self._fake_volume()
         src_volume = self._fake_volume()
         mock_set_volume_attributes.return_value = True
-        metadata = [{'key': 'fake_key', 'value': 'fake_value'}]
+        metadata = {'fake_key': 'fake_value'}
 
         self.assertTrue(self.driver._set_volume_attributes(volume, 'test',
                                                            metadata))
