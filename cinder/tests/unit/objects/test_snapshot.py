@@ -167,6 +167,26 @@ class TestSnapshot(test_objects.BaseObjectsTestCase):
                                                   self.project_id,
                                                   volume_type_id)
 
+    @mock.patch('cinder.db.sqlalchemy.api.snapshot_get')
+    def test_refresh(self, snapshot_get):
+        db_snapshot1 = fake_snapshot.fake_db_snapshot()
+        db_snapshot2 = db_snapshot1.copy()
+        db_snapshot2['display_name'] = 'foobar'
+
+        # On the second snapshot_get, return the snapshot with an updated
+        # display_name
+        snapshot_get.side_effect = [db_snapshot1, db_snapshot2]
+        snapshot = objects.Snapshot.get_by_id(self.context, '1')
+        self._compare(self, db_snapshot1, snapshot)
+
+        # display_name was updated, so a snapshot refresh should have a new
+        # value for that field
+        snapshot.refresh()
+        self._compare(self, db_snapshot2, snapshot)
+        snapshot_get.assert_has_calls([mock.call(self.context, '1'),
+                                       mock.call.__nonzero__(),
+                                       mock.call(self.context, '1')])
+
 
 class TestSnapshotList(test_objects.BaseObjectsTestCase):
     @mock.patch('cinder.objects.volume.Volume.get_by_id')

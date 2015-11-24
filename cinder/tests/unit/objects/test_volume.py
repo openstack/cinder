@@ -272,6 +272,27 @@ class TestVolume(test_objects.BaseObjectsTestCase):
         self._compare(self, db_consistencygroup, volume.consistencygroup)
         self._compare(self, db_snapshots, volume.snapshots)
 
+    @mock.patch('cinder.db.volume_glance_metadata_get', return_value={})
+    @mock.patch('cinder.db.sqlalchemy.api.volume_get')
+    def test_refresh(self, volume_get, volume_metadata_get):
+        db_volume1 = fake_volume.fake_db_volume()
+        db_volume2 = db_volume1.copy()
+        db_volume2['display_name'] = 'foobar'
+
+        # On the second volume_get, return the volume with an updated
+        # display_name
+        volume_get.side_effect = [db_volume1, db_volume2]
+        volume = objects.Volume.get_by_id(self.context, '1')
+        self._compare(self, db_volume1, volume)
+
+        # display_name was updated, so a volume refresh should have a new value
+        # for that field
+        volume.refresh()
+        self._compare(self, db_volume2, volume)
+        volume_get.assert_has_calls([mock.call(self.context, '1'),
+                                     mock.call.__nonzero__(),
+                                     mock.call(self.context, '1')])
+
 
 class TestVolumeList(test_objects.BaseObjectsTestCase):
     @mock.patch('cinder.db.volume_get_all')

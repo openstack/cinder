@@ -107,6 +107,26 @@ class TestCGSnapshot(test_objects.BaseObjectsTestCase):
         snapshotlist_get_for_cgs.assert_called_once_with(
             self.context, cgsnapshot.id)
 
+    @mock.patch('cinder.db.sqlalchemy.api.cgsnapshot_get')
+    def test_refresh(self, cgsnapshot_get):
+        db_cgsnapshot1 = fake_cgsnapshot.copy()
+        db_cgsnapshot2 = db_cgsnapshot1.copy()
+        db_cgsnapshot2['description'] = 'foobar'
+
+        # On the second cgsnapshot_get, return the CGSnapshot with an updated
+        # description
+        cgsnapshot_get.side_effect = [db_cgsnapshot1, db_cgsnapshot2]
+        cgsnapshot = objects.CGSnapshot.get_by_id(self.context, '1')
+        self._compare(self, db_cgsnapshot1, cgsnapshot)
+
+        # description was updated, so a CGSnapshot refresh should have a new
+        # value for that field
+        cgsnapshot.refresh()
+        self._compare(self, db_cgsnapshot2, cgsnapshot)
+        cgsnapshot_get.assert_has_calls([mock.call(self.context, '1'),
+                                         mock.call.__nonzero__(),
+                                         mock.call(self.context, '1')])
+
 
 class TestCGSnapshotList(test_objects.BaseObjectsTestCase):
     @mock.patch('cinder.db.cgsnapshot_get_all',

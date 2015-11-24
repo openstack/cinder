@@ -77,6 +77,26 @@ class TestService(test_objects.BaseObjectsTestCase):
             service.destroy()
             service_destroy.assert_called_once_with(elevated_ctx(), 123)
 
+    @mock.patch('cinder.db.sqlalchemy.api.service_get')
+    def test_refresh(self, service_get):
+        db_service1 = fake_service.fake_db_service()
+        db_service2 = db_service1.copy()
+        db_service2['availability_zone'] = 'foobar'
+
+        # On the second service_get, return the service with an updated
+        # availability_zone
+        service_get.side_effect = [db_service1, db_service2]
+        service = objects.Service.get_by_id(self.context, 123)
+        self._compare(self, db_service1, service)
+
+        # availability_zone was updated, so a service refresh should have a
+        # new value for that field
+        service.refresh()
+        self._compare(self, db_service2, service)
+        service_get.assert_has_calls([mock.call(self.context, 123),
+                                      mock.call.__nonzero__(),
+                                      mock.call(self.context, 123)])
+
 
 class TestServiceList(test_objects.BaseObjectsTestCase):
     @mock.patch('cinder.db.service_get_all')
