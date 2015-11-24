@@ -749,7 +749,7 @@ class StorwizeSVCDriver(san.SanDriver,
     def _check_volume_copy_ops(self):
         LOG.debug("Enter: update volume copy status.")
         ctxt = context.get_admin_context()
-        copy_items = self._vdiskcopyops.items()
+        copy_items = list(self._vdiskcopyops.items())
         for vol_id, copy_ops in copy_items:
             try:
                 volume = self.db.volume_get(ctxt, vol_id)

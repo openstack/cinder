@@ -1014,7 +1014,7 @@ class StorwizeHelpers(object):
         self.ssh.prestartfcmap(fc_map_id)
         mapping_ready = False
         wait_time = 5
-        max_retries = (timeout / wait_time) + 1
+        max_retries = (timeout // wait_time) + 1
         for try_number in range(1, max_retries):
             mapping_attrs = self._get_flashcopy_mapping_attributes(fc_map_id)
             if (mapping_attrs is None or
