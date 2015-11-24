@@ -18,6 +18,7 @@ Test cases for the conf key manager.
 """
 
 import array
+import binascii
 
 from oslo_config import cfg
 
@@ -48,7 +49,7 @@ class ConfKeyManagerTestCase(test_key_mgr.KeyManagerTestCase):
         self.ctxt = context.RequestContext('fake', 'fake')
 
         self.key_id = '00000000-0000-0000-0000-000000000000'
-        encoded = array.array('B', self._hex_key.decode('hex')).tolist()
+        encoded = array.array('B', binascii.unhexlify(self._hex_key)).tolist()
         self.key = key.SymmetricKey('AES', encoded)
 
     def test___init__(self):
