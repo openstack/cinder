@@ -32,6 +32,7 @@ encryption key so *any* volume can be decrypted once the fixed key is known.
 """
 
 import array
+import binascii
 
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -70,8 +71,8 @@ class ConfKeyManager(key_mgr.KeyManager):
 
     def _generate_key(self, **kwargs):
         _hex = self._generate_hex_key(**kwargs)
-        return key.SymmetricKey('AES',
-                                array.array('B', _hex.decode('hex')).tolist())
+        key_list = array.array('B', binascii.unhexlify(_hex)).tolist()
+        return key.SymmetricKey('AES', key_list)
 
     def _generate_hex_key(self, **kwargs):
         if CONF.keymgr.fixed_key is None:

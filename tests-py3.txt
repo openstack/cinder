@@ -18,7 +18,12 @@ cinder.tests.unit.api.test_versions
 cinder.tests.unit.api.test_xmlutil
 cinder.tests.unit.image.test_cache
 cinder.tests.unit.image.test_glance
+cinder.tests.unit.keymgr.test_barbican
+cinder.tests.unit.keymgr.test_conf_key_mgr
+cinder.tests.unit.keymgr.test_key
+cinder.tests.unit.keymgr.test_key_mgr
 cinder.tests.unit.keymgr.test_mock_key_mgr
+cinder.tests.unit.keymgr.test_not_implemented_key_mgr
 cinder.tests.unit.scheduler.test_allocated_capacity_weigher
 cinder.tests.unit.scheduler.test_capacity_weigher
 cinder.tests.unit.scheduler.test_chance_weigher

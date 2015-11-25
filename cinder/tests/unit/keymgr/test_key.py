@@ -17,8 +17,6 @@
 Test cases for the key classes.
 """
 
-import array
-
 from cinder.keymgr import key
 from cinder import test
 
@@ -41,7 +39,7 @@ class SymmetricKeyTestCase(KeyTestCase):
 
     def setUp(self):
         self.algorithm = 'AES'
-        self.encoded = array.array('B', ('0' * 64).decode('hex')).tolist()
+        self.encoded = [0] * 32
 
         super(SymmetricKeyTestCase, self).setUp()
 
