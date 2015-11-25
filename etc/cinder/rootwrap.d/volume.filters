@@ -28,19 +28,8 @@ lvdisplay_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, lvdisplay
 # this file.
 scsi_id: CommandFilter, /lib/udev/scsi_id, root
 
-# cinder/volumes/drivers/srb.py: 'pvresize', '--setphysicalvolumesize', sizestr, pvname
-pvresize: EnvFilter, env, root, LC_ALL=C, pvresize
-pvresize_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, pvresize
-
 # cinder/brick/local_dev/lvm.py: 'vgcreate', vg_name, pv_list
 vgcreate: CommandFilter, vgcreate, root
-
-# cinder/volumes/drivers/srb.py: 'vgremove', '-f', vgname
-vgremove: CommandFilter, vgremove, root
-
-# cinder/volumes/drivers/srb.py: 'vgchange', '-an', vgname
-# cinder/volumes/drivers/srb.py: 'vgchange', '-ay', vgname
-vgchange: CommandFilter, vgchange, root
 
 # cinder/brick/local_dev/lvm.py: 'lvcreate', '-L', sizestr, '-n', volume_name,..
 # cinder/brick/local_dev/lvm.py: 'lvcreate', '-L', ...
