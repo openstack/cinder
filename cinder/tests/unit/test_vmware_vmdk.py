@@ -1682,6 +1682,31 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         vops.create_vm_inventory_folder.assert_called_once_with(
             datacenter, ['OpenStack', project_folder_name, self.VOLUME_FOLDER])
 
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.'
+                '_get_volume_type_extra_spec')
+    @ddt.data('full', 'linked')
+    def test_get_clone_type(self, clone_type, get_volume_type_extra_spec):
+        get_volume_type_extra_spec.return_value = clone_type
+
+        volume = self._create_volume_dict()
+        self.assertEqual(clone_type, self._driver._get_clone_type(volume))
+        get_volume_type_extra_spec.assert_called_once_with(
+            volume['volume_type_id'], 'clone_type',
+            default_value=volumeops.FULL_CLONE_TYPE)
+
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.'
+                '_get_volume_type_extra_spec')
+    def test_get_clone_type_invalid(
+            self, get_volume_type_extra_spec):
+        get_volume_type_extra_spec.return_value = 'foo'
+
+        volume = self._create_volume_dict()
+        self.assertRaises(
+            cinder_exceptions.Invalid, self._driver._get_clone_type, volume)
+        get_volume_type_extra_spec.assert_called_once_with(
+            volume['volume_type_id'], 'clone_type',
+            default_value=volumeops.FULL_CLONE_TYPE)
+
     @mock.patch.object(VMDK_DRIVER, '_extend_backing')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     def test_clone_backing_linked(self, volume_ops, extend_backing):

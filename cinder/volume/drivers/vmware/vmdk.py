@@ -1813,11 +1813,22 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         :return: Clone type from the extra spec if present, else return
                  default 'full' clone type
         """
-        return _get_volume_type_extra_spec(volume['volume_type_id'],
-                                           'clone_type',
-                                           (volumeops.FULL_CLONE_TYPE,
-                                            volumeops.LINKED_CLONE_TYPE),
-                                           volumeops.FULL_CLONE_TYPE)
+        clone_type = _get_volume_type_extra_spec(
+            volume['volume_type_id'],
+            'clone_type',
+            default_value=volumeops.FULL_CLONE_TYPE)
+
+        if (clone_type != volumeops.FULL_CLONE_TYPE
+                and clone_type != volumeops.LINKED_CLONE_TYPE):
+            msg = (_("Clone type '%(clone_type)s' is invalid; valid values"
+                     " are: '%(full_clone)s' and '%(linked_clone)s'.") %
+                   {'clone_type': clone_type,
+                    'full_clone': volumeops.FULL_CLONE_TYPE,
+                    'linked_clone': volumeops.LINKED_CLONE_TYPE})
+            LOG.error(msg)
+            raise exception.Invalid(message=msg)
+
+        return clone_type
 
     def _clone_backing(self, volume, backing, snapshot, clone_type, src_vsize):
         """Clone the backing.
