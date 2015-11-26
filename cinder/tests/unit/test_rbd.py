@@ -372,6 +372,19 @@ class RBDTestCase(test.TestCase):
         proxy.unprotect_snap.assert_called_with(self.snapshot_name)
 
     @common_mocks
+    def test_delete_notfound_snapshot(self):
+        proxy = self.mock_proxy.return_value
+        proxy.__enter__.return_value = proxy
+
+        proxy.unprotect_snap.side_effect = (
+            self.mock_rbd.ImageNotFound)
+
+        self.driver.delete_snapshot(self.snapshot)
+
+        proxy.remove_snap.assert_called_with(self.snapshot_name)
+        proxy.unprotect_snap.assert_called_with(self.snapshot_name)
+
+    @common_mocks
     def test_delete_busy_snapshot(self):
         proxy = self.mock_proxy.return_value
         proxy.__enter__.return_value = proxy
