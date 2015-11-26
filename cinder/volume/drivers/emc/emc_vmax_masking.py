@@ -91,30 +91,11 @@ class EMCVMAXMasking(object):
         assocStorageGroupName = None
         if isLiveMigration is False:
             if isV3:
-                assocStorageGroupInstanceName = (
-                    self.utils.get_storage_group_from_volume(
-                        conn, volumeInstance.path,
-                        maskingViewDict['sgGroupName']))
-                instance = conn.GetInstance(
-                    assocStorageGroupInstanceName, LocalOnly=False)
-                assocStorageGroupName = instance['ElementName']
-                defaultSgGroupName = self.utils.get_v3_storage_group_name(
-                    maskingViewDict['pool'],
-                    maskingViewDict['slo'],
-                    maskingViewDict['workload'])
+                defaultStorageGroupInstanceName = (
+                    self._get_v3_default_storagegroup_instancename(
+                        conn, volumeInstance, maskingViewDict,
+                        controllerConfigService, volumeName))
 
-                if assocStorageGroupName != defaultSgGroupName:
-                    LOG.warning(_LW(
-                        "Volume: %(volumeName)s Does not belong "
-                        "to storage storage group %(defaultSgGroupName)s."),
-                        {'volumeName': volumeName,
-                         'defaultSgGroupName': defaultSgGroupName})
-                defaultStorageGroupInstanceName = assocStorageGroupInstanceName
-
-                self._get_and_remove_from_storage_group_v3(
-                    conn, controllerConfigService, volumeInstance.path,
-                    volumeName, maskingViewDict,
-                    defaultStorageGroupInstanceName)
             else:
                 fastPolicyName = maskingViewDict['fastPolicy']
                 # If FAST is enabled remove the volume from the default SG.
@@ -190,6 +171,41 @@ class EMCVMAXMasking(object):
             raise exception.VolumeBackendAPIException(data=exceptionMessage)
 
         return rollbackDict
+
+    def _get_v3_default_storagegroup_instancename(self, conn, volumeinstance,
+                                                  maskingviewdict,
+                                                  controllerConfigService,
+                                                  volumeName):
+        defaultStorageGroupInstanceName = None
+        defaultSgGroupName = self.utils.get_v3_storage_group_name(
+            maskingviewdict['pool'],
+            maskingviewdict['slo'],
+            maskingviewdict['workload'])
+        assocStorageGroupInstanceNames = (
+            self.utils.get_storage_groups_from_volume(
+                conn, volumeinstance.path))
+        for assocStorageGroupInstanceName in (
+                assocStorageGroupInstanceNames):
+            instance = conn.GetInstance(
+                assocStorageGroupInstanceName, LocalOnly=False)
+            assocStorageGroupName = instance['ElementName']
+
+            if assocStorageGroupName == defaultSgGroupName:
+                defaultStorageGroupInstanceName = (
+                    assocStorageGroupInstanceName)
+                break
+        if defaultStorageGroupInstanceName:
+            self._get_and_remove_from_storage_group_v3(
+                conn, controllerConfigService, volumeinstance.path,
+                volumeName, maskingviewdict,
+                defaultStorageGroupInstanceName)
+        else:
+            LOG.warning(_LW(
+                "Volume: %(volumeName)s does not belong "
+                "to storage group %(defaultSgGroupName)s."),
+                {'volumeName': volumeName,
+                 'defaultSgGroupName': defaultSgGroupName})
+        return defaultStorageGroupInstanceName
 
     def _validate_masking_view(self, conn, maskingViewDict,
                                defaultStorageGroupInstanceName,

@@ -7174,3 +7174,67 @@ class EMCVMAXProvisionV3Test(test.TestCase):
             provisionv3.extend_volume_in_SG, conn, storageConfigService,
             theVolumeInstanceName, inVolumeInstanceName, volumeSize,
             extraSpecs)
+
+
+class EMCVMAXMaskingTest(test.TestCase):
+    def setUp(self):
+        self.data = EMCVMAXCommonData()
+
+        super(EMCVMAXMaskingTest, self).setUp()
+
+        configuration = mock.Mock()
+        configuration.safe_get.return_value = 'MaskingTests'
+        configuration.config_group = 'MaskingTests'
+        emc_vmax_common.EMCVMAXCommon._get_ecom_connection = mock.Mock(
+            return_value=self.fake_ecom_connection())
+        emc_vmax_common.EMCVMAXCommon._gather_info = mock.Mock(
+            return_value=self.fake_gather_info())
+        instancename = FakeCIMInstanceName()
+        emc_vmax_utils.EMCVMAXUtils.get_instance_name = (
+            instancename.fake_getinstancename)
+        driver = emc_vmax_iscsi.EMCVMAXISCSIDriver(configuration=configuration)
+        driver.db = FakeDB()
+        self.driver = driver
+        self.driver.utils = emc_vmax_utils.EMCVMAXUtils(object)
+
+    def fake_ecom_connection(self):
+        conn = FakeEcomConnection()
+        return conn
+
+    def fake_gather_info(self):
+        return
+
+    def test_get_v3_default_storage_group_instance_name(self):
+        masking = self.driver.common.masking
+        conn = self.fake_ecom_connection()
+        extraSpecs = self.data.extra_specs
+        masking._get_and_remove_from_storage_group_v3 = mock.Mock()
+        controllerConfigService = (
+            self.driver.utils.find_controller_configuration_service(
+                conn, self.data.storage_system))
+        maskingviewdict = self.driver.common._populate_masking_dict(
+            self.data.test_volume, self.data.connector, extraSpecs)
+        result = (
+            masking._get_v3_default_storagegroup_instancename(
+                conn, maskingviewdict['volumeInstance'],
+                maskingviewdict,
+                controllerConfigService, maskingviewdict['volumeName']))
+        self.assertEqual('OS-SRP_1-Bronze-DSS-SG', result['ElementName'])
+
+    def test_get_v3_default_storage_group_instance_name_warning(self):
+        masking = self.driver.common.masking
+        conn = self.fake_ecom_connection()
+        extraSpecs = self.data.extra_specs
+        masking.utils.get_storage_groups_from_volume = mock.Mock(
+            return_value=[])
+        controllerConfigService = (
+            self.driver.utils.find_controller_configuration_service(
+                conn, self.data.storage_system))
+        maskingviewdict = self.driver.common._populate_masking_dict(
+            self.data.test_volume, self.data.connector, extraSpecs)
+        result = (
+            masking._get_v3_default_storagegroup_instancename(
+                conn, maskingviewdict['volumeInstance'],
+                maskingviewdict,
+                controllerConfigService, maskingviewdict['volumeName']))
+        self.assertIsNone(result)
