@@ -498,7 +498,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
 
-        self.assertEqual(None, conn_info)
+        self.assertIsNone(conn_info)
 
 
 class InfortrendiSCSICommonTestCase(InfortrendTestCass):

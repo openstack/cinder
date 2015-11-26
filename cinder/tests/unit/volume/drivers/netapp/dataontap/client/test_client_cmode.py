@@ -103,7 +103,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
         iqn = self.client.get_iscsi_service_details()
 
-        self.assertEqual(None, iqn)
+        self.assertIsNone(iqn)
 
     def test_get_iscsi_service_details(self):
         expected_iqn = 'iqn.1998-01.org.openstack.iscsi:name1'
@@ -819,9 +819,8 @@ class NetAppCmodeClientTestCase(test.TestCase):
         self.assertEqual(expected_flex_vol, actual_flex_vol)
         self.assertEqual(expected_src_path, actual_src_path)
         self.assertEqual(expected_dest_path, actual_dest_path)
-        self.assertEqual(None,
-                         actual_request.get_child_by_name(
-                             'destination-exists'))
+        self.assertIsNone(actual_request.get_child_by_name(
+            'destination-exists'))
 
     def test_get_file_usage(self):
         expected_bytes = "2048"

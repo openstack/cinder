@@ -1199,9 +1199,8 @@ class FlashSystemDriverTestCase(test.TestCase):
         self.assertEqual(
             host2,
             self.driver._find_host_exhaustive(conn2, [host1, host2]))
-        self.assertEqual(
-            None,
-            self.driver._find_host_exhaustive(conn3, [host1, host2]))
+        self.assertIsNone(self.driver._find_host_exhaustive(conn3,
+                                                            [host1, host2]))
 
         # clear environment
         self.driver._delete_host(host1)
@@ -1261,6 +1260,4 @@ class FlashSystemDriverTestCase(test.TestCase):
         self.driver.delete_volume(vol2)
 
         # case 4: If there is no vdisk mapped to host, host should be removed
-        self.assertEqual(
-            None,
-            self.driver._get_host_from_connector(self.connector))
+        self.assertIsNone(self.driver._get_host_from_connector(self.connector))

@@ -196,9 +196,8 @@ class TestURLMap(test.TestCase):
         self.assertEqual('value', wrap(self.input_environ, start_response))
 
     def test_content_type_strategy_without_version(self):
-        self.assertEqual(None,
-                         self.urlmap._content_type_strategy('host', 20,
-                                                            self.environ))
+        self.assertIsNone(self.urlmap._content_type_strategy('host', 20,
+                                                             self.environ))
 
     def test_content_type_strategy_with_version(self):
         environ = {'HTTP_ACCEPT': "application/vnd.openstack.melange+xml;"

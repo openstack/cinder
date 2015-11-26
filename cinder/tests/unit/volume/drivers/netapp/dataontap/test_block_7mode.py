@@ -421,13 +421,13 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
         result = self.library._mark_qos_policy_group_for_deletion(
             fake.QOS_POLICY_GROUP_INFO)
 
-        self.assertEqual(None, result)
+        self.assertIsNone(result)
 
     def test_setup_qos_for_volume(self):
         result = self.library._setup_qos_for_volume(fake.VOLUME,
                                                     fake.EXTRA_SPECS)
 
-        self.assertEqual(None, result)
+        self.assertIsNone(result)
 
     def test_manage_existing_lun_same_name(self):
         mock_lun = block_base.NetAppLun('handle', 'name', '1',

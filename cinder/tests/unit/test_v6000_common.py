@@ -142,7 +142,7 @@ class V6000CommonTestCase(test.TestCase):
             self.driver.vip.version)
         self.driver.vip.basic.get_node_values.assert_called_with(
             [bn1, bn2])
-        self.assertEqual(None, result)
+        self.assertIsNone(result)
 
     def test_check_for_setup_error_no_container(self):
         """No container was configured."""
@@ -560,4 +560,4 @@ class V6000CommonTestCase(test.TestCase):
     def test_fatal_error_code_non_fatal_error(self):
         """Returns no exception for a non-fatal error code."""
         response = {'code': 1024, 'message': 'try again!'}
-        self.assertEqual(None, self.driver._fatal_error_code(response))
+        self.assertIsNone(self.driver._fatal_error_code(response))

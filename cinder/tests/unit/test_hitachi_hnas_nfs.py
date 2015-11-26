@@ -285,7 +285,7 @@ class HDSNFSDriverTest(test.TestCase):
         m_volume_not_present.return_value = True
 
         self.driver.delete_snapshot(svol)
-        self.assertEqual(None, svol['provider_location'])
+        self.assertIsNone(svol['provider_location'])
 
     @mock.patch.object(nfs.HDSNFSDriver, '_get_service')
     @mock.patch.object(nfs.HDSNFSDriver, '_id_to_vol', side_effect=id_to_vol)

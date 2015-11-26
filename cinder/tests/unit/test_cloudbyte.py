@@ -1111,9 +1111,7 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
             'CustomerA', self.driver.configuration.cb_account_name)
 
         # assert the result
-        self.assertEqual(
-            None,
-            provider_details['provider_auth'])
+        self.assertIsNone(provider_details['provider_auth'])
         self.assertThat(
             provider_details['provider_location'],
             matchers.Contains('172.16.50.35:3260'))
@@ -1343,9 +1341,7 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
             self.driver.create_volume_from_snapshot(cloned_volume, snapshot))
 
         # assert the result
-        self.assertEqual(
-            None,
-            provider_details['provider_auth'])
+        self.assertIsNone(provider_details['provider_auth'])
         self.assertEqual(
             '20.10.22.56:3260 '
             'iqn.2014-06.acc1.openstacktsm:acc1DS1Snap1clone1 0',
@@ -1413,8 +1409,7 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
         model_update = self.driver.create_export({}, {}, {})
 
         # assert the result
-        self.assertEqual(None,
-                         model_update['provider_auth'])
+        self.assertIsNone(model_update['provider_auth'])
 
     @mock.patch.object(cloudbyte.CloudByteISCSIDriver,
                        '_api_request_for_cloudbyte')
@@ -1450,8 +1445,7 @@ class CloudByteISCSIDriverTestCase(testtools.TestCase):
         model_update = self.driver.create_export({}, {}, {})
 
         # assert the result
-        self.assertEqual(None,
-                         model_update['provider_auth'])
+        self.assertIsNone(model_update['provider_auth'])
 
     @mock.patch.object(cloudbyte.CloudByteISCSIDriver,
                        '_api_request_for_cloudbyte')

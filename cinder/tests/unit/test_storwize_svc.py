@@ -2729,7 +2729,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         # in the parameter.
         params = self.driver._get_vdisk_params(None, volume_type=None,
                                                volume_metadata=None)
-        self.assertEqual(None, params['qos'])
+        self.assertIsNone(params['qos'])
         qos_spec = volume_types.get_volume_type_qos_specs(type_id)
         volume_types.destroy(self.ctxt, type_id)
         qos_specs.delete(self.ctxt, qos_spec['qos_specs']['id'])
@@ -2758,7 +2758,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         # in the parameter.
         params = self.driver._get_vdisk_params(None, volume_type=None,
                                                volume_metadata=None)
-        self.assertEqual(None, params['qos'])
+        self.assertIsNone(params['qos'])
         volume_types.destroy(self.ctxt, type_id)
 
         # If the QoS is set in the volume metadata,
@@ -3059,8 +3059,8 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         self.driver._check_volume_copy_ops()
         self.driver._rm_vdisk_copy_op(ctxt, volume, new_ops[0], new_ops[1])
         admin_metadata = self.db.volume_admin_metadata_get(ctxt, volume['id'])
-        self.assertEqual(None, admin_metadata.get('vdiskcopyops', None),
-                         'Storwize driver delete vdisk copy error')
+        self.assertIsNone(admin_metadata.get('vdiskcopyops', None),
+                          'Storwize driver delete vdisk copy error')
         self._delete_volume(volume)
 
     def test_storwize_delete_with_vdisk_copy_ops(self):

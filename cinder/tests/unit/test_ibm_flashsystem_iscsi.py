@@ -260,6 +260,4 @@ class FlashSystemISCSIDriverTestCase(test.TestCase):
         self.driver.delete_volume(vol2)
 
         # case 4: If there is no vdisk mapped to host, host should be removed
-        self.assertEqual(
-            None,
-            self.driver._get_host_from_connector(self.connector))
+        self.assertIsNone(self.driver._get_host_from_connector(self.connector))

@@ -758,7 +758,7 @@ class VolumeApiTest(test.TestCase):
 
         req = fakes.HTTPRequest.blank('/v1/volumes/1')
         res_dict = self.controller.show(req, 1)
-        self.assertEqual(True, res_dict['volume']['encrypted'])
+        self.assertTrue(res_dict['volume']['encrypted'])
 
     def test_volume_show_with_unencrypted_volume(self):
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_api_get)

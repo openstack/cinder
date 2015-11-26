@@ -163,7 +163,7 @@ class IBMNASDriverTestCase(test.TestCase):
         drv = self._driver
         mock_ssh.return_value = None
 
-        self.assertEqual(None, drv._ssh_operation('ssh_cmd'))
+        self.assertIsNone(drv._ssh_operation('ssh_cmd'))
 
     @mock.patch('cinder.volume.drivers.ibm.ibmnas.IBMNAS_NFSDriver._run_ssh')
     def test_ssh_operation_exception(self, mock_ssh):
@@ -186,9 +186,9 @@ class IBMNASDriverTestCase(test.TestCase):
         mock_ssh.return_value = True
         mock_execute.return_value = True
 
-        self.assertEqual(None, drv._create_ibmnas_snap(self.TEST_VOLUME_PATH,
-                                                       self.TEST_SNAP_PATH,
-                                                       self.TEST_MNT_POINT))
+        self.assertIsNone(drv._create_ibmnas_snap(self.TEST_VOLUME_PATH,
+                                                  self.TEST_SNAP_PATH,
+                                                  self.TEST_MNT_POINT))
 
     @mock.patch('cinder.volume.drivers.ibm.ibmnas.IBMNAS_NFSDriver.'
                 '_ssh_operation')
@@ -201,9 +201,9 @@ class IBMNASDriverTestCase(test.TestCase):
         mock_ssh.return_value = True
         mock_execute.return_value = True
 
-        self.assertEqual(None, drv._create_ibmnas_snap(self.TEST_VOLUME_PATH,
-                                                       self.TEST_SNAP_PATH,
-                                                       self.TEST_MNT_POINT))
+        self.assertIsNone(drv._create_ibmnas_snap(self.TEST_VOLUME_PATH,
+                                                  self.TEST_SNAP_PATH,
+                                                  self.TEST_MNT_POINT))
 
     @mock.patch('cinder.volume.drivers.ibm.ibmnas.IBMNAS_NFSDriver.'
                 '_ssh_operation')
@@ -213,9 +213,9 @@ class IBMNASDriverTestCase(test.TestCase):
         drv = self._driver
         mock_ssh.return_value = True
 
-        self.assertEqual(None, drv._create_ibmnas_snap(self.TEST_VOLUME_PATH,
-                                                       self.TEST_SNAP_PATH,
-                                                       None))
+        self.assertIsNone(drv._create_ibmnas_snap(self.TEST_VOLUME_PATH,
+                                                  self.TEST_SNAP_PATH,
+                                                  None))
 
     @mock.patch('cinder.volume.drivers.ibm.ibmnas.IBMNAS_NFSDriver.'
                 '_ssh_operation')
@@ -359,7 +359,7 @@ class IBMNASDriverTestCase(test.TestCase):
         volume['name'] = '/volume-123'
         volume['provider_location'] = self.TEST_VOLUME_PATH
 
-        self.assertEqual(None, drv.delete_volume(volume))
+        self.assertIsNone(drv.delete_volume(volume))
 
     @mock.patch('cinder.volume.drivers.ibm.ibmnas.IBMNAS_NFSDriver.'
                 '_get_export_path')

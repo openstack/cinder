@@ -105,8 +105,8 @@ class TestBaseISCSITargetDriver(tf.TargetDriverFixture):
 
             mock_get_target.side_effect = exception.NotFound
             ctxt = context.get_admin_context()
-            self.assertEqual(None, self.target.remove_export(ctxt,
-                                                             self.testvol))
+            self.assertIsNone(self.target.remove_export(ctxt,
+                                                        self.testvol))
 
     def test_remove_export_show_error(self):
 
@@ -119,8 +119,8 @@ class TestBaseISCSITargetDriver(tf.TargetDriverFixture):
             iscsi_target, lun = mock_get_target.return_value
             mshow.side_effect = Exception
             ctxt = context.get_admin_context()
-            self.assertEqual(None, self.target.remove_export(ctxt,
-                                                             self.testvol))
+            self.assertIsNone(self.target.remove_export(ctxt,
+                                                        self.testvol))
 
     def test_initialize_connection(self):
         expected = {'driver_volume_type': 'iscsi',

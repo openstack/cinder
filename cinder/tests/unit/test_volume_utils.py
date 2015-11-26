@@ -727,8 +727,7 @@ class VolumeUtilsTestCase(test.TestCase):
                          volume_utils.extract_host(host, 'backend', True))
         self.assertEqual(host,
                          volume_utils.extract_host(host, 'backend', False))
-        self.assertEqual(None,
-                         volume_utils.extract_host(host, 'pool'))
+        self.assertIsNone(volume_utils.extract_host(host, 'pool'))
         self.assertEqual('_pool0',
                          volume_utils.extract_host(host, 'pool', True))
 
@@ -739,8 +738,7 @@ class VolumeUtilsTestCase(test.TestCase):
                          volume_utils.extract_host(host, 'host'))
         self.assertEqual(host,
                          volume_utils.extract_host(host, 'backend'))
-        self.assertEqual(None,
-                         volume_utils.extract_host(host, 'pool'))
+        self.assertIsNone(volume_utils.extract_host(host, 'pool'))
         self.assertEqual('_pool0',
                          volume_utils.extract_host(host, 'pool', True))
 

@@ -242,13 +242,11 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
         mock_exec.side_effect = _fake_execute
 
         with mock.patch.object(self.target, '_get_target', return_value=False):
-            self.assertEqual(
-                None,
-                self.target.remove_iscsi_target(
-                    1,
-                    0,
-                    self.VOLUME_ID,
-                    self.VOLUME_NAME))
+            self.assertIsNone(self.target.remove_iscsi_target(
+                1,
+                0,
+                self.VOLUME_ID,
+                self.VOLUME_NAME))
 
             mock_exec.side_effect = _fake_execute_wrong_message
             self.assertRaises(exception.ISCSITargetRemoveFailed,
@@ -284,13 +282,11 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
         mock_exec.side_effect = _fake_execute
 
         with mock.patch.object(self.target, '_get_target', return_value=False):
-            self.assertEqual(
-                None,
-                self.target.remove_iscsi_target(
-                    1,
-                    0,
-                    self.VOLUME_ID,
-                    self.VOLUME_NAME))
+            self.assertIsNone(self.target.remove_iscsi_target(
+                1,
+                0,
+                self.VOLUME_ID,
+                self.VOLUME_NAME))
 
             mock_exec.side_effect = _fake_execute_wrong_message
             self.assertRaises(exception.ISCSITargetRemoveFailed,
@@ -327,12 +323,11 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
 
         # Test the failure case: path does not exist
         mock_path_exists.return_value = None
-        self.assertEqual(None,
-                         self.target.remove_iscsi_target(
-                             0,
-                             1,
-                             self.testvol['id'],
-                             self.testvol['name']))
+        self.assertIsNone(self.target.remove_iscsi_target(
+            0,
+            1,
+                          self.testvol['id'],
+                          self.testvol['name']))
 
         # Test the normal case
         mock_path_exists.return_value = True
