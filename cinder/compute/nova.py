@@ -62,7 +62,8 @@ LOG = logging.getLogger(__name__)
 NOVA_API_VERSION = 2
 
 nova_extensions = [ext for ext in nova_client.discover_extensions(2)
-                   if ext.name == "assisted_volume_snapshots"]
+                   if ext.name in ("assisted_volume_snapshots",
+                                   "list_extensions")]
 
 
 def novaclient(context, admin_endpoint=False, privileged_user=False,
@@ -158,7 +159,7 @@ class API(base.Base):
 
     def has_extension(self, context, extension, timeout=None):
         try:
-            nova_exts = nova_client.discover_extensions(NOVA_API_VERSION)
+            nova_exts = novaclient(context).list_extensions.show_all()
         except request_exceptions.Timeout:
             raise exception.APITimeout(service='Nova')
         return extension in [e.name for e in nova_exts]
