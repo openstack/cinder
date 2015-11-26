@@ -29,7 +29,7 @@ from cinder.image import image_utils
 from cinder import utils
 from cinder.volume.drivers import remotefs as remotefs_drv
 
-VERSION = '1.0'
+VERSION = '1.1'
 
 LOG = logging.getLogger(__name__)
 
@@ -76,6 +76,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriver):
 
     Version history:
         1.0   - Initial driver.
+        1.1   - Adds optional insecure NAS settings
     """
 
     driver_volume_type = 'quobyte'
@@ -92,9 +93,9 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriver):
 
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
-        self.set_nas_security_options(is_new_cinder_install=False)
         super(QuobyteDriver, self).do_setup(context)
 
+        self.set_nas_security_options(is_new_cinder_install=False)
         self.shares = {}  # address : options
         self._nova = compute.API()
 
@@ -118,9 +119,46 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriver):
                 raise
 
     def set_nas_security_options(self, is_new_cinder_install):
-        self.configuration.nas_secure_file_operations = 'true'
-        self.configuration.nas_secure_file_permissions = 'true'
         self._execute_as_root = False
+
+        LOG.debug("nas_secure_file_* settings are %(ops)s and %(perm)s",
+                  {'ops': self.configuration.nas_secure_file_operations,
+                   'perm': self.configuration.nas_secure_file_permissions}
+                  )
+
+        if self.configuration.nas_secure_file_operations == 'auto':
+            """Note (kaisers): All previous Quobyte driver versions ran with
+            secure settings hardcoded to 'True'. Therefore the default 'auto'
+            setting can safely be mapped to the same, secure, setting.
+            """
+            LOG.debug("Mapping 'auto' value to 'true' for"
+                      " nas_secure_file_operations.")
+            self.configuration.nas_secure_file_operations = 'true'
+
+        if self.configuration.nas_secure_file_permissions == 'auto':
+            """Note (kaisers): All previous Quobyte driver versions ran with
+            secure settings hardcoded to 'True'. Therefore the default 'auto'
+            setting can safely be mapped to the same, secure, setting.
+            """
+            LOG.debug("Mapping 'auto' value to 'true' for"
+                      " nas_secure_file_permissions.")
+            self.configuration.nas_secure_file_permissions = 'true'
+
+        if self.configuration.nas_secure_file_operations == 'false':
+            LOG.warning(_LW("The NAS file operations will be run as "
+                            "root, allowing root level access at the storage "
+                            "backend."))
+            self._execute_as_root = True
+        else:
+            LOG.info(_LI("The NAS file operations will be run as"
+                         " non privileged user in secure mode. Please"
+                         " ensure your libvirtd settings have been configured"
+                         " accordingly (see section 'OpenStack' in the Quobyte"
+                         " Manual."))
+
+        if self.configuration.nas_secure_file_permissions == 'false':
+            LOG.warning(_LW("The NAS file permissions mode will be 666 "
+                            "(allowing other/world read & write access)."))
 
     def _qemu_img_info(self, path, volume_name):
         return super(QuobyteDriver, self)._qemu_img_info_base(
@@ -389,7 +427,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriver):
                         LOG.info(_LI('Fixing previous mount %s which was not'
                                      ' unmounted correctly.'), mount_path)
                         self._execute('umount.quobyte', mount_path,
-                                      run_as_root=False)
+                                      run_as_root=self._execute_as_root)
                     except processutils.ProcessExecutionError as exc:
                         LOG.warning(_LW("Failed to unmount previous mount: "
                                         "%s"), exc)
@@ -409,7 +447,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriver):
 
             try:
                 LOG.info(_LI('Mounting volume: %s ...'), quobyte_volume)
-                self._execute(*command, run_as_root=False)
+                self._execute(*command, run_as_root=self._execute_as_root)
                 LOG.info(_LI('Mounting volume: %s succeeded'), quobyte_volume)
                 mounted = True
             except processutils.ProcessExecutionError as exc:
@@ -425,7 +463,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriver):
         """Wraps execute calls for checking validity of a Quobyte volume"""
         command = ['getfattr', "-n", "quobyte.info", mount_path]
         try:
-            self._execute(*command, run_as_root=False)
+            self._execute(*command, run_as_root=self._execute_as_root)
         except processutils.ProcessExecutionError as exc:
             msg = (_("The mount %(mount_path)s is not a valid"
                      " Quobyte USP volume. Error: %(exc)s")
