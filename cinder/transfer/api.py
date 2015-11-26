@@ -165,8 +165,11 @@ class API(base.Base):
                                                "transfer.accept.start")
 
         try:
-            reservations = QUOTAS.reserve(context, volumes=1,
-                                          gigabytes=vol_ref['size'])
+            reserve_opts = {'volumes': 1, 'gigabytes': vol_ref.size}
+            QUOTAS.add_volume_type_opts(context,
+                                        reserve_opts,
+                                        vol_ref.volume_type_id)
+            reservations = QUOTAS.reserve(context, **reserve_opts)
         except exception.OverQuota as e:
             overs = e.kwargs['overs']
             usages = e.kwargs['usages']
@@ -196,10 +199,13 @@ class API(base.Base):
                 raise exception.VolumeLimitExceeded(allowed=quotas['volumes'])
         try:
             donor_id = vol_ref['project_id']
+            reserve_opts = {'volumes': -1, 'gigabytes': -vol_ref.size}
+            QUOTAS.add_volume_type_opts(context,
+                                        reserve_opts,
+                                        vol_ref.volume_type_id)
             donor_reservations = QUOTAS.reserve(context.elevated(),
                                                 project_id=donor_id,
-                                                volumes=-1,
-                                                gigabytes=-vol_ref['size'])
+                                                **reserve_opts)
         except Exception:
             donor_reservations = None
             LOG.exception(_LE("Failed to update quota donating volume"
