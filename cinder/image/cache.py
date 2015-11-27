@@ -196,9 +196,6 @@ class ImageVolumeCache(object):
         # Delete will evict the cache entry.
         self.volume_api.delete(context, volume_ref)
 
-    def _get_image_volume_name(self, image_id):
-        return 'image-volume-' + image_id
-
     def _should_update_entry(self, cache_entry, image_meta):
         """Ensure that the cache entry image data is still valid."""
         image_updated_utc = (image_meta['updated_at']
