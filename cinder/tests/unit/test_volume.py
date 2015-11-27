@@ -1432,7 +1432,7 @@ class VolumeTestCase(BaseVolumeTestCase):
     def _fake_execute(self, *cmd, **kwargs):
         pass
 
-    @mock.patch.object(cinder.volume.drivers.lvm.LVMISCSIDriver,
+    @mock.patch.object(cinder.volume.drivers.lvm.LVMVolumeDriver,
                        'create_volume_from_snapshot')
     def test_create_volume_from_snapshot_check_locks(
             self, mock_lvm_create):
@@ -6563,35 +6563,393 @@ class GenericVolumeDriverTestCase(DriverTestCase):
         db.volume_destroy(self.context, dest_vol['id'])
 
 
-class LVMISCSIVolumeDriverTestCase(DriverTestCase):
+class LVMVolumeDriverTestCase(DriverTestCase):
     """Test case for VolumeDriver"""
-    driver_name = "cinder.volume.drivers.lvm.LVMISCSIDriver"
+    driver_name = "cinder.volume.drivers.lvm.LVMVolumeDriver"
+    FAKE_VOLUME = {'name': 'test1',
+                   'id': 'test1'}
 
-    def test_delete_busy_volume(self):
-        """Test deleting a busy volume."""
-        self.stubs.Set(self.volume.driver, '_volume_not_present',
-                       lambda x: False)
-        self.stubs.Set(self.volume.driver, '_delete_volume',
-                       lambda x: False)
+    @mock.patch.object(fake_driver.FakeISCSIDriver, 'create_export')
+    def test_delete_volume_invalid_parameter(self, _mock_create_export):
+        self.configuration.volume_clear = 'zero'
+        self.configuration.volume_clear_size = 0
+        lvm_driver = lvm.LVMVolumeDriver(configuration=self.configuration,
+                                         db=db)
+        self.mox.StubOutWithMock(os.path, 'exists')
 
-        self.volume.driver.vg = fake_lvm.FakeBrickLVM('cinder-volumes',
-                                                      False,
-                                                      None,
-                                                      'default')
+        os.path.exists(mox.IgnoreArg()).AndReturn(True)
 
-        self.stubs.Set(self.volume.driver.vg, 'lv_has_snapshot',
-                       lambda x: True)
-        self.assertRaises(exception.VolumeIsBusy,
-                          self.volume.driver.delete_volume,
-                          {'name': 'test1', 'size': 1024})
+        self.mox.ReplayAll()
+        # Test volume without 'size' field and 'volume_size' field
+        self.assertRaises(exception.InvalidParameterValue,
+                          lvm_driver._delete_volume,
+                          self.FAKE_VOLUME)
 
-        self.stubs.Set(self.volume.driver.vg, 'lv_has_snapshot',
-                       lambda x: False)
-        self.output = 'x'
-        self.volume.driver.delete_volume(
-            {'name': 'test1',
-             'size': 1024,
-             'id': '478e14bc-a6a9-11e4-89d3-123b93f75cba'})
+    @mock.patch.object(fake_driver.FakeISCSIDriver, 'create_export')
+    def test_delete_volume_bad_path(self, _mock_create_export):
+        self.configuration.volume_clear = 'zero'
+        self.configuration.volume_clear_size = 0
+        self.configuration.volume_type = 'default'
+
+        volume = dict(self.FAKE_VOLUME, size=1)
+        lvm_driver = lvm.LVMVolumeDriver(configuration=self.configuration,
+                                         db=db)
+
+        self.mox.StubOutWithMock(os.path, 'exists')
+        os.path.exists(mox.IgnoreArg()).AndReturn(False)
+        self.mox.ReplayAll()
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          lvm_driver._delete_volume, volume)
+
+    @mock.patch.object(fake_driver.FakeISCSIDriver, 'create_export')
+    def test_delete_volume_thinlvm_snap(self, _mock_create_export):
+        self.configuration.volume_clear = 'zero'
+        self.configuration.volume_clear_size = 0
+        self.configuration.lvm_type = 'thin'
+        self.configuration.iscsi_helper = 'tgtadm'
+        lvm_driver = lvm.LVMVolumeDriver(configuration=self.configuration,
+                                         vg_obj=mox.MockAnything(),
+                                         db=db)
+
+        # Ensures that copy_volume is not called for ThinLVM
+        self.mox.StubOutWithMock(volutils, 'copy_volume')
+        self.mox.StubOutWithMock(volutils, 'clear_volume')
+        self.mox.StubOutWithMock(lvm_driver, '_execute')
+        self.mox.ReplayAll()
+
+        uuid = '00000000-0000-0000-0000-c3aa7ee01536'
+
+        fake_snapshot = {'name': 'volume-' + uuid,
+                         'id': uuid,
+                         'size': 123}
+
+        lvm_driver._delete_volume(fake_snapshot, is_snapshot=True)
+
+    def test_check_for_setup_error(self):
+
+        def get_all_volume_groups(vg):
+            return [{'name': 'cinder-volumes'}]
+
+        self.stubs.Set(volutils, 'get_all_volume_groups',
+                       get_all_volume_groups)
+
+        vg_obj = fake_lvm.FakeBrickLVM('cinder-volumes',
+                                       False,
+                                       None,
+                                       'default')
+
+        configuration = conf.Configuration(fake_opt, 'fake_group')
+        lvm_driver = lvm.LVMVolumeDriver(configuration=configuration,
+                                         vg_obj=vg_obj, db=db)
+
+        lvm_driver.delete_snapshot = mock.Mock()
+        self.stubs.Set(volutils, 'get_all_volume_groups',
+                       get_all_volume_groups)
+
+        volume = tests_utils.create_volume(self.context,
+                                           host=socket.gethostname())
+        volume_id = volume['id']
+
+        backup = {}
+        backup['volume_id'] = volume_id
+        backup['user_id'] = 'fake'
+        backup['project_id'] = 'fake'
+        backup['host'] = socket.gethostname()
+        backup['availability_zone'] = '1'
+        backup['display_name'] = 'test_check_for_setup_error'
+        backup['display_description'] = 'test_check_for_setup_error'
+        backup['container'] = 'fake'
+        backup['status'] = 'creating'
+        backup['fail_reason'] = ''
+        backup['service'] = 'fake'
+        backup['parent_id'] = None
+        backup['size'] = 5 * 1024 * 1024
+        backup['object_count'] = 22
+        db.backup_create(self.context, backup)
+
+        lvm_driver.check_for_setup_error()
+
+    @mock.patch.object(utils, 'temporary_chown')
+    @mock.patch('six.moves.builtins.open')
+    @mock.patch.object(os_brick.initiator.connector,
+                       'get_connector_properties')
+    @mock.patch.object(db.sqlalchemy.api, 'volume_get')
+    def test_backup_volume(self, mock_volume_get,
+                           mock_get_connector_properties,
+                           mock_file_open,
+                           mock_temporary_chown):
+        vol = tests_utils.create_volume(self.context)
+        self.context.user_id = 'fake'
+        self.context.project_id = 'fake'
+        backup = tests_utils.create_backup(self.context,
+                                           vol['id'])
+        backup_obj = objects.Backup.get_by_id(self.context, backup.id)
+
+        properties = {}
+        attach_info = {'device': {'path': '/dev/null'}}
+        backup_service = mock.Mock()
+
+        self.volume.driver._detach_volume = mock.MagicMock()
+        self.volume.driver._attach_volume = mock.MagicMock()
+        self.volume.driver.terminate_connection = mock.MagicMock()
+
+        mock_volume_get.return_value = vol
+        mock_get_connector_properties.return_value = properties
+        f = mock_file_open.return_value = open('/dev/null', 'rb')
+
+        backup_service.backup(backup_obj, f, None)
+        self.volume.driver._attach_volume.return_value = attach_info
+
+        self.volume.driver.backup_volume(self.context, backup_obj,
+                                         backup_service)
+
+        mock_volume_get.assert_called_with(self.context, vol['id'])
+
+    def test_retype_volume(self):
+        vol = tests_utils.create_volume(self.context)
+        new_type = 'fake'
+        diff = {}
+        host = 'fake_host'
+        retyped = self.volume.driver.retype(self.context, vol, new_type,
+                                            diff, host)
+        self.assertTrue(retyped)
+
+    def test_update_migrated_volume(self):
+        fake_volume_id = 'vol1'
+        fake_new_volume_id = 'vol2'
+        fake_provider = 'fake_provider'
+        original_volume_name = CONF.volume_name_template % fake_volume_id
+        current_name = CONF.volume_name_template % fake_new_volume_id
+        fake_volume = tests_utils.create_volume(self.context)
+        fake_volume['id'] = fake_volume_id
+        fake_new_volume = tests_utils.create_volume(self.context)
+        fake_new_volume['id'] = fake_new_volume_id
+        fake_new_volume['provider_location'] = fake_provider
+        fake_vg = fake_lvm.FakeBrickLVM('cinder-volumes', False,
+                                        None, 'default')
+        with mock.patch.object(self.volume.driver, 'vg') as vg:
+            vg.return_value = fake_vg
+            vg.rename_volume.return_value = None
+            update = self.volume.driver.update_migrated_volume(self.context,
+                                                               fake_volume,
+                                                               fake_new_volume,
+                                                               'available')
+            vg.rename_volume.assert_called_once_with(current_name,
+                                                     original_volume_name)
+            self.assertEqual({'_name_id': None,
+                              'provider_location': None}, update)
+
+            vg.rename_volume.reset_mock()
+            vg.rename_volume.side_effect = processutils.ProcessExecutionError
+            update = self.volume.driver.update_migrated_volume(self.context,
+                                                               fake_volume,
+                                                               fake_new_volume,
+                                                               'available')
+            vg.rename_volume.assert_called_once_with(current_name,
+                                                     original_volume_name)
+            self.assertEqual({'_name_id': fake_new_volume_id,
+                              'provider_location': fake_provider},
+                             update)
+
+    @mock.patch.object(utils, 'temporary_chown')
+    @mock.patch('six.moves.builtins.open')
+    @mock.patch.object(os_brick.initiator.connector,
+                       'get_connector_properties')
+    @mock.patch.object(db.sqlalchemy.api, 'volume_get')
+    def test_backup_volume_inuse(self, mock_volume_get,
+                                 mock_get_connector_properties,
+                                 mock_file_open,
+                                 mock_temporary_chown):
+
+        vol = tests_utils.create_volume(self.context,
+                                        status='backing-up',
+                                        previous_status='in-use')
+        self.context.user_id = 'fake'
+        self.context.project_id = 'fake'
+
+        mock_volume_get.return_value = vol
+        temp_snapshot = tests_utils.create_snapshot(self.context, vol['id'])
+        backup = tests_utils.create_backup(self.context,
+                                           vol['id'])
+        backup_obj = objects.Backup.get_by_id(self.context, backup.id)
+        properties = {}
+        attach_info = {'device': {'path': '/dev/null'}}
+        backup_service = mock.Mock()
+
+        self.volume.driver._detach_volume = mock.MagicMock()
+        self.volume.driver._attach_volume = mock.MagicMock()
+        self.volume.driver.terminate_connection = mock.MagicMock()
+        self.volume.driver._create_temp_snapshot = mock.MagicMock()
+        self.volume.driver._delete_temp_snapshot = mock.MagicMock()
+
+        mock_get_connector_properties.return_value = properties
+        f = mock_file_open.return_value = open('/dev/null', 'rb')
+
+        backup_service.backup(backup_obj, f, None)
+        self.volume.driver._attach_volume.return_value = attach_info
+        self.volume.driver._create_temp_snapshot.return_value = temp_snapshot
+
+        self.volume.driver.backup_volume(self.context, backup_obj,
+                                         backup_service)
+
+        mock_volume_get.assert_called_with(self.context, vol['id'])
+        self.volume.driver._create_temp_snapshot.assert_called_once_with(
+            self.context, vol)
+        self.volume.driver._delete_temp_snapshot.assert_called_once_with(
+            self.context, temp_snapshot)
+
+    def test_create_volume_from_snapshot_none_sparse(self):
+
+        with mock.patch.object(self.volume.driver, 'vg'), \
+                mock.patch.object(self.volume.driver, '_create_volume'), \
+                mock.patch.object(volutils, 'copy_volume') as mock_copy:
+
+            # Test case for thick LVM
+            src_volume = tests_utils.create_volume(self.context)
+            snapshot_ref = tests_utils.create_snapshot(self.context,
+                                                       src_volume['id'])
+            dst_volume = tests_utils.create_volume(self.context)
+            self.volume.driver.create_volume_from_snapshot(dst_volume,
+                                                           snapshot_ref)
+
+            volume_path = self.volume.driver.local_path(dst_volume)
+            snapshot_path = self.volume.driver.local_path(snapshot_ref)
+            volume_size = 1024
+            block_size = '1M'
+            mock_copy.assert_called_with(snapshot_path,
+                                         volume_path,
+                                         volume_size,
+                                         block_size,
+                                         execute=self.volume.driver._execute,
+                                         sparse=False)
+
+    def test_create_volume_from_snapshot_sparse(self):
+
+        self.configuration.lvm_type = 'thin'
+        lvm_driver = lvm.LVMVolumeDriver(configuration=self.configuration,
+                                         db=db)
+
+        with mock.patch.object(lvm_driver, 'vg'), \
+                mock.patch.object(lvm_driver, '_create_volume'), \
+                mock.patch.object(volutils, 'copy_volume') as mock_copy:
+
+            # Test case for thin LVM
+            lvm_driver._sparse_copy_volume = True
+            src_volume = tests_utils.create_volume(self.context)
+            snapshot_ref = tests_utils.create_snapshot(self.context,
+                                                       src_volume['id'])
+            dst_volume = tests_utils.create_volume(self.context)
+            lvm_driver.create_volume_from_snapshot(dst_volume,
+                                                   snapshot_ref)
+
+            volume_path = lvm_driver.local_path(dst_volume)
+            snapshot_path = lvm_driver.local_path(snapshot_ref)
+            volume_size = 1024
+            block_size = '1M'
+            mock_copy.assert_called_with(snapshot_path,
+                                         volume_path,
+                                         volume_size,
+                                         block_size,
+                                         execute=lvm_driver._execute,
+                                         sparse=True)
+
+    @mock.patch.object(cinder.volume.utils, 'get_all_volume_groups',
+                       return_value=[{'name': 'cinder-volumes'}])
+    @mock.patch('cinder.brick.local_dev.lvm.LVM.update_volume_group_info')
+    @mock.patch('cinder.brick.local_dev.lvm.LVM.get_all_physical_volumes')
+    @mock.patch('cinder.brick.local_dev.lvm.LVM.supports_thin_provisioning',
+                return_value=True)
+    def test_lvm_type_auto_thin_pool_exists(self, *_unused_mocks):
+        configuration = conf.Configuration(fake_opt, 'fake_group')
+        configuration.lvm_type = 'auto'
+
+        vg_obj = fake_lvm.FakeBrickLVM('cinder-volumes',
+                                       False,
+                                       None,
+                                       'default')
+
+        lvm_driver = lvm.LVMVolumeDriver(configuration=configuration,
+                                         vg_obj=vg_obj)
+
+        lvm_driver.check_for_setup_error()
+
+        self.assertEqual('thin', lvm_driver.configuration.lvm_type)
+
+    @mock.patch.object(cinder.volume.utils, 'get_all_volume_groups',
+                       return_value=[{'name': 'cinder-volumes'}])
+    @mock.patch.object(cinder.brick.local_dev.lvm.LVM, 'get_volumes',
+                       return_value=[])
+    @mock.patch('cinder.brick.local_dev.lvm.LVM.update_volume_group_info')
+    @mock.patch('cinder.brick.local_dev.lvm.LVM.get_all_physical_volumes')
+    @mock.patch('cinder.brick.local_dev.lvm.LVM.supports_thin_provisioning',
+                return_value=True)
+    def test_lvm_type_auto_no_lvs(self, *_unused_mocks):
+        configuration = conf.Configuration(fake_opt, 'fake_group')
+        configuration.lvm_type = 'auto'
+
+        vg_obj = fake_lvm.FakeBrickLVM('cinder-volumes',
+                                       False,
+                                       None,
+                                       'default')
+
+        lvm_driver = lvm.LVMVolumeDriver(configuration=configuration,
+                                         vg_obj=vg_obj)
+
+        lvm_driver.check_for_setup_error()
+
+        self.assertEqual('thin', lvm_driver.configuration.lvm_type)
+
+    @mock.patch.object(cinder.volume.utils, 'get_all_volume_groups',
+                       return_value=[{'name': 'cinder-volumes'}])
+    @mock.patch('cinder.brick.local_dev.lvm.LVM.update_volume_group_info')
+    @mock.patch('cinder.brick.local_dev.lvm.LVM.get_all_physical_volumes')
+    @mock.patch('cinder.brick.local_dev.lvm.LVM.supports_thin_provisioning',
+                return_value=False)
+    def test_lvm_type_auto_no_thin_support(self, *_unused_mocks):
+        configuration = conf.Configuration(fake_opt, 'fake_group')
+        configuration.lvm_type = 'auto'
+
+        lvm_driver = lvm.LVMVolumeDriver(configuration=configuration)
+
+        lvm_driver.check_for_setup_error()
+
+        self.assertEqual('default', lvm_driver.configuration.lvm_type)
+
+    @mock.patch.object(cinder.volume.utils, 'get_all_volume_groups',
+                       return_value=[{'name': 'cinder-volumes'}])
+    @mock.patch('cinder.brick.local_dev.lvm.LVM.update_volume_group_info')
+    @mock.patch('cinder.brick.local_dev.lvm.LVM.get_all_physical_volumes')
+    @mock.patch('cinder.brick.local_dev.lvm.LVM.get_volume')
+    @mock.patch('cinder.brick.local_dev.lvm.LVM.supports_thin_provisioning',
+                return_value=False)
+    def test_lvm_type_auto_no_thin_pool(self, *_unused_mocks):
+        configuration = conf.Configuration(fake_opt, 'fake_group')
+        configuration.lvm_type = 'auto'
+
+        lvm_driver = lvm.LVMVolumeDriver(configuration=configuration)
+
+        lvm_driver.check_for_setup_error()
+
+        self.assertEqual('default', lvm_driver.configuration.lvm_type)
+
+    @mock.patch.object(lvm.LVMVolumeDriver, 'extend_volume')
+    def test_create_cloned_volume_by_thin_snapshot(self, mock_extend):
+        self.configuration.lvm_type = 'thin'
+        fake_vg = mock.Mock(fake_lvm.FakeBrickLVM('cinder-volumes', False,
+                                                  None, 'default'))
+        lvm_driver = lvm.LVMVolumeDriver(configuration=self.configuration,
+                                         vg_obj=fake_vg,
+                                         db=db)
+        fake_volume = tests_utils.create_volume(self.context, size=1)
+        fake_new_volume = tests_utils.create_volume(self.context, size=2)
+
+        lvm_driver.create_cloned_volume(fake_new_volume, fake_volume)
+        fake_vg.create_lv_snapshot.assert_called_once_with(
+            fake_new_volume['name'], fake_volume['name'], 'thin')
+        mock_extend.assert_called_once_with(fake_new_volume, 2)
+        fake_vg.activate_lv.assert_called_once_with(
+            fake_new_volume['name'], is_snapshot=True, permanent=True)
 
     def test_lvm_migrate_volume_no_loc_info(self):
         host = {'capabilities': {}}
@@ -6961,398 +7319,9 @@ class LVMISCSIVolumeDriverTestCase(DriverTestCase):
         self.assertEqual(ret, None)
 
 
-class LVMVolumeDriverTestCase(DriverTestCase):
-    """Test case for VolumeDriver"""
-    driver_name = "cinder.volume.drivers.lvm.LVMVolumeDriver"
-    FAKE_VOLUME = {'name': 'test1',
-                   'id': 'test1'}
-
-    @mock.patch.object(fake_driver.FakeISCSIDriver, 'create_export')
-    def test_delete_volume_invalid_parameter(self, _mock_create_export):
-        self.configuration.volume_clear = 'zero'
-        self.configuration.volume_clear_size = 0
-        lvm_driver = lvm.LVMVolumeDriver(configuration=self.configuration,
-                                         db=db)
-        self.mox.StubOutWithMock(os.path, 'exists')
-
-        os.path.exists(mox.IgnoreArg()).AndReturn(True)
-
-        self.mox.ReplayAll()
-        # Test volume without 'size' field and 'volume_size' field
-        self.assertRaises(exception.InvalidParameterValue,
-                          lvm_driver._delete_volume,
-                          self.FAKE_VOLUME)
-
-    @mock.patch.object(fake_driver.FakeISCSIDriver, 'create_export')
-    def test_delete_volume_bad_path(self, _mock_create_export):
-        self.configuration.volume_clear = 'zero'
-        self.configuration.volume_clear_size = 0
-        self.configuration.volume_type = 'default'
-
-        volume = dict(self.FAKE_VOLUME, size=1)
-        lvm_driver = lvm.LVMVolumeDriver(configuration=self.configuration,
-                                         db=db)
-
-        self.mox.StubOutWithMock(os.path, 'exists')
-        os.path.exists(mox.IgnoreArg()).AndReturn(False)
-        self.mox.ReplayAll()
-
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          lvm_driver._delete_volume, volume)
-
-    @mock.patch.object(fake_driver.FakeISCSIDriver, 'create_export')
-    def test_delete_volume_thinlvm_snap(self, _mock_create_export):
-        self.configuration.volume_clear = 'zero'
-        self.configuration.volume_clear_size = 0
-        self.configuration.lvm_type = 'thin'
-        self.configuration.iscsi_helper = 'tgtadm'
-        lvm_driver = lvm.LVMISCSIDriver(configuration=self.configuration,
-                                        vg_obj=mox.MockAnything(),
-                                        db=db)
-
-        # Ensures that copy_volume is not called for ThinLVM
-        self.mox.StubOutWithMock(volutils, 'copy_volume')
-        self.mox.StubOutWithMock(volutils, 'clear_volume')
-        self.mox.StubOutWithMock(lvm_driver, '_execute')
-        self.mox.ReplayAll()
-
-        uuid = '00000000-0000-0000-0000-c3aa7ee01536'
-
-        fake_snapshot = {'name': 'volume-' + uuid,
-                         'id': uuid,
-                         'size': 123}
-
-        lvm_driver._delete_volume(fake_snapshot, is_snapshot=True)
-
-    def test_check_for_setup_error(self):
-
-        def get_all_volume_groups(vg):
-            return [{'name': 'cinder-volumes'}]
-
-        self.stubs.Set(volutils, 'get_all_volume_groups',
-                       get_all_volume_groups)
-
-        vg_obj = fake_lvm.FakeBrickLVM('cinder-volumes',
-                                       False,
-                                       None,
-                                       'default')
-
-        configuration = conf.Configuration(fake_opt, 'fake_group')
-        lvm_driver = lvm.LVMVolumeDriver(configuration=configuration,
-                                         vg_obj=vg_obj, db=db)
-
-        lvm_driver.delete_snapshot = mock.Mock()
-        self.stubs.Set(volutils, 'get_all_volume_groups',
-                       get_all_volume_groups)
-
-        volume = tests_utils.create_volume(self.context,
-                                           host=socket.gethostname())
-        volume_id = volume['id']
-
-        backup = {}
-        backup['volume_id'] = volume_id
-        backup['user_id'] = 'fake'
-        backup['project_id'] = 'fake'
-        backup['host'] = socket.gethostname()
-        backup['availability_zone'] = '1'
-        backup['display_name'] = 'test_check_for_setup_error'
-        backup['display_description'] = 'test_check_for_setup_error'
-        backup['container'] = 'fake'
-        backup['status'] = 'creating'
-        backup['fail_reason'] = ''
-        backup['service'] = 'fake'
-        backup['parent_id'] = None
-        backup['size'] = 5 * 1024 * 1024
-        backup['object_count'] = 22
-        db.backup_create(self.context, backup)
-
-        lvm_driver.check_for_setup_error()
-
-    @mock.patch.object(utils, 'temporary_chown')
-    @mock.patch('six.moves.builtins.open')
-    @mock.patch.object(os_brick.initiator.connector,
-                       'get_connector_properties')
-    @mock.patch.object(db.sqlalchemy.api, 'volume_get')
-    def test_backup_volume(self, mock_volume_get,
-                           mock_get_connector_properties,
-                           mock_file_open,
-                           mock_temporary_chown):
-        vol = tests_utils.create_volume(self.context)
-        self.context.user_id = 'fake'
-        self.context.project_id = 'fake'
-        backup = tests_utils.create_backup(self.context,
-                                           vol['id'])
-        backup_obj = objects.Backup.get_by_id(self.context, backup.id)
-
-        properties = {}
-        attach_info = {'device': {'path': '/dev/null'}}
-        backup_service = mock.Mock()
-
-        self.volume.driver._detach_volume = mock.MagicMock()
-        self.volume.driver._attach_volume = mock.MagicMock()
-        self.volume.driver.terminate_connection = mock.MagicMock()
-
-        mock_volume_get.return_value = vol
-        mock_get_connector_properties.return_value = properties
-        f = mock_file_open.return_value = open('/dev/null', 'rb')
-
-        backup_service.backup(backup_obj, f, None)
-        self.volume.driver._attach_volume.return_value = attach_info
-
-        self.volume.driver.backup_volume(self.context, backup_obj,
-                                         backup_service)
-
-        mock_volume_get.assert_called_with(self.context, vol['id'])
-
-    def test_retype_volume(self):
-        vol = tests_utils.create_volume(self.context)
-        new_type = 'fake'
-        diff = {}
-        host = 'fake_host'
-        retyped = self.volume.driver.retype(self.context, vol, new_type,
-                                            diff, host)
-        self.assertTrue(retyped)
-
-    def test_update_migrated_volume(self):
-        fake_volume_id = 'vol1'
-        fake_new_volume_id = 'vol2'
-        fake_provider = 'fake_provider'
-        original_volume_name = CONF.volume_name_template % fake_volume_id
-        current_name = CONF.volume_name_template % fake_new_volume_id
-        fake_volume = tests_utils.create_volume(self.context)
-        fake_volume['id'] = fake_volume_id
-        fake_new_volume = tests_utils.create_volume(self.context)
-        fake_new_volume['id'] = fake_new_volume_id
-        fake_new_volume['provider_location'] = fake_provider
-        fake_vg = fake_lvm.FakeBrickLVM('cinder-volumes', False,
-                                        None, 'default')
-        with mock.patch.object(self.volume.driver, 'vg') as vg:
-            vg.return_value = fake_vg
-            vg.rename_volume.return_value = None
-            update = self.volume.driver.update_migrated_volume(self.context,
-                                                               fake_volume,
-                                                               fake_new_volume,
-                                                               'available')
-            vg.rename_volume.assert_called_once_with(current_name,
-                                                     original_volume_name)
-            self.assertEqual({'_name_id': None,
-                              'provider_location': None}, update)
-
-            vg.rename_volume.reset_mock()
-            vg.rename_volume.side_effect = processutils.ProcessExecutionError
-            update = self.volume.driver.update_migrated_volume(self.context,
-                                                               fake_volume,
-                                                               fake_new_volume,
-                                                               'available')
-            vg.rename_volume.assert_called_once_with(current_name,
-                                                     original_volume_name)
-            self.assertEqual({'_name_id': fake_new_volume_id,
-                              'provider_location': fake_provider},
-                             update)
-
-    @mock.patch.object(utils, 'temporary_chown')
-    @mock.patch('six.moves.builtins.open')
-    @mock.patch.object(os_brick.initiator.connector,
-                       'get_connector_properties')
-    @mock.patch.object(db.sqlalchemy.api, 'volume_get')
-    def test_backup_volume_inuse(self, mock_volume_get,
-                                 mock_get_connector_properties,
-                                 mock_file_open,
-                                 mock_temporary_chown):
-
-        vol = tests_utils.create_volume(self.context,
-                                        status='backing-up',
-                                        previous_status='in-use')
-        self.context.user_id = 'fake'
-        self.context.project_id = 'fake'
-
-        mock_volume_get.return_value = vol
-        temp_snapshot = tests_utils.create_snapshot(self.context, vol['id'])
-        backup = tests_utils.create_backup(self.context,
-                                           vol['id'])
-        backup_obj = objects.Backup.get_by_id(self.context, backup.id)
-        properties = {}
-        attach_info = {'device': {'path': '/dev/null'}}
-        backup_service = mock.Mock()
-
-        self.volume.driver._detach_volume = mock.MagicMock()
-        self.volume.driver._attach_volume = mock.MagicMock()
-        self.volume.driver.terminate_connection = mock.MagicMock()
-        self.volume.driver._create_temp_snapshot = mock.MagicMock()
-        self.volume.driver._delete_temp_snapshot = mock.MagicMock()
-
-        mock_get_connector_properties.return_value = properties
-        f = mock_file_open.return_value = open('/dev/null', 'rb')
-
-        backup_service.backup(backup_obj, f, None)
-        self.volume.driver._attach_volume.return_value = attach_info
-        self.volume.driver._create_temp_snapshot.return_value = temp_snapshot
-
-        self.volume.driver.backup_volume(self.context, backup_obj,
-                                         backup_service)
-
-        mock_volume_get.assert_called_with(self.context, vol['id'])
-        self.volume.driver._create_temp_snapshot.assert_called_once_with(
-            self.context, vol)
-        self.volume.driver._delete_temp_snapshot.assert_called_once_with(
-            self.context, temp_snapshot)
-
-    def test_create_volume_from_snapshot_none_sparse(self):
-
-        with mock.patch.object(self.volume.driver, 'vg'), \
-                mock.patch.object(self.volume.driver, '_create_volume'), \
-                mock.patch.object(volutils, 'copy_volume') as mock_copy:
-
-            # Test case for thick LVM
-            src_volume = tests_utils.create_volume(self.context)
-            snapshot_ref = tests_utils.create_snapshot(self.context,
-                                                       src_volume['id'])
-            dst_volume = tests_utils.create_volume(self.context)
-            self.volume.driver.create_volume_from_snapshot(dst_volume,
-                                                           snapshot_ref)
-
-            volume_path = self.volume.driver.local_path(dst_volume)
-            snapshot_path = self.volume.driver.local_path(snapshot_ref)
-            volume_size = 1024
-            block_size = '1M'
-            mock_copy.assert_called_with(snapshot_path,
-                                         volume_path,
-                                         volume_size,
-                                         block_size,
-                                         execute=self.volume.driver._execute,
-                                         sparse=False)
-
-    def test_create_volume_from_snapshot_sparse(self):
-
-        self.configuration.lvm_type = 'thin'
-        lvm_driver = lvm.LVMVolumeDriver(configuration=self.configuration,
-                                         db=db)
-
-        with mock.patch.object(lvm_driver, 'vg'), \
-                mock.patch.object(lvm_driver, '_create_volume'), \
-                mock.patch.object(volutils, 'copy_volume') as mock_copy:
-
-            # Test case for thin LVM
-            lvm_driver._sparse_copy_volume = True
-            src_volume = tests_utils.create_volume(self.context)
-            snapshot_ref = tests_utils.create_snapshot(self.context,
-                                                       src_volume['id'])
-            dst_volume = tests_utils.create_volume(self.context)
-            lvm_driver.create_volume_from_snapshot(dst_volume,
-                                                   snapshot_ref)
-
-            volume_path = lvm_driver.local_path(dst_volume)
-            snapshot_path = lvm_driver.local_path(snapshot_ref)
-            volume_size = 1024
-            block_size = '1M'
-            mock_copy.assert_called_with(snapshot_path,
-                                         volume_path,
-                                         volume_size,
-                                         block_size,
-                                         execute=lvm_driver._execute,
-                                         sparse=True)
-
-    @mock.patch.object(cinder.volume.utils, 'get_all_volume_groups',
-                       return_value=[{'name': 'cinder-volumes'}])
-    @mock.patch('cinder.brick.local_dev.lvm.LVM.update_volume_group_info')
-    @mock.patch('cinder.brick.local_dev.lvm.LVM.get_all_physical_volumes')
-    @mock.patch('cinder.brick.local_dev.lvm.LVM.supports_thin_provisioning',
-                return_value=True)
-    def test_lvm_type_auto_thin_pool_exists(self, *_unused_mocks):
-        configuration = conf.Configuration(fake_opt, 'fake_group')
-        configuration.lvm_type = 'auto'
-
-        vg_obj = fake_lvm.FakeBrickLVM('cinder-volumes',
-                                       False,
-                                       None,
-                                       'default')
-
-        lvm_driver = lvm.LVMVolumeDriver(configuration=configuration,
-                                         vg_obj=vg_obj)
-
-        lvm_driver.check_for_setup_error()
-
-        self.assertEqual('thin', lvm_driver.configuration.lvm_type)
-
-    @mock.patch.object(cinder.volume.utils, 'get_all_volume_groups',
-                       return_value=[{'name': 'cinder-volumes'}])
-    @mock.patch.object(cinder.brick.local_dev.lvm.LVM, 'get_volumes',
-                       return_value=[])
-    @mock.patch('cinder.brick.local_dev.lvm.LVM.update_volume_group_info')
-    @mock.patch('cinder.brick.local_dev.lvm.LVM.get_all_physical_volumes')
-    @mock.patch('cinder.brick.local_dev.lvm.LVM.supports_thin_provisioning',
-                return_value=True)
-    def test_lvm_type_auto_no_lvs(self, *_unused_mocks):
-        configuration = conf.Configuration(fake_opt, 'fake_group')
-        configuration.lvm_type = 'auto'
-
-        vg_obj = fake_lvm.FakeBrickLVM('cinder-volumes',
-                                       False,
-                                       None,
-                                       'default')
-
-        lvm_driver = lvm.LVMVolumeDriver(configuration=configuration,
-                                         vg_obj=vg_obj)
-
-        lvm_driver.check_for_setup_error()
-
-        self.assertEqual('thin', lvm_driver.configuration.lvm_type)
-
-    @mock.patch.object(cinder.volume.utils, 'get_all_volume_groups',
-                       return_value=[{'name': 'cinder-volumes'}])
-    @mock.patch('cinder.brick.local_dev.lvm.LVM.update_volume_group_info')
-    @mock.patch('cinder.brick.local_dev.lvm.LVM.get_all_physical_volumes')
-    @mock.patch('cinder.brick.local_dev.lvm.LVM.supports_thin_provisioning',
-                return_value=False)
-    def test_lvm_type_auto_no_thin_support(self, *_unused_mocks):
-        configuration = conf.Configuration(fake_opt, 'fake_group')
-        configuration.lvm_type = 'auto'
-
-        lvm_driver = lvm.LVMVolumeDriver(configuration=configuration)
-
-        lvm_driver.check_for_setup_error()
-
-        self.assertEqual('default', lvm_driver.configuration.lvm_type)
-
-    @mock.patch.object(cinder.volume.utils, 'get_all_volume_groups',
-                       return_value=[{'name': 'cinder-volumes'}])
-    @mock.patch('cinder.brick.local_dev.lvm.LVM.update_volume_group_info')
-    @mock.patch('cinder.brick.local_dev.lvm.LVM.get_all_physical_volumes')
-    @mock.patch('cinder.brick.local_dev.lvm.LVM.get_volume')
-    @mock.patch('cinder.brick.local_dev.lvm.LVM.supports_thin_provisioning',
-                return_value=False)
-    def test_lvm_type_auto_no_thin_pool(self, *_unused_mocks):
-        configuration = conf.Configuration(fake_opt, 'fake_group')
-        configuration.lvm_type = 'auto'
-
-        lvm_driver = lvm.LVMVolumeDriver(configuration=configuration)
-
-        lvm_driver.check_for_setup_error()
-
-        self.assertEqual('default', lvm_driver.configuration.lvm_type)
-
-    @mock.patch.object(lvm.LVMISCSIDriver, 'extend_volume')
-    def test_create_cloned_volume_by_thin_snapshot(self, mock_extend):
-        self.configuration.lvm_type = 'thin'
-        fake_vg = mock.Mock(fake_lvm.FakeBrickLVM('cinder-volumes', False,
-                                                  None, 'default'))
-        lvm_driver = lvm.LVMISCSIDriver(configuration=self.configuration,
-                                        vg_obj=fake_vg,
-                                        db=db)
-        fake_volume = tests_utils.create_volume(self.context, size=1)
-        fake_new_volume = tests_utils.create_volume(self.context, size=2)
-
-        lvm_driver.create_cloned_volume(fake_new_volume, fake_volume)
-        fake_vg.create_lv_snapshot.assert_called_once_with(
-            fake_new_volume['name'], fake_volume['name'], 'thin')
-        mock_extend.assert_called_once_with(fake_new_volume, 2)
-        fake_vg.activate_lv.assert_called_once_with(
-            fake_new_volume['name'], is_snapshot=True, permanent=True)
-
-
 class ISCSITestCase(DriverTestCase):
     """Test Case for ISCSIDriver"""
-    driver_name = "cinder.volume.drivers.lvm.LVMISCSIDriver"
+    driver_name = "cinder.volume.drivers.lvm.LVMVolumeDriver"
 
     def setUp(self):
         super(ISCSITestCase, self).setUp()
@@ -7500,70 +7469,6 @@ class ISCSITestCase(DriverTestCase):
         connector = {'ip': '10.0.0.2', 'host': 'fakehost'}
         self.assertRaises(exception.InvalidConnectorException,
                           iscsi_driver.validate_connector, connector)
-
-
-class ISERTestCase(DriverTestCase):
-    """Test Case for ISERDriver."""
-    driver_name = "cinder.volume.drivers.lvm.LVMISERDriver"
-
-    def setUp(self):
-        super(ISERTestCase, self).setUp()
-        self.configuration = mock.Mock(conf.Configuration)
-        self.configuration.safe_get.return_value = None
-        self.configuration.num_iser_scan_tries = 3
-        self.configuration.iser_target_prefix = 'iqn.2010-10.org.openstack:'
-        self.configuration.iser_ip_address = '0.0.0.0'
-        self.configuration.iser_port = 3260
-        self.configuration.target_driver = \
-            'cinder.volume.targets.iser.ISERTgtAdm'
-
-    @test.testtools.skip("SKIP until ISER driver is removed or fixed")
-    def test_get_volume_stats(self):
-        def _fake_get_all_physical_volumes(obj, root_helper, vg_name):
-            return [{}]
-
-        def _fake_get_all_volume_groups(obj, vg_name=None, no_suffix=True):
-            return [{'name': 'cinder-volumes',
-                     'size': '5.52',
-                     'available': '0.52',
-                     'lv_count': '2',
-                     'uuid': 'vR1JU3-FAKE-C4A9-PQFh-Mctm-9FwA-Xwzc1m'}]
-
-        self.stubs.Set(brick_lvm.LVM,
-                       'get_all_physical_volumes',
-                       _fake_get_all_physical_volumes)
-
-        self.stubs.Set(brick_lvm.LVM,
-                       'get_all_volume_groups',
-                       _fake_get_all_volume_groups)
-
-        self.volume_driver = \
-            lvm.LVMISERDriver(configuration=self.configuration)
-        self.volume.driver.vg = brick_lvm.LVM('cinder-volumes', 'sudo')
-
-        stats = self.volume.driver.get_volume_stats(refresh=True)
-
-        self.assertEqual(
-            float('5.52'), stats['pools'][0]['total_capacity_gb'])
-        self.assertEqual(
-            float('0.52'), stats['pools'][0]['free_capacity_gb'])
-        self.assertEqual(
-            float('5.0'), stats['pools'][0]['provisioned_capacity_gb'])
-        self.assertEqual('iSER', stats['storage_protocol'])
-
-    @test.testtools.skip("SKIP until ISER driver is removed or fixed")
-    def test_get_volume_stats2(self):
-        iser_driver = lvm.LVMISERDriver(configuration=self.configuration)
-
-        stats = iser_driver.get_volume_stats(refresh=True)
-
-        self.assertEqual(
-            0, stats['pools'][0]['total_capacity_gb'])
-        self.assertEqual(
-            0, stats['pools'][0]['free_capacity_gb'])
-        self.assertEqual(
-            float('5.0'), stats['pools'][0]['provisioned_capacity_gb'])
-        self.assertEqual('iSER', stats['storage_protocol'])
 
 
 class FibreChannelTestCase(DriverTestCase):

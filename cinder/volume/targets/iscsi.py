@@ -112,9 +112,8 @@ class ISCSITarget(driver.Target):
             # code.  The trick here is that different targets use different
             # default lun numbers, the base driver with tgtadm uses 1
             # others like LIO use 0.
-            if (self.configuration.volume_driver in
-                    ['cinder.volume.drivers.lvm.LVMISCSIDriver',
-                     'cinder.volume.drivers.lvm.ThinLVMVolumeDriver'] and
+            if (self.configuration.volume_driver ==
+                    'cinder.volume.drivers.lvm.ThinLVMVolumeDriver' and
                     self.configuration.iscsi_helper == 'tgtadm'):
                 lun = 1
             else:

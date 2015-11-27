@@ -1,0 +1,3 @@
+---
+upgrade:
+  - Removed deprecated LVMISCSIDriver and LVMISERDriver. These should be switched to use the LVMVolumeDriver with the desired iscsi_helper configuration set to the desired iSCSI helper.
