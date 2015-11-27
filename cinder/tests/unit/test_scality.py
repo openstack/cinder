@@ -149,6 +149,21 @@ class ScalityDriverTestCase(test.TestCase):
                          _FAKE_MNT_POINT)
         self.assertEqual(expected_args, mock_execute.call_args[0])
 
+    @mock.patch("cinder.volume.utils.read_proc_mounts")
+    @mock.patch("oslo_concurrency.processutils.execute")
+    @mock.patch("oslo_utils.fileutils.ensure_tree", mock.Mock())
+    @mock.patch("os.symlink", mock.Mock())
+    def test_ensure_shares_mounted_when_sofs_mounted(self, mock_execute,
+                                                     mock_read_proc_mounts):
+        mock_read_proc_mounts.return_value = _FAKE_MOUNTS_TABLE[1]
+
+        self.drv._ensure_shares_mounted()
+
+        # Because SOFS is mounted from the beginning, we shouldn't read
+        # /proc/mounts more than once.
+        mock_read_proc_mounts.assert_called_once_with()
+        self.assertFalse(mock_execute.called)
+
     def test_find_share_when_no_shares_mounted(self):
         self.assertRaises(exception.RemoteFSNoSharesMounted,
                           self.drv._find_share, 'ignored')
