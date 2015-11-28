@@ -165,9 +165,8 @@ class TgtAdm(iscsi.ISCSITarget):
         if os.path.exists(volume_path):
             LOG.warning(_LW('Persistence file already exists for volume, '
                             'found file at: %s'), volume_path)
-        f = open(volume_path, 'w+')
-        f.write(volume_conf)
-        f.close()
+        with open(volume_path, 'w+') as f:
+            f.write(volume_conf)
         LOG.debug(('Created volume path %(vp)s,\n'
                    'content: %(vc)s'),
                   {'vp': volume_path, 'vc': volume_conf})
