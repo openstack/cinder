@@ -24,8 +24,6 @@ from cinder import objects
 from cinder.objects import base
 
 CONF = cfg.CONF
-OPTIONAL_FIELDS = ['metadata', 'admin_metadata',
-                   'volume_type', 'volume_attachment']
 LOG = logging.getLogger(__name__)
 
 
@@ -36,6 +34,9 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
     # Version 1.1: Added metadata, admin_metadata, volume_attachment, and
     #              volume_type
     VERSION = '1.1'
+
+    OPTIONAL_FIELDS = ('metadata', 'admin_metadata',
+                       'volume_type', 'volume_attachment')
 
     DEFAULT_EXPECTED_ATTR = ('admin_metadata', 'metadata')
 
@@ -146,7 +147,7 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
         if expected_attrs is None:
             expected_attrs = []
         for name, field in volume.fields.items():
-            if name in OPTIONAL_FIELDS:
+            if name in Volume.OPTIONAL_FIELDS:
                 continue
             value = db_volume.get(name)
             if isinstance(field, fields.IntegerField):
@@ -218,7 +219,7 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
             db.volume_destroy(self._context, self.id)
 
     def obj_load_attr(self, attrname):
-        if attrname not in OPTIONAL_FIELDS:
+        if attrname not in self.OPTIONAL_FIELDS:
             raise exception.ObjectActionError(
                 action='obj_load_attr',
                 reason=_('attribute %s not lazy-loadable') % attrname)
