@@ -1,0 +1,3 @@
+---
+upgrade:
+  - VMware backend driver now enforces minimum vCenter version of 5.1.

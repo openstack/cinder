@@ -1,0 +1,3 @@
+---
+upgrade:
+  - Removed the deprecated NPIV options for the Storwize backend driver.
