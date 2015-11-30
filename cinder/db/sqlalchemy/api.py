@@ -1885,47 +1885,49 @@ def _volume_x_metadata_get_item(context, volume_id, key, model, notfound_exec,
     return result
 
 
-def _volume_x_metadata_update(context, volume_id, metadata, delete,
-                              model, notfound_exec, session=None):
-    if not session:
-        session = get_session()
+def _volume_x_metadata_update(context, volume_id, metadata, delete, model,
+                              session=None):
+    session = session or get_session()
+    metadata = metadata.copy()
 
     with session.begin(subtransactions=True):
-        # Set existing metadata to deleted if delete argument is True
+        # Set existing metadata to deleted if delete argument is True.  This is
+        # commited immediately to the DB
         if delete:
-            original_metadata = _volume_x_metadata_get(context, volume_id,
-                                                       model, session=session)
-            for meta_key, meta_value in original_metadata.items():
-                if meta_key not in metadata:
-                    meta_ref = _volume_x_metadata_get_item(context, volume_id,
-                                                           meta_key, model,
-                                                           notfound_exec,
-                                                           session=session)
-                    meta_ref.update({'deleted': True})
-                    meta_ref.save(session=session)
+            expected_values = {'volume_id': volume_id}
+            # We don't want to delete keys we are going to update
+            if metadata:
+                expected_values['key'] = db.Not(metadata.keys())
+            conditional_update(context, model, {'deleted': True},
+                               expected_values)
 
-        meta_ref = None
+        # Get existing metadata
+        db_meta = _volume_x_metadata_get_query(context, volume_id, model).all()
+        save = []
+        skip = []
 
-        # Now update all existing items with new values, or create new meta
-        # objects
-        for meta_key, meta_value in metadata.items():
+        # We only want to send changed metadata.
+        for row in db_meta:
+            if row.key in metadata:
+                value = metadata.pop(row.key)
+                if row.value != value:
+                    # ORM objects will not be saved until we do the bulk save
+                    row.value = value
+                    save.append(row)
+                    continue
+            skip.append(row)
 
-            # update the value whether it exists or not
-            item = {"value": meta_value}
+        # We also want to save non-existent metadata
+        save.extend(model(key=key, value=value, volume_id=volume_id)
+                    for key, value in metadata.items())
+        # Do a bulk save
+        if save:
+            session.bulk_save_objects(save, update_changed_only=True)
 
-            try:
-                meta_ref = _volume_x_metadata_get_item(context, volume_id,
-                                                       meta_key, model,
-                                                       notfound_exec,
-                                                       session=session)
-            except notfound_exec:
-                meta_ref = model()
-                item.update({"key": meta_key, "volume_id": volume_id})
-
-            meta_ref.update(item)
-            meta_ref.save(session=session)
-
-    return _volume_x_metadata_get(context, volume_id, model)
+        # Construct result dictionary with current metadata
+        save.extend(skip)
+        result = {row['key']: row['value'] for row in save}
+    return result
 
 
 def _volume_user_metadata_get_query(context, volume_id, session=None):
@@ -1960,7 +1962,6 @@ def _volume_user_metadata_update(context, volume_id, metadata, delete,
                                  session=None):
     return _volume_x_metadata_update(context, volume_id, metadata, delete,
                                      models.VolumeMetadata,
-                                     exception.VolumeMetadataNotFound,
                                      session=session)
 
 
@@ -1970,7 +1971,6 @@ def _volume_image_metadata_update(context, volume_id, metadata, delete,
                                   session=None):
     return _volume_x_metadata_update(context, volume_id, metadata, delete,
                                      models.VolumeGlanceMetadata,
-                                     exception.GlanceMetadataNotFound,
                                      session=session)
 
 
@@ -2048,7 +2048,6 @@ def _volume_admin_metadata_update(context, volume_id, metadata, delete,
                                   session=None):
     return _volume_x_metadata_update(context, volume_id, metadata, delete,
                                      models.VolumeAdminMetadata,
-                                     exception.VolumeAdminMetadataNotFound,
                                      session=session)
 
 

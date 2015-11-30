@@ -1047,26 +1047,9 @@ class API(base.Base):
             msg = _("The volume metadata cannot be updated when the volume "
                     "is in maintenance mode.")
             raise exception.InvalidVolume(reason=msg)
-        if delete:
-            _metadata = metadata
-        else:
-            if meta_type == common.METADATA_TYPES.user:
-                orig_meta = self.get_volume_metadata(context, volume)
-            elif meta_type == common.METADATA_TYPES.image:
-                try:
-                    orig_meta = self.get_volume_image_metadata(context,
-                                                               volume)
-                except exception.GlanceMetadataNotFound:
-                    orig_meta = {}
-            else:
-                raise exception.InvalidMetadataType(metadata_type=meta_type,
-                                                    id=volume['id'])
-            _metadata = orig_meta.copy()
-            _metadata.update(metadata)
-
-        self._check_metadata_properties(_metadata)
+        self._check_metadata_properties(metadata)
         db_meta = self.db.volume_metadata_update(context, volume['id'],
-                                                 _metadata,
+                                                 metadata,
                                                  delete,
                                                  meta_type)
 
@@ -1075,17 +1058,6 @@ class API(base.Base):
         LOG.info(_LI("Update volume metadata completed successfully."),
                  resource=volume)
         return db_meta
-
-    def get_volume_metadata_value(self, volume, key):
-        """Get value of particular metadata key."""
-        metadata = volume.get('volume_metadata')
-        if metadata:
-            for i in volume['volume_metadata']:
-                if i['key'] == key:
-                    return i['value']
-        LOG.info(_LI("Get volume metadata key completed successfully."),
-                 resource=volume)
-        return None
 
     @wrap_check_policy
     def get_volume_admin_metadata(self, context, volume):
@@ -1104,23 +1076,15 @@ class API(base.Base):
         `metadata` argument will be deleted.
 
         """
-        if delete:
-            _metadata = metadata
-        else:
-            orig_meta = self.get_volume_admin_metadata(context, volume)
-            _metadata = orig_meta.copy()
-            _metadata.update(metadata)
-
-        self._check_metadata_properties(_metadata)
-
-        self.db.volume_admin_metadata_update(context, volume['id'],
-                                             _metadata, delete)
+        self._check_metadata_properties(metadata)
+        db_meta = self.db.volume_admin_metadata_update(context, volume['id'],
+                                                       metadata, delete)
 
         # TODO(jdg): Implement an RPC call for drivers that may use this info
 
         LOG.info(_LI("Update volume admin metadata completed successfully."),
                  resource=volume)
-        return _metadata
+        return db_meta
 
     def get_snapshot_metadata(self, context, snapshot):
         """Get all metadata associated with a snapshot."""
