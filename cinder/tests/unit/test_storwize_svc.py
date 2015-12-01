@@ -61,6 +61,7 @@ class StorwizeSVCManagementSimulator(object):
             'startfcmap': '',
             'rmfcmap': '',
             'lslicense': '',
+            'lsguicapabilities': '',
         }
         self._errors = {
             'CMMVC5701E': ('', 'CMMVC5701E No object ID was specified.'),
@@ -349,6 +350,15 @@ class StorwizeSVCManagementSimulator(object):
             rows[2] = ['license_compression_enclosures', '0']
         else:
             rows[2] = ['license_compression_enclosures', '1']
+        return self._print_info_cmd(rows=rows, **kwargs)
+
+    def _cmd_lsguicapabilities(self, **kwargs):
+        rows = [None]
+        if self._next_cmd_error['lsguicapabilities'] == 'no_compression':
+            self._next_cmd_error['lsguicapabilities'] = ''
+            rows[0] = ['license_scheme', '0']
+        else:
+            rows[0] = ['license_scheme', '9846']
         return self._print_info_cmd(rows=rows, **kwargs)
 
     # Print mostly made-up stuff in the correct syntax
@@ -1861,6 +1871,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
 
         if self.USESIM:
             self.sim.error_injection('lslicense', 'no_compression')
+            self.sim.error_injection('lsguicapabilities', 'no_compression')
             self._set_flag('storwize_svc_vol_compression', True)
             self.driver.do_setup(None)
             self.assertRaises(exception.InvalidInput,
@@ -3698,21 +3709,32 @@ class StorwizeHelpersTestCase(test.TestCase):
         super(StorwizeHelpersTestCase, self).setUp()
         self.storwize_svc_common = storwize_svc_common.StorwizeHelpers(None)
 
-    def test_compression_enabled(self):
+    @mock.patch.object(storwize_svc_common.StorwizeSSH, 'lslicense')
+    @mock.patch.object(storwize_svc_common.StorwizeSSH, 'lsguicapabilities')
+    def test_compression_enabled(self, lsguicapabilities, lslicense):
         fake_license_without_keys = {}
         fake_license = {
             'license_compression_enclosures': '1',
             'license_compression_capacity': '1'
         }
+        fake_license_scheme = {
+            'license_scheme': '9846'
+        }
+        fake_license_invalid_scheme = {
+            'license_scheme': '0000'
+        }
 
-        # Check when keys of return licenses do not contain
-        # 'license_compression_enclosures' and 'license_compression_capacity'
-        with mock.patch.object(
-                storwize_svc_common.StorwizeSSH, 'lslicense') as lslicense:
-            lslicense.return_value = fake_license_without_keys
-            self.assertFalse(self.storwize_svc_common.compression_enabled())
+        lslicense.side_effect = [fake_license_without_keys,
+                                 fake_license_without_keys,
+                                 fake_license,
+                                 fake_license_without_keys]
+        lsguicapabilities.side_effect = [fake_license_without_keys,
+                                         fake_license_invalid_scheme,
+                                         fake_license_scheme]
+        self.assertFalse(self.storwize_svc_common.compression_enabled())
 
-        with mock.patch.object(
-                storwize_svc_common.StorwizeSSH, 'lslicense') as lslicense:
-            lslicense.return_value = fake_license
-            self.assertTrue(self.storwize_svc_common.compression_enabled())
+        self.assertFalse(self.storwize_svc_common.compression_enabled())
+
+        self.assertTrue(self.storwize_svc_common.compression_enabled())
+
+        self.assertTrue(self.storwize_svc_common.compression_enabled())
