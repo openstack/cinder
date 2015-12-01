@@ -326,6 +326,7 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
 
         data['total_capacity_gb'] = 0
         data['free_capacity_gb'] = 0
+        data['multiattach'] = True
 
         provisioned_capacity = 0
 
