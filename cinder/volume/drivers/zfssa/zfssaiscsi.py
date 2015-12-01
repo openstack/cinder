@@ -26,6 +26,7 @@ import six
 from cinder import exception
 from cinder import utils
 from cinder.i18n import _, _LE, _LI, _LW
+from cinder.image import image_utils
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
 from cinder.volume.drivers.zfssa import zfssarest
@@ -459,6 +460,7 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
             # Cleanup snapshot
             self.delete_snapshot(zfssa_snapshot)
 
+    @utils.synchronized('zfssaiscsi', external=True)
     def clone_image(self, context, volume,
                     image_location, image_meta,
                     image_service):
@@ -474,21 +476,28 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
         Create a new cache volume as in (1).
 
         Clone a volume from the cache volume and returns it to Cinder.
+
+        A file lock is placed on this method to prevent:
+
+        (a) a race condition when a cache volume has been verified, but then
+        gets deleted before it is cloned.
+
+        (b) failure of subsequent clone_image requests if the first request is
+        still pending.
         """
         LOG.debug('Cloning image %(image)s to volume %(volume)s',
                   {'image': image_meta['id'], 'volume': volume['name']})
         lcfg = self.configuration
+        cachevol_size = 0
         if not lcfg.zfssa_enable_local_cache:
             return None, False
 
-        # virtual_size is the image's actual size when stored in a volume
-        # virtual_size is expected to be updated manually through glance
-        try:
-            virtual_size = int(image_meta['properties'].get('virtual_size'))
-        except Exception:
-            LOG.error(_LE('virtual_size property is not set for the image.'))
-            return None, False
-        cachevol_size = int(math.ceil(float(virtual_size) / units.Gi))
+        with image_utils.TemporaryImages.fetch(image_service,
+                                               context,
+                                               image_meta['id']) as tmp_image:
+            info = image_utils.qemu_img_info(tmp_image)
+            cachevol_size = int(math.ceil(float(info.virtual_size) / units.Gi))
+
         if cachevol_size > volume['size']:
             exception_msg = (_LE('Image size %(img_size)dGB is larger '
                                  'than volume size %(vol_size)dGB.'),
@@ -527,7 +536,6 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
 
         return None, True
 
-    @utils.synchronized('zfssaiscsi', external=True)
     def _verify_cache_volume(self, context, img_meta,
                              img_service, specs, cachevol_props):
         """Verify if we have a cache volume that we want.
@@ -540,9 +548,6 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
         If it's out of date, delete it and create a new one.
         After the function returns, there should be a cache volume available,
         ready for cloning.
-
-        There needs to be a file lock here, otherwise subsequent clone_image
-        requests will fail if the first request is still pending.
         """
         lcfg = self.configuration
         cachevol_name = 'os-cache-vol-%s' % img_meta['id']
@@ -560,6 +565,13 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
             cache_vol = self.zfssa.get_lun(lcfg.zfssa_pool,
                                            lcfg.zfssa_cache_project,
                                            cachevol_name)
+            if (not cache_vol.get('updated_at', None) or
+                    not cache_vol.get('image_id', None)):
+                exc_msg = (_('Cache volume %s does not have required '
+                             'properties') % cachevol_name)
+                LOG.error(exc_msg)
+                raise exception.VolumeBackendAPIException(data=exc_msg)
+
             cache_snap = self.zfssa.get_lun_snapshot(lcfg.zfssa_pool,
                                                      lcfg.zfssa_cache_project,
                                                      cachevol_name,
@@ -948,9 +960,13 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
                 numclones = 0
 
         if numclones == 0:
-            self.zfssa.delete_lun(lcfg.zfssa_pool,
-                                  lcfg.zfssa_cache_project,
-                                  cache['share'])
+            try:
+                self.zfssa.delete_lun(lcfg.zfssa_pool,
+                                      lcfg.zfssa_cache_project,
+                                      cache['share'])
+            except exception.VolumeBackendAPIException:
+                LOG.warning(_LW("Volume %s exists but can't be deleted"),
+                            cache['share'])
 
 
 class MigrateVolumeInit(task.Task):

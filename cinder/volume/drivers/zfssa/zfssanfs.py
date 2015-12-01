@@ -28,6 +28,7 @@ import six
 from cinder import exception
 from cinder import utils
 from cinder.i18n import _, _LE, _LI
+from cinder.image import image_utils
 from cinder.volume.drivers import nfs
 from cinder.volume.drivers.san import san
 from cinder.volume.drivers.zfssa import zfssarest
@@ -297,6 +298,7 @@ class ZFSSANFSDriver(nfs.NfsDriver):
                       'volume': volume['name']})
             self._check_origin(vol_props['origin'])
 
+    @utils.synchronized('zfssanfs', external=True)
     def clone_image(self, context, volume,
                     image_location, image_meta,
                     image_service):
@@ -312,21 +314,26 @@ class ZFSSANFSDriver(nfs.NfsDriver):
         Create a new cache volume as in (1).
 
         Clone a volume from the cache volume and returns it to Cinder.
+
+        A file lock is placed on this method to prevent:
+        (a) a race condition when a cache volume has been verified, but then
+        gets deleted before it is cloned.
+
+        (b) failure of subsequent clone_image requests if the first request is
+        still pending.
         """
         LOG.debug('Cloning image %(image)s to volume %(volume)s',
                   {'image': image_meta['id'], 'volume': volume['name']})
         lcfg = self.configuration
+        cachevol_size = 0
         if not lcfg.zfssa_enable_local_cache:
             return None, False
 
-        # virtual_size is the image's actual size when stored in a volume
-        # virtual_size is expected to be updated manually through glance
-        try:
-            virtual_size = int(image_meta['properties'].get('virtual_size'))
-        except Exception:
-            LOG.error(_LE('virtual_size property is not set for the image.'))
-            return None, False
-        cachevol_size = int(math.ceil(float(virtual_size) / units.Gi))
+        with image_utils.TemporaryImages.fetch(
+                image_service, context, image_meta['id']) as tmp_image:
+            info = image_utils.qemu_img_info(tmp_image)
+            cachevol_size = int(math.ceil(float(info.virtual_size) / units.Gi))
+
         if cachevol_size > volume['size']:
             exception_msg = (_LE('Image size %(img_size)dGB is larger '
                                  'than volume size %(vol_size)dGB.'),
@@ -370,7 +377,6 @@ class ZFSSANFSDriver(nfs.NfsDriver):
 
         return clone_vol, True
 
-    @utils.synchronized('zfssanfs', external=True)
     def _verify_cache_volume(self, context, img_meta,
                              img_service, cachevol_props):
         """Verify if we have a cache volume that we want.
@@ -490,7 +496,12 @@ class ZFSSANFSDriver(nfs.NfsDriver):
 
         If the cache no longer has clone, it will be deleted.
         """
-        cachevol_props = self.zfssa.get_volume(origin)
+        try:
+            cachevol_props = self.zfssa.get_volume(origin)
+        except exception.VolumeNotFound:
+            LOG.debug('Origin %s does not exist', origin)
+            return
+
         numclones = cachevol_props['numclones']
         LOG.debug('Number of clones: %d', numclones)
         if numclones <= 1:
@@ -500,7 +511,6 @@ class ZFSSANFSDriver(nfs.NfsDriver):
             cachevol_props = {'numclones': six.text_type(numclones - 1)}
             self.zfssa.set_file_props(origin, cachevol_props)
 
-    @utils.synchronized('zfssanfs', external=True)
     def _update_origin(self, vol_name, cachevol_name):
         """Update WebDAV property of a volume.
 
