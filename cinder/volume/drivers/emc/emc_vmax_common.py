@@ -1472,6 +1472,7 @@ class EMCVMAXCommon(object):
                 {'volumeName': volumeName,
                  'volumeInstance': volumeInstance.path})
         else:
+            host = self.utils.get_host_short_name(host)
             hoststr = ("-%(host)s-"
                        % {'host': host})
 

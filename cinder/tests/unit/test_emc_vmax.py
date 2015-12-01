@@ -813,8 +813,7 @@ class FakeEcomConnection(object):
 
         return unitnames
 
-    def _ref_unitnames2(self):
-        unitnames = []
+    def mv_entry(self, mvname):
         unitname = {}
 
         dependent = {}
@@ -829,28 +828,28 @@ class FakeEcomConnection(object):
 
         classcimproperty = Fake_CIMProperty()
         elementName = (
-            classcimproperty.fake_getElementNameCIMProperty('OS-myhost-MV'))
+            classcimproperty.fake_getElementNameCIMProperty(mvname))
         properties = {u'ElementName': elementName}
         antecedent.properties = properties
 
         unitname['Dependent'] = dependent
         unitname['Antecedent'] = antecedent
         unitname['CreationClassName'] = self.data.unit_creationclass
+        return unitname
+
+    def _ref_unitnames2(self):
+        unitnames = []
+        unitname = self.mv_entry('OS-myhost-MV')
         unitnames.append(unitname)
 
         # Second masking
-        unitname2 = unitname.copy()
-        elementName2 = (
-            classcimproperty.fake_getElementNameCIMProperty('OS-fakehost-MV'))
-        properties2 = {u'ElementName': elementName2}
-
-        antecedent2 = SYMM_LunMasking()
-        antecedent2['CreationClassName'] = self.data.lunmask_creationclass2
-        antecedent2['SystemName'] = self.data.storage_system
-
-        antecedent2.properties = properties2
-        unitname2['Antecedent'] = antecedent2
+        unitname2 = self.mv_entry('OS-fakehost-MV')
         unitnames.append(unitname2)
+
+        # third masking
+        amended = 'OS-rslong493156848e71b072a17c1c4625e45f75-MV'
+        unitname3 = self.mv_entry(amended)
+        unitnames.append(unitname3)
         return unitnames
 
     def _default_ref(self, objectpath):
@@ -2022,8 +2021,28 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         data = (
             self.driver.common.find_device_number(self.data.test_volume_v2,
                                                   host))
-        # Empty dict
         self.assertFalse(data)
+
+    def test_find_device_number_long_host(self):
+        # Long host name
+        host = 'myhost.mydomain.com'
+        data = (
+            self.driver.common.find_device_number(self.data.test_volume_v2,
+                                                  host))
+        self.assertEqual('OS-myhost-MV', data['maskingview'])
+
+    def test_find_device_number_short_name_over_38_chars(self):
+        # short name over 38 chars
+        host = 'myShortnameIsOverThirtyEightCharactersLong'
+        host = self.driver.common.utils.generate_unique_trunc_host(host)
+        amended = 'OS-' + host + '-MV'
+        v2_host_over_38 = self.data.test_volume_v2.copy()
+        # Pool aware scheduler enabled
+        v2_host_over_38['host'] = host
+        data = (
+            self.driver.common.find_device_number(v2_host_over_38,
+                                                  host))
+        self.assertEqual(amended, data['maskingview'])
 
     def test_unbind_and_get_volume_from_storage_pool(self):
         conn = self.fake_ecom_connection()
