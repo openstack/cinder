@@ -980,21 +980,6 @@ class CephBackupDriver(driver.BackupDriver):
         LOG.debug("Restore transfer completed in %.4fs",
                   (time.time() - before))
 
-    def _num_backup_snaps(self, backup_base_name):
-        """Return the number of snapshots that exist on the base image."""
-        with rbd_driver.RADOSClient(self, self._ceph_backup_pool) as client:
-            base_rbd = self.rbd.Image(client.ioctx, backup_base_name,
-                                      read_only=True)
-            try:
-                snaps = self.get_backup_snaps(base_rbd)
-            finally:
-                base_rbd.close()
-
-        if snaps:
-            return len(snaps)
-        else:
-            return 0
-
     def _get_restore_point(self, base_name, backup_id):
         """Get restore point snapshot name for incremental backup.
 
