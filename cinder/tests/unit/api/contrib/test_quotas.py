@@ -32,7 +32,9 @@ from cinder import db
 from cinder import test
 from cinder.tests.unit import test_db_api
 
+from keystonemiddleware import auth_token
 from oslo_config import cfg
+from oslo_config import fixture as config_fixture
 
 
 CONF = cfg.CONF
@@ -92,7 +94,10 @@ class QuotaSetsControllerTest(test.TestCase):
         self.req.environ['cinder.context'].project_id = 'foo'
 
         self._create_project_hierarchy()
-        self.auth_url = CONF.keymgr.encryption_auth_url
+
+        self.auth_url = 'http://localhost:5000'
+        self.fixture = self.useFixture(config_fixture.Config(auth_token.CONF))
+        self.fixture.config(auth_uri=self.auth_url, group='keystone_authtoken')
 
     def _create_project_hierarchy(self):
         """Sets an environment used for nested quotas tests.
@@ -123,15 +128,16 @@ class QuotaSetsControllerTest(test.TestCase):
     def _get_project(self, context, id, subtree_as_ids=False):
         return self.project_by_id.get(id, self.FakeProject())
 
-    @mock.patch('keystoneclient.v3.client.Client')
-    def test_keystone_client_instantiation(self, ksclient_class):
+    @mock.patch('keystoneclient.client.Client')
+    @mock.patch('keystoneclient.session.Session')
+    def test_keystone_client_instantiation(self, ksclient_session,
+                                           ksclient_class):
         context = self.req.environ['cinder.context']
         self.controller._get_project(context, context.project_id)
         ksclient_class.assert_called_once_with(auth_url=self.auth_url,
-                                               token=context.auth_token,
-                                               project_id=context.project_id)
+                                               session=ksclient_session())
 
-    @mock.patch('keystoneclient.v3.client.Client')
+    @mock.patch('keystoneclient.client.Client')
     def test_get_project(self, ksclient_class):
         context = self.req.environ['cinder.context']
         keystoneclient = ksclient_class.return_value

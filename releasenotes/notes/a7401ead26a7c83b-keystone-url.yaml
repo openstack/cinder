@@ -1,0 +1,3 @@
+---
+fixes:
+  - Cinder will now correctly read Keystone's endpoint for quota calls from keystone_authtoken.auth_uri instead of keymgr.encryption_auth_url config option.

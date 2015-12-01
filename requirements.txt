@@ -33,6 +33,7 @@ pycrypto>=2.6
 pyparsing>=2.0.1
 python-barbicanclient>=3.3.0
 python-glanceclient>=0.18.0
+python-keystoneclient>=1.6.0,!=1.8.0
 python-novaclient!=2.33.0,>=2.29.0
 python-swiftclient>=2.2.0
 requests>=2.8.1
