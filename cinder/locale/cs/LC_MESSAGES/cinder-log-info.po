@@ -7,10 +7,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev260\n"
+"Project-Id-Version: cinder 8.0.0.dev364\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-20 06:38+0000\n"
-"PO-Revision-Date: 2015-11-19 08:34+0000\n"
+"POT-Creation-Date: 2015-12-01 06:53+0000\n"
+"PO-Revision-Date: 2015-11-27 09:24+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language-Team: Czech\n"
 "Language: cs\n"
@@ -1103,27 +1103,6 @@ msgstr ""
 msgid "Entering unmanage_volume volume = %s"
 msgstr "Spouštění rušení správy svazku %s."
 
-msgid "Error attaching Volume"
-msgstr "Chyba při připojování svazku"
-
-msgid "Error creating Volume"
-msgstr "Chyba při vytváření svazku"
-
-#, python-format
-msgid "Error creating Volume %s."
-msgstr "Chyba při vytváření svazku %s."
-
-#, python-format
-msgid "Error destroying Volume %s."
-msgstr "Chyba při ničení svazku %s."
-
-msgid "Error detaching Volume"
-msgstr "Chyba při odpojování svazku"
-
-#, python-format
-msgid "Error extending Volume %s."
-msgstr "Chyba při rozšiřování svazku %s."
-
 #, python-format
 msgid "Exploring array subnet label %s"
 msgstr "Prozkoumávání jmenovky podsítě pole %s"
@@ -1318,9 +1297,6 @@ msgstr "Získání popisných dat obrazu svazku úspěšně dokončeno."
 
 msgid "Get volume metadata completed successfully."
 msgstr "Získání popisných dat svazku úspěšně dokončeno."
-
-msgid "Get volume metadata key completed successfully."
-msgstr "Získání klíče popisných dat svazku úspěšně dokončeno."
 
 msgid "Getting getInitiatorGrpList"
 msgstr "Získávání seznamu skupin zavaděče"
@@ -1753,10 +1729,6 @@ msgid "Re-using existing purity host %(host_name)r"
 msgstr "Znovu používání existujícího hostitele Purity %(host_name)r"
 
 #, python-format
-msgid "Reference count of %(volume)s is %(count)d, not detaching."
-msgstr "Počet odkazů %(volume)s je %(count)d, nebude připojeno."
-
-#, python-format
 msgid "Registering image in cache %s"
 msgstr "Registrování obrazu v mezipaměti %s"
 
@@ -2140,6 +2112,10 @@ msgid "Snapshot %s created successfully."
 msgstr "Snímek %s úspěšně vytvořen."
 
 #, python-format
+msgid "Snapshot %s does not exist in backend."
+msgstr "Snímek %s neexistuje v podpůrné vrstvě,"
+
+#, python-format
 msgid "Snapshot %s not found"
 msgstr "Snímek %s nenalezen"
 
@@ -2422,6 +2398,15 @@ msgstr "Ukončení připojení: %(volume)s."
 msgid "Terminate volume connection completed successfully."
 msgstr "Ukončení připojení svazku úspěšně dokončeno."
 
+msgid ""
+"The NAS file operations will be run as non privileged user in secure mode. "
+"Please ensure your libvirtd settings have been configured accordingly (see "
+"section 'OpenStack' in the Quobyte Manual."
+msgstr ""
+"Operace se souborem NAS budou spouštěny pod účtem uživatele bez oprávnění "
+"správce v zabezpečeném režimu. Ujistěte se prosím, že vaše nastavení "
+"libvirtd je správné (přečtěte si část 'OpenStack' v příručce Quobyte)."
+
 #, python-format
 msgid "The QoS sepcs is: %s."
 msgstr "Specifikace QoS jsou %s."
@@ -2429,6 +2414,14 @@ msgstr "Specifikace QoS jsou %s."
 #, python-format
 msgid "The iSCSI target %(target_name)s already exists."
 msgstr "Cíl iSCSI %(target_name)s již existuje."
+
+#, python-format
+msgid ""
+"The image was successfully converted, but image size is unavailable. src "
+"%(src)s, dest %(dest)s. %(error)s"
+msgstr ""
+"Obraz byl úspěšně převeden, ale velikost obrazu není dostupná. Zdroj "
+"%(src)s, cíl %(dest)s. %(error)s"
 
 #, python-format
 msgid ""

@@ -7,9 +7,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev260\n"
+"Project-Id-Version: cinder 8.0.0.dev364\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-20 06:38+0000\n"
+"POT-Creation-Date: 2015-12-01 06:53+0000\n"
 "PO-Revision-Date: 2015-09-16 08:22+0000\n"
 "Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
 "Language-Team: Turkish (Turkey)\n"
@@ -922,27 +922,6 @@ msgstr ""
 "terminate_connection'a giriliyor mantıksal sürücü=%(vol)s bağlayıcı=%(conn)s "
 "konum=%(loc)s."
 
-msgid "Error attaching Volume"
-msgstr "Mantıksal sürücü eklenirken hata"
-
-msgid "Error creating Volume"
-msgstr "Mantıksal sürücü oluşturmada hata"
-
-#, python-format
-msgid "Error creating Volume %s."
-msgstr "Mantıksal sürücü %s oluşturulurken hata."
-
-#, python-format
-msgid "Error destroying Volume %s."
-msgstr "Mantıksal sürücü %s silinirken hata."
-
-msgid "Error detaching Volume"
-msgstr "Mantıksal sürücü ayrılırken hata"
-
-#, python-format
-msgid "Error extending Volume %s."
-msgstr "Mantıksal sürücü %s büyütülürken hata."
-
 #, python-format
 msgid "Exploring array subnet label %s"
 msgstr "Dizi alt ağ etiketi %s keşfediliyor"
@@ -1096,9 +1075,6 @@ msgstr "Mantıksal sürücü imaj-metadata'sı getir başarıyla tamamlandı."
 
 msgid "Get volume metadata completed successfully."
 msgstr "Mantıksal sürücü metadata alma başarıyla tamamlandı."
-
-msgid "Get volume metadata key completed successfully."
-msgstr "Mantıksal sürücü metadata anahtarı getir başarıyla tamamlandı."
 
 msgid "Getting getInitiatorGrpList"
 msgstr "getInitiatorGrpList getiriliyor"
@@ -1473,10 +1449,6 @@ msgstr ""
 #, python-format
 msgid "Re-using existing purity host %(host_name)r"
 msgstr "Mevcut purity istemcisi %(host_name)r tekrar kullanılıyor"
-
-#, python-format
-msgid "Reference count of %(volume)s is %(count)d, not detaching."
-msgstr "%(volume)s için referans sayısı %(count)d, ayrılmıyor."
 
 #, python-format
 msgid "Registering image in cache %s"

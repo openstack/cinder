@@ -7,9 +7,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev282\n"
+"Project-Id-Version: cinder 8.0.0.dev364\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-23 06:41+0000\n"
+"POT-Creation-Date: 2015-12-01 06:53+0000\n"
 "PO-Revision-Date: 2015-08-26 03:31+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: Turkish (Turkey)\n"
@@ -28,15 +28,6 @@ msgstr "%(path)s açık izinlerle ayarlanıyor: %(perm)s"
 #, python-format
 msgid "%s"
 msgstr "%s"
-
-#, python-format
-msgid "%s is not an accepted REST server IP address"
-msgstr "%s kabul edilen REST sunucusu IP adresi değil"
-
-#, python-format
-msgid "All attempts to recover failed detach of %(volume)s failed."
-msgstr ""
-"%(volume)s başarısız ayırma işlemini tüm kurtarma çabaları başarısız oldu."
 
 #, python-format
 msgid "AttachSnapTask.revert: detach mount point %s"
@@ -159,9 +150,6 @@ msgstr ""
 "Yapılandırma seçenekleri eqlx_use_chap, eqlx_chap_login ve "
 "eqlx_chap_password artık kullanılmıyor. Aynıları için sırayla chap_auth, "
 "chap_username ve chap_password kullanın."
-
-msgid "Configuration variable srb_base_urls not set or empty."
-msgstr "Yapılandırma değişkeni srb_base_urls ayarlanmamış veya boş."
 
 #, python-format
 msgid "Consistency group %(name)s already exists. Message: %(msg)s"
@@ -309,10 +297,6 @@ msgstr "Mantıksal sürücü bilgisi tazelenirken hata. İleti: %s"
 #, python-format
 msgid "Error unmapping LUN. Code :%(code)s, Message: %(message)s"
 msgstr "LUN eşleştirmesi kaldırmada hata. Kod :%(code)s, İleti: %(message)s"
-
-#, python-format
-msgid "Error while removing export: %r"
-msgstr "Dışa aktarma kaldırılırken hata: %r"
 
 #, python-format
 msgid "Exception during cache cleaning %(share)s. Message - %(ex)s"
@@ -1004,10 +988,6 @@ msgstr ""
 "bulunamadı. Metadata yedeği siliniyor."
 
 #, python-format
-msgid "Removed volume group %s still appears in vgs."
-msgstr "Silinmiş mantıksal sürücü grubu %s hala vgs'de görünüyor."
-
-#, python-format
 msgid "Rename failure in cleanup of cDOT QOS policy group %(name)s: %(ex)s"
 msgstr ""
 "cDOT QOS ilke grubu %(name)s temizliğinde yeniden adlandırma hatası: %(ex)s"
@@ -1026,10 +1006,6 @@ msgstr ""
 
 msgid "Requested image is not accessible by current Tenant."
 msgstr "İstenen imaj mevcut Kiracı tarafından erişilebilir değil."
-
-#, python-format
-msgid "Retrying failed call to %(func)s, attempt %(attempt)i."
-msgstr "%(func)s başarısız çağrısı tekrarlanıyor, deneme %(attempt)i."
 
 msgid "Returning as clean tmp vol job already running."
 msgstr "Geçici mantıksal sürücü temizleme işi hala çalıştığından dönülüyor."
@@ -1329,10 +1305,6 @@ msgstr ""
 #, python-format
 msgid "Volume %(volume_id)s cannot be retyped during attachment."
 msgstr "Mantıksal sürücü %(volume_id)s ekleme sırasında retype edilemez."
-
-#, python-format
-msgid "Volume %r not found while trying to remove."
-msgstr "Mantıksal sürücü %r silinmeye çalışılırken bulunamadı."
 
 #, python-format
 msgid "Volume %s does not exist."
