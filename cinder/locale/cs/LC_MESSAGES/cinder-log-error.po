@@ -8,10 +8,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev269\n"
+"Project-Id-Version: cinder 8.0.0.dev364\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-22 06:39+0000\n"
-"PO-Revision-Date: 2015-11-21 07:19+0000\n"
+"POT-Creation-Date: 2015-12-01 06:53+0000\n"
+"PO-Revision-Date: 2015-11-27 09:22+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language-Team: Czech\n"
 "Language: cs\n"
@@ -396,10 +396,6 @@ msgstr "Nelze se připojit k %(primary)s nebo %(secondary)s!"
 msgid "Could not create snapshot set. Error: '%s'"
 msgstr "Nelze vytvořit sadu snímků. Chyba: '%s'"
 
-#, python-format
-msgid "Could not deactivate volume group %s"
-msgstr "Nelze deaktivovat skupinu svazku %s"
-
 msgid "Could not decode scheduler options."
 msgstr "Nelze rozšifrovat volby plánovače."
 
@@ -410,10 +406,6 @@ msgstr "Nelze smazat nezdařený svazek obrazu %(id)s."
 #, python-format
 msgid "Could not delete the image volume %(id)s."
 msgstr "Nelze smazat svazek obrazu %(id)s."
-
-#, python-format
-msgid "Could not detach volume %(vol)s from device %(dev)s."
-msgstr "Nelze odpojit svazek %(vol)s ze zařízení %(dev)s."
 
 #, python-format
 msgid ""
@@ -465,9 +457,6 @@ msgstr "Nelze vyhodnotit soubor voleb plánovače %(filename)s."
 #, python-format
 msgid "Could not validate device %s"
 msgstr "Nelze ověřit zařízení %s"
-
-msgid "Cound not setup urls on the Block Driver."
-msgstr "Nelze nastavit url na blokovém ovladači"
 
 #, python-format
 msgid "Create cg snapshot %s failed."
@@ -669,9 +658,6 @@ msgstr ""
 msgid "Error activating LV"
 msgstr "Chyba při aktivaci logického svazku"
 
-msgid "Error activating Volume Group"
-msgstr "Chyba při aktivaci skupiny svazku"
-
 msgid "Error adding HBA to server"
 msgstr "Chyba při přidávání HBA k serveru"
 
@@ -690,6 +676,9 @@ msgstr ""
 #, python-format
 msgid "Error cleaning up failed volume creation.  Msg - %s."
 msgstr "Chyba při čištění selhaného vytváření svazku. Zpráva - %s"
+
+msgid "Error cloning volume"
+msgstr "Chyba při klonování svazku"
 
 msgid "Error closing channel."
 msgstr "Chyba při uzavírání kanálu."
@@ -720,11 +709,17 @@ msgstr "Chyba při vytváření skupiny svazku"
 msgid "Error creating chap record."
 msgstr "Chyba při vytváření záznamu chap."
 
+msgid "Error creating cloned volume"
+msgstr "Chyba při vytváření klonovaného svazku"
+
 msgid "Error creating key."
 msgstr "Chyba při vytváření klíče."
 
 msgid "Error creating snapshot"
 msgstr "Chyba při vytváření snímku"
+
+msgid "Error creating volume"
+msgstr "Chyba při vytváření svazku"
 
 #, python-format
 msgid "Error creating volume. Msg - %s."
@@ -733,14 +728,14 @@ msgstr "Chyba při vytváření svazku. Zpráva - %s."
 msgid "Error deactivating LV"
 msgstr "Chyba při deaktivaci logického svazku"
 
-msgid "Error deactivating Volume Group"
-msgstr "Chyba při deaktivaci skupiny svazku"
-
 msgid "Error deleting key."
 msgstr "Chyba při mazání klíče."
 
-msgid "Error destroying Volume Group"
-msgstr "Chyba při ničení skupiny svazku"
+msgid "Error deleting snapshot"
+msgstr "Chyba při mazání snímku"
+
+msgid "Error deleting volume"
+msgstr "Chyba při mazání svazku"
 
 #, python-format
 msgid "Error detaching snapshot %(snapshot)s, due to remove export failure."
@@ -784,8 +779,8 @@ msgstr "Chyba při rozšiřování svazku %(name)s: %(code)d %(reason)s"
 msgid "Error extending Volume"
 msgstr "Chyba při rozšiřování svazku"
 
-msgid "Error extending thin provisioning pool"
-msgstr "Chyba při rozšiřování mělké poskytující zásoby"
+msgid "Error extending volume"
+msgstr "Chyba při rozšiřování svazku"
 
 #, python-format
 msgid "Error extending volume %(id)s. Ex: %(ex)s"
@@ -1044,12 +1039,13 @@ msgid "Error renaming volume %(original)s to %(name)s: %(code)d %(reason)s"
 msgstr ""
 "Chyba při přejmenování svazku %(original)s na %(name)s: %(code)d %(reason)s"
 
-msgid "Error resizing Physical Volume"
-msgstr "Chyba při změně velikosti fyzického svazku"
-
 #, python-format
 msgid "Error resolving host %(host)s. Error - %(e)s."
 msgstr "Nelze převést na ip adresu hostitele %(host)s. Chyba - %(e)s."
+
+#, python-format
+msgid "Error retrieving LUN %(vol)s number"
+msgstr "Chyba při získávání čísla LUN %(vol)s"
 
 #, python-format
 msgid "Error running SSH command: \"%s\"."
@@ -1079,6 +1075,14 @@ msgstr "Chyba při ukládání klíče."
 #, python-format
 msgid "Error unmapping volume: %s"
 msgstr "Chyba při zrušení mapování svazku: %s"
+
+#, python-format
+msgid "Error verifying LUN container %(bkt)s"
+msgstr "Chyba při ověřování kontejneru LUN %(bkt)s"
+
+#, python-format
+msgid "Error verifying iSCSI service %(serv)s on host %(hst)s"
+msgstr "Chyba při ověřování služby iSCSI %(serv)s, na hostiteli %(hst)s"
 
 msgid "Error: unable to snap replay"
 msgstr "Chyba: Nelze vytvořit snímek ze zpětného načtení"
@@ -2273,6 +2277,10 @@ msgstr ""
 "U kontroly verzi firmware nebyl žádný výstup v rozhraní příkazového řádku"
 
 #, python-format
+msgid "No VIP configured for service %s"
+msgstr "Nenastaveno žádné VIP pro službu %s"
+
+#, python-format
 msgid ""
 "No action required. Volume: %(volumeName)s is already part of pool: %(pool)s."
 msgstr ""
@@ -2748,10 +2756,6 @@ msgstr "Nelze smazat zaneprázdněný svazek."
 #, python-format
 msgid "Unable to delete due to existing snapshot for volume: %s"
 msgstr "Nelze smazat kvůli existujícímu snímku svazku. %s"
-
-#, python-format
-msgid "Unable to delete due to existing snapshot for volume: %s."
-msgstr "Nelze smazat kvůli existujícímu snímku svazku: %s."
 
 #, python-format
 msgid "Unable to delete profile %(cg)s : %(reason)s"
@@ -3325,9 +3329,6 @@ msgstr ""
 #, python-format
 msgid "unmanage: Volume %s does not exist!"
 msgstr "Zrušení správy: Svazek %s neexistuje!"
-
-msgid "virtual_size property is not set for the image."
-msgstr "Vlastnosti virtual_size není v obrazu nastavena."
 
 msgid ""
 "zfssa_replication_ip not set in cinder.conf. zfssa_replication_ip is needed "

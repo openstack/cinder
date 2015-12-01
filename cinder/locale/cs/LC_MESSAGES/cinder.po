@@ -9,10 +9,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev282\n"
+"Project-Id-Version: cinder 8.0.0.dev364\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-23 06:41+0000\n"
-"PO-Revision-Date: 2015-11-22 08:28+0000\n"
+"POT-Creation-Date: 2015-12-01 06:53+0000\n"
+"PO-Revision-Date: 2015-11-27 09:20+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language: cs\n"
 "Language-Team: Czech\n"
@@ -1205,6 +1205,14 @@ msgstr ""
 msgid "Clone feature is not licensed on %(storageSystem)s."
 msgstr "Funkce klonování není licencována na %(storageSystem)s."
 
+#, python-format
+msgid ""
+"Clone type '%(clone_type)s' is invalid; valid values are: '%(full_clone)s' "
+"and '%(linked_clone)s'."
+msgstr ""
+"Typ klonu '%(clone_type)s' je neplatný; platné hodnoty jsou: "
+"'%(full_clone)s' a '%(linked_clone)s'."
+
 msgid ""
 "Cluster is not formatted. You should probably perform \"dog cluster format\"."
 msgstr ""
@@ -1360,10 +1368,6 @@ msgid "Copying metadata from %(src_type)s %(src_id)s to %(vol_id)s."
 msgstr "Kopírování popisných dat z %(src_type)s %(src_id)s do %(vol_id)s."
 
 #, python-format
-msgid "Could not attach volume %(vol)s as %(dev)s on system."
-msgstr "Nelze připojit svazek %(vol)s jako %(dev)s v systému"
-
-#, python-format
 msgid "Could not bind to %(host)s:%(port)s after trying for 30 seconds"
 msgstr "Nelze svázat s %(host)s:%(port)s i po 30 vteřinách snažení"
 
@@ -1387,16 +1391,6 @@ msgstr ""
 msgid "Could not create symbolic link. Link: %(link)s Target %(target)s"
 msgstr "Symbolický odkaz nelze vytvořit. Odkaz: %(link)s, cíl %(target)s"
 
-msgid "Could not create volume on any configured REST server."
-msgstr "Nelze vytvořit svazek na žádném nastaveném serveru REST."
-
-msgid "Could not destroy volume on any configured REST server."
-msgstr "Nelze zničit svazek na žádném nastaveném serveru REST."
-
-#, python-format
-msgid "Could not detach volume %(vol)s from device %(dev)s."
-msgstr "Nelze připojit svazek %(vol)s v zařízení %(dev)s."
-
 msgid ""
 "Could not determine which Keystone endpoint to use. This can either be set "
 "in the service catalog or with the cinder.conf config option "
@@ -1412,9 +1406,6 @@ msgid ""
 msgstr ""
 "Nelze zjistit, který koncový bod Swift použít. Ten může být nastaven buď v "
 "katalogu služby nebo pomocí volby 'backup_swift_url' v souboru cinder.conf."
-
-msgid "Could not extend volume on any configured REST server."
-msgstr "Nelze rozšířit svazek na žádném nastaveném serveru REST."
 
 #, python-format
 msgid "Could not find GPFS cluster id: %s."
@@ -1474,9 +1465,6 @@ msgstr "Nelze přečíst %s. Znovu prováděno pomocí sudo"
 #, python-format
 msgid "Could not save configuration to %(file_path)s: %(exc)s"
 msgstr "Nelze uložit nastavení do %(file_path)s: %(exc)s"
-
-msgid "Could not setup urls properly"
-msgstr "Nelze správně nastavit url"
 
 msgid "Create QoS policy error."
 msgstr "Chyba při vytváření zásady QoS."
@@ -2507,6 +2495,10 @@ msgstr "Chyba při mazání svazku: %(vol)s. %(error)s."
 #, python-format
 msgid "Error renaming volume %(vol)s: %(err)s."
 msgstr "Chyba při přejmenování svazku %(vol)s: %(err)s."
+
+#, python-format
+msgid "Error response: %s"
+msgstr "Chybová odpověď: %s"
 
 msgid "Error retrieving volume size"
 msgstr "Chyba při získávání velikosti svazku"
@@ -4172,10 +4164,6 @@ msgstr "Pro rozšíření svazku není dostatek volného místa."
 msgid "Insufficient privileges"
 msgstr "Nedostatečná oprávnění"
 
-#, python-format
-msgid "Internal error in srb driver: Trying to detach detached volume %s."
-msgstr "Vnitřní chyba v ovladači srb. Pokus o odpojení odpojeného svazku %s."
-
 msgid "Interval value (in seconds) between connection retries to ceph cluster."
 msgstr ""
 "Hodnota intervalu ( ve vteřinách) mezi jednotlivými pokusy o připojení ke "
@@ -4443,11 +4431,6 @@ msgstr "Neplatný json katalog služeb"
 
 msgid "Invalid sheepdog cluster status."
 msgstr "Neplatný stav clusteru sheepdog."
-
-#, python-format
-msgid "Invalid size parameter '%s': Cannot be interpreted as an integer value."
-msgstr ""
-"Neplatný parametr velikosti '%s'. Nelze vyložit jako celočíselnou hodnotu."
 
 #, python-format
 msgid "Invalid snapshot: %(reason)s"
@@ -5272,6 +5255,9 @@ msgstr "Žádná odpověď od výpisu volání api tsm úložiště CloudByte."
 msgid "No response was received from CloudByte's list filesystem api call."
 msgstr "Žádná odpověď od výpisu volání api souborového systému CloudByte."
 
+msgid "No service VIP configured and no nexenta_client_address"
+msgstr "Nenastavena žádné VIP pro službu a nejsou žádné adresy klienta nexenta"
+
 #, python-format
 msgid "No snap found with %s as backing file."
 msgstr "Nenalezen žádný snímek kde %s je záložní soubor."
@@ -5310,9 +5296,6 @@ msgid ""
 msgstr ""
 "Hostitel nemá k dispozici nepoužité ID LUN; vícenásobné připojení je "
 "povoleno, což vyžaduje jedinečné ID LUN napříč celou skupinou hostitele."
-
-msgid "No url configured"
-msgstr "Žádná url není nastavena"
 
 #, python-format
 msgid "No valid host was found. %(reason)s"
@@ -7397,6 +7380,10 @@ msgid "Vdisk %(name)s not involved in mapping %(src)s -> %(tgt)s."
 msgstr "Virtuální disk %(name)s není součástí mapování %(src)s -> %(tgt)s."
 
 #, python-format
+msgid "VersionedObject %s cannot retrieve object by id."
+msgstr "Objekt s verzí %s nemůže získat objekt podle id."
+
+#, python-format
 msgid "Virtual volume '%s' doesn't exist on array."
 msgstr "Virtuální svazek '%s' neexistuje v poli."
 
@@ -7937,6 +7924,9 @@ msgid ""
 msgstr ""
 "Při provozování serveru v režimu SSL musíte zadat konfigurační volby "
 "cert_file a key_file ve vašem souboru s nastavení."
+
+msgid "Wrong resource call syntax"
+msgstr "Špatná syntaxe volání zdroje"
 
 msgid "X-IO Volume Driver exception!"
 msgstr "Výjimka ovladače svazku X-IO!"

@@ -7,10 +7,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev282\n"
+"Project-Id-Version: cinder 8.0.0.dev364\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-23 06:41+0000\n"
-"PO-Revision-Date: 2015-11-19 08:34+0000\n"
+"POT-Creation-Date: 2015-12-01 06:53+0000\n"
+"PO-Revision-Date: 2015-11-27 09:25+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language-Team: Czech\n"
 "Language: cs\n"
@@ -34,10 +34,6 @@ msgid "%s is already mounted"
 msgstr "%s již je připojeno"
 
 #, python-format
-msgid "%s is not an accepted REST server IP address"
-msgstr "%s není přijatelná IP adresa serveru REST"
-
-#, python-format
 msgid "%s not found!"
 msgstr "%s nenalezeno!"
 
@@ -53,10 +49,6 @@ msgstr ""
 #, python-format
 msgid "3PAR vlun for volume %(name)s not found on host %(host)s"
 msgstr "3PAR vlun pro svazek %(name)s nenalezen v hostiteli %(host)s"
-
-#, python-format
-msgid "All attempts to recover failed detach of %(volume)s failed."
-msgstr "Všechny pokusy o obnovu selhaného odpojení %(volume)s se nezdařila."
 
 #, python-format
 msgid "AttachSnapTask.revert: detach mount point %s"
@@ -194,9 +186,6 @@ msgstr ""
 "Volby nastavení eqlx_use_chap, eqlx_chap_login a eqlx_chap_password jsou "
 "zastaralé. Byly nahrazeny volbami use_chap_auth, chap_username a "
 "chap_password respectively se stejnou funkcí."
-
-msgid "Configuration variable srb_base_urls not set or empty."
-msgstr "Proměnná nastavení srb_base_urls není nastavena nebo je prázdná."
 
 #, python-format
 msgid "Consistency group %(name)s already exists. Message: %(msg)s"
@@ -390,10 +379,6 @@ msgstr "Chyba při aktualizaci typu agentu ve svazku %s."
 
 msgid "Error while listing objects, continuing with delete."
 msgstr "Chyba při vypisování objektů, pokračuje se ve smazání."
-
-#, python-format
-msgid "Error while removing export: %r"
-msgstr "Chyba při odstraňování exportu: %r"
 
 #, python-format
 msgid "Exception during cache cleaning %(share)s. Message - %(ex)s"
@@ -1184,10 +1169,6 @@ msgstr ""
 "SRP a ne SLO. Výkon nemusí být takový, jaký jste očekávali."
 
 #, python-format
-msgid "Removed volume group %s still appears in vgs."
-msgstr "Odstraněná skupina svazku %s se stále objevuje ve vgs."
-
-#, python-format
 msgid "Rename failure in cleanup of cDOT QOS policy group %(name)s: %(ex)s"
 msgstr ""
 "Selhání přejmenování při čistění skupiny zásady QOS cDOT %(name)s: %(ex)s"
@@ -1206,10 +1187,6 @@ msgstr ""
 
 msgid "Requested image is not accessible by current Tenant."
 msgstr "Požadovaný obraz není dostupný současnému nájemníku."
-
-#, python-format
-msgid "Retrying failed call to %(func)s, attempt %(attempt)i."
-msgstr "Opakování selhaného volání  %(func)s, pokus %(attempt)i."
 
 msgid "Returning as clean tmp vol job already running."
 msgstr "Probíhá vrácení protože úkol čištění dočasného svazku již probíhá."
@@ -1325,6 +1302,13 @@ msgstr "Předpona 'hplh' je zastaralá. Místo toho použijte 'hpelh'."
 msgid "The MCS Channel is grouped."
 msgstr "Kanál MCS je seskupen."
 
+msgid ""
+"The NAS file operations will be run as root, allowing root level access at "
+"the storage backend."
+msgstr ""
+"Operace se souborem NAS budou spouštěny pod účtem root, umožňující přístup k "
+"podpůrné vrstvě úložiště na úrovni správce."
+
 #, python-format
 msgid ""
 "The NAS file operations will be run as root: allowing root level access at "
@@ -1334,6 +1318,13 @@ msgstr ""
 "Operace se souborem NAS budou spouštěny pod účtem root: umožňující přístup k "
 "podpůrné vrstvě úložiště na úrovni správce. Toto je považováno za nebezpečné "
 "prostředí NAS. Pro další informace o bezpečném nastavení NFS si přečtěte %s."
+
+msgid ""
+"The NAS file permissions mode will be 666 (allowing other/world read & write "
+"access)."
+msgstr ""
+"Režim oprávnění souboru NAS bude 666 (umožňující ostatním/světu přístup ke "
+"čtení a zápisu)."
 
 #, python-format
 msgid ""
@@ -1640,10 +1631,6 @@ msgstr "Svazek %(volume_id)s nemůže být přetypován protože má snímek."
 #, python-format
 msgid "Volume %(volume_id)s cannot be retyped during attachment."
 msgstr "Svazek %(volume_id)s nemůže být během připojování přetypován."
-
-#, python-format
-msgid "Volume %r not found while trying to remove."
-msgstr "Svazek %r nenalezen při pokusu o odstranění."
 
 #, python-format
 msgid "Volume %s already deleted."

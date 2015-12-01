@@ -7,9 +7,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev260\n"
+"Project-Id-Version: cinder 8.0.0.dev364\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-20 06:38+0000\n"
+"POT-Creation-Date: 2015-12-01 06:53+0000\n"
 "PO-Revision-Date: 2015-09-16 08:16+0000\n"
 "Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
 "Language: tr_TR\n"
@@ -1100,10 +1100,6 @@ msgid "Copying metadata from %(src_type)s %(src_id)s to %(vol_id)s."
 msgstr "Metadata %(src_type)s %(src_id)s den %(vol_id)s e kopyalanıyor."
 
 #, python-format
-msgid "Could not attach volume %(vol)s as %(dev)s on system."
-msgstr "%(vol)s mantıksal sürücüsü sistemde %(dev)s olarak eklenemedi."
-
-#, python-format
 msgid "Could not bind to %(host)s:%(port)s after trying for 30 seconds"
 msgstr "30 saniyelik denemeden sonra %(host)s:%(port)s bağlanamadı"
 
@@ -1126,20 +1122,6 @@ msgstr ""
 #, python-format
 msgid "Could not create symbolic link. Link: %(link)s Target %(target)s"
 msgstr "Sembolik bağlantı oluşturulamıyor. Bağlantı: %(link)s Hedef %(target)s"
-
-msgid "Could not create volume on any configured REST server."
-msgstr ""
-"Yapılandırılan herhangi bir REST sunucuda mantıksal sürücü oluşturulamıyor."
-
-msgid "Could not destroy volume on any configured REST server."
-msgstr "Mantıksal sürücü yapılandırılan hiçbir REST sunucuda silinemiyor."
-
-#, python-format
-msgid "Could not detach volume %(vol)s from device %(dev)s."
-msgstr " %(vol)s mantıksal sürücüsü %(dev)s aygıtından ayrılamadı."
-
-msgid "Could not extend volume on any configured REST server."
-msgstr "Mantıksal sürücü yapılandırılan hiçbir REST sunucuda büyütülemiyor."
 
 #, python-format
 msgid "Could not find GPFS cluster id: %s."
@@ -1202,9 +1184,6 @@ msgstr "%s okunamadı. sudo ile yeniden çalıştırılıyor"
 #, python-format
 msgid "Could not save configuration to %(file_path)s: %(exc)s"
 msgstr "Yapılandırma %(file_path)s yoluna kaydedilemedi: %(exc)s"
-
-msgid "Could not setup urls properly"
-msgstr "Url'ler uygun bir şekilde ayarlanamadı"
 
 #, python-format
 msgid ""
@@ -3324,12 +3303,6 @@ msgstr "%(uuid)s örneği bulunamadı."
 msgid "Insufficient privileges"
 msgstr "Yetersiz ayrıcalıklar"
 
-#, python-format
-msgid "Internal error in srb driver: Trying to detach detached volume %s."
-msgstr ""
-"Srb sürücüsünde dahili hata: %s ayrı mantıksal sürücüsü ayrılmaya "
-"çalışılıyor."
-
 msgid "Interval value (in seconds) between connection retries to ceph cluster."
 msgstr "Ceph kümesi için bağlantılar arasındaki dahili değer (saniye cinsinde)"
 
@@ -3533,10 +3506,6 @@ msgstr "Geçersiz koşul sonu %(expire)s."
 
 msgid "Invalid service catalog json."
 msgstr "Geçersiz servis katalogu json."
-
-#, python-format
-msgid "Invalid size parameter '%s': Cannot be interpreted as an integer value."
-msgstr "Geçersiz boyutta parametre '%s': Tam sayı değer olarak yorumlanamaz."
 
 #, python-format
 msgid "Invalid snapshot: %(reason)s"
@@ -4254,9 +4223,6 @@ msgid ""
 msgstr ""
 "İstemci üzerinde kullanılabilir LUN ID'si yok; çoklu ekleme etkin ki bu tüm "
 "LUN ID'lerinin tüm istemci grupları arasında benzersiz olmasını gerektirir."
-
-msgid "No url configured"
-msgstr "Url yapılandırılamıyor"
 
 #, python-format
 msgid "No valid host was found. %(reason)s"

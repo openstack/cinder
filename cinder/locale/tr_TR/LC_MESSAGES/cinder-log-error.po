@@ -8,9 +8,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev167\n"
+"Project-Id-Version: cinder 8.0.0.dev364\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-11-11 06:36+0000\n"
+"POT-Creation-Date: 2015-12-01 06:53+0000\n"
 "PO-Revision-Date: 2015-09-16 08:22+0000\n"
 "Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
 "Language-Team: Turkish (Turkey)\n"
@@ -20,7 +20,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 "Generated-By: Babel 2.0\n"
-"X-Generator: Zanata 3.7.1\n"
+"X-Generator: Zanata 3.7.3\n"
 
 #, python-format
 msgid ""
@@ -279,16 +279,8 @@ msgstr ""
 "%(snap)s anlık sistem görüntüsü %(vol)s mantıksal sürücüsü için mantıksal "
 "sürücüye anlık sistem görüntüsü kopyalayamadı!"
 
-#, python-format
-msgid "Could not deactivate volume group %s"
-msgstr "Mantıksal sürücü grubu %s etkinliği kaldırılamadı"
-
 msgid "Could not decode scheduler options."
 msgstr "Zamanlayıcı seçenekleri şifresi çözülemedi."
-
-#, python-format
-msgid "Could not detach volume %(vol)s from device %(dev)s."
-msgstr "%(dev)s aygıtından %(vol)s mantıksal sürücüsü ayrılamadı."
 
 #, python-format
 msgid "Could not find a host for consistency group %(group_id)s."
@@ -312,9 +304,6 @@ msgstr "%s paylaşımının kapasite bilgisi alınamadı."
 #, python-format
 msgid "Could not stat scheduler options file %(filename)s."
 msgstr "%(filename)s zamanlayıcı seçenek dosyalarının bilgileri gösterilemedi."
-
-msgid "Cound not setup urls on the Block Driver."
-msgstr "Blok Sürücüsüne adresler kurulamadı."
 
 #, python-format
 msgid "Create cg snapshot %s failed."
@@ -459,9 +448,6 @@ msgstr ""
 msgid "Error activating LV"
 msgstr "LV etkinleştirilirken hata"
 
-msgid "Error activating Volume Group"
-msgstr "Mantıksal Sürücü Grubu etkişleştirilirken hata"
-
 msgid "Error adding HBA to server"
 msgstr "Sunucuya HBA ekleme hatası"
 
@@ -508,14 +494,8 @@ msgstr "Anlık sistem görüntüsü oluşturma hatası"
 msgid "Error creating volume. Msg - %s."
 msgstr "Mantıksal sürücü oluşturulurken hata. İleti - %s."
 
-msgid "Error deactivating Volume Group"
-msgstr "Mantıksal Sürücü Grubu etkinliği kaldırılırken hata"
-
 msgid "Error deleting key."
 msgstr "Anahtar silinirken hata."
-
-msgid "Error destroying Volume Group"
-msgstr "Mantıksal Sürücü Grubu silinirken hata"
 
 #, python-format
 msgid "Error detaching volume %(volume)s, due to remove export failure."
@@ -554,9 +534,6 @@ msgstr "Mantıksal sürücü %(name)s genişletilirken hata: %(code)d %(reason)s
 
 msgid "Error extending Volume"
 msgstr "Mantıksal sürücü genişletilirken hata"
-
-msgid "Error extending thin provisioning pool"
-msgstr "İnce hazırlık havuzu genişletilirken hata"
 
 #, python-format
 msgid "Error extending volume %(id)s. Ex: %(ex)s"
@@ -793,9 +770,6 @@ msgid "Error renaming volume %(original)s to %(name)s: %(code)d %(reason)s"
 msgstr ""
 "Mantıksal sürücüyü %(original)s özgün adından %(name)s adına yeniden "
 "adlandırırken hata: %(code)d %(reason)s"
-
-msgid "Error resizing Physical Volume"
-msgstr "Fiziki Sürücü yeniden boyutlandırılırken hata"
 
 #, python-format
 msgid "Error resolving host %(host)s. Error - %(e)s."
@@ -2086,10 +2060,6 @@ msgstr "Kullanılan mantıksal sürücü silinemedi."
 msgid "Unable to delete due to existing snapshot for volume: %s"
 msgstr ""
 "Mantıksal sürücü için varolan anlık sistem görüntüsü nedeniyle silinemedi: %s"
-
-#, python-format
-msgid "Unable to delete due to existing snapshot for volume: %s."
-msgstr "Mantıksal sürücü anlık sistem görüntüleri nedeniyle silinemedi: %s."
 
 #, python-format
 msgid "Unable to delete profile %(cg)s : %(reason)s"
