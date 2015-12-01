@@ -2343,3 +2343,55 @@ class EMCVMAXUtils(object):
                       {'volume': volumeInstance.path, 'rc': rc, 'ret': ret})
             memberVolumes = ret['OutElements']
         return memberVolumes
+
+    def get_iscsi_protocol_endpoints(self, conn, portgroupinstancename):
+        """Get the iscsi protocol endpoints of a port group.
+
+        :param conn: the ecom connection
+        :param portgroupinstancename: the portgroup instance name
+        :returns: iscsiendpoints
+        """
+        iscsiendpoints = conn.AssociatorNames(
+            portgroupinstancename,
+            AssocClass='CIM_MemberOfCollection')
+        return iscsiendpoints
+
+    def get_tcp_protocol_endpoints(self, conn, iscsiendpointinstancename):
+        """Get the tcp protocol endpoints associated with an iscsi endpoint
+
+        :param conn: the ecom connection
+        :param iscsiendpointinstancename: the iscsi endpoint instance name
+        :returns: tcpendpoints
+        """
+        tcpendpoints = conn.AssociatorNames(
+            iscsiendpointinstancename,
+            AssocClass='CIM_BindsTo')
+        return tcpendpoints
+
+    def get_ip_protocol_endpoints(self, conn, tcpendpointinstancename):
+        """Get the ip protocol endpoints associated with an tcp endpoint
+
+        :param conn: the ecom connection
+        :param tcpendpointinstancename: the tcp endpoint instance name
+        :returns: ipendpoints
+        """
+        ipendpoints = conn.AssociatorNames(
+            tcpendpointinstancename,
+            AssocClass='CIM_BindsTo')
+        return ipendpoints
+
+    def get_iscsi_ip_address(self, conn, ipendpointinstancename):
+        """Get the IPv4Address from the ip endpoint instance name
+
+        :param conn: the ecom connection
+        :param ipendpointinstancename: the ip endpoint instance name
+        :returns: foundIpAddress
+        """
+        foundIpAddress = None
+        ipendpointinstance = conn.GetInstance(ipendpointinstancename)
+        propertiesList = ipendpointinstance.properties.items()
+        for properties in propertiesList:
+            if properties[0] == 'IPv4Address':
+                cimProperties = properties[1]
+                foundIpAddress = cimProperties.value
+        return foundIpAddress

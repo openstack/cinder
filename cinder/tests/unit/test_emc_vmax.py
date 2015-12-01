@@ -89,6 +89,10 @@ class EMC_StorageHardwareID(dict):
     pass
 
 
+class CIM_IPProtocolEndpoint(dict):
+    pass
+
+
 class SE_ReplicationSettingData(dict):
     def __init__(self, *args, **kwargs):
         self['DefaultInstance'] = self.createInstance()
@@ -142,6 +146,12 @@ class Fake_CIMProperty(object):
     def fake_getSupportedReplicationTypes(self):
         cimproperty = Fake_CIMProperty()
         cimproperty.value = [2, 10]
+        return cimproperty
+
+    def fake_getipv4address(self):
+        cimproperty = Fake_CIMProperty()
+        cimproperty.key = 'IPv4Address'
+        cimproperty.value = '10.10.10.10'
         return cimproperty
 
 
@@ -764,6 +774,10 @@ class FakeEcomConnection(object):
             result = self._enum_maskingView()
         elif ResultClass == 'EMC_Meta':
             result = self._enum_metavolume()
+        elif AssocClass == 'CIM_BindsTo':
+            result = self._assocnames_bindsto()
+        elif AssocClass == 'CIM_MemberOfCollection':
+            result = self._assocnames_memberofcollection()
         else:
             result = self._default_assocnames(objectpath)
         return result
@@ -989,6 +1003,12 @@ class FakeEcomConnection(object):
     def _assocnames_portgroup(self):
         return self._enum_portgroup()
 
+    def _assocnames_memberofcollection(self):
+        return self._enum_hostedservice()
+
+    def _assocnames_bindsto(self):
+        return self._enum_ipprotocolendpoint()
+
     def _default_assocnames(self, objectpath):
         return objectpath
 
@@ -1142,6 +1162,9 @@ class FakeEcomConnection(object):
         properties = {u'SupportedReplicationTypes': repTypesCimproperty}
         repServCpblInstance.properties = properties
         return repServCpblInstance
+
+    def _getinstance_ipprotocolendpoint(self, objectpath):
+        return self._enum_ipprotocolendpoint()[0]
 
     def _default_getinstance(self, objectpath):
         return objectpath
@@ -1589,6 +1612,20 @@ class FakeEcomConnection(object):
         swIdentities.append(swIdentity)
         return swIdentities
 
+    def _enum_ipprotocolendpoint(self):
+        ipprotocolendpoints = []
+        ipprotocolendpoint = CIM_IPProtocolEndpoint()
+        ipprotocolendpoint['CreationClassName'] = 'CIM_IPProtocolEndpoint'
+        ipprotocolendpoint['SystemName'] = self.data.storage_system
+        classcimproperty = Fake_CIMProperty()
+        ipv4addresscimproperty = (
+            classcimproperty.fake_getipv4address())
+        properties = {u'IPv4Address': ipv4addresscimproperty}
+        ipprotocolendpoint.properties = properties
+        ipprotocolendpoint.path = ipprotocolendpoint
+        ipprotocolendpoints.append(ipprotocolendpoint)
+        return ipprotocolendpoints
+
     def _default_enum(self):
         names = []
         name = {}
@@ -1802,6 +1839,12 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
 
     def fake_is_v3(self, conn, serialNumber):
         return False
+
+    def test_find_ip_protocol_endpoints(self):
+        conn = self.fake_ecom_connection()
+        foundIpAddresses = self.driver.common._find_ip_protocol_endpoints(
+            conn, self.data.storage_system, self.data.port_group)
+        self.assertEqual('10.10.10.10', foundIpAddresses[0])
 
     def test_find_device_number(self):
         host = 'myhost'
@@ -2245,7 +2288,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
                 conn, self.data.storage_system))
 
         foundPortGroupInstanceName = (
-            self.driver.common.masking._find_port_group(
+            self.driver.common.masking.find_port_group(
                 conn, controllerConfigService, self.data.port_group))
         # The port group has been found.
         self.assertEqual(
@@ -2255,7 +2298,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         self.driver.common.masking.utils.get_existing_instance = mock.Mock(
             return_value=None)
         foundPortGroupInstanceName2 = (
-            self.driver.common.masking._find_port_group(
+            self.driver.common.masking.find_port_group(
                 conn, controllerConfigService, self.data.port_group))
         # The port group has not been found as it has been deleted
         # externally or by another thread.
