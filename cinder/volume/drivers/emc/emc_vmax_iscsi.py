@@ -60,6 +60,8 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
               - Incorrect SG selected on an attach (#1515176)
               - Cleanup Zoning (bug #1501938)  NOTE: FC only
               - Last volume in SG fix
+              - _remove_last_vol_and_delete_sg is not being called
+                for VMAX3 (bug #1520549)
     """
 
     VERSION = "2.3.0"
