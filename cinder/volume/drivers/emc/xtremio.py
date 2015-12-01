@@ -198,21 +198,35 @@ class XtremIOClient3(XtremIOClient):
 
     def find_lunmap(self, ig_name, vol_name):
         try:
-            for lm_link in self.req('lun-maps')['lun-maps']:
-                idx = lm_link['href'].split('/')[-1]
-                lm = self.req('lun-maps', idx=int(idx))['content']
-                if lm['ig-name'] == ig_name and lm['vol-name'] == vol_name:
-                    return lm
+            lun_mappings = self.req('lun-maps')['lun-maps']
         except exception.NotFound:
             raise (exception.VolumeDriverException
                    (_("can't find lun-map, ig:%(ig)s vol:%(vol)s") %
                     {'ig': ig_name, 'vol': vol_name}))
 
+        for lm_link in lun_mappings:
+            idx = lm_link['href'].split('/')[-1]
+            # NOTE(geguileo): There can be races so mapped elements retrieved
+            # in the listing may no longer exist.
+            try:
+                lm = self.req('lun-maps', idx=int(idx))['content']
+            except exception.NotFound:
+                continue
+            if lm['ig-name'] == ig_name and lm['vol-name'] == vol_name:
+                return lm
+
+        return None
+
     def num_of_mapped_volumes(self, initiator):
         cnt = 0
         for lm_link in self.req('lun-maps')['lun-maps']:
             idx = lm_link['href'].split('/')[-1]
-            lm = self.req('lun-maps', idx=int(idx))['content']
+            # NOTE(geguileo): There can be races so mapped elements retrieved
+            # in the listing may no longer exist.
+            try:
+                lm = self.req('lun-maps', idx=int(idx))['content']
+            except exception.NotFound:
+                continue
             if lm['ig-name'] == initiator:
                 cnt += 1
         return cnt
