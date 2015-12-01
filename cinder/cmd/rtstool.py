@@ -128,7 +128,7 @@ def add_initiator(target_iqn, initiator_iqn, userid, password):
     tpg = next(target.tpgs)  # get the first one
     for acl in tpg.node_acls:
         # See if this ACL configuration already exists
-        if acl.node_wwn == initiator_iqn:
+        if acl.node_wwn.lower() == initiator_iqn.lower():
             # No further action required
             return
 
@@ -143,7 +143,7 @@ def delete_initiator(target_iqn, initiator_iqn):
     target = _lookup_target(target_iqn, initiator_iqn)
     tpg = next(target.tpgs)  # get the first one
     for acl in tpg.node_acls:
-        if acl.node_wwn == initiator_iqn:
+        if acl.node_wwn.lower() == initiator_iqn.lower():
             acl.delete()
             return
 
