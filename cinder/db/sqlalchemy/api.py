@@ -403,19 +403,6 @@ def service_get_by_host_and_topic(context, host, topic):
 
 
 @require_admin_context
-def _service_get_all_topic_subquery(context, session, topic, subq, label):
-    sort_value = getattr(subq.c, label)
-    return model_query(context, models.Service,
-                       func.coalesce(sort_value, 0),
-                       session=session, read_deleted="no").\
-        filter_by(topic=topic).\
-        filter_by(disabled=False).\
-        outerjoin((subq, models.Service.host == subq.c.host)).\
-        order_by(sort_value).\
-        all()
-
-
-@require_admin_context
 def service_get_by_args(context, host, binary):
     results = model_query(context, models.Service).\
         filter_by(host=host).\
@@ -1284,16 +1271,6 @@ def volume_destroy(context, volume_id):
 
 
 @require_admin_context
-def volume_detach(context, attachment_id):
-    session = get_session()
-    with session.begin():
-        volume_attachment_ref = volume_attachment_get(context, attachment_id,
-                                                      session=session)
-        volume_attachment_ref['attach_status'] = 'detaching'
-        volume_attachment_ref.save(session=session)
-
-
-@require_admin_context
 def volume_detached(context, volume_id, attachment_id):
     """This updates a volume attachment and marks it as detached.
 
@@ -1972,12 +1949,6 @@ def _volume_image_metadata_update(context, volume_id, metadata, delete,
     return _volume_x_metadata_update(context, volume_id, metadata, delete,
                                      models.VolumeGlanceMetadata,
                                      session=session)
-
-
-@require_context
-@require_volume_exists
-def volume_metadata_get_item(context, volume_id, key):
-    return _volume_user_metadata_get_item(context, volume_id, key)
 
 
 @require_context
@@ -3788,11 +3759,6 @@ def _consistencygroup_data_get_for_project(context, project_id,
     result = query.first()
 
     return (0, result[0] or 0)
-
-
-@require_admin_context
-def consistencygroup_data_get_for_project(context, project_id):
-    return _consistencygroup_data_get_for_project(context, project_id)
 
 
 @require_context
