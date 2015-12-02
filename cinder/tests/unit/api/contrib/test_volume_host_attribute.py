@@ -12,10 +12,10 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
-import json
 import uuid
 
 from lxml import etree
+from oslo_serialization import jsonutils
 from oslo_utils import timeutils
 import webob
 
@@ -82,7 +82,7 @@ class VolumeHostAttributeTest(test.TestCase):
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
-        vol = json.loads(res.body)['volume']
+        vol = jsonutils.loads(res.body)['volume']
         self.assertEqual('host001', vol['os-vol-host-attr:host'])
 
     def test_get_volume_unallowed(self):
@@ -91,7 +91,7 @@ class VolumeHostAttributeTest(test.TestCase):
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
-        vol = json.loads(res.body)['volume']
+        vol = jsonutils.loads(res.body)['volume']
         self.assertNotIn('os-vol-host-attr:host', vol)
 
     def test_list_detail_volumes_allowed(self):
@@ -100,7 +100,7 @@ class VolumeHostAttributeTest(test.TestCase):
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
-        vol = json.loads(res.body)['volumes']
+        vol = jsonutils.loads(res.body)['volumes']
         self.assertEqual('host001', vol[0]['os-vol-host-attr:host'])
 
     def test_list_detail_volumes_unallowed(self):
@@ -109,7 +109,7 @@ class VolumeHostAttributeTest(test.TestCase):
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
-        vol = json.loads(res.body)['volumes']
+        vol = jsonutils.loads(res.body)['volumes']
         self.assertNotIn('os-vol-host-attr:host', vol[0])
 
     def test_list_simple_volumes_no_host(self):
@@ -118,7 +118,7 @@ class VolumeHostAttributeTest(test.TestCase):
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
-        vol = json.loads(res.body)['volumes']
+        vol = jsonutils.loads(res.body)['volumes']
         self.assertNotIn('os-vol-host-attr:host', vol[0])
 
     def test_get_volume_xml(self):

@@ -57,7 +57,7 @@ class SchedulerHintsTestCase(test.TestCase):
         body = {'id': id,
                 'volume_type_id': 'cedef40a-ed67-4d10-800e-17455edce175',
                 'volume_id': '1', }
-        req.body = jsonutils.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(self.app)
         self.assertEqual(202, res.status_int)
 
@@ -80,7 +80,7 @@ class SchedulerHintsTestCase(test.TestCase):
                 'volume_id': '1',
                 'scheduler_hints': {'a': 'b'}, }
 
-        req.body = jsonutils.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(self.app)
         self.assertEqual(202, res.status_int)
 
@@ -94,6 +94,6 @@ class SchedulerHintsTestCase(test.TestCase):
             'volume_id': '1',
             'scheduler_hints': 'a', }}
 
-        req.body = jsonutils.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(self.app)
         self.assertEqual(400, res.status_int)

@@ -130,7 +130,7 @@ class VolumeManageTest(test.TestCase):
         req.environ['cinder.context'] = context.RequestContext('admin',
                                                                'fake',
                                                                True)
-        req.body = jsonutils.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(app())
         return res
 

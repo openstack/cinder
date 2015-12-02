@@ -49,7 +49,7 @@ class SnapshotActionsTest(test.TestCase):
         body = {'os-update_snapshot_status': {'status': 'available'}}
         req = webob.Request.blank('/v2/fake/snapshots/1/action')
         req.method = "POST"
-        req.body = jsonutils.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
 
         res = req.get_response(fakes.wsgi_app())
@@ -62,7 +62,7 @@ class SnapshotActionsTest(test.TestCase):
         body = {'os-update_snapshot_status': {'status': 'in-use'}}
         req = webob.Request.blank('/v2/fake/snapshots/1/action')
         req.method = "POST"
-        req.body = jsonutils.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
 
         res = req.get_response(fakes.wsgi_app())
@@ -73,7 +73,7 @@ class SnapshotActionsTest(test.TestCase):
         body = {'os-update_snapshot_status': {}}
         req = webob.Request.blank('/v2/fake/snapshots/1/action')
         req.method = "POST"
-        req.body = jsonutils.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
 
         res = req.get_response(fakes.wsgi_app())

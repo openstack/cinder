@@ -17,10 +17,10 @@
 Tests for cgsnapshot code.
 """
 
-import json
 from xml.dom import minidom
 
 import mock
+from oslo_serialization import jsonutils
 import webob
 
 from cinder.consistencygroup import api as consistencygroupAPI
@@ -56,7 +56,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(200, res.status_int)
         self.assertEqual('this is a test cgsnapshot',
@@ -100,7 +100,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(404, res.status_int)
         self.assertEqual(404, res_dict['itemNotFound']['code'])
@@ -123,7 +123,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(200, res.status_int)
         self.assertEqual(cgsnapshot1.id,
@@ -199,7 +199,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
         req.headers['Content-Type'] = 'application/json'
         req.headers['Accept'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(200, res.status_int)
         self.assertEqual('this is a test cgsnapshot',
@@ -315,10 +315,10 @@ class CgsnapshotsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/cgsnapshots')
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
 
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(202, res.status_int)
         self.assertIn('id', res_dict['cgsnapshot'])
@@ -332,12 +332,12 @@ class CgsnapshotsAPITestCase(test.TestCase):
     def test_create_cgsnapshot_with_no_body(self):
         # omit body from the request
         req = webob.Request.blank('/v2/fake/cgsnapshots')
-        req.body = json.dumps(None)
+        req.body = jsonutils.dump_as_bytes(None)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.headers['Accept'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
@@ -358,11 +358,11 @@ class CgsnapshotsAPITestCase(test.TestCase):
                                "CG Snapshot 1",
                                "consistencygroup_id": consistencygroup.id}}
         req = webob.Request.blank('/v2/fake/cgsnapshots')
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
@@ -386,9 +386,9 @@ class CgsnapshotsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/cgsnapshots')
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(404, res.status_int)
         self.assertEqual(404, res_dict['itemNotFound']['code'])
@@ -425,7 +425,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
         req.method = 'DELETE'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(404, res.status_int)
         self.assertEqual(404, res_dict['itemNotFound']['code'])
@@ -446,7 +446,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
         req.method = 'DELETE'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])

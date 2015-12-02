@@ -12,10 +12,10 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import json
 import uuid
 
 from lxml import etree
+from oslo_serialization import jsonutils
 from oslo_utils import timeutils
 import webob
 
@@ -78,7 +78,7 @@ class VolumeMigStatusAttributeTest(test.TestCase):
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
-        vol = json.loads(res.body)['volume']
+        vol = jsonutils.loads(res.body)['volume']
         self.assertEqual('migrating', vol['os-vol-mig-status-attr:migstat'])
         self.assertEqual('fake2', vol['os-vol-mig-status-attr:name_id'])
 
@@ -88,7 +88,7 @@ class VolumeMigStatusAttributeTest(test.TestCase):
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
-        vol = json.loads(res.body)['volume']
+        vol = jsonutils.loads(res.body)['volume']
         self.assertNotIn('os-vol-mig-status-attr:migstat', vol)
         self.assertNotIn('os-vol-mig-status-attr:name_id', vol)
 
@@ -98,7 +98,7 @@ class VolumeMigStatusAttributeTest(test.TestCase):
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
-        vol = json.loads(res.body)['volumes']
+        vol = jsonutils.loads(res.body)['volumes']
         self.assertEqual('migrating', vol[0]['os-vol-mig-status-attr:migstat'])
         self.assertEqual('fake2', vol[0]['os-vol-mig-status-attr:name_id'])
 
@@ -108,7 +108,7 @@ class VolumeMigStatusAttributeTest(test.TestCase):
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
-        vol = json.loads(res.body)['volumes']
+        vol = jsonutils.loads(res.body)['volumes']
         self.assertNotIn('os-vol-mig-status-attr:migstat', vol[0])
         self.assertNotIn('os-vol-mig-status-attr:name_id', vol[0])
 
@@ -118,7 +118,7 @@ class VolumeMigStatusAttributeTest(test.TestCase):
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
-        vol = json.loads(res.body)['volumes']
+        vol = jsonutils.loads(res.body)['volumes']
         self.assertNotIn('os-vol-mig-status-attr:migstat', vol[0])
         self.assertNotIn('os-vol-mig-status-attr:name_id', vol[0])
 

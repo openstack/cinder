@@ -127,7 +127,7 @@ class VolumeUnmanageTest(test.TestCase):
                                                                'fake',
                                                                True)
         body = {'os-unmanage': ''}
-        req.body = jsonutils.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(app())
         return res
 
