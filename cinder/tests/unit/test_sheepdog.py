@@ -426,6 +426,23 @@ class SheepdogClientTestCase(test.TestCase):
 
     @mock.patch.object(utils, 'execute')
     @mock.patch.object(sheepdog, 'LOG')
+    def test_run_dog_fail_to_connect(self, fake_logger, fake_execute):
+        args = ('cluster', 'info')
+        cmd = self.test_data.CMD_DOG_CLUSTER_INFO
+        exit_code = 2
+        stdout = 'stdout dummy'
+        stderr = self.test_data.DOG_COMMAND_ERROR_FAIL_TO_CONNECT
+        expected_reason = (_('Failed to connect to sheep daemon. '
+                             'addr: %(addr)s, port: %(port)s'),
+                           {'addr': SHEEP_ADDR, 'port': SHEEP_PORT})
+        fake_execute.side_effect = processutils.ProcessExecutionError(
+            cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
+        ex = self.assertRaises(exception.SheepdogError,
+                               self.client._run_dog, *args)
+        self.assertEqual(expected_reason, ex.kwargs['reason'])
+
+    @mock.patch.object(utils, 'execute')
+    @mock.patch.object(sheepdog, 'LOG')
     def test_run_dog_unknown_error(self, fake_logger, fake_execute):
         args = ('cluster', 'info')
         cmd = self.test_data.CMD_DOG_CLUSTER_INFO
@@ -558,26 +575,6 @@ class SheepdogClientTestCase(test.TestCase):
 
     @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
     @mock.patch.object(sheepdog, 'LOG')
-    def test_check_cluster_status_fail_to_connect(self, fake_logger,
-                                                  fake_execute):
-        cmd = self.test_data.CMD_DOG_CLUSTER_INFO
-        exit_code = 2
-        stdout = 'stdout_dummy'
-        stderr = self.test_data.DOG_COMMAND_ERROR_FAIL_TO_CONNECT
-        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
-                                                         exit_code=exit_code,
-                                                         stdout=stdout,
-                                                         stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
-            cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
-            stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError,
-                               self.client.check_cluster_status)
-        self.assertEqual(expected_msg, ex.msg)
-        self.assertTrue(fake_logger.error.called)
-
-    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
-    @mock.patch.object(sheepdog, 'LOG')
     def test_check_cluster_status_unknown_error(self, fake_logger,
                                                 fake_execute):
         cmd = self.test_data.CMD_DOG_CLUSTER_INFO
@@ -600,23 +597,6 @@ class SheepdogClientTestCase(test.TestCase):
         fake_execute.return_value = ('', '')
         self.client.create(self._vdiname, self._vdisize)
         fake_execute.assert_called_once_with(*expected_cmd)
-
-    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
-    @mock.patch.object(sheepdog, 'LOG')
-    def test_create_fail_to_connect(self, fake_logger, fake_execute):
-        cmd = self.test_data.cmd_dog_vdi_create(self._vdiname, self._vdisize)
-        exit_code = 2
-        stdout = ''
-        stderr = self.test_data.DOG_COMMAND_ERROR_FAIL_TO_CONNECT
-        expected_msg = self.test_data.sheepdog_cmd_error(
-            cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
-            cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
-            stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError, self.client.create,
-                               self._vdiname, self._vdisize)
-        self.assertTrue(fake_logger.error.called)
-        self.assertEqual(expected_msg, ex.msg)
 
     @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
     @mock.patch.object(sheepdog, 'LOG')
@@ -686,25 +666,6 @@ class SheepdogClientTestCase(test.TestCase):
 
     @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
     @mock.patch.object(sheepdog, 'LOG')
-    def test_delete_fail_to_connect(self, fake_logger, fake_execute):
-        cmd = self.test_data.cmd_dog_vdi_delete(self._vdiname)
-        exit_code = 2
-        stdout = 'stdout_dummy'
-        stderr = self.test_data.DOG_COMMAND_ERROR_FAIL_TO_CONNECT
-        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
-                                                         exit_code=exit_code,
-                                                         stdout=stdout,
-                                                         stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
-            cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
-            stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError,
-                               self.client.delete, self._vdiname)
-        self.assertTrue(fake_logger.error.called)
-        self.assertEqual(expected_msg, ex.msg)
-
-    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
-    @mock.patch.object(sheepdog, 'LOG')
     def test_delete_unknown_error(self, fake_logger, fake_execute):
         cmd = self.test_data.cmd_dog_vdi_delete(self._vdiname)
         exit_code = 2
@@ -730,26 +691,6 @@ class SheepdogClientTestCase(test.TestCase):
         fake_execute.return_value = ('', '')
         self.client.create_snapshot(*args)
         fake_execute.assert_called_once_with(*expected_cmd)
-
-    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
-    @mock.patch.object(sheepdog, 'LOG')
-    def test_create_snapshot_fail_to_connect(self, fake_logger, fake_execute):
-        args = (self._src_vdiname, self._snapname)
-        cmd = self.test_data.cmd_dog_vdi_create_snapshot(*args)
-        exit_code = 2
-        stdout = ''
-        stderr = self.test_data.DOG_COMMAND_ERROR_FAIL_TO_CONNECT
-        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
-                                                         exit_code=exit_code,
-                                                         stdout=stdout,
-                                                         stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
-            cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
-            stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError,
-                               self.client.create_snapshot, *args)
-        self.assertTrue(fake_logger.error.called)
-        self.assertEqual(expected_msg, ex.msg)
 
     @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
     @mock.patch.object(sheepdog, 'LOG')
@@ -858,26 +799,6 @@ class SheepdogClientTestCase(test.TestCase):
         ex = self.assertRaises(exception.SheepdogError,
                                self.client.delete_snapshot, *args)
         self.assertEqual(expected_reason, ex.kwargs['reason'])
-
-    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
-    @mock.patch.object(sheepdog, 'LOG')
-    def test_delete_snapshot_fail_to_connect(self, fake_logger, fake_execute):
-        args = (self._src_vdiname, self._snapname)
-        cmd = self.test_data.cmd_dog_vdi_delete_snapshot(*args)
-        exit_code = 2
-        stdout = ''
-        stderr = self.test_data.DOG_COMMAND_ERROR_FAIL_TO_CONNECT
-        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
-                                                         exit_code=exit_code,
-                                                         stdout=stdout,
-                                                         stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
-            cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
-            stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError,
-                               self.client.delete_snapshot, *args)
-        self.assertTrue(fake_logger.error.called)
-        self.assertEqual(expected_msg, ex.msg)
 
     @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
     @mock.patch.object(sheepdog, 'LOG')
@@ -1047,25 +968,6 @@ class SheepdogClientTestCase(test.TestCase):
 
     @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
     @mock.patch.object(sheepdog, 'LOG')
-    def test_resize_fail_to_connect(self, fake_logger, fake_execute):
-        cmd = self.test_data.cmd_dog_vdi_resize(self._vdiname, 10 * 1024 ** 3)
-        exit_code = 2
-        stdout = 'stdout_dummy'
-        stderr = self.test_data.DOG_COMMAND_ERROR_FAIL_TO_CONNECT
-        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
-                                                         exit_code=exit_code,
-                                                         stdout=stdout,
-                                                         stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
-            cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
-            stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError,
-                               self.client.resize, self._vdiname, 10)
-        self.assertTrue(fake_logger.error.called)
-        self.assertEqual(expected_msg, ex.msg)
-
-    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
-    @mock.patch.object(sheepdog, 'LOG')
     def test_resize_vdi_not_found(self, fake_logger, fake_execute):
         cmd = self.test_data.cmd_dog_vdi_resize(self._vdiname, 10 * 1024 ** 3)
         exit_code = 1
@@ -1147,25 +1049,6 @@ class SheepdogClientTestCase(test.TestCase):
         fake_execute.return_value = (self.test_data.COLLIE_NODE_INFO, '')
         self.client.get_volume_stats()
         fake_execute.assert_called_once_with(*expected_cmd)
-
-    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
-    @mock.patch.object(sheepdog, 'LOG')
-    def test_get_volume_stats_fail_to_connect(self, fake_logger, fake_execute):
-        cmd = self.test_data.cmd_dog_node_info()
-        exit_code = 2
-        stdout = 'stdout_dummy'
-        stderr = self.test_data.DOG_COMMAND_ERROR_FAIL_TO_CONNECT
-        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
-                                                         exit_code=exit_code,
-                                                         stdout=stdout,
-                                                         stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
-            cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
-            stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError,
-                               self.client.get_volume_stats)
-        self.assertTrue(fake_logger.error.called)
-        self.assertEqual(expected_msg, ex.msg)
 
     @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
     @mock.patch.object(sheepdog, 'LOG')
