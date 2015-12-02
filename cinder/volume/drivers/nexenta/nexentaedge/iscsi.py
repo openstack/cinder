@@ -22,8 +22,8 @@ from oslo_utils import units
 from cinder import exception
 from cinder.i18n import _, _LE
 from cinder.volume import driver
-from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta.nexentaedge import jsonrpc
+from cinder.volume.drivers.nexenta import options
 
 
 LOG = logging.getLogger(__name__)
