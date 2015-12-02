@@ -15,7 +15,6 @@
 
 import json
 
-from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import units
@@ -23,49 +22,9 @@ from oslo_utils import units
 from cinder import exception
 from cinder.i18n import _, _LE
 from cinder.volume import driver
+from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta.nexentaedge import jsonrpc
 
-
-nexenta_edge_opts = [
-    cfg.StrOpt('nexenta_rest_address',
-               default='',
-               help='IP address of NexentaEdge management REST API endpoint'),
-    cfg.IntOpt('nexenta_rest_port',
-               default=8080,
-               help='HTTP port to connect to NexentaEdge REST API endpoint'),
-    cfg.StrOpt('nexenta_rest_protocol',
-               default='auto',
-               help='Use http or https for REST connection (default auto)'),
-    cfg.IntOpt('nexenta_iscsi_target_portal_port',
-               default=3260,
-               help='NexentaEdge target portal port'),
-    cfg.StrOpt('nexenta_rest_user',
-               default='admin',
-               help='User name to connect to NexentaEdge'),
-    cfg.StrOpt('nexenta_rest_password',
-               default='nexenta',
-               help='Password to connect to NexentaEdge',
-               secret=True),
-    cfg.StrOpt('nexenta_lun_container',
-               default='',
-               help='NexentaEdge logical path of bucket for LUNs'),
-    cfg.StrOpt('nexenta_iscsi_service',
-               default='',
-               help='NexentaEdge iSCSI service name'),
-    cfg.StrOpt('nexenta_client_address',
-               default='',
-               help='NexentaEdge iSCSI Gateway client '
-               'address for non-VIP service'),
-    cfg.StrOpt('nexenta_blocksize',
-               default=4096,
-               help='NexentaEdge iSCSI LUN block size'),
-    cfg.StrOpt('nexenta_chunksize',
-               default=16384,
-               help='NexentaEdge iSCSI LUN object chunk size')
-]
-
-CONF = cfg.CONF
-CONF.register_opts(nexenta_edge_opts)
 
 LOG = logging.getLogger(__name__)
 
@@ -82,7 +41,14 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
     def __init__(self, *args, **kwargs):
         super(NexentaEdgeISCSIDriver, self).__init__(*args, **kwargs)
         if self.configuration:
-            self.configuration.append_config_values(nexenta_edge_opts)
+            self.configuration.append_config_values(
+                options.NEXENTA_CONNECTION_OPTS)
+            self.configuration.append_config_values(
+                options.NEXENTA_ISCSI_OPTS)
+            self.configuration.append_config_values(
+                options.NEXENTA_DATASET_OPTS)
+            self.configuration.append_config_values(
+                options.NEXENTA_EDGE_OPTS)
         self.restapi_protocol = self.configuration.nexenta_rest_protocol
         self.restapi_host = self.configuration.nexenta_rest_address
         self.restapi_port = self.configuration.nexenta_rest_port

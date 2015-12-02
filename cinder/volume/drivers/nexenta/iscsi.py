@@ -64,7 +64,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
             self.configuration.append_config_values(
                 options.NEXENTA_ISCSI_OPTS)
             self.configuration.append_config_values(
-                options.NEXENTA_VOLUME_OPTS)
+                options.NEXENTA_DATASET_OPTS)
             self.configuration.append_config_values(
                 options.NEXENTA_RRMGR_OPTS)
         self.nms_protocol = self.configuration.nexenta_rest_protocol
