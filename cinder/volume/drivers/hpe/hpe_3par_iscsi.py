@@ -102,10 +102,11 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         3.0.0 - Rebranded HP to HPE.
         3.0.1 - Python 3 support
         3.0.2 - Remove db access for consistency groups
+        3.0.3 - Fix multipath dictionary key error. bug #1522062
 
     """
 
-    VERSION = "3.0.2"
+    VERSION = "3.0.3"
 
     def __init__(self, *args, **kwargs):
         super(HPE3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -304,7 +305,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
                 volume,
                 connector)
 
-            if connector['multipath']:
+            if connector.get('multipath'):
                 ready_ports = common.client.getiSCSIPorts(
                     state=common.client.PORT_STATE_READY)
 
