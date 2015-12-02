@@ -68,7 +68,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             self.configuration.append_config_values(
                 options.NEXENTA_NFS_OPTS)
             self.configuration.append_config_values(
-                options.NEXENTA_VOLUME_OPTS)
+                options.NEXENTA_DATASET_OPTS)
             self.configuration.append_config_values(
                 options.NEXENTA_RRMGR_OPTS)
 
