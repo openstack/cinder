@@ -7104,6 +7104,15 @@ class LVMVolumeDriverTestCase(DriverTestCase):
 
         mock_volume_get.assert_called_with(self.context, vol['id'])
 
+    def test_retype_volume(self):
+        vol = tests_utils.create_volume(self.context)
+        new_type = 'fake'
+        diff = {}
+        host = 'fake_host'
+        retyped = self.volume.driver.retype(self.context, vol, new_type,
+                                            diff, host)
+        self.assertTrue(retyped)
+
     def test_update_migrated_volume(self):
         fake_volume_id = 'vol1'
         fake_new_volume_id = 'vol2'
