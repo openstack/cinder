@@ -1752,12 +1752,15 @@ class EMCVMAXCommon(object):
                     'slo': slo,
                     'workload': workload}))
         else:
+            maskingViewDict['fastPolicy'] = extraSpecs[FASTPOLICY]
+            if maskingViewDict['fastPolicy']:
+                uniqueName = self.utils.generate_unique_trunc_fastpolicy(
+                    maskingViewDict['fastPolicy']) + '-FP'
             prefix = (
                 ("OS-%(shortHostName)s-%(poolName)s-%(protocol)s"
                  % {'shortHostName': shortHostName,
                     'poolName': uniqueName,
                     'protocol': protocol}))
-            maskingViewDict['fastPolicy'] = extraSpecs[FASTPOLICY]
 
         maskingViewDict['sgGroupName'] = ("%(prefix)s-SG"
                                           % {'prefix': prefix})

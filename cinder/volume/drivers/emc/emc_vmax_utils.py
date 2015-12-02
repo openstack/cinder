@@ -2377,6 +2377,20 @@ class EMCVMAXUtils(object):
         else:
             return poolName
 
+    def generate_unique_trunc_fastpolicy(self, fastPolicyName):
+        """Create a unique fast policy name under 14 chars
+
+        :param fastPolicyName: long fast policy name
+        :returns: truncated fast policy name
+        """
+        if fastPolicyName and len(fastPolicyName) > 14:
+            return (
+                ("%(first)s_%(last)s"
+                 % {'first': fastPolicyName[:7],
+                    'last': fastPolicyName[-6:]}))
+        else:
+            return fastPolicyName
+
     def get_iscsi_protocol_endpoints(self, conn, portgroupinstancename):
         """Get the iscsi protocol endpoints of a port group.
 
