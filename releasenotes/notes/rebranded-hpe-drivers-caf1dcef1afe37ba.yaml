@@ -1,0 +1,3 @@
+---
+upgrade:
+  - HP drivers have been rebranded to HPE. Existing configurations will continue to work with the legacy name, but will need to be updated by the next release.

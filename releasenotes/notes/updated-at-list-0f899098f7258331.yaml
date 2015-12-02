@@ -1,0 +1,3 @@
+---
+features:
+  - The updated_at timestamp is now returned in listing detail.
