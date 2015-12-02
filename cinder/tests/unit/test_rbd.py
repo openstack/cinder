@@ -28,6 +28,7 @@ from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import objects
 from cinder import test
+from cinder.tests.unit import fake_volume
 from cinder.tests.unit.image import fake as fake_image
 from cinder.tests.unit import test_volume
 from cinder.tests.unit import utils
@@ -853,29 +854,32 @@ class RBDTestCase(test.TestCase):
         context = {}
         diff = {'encryption': {},
                 'extra_specs': {}}
-        fake_volume = {'name': 'testvolume',
-                       'host': 'currenthost'}
+        updates = {'name': 'testvolume',
+                   'host': 'currenthost',
+                   'id': 'fakeid'}
         fake_type = 'high-IOPS'
+        volume = fake_volume.fake_volume_obj(context, **updates)
 
-        # no support for migration
-        host = {'host': 'anotherhost'}
-        self.assertFalse(self.driver.retype(context, fake_volume,
-                                            fake_type, diff, host))
+        # The hosts have been checked same before rbd.retype
+        # is called.
+        # RBD doesn't support multiple pools in a driver.
         host = {'host': 'currenthost'}
+        self.assertTrue(self.driver.retype(context, volume,
+                                           fake_type, diff, host))
 
-        # no support for changing encryption
-        diff['encryption'] = {'non-empty': 'non-empty'}
-        self.assertFalse(self.driver.retype(context, fake_volume,
-                                            fake_type, diff, host))
+        # The encryptions have been checked as same before rbd.retype
+        # is called.
         diff['encryption'] = {}
+        self.assertTrue(self.driver.retype(context, volume,
+                                           fake_type, diff, host))
 
-        # no support for changing extra_specs
+        # extra_specs changes are supported.
         diff['extra_specs'] = {'non-empty': 'non-empty'}
-        self.assertFalse(self.driver.retype(context, fake_volume,
-                                            fake_type, diff, host))
+        self.assertTrue(self.driver.retype(context, volume,
+                                           fake_type, diff, host))
         diff['extra_specs'] = {}
 
-        self.assertTrue(self.driver.retype(context, fake_volume,
+        self.assertTrue(self.driver.retype(context, volume,
                                            fake_type, diff, host))
 
     @common_mocks

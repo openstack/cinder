@@ -767,28 +767,14 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
             volume.remove_snap(snap_name)
 
     def retype(self, context, volume, new_type, diff, host):
-        """Retypes a volume, allows QoS change only."""
-        LOG.debug('Retype volume request %(vol)s to be %(type)s '
-                  '(host: %(host)s), diff %(diff)s.',
-                  {
-                      'vol': volume['name'],
-                      'type': new_type,
-                      'host': host,
-                      'diff': diff
-                  })
+        """Retypes a volume, allow Qos and extra_specs change."""
 
-        if volume['host'] != host['host']:
-            LOG.error(_LE('Retype with host migration not supported.'))
-            return False
-
-        if diff['encryption']:
-            LOG.error(_LE('Retype of encryption type not supported.'))
-            return False
-
-        if diff['extra_specs']:
-            LOG.error(_LE('Retype of extra_specs not supported.'))
-            return False
-
+        # No need to check encryption, extra_specs and Qos here as:
+        # encryptions have been checked as same.
+        # extra_specs are not used in the driver.
+        # Qos settings are not used in the driver.
+        LOG.debug('RBD retype called for volume %s. No action '
+                  'required for RBD volumes.', volume.id)
         return True
 
     def ensure_export(self, context, volume):
