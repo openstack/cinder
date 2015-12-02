@@ -26,11 +26,11 @@ def fake_db_volume(**updates):
         'status': 'available',
         'attach_status': 'detached',
         'previous_status': None,
-        'metadata': {},
-        'admin_metadata': {},
         'volume_attachment': [],
         'volume_metadata': [],
         'volume_admin_metadata': [],
+        'volume_glance_metadata': [],
+        'snapshots': [],
     }
 
     for name, field in objects.Volume.fields.items():

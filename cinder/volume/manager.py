@@ -1600,26 +1600,25 @@ class VolumeManager(manager.SchedulerDependentManager):
         rpcapi = volume_rpcapi.VolumeAPI()
 
         # Create new volume on remote host
-        new_vol_values = dict(volume)
-        del new_vol_values['id']
-        del new_vol_values['_name_id']
-        new_vol_values.pop('name', None)
-        # We don't copy volume_type because the db sets that according to
-        # volume_type_id, which we do copy
-        new_vol_values.pop('volume_type', None)
+
+        skip = {'id', '_name_id', 'name', 'host', 'status',
+                'attach_status', 'migration_status', 'volume_type',
+                'consistencygroup', 'volume_attachment'}
+        # We don't copy volume_type, consistencygroup and volume_attachment,
+        # because the db sets that according to [field]_id, which we do copy.
+        # We also skip some other values that are either set manually later or
+        # during creation of Volume object.
+        new_vol_values = {k: volume[k] for k in set(volume.keys()) - skip}
         if new_type_id:
             new_vol_values['volume_type_id'] = new_type_id
-        new_vol_values['host'] = host['host']
-        new_vol_values['status'] = 'creating'
-
-        # FIXME(jdg): using a : delimeter is confusing to
-        # me below here.  We're adding a string member to a dict
-        # using a :, which is kind of a poor choice in this case
-        # I think
-        new_vol_values['migration_status'] = 'target:%s' % volume['id']
-        new_vol_values['attach_status'] = 'detached'
-        new_vol_values.pop('volume_attachment', None)
-        new_volume = objects.Volume(context=ctxt, **new_vol_values)
+        new_volume = objects.Volume(
+            context=ctxt,
+            host=host['host'],
+            status='creating',
+            attach_status='detached',
+            migration_status='target:%s' % volume['id'],
+            **new_vol_values
+        )
         new_volume.create()
         rpcapi.create_volume(ctxt, new_volume, host['host'],
                              None, None, allow_reschedule=False)
