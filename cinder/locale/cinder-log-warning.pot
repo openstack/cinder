@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev364\n"
+"Project-Id-Version: cinder 8.0.0.dev388\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-01 06:53+0000\n"
+"POT-Creation-Date: 2015-12-02 06:25+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -126,7 +126,7 @@ msgid ""
 "not verified. Skipping verify."
 msgstr ""
 
-#: cinder/backup/drivers/ceph.py:1187
+#: cinder/backup/drivers/ceph.py:1172
 #, python-format
 msgid ""
 "RBD image for backup %(backup)s of volume %(volume)s not found. Deleting "
@@ -151,7 +151,7 @@ msgstr ""
 msgid "Deadlock detected when running '%(func_name)s': Retrying..."
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:919
+#: cinder/db/sqlalchemy/api.py:906
 #, python-format
 msgid "Change will make usage less than 0 for the following resources: %s"
 msgstr ""
@@ -349,14 +349,14 @@ msgstr ""
 msgid "Image delete encountered an error."
 msgstr ""
 
-#: cinder/volume/manager.py:1712
+#: cinder/volume/manager.py:1711
 #, python-format
 msgid ""
 "Failed to migrate volume. The destination volume %(vol)s is not deleted "
 "since the source volume may have been deleted."
 msgstr ""
 
-#: cinder/volume/manager.py:1867
+#: cinder/volume/manager.py:1866
 #, python-format
 msgid "Update driver status failed: %(config_group)s is uninitialized."
 msgstr ""
@@ -478,13 +478,13 @@ msgstr ""
 msgid "snapshot: %s not found, skipping delete operations"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:753
+#: cinder/volume/drivers/lvm.py:761
 msgid ""
 "LVMISCSIDriver is deprecated, you should now just use LVMVolumeDriver and"
 " specify iscsi_helper for the target driver you wish to use."
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:770
+#: cinder/volume/drivers/lvm.py:778
 msgid ""
 "LVMISERDriver is deprecated, you should now just use LVMVolumeDriver and "
 "specify iscsi_helper for the target driver you wish to use. In order to "
@@ -610,17 +610,17 @@ msgstr ""
 msgid "No backing file found for %s, allowing snapshot to be deleted."
 msgstr ""
 
-#: cinder/volume/drivers/sheepdog.py:181
+#: cinder/volume/drivers/sheepdog.py:177
 #, python-format
 msgid "Volume not found. %s"
 msgstr ""
 
-#: cinder/volume/drivers/sheepdog.py:233
+#: cinder/volume/drivers/sheepdog.py:220
 #, python-format
 msgid "Snapshot \"%s\" not found."
 msgstr ""
 
-#: cinder/volume/drivers/sheepdog.py:235
+#: cinder/volume/drivers/sheepdog.py:222
 #, python-format
 msgid "Volume \"%s\" not found."
 msgstr ""
@@ -813,33 +813,33 @@ msgid ""
 "dictionary."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:2166
+#: cinder/volume/drivers/emc/emc_vmax_common.py:2169
 #, python-format
 msgid ""
 "Pre check for deletion. Volume: %(volumeName)s is part of a storage "
 "group. Attempting removal from %(storageGroupInstanceNames)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:3032
+#: cinder/volume/drivers/emc/emc_vmax_common.py:3035
 #, python-format
 msgid "Volume : %(volumeName)s is not currently belonging to any storage group."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:3305
+#: cinder/volume/drivers/emc/emc_vmax_common.py:3308
 #, python-format
 msgid ""
 "The volume: %(volumename)s. was not first part of the default storage "
 "group for FAST policy %(fastPolicyName)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:3746
+#: cinder/volume/drivers/emc/emc_vmax_common.py:3749
 #, python-format
 msgid ""
 "Clone failed on V3. Cleaning up the target volume. Clone name: "
 "%(cloneName)s "
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:3957
+#: cinder/volume/drivers/emc/emc_vmax_common.py:3960
 #, python-format
 msgid "FAST is enabled. Policy: %(fastPolicyName)s."
 msgstr ""
@@ -853,7 +853,7 @@ msgstr ""
 msgid "Unable to get storage tiers from tier policy rule."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_fc.py:235
+#: cinder/volume/drivers/emc/emc_vmax_fc.py:236
 #, python-format
 msgid "Volume %(volume)s is not in any masking view."
 msgstr ""
@@ -1295,7 +1295,7 @@ msgstr ""
 msgid "object %(key)s of type %(typ)s not found, %(err_msg)s"
 msgstr ""
 
-#: cinder/volume/drivers/emc/xtremio.py:530
+#: cinder/volume/drivers/emc/xtremio.py:544
 msgid "terminate_connection: lun map not found"
 msgstr ""
 
@@ -1542,19 +1542,24 @@ msgstr ""
 msgid "Volume %s does not exist."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:691
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:428
+#, python-format
+msgid "Failed to run lsguicapability. Exception: %s."
+msgstr ""
+
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:707
 #, python-format
 msgid "unmap_vol_from_host: No mapping of volume %(vol_name)s to any host found."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:697
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:713
 #, python-format
 msgid ""
 "unmap_vol_from_host: Multiple mappings of volume %(vol_name)s found, no "
 "host specified."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:709
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:725
 #, python-format
 msgid ""
 "unmap_vol_from_host: No mapping of volume %(vol_name)s to host %(host)s "

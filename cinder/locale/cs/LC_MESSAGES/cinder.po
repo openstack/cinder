@@ -9,10 +9,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev364\n"
+"Project-Id-Version: cinder 8.0.0.dev388\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-01 06:53+0000\n"
-"PO-Revision-Date: 2015-11-27 09:20+0000\n"
+"POT-Creation-Date: 2015-12-02 06:25+0000\n"
+"PO-Revision-Date: 2015-12-01 08:17+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language: cs\n"
 "Language-Team: Czech\n"
@@ -744,6 +744,10 @@ msgstr ""
 msgid "Cache volume %(cache_vol)sdoes not have snapshot %(cache_snap)s."
 msgstr "Svazek mezipaměti %(cache_vol)s nemá snímek %(cache_snap)s."
 
+#, python-format
+msgid "Cache volume %s does not have required properties"
+msgstr "Svazek mezipaměti %s nemá požadované vlastnosti"
+
 msgid "Can not add FC initiator to host."
 msgstr "Nelze přidat zavaděče FC na hostitele."
 
@@ -1239,6 +1243,9 @@ msgstr ""
 #, python-format
 msgid "Compute cluster: %(cluster)s not found."
 msgstr "Výpočetní cluster: %(cluster)s nenalezen."
+
+msgid "Condition has no field."
+msgstr "Podmínka nemá žádné pole."
 
 #, python-format
 msgid "Configuration file %(configurationFile)s does not exist."
@@ -7382,6 +7389,10 @@ msgstr "Virtuální disk %(name)s není součástí mapování %(src)s -> %(tgt)
 #, python-format
 msgid "VersionedObject %s cannot retrieve object by id."
 msgstr "Objekt s verzí %s nemůže získat objekt podle id."
+
+#, python-format
+msgid "VersionedObject %s does not support conditional update."
+msgstr "Objekt s verzí %s nepodporuje podmíněné aktualizace."
 
 #, python-format
 msgid "Virtual volume '%s' doesn't exist on array."

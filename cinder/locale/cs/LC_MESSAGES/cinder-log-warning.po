@@ -7,10 +7,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev364\n"
+"Project-Id-Version: cinder 8.0.0.dev388\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-01 06:53+0000\n"
-"PO-Revision-Date: 2015-11-27 09:25+0000\n"
+"POT-Creation-Date: 2015-12-02 06:25+0000\n"
+"PO-Revision-Date: 2015-12-01 08:24+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language-Team: Czech\n"
 "Language: cs\n"
@@ -1198,6 +1198,14 @@ msgstr ""
 "%(code)d %(reason)s"
 
 #, python-format
+msgid ""
+"ScaleIO only supports volumes with a granularity of 8 GBs. The new volume "
+"size is: %d."
+msgstr ""
+"ScaleIO podporuje pouze svazky s rozdělením po 8GB. Nová velikost svazku je: "
+"%d."
+
+#, python-format
 msgid "See unavailable iSCSI target: %s"
 msgstr "Prohlédněte si nedostupný cíl iSCSI: %s"
 
@@ -1647,6 +1655,10 @@ msgstr "Svazek %s nemá zadáno umístění poskytovatele, je přeskočen"
 #, python-format
 msgid "Volume %s does not have provider_location specified, skipping."
 msgstr "Svazek %s nemá zadáno umístění poskytovatele, je přeskočen."
+
+#, python-format
+msgid "Volume %s exists but can't be deleted"
+msgstr "Svazek %s existuje ale nemůže být smazán"
 
 #, python-format
 msgid "Volume %s is not found!, it may have been deleted."
