@@ -55,7 +55,7 @@ NEXENTA_CONNECTION_OPTS = [
                default='',
                help='IP address of Nexenta SA'),
     cfg.IntOpt('nexenta_rest_port',
-               default=2000,
+               default=8080,
                help='HTTP port to connect to Nexenta REST API server'),
     cfg.StrOpt('nexenta_rest_protocol',
                default='auto',
