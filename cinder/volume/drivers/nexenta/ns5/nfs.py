@@ -338,9 +338,13 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
 
         :param volume: volume reference
         """
+        # nfs_share = volume['provider_location']
+        # path = self.share2fs[nfs_share]
+        # return '%s/%s' % (path, volume['name'])
         nfs_share = volume['provider_location']
-        path = self.share2fs[nfs_share]
-        return '%s/%s' % (path, volume['name'])
+        LOG.warning(nfs_share)
+        share = nfs_share.split(':')[1].rstrip('/')
+        return '%s/%s/volume' % (share, volume['name'])
 
     def _share_folder(self, nef, path, filesystem):
         """Share NFS filesystem on NexentaStor Appliance.
