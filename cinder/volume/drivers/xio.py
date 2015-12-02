@@ -367,7 +367,7 @@ class XIOISEDriver(object):
         auth_key = ('%s:%s'
                     % (self.configuration.san_login,
                        self.configuration.san_password))
-        auth_key = base64.encode_as_text(auth_key)[:-1]
+        auth_key = base64.encode_as_text(auth_key)
         header['Authorization'] = 'Basic %s' % auth_key
         # We allow 5 retries on each IP address. If connection to primary
         # fails, secondary will be tried. If connection to secondary is
