@@ -803,6 +803,9 @@ class TestCinderRtstoolCmd(test.TestCase):
         sys.argv = ['cinder-rtstool']
         CONF(sys.argv[1:], project='cinder', version=version.version_string())
 
+        self.INITIATOR_IQN = 'iqn.2015.12.com.example.openstack.i:UNIT1'
+        self.TARGET_IQN = 'iqn.2015.12.com.example.openstack.i:TARGET1'
+
     def tearDown(self):
         super(TestCinderRtstoolCmd, self).tearDown()
 
@@ -973,7 +976,7 @@ class TestCinderRtstoolCmd(test.TestCase):
             self.assertRaises(rtslib_fb.utils.RTSLibError,
                               cinder_rtstool.add_initiator,
                               mock.sentinel.target_iqn,
-                              mock.sentinel.initiator_iqn,
+                              self.INITIATOR_IQN,
                               mock.sentinel.userid,
                               mock.sentinel.password)
 
@@ -984,7 +987,7 @@ class TestCinderRtstoolCmd(test.TestCase):
         self.assertRaises(cinder_rtstool.RtstoolError,
                           cinder_rtstool.add_initiator,
                           mock.sentinel.target_iqn,
-                          mock.sentinel.initiator_iqn,
+                          self.INITIATOR_IQN,
                           mock.sentinel.userid,
                           mock.sentinel.password)
 
@@ -994,15 +997,64 @@ class TestCinderRtstoolCmd(test.TestCase):
     def test_add_initiator_acl_exists(self, rtsroot, node_acl, mapped_lun):
         target_iqn = mock.MagicMock()
         target_iqn.tpgs.return_value = \
-            [{'node_acls': mock.sentinel.initiator_iqn}]
-        acl = mock.MagicMock(node_wwn=mock.sentinel.initiator_iqn)
+            [{'node_acls': self.INITIATOR_IQN}]
+        acl = mock.MagicMock(node_wwn=self.INITIATOR_IQN)
+        tpg = mock.MagicMock(node_acls=[acl])
+        tpgs = iter([tpg])
+        target = mock.MagicMock(tpgs=tpgs, wwn=self.TARGET_IQN)
+        rtsroot.return_value = mock.MagicMock(targets=[target])
+
+        cinder_rtstool.add_initiator(self.TARGET_IQN,
+                                     self.INITIATOR_IQN,
+                                     mock.sentinel.userid,
+                                     mock.sentinel.password)
+        self.assertFalse(node_acl.called)
+        self.assertFalse(mapped_lun.called)
+
+    @mock.patch.object(rtslib_fb, 'MappedLUN')
+    @mock.patch.object(rtslib_fb, 'NodeACL')
+    @mock.patch.object(rtslib_fb.root, 'RTSRoot')
+    def test_add_initiator_acl_exists_case_1(self,
+                                             rtsroot,
+                                             node_acl,
+                                             mapped_lun):
+        """Ensure initiator iqns are handled in a case-insensitive manner."""
+        target_iqn = mock.MagicMock()
+        target_iqn.tpgs.return_value = \
+            [{'node_acls': self.INITIATOR_IQN.lower()}]
+        acl = mock.MagicMock(node_wwn=self.INITIATOR_IQN)
         tpg = mock.MagicMock(node_acls=[acl])
         tpgs = iter([tpg])
         target = mock.MagicMock(tpgs=tpgs, wwn=target_iqn)
         rtsroot.return_value = mock.MagicMock(targets=[target])
 
         cinder_rtstool.add_initiator(target_iqn,
-                                     mock.sentinel.initiator_iqn,
+                                     self.INITIATOR_IQN,
+                                     mock.sentinel.userid,
+                                     mock.sentinel.password)
+        self.assertFalse(node_acl.called)
+        self.assertFalse(mapped_lun.called)
+
+    @mock.patch.object(rtslib_fb, 'MappedLUN')
+    @mock.patch.object(rtslib_fb, 'NodeACL')
+    @mock.patch.object(rtslib_fb.root, 'RTSRoot')
+    def test_add_initiator_acl_exists_case_2(self,
+                                             rtsroot,
+                                             node_acl,
+                                             mapped_lun):
+        """Ensure initiator iqns are handled in a case-insensitive manner."""
+        iqn_lower = self.INITIATOR_IQN.lower()
+        target_iqn = mock.MagicMock()
+        target_iqn.tpgs.return_value = \
+            [{'node_acls': self.INITIATOR_IQN}]
+        acl = mock.MagicMock(node_wwn=iqn_lower)
+        tpg = mock.MagicMock(node_acls=[acl])
+        tpgs = iter([tpg])
+        target = mock.MagicMock(tpgs=tpgs, wwn=target_iqn)
+        rtsroot.return_value = mock.MagicMock(targets=[target])
+
+        cinder_rtstool.add_initiator(target_iqn,
+                                     self.INITIATOR_IQN,
                                      mock.sentinel.userid,
                                      mock.sentinel.password)
         self.assertFalse(node_acl.called)
@@ -1014,7 +1066,7 @@ class TestCinderRtstoolCmd(test.TestCase):
     def test_add_initiator(self, rtsroot, node_acl, mapped_lun):
         target_iqn = mock.MagicMock()
         target_iqn.tpgs.return_value = \
-            [{'node_acls': mock.sentinel.initiator_iqn}]
+            [{'node_acls': self.INITIATOR_IQN}]
         tpg = mock.MagicMock()
         tpgs = iter([tpg])
         target = mock.MagicMock(tpgs=tpgs, wwn=target_iqn)
@@ -1025,11 +1077,11 @@ class TestCinderRtstoolCmd(test.TestCase):
         node_acl.return_value = acl_new
 
         cinder_rtstool.add_initiator(target_iqn,
-                                     mock.sentinel.initiator_iqn,
+                                     self.INITIATOR_IQN,
                                      mock.sentinel.userid,
                                      mock.sentinel.password)
         node_acl.assert_called_once_with(tpg,
-                                         mock.sentinel.initiator_iqn,
+                                         self.INITIATOR_IQN,
                                          mode='create')
         mapped_lun.assert_called_once_with(acl_new, 0, tpg_lun=0)
 
@@ -1057,6 +1109,40 @@ class TestCinderRtstoolCmd(test.TestCase):
 
         target.delete.assert_called_once_with()
         storage_object.delete.assert_called_once_with()
+
+    @mock.patch.object(rtslib_fb, 'MappedLUN')
+    @mock.patch.object(rtslib_fb, 'NodeACL')
+    @mock.patch.object(rtslib_fb.root, 'RTSRoot')
+    def test_delete_initiator(self, rtsroot, node_acl, mapped_lun):
+        target_iqn = mock.MagicMock()
+        target_iqn.tpgs.return_value = \
+            [{'node_acls': self.INITIATOR_IQN}]
+        acl = mock.MagicMock(node_wwn=self.INITIATOR_IQN)
+        tpg = mock.MagicMock(node_acls=[acl])
+        tpgs = iter([tpg])
+        target = mock.MagicMock(tpgs=tpgs, wwn=target_iqn)
+        rtsroot.return_value = mock.MagicMock(targets=[target])
+
+        cinder_rtstool.delete_initiator(target_iqn,
+                                        self.INITIATOR_IQN)
+
+    @mock.patch.object(rtslib_fb, 'MappedLUN')
+    @mock.patch.object(rtslib_fb, 'NodeACL')
+    @mock.patch.object(rtslib_fb.root, 'RTSRoot')
+    def test_delete_initiator_case(self, rtsroot, node_acl, mapped_lun):
+        """Ensure iqns are handled in a case-insensitive manner."""
+        initiator_iqn_lower = self.INITIATOR_IQN.lower()
+        target_iqn = mock.MagicMock()
+        target_iqn.tpgs.return_value = \
+            [{'node_acls': initiator_iqn_lower}]
+        acl = mock.MagicMock(node_wwn=self.INITIATOR_IQN)
+        tpg = mock.MagicMock(node_acls=[acl])
+        tpgs = iter([tpg])
+        target = mock.MagicMock(tpgs=tpgs, wwn=target_iqn)
+        rtsroot.return_value = mock.MagicMock(targets=[target])
+
+        cinder_rtstool.delete_initiator(target_iqn,
+                                        self.INITIATOR_IQN)
 
     @mock.patch.object(cinder_rtstool, 'os', autospec=True)
     @mock.patch.object(cinder_rtstool, 'rtslib_fb', autospec=True)
