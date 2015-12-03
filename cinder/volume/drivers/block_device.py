@@ -21,10 +21,11 @@ from oslo_utils import importutils
 from oslo_utils import units
 
 from cinder import context
-from cinder.db.sqlalchemy import api
 from cinder import exception
-from cinder.i18n import _, _LI
+from cinder.i18n import _, _LI, _LW
 from cinder.image import image_utils
+from cinder import objects
+from cinder import utils
 from cinder.volume import driver
 from cinder.volume import utils as volutils
 
@@ -43,7 +44,7 @@ CONF.register_opts(volume_opts)
 
 class BlockDeviceDriver(driver.BaseVD, driver.LocalVD,
                         driver.CloneableImageVD, driver.TransferVD):
-    VERSION = '2.1.0'
+    VERSION = '2.2.0'
 
     def __init__(self, *args, **kwargs):
         super(BlockDeviceDriver, self).__init__(*args, **kwargs)
@@ -61,17 +62,27 @@ class BlockDeviceDriver(driver.BaseVD, driver.LocalVD,
     def check_for_setup_error(self):
         pass
 
+    def _update_provider_location(self, object, device):
+        # We update provider_location and host to mark device as used to
+        # avoid race with other threads.
+        # TODO(ynesenenko): need to remove DB access from driver
+        object.update({'provider_location': device, 'host': self.host})
+        object.save()
+
+    @utils.synchronized('block_device', external=True)
     def create_volume(self, volume):
-        device = self.find_appropriate_size_device(volume['size'])
-        LOG.info(_LI("Create %(volume)s on %(device)s"),
-                 {"volume": volume['name'], "device": device})
-        return {
-            'provider_location': device,
-        }
+        device = self.find_appropriate_size_device(volume.size)
+        LOG.info(_LI("Creating %(volume)s on %(device)s"),
+                 {"volume": volume.name, "device": device})
+        self._update_provider_location(volume, device)
 
     def delete_volume(self, volume):
         """Deletes a logical volume."""
-        dev_path = self.local_path(volume)
+        self._clear_block_device(volume)
+
+    def _clear_block_device(self, device):
+        """Deletes a block device."""
+        dev_path = self.local_path(device)
         if not dev_path or dev_path not in \
                 self.configuration.available_devices:
             return
@@ -82,10 +93,17 @@ class BlockDeviceDriver(driver.BaseVD, driver.LocalVD,
                 dev_size[dev_path], dev_path,
                 volume_clear=self.configuration.volume_clear,
                 volume_clear_size=self.configuration.volume_clear_size)
+        else:
+            LOG.warning(_LW("The device %s won't be cleared."), device)
+
+        if device.status == "error_deleting":
+            msg = _("Failed to delete device.")
+            LOG.error(msg, resource=device)
+            raise exception.VolumeDriverException(msg)
 
     def local_path(self, device):
-        if device['provider_location']:
-            path = device['provider_location'].rsplit(" ", 1)
+        if device.provider_location:
+            path = device.provider_location.rsplit(" ", 1)
             return path[-1]
         else:
             return None
@@ -97,7 +115,7 @@ class BlockDeviceDriver(driver.BaseVD, driver.LocalVD,
                                  image_id,
                                  self.local_path(volume),
                                  self.configuration.volume_dd_blocksize,
-                                 size=volume['size'])
+                                 size=volume.size)
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
@@ -106,18 +124,17 @@ class BlockDeviceDriver(driver.BaseVD, driver.LocalVD,
                                   image_meta,
                                   self.local_path(volume))
 
+    @utils.synchronized('block_device', external=True)
     def create_cloned_volume(self, volume, src_vref):
-        LOG.info(_LI('Creating clone of volume: %s'), src_vref['id'])
-        device = self.find_appropriate_size_device(src_vref['size'])
+        LOG.info(_LI('Creating clone of volume: %s.'), src_vref.id)
+        device = self.find_appropriate_size_device(src_vref.size)
         dev_size = self._get_devices_sizes([device])
         volutils.copy_volume(
             self.local_path(src_vref), device,
             dev_size[device],
             self.configuration.volume_dd_blocksize,
             execute=self._execute)
-        return {
-            'provider_location': device,
-        }
+        self._update_provider_location(volume, device)
 
     def get_volume_stats(self, refresh=False):
         if refresh:
@@ -135,7 +152,7 @@ class BlockDeviceDriver(driver.BaseVD, driver.LocalVD,
                 free_size += size
             total_size += size
 
-        LOG.debug("Updating volume stats")
+        LOG.debug("Updating volume stats.")
         backend_name = self.configuration.safe_get('volume_backend_name')
         data = {'total_capacity_gb': total_size / units.Ki,
                 'free_capacity_gb': free_size / units.Ki,
@@ -148,15 +165,21 @@ class BlockDeviceDriver(driver.BaseVD, driver.LocalVD,
 
         self._stats = data
 
-    def _get_used_devices(self):
-        lst = api.volume_get_all_by_host(context.get_admin_context(),
-                                         self.host)
-        used_devices = set()
-        for volume in lst:
-            local_path = self.local_path(volume)
+    def _get_used_paths(self, lst):
+        used_dev = set()
+        for item in lst:
+            local_path = self.local_path(item)
             if local_path:
-                used_devices.add(local_path)
-        return used_devices
+                used_dev.add(local_path)
+        return used_dev
+
+    def _get_used_devices(self):
+        lst = objects.VolumeList.get_all_by_host(context.get_admin_context(),
+                                                 self.host)
+        used_devices = self._get_used_paths(lst)
+        snp_lst = objects.SnapshotList.get_by_host(context.get_admin_context(),
+                                                   self.host)
+        return used_devices.union(self._get_used_paths(snp_lst))
 
     def _get_devices_sizes(self, dev_paths):
         """Return devices' sizes in Mb"""
@@ -231,7 +254,7 @@ class BlockDeviceDriver(driver.BaseVD, driver.LocalVD,
         self.target_driver.remove_export(context, volume)
 
     def initialize_connection(self, volume, connector):
-        if connector['host'] != volutils.extract_host(volume['host'], 'host'):
+        if connector['host'] != volutils.extract_host(volume.host, 'host'):
             return self.target_driver.initialize_connection(volume, connector)
         else:
             return {
