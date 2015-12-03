@@ -229,6 +229,39 @@ class BlockDeviceDriver(driver.BaseVD, driver.LocalVD,
             LOG.error(msg, resource=volume)
             raise exception.CinderException(msg)
 
+    @utils.synchronized('block_device', external=True)
+    def create_snapshot(self, snapshot):
+        volume = snapshot.volume
+        if volume.status != 'available':
+            msg = _("Volume is not available.")
+            LOG.error(msg, resource=volume)
+            raise exception.CinderException(msg)
+
+        LOG.info(_LI('Creating volume snapshot: %s.'), snapshot.id)
+        device = self.find_appropriate_size_device(snapshot.volume_size)
+        dev_size = self._get_devices_sizes([device])
+        volutils.copy_volume(
+            self.local_path(volume), device,
+            dev_size[device],
+            self.configuration.volume_dd_blocksize,
+            execute=self._execute)
+        self._update_provider_location(snapshot, device)
+
+    def delete_snapshot(self, snapshot):
+        self._clear_block_device(snapshot)
+
+    @utils.synchronized('block_device', external=True)
+    def create_volume_from_snapshot(self, volume, snapshot):
+        LOG.info(_LI('Creating volume %s from snapshot.'), volume.id)
+        device = self.find_appropriate_size_device(snapshot.volume_size)
+        dev_size = self._get_devices_sizes([device])
+        volutils.copy_volume(
+            self.local_path(snapshot), device,
+            dev_size[device],
+            self.configuration.volume_dd_blocksize,
+            execute=self._execute)
+        self._update_provider_location(volume, device)
+
     # #######  Interface methods for DataPath (Target Driver) ########
 
     def ensure_export(self, context, volume):
