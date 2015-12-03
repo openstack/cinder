@@ -21,7 +21,7 @@ from cinder.volume.drivers import lvm
 from cinder.zonemanager import utils as fczm_utils
 
 
-class FakeISCSIDriver(lvm.LVMISCSIDriver):
+class FakeISCSIDriver(lvm.LVMVolumeDriver):
     """Logs calls instead of executing."""
     def __init__(self, *args, **kwargs):
         super(FakeISCSIDriver, self).__init__(execute=self.fake_execute,
