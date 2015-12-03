@@ -12,6 +12,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_utils import timeutils
+
+from cinder import exception
 from cinder.tests.unit.brick import fake_lvm
 from cinder.volume import driver
 from cinder.volume.drivers import lvm
@@ -191,3 +194,150 @@ class LoggingVolumeDriver(driver.VolumeDriver):
             if match:
                 matches.append(entry)
         return matches
+
+
+class FakeGateDriver(lvm.LVMVolumeDriver):
+    """Class designation for FakeGateDriver.
+
+    FakeGateDriver is for TESTING ONLY. There are a few
+    driver features such as CG and replication that are not
+    supported by the reference driver LVM currently. Adding
+    those functions in this fake driver will help detect
+    problems when changes are introduced in those functions.
+
+    Implementation of this driver is NOT meant for production.
+    They are implemented simply to make sure calls to the driver
+    functions are passing in the correct parameters, and the
+    results returned by the driver are handled properly by the manager.
+
+    """
+    def __init__(self, *args, **kwargs):
+        super(FakeGateDriver, self).__init__(*args, **kwargs)
+
+    def _update_volume_stats(self):
+        super(FakeGateDriver, self)._update_volume_stats()
+        self._stats["pools"][0]["consistencygroup_support"] = True
+        self._stats["pools"][0]["replication_enabled"] = True
+
+    # NOTE(xyang): Consistency Group functions implemented below
+    # are for testing purpose only. Data consistency cannot be
+    # achieved by running these functions.
+    def create_consistencygroup(self, context, group):
+        """Creates a consistencygroup."""
+        # A consistencygroup entry is already created in db
+        # This driver just returns a status
+        now = timeutils.utcnow()
+        model_update = {'status': 'available', 'updated_at': now}
+
+        return model_update
+
+    def create_consistencygroup_from_src(self, context, group, volumes,
+                                         cgsnapshot=None, snapshots=None,
+                                         soure_cg=None, source_vols=None):
+        """Creates a consistencygroup from cgsnapshot or source cg."""
+        for vol in volumes:
+            try:
+                if snapshots:
+                    for snapshot in snapshots:
+                        if vol['snapshot_id'] == snapshot['id']:
+                            self.create_volume_from_snapshot(vol, snapshot)
+                            break
+            except Exception:
+                raise
+            try:
+                if source_vols:
+                    for source_vol in source_vols:
+                        if vol['source_volid'] == source_vol['id']:
+                            self.create_cloned_volume(vol, source_vol)
+                            break
+            except Exception:
+                raise
+        return None, None
+
+    def delete_consistencygroup(self, context, group, volumes):
+        """Deletes a consistencygroup and volumes in the group."""
+        model_update = {'status': group.status}
+        volume_model_updates = []
+        for volume_ref in volumes:
+            volume_model_update = {'id': volume_ref.id}
+            try:
+                self.remove_export(context, volume_ref)
+                self.delete_volume(volume_ref)
+                volume_model_update['status'] = 'deleted'
+            except exception.VolumeIsBusy:
+                volume_model_update['status'] = 'available'
+            except Exception:
+                volume_model_update['status'] = 'error'
+                model_update['status'] = 'error'
+            volume_model_updates.append(volume_model_update)
+
+        return model_update, volume_model_updates
+
+    def update_consistencygroup(self, context, group,
+                                add_volumes=None, remove_volumes=None):
+        """Updates a consistency group."""
+        return None, None, None
+
+    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
+        """Creates a cgsnapshot.
+
+        Snapshots created here are NOT consistent. This is for
+        testing purpose only.
+        """
+        model_update = {'status': 'available'}
+        snapshot_model_updates = []
+        for snapshot in snapshots:
+            snapshot_model_update = {'id': snapshot.id}
+            try:
+                self.create_snapshot(snapshot)
+                snapshot_model_update['status'] = 'available'
+            except Exception:
+                snapshot_model_update['status'] = 'error'
+                model_update['status'] = 'error'
+            snapshot_model_updates.append(snapshot_model_update)
+
+        return model_update, snapshot_model_updates
+
+    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
+        """Deletes a cgsnapshot."""
+        model_update = {'status': cgsnapshot.status}
+        snapshot_model_updates = []
+        for snapshot in snapshots:
+            snapshot_model_update = {'id': snapshot.id}
+            try:
+                self.delete_snapshot(snapshot)
+                snapshot_model_update['status'] = 'deleted'
+            except exception.SnapshotIsBusy:
+                snapshot_model_update['status'] = 'available'
+            except Exception:
+                snapshot_model_update['status'] = 'error'
+                model_update['status'] = 'error'
+            snapshot_model_updates.append(snapshot_model_update)
+
+        return model_update, snapshot_model_updates
+
+    # Replication functions here are not really doing replication.
+    # They are added so that we can do basic sanity check of replication
+    # APIs.
+    def replication_enable(self, context, volume):
+        return
+
+    def replication_disable(self, context, volume):
+        return
+
+    def replication_failover(self, context, volume, secondary):
+        return {'model_update': {'status': volume['status']},
+                'replication_driver_data': {'replication_driver_data': ''}}
+
+    def list_replication_targets(self, context, volume):
+        targets = []
+        remote_target = {'managed_backend_name': None,
+                         'type': 'unmanaged',
+                         'remote_device_id': 'fake_remote_device',
+                         'san_ip': '123.456.78.90'}
+        targets.append(remote_target)
+        return {'volume_id': volume['id'],
+                'targets': targets}
+
+    def get_replication_updates(self, context):
+        return []
