@@ -76,20 +76,23 @@ fi
 if [ $NOSAMPLE -eq 0 ] ; then
     oslo-config-generator --config-file=cinder/config/cinder-config-generator.conf
 
+    if [ $? -ne 0 ] ; then
+        echo -en "\n\n#################################################"
+        echo -en "\nERROR: Non-zero exit from oslo-config-generator."
+        echo -en "\n       See output above for details.\n"
+        echo -en "#################################################\n"
+        mv $TARGETDIR/opts.py.bak $TARGETDIR/opts.py
+        exit 1
+    fi
+
     diff $TARGETDIR/opts.py $TARGETDIR/opts.py.bak &> /dev/null
+
     if [ $? -ne 0 ] ; then
         mv $TARGETDIR/opts.py.bak $TARGETDIR/opts.py
     else
        rm -f $TARGETDIR/opts.py.bak
     fi
 
-    if [ $? -ne 0 ] ; then
-        echo -en "\n\n#################################################"
-        echo -en "\nERROR: Non-zero exit from oslo-config-generator."
-        echo -en "\n       See output above for details.\n"
-        echo -en "#################################################\n"
-        exit 1
-    fi
     if [ ! -s ./etc/cinder/cinder.conf.sample ] ; then
         echo -en "\n\n#########################################################"
         echo -en "\nERROR: etc/cinder/cinder.sample.conf not created properly."
