@@ -15,8 +15,10 @@
 
 import webob
 
+from keystoneclient.auth.identity.generic import token
+from keystoneclient import client
 from keystoneclient import exceptions
-from keystoneclient.v3 import client
+from keystoneclient import session
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
@@ -180,9 +182,13 @@ class QuotaSetsController(wsgi.Controller):
         order to do quota operations properly.
         """
         try:
-            keystone = client.Client(auth_url=CONF.keymgr.encryption_auth_url,
-                                     token=context.auth_token,
-                                     project_id=context.project_id)
+            auth_plugin = token.Token(
+                auth_url=CONF.keystone_authtoken.auth_uri,
+                token=context.auth_token,
+                project_id=context.project_id)
+            client_session = session.Session(auth=auth_plugin)
+            keystone = client.Client(auth_url=CONF.keystone_authtoken.auth_uri,
+                                     session=client_session)
             project = keystone.projects.get(id, subtree_as_ids=subtree_as_ids)
         except exceptions.NotFound:
             msg = (_("Tenant ID: %s does not exist.") % id)
