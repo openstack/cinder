@@ -3007,6 +3007,7 @@ class HPE3PARBaseDriver(object):
             common = self.driver._login()
 
             unm_matcher = common._get_3par_unm_name(self.volume['id'])
+            ums_matcher = common._get_3par_ums_name(self.volume['id'])
 
             existing_ref = {'source-name': unm_matcher}
             result = common._get_existing_volume_ref_name(existing_ref)
@@ -3015,6 +3016,10 @@ class HPE3PARBaseDriver(object):
             existing_ref = {'source-id': self.volume['id']}
             result = common._get_existing_volume_ref_name(existing_ref)
             self.assertEqual(unm_matcher, result)
+
+            existing_ref = {'source-id': self.volume['id']}
+            result = common._get_existing_volume_ref_name(existing_ref, True)
+            self.assertEqual(ums_matcher, result)
 
             existing_ref = {'bad-key': 'foo'}
             self.assertRaises(
@@ -3444,6 +3449,87 @@ class HPE3PARBaseDriver(object):
                 expected +
                 self.standard_logout)
 
+    def test_manage_existing_snapshot(self):
+        mock_client = self.setup_driver()
+
+        new_comment = Comment({
+            "display_name": "snap",
+            "volume_name": "volume-007dbfce-7579-40bc-8f90-a20b3902283e",
+            "volume_id": "007dbfce-7579-40bc-8f90-a20b3902283e",
+            "description": "",
+        })
+        snapshot = {
+            'display_name': None,
+            'id': '007dbfce-7579-40bc-8f90-a20b3902283e',
+            'volume_id': self.VOLUME_ID,
+        }
+
+        mock_client.getVolume.return_value = {
+            "comment": "{'display_name': 'snap'}",
+            'copyOf': self.VOLUME_NAME_3PAR,
+        }
+
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            common = self.driver._login()
+
+            oss_matcher = common._get_3par_snap_name(snapshot['id'])
+            ums_matcher = common._get_3par_ums_name(snapshot['id'])
+            existing_ref = {'source-name': ums_matcher}
+            expected_obj = {'display_name': 'snap'}
+
+            obj = self.driver.manage_existing_snapshot(snapshot, existing_ref)
+
+            expected = [
+                mock.call.getVolume(existing_ref['source-name']),
+                mock.call.modifyVolume(existing_ref['source-name'],
+                                       {'newName': oss_matcher,
+                                        'comment': new_comment}),
+            ]
+
+            mock_client.assert_has_calls(
+                self.standard_login +
+                expected +
+                self.standard_logout)
+            self.assertEqual(expected_obj, obj)
+
+    def test_manage_existing_snapshot_invalid_parent(self):
+        mock_client = self.setup_driver()
+
+        snapshot = {
+            'display_name': None,
+            'id': '007dbfce-7579-40bc-8f90-a20b3902283e',
+            'volume_id': self.VOLUME_ID,
+        }
+
+        mock_client.getVolume.return_value = {
+            "comment": "{'display_name': 'snap'}",
+            'copyOf': 'fake-invalid',
+        }
+
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            common = self.driver._login()
+
+            ums_matcher = common._get_3par_ums_name(snapshot['id'])
+            existing_ref = {'source-name': ums_matcher}
+
+            self.assertRaises(exception.InvalidInput,
+                              self.driver.manage_existing_snapshot,
+                              snapshot=snapshot,
+                              existing_ref=existing_ref)
+
+            expected = [
+                mock.call.getVolume(existing_ref['source-name']),
+            ]
+
+            mock_client.assert_has_calls(
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
     def test_manage_existing_get_size(self):
         mock_client = self.setup_driver()
         mock_client.getVolume.return_value = {'sizeMiB': 2048}
@@ -3519,6 +3605,86 @@ class HPE3PARBaseDriver(object):
                 expected +
                 self.standard_logout)
 
+    def test_manage_existing_snapshot_get_size(self):
+        mock_client = self.setup_driver()
+        mock_client.getVolume.return_value = {'sizeMiB': 2048}
+
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            common = self.driver._login()
+
+            ums_matcher = common._get_3par_ums_name(self.snapshot['id'])
+            snapshot = {}
+            existing_ref = {'source-name': ums_matcher}
+
+            size = self.driver.manage_existing_snapshot_get_size(snapshot,
+                                                                 existing_ref)
+
+            expected_size = 2
+            expected = [mock.call.getVolume(existing_ref['source-name'])]
+
+            mock_client.assert_has_calls(
+                self.standard_login +
+                expected +
+                self.standard_logout)
+            self.assertEqual(expected_size, size)
+
+    def test_manage_existing_snapshot_get_size_invalid_reference(self):
+        mock_client = self.setup_driver()
+
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+
+            snapshot = {}
+            existing_ref = {'source-name': self.SNAPSHOT_3PAR_NAME}
+
+            self.assertRaises(exception.ManageExistingInvalidReference,
+                              self.driver.manage_existing_snapshot_get_size,
+                              snapshot=snapshot,
+                              existing_ref=existing_ref)
+
+            mock_client.assert_has_calls(
+                self.standard_login +
+                self.standard_logout)
+
+            existing_ref = {}
+
+            self.assertRaises(exception.ManageExistingInvalidReference,
+                              self.driver.manage_existing_snapshot_get_size,
+                              snapshot=snapshot,
+                              existing_ref=existing_ref)
+
+            mock_client.assert_has_calls(
+                self.standard_login +
+                self.standard_logout)
+
+    def test_manage_existing_snapshot_get_size_invalid_input(self):
+        mock_client = self.setup_driver()
+        mock_client.getVolume.side_effect = hpeexceptions.HTTPNotFound('fake')
+
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            common = self.driver._login()
+
+            ums_matcher = common._get_3par_ums_name(self.snapshot['id'])
+            snapshot = {}
+            existing_ref = {'source-name': ums_matcher}
+
+            self.assertRaises(exception.InvalidInput,
+                              self.driver.manage_existing_snapshot_get_size,
+                              snapshot=snapshot,
+                              existing_ref=existing_ref)
+
+            expected = [mock.call.getVolume(existing_ref['source-name'])]
+
+            mock_client.assert_has_calls(
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
     def test_unmanage(self):
         mock_client = self.setup_driver()
         with mock.patch.object(hpecommon.HPE3PARCommon,
@@ -3532,6 +3698,26 @@ class HPE3PARBaseDriver(object):
 
             expected = [
                 mock.call.modifyVolume(osv_matcher, {'newName': unm_matcher})
+            ]
+
+            mock_client.assert_has_calls(
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
+    def test_unmanage_snapshot(self):
+        mock_client = self.setup_driver()
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            common = self.driver._login()
+            self.driver.unmanage_snapshot(self.snapshot)
+
+            oss_matcher = common._get_3par_snap_name(self.snapshot['id'])
+            ums_matcher = common._get_3par_ums_name(self.snapshot['id'])
+
+            expected = [
+                mock.call.modifyVolume(oss_matcher, {'newName': ums_matcher})
             ]
 
             mock_client.assert_has_calls(

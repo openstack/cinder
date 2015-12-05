@@ -217,10 +217,11 @@ class HPE3PARCommon(object):
         3.0.3 - Remove db access for consistency groups
         3.0.4 - Adds v2 managed replication support
         3.0.5 - Adds v2 unmanaged replication support
+        3.0.6 - Adding manage/unmanage snapshot support
 
     """
 
-    VERSION = "3.0.5"
+    VERSION = "3.0.6"
 
     stats = {}
 
@@ -759,6 +760,73 @@ class HPE3PARCommon(object):
         # any model updates from retype.
         return updates
 
+    def manage_existing_snapshot(self, snapshot, existing_ref):
+        """Manage an existing 3PAR snapshot.
+
+        existing_ref is a dictionary of the form:
+        {'source-name': <name of the snapshot>}
+        """
+        target_snap_name = self._get_existing_volume_ref_name(existing_ref,
+                                                              is_snapshot=True)
+
+        # Check for the existence of the snapshot.
+        try:
+            snap = self.client.getVolume(target_snap_name)
+        except hpeexceptions.HTTPNotFound:
+            err = (_("Snapshot '%s' doesn't exist on array.") %
+                   target_snap_name)
+            LOG.error(err)
+            raise exception.InvalidInput(reason=err)
+
+        # Make sure the snapshot is being associated with the correct volume.
+        parent_vol_name = self._get_3par_vol_name(snapshot['volume_id'])
+        if parent_vol_name != snap['copyOf']:
+            err = (_("The provided snapshot '%s' is not a snapshot of "
+                     "the provided volume.") % target_snap_name)
+            LOG.error(err)
+            raise exception.InvalidInput(reason=err)
+
+        new_comment = {}
+
+        # Use the display name from the existing snapshot if no new name
+        # was chosen by the user.
+        if snapshot['display_name']:
+            display_name = snapshot['display_name']
+            new_comment['display_name'] = snapshot['display_name']
+        elif 'comment' in snap:
+            display_name = self._get_3par_vol_comment_value(snap['comment'],
+                                                            'display_name')
+            if display_name:
+                new_comment['display_name'] = display_name
+        else:
+            display_name = None
+
+        # Generate the new snapshot information based on the new ID.
+        new_snap_name = self._get_3par_snap_name(snapshot['id'])
+        new_comment['volume_id'] = snapshot['id']
+        new_comment['volume_name'] = 'volume-' + snapshot['id']
+        if snapshot.get('display_description', None):
+            new_comment['description'] = snapshot['display_description']
+        else:
+            new_comment['description'] = ""
+
+        new_vals = {'newName': new_snap_name,
+                    'comment': json.dumps(new_comment)}
+
+        # Update the existing snapshot with the new name and comments.
+        self.client.modifyVolume(target_snap_name, new_vals)
+
+        LOG.info(_LI("Snapshot '%(ref)s' renamed to '%(new)s'."),
+                 {'ref': existing_ref['source-name'], 'new': new_snap_name})
+
+        updates = {'display_name': display_name}
+
+        LOG.info(_LI("Snapshot %(disp)s '%(new)s' is now being managed."),
+                 {'disp': display_name, 'new': new_snap_name})
+
+        # Return display name to update the name displayed in the GUI.
+        return updates
+
     def manage_existing_get_size(self, volume, existing_ref):
         """Return size of volume to be managed by manage_existing.
 
@@ -785,6 +853,33 @@ class HPE3PARCommon(object):
 
         return int(math.ceil(float(vol['sizeMiB']) / units.Ki))
 
+    def manage_existing_snapshot_get_size(self, snapshot, existing_ref):
+        """Return size of snapshot to be managed by manage_existing_snapshot.
+
+        existing_ref is a dictionary of the form:
+        {'source-name': <name of the snapshot>}
+        """
+        target_snap_name = self._get_existing_volume_ref_name(existing_ref,
+                                                              is_snapshot=True)
+
+        # Make sure the reference is not in use.
+        if re.match('osv-*|oss-*|vvs-*|unm-*', target_snap_name):
+            reason = _("Reference must be for an unmanaged snapshot.")
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=target_snap_name,
+                reason=reason)
+
+        # Check for the existence of the snapshot.
+        try:
+            snap = self.client.getVolume(target_snap_name)
+        except hpeexceptions.HTTPNotFound:
+            err = (_("Snapshot '%s' doesn't exist on array.") %
+                   target_snap_name)
+            LOG.error(err)
+            raise exception.InvalidInput(reason=err)
+
+        return int(math.ceil(float(snap['sizeMiB']) / units.Ki))
+
     def unmanage(self, volume):
         """Removes the specified volume from Cinder management."""
         # Rename the volume's name to unm-* format so that it can be
@@ -799,7 +894,21 @@ class HPE3PARCommon(object):
                   'vol': vol_name,
                   'new': new_vol_name})
 
-    def _get_existing_volume_ref_name(self, existing_ref):
+    def unmanage_snapshot(self, snapshot):
+        """Removes the specified snapshot from Cinder management."""
+        # Rename the snapshots's name to ums-* format so that it can be
+        # easily found later.
+        snap_name = self._get_3par_snap_name(snapshot['id'])
+        new_snap_name = self._get_3par_ums_name(snapshot['id'])
+        self.client.modifyVolume(snap_name, {'newName': new_snap_name})
+
+        LOG.info(_LI("Snapshot %(disp)s '%(vol)s' is no longer managed. "
+                     "Snapshot renamed to '%(new)s'."),
+                 {'disp': snapshot['display_name'],
+                  'vol': snap_name,
+                  'new': new_snap_name})
+
+    def _get_existing_volume_ref_name(self, existing_ref, is_snapshot=False):
         """Returns the volume name of an existing reference.
 
         Checks if an existing volume reference has a source-name or
@@ -810,7 +919,10 @@ class HPE3PARCommon(object):
         if 'source-name' in existing_ref:
             vol_name = existing_ref['source-name']
         elif 'source-id' in existing_ref:
-            vol_name = self._get_3par_unm_name(existing_ref['source-id'])
+            if is_snapshot:
+                vol_name = self._get_3par_ums_name(existing_ref['source-id'])
+            else:
+                vol_name = self._get_3par_unm_name(existing_ref['source-id'])
         else:
             reason = _("Reference must contain source-name or source-id.")
             raise exception.ManageExistingInvalidReference(
@@ -883,6 +995,10 @@ class HPE3PARCommon(object):
     def _get_3par_snap_name(self, snapshot_id):
         snapshot_name = self._encode_name(snapshot_id)
         return "oss-%s" % snapshot_name
+
+    def _get_3par_ums_name(self, snapshot_id):
+        ums_name = self._encode_name(snapshot_id)
+        return "ums-%s" % ums_name
 
     def _get_3par_vvs_name(self, volume_id):
         vvs_name = self._encode_name(volume_id)

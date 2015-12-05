@@ -55,6 +55,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
                          driver.ManageableVD,
                          driver.ExtendVD,
                          driver.SnapshotVD,
+                         driver.ManageableSnapshotsVD,
                          driver.MigrateVD,
                          driver.ConsistencyGroupVD,
                          driver.BaseVD):
@@ -105,10 +106,11 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         3.0.3 - Fix multipath dictionary key error. bug #1522062
         3.0.4 - Adds v2 managed replication support
         3.0.5 - Adds v2 unmanaged replication support
+        3.0.6 - Adding manage/unmanage snapshot support
 
     """
 
-    VERSION = "3.0.5"
+    VERSION = "3.0.6"
 
     def __init__(self, *args, **kwargs):
         super(HPE3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -822,6 +824,13 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    def manage_existing_snapshot(self, snapshot, existing_ref):
+        common = self._login()
+        try:
+            return common.manage_existing_snapshot(snapshot, existing_ref)
+        finally:
+            self._logout(common)
+
     def manage_existing_get_size(self, volume, existing_ref):
         common = self._login(volume)
         try:
@@ -829,10 +838,25 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    def manage_existing_snapshot_get_size(self, snapshot, existing_ref):
+        common = self._login()
+        try:
+            return common.manage_existing_snapshot_get_size(snapshot,
+                                                            existing_ref)
+        finally:
+            self._logout(common)
+
     def unmanage(self, volume):
         common = self._login(volume)
         try:
             common.unmanage(volume)
+        finally:
+            self._logout(common)
+
+    def unmanage_snapshot(self, snapshot):
+        common = self._login()
+        try:
+            common.unmanage_snapshot(snapshot)
         finally:
             self._logout(common)
 
