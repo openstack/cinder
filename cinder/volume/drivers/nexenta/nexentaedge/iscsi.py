@@ -56,10 +56,10 @@ nexenta_edge_opts = [
                default='',
                help='NexentaEdge iSCSI Gateway client '
                'address for non-VIP service'),
-    cfg.StrOpt('nexenta_blocksize',
+    cfg.IntOpt('nexenta_blocksize',
                default=4096,
                help='NexentaEdge iSCSI LUN block size'),
-    cfg.StrOpt('nexenta_chunksize',
+    cfg.IntOpt('nexenta_chunksize',
                default=16384,
                help='NexentaEdge iSCSI LUN object chunk size')
 ]
