@@ -97,6 +97,12 @@ sf_opts = [
 CONF = cfg.CONF
 CONF.register_opts(sf_opts)
 
+# SolidFire API Error Constants
+xExceededLimit = 'xExceededLimit'
+xAlreadyInVolumeAccessGroup = 'xAlreadyInVolumeAccessGroup'
+xVolumeAccessGroupIDDoesNotExist = 'xVolumeAccessGroupIDDoesNotExist'
+xNotInVolumeAccessGroup = 'xNotInVolumeAccessGroup'
+
 
 def retry(exc_tuple, tries=5, delay=1, backoff=2):
     def retry_dec(f):
@@ -819,57 +825,153 @@ class SolidFireDriver(san.SanISCSIDriver):
         vlist = sorted(vlist, key=lambda k: k['volumeID'])
         return vlist
 
-    def _create_vag(self, vag_name):
+    def _create_vag(self, iqn, vol_id=None):
         """Create a volume access group(vag).
 
            Returns the vag_id.
         """
-        params = {'name': vag_name}
-        result = self._issue_api_request('CreateVolumeAccessGroup',
-                                         params,
-                                         version='7.0')
-        return result['result']['volumeAccessGroupID']
+        vag_name = re.sub('[^0-9a-zA-Z]+', '-', iqn)
+        params = {'name': vag_name,
+                  'initiators': [iqn],
+                  'volumes': [vol_id],
+                  'attributes': {'openstack': True}}
+        try:
+            result = self._issue_api_request('CreateVolumeAccessGroup',
+                                             params,
+                                             version='7.0')
+            return result['result']['volumeAccessGroupID']
+        except exception.SolidFireAPIException as error:
+            if xExceededLimit in error.msg:
+                if iqn in error.msg:
+                    # Initiator double registered.
+                    return self._safe_create_vag(iqn, vol_id)
+                else:
+                    # VAG limit reached. Purge and start over.
+                    self._purge_vags()
+                    return self._safe_create_vag(iqn, vol_id)
+            else:
+                raise
 
-    def _get_vags(self, vag_name):
-        """Retrieve SolidFire volume access group objects by name.
+    def _safe_create_vag(self, iqn, vol_id=None):
+        # Potential race condition with simultaneous volume attaches to the
+        # same host. To help avoid this, VAG creation makes a best attempt at
+        # finding and using an existing VAG.
 
-           Returns an array of vags with a matching name value.
-           Returns an empty array if there are no matches.
-        """
+        vags = self._get_vags_by_name(iqn)
+        if vags:
+            # Filter through the vags and find the one with matching initiator
+            vag = next((v for v in vags if iqn in v['initiators']), None)
+            if vag:
+                return vag['volumeAccessGroupID']
+            else:
+                # No matches, use the first result, add initiator IQN.
+                vag_id = vags[0]['volumeAccessGroupID']
+                return self._add_initiator_to_vag(iqn, vag_id)
+        return self._create_vag(iqn, vol_id)
+
+    def _base_get_vags(self):
         params = {}
         vags = self._issue_api_request(
             'ListVolumeAccessGroups',
             params,
             version='7.0')['result']['volumeAccessGroups']
+        return vags
+
+    def _get_vags_by_name(self, iqn):
+        """Retrieve SolidFire volume access group objects by name.
+
+           Returns an array of vags with a matching name value.
+           Returns an empty array if there are no matches.
+        """
+        vags = self._base_get_vags()
+        vag_name = re.sub('[^0-9a-zA-Z]+', '-', iqn)
         matching_vags = [vag for vag in vags if vag['name'] == vag_name]
         return matching_vags
 
     def _add_initiator_to_vag(self, iqn, vag_id):
+        # Added a vag_id return as there is a chance that we might have to
+        # create a new VAG if our target VAG is deleted underneath us.
         params = {"initiators": [iqn],
                   "volumeAccessGroupID": vag_id}
-        self._issue_api_request('AddInitiatorsToVolumeAccessGroup',
-                                params,
-                                version='7.0')
+        try:
+            self._issue_api_request('AddInitiatorsToVolumeAccessGroup',
+                                    params,
+                                    version='7.0')
+            return vag_id
+        except exception.SolidFireAPIException as error:
+            if xAlreadyInVolumeAccessGroup in error.msg:
+                return vag_id
+            elif xVolumeAccessGroupIDDoesNotExist in error.msg:
+                # No locking means sometimes a VAG can be removed by a parallel
+                # volume detach against the same host.
+                return self._safe_create_vag(iqn)
+            else:
+                raise
 
-    def _add_volume_to_vag(self, vol_id, vag_id):
+    def _add_volume_to_vag(self, vol_id, iqn, vag_id):
+        # Added a vag_id return to be consistent with add_initiator_to_vag. It
+        # isn't necessary but may be helpful in the future.
         params = {"volumeAccessGroupID": vag_id,
                   "volumes": [vol_id]}
-        self._issue_api_request('AddVolumesToVolumeAccessGroup',
-                                params,
-                                version='7.0')
+        try:
+            self._issue_api_request('AddVolumesToVolumeAccessGroup',
+                                    params,
+                                    version='7.0')
+            return vag_id
+
+        except exception.SolidFireAPIException as error:
+            if xAlreadyInVolumeAccessGroup in error.msg:
+                return vag_id
+            elif xVolumeAccessGroupIDDoesNotExist in error.msg:
+                return self._safe_create_vag(iqn, vol_id)
+            else:
+                raise
 
     def _remove_volume_from_vag(self, vol_id, vag_id):
         params = {"volumeAccessGroupID": vag_id,
                   "volumes": [vol_id]}
-        self._issue_api_request('RemoveVolumesFromVolumeAccessGroup',
-                                params,
-                                version='7.0')
+        try:
+            self._issue_api_request('RemoveVolumesFromVolumeAccessGroup',
+                                    params,
+                                    version='7.0')
+        except exception.SolidFireAPIException as error:
+            if xNotInVolumeAccessGroup in error.msg:
+                pass
+            elif xVolumeAccessGroupIDDoesNotExist in error.msg:
+                pass
+            else:
+                raise
+
+    def _remove_volume_from_vags(self, vol_id):
+        # Due to all sorts of uncertainty around multiattach, on volume
+        # deletion we make a best attempt at removing the vol_id from VAGs.
+        vags = self._base_get_vags()
+        targets = [v for v in vags if vol_id in v['volumes']]
+        for vag in targets:
+            self._remove_volume_from_vag(vol_id, vag['volumeAccessGroupID'])
 
     def _remove_vag(self, vag_id):
         params = {"volumeAccessGroupID": vag_id}
-        self._issue_api_request('DeleteVolumeAccessGroup',
-                                params,
-                                version='7.0')
+        try:
+            self._issue_api_request('DeleteVolumeAccessGroup',
+                                    params,
+                                    version='7.0')
+        except exception.SolidFireAPIException as error:
+            if xVolumeAccessGroupIDDoesNotExist not in error.msg:
+                raise
+
+    def _purge_vags(self, limit=10):
+        # Purge up to limit number of VAGs that have no active volumes,
+        # initiators, and an OpenStack attribute. Purge oldest VAGs first.
+        vags = self._base_get_vags()
+        targets = [v for v in vags if v['volumes'] == [] and
+                   v['initiators'] == [] and
+                   v['deletedVolumes'] == [] and
+                   v['attributes'].get('openstack')]
+        sorted_targets = sorted(targets,
+                                key=lambda k: k['volumeAccessGroupID'])
+        for vag in sorted_targets[:limit]:
+            self._remove_vag(vag['volumeAccessGroupID'])
 
     def clone_image(self, context,
                     volume, image_location,
@@ -1022,6 +1124,8 @@ class SolidFireDriver(san.SanISCSIDriver):
         if sf_vol is not None:
             params = {'volumeID': sf_vol['volumeID']}
             self._issue_api_request('DeleteVolume', params)
+            if volume.get('multiattach'):
+                self._remove_volume_from_vags(sf_vol['volumeID'])
         else:
             LOG.error(_LE("Volume ID %s was not found on "
                           "the SolidFire Cluster while attempting "
@@ -1409,33 +1513,14 @@ class SolidFireISCSI(iscsi_driver.SanISCSITarget):
            Optionally checks and utilizes volume access groups.
         """
         if self.configuration.sf_enable_vag:
-            raw_iqn = connector['initiator']
-            vag_name = re.sub('[^0-9a-zA-Z]+', '-', raw_iqn)
-            vag = self._get_vags(vag_name)
+            iqn = connector['initiator']
             provider_id = volume['provider_id']
             vol_id = int(self._parse_provider_id_string(provider_id)[0])
 
-            if vag:
-                vag_id = vag[0]['volumeAccessGroupID']
-                vag = vag[0]
-            else:
-                vag_id = self._create_vag(vag_name)
-                vag = self._get_vags(vag_name)[0]
-
-            # TODO(chrismorrell): There is a potential race condition if a
-            # volume is attached and another is detached on the same
-            # host/initiator. The detach may purge the VAG before the attach
-            # has a chance to add the volume to the VAG. Propose combining
-            # add_initiator_to_vag and add_volume_to_vag with a retry on
-            # SFAPI exception regarding nonexistent VAG.
-
-            # Verify IQN matches.
-            if raw_iqn not in vag['initiators']:
-                self._add_initiator_to_vag(raw_iqn,
-                                           vag_id)
-            # Add volume to vag if not already.
-            if vol_id not in vag['volumes']:
-                self._add_volume_to_vag(vol_id, vag_id)
+            # safe_create_vag may opt to reuse vs create a vag, so we need to
+            # add our vol_id.
+            vag_id = self._safe_create_vag(iqn, vol_id)
+            self._add_volume_to_vag(vol_id, iqn, vag_id)
 
         # Continue along with default behavior
         return super(SolidFireISCSI, self).initialize_connection(volume,
@@ -1448,13 +1533,15 @@ class SolidFireISCSI(iscsi_driver.SanISCSITarget):
            If the VAG is empty then the VAG is also removed.
         """
         if self.configuration.sf_enable_vag:
-            raw_iqn = properties['initiator']
-            vag_name = re.sub('[^0-9a-zA-Z]+', '-', raw_iqn)
-            vag = self._get_vags(vag_name)
+            iqn = properties['initiator']
+            vag = self._get_vags_by_name(iqn)
             provider_id = volume['provider_id']
             vol_id = int(self._parse_provider_id_string(provider_id)[0])
 
-            if vag:
+            if vag and not volume['multiattach']:
+                # Multiattach causes problems with removing volumes from VAGs.
+                # Compromise solution for now is to remove multiattach volumes
+                # from VAGs during volume deletion.
                 vag = vag[0]
                 vag_id = vag['volumeAccessGroupID']
                 if [vol_id] == vag['volumes']:

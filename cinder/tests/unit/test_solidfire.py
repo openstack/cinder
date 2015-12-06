@@ -499,43 +499,48 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.assertRaises(exception.SolidFireAPIException,
                           sfv._get_sfaccount_by_name, 'some-name')
 
-    @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
-    @mock.patch.object(solidfire.SolidFireDriver, '_create_template_account')
-    def test_delete_volume(self,
-                           _mock_create_template_account,
-                           _mock_issue_api_request):
-        _mock_issue_api_request.return_value = self.mock_stats_data
-        _mock_create_template_account.return_value = 1
+    def test_delete_volume(self):
         testvol = {'project_id': 'testprjid',
                    'name': 'test_volume',
                    'size': 1,
                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
                    'created_at': timeutils.utcnow(),
                    'provider_id': '1 5 None',
+                   'multiattach': True
                    }
         fake_sfaccounts = [{'accountID': 5,
                             'name': 'testprjid',
                             'targetSecret': 'shhhh',
                             'username': 'john-wayne'}]
 
-        def _fake_do_v_create(project_id, params):
-            return project_id, params
+        get_vol_result = [{'volumeID': 5,
+                           'name': 'test_volume',
+                           'accountID': 25,
+                           'sliceCount': 1,
+                           'totalSize': 1 * units.Gi,
+                           'enable512e': True,
+                           'access': "readWrite",
+                           'status': "active",
+                           'attributes': {},
+                           'qos': None,
+                           'iqn': 'super_fake_iqn'}]
 
-        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        mod_conf = self.configuration
+        mod_conf.sf_enable_vag = True
+        sfv = solidfire.SolidFireDriver(configuration=mod_conf)
         with mock.patch.object(sfv,
                                '_get_sfaccounts_for_tenant',
                                return_value=fake_sfaccounts), \
-                mock.patch.object(sfv,
-                                  '_issue_api_request',
-                                  side_effect=self.fake_issue_api_request), \
-                mock.patch.object(sfv,
-                                  '_get_account_create_availability',
-                                  return_value=fake_sfaccounts[0]), \
-                mock.patch.object(sfv,
-                                  '_do_volume_create',
-                                  side_effect=_fake_do_v_create):
+            mock.patch.object(sfv,
+                              '_get_volumes_for_account',
+                              return_value=get_vol_result), \
+            mock.patch.object(sfv,
+                              '_issue_api_request'), \
+            mock.patch.object(sfv,
+                              '_remove_volume_from_vags') as rem_vol:
 
             sfv.delete_volume(testvol)
+            rem_vol.assert_called_with(get_vol_result[0]['volumeID'])
 
     def test_delete_volume_no_volume_on_backend(self):
         fake_sfaccounts = [{'accountID': 5,
@@ -1112,73 +1117,11 @@ class SolidFireVolumeTestCase(test.TestCase):
                 sfv, '_issue_api_request', side_effect=_fake_issue_api_req):
             self.assertEqual(5, sfv._get_sf_volume(test_name, 8)['volumeID'])
 
-    def test_create_vag(self):
-        global counter
-        counter = 0
-
-        def _trick_get_vag(vag_name):
-            # On the second call to get_vag we want to return a fake VAG
-            # result as required by logic of _sf_initialize_connection.
-            global counter
-            vag = {'attributes': {},
-                   'deletedVolumes': [],
-                   'initiators': [],
-                   'name': 'TESTIQN',
-                   'volumeAccessGroupID': 1,
-                   'volumes': [],
-                   'virtualNetworkIDs': []}
-
-            if counter == 1:
-                return [vag]
-            counter += 1
-
+    def test_sf_init_conn_with_vag(self):
+        # Verify with the _enable_vag conf set that we correctly create a VAG.
         mod_conf = self.configuration
         mod_conf.sf_enable_vag = True
         sfv = solidfire.SolidFireDriver(configuration=mod_conf)
-
-        testvol = {'project_id': 'testprjid',
-                   'name': 'testvol',
-                   'size': 1,
-                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
-                   'volume_type_id': None,
-                   'provider_location': '10.10.7.1:3260 iqn.2010-01.com.'
-                                        'solidfire:87hg.uuid-2cc06226-cc'
-                                        '74-4cb7-bd55-14aed659a0cc.4060 0',
-                   'provider_auth': 'CHAP stack-1-a60e2611875f40199931f2'
-                                    'c76370d66b 2FE0CQ8J196R',
-                   'provider_geometry': '4096 4096',
-                   'created_at': timeutils.utcnow(),
-                   'provider_id': "1 1 1"
-                   }
-
-        connector = {'initiator': 'iqn.2012-07.org.fake:01'}
-
-        def add_volume_to_vag_check(vol_id, vag_id):
-            self.assertEqual(1, vol_id)
-            self.assertEqual(1, vag_id)
-
-        with mock.patch.object(sfv,
-                               '_create_vag',
-                               return_value=1), \
-            mock.patch.object(sfv,
-                              '_get_vags',
-                              side_effect=_trick_get_vag), \
-            mock.patch.object(sfv,
-                              '_add_initiator_to_vag'), \
-            mock.patch.object(sfv,
-                              '_add_volume_to_vag',
-                              side_effect=add_volume_to_vag_check):
-
-            sfv.initialize_connection(testvol, connector)
-
-    def test_remove_vag(self):
-        vag = {'attributes': {},
-               'deletedVolumes': [],
-               'initiators': [],
-               'name': 'TESTIQN',
-               'volumeAccessGroupID': 1,
-               'volumes': [1],
-               'virtualNetworkIDs': []}
         testvol = {'project_id': 'testprjid',
                    'name': 'testvol',
                    'size': 1,
@@ -1194,55 +1137,384 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'provider_id': "1 1 1"
                    }
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
-        mod_conf = self.configuration
-        mod_conf.sf_enable_vag = True
-        sfv = solidfire.SolidFireDriver(configuration=mod_conf)
-
-        with mock.patch.object(sfv,
-                               '_get_vags',
-                               return_value=[vag]), \
-            mock.patch.object(sfv,
-                              '_remove_vag') as mock_rem_vag:
-            sfv.terminate_connection(testvol, connector, force=False)
-            mock_rem_vag.assert_called_with(vag['volumeAccessGroupID'])
-
-    def test_remove_volume_from_vag(self):
-        vag = {'attributes': {},
-               'deletedVolumes': [],
-               'initiators': [],
-               'name': 'TESTIQN',
-               'volumeAccessGroupID': 1,
-               'volumes': [1, 2],
-               'virtualNetworkIDs': []}
-        testvol = {'project_id': 'testprjid',
-                   'name': 'testvol',
-                   'size': 1,
-                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
-                   'volume_type_id': None,
-                   'provider_location': '10.10.7.1:3260 iqn.2010-01.com.'
-                                        'solidfire:87hg.uuid-2cc06226-cc'
-                                        '74-4cb7-bd55-14aed659a0cc.4060 0',
-                   'provider_auth': 'CHAP stack-1-a60e2611875f40199931f2'
-                                    'c76370d66b 2FE0CQ8J196R',
-                   'provider_geometry': '4096 4096',
-                   'created_at': timeutils.utcnow(),
-                   'provider_id': "1 1 1"
-                   }
-        connector = {'initiator': 'iqn.2012-07.org.fake:01'}
-        mod_conf = self.configuration
-        mod_conf.sf_enable_vag = True
-        sfv = solidfire.SolidFireDriver(configuration=mod_conf)
         provider_id = testvol['provider_id']
         vol_id = int(sfv._parse_provider_id_string(provider_id)[0])
+        vag_id = 1
 
         with mock.patch.object(sfv,
-                               '_get_vags',
-                               return_value=[vag]), \
+                               '_safe_create_vag',
+                               return_value=vag_id) as create_vag, \
             mock.patch.object(sfv,
-                              '_remove_vag') as mock_rem_vag, \
+                              '_add_volume_to_vag') as add_vol:
+            sfv._sf_initialize_connection(testvol, connector)
+            create_vag.assert_called_with(connector['initiator'],
+                                          vol_id)
+            add_vol.assert_called_with(vol_id,
+                                       connector['initiator'],
+                                       vag_id)
+
+    def test_sf_term_conn_with_vag_rem_vag(self):
+        # Verify we correctly remove an empty VAG on detach.
+        mod_conf = self.configuration
+        mod_conf.sf_enable_vag = True
+        sfv = solidfire.SolidFireDriver(configuration=mod_conf)
+        testvol = {'project_id': 'testprjid',
+                   'name': 'testvol',
+                   'size': 1,
+                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+                   'volume_type_id': None,
+                   'provider_location': '10.10.7.1:3260 iqn.2010-01.com.'
+                                        'solidfire:87hg.uuid-2cc06226-cc'
+                                        '74-4cb7-bd55-14aed659a0cc.4060 0',
+                   'provider_auth': 'CHAP stack-1-a60e2611875f40199931f2'
+                                    'c76370d66b 2FE0CQ8J196R',
+                   'provider_geometry': '4096 4096',
+                   'created_at': timeutils.utcnow(),
+                   'provider_id': "1 1 1",
+                   'multiattach': False
+                   }
+        connector = {'initiator': 'iqn.2012-07.org.fake:01'}
+        vag_id = 1
+        vags = [{'attributes': {},
+                 'deletedVolumes': [],
+                 'initiators': [connector['initiator']],
+                 'name': 'fakeiqn',
+                 'volumeAccessGroupID': vag_id,
+                 'volumes': [1],
+                 'virtualNetworkIDs': []}]
+
+        with mock.patch.object(sfv,
+                               '_get_vags_by_name',
+                               return_value=vags), \
             mock.patch.object(sfv,
-                              '_remove_volume_from_vag') as mock_rem_vol_vag:
-            sfv.terminate_connection(testvol, connector, force=False)
-            mock_rem_vol_vag.assert_called_with(vol_id,
-                                                vag['volumeAccessGroupID'])
-            mock_rem_vag.assert_not_called()
+                              '_remove_vag') as rem_vag:
+            sfv._sf_terminate_connection(testvol, connector, False)
+            rem_vag.assert_called_with(vag_id)
+
+    def test_sf_term_conn_with_vag_rem_vol(self):
+        # Verify we correctly remove a the volume from a non-empty VAG.
+        mod_conf = self.configuration
+        mod_conf.sf_enable_vag = True
+        sfv = solidfire.SolidFireDriver(configuration=mod_conf)
+        testvol = {'project_id': 'testprjid',
+                   'name': 'testvol',
+                   'size': 1,
+                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+                   'volume_type_id': None,
+                   'provider_location': '10.10.7.1:3260 iqn.2010-01.com.'
+                                        'solidfire:87hg.uuid-2cc06226-cc'
+                                        '74-4cb7-bd55-14aed659a0cc.4060 0',
+                   'provider_auth': 'CHAP stack-1-a60e2611875f40199931f2'
+                                    'c76370d66b 2FE0CQ8J196R',
+                   'provider_geometry': '4096 4096',
+                   'created_at': timeutils.utcnow(),
+                   'provider_id': "1 1 1",
+                   'multiattach': False
+                   }
+        provider_id = testvol['provider_id']
+        vol_id = int(sfv._parse_provider_id_string(provider_id)[0])
+        connector = {'initiator': 'iqn.2012-07.org.fake:01'}
+        vag_id = 1
+        vags = [{'attributes': {},
+                 'deletedVolumes': [],
+                 'initiators': [connector['initiator']],
+                 'name': 'fakeiqn',
+                 'volumeAccessGroupID': vag_id,
+                 'volumes': [1, 2],
+                 'virtualNetworkIDs': []}]
+
+        with mock.patch.object(sfv,
+                               '_get_vags_by_name',
+                               return_value=vags), \
+            mock.patch.object(sfv,
+                              '_remove_volume_from_vag') as rem_vag:
+            sfv._sf_terminate_connection(testvol, connector, False)
+            rem_vag.assert_called_with(vol_id, vag_id)
+
+    def test_safe_create_vag_simple(self):
+        # Test the sunny day call straight into _create_vag.
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        iqn = 'fake_iqn'
+        vol_id = 1
+
+        with mock.patch.object(sfv,
+                               '_get_vags_by_name',
+                               return_value=[]), \
+            mock.patch.object(sfv,
+                              '_create_vag') as mock_create_vag:
+            sfv._safe_create_vag(iqn, vol_id)
+            mock_create_vag.assert_called_with(iqn, vol_id)
+
+    def test_safe_create_vag_matching_vag(self):
+        # Vag exists, resuse.
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        iqn = 'TESTIQN'
+        vags = [{'attributes': {},
+                 'deletedVolumes': [],
+                 'initiators': [iqn],
+                 'name': iqn,
+                 'volumeAccessGroupID': 1,
+                 'volumes': [1, 2],
+                 'virtualNetworkIDs': []}]
+
+        with mock.patch.object(sfv,
+                               '_get_vags_by_name',
+                               return_value=vags), \
+            mock.patch.object(sfv,
+                              '_create_vag') as create_vag, \
+            mock.patch.object(sfv,
+                              '_add_initiator_to_vag') as add_iqn:
+            vag_id = sfv._safe_create_vag(iqn, None)
+            self.assertEqual(vag_id, vags[0]['volumeAccessGroupID'])
+            create_vag.assert_not_called()
+            add_iqn.assert_not_called()
+
+    def test_safe_create_vag_reuse_vag(self):
+        # Reuse a matching vag.
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        iqn = 'TESTIQN'
+        vags = [{'attributes': {},
+                 'deletedVolumes': [],
+                 'initiators': [],
+                 'name': iqn,
+                 'volumeAccessGroupID': 1,
+                 'volumes': [1, 2],
+                 'virtualNetworkIDs': []}]
+        vag_id = vags[0]['volumeAccessGroupID']
+
+        with mock.patch.object(sfv,
+                               '_get_vags_by_name',
+                               return_value=vags), \
+            mock.patch.object(sfv,
+                              '_add_initiator_to_vag',
+                              return_value = vag_id) as add_init:
+            res_vag_id = sfv._safe_create_vag(iqn, None)
+            self.assertEqual(res_vag_id, vag_id)
+            add_init.assert_called_with(iqn, vag_id)
+
+    def test_create_vag_iqn_fail(self):
+        # Attempt to create a VAG with an already in-use initiator.
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        iqn = 'TESTIQN'
+        vag_id = 1
+        vol_id = 42
+
+        def throw_request(method, params, version):
+            msg = 'xExceededLimit: {}'.format(params['initiators'][0])
+            raise exception.SolidFireAPIException(message=msg)
+
+        with mock.patch.object(sfv,
+                               '_issue_api_request',
+                               side_effect=throw_request), \
+            mock.patch.object(sfv,
+                              '_safe_create_vag',
+                              return_value=vag_id) as create_vag, \
+            mock.patch.object(sfv,
+                              '_purge_vags') as purge_vags:
+            res_vag_id = sfv._create_vag(iqn, vol_id)
+            self.assertEqual(res_vag_id, vag_id)
+            create_vag.assert_called_with(iqn, vol_id)
+            purge_vags.assert_not_called()
+
+    def test_create_vag_limit_fail(self):
+        # Attempt to create a VAG with VAG limit reached.
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        iqn = 'TESTIQN'
+        vag_id = 1
+        vol_id = 42
+
+        def throw_request(method, params, version):
+            msg = 'xExceededLimit'
+            raise exception.SolidFireAPIException(message=msg)
+
+        with mock.patch.object(sfv,
+                               '_issue_api_request',
+                               side_effect=throw_request), \
+            mock.patch.object(sfv,
+                              '_safe_create_vag',
+                              return_value=vag_id) as create_vag, \
+            mock.patch.object(sfv,
+                              '_purge_vags') as purge_vags:
+            res_vag_id = sfv._create_vag(iqn, vol_id)
+            self.assertEqual(res_vag_id, vag_id)
+            create_vag.assert_called_with(iqn, vol_id)
+            purge_vags.assert_called_with()
+
+    def test_add_initiator_duplicate(self):
+        # Thrown exception should yield vag_id.
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        iqn = 'TESTIQN'
+        vag_id = 1
+
+        def throw_request(method, params, version):
+            msg = 'xAlreadyInVolumeAccessGroup'
+            raise exception.SolidFireAPIException(message=msg)
+
+        with mock.patch.object(sfv,
+                               '_issue_api_request',
+                               side_effect=throw_request):
+            res_vag_id = sfv._add_initiator_to_vag(iqn, vag_id)
+            self.assertEqual(vag_id, res_vag_id)
+
+    def test_add_initiator_missing_vag(self):
+        # Thrown exception should result in create_vag call.
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        iqn = 'TESTIQN'
+        vag_id = 1
+
+        def throw_request(method, params, version):
+            msg = 'xVolumeAccessGroupIDDoesNotExist'
+            raise exception.SolidFireAPIException(message=msg)
+
+        with mock.patch.object(sfv,
+                               '_issue_api_request',
+                               side_effect=throw_request), \
+            mock.patch.object(sfv,
+                              '_safe_create_vag',
+                              return_value=vag_id) as mock_create_vag:
+            res_vag_id = sfv._add_initiator_to_vag(iqn, vag_id)
+            self.assertEqual(vag_id, res_vag_id)
+            mock_create_vag.assert_called_with(iqn)
+
+    def test_add_volume_to_vag_duplicate(self):
+        # Thrown exception should yield vag_id
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        iqn = 'TESTIQN'
+        vag_id = 1
+        vol_id = 42
+
+        def throw_request(method, params, version):
+            msg = 'xAlreadyInVolumeAccessGroup'
+            raise exception.SolidFireAPIException(message=msg)
+
+        with mock.patch.object(sfv,
+                               '_issue_api_request',
+                               side_effect=throw_request):
+            res_vag_id = sfv._add_volume_to_vag(vol_id, iqn, vag_id)
+            self.assertEqual(res_vag_id, vag_id)
+
+    def test_add_volume_to_vag_missing_vag(self):
+        # Thrown exception should yield vag_id
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        iqn = 'TESTIQN'
+        vag_id = 1
+        vol_id = 42
+
+        def throw_request(method, params, version):
+            msg = 'xVolumeAccessGroupIDDoesNotExist'
+            raise exception.SolidFireAPIException(message=msg)
+
+        with mock.patch.object(sfv,
+                               '_issue_api_request',
+                               side_effect=throw_request), \
+            mock.patch.object(sfv,
+                              '_safe_create_vag',
+                              return_value=vag_id) as mock_create_vag:
+            res_vag_id = sfv._add_volume_to_vag(vol_id, iqn, vag_id)
+            self.assertEqual(res_vag_id, vag_id)
+            mock_create_vag.assert_called_with(iqn, vol_id)
+
+    def test_remove_volume_from_vag_missing_volume(self):
+        # Volume not in VAG, throws.
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        vag_id = 1
+        vol_id = 42
+
+        def throw_request(method, params, version):
+            msg = 'xNotInVolumeAccessGroup'
+            raise exception.SolidFireAPIException(message=msg)
+
+        with mock.patch.object(sfv,
+                               '_issue_api_request',
+                               side_effect=throw_request):
+            sfv._remove_volume_from_vag(vol_id, vag_id)
+
+    def test_remove_volume_from_vag_missing_vag(self):
+        # Volume not in VAG, throws.
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        vag_id = 1
+        vol_id = 42
+
+        def throw_request(method, params, version):
+            msg = 'xVolumeAccessGroupIDDoesNotExist'
+            raise exception.SolidFireAPIException(message=msg)
+
+        with mock.patch.object(sfv,
+                               '_issue_api_request',
+                               side_effect=throw_request):
+            sfv._remove_volume_from_vag(vol_id, vag_id)
+
+    def test_remove_volume_from_vag_unknown_exception(self):
+        # Volume not in VAG, throws.
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        vag_id = 1
+        vol_id = 42
+
+        def throw_request(method, params, version):
+            msg = 'xUnknownException'
+            raise exception.SolidFireAPIException(message=msg)
+
+        with mock.patch.object(sfv,
+                               '_issue_api_request',
+                               side_effect=throw_request):
+            self.assertRaises(exception.SolidFireAPIException,
+                              sfv._remove_volume_from_vag,
+                              vol_id,
+                              vag_id)
+
+    def test_remove_volume_from_vags(self):
+        # Remove volume from several VAGs.
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        vol_id = 42
+        vags = [{'volumeAccessGroupID': 1,
+                 'volumes': [vol_id]},
+                {'volumeAccessGroupID': 2,
+                 'volumes': [vol_id, 43]}]
+
+        with mock.patch.object(sfv,
+                               '_base_get_vags',
+                               return_value=vags), \
+            mock.patch.object(sfv,
+                              '_remove_volume_from_vag') as rem_vol:
+            sfv._remove_volume_from_vags(vol_id)
+            self.assertEqual(len(vags), rem_vol.call_count)
+
+    def test_purge_vags(self):
+        # Remove subset of VAGs.
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        vags = [{'initiators': [],
+                 'volumeAccessGroupID': 1,
+                 'deletedVolumes': [],
+                 'volumes': [],
+                 'attributes': {'openstack': True}},
+                {'initiators': [],
+                 'volumeAccessGroupID': 2,
+                 'deletedVolumes': [],
+                 'volumes': [],
+                 'attributes': {'openstack': False}},
+                {'initiators': [],
+                 'volumeAccessGroupID': 3,
+                 'deletedVolumes': [1],
+                 'volumes': [],
+                 'attributes': {'openstack': True}},
+                {'initiators': [],
+                 'volumeAccessGroupID': 4,
+                 'deletedVolumes': [],
+                 'volumes': [1],
+                 'attributes': {'openstack': True}},
+                {'initiators': ['fakeiqn'],
+                 'volumeAccessGroupID': 5,
+                 'deletedVolumes': [],
+                 'volumes': [],
+                 'attributes': {'openstack': True}}]
+        with mock.patch.object(sfv,
+                               '_base_get_vags',
+                               return_value=vags), \
+            mock.patch.object(sfv,
+                              '_remove_vag') as rem_vag:
+            sfv._purge_vags()
+            # Of the vags provided there is only one that is valid for purge
+            # based on the limits of no initiators, volumes, deleted volumes,
+            # and features the openstack attribute.
+            self.assertEqual(1, rem_vag.call_count)
+            rem_vag.assert_called_with(1)
