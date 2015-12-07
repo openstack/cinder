@@ -187,11 +187,19 @@ class TestVolume(test_objects.BaseObjectsTestCase):
             self.context, volume.id)
 
         # Test volume_type lazy-loaded field
-        volume_type = objects.VolumeType(context=self.context, id=5)
+        # Case1. volume.volume_type_id = None
+        self.assertIsNone(volume.volume_type)
+
+        # Case2. volume2.volume_type_id = 1
+        fake2 = fake_volume.fake_db_volume()
+        fake2.update({'volume_type_id': 1})
+        volume2 = objects.Volume._from_db_object(
+            self.context, objects.Volume(), fake2)
+        volume_type = objects.VolumeType(context=self.context, id=1)
         mock_vt_get_by_id.return_value = volume_type
-        self.assertEqual(volume_type, volume.volume_type)
+        self.assertEqual(volume_type, volume2.volume_type)
         mock_vt_get_by_id.assert_called_once_with(self.context,
-                                                  volume.volume_type_id)
+                                                  volume2.volume_type_id)
 
         # Test consistencygroup lazy-loaded field
         consistencygroup = objects.ConsistencyGroup(context=self.context, id=2)

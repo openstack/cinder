@@ -290,8 +290,11 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
             self.glance_metadata = db.volume_glance_metadata_get(
                 self._context, self.id)
         elif attrname == 'volume_type':
-            self.volume_type = objects.VolumeType.get_by_id(
-                self._context, self.volume_type_id)
+            # If the volume doesn't have volume_type, VolumeType.get_by_id
+            # would trigger a db call which raise VolumeTypeNotFound exception.
+            self.volume_type = (objects.VolumeType.get_by_id(
+                self._context, self.volume_type_id) if self.volume_type_id
+                else None)
         elif attrname == 'volume_attachment':
             attachments = objects.VolumeAttachmentList.get_all_by_volume_id(
                 self._context, self.id)
