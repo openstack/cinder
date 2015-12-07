@@ -78,6 +78,7 @@ class BarbicanKeyManagerTestCase(test_key_mgr.KeyManagerTestCase):
         self.create = self.mock_barbican.secrets.create
 
         self.key_mgr._barbican_client = self.mock_barbican
+        self.key_mgr._current_context = self.ctxt
 
     def _build_mock_symKey(self):
         self.mock_symKey = mock.Mock()
