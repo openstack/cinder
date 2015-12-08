@@ -73,9 +73,9 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         self.nms_user = self.configuration.nexenta_user
         self.nms_password = self.configuration.nexenta_password
         self.volume = self.configuration.nexenta_volume
-        self.volume_compression = self.configuration.nexenta_volume_compression
-        self.volume_deduplication = self.configuration.nexenta_volume_dedup
-        self.volume_description = self.configuration.nexenta_volume_description
+        self.volume_compression = self.configuration.nexenta_dataset_compression
+        self.volume_deduplication = self.configuration.nexenta_dataset_dedup
+        self.volume_description = self.configuration.nexenta_dataset_description
         self.rrmgr_compression = self.configuration.nexenta_rrmgr_compression
         self.rrmgr_tcp_buf_size = self.configuration.nexenta_rrmgr_tcp_buf_size
         self.rrmgr_connections = self.configuration.nexenta_rrmgr_connections
