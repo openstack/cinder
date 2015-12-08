@@ -120,15 +120,21 @@ class API(base.Base):
         services = self.db.service_get_all_by_topic(ctxt, topic)
         return [srv['host'] for srv in services if not srv['disabled']]
 
+    def _check_volume_availability(self, volume, force):
+        """Check if the volume can be used."""
+        if volume['status'] not in ['available', 'in-use']:
+            msg = _('Volume status must be available/in-use.')
+            raise exception.InvalidVolume(reason=msg)
+        if not force and 'in-use' == volume['status']:
+            msg = _('Volume status is in-use.')
+            raise exception.InvalidVolume(reason=msg)
+
     def create(self, context, name, description, volume_id,
-               container, incremental=False, availability_zone=None):
+               container, incremental=False, force, availability_zone=None):
         """Make the RPC call to create a volume backup."""
         check_policy(context, 'create')
         volume = self.volume_api.get(context, volume_id)
-
-        if volume['status'] != "available":
-            msg = _('Volume to be backed up must be available')
-            raise exception.InvalidVolume(reason=msg)
+        self._check_volume_availability(volume, force)
 
         volume_host = volume_utils.extract_host(volume['host'], 'host')
         if not self._is_backup_service_enabled(volume, volume_host):
