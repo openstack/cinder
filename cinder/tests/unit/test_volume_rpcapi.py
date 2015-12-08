@@ -19,6 +19,7 @@ import copy
 
 import mock
 from oslo_config import cfg
+import oslo_messaging as messaging
 from oslo_serialization import jsonutils
 
 from cinder import context
@@ -459,27 +460,52 @@ class VolumeRpcAPITestCase(test.TestCase):
                               new_type_id='fake',
                               dest_host=dest_host,
                               migration_policy='never',
-                              reservations=None,
-                              version='1.34')
-        can_send_version.assert_called_once_with('1.34')
+                              reservations=self.fake_reservations,
+                              old_reservations=self.fake_reservations,
+                              version='1.37')
+        can_send_version.assert_called_once_with('1.37')
 
-    @mock.patch('oslo_messaging.RPCClient.can_send_version',
-                return_value=False)
-    def test_retype_old(self, can_send_version):
+    def test_retype_version_134(self):
         class FakeHost(object):
             def __init__(self):
                 self.host = 'host'
                 self.capabilities = {}
         dest_host = FakeHost()
-        self._test_volume_api('retype',
-                              rpc_method='cast',
-                              volume=self.fake_volume_obj,
-                              new_type_id='fake',
-                              dest_host=dest_host,
-                              migration_policy='never',
-                              reservations=None,
-                              version='1.12')
-        can_send_version.assert_called_once_with('1.34')
+        with mock.patch.object(messaging.RPCClient,
+                               'can_send_version',
+                               side_effect=[False, True]) as can_send_version:
+            self._test_volume_api('retype',
+                                  rpc_method='cast',
+                                  volume=self.fake_volume_obj,
+                                  new_type_id='fake',
+                                  dest_host=dest_host,
+                                  migration_policy='never',
+                                  reservations=self.fake_reservations,
+                                  old_reservations=self.fake_reservations,
+                                  version='1.34')
+        can_send_version.assert_any_call('1.37')
+        can_send_version.assert_any_call('1.34')
+
+    def test_retype_version_112(self):
+        class FakeHost(object):
+            def __init__(self):
+                self.host = 'host'
+                self.capabilities = {}
+        dest_host = FakeHost()
+        with mock.patch.object(messaging.RPCClient,
+                               'can_send_version',
+                               side_effect=[False, False]) as can_send_version:
+            self._test_volume_api('retype',
+                                  rpc_method='cast',
+                                  volume=self.fake_volume_obj,
+                                  new_type_id='fake',
+                                  dest_host=dest_host,
+                                  migration_policy='never',
+                                  reservations=self.fake_reservations,
+                                  old_reservations=self.fake_reservations,
+                                  version='1.12')
+            can_send_version.assert_any_call('1.37')
+            can_send_version.assert_any_call('1.34')
 
     def test_manage_existing(self):
         self._test_volume_api('manage_existing',

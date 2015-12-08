@@ -197,7 +197,7 @@ def locked_snapshot_operation(f):
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '1.36'
+    RPC_API_VERSION = '1.37'
 
     target = messaging.Target(version=RPC_API_VERSION)
 
@@ -2063,7 +2063,8 @@ class VolumeManager(manager.SchedulerDependentManager):
                  resource=volume)
 
     def retype(self, ctxt, volume_id, new_type_id, host,
-               migration_policy='never', reservations=None, volume=None):
+               migration_policy='never', reservations=None,
+               volume=None, old_reservations=None):
 
         def _retype_error(context, volume, old_reservations,
                           new_reservations, status_update):
@@ -2102,22 +2103,26 @@ class VolumeManager(manager.SchedulerDependentManager):
                 volume.update(status_update)
                 volume.save()
 
-        # Get old reservations
-        try:
-            reserve_opts = {'volumes': -1, 'gigabytes': -volume.size}
-            QUOTAS.add_volume_type_opts(context,
-                                        reserve_opts,
-                                        volume.volume_type_id)
-            old_reservations = QUOTAS.reserve(context,
-                                              project_id=project_id,
-                                              **reserve_opts)
-        except Exception:
-            volume.update(status_update)
-            volume.save()
-            LOG.exception(_LE("Failed to update usages "
-                              "while retyping volume."))
-            raise exception.CinderException(_("Failed to get old volume type"
-                                              " quota reservations"))
+        # If old_reservations has been passed in from the API, we should
+        # skip quotas.
+        # TODO(ntpttr): These reservation checks are left in to be backwards
+        #               compatible with Liberty and can be removed in N.
+        if not old_reservations:
+            # Get old reservations
+            try:
+                reserve_opts = {'volumes': -1, 'gigabytes': -volume.size}
+                QUOTAS.add_volume_type_opts(context,
+                                            reserve_opts,
+                                            volume.volume_type_id)
+                old_reservations = QUOTAS.reserve(context,
+                                                  project_id=project_id,
+                                                  **reserve_opts)
+            except Exception:
+                volume.update(status_update)
+                volume.save()
+                msg = _("Failed to update quota usage while retyping volume.")
+                LOG.exception(msg, resource=volume)
+                raise exception.CinderException(msg)
 
         # We already got the new reservations
         new_reservations = reservations
