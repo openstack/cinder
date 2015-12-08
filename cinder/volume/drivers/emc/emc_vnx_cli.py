@@ -835,9 +835,8 @@ class CommandLineHelper(object):
             return _lun_state_validation(data)
 
         self._wait_for_a_condition(lun_is_ready,
-                                   None,
-                                   INTERVAL_5_SEC,
-                                   lambda ex:
+                                   interval=INTERVAL_5_SEC,
+                                   ignorable_exception_arbiter=lambda ex:
                                    isinstance(ex, exception.EMCVnxCLICmdError))
         lun = self.get_lun_by_name(name, VNXLunProperties.lun_all, False)
         return lun
@@ -884,14 +883,15 @@ class CommandLineHelper(object):
 
     def _wait_for_a_condition(self, testmethod, timeout=None,
                               interval=INTERVAL_5_SEC,
-                              ignorable_exception_arbiter=lambda ex: True):
+                              ignorable_exception_arbiter=lambda ex: True,
+                              *args, **kwargs):
         start_time = time.time()
         if timeout is None:
             timeout = self.timeout
 
         def _inner():
             try:
-                test_value = testmethod()
+                test_value = testmethod(*args, **kwargs)
             except Exception as ex:
                 test_value = False
                 with excutils.save_and_reraise_exception(
@@ -988,6 +988,12 @@ class CommandLineHelper(object):
             else:
                 self._raise_cli_error(command_create_cg, rc, out)
 
+        self._wait_for_a_condition(self.get_consistency_group_by_name,
+                                   cg_name=cg_name,
+                                   interval=INTERVAL_5_SEC,
+                                   ignorable_exception_arbiter=lambda ex:
+                                   isinstance(ex, exception.EMCVnxCLICmdError))
+
     def get_consistency_group_by_name(self, cg_name):
         cmd = ('snap', '-group', '-list', '-id', cg_name)
         data = {
@@ -1011,6 +1017,8 @@ class CommandLineHelper(object):
                                 if luns_of_cg else [])
                 LOG.debug("Found consistent group %s.", data['Name'])
 
+        else:
+            self._raise_cli_error(cmd, rc, out)
         return data
 
     def add_lun_to_consistency_group(self, cg_name, lun_id, poll=False):
@@ -1089,6 +1097,20 @@ class CommandLineHelper(object):
                             {'name': snap_name, 'msg': out})
             else:
                 self._raise_cli_error(create_cg_snap_cmd, rc, out)
+        self._wait_for_a_condition(self.check_snapshot,
+                                   snap_name=snap_name,
+                                   interval=INTERVAL_30_SEC,
+                                   ignorable_exception_arbiter=lambda ex:
+                                   isinstance(ex, exception.EMCVnxCLICmdError))
+
+    def check_snapshot(self, snap_name, poll=True):
+        """check if a snapshot/cgsnapshot is existed."""
+        cmd_get = ('snap', '-list', '-id', snap_name)
+        out, rc = self.command_execute(*cmd_get)
+        if rc == 0:
+            return True
+        else:
+            self._raise_cli_error(cmd_get, rc, out)
 
     def delete_cgsnapshot(self, snap_name):
         """Delete a cgsnapshot (snap group)."""
