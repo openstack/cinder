@@ -64,6 +64,7 @@ from cinder.volume.drivers import blockbridge as \
     cinder_volume_drivers_blockbridge
 from cinder.volume.drivers.cloudbyte import options as \
     cinder_volume_drivers_cloudbyte_options
+from cinder.volume.drivers import coho as cinder_volume_drivers_coho
 from cinder.volume.drivers import datera as cinder_volume_drivers_datera
 from cinder.volume.drivers.dell import dell_storagecenter_common as \
     cinder_volume_drivers_dell_dellstoragecentercommon
@@ -239,6 +240,7 @@ def list_opts():
                 cinder_db_api.db_opts,
                 cinder_scheduler_weights_volumenumber.
                 volume_number_weight_opts,
+                cinder_volume_drivers_coho.coho_opts,
                 cinder_volume_drivers_xio.XIO_OPTS,
                 cinder_volume_drivers_zfssa_zfssaiscsi.ZFSSA_OPTS,
                 cinder_volume_driver.volume_opts,

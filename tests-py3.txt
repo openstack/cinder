@@ -53,6 +53,7 @@ cinder.tests.unit.test_block_device
 cinder.tests.unit.test_blockbridge
 cinder.tests.unit.test_cloudbyte
 cinder.tests.unit.test_cmd
+cinder.tests.unit.test_coho
 cinder.tests.unit.test_conf
 cinder.tests.unit.test_context
 cinder.tests.unit.test_db_api
