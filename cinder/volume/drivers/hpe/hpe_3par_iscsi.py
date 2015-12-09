@@ -103,10 +103,11 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         3.0.1 - Python 3 support
         3.0.2 - Remove db access for consistency groups
         3.0.3 - Fix multipath dictionary key error. bug #1522062
+        3.0.4 - Adds v2 managed replication support
 
     """
 
-    VERSION = "3.0.3"
+    VERSION = "3.0.4"
 
     def __init__(self, *args, **kwargs):
         super(HPE3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -116,13 +117,29 @@ class HPE3PARISCSIDriver(driver.TransferVD,
     def _init_common(self):
         return hpecommon.HPE3PARCommon(self.configuration)
 
-    def _login(self):
+    def _login(self, timeout=None):
         common = self._init_common()
-        common.do_setup(None)
-        common.client_login()
+        common.do_setup(None, timeout=timeout)
+        # If replication is enabled and we cannot login, we do not want to
+        # raise an exception so a failover can still be executed.
+        try:
+            common.client_login()
+        except Exception:
+            if common._replication_enabled:
+                LOG.warning(_LW("The primary array is not reachable at this "
+                                "time. Since replication is enabled, "
+                                "listing replication targets and failing over "
+                                "a volume can still be performed."))
+                pass
+            else:
+                raise
         return common
 
     def _logout(self, common):
+        # If replication is enabled and we do not have a client ID, we did not
+        # login, but can still failover. There is no need to logout.
+        if common.client is None and common._replication_enabled:
+            return
         common.client_logout()
 
     def _check_flags(self, common):
@@ -861,5 +878,44 @@ class HPE3PARISCSIDriver(driver.TransferVD,
             reason = (_("Volume %s doesn't exist on array.") % volume)
             LOG.error(reason)
             raise exception.InvalidVolume(reason)
+        finally:
+            self._logout(common)
+
+    def get_replication_updates(self, context):
+        common = self._login()
+        try:
+            return common.get_replication_updates(context)
+        finally:
+            self._logout(common)
+
+    def replication_enable(self, context, volume):
+        """Enable replication on a replication capable volume."""
+        common = self._login()
+        try:
+            return common.replication_enable(context, volume)
+        finally:
+            self._logout(common)
+
+    def replication_disable(self, context, volume):
+        """Disable replication on the specified volume."""
+        common = self._login()
+        try:
+            return common.replication_disable(context, volume)
+        finally:
+            self._logout(common)
+
+    def replication_failover(self, context, volume, secondary):
+        """Force failover to a secondary replication target."""
+        common = self._login(timeout=30)
+        try:
+            return common.replication_failover(context, volume, secondary)
+        finally:
+            self._logout(common)
+
+    def list_replication_targets(self, context, volume):
+        """Provides a means to obtain replication targets for a volume."""
+        common = self._login(timeout=30)
+        try:
+            return common.list_replication_targets(context, volume)
         finally:
             self._logout(common)
