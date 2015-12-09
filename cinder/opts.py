@@ -128,8 +128,8 @@ from cinder.volume.drivers.lenovo import lenovo_common as \
 from cinder.volume.drivers import lvm as cinder_volume_drivers_lvm
 from cinder.volume.drivers.netapp import options as \
     cinder_volume_drivers_netapp_options
-from cinder.volume.drivers.nexenta.nexentaedge import iscsi as \
-    cinder_volume_drivers_nexenta_nexentaedge_iscsi
+from cinder.volume.drivers.nexenta import options as \
+    cinder_volume_drivers_nexenta_options
 from cinder.volume.drivers import nfs as cinder_volume_drivers_nfs
 from cinder.volume.drivers import nimble as cinder_volume_drivers_nimble
 from cinder.volume.drivers.prophetstor import options as \
@@ -218,6 +218,12 @@ def list_opts():
                 cinder_test.test_opts,
                 cinder_volume_drivers_ibm_gpfs.gpfs_opts,
                 cinder_volume_drivers_violin_v7000common.violin_opts,
+                cinder_volume_drivers_nexenta_options.NEXENTA_CONNECTION_OPTS,
+                cinder_volume_drivers_nexenta_options.NEXENTA_ISCSI_OPTS,
+                cinder_volume_drivers_nexenta_options.NEXENTA_DATASET_OPTS,
+                cinder_volume_drivers_nexenta_options.NEXENTA_NFS_OPTS,
+                cinder_volume_drivers_nexenta_options.NEXENTA_RRMGR_OPTS,
+                cinder_volume_drivers_nexenta_options.NEXENTA_EDGE_OPTS,
                 cinder_exception.exc_log_opts,
                 cinder_common_config.global_opts,
                 cinder_scheduler_weights_capacity.capacity_weight_opts,
@@ -310,8 +316,6 @@ def list_opts():
                 cinder_volume_drivers_hpe_hpexpopts.HORCM_VOLUME_OPTS,
                 cinder_volume_drivers_hitachi_hbsdiscsi.volume_opts,
                 cinder_volume_manager.volume_manager_opts,
-                cinder_volume_drivers_nexenta_nexentaedge_iscsi.
-                nexenta_edge_opts,
                 cinder_volume_drivers_ibm_flashsystemiscsi.
                 flashsystem_iscsi_opts,
                 cinder_volume_drivers_tegile.tegile_opts,

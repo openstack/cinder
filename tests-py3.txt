@@ -106,6 +106,7 @@ cinder.tests.unit.test_netapp
 cinder.tests.unit.test_netapp_nfs
 cinder.tests.unit.test_netapp_ssc
 cinder.tests.unit.test_nexenta_edge
+cinder.tests.unit.test_nexenta
 cinder.tests.unit.test_nfs
 cinder.tests.unit.test_nimble
 cinder.tests.unit.test_prophetstor_dpl
