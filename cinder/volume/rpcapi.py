@@ -83,6 +83,8 @@ class VolumeAPI(object):
         1.33 - Adds support for sending objects over RPC in delete_volume().
         1.34 - Adds support for sending objects over RPC in retype().
         1.35 - Adds support for sending objects over RPC in extend_volume().
+        1.36 - Adds support for sending objects over RPC in migrate_volume(),
+               migrate_volume_completion(), and update_migrated_volume().
     """
 
     BASE_RPC_API_VERSION = '1.0'
@@ -246,20 +248,35 @@ class VolumeAPI(object):
         cctxt.cast(ctxt, 'extend_volume', **msg_args)
 
     def migrate_volume(self, ctxt, volume, dest_host, force_host_copy):
-        new_host = utils.extract_host(volume['host'])
-        cctxt = self.client.prepare(server=new_host, version='1.8')
+        new_host = utils.extract_host(volume.host)
         host_p = {'host': dest_host.host,
                   'capabilities': dest_host.capabilities}
-        cctxt.cast(ctxt, 'migrate_volume', volume_id=volume['id'],
-                   host=host_p, force_host_copy=force_host_copy)
+
+        msg_args = {'volume_id': volume.id, 'host': host_p,
+                    'force_host_copy': force_host_copy}
+        if self.client.can_send_version('1.36'):
+            version = '1.36'
+            msg_args['volume'] = volume
+        else:
+            version = '1.8'
+
+        cctxt = self.client.prepare(server=new_host, version=version)
+        cctxt.cast(ctxt, 'migrate_volume', **msg_args)
 
     def migrate_volume_completion(self, ctxt, volume, new_volume, error):
-        new_host = utils.extract_host(volume['host'])
-        cctxt = self.client.prepare(server=new_host, version='1.10')
-        return cctxt.call(ctxt, 'migrate_volume_completion',
-                          volume_id=volume['id'],
-                          new_volume_id=new_volume['id'],
-                          error=error)
+        new_host = utils.extract_host(volume.host)
+
+        msg_args = {'volume_id': volume.id, 'new_volume_id': new_volume.id,
+                    'error': error}
+        if self.client.can_send_version('1.36'):
+            version = '1.36'
+            msg_args['volume'] = volume
+            msg_args['new_volume'] = new_volume
+        else:
+            version = '1.10'
+
+        cctxt = self.client.prepare(server=new_host, version=version)
+        return cctxt.call(ctxt, 'migrate_volume_completion', **msg_args)
 
     def retype(self, ctxt, volume, new_type_id, dest_host,
                migration_policy='never', reservations=None):
@@ -296,7 +313,7 @@ class VolumeAPI(object):
     def update_migrated_volume(self, ctxt, volume, new_volume,
                                original_volume_status):
         host = utils.extract_host(new_volume['host'])
-        cctxt = self.client.prepare(server=host, version='1.19')
+        cctxt = self.client.prepare(server=host, version='1.36')
         cctxt.call(ctxt,
                    'update_migrated_volume',
                    volume=volume,

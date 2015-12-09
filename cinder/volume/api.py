@@ -1275,39 +1275,38 @@ class API(base.Base):
                        lock_volume):
         """Migrate the volume to the specified host."""
 
-        if volume['status'] not in ['available', 'in-use']:
+        if volume.status not in ['available', 'in-use']:
             msg = _('Volume %(vol_id)s status must be available or in-use, '
                     'but current status is: '
-                    '%(vol_status)s.') % {'vol_id': volume['id'],
-                                          'vol_status': volume['status']}
+                    '%(vol_status)s.') % {'vol_id': volume.id,
+                                          'vol_status': volume.status}
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 
         # Make sure volume is not part of a migration.
         if self._is_volume_migrating(volume):
             msg = _("Volume %s is already part of an active "
-                    "migration.") % volume['id']
+                    "migration.") % volume.id
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 
         # We only handle volumes without snapshots for now
-        snaps = objects.SnapshotList.get_all_for_volume(context, volume['id'])
+        snaps = objects.SnapshotList.get_all_for_volume(context, volume.id)
         if snaps:
-            msg = _("Volume %s must not have snapshots.") % volume['id']
+            msg = _("Volume %s must not have snapshots.") % volume.id
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 
         # We only handle non-replicated volumes for now
-        rep_status = volume['replication_status']
-        if rep_status is not None and rep_status != 'disabled':
-            msg = _("Volume %s must not be replicated.") % volume['id']
+        if (volume.replication_status is not None and
+                volume.replication_status != 'disabled'):
+            msg = _("Volume %s must not be replicated.") % volume.id
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 
-        cg_id = volume.get('consistencygroup_id', None)
-        if cg_id:
+        if volume.consistencygroup_id:
             msg = _("Volume %s must not be part of a consistency "
-                    "group.") % volume['id']
+                    "group.") % volume.id
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 
@@ -1327,7 +1326,7 @@ class API(base.Base):
             raise exception.InvalidHost(reason=msg)
 
         # Make sure the destination host is different than the current one
-        if host == volume['host']:
+        if host == volume.host:
             msg = _('Destination host must be different '
                     'than the current host.')
             LOG.error(msg)
@@ -1340,27 +1339,27 @@ class API(base.Base):
         # that this volume is in maintenance mode, and no action is allowed
         # on this volume, e.g. attach, detach, retype, migrate, etc.
         updates = {'migration_status': 'starting',
-                   'previous_status': volume['status']}
-        if lock_volume and volume['status'] == 'available':
+                   'previous_status': volume.status}
+        if lock_volume and volume.status == 'available':
             updates['status'] = 'maintenance'
         self.update(context, volume, updates)
 
         # Call the scheduler to ensure that the host exists and that it can
         # accept the volume
         volume_type = {}
-        volume_type_id = volume['volume_type_id']
-        if volume_type_id:
+        if volume.volume_type_id:
             volume_type = volume_types.get_volume_type(context.elevated(),
-                                                       volume_type_id)
+                                                       volume.volume_type_id)
         request_spec = {'volume_properties': volume,
                         'volume_type': volume_type,
-                        'volume_id': volume['id']}
+                        'volume_id': volume.id}
         self.scheduler_rpcapi.migrate_volume_to_host(context,
                                                      CONF.volume_topic,
-                                                     volume['id'],
+                                                     volume.id,
                                                      host,
                                                      force_host_copy,
-                                                     request_spec)
+                                                     request_spec,
+                                                     volume=volume)
         LOG.info(_LI("Migrate volume request issued successfully."),
                  resource=volume)
 
@@ -1368,34 +1367,34 @@ class API(base.Base):
     def migrate_volume_completion(self, context, volume, new_volume, error):
         # This is a volume swap initiated by Nova, not Cinder. Nova expects
         # us to return the new_volume_id.
-        if not (volume['migration_status'] or new_volume['migration_status']):
+        if not (volume.migration_status or new_volume.migration_status):
             # Don't need to do migration, but still need to finish the
             # volume attach and detach so volumes don't end in 'attaching'
             # and 'detaching' state
-            attachments = volume['volume_attachment']
+            attachments = volume.volume_attachment
             for attachment in attachments:
-                self.detach(context, volume, attachment['id'])
+                self.detach(context, volume, attachment.id)
 
                 self.attach(context, new_volume,
-                            attachment['instance_uuid'],
-                            attachment['attached_host'],
-                            attachment['mountpoint'],
+                            attachment.instance_uuid,
+                            attachment.attached_host,
+                            attachment.mountpoint,
                             'rw')
 
-            return new_volume['id']
+            return new_volume.id
 
-        if not volume['migration_status']:
+        if not volume.migration_status:
             msg = _('Source volume not mid-migration.')
             raise exception.InvalidVolume(reason=msg)
 
-        if not new_volume['migration_status']:
+        if not new_volume.migration_status:
             msg = _('Destination volume not mid-migration.')
             raise exception.InvalidVolume(reason=msg)
 
-        expected_status = 'target:%s' % volume['id']
-        if not new_volume['migration_status'] == expected_status:
+        expected_status = 'target:%s' % volume.id
+        if not new_volume.migration_status == expected_status:
             msg = (_('Destination has migration_status %(stat)s, expected '
-                     '%(exp)s.') % {'stat': new_volume['migration_status'],
+                     '%(exp)s.') % {'stat': new_volume.migration_status,
                                     'exp': expected_status})
             raise exception.InvalidVolume(reason=msg)
 

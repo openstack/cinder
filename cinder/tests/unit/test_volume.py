@@ -4183,22 +4183,20 @@ class VolumeTestCase(BaseVolumeTestCase):
 
     def test_clean_temporary_volume(self):
         def fake_delete_volume(ctxt, volume):
-            db.volume_destroy(ctxt, volume['id'])
+            volume.destroy()
 
         fake_volume = tests_utils.create_volume(self.context, size=1,
-                                                host=CONF.host)
+                                                host=CONF.host,
+                                                migration_status='migrating')
         fake_new_volume = tests_utils.create_volume(self.context, size=1,
                                                     host=CONF.host)
-        # Check when the migrated volume is in migration
-        db.volume_update(self.context, fake_volume['id'],
-                         {'migration_status': 'migrating'})
         # 1. Only clean the db
-        self.volume._clean_temporary_volume(self.context, fake_volume['id'],
-                                            fake_new_volume['id'],
+        self.volume._clean_temporary_volume(self.context, fake_volume,
+                                            fake_new_volume,
                                             clean_db_only=True)
         self.assertRaises(exception.VolumeNotFound,
                           db.volume_get, self.context,
-                          fake_new_volume['id'])
+                          fake_new_volume.id)
 
         # 2. Delete the backend storage
         fake_new_volume = tests_utils.create_volume(self.context, size=1,
@@ -4207,23 +4205,23 @@ class VolumeTestCase(BaseVolumeTestCase):
                 mock_delete_volume:
             mock_delete_volume.side_effect = fake_delete_volume
             self.volume._clean_temporary_volume(self.context,
-                                                fake_volume['id'],
-                                                fake_new_volume['id'],
+                                                fake_volume,
+                                                fake_new_volume,
                                                 clean_db_only=False)
             self.assertRaises(exception.VolumeNotFound,
                               db.volume_get, self.context,
-                              fake_new_volume['id'])
+                              fake_new_volume.id)
 
         # Check when the migrated volume is not in migration
         fake_new_volume = tests_utils.create_volume(self.context, size=1,
                                                     host=CONF.host)
-        db.volume_update(self.context, fake_volume['id'],
-                         {'migration_status': 'non-migrating'})
-        self.volume._clean_temporary_volume(self.context, fake_volume['id'],
-                                            fake_new_volume['id'])
+        fake_volume.migration_status = 'non-migrating'
+        fake_volume.save()
+        self.volume._clean_temporary_volume(self.context, fake_volume,
+                                            fake_new_volume)
         volume = db.volume_get(context.get_admin_context(),
-                               fake_new_volume['id'])
-        self.assertIsNone(volume['migration_status'])
+                               fake_new_volume.id)
+        self.assertIsNone(volume.migration_status)
 
     def test_update_volume_readonly_flag(self):
         """Test volume readonly flag can be updated at API level."""
@@ -4323,13 +4321,14 @@ class VolumeMigrationTestCase(VolumeTestCase):
                                            host=CONF.host,
                                            migration_status='migrating')
         host_obj = {'host': 'newhost', 'capabilities': {}}
-        self.volume.migrate_volume(self.context, volume['id'],
-                                   host_obj, False)
+        self.volume.migrate_volume(self.context, volume.id, host_obj, False,
+                                   volume=volume)
 
         # check volume properties
-        volume = db.volume_get(context.get_admin_context(), volume['id'])
-        self.assertEqual('newhost', volume['host'])
-        self.assertEqual('success', volume['migration_status'])
+        volume = objects.Volume.get_by_id(context.get_admin_context(),
+                                          volume.id)
+        self.assertEqual('newhost', volume.host)
+        self.assertEqual('success', volume.migration_status)
 
     def _fake_create_volume(self, ctxt, volume, host, req_spec, filters,
                             allow_reschedule=True):
@@ -4351,12 +4350,14 @@ class VolumeMigrationTestCase(VolumeTestCase):
             self.assertRaises(processutils.ProcessExecutionError,
                               self.volume.migrate_volume,
                               self.context,
-                              volume['id'],
+                              volume.id,
                               host_obj,
-                              False)
-            volume = db.volume_get(context.get_admin_context(), volume['id'])
-            self.assertEqual('error', volume['migration_status'])
-            self.assertEqual('available', volume['status'])
+                              False,
+                              volume=volume)
+            volume = objects.Volume.get_by_id(context.get_admin_context(),
+                                              volume.id)
+            self.assertEqual('error', volume.migration_status)
+            self.assertEqual('available', volume.status)
 
     @mock.patch('cinder.compute.API')
     @mock.patch('cinder.volume.manager.VolumeManager.'
@@ -4366,7 +4367,10 @@ class VolumeMigrationTestCase(VolumeTestCase):
                                     migrate_volume_completion,
                                     nova_api):
         fake_volume_id = 'fake_volume_id'
-        fake_new_volume = {'status': 'available', 'id': fake_volume_id}
+        fake_db_new_volume = {'status': 'available', 'id': fake_volume_id}
+        fake_new_volume = fake_volume.fake_db_volume(**fake_db_new_volume)
+        new_volume_obj = fake_volume.fake_volume_obj(self.context,
+                                                     **fake_new_volume)
         host_obj = {'host': 'newhost', 'capabilities': {}}
         volume_get.return_value = fake_new_volume
         update_server_volume = nova_api.return_value.update_server_volume
@@ -4377,12 +4381,10 @@ class VolumeMigrationTestCase(VolumeTestCase):
             self.volume._migrate_volume_generic(self.context, volume,
                                                 host_obj, None)
             mock_copy_volume.assert_called_with(self.context, volume,
-                                                fake_new_volume,
+                                                new_volume_obj,
                                                 remote='dest')
-            migrate_volume_completion.assert_called_with(self.context,
-                                                         volume['id'],
-                                                         fake_new_volume['id'],
-                                                         error=False)
+            migrate_volume_completion.assert_called_with(
+                self.context, volume.id, new_volume_obj.id, error=False)
             self.assertFalse(update_server_volume.called)
 
     @mock.patch('cinder.compute.API')
@@ -4421,6 +4423,7 @@ class VolumeMigrationTestCase(VolumeTestCase):
                                                rpc_delete_volume,
                                                update_migrated_volume):
         fake_volume = tests_utils.create_volume(self.context, size=1,
+                                                previous_status='available',
                                                 host=CONF.host)
 
         host_obj = {'host': 'newhost', 'capabilities': {}}
@@ -4430,12 +4433,12 @@ class VolumeMigrationTestCase(VolumeTestCase):
                 mock.patch.object(self.volume.driver, 'delete_volume') as \
                 delete_volume:
             create_volume.side_effect = self._fake_create_volume
-            self.volume.migrate_volume(self.context, fake_volume['id'],
-                                       host_obj, True)
-            volume = db.volume_get(context.get_admin_context(),
-                                   fake_volume['id'])
-            self.assertEqual('newhost', volume['host'])
-            self.assertEqual('success', volume['migration_status'])
+            self.volume.migrate_volume(self.context, fake_volume.id,
+                                       host_obj, True, volume=fake_volume)
+            volume = objects.Volume.get_by_id(context.get_admin_context(),
+                                              fake_volume.id)
+            self.assertEqual('newhost', volume.host)
+            self.assertEqual('success', volume.migration_status)
             self.assertFalse(mock_migrate_volume.called)
             self.assertFalse(delete_volume.called)
             self.assertTrue(rpc_delete_volume.called)
@@ -4461,12 +4464,14 @@ class VolumeMigrationTestCase(VolumeTestCase):
             self.assertRaises(processutils.ProcessExecutionError,
                               self.volume.migrate_volume,
                               self.context,
-                              volume['id'],
+                              volume.id,
                               host_obj,
-                              True)
-            volume = db.volume_get(context.get_admin_context(), volume['id'])
-            self.assertEqual('error', volume['migration_status'])
-            self.assertEqual('available', volume['status'])
+                              True,
+                              volume=volume)
+            volume = objects.Volume.get_by_id(context.get_admin_context(),
+                                              volume.id)
+            self.assertEqual('error', volume.migration_status)
+            self.assertEqual('available', volume.status)
 
     @mock.patch('cinder.db.volume_update')
     def test_update_migrated_volume(self, volume_update):
@@ -4474,7 +4479,8 @@ class VolumeMigrationTestCase(VolumeTestCase):
         fake_new_host = 'fake_new_host'
         fake_update = {'_name_id': 'updated_id',
                        'provider_location': 'updated_location'}
-        fake_elevated = 'fake_elevated'
+        fake_elevated = context.RequestContext('fake', self.project_id,
+                                               is_admin=True)
         volume = tests_utils.create_volume(self.context, size=1,
                                            status='available',
                                            host=fake_host)
@@ -4484,13 +4490,13 @@ class VolumeMigrationTestCase(VolumeTestCase):
             provider_location='fake_provider_location',
             _name_id='fake_name_id',
             host=fake_new_host)
-        new_volume['_name_id'] = 'fake_name_id'
-        new_volume['provider_location'] = 'fake_provider_location'
-        fake_update_error = {'_name_id': new_volume['_name_id'],
+        new_volume._name_id = 'fake_name_id'
+        new_volume.provider_location = 'fake_provider_location'
+        fake_update_error = {'_name_id': new_volume._name_id,
                              'provider_location':
-                             new_volume['provider_location']}
-        expected_update = {'_name_id': volume['_name_id'],
-                           'provider_location': volume['provider_location']}
+                             new_volume.provider_location}
+        expected_update = {'_name_id': volume._name_id,
+                           'provider_location': volume.provider_location}
         with mock.patch.object(self.volume.driver,
                                'update_migrated_volume') as migrate_update,\
                 mock.patch.object(self.context, 'elevated') as elevated:
@@ -4499,19 +4505,23 @@ class VolumeMigrationTestCase(VolumeTestCase):
             self.volume.update_migrated_volume(self.context, volume,
                                                new_volume, 'available')
             volume_update.assert_has_calls((
-                mock.call(fake_elevated, new_volume['id'], expected_update),
-                mock.call(fake_elevated, volume['id'], fake_update)))
+                mock.call(fake_elevated, new_volume.id, expected_update),
+                mock.call(fake_elevated, volume.id, fake_update)))
 
             # Test the case for update_migrated_volume not implemented
             # for the driver.
             migrate_update.reset_mock()
             volume_update.reset_mock()
+            # Reset the volume objects to their original value, since they
+            # were changed in the last call.
+            new_volume._name_id = 'fake_name_id'
+            new_volume.provider_location = 'fake_provider_location'
             migrate_update.side_effect = NotImplementedError
             self.volume.update_migrated_volume(self.context, volume,
                                                new_volume, 'available')
             volume_update.assert_has_calls((
-                mock.call(fake_elevated, new_volume['id'], expected_update),
-                mock.call(fake_elevated, volume['id'], fake_update_error)))
+                mock.call(fake_elevated, new_volume.id, fake_update),
+                mock.call(fake_elevated, volume.id, fake_update_error)))
 
     def test_migrate_volume_generic_create_volume_error(self):
         self.expected_status = 'error'
@@ -4530,10 +4540,12 @@ class VolumeMigrationTestCase(VolumeTestCase):
             self.assertRaises(exception.VolumeMigrationFailed,
                               self.volume.migrate_volume,
                               self.context,
-                              volume['id'],
+                              volume.id,
                               host_obj,
-                              True)
-            volume = db.volume_get(context.get_admin_context(), volume['id'])
+                              True,
+                              volume=volume)
+            volume = objects.Volume.get_by_id(context.get_admin_context(),
+                                              volume.id)
             self.assertEqual('error', volume['migration_status'])
             self.assertEqual('available', volume['status'])
             self.assertTrue(clean_temporary_volume.called)
@@ -4558,10 +4570,12 @@ class VolumeMigrationTestCase(VolumeTestCase):
             self.assertRaises(exception.VolumeMigrationFailed,
                               self.volume.migrate_volume,
                               self.context,
-                              volume['id'],
+                              volume.id,
                               host_obj,
-                              True)
-            volume = db.volume_get(context.get_admin_context(), volume['id'])
+                              True,
+                              volume=volume)
+            volume = objects.Volume.get_by_id(context.get_admin_context(),
+                                              volume.id)
             self.assertEqual('error', volume['migration_status'])
             self.assertEqual('available', volume['status'])
             self.assertTrue(clean_temporary_volume.called)
@@ -4588,10 +4602,12 @@ class VolumeMigrationTestCase(VolumeTestCase):
             self.assertRaises(processutils.ProcessExecutionError,
                               self.volume.migrate_volume,
                               self.context,
-                              volume['id'],
+                              volume.id,
                               host_obj,
-                              True)
-            volume = db.volume_get(context.get_admin_context(), volume['id'])
+                              True,
+                              volume=volume)
+            volume = objects.Volume.get_by_id(context.get_admin_context(),
+                                              volume.id)
             self.assertEqual('error', volume['migration_status'])
             self.assertEqual('available', volume['status'])
 
@@ -4634,9 +4650,10 @@ class VolumeMigrationTestCase(VolumeTestCase):
             self.assertRaises(processutils.ProcessExecutionError,
                               self.volume.migrate_volume,
                               self.context,
-                              volume['id'],
+                              volume.id,
                               host_obj,
-                              True)
+                              True,
+                              volume=volume)
             volume = db.volume_get(context.get_admin_context(), volume['id'])
             self.assertEqual('error', volume['migration_status'])
             self.assertEqual('available', volume['status'])
@@ -4649,7 +4666,7 @@ class VolumeMigrationTestCase(VolumeTestCase):
                                         previous_status='available'):
         def fake_attach_volume(ctxt, volume, instance_uuid, host_name,
                                mountpoint, mode):
-            tests_utils.attach_volume(ctxt, volume['id'],
+            tests_utils.attach_volume(ctxt, volume.id,
                                       instance_uuid, host_name,
                                       '/dev/vda')
 
@@ -4661,12 +4678,12 @@ class VolumeMigrationTestCase(VolumeTestCase):
                                                previous_status=previous_status)
         attachment_id = None
         if status == 'in-use':
-            vol = tests_utils.attach_volume(self.context, old_volume['id'],
+            vol = tests_utils.attach_volume(self.context, old_volume.id,
                                             instance_uuid, attached_host,
                                             '/dev/vda')
             self.assertEqual('in-use', vol['status'])
             attachment_id = vol['volume_attachment'][0]['id']
-        target_status = 'target:%s' % old_volume['id']
+        target_status = 'target:%s' % old_volume.id
         new_host = CONF.host + 'new'
         new_volume = tests_utils.create_volume(self.context, size=0,
                                                host=new_host,
@@ -4681,16 +4698,18 @@ class VolumeMigrationTestCase(VolumeTestCase):
                                   'update_migrated_volume'),\
                 mock.patch.object(self.volume.driver, 'attach_volume'):
             mock_attach_volume.side_effect = fake_attach_volume
-            self.volume.migrate_volume_completion(self.context, old_volume[
-                'id'], new_volume['id'])
-            after_new_volume = db.volume_get(self.context, new_volume.id)
-            after_old_volume = db.volume_get(self.context, old_volume.id)
+            self.volume.migrate_volume_completion(self.context, old_volume.id,
+                                                  new_volume.id)
+            after_new_volume = objects.Volume.get_by_id(self.context,
+                                                        new_volume.id)
+            after_old_volume = objects.Volume.get_by_id(self.context,
+                                                        old_volume.id)
             if status == 'in-use':
                 mock_detach_volume.assert_called_with(self.context,
-                                                      old_volume['id'],
+                                                      old_volume.id,
                                                       attachment_id)
                 attachment = db.volume_attachment_get_by_instance_uuid(
-                    self.context, old_volume['id'], instance_uuid)
+                    self.context, old_volume.id, instance_uuid)
                 self.assertIsNotNone(attachment)
                 self.assertEqual(attached_host, attachment['attached_host'])
                 self.assertEqual(instance_uuid, attachment['instance_uuid'])
@@ -4865,10 +4884,11 @@ class VolumeMigrationTestCase(VolumeTestCase):
         self.volume.driver._initialized = False
         self.assertRaises(exception.DriverNotInitialized,
                           self.volume.migrate_volume,
-                          self.context, volume['id'],
-                          host_obj, True)
+                          self.context, volume.id, host_obj, True,
+                          volume=volume)
 
-        volume = db.volume_get(context.get_admin_context(), volume['id'])
+        volume = objects.Volume.get_by_id(context.get_admin_context(),
+                                          volume.id)
         self.assertEqual('error', volume.migration_status)
 
         # lets cleanup the mess.

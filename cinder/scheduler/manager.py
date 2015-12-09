@@ -56,7 +56,7 @@ LOG = logging.getLogger(__name__)
 class SchedulerManager(manager.Manager):
     """Chooses a host to create volumes."""
 
-    RPC_API_VERSION = '1.10'
+    RPC_API_VERSION = '1.11'
 
     target = messaging.Target(version=RPC_API_VERSION)
 
@@ -148,13 +148,18 @@ class SchedulerManager(manager.Manager):
 
     def migrate_volume_to_host(self, context, topic, volume_id, host,
                                force_host_copy, request_spec,
-                               filter_properties=None):
+                               filter_properties=None, volume=None):
         """Ensure that the host exists and can accept the volume."""
 
         self._wait_for_scheduler()
 
+        # FIXME(thangp): Remove this in v2.0 of RPC API.
+        if volume is None:
+            # For older clients, mimic the old behavior and look up the
+            # volume by its volume_id.
+            volume = objects.Volume.get_by_id(context, volume_id)
+
         def _migrate_volume_set_error(self, context, ex, request_spec):
-            volume = db.volume_get(context, request_spec['volume_id'])
             if volume.status == 'maintenance':
                 previous_status = (
                     volume.previous_status or 'maintenance')
@@ -176,8 +181,7 @@ class SchedulerManager(manager.Manager):
             with excutils.save_and_reraise_exception():
                 _migrate_volume_set_error(self, context, ex, request_spec)
         else:
-            volume_ref = db.volume_get(context, volume_id)
-            volume_rpcapi.VolumeAPI().migrate_volume(context, volume_ref,
+            volume_rpcapi.VolumeAPI().migrate_volume(context, volume,
                                                      tgt_host,
                                                      force_host_copy)
 

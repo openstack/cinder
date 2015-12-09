@@ -44,6 +44,8 @@ class SchedulerAPI(object):
         1.8 - Add sending object over RPC in create_consistencygroup method
         1.9 - Adds support for sending objects over RPC in create_volume()
         1.10 - Adds support for sending objects over RPC in retype()
+        1.11 - Adds support for sending objects over RPC in
+               migrate_volume_to_host()
     """
 
     RPC_API_VERSION = '1.0'
@@ -95,17 +97,20 @@ class SchedulerAPI(object):
 
     def migrate_volume_to_host(self, ctxt, topic, volume_id, host,
                                force_host_copy=False, request_spec=None,
-                               filter_properties=None):
-
-        cctxt = self.client.prepare(version='1.3')
+                               filter_properties=None, volume=None):
         request_spec_p = jsonutils.to_primitive(request_spec)
-        return cctxt.cast(ctxt, 'migrate_volume_to_host',
-                          topic=topic,
-                          volume_id=volume_id,
-                          host=host,
-                          force_host_copy=force_host_copy,
-                          request_spec=request_spec_p,
-                          filter_properties=filter_properties)
+        msg_args = {'topic': topic, 'volume_id': volume_id,
+                    'host': host, 'force_host_copy': force_host_copy,
+                    'request_spec': request_spec_p,
+                    'filter_properties': filter_properties}
+        if self.client.can_send_version('1.11'):
+            version = '1.11'
+            msg_args['volume'] = volume
+        else:
+            version = '1.3'
+
+        cctxt = self.client.prepare(version=version)
+        return cctxt.cast(ctxt, 'migrate_volume_to_host', **msg_args)
 
     def retype(self, ctxt, topic, volume_id,
                request_spec=None, filter_properties=None, volume=None):
