@@ -704,6 +704,14 @@ class TintriDriver(driver.ManageableVD,
         raise exception.ManageExistingInvalidReference(
             existing_ref=vol_ref, reason=_('Volume not found.'))
 
+    def retype(self, context, volume, new_type, diff, host):
+        """Retype from one volume type to another.
+
+        At this point Tintri VMstore does not differentiate between
+        volume types on the same array. This is a no-op for us.
+        """
+        return True, None
+
 
 class TClient(object):
     """REST client for Tintri storage."""

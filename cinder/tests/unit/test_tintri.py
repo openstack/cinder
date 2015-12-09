@@ -245,3 +245,9 @@ class TintriDriverTestCase(test.TestCase):
         volume = fake_volume.fake_volume_obj(self.context)
         volume.provider_location = self._provider_location
         self._driver.unmanage(volume)
+
+    def test_retype(self):
+        volume = fake_volume.fake_volume_obj(self.context)
+        retype, update = self._driver.retype(None, volume, None, None, None)
+        self.assertTrue(retype)
+        self.assertIsNone(update)
