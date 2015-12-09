@@ -77,9 +77,11 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         self.rrmgr_tcp_buf_size = self.configuration.nexenta_rrmgr_tcp_buf_size
         self.rrmgr_connections = self.configuration.nexenta_rrmgr_connections
         self.nfs_mount_point_base = self.configuration.nexenta_mount_point_base
-        self.volume_compression = self.configuration.nexenta_dataset_compression
+        self.volume_compression = (
+            self.configuration.nexenta_dataset_compression)
         self.volume_deduplication = self.configuration.nexenta_dataset_dedup
-        self.volume_description = self.configuration.nexenta_dataset_description
+        self.volume_description = (
+            self.configuration.nexenta_dataset_description)
         self.sparsed_volumes = self.configuration.nexenta_sparsed_volumes
         self._nms2volroot = {}
         self.share2nms = {}
