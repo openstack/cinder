@@ -114,13 +114,7 @@ if __name__ == "__main__":
 
         flag = False
 
-    registered_opts_dict = {'fc-zone-manager': [],
-                            'keymgr': [],
-                            'BRCD_FABRIC_EXAMPLE': [],
-                            'CISCO_FABRIC_EXAMPLE': [],
-                            'profiler': [],
-                            'backend': [],
-                            'DEFAULT': [], }
+    registered_opts_dict = {'DEFAULT': [], }
 
     def _write_item(opts):
         list_name = opts[-3:]
@@ -177,113 +171,36 @@ if __name__ == "__main__":
                 if (exists != -1) or (key == 'cinder_volume_configuration'):
                     continue
 
-                if aline.find("fc-zone-manager") != -1:
-                    fc_zm_list = _retrieve_name(aline)
-                    replace_string = ", group='fc-zone-manager')"
-                    fc_zm_list = fc_zm_list.replace(replace_string, '')
-                    fc_zm_list = fc_zm_list.strip()
-                    line = key + "." + fc_zm_list
-                    registered_opts_dict['fc-zone-manager'].append(line)
-                elif aline.find("keymgr") != -1:
-                    keymgr_list = _retrieve_name(aline)
-                    keymgr_list = keymgr_list.replace(", group='keymgr')", '')
-                    keymgr_list = keymgr_list.strip()
-                    line = key + "." + keymgr_list
-                    registered_opts_dict['keymgr'].append(line)
-                elif aline.find("BRCD_FABRIC_EXAMPLE") != -1:
-                    brcd_list = _retrieve_name(aline)
-                    replace_string = ", group='BRCD_FABRIC_EXAMPLE')"
-                    brcd_list = brcd_list.replace(replace_string, '')
-                    brcd_list = brcd_list.strip()
-                    line = key + "." + brcd_list
-                    registered_opts_dict['BRCD_FABRIC_EXAMPLE'].append(line)
-                elif aline.find("CISCO_FABRIC_EXAMPLE") != -1:
-                    cisco_list = _retrieve_name(aline)
-                    replace_string = ", group='CISCO_FABRIC_EXAMPLE')"
-                    cisco_list = cisco_list.replace(replace_string, '')
-                    cisco_list = cisco_list.strip()
-                    line = key + "." + cisco_list
-                    registered_opts_dict['CISCO_FABRIC_EXAMPLE'].append(line)
-                elif aline.find("profiler") != -1:
-                    profiler_list = _retrieve_name(aline)
-                    replace_string = ', group="profiler")'
-                    profiler_list = profiler_list.replace(replace_string, '')
-                    profiler_list = profiler_list.strip()
-                    line = key + "." + profiler_list
-                    registered_opts_dict['profiler'].append(line)
-                elif aline.find("backend") != -1:
-                    backend_list = _retrieve_name(aline)
-                    replace_string = ', group=backend)'
-                    backend_list = backend_list.replace(replace_string, '')
-                    backend_list = backend_list.strip()
-                    line = key + "." + backend_list
-                    registered_opts_dict['backend'].append(line)
+                group_exists = aline.find(', group=')
+                formatted_opt = _retrieve_name(aline[: group_exists])
+                formatted_opt = formatted_opt.replace(')', '').strip()
+                if group_exists != -1:
+                    group_name = aline[group_exists:-1].replace(', group=\"\'', '').\
+                        replace(', group=', '').strip("\'\")").upper()
+                    if group_name in registered_opts_dict:
+                        line = key + "." + formatted_opt
+                        registered_opts_dict[group_name].append(line)
+                    else:
+                        line = key + "." + formatted_opt
+                        registered_opts_dict[group_name] = [line]
                 else:
-                    default_list = _retrieve_name(aline)
-                    default_list = default_list.replace(')', '').strip()
-                    line = key + "." + default_list
+                    line = key + "." + formatted_opt
                     registered_opts_dict['DEFAULT'].append(line)
-        opt_dict[key] = registered_opts_dict
 
-    list_str = ("\n\n"
-                "def list_opts():\n"
-                "    return [\n"
-                "        ('DEFAULT',\n"
-                "            itertools.chain(\n")
-    opt_file.write(list_str)
+setup_str = ("\n\n"
+             "def list_opts():\n"
+             "    return [\n")
+opt_file.write(setup_str)
 
-    for item in registered_opts_dict["DEFAULT"]:
+for key in registered_opts_dict:
+    section_start_str = ("        ('" + key + "',\n"
+                         "            itertools.chain(\n")
+    opt_file.write(section_start_str)
+    for item in registered_opts_dict[key]:
         _write_item(item)
+    section_end_str = "            )),\n"
+    opt_file.write(section_end_str)
 
-    profiler_str = ("            )),\n"
-                    "        ('profiler',\n"
-                    "            itertools.chain(\n")
-    opt_file.write(profiler_str)
-
-    for item in registered_opts_dict["profiler"]:
-        _write_item(item)
-
-    backend_str = ("            )),\n"
-                   "        ('backend',\n"
-                   "            itertools.chain(\n")
-    opt_file.write(backend_str)
-
-    for item in registered_opts_dict["backend"]:
-        _write_item(item)
-
-    cisco_str = ("            )),\n"
-                 "        ('CISCO_FABRIC_EXAMPLE',\n"
-                 "            itertools.chain(\n")
-    opt_file.write(cisco_str)
-
-    for item in registered_opts_dict["CISCO_FABRIC_EXAMPLE"]:
-        _write_item(item)
-
-    brcd_str = ("            )),\n"
-                "        ('BRCD_FABRIC_EXAMPLE',\n"
-                "            itertools.chain(\n")
-    opt_file.write(brcd_str)
-
-    for item in registered_opts_dict["BRCD_FABRIC_EXAMPLE"]:
-        _write_item(item)
-
-    keymgr_str = ("            )),\n"
-                  "        ('keymgr',\n"
-                  "            itertools.chain(\n")
-    opt_file.write(keymgr_str)
-
-    for item in registered_opts_dict["keymgr"]:
-        _write_item(item)
-
-    fczm_str = ("            )),\n"
-                "        ('fc-zone-manager',\n"
-                "            itertools.chain(\n")
-    opt_file.write(fczm_str)
-
-    for item in registered_opts_dict["fc-zone-manager"]:
-        _write_item(item)
-
-    closing_str = ("            )),\n"
-                   "    ]\n")
-    opt_file.write(closing_str)
-    opt_file.close()
+closing_str = ("    ]\n")
+opt_file.write(closing_str)
+opt_file.close()

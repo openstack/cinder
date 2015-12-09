@@ -170,6 +170,18 @@ from cinder.zonemanager import fc_zone_manager as \
 
 def list_opts():
     return [
+        ('FC-ZONE-MANAGER',
+            itertools.chain(
+                cinder_zonemanager_fczonemanager.zone_manager_opts,
+                cinder_zonemanager_drivers_brocade_brcdfczonedriver.brcd_opts,
+                cinder_zonemanager_drivers_cisco_ciscofczonedriver.cisco_opts,
+            )),
+        ('KEYMGR',
+            itertools.chain(
+                cinder_keymgr_keymgr.encryption_opts,
+                cinder.keymgr.keymgr_opts,
+                cinder_keymgr_confkeymgr.key_mgr_opts,
+            )),
         ('DEFAULT',
             itertools.chain(
                 cinder_backup_driver.service_opts,
@@ -307,14 +319,9 @@ def list_opts():
                 cinder_volume_drivers_vzstorage.vzstorage_opts,
                 cinder_volume_drivers_nfs.nfs_opts,
             )),
-        ('profiler',
+        ('PROFILER',
             itertools.chain(
                 cinder_service.profiler_opts,
-            )),
-        ('backend',
-            itertools.chain(
-                [cinder_cmd_volume.host_opt],
-                [cinder_cmd_all.volume_cmd.host_opt],
             )),
         ('CISCO_FABRIC_EXAMPLE',
             itertools.chain(
@@ -326,16 +333,9 @@ def list_opts():
                 cinder_zonemanager_drivers_brocade_brcdfabricopts.
                 brcd_zone_opts,
             )),
-        ('keymgr',
+        ('BACKEND',
             itertools.chain(
-                cinder_keymgr_keymgr.encryption_opts,
-                cinder.keymgr.keymgr_opts,
-                cinder_keymgr_confkeymgr.key_mgr_opts,
-            )),
-        ('fc-zone-manager',
-            itertools.chain(
-                cinder_zonemanager_fczonemanager.zone_manager_opts,
-                cinder_zonemanager_drivers_brocade_brcdfczonedriver.brcd_opts,
-                cinder_zonemanager_drivers_cisco_ciscofczonedriver.cisco_opts,
+                [cinder_cmd_volume.host_opt],
+                [cinder_cmd_all.volume_cmd.host_opt],
             )),
     ]
