@@ -1711,7 +1711,7 @@ class API(base.Base):
 
     def check_volume_filters(self, filters):
         booleans = self.db.get_booleans_for_table('volume')
-        for k, v in filters.iteritems():
+        for k, v in filters.items():
             try:
                 if k in booleans:
                     filters[k] = bool(v)
