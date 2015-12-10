@@ -1217,7 +1217,7 @@ class API(base.Base):
                     "container_format": recv_metadata['container_format'],
                     "disk_format": recv_metadata['disk_format'],
                     "image_name": recv_metadata.get('name', None)}
-        LOG.info(_LI("Copy image to volume completed successfully."),
+        LOG.info(_LI("Copy volume to image completed successfully."),
                  resource=volume)
         return response
 
