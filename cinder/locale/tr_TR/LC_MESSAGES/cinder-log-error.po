@@ -8,9 +8,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev364\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev32\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-01 06:53+0000\n"
+"POT-Creation-Date: 2015-12-10 06:20+0000\n"
 "PO-Revision-Date: 2015-09-16 08:22+0000\n"
 "Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
 "Language-Team: Turkish (Turkey)\n"
@@ -1153,10 +1153,6 @@ msgid "Failed to created Cinder secure environment indicator file: %s"
 msgstr "Cinder güvenli ortam gösterge dosyası oluşturulamadı: %s"
 
 #, python-format
-msgid "Failed to delete initiator iqn %s to target."
-msgstr "Hedefe başlatıcı iqn %s silinemedi."
-
-#, python-format
 msgid "Failed to delete snapshot %(snap)s of volume %(vol)s."
 msgstr ""
 "%(vol)s mantıksal sürücüsünün %(snap)s anlık sistem görüntüsü silinemedi."
@@ -1855,15 +1851,6 @@ msgid "Retry %(retry)s times: %(method)s Failed %(rc)s: %(reason)s"
 msgstr ""
 "Yeniden deneme %(retry)s süreleri: %(method)s Başarısız oldu %(rc)s: "
 "%(reason)s"
-
-msgid "Retype of encryption type not supported."
-msgstr "Şifreleme türü Retype desteklenmiyor."
-
-msgid "Retype of extra_specs not supported."
-msgstr "extra_specs Retype desteklenmiyor."
-
-msgid "Retype with host migration not supported."
-msgstr "İstemci göçü ile Retype desteklenmiyor."
 
 #, python-format
 msgid ""

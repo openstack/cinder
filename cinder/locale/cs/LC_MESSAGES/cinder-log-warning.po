@@ -7,10 +7,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev388\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev32\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-02 06:25+0000\n"
-"PO-Revision-Date: 2015-12-01 08:24+0000\n"
+"POT-Creation-Date: 2015-12-10 06:20+0000\n"
+"PO-Revision-Date: 2015-12-08 03:41+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language-Team: Czech\n"
 "Language: cs\n"
@@ -600,6 +600,10 @@ msgid "Failed to run command: %s."
 msgstr "Nelze provést příkaz: %s."
 
 #, python-format
+msgid "Failed to run lsguicapability. Exception: %s."
+msgstr "Nelze spustit lsguicapability. Výjimka: %s."
+
+#, python-format
 msgid ""
 "Failed to save iscsi LIO configuration when modifying volume id: %(vol_id)s."
 msgstr "Nelze uložit nastavení iscsi LIO při měnění id svazku %(vol_id)s."
@@ -875,22 +879,6 @@ msgid "LUN with id %(remove_id)s is not present in cg %(cg_name)s, skip it."
 msgstr ""
 "LUN s id %(remove_id)s není přítomna ve skupině jednotnosti %(cg_name)s, je "
 "přeskočena."
-
-msgid ""
-"LVMISCSIDriver is deprecated, you should now just use LVMVolumeDriver and "
-"specify iscsi_helper for the target driver you wish to use."
-msgstr ""
-"LVMISCSIDriver je zastaralý, nyní byste měli používat LVMVolumeDriver a "
-"zadat pomocníka iscsi pro cílový ovladač, který chcete použít."
-
-msgid ""
-"LVMISERDriver is deprecated, you should now just use LVMVolumeDriver and "
-"specify iscsi_helper for the target driver you wish to use. In order to "
-"enable iser, please set iscsi_protocol with the value iser."
-msgstr ""
-"LVMISERDriver je zastaralý, nyní byste měli používat LVMVolumeDriver a zadat "
-"pomocníka iscsi pro cílový ovladač, který chcete použít. Abyste mohli použít "
-"iser, prosím nastavte protokol iscsi s hodnotou iser."
 
 msgid "Least busy iSCSI port not found, using first iSCSI port in list."
 msgstr ""

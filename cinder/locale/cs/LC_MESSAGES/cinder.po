@@ -9,10 +9,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev388\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev32\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-02 06:25+0000\n"
-"PO-Revision-Date: 2015-12-01 08:17+0000\n"
+"POT-Creation-Date: 2015-12-10 06:20+0000\n"
+"PO-Revision-Date: 2015-12-08 03:38+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language: cs\n"
 "Language-Team: Czech\n"
@@ -8504,6 +8504,12 @@ msgstr ""
 "Získání parametrů iSCSI: Nelze získat cílovou IP adresu pro zavaděč %(ini)s, "
 "prosím zkontrolujte  soubor s nastavením."
 
+msgid "glance_metadata assigned"
+msgstr "popisná data glance přidělena"
+
+msgid "glance_metadata changed"
+msgstr "popisná data glance změněna"
+
 #, python-format
 msgid ""
 "gpfs_images_share_mode is set to copy_on_write, but %(vol)s and %(img)s "
@@ -8816,6 +8822,9 @@ msgstr "id snímku:%s nenalezeno"
 #, python-format
 msgid "snapshot-%s"
 msgstr "snímek-%s"
+
+msgid "snapshots assigned"
+msgstr "snímky přiděleny"
 
 msgid "snapshots changed"
 msgstr "snímek změněn"

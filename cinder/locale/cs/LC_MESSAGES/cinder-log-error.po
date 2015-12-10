@@ -8,10 +8,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.dev388\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev32\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-02 06:25+0000\n"
-"PO-Revision-Date: 2015-11-27 09:22+0000\n"
+"POT-Creation-Date: 2015-12-10 06:20+0000\n"
+"PO-Revision-Date: 2015-12-08 03:40+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language-Team: Czech\n"
 "Language: cs\n"
@@ -1536,7 +1536,7 @@ msgid "Failed to created Cinder secure environment indicator file: %s"
 msgstr "Nelze vytvořit soubor indikující bezpečné prostředí Cinder: %s"
 
 #, python-format
-msgid "Failed to delete initiator iqn %s to target."
+msgid "Failed to delete initiator iqn %s from target."
 msgstr "Nelze smazat zavaděč iqn %s z cíle."
 
 #, python-format
@@ -1659,6 +1659,10 @@ msgstr "Nelze získat aktualizované statistiky z clusteru Datera."
 
 msgid "Failed to get updated stats from Datera cluster."
 msgstr "Nelze získat aktualizované statistiky z clusteru Datera."
+
+#, python-format
+msgid "Failed to get volume status. %s"
+msgstr "Nelze získat stav svazku. %s"
 
 msgid "Failed to initialize connection"
 msgstr "Nelze zavést připojení"
@@ -1946,6 +1950,10 @@ msgstr ""
 
 msgid "Failed to write in /etc/scst.conf."
 msgstr "Nelze zapisovat do/etc/scst.conf."
+
+#, python-format
+msgid "Failed to write persistence file: %(path)s."
+msgstr "Nelze zapsat soubor přetrvání: %(path)s."
 
 #, python-format
 msgid "Failed updating %(object_type)s %(object_id)s with %(update)s"
@@ -2468,17 +2476,8 @@ msgstr "Obnovení svazku %(volume)s bylo dokončeno s chybou - %(error)s."
 msgid "Retry %(retry)s times: %(method)s Failed %(rc)s: %(reason)s"
 msgstr "Pokus proveden %(retry)skrát: %(method)s selhala %(rc)s: %(reason)s"
 
-msgid "Retype of encryption type not supported."
-msgstr "Přetypování typu šifrování není podporováno."
-
-msgid "Retype of extra_specs not supported."
-msgstr "Přetypování dodatečných specifikací není podporováno."
-
 msgid "Retype volume error."
 msgstr "Chyba přetypování svazku."
-
-msgid "Retype with host migration not supported."
-msgstr "Přetypování spolu s přesunem hostitele není podporováno."
 
 #, python-format
 msgid ""
