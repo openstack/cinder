@@ -938,8 +938,9 @@ class XtremIOFibreChannelDriver(XtremIOVolumeDriver,
                 data = {'initiator-name': wwpn, 'ig-id': ig_name,
                         'port-address': wwpn}
                 self.client.req('initiators', 'POST', data)
-        igs = list(set([i['ig-id'][XTREMIO_OID_NAME]
-                        for i in found] + [ig_name]))
+        igs = list(set([i['ig-id'][XTREMIO_OID_NAME] for i in found]))
+        if new and ig['ig-id'][XTREMIO_OID_NAME] not in igs:
+            igs.append(ig['ig-id'][XTREMIO_OID_NAME])
 
         if len(igs) > 1:
             lun_num = self._get_free_lun(igs)

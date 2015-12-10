@@ -630,6 +630,33 @@ class EMCXIODriverFibreChannelTestCase(test.TestCase):
                                          self.data.connector)
         self.driver.delete_volume(self.data.test_volume)
 
+    def test_initialize_existing_ig_terminate_connection(self, req):
+        req.side_effect = xms_request
+        self.driver.client = xtremio.XtremIOClient4(
+            self.config, self.config.xtremio_cluster_name)
+
+        self.driver.create_volume(self.data.test_volume)
+
+        pre_existing = 'pre_existing_host'
+        self.driver._create_ig(pre_existing)
+        wwpns = self.driver._get_initiator_name(self.data.connector)
+        for wwpn in wwpns:
+            data = {'initiator-name': wwpn, 'ig-id': pre_existing,
+                    'port-address': wwpn}
+            self.driver.client.req('initiators', 'POST', data)
+
+        def get_fake_initiator(wwpn):
+            return {'port-address': wwpn, 'ig-id': ['', pre_existing, 1]}
+        with mock.patch.object(self.driver.client, 'get_initiator',
+                               side_effect=get_fake_initiator):
+            map_data = self.driver.initialize_connection(self.data.test_volume,
+                                                         self.data.connector)
+        self.assertEqual(1, map_data['data']['target_lun'])
+        self.assertEqual(1, len(xms_data['initiator-groups']))
+        self.driver.terminate_connection(self.data.test_volume,
+                                         self.data.connector)
+        self.driver.delete_volume(self.data.test_volume)
+
     def test_race_on_terminate_connection(self, req):
         """Test for race conditions on num_of_mapped_volumes.
 
