@@ -132,6 +132,11 @@ class API(base.Base):
     def create(self, context, name, description, volume_id,
                container, incremental=False, force, availability_zone=None):
         """Make the RPC call to create a volume backup."""
+        """Incremental backup flag is not required, set incremental to false.
+           volumes are stored in Ceph and All backups will be
+           incremental by default.
+        """
+        incremental = False
         check_policy(context, 'create')
         volume = self.volume_api.get(context, volume_id)
         self._check_volume_availability(volume, force)

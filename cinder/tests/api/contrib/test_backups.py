@@ -36,7 +36,7 @@ from cinder.tests.api import fakes
 from cinder.tests import utils
 # needed for stubs to work
 import cinder.volume
-
+import unittest
 
 LOG = logging.getLogger(__name__)
 
@@ -500,6 +500,7 @@ class BackupsAPITestCase(test.TestCase):
         db.volume_destroy(context.get_admin_context(), volume_id)
 
     @mock.patch('cinder.db.service_get_all_by_topic')
+    @unittest.skip("removing incremental backup from cinder API")
     def test_create_incremental_backup_invalid_status(
             self, _mock_service_get_all_by_topic):
         _mock_service_get_all_by_topic.return_value = [
@@ -669,6 +670,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(volume['status'], 'available')
 
     @mock.patch('cinder.db.service_get_all_by_topic')
+    @unittest.skip("removing incremental backup from cinder API")
     def test_create_incremental_backup_invalid_no_full(
             self, _mock_service_get_all_by_topic):
         _mock_service_get_all_by_topic.return_value = [
