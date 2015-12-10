@@ -49,6 +49,7 @@ class BarbicanKeyManager(key_mgr.KeyManager):
         self._base_url = CONF.keymgr.encryption_api_url
         self._parse_barbican_api_url()
         self._barbican_client = None
+        self._current_context = None
 
     def _parse_barbican_api_url(self):
         """Setup member variables to reference the Barbican URL.
@@ -84,30 +85,34 @@ class BarbicanKeyManager(key_mgr.KeyManager):
                                  or project_id is None
         """
 
-        if not self._barbican_client:
-            # Confirm context is provided, if not raise not authorized
-            if not ctxt:
-                msg = _("User is not authorized to use key manager.")
-                LOG.error(msg)
-                raise exception.NotAuthorized(msg)
+        # Confirm context is provided, if not raise not authorized
+        if not ctxt:
+            msg = _("User is not authorized to use key manager.")
+            LOG.error(msg)
+            raise exception.NotAuthorized(msg)
 
-            if not hasattr(ctxt, 'project_id') or ctxt.project_id is None:
-                msg = _("Unable to create Barbican Client without project_id.")
-                LOG.error(msg)
-                raise exception.KeyManagerError(msg)
+        if not hasattr(ctxt, 'project_id') or ctxt.project_id is None:
+            msg = _("Unable to create Barbican Client without project_id.")
+            LOG.error(msg)
+            raise exception.KeyManagerError(msg)
 
-            try:
-                auth = identity.v3.Token(
-                    auth_url=CONF.keymgr.encryption_auth_url,
-                    token=ctxt.auth_token,
-                    project_id=ctxt.project_id)
-                sess = session.Session(auth=auth)
-                self._barbican_client = barbican_client.Client(
-                    session=sess,
-                    endpoint=self._barbican_endpoint)
-            except Exception:
-                with excutils.save_and_reraise_exception():
-                    LOG.exception(_LE("Error creating Barbican client."))
+        # If same context, return cached barbican client
+        if self._barbican_client and self._current_context == ctxt:
+            return self._barbican_client
+
+        try:
+            auth = identity.v3.Token(
+                auth_url=CONF.keymgr.encryption_auth_url,
+                token=ctxt.auth_token,
+                project_id=ctxt.project_id)
+            sess = session.Session(auth=auth)
+            self._barbican_client = barbican_client.Client(
+                session=sess,
+                endpoint=self._barbican_endpoint)
+            self._current_context = ctxt
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_LE("Error creating Barbican client."))
 
         return self._barbican_client
 
