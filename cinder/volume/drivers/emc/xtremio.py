@@ -739,9 +739,9 @@ class XtremIOISCSIDriver(XtremIOVolumeDriver, driver.ISCSIDriver):
             login_passwd = self._get_password()
             data['initiator-authentication-password'] = login_passwd
         if discovery_chap:
-            data['chap-discovery-initiator-user-name'] = 'chap_user'
+            data['initiator-discovery-user-name'] = 'chap_user'
             discovery_passwd = self._get_password()
-            data['chap-discovery-initiator-password'] = discovery_passwd
+            data['initiator-discovery-password'] = discovery_passwd
         return login_passwd, discovery_passwd
 
     def _create_initiator(self, connector, login_chap, discovery_chap):
