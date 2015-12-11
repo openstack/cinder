@@ -323,8 +323,13 @@ class QuotaSetsController(wsgi.Controller):
                 value = self._validate_quota_limit(body['quota_set'], key,
                                                    quota_values,
                                                    parent_project_quotas)
+                original_quota = 0
+                if quota_values.get(key):
+                    original_quota = quota_values[key]['limit']
+
                 allocated_quotas[key] = (
-                    parent_project_quotas[key].get('allocated', 0) + value)
+                    parent_project_quotas[key].get('allocated', 0) + value -
+                    original_quota)
             else:
                 value = self._validate_quota_limit(body['quota_set'], key)
             valid_quotas[key] = value

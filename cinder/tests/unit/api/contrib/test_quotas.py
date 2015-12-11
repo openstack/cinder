@@ -264,6 +264,25 @@ class QuotaSetsControllerTest(test.TestCase):
                          volumes=4, backups=4, tenant_id=None)
         result = self.controller.update(self.req, self.D.id, body)
 
+    def test_update_subproject_repetitive(self):
+        self.controller._get_project = mock.Mock()
+        self.controller._get_project.side_effect = self._get_project
+        # Update the project A volumes quota.
+        self.req.environ['cinder.context'].project_id = self.A.id
+        body = make_body(gigabytes=2000, snapshots=15,
+                         volumes=10, backups=5, tenant_id=None)
+        result = self.controller.update(self.req, self.A.id, body)
+        self.assertDictMatch(body, result)
+        # Update the quota of B to be equal to its parent quota
+        # three times should be successful, the quota will not be
+        # allocated to 'allocated' value of parent project
+        for i in range(0, 3):
+            self.req.environ['cinder.context'].project_id = self.A.id
+            body = make_body(gigabytes=2000, snapshots=15,
+                             volumes=10, backups=5, tenant_id=None)
+            result = self.controller.update(self.req, self.B.id, body)
+            self.assertDictMatch(body, result)
+
     def test_update_subproject_not_in_hierarchy(self):
         self.controller._get_project = mock.Mock()
         self.controller._get_project.side_effect = self._get_project
