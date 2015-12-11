@@ -25,11 +25,11 @@ from oslo_utils import units
 
 from cinder import exception
 from cinder.i18n import _
+import cinder.image.glance
 from cinder.image import image_utils
 from cinder import objects
 from cinder import test
 from cinder.tests.unit import fake_volume
-from cinder.tests.unit.image import fake as fake_image
 from cinder.tests.unit import test_volume
 from cinder.tests.unit import utils
 from cinder.volume import configuration as conf
@@ -840,14 +840,10 @@ class RBDTestCase(test.TestCase):
                     'size': fake_size,
                     'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'}
 
-        self.mox.StubOutWithMock(self.driver, '_resize')
         size = int(fake_size) * units.Gi
-        self.driver._resize(fake_vol, size=size)
-
-        self.mox.ReplayAll()
-        self.driver.extend_volume(fake_vol, fake_size)
-
-        self.mox.VerifyAll()
+        with mock.patch.object(self.driver, '_resize') as mock_resize:
+            self.driver.extend_volume(fake_vol, fake_size)
+            mock_resize.assert_called_once_with(fake_vol, size=size)
 
     @common_mocks
     def test_retype(self):
@@ -1093,9 +1089,6 @@ class ManagedRBDTestCase(test_volume.DriverTestCase):
 
     def setUp(self):
         super(ManagedRBDTestCase, self).setUp()
-        # TODO(dosaboy): need to remove dependency on mox stubs here once
-        # image.fake has been converted to mock.
-        fake_image.stub_out_image_service(self.stubs)
         self.volume.driver.set_initialized()
         self.volume.stats = {'allocated_capacity_gb': 0,
                              'pools': {}}
@@ -1145,7 +1138,8 @@ class ManagedRBDTestCase(test_volume.DriverTestCase):
             # cleanup
             volume.destroy()
 
-    def test_create_vol_from_image_status_available(self):
+    @mock.patch.object(cinder.image.glance, 'get_default_image_service')
+    def test_create_vol_from_image_status_available(self, mock_gdis):
         """Clone raw image then verify volume is in available state."""
 
         def _mock_clone_image(context, volume, image_location,
@@ -1164,9 +1158,12 @@ class ManagedRBDTestCase(test_volume.DriverTestCase):
 
                 self.assertTrue(mock_clone_image.called)
                 self.assertFalse(mock_create.called)
+                self.assertTrue(mock_gdis.called)
 
+    @mock.patch.object(cinder.image.glance, 'get_default_image_service')
     @mock.patch('cinder.image.image_utils.TemporaryImages.fetch')
-    def test_create_vol_from_non_raw_image_status_available(self, mock_fetch):
+    def test_create_vol_from_non_raw_image_status_available(self, mock_fetch,
+                                                            mock_gdis):
         """Clone non-raw image then verify volume is in available state."""
 
         def _mock_clone_image(context, volume, image_location,
@@ -1186,8 +1183,10 @@ class ManagedRBDTestCase(test_volume.DriverTestCase):
 
                 self.assertTrue(mock_clone_image.called)
                 self.assertTrue(mock_create.called)
+                self.assertTrue(mock_gdis.called)
 
-    def test_create_vol_from_image_status_error(self):
+    @mock.patch.object(cinder.image.glance, 'get_default_image_service')
+    def test_create_vol_from_image_status_error(self, mock_gdis):
         """Fail to clone raw image then verify volume is in error state."""
         with mock.patch.object(self.volume.driver, 'clone_image') as \
                 mock_clone_image:
@@ -1201,6 +1200,7 @@ class ManagedRBDTestCase(test_volume.DriverTestCase):
 
                 self.assertTrue(mock_clone_image.called)
                 self.assertFalse(self.volume.driver.create_volume.called)
+                self.assertTrue(mock_gdis.called)
 
     def test_clone_failure(self):
         driver = self.volume.driver
