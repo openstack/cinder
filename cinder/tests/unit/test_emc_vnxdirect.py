@@ -477,6 +477,10 @@ class EMCVNXCLIDriverTestData(object):
             output += out
         return (output, 0)
 
+    def SNAP_NOT_EXIST(self):
+        return ("Could not retrieve the specified (Snapshot).\n "
+                "The (Snapshot) may not exist", 9)
+
     NDU_LIST_CMD = ('ndu', '-list')
     NDU_LIST_RESULT = ("Name of the software package:   -Compression " +
                        "Name of the software package:   -Deduplication " +
@@ -740,6 +744,9 @@ class EMCVNXCLIDriverTestData(object):
     def GET_CG_BY_NAME_CMD(self, cg_name):
         return ('snap', '-group', '-list', '-id', cg_name)
 
+    def GET_SNAP(self, snap_name):
+        return ('snap', '-list', '-id', snap_name)
+
     def REMOVE_LUNS_FROM_CG_CMD(self, cg_name, remove_ids):
         return ('snap', '-group', '-rmmember', '-id', cg_name, '-res',
                 ','.join(remove_ids))
@@ -780,6 +787,9 @@ Allow auto delete:  No
 Member LUN ID(s):  1, 3
 State:  Ready
 """ % {'cg_name': cg_name}, 0
+
+    def CG_NOT_FOUND(self):
+        return ("Cannot find the consistency group. \n\n", 13)
 
     def CG_REPL_ERROR(self):
         return """
@@ -3834,8 +3844,9 @@ Time Remaining:  0 second(s)
 
     def test_create_consistency_group(self):
         cg_name = self.testData.test_cg['id']
-        commands = [self.testData.CREATE_CONSISTENCYGROUP_CMD(cg_name)]
-        results = [SUCCEED]
+        commands = [self.testData.CREATE_CONSISTENCYGROUP_CMD(cg_name),
+                    self.testData.GET_CG_BY_NAME_CMD(cg_name)]
+        results = [SUCCEED, self.testData.CG_PROPERTY(cg_name)]
         fake_cli = self.driverSetup(commands, results)
 
         model_update = self.driver.create_consistencygroup(
@@ -3844,7 +3855,30 @@ Time Remaining:  0 second(s)
         expect_cmd = [
             mock.call(
                 *self.testData.CREATE_CONSISTENCYGROUP_CMD(
-                    cg_name), poll=False)]
+                    cg_name), poll=False),
+            mock.call(
+                *self.testData.GET_CG_BY_NAME_CMD(cg_name))]
+        fake_cli.assert_has_calls(expect_cmd)
+
+    def test_create_consistency_group_retry(self):
+        cg_name = self.testData.test_cg['id']
+        commands = [self.testData.CREATE_CONSISTENCYGROUP_CMD(cg_name),
+                    self.testData.GET_CG_BY_NAME_CMD(cg_name)]
+        results = [SUCCEED,
+                   [self.testData.CG_NOT_FOUND(),
+                    self.testData.CG_PROPERTY(cg_name)]]
+        fake_cli = self.driverSetup(commands, results)
+        model_update = self.driver.create_consistencygroup(
+            None, self.testData.test_cg)
+        self.assertDictMatch({'status': 'available'}, model_update)
+        expect_cmd = [
+            mock.call(
+                *self.testData.CREATE_CONSISTENCYGROUP_CMD(
+                    cg_name), poll=False),
+            mock.call(
+                *self.testData.GET_CG_BY_NAME_CMD(cg_name)),
+            mock.call(
+                *self.testData.GET_CG_BY_NAME_CMD(cg_name))]
         fake_cli.assert_has_calls(expect_cmd)
 
     @mock.patch(
@@ -3882,8 +3916,10 @@ Time Remaining:  0 second(s)
     def test_create_cgsnapshot(self):
         cgsnapshot = self.testData.test_cgsnapshot['id']
         cg_name = self.testData.test_cgsnapshot['consistencygroup_id']
-        commands = [self.testData.CREATE_CG_SNAPSHOT(cg_name, cgsnapshot)]
-        results = [SUCCEED]
+        commands = [self.testData.CREATE_CG_SNAPSHOT(cg_name, cgsnapshot),
+                    self.testData.GET_SNAP(cgsnapshot)]
+        results = [SUCCEED,
+                   SUCCEED]
         fake_cli = self.driverSetup(commands, results)
         snapshot_obj = fake_snapshot.fake_snapshot_obj(
             self.testData.SNAPS_IN_SNAP_GROUP())
@@ -3893,7 +3929,32 @@ Time Remaining:  0 second(s)
         expect_cmd = [
             mock.call(
                 *self.testData.CREATE_CG_SNAPSHOT(
-                    cg_name, cgsnapshot))]
+                    cg_name, cgsnapshot)),
+            mock.call(
+                *self.testData.GET_SNAP(cgsnapshot))]
+        fake_cli.assert_has_calls(expect_cmd)
+
+    def test_create_cgsnapshot_retry(self):
+        cgsnapshot = self.testData.test_cgsnapshot['id']
+        cg_name = self.testData.test_cgsnapshot['consistencygroup_id']
+        commands = [self.testData.CREATE_CG_SNAPSHOT(cg_name, cgsnapshot),
+                    self.testData.GET_SNAP(cgsnapshot)]
+        results = [SUCCEED,
+                   [self.testData.SNAP_NOT_EXIST(), SUCCEED]]
+        fake_cli = self.driverSetup(commands, results)
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(
+            self.testData.SNAPS_IN_SNAP_GROUP())
+        snapshot_obj.consistencygroup_id = cg_name
+        self.driver.create_cgsnapshot(None, self.testData.test_cgsnapshot,
+                                      [snapshot_obj])
+        expect_cmd = [
+            mock.call(
+                *self.testData.CREATE_CG_SNAPSHOT(
+                    cg_name, cgsnapshot)),
+            mock.call(
+                *self.testData.GET_SNAP(cgsnapshot)),
+            mock.call(
+                *self.testData.GET_SNAP(cgsnapshot))]
         fake_cli.assert_has_calls(expect_cmd)
 
     def test_delete_cgsnapshot(self):
@@ -3961,6 +4022,8 @@ Time Remaining:  0 second(s)
         expect_cmd = [
             mock.call(
                 *self.testData.CREATE_CG_SNAPSHOT(cg_name, tmp_cgsnapshot)),
+            mock.call(
+                *self.testData.GET_SNAP(tmp_cgsnapshot)),
             mock.call(*self.testData.SNAP_MP_CREATE_CMD(name='vol1',
                                                         source='clone1'),
                       poll=False),
@@ -4219,6 +4282,7 @@ Time Remaining:  0 second(s)
             mock.call(*td.MIGRATION_VERIFY_CMD(6232), poll=True),
             mock.call(*td.CREATE_CONSISTENCYGROUP_CMD(
                       new_cg['id'], [6231, 6232]), poll=True),
+            mock.call(*td.GET_CG_BY_NAME_CMD(new_cg.id)),
             mock.call(*td.DELETE_CG_SNAPSHOT(copied_snap_name))]
         self.assertEqual(expect_cmd, fake_cli.call_args_list)
 
