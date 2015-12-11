@@ -34,6 +34,7 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
             self.configuration.append_config_values(
                 options.NEXENTA_EDGE_OPTS)
         self.restapi_protocol = self.configuration.nexenta_rest_protocol
+        self.restapi_host = self.configuration.nexenta_rest_address
         self.restapi_port = self.configuration.nexenta_rest_port
         self.restapi_user = self.configuration.nexenta_rest_user
         self.restapi_password = self.configuration.nexenta_rest_password
@@ -78,7 +79,7 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
             protocol, auto = self.restapi_protocol, False
 
         self.restapi = jsonrpc.NexentaEdgeJSONProxy(
-            protocol, 'localhost', self.restapi_port, '/',
+            protocol, self.restapi_host, self.restapi_port, '/',
             self.restapi_user, self.restapi_password, auto=auto)
 
     def check_for_setup_error(self):
@@ -102,6 +103,7 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
         for dev in nbds:
             if dev['objectPath'] == self.bucket_path + '/' + volume['name']:
                 return dev['number']
+        raise Exception #FIXME
 
     def _new_nbd_number(self, volume):
         nbds = self._get_nbd_devices()
@@ -109,12 +111,13 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
         for dev in nbds:
             devmap[dev['number']] = True
         for i in range(1, 4096):
-            if devmap[i]:
+            if i in devmap and devmap[i]:
                 continue
             return i
+        raise Exception #FIXME
 
     def local_path(self, volume):
-        return '/dev/nbd' + self._get_nbd_number(volume)
+        return '/dev/nbd' + str(self._get_nbd_number(volume))
 
     def create_volume(self, volume):
         number = self._new_nbd_number(volume)
@@ -131,7 +134,15 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
                 LOG.exception(_LE('Error creating volume'))
 
     def delete_volume(self, volume):
-        raise NotImplemented
+        number = self._get_nbd_number(volume)
+        try:
+            self.restapi.delete('nbd', {
+                'objectPath': self.bucket_path + '/' + volume['name'],
+                'number': number
+            })
+        except exception.VolumeBackendAPIException:
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_LE('Error deleting volume'))
 
     def extend_volume(self, volume, new_size):
         raise NotImplemented
