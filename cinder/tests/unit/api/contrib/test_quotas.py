@@ -32,6 +32,7 @@ from cinder import db
 from cinder import test
 from cinder.tests.unit import test_db_api
 
+from keystoneclient import exceptions
 from keystonemiddleware import auth_token
 from oslo_config import cfg
 from oslo_config import fixture as config_fixture
@@ -206,6 +207,17 @@ class QuotaSetsControllerTest(test.TestCase):
         self.req.environ['cinder.context'].project_id = 'bad_project'
         self.assertRaises(webob.exc.HTTPForbidden, self.controller.show,
                           self.req, 'foo')
+
+    def test_show_non_admin_user(self):
+        self.controller._get_project = mock.Mock()
+        self.controller._get_project.side_effect = exceptions.Forbidden
+        self.controller._get_quotas = mock.Mock(side_effect=
+                                                self.controller._get_quotas)
+        result = self.controller.show(self.req, 'foo')
+        self.assertDictMatch(make_body(), result)
+        self.controller._get_quotas.assert_called_with(
+            self.req.environ['cinder.context'], 'foo', False,
+            parent_project_id=None)
 
     def test_subproject_show_not_authorized(self):
         self.controller._get_project = mock.Mock()
