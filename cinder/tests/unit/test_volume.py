@@ -48,6 +48,7 @@ from cinder import exception
 from cinder.image import image_utils
 from cinder import keymgr
 from cinder import objects
+from cinder.objects import fields
 import cinder.policy
 from cinder import quota
 from cinder import test
@@ -6732,7 +6733,7 @@ class LVMVolumeDriverTestCase(DriverTestCase):
         backup['display_name'] = 'test_check_for_setup_error'
         backup['display_description'] = 'test_check_for_setup_error'
         backup['container'] = 'fake'
-        backup['status'] = 'creating'
+        backup['status'] = fields.BackupStatus.CREATING
         backup['fail_reason'] = ''
         backup['service'] = 'fake'
         backup['parent_id'] = None

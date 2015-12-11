@@ -36,6 +36,7 @@ from cinder.cmd import volume as cinder_volume
 from cinder.cmd import volume_usage_audit
 from cinder import context
 from cinder import exception
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit import fake_volume
 from cinder import version
@@ -624,7 +625,7 @@ class TestCinderManageCmd(test.TestCase):
                   'host': 'fake-host',
                   'display_name': 'fake-display-name',
                   'container': 'fake-container',
-                  'status': 'fake-status',
+                  'status': fields.BackupStatus.AVAILABLE,
                   'size': 123,
                   'object_count': 1,
                   'volume_id': 'fake-volume-id',

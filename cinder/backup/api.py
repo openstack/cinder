@@ -34,6 +34,7 @@ from cinder.db import base
 from cinder import exception
 from cinder.i18n import _, _LI, _LW
 from cinder import objects
+from cinder.objects import fields
 import cinder.policy
 from cinder import quota
 from cinder import utils
@@ -83,7 +84,8 @@ class API(base.Base):
         :raises: ServiceNotFound
         """
         check_policy(context, 'delete')
-        if not force and backup.status not in ['available', 'error']:
+        if not force and backup.status not in [fields.BackupStatus.AVAILABLE,
+                                               fields.BackupStatus.ERROR]:
             msg = _('Backup status must be available or error')
             raise exception.InvalidBackup(reason=msg)
         if force and not self._check_support_to_force_delete(context,
@@ -101,7 +103,7 @@ class API(base.Base):
             msg = _('Incremental backups exist for this backup.')
             raise exception.InvalidBackup(reason=msg)
 
-        backup.status = 'deleting'
+        backup.status = fields.BackupStatus.DELETING
         backup.save()
         self.backup_rpcapi.delete_backup(context, backup)
 
@@ -256,7 +258,7 @@ class API(base.Base):
         parent_id = None
         if latest_backup:
             parent_id = latest_backup.id
-            if latest_backup['status'] != "available":
+            if latest_backup['status'] != fields.BackupStatus.AVAILABLE:
                 msg = _('The parent backup must be available for '
                         'incremental backup.')
                 raise exception.InvalidBackup(reason=msg)
@@ -276,7 +278,7 @@ class API(base.Base):
                 'display_name': name,
                 'display_description': description,
                 'volume_id': volume_id,
-                'status': 'creating',
+                'status': fields.BackupStatus.CREATING,
                 'container': container,
                 'parent_id': parent_id,
                 'size': volume['size'],
@@ -308,7 +310,7 @@ class API(base.Base):
         """Make the RPC call to restore a volume backup."""
         check_policy(context, 'restore')
         backup = self.get(context, backup_id)
-        if backup['status'] != 'available':
+        if backup['status'] != fields.BackupStatus.AVAILABLE:
             msg = _('Backup status must be available')
             raise exception.InvalidBackup(reason=msg)
 
@@ -359,7 +361,7 @@ class API(base.Base):
 
         # Setting the status here rather than setting at start and unrolling
         # for each error condition, it should be a very small window
-        backup.status = 'restoring'
+        backup.status = fields.BackupStatus.RESTORING
         backup.save()
         volume_host = volume_utils.extract_host(volume['host'], 'host')
         self.db.volume_update(context, volume_id, {'status':
@@ -402,7 +404,7 @@ class API(base.Base):
         """
         check_policy(context, 'backup-export')
         backup = self.get(context, backup_id)
-        if backup['status'] != 'available':
+        if backup['status'] != fields.BackupStatus.AVAILABLE:
             msg = (_('Backup status must be available and not %s.') %
                    backup['status'])
             raise exception.InvalidBackup(reason=msg)
@@ -449,7 +451,7 @@ class API(base.Base):
             'user_id': context.user_id,
             'project_id': context.project_id,
             'volume_id': '0000-0000-0000-0000',
-            'status': 'creating',
+            'status': fields.BackupStatus.CREATING,
         }
 
         try:
@@ -462,7 +464,7 @@ class API(base.Base):
 
             # If record exists and it's not deleted we cannot proceed with the
             # import
-            if backup.status != 'deleted':
+            if backup.status != fields.BackupStatus.DELETED:
                 msg = _('Backup already exists in database.')
                 raise exception.InvalidBackup(reason=msg)
 

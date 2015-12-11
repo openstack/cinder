@@ -56,6 +56,7 @@ from cinder import db
 from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder.i18n import _, _LW, _LE, _LI
+from cinder.objects import fields
 
 
 CONF = cfg.CONF
@@ -3648,7 +3649,7 @@ def backup_update(context, backup_id, values):
 def backup_destroy(context, backup_id):
     model_query(context, models.Backup).\
         filter_by(id=backup_id).\
-        update({'status': 'deleted',
+        update({'status': fields.BackupStatus.DELETED,
                 'deleted': True,
                 'deleted_at': timeutils.utcnow(),
                 'updated_at': literal_column('updated_at')})

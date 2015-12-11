@@ -17,6 +17,7 @@ import mock
 from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder import objects
+from cinder.objects import fields
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import objects as test_objects
 from cinder.tests.unit import utils
@@ -25,7 +26,7 @@ from cinder.tests.unit import utils
 fake_backup = {
     'id': '1',
     'volume_id': 'fake_id',
-    'status': "creating",
+    'status': fields.BackupStatus.CREATING,
     'size': 1,
     'display_name': 'fake_name',
     'display_description': 'fake_description',

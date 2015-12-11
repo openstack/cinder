@@ -30,6 +30,7 @@ from cinder.db.sqlalchemy import api as sqa_api
 from cinder.db.sqlalchemy import models as sqa_models
 from cinder import exception
 from cinder import objects
+from cinder.objects import fields
 from cinder import quota
 from cinder import quota_utils
 from cinder import test
@@ -102,7 +103,7 @@ class QuotaIntegrationTestCase(test.TestCase):
         backup['project_id'] = self.project_id
         backup['volume_id'] = volume['id']
         backup['volume_size'] = volume['size']
-        backup['status'] = 'available'
+        backup['status'] = fields.BackupStatus.AVAILABLE
         return db.backup_create(self.context, backup)
 
     def test_volume_size_limit_exceeds(self):

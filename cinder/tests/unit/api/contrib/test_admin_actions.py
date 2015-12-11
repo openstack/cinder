@@ -26,6 +26,7 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder import objects
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.api.contrib import test_backups
 from cinder.tests.unit.api import fakes
@@ -200,15 +201,16 @@ class AdminActionsTest(BaseAdminTest):
         volume = db.volume_create(self.ctx, {'status': 'available',
                                              'user_id': 'user',
                                              'project_id': 'project'})
-        backup = db.backup_create(self.ctx, {'status': 'available',
-                                             'size': 1,
-                                             'volume_id': volume['id'],
-                                             'user_id': 'user',
-                                             'project_id': 'project'})
+        backup = db.backup_create(self.ctx,
+                                  {'status': fields.BackupStatus.AVAILABLE,
+                                   'size': 1,
+                                   'volume_id': volume['id'],
+                                   'user_id': 'user',
+                                   'project_id': 'project'})
 
         resp = self._issue_backup_reset(self.ctx,
                                         backup,
-                                        {'status': 'error'})
+                                        {'status': fields.BackupStatus.ERROR})
 
         self.assertEqual(202, resp.status_int)
 
@@ -219,7 +221,7 @@ class AdminActionsTest(BaseAdminTest):
                                         'volume_id': "fakeid"})
         resp = self._issue_backup_reset(ctx,
                                         backup,
-                                        {'status': 'error'})
+                                        {'status': fields.BackupStatus.ERROR})
         # request is not authorized
         self.assertEqual(403, resp.status_int)
 
@@ -227,14 +229,15 @@ class AdminActionsTest(BaseAdminTest):
         volume = db.volume_create(self.ctx,
                                   {'status': 'available', 'host': 'test',
                                    'provider_location': '', 'size': 1})
-        backup = db.backup_create(self.ctx, {'status': 'available',
-                                             'volume_id': volume['id'],
-                                             'user_id': 'user',
-                                             'project_id': 'project'})
+        backup = db.backup_create(self.ctx,
+                                  {'status': fields.BackupStatus.AVAILABLE,
+                                   'volume_id': volume['id'],
+                                   'user_id': 'user',
+                                   'project_id': 'project'})
 
         resp = self._issue_backup_reset(self.ctx,
                                         backup,
-                                        {'status': 'error'})
+                                        {'status': fields.BackupStatus.ERROR})
 
         self.assertEqual(202, resp.status_int)
 
@@ -253,15 +256,16 @@ class AdminActionsTest(BaseAdminTest):
         volume = db.volume_create(self.ctx,
                                   {'status': 'available', 'host': 'test',
                                    'provider_location': '', 'size': 1})
-        backup = db.backup_create(self.ctx, {'status': 'available',
-                                             'volume_id': volume['id'],
-                                             'user_id': 'user',
-                                             'project_id': 'project'})
+        backup = db.backup_create(self.ctx,
+                                  {'status': fields.BackupStatus.AVAILABLE,
+                                   'volume_id': volume['id'],
+                                   'user_id': 'user',
+                                   'project_id': 'project'})
 
         backup['id'] = 'fake_id'
         resp = self._issue_backup_reset(self.ctx,
                                         backup,
-                                        {'status': 'error'})
+                                        {'status': fields.BackupStatus.ERROR})
 
         # Should raise 404 if backup doesn't exist.
         self.assertEqual(404, resp.status_int)

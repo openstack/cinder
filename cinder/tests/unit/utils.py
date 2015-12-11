@@ -24,6 +24,7 @@ import oslo_versionedobjects
 from cinder import context
 from cinder import db
 from cinder import objects
+from cinder.objects import fields
 
 
 def get_test_admin_context():
@@ -168,7 +169,7 @@ def create_backup(ctxt,
                   volume_id,
                   display_name='test_backup',
                   display_description='This is a test backup',
-                  status='creating',
+                  status=fields.BackupStatus.CREATING,
                   parent_id=None,
                   temp_volume_id=None,
                   temp_snapshot_id=None,

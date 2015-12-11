@@ -16,6 +16,7 @@
 import mock
 
 from cinder import exception
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
@@ -328,7 +329,7 @@ class HPEXPFCDriverTest(test.TestCase):
                       'name': 'backup-test',
                       'id': 'id-backup',
                       'provider_location': '0',
-                      'status': 'available'}
+                      'status': fields.BackupStatus.AVAILABLE}
 
     _TEST_SNAPSHOT = {'volume_name': 'test',
                       'size': 128,

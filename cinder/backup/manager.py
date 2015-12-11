@@ -47,6 +47,7 @@ from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder import manager
 from cinder import objects
+from cinder.objects import fields
 from cinder import quota
 from cinder import rpc
 from cinder import utils
@@ -188,7 +189,7 @@ class BackupManager(manager.SchedulerDependentManager):
         driver.set_initialized()
 
     def _update_backup_error(self, backup, context, err):
-        backup.status = 'error'
+        backup.status = fields.BackupStatus.ERROR
         backup.fail_reason = err
         backup.save()
 
@@ -254,18 +255,18 @@ class BackupManager(manager.SchedulerDependentManager):
                                   {'status': 'error_restoring'})
 
     def _cleanup_one_backup(self, ctxt, backup):
-        if backup['status'] == 'creating':
+        if backup['status'] == fields.BackupStatus.CREATING:
             LOG.info(_LI('Resetting backup %s to error (was creating).'),
                      backup['id'])
             err = 'incomplete backup reset on manager restart'
             self._update_backup_error(backup, ctxt, err)
-        if backup['status'] == 'restoring':
+        if backup['status'] == fields.BackupStatus.RESTORING:
             LOG.info(_LI('Resetting backup %s to '
                          'available (was restoring).'),
                      backup['id'])
-            backup.status = 'available'
+            backup.status = fields.BackupStatus.AVAILABLE
             backup.save()
-        if backup['status'] == 'deleting':
+        if backup['status'] == fields.BackupStatus.DELETING:
             LOG.info(_LI('Resuming delete on backup: %s.'), backup['id'])
             if CONF.backup_service_inithost_offload:
                 # Offload all the pending backup delete operations to the
@@ -315,7 +316,8 @@ class BackupManager(manager.SchedulerDependentManager):
                       "backup %s.", backup.id)
             return
 
-        if backup.temp_volume_id and backup.status == 'error':
+        if (backup.temp_volume_id
+                and backup.status == fields.BackupStatus.ERROR):
             try:
                 temp_volume = self.db.volume_get(ctxt,
                                                  backup.temp_volume_id)
@@ -331,7 +333,8 @@ class BackupManager(manager.SchedulerDependentManager):
             backup.temp_volume_id = None
             backup.save()
 
-        if backup.temp_snapshot_id and backup.status == 'error':
+        if (backup.temp_snapshot_id
+                and backup.status == fields.BackupStatus.ERROR):
             try:
                 temp_snapshot = objects.Snapshot.get_by_id(
                     ctxt, backup.temp_snapshot_id)
@@ -378,7 +381,7 @@ class BackupManager(manager.SchedulerDependentManager):
             self._update_backup_error(backup, context, err)
             raise exception.InvalidVolume(reason=err)
 
-        expected_status = 'creating'
+        expected_status = fields.BackupStatus.CREATING
         actual_status = backup.status
         if actual_status != expected_status:
             err = _('Create backup aborted, expected backup status '
@@ -411,7 +414,7 @@ class BackupManager(manager.SchedulerDependentManager):
         self.db.volume_update(context, volume_id,
                               {'status': previous_status,
                                'previous_status': 'backing-up'})
-        backup.status = 'available'
+        backup.status = fields.BackupStatus.AVAILABLE
         backup.size = volume['size']
         backup.availability_zone = self.az
         backup.save()
@@ -446,11 +449,11 @@ class BackupManager(manager.SchedulerDependentManager):
                      '%(expected_status)s but got %(actual_status)s.') %
                    {'expected_status': expected_status,
                     'actual_status': actual_status})
-            backup.status = 'available'
+            backup.status = fields.BackupStatus.AVAILABLE
             backup.save()
             raise exception.InvalidVolume(reason=err)
 
-        expected_status = 'restoring'
+        expected_status = fields.BackupStatus.RESTORING
         actual_status = backup['status']
         if actual_status != expected_status:
             err = (_('Restore backup aborted: expected backup status '
@@ -480,7 +483,7 @@ class BackupManager(manager.SchedulerDependentManager):
                 'configured_service': configured_service,
                 'backup_service': backup_service,
             }
-            backup.status = 'available'
+            backup.status = fields.BackupStatus.AVAILABLE
             backup.save()
             self.db.volume_update(context, volume_id, {'status': 'error'})
             raise exception.InvalidBackup(reason=err)
@@ -500,11 +503,11 @@ class BackupManager(manager.SchedulerDependentManager):
             with excutils.save_and_reraise_exception():
                 self.db.volume_update(context, volume_id,
                                       {'status': 'error_restoring'})
-                backup.status = 'available'
+                backup.status = fields.BackupStatus.AVAILABLE
                 backup.save()
 
         self.db.volume_update(context, volume_id, {'status': 'available'})
-        backup.status = 'available'
+        backup.status = fields.BackupStatus.AVAILABLE
         backup.save()
         LOG.info(_LI('Restore backup finished, backup %(backup_id)s restored'
                      ' to volume %(volume_id)s.'),
@@ -529,7 +532,7 @@ class BackupManager(manager.SchedulerDependentManager):
         backup.host = self.host
         backup.save()
 
-        expected_status = 'deleting'
+        expected_status = fields.BackupStatus.DELETING
         actual_status = backup.status
         if actual_status != expected_status:
             err = _('Delete_backup aborted, expected backup status '
@@ -615,7 +618,7 @@ class BackupManager(manager.SchedulerDependentManager):
         """
         LOG.info(_LI('Export record started, backup: %s.'), backup.id)
 
-        expected_status = 'available'
+        expected_status = fields.BackupStatus.AVAILABLE
         actual_status = backup.status
         if actual_status != expected_status:
             err = (_('Export backup aborted, expected backup status '
@@ -734,7 +737,7 @@ class BackupManager(manager.SchedulerDependentManager):
                 raise exception.InvalidBackup(reason=msg)
 
             # Overwrite some fields
-            backup_options['status'] = 'available'
+            backup_options['status'] = fields.BackupStatus.AVAILABLE
             backup_options['service'] = self.driver_name
             backup_options['availability_zone'] = self.az
             backup_options['host'] = self.host
@@ -805,7 +808,8 @@ class BackupManager(manager.SchedulerDependentManager):
             # Verify backup
             try:
                 # check whether the backup is ok or not
-                if status == 'available' and backup['status'] != 'restoring':
+                if (status == fields.BackupStatus.AVAILABLE
+                        and backup['status'] != fields.BackupStatus.RESTORING):
                     # check whether we could verify the backup is ok or not
                     if isinstance(backup_service,
                                   driver.BackupDriverWithVerify):
@@ -824,9 +828,9 @@ class BackupManager(manager.SchedulerDependentManager):
                             reason=msg)
                 # reset status to error or from restoring to available
                 else:
-                    if (status == 'error' or
-                        (status == 'available' and
-                            backup.status == 'restoring')):
+                    if (status == fields.BackupStatus.ERROR or
+                        (status == fields.BackupStatus.AVAILABLE and
+                            backup.status == fields.BackupStatus.RESTORING)):
                         backup.status = status
                         backup.save()
             except exception.InvalidBackup:

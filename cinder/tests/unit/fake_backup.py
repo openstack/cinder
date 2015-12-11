@@ -15,6 +15,7 @@
 from oslo_versionedobjects import fields
 
 from cinder import objects
+from cinder.objects import fields as c_fields
 
 
 def fake_db_backup(**updates):
@@ -23,7 +24,7 @@ def fake_db_backup(**updates):
         'user_id': 'fake_user',
         'project_id': 'fake_project',
         'volume_id': 'fake_id',
-        'status': 'creating',
+        'status': c_fields.BackupStatus.CREATING,
         'host': 'fake_host',
         'display_name': 'fake_name',
         'size': 5,

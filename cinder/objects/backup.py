@@ -27,6 +27,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import objects
 from cinder.objects import base
+from cinder.objects import fields as c_fields
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
@@ -39,7 +40,8 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
     # Version 1.1: Add new field num_dependent_backups and extra fields
     #              is_incremental and has_dependent_backups.
     # Version 1.2: Add new field snapshot_id and data_timestamp.
-    VERSION = '1.2'
+    # Version 1.3: Changed 'status' field to use BackupStatusField
+    VERSION = '1.3'
 
     fields = {
         'id': fields.UUIDField(),
@@ -52,7 +54,7 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
         'availability_zone': fields.StringField(nullable=True),
         'container': fields.StringField(nullable=True),
         'parent_id': fields.StringField(nullable=True),
-        'status': fields.StringField(nullable=True),
+        'status': c_fields.BackupStatusField(nullable=True),
         'fail_reason': fields.StringField(nullable=True),
         'size': fields.IntegerField(),
 

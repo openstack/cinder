@@ -38,6 +38,7 @@ from cinder.backup import driver
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder import objects
+from cinder.objects import fields
 from cinder.volume import utils as volume_utils
 
 LOG = logging.getLogger(__name__)
@@ -468,7 +469,8 @@ class ChunkedBackupDriver(driver.BackupDriver):
             # has been changed to delete or has been deleted, we cancel the
             # backup process to do forcing delete.
             backup = objects.Backup.get_by_id(self.context, backup.id)
-            if 'deleting' == backup.status or 'deleted' == backup.status:
+            if backup.status in (fields.BackupStatus.DELETING,
+                                 fields.BackupStatus.DELETED):
                 is_backup_canceled = True
                 # To avoid the chunk left when deletion complete, need to
                 # clean up the object of chunk again.
