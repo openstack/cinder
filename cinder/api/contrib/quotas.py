@@ -231,7 +231,7 @@ class QuotaSetsController(wsgi.Controller):
             # NOTE(e0ne): Keystone API v2 requires admin permissions for
             # project_get method. We ignore Forbidden exception for
             # non-admin users.
-            parent_project_id = target_project_id
+            parent_project_id = None
 
         try:
             sqlalchemy_api.authorize_project_context(context,
