@@ -1640,7 +1640,7 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
 
     def test_get_volume_status(self):
         data = self.driver.get_volume_stats()
-        self.assertEqual('2.0.2', data['driver_version'])
+        self.assertEqual('2.0.3', data['driver_version'])
 
     def test_extend_volume(self):
         lun_info = self.driver.extend_volume(test_volume, 3)
@@ -2162,6 +2162,159 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
             self.driver.unmanage(test_volume)
             self.assertEqual(ddt_data[1], mock_rename.call_count)
 
+    @mock.patch.object(rest_client.RestClient, 'get_snapshot_info',
+                       return_value={'ID': 'ID1',
+                                     'NAME': 'test1',
+                                     'PARENTID': '12',
+                                     'USERCAPACITY': 2097152,
+                                     'HEALTHSTATUS': '2'})
+    @mock.patch.object(rest_client.RestClient, 'get_snapshot_id_by_name',
+                       return_value='ID1')
+    def test_manage_existing_snapshot_abnormal(self, mock_get_by_name,
+                                               mock_get_info):
+        with mock.patch.object(huawei_driver.HuaweiBaseDriver,
+                               '_get_snapshot_info_by_ref',
+                               return_value={'HEALTHSTATUS': '2',
+                                             'PARENTID': '12'}):
+            test_snapshot = {'volume_id': '21ec7341-9256-497b-97d9-ef48edcf',
+                             'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
+                             'volume': {'provider_location': '12'}}
+            external_ref = {'source-name': 'test1'}
+            ex = self.assertRaises(exception.ManageExistingInvalidReference,
+                                   self.driver.manage_existing_snapshot,
+                                   test_snapshot, external_ref)
+            self.assertIsNotNone(re.search('Snapshot status is not normal',
+                                           ex.msg))
+
+    @mock.patch.object(rest_client.RestClient, 'get_snapshot_info',
+                       return_value={'ID': 'ID1',
+                                     'EXPOSEDTOINITIATOR': 'true',
+                                     'NAME': 'test1',
+                                     'PARENTID': '12',
+                                     'USERCAPACITY': 2097152,
+                                     'HEALTHSTATUS': constants.STATUS_HEALTH})
+    @mock.patch.object(rest_client.RestClient, 'get_snapshot_id_by_name',
+                       return_value='ID1')
+    def test_manage_existing_snapshot_with_lungroup(self, mock_get_by_name,
+                                                    mock_get_info):
+        # Already in LUN group.
+        test_snapshot = {'volume_id': '21ec7341-9256-497b-97d9-ef48edcf0635',
+                         'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
+                         'volume': {'provider_location': '12'}}
+        external_ref = {'source-name': 'test1'}
+        ex = self.assertRaises(exception.ManageExistingInvalidReference,
+                               self.driver.manage_existing_snapshot,
+                               test_snapshot, external_ref)
+        self.assertIsNotNone(re.search('Snapshot is exposed to initiator',
+                                       ex.msg))
+
+    @mock.patch.object(rest_client.RestClient, 'rename_snapshot')
+    @mock.patch.object(huawei_driver.HuaweiBaseDriver,
+                       '_get_snapshot_info_by_ref',
+                       return_value={'ID': 'ID1',
+                                     'EXPOSEDTOINITIATOR': 'false',
+                                     'NAME': 'test1',
+                                     'PARENTID': '12',
+                                     'USERCAPACITY': 2097152,
+                                     'HEALTHSTATUS': constants.STATUS_HEALTH})
+    @mock.patch.object(rest_client.RestClient, 'get_snapshot_info',
+                       return_value={'ID': 'ID1',
+                                     'EXPOSEDTOINITIATOR': 'false',
+                                     'NAME': 'test1',
+                                     'PARENTID': '12',
+                                     'USERCAPACITY': 2097152,
+                                     'HEALTHSTATUS': constants.STATUS_HEALTH})
+    @mock.patch.object(rest_client.RestClient, 'get_snapshot_id_by_name',
+                       return_value='ID1')
+    def test_manage_existing_snapshot_success(self, mock_get_by_name,
+                                              mock_get_info,
+                                              mock_check_snapshot,
+                                              mock_rename):
+        test_snapshot = {'volume_id': '21ec7341-9256-497b-97d9-ef48edcf0635',
+                         'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
+                         'volume': {'provider_location': '12'}}
+        external_ref = {'source-name': 'test1'}
+        model_update = self.driver.manage_existing_snapshot(test_snapshot,
+                                                            external_ref)
+        self.assertEqual({'provider_location': 'ID1'}, model_update)
+
+        test_snapshot = {'volume_id': '21ec7341-9256-497b-97d9-ef48edcf0635',
+                         'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
+                         'volume': {'provider_location': '12'}}
+        external_ref = {'source-id': 'ID1'}
+        model_update = self.driver.manage_existing_snapshot(test_snapshot,
+                                                            external_ref)
+        self.assertEqual({'provider_location': 'ID1'}, model_update)
+
+    @mock.patch.object(rest_client.RestClient, 'get_snapshot_info',
+                       return_value={'ID': 'ID1',
+                                     'EXPOSEDTOINITIATOR': 'false',
+                                     'NAME': 'test1',
+                                     'USERCAPACITY': 2097152,
+                                     'PARENTID': '11',
+                                     'HEALTHSTATUS': constants.STATUS_HEALTH})
+    @mock.patch.object(rest_client.RestClient, 'get_snapshot_id_by_name',
+                       return_value='ID1')
+    def test_manage_existing_snapshot_mismatch_lun(self, mock_get_by_name,
+                                                   mock_get_info):
+        external_ref = {'source-name': 'test1'}
+        test_snapshot = {'volume_id': '21ec7341-9256-497b-97d9-ef48edcf0635',
+                         'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
+                         'volume': {'provider_location': '12'}}
+        ex = self.assertRaises(exception.ManageExistingInvalidReference,
+                               self.driver.manage_existing_snapshot,
+                               test_snapshot, external_ref)
+        self.assertIsNotNone(re.search("Snapshot doesn't belong to volume",
+                                       ex.msg))
+
+    @mock.patch.object(rest_client.RestClient, 'get_snapshot_info',
+                       return_value={'USERCAPACITY': 2097152})
+    @mock.patch.object(rest_client.RestClient, 'get_snapshot_id_by_name',
+                       return_value='ID1')
+    def test_manage_existing_snapshot_get_size_success(self,
+                                                       mock_get_id_by_name,
+                                                       mock_get_info):
+        external_ref = {'source-name': 'test1',
+                        'source-id': 'ID1'}
+        test_snapshot = {'volume_id': '21ec7341-9256-497b-97d9-ef48edcf0635',
+                         'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
+                         'volume': {'provider_location': '12'}}
+        size = self.driver.manage_existing_snapshot_get_size(test_snapshot,
+                                                             external_ref)
+        self.assertEqual(1, size)
+
+        external_ref = {'source-name': 'test1'}
+        test_snapshot = {'volume_id': '21ec7341-9256-497b-97d9-ef48edcf0635',
+                         'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
+                         'volume': {'provider_location': '12'}}
+        size = self.driver.manage_existing_snapshot_get_size(test_snapshot,
+                                                             external_ref)
+        self.assertEqual(1, size)
+
+        external_ref = {'source-id': 'ID1'}
+        test_snapshot = {'volume_id': '21ec7341-9256-497b-97d9-ef48edcf0635',
+                         'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
+                         'volume': {'provider_location': '12'}}
+        size = self.driver.manage_existing_snapshot_get_size(test_snapshot,
+                                                             external_ref)
+        self.assertEqual(1, size)
+
+    @mock.patch.object(rest_client.RestClient, 'rename_snapshot')
+    def test_unmanage_snapshot(self, mock_rename):
+        test_snapshot = {'volume_id': '21ec7341-9256-497b-97d9-ef48edcf0635',
+                         'id': '21ec7341-9256-497b-97d9-ef48edcf0635'}
+        with mock.patch.object(rest_client.RestClient,
+                               'get_snapshot_id_by_name',
+                               return_value=None):
+            self.driver.unmanage_snapshot(test_snapshot)
+            self.assertEqual(0, mock_rename.call_count)
+
+        with mock.patch.object(rest_client.RestClient,
+                               'get_snapshot_id_by_name',
+                               return_value='ID1'):
+            self.driver.unmanage_snapshot(test_snapshot)
+            self.assertEqual(1, mock_rename.call_count)
+
 
 class FCSanLookupService(object):
 
@@ -2236,7 +2389,7 @@ class HuaweiFCDriverTestCase(test.TestCase):
     def test_get_volume_status(self):
 
         data = self.driver.get_volume_stats()
-        self.assertEqual('2.0.2', data['driver_version'])
+        self.assertEqual('2.0.3', data['driver_version'])
 
     def test_extend_volume(self):
 
