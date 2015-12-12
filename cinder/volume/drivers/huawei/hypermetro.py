@@ -1,4 +1,4 @@
-# Copyright (c) 2015 Huawei Technologies Co., Ltd.
+# Copyright (c) 2016 Huawei Technologies Co., Ltd.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -14,67 +14,59 @@
 #    under the License.
 #
 
-import six
-
 from oslo_log import log as logging
 
 from cinder import exception
 from cinder.i18n import _, _LI, _LW
 from cinder.volume.drivers.huawei import constants
 from cinder.volume.drivers.huawei import huawei_utils
-from cinder.volume.drivers.huawei import rest_client
 
 LOG = logging.getLogger(__name__)
 
 
 class HuaweiHyperMetro(object):
 
-    def __init__(self, client, rmt_client, configuration):
+    def __init__(self, client, rmt_client, configuration, db):
+        self.db = db
         self.client = client
         self.rmt_client = rmt_client
         self.configuration = configuration
-        self.xml_file_path = self.configuration.cinder_huawei_conf_file
 
-    def create_hypermetro(self, local_lun_id, lun_param):
+    def create_hypermetro(self, local_lun_id, lun_params):
         """Create hypermetro."""
-        metro_devices = self.configuration.hypermetro_devices
-        device_info = huawei_utils.get_remote_device_info(metro_devices)
-        self.rmt_client = rest_client.RestClient(self.configuration)
-        self.rmt_client.login_with_ip(device_info)
 
         try:
             # Get the remote pool info.
-            config_pool = device_info['StoragePool']
-            remote_pool = self.rmt_client.find_all_pools()
-            pool = self.rmt_client.find_pool_info(config_pool,
-                                                  remote_pool)
-            # Create remote lun
-            lun_param['PARENTID'] = pool['ID']
-            remotelun_info = self.rmt_client.create_volume(lun_param)
+            config_pool = self.configuration.metro_storage_pools
+            remote_pool = self.rmt_client.get_all_pools()
+            pool = self.rmt_client.get_pool_info(config_pool, remote_pool)
+            # Create remote lun.
+            lun_params['pool_id'] = pool['ID']
+            remotelun_info = self.rmt_client.create_lun(lun_params)
             remote_lun_id = remotelun_info['ID']
 
-            # Get hypermetro domain
+            # Get hypermetro domain.
             try:
-                domain_name = device_info['domain_name']
+                domain_name = self.configuration.metro_domain_name
                 domain_id = self.rmt_client.get_hyper_domain_id(domain_name)
                 self._wait_volume_ready(remote_lun_id)
                 hypermetro = self._create_hypermetro_pair(domain_id,
                                                           local_lun_id,
                                                           remote_lun_id)
 
-                return hypermetro['ID'], remote_lun_id
-            except Exception as err:
+                LOG.info(_LI("Hypermetro id: %(metro_id)s. "
+                             "Remote lun id: %(remote_lun_id)s."),
+                         {'metro_id': hypermetro['ID'],
+                          'remote_lun_id': remote_lun_id})
+
+                return {'hypermetro_id': hypermetro['ID'],
+                        'remote_lun_id': remote_lun_id}
+            except exception.VolumeBackendAPIException as err:
                 self.rmt_client.delete_lun(remote_lun_id)
                 msg = _('Create hypermetro error. %s.') % err
                 raise exception.VolumeBackendAPIException(data=msg)
         except exception.VolumeBackendAPIException:
             raise
-        except Exception as err:
-            msg = _("Create remote LUN error. %s.") % err
-            LOG.exception(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-        finally:
-            self.rmt_client.logout()
 
     def delete_hypermetro(self, volume):
         """Delete hypermetro."""
@@ -96,21 +88,8 @@ class HuaweiHyperMetro(object):
                 self.client.delete_hypermetro(metro_id)
 
         # Delete remote lun.
-        if remote_lun_id:
-            metro_devices = self.configuration.hypermetro_devices
-            device_info = huawei_utils.get_remote_device_info(metro_devices)
-            self.rmt_client = rest_client.RestClient(self.configuration)
-            self.rmt_client.login_with_ip(device_info)
-
-            try:
-                if self.rmt_client.check_lun_exist(remote_lun_id):
-                    self.rmt_client.delete_lun(remote_lun_id)
-            except Exception as err:
-                msg = _("Delete remote lun err. %s.") % err
-                LOG.exception(msg)
-                raise exception.VolumeBackendAPIException(data=msg)
-            finally:
-                self.rmt_client.logout()
+        if remote_lun_id and self.rmt_client.check_lun_exist(remote_lun_id):
+            self.rmt_client.delete_lun(remote_lun_id)
 
     def _create_hypermetro_pair(self, domain_id, lun_id, remote_lun_id):
         """Create a HyperMetroPair."""
@@ -126,78 +105,64 @@ class HuaweiHyperMetro(object):
 
     def connect_volume_fc(self, volume, connector):
         """Create map between a volume and a host for FC."""
-        self.xml_file_path = self.configuration.cinder_huawei_conf_file
-        metro_devices = self.configuration.hypermetro_devices
-        device_info = huawei_utils.get_remote_device_info(metro_devices)
-        self.rmt_client = rest_client.RestClient(self.configuration)
-        self.rmt_client.login_with_ip(device_info)
+        wwns = connector['wwpns']
+        volume_name = huawei_utils.encode_name(volume['id'])
 
-        try:
-            wwns = connector['wwpns']
-            volume_name = huawei_utils.encode_name(volume['id'])
+        LOG.info(_LI(
+            'initialize_connection_fc, initiator: %(wwpns)s,'
+            ' volume name: %(volume)s.'),
+            {'wwpns': wwns,
+             'volume': volume_name})
 
-            LOG.info(_LI(
-                'initialize_connection_fc, initiator: %(wwpns)s,'
-                ' volume name: %(volume)s.'),
-                {'wwpns': wwns,
-                 'volume': volume_name})
+        metadata = huawei_utils.get_volume_metadata(volume)
+        lun_id = metadata['remote_lun_id']
 
-            metadata = huawei_utils.get_volume_metadata(volume)
-            lun_id = metadata['remote_lun_id']
+        if lun_id is None:
+            lun_id = self.rmt_client.get_lun_id_by_name(volume_name)
+        if lun_id is None:
+            msg = _("Can't get volume id. Volume name: %s.") % volume_name
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
 
-            if lun_id is None:
-                lun_id = self.rmt_client.get_volume_by_name(volume_name)
-            if lun_id is None:
-                msg = _("Can't get volume id. Volume name: %s.") % volume_name
+        original_host_name = connector['host']
+        host_name = huawei_utils.encode_host_name(original_host_name)
+        host_id = self.client.add_host_with_check(host_name,
+                                                  original_host_name)
+
+        # Create hostgroup if not exist.
+        host_id = self.rmt_client.add_host_with_check(
+            host_name, original_host_name)
+
+        online_wwns_in_host = (
+            self.rmt_client.get_host_online_fc_initiators(host_id))
+        online_free_wwns = self.rmt_client.get_online_free_wwns()
+        for wwn in wwns:
+            if (wwn not in online_wwns_in_host
+                    and wwn not in online_free_wwns):
+                wwns_in_host = (
+                    self.rmt_client.get_host_fc_initiators(host_id))
+                iqns_in_host = (
+                    self.rmt_client.get_host_iscsi_initiators(host_id))
+                if not (wwns_in_host or iqns_in_host):
+                    self.rmt_client.remove_host(host_id)
+
+                msg = _('Can not add FC port to host.')
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
 
-            host_name_before_hash = None
-            host_name = connector['host']
-            if host_name and (len(host_name) > constants.MAX_HOSTNAME_LENGTH):
-                host_name_before_hash = host_name
-                host_name = six.text_type(hash(host_name))
+        for wwn in wwns:
+            if wwn in online_free_wwns:
+                self.rmt_client.add_fc_port_to_host(host_id, wwn)
 
-            # Create hostgroup if not exist.
-            host_id = self.rmt_client.add_host_with_check(
-                host_name, host_name_before_hash)
+        (tgt_port_wwns, init_targ_map) = (
+            self.rmt_client.get_init_targ_map(wwns))
 
-            online_wwns_in_host = (
-                self.rmt_client.get_host_online_fc_initiators(host_id))
-            online_free_wwns = self.rmt_client.get_online_free_wwns()
-            for wwn in wwns:
-                if (wwn not in online_wwns_in_host
-                        and wwn not in online_free_wwns):
-                    wwns_in_host = (
-                        self.rmt_client.get_host_fc_initiators(host_id))
-                    iqns_in_host = (
-                        self.rmt_client.get_host_iscsi_initiators(host_id))
-                    if not wwns_in_host and not iqns_in_host:
-                        self.rmt_client.remove_host(host_id)
-
-                    msg = _('Can not add FC port to host.')
-                    LOG.error(msg)
-                    raise exception.VolumeBackendAPIException(data=msg)
-
-            for wwn in wwns:
-                if wwn in online_free_wwns:
-                    self.rmt_client.add_fc_port_to_host(host_id, wwn)
-
-            (tgt_port_wwns, init_targ_map) = (
-                self.rmt_client.get_init_targ_map(wwns))
-
-            # Add host into hostgroup.
-            hostgroup_id = self.rmt_client.add_host_into_hostgroup(host_id)
-            map_info = self.rmt_client.do_mapping(lun_id,
-                                                  hostgroup_id,
-                                                  host_id)
-            host_lun_id = self.rmt_client.find_host_lun_id(host_id, lun_id)
-        except exception.VolumeBackendAPIException:
-            raise
-        except Exception as err:
-            msg = _("Connect volume fc: connect volume error. %s.") % err
-            LOG.exception(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+        # Add host into hostgroup.
+        hostgroup_id = self.rmt_client.add_host_to_hostgroup(host_id)
+        map_info = self.rmt_client.do_mapping(lun_id,
+                                              hostgroup_id,
+                                              host_id)
+        host_lun_id = self.rmt_client.get_host_lun_id(host_id, lun_id)
 
         # Return FC properties.
         fc_info = {'driver_volume_type': 'fibre_channel',
@@ -216,76 +181,61 @@ class HuaweiHyperMetro(object):
     def disconnect_volume_fc(self, volume, connector):
         """Delete map between a volume and a host for FC."""
         # Login remote storage device.
-        self.xml_file_path = self.configuration.cinder_huawei_conf_file
-        metro_devices = self.configuration.hypermetro_devices
-        device_info = huawei_utils.get_remote_device_info(metro_devices)
-        self.rmt_client = rest_client.RestClient(self.configuration)
-        self.rmt_client.login_with_ip(device_info)
 
-        try:
-            wwns = connector['wwpns']
-            volume_name = huawei_utils.encode_name(volume['id'])
-            metadata = huawei_utils.get_volume_metadata(volume)
-            lun_id = metadata['remote_lun_id']
-            host_name = connector['host']
-            left_lunnum = -1
-            lungroup_id = None
-            view_id = None
+        wwns = connector['wwpns']
+        volume_name = huawei_utils.encode_name(volume['id'])
+        metadata = huawei_utils.get_volume_metadata(volume)
+        lun_id = metadata['remote_lun_id']
+        host_name = connector['host']
+        left_lunnum = -1
+        lungroup_id = None
+        view_id = None
 
-            LOG.info(_LI('terminate_connection_fc: volume name: %(volume)s, '
-                         'wwpns: %(wwns)s, '
-                         'lun_id: %(lunid)s.'),
-                     {'volume': volume_name,
-                      'wwns': wwns,
-                      'lunid': lun_id},)
+        LOG.info(_LI('terminate_connection_fc: volume name: %(volume)s, '
+                     'wwpns: %(wwns)s, '
+                     'lun_id: %(lunid)s.'),
+                 {'volume': volume_name,
+                  'wwns': wwns,
+                  'lunid': lun_id},)
 
-            if host_name and (len(host_name) > constants.MAX_HOSTNAME_LENGTH):
-                host_name = six.text_type(hash(host_name))
+        host_name = huawei_utils.encode_host_name(host_name)
+        hostid = self.rmt_client.get_host_id_by_name(host_name)
+        if hostid:
+            mapping_view_name = constants.MAPPING_VIEW_PREFIX + hostid
+            view_id = self.rmt_client.find_mapping_view(
+                mapping_view_name)
+            if view_id:
+                lungroup_id = self.rmt_client.find_lungroup_from_map(
+                    view_id)
 
-            hostid = self.rmt_client.find_host(host_name)
-            if hostid:
-                mapping_view_name = constants.MAPPING_VIEW_PREFIX + hostid
-                view_id = self.rmt_client.find_mapping_view(
-                    mapping_view_name)
-                if view_id:
-                    lungroup_id = self.rmt_client.find_lungroup_from_map(
-                        view_id)
-
-            if lun_id and self.rmt_client.check_lun_exist(lun_id):
-                if lungroup_id:
-                    lungroup_ids = self.rmt_client.get_lungroupids_by_lunid(
-                        lun_id)
-                    if lungroup_id in lungroup_ids:
-                        self.rmt_client.remove_lun_from_lungroup(
-                            lungroup_id, lun_id)
-                    else:
-                        LOG.warning(_LW("Lun is not in lungroup. "
-                                        "Lun id: %(lun_id)s, "
-                                        "lungroup id: %(lungroup_id)s"),
-                                    {"lun_id": lun_id,
-                                     "lungroup_id": lungroup_id})
-
-            (tgt_port_wwns, init_targ_map) = (
-                self.rmt_client.get_init_targ_map(wwns))
-
-            hostid = self.rmt_client.find_host(host_name)
-            if hostid:
-                mapping_view_name = constants.MAPPING_VIEW_PREFIX + hostid
-                view_id = self.rmt_client.find_mapping_view(
-                    mapping_view_name)
-                if view_id:
-                    lungroup_id = self.rmt_client.find_lungroup_from_map(
-                        view_id)
+        if lun_id and self.rmt_client.check_lun_exist(lun_id):
             if lungroup_id:
-                left_lunnum = self.rmt_client.get_lunnum_from_lungroup(
-                    lungroup_id)
+                lungroup_ids = self.rmt_client.get_lungroupids_by_lunid(
+                    lun_id)
+                if lungroup_id in lungroup_ids:
+                    self.rmt_client.remove_lun_from_lungroup(
+                        lungroup_id, lun_id)
+                else:
+                    LOG.warning(_LW("Lun is not in lungroup. "
+                                    "Lun id: %(lun_id)s, "
+                                    "lungroup id: %(lungroup_id)s"),
+                                {"lun_id": lun_id,
+                                 "lungroup_id": lungroup_id})
 
-        except Exception as err:
-            msg = _("Remote detatch volume error. %s.") % err
-            LOG.exception(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-        finally:
-            self.rmt_client.logout()
+        (tgt_port_wwns, init_targ_map) = (
+            self.rmt_client.get_init_targ_map(wwns))
+
+        hostid = self.rmt_client.get_host_id_by_name(host_name)
+        if hostid:
+            mapping_view_name = constants.MAPPING_VIEW_PREFIX + hostid
+            view_id = self.rmt_client.find_mapping_view(
+                mapping_view_name)
+            if view_id:
+                lungroup_id = self.rmt_client.find_lungroup_from_map(
+                    view_id)
+        if lungroup_id:
+            left_lunnum = self.rmt_client.get_lunnum_from_lungroup(
+                lungroup_id)
 
         if int(left_lunnum) > 0:
             info = {'driver_volume_type': 'fibre_channel',
@@ -298,9 +248,7 @@ class HuaweiHyperMetro(object):
         return info
 
     def _wait_volume_ready(self, lun_id):
-        event_type = 'LUNReadyWaitInterval'
-        wait_interval = huawei_utils.get_wait_interval(self.xml_file_path,
-                                                       event_type)
+        wait_interval = self.configuration.lun_ready_wait_interval
 
         def _volume_ready():
             result = self.rmt_client.get_lun_info(lun_id)
@@ -309,8 +257,7 @@ class HuaweiHyperMetro(object):
                 return True
             return False
 
-        huawei_utils.wait_for_condition(self.xml_file_path,
-                                        _volume_ready,
+        huawei_utils.wait_for_condition(_volume_ready,
                                         wait_interval,
                                         wait_interval * 10)
 

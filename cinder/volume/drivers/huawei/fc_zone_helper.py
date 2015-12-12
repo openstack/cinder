@@ -1,4 +1,4 @@
-# Copyright (c) 2015 Huawei Technologies Co., Ltd.
+# Copyright (c) 2016 Huawei Technologies Co., Ltd.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -23,14 +23,14 @@ LOG = logging.getLogger(__name__)
 class FCZoneHelper(object):
     """FC zone helper for Huawei driver."""
 
-    def __init__(self, fcsan_lookup_service, restclient):
+    def __init__(self, fcsan_lookup_service, client):
         self.fcsan_lookup_service = fcsan_lookup_service
-        self.restclient = restclient
+        self.client = client
 
     def _get_fc_port_contr_map(self):
         port_list = []
         port_contr_map = {}
-        data = self.restclient.get_fc_ports_on_array()
+        data = self.client.get_fc_ports_on_array()
         for item in data:
             if item['RUNNINGSTATUS'] == constants.FC_PORT_CONNECTED:
                 port_list.append(item['WWN'])
