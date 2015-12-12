@@ -1076,22 +1076,29 @@ class VolumeManager(manager.SchedulerDependentManager):
         reservations = QUOTAS.reserve(ctx, **reserve_opts)
 
         try:
-            new_vol_values = {}
-            for k, v in volume.items():
-                new_vol_values[k] = v
-            del new_vol_values['id']
-            del new_vol_values['_name_id']
-            del new_vol_values['volume_type']
+            new_vol_values = dict(volume.items())
+            new_vol_values.pop('id', None)
+            new_vol_values.pop('_name_id', None)
+            new_vol_values.pop('volume_type', None)
+            new_vol_values.pop('name', None)
+
             new_vol_values['volume_type_id'] = volume_type_id
             new_vol_values['attach_status'] = 'detached'
-            new_vol_values['volume_attachment'] = []
             new_vol_values['status'] = 'creating'
             new_vol_values['project_id'] = ctx.project_id
             new_vol_values['display_name'] = 'image-%s' % image_meta['id']
             new_vol_values['source_volid'] = volume.id
+
             LOG.debug('Creating image volume entry: %s.', new_vol_values)
-            image_volume = self.db.volume_create(ctx, new_vol_values)
-        except Exception:
+            image_volume = objects.Volume(context=ctx, **new_vol_values)
+            image_volume.create()
+        except Exception as ex:
+            LOG.exception(_LE('Create clone_image_volume: %(volume_id)s'
+                              'for image %(image_id)s, '
+                              'failed (Exception: %(except)s)'),
+                          {'volume_id': volume.id,
+                           'image_id': image_meta['id'],
+                           'except': ex})
             QUOTAS.rollback(ctx, reservations)
             return False
 
