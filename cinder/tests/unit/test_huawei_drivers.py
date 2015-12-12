@@ -31,6 +31,7 @@ from cinder.volume.drivers.huawei import fc_zone_helper
 from cinder.volume.drivers.huawei import huawei_conf
 from cinder.volume.drivers.huawei import huawei_driver
 from cinder.volume.drivers.huawei import hypermetro
+from cinder.volume.drivers.huawei import replication
 from cinder.volume.drivers.huawei import rest_client
 from cinder.volume.drivers.huawei import smartx
 
@@ -98,6 +99,31 @@ hyper_volume = {'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0635',
                                      'value': '11'}],
                 }
 
+sync_replica_specs = {'replication_enabled': '<is> True',
+                      'replication_type': '<in> sync'}
+async_replica_specs = {'replication_enabled': '<is> True',
+                       'replication_type': '<in> async'}
+
+TEST_PAIR_ID = "3400a30d844d0004"
+replication_volume = {
+    'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0635',
+    'size': 2,
+    'volume_name': 'vol1',
+    'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
+    'volume_id': '21ec7341-9256-497b-97d9-ef48edcf0635',
+    'provider_auth': None,
+    'project_id': 'project',
+    'display_name': 'vol1',
+    'display_description': 'test volume',
+    'volume_type_id': None,
+    'host': 'ubuntu@huawei#OpenStack_Pool',
+    'provider_location': '11',
+    'metadata': {'lun_wwn': '6643e8c1004c5f6723e9f454003'},
+    'replication_status': 'disabled',
+    'replication_driver_data':
+        '{"pair_id": "%s", "rmt_lun_id": "1"}' % TEST_PAIR_ID,
+}
+
 test_snap = {'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0635',
              'size': 1,
              'volume_name': 'vol1',
@@ -150,6 +176,22 @@ test_new_type = {
         'policy': '2',
         'smartcache:cachename': 'cache-test',
         'smartpartition:partitionname': 'partition-test',
+    },
+    'is_public': True,
+    'deleted_at': None,
+    'id': u'530a56e1-a1a4-49f3-ab6c-779a6e5d999f',
+    'description': None,
+}
+
+test_new_replication_type = {
+    'name': u'new_type',
+    'qos_specs_id': None,
+    'deleted': False,
+    'created_at': None,
+    'updated_at': None,
+    'extra_specs': {
+        'replication_enabled': '<is> True',
+        'replication_type': '<in> sync',
     },
     'is_public': True,
     'deleted_at': None,
@@ -279,7 +321,13 @@ FAKE_LUN_INFO_RESPONSE = """
     },
     "data": {
         "ID": "1",
-        "NAME": "5mFHcBv4RkCcD+JyrWc0SA"
+        "NAME": "5mFHcBv4RkCcD+JyrWc0SA",
+        "WWN": "6643e8c1004c5f6723e9f454003",
+        "DESCRIPTION": "21ec7341-9256-497b-97d9-ef48edcf0635",
+        "HEALTHSTATUS": "1",
+        "RUNNINGSTATUS": "27",
+        "ALLOCTYPE": "1",
+        "CAPACITY": "2097152"
     }
 }
 """
@@ -294,7 +342,7 @@ FAKE_LUN_GET_SUCCESS_RESPONSE = """
         "IOCLASSID": "11",
         "NAME": "5mFHcBv4RkCcD+JyrWc0SA",
         "DESCRIPTION": "21ec7341-9256-497b-97d9-ef48edcf0635",
-        "RUNNINGSTATUS": "2",
+        "RUNNINGSTATUS": "10",
         "HEALTHSTATUS": "1",
         "RUNNINGSTATUS": "27",
         "LUNLIST": "",
@@ -309,7 +357,9 @@ FAKE_LUN_GET_SUCCESS_RESPONSE = """
         "WRITECACHEPOLICY": "5",
         "OWNINGCONTROLLER": "0B",
         "SMARTCACHEPARTITIONID": "",
-        "CACHEPARTITIONID": ""
+        "CACHEPARTITIONID": "",
+        "WWN": "6643e8c1004c5f6723e9f454003",
+        "PARENTNAME": "OpenStack_Pool"
     }
 }
 """
@@ -938,7 +988,8 @@ FAKE_SYSTEM_VERSION_RESPONSE = """
         "code": 0
     },
     "data":{
-        "PRODUCTVERSION": "V100R001C10"
+        "PRODUCTVERSION": "V100R001C10",
+        "wwn": "21003400a30d844d"
     }
 }
 """
@@ -1603,6 +1654,148 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/fc_port/associate?TYPE=213&ASSOCIATEOBJTYPE='
     FAKE_PORTS_IN_PG_RESPONSE)
 
 
+# Replication response
+FAKE_GET_REMOTEDEV_RESPONSE = """
+{
+    "data":[{
+        "ARRAYTYPE":"1",
+        "HEALTHSTATUS":"1",
+        "ID":"0",
+        "NAME":"Huawei.Storage",
+        "RUNNINGSTATUS":"1",
+        "WWN":"21003400a30d844d"
+    }],
+    "error":{
+        "code":0,
+        "description":"0"
+    }
+}
+"""
+MAP_COMMAND_TO_FAKE_RESPONSE['/remote_device/GET'] = (
+    FAKE_GET_REMOTEDEV_RESPONSE)
+
+FAKE_CREATE_PAIR_RESPONSE = """
+{
+    "data":{
+        "ID":"%s"
+    },
+    "error":{
+        "code":0,
+        "description":"0"
+    }
+}
+""" % TEST_PAIR_ID
+MAP_COMMAND_TO_FAKE_RESPONSE['/REPLICATIONPAIR/POST'] = (
+    FAKE_CREATE_PAIR_RESPONSE)
+
+FAKE_DELETE_PAIR_RESPONSE = """
+{
+    "data":{},
+    "error":{
+        "code":0,
+        "description":"0"
+    }
+}
+"""
+MAP_COMMAND_TO_FAKE_RESPONSE['/REPLICATIONPAIR/%s/DELETE' % TEST_PAIR_ID] = (
+    FAKE_DELETE_PAIR_RESPONSE)
+
+FAKE_SET_PAIR_ACCESS_RESPONSE = """
+{
+    "data":{},
+    "error":{
+        "code":0,
+        "description":"0"
+    }
+}
+"""
+MAP_COMMAND_TO_FAKE_RESPONSE['/REPLICATIONPAIR/%s/PUT' % TEST_PAIR_ID] = (
+    FAKE_SET_PAIR_ACCESS_RESPONSE)
+
+FAKE_GET_PAIR_NORMAL_RESPONSE = """
+{
+    "data":{
+        "REPLICATIONMODEL": "1",
+        "RUNNINGSTATUS": "1",
+        "SECRESACCESS": "2",
+        "HEALTHSTATUS": "1",
+        "ISPRIMARY": "true"
+    },
+    "error":{
+        "code":0,
+        "description":"0"
+    }
+}
+"""
+
+FAKE_GET_PAIR_SPLIT_RESPONSE = """
+{
+    "data":{
+        "REPLICATIONMODEL": "1",
+        "RUNNINGSTATUS": "26",
+        "SECRESACCESS": "2",
+        "ISPRIMARY": "true"
+    },
+    "error":{
+        "code":0,
+        "description":"0"
+    }
+}
+"""
+
+FAKE_GET_PAIR_SYNC_RESPONSE = """
+{
+    "data":{
+        "REPLICATIONMODEL": "1",
+        "RUNNINGSTATUS": "23",
+        "SECRESACCESS": "2"
+    },
+    "error":{
+        "code":0,
+        "description":"0"
+    }
+}
+"""
+MAP_COMMAND_TO_FAKE_RESPONSE['/REPLICATIONPAIR/%s/GET' % TEST_PAIR_ID] = (
+    FAKE_GET_PAIR_NORMAL_RESPONSE)
+
+FAKE_SYNC_PAIR_RESPONSE = """
+{
+    "data":{},
+    "error":{
+        "code":0,
+        "description":"0"
+    }
+}
+"""
+MAP_COMMAND_TO_FAKE_RESPONSE['/REPLICATIONPAIR/sync/PUT'] = (
+    FAKE_SYNC_PAIR_RESPONSE)
+
+FAKE_SPLIT_PAIR_RESPONSE = """
+{
+    "data":{},
+    "error":{
+        "code":0,
+        "description":"0"
+    }
+}
+"""
+MAP_COMMAND_TO_FAKE_RESPONSE['/REPLICATIONPAIR/split/PUT'] = (
+    FAKE_SPLIT_PAIR_RESPONSE)
+
+FAKE_SWITCH_PAIR_RESPONSE = """
+{
+    "data":{},
+    "error":{
+        "code":0,
+        "description":"0"
+    }
+}
+"""
+MAP_COMMAND_TO_FAKE_RESPONSE['/REPLICATIONPAIR/switch/PUT'] = (
+    FAKE_SWITCH_PAIR_RESPONSE)
+
+
 def Fake_sleep(time):
     pass
 
@@ -1612,7 +1805,14 @@ class FakeHuaweiConf(object):
         self.conf = conf
         self.protocol = protocol
 
+    def safe_get(self, key):
+        try:
+            return getattr(self.conf, key)
+        except Exception:
+            return
+
     def update_config_value(self):
+        setattr(self.conf, 'volume_backend_name', 'huawei_storage')
         setattr(self.conf, 'san_address',
                 ['http://100.115.10.69:8082/deviceManager/rest/'])
         setattr(self.conf, 'san_user', 'admin')
@@ -1645,6 +1845,16 @@ class FakeHuaweiConf(object):
                       'ALUA': '1',
                       'TargetPortGroup': 'portgroup-test', }
         setattr(self.conf, 'iscsi_info', [iscsi_info])
+
+        targets = [{'target_device_id': 'huawei-replica-1',
+                    'managed_backend_name': 'ubuntu@huawei2#OpenStack_Pool',
+                    'san_address':
+                        'https://100.97.10.69:8088/deviceManager/rest/',
+                    'san_user': 'admin',
+                    'san_password': 'Admin@storage1'}]
+        setattr(self.conf, 'replication_device', targets)
+
+        setattr(self.conf, 'safe_get', self.safe_get)
 
 
 class FakeClient(rest_client.RestClient):
@@ -1717,6 +1927,11 @@ class FakeDB(object):
         return volumes
 
 
+class FakeReplicaPairManager(replication.ReplicaPairManager):
+    def _init_rmt_client(self):
+        self.rmt_client = FakeClient(self.conf)
+
+
 class FakeISCSIStorage(huawei_driver.HuaweiISCSIDriver):
     """Fake Huawei Storage, Rewrite some methods of HuaweiISCSIDriver."""
 
@@ -1734,6 +1949,7 @@ class FakeISCSIStorage(huawei_driver.HuaweiISCSIDriver):
                                                  self.rmt_client,
                                                  self.configuration,
                                                  self.db)
+        self.replica = FakeReplicaPairManager(self.client, self.configuration)
 
 
 class FakeFCStorage(huawei_driver.HuaweiFCDriver):
@@ -1754,6 +1970,7 @@ class FakeFCStorage(huawei_driver.HuaweiFCDriver):
                                                  self.rmt_client,
                                                  self.configuration,
                                                  self.db)
+        self.replica = FakeReplicaPairManager(self.client, self.configuration)
 
 
 @ddt.ddt
@@ -1836,9 +2053,20 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         self.assertTrue(delete_flag)
 
     def test_create_volume_from_snapsuccess(self):
-        lun_info = self.driver.create_volume_from_snapshot(test_volume,
-                                                           test_volume)
-        self.assertEqual('1', lun_info['provider_location'])
+        self.mock_object(
+            huawei_driver.HuaweiBaseDriver,
+            '_get_volume_type',
+            mock.Mock(return_value={'extra_specs': sync_replica_specs}))
+        self.mock_object(replication.ReplicaCommonDriver, 'sync')
+        model_update = self.driver.create_volume_from_snapshot(test_volume,
+                                                               test_volume)
+        self.assertEqual('1', model_update['provider_location'])
+
+        driver_data = {'pair_id': TEST_PAIR_ID,
+                       'rmt_lun_id': '1'}
+        driver_data = replication.to_string(driver_data)
+        self.assertEqual(driver_data, model_update['replication_driver_data'])
+        self.assertEqual('enabled', model_update['replication_status'])
 
     def test_initialize_connection_success(self):
         iscsi_properties = self.driver.initialize_connection(test_volume,
@@ -1850,7 +2078,7 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
 
     def test_get_volume_status(self):
         data = self.driver.get_volume_stats()
-        self.assertEqual('2.0.3', data['driver_version'])
+        self.assertEqual('2.0.5', data['driver_version'])
 
     def test_extend_volume(self):
 
@@ -2501,6 +2729,311 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
             self.driver.unmanage_snapshot(test_snapshot)
             self.assertEqual(1, mock_rename.call_count)
 
+    def test_init_rmt_client(self):
+        self.mock_object(rest_client, 'RestClient',
+                         mock.Mock(return_value=None))
+        replica = replication.ReplicaPairManager(self.driver.client,
+                                                 self.configuration)
+        self.assertEqual(replica.rmt_pool, 'OpenStack_Pool')
+        self.assertEqual(replica.target_dev_id, 'huawei-replica-1')
+
+    @ddt.data(sync_replica_specs, async_replica_specs)
+    def test_create_replication_success(self, mock_type):
+        self.mock_object(replication.ReplicaCommonDriver, 'sync')
+        self.mock_object(
+            huawei_driver.HuaweiBaseDriver,
+            '_get_volume_type',
+            mock.Mock(return_value={'extra_specs': mock_type}))
+
+        model_update = self.driver.create_volume(replication_volume)
+        driver_data = {'pair_id': TEST_PAIR_ID,
+                       'rmt_lun_id': '1'}
+        driver_data = replication.to_string(driver_data)
+        self.assertEqual(driver_data, model_update['replication_driver_data'])
+        self.assertEqual('enabled', model_update['replication_status'])
+
+    @ddt.data(
+        [
+            rest_client.RestClient,
+            'get_array_info',
+            mock.Mock(
+                side_effect=exception.VolumeBackendAPIException(data='err'))
+        ],
+        [
+            rest_client.RestClient,
+            'get_remote_devices',
+            mock.Mock(
+                side_effect=exception.VolumeBackendAPIException(data='err'))
+        ],
+        [
+            rest_client.RestClient,
+            'get_remote_devices',
+            mock.Mock(return_value={})
+        ],
+        [
+            replication.ReplicaPairManager,
+            'wait_volume_online',
+            mock.Mock(side_effect=[
+                None,
+                exception.VolumeBackendAPIException(data='err')])
+        ],
+        [
+            rest_client.RestClient,
+            'create_pair',
+            mock.Mock(
+                side_effect=exception.VolumeBackendAPIException(data='err'))
+        ],
+        [
+            replication.ReplicaCommonDriver,
+            'sync',
+            mock.Mock(
+                side_effect=exception.VolumeBackendAPIException(data='err'))
+        ],
+    )
+    @ddt.unpack
+    def test_create_replication_fail(self, mock_module, mock_func, mock_value):
+        self.mock_object(
+            huawei_driver.HuaweiBaseDriver,
+            '_get_volume_type',
+            mock.Mock(return_value={'extra_specs': sync_replica_specs}))
+        self.mock_object(replication.ReplicaPairManager, '_delete_pair')
+        self.mock_object(mock_module, mock_func, mock_value)
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.driver.create_volume, replication_volume)
+
+    def test_delete_replication_success(self):
+        self.mock_object(replication.ReplicaCommonDriver, 'split')
+        self.mock_object(
+            huawei_driver.HuaweiBaseDriver,
+            '_get_volume_type',
+            mock.Mock(return_value={'extra_specs': sync_replica_specs}))
+        self.driver.delete_volume(replication_volume)
+
+        self.mock_object(rest_client.RestClient, 'check_lun_exist',
+                         mock.Mock(return_value=False))
+        self.driver.delete_volume(replication_volume)
+
+    def test_wait_volume_online(self):
+        replica = FakeReplicaPairManager(self.driver.client,
+                                         self.configuration)
+        lun_info = {'ID': '11'}
+
+        replica.wait_volume_online(self.driver.client, lun_info)
+
+        offline_status = {'RUNNINGSTATUS': '28'}
+        replica.wait_volume_online(self.driver.client, lun_info)
+
+        with mock.patch.object(rest_client.RestClient, 'get_lun_info',
+                               offline_status):
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              replica.wait_volume_online,
+                              self.driver.client,
+                              lun_info)
+
+    def test_wait_second_access(self):
+        pair_id = '1'
+        access_ro = constants.REPLICA_SECOND_RO
+        access_rw = constants.REPLICA_SECOND_RW
+        op = replication.PairOp(self.driver.client)
+        common_driver = replication.ReplicaCommonDriver(self.configuration, op)
+        self.mock_object(replication.PairOp, 'get_replica_info',
+                         mock.Mock(return_value={'SECRESACCESS': access_ro}))
+
+        common_driver.wait_second_access(pair_id, access_ro)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          common_driver.wait_second_access, pair_id, access_rw)
+
+    def test_wait_replica_ready(self):
+        normal_status = {
+            'RUNNINGSTATUS': constants.REPLICA_RUNNING_STATUS_NORMAL,
+            'HEALTHSTATUS': constants.REPLICA_HEALTH_STATUS_NORMAL
+        }
+        split_status = {
+            'RUNNINGSTATUS': constants.REPLICA_RUNNING_STATUS_SPLIT,
+            'HEALTHSTATUS': constants.REPLICA_HEALTH_STATUS_NORMAL
+        }
+        sync_status = {
+            'RUNNINGSTATUS': constants.REPLICA_RUNNING_STATUS_SYNC,
+            'HEALTHSTATUS': constants.REPLICA_HEALTH_STATUS_NORMAL
+        }
+        pair_id = '1'
+        op = replication.PairOp(self.driver.client)
+        common_driver = replication.ReplicaCommonDriver(self.configuration, op)
+        with mock.patch.object(replication.PairOp, 'get_replica_info',
+                               mock.Mock(return_value=normal_status)):
+            common_driver.wait_replica_ready(pair_id)
+
+        with mock.patch.object(
+                replication.PairOp,
+                'get_replica_info',
+                mock.Mock(side_effect=[sync_status, normal_status])):
+            common_driver.wait_replica_ready(pair_id)
+
+        with mock.patch.object(replication.PairOp, 'get_replica_info',
+                               mock.Mock(return_value=split_status)):
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              common_driver.wait_replica_ready, pair_id)
+
+    def test_replication_enable_success(self):
+        self.mock_object(replication.ReplicaCommonDriver, 'unprotect_second')
+        self.mock_object(replication.ReplicaCommonDriver, 'split')
+        self.mock_object(replication.PairOp, 'is_primary',
+                         mock.Mock(side_effect=[False, True]))
+        self.driver.replication_enable(None, replication_volume)
+
+    @ddt.data(
+        [
+            replication.AbsReplicaOp,
+            'is_running_status',
+            mock.Mock(return_value=False)
+        ],
+        [
+            replication,
+            'get_replication_driver_data',
+            mock.Mock(return_value={})
+        ],
+        [
+            replication.PairOp,
+            'get_replica_info',
+            mock.Mock(return_value={})
+        ],
+    )
+    @ddt.unpack
+    def test_replication_enable_fail(self, mock_module, mock_func, mock_value):
+        self.mock_object(mock_module, mock_func, mock_value)
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.driver.replication_enable, None, replication_volume)
+
+    def test_replication_disable_fail(self):
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.driver.replication_disable, None, replication_volume)
+
+    def test_replication_disable_success(self):
+        self.mock_object(replication.ReplicaCommonDriver, 'split')
+        self.driver.replication_disable(None, replication_volume)
+
+        self.mock_object(replication, 'get_replication_driver_data',
+                         mock.Mock(return_value={}))
+        self.driver.replication_disable(None, replication_volume)
+
+    def test_replication_failover_success(self):
+        self.mock_object(replication.ReplicaCommonDriver, 'split')
+        self.mock_object(replication.PairOp, 'is_primary',
+                         mock.Mock(return_value=False))
+        model_update = self.driver.replication_failover(
+            None, replication_volume, None)
+        self.assertEqual('ubuntu@huawei2#OpenStack_Pool', model_update['host'])
+        self.assertEqual('1', model_update['provider_location'])
+        driver_data = {'pair_id': TEST_PAIR_ID,
+                       'rmt_lun_id': '11'}
+        driver_data = replication.to_string(driver_data)
+        self.assertEqual(driver_data, model_update['replication_driver_data'])
+
+    @ddt.data(
+        [
+            replication.PairOp,
+            'is_primary',
+            mock.Mock(return_value=True)
+        ],
+        [
+            replication.PairOp,
+            'is_primary',
+            mock.Mock(return_value=False)
+        ],
+        [
+            replication,
+            'get_replication_driver_data',
+            mock.Mock(return_value={})
+        ],
+        [
+            replication,
+            'get_replication_driver_data',
+            mock.Mock(return_value={'pair_id': '1'})
+        ],
+    )
+    @ddt.unpack
+    def test_replication_failover_fail(self,
+                                       mock_module, mock_func, mock_value):
+        self.mock_object(
+            replication.ReplicaCommonDriver,
+            'wait_second_access',
+            mock.Mock(
+                side_effect=exception.VolumeBackendAPIException(data="error")))
+        self.mock_object(mock_module, mock_func, mock_value)
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.driver.replication_failover,
+            None,
+            replication_volume, None)
+
+    def test_list_replication_targets(self):
+        info = self.driver.list_replication_targets(None, replication_volume)
+        targets = [{'target_device_id': 'huawei-replica-1'}]
+        self.assertEqual(targets, info['targets'])
+
+        self.mock_object(replication, 'get_replication_driver_data',
+                         mock.Mock(return_value={}))
+        info = self.driver.list_replication_targets(None, replication_volume)
+        self.assertEqual(targets, info['targets'])
+
+    @ddt.data(constants.REPLICA_SECOND_RW, constants.REPLICA_SECOND_RO)
+    def test_replication_protect_second(self, mock_access):
+        replica_id = TEST_PAIR_ID
+        op = replication.PairOp(self.driver.client)
+        common_driver = replication.ReplicaCommonDriver(self.configuration, op)
+
+        self.mock_object(replication.ReplicaCommonDriver, 'wait_second_access')
+        self.mock_object(
+            replication.PairOp,
+            'get_replica_info',
+            mock.Mock(return_value={'SECRESACCESS': mock_access}))
+
+        common_driver.protect_second(replica_id)
+        common_driver.unprotect_second(replica_id)
+
+    def test_replication_sync(self):
+        replica_id = TEST_PAIR_ID
+        op = replication.PairOp(self.driver.client)
+        common_driver = replication.ReplicaCommonDriver(self.configuration, op)
+        async_normal_status = {
+            'REPLICATIONMODEL': constants.REPLICA_ASYNC_MODEL,
+            'RUNNINGSTATUS': constants.REPLICA_RUNNING_STATUS_NORMAL,
+            'HEALTHSTATUS': constants.REPLICA_HEALTH_STATUS_NORMAL
+        }
+
+        self.mock_object(replication.ReplicaCommonDriver, 'protect_second')
+        self.mock_object(replication.PairOp, 'get_replica_info',
+                         mock.Mock(return_value=async_normal_status))
+        common_driver.sync(replica_id, True)
+        common_driver.sync(replica_id, False)
+
+    def test_replication_split(self):
+        replica_id = TEST_PAIR_ID
+        op = replication.PairOp(self.driver.client)
+        common_driver = replication.ReplicaCommonDriver(self.configuration, op)
+
+        self.mock_object(replication.ReplicaCommonDriver, 'wait_expect_state')
+        self.mock_object(replication.PairOp, 'split', mock.Mock(
+            side_effect=exception.VolumeBackendAPIException(data='err')))
+        common_driver.split(replica_id)
+
+    def test_replication_base_op(self):
+        replica_id = '1'
+        op = replication.AbsReplicaOp(None)
+        op.create()
+        op.delete(replica_id)
+        op.protect_second(replica_id)
+        op.unprotect_second(replica_id)
+        op.sync(replica_id)
+        op.split(replica_id)
+        op.switch(replica_id)
+        op.is_primary({})
+        op.get_replica_info(replica_id)
+        op._is_status(None, {'key': 'volue'}, None)
+
 
 class FCSanLookupService(object):
 
@@ -2565,9 +3098,33 @@ class HuaweiFCDriverTestCase(test.TestCase):
         self.assertTrue(self.driver.client.terminateFlag)
 
     def test_get_volume_status(self):
-
+        remote_device_info = {"ARRAYTYPE": "1",
+                              "HEALTHSTATUS": "1",
+                              "RUNNINGSTATUS": "10"}
+        self.mock_object(
+            replication.ReplicaPairManager,
+            'get_remote_device_by_wwn',
+            mock.Mock(return_value=remote_device_info))
         data = self.driver.get_volume_stats()
-        self.assertEqual('2.0.4', data['driver_version'])
+        self.assertEqual('2.0.5', data['driver_version'])
+        self.assertTrue(data['pools'][0]['replication_enabled'])
+        self.assertListEqual(['sync', 'async'],
+                             data['pools'][0]['replication_type'])
+
+        self.mock_object(
+            replication.ReplicaPairManager,
+            'get_remote_device_by_wwn',
+            mock.Mock(return_value={}))
+        data = self.driver.get_volume_stats()
+        self.assertNotIn('replication_enabled', data['pools'][0])
+
+        self.mock_object(
+            replication.ReplicaPairManager,
+            'try_get_remote_wwn',
+            mock.Mock(return_value={}))
+        data = self.driver.get_volume_stats()
+        self.assertEqual('2.0.5', data['driver_version'])
+        self.assertNotIn('replication_enabled', data['pools'][0])
 
     def test_extend_volume(self):
         self.driver.extend_volume(test_volume, 3)
@@ -2753,6 +3310,17 @@ class HuaweiFCDriverTestCase(test.TestCase):
     def test_retype_volume_success(self, mock_add_lun_to_partition):
         retype = self.driver.retype(None, test_volume,
                                     test_new_type, None, test_host)
+        self.assertTrue(retype)
+
+    @mock.patch.object(rest_client.RestClient, 'add_lun_to_partition')
+    @mock.patch.object(
+        huawei_driver.HuaweiBaseDriver,
+        '_get_volume_type',
+        return_value={'extra_specs': sync_replica_specs})
+    def test_retype_replication_volume_success(self, mock_get_type,
+                                               mock_add_lun_to_partition):
+        retype = self.driver.retype(None, test_volume,
+                                    test_new_replication_type, None, test_host)
         self.assertTrue(retype)
 
     def test_retype_volume_cache_fail(self):

@@ -231,7 +231,7 @@ class RestClient(object):
 
         return info
 
-    def get_pool_id(self, volume, pool_name):
+    def get_pool_id(self, pool_name):
         pools = self.get_all_pools()
         pool_info = self.get_pool_info(pool_name, pools)
         if not pool_info:
@@ -1562,11 +1562,15 @@ class RestClient(object):
 
         self._assert_rest_result(result, _('Add lun to cache error.'))
 
-    def find_array_version(self):
+    def get_array_info(self):
         url = "/system/"
         result = self.call(url, None, "GET")
-        self._assert_rest_result(result, _('Find array version error.'))
-        return result['data']['PRODUCTVERSION']
+        self._assert_rest_result(result, _('Get array info error.'))
+        return result.get('data', None)
+
+    def find_array_version(self):
+        info = self.get_array_info()
+        return info.get('PRODUCTVERSION', None)
 
     def remove_host(self, host_id):
         url = "/host/%s" % host_id
@@ -2008,3 +2012,78 @@ class RestClient(object):
         for item in result.get('data', []):
             wwns.append(item['WWN'])
         return wwns
+
+    def get_remote_devices(self):
+        url = "/remote_device"
+        result = self.call(url, None, "GET")
+        self._assert_rest_result(result, _('Get remote devices error.'))
+        return result.get('data', [])
+
+    def create_pair(self, pair_params):
+        url = "/REPLICATIONPAIR"
+        result = self.call(url, pair_params, "POST")
+
+        msg = _('Create replication error.')
+        self._assert_rest_result(result, msg)
+        self._assert_data_in_result(result, msg)
+        return result['data']
+
+    def get_pair_by_id(self, pair_id):
+        url = "/REPLICATIONPAIR/" + pair_id
+        result = self.call(url, None, "GET")
+
+        msg = _('Get pair failed.')
+        self._assert_rest_result(result, msg)
+        return result.get('data', {})
+
+    def switch_pair(self, pair_id):
+        url = '/REPLICATIONPAIR/switch'
+        data = {"ID": pair_id,
+                "TYPE": "263"}
+        result = self.call(url, data, "PUT")
+
+        msg = _('Switch over pair error.')
+        self._assert_rest_result(result, msg)
+
+    def split_pair(self, pair_id):
+        url = '/REPLICATIONPAIR/split'
+        data = {"ID": pair_id,
+                "TYPE": "263"}
+        result = self.call(url, data, "PUT")
+
+        msg = _('Split pair error.')
+        self._assert_rest_result(result, msg)
+
+    def delete_pair(self, pair_id, force=False):
+        url = "/REPLICATIONPAIR/" + pair_id
+        data = None
+        if force:
+            data = {"ISLOCALDELETE": force}
+
+        result = self.call(url, data, "DELETE")
+
+        msg = _('delete_replication error.')
+        self._assert_rest_result(result, msg)
+
+    def sync_pair(self, pair_id):
+        url = "/REPLICATIONPAIR/sync"
+        data = {"ID": pair_id,
+                "TYPE": "263"}
+        result = self.call(url, data, "PUT")
+
+        msg = _('Sync pair error.')
+        self._assert_rest_result(result, msg)
+
+    def check_pair_exist(self, pair_id):
+        url = "/REPLICATIONPAIR/" + pair_id
+        result = self.call(url, None, "GET")
+        return result['error']['code'] == 0
+
+    def set_pair_second_access(self, pair_id, access):
+        url = "/REPLICATIONPAIR/" + pair_id
+        data = {"ID": pair_id,
+                "SECRESACCESS": access}
+        result = self.call(url, data, "PUT")
+
+        msg = _('Set pair secondary access error.')
+        self._assert_rest_result(result, msg)
