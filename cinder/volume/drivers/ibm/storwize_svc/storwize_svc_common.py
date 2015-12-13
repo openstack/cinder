@@ -263,11 +263,13 @@ class StorwizeSSH(object):
              '-unit', 'gb', vdisk])
         self.run_ssh_assert_no_output(ssh_cmd)
 
-    def mkfcmap(self, source, target, full_copy, consistgrp=None):
+    def mkfcmap(self, source, target, full_copy, copy_rate, consistgrp=None):
         ssh_cmd = ['svctask', 'mkfcmap', '-source', source, '-target',
                    target, '-autodelete']
         if not full_copy:
             ssh_cmd.extend(['-copyrate', '0'])
+        else:
+            ssh_cmd.extend(['-copyrate', six.text_type(copy_rate)])
         if consistgrp:
             ssh_cmd.extend(['-consistgrp', consistgrp])
         out, err = self._ssh(ssh_cmd, check_exit_code=False)
@@ -1142,13 +1144,14 @@ class StorwizeHelpers(object):
             return mapping_ready
         self._wait_for_a_condition(prepare_fc_consistgrp_success, timeout)
 
-    def run_flashcopy(self, source, target, timeout, full_copy=True):
+    def run_flashcopy(self, source, target, timeout, copy_rate,
+                      full_copy=True):
         """Create a FlashCopy mapping from the source to the target."""
         LOG.debug('Enter: run_flashcopy: execute FlashCopy from source '
                   '%(source)s to target %(target)s.',
                   {'source': source, 'target': target})
 
-        fc_map_id = self.ssh.mkfcmap(source, target, full_copy)
+        fc_map_id = self.ssh.mkfcmap(source, target, full_copy, copy_rate)
         self._prepare_fc_map(fc_map_id, timeout)
         self.ssh.startfcmap(fc_map_id)
 
@@ -1178,7 +1181,9 @@ class StorwizeHelpers(object):
             pool = config.storwize_svc_volpool_name
         self.create_vdisk(target, src_size, 'b', pool, opts)
 
-        self.ssh.mkfcmap(source, target, full_copy, consistgrp)
+        self.ssh.mkfcmap(source, target, full_copy,
+                         config.storwize_svc_flashcopy_rate,
+                         consistgrp=consistgrp)
 
         LOG.debug('Leave: create_flashcopy_to_consistgrp: '
                   'FlashCopy started from  %(source)s to %(target)s.',
@@ -1301,7 +1306,9 @@ class StorwizeHelpers(object):
         self.create_vdisk(tgt, src_size, 'b', pool, opts)
         timeout = config.storwize_svc_flashcopy_timeout
         try:
-            self.run_flashcopy(src, tgt, timeout, full_copy=full_copy)
+            self.run_flashcopy(src, tgt, timeout,
+                               config.storwize_svc_flashcopy_rate,
+                               full_copy=full_copy)
         except Exception:
             with excutils.save_and_reraise_exception():
                 self.delete_vdisk(tgt, True)

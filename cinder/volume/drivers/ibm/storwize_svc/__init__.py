@@ -120,6 +120,12 @@ storwize_svc_opts = [
                 default=False,
                 help='Specifies that the volume not be formatted during '
                      'creation.'),
+    cfg.IntOpt('storwize_svc_flashcopy_rate',
+               default=50,
+               min=1, max=100,
+               help='Specifies the Storwize FlashCopy copy rate to be used '
+                    'when creating a full volume copy. The default is rate '
+                    'is 50, and the valid rates are 1-100.'),
 ]
 
 CONF = cfg.CONF

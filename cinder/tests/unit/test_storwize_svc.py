@@ -1753,6 +1753,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                                'san_password': 'pass',
                                'storwize_svc_volpool_name': 'openstack',
                                'storwize_svc_flashcopy_timeout': 20,
+                               'storwize_svc_flashcopy_rate': 49,
                                # Test ignore capitalization
                                'storwize_svc_connection_protocol': 'iScSi',
                                'storwize_svc_allow_tenant_qos': True}
@@ -2081,6 +2082,11 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         if self.USESIM:
             self.sim.error_injection('lsfcmap', 'speed_up')
         self.driver.create_cloned_volume(vol3, vol2)
+        if self.USESIM:
+            # validate copyrate was set on the flash copy
+            for i, fcmap in self.sim._fcmappings_list.items():
+                if fcmap['target'] == vol2['name']:
+                    self.assertEqual('49', fcmap['copyrate'])
         self._assert_vol_exists(vol3['name'], True)
 
         # Delete in the 'opposite' order to make sure it works
