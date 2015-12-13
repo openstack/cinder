@@ -9,10 +9,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev32\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev48\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-10 06:20+0000\n"
-"PO-Revision-Date: 2015-12-08 03:38+0000\n"
+"POT-Creation-Date: 2015-12-13 06:21+0000\n"
+"PO-Revision-Date: 2015-12-12 07:36+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language: cs\n"
 "Language-Team: Czech\n"
@@ -1222,6 +1222,10 @@ msgid ""
 msgstr ""
 "Cluster není zformátován. Pravděpodobně byste měli provést příkaz \"dog "
 "cluster format\"."
+
+#, python-format
+msgid "Coho Data Cinder driver failure: %(message)s"
+msgstr "Selhání ovladače Cinder Coho Data: %(message)s"
 
 #, python-format
 msgid "Command %(cmd)s blocked in the CLI and was cancelled"
@@ -3093,6 +3097,9 @@ msgstr "Nelze zajistit oblast zdrojů snímku, nelze nalézt svazek s id %s"
 msgid "Failed to establish SSC connection."
 msgstr "Nelze vytvořit připojení SSC."
 
+msgid "Failed to establish connection with Coho cluster"
+msgstr "Zavedení připojení s clusterem Coho selhalo"
+
 #, python-format
 msgid ""
 "Failed to execute CloudByte API [%(cmd)s]. Http status: %(status)s, Error: "
@@ -4723,6 +4730,18 @@ msgstr ""
 
 msgid "Lun migration error."
 msgstr "Chyba při přesunu Lun."
+
+#, python-format
+msgid "MSG_DENIED: %r"
+msgstr "Zpráva zamítnuta: %r"
+
+#, python-format
+msgid "MSG_DENIED: AUTH_ERROR: %r"
+msgstr "Zpráva zamítnuta: Chyba při ověření: %r"
+
+#, python-format
+msgid "MSG_DENIED: RPC_MISMATCH: %r"
+msgstr "Zpráva zamítnuta: Neshoda vzdáleného volání procedur: %r"
 
 #, python-format
 msgid "Malformed fcns output string: %s"
@@ -8661,6 +8680,10 @@ msgstr "název nemůže být Žádný"
 #, python-format
 msgid "naviseccli_path: Could not find NAVISECCLI tool %(path)s."
 msgstr "naviseccli_path:  Nelze najít nástroj NAVISECCLI %(path)s."
+
+#, python-format
+msgid "no REPLY but %r"
+msgstr "Žádná odpověď ale %r"
 
 msgid "no available iSCSI IPs on mga"
 msgstr "V mga nejsou dostupné žádné IP adresy iSCSI"
