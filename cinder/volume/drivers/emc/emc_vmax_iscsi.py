@@ -50,10 +50,11 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
         2.2.2 - Update Consistency Group
         2.2.3 - Pool aware scheduler(multi-pool) support
         2.2.4 - Create CG from CG snapshot
-        2.3   - Name change for MV and SG for FAST (bug #1515181)
+        2.3.0 - Name change for MV and SG for FAST (bug #1515181)
+              - Fix for randomly choosing port group. (bug #1501919)
     """
 
-    VERSION = "2.3"
+    VERSION = "2.3.0"
 
     def __init__(self, *args, **kwargs):
 

@@ -2042,26 +2042,46 @@ class EMCVMAXUtils(object):
         portGroupElements = element.getElementsByTagName('PortGroup')
         if portGroupElements and len(portGroupElements) > 0:
             portGroupNames = []
-            for __ in portGroupElements:
-                portGroupName = self._process_tag(
-                    element, 'PortGroup')
-                if portGroupName:
-                    portGroupNames.append(portGroupName)
+            for portGroupElement in portGroupElements:
+                if portGroupElement.childNodes:
+                    portGroupName = portGroupElement.childNodes[0].nodeValue
+                    if portGroupName:
+                        portGroupNames.append(portGroupName.strip())
+            portGroupNames = EMCVMAXUtils._filter_list(portGroupNames)
+            if len(portGroupNames) > 0:
+                return EMCVMAXUtils._get_random_pg_from_list(portGroupNames)
 
-            LOG.debug("portGroupNames: %(portGroupNames)s.",
-                      {'portGroupNames': portGroupNames})
-            numPortGroups = len(portGroupNames)
-            if numPortGroups > 0:
-                selectedPortGroupName = (
-                    portGroupNames[random.randint(0, numPortGroups - 1)])
-                LOG.debug("Returning selected PortGroup: "
-                          "%(selectedPortGroupName)s.",
-                          {'selectedPortGroupName': selectedPortGroupName})
-                return selectedPortGroupName
-
-        exception_message = (_("No PortGroup elements found in config file."))
+        exception_message = (_("No Port Group elements found in config file."))
         LOG.error(exception_message)
         raise exception.VolumeBackendAPIException(data=exception_message)
+
+    @staticmethod
+    def _get_random_pg_from_list(portgroupnames):
+        """From list of portgroup, choose one randomly
+
+        :param portGroupNames: list of available portgroups
+        :returns: portGroupName - the random portgroup
+        """
+        portgroupname = (
+            portgroupnames[random.randint(0, len(portgroupnames) - 1)])
+
+        LOG.info(_LI("Returning random Port Group: "
+                     "%(portGroupName)s."),
+                 {'portGroupName': portgroupname})
+
+        return portgroupname
+
+    @staticmethod
+    def _filter_list(portgroupnames):
+        """Clean up the port group list
+
+        :param portgroupnames: list of available portgroups
+        :returns: portgroupnames - cleaned up list
+        """
+        portgroupnames = filter(None, portgroupnames)
+        # Convert list to set to remove duplicate portgroups
+        portgroupnames = list(set(portgroupnames))
+        return portgroupnames
 
     def _get_serial_number(self, arrayInfo):
         """If we don't have a pool then we just get the serial number.
