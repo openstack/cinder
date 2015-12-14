@@ -17,7 +17,6 @@
 import datetime
 
 import mock
-from mox3 import mox
 from oslo_utils import timeutils
 from oslo_utils import units
 
@@ -31,16 +30,16 @@ from cinder.volume import volume_types
 
 
 def create_configuration():
-    configuration = mox.MockObject(conf.Configuration)
+    configuration = mock.Mock(conf.Configuration)
     configuration.san_is_local = False
-    configuration.append_config_values(mox.IgnoreArg())
+    configuration.append_config_values(mock.IgnoreArg())
     return configuration
 
 
 class SolidFireVolumeTestCase(test.TestCase):
     def setUp(self):
         self.ctxt = context.get_admin_context()
-        self.configuration = mox.MockObject(conf.Configuration)
+        self.configuration = mock.Mock(conf.Configuration)
         self.configuration.sf_allow_tenant_qos = True
         self.configuration.san_is_local = True
         self.configuration.sf_emulate_512 = True
