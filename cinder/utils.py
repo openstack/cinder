@@ -342,10 +342,7 @@ def safe_minidom_parse_string(xml_string):
 def is_valid_boolstr(val):
     """Check if the provided string is a valid bool string or not."""
     val = str(val).lower()
-    return (val == 'true' or val == 'false' or
-            val == 'yes' or val == 'no' or
-            val == 'y' or val == 'n' or
-            val == '1' or val == '0')
+    return val in ('true', 'false', 'yes', 'no', 'y', 'n', '1', '0')
 
 
 def is_none_string(val):
