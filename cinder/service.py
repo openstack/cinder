@@ -370,7 +370,8 @@ class WSGIService(service.ServiceBase):
             raise exception.InvalidInput(msg)
         setup_profiler(name, self.host)
 
-        self.server = wsgi.Server(name,
+        self.server = wsgi.Server(CONF,
+                                  name,
                                   self.app,
                                   host=self.host,
                                   port=self.port)
