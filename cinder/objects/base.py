@@ -240,6 +240,13 @@ class CinderObjectDictCompat(base.VersionedObjectDictCompat):
         else:
             return getattr(self, key)
 
+    def __contains__(self, name):
+        try:
+            # Overriding this to make extra fields pass "'foo' in obj" tests
+            return name in self.obj_extra_fields or self.obj_attr_is_set(name)
+        except AttributeError:
+            return False
+
 
 class CinderPersistentObject(object):
     """Mixin class for Persistent objects.
