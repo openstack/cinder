@@ -24,15 +24,15 @@ LOG = logging.getLogger(__name__)
 class ViewBuilder(common.ViewBuilder):
     """Model QoS specs API responses as a python dictionary."""
 
-    _collection_name = "qos_specs"
+    _collection_name = "qos-specs"
 
     def __init__(self):
         """Initialize view builder."""
         super(ViewBuilder, self).__init__()
 
-    def summary_list(self, request, qos_specs):
+    def summary_list(self, request, qos_specs, qos_count=None):
         """Show a list of qos_specs without many details."""
-        return self._list_view(self.detail, request, qos_specs)
+        return self._list_view(self.detail, request, qos_specs, qos_count)
 
     def summary(self, request, qos_spec):
         """Generic, non-detailed view of a qos_specs."""
@@ -57,9 +57,14 @@ class ViewBuilder(common.ViewBuilder):
             'qos_associations': associates
         }
 
-    def _list_view(self, func, request, qos_specs):
+    def _list_view(self, func, request, qos_specs, qos_count=None):
         """Provide a view for a list of qos_specs."""
         specs_list = [func(request, specs)['qos_specs'] for specs in qos_specs]
+        specs_links = self._get_collection_links(request, qos_specs,
+                                                 self._collection_name,
+                                                 qos_count)
         specs_dict = dict(qos_specs=specs_list)
+        if specs_links:
+            specs_dict['qos_specs_links'] = specs_links
 
         return specs_dict

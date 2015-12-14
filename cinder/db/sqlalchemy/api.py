@@ -1591,13 +1591,13 @@ def _generate_paginate_query(context, session, marker, limit, sort_keys,
         if query is None:
             return None
 
-    marker_volume = None
+    marker_object = None
     if marker is not None:
-        marker_volume = get(context, marker, session)
+        marker_object = get(context, marker, session)
 
     return sqlalchemyutils.paginate_query(query, paginate_type, limit,
                                           sort_keys,
-                                          marker=marker_volume,
+                                          marker=marker_object,
                                           sort_dirs=sort_dirs,
                                           offset=offset)
 
@@ -3002,7 +3002,8 @@ def qos_specs_get(context, qos_specs_id, inactive=False):
 
 
 @require_admin_context
-def qos_specs_get_all(context, inactive=False, filters=None):
+def qos_specs_get_all(context, filters=None, marker=None, limit=None,
+                      offset=None, sort_keys=None, sort_dirs=None):
     """Returns a list of all qos_specs.
 
     Results is like:
@@ -3028,15 +3029,48 @@ def qos_specs_get_all(context, inactive=False, filters=None):
          },
         ]
     """
-    filters = filters or {}
-    # TODO(zhiteng) Add filters for 'consumer'
+    session = get_session()
+    with session.begin():
+        # Generate the query
+        query = _generate_paginate_query(context, session, marker, limit,
+                                         sort_keys, sort_dirs, filters,
+                                         offset, models.QualityOfServiceSpecs)
+        # No Qos specs would match, return empty list
+        if query is None:
+            return []
+        rows = query.all()
+        return _dict_with_qos_specs(rows)
 
-    read_deleted = "yes" if inactive else "no"
+
+@require_admin_context
+def _qos_specs_get_query(context, session):
     rows = model_query(context, models.QualityOfServiceSpecs,
-                       read_deleted=read_deleted). \
-        options(joinedload_all('specs')).all()
+                       session=session,
+                       read_deleted='no').\
+        options(joinedload_all('specs')).filter_by(key='QoS_Specs_Name')
+    return rows
 
-    return _dict_with_qos_specs(rows)
+
+def _process_qos_specs_filters(query, filters):
+    if filters:
+        # Ensure that filters' keys exist on the model
+        if not is_valid_model_filters(models.QualityOfServiceSpecs, filters):
+            return
+        query = query.filter_by(**filters)
+    return query
+
+
+@require_admin_context
+def _qos_specs_get(context, qos_spec_id, session=None):
+    result = model_query(context, models.QualityOfServiceSpecs,
+                         session=session,
+                         read_deleted='no').\
+        filter_by(id=qos_spec_id).filter_by(key='QoS_Specs_Name').first()
+
+    if not result:
+        raise exception.QoSSpecsNotFound(specs_id=qos_spec_id)
+
+    return result
 
 
 @require_admin_context
@@ -4049,7 +4083,9 @@ def driver_initiator_data_get(context, initiator, namespace):
 PAGINATION_HELPERS = {
     models.Volume: (_volume_get_query, _process_volume_filters, _volume_get),
     models.Snapshot: (_snaps_get_query, _process_snaps_filters, _snapshot_get),
-    models.Backup: (_backups_get_query, _process_backups_filters, _backup_get)
+    models.Backup: (_backups_get_query, _process_backups_filters, _backup_get),
+    models.QualityOfServiceSpecs: (_qos_specs_get_query,
+                                   _process_qos_specs_filters, _qos_specs_get)
 }
 
 

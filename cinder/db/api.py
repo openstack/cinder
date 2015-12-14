@@ -591,9 +591,12 @@ def qos_specs_get(context, qos_specs_id):
     return IMPL.qos_specs_get(context, qos_specs_id)
 
 
-def qos_specs_get_all(context, inactive=False, filters=None):
+def qos_specs_get_all(context, filters=None, marker=None, limit=None,
+                      offset=None, sort_keys=None, sort_dirs=None):
     """Get all qos_specs."""
-    return IMPL.qos_specs_get_all(context, inactive, filters)
+    return IMPL.qos_specs_get_all(context, filters=filters, marker=marker,
+                                  limit=limit, offset=offset,
+                                  sort_keys=sort_keys, sort_dirs=sort_dirs)
 
 
 def qos_specs_get_by_name(context, name):
