@@ -34,9 +34,10 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
 
     Version history:
         1.0.0 - Initial driver version.
+        1.0.1 - Moved opts to options.py.
     """
 
-    VERSION = '1.0.0'
+    VERSION = '1.0.1'
 
     def __init__(self, *args, **kwargs):
         super(NexentaEdgeISCSIDriver, self).__init__(*args, **kwargs)
