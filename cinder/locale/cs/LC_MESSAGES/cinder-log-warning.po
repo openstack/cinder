@@ -7,10 +7,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev32\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev67\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-10 06:20+0000\n"
-"PO-Revision-Date: 2015-12-08 03:41+0000\n"
+"POT-Creation-Date: 2015-12-15 06:26+0000\n"
+"PO-Revision-Date: 2015-12-14 02:29+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language-Team: Czech\n"
 "Language: cs\n"
@@ -36,6 +36,18 @@ msgstr "%s již je připojeno"
 #, python-format
 msgid "%s not found!"
 msgstr "%s nenalezeno!"
+
+#, python-format
+msgid ""
+"'%s' is not a valid replication array. In order to be valid, "
+"target_device_id, replication_mode, hpe3par_api_url, hpe3par_username, "
+"hpe3par_password, cpg_map, and must be specified. If the target is managed, "
+"managed_backend_name must be set as well."
+msgstr ""
+"'%s' není platné pole replikace. Aby bylo platné, je třeba zadat "
+"target_device_id, replication_mode, hpe3par_api_url, hpe3par_username, "
+"hpe3par_password, cpg_map. Pokud cíl je spravován, musí být také zadáno "
+"managed_backend_name."
 
 msgid ""
 "'hpe3par:cpg' is not supported as an extra spec in a volume type.  CPG's are "
@@ -1390,6 +1402,24 @@ msgstr ""
 "Volba 'nfs_used_ratio' je zastaralá a bude odstraněna ve verzi Mitaka. Místo "
 "toho prosím nastavte 'reserved_percentage = %d'."
 
+msgid ""
+"The primary array is currently unreachable. All targets returned from "
+"list_replication_targets are pulled directly from cinder.conf and are not "
+"guarenteed to be available because they could not be verified with the "
+"primary array."
+msgstr ""
+"Hlavní pole je nyní nedostupné. Všechny cíle vrácené ze seznamu replikací "
+"jsou získávány přímo z cinder.conf a neexistuje záruka, že budou dostupné, "
+"protože nemohly být v hlavním poli ověřeny."
+
+msgid ""
+"The primary array is not reachable at this time. Since replication is "
+"enabled, listing replication targets and failing over a volume can still be "
+"performed."
+msgstr ""
+"Hlavní pole není v současnosti dostupné. Protože je replikace povolená může "
+"být stále proveden výpis cílů replikace a zavedení záložního systému."
+
 #, python-format
 msgid "The provisioning: %(provisioning)s is not valid."
 msgstr "Poskytování %(provisioning)s není platné."
@@ -1405,6 +1435,17 @@ msgstr ""
 #, python-format
 msgid "The specified Snapshot mount point %s is not currently attached."
 msgstr "Zadaný bod připojení snímku %s není v současnosti připojen."
+
+#, python-format
+msgid ""
+"The target array and all of its secondary arrays must be on the same API "
+"version. Array '%(target)s' is on %(target_ver)s while the primary array is "
+"on %(primary_ver)s, therefore it will not be added as a valid replication "
+"target."
+msgstr ""
+"Cílové pole a všechny jeho druhotné pole musí mít stejnou verzi API. Pole "
+"'%(target)s' má %(target_ver)s zatímco hlavní pole má %(primary_ver)s a "
+"proto nebude přidáno jako platný cíl replikace."
 
 #, python-format
 msgid ""

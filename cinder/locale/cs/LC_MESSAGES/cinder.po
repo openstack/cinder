@@ -9,10 +9,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev48\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev67\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-13 06:21+0000\n"
-"PO-Revision-Date: 2015-12-12 07:36+0000\n"
+"POT-Creation-Date: 2015-12-15 06:26+0000\n"
+"PO-Revision-Date: 2015-12-14 02:06+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language: cs\n"
 "Language-Team: Czech\n"
@@ -332,6 +332,9 @@ msgstr "Zásoba nemohla být nalezena. (Id zásoby: %(pool_id)s)"
 #, python-format
 msgid "A snapshot status is invalid. (status: %(status)s)"
 msgstr "Stav snímku je neplatný. (Stav: %(status)s)"
+
+msgid "A valid secondary target MUST be specified in order to failover."
+msgstr "Pro zavedení záložního systému MUSÍ být zadán platný druhotní cíl."
 
 msgid "A volume ID or share was not specified."
 msgstr "Nezadáno ID svazku nebo sdílení."
@@ -1227,6 +1230,9 @@ msgstr ""
 msgid "Coho Data Cinder driver failure: %(message)s"
 msgstr "Selhání ovladače Cinder Coho Data: %(message)s"
 
+msgid "Coho rpc port is not configured"
+msgstr "RPC port Coho není nastaven"
+
 #, python-format
 msgid "Command %(cmd)s blocked in the CLI and was cancelled"
 msgstr "Příkaz %(cmd)s byl v klientském řádku zablokován a zrušen"
@@ -1377,10 +1383,6 @@ msgstr ""
 #, python-format
 msgid "Copying metadata from %(src_type)s %(src_id)s to %(vol_id)s."
 msgstr "Kopírování popisných dat z %(src_type)s %(src_id)s do %(vol_id)s."
-
-#, python-format
-msgid "Could not bind to %(host)s:%(port)s after trying for 30 seconds"
-msgstr "Nelze svázat s %(host)s:%(port)s i po 30 vteřinách snažení"
 
 #, python-format
 msgid ""
@@ -4412,6 +4414,10 @@ msgstr ""
 "Nový název='%s'."
 
 #, python-format
+msgid "Invalid port number %(config)s for Coho rpc port"
+msgstr "Neplatné číslo portu %(config)s pro port RPC Coho"
+
+#, python-format
 msgid "Invalid qos specs: %(reason)s"
 msgstr "Neplatné specifikace qos: %(reason)s"
 
@@ -4439,6 +4445,9 @@ msgstr "Neplatné vypršení rezervace %(expire)s."
 
 msgid "Invalid resource pool name. Please check the config file."
 msgstr "Neplatný název zásoby zdroje. Prosím zkontrolujte soubor s nastavením."
+
+msgid "Invalid response header from RPC server"
+msgstr "Neplatná hlavička odpovědi od serveru RPC"
 
 msgid "Invalid service catalog json."
 msgstr "Neplatný json katalog služeb"
@@ -5102,6 +5111,10 @@ msgstr ""
 msgid "Need non-zero volume size"
 msgstr "Je třeba zadat nenulovou velikost svazku"
 
+#, python-format
+msgid "Neither MSG_DENIED nor MSG_ACCEPTED: %r"
+msgstr "Zpráva nebyla zamítnuta ani přijata: %r"
+
 msgid "NetApp Cinder Driver exception."
 msgstr "Výjimka ovladače NetApp Cinder."
 
@@ -5132,8 +5145,8 @@ msgstr "Výjimka ovladače Nimble Cinder"
 msgid "No FCP targets found"
 msgstr "Žádné cíle FCP nenalezeny"
 
-msgid "No PortGroup elements found in config file."
-msgstr "V souboru s nastavením nenalezeny žádné prvky PortGroup."
+msgid "No Port Group elements found in config file."
+msgstr "V souboru nastavení nenalezeny žádné prvky skupiny portu."
 
 msgid "No active iSCSI portals with supplied iSCSI IPs"
 msgstr "Žádné aktivní portály iSCSI zadané pomocí IP iSCSI"
@@ -5704,6 +5717,9 @@ msgstr "Heslo serveru REST musí být zadáno."
 msgid "REST server username must by specified."
 msgstr "Uživatelské jméno serveru REST musí být zadáno."
 
+msgid "RPC server response is incomplete"
+msgstr "Odpověď serveru RPC je nedokončená"
+
 msgid "Raid did not have MCS Channel."
 msgstr "RAID neměl kanál MCS."
 
@@ -5902,6 +5918,9 @@ msgstr "Zdroj není připraven."
 #, python-format
 msgid "Response error - %s."
 msgstr "Chyba odpovědi - %s."
+
+msgid "Response error - The storage-system is offline."
+msgstr "Chyba v odpovědi - Systém úložiště je mimo provoz."
 
 #, python-format
 msgid "Response error code - %s."
@@ -6429,6 +6448,12 @@ msgstr "Dodatečná specifikace %s je neplatná."
 msgid "The extraspec: %(extraspec)s is not valid."
 msgstr "Dodatečná specifikace: %(extraspec)s není platná."
 
+msgid "The failed-over volume could not be deleted."
+msgstr "Záložní svazek nelze smazat."
+
+msgid "The failover array cannot be the primary array."
+msgstr "Záložní pole nemůže být hlavní."
+
 #, python-format
 msgid "The file copy from %(src)s to %(dest)s failed."
 msgstr "Kopírování souboru z %(src)s do %(dest)s selhalo."
@@ -6496,6 +6521,15 @@ msgid ""
 msgstr ""
 "Odkaz na svazek v podpůrné vrstvě by měl být ve formátu souborový systém/"
 "název svazku (název svazku nemůže obsahovat '/')"
+
+msgid ""
+"The replication mode was not configured correctly in the volume type "
+"extra_specs. If replication:mode is periodic, replication:sync_period must "
+"also be specified and be between 300 and 31622400 seconds."
+msgstr ""
+"Režim replikace nebyl v dodatečných specifikacích svazku správně nastaven. "
+"Pokud je režim periodic, musí být také zadáno replication:sync_period a mít "
+"zvolen interval mající hodnotu od 300 až 31622400 vteřin."
 
 #, python-format
 msgid ""
@@ -6729,8 +6763,40 @@ msgid "There is no virtual disk device."
 msgstr "Neexistuje žádné zařízení virtuálního disku."
 
 #, python-format
+msgid "There was a problem with the failover (%s) and it was unsuccessful."
+msgstr ""
+"Při zavádění záložního systému (%s) se vyskytl problém a bylo neúspěšné."
+
+#, python-format
+msgid "There was an error adding the volume to the remote copy group: %s."
+msgstr "Při přidávání svazku do skupiny vzdálené kopie se vyskytla chyba: %s."
+
+#, python-format
 msgid "There was an error creating the cgsnapshot: %s"
 msgstr "Při vytváření snímku skupiny jednotnosti nastala chyba: %s"
+
+#, python-format
+msgid "There was an error creating the remote copy group: %s."
+msgstr "Při vytváření skupiny vzdálené kopie se vyskytla chyba: %s"
+
+#, python-format
+msgid ""
+"There was an error setting the sync period for the remote copy group: %s."
+msgstr ""
+"Při nastavování doby synchronizace skupiny vzdálené kopie se vyskytla chyba: "
+"%s"
+
+#, python-format
+msgid ""
+"There was an error setting up a remote copy group on the 3PAR arrays: "
+"('%s'). The volume will not be recognized as replication type."
+msgstr ""
+"Při nastavování skupiny vzdálené kopie na polích 3PAR se vyskytla chyba: "
+"('%s'). Svazek nebude rozpoznán jako mající typ pocházející od replikace."
+
+#, python-format
+msgid "There was an error starting remote copy: %s."
+msgstr "Při spouštění vzdálené kopie se vyskytla chyba: %s"
 
 #, python-format
 msgid "There's no Gluster config file configured (%s)"
@@ -6929,6 +6995,13 @@ msgid ""
 "Unable to disable replication due to invalid replication status: %(status)s."
 msgstr "Nelze zakázat replikaci kvůli neplatnému stavu replikace: %(status)s."
 
+msgid ""
+"Unable to disable volume replication because volume is not of replicated "
+"type."
+msgstr ""
+"Nelze zakázat replikaci svazku protože svazek není typu pocházející z "
+"replikace."
+
 #, python-format
 msgid ""
 "Unable to do manage snapshot operations with Purity REST API version "
@@ -6942,9 +7015,19 @@ msgid ""
 "Unable to enable replication due to invalid replication status: %(status)s."
 msgstr "Nelze povolit replikaci kvůli neplatnému stavu replikace: %(status)s."
 
+msgid ""
+"Unable to enable volume replication because volume is not of replicated type."
+msgstr ""
+"Nelze povolit replikaci svazku protože svazek není typu pocházející z "
+"replikace."
+
 #, python-format
 msgid "Unable to extend volume %s"
 msgstr "Nelze rozšířit svazek %s"
+
+msgid "Unable to failover because volume is not of replicated type."
+msgstr ""
+"Nelze zavést záložní systém protože svazek není typu pocházející z replikace."
 
 msgid "Unable to fetch connection information from backend."
 msgstr "Nelze získat informace o připojení z podpůrné vrstvy."
@@ -6961,20 +7044,8 @@ msgstr "Nelze najít odkaz na Purity s názvem=%s"
 msgid "Unable to find Volume Group: %(vg_name)s"
 msgstr "Nelze najít skupinu svazku: %(vg_name)s"
 
-#, python-format
-msgid "Unable to find ca_file : %s"
-msgstr "Nelze najít soubor certifikační autority : %s"
-
-#, python-format
-msgid "Unable to find cert_file : %s"
-msgstr "Nelze najít soubor certifikátu  : %s"
-
 msgid "Unable to find iSCSI mappings."
 msgstr "Nelze najít mapování iSCSI."
-
-#, python-format
-msgid "Unable to find key_file : %s"
-msgstr "Nelze najít soubor s klíčem : %s"
 
 #, python-format
 msgid "Unable to find ssh_hosts_key_file: %s"
@@ -7249,6 +7320,13 @@ msgstr "Neznámý směr řazení, musí být buď 'desc' nebo 'asc'."
 
 msgid "Unmanage volume not implemented."
 msgstr "Zrušení správy svazku není zavedeno."
+
+msgid ""
+"Unmanaged replication is not supported at this time. Please configure cinder."
+"conf for managed replication."
+msgstr ""
+"Nespravovaná replikace není v současnosti podporována. Prosím nastavte "
+"spravovanou replikaci v cinder.conf."
 
 #, python-format
 msgid "Unrecognized QOS keyword: \"%s\""
@@ -7948,13 +8026,6 @@ msgstr ""
 "Čekání na připojení uzlů ke clusteru. Ujistěte se, že všichni daemoni sheep "
 "jsou spuštěni."
 
-msgid ""
-"When running server in SSL mode, you must specify both a cert_file and "
-"key_file option value in your configuration file."
-msgstr ""
-"Při provozování serveru v režimu SSL musíte zadat konfigurační volby "
-"cert_file a key_file ve vašem souboru s nastavení."
-
 msgid "Wrong resource call syntax"
 msgstr "Špatná syntaxe volání zdroje"
 
@@ -8182,6 +8253,23 @@ msgstr ""
 
 msgid "being attached by different mode"
 msgstr "je připojen v jiném režimu"
+
+#, python-format
+msgid "call failed: %r"
+msgstr "Volání selhalo: %r"
+
+msgid "call failed: GARBAGE_ARGS"
+msgstr "Volání selhalo: Zbytečné argumenty"
+
+msgid "call failed: PROC_UNAVAIL"
+msgstr "Volání selhalo: Proces je nedostupný"
+
+#, python-format
+msgid "call failed: PROG_MISMATCH: %r"
+msgstr "Volání selhalo: Neshoda programu: %r"
+
+msgid "call failed: PROG_UNAVAIL"
+msgstr "Volání selhalo: Program je nedostupný"
 
 #, python-format
 msgid "can't find lun-map, ig:%(ig)s vol:%(vol)s"
