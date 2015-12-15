@@ -17,8 +17,10 @@ import mock
 from oslo_config import cfg
 
 from cinder import context
-from cinder.db.sqlalchemy import api
+from cinder import db
 import cinder.exception
+from cinder.objects import snapshot as obj_snap
+from cinder.objects import volume as obj_volume
 import cinder.test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import block_device
@@ -37,15 +39,14 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
         self.configuration.volume_dd_blocksize = 1234
         self.drv = block_device.BlockDeviceDriver(
             configuration=self.configuration,
-            host='localhost')
+            host='localhost', db=db)
 
     def test_initialize_connection(self):
-        TEST_VOLUME1 = {'host': 'localhost1',
-                        'provider_location': '1 2 3 /dev/loop1',
-                        'provider_auth': 'a b c',
-                        'attached_mode': 'rw',
-                        'id': 'fake-uuid'}
-
+        TEST_VOLUME1 = obj_volume.Volume(host='localhost1',
+                                         provider_location='1 2 3 /dev/loop1',
+                                         provider_auth='a b c',
+                                         attached_mode='rw',
+                                         id='fake-uuid')
         TEST_CONNECTOR = {'host': 'localhost1'}
 
         data = self.drv.initialize_connection(TEST_VOLUME1, TEST_CONNECTOR)
@@ -57,11 +58,11 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
     @mock.patch('cinder.volume.driver.ISCSIDriver.initialize_connection')
     def test_initialize_connection_different_hosts(self, _init_conn):
         TEST_CONNECTOR = {'host': 'localhost1'}
-        TEST_VOLUME2 = {'host': 'localhost2',
-                        'provider_location': '1 2 3 /dev/loop2',
-                        'provider_auth': 'd e f',
-                        'attached_mode': 'rw',
-                        'id': 'fake-uuid-2'}
+        TEST_VOLUME2 = obj_volume.Volume(host='localhost2',
+                                         provider_location='1 2 3 /dev/loop2',
+                                         provider_auth='d e f',
+                                         attached_mode='rw',
+                                         id='fake-uuid-2')
         _init_conn.return_value = 'data'
 
         data = self.drv.initialize_connection(TEST_VOLUME2, TEST_CONNECTOR)
@@ -82,14 +83,18 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
     @mock.patch('cinder.volume.utils.clear_volume')
     def test_delete_not_volume_provider_location(self, _clear_volume,
                                                  _local_path):
-        TEST_VOLUME2 = {'provider_location': None}
+        TEST_VOLUME2 = obj_volume.Volume(provider_location=None)
         self.drv.delete_volume(TEST_VOLUME2)
         _local_path.assert_called_once_with(TEST_VOLUME2)
 
     @mock.patch('os.path.exists', return_value=True)
     @mock.patch('cinder.volume.utils.clear_volume')
     def test_delete_volume_path_exist(self, _clear_volume, _exists):
-        TEST_VOLUME1 = {'provider_location': '1 2 3 /dev/loop1'}
+        TEST_VOLUME = obj_volume.Volume(name_id='1234',
+                                        size=1,
+                                        provider_location='/dev/loop1',
+                                        display_name='vol1',
+                                        status='available')
 
         with mock.patch.object(self.drv, 'local_path',
                                return_value='/dev/loop1') as lp_mocked:
@@ -98,29 +103,43 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
                     gds_mocked:
                 volutils.clear_volume(gds_mocked, lp_mocked)
 
-                self.drv.delete_volume(TEST_VOLUME1)
+                self.drv.delete_volume(TEST_VOLUME)
 
-                lp_mocked.assert_called_once_with(TEST_VOLUME1)
+                lp_mocked.assert_called_once_with(TEST_VOLUME)
                 gds_mocked.assert_called_once_with(['/dev/loop1'])
 
         self.assertTrue(_exists.called)
         self.assertTrue(_clear_volume.called)
 
     def test_delete_path_is_not_in_list_of_available_devices(self):
-        TEST_VOLUME2 = {'provider_location': '1 2 3 /dev/loop0'}
+        TEST_VOLUME2 = obj_volume.Volume(provider_location='/dev/loop0')
         with mock.patch.object(self.drv, 'local_path',
                                return_value='/dev/loop0') as lp_mocked:
             self.drv.delete_volume(TEST_VOLUME2)
             lp_mocked.assert_called_once_with(TEST_VOLUME2)
 
+    def test__update_provider_location(self):
+        TEST_VOLUME = obj_volume.Volume(name_id='1234',
+                                        size=1,
+                                        display_name='vol1')
+        with mock.patch.object(obj_volume.Volume, 'update') as update_mocked, \
+                mock.patch.object(obj_volume.Volume, 'save') as save_mocked:
+            self.drv._update_provider_location(TEST_VOLUME, 'dev_path')
+            self.assertEqual(1, update_mocked.call_count)
+            save_mocked.assert_called_once_with()
+
     def test_create_volume(self):
-        TEST_VOLUME = {'size': 1, 'name': 'vol1'}
+        TEST_VOLUME = obj_volume.Volume(name_id='1234',
+                                        size=1,
+                                        display_name='vol1')
 
         with mock.patch.object(self.drv, 'find_appropriate_size_device',
                                return_value='dev_path') as fasd_mocked:
-            result = self.drv.create_volume(TEST_VOLUME)
-            self.assertEqual({'provider_location': 'dev_path'}, result)
-            fasd_mocked.assert_called_once_with(TEST_VOLUME['size'])
+            with mock.patch.object(self.drv, '_update_provider_location') as \
+                    upl_mocked:
+                self.drv.create_volume(TEST_VOLUME)
+                fasd_mocked.assert_called_once_with(TEST_VOLUME.size)
+                upl_mocked.assert_called_once_with(TEST_VOLUME, 'dev_path')
 
     def test_update_volume_stats(self):
 
@@ -147,10 +166,13 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
 
     @mock.patch('cinder.volume.utils.copy_volume')
     def test_create_cloned_volume(self, _copy_volume):
-        TEST_SRC = {'id': '1',
-                    'size': 1,
-                    'provider_location': '1 2 3 /dev/loop1'}
-        TEST_VOLUME = {}
+        TEST_SRC = obj_volume.Volume(id=1,
+                                     name_id='5678',
+                                     size=1,
+                                     provider_location='/dev/loop1')
+        TEST_VOLUME = obj_volume.Volume(name_id='1234',
+                                        size=1,
+                                        display_name='vol1')
 
         with mock.patch.object(self.drv, 'find_appropriate_size_device',
                                return_value='/dev/loop2') as fasd_mocked:
@@ -160,20 +182,24 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
                 with mock.patch.object(self.drv, 'local_path',
                                        return_value='/dev/loop1') as \
                         lp_mocked:
-                    volutils.copy_volume('/dev/loop1', fasd_mocked, 2,
-                                         mock.sentinel,
-                                         execute=self.drv._execute)
-
-                    self.assertEqual({'provider_location': '/dev/loop2'},
-                                     self.drv.create_cloned_volume(TEST_VOLUME,
-                                                                   TEST_SRC))
-                    fasd_mocked.assert_called_once_with(TEST_SRC['size'])
-                    lp_mocked.assert_called_once_with(TEST_SRC)
-                    gds_mocked.assert_called_once_with(['/dev/loop2'])
+                    with mock.patch.object(self.drv,
+                                           '_update_provider_location') as \
+                            upl_mocked:
+                        volutils.copy_volume('/dev/loop1', fasd_mocked, 2,
+                                             mock.sentinel,
+                                             execute=self.drv._execute)
+                        self.drv.create_cloned_volume(TEST_VOLUME, TEST_SRC)
+                        fasd_mocked.assert_called_once_with(TEST_SRC.size)
+                        lp_mocked.assert_called_once_with(TEST_SRC)
+                        gds_mocked.assert_called_once_with(['/dev/loop2'])
+                        upl_mocked.assert_called_once_with(
+                            TEST_VOLUME, '/dev/loop2')
 
     @mock.patch.object(cinder.image.image_utils, 'fetch_to_raw')
     def test_copy_image_to_volume(self, _fetch_to_raw):
-        TEST_VOLUME = {'provider_location': '1 2 3 /dev/loop1', 'size': 1}
+        TEST_VOLUME = obj_volume.Volume(name_id='1234',
+                                        size=1,
+                                        provider_location='/dev/loop1')
         TEST_IMAGE_SERVICE = "image_service"
         TEST_IMAGE_ID = "image_id"
 
@@ -188,7 +214,7 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
                                               1234, size=1)
 
     def test_copy_volume_to_image(self):
-        TEST_VOLUME = {'provider_location': '1 2 3 /dev/loop1'}
+        TEST_VOLUME = {'provider_location': '/dev/loop1'}
         TEST_IMAGE_SERVICE = "image_service"
         TEST_IMAGE_META = "image_meta"
 
@@ -208,15 +234,17 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
 
     def test_get_used_devices(self):
         TEST_VOLUME1 = {'host': 'localhost',
-                        'provider_location': '1 2 3 /dev/loop1'}
+                        'provider_location': '/dev/loop1'}
         TEST_VOLUME2 = {'host': 'localhost',
-                        'provider_location': '1 2 3 /dev/loop2'}
+                        'provider_location': '/dev/loop2'}
 
         def fake_local_path(vol):
             return vol['provider_location'].split()[-1]
 
-        with mock.patch.object(api, 'volume_get_all_by_host',
-                               return_value=[TEST_VOLUME1, TEST_VOLUME2]):
+        with mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
+                               return_value=[TEST_VOLUME1, TEST_VOLUME2]),\
+                mock.patch.object(obj_snap.SnapshotList, 'get_by_host',
+                                  return_value=[]):
             with mock.patch.object(context, 'get_admin_context'):
                 with mock.patch.object(self.drv, 'local_path',
                                        return_value=fake_local_path):
