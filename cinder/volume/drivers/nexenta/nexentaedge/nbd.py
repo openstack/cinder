@@ -10,6 +10,7 @@ from cinder import exception
 from cinder.i18n import _LE
 from cinder.image import image_utils
 from cinder.volume import driver
+from cinder.volume import utils as volutils
 from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta.nexentaedge import jsonrpc
 
@@ -89,34 +90,61 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
                 LOG.exception(_LE('Error verifying container %(bkt)s'),
                               {'bkt': self.bucket_path})
 
-    def _get_nbd_number(self, volume):
+    def _get_nbd_devices(self):
         try:
-            rsp = self.restapi.get('nbd/number', {
-                'objectPath': self.bucket_path + '/' + volume['name'],
-                'serverId': self.hostname
-            })
+            rsp = self.restapi.get('sysconfig/nbd/devices')
         except exception.VolumeBackendAPIException:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Error verifying NBD number'))
-        return json.loads(rsp['data']['number'])
+                LOG.exception(_LE('Error getting NBD list'))
+        return json.loads(rsp['value'])
+
+    def _get_nbd_number(self, volume):
+        nbds = self._get_nbd_devices()
+        for dev in nbds:
+            if dev['objectPath'] == self.bucket_path + '/' + volume['name']:
+                return dev['number']
+        raise Exception #FIXME
+
+    def _new_nbd_number(self, volume):
+        nbds = self._get_nbd_devices()
+        devmap = {}
+        for dev in nbds:
+            devmap[dev['number']] = True
+        for i in range(1, 4096):
+            if i in devmap and devmap[i]:
+                continue
+            return i
+        raise Exception #FIXME
 
     def local_path(self, volume):
-        return '/dev/nbd' + self._get_nbd_number(volume)
+        return '/dev/nbd' + str(self._get_nbd_number(volume))
 
     def create_volume(self, volume):
+        number = self._new_nbd_number(volume)
         try:
             self.restapi.post('nbd', {
                 'objectPath': self.bucket_path + '/' + volume['name'],
-                'serverId': self.hostname
+                'volSizeMB': int(volume['size']) * units.Ki,
+                'blockSize': self.blocksize,
+                'chunkSize': self.chunksize,
+                'number': number
             })
         except exception.VolumeBackendAPIException:
             with excutils.save_and_reraise_exception():
                 LOG.exception(_LE('Error creating volume'))
 
-    def create_volume_from_snapshot(self, volume, snapshot):
-        raise NotImplemented
-
     def delete_volume(self, volume):
+        number = self._get_nbd_number(volume)
+        try:
+            self.restapi.delete('nbd', {
+                'objectPath': self.bucket_path + '/' + volume['name'],
+                'number': number
+            })
+        except exception.VolumeBackendAPIException:
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_LE('Error deleting volume'))
+
+    def extend_volume(self, volume, new_size):
         raise NotImplemented
 
     def create_snapshot(self, snapshot):
@@ -125,10 +153,10 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
     def delete_snapshot(self, snapshot):
         raise NotImplemented
 
-    def create_cloned_volume(self, volume, src_vref):
+    def create_volume_from_snapshot(self, volume, snapshot):
         raise NotImplemented
 
-    def extend_volume(self, volume, new_size):
+    def create_cloned_volume(self, volume, src_vref):
         raise NotImplemented
 
     def migrate_volume(self, ctxt, volume, host, thin=False, mirror_count=0):
@@ -154,7 +182,6 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
         }
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
-        """Fetch the image from image_service and write it to the volume."""
         image_utils.fetch_to_raw(context,
                                  image_service,
                                  image_id,
@@ -163,7 +190,6 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
                                  size=volume['size'])
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
-        """Copy the volume to the specified image."""
         image_utils.upload_volume(context,
                                   image_service,
                                   image_meta,
@@ -172,19 +198,13 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
     # #######  Interface methods for DataPath (Target Driver) ########
 
     def ensure_export(self, context, volume):
-        volume_path = "/dev/%s/%s" % (self.configuration.volume_group,
-                                      volume['name'])
-
+        volume_path = self.local_path(volume)
         model_update = \
             self.target_driver.ensure_export(context, volume, volume_path)
         return model_update
 
     def create_export(self, context, volume, connector, vg=None):
-        if vg is None:
-            vg = self.configuration.volume_group
-
-        volume_path = "/dev/%s/%s" % (vg, volume['name'])
-
+        volume_path = self.local_path(volume)
         export_info = self.target_driver.create_export(
             context,
             volume,
@@ -196,7 +216,13 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
         self.target_driver.remove_export(context, volume)
 
     def initialize_connection(self, volume, connector):
-        return self.target_driver.initialize_connection(volume, connector)
+        if connector['host'] != volutils.extract_host(volume['host'], 'host'):
+            return self.target_driver.initialize_connection(volume, connector)
+        else:
+            return {
+                'driver_volume_type': 'local',
+                'data': {'device_path': self.local_path(volume)},
+            }
 
     def validate_connector(self, connector):
         return self.target_driver.validate_connector(connector)
