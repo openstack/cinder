@@ -55,7 +55,8 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
     # Version 1.1: Added metadata, admin_metadata, volume_attachment, and
     #              volume_type
     # Version 1.2: Added glance_metadata, consistencygroup and snapshots
-    VERSION = '1.2'
+    # Version 1.3: Added finish_volume_migration()
+    VERSION = '1.3'
 
     OPTIONAL_FIELDS = ('metadata', 'admin_metadata', 'glance_metadata',
                        'volume_type', 'volume_attachment', 'consistencygroup',
@@ -372,6 +373,41 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
 
         if not md_was_changed:
             self.obj_reset_changes(['metadata'])
+
+    def finish_volume_migration(self, dest_volume):
+        # We swap fields between source (i.e. self) and destination at the
+        # end of migration because we want to keep the original volume id
+        # in the DB but now pointing to the migrated volume.
+        skip = ({'id', 'provider_location', 'glance_metadata'} |
+                set(self.obj_extra_fields))
+        for key in set(dest_volume.fields.keys()) - skip:
+            # Only swap attributes that are already set.  We do not want to
+            # unexpectedly trigger a lazy-load.
+            if not dest_volume.obj_attr_is_set(key):
+                continue
+
+            value = getattr(dest_volume, key)
+            value_to_dst = getattr(self, key)
+
+            # Destination must have a _name_id since the id no longer matches
+            # the volume.  If it doesn't have a _name_id we set one.
+            if key == '_name_id':
+                if not dest_volume._name_id:
+                    setattr(dest_volume, key, self.id)
+                continue
+            elif key == 'migration_status':
+                value = None
+                value_to_dst = 'deleting'
+            elif key == 'display_description':
+                value_to_dst = 'migration src for ' + self.id
+            elif key == 'status':
+                value_to_dst = 'deleting'
+
+            setattr(self, key, value)
+            setattr(dest_volume, key, value_to_dst)
+
+        dest_volume.save()
+        return dest_volume
 
 
 @base.CinderObjectRegistry.register
