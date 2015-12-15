@@ -1608,7 +1608,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         # Create new volume on remote host
 
-        skip = {'id', '_name_id', 'name', 'host', 'status',
+        skip = {'id', '_name_id', 'name_id', 'name', 'host', 'status',
                 'attach_status', 'migration_status', 'volume_type',
                 'consistencygroup', 'volume_attachment'}
         # We don't copy volume_type, consistencygroup and volume_attachment,
