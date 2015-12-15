@@ -17,6 +17,7 @@
 Test suite for VMware VMDK driver volumeops module.
 """
 
+import ddt
 import mock
 from oslo_utils import units
 from oslo_vmware import exceptions
@@ -27,6 +28,7 @@ from cinder.volume.drivers.vmware import exceptions as vmdk_exceptions
 from cinder.volume.drivers.vmware import volumeops
 
 
+@ddt.ddt
 class VolumeOpsTestCase(test.TestCase):
     """Unit tests for volumeops module."""
 
@@ -1222,81 +1224,63 @@ class VolumeOpsTestCase(test.TestCase):
         self._verify_extra_config(ret.config.extraConfig, key, value)
 
     @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                '_get_folder')
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
                 '_get_clone_spec')
-    def test_clone_backing(self, get_clone_spec):
-        folder = mock.Mock(name='folder', spec=object)
-        folder._type = 'Folder'
-        task = mock.sentinel.task
-        self.session.invoke_api.side_effect = [folder, task, folder, task,
-                                               folder, task]
-        task_info = mock.Mock(spec=object)
-        task_info.result = mock.sentinel.new_backing
-        self.session.wait_for_task.return_value = task_info
+    def _test_clone_backing(
+            self, clone_type, folder, get_clone_spec, get_folder):
+        backing_folder = mock.sentinel.backing_folder
+        get_folder.return_value = backing_folder
+
         clone_spec = mock.sentinel.clone_spec
         get_clone_spec.return_value = clone_spec
-        # Test non-linked clone_backing
+
+        task = mock.sentinel.task
+        self.session.invoke_api.return_value = task
+
+        clone = mock.sentinel.clone
+        self.session.wait_for_task.return_value = mock.Mock(result=clone)
+
         name = mock.sentinel.name
-        backing = mock.Mock(spec=object)
-        backing._type = 'VirtualMachine'
+        backing = mock.sentinel.backing
         snapshot = mock.sentinel.snapshot
-        clone_type = "anything-other-than-linked"
-        datastore = mock.sentinel.datstore
-        ret = self.vops.clone_backing(name, backing, snapshot, clone_type,
-                                      datastore)
-        # verify calls
-        self.assertEqual(mock.sentinel.new_backing, ret)
-        disk_move_type = 'moveAllDiskBackingsAndDisallowSharing'
-        get_clone_spec.assert_called_with(
-            datastore, disk_move_type, snapshot, backing, None, host=None,
-            resource_pool=None, extra_config=None)
-        expected = [mock.call(vim_util, 'get_object_property',
-                              self.session.vim, backing, 'parent'),
-                    mock.call(self.session.vim, 'CloneVM_Task', backing,
-                              folder=folder, name=name, spec=clone_spec)]
-        self.assertEqual(expected, self.session.invoke_api.mock_calls)
-
-        # Test linked clone_backing
-        clone_type = volumeops.LINKED_CLONE_TYPE
-        self.session.invoke_api.reset_mock()
-        ret = self.vops.clone_backing(name, backing, snapshot, clone_type,
-                                      datastore)
-        # verify calls
-        self.assertEqual(mock.sentinel.new_backing, ret)
-        disk_move_type = 'createNewChildDiskBacking'
-        get_clone_spec.assert_called_with(
-            datastore, disk_move_type, snapshot, backing, None, host=None,
-            resource_pool=None, extra_config=None)
-        expected = [mock.call(vim_util, 'get_object_property',
-                              self.session.vim, backing, 'parent'),
-                    mock.call(self.session.vim, 'CloneVM_Task', backing,
-                              folder=folder, name=name, spec=clone_spec)]
-        self.assertEqual(expected, self.session.invoke_api.mock_calls)
-
-        # Test with optional params (disk_type, host, resource_pool and
-        # extra_config).
-        clone_type = None
-        disk_type = 'thin'
+        datastore = mock.sentinel.datastore
+        disk_type = mock.sentinel.disk_type
         host = mock.sentinel.host
-        rp = mock.sentinel.rp
+        resource_pool = mock.sentinel.resource_pool
         extra_config = mock.sentinel.extra_config
-        self.session.invoke_api.reset_mock()
-        ret = self.vops.clone_backing(name, backing, snapshot, clone_type,
-                                      datastore, disk_type, host, rp,
-                                      extra_config)
+        ret = self.vops.clone_backing(
+            name, backing, snapshot, clone_type, datastore,
+            disk_type=disk_type, host=host, resource_pool=resource_pool,
+            extra_config=extra_config, folder=folder)
 
-        self.assertEqual(mock.sentinel.new_backing, ret)
-        disk_move_type = 'moveAllDiskBackingsAndDisallowSharing'
-        get_clone_spec.assert_called_with(
-            datastore, disk_move_type, snapshot, backing, disk_type, host=host,
-            resource_pool=rp, extra_config=extra_config)
-        expected = [mock.call(vim_util, 'get_object_property',
-                              self.session.vim, backing, 'parent'),
-                    mock.call(self.session.vim, 'CloneVM_Task', backing,
-                              folder=folder, name=name, spec=clone_spec)]
-        self.assertEqual(expected, self.session.invoke_api.mock_calls)
+        if folder:
+            self.assertFalse(get_folder.called)
+        else:
+            get_folder.assert_called_once_with(backing)
 
-        # Clear side effects.
-        self.session.invoke_api.side_effect = None
+        if clone_type == 'linked':
+            exp_disk_move_type = 'createNewChildDiskBacking'
+        else:
+            exp_disk_move_type = 'moveAllDiskBackingsAndDisallowSharing'
+        get_clone_spec.assert_called_once_with(
+            datastore, exp_disk_move_type, snapshot, backing, disk_type,
+            host=host, resource_pool=resource_pool, extra_config=extra_config)
+
+        exp_folder = folder if folder else backing_folder
+        self.session.invoke_api.assert_called_once_with(
+            self.session.vim, 'CloneVM_Task', backing, folder=exp_folder,
+            name=name, spec=clone_spec)
+
+        self.session.wait_for_task.assert_called_once_with(task)
+        self.assertEqual(clone, ret)
+
+    @ddt.data('linked', 'full')
+    def test_clone_backing(self, clone_type):
+        self._test_clone_backing(clone_type, mock.sentinel.folder)
+
+    def test_clone_backing_with_empty_folder(self):
+        self._test_clone_backing('linked', None)
 
     @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
                 '_create_specs_for_disk_add')
