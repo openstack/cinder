@@ -103,7 +103,7 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
         for dev in nbds:
             if dev['objectPath'] == self.bucket_path + '/' + volume['name']:
                 return dev['number']
-        raise Exception #FIXME
+        return -1
 
     def _new_nbd_number(self, volume):
         nbds = self._get_nbd_devices()
@@ -117,7 +117,10 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
         raise Exception #FIXME
 
     def local_path(self, volume):
-        return '/dev/nbd' + str(self._get_nbd_number(volume))
+        number = self._get_nbd_number(volume)
+        if number == -1:
+            raise Exception #FIXME
+        return '/dev/nbd' + str(number)
 
     def create_volume(self, volume):
         number = self._new_nbd_number(volume)
@@ -135,6 +138,8 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
 
     def delete_volume(self, volume):
         number = self._get_nbd_number(volume)
+        if number == -1:
+            return
         try:
             self.restapi.delete('nbd', {
                 'objectPath': self.bucket_path + '/' + volume['name'],
@@ -148,13 +153,35 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
         raise NotImplemented
 
     def create_snapshot(self, snapshot):
-        raise NotImplemented
+        try:
+            self.restapi.post('nbd/snapshot', {
+                'objectPath': self.bucket_path + '/' + snapshot['volume_name'],
+                'snapName': snapshot['name']
+            })
+        except exception.VolumeBackendAPIException:
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_LE('Error creating snapshot'))
 
     def delete_snapshot(self, snapshot):
-        raise NotImplemented
+        try:
+            self.restapi.delete('nbd/snapshot', {
+                'objectPath': self.bucket_path + '/' + snapshot['volume_name'],
+                'snapName': snapshot['name']
+            })
+        except exception.VolumeBackendAPIException:
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_LE('Error deleting snapshot'))
 
     def create_volume_from_snapshot(self, volume, snapshot):
-        raise NotImplemented
+        try:
+            self.restapi.put('nbd/snapshot/clone', {
+                'objectPath': self.bucket_path + '/' + snapshot['volume_name'],
+                'snapName': snapshot['name'],
+                'clonePath': self.bucket_path + '/' + volume['name']
+            })
+        except exception.VolumeBackendAPIException:
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_LE('Error cloning snapshot'))
 
     def create_cloned_volume(self, volume, src_vref):
         raise NotImplemented
