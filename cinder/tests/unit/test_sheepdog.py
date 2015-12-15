@@ -284,9 +284,9 @@ class SheepdogIOWrapperTestCase(test.TestCase):
         self.snapshot_name = 'snapshot-bf452d80-068a-43d7-ba9f-196cf47bd0be'
 
         self.vdi_wrapper = sheepdog.SheepdogIOWrapper(
-            self.volume)
+            SHEEP_ADDR, SHEEP_PORT, self.volume)
         self.snapshot_wrapper = sheepdog.SheepdogIOWrapper(
-            self.volume, self.snapshot_name)
+            SHEEP_ADDR, SHEEP_PORT, self.volume, self.snapshot_name)
 
         self.execute = mock.MagicMock()
         self.mock_object(processutils, 'execute', self.execute)
@@ -321,7 +321,8 @@ class SheepdogIOWrapperTestCase(test.TestCase):
     def test_read_vdi(self):
         self.vdi_wrapper.read()
         self.execute.assert_called_once_with(
-            'dog', 'vdi', 'read', self.volume['name'], 0, process_input=None)
+            'dog', 'vdi', 'read', '-a', SHEEP_ADDR, '-p', SHEEP_PORT,
+            self.volume['name'], 0, process_input=None)
 
     def test_read_vdi_invalid(self):
         self.vdi_wrapper._valid = False
@@ -334,7 +335,7 @@ class SheepdogIOWrapperTestCase(test.TestCase):
         self.vdi_wrapper.write(data)
 
         self.execute.assert_called_once_with(
-            'dog', 'vdi', 'write',
+            'dog', 'vdi', 'write', '-a', SHEEP_ADDR, '-p', SHEEP_PORT,
             self.volume['name'], 0, len(data),
             process_input=data)
         self.assertEqual(len(data), self.vdi_wrapper.tell())
@@ -347,8 +348,8 @@ class SheepdogIOWrapperTestCase(test.TestCase):
     def test_read_snapshot(self):
         self.snapshot_wrapper.read()
         self.execute.assert_called_once_with(
-            'dog', 'vdi', 'read', '-s', self.snapshot_name,
-            self.volume['name'], 0,
+            'dog', 'vdi', 'read', '-a', SHEEP_ADDR, '-p', SHEEP_PORT,
+            '-s', self.snapshot_name, self.volume['name'], 0,
             process_input=None)
 
     def test_seek(self):
@@ -389,6 +390,8 @@ class SheepdogClientTestCase(test.TestCase):
         self.driver.do_setup(None)
         self.test_data = SheepdogDriverTestDataGenerator()
         self.client = self.driver.client
+        self._addr = SHEEP_ADDR
+        self._port = SHEEP_PORT
         self._vdiname = self.test_data.TEST_VOLUME.name
         self._vdisize = self.test_data.TEST_VOLUME.size
         self._src_vdiname = self.test_data.TEST_SNAPSHOT.volume_name
@@ -1083,6 +1086,8 @@ class SheepdogDriverTestCase(test.TestCase):
         self.driver.do_setup(None)
         self.test_data = SheepdogDriverTestDataGenerator()
         self.client = self.driver.client
+        self._addr = SHEEP_ADDR
+        self._port = SHEEP_PORT
         self._vdiname = self.test_data.TEST_VOLUME.name
         self._vdisize = self.test_data.TEST_VOLUME.size
         self._src_vdiname = self.test_data.TEST_SNAPSHOT.volume_name
@@ -1165,7 +1170,10 @@ class SheepdogDriverTestCase(test.TestCase):
                                 '-f', 'raw',
                                 '-t', 'none',
                                 '-O', 'raw',
-                                'sheepdog:%s' % fake_volume['name'],
+                                'sheepdog:%s:%s:%s' % (
+                                    self._addr,
+                                    self._port,
+                                    fake_volume['name']),
                                 mock.ANY)
                 fake_try_execute.assert_called_once_with(*expected_cmd)
                 fake_image_service_update.assert_called_once_with(
@@ -1254,8 +1262,10 @@ class SheepdogDriverTestCase(test.TestCase):
                         image_location, image_meta, image_service)
 
         self.assertTrue(cloned)
-        self.assertEqual("sheepdog:%s" %
-                         self.test_data.TEST_CLONED_VOLUME.name,
+        self.assertEqual("sheepdog:%s:%s:%s" % (
+                         self._addr,
+                         self._port,
+                         self.test_data.TEST_CLONED_VOLUME.name),
                          model_updated['provider_location'])
 
     def test_clone_image_failure(self):
@@ -1309,6 +1319,19 @@ class SheepdogDriverTestCase(test.TestCase):
                                                  self._snapname,
                                                  self._dst_vdiname,
                                                  self._dst_vdisize)
+
+    def test_initialize_connection(self):
+        fake_volume = self.test_data.TEST_VOLUME
+        expected = {
+            'driver_volume_type': 'sheepdog',
+            'data': {
+                'name': fake_volume.name,
+                'hosts': ["127.0.0.1"],
+                'ports': ["7000"],
+            }
+        }
+        actual = self.driver.initialize_connection(fake_volume, None)
+        self.assertDictMatch(expected, actual)
 
     @mock.patch.object(sheepdog.SheepdogClient, 'resize')
     @mock.patch.object(sheepdog, 'LOG')
