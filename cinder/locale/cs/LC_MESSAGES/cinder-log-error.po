@@ -8,10 +8,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev32\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev67\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-10 06:20+0000\n"
-"PO-Revision-Date: 2015-12-08 03:40+0000\n"
+"POT-Creation-Date: 2015-12-15 06:26+0000\n"
+"PO-Revision-Date: 2015-12-14 02:23+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language-Team: Czech\n"
 "Language: cs\n"
@@ -451,6 +451,11 @@ msgid "Could not get share %s capacity info."
 msgstr "Nelze získat informace o kapacitě sdílení %s."
 
 #, python-format
+msgid "Could not log in to 3PAR array (%s) with the provided credentials."
+msgstr ""
+"Nelze se přihlásit do pole 3PAR (%s) pomocí zadaných přihlašovacích údajů."
+
+#, python-format
 msgid "Could not stat scheduler options file %(filename)s."
 msgstr "Nelze vyhodnotit soubor voleb plánovače %(filename)s."
 
@@ -461,6 +466,14 @@ msgstr "Nelze ověřit zařízení %s"
 #, python-format
 msgid "Create cg snapshot %s failed."
 msgstr "Vytvoření snímku skupiny jednotnosti %s selhalo."
+
+#, python-format
+msgid ""
+"Create clone_image_volume: %(volume_id)sfor image %(image_id)s, failed "
+"(Exception: %(except)s)"
+msgstr ""
+"Vytvoření klonu svazku obrazu: %(volume_id)s pro obraz %(image_id)s selhalo "
+"(Výjimka: %(except)s)"
 
 #, python-format
 msgid "Create consistency group %s failed."
@@ -610,6 +623,10 @@ msgstr "Nenalezen očekávaný sloupec v lsvdisku: %s."
 msgid "Differential restore failed, trying full restore"
 msgstr "Rozdílová obnova selhala, pokus o celkovou obnovu"
 
+msgid ""
+"Disabling replication failed because replication is not properly configured."
+msgstr "Zakázání replikace selhalo, protože replikace není správně nastavena."
+
 #, python-format
 msgid "Disconnection failed with message: %(msg)s."
 msgstr "Odpojení selhalo se zprávou: %(msg)s."
@@ -624,6 +641,10 @@ msgid ""
 msgstr ""
 "Přesun svazku %(vol)s za pomocí ovladače selhal. Přesun z %(src)s do %(dst)s "
 "selhal s chybou: %(error)s."
+
+msgid ""
+"Enabling replication failed because replication is not properly configured."
+msgstr "Povolení replikace selhalo, protože replikace není správně nastavena."
 
 #, python-format
 msgid "Error Attaching volume %(vol)s."
@@ -1169,6 +1190,20 @@ msgstr "Rozšíření svazku selhalo."
 #, python-format
 msgid "Extension of volume %s failed."
 msgstr "Rozšíření snímku %s selhalo."
+
+msgid ""
+"Extra spec replication:mode must be set and must be either 'sync' or "
+"'periodic'."
+msgstr ""
+"Dodatečná specifikace replication:mode musí být zadána a musí mít hodnotu "
+"'sync' nebo 'periodic'."
+
+msgid ""
+"Extra spec replication:sync_period must be greater than 299 and less than "
+"31622401 seconds."
+msgstr ""
+"Dodatečná specifikace  replication:sync_period musí být větší než 299 a "
+"menší než 31622401 vteřin."
 
 #, python-format
 msgid ""
@@ -1855,10 +1890,6 @@ msgstr "Ukončování horcm selhalo."
 msgid "Failed to snap Consistency Group %s"
 msgstr "Nelze vytvořit snímek skupiny jednotnosti %s"
 
-#, python-format
-msgid "Failed to start %(name)s on %(_host)s: %(_port)s with SSL support."
-msgstr "Nelze spustit %(name)s na %(_host)s:%(_port)s s podporou SSL."
-
 msgid "Failed to start horcm."
 msgstr "Spouštění horcm selhalo."
 
@@ -2126,6 +2157,12 @@ msgstr "Neplatný název hostitele %(host)s"
 #, python-format
 msgid "Invalid value for %(key)s, value is %(value)s."
 msgstr "Neplatná hodnota pro %(key)s, hodnota je %(value)s."
+
+msgid ""
+"Issuing a fail-over failed because replication is not properly configured."
+msgstr ""
+"Vyvolání zavedení záložního systému, protože replikace není správně "
+"nastavena."
 
 #, python-format
 msgid "JSON encode params %(param)s error: %(status)s."
@@ -2699,6 +2736,15 @@ msgstr "V nastaveném clusteru nejsou dostupní žádní platní hostitele: %s."
 #, python-format
 msgid "There is no valid datastore satisfying requirements: %s."
 msgstr "Žádné platné datové úložiště splňující požadavky: %s."
+
+msgid "There must be at least one valid replication device configured."
+msgstr "Musí být zadáno alespoň jedno platné replikační zařízení."
+
+#, python-format
+msgid ""
+"There was a problem disabling replication on volume '%(name)s': %(error)s"
+msgstr ""
+"Při zakazování replikace ve svazku '%(name)s' se vyskytl problém: %(error)s"
 
 #, python-format
 msgid "There was an error deleting snapshot %(id)s: %(error)."

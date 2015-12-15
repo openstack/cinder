@@ -7,10 +7,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev48\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev67\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-13 06:22+0000\n"
-"PO-Revision-Date: 2015-11-27 09:24+0000\n"
+"POT-Creation-Date: 2015-12-15 06:26+0000\n"
+"PO-Revision-Date: 2015-12-14 02:24+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language-Team: Czech\n"
 "Language: cs\n"
@@ -72,10 +72,6 @@ msgstr "%(element)s: %(val)s"
 #, python-format
 msgid "%(method)s %(url)s"
 msgstr "%(method)s %(url)s"
-
-#, python-format
-msgid "%(name)s listening on %(_host)s:%(_port)s"
-msgstr "%(name)s poslouchá na %(_host)s:%(_port)s"
 
 #, python-format
 msgid "%(url)s returned a fault: %(e)s"
@@ -1895,6 +1891,10 @@ msgstr ""
 "%(connector)s."
 
 #, python-format
+msgid "Returning random Port Group: %(portGroupName)s."
+msgstr "Vrácení náhodné skupiny portu: %(portGroupName)s."
+
+#, python-format
 msgid ""
 "Retype LUN(id: %(lun_id)s) smartcache from (name: %(old_name)s, id: "
 "%(old_id)s) to (name: %(new_name)s, id: %(new_id)s) successfully."
@@ -2188,9 +2188,6 @@ msgstr "Spouštění ovladače svazku %(driver_name)s (%(version)s)"
 #, python-format
 msgid "Starting volume driver %(driver_name)s (%(version)s)."
 msgstr "Spouštění ovladače svazku %(driver_name)s (%(version)s)."
-
-msgid "Stopping WSGI server."
-msgstr "Zastavování serveru WSGI."
 
 #, python-format
 msgid "Storage Group %(storageGroupName)s successfully deleted."
@@ -2914,9 +2911,6 @@ msgid ""
 msgstr ""
 "Svazek: %(vol_id)s, velikost: %(vol_size)d je větší než záloha: "
 "%(backup_id)s, velikost: %(backup_size)d, pokračuje se v obnově."
-
-msgid "WSGI server has stopped."
-msgstr "Server WSGI byl zastaven."
 
 #, python-format
 msgid "WWPN on node %(node)s: %(wwpn)s."

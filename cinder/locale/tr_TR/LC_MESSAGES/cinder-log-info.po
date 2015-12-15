@@ -7,9 +7,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev48\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev67\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-13 06:22+0000\n"
+"POT-Creation-Date: 2015-12-15 06:26+0000\n"
 "PO-Revision-Date: 2015-09-16 08:22+0000\n"
 "Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
 "Language-Team: Turkish (Turkey)\n"
@@ -72,10 +72,6 @@ msgstr "%(element)s: %(val)s"
 #, python-format
 msgid "%(method)s %(url)s"
 msgstr "%(method)s %(url)s"
-
-#, python-format
-msgid "%(name)s listening on %(_host)s:%(_port)s"
-msgstr "%(name)s %(_host)s:%(_port)s üzerinde dinliyor"
 
 #, python-format
 msgid "%(url)s returned a fault: %(e)s"
@@ -1788,9 +1784,6 @@ msgstr "Mantıksal sürücü %(driver_name)s (%(version)s) başlatılıyor"
 msgid "Starting volume driver %(driver_name)s (%(version)s)."
 msgstr "Mantıksal sürücü sürücüsü başlatılıyor %(driver_name)s (%(version)s)."
 
-msgid "Stopping WSGI server."
-msgstr "WSGI sunucusu durduruluyor."
-
 #, python-format
 msgid "Storage Group %s was empty."
 msgstr "Depolama Grubu %s boştu."
@@ -2363,9 +2356,6 @@ msgid ""
 msgstr ""
 "Mantıksal sürücü: %(vol_id)s, boyut: %(vol_size)d yedek: %(backup_id)s, "
 "boyut: %(backup_size)d'den büyük, geri yüklemeyle devam ediliyor."
-
-msgid "WSGI server has stopped."
-msgstr "WSGI sunucusu durduruldu."
 
 #, python-format
 msgid "WWPN on node %(node)s: %(wwpn)s."
