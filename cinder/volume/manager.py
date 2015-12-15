@@ -2653,10 +2653,11 @@ class VolumeManager(manager.SchedulerDependentManager):
             # self.host is 'host@backend'
             # volume_ref['host'] is 'host@backend#pool'
             # Extract host before doing comparison
-            new_host = vol_utils.extract_host(volume_ref['host'])
-            if new_host != self.host:
-                raise exception.InvalidVolume(
-                    reason=_("Volume is not local to this node"))
+            if volume_ref['host']:
+                new_host = vol_utils.extract_host(volume_ref['host'])
+                if new_host != self.host:
+                    raise exception.InvalidVolume(
+                        reason=_("Volume is not local to this node"))
 
         self._notify_about_consistencygroup_usage(
             context, group, "delete.start")
