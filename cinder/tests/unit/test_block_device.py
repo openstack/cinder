@@ -318,3 +318,100 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
                                   self.drv.extend_volume, TEST_VOLUME, 2)
                 lp_mocked.assert_called_once_with(TEST_VOLUME)
                 mock_get_size.assert_called_once_with(['/dev/loop1'])
+
+    @mock.patch('cinder.volume.utils.copy_volume')
+    def test_create_snapshot(self, _copy_volume):
+        TEST_VOLUME = obj_volume.Volume(id=1,
+                                        name_id='1234',
+                                        size=1,
+                                        display_name='vol1',
+                                        status='available',
+                                        provider_location='/dev/loop1')
+        TEST_SNAP = obj_snap.Snapshot(id=1,
+                                      volume_id=1,
+                                      volume_size=1024,
+                                      provider_location='/dev/loop2',
+                                      volume=TEST_VOLUME)
+
+        with mock.patch.object(self.drv, 'find_appropriate_size_device',
+                               return_value='/dev/loop2') as fasd_mocked:
+            with mock.patch.object(self.drv, '_get_devices_sizes',
+                                   return_value={'/dev/loop2': 1024}) as \
+                    gds_mocked:
+                with mock.patch.object(self.drv,
+                                       '_update_provider_location') as \
+                        upl_mocked:
+                    volutils.copy_volume('/dev/loop1', fasd_mocked, 1024,
+                                         mock.sentinel,
+                                         execute=self.drv._execute)
+                    self.drv.create_snapshot(TEST_SNAP)
+                    fasd_mocked.assert_called_once_with(TEST_SNAP.volume_size)
+                    gds_mocked.assert_called_once_with(['/dev/loop2'])
+                    upl_mocked.assert_called_once_with(
+                        TEST_SNAP, '/dev/loop2')
+
+    def test_create_snapshot_with_not_available_volume(self):
+        TEST_VOLUME = obj_volume.Volume(id=1,
+                                        name_id='1234',
+                                        size=1,
+                                        display_name='vol1',
+                                        status='in use',
+                                        provider_location='/dev/loop1')
+        TEST_SNAP = obj_snap.Snapshot(id=1,
+                                      volume_id=1,
+                                      volume_size=1024,
+                                      provider_location='/dev/loop2',
+                                      volume=TEST_VOLUME)
+
+        self.assertRaises(cinder.exception.CinderException,
+                          self.drv.create_snapshot, TEST_SNAP)
+
+    @mock.patch('cinder.volume.utils.copy_volume')
+    def test_create_volume_from_snapshot(self, _copy_volume):
+        TEST_SNAP = obj_snap.Snapshot(volume_id=1,
+                                      volume_size=1024,
+                                      provider_location='/dev/loop1')
+        TEST_VOLUME = obj_volume.Volume(id=1,
+                                        name_id='1234',
+                                        size=1,
+                                        display_name='vol1',
+                                        provider_location='/dev/loop2')
+
+        with mock.patch.object(self.drv, 'find_appropriate_size_device',
+                               return_value='/dev/loop2') as fasd_mocked:
+            with mock.patch.object(self.drv, '_get_devices_sizes',
+                                   return_value={'/dev/loop2': 1024}) as \
+                    gds_mocked:
+                with mock.patch.object(self.drv,
+                                       '_update_provider_location') as \
+                        upl_mocked:
+                    volutils.copy_volume('/dev/loop1', fasd_mocked, 1024,
+                                         mock.sentinel,
+                                         execute=self.drv._execute)
+                    self.drv.create_volume_from_snapshot(
+                        TEST_VOLUME, TEST_SNAP)
+                    fasd_mocked.assert_called_once_with(
+                        TEST_SNAP.volume_size)
+                    gds_mocked.assert_called_once_with(['/dev/loop2'])
+                    upl_mocked.assert_called_once_with(
+                        TEST_VOLUME, '/dev/loop2')
+
+    @mock.patch('os.path.exists', return_value=True)
+    @mock.patch('cinder.volume.utils.clear_volume')
+    def test_delete_snapshot(self, _clear_volume, _exists):
+        TEST_SNAP = obj_snap.Snapshot(volume_id=1,
+                                      provider_location='/dev/loop1',
+                                      status='available')
+
+        with mock.patch.object(self.drv, 'local_path',
+                               return_value='/dev/loop1') as lp_mocked:
+            with mock.patch.object(self.drv, '_get_devices_sizes',
+                                   return_value={'/dev/loop1': 1}) as \
+                    gds_mocked:
+                volutils.clear_volume(gds_mocked, lp_mocked)
+                self.drv.delete_snapshot(TEST_SNAP)
+                lp_mocked.assert_called_once_with(TEST_SNAP)
+                gds_mocked.assert_called_once_with(['/dev/loop1'])
+
+        self.assertTrue(_exists.called)
+        self.assertTrue(_clear_volume.called)
