@@ -100,9 +100,10 @@ class VolumeAPI(rpc.RPCAPI):
 
         2.0  - Remove 1.x compatibility
         2.1  - Add get_manageable_volumes() and get_manageable_snapshots().
+        2.2 - Adds support for sending objects over RPC in manage_existing().
     """
 
-    RPC_API_VERSION = '2.1'
+    RPC_API_VERSION = '2.2'
     TOPIC = CONF.volume_topic
     BINARY = 'cinder-volume'
 
@@ -243,8 +244,15 @@ class VolumeAPI(rpc.RPCAPI):
                    old_reservations=old_reservations)
 
     def manage_existing(self, ctxt, volume, ref):
-        cctxt = self._get_cctxt(volume['host'], '2.0')
-        cctxt.cast(ctxt, 'manage_existing', volume_id=volume['id'], ref=ref)
+        msg_args = {
+            'volume_id': volume.id, 'ref': ref, 'volume': volume,
+        }
+        version = '2.2'
+        if not self.client.can_send_version('2.2'):
+            version = '2.0'
+            msg_args.pop('volume')
+        cctxt = self._get_cctxt(volume.host, version)
+        cctxt.cast(ctxt, 'manage_existing', **msg_args)
 
     def promote_replica(self, ctxt, volume):
         cctxt = self._get_cctxt(volume['host'], '2.0')

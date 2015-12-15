@@ -20,6 +20,7 @@ from taskflow.types import failure as ft
 from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _LE
+from cinder import objects
 from cinder.volume.flows import common
 
 LOG = logging.getLogger(__name__)
@@ -68,18 +69,11 @@ class EntryCreateTask(flow_utils.CinderTask):
             'bootable': kwargs.pop('bootable'),
         }
 
-        volume = self.db.volume_create(context, volume_properties)
+        volume = objects.Volume(context, volume_properties)
+        volume.create()
 
         return {
             'volume_properties': volume_properties,
-            # NOTE(harlowja): it appears like further usage of this volume
-            # result actually depend on it being a sqlalchemy object and not
-            # just a plain dictionary so that's why we are storing this here.
-            #
-            # In the future where this task results can be serialized and
-            # restored automatically for continued running we will need to
-            # resolve the serialization & recreation of this object since raw
-            # sqlalchemy objects can't be serialized.
             'volume': volume,
         }
 
@@ -117,8 +111,9 @@ class ManageCastTask(flow_utils.CinderTask):
         # Call the scheduler to ensure that the host exists and that it can
         # accept the volume
         self.scheduler_rpcapi.manage_existing(context, CONF.volume_topic,
-                                              volume['id'],
-                                              request_spec=request_spec)
+                                              volume.id,
+                                              request_spec=request_spec,
+                                              volume=volume)
 
     def revert(self, context, result, flow_failures, **kwargs):
         # Restore the source volume status and set the volume to error status.

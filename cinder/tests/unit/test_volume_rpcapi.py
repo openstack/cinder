@@ -16,7 +16,9 @@
 Unit Tests for cinder.volume.rpcapi
 """
 import copy
+import mock
 
+import ddt
 from oslo_config import cfg
 from oslo_serialization import jsonutils
 
@@ -37,6 +39,7 @@ from cinder.volume import utils
 CONF = cfg.CONF
 
 
+@ddt.ddt
 class VolumeRpcAPITestCase(test.TestCase):
 
     def setUp(self):
@@ -408,14 +411,19 @@ class VolumeRpcAPITestCase(test.TestCase):
                               old_reservations=self.fake_reservations,
                               version='2.0')
 
-    def test_manage_existing(self):
+    @ddt.data('2.0', '2.2')
+    @mock.patch('oslo_messaging.RPCClient.can_send_version')
+    def test_manage_existing(self, version, can_send_version):
+        can_send_version.side_effect = lambda x: x == version
         self._test_volume_api('manage_existing',
                               rpc_method='cast',
-                              volume=self.fake_volume,
+                              volume=self.fake_volume_obj,
                               ref={'lv_name': 'foo'},
-                              version='2.0')
+                              version=version)
+        can_send_version.assert_called_once_with('2.2')
 
-    def test_manage_existing_snapshot(self):
+    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
+    def test_manage_existing_snapshot(self, mock_can_send_version):
         volume_update = {'host': 'fake_host'}
         snpshot = {
             'id': fake.SNAPSHOT_ID,

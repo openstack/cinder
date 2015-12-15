@@ -19,6 +19,7 @@ Unit Tests for cinder.scheduler.rpcapi
 
 import copy
 
+import ddt
 import mock
 
 from cinder import context
@@ -26,6 +27,7 @@ from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import test
 
 
+@ddt.ddt
 class SchedulerRpcAPITestCase(test.TestCase):
 
     def setUp(self):
@@ -118,14 +120,19 @@ class SchedulerRpcAPITestCase(test.TestCase):
                                  volume='volume',
                                  version='2.0')
 
-    def test_manage_existing(self):
+    @ddt.data('2.0', '2.1')
+    @mock.patch('oslo_messaging.RPCClient.can_send_version')
+    def test_manage_existing(self, version, can_send_version):
+        can_send_version.side_effect = lambda x: x == version
         self._test_scheduler_api('manage_existing',
                                  rpc_method='cast',
                                  topic='topic',
                                  volume_id='volume_id',
                                  request_spec='fake_request_spec',
                                  filter_properties='filter_properties',
-                                 version='2.0')
+                                 volume='volume',
+                                 version=version)
+        can_send_version.assert_called_with('2.1')
 
     def test_get_pools(self):
         self._test_scheduler_api('get_pools',
