@@ -36,6 +36,26 @@ class TestVolumeAttachment(test_objects.BaseObjectsTestCase):
         volume_attachment_update.assert_called_once_with(
             self.context, attachment.id, {'attach_status': 'attaching'})
 
+    @mock.patch('cinder.db.sqlalchemy.api.volume_attachment_get')
+    def test_refresh(self, attachment_get):
+        db_attachment1 = fake_volume.fake_db_volume_attachment()
+        db_attachment2 = db_attachment1.copy()
+        db_attachment2['mountpoint'] = '/dev/sdc'
+
+        # On the second volume_attachment_get, return the volume attachment
+        # with an updated mountpoint
+        attachment_get.side_effect = [db_attachment1, db_attachment2]
+        attachment = objects.VolumeAttachment.get_by_id(self.context, '1')
+        self._compare(self, db_attachment1, attachment)
+
+        # mountpoint was updated, so a volume attachment refresh should have a
+        # new value for that field
+        attachment.refresh()
+        self._compare(self, db_attachment2, attachment)
+        attachment_get.assert_has_calls([mock.call(self.context, '1'),
+                                         mock.call.__nonzero__(),
+                                         mock.call(self.context, '1')])
+
 
 class TestVolumeAttachmentList(test_objects.BaseObjectsTestCase):
     @mock.patch('cinder.db.volume_attachment_get_used_by_volume_id')

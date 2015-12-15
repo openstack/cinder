@@ -205,6 +205,24 @@ class CinderObject(base.VersionedObject):
             self.obj_reset_changes(values.keys())
         return result
 
+    def refresh(self):
+        # To refresh we need to have a model and for the model to have an id
+        # field
+        if 'id' not in self.fields:
+            msg = (_('VersionedObject %s cannot retrieve object by id.') %
+                   (self.obj_name()))
+            raise NotImplementedError(msg)
+
+        current = self.get_by_id(self._context, self.id)
+
+        for field in self.fields:
+            # Only update attributes that are already set.  We do not want to
+            # unexpectedly trigger a lazy-load.
+            if self.obj_attr_is_set(field):
+                if self[field] != current[field]:
+                    self[field] = current[field]
+        self.obj_reset_changes()
+
 
 class CinderObjectDictCompat(base.VersionedObjectDictCompat):
     """Mix-in to provide dictionary key access compat.

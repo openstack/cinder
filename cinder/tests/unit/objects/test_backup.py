@@ -140,6 +140,26 @@ class TestBackup(test_objects.BaseObjectsTestCase):
                           objects.Backup.decode_record,
                           export_string)
 
+    @mock.patch('cinder.db.sqlalchemy.api.backup_get')
+    def test_refresh(self, backup_get):
+        db_backup1 = fake_backup.copy()
+        db_backup2 = db_backup1.copy()
+        db_backup2['display_name'] = 'foobar'
+
+        # On the second backup_get, return the backup with an updated
+        # display_name
+        backup_get.side_effect = [db_backup1, db_backup2]
+        backup = objects.Backup.get_by_id(self.context, '1')
+        self._compare(self, db_backup1, backup)
+
+        # display_name was updated, so a backup refresh should have a new value
+        # for that field
+        backup.refresh()
+        self._compare(self, db_backup2, backup)
+        backup_get.assert_has_calls([mock.call(self.context, '1'),
+                                     mock.call.__nonzero__(),
+                                     mock.call(self.context, '1')])
+
 
 class TestBackupList(test_objects.BaseObjectsTestCase):
     @mock.patch('cinder.db.backup_get_all', return_value=[fake_backup])

@@ -83,6 +83,26 @@ class TestConsistencyGroup(test_objects.BaseObjectsTestCase):
         admin_context = consistencygroup_destroy.call_args[0][0]
         self.assertTrue(admin_context.is_admin)
 
+    @mock.patch('cinder.db.sqlalchemy.api.consistencygroup_get')
+    def test_refresh(self, consistencygroup_get):
+        db_cg1 = fake_consistencygroup.copy()
+        db_cg2 = db_cg1.copy()
+        db_cg2['description'] = 'foobar'
+
+        # On the second consistencygroup_get, return the ConsistencyGroup with
+        # an updated description
+        consistencygroup_get.side_effect = [db_cg1, db_cg2]
+        cg = objects.ConsistencyGroup.get_by_id(self.context, '1')
+        self._compare(self, db_cg1, cg)
+
+        # description was updated, so a ConsistencyGroup refresh should have a
+        # new value for that field
+        cg.refresh()
+        self._compare(self, db_cg2, cg)
+        consistencygroup_get.assert_has_calls([mock.call(self.context, '1'),
+                                               mock.call.__nonzero__(),
+                                               mock.call(self.context, '1')])
+
 
 class TestConsistencyGroupList(test_objects.BaseObjectsTestCase):
     @mock.patch('cinder.db.consistencygroup_get_all',

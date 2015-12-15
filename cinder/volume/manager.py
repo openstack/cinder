@@ -598,13 +598,12 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         context = context.elevated()
 
-        # FIXME(thangp): Remove this in v2.0 of RPC API.
-        if volume is not None:
-            volume_id = volume.id
-
         try:
-            # TODO(thangp): Replace with volume.refresh() when it is available
-            volume = objects.Volume.get_by_id(context, volume_id)
+            # FIXME(thangp): Remove this in v2.0 of RPC API.
+            if volume is None:
+                volume = objects.Volume.get_by_id(context, volume_id)
+            else:
+                volume.refresh()
         except exception.VolumeNotFound:
             # NOTE(thingee): It could be possible for a volume to
             # be deleted when resuming deletes from init_host().

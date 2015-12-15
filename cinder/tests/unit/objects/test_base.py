@@ -13,6 +13,7 @@
 #    under the License.
 
 import datetime
+import mock
 import uuid
 
 from iso8601 import iso8601
@@ -81,6 +82,33 @@ class TestCinderObject(test_objects.BaseObjectsTestCase):
         self.obj.scheduled_at = now_tz
         self.assertDictEqual({'scheduled_at': now},
                              self.obj.cinder_obj_get_changes())
+
+    def test_refresh(self):
+        @objects.base.CinderObjectRegistry.register_if(False)
+        class MyTestObject(objects.base.CinderObject,
+                           objects.base.CinderObjectDictCompat,
+                           objects.base.CinderComparableObject):
+            fields = {'id': fields.UUIDField(),
+                      'name': fields.StringField()}
+
+        test_obj = MyTestObject(id='1', name='foo')
+        refresh_obj = MyTestObject(id='1', name='bar')
+        with mock.patch(
+                'cinder.objects.base.CinderObject.get_by_id') as get_by_id:
+            get_by_id.return_value = refresh_obj
+
+            test_obj.refresh()
+            self._compare(self, refresh_obj, test_obj)
+
+    def test_refresh_no_id_field(self):
+        @objects.base.CinderObjectRegistry.register_if(False)
+        class MyTestObjectNoId(objects.base.CinderObject,
+                               objects.base.CinderObjectDictCompat,
+                               objects.base.CinderComparableObject):
+            fields = {'uuid': fields.UUIDField()}
+
+        test_obj = MyTestObjectNoId(uuid='1', name='foo')
+        self.assertRaises(NotImplementedError, test_obj.refresh)
 
 
 class TestCinderComparableObject(test_objects.BaseObjectsTestCase):
