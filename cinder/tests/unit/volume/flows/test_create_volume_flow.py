@@ -14,6 +14,7 @@
 #    under the License.
 """ Tests for create_volume TaskFlow """
 
+import ddt
 import mock
 
 from oslo_config import cfg
@@ -35,6 +36,7 @@ from cinder.volume.flows.manager import create_volume as create_volume_manager
 CONF = cfg.CONF
 
 
+@ddt.ddt
 class CreateVolumeFlowTestCase(test.TestCase):
 
     def time_inc(self):
@@ -340,6 +342,237 @@ class CreateVolumeFlowTestCase(test.TestCase):
                            'consistencygroup_id': None,
                            'cgsnapshot_id': None, }
         self.assertEqual(expected_result, result)
+
+    @mock.patch('cinder.volume.volume_types.is_encrypted')
+    @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs')
+    @mock.patch('cinder.volume.volume_types.get_default_volume_type')
+    @mock.patch('cinder.volume.volume_types.get_volume_type_by_name')
+    @mock.patch('cinder.volume.flows.api.create_volume.'
+                'ExtractVolumeRequestTask.'
+                '_get_volume_type_id')
+    def test_extract_image_volume_type_from_image(
+            self,
+            fake_get_type_id,
+            fake_get_vol_type,
+            fake_get_def_vol_type,
+            fake_get_qos,
+            fake_is_encrypted):
+
+        image_volume_type = 'type_from_image'
+        fake_image_service = fake_image.FakeImageService()
+        image_id = 6
+        image_meta = {}
+        image_meta['id'] = image_id
+        image_meta['status'] = 'active'
+        image_meta['size'] = 1
+        image_meta['properties'] = {}
+        image_meta['properties']['cinder_img_volume_type'] = image_volume_type
+        fake_image_service.create(self.ctxt, image_meta)
+        fake_key_manager = mock_key_mgr.MockKeyManager()
+
+        task = create_volume.ExtractVolumeRequestTask(
+            fake_image_service,
+            {'nova'})
+
+        fake_is_encrypted.return_value = False
+        fake_get_type_id.return_value = 1
+        fake_get_vol_type.return_value = image_volume_type
+        fake_get_def_vol_type.return_value = 'fake_vol_type'
+        fake_get_qos.return_value = {'qos_specs': None}
+        result = task.execute(self.ctxt,
+                              size=1,
+                              snapshot=None,
+                              image_id=image_id,
+                              source_volume=None,
+                              availability_zone='nova',
+                              volume_type=None,
+                              metadata=None,
+                              key_manager=fake_key_manager,
+                              source_replica=None,
+                              consistencygroup=None,
+                              cgsnapshot=None)
+        expected_result = {'size': 1,
+                           'snapshot_id': None,
+                           'source_volid': None,
+                           'availability_zone': 'nova',
+                           'volume_type': image_volume_type,
+                           'volume_type_id': 1,
+                           'encryption_key_id': None,
+                           'qos_specs': None,
+                           'source_replicaid': None,
+                           'consistencygroup_id': None,
+                           'cgsnapshot_id': None, }
+        self.assertEqual(expected_result, result)
+
+    @mock.patch('cinder.db.volume_type_get_by_name')
+    @mock.patch('cinder.volume.volume_types.is_encrypted')
+    @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs')
+    @mock.patch('cinder.volume.volume_types.get_default_volume_type')
+    @mock.patch('cinder.volume.flows.api.create_volume.'
+                'ExtractVolumeRequestTask.'
+                '_get_volume_type_id')
+    def test_extract_image_volume_type_from_image_invalid_type(
+            self,
+            fake_get_type_id,
+            fake_get_def_vol_type,
+            fake_get_qos,
+            fake_is_encrypted,
+            fake_db_get_vol_type):
+
+        image_volume_type = 'invalid'
+        fake_image_service = fake_image.FakeImageService()
+        image_id = 7
+        image_meta = {}
+        image_meta['id'] = image_id
+        image_meta['status'] = 'active'
+        image_meta['size'] = 1
+        image_meta['properties'] = {}
+        image_meta['properties']['cinder_img_volume_type'] = image_volume_type
+        fake_image_service.create(self.ctxt, image_meta)
+        fake_key_manager = mock_key_mgr.MockKeyManager()
+
+        task = create_volume.ExtractVolumeRequestTask(
+            fake_image_service,
+            {'nova'})
+
+        fake_is_encrypted.return_value = False
+        fake_get_type_id.return_value = 1
+        fake_get_def_vol_type.return_value = 'fake_vol_type'
+        fake_db_get_vol_type.side_effect = (
+            exception.VolumeTypeNotFoundByName(volume_type_name='invalid'))
+        fake_get_qos.return_value = {'qos_specs': None}
+        result = task.execute(self.ctxt,
+                              size=1,
+                              snapshot=None,
+                              image_id=image_id,
+                              source_volume=None,
+                              availability_zone='nova',
+                              volume_type=None,
+                              metadata=None,
+                              key_manager=fake_key_manager,
+                              source_replica=None,
+                              consistencygroup=None,
+                              cgsnapshot=None)
+        expected_result = {'size': 1,
+                           'snapshot_id': None,
+                           'source_volid': None,
+                           'availability_zone': 'nova',
+                           'volume_type': 'fake_vol_type',
+                           'volume_type_id': 1,
+                           'encryption_key_id': None,
+                           'qos_specs': None,
+                           'source_replicaid': None,
+                           'consistencygroup_id': None,
+                           'cgsnapshot_id': None, }
+        self.assertEqual(expected_result, result)
+
+    @mock.patch('cinder.db.volume_type_get_by_name')
+    @mock.patch('cinder.volume.volume_types.is_encrypted')
+    @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs')
+    @mock.patch('cinder.volume.volume_types.get_default_volume_type')
+    @mock.patch('cinder.volume.flows.api.create_volume.'
+                'ExtractVolumeRequestTask.'
+                '_get_volume_type_id')
+    @ddt.data((8, None), (9, {'cinder_img_volume_type': None}))
+    @ddt.unpack
+    def test_extract_image_volume_type_from_image_properties_error(
+            self,
+            image_id,
+            fake_img_properties,
+            fake_get_type_id,
+            fake_get_def_vol_type,
+            fake_get_qos,
+            fake_is_encrypted,
+            fake_db_get_vol_type):
+
+        fake_image_service = fake_image.FakeImageService()
+        image_meta = {}
+        image_meta['id'] = image_id
+        image_meta['status'] = 'active'
+        image_meta['size'] = 1
+        image_meta['properties'] = fake_img_properties
+        fake_image_service.create(self.ctxt, image_meta)
+        fake_key_manager = mock_key_mgr.MockKeyManager()
+
+        task = create_volume.ExtractVolumeRequestTask(
+            fake_image_service,
+            {'nova'})
+
+        fake_is_encrypted.return_value = False
+        fake_get_type_id.return_value = 1
+        fake_get_def_vol_type.return_value = 'fake_vol_type'
+        fake_get_qos.return_value = {'qos_specs': None}
+        result = task.execute(self.ctxt,
+                              size=1,
+                              snapshot=None,
+                              image_id=image_id,
+                              source_volume=None,
+                              availability_zone='nova',
+                              volume_type=None,
+                              metadata=None,
+                              key_manager=fake_key_manager,
+                              source_replica=None,
+                              consistencygroup=None,
+                              cgsnapshot=None)
+        expected_result = {'size': 1,
+                           'snapshot_id': None,
+                           'source_volid': None,
+                           'availability_zone': 'nova',
+                           'volume_type': 'fake_vol_type',
+                           'volume_type_id': 1,
+                           'encryption_key_id': None,
+                           'qos_specs': None,
+                           'source_replicaid': None,
+                           'consistencygroup_id': None,
+                           'cgsnapshot_id': None, }
+        self.assertEqual(expected_result, result)
+
+    @mock.patch('cinder.db.volume_type_get_by_name')
+    @mock.patch('cinder.volume.volume_types.is_encrypted')
+    @mock.patch('cinder.volume.volume_types.get_volume_type_qos_specs')
+    @mock.patch('cinder.volume.volume_types.get_default_volume_type')
+    @mock.patch('cinder.volume.flows.api.create_volume.'
+                'ExtractVolumeRequestTask.'
+                '_get_volume_type_id')
+    def test_extract_image_volume_type_from_image_invalid_input(
+            self,
+            fake_get_type_id,
+            fake_get_def_vol_type,
+            fake_get_qos,
+            fake_is_encrypted,
+            fake_db_get_vol_type):
+
+        fake_image_service = fake_image.FakeImageService()
+        image_id = 10
+        image_meta = {}
+        image_meta['id'] = image_id
+        image_meta['status'] = 'inactive'
+        fake_image_service.create(self.ctxt, image_meta)
+        fake_key_manager = mock_key_mgr.MockKeyManager()
+
+        task = create_volume.ExtractVolumeRequestTask(
+            fake_image_service,
+            {'nova'})
+
+        fake_is_encrypted.return_value = False
+        fake_get_type_id.return_value = 1
+        fake_get_def_vol_type.return_value = 'fake_vol_type'
+        fake_get_qos.return_value = {'qos_specs': None}
+
+        self.assertRaises(exception.InvalidInput,
+                          task.execute,
+                          self.ctxt,
+                          size=1,
+                          snapshot=None,
+                          image_id=image_id,
+                          source_volume=None,
+                          availability_zone='nova',
+                          volume_type=None,
+                          metadata=None,
+                          key_manager=fake_key_manager,
+                          source_replica=None,
+                          consistencygroup=None,
+                          cgsnapshot=None)
 
 
 class CreateVolumeFlowManagerTestCase(test.TestCase):
