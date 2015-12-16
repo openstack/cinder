@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev69\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev82\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-15 06:26+0000\n"
+"POT-Creation-Date: 2015-12-16 06:24+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -519,7 +519,7 @@ msgstr ""
 msgid "Unable to attach volume, because it is in maintenance."
 msgstr ""
 
-#: cinder/volume/api.py:668 cinder/volume/manager.py:939
+#: cinder/volume/api.py:668 cinder/volume/manager.py:938
 msgid "Attach volume completed successfully."
 msgstr ""
 
@@ -527,7 +527,7 @@ msgstr ""
 msgid "Unable to detach volume, because it is in maintenance."
 msgstr ""
 
-#: cinder/volume/api.py:681 cinder/volume/manager.py:1030
+#: cinder/volume/api.py:681 cinder/volume/manager.py:1029
 msgid "Detach volume completed successfully."
 msgstr ""
 
@@ -537,11 +537,11 @@ msgid ""
 "maintenance."
 msgstr ""
 
-#: cinder/volume/api.py:697 cinder/volume/manager.py:1411
+#: cinder/volume/api.py:697 cinder/volume/manager.py:1410
 msgid "Initialize volume connection completed successfully."
 msgstr ""
 
-#: cinder/volume/api.py:707 cinder/volume/manager.py:1434
+#: cinder/volume/api.py:707 cinder/volume/manager.py:1433
 msgid "Terminate volume connection completed successfully."
 msgstr ""
 
@@ -549,7 +549,7 @@ msgstr ""
 msgid "Unable to accept transfer for volume, because it is in maintenance."
 msgstr ""
 
-#: cinder/volume/api.py:722 cinder/volume/manager.py:1483
+#: cinder/volume/api.py:722 cinder/volume/manager.py:1482
 msgid "Transfer volume completed successfully."
 msgstr ""
 
@@ -621,7 +621,7 @@ msgstr ""
 msgid "Force upload to image is disabled, Force option will be ignored."
 msgstr ""
 
-#: cinder/volume/api.py:1220 cinder/volume/manager.py:1226
+#: cinder/volume/api.py:1220 cinder/volume/manager.py:1225
 msgid "Copy volume to image completed successfully."
 msgstr ""
 
@@ -684,91 +684,91 @@ msgstr ""
 msgid "Created volume successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:710
+#: cinder/volume/manager.py:709
 msgid "Deleted volume successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:777
+#: cinder/volume/manager.py:776
 msgid "Create snapshot completed successfully"
 msgstr ""
 
-#: cinder/volume/manager.py:844
+#: cinder/volume/manager.py:843
 msgid "Delete snapshot completed successfully"
 msgstr ""
 
-#: cinder/volume/manager.py:955 cinder/volume/manager.py:980
+#: cinder/volume/manager.py:954 cinder/volume/manager.py:979
 msgid "Volume detach called, but volume not attached."
 msgstr ""
 
-#: cinder/volume/manager.py:1449
+#: cinder/volume/manager.py:1448
 msgid "Remove volume export completed successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:1700
+#: cinder/volume/manager.py:1699
 #, python-format
 msgid ""
 "Couldn't find the temporary volume %(vol)s in the database. There is no "
 "need to clean up this volume."
 msgstr ""
 
-#: cinder/volume/manager.py:1713
+#: cinder/volume/manager.py:1712
 #, python-format
 msgid ""
 "Couldn't find destination volume %(vol)s in the database. The entry might"
 " be successfully deleted during migration completion phase."
 msgstr ""
 
-#: cinder/volume/manager.py:1751
+#: cinder/volume/manager.py:1750
 #, python-format
 msgid ""
 "migrate_volume_completion is cleaning up an error for volume %(vol1)s "
 "(temporary volume %(vol2)s"
 msgstr ""
 
-#: cinder/volume/manager.py:1809
+#: cinder/volume/manager.py:1808
 msgid "Complete-Migrate volume completed successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:1875
+#: cinder/volume/manager.py:1874
 msgid "Migrate volume completed successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:2069
+#: cinder/volume/manager.py:2068
 msgid "Extend volume completed successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:2167
+#: cinder/volume/manager.py:2166
 #, python-format
 msgid "Volume %s: retyped successfully"
 msgstr ""
 
-#: cinder/volume/manager.py:2225
+#: cinder/volume/manager.py:2224
 msgid "Retype volume completed successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:2262
+#: cinder/volume/manager.py:2261
 msgid "Manage existing volume completed successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:2296
+#: cinder/volume/manager.py:2295
 msgid "Promote volume replica completed successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:2360
+#: cinder/volume/manager.py:2359
 #, python-format
 msgid "Consistency group %s: creating"
 msgstr ""
 
-#: cinder/volume/manager.py:2384
+#: cinder/volume/manager.py:2383
 #, python-format
 msgid "Consistency group %s: created successfully"
 msgstr ""
 
-#: cinder/volume/manager.py:2390
+#: cinder/volume/manager.py:2389
 msgid "Create consistency group completed successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:2523
+#: cinder/volume/manager.py:2522
 #, python-format
 msgid "Create consistency group from source-%(source)s completed successfully."
 msgstr ""
@@ -817,14 +817,24 @@ msgstr ""
 msgid "Elapsed time for clear volume: %.2f sec"
 msgstr ""
 
-#: cinder/volume/drivers/block_device.py:66
+#: cinder/volume/drivers/block_device.py:75
 #, python-format
-msgid "Create %(volume)s on %(device)s"
+msgid "Creating %(volume)s on %(device)s"
 msgstr ""
 
-#: cinder/volume/drivers/block_device.py:110 cinder/volume/drivers/lvm.py:470
+#: cinder/volume/drivers/block_device.py:129
 #, python-format
-msgid "Creating clone of volume: %s"
+msgid "Creating clone of volume: %s."
+msgstr ""
+
+#: cinder/volume/drivers/block_device.py:240
+#, python-format
+msgid "Creating volume snapshot: %s."
+msgstr ""
+
+#: cinder/volume/drivers/block_device.py:255
+#, python-format
+msgid "Creating volume %s from snapshot."
 msgstr ""
 
 #: cinder/volume/drivers/datera.py:182
@@ -884,6 +894,11 @@ msgstr ""
 #: cinder/volume/drivers/lvm.py:408
 #, python-format
 msgid "Successfully deleted volume: %s"
+msgstr ""
+
+#: cinder/volume/drivers/lvm.py:470
+#, python-format
+msgid "Creating clone of volume: %s"
 msgstr ""
 
 #: cinder/volume/drivers/nfs.py:307 cinder/volume/drivers/smbfs.py:481

@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev69\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev82\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-15 06:26+0000\n"
+"POT-Creation-Date: 2015-12-16 06:24+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -2622,7 +2622,7 @@ msgstr ""
 msgid "Can't parse backup record."
 msgstr ""
 
-#: cinder/objects/base.py:88
+#: cinder/objects/base.py:88 cinder/objects/base.py:212
 #, python-format
 msgid "VersionedObject %s cannot retrieve object by id."
 msgstr ""
@@ -2893,27 +2893,27 @@ msgstr ""
 msgid "flush() not supported in this version of librbd"
 msgstr ""
 
-#: cinder/tests/unit/test_sheepdog.py:435
-#: cinder/tests/unit/test_sheepdog.py:659
-#: cinder/tests/unit/test_sheepdog.py:795 cinder/volume/drivers/sheepdog.py:99
+#: cinder/tests/unit/test_sheepdog.py:438
+#: cinder/tests/unit/test_sheepdog.py:662
+#: cinder/tests/unit/test_sheepdog.py:798 cinder/volume/drivers/sheepdog.py:99
 #: cinder/volume/drivers/sheepdog.py:186 cinder/volume/drivers/sheepdog.py:231
 #, python-format
 msgid "Failed to connect to sheep daemon. addr: %(addr)s, port: %(port)s"
 msgstr ""
 
-#: cinder/tests/unit/test_sheepdog.py:543 cinder/volume/drivers/sheepdog.py:154
+#: cinder/tests/unit/test_sheepdog.py:546 cinder/volume/drivers/sheepdog.py:154
 msgid ""
 "Cluster is not formatted. You should probably perform \"dog cluster "
 "format\"."
 msgstr ""
 
-#: cinder/tests/unit/test_sheepdog.py:557 cinder/volume/drivers/sheepdog.py:157
+#: cinder/tests/unit/test_sheepdog.py:560 cinder/volume/drivers/sheepdog.py:157
 msgid ""
 "Waiting for all nodes to join cluster. Ensure all sheep daemons are "
 "running."
 msgstr ""
 
-#: cinder/tests/unit/test_sheepdog.py:570 cinder/volume/drivers/sheepdog.py:152
+#: cinder/tests/unit/test_sheepdog.py:573 cinder/volume/drivers/sheepdog.py:152
 msgid "Invalid sheepdog cluster status."
 msgstr ""
 
@@ -3393,7 +3393,7 @@ msgstr ""
 msgid "attach snapshot from remote node"
 msgstr ""
 
-#: cinder/volume/driver.py:1059 cinder/volume/manager.py:1504
+#: cinder/volume/driver.py:1059 cinder/volume/manager.py:1503
 #: cinder/volume/drivers/ibm/flashsystem_common.py:787
 #, python-format
 msgid "Unable to access the backend storage via the path %(path)s."
@@ -3441,134 +3441,134 @@ msgstr ""
 msgid "Create manager volume flow failed."
 msgstr ""
 
-#: cinder/volume/manager.py:625
+#: cinder/volume/manager.py:624
 msgid "volume is not local to this node"
 msgstr ""
 
-#: cinder/volume/manager.py:861
+#: cinder/volume/manager.py:860
 msgid "being attached by different mode"
 msgstr ""
 
-#: cinder/volume/manager.py:866
+#: cinder/volume/manager.py:865
 msgid "volume is already attached"
 msgstr ""
 
-#: cinder/volume/manager.py:971
+#: cinder/volume/manager.py:970
 msgid ""
 "Detach volume failed: More than one attachment, but no attachment_id "
 "provided."
 msgstr ""
 
-#: cinder/volume/manager.py:1113
+#: cinder/volume/manager.py:1112 cinder/volume/drivers/block_device.py:236
 msgid "Volume is not available."
 msgstr ""
 
-#: cinder/volume/manager.py:1334
+#: cinder/volume/manager.py:1333
 #, python-format
 msgid "Validate volume connection failed (error: %(err)s)."
 msgstr ""
 
-#: cinder/volume/manager.py:1343
+#: cinder/volume/manager.py:1342
 msgid "Create export for volume failed."
 msgstr ""
 
-#: cinder/volume/manager.py:1366
+#: cinder/volume/manager.py:1365
 #, python-format
 msgid "Driver initialize connection failed (error: %(err)s)."
 msgstr ""
 
-#: cinder/volume/manager.py:1430
+#: cinder/volume/manager.py:1429
 #, python-format
 msgid "Terminate volume connection failed: %(err)s"
 msgstr ""
 
-#: cinder/volume/manager.py:1445
+#: cinder/volume/manager.py:1444
 msgid "Remove volume export failed."
 msgstr ""
 
-#: cinder/volume/manager.py:1510
+#: cinder/volume/manager.py:1509
 msgid "Unable to access the backend storage via file handle."
 msgstr ""
 
-#: cinder/volume/manager.py:1643
+#: cinder/volume/manager.py:1642
 msgid "failed to create new_volume on destination host"
 msgstr ""
 
-#: cinder/volume/manager.py:1649
+#: cinder/volume/manager.py:1648
 msgid "timeout creating new_volume on destination host"
 msgstr ""
 
-#: cinder/volume/manager.py:2043
+#: cinder/volume/manager.py:2042
 #, python-format
 msgid "Volume %s: Error trying to extend volume"
 msgstr ""
 
-#: cinder/volume/manager.py:2126
+#: cinder/volume/manager.py:2125
 msgid "Failed to get old volume type quota reservations"
 msgstr ""
 
-#: cinder/volume/manager.py:2180
+#: cinder/volume/manager.py:2179
 msgid "Retype requires migration but is not allowed."
 msgstr ""
 
-#: cinder/volume/manager.py:2188
+#: cinder/volume/manager.py:2187
 msgid "Volume must not have snapshots."
 msgstr ""
 
-#: cinder/volume/manager.py:2197
+#: cinder/volume/manager.py:2196
 msgid "Volume must not be replicated."
 msgstr ""
 
-#: cinder/volume/manager.py:2238
+#: cinder/volume/manager.py:2237
 msgid "Failed to create manage_existing flow."
 msgstr ""
 
-#: cinder/volume/manager.py:2281
+#: cinder/volume/manager.py:2280
 msgid "Error promoting secondary volume to primary"
 msgstr ""
 
-#: cinder/volume/manager.py:2291 cinder/volume/manager.py:2324
+#: cinder/volume/manager.py:2290 cinder/volume/manager.py:2323
 #, python-format
 msgid "Failed updating model with driver provided model %(model)s"
 msgstr ""
 
-#: cinder/volume/manager.py:2314
+#: cinder/volume/manager.py:2313
 msgid "Synchronizing secondary volume to primary failed."
 msgstr ""
 
-#: cinder/volume/manager.py:2366
+#: cinder/volume/manager.py:2365
 msgid "Create consistency group failed."
 msgstr ""
 
-#: cinder/volume/manager.py:2421
+#: cinder/volume/manager.py:2420
 #, python-format
 msgid "snapshot-%s"
 msgstr ""
 
-#: cinder/volume/manager.py:2427
+#: cinder/volume/manager.py:2426
 #, python-format
 msgid ""
 "Cannot create consistency group %(group)s because snapshot %(snap)s is "
 "not in a valid state. Valid states are: %(valid)s."
 msgstr ""
 
-#: cinder/volume/manager.py:2449
+#: cinder/volume/manager.py:2448
 #, python-format
 msgid "cg-%s"
 msgstr ""
 
-#: cinder/volume/manager.py:2455
+#: cinder/volume/manager.py:2454
 #, python-format
 msgid ""
 "Cannot create consistency group %(group)s because source volume "
 "%(source_vol)s is not in a valid state. Valid states are: %(valid)s."
 msgstr ""
 
-#: cinder/volume/manager.py:2535
+#: cinder/volume/manager.py:2534
 msgid "Input volumes or snapshots are invalid."
 msgstr ""
 
-#: cinder/volume/manager.py:2558
+#: cinder/volume/manager.py:2557
 msgid "Input volumes or source volumes are invalid."
 msgstr ""
 
@@ -3672,15 +3672,19 @@ msgstr ""
 msgid "Type access modification is not applicable to public volume type."
 msgstr ""
 
-#: cinder/volume/drivers/block_device.py:183
+#: cinder/volume/drivers/block_device.py:100
+msgid "Failed to delete device."
+msgstr ""
+
+#: cinder/volume/drivers/block_device.py:206
 msgid "No free disk"
 msgstr ""
 
-#: cinder/volume/drivers/block_device.py:197
+#: cinder/volume/drivers/block_device.py:220
 msgid "No big enough free disk"
 msgstr ""
 
-#: cinder/volume/drivers/block_device.py:205
+#: cinder/volume/drivers/block_device.py:228
 msgid "Insufficient free space available to extend volume."
 msgstr ""
 
@@ -4449,40 +4453,40 @@ msgstr ""
 msgid "Backup is only supported for SOFS volumes without backing file."
 msgstr ""
 
-#: cinder/volume/drivers/sheepdog.py:332
+#: cinder/volume/drivers/sheepdog.py:334
 #, python-format
 msgid "Sheepdog I/O Error, command was: \"%s\"."
 msgstr ""
 
-#: cinder/volume/drivers/sheepdog.py:339
+#: cinder/volume/drivers/sheepdog.py:341
 #, python-format
 msgid "An error occurred while reading volume \"%s\"."
 msgstr ""
 
-#: cinder/volume/drivers/sheepdog.py:355
+#: cinder/volume/drivers/sheepdog.py:357
 #, python-format
 msgid "An error occurred while writing to volume \"%s\"."
 msgstr ""
 
-#: cinder/volume/drivers/sheepdog.py:367
+#: cinder/volume/drivers/sheepdog.py:370
 #, python-format
 msgid "An error occured while seeking for volume \"%s\"."
 msgstr ""
 
-#: cinder/volume/drivers/sheepdog.py:381
+#: cinder/volume/drivers/sheepdog.py:384
 #, python-format
 msgid "Invalid argument - whence=%s not supported."
 msgstr ""
 
-#: cinder/volume/drivers/sheepdog.py:385
+#: cinder/volume/drivers/sheepdog.py:388
 msgid "Invalid argument - negative seek offset."
 msgstr ""
 
-#: cinder/volume/drivers/sheepdog.py:401
+#: cinder/volume/drivers/sheepdog.py:404
 msgid "fileno is not supported by SheepdogIOWrapper"
 msgstr ""
 
-#: cinder/volume/drivers/sheepdog.py:635
+#: cinder/volume/drivers/sheepdog.py:639
 #, python-format
 msgid "Failed to create a temporary snapshot for volume %s."
 msgstr ""

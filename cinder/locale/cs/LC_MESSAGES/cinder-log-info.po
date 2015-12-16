@@ -7,10 +7,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev67\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev82\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-15 06:26+0000\n"
-"PO-Revision-Date: 2015-12-14 02:24+0000\n"
+"POT-Creation-Date: 2015-12-16 06:24+0000\n"
+"PO-Revision-Date: 2015-12-15 08:33+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language-Team: Czech\n"
 "Language: cs\n"
@@ -547,10 +547,6 @@ msgstr ""
 "čistit."
 
 #, python-format
-msgid "Create %(volume)s on %(device)s"
-msgstr "Vytváření %(volume)s na %(device)s"
-
-#, python-format
 msgid "Create Cloned Volume %(volume_id)s completed."
 msgstr "Vytváření klonovaného svazku %(volume_id)s dokončeno."
 
@@ -721,6 +717,10 @@ msgid "Created volume with label %s."
 msgstr "Vytvořen svazek se jmenovkou %s."
 
 #, python-format
+msgid "Creating %(volume)s on %(device)s"
+msgstr "Vytváření %(volume)s na %(device)s"
+
+#, python-format
 msgid "Creating backup of volume %(volume_id)s in container %(container)s"
 msgstr "Vytváření zálohy svazku %(volume_id)s v kontejneru %(container)s"
 
@@ -731,6 +731,10 @@ msgstr "Vytváření snímku skupiny jednotnosti %(name)s."
 #, python-format
 msgid "Creating clone of volume: %s"
 msgstr "Vytváření klona svazku %s"
+
+#, python-format
+msgid "Creating clone of volume: %s."
+msgstr "Vytváření klona svazku %s."
 
 #, python-format
 msgid "Creating consistency group %(name)s from cgsnapshot %(snap)s."
@@ -793,9 +797,17 @@ msgid "Creating transfer of volume %s"
 msgstr "Vytváření přenosu pro svazek %s"
 
 #, python-format
+msgid "Creating volume %s from snapshot."
+msgstr "Vytváření svazku %s ze snímku."
+
+#, python-format
 msgid "Creating volume of %(size)s GB for restore of backup %(backup_id)s."
 msgstr ""
 "Vytváření svazku s velikostí %(size)s GB pro obnovu zálohy %(backup_id)s."
+
+#, python-format
+msgid "Creating volume snapshot: %s."
+msgstr "Vytváření snímku svazku: %s."
 
 #, python-format
 msgid "Creatng volume from snapshot. volume: %s"

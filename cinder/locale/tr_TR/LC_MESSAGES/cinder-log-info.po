@@ -7,9 +7,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev67\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev82\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-15 06:26+0000\n"
+"POT-Creation-Date: 2015-12-16 06:24+0000\n"
 "PO-Revision-Date: 2015-09-16 08:22+0000\n"
 "Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
 "Language-Team: Turkish (Turkey)\n"
@@ -457,10 +457,6 @@ msgid ""
 msgstr ""
 "Geçici mantıksal sürücü %(vol)s veri tabanında bulunamadı. Bu mantıksal "
 "sürücüyü temizlemeye gerek yok."
-
-#, python-format
-msgid "Create %(volume)s on %(device)s"
-msgstr "%(device)s üzerinde %(volume)s oluştur"
 
 #, python-format
 msgid "Create Cloned Volume %(volume_id)s completed."

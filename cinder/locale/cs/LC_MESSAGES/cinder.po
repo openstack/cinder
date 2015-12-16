@@ -9,10 +9,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev67\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev82\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-15 06:26+0000\n"
-"PO-Revision-Date: 2015-12-14 02:06+0000\n"
+"POT-Creation-Date: 2015-12-16 06:24+0000\n"
+"PO-Revision-Date: 2015-12-15 08:32+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language: cs\n"
 "Language-Team: Czech\n"
@@ -3031,6 +3031,9 @@ msgid ""
 msgstr ""
 "Nelze smazat skupinu jednotnosti. %(consistencyGroupName)s. Návratový kód: "
 "%(rc)lu. Chyba: %(error)s."
+
+msgid "Failed to delete device."
+msgstr "Smazání zařízení selhalo."
 
 #, python-format
 msgid ""
