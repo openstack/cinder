@@ -1,0 +1,14 @@
+#!/bin/bash
+#-------------------------
+# Testing client utilities
+#-------------------------
+set -e
+
+result=$(python `dirname $0`/test_import_cinder.py 2>&1)
+if [ "$result" ]; then
+    echo "ERROR: PYTHON-CINDER MODULE CANNOT BE IMPORTED"
+    exit 1
+else
+    echo "OK"
+    exit 0
+fi

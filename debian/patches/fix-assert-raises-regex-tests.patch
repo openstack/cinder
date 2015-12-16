@@ -1,0 +1,11 @@
+--- a/cinder/tests/objects/test_objects.py
++++ b/cinder/tests/objects/test_objects.py
+@@ -438,7 +438,7 @@ class _TestObject(object):
+         class Foo(base.CinderObject):
+             fields = {'foobar': fields.Field(fields.Integer())}
+         obj = Foo()
+-        with self.assertRaisesRegex(NotImplementedError, ".*foobar.*"):
++        with self.assertRaisesRegexp(NotImplementedError, ".*foobar.*"):
+             obj.foobar
+ 
+     def test_loaded_in_primitive(self):

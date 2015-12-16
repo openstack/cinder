@@ -1,0 +1,22 @@
+#!/bin/sh -e
+
+if [ "$1" = "configure" ]; then
+    chown cinder:cinder /var/lib/cinder/volumes
+    chmod 0750 /var/lib/cinder/volumes
+    chown root:root /etc/cinder/rootwrap.d/volume.filters
+
+	if which invoke-rc.d >/dev/null 2>&1; then
+		invoke-rc.d tgtd restart > /dev/null 2>&1 || true
+	else
+		/etc/init.d/tgtd restart > /dev/null 2>&1 || true
+	fi
+
+	if which invoke-rc.d >/dev/null 2>&1; then
+		invoke-rc.d cinder-volume restart > /dev/null 2>&1 || true
+	else
+		/etc/init.d/cinder-volume restart > /dev/null 2>&1 || true
+	fi
+
+fi
+
+#DEBHELPER#

@@ -1,0 +1,766 @@
+cinder (1:2015.1.1-0ubuntu3) UNRELEASED; urgency=medium
+
+  * d/rules: Prevent dh_python2 from guessing dependencies.
+
+ -- Corey Bryant <corey.bryant@canonical.com>  Thu, 13 Aug 2015 14:45:16 -0400
+
+cinder (1:2015.1.1-0ubuntu2) vivid; urgency=medium
+
+  * Additional support for stable/kilo (LP: #1481008):
+    - debian/patches/CVE-2015-1851.patch: Dropped. Fixed upstream.
+
+ -- David Ames <david.ames@canonical.com>  Thu, 06 Aug 2015 08:52:22 -0700
+
+cinder (1:2015.1.1-0ubuntu1) vivid; urgency=medium
+
+  * Resynchronize with stable/kilo (651bab0) (LP: #1481008):
+    - [b130f00] Fix NetApp cDOT driver use of Glance locations
+    - [3388fff] Volume manager should set filter_function and goodness_function
+    - [08ff005] Update expected error message from lvs
+    - [27b5e75] Revert "Graceful shutdown WSGI/RPC server"
+    - [4f86ae7] Fix 'no actual-pathname' NetApp API error
+    - [70c6a35] Graceful shutdown WSGI/RPC server
+    - [6c05594] Add exception catch in report_state for DBError
+    - [50db0fc] Fix broken export commands on block_device driver
+    - [9634b76] Disallow backing files when uploading volumes to image
+    - [223b258] Fix cinder concurrency issues on rtstool
+    - [ea9e2e0] Create iSCSI lio portals with right IPs and port
+    - [f8149fc] Dispose DB connections between backend proc starts
+    - [28bb8d2] Allow provisioning to reach max oversubscription
+    - [0490f1c] Create initiator id for VMAX iSCSI driver
+    - [28df54c] Fix capacity filter to allow oversubscription
+    - [c56bbb7] VMware: Fix missing target resource pool
+    - [03562c3] Check volume_backend in retype
+    - [5ff9497] Use nfs_oversub_ratio when reporting pool capacity
+    - [9affeaf] NFS Backup: Correcting backup_sha_block_size_bytes help message
+    - [c0f12f2] LVM: Pass volume size in MiB to copy_volume() during volume migration
+    - [e316d6f] Dell: Added support for update_migrated_volume
+    - [f0a4447] Allow rexports for targets with Datera
+    - [dabbaed] HDS HNAS Driver fails when FS unhealthy
+    - [a5908fd] Revert state if attachment already exists
+    - [651bab0] VolMgr: reschedule only when filter_properties has retry
+  * d/p/fix-requirements.patch: Rebased.
+
+ -- David Ames <david.ames@canonical.com>  Mon, 03 Aug 2015 10:43:21 -0700
+
+cinder (1:2015.1.0-0ubuntu1.1) vivid-security; urgency=medium
+
+  * SECURITY UPDATE: arbitrary file read via crafted qcow2 backing file
+    - debian/patches/CVE-2015-1851.patch: disallow backing files in
+      cinder/image/image_utils.py, added test to
+      cinder/tests/test_image_utils.py.
+    - CVE-2015-1851
+
+ -- Marc Deslauriers <marc.deslauriers@ubuntu.com>  Wed, 22 Jul 2015 10:37:01 -0400
+
+cinder (1:2015.1.0-0ubuntu1) vivid; urgency=medium
+
+  [ Chuck Short ]
+  * New upstream release for OpenStack Kilo. (LP: #1449744)
+
+  [ James Page ]
+  * d/p/*: Refresh.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Sun, 03 May 2015 13:40:57 -0400
+
+cinder (1:2015.1~rc1-0ubuntu1) vivid; urgency=medium
+
+  [ Chuck Short ]
+  * New upstream milestone release:
+    - d/control: Align with upstream dependencies.
+
+  [ James Page ]
+  * d/p/*: Refreshed. 
+
+ -- Chuck Short <zulcss@ubuntu.com>  Wed, 15 Apr 2015 13:53:09 -0400
+
+cinder (1:2015.1~b3-0ubuntu1) vivid; urgency=medium
+
+  [ James Page ]
+  * d/pydist-overrides: Add overrides for oslo packages.
+
+  [ Corey Bryant ]
+  * New upstream milestone release for OpenStack Kilo:
+    - d/control: Align with upstream dependencies.
+    - d/p/skip-huaweistorac-delete-snapshot-success-test.patch: Dropped.
+      Patched test has been removed.
+
+  [ James Page ]
+  * d/control: Add missing BD on python-testresources.
+  * d/p/fix-long-casting.patch: Workaround some problematic type casting between
+    int/long (LP: #1435242).
+  * d/p/fix-assert-raises-regex-tests.patch: Patchup incorrect usage of
+    assertUsesRegex{p} in unit tests.
+
+ -- James Page <james.page@ubuntu.com>  Mon, 30 Mar 2015 11:07:20 +0100
+
+cinder (1:2015.1~b2-0ubuntu1) vivid; urgency=medium
+
+  [ Corey Bryant ]
+  * New upstream release.
+    - d/control: Align with upstream dependencies.
+    - d/p/fix-assert-raises-regex-tests.patch: Dropped. Fixed upstream.
+    - d/p/remove-private-_lazy-import.patch: Dropped. Fixed upstream.
+    - d/p/pep-0476.patch: Dropped. Fixed upstream.
+    - d/p/skip-rtslib-test.patch: Rebased.
+    - d/p/fix-requirements.patch: Rebased.
+    - d/p/skip-huaweistorac-delete-snapshot-success-test.patch: Rebased.
+
+  [ James Page ]
+  * d/control: Transition to new non-namespaced oslo packages.
+  * d/p/skip-rtslib-test.patch: Rewrite to be a little more elegant. 
+
+ -- Corey Bryant <corey.bryant@canonical.com>  Mon, 16 Feb 2015 10:39:55 +0000
+
+cinder (1:2015.1~b1-0ubuntu5) vivid; urgency=medium
+
+  * d/p/remove-private-_lazy-import.patch: Cherry picked from master and
+    adapted. Fixes tests that were importing internal i18n._lazy module.
+  * d/p/pep-0476.patch: Deal with PEP-0476 certificate chain checking.
+  * d/p/skip-ssl-tests.patch: Dropped in favor of pep-0476.patch.
+
+ -- Corey Bryant <corey.bryant@canonical.com>  Thu, 15 Jan 2015 08:06:53 +0000
+
+cinder (1:2015.1~b1-0ubuntu4) vivid; urgency=medium
+
+  * Rebuild to pick up pkgos upstart generation fix.
+    - d/control: Bump openstack-pkg-tools to ensure upstart fix inclusion.
+
+ -- Corey Bryant <corey.bryant@canonical.com>  Wed, 14 Jan 2015 10:40:32 -0500
+
+cinder (1:2015.1~b1-0ubuntu3) vivid; urgency=medium
+
+  * d/p/fix-iscsi-initiator-exception.patch: Dropped. Abandoned upstream.
+  * d/p/skip-huaweistorac-delete-snapshot-success-test.patch: Handle OSError
+    exception.
+  * d/cinder-common.logrotate: Apply to all cinder log files.
+
+ -- Corey Bryant <corey.bryant@canonical.com>  Thu, 08 Jan 2015 10:53:04 -0500
+
+cinder (1:2015.1~b1-0ubuntu2) vivid; urgency=medium
+
+  * Systemd enablement:
+    - d/control: Add dh-systemd and openstack-pkg-tools to BD's.
+    - d/rules: Enable use of pkgos, tidyup generated init files.
+    - d/*.init.in: Cherry pick pkgos template configurations from
+      Debian cinder package (thanks Thomas).
+    - d/*.upstart: Drop in preference to generated files.
+  * d/control,compat: Bump debhelper compat level to 9.
+  * d/*.logrotate,cinder-common.logrotate: Move to single logrotate
+    configuration.
+
+ -- James Page <james.page@ubuntu.com>  Thu, 08 Jan 2015 14:18:18 +0000
+
+cinder (1:2015.1~b1-0ubuntu1) vivid; urgency=medium
+
+  [ Chuck Short ]
+  * Open for vivid.
+  * debian/control: Update bzr branch.
+  * debian/patches/fix-requirements.patch: Refreshed.
+
+  [ Corey Bryant ]
+  * New upstream release.
+    - d/watch: Update uversionmangle for kilo beta naming.
+    - d/control: Align requirements with upstream.
+    - d/p/fix-requirements.patch: Refreshed.
+    - d/p/skip-ssl-tests.patch: Skip tests that fail due to PEP 476.
+    - d/p/fix-iscsi-initiator-exception.patch: Handle OSError exception.
+      Cherry picked from //review.openstack.org/#/c/145342/.
+    - d/p/fix-assert-raises-regex-tests.patch: Use assertRaisesRegexp().
+      Cherry picked from https://review.openstack.org/#/c/145041/.
+    - d/p/skip-rtslib-test.patch: Skip rtslib related tests.
+  * d/control: Bumped Standards-Version to 3.9.6.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Wed, 07 Jan 2015 09:10:57 -0500
+
+cinder (1:2014.2-0ubuntu1) utopic; urgency=medium
+
+  * New upstream release.
+  * d/watch: Only match versions starting with digits.
+
+ -- James Page <james.page@ubuntu.com>  Thu, 16 Oct 2014 15:44:32 +0100
+
+cinder (1:2014.2~rc2-0ubuntu2) utopic; urgency=medium
+
+  * d/control: Add missing Depends on qemu-utils to cinder-volume
+    (LP: #1381395).
+  * d/cinder_sudoers: Add missing trailing *, resolving issues running
+    commands using rootwrap (LP: #1380425).
+
+ -- James Page <james.page@ubuntu.com>  Wed, 15 Oct 2014 10:15:38 +0100
+
+cinder (1:2014.2~rc2-0ubuntu1) utopic; urgency=medium
+
+  [ Corey Bryant ]
+  * New upstream release candidate.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Thu, 09 Oct 2014 15:38:58 -0400
+
+cinder (1:2014.2~rc1-0ubuntu1) utopic; urgency=medium
+
+  [ Chuck Short ]
+  * debian/patches/debian/patches/fix-requirements.patch: Rediffed.
+
+  [ James Page ]
+  * New upstream release candidate:
+    - d/p/fix-glance-tests.patch: Dropped, included upstream.
+    - d/control: Align dependency versions with upstream release.
+  * d/watch: Use tarballs.openstack.org for releases.
+  * d/rules: Run testr directly rather than through run_tests.sh.
+  * d/control: Update maintainer.
+
+ -- James Page <james.page@ubuntu.com>  Wed, 01 Oct 2014 10:00:19 +0100
+
+cinder (1:2014.2~b3-0ubuntu2) utopic; urgency=medium
+
+  [ Chuck Short ]
+  * d/control: Add python-barbicanclient as a dependency.
+  * d/p/no-barbican.patch: Dropped.
+
+  [ James Page ]
+  * d/rules: Re-enable test suite.
+  * d/control: Align versioned dependencies to Juno b3.
+  * d/p/fix-glance-tests.patch: Cherry pick fix from upstream VCS to
+    resolve unit test failures with glance v2 client.
+
+ -- James Page <james.page@ubuntu.com>  Thu, 18 Sep 2014 16:45:51 +0100
+
+cinder (1:2014.2~b3-0ubuntu1) utopic; urgency=medium
+
+  * New upstream version (LP: #1366146)
+  * debian/cinder-common.install: Removed cinder-rpc-zmq-receiver.
+  * debian/cinder-volume.install: Removed cinder-clear-rabbit-queues.
+  * debian/control: Add python-oslo.i18n.
+  * debian/control: Add python-osprofiler.
+  * debian/patches/no-barbican.patch: Dont use python-barbican because its
+    not in the archive yet.
+  * debian/rules: Temporarily disable tests.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Fri, 05 Sep 2014 15:23:13 -0400
+
+cinder (1:2014.2~b2-0ubuntu1) utopic; urgency=medium
+
+  * New upstream release.
+  * Clean up dependencies:
+    - debian/control: Dropped python-d2to1, python-hp3parclient,
+      python-hplefthandclient, python-lockfile, python-amqplib
+    - debian/control: Add python-oslosphinx, python-requests,
+      python-hacking, python-oslo.db.
+  * debian/patches/fix-requirements.patch: Refreshed.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Thu, 24 Jul 2014 13:44:04 -0400
+
+cinder (1:2014.2~b1-0ubuntu2) utopic; urgency=medium
+
+  * SECURITY UPDATE: specify /etc/nova/rootwrap.conf for use with
+    nova-rootwrap
+    - CVE-2013-1068 (LP: #1185019) 
+
+ -- Chuck Short <zulcss@ubuntu.com>  Wed, 18 Jun 2014 11:37:45 -0400
+
+cinder (1:2014.2~b1-0ubuntu1) utopic; urgency=medium
+
+  * New upstream release.
+  * debian/control: Open up juno release
+  * debian/patches/fix-requirements.patch: Refreshed.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Thu, 12 Jun 2014 10:35:06 -0400
+
+cinder (1:2014.1-0ubuntu1) trusty; urgency=medium
+
+  * New upstream release (LP: #1299055).
+
+ -- Corey Bryant <corey.bryant@canonical.com>  Wed, 16 Apr 2014 13:06:37 -0400
+
+cinder (1:2014.1~rc3-0ubuntu1) trusty; urgency=medium
+
+  * New release candidate (LP: #1299010).
+
+ -- Chuck Short <zulcss@ubuntu.com>  Tue, 15 Apr 2014 09:02:40 -0400
+
+cinder (1:2014.1~rc2-0ubuntu1) trusty; urgency=medium
+
+  * New upstream release (LP: #1299010).
+
+ -- Chuck Short <zulcss@ubuntu.com>  Mon, 07 Apr 2014 11:18:57 -0400
+
+cinder (1:2014.1~rc1-0ubuntu1) trusty; urgency=medium
+
+  * New upstream release (LP: #1299010).
+  * debian/patches/fixup-rbd-str-handling.patch: Dropped no longer needed. 
+  * debian/patches/fix-requirements.patch: Rediffed. 
+  * debian/control: Add python-oslo.messaging.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Fri, 28 Mar 2014 09:48:21 -0400
+
+cinder (1:2014.1~b3-0ubuntu3) trusty; urgency=medium
+
+  * d/p/fixup-rbd-str-handling.patch: Cherry pick fix from upstream
+    Gerrit to resolve issue deleting Ceph volumes and snapshots
+    (LP: #1292433).
+  * d/control,rules: Use upstream run_tests.sh wrapper to execute unit tests,
+    add subunit to BD's to ensure output is correctly formatted.
+
+ -- James Page <james.page@ubuntu.com>  Fri, 14 Mar 2014 11:19:16 +0000
+
+cinder (1:2014.1~b3-0ubuntu2) trusty; urgency=medium
+
+  * d/cinder-common.postinst: Correct use of getent (LP: #1224275). 
+  * d/cinder-common.postinst: Tidy detection of local sqlite database use
+    for db sync operations (LP: #1290423).
+
+ -- James Page <james.page@ubuntu.com>  Thu, 13 Mar 2014 10:11:20 +0000
+
+cinder (1:2014.1~b3-0ubuntu1) trusty; urgency=medium
+
+  [ Chuck Short ]
+  * debian/patches/fix-requirements.patch: Refreshed. 
+  * debian/control: Bump python-keystoneclient to 0.4.2.
+  * debian/patches/skip-tests.patch: Temporarily skip
+    testlefthand tests since the needed python library hasnt been 
+    packaged yet.
+
+  [ James Page ]
+  * d/p/fix-requirements.patch: Refreshed.
+  * d/control,d/p/series/skip-tests.patch: Add BD on python-hplefthandclient,
+    bump version requirement on python-hp3parclient to >= 3.0.0 and drop
+    patch that skips hplefthandclient tests.
+
+  [ Corey Bryant ]
+  * New upstream release.
+
+ -- Corey Bryant <corey.bryant@canonical.com>  Thu, 06 Mar 2014 13:16:02 -0500
+
+cinder (1:2014.1~b2-0ubuntu1) trusty; urgency=low
+
+  [ James Page ]
+  * d/control: Add versioned dependency python-six >= 1.4.1 (LP: #1259203). 
+  * d/p/*: Refreshed.
+
+  [Chuck Short]
+  * New upstream release.
+  * debian/control: Add python-taskflow as a dependency.
+  * debian/control: Add python-oslo.rootwrap as a dependency.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Thu, 23 Jan 2014 12:41:54 -0500
+
+cinder (1:2014.1~b1-0ubuntu1) trusty; urgency=low
+
+  [ Chuck Short ]
+  * New upstream release.
+  * debian/control:
+    - Open icehouse release.
+    - Add python-rtslib as a dependency.
+  * debian/patches/fix-sqlalchemy-requirements.patch: Dropped no longer needed.
+  * debian/patches/fix-babel-requirements.patch: Dropped no longer needed.
+  * debian/paches/fix-requirements.patch:  Fixed up requirements.txt for 
+    dependencies we have in Ubuntu.
+  * debian/cinder-common.install: Add "cinder-rtstool".
+
+  [ James Page ]
+  * debian/patches/*: Refresh.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Thu, 05 Dec 2013 21:30:40 -0500
+
+cinder (1:2013.2-0ubuntu1) saucy; urgency=low
+
+  * New upstream release (LP: #1236462).
+
+ -- Chuck Short <zulcss@ubuntu.com>  Thu, 17 Oct 2013 10:00:43 -0400
+
+cinder (1:2013.2~rc3-0ubuntu1) saucy; urgency=low
+
+  * New upstream release candidate (LP: #1240254).
+
+ -- James Page <james.page@ubuntu.com>  Wed, 16 Oct 2013 08:59:28 +0100
+
+cinder (1:2013.2~rc2-0ubuntu1) saucy; urgency=low
+
+  * New upstream release candidate (LP: #1239156). 
+
+ -- James Page <james.page@ubuntu.com>  Sat, 12 Oct 2013 16:52:11 +0100
+
+cinder (1:2013.2~rc1-0ubuntu1) saucy; urgency=low
+
+  * New upstream release candidate.
+  * debian/patches/skip-sqlachemy-failures.patch: Dropped
+  * debian/patches/fix-sqlalchemy-requirements.patch: Refreshed.
+  * debian/patches/fix-babel-requirements.patch: Revert dependency requirement
+    for python-babel.
+  * debian/control:
+    - Dropped python-nose and python-setuptool-git.
+    - Added python-netaddr as a build-dependency. (LP: #1227153)
+    - Added python-six as a build-dependency.
+    - Added versioned dependencies to python-pbr, python-amqplib,
+      python-glanceclient, python-novaclient, and python-swiftclient,
+      python-lxml, python-webob, python-oslo.config, python-sqlalchemy,
+      python-fixtures, python-testtools, and python-fixtures
+    - Bumped versioned dependencies for python-eventlet, python-hp3parclient,
+      python-keystoneclient, and python-novaclient
+
+ -- Chuck Short <zulcss@ubuntu.com>  Fri, 04 Oct 2013 08:40:26 -0400
+
+cinder (1:2013.2~b3-0ubuntu1) saucy; urgency=low
+
+  [ James Page ]
+  * d/control: Switch ceph-common -> python-ceph inline with upstream
+    refactoring of Ceph RBD driver, move to Suggests of python-cinder.
+    (LP: #1190791). 
+
+  [ Adam Gandelman ]
+  * debian/patches/avoid_paramiko_vers_depends.patch: Dropped, no longer
+    required.
+  * Add minimum requirement python-greenlet (>= 0.3.2).
+  * Add minimum requirement python-eventlet (>= 0.12.0).
+  * Add minimum requirement python-paramiko (>= 1.8).
+
+  [ Chuck Short ]
+  * New upstream release.
+  * debian/patches/skip-sqlachemy-failures.patch: Skip testfailures
+    with sqlalchemy 0.8 until they are fixed upstream.
+  * debian/control: Add python-babel to build-depends.
+  * debian/control: Add python-novaclient to build-depends.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Sun, 08 Sep 2013 21:09:46 -0400
+
+cinder (1:2013.2~b2-0ubuntu3) saucy; urgency=low
+
+  * debian/patches/fix-sqlalchemy-requirements.patch: Fix requirements for sqlalchemy
+    0.8.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Mon, 22 Jul 2013 10:03:52 -0400
+
+cinder (1:2013.2~b2-0ubuntu2) saucy; urgency=low
+
+  * d/rules: Disable test parallel execution; causing FTBFS when high
+    levels of concurrency occur on buildds. 
+
+ -- James Page <james.page@ubuntu.com>  Sun, 21 Jul 2013 10:10:10 +0100
+
+cinder (1:2013.2~b2-0ubuntu1) saucy; urgency=low
+
+  [ Chuck Short ]
+  * debian/patches/avoid_paramiko_vers_depends.patch: Refreshed
+  * debian/control: Add missing testrepostory.
+  * debian/rules: Use testr directly.
+
+  [ Adam Gandelman ]
+  * debian/control:
+    - Add minimum requirement python-anyjson (>= 0.3.3).
+    - Add minimum requirement python-keystoneclient (>= 0.2.3).
+    - Add minimum requirement python-kombu (>= 2.5.12).
+
+  [ James Page ]
+  * New upstream release.
+  * d/control: Update VCS fields for new branch locations.
+  * d/rules: Run unit tests in parallel.
+
+ -- James Page <james.page@ubuntu.com>  Fri, 19 Jul 2013 14:14:40 +0100
+
+cinder (1:2013.2~b1-0ubuntu2) saucy; urgency=low
+
+  [ Chuck Short ]
+  * debian/patches/avoid_paramiko_vers_depends.patch: Refreshed
+
+  [ Adam Gandelman ]
+  * debian/control: Bump min. stevedore version >= 0.9.
+ 
+  [Yolanda Robla]
+  * debian/tests: Added autopkgtests.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Wed, 19 Jun 2013 12:45:18 -0500
+
+cinder (1:2013.2~b1-0ubuntu1) saucy; urgency=low
+
+  [ Chuck Short ]
+  * New upstream version.
+  * debian/patches/fix_cinder_dependencies.patch: Dropped.
+  * debian/control: Bump standards version to 3.9.4.
+  * debian/control: Add python-pbr and python-d2to1 to build-depends.
+  * debian/control: Add python-testtools and python-fixtures to build-depends
+  * debian/rules: Add work around to remove wonky setup.py setup
+  * debian/cinder-common.install: Add cinder-rpc-zmq-receiver binary.
+
+  [ James Page ]
+  * debian/control: Drop surplus dependency on python-glance (LP: #1175600).
+  * debian/control,rules: Drop dependency on pep8, don't run pep8 tests during
+    package build process (its just way to late).
+  * debian/control: Drop surplus BD on python-cheetah.
+
+  [ Adam Gandelman ]
+  * debian/patches/avoid_paramiko_vers_depends.patch: Avoid version
+    requirement on paramiko.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Fri, 31 May 2013 10:01:03 -0500
+
+cinder (1:2013.1-0ubuntu2) raring; urgency=low
+
+  * debian/control: Bump minimum stevedore version 0.8.
+    (LP: #1169730)
+
+ -- Adam Gandelman <adamg@ubuntu.com>  Tue, 16 Apr 2013 14:38:46 -0700
+
+cinder (1:2013.1-0ubuntu1) raring; urgency=low
+
+  * New upstream release. 
+
+ -- Chuck Short <zulcss@ubuntu.com>  Fri, 05 Apr 2013 07:53:23 -0500
+
+cinder (1:2013.1~rc3-0ubuntu1) raring; urgency=low
+
+  * New upstream release. 
+
+ -- Chuck Short <zulcss@ubuntu.com>  Wed, 27 Mar 2013 07:51:21 -0500
+
+cinder (1:2013.1~rc2-0ubuntu2) raring; urgency=low
+
+  * debian/rules: Fix FTBFS, we want '-v' and not '-V'. 
+
+ -- Chuck Short <zulcss@ubuntu.com>  Mon, 25 Mar 2013 08:30:42 -0500
+
+cinder (1:2013.1~rc2-0ubuntu1) raring; urgency=low
+
+  * New upstream release.
+  * debian/control, debian/cinder-volume.install: Dropped rtstool and python-rtslib
+    since it was dropped upstream. 
+  * debian/rules: Run tests more verbosely.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Mon, 25 Mar 2013 07:59:45 -0500
+
+cinder (1:2013.1~rc1-0ubuntu1) raring; urgency=low
+
+  [ Chuck Short ]
+  * debian/patches/fix-ubuntu-tests.patch: Dropped.
+  * debian/rules: Fix version number when building the testsuite. 
+  * debian/cinder-backup{.install, upstart, logroate}: Add cinder-backup
+    service.
+  * debian/rules: Run the testsuite against PYTHONPATH.
+  * debian/control: Update build-depends and run-time depends.
+    - Dropped python-glance not needed.
+    - Dropped python-cheetah not needed.
+    - Droped python-daemon not needed.
+    - Dropped python-netaddr not needed.
+    - Renamed python-oslo-config to python-oslo.config.
+    - Added python-keystoneclient to depends.
+    - Added python-swiftclient to depends.
+   * debian/pydist-overrides: No longer needed.
+
+  [ James Page ]
+  * New upstream release candidate.
+  * d/watch: Update uversionmangle to deal with upstream versioning
+    changes, remove tarballs.openstack.org.
+  * d/cinder.conf: Set lock_path to /var/lock/cinder (default is not
+    sensible).
+
+ -- James Page <james.page@ubuntu.com>  Sat, 16 Mar 2013 09:30:20 +0000
+
+cinder (2013.1.g3-0ubuntu1) raring; urgency=low
+
+  [ Yolanda Robla Mota ]
+  * d/control: Add BD on python-hp3parclient.
+  * d/patches: Drop patches related to disabling hp3parclient.
+
+  [ James Page ]
+  * d/control: Add Suggests: python-hp3parclient for python-cinder.
+  * d/control: Add BD on python-oslo-config.
+  * d/*: Wrapped and sorted.
+
+  [ Chuck Short ]
+  * New upstream release.
+  * debian/rules, debian/cinder-volumes.install: 
+    - Fail if binaries are missing and install missing binaries.
+  * debian/patches/fix-ubuntu-tests.patch: Fix failing tests.
+  * debian/control: Add python-rtslib and python-mock.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Fri, 22 Feb 2013 10:45:17 -0600
+
+cinder (2013.1~g2-0ubuntu2) raring; urgency=low
+
+  * debian/patches/series: Enable skip_failed_tests to fix FTBFS. 
+
+ -- Chris J Arges <chris.j.arges@canonical.com>  Tue, 15 Jan 2013 10:10:28 -0600
+
+cinder (2013.1~g2-0ubuntu1) raring; urgency=low
+
+  [ Chuck Short ]
+  * New upstream release. 
+  * debian/patches/avoid_setuptools_git_dependency.patch: Rediff
+    due to upstream changes.
+  * debian/control: Add python-keystoneclient as a dependency
+
+  [ James Page ]
+  * Improve upstart configurations:
+    - d/*.upstart: Switch to using start-stop-daemon instead of su,
+      stop on [!2345] to catch all transitions.
+  * d/control: General tidy of package descriptions.
+  * d/control: Drop BD on python-all-dev as its not required.
+  * d/*.postrm: Dropped; update-rc.d calls for purge are handled by
+    debhelper and are not require for upstart configurations.
+
+  [ Yolanda Robla Mota ]
+  * d/patches: removing hp3parclient dependency from tools/test-requires
+  * d/patches, d/control: adding stevedore dependency, merging deps patches
+  * d/patches: remove failing tests
+
+ -- Chuck Short <zulcss@ubuntu.com>  Fri, 11 Jan 2013 07:33:57 -0600
+
+cinder (2013.1~g1-0ubuntu1) raring; urgency=low
+
+  * New upstream release.
+  * debian/patches/avoid_setuptools_git_dependency.patch:
+    Avoid git installation. (LP: #1075948) 
+
+ -- Chuck Short <zulcss@ubuntu.com>  Fri, 23 Nov 2012 08:39:28 -0600
+
+cinder (2013.1~g1~20121101.361-0ubuntu1) raring; urgency=low
+
+  [ Adam Gandelman ]
+  * New upstream release.
+  * debian/patches/0001-Replace-builtin-hash.patch: Dropped.
+
+  [ James Page ]
+  * Cinder should suggest ceph-common, not python-ceph (LP: #1065901):
+    - debian/control: cinder-volume Suggests: python-ceph -> ceph-common
+
+ -- Adam Gandelman <adamg@canonical.com>  Thu, 01 Nov 2012 11:30:15 +0100
+
+cinder (2012.2-0ubuntu2) quantal; urgency=low
+
+  * debian/cinder_tgt.conf: Add missing configuration file. (LP: #1064366) 
+  * debian/README.Debian: Added note about migration from nova-volume
+    to cinder-volume.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Tue, 09 Oct 2012 08:26:21 -0500
+
+cinder (2012.2-0ubuntu1) quantal; urgency=low
+
+  * New upstream release. 
+  * debian/cinder-volume.postinst, debian/cinder-common.dirs,
+    debian/cinder.conf: Properly configure tgtd to be used with cinder.
+  * debian/pydist-overrides: Dont try to install babel.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Thu, 27 Sep 2012 11:32:27 -0500
+
+cinder (2012.2~rc3-0ubuntu1) quantal; urgency=low
+
+  * New upstream release.
+  * debian/patches/0001-Replace-builtin-hash-with-MD5-to-solve-32-64-bit-iss.patch:
+    Fix FTBFS.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Wed, 26 Sep 2012 14:07:35 -0500
+
+cinder (2012.2~rc2-0ubuntu1) quantal; urgency=low
+
+  [ Adam Gandelman ]
+  * debian/control: Add python-mysqldb to python-cinder Depends.
+
+  [ Chuck Short ]
+  * New upstream release
+  * debian/rules: Fail to build if the testsuite doesnt pass.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Tue, 25 Sep 2012 10:17:21 -0500
+
+cinder (2012.2~rc1-0ubuntu1) quantal; urgency=low
+
+  [ Adam Gandelman ]
+  * debian/control: Add lvm2 + tgt as a Dependency of cinder-volume.
+  * debian/cinder-volume.{dirs, postinst}:
+        - Create /var/lib/cinder/volumes (LP: #1047059)
+        - chmod 0600, not chown.
+  * debain/cinder-scheduler.postinst: Drop.
+  * debian/cinder.conf: Fix defaults.
+  * debian/*.upstart: Specify --log-file.
+  * debian/*.logrotate: Update.
+  * Only rootwrap filters with the packages that need them (cinder-volume).
+  * Ensure /etc/cinder/rootwrap.d/ is only writable by root, ensure
+    those permissions on /etc/cinder/rootwrap.conf and individual filter
+    configurations.
+
+  [ Chuck Short ]
+  * New upstream version.
+  * debian/control: Add python-ceph as a suggests
+
+ -- Chuck Short <zulcss@ubuntu.com>  Tue, 18 Sep 2012 14:24:45 -0500
+
+cinder (2012.2~rc1~20120907.230-0ubuntu4) quantal; urgency=low
+
+  [Chuck Short]
+  * New upstream version.
+  * debian/cinder.conf: Fix path for cinder-rootwrap. (LP: #1045438) 
+  * debian/control: Add python-glanceclient as a dep. 
+  * debian/cinder-common.postinst: Fix chmod thinko.
+  * debian/*.upstart: Specify the configuration files.
+
+  [Soren Hansen]
+  * Update debian/watch to account for symbolically named tarballs and
+    use newer URL.
+  * Fix Launchpad URLs in debian/watch.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Fri, 07 Sep 2012 11:27:55 -0500
+
+cinder (2012.2~f3-0ubuntu3) quantal; urgency=low
+
+  * debian/cinder.conf: Re-add sql_connection and set it to sqllite.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Wed, 22 Aug 2012 20:14:41 -0500
+
+cinder (2012.2~f3-0ubuntu2) quantal; urgency=low
+
+  * debian/cinder.conf: Get rid of deprecated warnings.
+    (LP: #1036240) 
+
+ -- Chuck Short <zulcss@ubuntu.com>  Sun, 19 Aug 2012 13:36:22 -0500
+
+cinder (2012.2~f3-0ubuntu1) quantal; urgency=low
+
+  * New upstream version.
+  * debian/patches/0001-Use-setuptools-git.patch: Dropped
+  * debian/control: Add python-glanceclient
+
+ -- Chuck Short <zulcss@ubuntu.com>  Fri, 17 Aug 2012 10:18:57 -0500
+
+cinder (2012.2~f3~20120809.102-0ubuntu2) quantal; urgency=low
+
+  * debian/cinder.conf, cinder-common.install: Use rootwrap.conf. (LP: #1036240) 
+  * debian/control: Drop python-babel.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Mon, 13 Aug 2012 14:14:31 -0500
+
+cinder (2012.2~f3~20120809.102-0ubuntu1) quantal; urgency=low
+
+  [ Adam Gandelman ]
+  * debian/control: Add python-setuptools dependency.
+  * debian/cinder-common.postinst: Fix syntax errors, fix permissions.
+  * debian/cinder-common.dirs: Correct, etc/nova -> etc/cinder.
+  * debian/{cinder_sudoers, rules, cinder-common.install}: Install proper
+    cinder_sudoers.
+  * debian/cinder-*.upstart: Close quotes, replace 'nova' references with
+    'cinder'.
+  * debian/cinder.conf: Specify correct sql_connection.
+  * debian/cinder-scheduler.postinst: Added.  Migrate local databases only.
+
+  [ Chuck Short ]
+  * debian/*.upstart: Fix upstart jobs to run with right interfaces.
+    (LP: #1030197)
+  * debian/control: Drop python-babel, python-nosexcover
+  * debian/control: Add python-mox, pep8
+  * debian/rules: Re-add get-orig-source
+  * debian/rules: Enable testsuite.
+  * debian/cinder.conf: Update config file.
+  * debian/cinder-{api,volumes,scheduler}.manpages: Add manpages.
+  * New upstream version.
+  * debian/rules: Don't run pep8 tests
+  * debian/patches/0001-Use-setuptools-git.patch: Cleanup manifest
+  * debian/control: Add python-setuptools-git
+  * debian/control: Add section for python-cinder
+  * fix lintian warnings and errors.
+  * debian/cinder-common.install: Remove clear_rabbit_queues since it
+    will conflict with nova installed.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Fri, 10 Aug 2012 12:05:11 -0500
+
+cinder (2012.2~f1~20120503.2-0ubuntu1) quantal; urgency=low
+
+  * Initial release.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Tue, 22 May 2012 09:57:46 -0400

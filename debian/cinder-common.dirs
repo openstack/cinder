@@ -1,0 +1,5 @@
+etc/cinder
+etc/cinder/rootwrap.d
+var/lib/cinder
+var/log/cinder
+var/lib/cinder/volumes

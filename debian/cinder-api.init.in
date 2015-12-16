@@ -1,0 +1,21 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          cinder-api
+# Required-Start:    $network $local_fs $remote_fs $syslog
+# Required-Stop:     $remote_fs
+# Should-Start:      postgresql mysql keystone rabbitmq-server ntp
+# Should-Stop:       postgresql mysql keystone rabbitmq-server ntp
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Cinder Api
+# Description:       Provides EBS like storage for your
+#                    virtual machine instances
+### END INIT INFO
+
+# Author: Julien Danjou <acid@debian.org>, Thomas Goirand <zigo@debian.org>
+
+# PATH should only include /usr/* if it runs after the mountnfs.sh script
+PATH=/sbin:/usr/sbin:/bin:/usr/bin
+DESC="OpenStack Cinder Api"
+PROJECT_NAME=cinder
+NAME=${PROJECT_NAME}-api

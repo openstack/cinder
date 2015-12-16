@@ -1,0 +1,3 @@
+Tests: python-cinder cinder-daemons cinder-volume
+Depends: python-cinder, cinder-api, cinder-scheduler, lvm2
+Restrictions: needs-root

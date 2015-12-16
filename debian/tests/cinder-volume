@@ -1,0 +1,17 @@
+#!/bin/bash
+#----------------------
+# Testing cinder-volume
+#----------------------
+set -e
+apt-get install -y cinder-volume cinder-backup 2>&1 > /dev/null
+DAEMONS=('cinder-volume' 'cinder-backup')
+
+for daemon in "${DAEMONS[@]}"; do
+    if pidof -x $daemon > /dev/null; then
+        echo "OK"
+    else
+        echo "ERROR: ${daemon} IS NOT RUNNING"
+        exit 1
+    fi
+done
+apt-get remove -y cinder-volume cinder-backup 2>&1 > /dev/null

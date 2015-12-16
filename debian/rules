@@ -1,0 +1,36 @@
+#!/usr/bin/make -f
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+export PBR_VERSION=$(shell dpkg-parsechangelog --show-field Version)
+include /usr/share/openstack-pkg-tools/pkgos.make
+
+%:
+	dh $@  --with python2,systemd
+
+get-orig-source:
+	uscan --verbose --rename --destdir=../build-area
+
+#ifeq (,$(findstring nocheck, $(DEB_BUILD_OPTIONS)))
+#override_dh_auto_test:
+#	rm -rf .testrepository
+#	testr init && \
+#	set -e && \
+#	TEMP_REZ=`mktemp -t` && \
+#	testr run --subunit | tee $$TEMP_REZ | subunit2pyunit; \
+#	rm -f $$TEMP_REZ
+#endif
+
+override_dh_python2:
+	dh_python2 --no-guessing-deps
+
+override_dh_install:
+	dh_install --fail-missing -Xbin/cinder-all
+
+override_dh_fixperms:
+	dh_fixperms -Xcinder_tgt.conf
+
+override_dh_clean:
+	# temporary workaround for d2to1 wonkyness
+	dh_clean -Xsetup.cfg
+	rm -f debian/*.init debian/*.service debian/*.upstart

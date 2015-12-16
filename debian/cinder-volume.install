@@ -1,0 +1,4 @@
+debian/cinder_tgt.conf etc/tgt/conf.d
+etc/cinder/rootwrap.d/volume.filters /etc/cinder/rootwrap.d
+usr/bin/cinder-volume
+usr/bin/cinder-volume-usage-audit

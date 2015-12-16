@@ -1,0 +1,36 @@
+Description: Workaround problematic type casting in 15.04
+ ======================================================================
+ FAIL: cinder.tests.test_utils.GetBlkdevMajorMinorTestCase.test_get_blkdev_major_minor_file
+ cinder.tests.test_utils.GetBlkdevMajorMinorTestCase.test_get_blkdev_major_minor_file
+ ----------------------------------------------------------------------
+ _StringException: Traceback (most recent call last):
+   File "/build/buildd/cinder-2015.1~b3/cinder/tests/test_utils.py", line 721, in test_get_blkdev_major_minor_file
+     dev = self._test_get_blkdev_major_minor_file('/dev/made_up_disk1')
+   File "/usr/lib/python2.7/dist-packages/mock.py", line 1210, in patched
+     return func(*args, **keywargs)
+   File "/build/buildd/cinder-2015.1~b3/cinder/tests/test_utils.py", line 712, in _test_get_blkdev_major_minor_file
+     dev = utils.get_blkdev_major_minor(test_file)
+   File "/build/buildd/cinder-2015.1~b3/cinder/utils.py", line 656, in get_blkdev_major_minor
+     return get_blkdev_major_minor(devpath, False)
+   File "/build/buildd/cinder-2015.1~b3/cinder/utils.py", line 645, in get_blkdev_major_minor
+     return '%d:%d' % (os.major(st.st_rdev), os.minor(st.st_rdev))
+ SystemError: ../Objects/longobject.c:998: bad argument to internal function
+ Traceback (most recent call last):
+ _StringException: Empty attachments:
+   stderr
+   stdout
+Author: James Page <james.page@ubuntu.com>
+Forwarded: no
+
+--- a/cinder/utils.py
++++ b/cinder/utils.py
+@@ -643,7 +643,8 @@ def get_blkdev_major_minor(path, lookup_
+     st = os.stat(path)
+     if stat.S_ISBLK(st.st_mode):
+         path, st = _get_disk_of_partition(path, st)
+-        return '%d:%d' % (os.major(st.st_rdev), os.minor(st.st_rdev))
++        return '%d:%d' % (os.major(long(st.st_rdev)),
++                          os.minor(long(st.st_rdev)))
+     elif stat.S_ISCHR(st.st_mode):
+         # No I/O ratelimit control is provided for character devices
+         return None

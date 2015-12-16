@@ -1,0 +1,8 @@
+/var/log/cinder/*.log {
+    daily
+    missingok
+    compress
+    delaycompress
+    copytruncate
+    notifempty
+}

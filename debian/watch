@@ -1,0 +1,3 @@
+version=3
+opts="uversionmangle=s/\.([a-zA-Z])/~$1/;s/%7E/~/;s/\.0b/~b/" \
+ http://tarballs.openstack.org/cinder/ cinder-(\d.*)\.tar\.gz

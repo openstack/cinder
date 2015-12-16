@@ -1,0 +1,10 @@
+Migration from nova-volumes to cinder-volumes:
+
+1. upgrade your nova install to folsom
+2. upgrade your nova database using nova-manage db sync
+3. install the folsom version of cinder
+4. create a cinder database using cinder-manage db sync
+5. copy data from nova database using cinder-manage migrate import_db --src=$NOVA_SQL_CONN --dest=$CINDER_SQL_CONN
+6. disable the nova-volume-api in enabled apis in /etc/nova/nova.conf sed -i "s/osapi_volume,// /etc/nova/nova.conf"
+7. restart nova-api
+8. start cinder-api 

@@ -1,0 +1,33 @@
+--- a/cinder/tests/test_cmd.py
++++ b/cinder/tests/test_cmd.py
+@@ -16,13 +16,20 @@ import sys
+ 
+ import mock
+ from oslo_config import cfg
+-import rtslib
++try:
++    import rtslib
++except ImportError:
++    rtslib = None
++import testtools
+ 
+ from cinder.cmd import all as cinder_all
+ from cinder.cmd import api as cinder_api
+ from cinder.cmd import backup as cinder_backup
+ from cinder.cmd import manage as cinder_manage
+-from cinder.cmd import rtstool as cinder_rtstool
++try:
++    from cinder.cmd import rtstool as cinder_rtstool
++except ImportError:
++    cinder_rtstool = None
+ from cinder.cmd import scheduler as cinder_scheduler
+ from cinder.cmd import volume as cinder_volume
+ from cinder.cmd import volume_usage_audit
+@@ -685,6 +692,7 @@ class TestCinderManageCmd(test.TestCase)
+ 
+ class TestCinderRtstoolCmd(test.TestCase):
+ 
++    @testtools.skipIf(rtslib is None, "rtslib not found, skipping tests")
+     def setUp(self):
+         super(TestCinderRtstoolCmd, self).setUp()
+         sys.argv = ['cinder-rtstool']

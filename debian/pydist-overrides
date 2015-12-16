@@ -1,0 +1,15 @@
+rtslib-fb
+oslo.context python-oslo-context
+oslo.concurrency python-oslo-concurrency
+oslo.config python-oslo-config
+oslo.messaging python-oslo-messaging
+oslo.vmware python-oslo-vmware
+oslo.utils python-oslo-utils
+oslo.serialization python-oslo-serialization
+oslo.db python-oslo-db
+oslo.i18n python-oslo-i18n
+oslo.utils python-oslo-utils
+oslo.rootwrap python-oslo-rootwrap
+oslo.log python-oslo-log
+oslo.middleware python-oslo-middleware
+setuptools-git
