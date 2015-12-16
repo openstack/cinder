@@ -16,13 +16,14 @@
 """
 Provides common functionality for integrated unit tests
 """
-
+import os.path
 import random
 import string
 import uuid
 
 import fixtures
 import mock
+from oslo_config import cfg
 from oslo_log import log as logging
 
 from cinder import service
@@ -30,6 +31,7 @@ from cinder import test  # For the flags
 from cinder.tests.unit.integrated.api import client
 
 
+CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 
@@ -80,6 +82,10 @@ class _IntegratedTestBase(test.TestCase):
         self.api = client.TestOpenStackClient('fake', 'fake', self.auth_url)
 
     def _start_api_service(self):
+        default_conf = os.path.abspath(os.path.join(
+            os.path.dirname(__file__), '..', '..', '..', '..',
+            'etc/cinder/api-paste.ini'))
+        CONF.api_paste_config = default_conf
         self.osapi = service.WSGIService("osapi_volume")
         self.osapi.start()
         # FIXME(ja): this is not the auth url - this is the service url

@@ -16,14 +16,10 @@
 
 from oslo_config import cfg
 from oslo_log import log as logging
-from oslo_service import wsgi
-from paste import deploy
 import webob.dec
 import webob.exc
 
-from cinder import exception
-from cinder.i18n import _, _LE
-from cinder import utils
+from cinder.i18n import _
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
@@ -159,32 +155,3 @@ class Middleware(Application):
             return response
         response = req.get_response(self.application)
         return self.process_response(response)
-
-
-class Loader(object):
-    """Used to load WSGI applications from paste configurations."""
-
-    def __init__(self, config_path=None):
-        """Initialize the loader, and attempt to find the config.
-
-        :param config_path: Full or relative path to the paste config.
-        :returns: None
-
-        """
-        wsgi.register_opts(CONF)  # noqa
-        config_path = config_path or CONF.api_paste_config
-        self.config_path = utils.find_config(config_path)
-
-    def load_app(self, name):
-        """Return the paste URLMap wrapped WSGI application.
-
-        :param name: Name of the application to load.
-        :returns: Paste URLMap object wrapping the requested application.
-        :raises: `cinder.exception.PasteAppNotFound`
-
-        """
-        try:
-            return deploy.loadapp("config:%s" % self.config_path, name=name)
-        except LookupError:
-            LOG.exception(_LE("Error loading app %s"), name)
-            raise exception.PasteAppNotFound(name=name, path=self.config_path)

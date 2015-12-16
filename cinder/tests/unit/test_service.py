@@ -32,7 +32,6 @@ from cinder import objects
 from cinder import rpc
 from cinder import service
 from cinder import test
-from cinder.wsgi import common as wsgi
 
 
 test_service_opts = [
@@ -252,58 +251,60 @@ class TestWSGIService(test.TestCase):
     def setUp(self):
         super(TestWSGIService, self).setUp()
 
-    def test_service_random_port(self):
-        with mock.patch.object(wsgi.Loader, 'load_app') as mock_load_app:
-            test_service = service.WSGIService("test_service")
-            self.assertEqual(0, test_service.port)
-            test_service.start()
-            self.assertNotEqual(0, test_service.port)
-            test_service.stop()
-            self.assertTrue(mock_load_app.called)
+    @mock.patch('oslo_service.wsgi.Loader')
+    def test_service_random_port(self, mock_loader):
+        test_service = service.WSGIService("test_service")
+        self.assertEqual(0, test_service.port)
+        test_service.start()
+        self.assertNotEqual(0, test_service.port)
+        test_service.stop()
+        self.assertTrue(mock_loader.called)
 
-    def test_reset_pool_size_to_default(self):
-        with mock.patch.object(wsgi.Loader, 'load_app') as mock_load_app:
-            test_service = service.WSGIService("test_service")
-            test_service.start()
+    @mock.patch('oslo_service.wsgi.Loader')
+    def test_reset_pool_size_to_default(self, mock_loader):
+        test_service = service.WSGIService("test_service")
+        test_service.start()
 
-            # Stopping the service, which in turn sets pool size to 0
-            test_service.stop()
-            self.assertEqual(0, test_service.server._pool.size)
+        # Stopping the service, which in turn sets pool size to 0
+        test_service.stop()
+        self.assertEqual(0, test_service.server._pool.size)
 
-            # Resetting pool size to default
-            test_service.reset()
-            test_service.start()
-            self.assertEqual(1000, test_service.server._pool.size)
-            self.assertTrue(mock_load_app.called)
+        # Resetting pool size to default
+        test_service.reset()
+        test_service.start()
+        self.assertEqual(1000, test_service.server._pool.size)
+        self.assertTrue(mock_loader.called)
 
-    @mock.patch('oslo_service.wsgi.Server')
-    def test_workers_set_default(self, wsgi_server):
-        self.override_config('osapi_volume_listen_port', 0)
+    @mock.patch('oslo_service.wsgi.Loader')
+    def test_workers_set_default(self, mock_loader):
         test_service = service.WSGIService("osapi_volume")
-        self.assertEqual(processutils.get_worker_count(), test_service.workers)
+        self.assertEqual(processutils.get_worker_count(),
+                         test_service.workers)
+        self.assertTrue(mock_loader.called)
 
-    @mock.patch('oslo_service.wsgi.Server')
-    def test_workers_set_good_user_setting(self, wsgi_server):
-        self.override_config('osapi_volume_listen_port', 0)
+    @mock.patch('oslo_service.wsgi.Loader')
+    def test_workers_set_good_user_setting(self, mock_loader):
         self.override_config('osapi_volume_workers', 8)
         test_service = service.WSGIService("osapi_volume")
         self.assertEqual(8, test_service.workers)
+        self.assertTrue(mock_loader.called)
 
-    @mock.patch('oslo_service.wsgi.Server')
-    def test_workers_set_zero_user_setting(self, wsgi_server):
-        self.override_config('osapi_volume_listen_port', 0)
+    @mock.patch('oslo_service.wsgi.Loader')
+    def test_workers_set_zero_user_setting(self, mock_loader):
         self.override_config('osapi_volume_workers', 0)
         test_service = service.WSGIService("osapi_volume")
-        # If a value less than 1 is used, defaults to number of procs available
-        self.assertEqual(processutils.get_worker_count(), test_service.workers)
+        # If a value less than 1 is used, defaults to number of procs
+        # available
+        self.assertEqual(processutils.get_worker_count(),
+                         test_service.workers)
+        self.assertTrue(mock_loader.called)
 
-    @mock.patch('oslo_service.wsgi.Server')
-    def test_workers_set_negative_user_setting(self, wsgi_server):
+    @mock.patch('oslo_service.wsgi.Loader')
+    def test_workers_set_negative_user_setting(self, mock_loader):
         self.override_config('osapi_volume_workers', -1)
         self.assertRaises(exception.InvalidInput,
-                          service.WSGIService,
-                          "osapi_volume")
-        self.assertFalse(wsgi_server.called)
+                          service.WSGIService, "osapi_volume")
+        self.assertTrue(mock_loader.called)
 
 
 class OSCompatibilityTestCase(test.TestCase):
