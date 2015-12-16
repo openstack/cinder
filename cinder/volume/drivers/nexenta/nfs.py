@@ -567,7 +567,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             }
         )
 
-        LOG.info(_LI('Regular file: %s created.') % path)
+        LOG.info(_LI('Regular file: %s created.'), path)
 
     def _set_rw_permissions_for_all(self, nms, path):
         """Sets 666 permissions for the path.
@@ -697,7 +697,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                               'count': num_attempts})
                     raise exception.NfsException(e)
                 LOG.warning(
-                    _LW('Mount attempt %(attempt)d failed: %(error)s.'
+                    _LW('Mount attempt %(attempt)d failed: %(error)s. '
                         'Retrying mount ...'), {
                         'attempt': attempt,
                         'error': e})
