@@ -13,8 +13,8 @@
 """Unit Tests for volume transfers."""
 
 
-import datetime
 import mock
+from oslo_utils import timeutils
 
 from cinder import context
 from cinder import exception
@@ -35,7 +35,7 @@ class VolumeTransferTestCase(test.TestCase):
         super(VolumeTransferTestCase, self).setUp()
         self.ctxt = context.RequestContext(user_id=fake.USER_ID,
                                            project_id=fake.PROJECT_ID)
-        self.updated_at = datetime.datetime(1, 1, 1, 1, 1, 1)
+        self.updated_at = timeutils.utcnow()
 
     @mock.patch('cinder.volume.utils.notify_about_volume_usage')
     def test_transfer_volume_create_delete(self, mock_notify):
