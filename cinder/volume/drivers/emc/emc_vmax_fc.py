@@ -44,6 +44,8 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
         2.2.4 - Create CG from CG snapshot
         2.3.0 - Name change for MV and SG for FAST (bug #1515181)
               - Fix for randomly choosing port group. (bug #1501919)
+              - get_short_host_name needs to be called in find_device_number
+                (bug #1520635)
     """
 
     VERSION = "2.3.0"
