@@ -218,10 +218,11 @@ class HPE3PARCommon(object):
         3.0.4 - Adds v2 managed replication support
         3.0.5 - Adds v2 unmanaged replication support
         3.0.6 - Adding manage/unmanage snapshot support
+        3.0.7 - Enable standard capabilities based on 3PAR licenses
 
     """
 
-    VERSION = "3.0.6"
+    VERSION = "3.0.7"
 
     stats = {}
 
@@ -244,6 +245,11 @@ class HPE3PARCommon(object):
     EXTRA_SPEC_REP_MODE = "replication:mode"
     EXTRA_SPEC_REP_SYNC_PERIOD = "replication:sync_period"
     RC_ACTION_CHANGE_TO_PRIMARY = 7
+
+    # License values for reported capabilities
+    PRIORITY_OPT_LIC = "Priority Optimization"
+    THIN_PROV_LIC = "Thin Provisioning"
+    REMOTE_COPY_LIC = "Remote Copy"
 
     # Valid values for volume type extra specs
     # The first value in the list is the default value
@@ -1148,6 +1154,21 @@ class HPE3PARCommon(object):
 
         pools = []
         info = self.client.getStorageSystemInfo()
+        qos_support = True
+        thin_support = True
+        remotecopy_support = True
+        if 'licenseInfo' in info:
+            if 'licenses' in info['licenseInfo']:
+                valid_licenses = info['licenseInfo']['licenses']
+                qos_support = self._check_license_enabled(
+                    valid_licenses, self.PRIORITY_OPT_LIC,
+                    "QoS_support")
+                thin_support = self._check_license_enabled(
+                    valid_licenses, self.THIN_PROV_LIC,
+                    "Thin_provisioning_support")
+                remotecopy_support = self._check_license_enabled(
+                    valid_licenses, self.REMOTE_COPY_LIC,
+                    "Replication")
 
         for cpg_name in self.config.hpe3par_cpg:
             try:
@@ -1210,8 +1231,8 @@ class HPE3PARCommon(object):
                     'total_capacity_gb': total_capacity,
                     'free_capacity_gb': free_capacity,
                     'provisioned_capacity_gb': provisioned_capacity,
-                    'QoS_support': True,
-                    'thin_provisioning_support': True,
+                    'QoS_support': qos_support,
+                    'thin_provisioning_support': thin_support,
                     'thick_provisioning_support': True,
                     'max_over_subscription_ratio': (
                         self.config.safe_get('max_over_subscription_ratio')),
@@ -1234,7 +1255,8 @@ class HPE3PARCommon(object):
                     'consistencygroup_support': True,
                     }
 
-            if hpe3parclient.version >= MIN_REP_CLIENT_VERSION:
+            if (hpe3parclient.version >= MIN_REP_CLIENT_VERSION
+                    and remotecopy_support):
                 pool['replication_enabled'] = self._replication_enabled
                 pool['replication_type'] = ['sync', 'periodic']
                 pool['replication_count'] = len(self._replication_targets)
@@ -1246,6 +1268,19 @@ class HPE3PARCommon(object):
                       'vendor_name': 'Hewlett Packard Enterprise',
                       'volume_backend_name': None,
                       'pools': pools}
+
+    def _check_license_enabled(self, valid_licenses,
+                               license_to_check, capability):
+        """Check a license against valid licenses on the array."""
+        if valid_licenses:
+            for license in valid_licenses:
+                if license_to_check in license.get('name'):
+                    return True
+            LOG.debug(("'%(capability)s' requires a '%(license)s' "
+                       "license which is not installed.") %
+                      {'capability': capability,
+                       'license': license_to_check})
+        return False
 
     def _get_vlun(self, volume_name, hostname, lun_id=None, nsp=None):
         """find a VLUN on a 3PAR host."""
