@@ -26,8 +26,6 @@ import socket
 import time
 from six import wraps
 
-from cinder.i18n import _, _LE, _LI
-
 #from oslo_log import log as logging
 
 try:
@@ -41,6 +39,7 @@ except:
 LOG = logging.getLogger(__name__)
 socket.setdefaulttimeout(100)
 
+
 def retry(exc_tuple, tries=5, delay=1, backoff=2):
     def retry_dec(f):
         @wraps(f)
@@ -53,13 +52,14 @@ def retry(exc_tuple, tries=5, delay=1, backoff=2):
                     time.sleep(_delay)
                     _tries -= 1
                     _delay *= backoff
-                    LOG.debug(_('Retrying %s, (%s attempts remaining)...'),
+                    LOG.debug('Retrying %s, (%s attempts remaining)...',
                               (args, _tries))
-            msg = (_('Retry count exceeded for command: %s'), (args,))
+            msg = ('Retry count exceeded for command: %s', (args,))
             LOG.error(msg)
             raise Exception(msg)
         return func_retry
     return retry_dec
+
 
 class NexentaEdgeJSONProxy(object):
 
@@ -85,7 +85,7 @@ class NexentaEdgeJSONProxy(object):
         if not self.method:
             method = name
         else:
-            raise Exception(_("Wrong resource call syntax"))
+            raise Exception("Wrong resource call syntax")
         return NexentaEdgeJSONProxy(
             self.protocol, self.host, self.port, self.path,
             self.user, self.password, self.auto, method)
@@ -123,7 +123,7 @@ class NexentaEdgeJSONProxy(object):
         rsp = req.json()
         req.close()
 
-        LOG.info(_LI('Got response: %s') % rsp)
+        LOG.info('Got response: %s' % rsp)
         if rsp.get('response') is None:
-            raise Exception(_LE('Bad response: %s') % rsp)
+            raise Exception('Bad response: %s' % rsp)
         return rsp.get('response')
