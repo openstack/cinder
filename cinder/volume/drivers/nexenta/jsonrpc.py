@@ -20,39 +20,14 @@
 .. moduleauthor:: Nexenta OpenStack Developers <openstack.team@nexenta.com>
 """
 
-import socket
-import time
-
-
-import requests
-from six import wraps
+import urllib2
 
 from cinder.openstack.common import jsonutils
+
 from cinder.openstack.common import log as logging
 from cinder.volume.drivers import nexenta
 
 LOG = logging.getLogger(__name__)
-socket.setdefaulttimeout(100)
-
-def retry(exc_tuple, tries=5, delay=1, backoff=2):
-    def retry_dec(f):
-        @wraps(f)
-        def func_retry(*args, **kwargs):
-            _tries, _delay = tries, delay
-            while _tries > 1:
-                try:
-                    return f(*args, **kwargs)
-                except exc_tuple:
-                    time.sleep(_delay)
-                    _tries -= 1
-                    _delay *= backoff
-                    LOG.debug('Retrying %s, (%s attempts remaining)...',
-                              (args, _tries))
-            msg = ('Retry count exceeded for command: %s', (args,))
-            LOG.error(msg)
-            raise NexentaJSONException(msg)
-        return func_retry
-    return retry_dec
 
 
 class NexentaJSONException(nexenta.NexentaException):
@@ -60,8 +35,6 @@ class NexentaJSONException(nexenta.NexentaException):
 
 
 class NexentaJSONProxy(object):
-
-    retry_exc_tuple = (requests.exceptions.ConnectionError,)
 
     def __init__(self, scheme, host, port, path, user, password, auto=False,
                  obj=None, method=None):
@@ -96,7 +69,6 @@ class NexentaJSONProxy(object):
     def __repr__(self):
         return 'NMS proxy: %s' % self.url
 
-    @retry(retry_exc_tuple, tries=6)
     def __call__(self, *args):
         data = jsonutils.dumps({
             'object': self.obj,
@@ -109,11 +81,20 @@ class NexentaJSONProxy(object):
             'Authorization': 'Basic %s' % auth
         }
         LOG.debug('Sending JSON data: %s', data)
-        req = requests.post(self.url, data=data, headers=headers)
-        response = req.json()
-        req.close()
+        request = urllib2.Request(self.url, data, headers)
+        response_obj = urllib2.urlopen(request)
+        if response_obj.info().status == 'EOF in headers':
+            if not self.auto or self.scheme != 'http':
+                LOG.error('No headers in server response')
+                raise NexentaJSONException('Bad response from server')
+            LOG.info('Auto switching to HTTPS connection to %s', self.url)
+            self.scheme = 'https'
+            request = urllib2.Request(self.url, data, headers)
+            response_obj = urllib2.urlopen(request)
 
-        LOG.debug('Got response: %s', response)
+        response_data = response_obj.read()
+        LOG.debug('Got response: %s', response_data)
+        response = jsonutils.loads(response_data)
         if response.get('error') is not None:
             raise NexentaJSONException(response['error'].get('message', ''))
         return response.get('result')
