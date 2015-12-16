@@ -206,3 +206,7 @@ user documentation.
   os-snapshot-manage and os-volume-manage now support ``cluster`` parameter on
   listings (summay and detailed).  Both location parameters, ``cluster`` and
   ``host`` are exclusive and only one should be provided.
+
+3.18
+----
+  Added backup project attribute.
