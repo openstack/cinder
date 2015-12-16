@@ -112,6 +112,7 @@ class ManageCastTask(flow_utils.CinderTask):
     def execute(self, context, **kwargs):
         volume = kwargs.pop('volume')
         request_spec = kwargs.copy()
+        request_spec['volume_id'] = volume.id
 
         # Call the scheduler to ensure that the host exists and that it can
         # accept the volume
