@@ -106,7 +106,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         :param api: Dell SC API opbject.
         :param scvolume: Dell SC Volume object.
         :param volume: Cinder Volume object.
-        :return: Nothing.
+        :returns: Nothing.
         """
         if scvolume and volume.get('consistencygroup_id'):
             profile = api.find_replay_profile(
@@ -389,7 +389,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         :param new_volume: The migration volume object that was created on
                            this backend as part of the migration process
         :param original_volume_status: The status of the original volume
-        :return model_update to update DB with any needed changes
+        :returns: model_update to update DB with any needed changes
         """
         # We use id as our volume name so we need to rename the backend
         # volume to the original volume name.
@@ -417,7 +417,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
 
         :param context: the context of the caller.
         :param group: the dictionary of the consistency group to be created.
-        :return: Nothing on success.
+        :returns: Nothing on success.
         :raises: VolumeBackendAPIException
         """
         gid = group['id']
@@ -434,7 +434,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
 
         :param context: the context of the caller.
         :param group: the dictionary of the consistency group to be created.
-        :return: Updated model_update, volumes.
+        :returns: Updated model_update, volumes.
         """
         gid = group['id']
         with self._client.open_connection() as api:
@@ -463,7 +463,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         :param group: the dictionary of the consistency group to be updated.
         :param add_volumes: a list of volume dictionaries to be added.
         :param remove_volumes: a list of volume dictionaries to be removed.
-        :return model_update, add_volumes_update, remove_volumes_update
+        :returns: model_update, add_volumes_update, remove_volumes_update
 
         model_update is a dictionary that the driver wants the manager
         to update upon a successful return. If None is returned, the manager
@@ -501,7 +501,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
 
         :param context: the context of the caller.
         :param cgsnapshot: Information about the snapshot to take.
-        :return: Updated model_update, snapshots.
+        :returns: Updated model_update, snapshots.
         :raises: VolumeBackendAPIException.
         """
         cgid = cgsnapshot['consistencygroup_id']
@@ -537,7 +537,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
 
         :param context: the context of the caller.
         :param cgsnapshot: Information about the snapshot to delete.
-        :return: Updated model_update, snapshots.
+        :returns: Updated model_update, snapshots.
         :raises: VolumeBackendAPIException.
         """
         cgid = cgsnapshot['consistencygroup_id']

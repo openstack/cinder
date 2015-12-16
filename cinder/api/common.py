@@ -324,7 +324,7 @@ class ViewBuilder(object):
                            items
         :param id_key: Attribute key used to retrieve the unique ID, used
                        to generate the next link marker for a pagination query
-        :returns links
+        :returns: links
         """
         item_count = item_count or len(items)
         limit = _get_limit_param(request.GET.copy())

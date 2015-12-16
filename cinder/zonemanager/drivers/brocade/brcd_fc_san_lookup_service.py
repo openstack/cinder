@@ -71,7 +71,7 @@ class BrcdFCSanLookupService(fc_service.FCSanLookupService):
 
         :param initiator_wwn_list: List of initiator port WWN
         :param target_wwn_list: List of target port WWN
-        :returns List -- device wwn map in following format
+        :returns: List -- device wwn map in following format
             {
                 <San name>: {
                     'initiator_port_wwn_list':
@@ -80,7 +80,7 @@ class BrcdFCSanLookupService(fc_service.FCSanLookupService):
                     ('100000051e55a100', '100000051e55a121'..)
                 }
             }
-        :raises Exception when connection to fabric is failed
+        :raises: Exception when connection to fabric is failed
         """
         device_map = {}
         formatted_target_list = []
@@ -221,7 +221,7 @@ class BrcdFCSanLookupService(fc_service.FCSanLookupService):
 
         Parses nameserver raw data and adds the device port wwns to the list
 
-        :returns list of device port wwn from ns info
+        :returns: list of device port wwn from ns info
         """
         nsinfo_list = []
         lines = switch_data.split('\n')

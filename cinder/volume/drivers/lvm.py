@@ -345,7 +345,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
         :param new_volume: The migration volume object that was created on
                            this backend as part of the migration process
         :param original_volume_status: The status of the original volume
-        :return model_update to update DB with any needed changes
+        :returns: model_update to update DB with any needed changes
         """
         name_id = None
         provider_location = None

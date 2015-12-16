@@ -394,7 +394,7 @@ class NfsDriver(driver.ExtendVD, remotefs.RemoteFSDriver):
         :param new_volume: The migration volume object that was created on
                            this backend as part of the migration process
         :param original_volume_status: The status of the original volume
-        :return model_update to update DB with any needed changes
+        :returns: model_update to update DB with any needed changes
         """
         # TODO(vhou) This method may need to be updated after
         # NFS snapshots are introduced.

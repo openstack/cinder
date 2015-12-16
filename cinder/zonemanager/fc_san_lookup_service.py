@@ -59,7 +59,7 @@ class FCSanLookupService(fc_common.FCCommon):
         available.
         :param initiator_list list of initiator port WWN
         :param target_list list of target port WWN
-        :return device wwn map in following format
+        :returns: device wwn map in following format
             {
                 <San name>: {
                     'initiator_port_wwn_list':
@@ -68,7 +68,7 @@ class FCSanLookupService(fc_common.FCCommon):
                     ('100000051E55A100', '100000051E55A121'..)
                 }
             }
-        :raise Exception when a lookup service implementation is not specified
+        :raise: Exception when a lookup service implementation is not specified
         in cinder.conf:fc_san_lookup_service
         """
         # Initialize vendor specific implementation of  FCZoneDriver

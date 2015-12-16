@@ -446,7 +446,7 @@ class DotHillCommon(object):
         :param host: A dictionary describing the host to migrate to, where
                      host['host'] is its name, and host['capabilities'] is a
                      dictionary of its reported capabilities.
-        :returns (False, None) if the driver does not support migration,
+        :returns: (False, None) if the driver does not support migration,
                  (True, None) if successful
 
         """

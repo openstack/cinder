@@ -867,7 +867,7 @@ def trace(f):
     Using this decorator on a function will cause its execution to be logged at
     `DEBUG` level with arguments, return values, and exceptions.
 
-    :returns a function decorator
+    :returns: a function decorator
     """
 
     func_name = f.__name__
@@ -968,7 +968,7 @@ def resolve_hostname(hostname):
     In this case, the same IP address will be returned.
 
     :param hostname:  Host name to resolve.
-    :return:          IP Address for Host name.
+    :returns:         IP Address for Host name.
     """
     result = socket.getaddrinfo(hostname, None)[0]
     (family, socktype, proto, canonname, sockaddr) = result
