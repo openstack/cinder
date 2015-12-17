@@ -1,0 +1,4 @@
+---
+fixes:
+  - Fixed an issue when deleting a consistency group snapshot with
+    the Dell SC backend driver.

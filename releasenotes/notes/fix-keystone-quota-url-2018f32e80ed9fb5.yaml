@@ -1,0 +1,5 @@
+---
+fixes:
+  - Fixed an error in quota handling that required the
+    keystone encryption_auth_url to be configured even
+    if no encryption was being used.

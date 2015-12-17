@@ -1,0 +1,3 @@
+---
+fixes:
+  - Better cleanup handling in the NetApp E-Series driver.

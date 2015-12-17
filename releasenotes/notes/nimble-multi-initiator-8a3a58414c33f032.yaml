@@ -1,0 +1,4 @@
+---
+fixes:
+  - Add ability to enable multi-initiator support to allow live migration
+    in the Nimble backend driver.

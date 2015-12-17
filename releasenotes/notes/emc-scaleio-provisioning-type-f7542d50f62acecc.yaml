@@ -1,0 +1,5 @@
+---
+fixes:
+  - An error has been corrected in the EMC ScaleIO driver that had
+    caused all volumes to be provisioned at 'thick' even if user had
+    specificed 'thin'.

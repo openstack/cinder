@@ -1,0 +1,3 @@
+---
+fixes:
+  - IQN identification is now case-insensitive when using LIO.
