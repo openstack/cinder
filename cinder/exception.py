@@ -1020,5 +1020,5 @@ class HNASConnError(CinderException):
 
 
 # NexentaStor driver exception
-class NexentaException(CinderException):
+class NexentaException(VolumeDriverException):
     message = _("%(message)s")

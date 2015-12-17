@@ -19,6 +19,7 @@
 """
 
 from oslo_log import log as logging
+from oslo_utils import excutils
 
 from cinder import context
 from cinder import exception
@@ -273,8 +274,10 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         try:
             self.create_volume_from_snapshot(volume, snapshot)
         except exception.NexentaException:
-            LOG.error(_LE('Volume creation failed, deleting created snapshot '
-                          '%(volume_name)s@%(name)s'), snapshot)
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_LE(
+                    'Volume creation failed, deleting created snapshot '
+                    '%(volume_name)s@%(name)s'), snapshot)
             try:
                 self.delete_snapshot(snapshot)
             except (exception.NexentaException, exception.SnapshotIsBusy):
