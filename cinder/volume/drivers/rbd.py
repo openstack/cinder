@@ -290,6 +290,11 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
             msg = _('rados and rbd python libraries not found')
             raise exception.VolumeBackendAPIException(data=msg)
 
+        for attr in ['rbd_cluster_name', 'rbd_pool']:
+            val = getattr(self.configuration, attr)
+            if not val:
+                raise exception.InvalidConfigurationValue(option=attr,
+                                                          value=val)
         # NOTE: Checking connection to ceph
         # RADOSClient __init__ method invokes _connect_to_rados
         # so no need to check for self.rados.Error here.
