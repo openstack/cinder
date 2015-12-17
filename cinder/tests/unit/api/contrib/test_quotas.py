@@ -133,17 +133,49 @@ class QuotaSetsControllerTest(test.TestCase):
     def test_keystone_client_instantiation(self, ksclient_session,
                                            ksclient_class):
         context = self.req.environ['cinder.context']
-        self.controller._get_project(context, context.project_id)
+        self.controller._keystone_client(context)
         ksclient_class.assert_called_once_with(auth_url=self.auth_url,
                                                session=ksclient_session())
 
     @mock.patch('keystoneclient.client.Client')
-    def test_get_project(self, ksclient_class):
+    def test_get_project_keystoneclient_v2(self, ksclient_class):
         context = self.req.environ['cinder.context']
         keystoneclient = ksclient_class.return_value
-        self.controller._get_project(context, context.project_id)
+        keystoneclient.version = 'v2.0'
+        expected_project = self.controller.GenericProjectInfo(
+            context.project_id, 'v2.0')
+        project = self.controller._get_project(context, context.project_id)
+        self.assertEqual(expected_project.__dict__, project.__dict__)
+
+    @mock.patch('keystoneclient.client.Client')
+    def test_get_project_keystoneclient_v3(self, ksclient_class):
+        context = self.req.environ['cinder.context']
+        keystoneclient = ksclient_class.return_value
+        keystoneclient.version = 'v3'
+        returned_project = self.FakeProject(context.project_id, 'bar')
+        del returned_project.subtree
+        keystoneclient.projects.get.return_value = returned_project
+        expected_project = self.controller.GenericProjectInfo(
+            context.project_id, 'v3', 'bar')
+        project = self.controller._get_project(context, context.project_id)
+        self.assertEqual(expected_project.__dict__, project.__dict__)
+
+    @mock.patch('keystoneclient.client.Client')
+    def test_get_project_keystoneclient_v3_with_subtree(self, ksclient_class):
+        context = self.req.environ['cinder.context']
+        keystoneclient = ksclient_class.return_value
+        keystoneclient.version = 'v3'
+        returned_project = self.FakeProject(context.project_id, 'bar')
+        subtree_dict = {'baz': {'quux': None}}
+        returned_project.subtree = subtree_dict
+        keystoneclient.projects.get.return_value = returned_project
+        expected_project = self.controller.GenericProjectInfo(
+            context.project_id, 'v3', 'bar', subtree_dict)
+        project = self.controller._get_project(context, context.project_id,
+                                               subtree_as_ids=True)
         keystoneclient.projects.get.assert_called_once_with(
-            context.project_id, subtree_as_ids=False)
+            context.project_id, subtree_as_ids=True)
+        self.assertEqual(expected_project.__dict__, project.__dict__)
 
     def test_defaults(self):
         self.controller._get_project = mock.Mock()
