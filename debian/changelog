@@ -1,3 +1,11 @@
+cinder (1:2015.1.1-0sbs1) UNRELEASED; urgency=medium
+
+  * debian rule file added
+  * backup related fixes
+
+ -- Corey Bryant <corey.bryant@canonical.com>  Thu, 13 Aug 2015 14:45:16 -0400
+
+
 cinder (1:2015.1.1-0ubuntu3) UNRELEASED; urgency=medium
 
   * d/rules: Prevent dh_python2 from guessing dependencies.
