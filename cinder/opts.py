@@ -109,8 +109,6 @@ from cinder.volume.drivers.ibm import flashsystem_fc as \
 from cinder.volume.drivers.ibm import flashsystem_iscsi as \
     cinder_volume_drivers_ibm_flashsystemiscsi
 from cinder.volume.drivers.ibm import gpfs as cinder_volume_drivers_ibm_gpfs
-from cinder.volume.drivers.ibm import ibmnas as \
-    cinder_volume_drivers_ibm_ibmnas
 from cinder.volume.drivers.ibm.storwize_svc import storwize_svc_common as \
     cinder_volume_drivers_ibm_storwize_svc_storwizesvccommon
 from cinder.volume.drivers.ibm.storwize_svc import storwize_svc_fc as \
@@ -226,7 +224,6 @@ def list_opts():
                 cinder_volume_drivers_sheepdog.sheepdog_opts,
                 [cinder_api_middleware_sizelimit.max_request_body_size_opt],
                 cinder_volume_drivers_solidfire.sf_opts,
-                cinder_volume_drivers_ibm_ibmnas.platform_opts,
                 cinder_backup_drivers_swift.swiftbackup_service_opts,
                 cinder_volume_drivers_cloudbyte_options.
                 cloudbyte_add_qosgroup_opts,
