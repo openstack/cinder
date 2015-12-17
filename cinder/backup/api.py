@@ -77,6 +77,7 @@ class API(base.Base):
         :param force: indicate force delete or not
         :raises: InvalidBackup
         :raises: BackupDriverException
+        :raises: ServiceNotFound
         """
         check_policy(context, 'delete')
         if not force and backup.status not in ['available', 'error']:
@@ -86,6 +87,9 @@ class API(base.Base):
                                                              backup.host):
             msg = _('force delete')
             raise exception.NotSupportedOperation(operation=msg)
+        if not self._is_backup_service_enabled(backup['availability_zone'],
+                                               backup.host):
+            raise exception.ServiceNotFound(service_id='cinder-backup')
 
         # Don't allow backup to be deleted if there are incremental
         # backups dependent on it.
@@ -121,15 +125,15 @@ class API(base.Base):
 
         return backups
 
-    def _is_backup_service_enabled(self, volume, volume_host):
+    def _is_backup_service_enabled(self, availability_zone, host):
         """Check if there is a backup service available."""
         topic = CONF.backup_topic
         ctxt = context.get_admin_context()
         services = objects.ServiceList.get_all_by_topic(
             ctxt, topic, disabled=False)
         for srv in services:
-            if (srv.availability_zone == volume['availability_zone'] and
-                    srv.host == volume_host and
+            if (srv.availability_zone == availability_zone and
+                    srv.host == host and
                     utils.service_is_up(srv)):
                 return True
         return False
@@ -163,7 +167,8 @@ class API(base.Base):
 
         previous_status = volume['status']
         volume_host = volume_utils.extract_host(volume['host'], 'host')
-        if not self._is_backup_service_enabled(volume, volume_host):
+        if not self._is_backup_service_enabled(volume['availability_zone'],
+                                               volume_host):
             raise exception.ServiceNotFound(service_id='cinder-backup')
 
         # Reserve a quota before setting volume status and backup status

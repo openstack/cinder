@@ -925,30 +925,46 @@ class BackupsAPITestCase(test.TestCase):
         volume = self.volume_api.get(context.get_admin_context(), volume_id)
 
         # test empty service
-        self.assertEqual(False, self.backup_api._is_backup_service_enabled(
-            volume, test_host))
+        self.assertEqual(False,
+                         self.backup_api._is_backup_service_enabled(
+                             volume['availability_zone'],
+                             test_host))
 
         # test host not match service
-        self.assertEqual(False, self.backup_api._is_backup_service_enabled(
-            volume, test_host))
+        self.assertEqual(False,
+                         self.backup_api._is_backup_service_enabled(
+                             volume['availability_zone'],
+                             test_host))
 
         # test az not match service
-        self.assertEqual(False, self.backup_api._is_backup_service_enabled(
-            volume, test_host))
+        self.assertEqual(False,
+                         self.backup_api._is_backup_service_enabled(
+                             volume['availability_zone'],
+                             test_host))
 
         # test disabled service
-        self.assertEqual(False, self.backup_api._is_backup_service_enabled(
-            volume, test_host))
+        self.assertEqual(False,
+                         self.backup_api._is_backup_service_enabled(
+                             volume['availability_zone'],
+                             test_host))
 
         # test dead service
-        self.assertEqual(False, self.backup_api._is_backup_service_enabled(
-            volume, test_host))
+        self.assertEqual(False,
+                         self.backup_api._is_backup_service_enabled(
+                             volume['availability_zone'],
+                             test_host))
 
         # test multi services and the last service matches
-        self.assertTrue(self.backup_api._is_backup_service_enabled(volume,
-                                                                   test_host))
+        self.assertTrue(self.backup_api._is_backup_service_enabled(
+                        volume['availability_zone'],
+                        test_host))
 
-    def test_delete_backup_available(self):
+    @mock.patch('cinder.db.service_get_all_by_topic')
+    def test_delete_backup_available(self,
+                                     _mock_service_get_all_by_topic):
+        _mock_service_get_all_by_topic.return_value = [
+            {'availability_zone': "az1", 'host': 'testhost',
+             'disabled': 0, 'updated_at': timeutils.utcnow()}]
         backup_id = self._create_backup(status='available')
         req = webob.Request.blank('/v2/fake/backups/%s' %
                                   backup_id)
@@ -962,7 +978,12 @@ class BackupsAPITestCase(test.TestCase):
 
         db.backup_destroy(context.get_admin_context(), backup_id)
 
-    def test_delete_delta_backup(self):
+    @mock.patch('cinder.db.service_get_all_by_topic')
+    def test_delete_delta_backup(self,
+                                 _mock_service_get_all_by_topic):
+        _mock_service_get_all_by_topic.return_value = [
+            {'availability_zone': "az1", 'host': 'testhost',
+             'disabled': 0, 'updated_at': timeutils.utcnow()}]
         backup_id = self._create_backup(status='available')
         delta_id = self._create_backup(status='available',
                                        incremental=True)
@@ -979,7 +1000,12 @@ class BackupsAPITestCase(test.TestCase):
         db.backup_destroy(context.get_admin_context(), delta_id)
         db.backup_destroy(context.get_admin_context(), backup_id)
 
-    def test_delete_backup_error(self):
+    @mock.patch('cinder.db.service_get_all_by_topic')
+    def test_delete_backup_error(self,
+                                 _mock_service_get_all_by_topic):
+        _mock_service_get_all_by_topic.return_value = [
+            {'availability_zone': "az1", 'host': 'testhost',
+             'disabled': 0, 'updated_at': timeutils.utcnow()}]
         backup_id = self._create_backup(status='error')
         req = webob.Request.blank('/v2/fake/backups/%s' %
                                   backup_id)
@@ -1022,7 +1048,12 @@ class BackupsAPITestCase(test.TestCase):
 
         db.backup_destroy(context.get_admin_context(), backup_id)
 
-    def test_delete_backup_with_InvalidBackup2(self):
+    @mock.patch('cinder.db.service_get_all_by_topic')
+    def test_delete_backup_with_InvalidBackup2(self,
+                                               _mock_service_get_all_by_topic):
+        _mock_service_get_all_by_topic.return_value = [
+            {'availability_zone': "az1", 'host': 'testhost',
+             'disabled': 0, 'updated_at': timeutils.utcnow()}]
         volume_id = utils.create_volume(self.context, size=5)['id']
         backup_id = self._create_backup(volume_id, status="available")
         delta_backup_id = self._create_backup(status='available',
@@ -1042,6 +1073,23 @@ class BackupsAPITestCase(test.TestCase):
                          res_dict['badRequest']['message'])
 
         db.backup_destroy(context.get_admin_context(), delta_backup_id)
+        db.backup_destroy(context.get_admin_context(), backup_id)
+
+    @mock.patch('cinder.db.service_get_all_by_topic')
+    def test_delete_backup_service_down(self,
+                                        _mock_service_get_all_by_topic):
+        _mock_service_get_all_by_topic.return_value = [
+            {'availability_zone': "az1", 'host': 'testhost',
+             'disabled': 0, 'updated_at': '1775-04-19 05:00:00'}]
+        backup_id = self._create_backup(status='available')
+        req = webob.Request.blank('/v2/fake/backups/%s' %
+                                  backup_id)
+        req.method = 'DELETE'
+        req.headers['Content-Type'] = 'application/json'
+        res = req.get_response(fakes.wsgi_app())
+
+        self.assertEqual(404, res.status_int)
+
         db.backup_destroy(context.get_admin_context(), backup_id)
 
     def test_restore_backup_volume_id_specified_json(self):
