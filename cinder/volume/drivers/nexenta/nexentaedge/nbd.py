@@ -114,12 +114,12 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
             if i in devmap and devmap[i]:
                 continue
             return i
-        raise Exception #FIXME
+        raise Exception  # FIXME
 
     def local_path(self, volume):
         number = self._get_nbd_number(volume)
         if number == -1:
-            raise Exception #FIXME
+            raise Exception  # FIXME
         return '/dev/nbd' + str(number)
 
     def create_volume(self, volume):
@@ -150,7 +150,14 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
                 LOG.exception(_LE('Error deleting volume'))
 
     def extend_volume(self, volume, new_size):
-        raise NotImplemented
+        try:
+            self.restapi.put('nbd/resize', {
+                'objectPath': self.bucket_path + '/' + volume['name'],
+                'newSizeMB': new_size * units.Ki
+            })
+        except exception.VolumeBackendAPIException:
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_LE('Error extending volume'))
 
     def create_snapshot(self, snapshot):
         try:
