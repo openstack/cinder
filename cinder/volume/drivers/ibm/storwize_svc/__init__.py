@@ -946,7 +946,7 @@ class StorwizeSVCDriver(san.SanDriver,
         :param new_volume: The migration volume object that was created on
                            this backend as part of the migration process
         :param original_volume_status: The status of the original volume
-        :return model_update to update DB with any needed changes
+        :returns: model_update to update DB with any needed changes
         """
         current_name = CONF.volume_name_template % new_volume['id']
         original_volume_name = CONF.volume_name_template % volume['id']

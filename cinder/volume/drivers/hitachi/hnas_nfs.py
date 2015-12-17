@@ -588,7 +588,7 @@ class HDSNFSDriver(nfs.NfsDriver):
         Convert that to an IP address and then restore the entire path.
 
         :param vol_ref:  driver-specific information used to identify a volume
-        :return:         a volume reference where share is in IP format
+        :returns:         a volume reference where share is in IP format
         """
 
         # First strip out share and convert to IP format.
@@ -615,7 +615,7 @@ class HDSNFSDriver(nfs.NfsDriver):
         if unsuccessful.
 
         :param vol_ref: driver-specific information used to identify a volume
-        :return:        NFS Share, NFS mount, volume path or raise error
+        :returns:        NFS Share, NFS mount, volume path or raise error
         """
         # Check that the reference is valid.
         if 'source-name' not in vol_ref:

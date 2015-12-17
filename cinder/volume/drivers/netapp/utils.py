@@ -244,7 +244,7 @@ def get_pool_name_filter_regex(configuration):
 
     :param configuration: The volume driver configuration
     :raise InvalidConfigurationValue: if configured regex pattern is invalid
-    :return: A compiled regex for filtering pool names
+    :returns: A compiled regex for filtering pool names
     """
 
     # If the configuration parameter is specified as an empty string
@@ -487,6 +487,6 @@ class FeatureState(object):
     def __nonzero__(self):
         """Allow a FeatureState object to be tested for truth value
 
-        :return True if the feature is supported, otherwise False
+        :returns: True if the feature is supported, otherwise False
         """
         return self.supported

@@ -360,7 +360,7 @@ class BackupDriver(base.Base):
         Default backup driver implementation has no extra information.
 
         :param backup: backup object to export
-        :returns driver_info - dictionary with extra information
+        :returns: driver_info - dictionary with extra information
         """
         return {}
 
@@ -378,7 +378,7 @@ class BackupDriver(base.Base):
         :param backup: backup object to export
         :param driver_info: dictionary with driver specific backup record
                             information
-        :returns nothing
+        :returns: nothing
         """
         return
 

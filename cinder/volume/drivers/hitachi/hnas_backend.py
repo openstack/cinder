@@ -49,7 +49,7 @@ class HnasBackend(object):
         :param ip0: string IP address of controller
         :param user: string user authentication for array
         :param pw: string password authentication for array
-        :return: formated string with version information
+        :returns: formated string with version information
         """
         LOG.debug('Enable ssh: %s',
                   six.text_type(self.drv_configs['ssh_enabled']))
@@ -122,7 +122,7 @@ class HnasBackend(object):
        :param ip0: string IP address of controller
        :param user: string user authentication for array
        :param pw: string password authentication for array
-       :return: formated string with version information
+       :returns: formated string with version information
        """
         if (self.drv_configs['ssh_enabled'] == 'True' and
                 self.drv_configs['cluster_admin_ip0'] is not None):
@@ -160,7 +160,7 @@ class HnasBackend(object):
         :param ip0: string IP address of controller
         :param user: string user authentication for array
         :param pw: string password authentication for array
-        :return: formated string with iSCSI information
+        :returns: formated string with iSCSI information
         """
 
         out, err = self.run_cmd(cmd, ip0, user, pw,
@@ -188,7 +188,7 @@ class HnasBackend(object):
         :param user: string user authentication for array
         :param pw: string password authentication for array
         :param fslabel: filesystem label we want to get info
-        :return: formated string with filesystems and fsids
+        :returns: formated string with filesystems and fsids
         """
 
         if fslabel is None:
@@ -251,7 +251,7 @@ class HnasBackend(object):
         :param ip0: string IP address of controller
         :param user: string user authentication for array
         :param pw: string password authentication for array
-        :return: EVS id of the file system
+        :returns: EVS id of the file system
         """
 
         out, err = self.run_cmd(cmd, ip0, user, pw, "evsfs", "list",
@@ -618,7 +618,7 @@ class HnasBackend(object):
         :param evsid: EVSID for the file system
         :param iqn: iSCSI qualified name
         :param hlun: logical unit id
-        :return: formated string
+        :returns: formated string
         """
 
         out, err = self.run_cmd(cmd, ip0, user, pw, "console-context",
@@ -665,7 +665,7 @@ class HnasBackend(object):
         :param targetalias: alias of the target
         :param hdp: data pool of the logical unit
         :param secret: CHAP secret of the target
-        :return: string with full IQN
+        :returns: string with full IQN
         """
 
         _evsid = self.get_evs(cmd, ip0, user, pw, hdp)
@@ -774,8 +774,8 @@ class HnasBackend(object):
         :param pw: string password authentication for array
         :param hdp: pool name used
         :param target_alias: alias of the target
-        :return True if target exists
-        :return list with the target info
+        :returns: True if target exists
+        :returns: list with the target info
         """
 
         LOG.debug("Checking if target %(tgt)s exists.", {'tgt': target_alias})
@@ -801,9 +801,9 @@ class HnasBackend(object):
         :param pw: string password authentication for array
         :param volume_name: number of the LUN
         :param hdp: storage pool of the LUN
-        :return True if the lun is attached
-        :return the LUN id
-        :return Info related to the target
+        :returns: True if the lun is attached
+        :returns: the LUN id
+        :returns: Info related to the target
         """
 
         LOG.debug("Checking if vol %s (hdp: %s) is attached.",

@@ -175,7 +175,7 @@ class RestClient(WebserviceClient):
 
         :param version: The version to validate
         :param actual_version: The running version of the Webservice
-        :return: True if the actual_version is equal or newer than the
+        :returns: True if the actual_version is equal or newer than the
         current running version, otherwise False
         """
         major_1, major_2, release, minor = version
@@ -325,7 +325,7 @@ class RestClient(WebserviceClient):
         explicitly disable it.
         :param flash_cache: If true, add the volume to a Flash Cache
         :param data_assurance: If true, enable the Data Assurance capability
-        :return The created volume
+        :returns: The created volume
         """
 
         # Utilize the new API if it is available
@@ -380,8 +380,8 @@ class RestClient(WebserviceClient):
         """Retrieve the given volume from array.
 
         :param object_id: The volume id, label, or wwn
-        :return The volume identified by object_id
-        :raise VolumeNotFound if the volume could not be found
+        :returns: The volume identified by object_id
+        :raise: VolumeNotFound if the volume could not be found
         """
 
         if self.features.SSC_API_V2:

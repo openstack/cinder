@@ -522,7 +522,7 @@ class BaseVD(object):
     def get_prefixed_property(self, property):
         """Return prefixed property name
 
-        :return a prefixed property name string or None
+        :returns: a prefixed property name string or None
         """
 
         if property and self.capabilities.get('vendor_prefix'):
@@ -844,7 +844,7 @@ class BaseVD(object):
         find the default filter_function. When None is returned the scheduler
         will always pass the driver instance.
 
-        :return a filter_function string or None
+        :returns: a filter_function string or None
         """
         ret_function = self.configuration.filter_function
         if not ret_function:
@@ -861,7 +861,7 @@ class BaseVD(object):
         find the default goodness_function. When None is returned the scheduler
         will give the lowest score to the driver instance.
 
-        :return a goodness_function string or None
+        :returns: a goodness_function string or None
         """
         ret_function = self.configuration.goodness_function
         if not ret_function:
@@ -876,7 +876,7 @@ class BaseVD(object):
         Each driver could overwrite the method to return a well-known
         default string if it is available.
 
-        :return: None
+        :returns: None
         """
         return None
 
@@ -886,7 +886,7 @@ class BaseVD(object):
         Each driver could overwrite the method to return a well-known
         default string if it is available.
 
-        :return: None
+        :returns: None
         """
         return None
 
@@ -1302,7 +1302,7 @@ class BaseVD(object):
         :param new_volume: The migration volume object that was created on
                            this backend as part of the migration process
         :param original_volume_status: The status of the original volume
-        :return model_update to update DB with any needed changes
+        :returns: model_update to update DB with any needed changes
         """
         msg = _("The method update_migrated_volume is not implemented.")
         raise NotImplementedError(msg)
@@ -1407,7 +1407,7 @@ class BaseVD(object):
         """Return pool name where volume reside on.
 
         :param volume: The volume hosted by the the driver.
-        :return: name of the pool where given volume is in.
+        :returns: name of the pool where given volume is in.
         """
         return None
 
@@ -1416,7 +1416,7 @@ class BaseVD(object):
 
         :param volumes: List of Cinder volumes to check for updates
         :param snapshots: List of Cinder snapshots to check for updates
-        :return: tuple (volume_updates, snapshot_updates)
+        :returns: tuple (volume_updates, snapshot_updates)
 
         where volume updates {'id': uuid, provider_id: <provider-id>}
         and snapshot updates {'id': uuid, provider_id: <provider-id>}
@@ -2050,7 +2050,7 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
 
         :param context: the context of the caller.
         :param group: the dictionary of the consistency group to be created.
-        :return model_update
+        :returns: model_update
 
         model_update will be in this format: {'status': xxx, ......}.
 
@@ -2078,7 +2078,7 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
         :param snapshots: a list of snapshot dictionaries in the cgsnapshot.
         :param source_cg: the dictionary of a consistency group as source.
         :param source_vols: a list of volume dictionaries in the source_cg.
-        :return model_update, volumes_model_update
+        :returns: model_update, volumes_model_update
 
         The source can be cgsnapshot or a source cg.
 
@@ -2103,7 +2103,7 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
         :param context: the context of the caller.
         :param group: the dictionary of the consistency group to be deleted.
         :param volumes: a list of volume dictionaries in the group.
-        :return model_update, volumes_model_update
+        :returns: model_update, volumes_model_update
 
         param volumes is retrieved directly from the db. It is a list of
         cinder.db.sqlalchemy.models.Volume to be precise. It cannot be
@@ -2149,7 +2149,7 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
         :param group: the dictionary of the consistency group to be updated.
         :param add_volumes: a list of volume dictionaries to be added.
         :param remove_volumes: a list of volume dictionaries to be removed.
-        :return model_update, add_volumes_update, remove_volumes_update
+        :returns: model_update, add_volumes_update, remove_volumes_update
 
         model_update is a dictionary that the driver wants the manager
         to update upon a successful return. If None is returned, the manager
@@ -2175,7 +2175,7 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
         :param context: the context of the caller.
         :param cgsnapshot: the dictionary of the cgsnapshot to be created.
         :param snapshots: a list of snapshot dictionaries in the cgsnapshot.
-        :return model_update, snapshots_model_update
+        :returns: model_update, snapshots_model_update
 
         param snapshots is retrieved directly from the db. It is a list of
         cinder.db.sqlalchemy.models.Snapshot to be precise. It cannot be
@@ -2219,7 +2219,7 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
         :param context: the context of the caller.
         :param cgsnapshot: the dictionary of the cgsnapshot to be deleted.
         :param snapshots: a list of snapshot dictionaries in the cgsnapshot.
-        :return model_update, snapshots_model_update
+        :returns: model_update, snapshots_model_update
 
         param snapshots is retrieved directly from the db. It is a list of
         cinder.db.sqlalchemy.models.Snapshot to be precise. It cannot be
@@ -2265,7 +2265,7 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
         """Return pool name where volume reside on.
 
         :param volume: The volume hosted by the the driver.
-        :return: name of the pool where given volume is in.
+        :returns: name of the pool where given volume is in.
         """
         return None
 

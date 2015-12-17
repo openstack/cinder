@@ -134,7 +134,7 @@ def _create_unique_device_link(backup_id, volume_path, volume_id, bckup_mode):
     :param volume_id: Volume id for backup or as restore target
     :param bckup_mode: TSM backup mode, either 'image' or 'file'
     :raises: InvalidBackup
-    :returns str -- hardlink path of the volume block device
+    :returns: str -- hardlink path of the volume block device
     """
     if _image_mode(bckup_mode):
         hardlink_path = utils.make_dev_path('%s-%s' %
@@ -165,7 +165,7 @@ def _check_dsmc_output(output, check_attrs, exact_match=True):
     value specified in check_attrs.  This is needed because for file
     backups, the parent directories may also be included the first a
     volume is backed up.
-    :returns bool -- indicate if requited output attribute found in output
+    :returns: bool -- indicate if requited output attribute found in output
     """
 
     parsed_attrs = {}
@@ -195,8 +195,8 @@ def _get_volume_realpath(volume_file, volume_id):
     :param volume_file: file object representing the volume
     :param volume_id: Volume id for backup or as restore target
     :raises: InvalidBackup
-    :returns str -- real path of volume device
-    :returns str -- backup mode to be used
+    :returns: str -- real path of volume device
+    :returns: str -- backup mode to be used
     """
 
     try:
@@ -417,7 +417,7 @@ class TSMBackupDriver(driver.BackupDriver):
         :param backup: backup information for volume
         :param volume_id: volume id
         :param volume_file: file object representing the volume
-        :raises InvalidBackup
+        :raises: InvalidBackup
         """
 
         # backup_path is the path that was originally backed up.
@@ -476,7 +476,7 @@ class TSMBackupDriver(driver.BackupDriver):
         """Delete the given backup from TSM server.
 
         :param backup: backup information for volume
-        :raises InvalidBackup
+        :raises: InvalidBackup
         """
 
         delete_attrs = {'Total number of objects deleted': '1'}

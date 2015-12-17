@@ -617,7 +617,7 @@ class XtremIOVolumeDriver(san.SanDriver):
         :param volumes: a list of volume dictionaries in the group.
         :param cgsnapshot: the dictionary of the cgsnapshot as source.
         :param snapshots: a list of snapshot dictionaries in the cgsnapshot.
-        :return model_update, volumes_model_update
+        :returns: model_update, volumes_model_update
         """
         if cgsnapshot and snapshots:
             snap_by_anc = self.get_snapset_ancestors(cgsnapshot)
@@ -643,7 +643,7 @@ class XtremIOVolumeDriver(san.SanDriver):
         :param group: the dictionary of the consistency group to be updated.
         :param add_volumes: a list of volume dictionaries to be added.
         :param remove_volumes: a list of volume dictionaries to be removed.
-        :return model_update, add_volumes_update, remove_volumes_update
+        :returns: model_update, add_volumes_update, remove_volumes_update
         """
         add_volumes = add_volumes if add_volumes else []
         remove_volumes = remove_volumes if remove_volumes else []

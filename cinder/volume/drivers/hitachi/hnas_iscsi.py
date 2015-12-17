@@ -226,7 +226,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
            Get the available service parametersfor a given volume using its
            type.
            :param volume: dictionary volume reference
-           :return HDP related to the service
+           :returns: HDP related to the service
         """
 
         label = utils.extract_host(volume['host'], level='pool')

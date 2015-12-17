@@ -1403,7 +1403,7 @@ class HPE3PARCommon(object):
 
         :param persona_value:
         :raises: exception.InvalidInput
-        :return: persona ID
+        :returns: persona ID
         """
         if persona_value not in self.valid_persona_values:
             err = (_("Must specify a valid persona %(valid)s,"
@@ -1457,7 +1457,7 @@ class HPE3PARCommon(object):
 
         :param type_id: id of type to get settings for
         :param pool: CPG to use if type does not have one set
-        :return: dict
+        :returns: dict
         """
 
         hpe3par_keys, qos, volume_type, vvs_name = self.get_type_info(type_id)
@@ -1535,7 +1535,7 @@ class HPE3PARCommon(object):
 
         :param volume:
         :param host: Optional host to use for default pool.
-        :return: dict
+        :returns: dict
         """
 
         type_id = volume.get('volume_type_id', None)
@@ -1693,7 +1693,7 @@ class HPE3PARCommon(object):
 
         :param volume_host: The volume's host string.
         :param cpg: The actual pool (cpg) used, for example from the type.
-        :return: dict Model update if we need to update volume host, else None
+        :returns: dict Model update if we need to update volume host, else None
         """
         model_update = {}
         host = volume_utils.extract_host(volume_host, 'backend')
@@ -2035,7 +2035,7 @@ class HPE3PARCommon(object):
         :param host: A dictionary describing the host to migrate to, where
                      host['host'] is its name, and host['capabilities'] is a
                      dictionary of its reported capabilities.
-        :returns (False, None) if the driver does not support migration,
+        :returns: (False, None) if the driver does not support migration,
                  (True, model_update) if successful
 
         """

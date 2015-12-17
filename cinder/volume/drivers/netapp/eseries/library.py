@@ -263,7 +263,7 @@ class NetAppESeriesLibrary(object):
 
         Example: (invalid, True)
 
-        :returns (str, bool)
+        :returns: (str, bool)
         """
 
         status = system.get('passwordStatus')
@@ -286,7 +286,7 @@ class NetAppESeriesLibrary(object):
 
         Example: (needsAttn, True)
 
-        :returns (str, bool)
+        :returns: (str, bool)
         """
         status = system.get('status')
         status = status.lower() if status else ''
@@ -390,7 +390,7 @@ class NetAppESeriesLibrary(object):
         """Return pool name where volume resides.
 
         :param volume: The volume hosted by the driver.
-        :return: Name of the pool where given volume is hosted.
+        :returns: Name of the pool where given volume is hosted.
         """
         eseries_volume = self._get_volume(volume['name_id'])
         storage_pool = self._client.get_storage_pool(
@@ -1267,7 +1267,7 @@ class NetAppESeriesLibrary(object):
 
         :param pool_id: The id of a storage pool
         :param action: The anticipated action
-        :return: A tuple (bool, set(str), int)
+        :returns: A tuple (bool, set(str), int)
         """
         actions = set()
         eta = 0
