@@ -2,6 +2,7 @@
 # Copyright (c) 2014 Clinton Knight.  All rights reserved.
 # Copyright (c) 2015 Tom Barron.  All rights reserved.
 # Copyright (c) 2015 Goutham Pacha Ravi. All rights reserved.
+# Copyright (c) 2016 Mike Rooney. All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -302,7 +303,8 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
 
         self.library.zapi_client.clone_lun.assert_called_once_with(
             '/vol/fake/fakeLUN', '/vol/fake/newFakeLUN', 'fakeLUN',
-            'newFakeLUN', 'false', block_count=0, dest_block=0, src_block=0)
+            'newFakeLUN', 'false', block_count=0, dest_block=0,
+            source_snapshot=None, src_block=0)
 
     def test_clone_lun_blocks(self):
         """Test for when clone lun is passed block information."""
@@ -322,7 +324,8 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
         self.library.zapi_client.clone_lun.assert_called_once_with(
             '/vol/fake/fakeLUN', '/vol/fake/newFakeLUN', 'fakeLUN',
             'newFakeLUN', 'false', block_count=block_count,
-            dest_block=dest_block, src_block=src_block)
+            dest_block=dest_block, src_block=src_block,
+            source_snapshot=None)
 
     def test_clone_lun_no_space_reservation(self):
         """Test for when space_reservation is not passed."""
@@ -337,7 +340,8 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
 
         self.library.zapi_client.clone_lun.assert_called_once_with(
             '/vol/fake/fakeLUN', '/vol/fake/newFakeLUN', 'fakeLUN',
-            'newFakeLUN', 'false', block_count=0, dest_block=0, src_block=0)
+            'newFakeLUN', 'false', block_count=0, dest_block=0, src_block=0,
+            source_snapshot=None)
 
     def test_clone_lun_qos_supplied(self):
         """Test for qos supplied in clone lun invocation."""
@@ -526,6 +530,7 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
 
         expected = [{
             'pool_name': 'vol1',
+            'consistencygroup_support': True,
             'QoS_support': False,
             'thin_provisioning_support': not thick,
             'thick_provisioning_support': thick,

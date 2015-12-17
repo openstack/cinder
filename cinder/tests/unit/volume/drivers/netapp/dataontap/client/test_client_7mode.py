@@ -1,5 +1,6 @@
 # Copyright (c) 2014 Alex Meade.  All rights reserved.
 # Copyright (c) 2015 Dustin Schoenbrun. All rights reserved.
+# Copyright (c) 2016 Mike Rooney. All rights reserved.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -21,6 +22,7 @@ import mock
 import paramiko
 import six
 
+from cinder import exception
 from cinder import ssh_utils
 from cinder import test
 from cinder.tests.unit.volume.drivers.netapp.dataontap.client import (
@@ -768,3 +770,42 @@ class NetApp7modeClientTestCase(test.TestCase):
         self.client.ssh_client.execute_command.assert_has_calls(
             [mock.call(ssh, command)]
         )
+
+    def test_get_snapshot_if_snapshot_present_not_busy(self):
+        expected_vol_name = fake.SNAPSHOT['volume_id']
+        expected_snapshot_name = fake.SNAPSHOT['name']
+        response = netapp_api.NaElement(
+            fake_client.SNAPSHOT_INFO_FOR_PRESENT_NOT_BUSY_SNAPSHOT_7MODE)
+        self.connection.invoke_successfully.return_value = response
+
+        snapshot = self.client.get_snapshot(expected_vol_name,
+                                            expected_snapshot_name)
+
+        self.assertEqual(expected_vol_name, snapshot['volume'])
+        self.assertEqual(expected_snapshot_name, snapshot['name'])
+        self.assertEqual(set([]), snapshot['owners'])
+        self.assertFalse(snapshot['busy'])
+
+    def test_get_snapshot_if_snapshot_present_busy(self):
+        expected_vol_name = fake.SNAPSHOT['volume_id']
+        expected_snapshot_name = fake.SNAPSHOT['name']
+        response = netapp_api.NaElement(
+            fake_client.SNAPSHOT_INFO_FOR_PRESENT_BUSY_SNAPSHOT_7MODE)
+        self.connection.invoke_successfully.return_value = response
+
+        snapshot = self.client.get_snapshot(expected_vol_name,
+                                            expected_snapshot_name)
+
+        self.assertEqual(expected_vol_name, snapshot['volume'])
+        self.assertEqual(expected_snapshot_name, snapshot['name'])
+        self.assertEqual(set([]), snapshot['owners'])
+        self.assertTrue(snapshot['busy'])
+
+    def test_get_snapshot_if_snapshot_not_present(self):
+        expected_vol_name = fake.SNAPSHOT['volume_id']
+        expected_snapshot_name = fake.SNAPSHOT['name']
+        response = netapp_api.NaElement(fake_client.SNAPSHOT_NOT_PRESENT_7MODE)
+        self.connection.invoke_successfully.return_value = response
+
+        self.assertRaises(exception.SnapshotNotFound, self.client.get_snapshot,
+                          expected_vol_name, expected_snapshot_name)

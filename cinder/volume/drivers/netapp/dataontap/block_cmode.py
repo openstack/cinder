@@ -7,6 +7,7 @@
 # Copyright (c) 2014 Jeff Applewhite.  All rights reserved.
 # Copyright (c) 2015 Tom Barron.  All rights reserved.
 # Copyright (c) 2015 Goutham Pacha Ravi. All rights reserved.
+# Copyright (c) 2016 Mike Rooney. All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -128,16 +129,19 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary):
 
     def _clone_lun(self, name, new_name, space_reserved=None,
                    qos_policy_group_name=None, src_block=0, dest_block=0,
-                   block_count=0):
+                   block_count=0, source_snapshot=None):
         """Clone LUN with the given handle to the new name."""
         if not space_reserved:
             space_reserved = self.lun_space_reservation
         metadata = self._get_lun_attr(name, 'metadata')
         volume = metadata['Volume']
+
         self.zapi_client.clone_lun(volume, name, new_name, space_reserved,
                                    qos_policy_group_name=qos_policy_group_name,
                                    src_block=src_block, dest_block=dest_block,
-                                   block_count=block_count)
+                                   block_count=block_count,
+                                   source_snapshot=source_snapshot)
+
         LOG.debug("Cloned LUN with new name %s", new_name)
         lun = self.zapi_client.get_lun_by_args(vserver=self.vserver,
                                                path='/vol/%s/%s'
@@ -266,6 +270,8 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary):
             pool['utilization'] = na_utils.round_down(utilization, '0.01')
             pool['filter_function'] = filter_function
             pool['goodness_function'] = goodness_function
+
+            pool['consistencygroup_support'] = True
 
             pools.append(pool)
 

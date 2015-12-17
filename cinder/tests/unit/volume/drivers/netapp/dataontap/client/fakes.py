@@ -1,4 +1,5 @@
 # Copyright (c) - 2015, Tom Barron.  All rights reserved.
+# Copyright (c) - 2016 Mike Rooney. All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -17,6 +18,7 @@ from lxml import etree
 import mock
 from six.moves import urllib
 
+from cinder.tests.unit.volume.drivers.netapp.dataontap import fakes as fake
 import cinder.volume.drivers.netapp.dataontap.client.api as netapp_api
 
 
@@ -203,6 +205,80 @@ VOLUME_LIST_INFO_RESPONSE = etree.XML("""
     </volumes>
   </results>
 """)
+
+SNAPSHOT_INFO_FOR_PRESENT_NOT_BUSY_SNAPSHOT_CMODE = etree.XML("""
+    <results status="passed">
+    <attributes-list>
+      <snapshot-info>
+        <name>%(snapshot_name)s</name>
+        <busy>False</busy>
+        <volume>%(vol_name)s</volume>
+      </snapshot-info>
+    </attributes-list>
+    <num-records>1</num-records>
+    </results>
+""" % {
+    'snapshot_name': fake.SNAPSHOT['name'],
+    'vol_name': fake.SNAPSHOT['volume_id'],
+})
+
+SNAPSHOT_INFO_FOR_PRESENT_BUSY_SNAPSHOT_CMODE = etree.XML("""
+    <results status="passed">
+    <attributes-list>
+      <snapshot-info>
+        <name>%(snapshot_name)s</name>
+        <busy>True</busy>
+        <volume>%(vol_name)s</volume>
+      </snapshot-info>
+    </attributes-list>
+    <num-records>1</num-records>
+    </results>
+""" % {
+    'snapshot_name': fake.SNAPSHOT['name'],
+    'vol_name': fake.SNAPSHOT['volume_id'],
+})
+
+SNAPSHOT_INFO_FOR_PRESENT_NOT_BUSY_SNAPSHOT_7MODE = etree.XML("""
+    <results status="passed">
+    <snapshots>
+      <snapshot-info>
+        <name>%(snapshot_name)s</name>
+        <busy>False</busy>
+        <volume>%(vol_name)s</volume>
+      </snapshot-info>
+    </snapshots>
+    </results>
+""" % {
+    'snapshot_name': fake.SNAPSHOT['name'],
+    'vol_name': fake.SNAPSHOT['volume_id'],
+})
+
+SNAPSHOT_INFO_FOR_PRESENT_BUSY_SNAPSHOT_7MODE = etree.XML("""
+    <results status="passed">
+    <snapshots>
+      <snapshot-info>
+        <name>%(snapshot_name)s</name>
+        <busy>True</busy>
+        <volume>%(vol_name)s</volume>
+      </snapshot-info>
+    </snapshots>
+    </results>
+""" % {
+    'snapshot_name': fake.SNAPSHOT['name'],
+    'vol_name': fake.SNAPSHOT['volume_id'],
+})
+
+SNAPSHOT_NOT_PRESENT_7MODE = etree.XML("""
+    <results status="passed">
+    <snapshots>
+      <snapshot-info>
+        <name>NOT_THE_RIGHT_SNAPSHOT</name>
+        <busy>false</busy>
+        <volume>%(vol_name)s</volume>
+      </snapshot-info>
+    </snapshots>
+    </results>
+""" % {'vol_name': fake.SNAPSHOT['volume_id']})
 
 NO_RECORDS_RESPONSE = etree.XML("""
   <results status="passed">
