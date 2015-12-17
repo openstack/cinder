@@ -25,15 +25,3 @@ def upgrade(migrate_engine):
     ForeignKeyConstraint(
         columns=[snapshots.c.volume_id],
         refcolumns=[volumes.c.id]).create()
-
-
-def downgrade(migrate_engine):
-    meta = MetaData()
-    meta.bind = migrate_engine
-
-    snapshots = Table('snapshots', meta, autoload=True)
-    volumes = Table('volumes', meta, autoload=True)
-
-    ForeignKeyConstraint(
-        columns=[snapshots.c.volume_id],
-        refcolumns=[volumes.c.id]).drop()

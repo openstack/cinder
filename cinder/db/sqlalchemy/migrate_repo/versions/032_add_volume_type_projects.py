@@ -39,15 +39,3 @@ def upgrade(migrate_engine):
     )
 
     volume_type_projects.create()
-
-
-def downgrade(migrate_engine):
-    meta = MetaData()
-    meta.bind = migrate_engine
-
-    volume_types = Table('volume_types', meta, autoload=True)
-    is_public = volume_types.columns.is_public
-    volume_types.drop_column(is_public)
-
-    volume_type_projects = Table('volume_type_projects', meta, autoload=True)
-    volume_type_projects.drop()

@@ -256,12 +256,3 @@ def upgrade(migrate_engine):
             "ALTER DATABASE %s DEFAULT CHARACTER SET utf8" %
             migrate_engine.url.database)
         migrate_engine.execute("ALTER TABLE %s Engine=InnoDB" % table)
-
-
-def downgrade(migrate_engine):
-    meta = MetaData()
-    meta.bind = migrate_engine
-    tables = define_tables(meta)
-    tables.reverse()
-    for table in tables:
-        table.drop()

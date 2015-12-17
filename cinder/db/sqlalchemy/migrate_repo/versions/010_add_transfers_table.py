@@ -39,12 +39,3 @@ def upgrade(migrate_engine):
     )
 
     transfers.create()
-
-
-def downgrade(migrate_engine):
-    meta = MetaData()
-    meta.bind = migrate_engine
-    transfers = Table('transfers',
-                      meta,
-                      autoload=True)
-    transfers.drop()

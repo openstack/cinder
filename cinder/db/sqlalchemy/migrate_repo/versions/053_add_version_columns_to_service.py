@@ -34,18 +34,3 @@ def upgrade(migrate_engine):
     services.update().values(rpc_available_version=None).execute()
     services.update().values(object_current_version=None).execute()
     services.update().values(object_available_version=None).execute()
-
-
-def downgrade(migrate_engine):
-    meta = MetaData()
-    meta.bind = migrate_engine
-
-    services = Table('services', meta, autoload=True)
-    rpc_current_version = services.columns.rpc_current_version
-    rpc_available_version = services.columns.rpc_available_version
-    object_current_version = services.columns.object_current_version
-    object_available_version = services.columns.object_available_version
-    services.drop_column(rpc_current_version)
-    services.drop_column(rpc_available_version)
-    services.drop_column(object_current_version)
-    services.drop_column(object_available_version)

@@ -58,20 +58,3 @@ def upgrade(migrate_engine):
     )
 
     encryption.create()
-
-
-def downgrade(migrate_engine):
-    meta = MetaData(bind=migrate_engine)
-
-    # drop encryption key UUID for volumes
-    volumes = Table('volumes', meta, autoload=True)
-    volumes.c.encryption_key_id.drop()
-
-    # drop encryption key UUID and volume type id for snapshots
-    snapshots = Table('snapshots', meta, autoload=True)
-    snapshots.c.encryption_key_id.drop()
-    snapshots.c.volume_type_id.drop()
-
-    # drop encryption types table
-    encryption = Table('encryption', meta, autoload=True)
-    encryption.drop()

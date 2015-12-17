@@ -31,14 +31,3 @@ def upgrade(migrate_engine):
         if dep_bks_list:
             backups.update().where(backups.columns.id == backup.id).values(
                 num_dependent_backups=len(dep_bks_list)).execute()
-
-
-def downgrade(migrate_engine):
-    """Remove num_dependent_backups column to backups."""
-    meta = MetaData()
-    meta.bind = migrate_engine
-
-    backups = Table('backups', meta, autoload=True)
-    num_dependent_backups = backups.columns.num_dependent_backups
-
-    backups.drop_column(num_dependent_backups)

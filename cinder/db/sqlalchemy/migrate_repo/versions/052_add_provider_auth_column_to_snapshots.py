@@ -23,13 +23,3 @@ def upgrade(migrate_engine):
     provider_auth = Column('provider_auth', String(255))
     snapshots.create_column(provider_auth)
     snapshots.update().values(provider_auth=None).execute()
-
-
-def downgrade(migrate_engine):
-    """Remove provider_auth column from snapshots."""
-    meta = MetaData()
-    meta.bind = migrate_engine
-
-    snapshots = Table('snapshots', meta, autoload=True)
-    provider_auth = snapshots.columns.provider_auth
-    snapshots.drop_column(provider_auth)

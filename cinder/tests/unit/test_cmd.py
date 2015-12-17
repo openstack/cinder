@@ -35,6 +35,7 @@ from cinder.cmd import scheduler as cinder_scheduler
 from cinder.cmd import volume as cinder_volume
 from cinder.cmd import volume_usage_audit
 from cinder import context
+from cinder import exception
 from cinder import test
 from cinder.tests.unit import fake_volume
 from cinder import version
@@ -383,6 +384,13 @@ class TestCinderManageCmd(test.TestCase):
         with mock.patch('sys.stdout', new=six.StringIO()):
             db_cmds.version()
             self.assertEqual(1, db_version.call_count)
+
+    @mock.patch('oslo_db.sqlalchemy.migration.db_version')
+    def test_db_commands_downgrade_fails(self, db_version):
+        db_version.return_value = 2
+        db_cmds = cinder_manage.DbCommands()
+        with mock.patch('sys.stdout', new=six.StringIO()):
+            self.assertRaises(exception.InvalidInput, db_cmds.sync, 1)
 
     @mock.patch('cinder.version.version_string')
     def test_versions_commands_list(self, version_string):

@@ -24,13 +24,3 @@ def upgrade(migrate_engine):
     volumes = Table('volumes', meta, autoload=True)
     migration_status = Column('migration_status', String(255))
     volumes.create_column(migration_status)
-
-
-def downgrade(migrate_engine):
-    """Remove migration_status column from volumes."""
-    meta = MetaData()
-    meta.bind = migrate_engine
-
-    volumes = Table('volumes', meta, autoload=True)
-    migration_status = volumes.columns.migration_status
-    volumes.drop_column(migration_status)

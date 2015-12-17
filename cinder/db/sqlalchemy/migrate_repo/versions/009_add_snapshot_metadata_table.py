@@ -36,12 +36,3 @@ def upgrade(migrate_engine):
     )
 
     snapshot_metadata.create()
-
-
-def downgrade(migrate_engine):
-    meta = MetaData()
-    meta.bind = migrate_engine
-    snapshot_metadata = Table('snapshot_metadata',
-                              meta,
-                              autoload=True)
-    snapshot_metadata.drop()

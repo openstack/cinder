@@ -24,14 +24,3 @@ def upgrade(migrate_engine):
 
     consistencygroups.create_column(source_cgid)
     consistencygroups.update().values(source_cgid=None).execute()
-
-
-def downgrade(migrate_engine):
-    """Remove source_cgid column from consistencygroups."""
-    meta = MetaData()
-    meta.bind = migrate_engine
-
-    consistencygroups = Table('consistencygroups', meta, autoload=True)
-    source_cgid = consistencygroups.columns.source_cgid
-
-    consistencygroups.drop_column(source_cgid)

@@ -13,7 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from migrate import ForeignKeyConstraint
 from sqlalchemy import Boolean, Column, DateTime
 from sqlalchemy import ForeignKey, MetaData, String, Table
 
@@ -80,52 +79,3 @@ def upgrade(migrate_engine):
 
     snapshots.create_column(cgsnapshot_id)
     snapshots.update().values(cgsnapshot_id=None).execute()
-
-
-def downgrade(migrate_engine):
-    meta = MetaData()
-    meta.bind = migrate_engine
-
-    # Drop column from snapshots table
-    if migrate_engine.name == 'mysql':
-        # MySQL cannot drop column cgsnapshot_id until the foreign key
-        # constraint is removed. So remove the foreign key first, and
-        # then drop the column.
-        table = Table('snapshots', meta, autoload=True)
-        ref_table = Table('snapshots', meta, autoload=True)
-        params = {'columns': [table.c['cgsnapshot_id']],
-                  'refcolumns': [ref_table.c['id']],
-                  'name': 'snapshots_ibfk_1'}
-
-        fkey = ForeignKeyConstraint(**params)
-        fkey.drop()
-
-    snapshots = Table('snapshots', meta, autoload=True)
-    cgsnapshot_id = snapshots.columns.cgsnapshot_id
-    snapshots.drop_column(cgsnapshot_id)
-
-    # Drop column from volumes table
-    if migrate_engine.name == 'mysql':
-        # MySQL cannot drop column consistencygroup_id until the foreign
-        # key constraint is removed. So remove the foreign key first,
-        # and then drop the column.
-        table = Table('volumes', meta, autoload=True)
-        ref_table = Table('volumes', meta, autoload=True)
-        params = {'columns': [table.c['consistencygroup_id']],
-                  'refcolumns': [ref_table.c['id']],
-                  'name': 'volumes_ibfk_1'}
-
-        fkey = ForeignKeyConstraint(**params)
-        fkey.drop()
-
-    volumes = Table('volumes', meta, autoload=True)
-    consistencygroup_id = volumes.columns.consistencygroup_id
-    volumes.drop_column(consistencygroup_id)
-
-    # Drop table
-    cgsnapshots = Table('cgsnapshots', meta, autoload=True)
-    cgsnapshots.drop()
-
-    # Drop table
-    consistencygroups = Table('consistencygroups', meta, autoload=True)
-    consistencygroups.drop()

@@ -23,13 +23,3 @@ def upgrade(migrate_engine):
     description = Column('description', String(255))
     volume_types.create_column(description)
     volume_types.update().values(description=None).execute()
-
-
-def downgrade(migrate_engine):
-    """Remove description column to volumes."""
-    meta = MetaData()
-    meta.bind = migrate_engine
-
-    volume_types = Table('volume_types', meta, autoload=True)
-    description = volume_types.columns.description
-    volume_types.drop_column(description)
