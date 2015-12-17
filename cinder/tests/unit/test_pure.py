@@ -16,6 +16,7 @@
 from copy import deepcopy
 import sys
 
+import ddt
 import mock
 from oslo_utils import units
 
@@ -152,6 +153,18 @@ SPACE_INFO_EMPTY = {
     "total": 0,
 }
 
+PERF_INFO = {
+    'writes_per_sec': 318,
+    'usec_per_write_op': 255,
+    'output_per_sec': 234240,
+    'reads_per_sec': 15,
+    'input_per_sec': 2827943,
+    'time': '2015-12-17T21:50:55Z',
+    'usec_per_read_op': 192,
+    'queue_depth': 4,
+}
+PERF_INFO_RAW = [PERF_INFO]
+
 ISCSI_CONNECTION_INFO = {
     "driver_volume_type": "iscsi",
     "data": {
@@ -183,6 +196,14 @@ PURE_SNAPSHOT = {
     "serial": "8343DFDE2DAFBE40000115E4",
     "size": 3221225472,
     "source": "vol1"
+}
+PURE_PGROUP = {
+    "hgroups": None,
+    "hosts": None,
+    "name": "pg1",
+    "source": "pure01",
+    "targets": None,
+    "volumes": ["v1"]
 }
 
 
@@ -225,13 +246,17 @@ class PureDriverTestCase(test.TestCase):
             mock_func.side_effect = original_side_effect
 
 
-class PureBaseVolumeDriverTestCase(PureDriverTestCase):
+class PureBaseSharedDriverTestCase(PureDriverTestCase):
     def setUp(self):
-        super(PureBaseVolumeDriverTestCase, self).setUp()
+        super(PureBaseSharedDriverTestCase, self).setUp()
         self.driver = pure.PureBaseVolumeDriver(configuration=self.mock_config)
-
         self.driver._array = self.array
         self.array.get_rest_version.return_value = '1.4'
+
+
+class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
+    def setUp(self):
+        super(PureBaseVolumeDriverTestCase, self).setUp()
 
     def test_generate_purity_host_name(self):
         result = self.driver._generate_purity_host_name(
@@ -517,92 +542,6 @@ class PureBaseVolumeDriverTestCase(PureDriverTestCase):
         self.array.list_host_connections.assert_called_with(PURE_HOST_NAME,
                                                             private=True)
         self.array.delete_host.assert_called_once_with(PURE_HOST_NAME)
-
-    @mock.patch(BASE_DRIVER_OBJ + ".get_filter_function", autospec=True)
-    @mock.patch(BASE_DRIVER_OBJ + "._get_provisioned_space", autospec=True)
-    def test_get_volume_stats(self, mock_space, mock_filter):
-        filter_function = "capabilities.total_volumes < 10"
-        mock_space.return_value = (PROVISIONED_CAPACITY * units.Gi, 100)
-        mock_filter.return_value = filter_function
-        self.assertEqual({}, self.driver.get_volume_stats())
-        self.array.get.return_value = SPACE_INFO
-        result = {
-            "volume_backend_name": VOLUME_BACKEND_NAME,
-            "vendor_name": "Pure Storage",
-            "driver_version": self.driver.VERSION,
-            "storage_protocol": None,
-            "total_capacity_gb": TOTAL_CAPACITY,
-            "free_capacity_gb": TOTAL_CAPACITY - USED_SPACE,
-            "reserved_percentage": 0,
-            "consistencygroup_support": True,
-            "thin_provisioning_support": True,
-            "provisioned_capacity": PROVISIONED_CAPACITY,
-            "max_over_subscription_ratio": (PROVISIONED_CAPACITY /
-                                            USED_SPACE),
-            "total_volumes": 100,
-            "filter_function": filter_function,
-            "multiattach": True,
-        }
-        real_result = self.driver.get_volume_stats(refresh=True)
-        self.assertDictMatch(result, real_result)
-        self.assertDictMatch(result, self.driver._stats)
-
-    @mock.patch(BASE_DRIVER_OBJ + ".get_filter_function", autospec=True)
-    @mock.patch(BASE_DRIVER_OBJ + "._get_provisioned_space", autospec=True)
-    def test_get_volume_stats_empty_array(self, mock_space, mock_filter):
-        filter_function = "capabilities.total_volumes < 10"
-        mock_space.return_value = (PROVISIONED_CAPACITY * units.Gi, 100)
-        mock_filter.return_value = filter_function
-        self.assertEqual({}, self.driver.get_volume_stats())
-        self.array.get.return_value = SPACE_INFO_EMPTY
-        result = {
-            "volume_backend_name": VOLUME_BACKEND_NAME,
-            "vendor_name": "Pure Storage",
-            "driver_version": self.driver.VERSION,
-            "storage_protocol": None,
-            "total_capacity_gb": TOTAL_CAPACITY,
-            "free_capacity_gb": TOTAL_CAPACITY,
-            "reserved_percentage": 0,
-            "consistencygroup_support": True,
-            "thin_provisioning_support": True,
-            "provisioned_capacity": PROVISIONED_CAPACITY,
-            "max_over_subscription_ratio": DEFAULT_OVER_SUBSCRIPTION,
-            "total_volumes": 100,
-            "filter_function": filter_function,
-            "multiattach": True,
-        }
-        real_result = self.driver.get_volume_stats(refresh=True)
-        self.assertDictMatch(result, real_result)
-        self.assertDictMatch(result, self.driver._stats)
-
-    @mock.patch(BASE_DRIVER_OBJ + ".get_filter_function", autospec=True)
-    @mock.patch(BASE_DRIVER_OBJ + "._get_provisioned_space", autospec=True)
-    def test_get_volume_stats_nothing_provisioned(self, mock_space,
-                                                  mock_filter):
-        filter_function = "capabilities.total_volumes < 10"
-        mock_space.return_value = (0, 0)
-        mock_filter.return_value = filter_function
-        self.assertEqual({}, self.driver.get_volume_stats())
-        self.array.get.return_value = SPACE_INFO
-        result = {
-            "volume_backend_name": VOLUME_BACKEND_NAME,
-            "vendor_name": "Pure Storage",
-            "driver_version": self.driver.VERSION,
-            "storage_protocol": None,
-            "total_capacity_gb": TOTAL_CAPACITY,
-            "free_capacity_gb": TOTAL_CAPACITY - USED_SPACE,
-            "reserved_percentage": 0,
-            "consistencygroup_support": True,
-            "thin_provisioning_support": True,
-            "provisioned_capacity": 0,
-            "max_over_subscription_ratio": DEFAULT_OVER_SUBSCRIPTION,
-            "total_volumes": 0,
-            "filter_function": filter_function,
-            "multiattach": True,
-        }
-        real_result = self.driver.get_volume_stats(refresh=True)
-        self.assertDictMatch(result, real_result)
-        self.assertDictMatch(result, self.driver._stats)
 
     def test_extend_volume(self):
         vol_name = VOLUME["name"] + "-cinder"
@@ -1638,3 +1577,114 @@ class PureFCDriverTestCase(PureDriverTestCase):
                           self.driver._connect, VOLUME, FC_CONNECTOR)
         self.assertTrue(self.array.connect_host.called)
         self.assertTrue(self.array.list_volume_private_connections)
+
+
+@ddt.ddt
+class PureVolumeUpdateStatsTestCase(PureBaseSharedDriverTestCase):
+    def setUp(self):
+        super(PureVolumeUpdateStatsTestCase, self).setUp()
+        self.array.get.side_effect = self.fake_get_array
+
+    def fake_get_array(*args, **kwargs):
+        if 'action' in kwargs and kwargs['action'] is 'monitor':
+            return PERF_INFO_RAW
+
+        if 'space' in kwargs and kwargs['space'] is True:
+            return SPACE_INFO
+
+    @ddt.data(dict(used=10,
+                   provisioned=100,
+                   config_ratio=5,
+                   expected_ratio=5,
+                   auto=False),
+              dict(used=10,
+                   provisioned=100,
+                   config_ratio=5,
+                   expected_ratio=10,
+                   auto=True),
+              dict(used=0,
+                   provisioned=100,
+                   config_ratio=5,
+                   expected_ratio=5,
+                   auto=True),
+              dict(used=10,
+                   provisioned=0,
+                   config_ratio=5,
+                   expected_ratio=5,
+                   auto=True))
+    @ddt.unpack
+    def test_get_thin_provisioning(self,
+                                   used,
+                                   provisioned,
+                                   config_ratio,
+                                   expected_ratio,
+                                   auto):
+        self.mock_config.pure_automatic_max_oversubscription_ratio = auto
+        self.mock_config.max_over_subscription_ratio = config_ratio
+        actual_ratio = self.driver._get_thin_provisioning(provisioned, used)
+        self.assertEqual(expected_ratio, actual_ratio)
+
+    @mock.patch(BASE_DRIVER_OBJ + '.get_goodness_function')
+    @mock.patch(BASE_DRIVER_OBJ + '.get_filter_function')
+    @mock.patch(BASE_DRIVER_OBJ + '._get_provisioned_space')
+    @mock.patch(BASE_DRIVER_OBJ + '._get_thin_provisioning')
+    def test_get_volume_stats(self, mock_get_thin_provisioning, mock_get_space,
+                              mock_get_filter, mock_get_goodness):
+        filter_function = 'capabilities.total_volumes < 10'
+        goodness_function = '90'
+        num_hosts = 20
+        num_snaps = 175
+        num_pgroups = 15
+        reserved_percentage = 12
+
+        self.array.list_hosts.return_value = [PURE_HOST] * num_hosts
+        self.array.list_volumes.return_value = [PURE_SNAPSHOT] * num_snaps
+        self.array.list_pgroups.return_value = [PURE_PGROUP] * num_pgroups
+        self.mock_config.reserved_percentage = reserved_percentage
+        mock_get_space.return_value = (PROVISIONED_CAPACITY * units.Gi, 100)
+        mock_get_filter.return_value = filter_function
+        mock_get_goodness.return_value = goodness_function
+        mock_get_thin_provisioning.return_value = (PROVISIONED_CAPACITY /
+                                                   USED_SPACE)
+
+        expected_result = {
+            'volume_backend_name': VOLUME_BACKEND_NAME,
+            'vendor_name': 'Pure Storage',
+            'driver_version': self.driver.VERSION,
+            'storage_protocol': None,
+            'consistencygroup_support': True,
+            'thin_provisioning_support': True,
+            'multiattach': True,
+            'total_capacity_gb': TOTAL_CAPACITY,
+            'free_capacity_gb': TOTAL_CAPACITY - USED_SPACE,
+            'reserved_percentage': reserved_percentage,
+            'provisioned_capacity': PROVISIONED_CAPACITY,
+            'max_over_subscription_ratio': (PROVISIONED_CAPACITY /
+                                            USED_SPACE),
+            'filter_function': filter_function,
+            'goodness_function': goodness_function,
+            'total_volumes': 100,
+            'total_snapshots': num_snaps,
+            'total_hosts': num_hosts,
+            'total_pgroups': num_pgroups,
+            'writes_per_sec': PERF_INFO['writes_per_sec'],
+            'reads_per_sec': PERF_INFO['reads_per_sec'],
+            'input_per_sec': PERF_INFO['input_per_sec'],
+            'output_per_sec': PERF_INFO['output_per_sec'],
+            'usec_per_read_op': PERF_INFO['usec_per_read_op'],
+            'usec_per_write_op': PERF_INFO['usec_per_write_op'],
+            'queue_depth': PERF_INFO['queue_depth'],
+        }
+
+        real_result = self.driver.get_volume_stats(refresh=True)
+        self.assertDictMatch(expected_result, real_result)
+
+        # Make sure when refresh=False we are using cached values and not
+        # sending additional requests to the array.
+        self.array.reset_mock()
+        real_result = self.driver.get_volume_stats(refresh=False)
+        self.assertDictMatch(expected_result, real_result)
+        self.assertFalse(self.array.get.called)
+        self.assertFalse(self.array.list_volumes.called)
+        self.assertFalse(self.array.list_hosts.called)
+        self.assertFalse(self.array.list_pgroups.called)

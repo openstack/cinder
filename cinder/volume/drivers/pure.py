@@ -47,6 +47,12 @@ LOG = logging.getLogger(__name__)
 PURE_OPTS = [
     cfg.StrOpt("pure_api_token",
                help="REST API authorization token."),
+    cfg.BoolOpt("pure_automatic_max_oversubscription_ratio",
+                default=True,
+                help="Automatically determine an oversubscription ratio based "
+                     "on the current total data reduction values. If used "
+                     "this calculated value will override the "
+                     "max_over_subscription_ratio config option.")
 ]
 
 CONF = cfg.CONF
@@ -293,43 +299,96 @@ class PureBaseVolumeDriver(san.SanDriver):
 
     def _update_stats(self):
         """Set self._stats with relevant information."""
-        info = self._array.get(space=True)
-        total_capacity = float(info["capacity"]) / units.Gi
-        used_space = float(info["total"]) / units.Gi
+
+        # Collect info from the array
+        space_info = self._array.get(space=True)
+        perf_info = self._array.get(action='monitor')[0]  # Always first index
+        hosts = self._array.list_hosts()
+        snaps = self._array.list_volumes(snap=True, pending=True)
+        pgroups = self._array.list_pgroups(pending=True)
+
+        # Perform some translations and calculations
+        total_capacity = float(space_info["capacity"]) / units.Gi
+        used_space = float(space_info["total"]) / units.Gi
         free_space = float(total_capacity - used_space)
         prov_space, total_vols = self._get_provisioned_space()
+        total_hosts = len(hosts)
+        total_snaps = len(snaps)
+        total_pgroups = len(pgroups)
         provisioned_space = float(prov_space) / units.Gi
-        # If array is empty we can not calculate a max oversubscription ratio.
-        # In this case we choose 20 as a default value for the ratio.  Once
-        # some volumes are actually created and some data is stored on the
-        # array a much more accurate number will be presented based on current
-        # usage.
-        if used_space == 0 or provisioned_space == 0:
-            thin_provisioning = 20
-        else:
-            thin_provisioning = provisioned_space / used_space
-        data = {
-            "volume_backend_name": self._backend_name,
-            "vendor_name": "Pure Storage",
-            "driver_version": self.VERSION,
-            "storage_protocol": self._storage_protocol,
-            "total_capacity_gb": total_capacity,
-            "free_capacity_gb": free_space,
-            "reserved_percentage": 0,
-            "consistencygroup_support": True,
-            "thin_provisioning_support": True,
-            "provisioned_capacity": provisioned_space,
-            "max_over_subscription_ratio": thin_provisioning,
-            "total_volumes": total_vols,
-            "filter_function": self.get_filter_function(),
-            "multiattach": True,
-        }
+        thin_provisioning = self._get_thin_provisioning(provisioned_space,
+                                                        used_space)
+
+        # Start with some required info
+        data = dict(
+            volume_backend_name=self._backend_name,
+            vendor_name='Pure Storage',
+            driver_version=self.VERSION,
+            storage_protocol=self._storage_protocol,
+        )
+
+        # Add flags for supported features
+        data['consistencygroup_support'] = True
+        data['thin_provisioning_support'] = True
+        data['multiattach'] = True
+
+        # Add capacity info for scheduler
+        data['total_capacity_gb'] = total_capacity
+        data['free_capacity_gb'] = free_space
+        data['reserved_percentage'] = self.configuration.reserved_percentage
+        data['provisioned_capacity'] = provisioned_space
+        data['max_over_subscription_ratio'] = thin_provisioning
+
+        # Add the filtering/goodness functions
+        data['filter_function'] = self.get_filter_function()
+        data['goodness_function'] = self.get_goodness_function()
+
+        # Add array metadata counts for filtering and weighing functions
+        data['total_volumes'] = total_vols
+        data['total_snapshots'] = total_snaps
+        data['total_hosts'] = total_hosts
+        data['total_pgroups'] = total_pgroups
+
+        # Add performance stats for filtering and weighing functions
+        #  IOPS
+        data['writes_per_sec'] = perf_info['writes_per_sec']
+        data['reads_per_sec'] = perf_info['reads_per_sec']
+
+        #  Bandwidth
+        data['input_per_sec'] = perf_info['input_per_sec']
+        data['output_per_sec'] = perf_info['output_per_sec']
+
+        #  Latency
+        data['usec_per_read_op'] = perf_info['usec_per_read_op']
+        data['usec_per_write_op'] = perf_info['usec_per_write_op']
+        data['queue_depth'] = perf_info['queue_depth']
+
         self._stats = data
 
     def _get_provisioned_space(self):
         """Sum up provisioned size of all volumes on array"""
         volumes = self._array.list_volumes(pending=True)
         return sum(item["size"] for item in volumes), len(volumes)
+
+    def _get_thin_provisioning(self, provisioned_space, used_space):
+        """Get the current value for the thin provisioning ratio.
+
+        If pure_automatic_max_oversubscription_ratio is True we will calculate
+        a value, if not we will respect the configuration option for the
+        max_over_subscription_ratio.
+        """
+        if (self.configuration.pure_automatic_max_oversubscription_ratio and
+                used_space != 0 and provisioned_space != 0):
+            # If array is empty we can not calculate a max oversubscription
+            # ratio. In this case we look to the config option as a starting
+            # point. Once some volumes are actually created and some data is
+            # stored on the array a much more accurate number will be
+            # presented based on current usage.
+            thin_provisioning = provisioned_space / used_space
+        else:
+            thin_provisioning = self.configuration.max_over_subscription_ratio
+
+        return thin_provisioning
 
     @log_debug_trace
     def extend_volume(self, volume, new_size):
@@ -769,7 +828,7 @@ class PureBaseVolumeDriver(san.SanDriver):
 
 class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
 
-    VERSION = "3.0.0"
+    VERSION = "4.0.0"
 
     def __init__(self, *args, **kwargs):
         execute = kwargs.pop("execute", utils.execute)
@@ -931,7 +990,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
 
 class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
 
-    VERSION = "1.0.0"
+    VERSION = "2.0.0"
 
     def __init__(self, *args, **kwargs):
         execute = kwargs.pop("execute", utils.execute)
