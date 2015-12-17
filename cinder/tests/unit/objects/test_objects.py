@@ -15,6 +15,7 @@
 from oslo_versionedobjects import fixture
 
 from cinder import db
+from cinder import objects
 from cinder.objects import base
 from cinder import test
 
@@ -88,3 +89,15 @@ class TestObjectVersions(test.TestCase):
             if not issubclass(cls[0], base.ObjectListBase):
                 db_model = db.get_model_for_versioned_object(cls[0])
                 _check_table_matched(db_model, cls[0])
+
+    def test_obj_make_compatible(self):
+        # Go through all of the object classes and run obj_to_primitive() with
+        # a target version of all previous minor versions. It doesn't test
+        # the converted data, but at least ensures the method doesn't blow
+        # up on something simple.
+        init_args = {}
+        init_kwargs = {objects.Snapshot: {'context': 'ctxt'}}
+        checker = fixture.ObjectVersionChecker(
+            base.CinderObjectRegistry.obj_classes())
+        checker.test_compatibility_routines(init_args=init_args,
+                                            init_kwargs=init_kwargs)
