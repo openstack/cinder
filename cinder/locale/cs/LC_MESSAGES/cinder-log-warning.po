@@ -7,10 +7,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev67\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev87\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-15 06:26+0000\n"
-"PO-Revision-Date: 2015-12-14 02:29+0000\n"
+"POT-Creation-Date: 2015-12-17 06:23+0000\n"
+"PO-Revision-Date: 2015-12-16 02:59+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language-Team: Czech\n"
 "Language: cs\n"
@@ -1361,6 +1361,10 @@ msgid ""
 msgstr ""
 "Pomlčka v názvu prodejce byla nahrazena podtržítkem. Aktualizovaný název "
 "prodejce je %(name)s\"."
+
+#, python-format
+msgid "The device %s won't be cleared."
+msgstr "Zařízení %s nebude vyčištěno."
 
 #, python-format
 msgid ""
