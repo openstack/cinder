@@ -412,6 +412,15 @@ class GlanceImageService(object):
     def _translate_to_glance(image_meta):
         image_meta = _convert_to_string(image_meta)
         image_meta = _remove_read_only(image_meta)
+
+        # NOTE(tsekiyama): From the Image API v2, custom properties must
+        # be stored in image_meta directly, instead of the 'properties' key.
+        if CONF.glance_api_version >= 2:
+            properties = image_meta.get('properties')
+            if properties:
+                image_meta.update(properties)
+                del image_meta['properties']
+
         return image_meta
 
     @staticmethod
