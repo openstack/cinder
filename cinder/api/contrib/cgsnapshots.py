@@ -16,6 +16,7 @@
 """The cgsnapshots api."""
 
 from oslo_log import log as logging
+import six
 import webob
 from webob import exc
 
@@ -67,9 +68,8 @@ class CgsnapshotsController(wsgi.Controller):
             self.cgsnapshot_api.delete_cgsnapshot(context, cgsnapshot)
         except exception.CgSnapshotNotFound as error:
             raise exc.HTTPNotFound(explanation=error.msg)
-        except exception.InvalidCgSnapshot:
-            msg = _("Invalid cgsnapshot")
-            raise exc.HTTPBadRequest(explanation=msg)
+        except exception.InvalidCgSnapshot as e:
+            raise exc.HTTPBadRequest(explanation=six.text_type(e))
         except Exception:
             msg = _("Failed cgsnapshot")
             raise exc.HTTPBadRequest(explanation=msg)

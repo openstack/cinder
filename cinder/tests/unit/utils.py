@@ -24,6 +24,7 @@ import oslo_versionedobjects
 
 from cinder import context
 from cinder import db
+from cinder import exception
 from cinder import objects
 from cinder.objects import fields
 from cinder.tests.unit import fake_constants as fake
@@ -107,6 +108,7 @@ def create_snapshot(ctxt,
                     display_description='this is a test snapshot',
                     cgsnapshot_id = None,
                     status=fields.SnapshotStatus.CREATING,
+                    testcase_instance=None,
                     **kwargs):
     vol = db.volume_get(ctxt, volume_id)
     snap = objects.Snapshot(ctxt)
@@ -119,6 +121,14 @@ def create_snapshot(ctxt,
     snap.display_description = display_description
     snap.cgsnapshot_id = cgsnapshot_id
     snap.create()
+    # We do the update after creating the snapshot in case we want to set
+    # deleted field
+    snap.update(kwargs)
+    snap.save()
+
+    # If we get a TestCase instance we add cleanup
+    if testcase_instance:
+        testcase_instance.addCleanup(snap.destroy)
     return snap
 
 
@@ -147,9 +157,12 @@ def create_consistencygroup(ctxt,
         cg.volume_type_id = volume_type_id
     cg.cgsnapshot_id = cgsnapshot_id
     cg.source_cgid = source_cgid
-    for key in kwargs:
-        setattr(cg, key, kwargs[key])
+    new_id = kwargs.pop('id', None)
+    cg.update(kwargs)
     cg.create()
+    if new_id and new_id != cg.id:
+        db.consistencygroup_update(ctxt, cg.id, {'id': new_id})
+        cg = objects.ConsistencyGroup.get_by_id(ctxt, new_id)
     return cg
 
 
@@ -158,19 +171,40 @@ def create_cgsnapshot(ctxt,
                       name='test_cgsnapshot',
                       description='this is a test cgsnapshot',
                       status='creating',
+                      recursive_create_if_needed=True,
+                      return_vo=True,
                       **kwargs):
     """Create a cgsnapshot object in the DB."""
-    cgsnap = objects.CGSnapshot(ctxt)
-    cgsnap.user_id = ctxt.user_id or fake.USER_ID
-    cgsnap.project_id = ctxt.project_id or fake.PROJECT_ID
-    cgsnap.status = status
-    cgsnap.name = name
-    cgsnap.description = description
-    cgsnap.consistencygroup_id = consistencygroup_id
-    for key in kwargs:
-        setattr(cgsnap, key, kwargs[key])
-    cgsnap.create()
-    return cgsnap
+    values = {
+        'user_id': ctxt.user_id or fake.USER_ID,
+        'project_id': ctxt.project_id or fake.PROJECT_ID,
+        'status': status,
+        'name': name,
+        'description': description,
+        'consistencygroup_id': consistencygroup_id}
+    values.update(kwargs)
+
+    if recursive_create_if_needed and consistencygroup_id:
+        create_cg = False
+        try:
+            objects.ConsistencyGroup.get_by_id(ctxt,
+                                               consistencygroup_id)
+            create_vol = not db.volume_get_all_by_group(
+                ctxt, consistencygroup_id)
+        except exception.ConsistencyGroupNotFound:
+            create_cg = True
+            create_vol = True
+        if create_cg:
+            create_consistencygroup(ctxt, id=consistencygroup_id)
+        if create_vol:
+            create_volume(ctxt, consistencygroup_id=consistencygroup_id)
+
+    cgsnap = db.cgsnapshot_create(ctxt, values)
+
+    if not return_vo:
+        return cgsnap
+
+    return objects.CGSnapshot.get_by_id(ctxt, cgsnap.id)
 
 
 def create_backup(ctxt,

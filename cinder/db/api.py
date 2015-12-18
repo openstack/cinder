@@ -992,9 +992,9 @@ def consistencygroup_get_all(context, filters=None, marker=None, limit=None,
                                          sort_dirs=sort_dirs)
 
 
-def consistencygroup_create(context, values):
+def consistencygroup_create(context, values, cg_snap_id=None, cg_id=None):
     """Create a consistencygroup from the values dictionary."""
-    return IMPL.consistencygroup_create(context, values)
+    return IMPL.consistencygroup_create(context, values, cg_snap_id, cg_id)
 
 
 def consistencygroup_get_all_by_project(context, project_id, filters=None,
@@ -1020,6 +1020,18 @@ def consistencygroup_update(context, consistencygroup_id, values):
 def consistencygroup_destroy(context, consistencygroup_id):
     """Destroy the consistencygroup or raise if it does not exist."""
     return IMPL.consistencygroup_destroy(context, consistencygroup_id)
+
+
+def cg_has_cgsnapshot_filter():
+    return IMPL.cg_has_cgsnapshot_filter()
+
+
+def cg_has_volumes_filter(attached_or_with_snapshots=False):
+    return IMPL.cg_has_volumes_filter(attached_or_with_snapshots)
+
+
+def cg_creating_from_src(cg_id=None, cgsnapshot_id=None):
+    return IMPL.cg_creating_from_src(cg_id, cgsnapshot_id)
 
 
 ###################
@@ -1061,6 +1073,13 @@ def cgsnapshot_update(context, cgsnapshot_id, values):
 def cgsnapshot_destroy(context, cgsnapshot_id):
     """Destroy the cgsnapshot or raise if it does not exist."""
     return IMPL.cgsnapshot_destroy(context, cgsnapshot_id)
+
+
+def cgsnapshot_creating_from_src():
+    return IMPL.cgsnapshot_creating_from_src()
+
+
+###################
 
 
 def purge_deleted_rows(context, age_in_days):

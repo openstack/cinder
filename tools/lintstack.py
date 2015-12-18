@@ -52,7 +52,13 @@ ignore_messages = [
 
     # Note(aarefiev): this error message is for SQLAlchemy rename calls in
     # DB migration(033_add_encryption_unique_key).
-    "Instance of 'Table' has no 'rename' member"
+    "Instance of 'Table' has no 'rename' member",
+
+    # NOTE(geguileo): these error messages are for code [E1101], and they can
+    # be ignored because a SQLAlchemy ORM class will have __table__ member
+    # during runtime.
+    "Class 'ConsistencyGroup' has no '__table__' member",
+    "Class 'Cgsnapshot' has no '__table__' member",
 ]
 
 # Note(maoy):  We ignore cinder.tests for now due to high false

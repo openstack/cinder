@@ -68,7 +68,8 @@ def wsgi_app(inner_app_v2=None, fake_auth=True, fake_auth_context=None,
         if fake_auth_context is not None:
             ctxt = fake_auth_context
         else:
-            ctxt = context.RequestContext('fake', 'fake', auth_token=True)
+            ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
+                                          auth_token=True)
         api_v2 = fault.FaultWrapper(auth.InjectContext(ctxt,
                                                        inner_app_v2))
     elif use_no_auth:
