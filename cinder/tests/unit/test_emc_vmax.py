@@ -1466,7 +1466,7 @@ class FakeEcomConnection(object):
         storagesetting = {}
         storagesetting['CreationClassName'] = 'CIM_StoragePoolSetting'
         storagesetting['InstanceID'] = ('SYMMETRIX-+-000197200056-+-SBronze:'
-                                        'NONE-+-F-+-0-+-SR-+-SRP_1')
+                                        'DSS-+-F-+-0-+-SR-+-SRP_1')
         storagesettings.append(storagesetting)
         return storagesettings
 
@@ -5615,6 +5615,12 @@ class EMCV3DriverTestCase(test.TestCase):
             self, _mock_volume_type, mock_storage_system):
         v3_vol = self.data.test_volume_v3
         v3_vol['host'] = 'HostX@Backend#NONE+SRP_1+1234567891011'
+        instid = 'SYMMETRIX-+-000197200056-+-NONE:DSS-+-F-+-0-+-SR-+-SRP_1'
+        storagepoolsetting = (
+            {'InstanceID': instid,
+             'CreationClassName': 'CIM_StoragePoolSetting'})
+        self.driver.common.provisionv3.get_storage_pool_setting = mock.Mock(
+            return_value=storagepoolsetting)
         extraSpecs = {'storagetype:pool': 'SRP_1',
                       'volume_backend_name': 'V3_BE',
                       'storagetype:workload': 'DSS',
@@ -6975,3 +6981,51 @@ class EMCV2MultiPoolDriverMultipleEcomsTestCase(test.TestCase):
         if bExists:
             os.remove(self.config_file_path)
         shutil.rmtree(self.tempdir)
+
+
+class EMCVMAXProvisionV3Test(test.TestCase):
+    def setUp(self):
+        self.data = EMCVMAXCommonData()
+
+        super(EMCVMAXProvisionV3Test, self).setUp()
+
+        configuration = mock.Mock()
+        configuration.safe_get.return_value = 'ProvisionV3Tests'
+        configuration.config_group = 'ProvisionV3Tests'
+        emc_vmax_common.EMCVMAXCommon._gather_info = mock.Mock()
+        driver = emc_vmax_iscsi.EMCVMAXISCSIDriver(configuration=configuration)
+        driver.db = FakeDB()
+        self.driver = driver
+
+    def test_get_storage_pool_setting(self):
+        provisionv3 = self.driver.common.provisionv3
+        conn = FakeEcomConnection()
+        slo = 'Bronze'
+        workload = 'DSS'
+        poolInstanceName = {}
+        poolInstanceName['InstanceID'] = "SATA_GOLD1"
+        poolInstanceName['CreationClassName'] = (
+            self.data.storagepool_creationclass)
+
+        storagePoolCapability = provisionv3.get_storage_pool_capability(
+            conn, poolInstanceName)
+        storagepoolsetting = provisionv3.get_storage_pool_setting(
+            conn, storagePoolCapability, slo, workload)
+        self.assertTrue(
+            'Bronze:DSS' in storagepoolsetting['InstanceID'])
+
+    def test_get_storage_pool_setting_exception(self):
+        provisionv3 = self.driver.common.provisionv3
+        conn = FakeEcomConnection()
+        slo = 'Bronze'
+        workload = 'NONE'
+        poolInstanceName = {}
+        poolInstanceName['InstanceID'] = "SATA_GOLD1"
+        poolInstanceName['CreationClassName'] = (
+            self.data.storagepool_creationclass)
+
+        storagePoolCapability = provisionv3.get_storage_pool_capability(
+            conn, poolInstanceName)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          provisionv3.get_storage_pool_setting,
+                          conn, storagePoolCapability, slo, workload)
