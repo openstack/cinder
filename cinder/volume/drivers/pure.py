@@ -216,6 +216,13 @@ class PureBaseVolumeDriver(san.SanDriver):
     def create_export(self, context, volume, connector):
         pass
 
+    def initialize_connection(self, volume, connector, initiator_data=None):
+        """Connect the volume to the specified initiator in Purity.
+
+        This implementation is specific to the host type (iSCSI, FC, etc).
+        """
+        raise NotImplementedError
+
     def _get_host(self, connector):
         """Get a Purity Host that corresponds to the host in the connector.
 
