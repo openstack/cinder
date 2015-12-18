@@ -1,4 +1,4 @@
-# Copyright 2013 IBM Corp.
+# Copyright 2015 IBM Corp.
 # Copyright 2012 OpenStack Foundation
 # All Rights Reserved.
 #
@@ -26,6 +26,7 @@ import mock
 from oslo_concurrency import processutils
 from oslo_utils import importutils
 from oslo_utils import units
+import six
 
 from cinder import context
 from cinder import exception
@@ -34,8 +35,9 @@ from cinder import test
 from cinder.tests.unit import utils as testutils
 from cinder import utils
 from cinder.volume import configuration as conf
-from cinder.volume.drivers.ibm import storwize_svc
 from cinder.volume.drivers.ibm.storwize_svc import storwize_svc_common
+from cinder.volume.drivers.ibm.storwize_svc import storwize_svc_fc
+from cinder.volume.drivers.ibm.storwize_svc import storwize_svc_iscsi
 from cinder.volume import qos_specs
 from cinder.volume import volume_types
 
@@ -204,8 +206,8 @@ class StorwizeSVCManagementSimulator(object):
         ids.sort()
         for index, n in enumerate(ids):
             if n > index:
-                return str(index)
-        return str(len(ids))
+                return six.text_type(index)
+        return six.text_type(len(ids))
 
     # Check if name is valid
     @staticmethod
@@ -339,7 +341,7 @@ class StorwizeSVCManagementSimulator(object):
             num = num * 1024
             unit_index += 1
 
-        return str(num)
+        return six.text_type(num)
 
     def _cmd_lslicense(self, **kwargs):
         rows = [None] * 3
@@ -378,9 +380,10 @@ class StorwizeSVCManagementSimulator(object):
                    'real_capacity', 'overallocation', 'warning',
                    'easy_tier', 'easy_tier_status']
         rows[1] = ['1', self._flags['storwize_svc_volpool_name'], 'online',
-                   '1', str(len(self._volumes_list)), '3573412790272',
-                   '256', '3529926246400', '1693247906775', '277841182',
-                   '38203734097', '47', '80', 'auto', 'inactive']
+                   '1', six.text_type(len(self._volumes_list)),
+                   '3573412790272', '256', '3529926246400', '1693247906775',
+                   '277841182', '38203734097', '47', '80', 'auto',
+                   'inactive']
         rows[2] = ['2', 'openstack2', 'online',
                    '1', '0', '3573412790272', '256',
                    '3529432325160', '1693247906775', '277841182',
@@ -726,7 +729,8 @@ port_speed!N/A
 
         curr_size = int(self._volumes_list[vol_name]['capacity'])
         addition = size * units.Gi
-        self._volumes_list[vol_name]['capacity'] = str(curr_size + addition)
+        self._volumes_list[vol_name]['capacity'] = (
+            six.text_type(curr_size + addition))
         return ('', '')
 
     def _get_fcmap_info(self, vol_name):
@@ -762,7 +766,8 @@ port_speed!N/A
                     cap = self._convert_bytes_units(vol['capacity'])
                 else:
                     cap = vol['capacity']
-                rows.append([str(vol['id']), vol['name'], vol['IO_group_id'],
+                rows.append([six.text_type(vol['id']), vol['name'],
+                             vol['IO_group_id'],
                              vol['IO_group_name'], 'online', '0',
                              self._flags['storwize_svc_volpool_name'],
                              cap, 'striped',
@@ -787,7 +792,7 @@ port_speed!N/A
                     item = self._convert_bytes_units(item)
             rows = []
 
-            rows.append(['id', str(vol['id'])])
+            rows.append(['id', six.text_type(vol['id'])])
             rows.append(['name', vol['name']])
             rows.append(['IO_group_id', vol['IO_group_id']])
             rows.append(['IO_group_name', vol['IO_group_name']])
@@ -883,7 +888,7 @@ port_speed!N/A
         if 'name' in kwargs:
             host_name = kwargs['name'].strip('\'\"')
         else:
-            host_name = 'host' + str(host_info['id'])
+            host_name = 'host' + six.text_type(host_info['id'])
 
         if self._is_invalid_name(host_name):
             return self._errors['CMMVC6527E']
@@ -1301,7 +1306,7 @@ port_speed!N/A
         filter_value = kwargs['filtervalue'].split('=')[1]
         to_delete = []
         for k, v in self._fcmappings_list.items():
-            if str(v[filter_key]) == filter_value:
+            if six.text_type(v[filter_key]) == filter_value:
                 source = self._volumes_list[v['source']]
                 target = self._volumes_list[v['target']]
                 self._state_transition('wait', v)
@@ -1429,14 +1434,16 @@ port_speed!N/A
                 if self._fcconsistgrp_list[cg_id]['name'] == kwargs['obj']:
                     fcconsistgrp = self._fcconsistgrp_list[cg_id]
             rows = []
-            rows.append(['id', str(cg_id)])
+            rows.append(['id', six.text_type(cg_id)])
             rows.append(['name', fcconsistgrp['name']])
             rows.append(['status', fcconsistgrp['status']])
-            rows.append(['autodelete', str(fcconsistgrp['autodelete'])])
-            rows.append(['start_time', str(fcconsistgrp['start_time'])])
+            rows.append(['autodelete',
+                         six.text_type(fcconsistgrp['autodelete'])])
+            rows.append(['start_time',
+                         six.text_type(fcconsistgrp['start_time'])])
 
             for fcmap_id in fcconsistgrp['fcmaps'].keys():
-                rows.append(['FC_mapping_id', str(fcmap_id)])
+                rows.append(['FC_mapping_id', six.text_type(fcmap_id)])
                 rows.append(['FC_mapping_name',
                              fcconsistgrp['fcmaps'][fcmap_id]])
 
@@ -1726,9 +1733,9 @@ port_speed!N/A
             raise exception.InvalidInput(reason=msg)
 
 
-class StorwizeSVCFakeDriver(storwize_svc.StorwizeSVCDriver):
+class StorwizeSVCISCSIFakeDriver(storwize_svc_iscsi.StorwizeSVCISCSIDriver):
     def __init__(self, *args, **kwargs):
-        super(StorwizeSVCFakeDriver, self).__init__(*args, **kwargs)
+        super(StorwizeSVCISCSIFakeDriver, self).__init__(*args, **kwargs)
 
     def set_fake_storage(self, fake):
         self.fake_storage = fake
@@ -1740,13 +1747,27 @@ class StorwizeSVCFakeDriver(storwize_svc.StorwizeSVCDriver):
         return ret
 
 
-class StorwizeSVCDriverTestCase(test.TestCase):
+class StorwizeSVCFcFakeDriver(storwize_svc_fc.StorwizeSVCFCDriver):
+    def __init__(self, *args, **kwargs):
+        super(StorwizeSVCFcFakeDriver, self).__init__(*args, **kwargs)
+
+    def set_fake_storage(self, fake):
+        self.fake_storage = fake
+
+    def _run_ssh(self, cmd, check_exit_code=True, attempts=1):
+        utils.check_ssh_injection(cmd)
+        ret = self.fake_storage.execute_command(cmd, check_exit_code)
+
+        return ret
+
+
+class StorwizeSVCISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(time, 'sleep')
     def setUp(self, mock_sleep):
-        super(StorwizeSVCDriverTestCase, self).setUp()
+        super(StorwizeSVCISCSIDriverTestCase, self).setUp()
         self.USESIM = True
         if self.USESIM:
-            self.driver = StorwizeSVCFakeDriver(
+            self.iscsi_driver = StorwizeSVCISCSIFakeDriver(
                 configuration=conf.Configuration(None))
             self._def_flags = {'san_ip': 'hostname',
                                'san_login': 'user',
@@ -1754,12 +1775,747 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                                'storwize_svc_volpool_name': 'openstack',
                                'storwize_svc_flashcopy_timeout': 20,
                                'storwize_svc_flashcopy_rate': 49,
-                               # Test ignore capitalization
-                               'storwize_svc_connection_protocol': 'iScSi',
+                               'storwize_svc_multipath_enabled': False,
                                'storwize_svc_allow_tenant_qos': True}
-            wwpns = [str(random.randint(0, 9999999999999999)).zfill(16),
-                     str(random.randint(0, 9999999999999999)).zfill(16)]
-            initiator = 'test.initiator.%s' % str(random.randint(10000, 99999))
+            wwpns = [
+                six.text_type(random.randint(0, 9999999999999999)).zfill(16),
+                six.text_type(random.randint(0, 9999999999999999)).zfill(16)]
+            initiator = 'test.initiator.%s' % six.text_type(
+                random.randint(10000, 99999))
+            self._connector = {'ip': '1.234.56.78',
+                               'host': 'storwize-svc-test',
+                               'wwpns': wwpns,
+                               'initiator': initiator}
+            self.sim = StorwizeSVCManagementSimulator('openstack')
+
+            self.iscsi_driver.set_fake_storage(self.sim)
+            self.ctxt = context.get_admin_context()
+
+        self._reset_flags()
+        self.ctxt = context.get_admin_context()
+        db_driver = self.iscsi_driver.configuration.db_driver
+        self.db = importutils.import_module(db_driver)
+        self.iscsi_driver.db = self.db
+        self.iscsi_driver.do_setup(None)
+        self.iscsi_driver.check_for_setup_error()
+        self.iscsi_driver._helpers.check_fcmapping_interval = 0
+
+    def _set_flag(self, flag, value):
+        group = self.iscsi_driver.configuration.config_group
+        self.iscsi_driver.configuration.set_override(flag, value, group)
+
+    def _reset_flags(self):
+        self.iscsi_driver.configuration.local_conf.reset()
+        for k, v in self._def_flags.items():
+            self._set_flag(k, v)
+
+    def _create_volume(self, **kwargs):
+        vol = testutils.create_volume(self.ctxt, **kwargs)
+        self.iscsi_driver.create_volume(vol)
+        return vol
+
+    def _delete_volume(self, volume):
+        self.iscsi_driver.delete_volume(volume)
+        self.db.volume_destroy(self.ctxt, volume['id'])
+
+    def _generate_vol_info(self, vol_name, vol_id):
+        rand_id = six.text_type(random.randint(10000, 99999))
+        if vol_name:
+            return {'name': 'snap_volume%s' % rand_id,
+                    'volume_name': vol_name,
+                    'id': rand_id,
+                    'volume_id': vol_id,
+                    'volume_size': 10,
+                    'mdisk_grp_name': 'openstack'}
+        else:
+            return {'name': 'test_volume%s' % rand_id,
+                    'size': 10,
+                    'id': rand_id,
+                    'volume_type_id': None,
+                    'mdisk_grp_name': 'openstack'}
+
+    def _assert_vol_exists(self, name, exists):
+        is_vol_defined = self.iscsi_driver._helpers.is_vdisk_defined(name)
+        self.assertEqual(exists, is_vol_defined)
+
+    def test_storwize_svc_iscsi_validate_connector(self):
+        conn_neither = {'host': 'host'}
+        conn_iscsi = {'host': 'host', 'initiator': 'foo'}
+        conn_fc = {'host': 'host', 'wwpns': 'bar'}
+        conn_both = {'host': 'host', 'initiator': 'foo', 'wwpns': 'bar'}
+
+        self.iscsi_driver._state['enabled_protocols'] = set(['iSCSI'])
+        self.iscsi_driver.validate_connector(conn_iscsi)
+        self.iscsi_driver.validate_connector(conn_both)
+        self.assertRaises(exception.InvalidConnectorException,
+                          self.iscsi_driver.validate_connector, conn_fc)
+        self.assertRaises(exception.InvalidConnectorException,
+                          self.iscsi_driver.validate_connector, conn_neither)
+
+        self.iscsi_driver._state['enabled_protocols'] = set(['iSCSI', 'FC'])
+        self.iscsi_driver.validate_connector(conn_iscsi)
+        self.iscsi_driver.validate_connector(conn_both)
+        self.assertRaises(exception.InvalidConnectorException,
+                          self.iscsi_driver.validate_connector, conn_neither)
+
+    def test_storwize_terminate_iscsi_connection(self):
+        # create a iSCSI volume
+        volume_iSCSI = self._create_volume()
+        extra_spec = {'capabilities:storage_protocol': '<in> iSCSI'}
+        vol_type_iSCSI = volume_types.create(self.ctxt, 'iSCSI', extra_spec)
+        volume_iSCSI['volume_type_id'] = vol_type_iSCSI['id']
+
+        connector = {'host': 'storwize-svc-host',
+                     'wwnns': ['20000090fa17311e', '20000090fa17311f'],
+                     'wwpns': ['ff00000000000000', 'ff00000000000001'],
+                     'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
+
+        self.iscsi_driver.initialize_connection(volume_iSCSI, connector)
+        self.iscsi_driver.terminate_connection(volume_iSCSI, connector)
+
+    def test_storwize_svc_iscsi_host_maps(self):
+        # Create two volumes to be used in mappings
+
+        ctxt = context.get_admin_context()
+        volume1 = self._generate_vol_info(None, None)
+        self.iscsi_driver.create_volume(volume1)
+        volume2 = self._generate_vol_info(None, None)
+        self.iscsi_driver.create_volume(volume2)
+
+        # Create volume types that we created
+        types = {}
+        for protocol in ['iSCSI']:
+            opts = {'storage_protocol': '<in> ' + protocol}
+            types[protocol] = volume_types.create(ctxt, protocol, opts)
+
+        expected = {'iSCSI': {'driver_volume_type': 'iscsi',
+                              'data': {'target_discovered': False,
+                                       'target_iqn':
+                                       'iqn.1982-01.com.ibm:1234.sim.node1',
+                                       'target_portal': '1.234.56.78:3260',
+                                       'target_lun': 0,
+                                       'auth_method': 'CHAP',
+                                       'discovery_auth_method': 'CHAP'}}}
+
+        volume1['volume_type_id'] = types[protocol]['id']
+        volume2['volume_type_id'] = types[protocol]['id']
+
+        # Check case where no hosts exist
+        if self.USESIM:
+            ret = self.iscsi_driver._helpers.get_host_from_connector(
+                self._connector)
+            self.assertIsNone(ret)
+
+        # Make sure that the volumes have been created
+        self._assert_vol_exists(volume1['name'], True)
+        self._assert_vol_exists(volume2['name'], True)
+
+        # Initialize connection from the first volume to a host
+        ret = self.iscsi_driver.initialize_connection(
+            volume1, self._connector)
+        self.assertEqual(expected[protocol]['driver_volume_type'],
+                         ret['driver_volume_type'])
+        for k, v in expected[protocol]['data'].items():
+            self.assertEqual(v, ret['data'][k])
+
+        # Initialize again, should notice it and do nothing
+        ret = self.iscsi_driver.initialize_connection(
+            volume1, self._connector)
+        self.assertEqual(expected[protocol]['driver_volume_type'],
+                         ret['driver_volume_type'])
+        for k, v in expected[protocol]['data'].items():
+            self.assertEqual(v, ret['data'][k])
+
+        # Try to delete the 1st volume (should fail because it is mapped)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.iscsi_driver.delete_volume,
+                          volume1)
+
+        ret = self.iscsi_driver.terminate_connection(volume1,
+                                                     self._connector)
+        if self.USESIM:
+            ret = self.iscsi_driver._helpers.get_host_from_connector(
+                self._connector)
+            self.assertIsNone(ret)
+
+        # Check cases with no auth set for host
+        if self.USESIM:
+            for auth_enabled in [True, False]:
+                for host_exists in ['yes-auth', 'yes-noauth', 'no']:
+                    self._set_flag('storwize_svc_iscsi_chap_enabled',
+                                   auth_enabled)
+                    case = 'en' + six.text_type(
+                        auth_enabled) + 'ex' + six.text_type(host_exists)
+                    conn_na = {'initiator': 'test:init:%s' %
+                                            random.randint(10000, 99999),
+                               'ip': '11.11.11.11',
+                               'host': 'host-%s' % case}
+                    if host_exists.startswith('yes'):
+                        self.sim._add_host_to_list(conn_na)
+                        if host_exists == 'yes-auth':
+                            kwargs = {'chapsecret': 'foo',
+                                      'obj': conn_na['host']}
+                            self.sim._cmd_chhost(**kwargs)
+                    volume1['volume_type_id'] = types['iSCSI']['id']
+
+                    init_ret = self.iscsi_driver.initialize_connection(volume1,
+                                                                       conn_na)
+                    host_name = self.sim._host_in_list(conn_na['host'])
+                    chap_ret = (
+                        self.iscsi_driver._helpers.get_chap_secret_for_host(
+                            host_name))
+                    if auth_enabled or host_exists == 'yes-auth':
+                        self.assertIn('auth_password', init_ret['data'])
+                        self.assertIsNotNone(chap_ret)
+                    else:
+                        self.assertNotIn('auth_password', init_ret['data'])
+                        self.assertIsNone(chap_ret)
+                    self.iscsi_driver.terminate_connection(volume1, conn_na)
+        self._set_flag('storwize_svc_iscsi_chap_enabled', True)
+
+        # Test no preferred node
+        if self.USESIM:
+            self.sim.error_injection('lsvdisk', 'no_pref_node')
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.iscsi_driver.initialize_connection,
+                              volume1, self._connector)
+
+        # Initialize connection from the second volume to the host with no
+        # preferred node set if in simulation mode, otherwise, just
+        # another initialize connection.
+        if self.USESIM:
+            self.sim.error_injection('lsvdisk', 'blank_pref_node')
+        self.iscsi_driver.initialize_connection(volume2, self._connector)
+
+        # Try to remove connection from host that doesn't exist (should fail)
+        conn_no_exist = self._connector.copy()
+        conn_no_exist['initiator'] = 'i_dont_exist'
+        conn_no_exist['wwpns'] = ['0000000000000000']
+        self.assertRaises(exception.VolumeDriverException,
+                          self.iscsi_driver.terminate_connection,
+                          volume1,
+                          conn_no_exist)
+
+        # Try to remove connection from volume that isn't mapped (should print
+        # message but NOT fail)
+        unmapped_vol = self._generate_vol_info(None, None)
+        self.iscsi_driver.create_volume(unmapped_vol)
+        self.iscsi_driver.terminate_connection(unmapped_vol, self._connector)
+        self.iscsi_driver.delete_volume(unmapped_vol)
+
+        # Remove the mapping from the 1st volume and delete it
+        self.iscsi_driver.terminate_connection(volume1, self._connector)
+        self.iscsi_driver.delete_volume(volume1)
+        self._assert_vol_exists(volume1['name'], False)
+
+        # Make sure our host still exists
+        host_name = self.iscsi_driver._helpers.get_host_from_connector(
+            self._connector)
+        self.assertIsNotNone(host_name)
+
+        # Remove the mapping from the 2nd volume. The host should
+        # be automatically removed because there are no more mappings.
+        self.iscsi_driver.terminate_connection(volume2, self._connector)
+
+        # Check if we successfully terminate connections when the host is not
+        # specified (see bug #1244257)
+        fake_conn = {'ip': '127.0.0.1', 'initiator': 'iqn.fake'}
+        self.iscsi_driver.initialize_connection(volume2, self._connector)
+        host_name = self.iscsi_driver._helpers.get_host_from_connector(
+            self._connector)
+        self.assertIsNotNone(host_name)
+        self.iscsi_driver.terminate_connection(volume2, fake_conn)
+        host_name = self.iscsi_driver._helpers.get_host_from_connector(
+            self._connector)
+        self.assertIsNone(host_name)
+        self.iscsi_driver.delete_volume(volume2)
+        self._assert_vol_exists(volume2['name'], False)
+
+        # Delete volume types that we created
+        for protocol in ['iSCSI']:
+            volume_types.destroy(ctxt, types[protocol]['id'])
+
+        # Check if our host still exists (it should not)
+        if self.USESIM:
+            ret = (
+                self.iscsi_driver._helpers.get_host_from_connector(
+                    self._connector))
+            self.assertIsNone(ret)
+
+    def test_storwize_svc_iscsi_multi_host_maps(self):
+        # We can't test connecting to multiple hosts from a single host when
+        # using real storage
+        if not self.USESIM:
+            return
+
+        # Create a volume to be used in mappings
+        ctxt = context.get_admin_context()
+        volume = self._generate_vol_info(None, None)
+        self.iscsi_driver.create_volume(volume)
+
+        # Create volume types for protocols
+        types = {}
+        for protocol in ['iSCSI']:
+            opts = {'storage_protocol': '<in> ' + protocol}
+            types[protocol] = volume_types.create(ctxt, protocol, opts)
+
+        # Create a connector for the second 'host'
+        wwpns = [six.text_type(random.randint(0, 9999999999999999)).zfill(16),
+                 six.text_type(random.randint(0, 9999999999999999)).zfill(16)]
+        initiator = 'test.initiator.%s' % six.text_type(random.randint(10000,
+                                                                       99999))
+        conn2 = {'ip': '1.234.56.79',
+                 'host': 'storwize-svc-test2',
+                 'wwpns': wwpns,
+                 'initiator': initiator}
+
+        # Check protocols for iSCSI
+        volume['volume_type_id'] = types[protocol]['id']
+
+        # Make sure that the volume has been created
+        self._assert_vol_exists(volume['name'], True)
+
+        self.iscsi_driver.initialize_connection(volume, self._connector)
+
+        self._set_flag('storwize_svc_multihostmap_enabled', False)
+        self.assertRaises(
+            exception.CinderException,
+            self.iscsi_driver.initialize_connection, volume, conn2)
+
+        self._set_flag('storwize_svc_multihostmap_enabled', True)
+        self.iscsi_driver.initialize_connection(volume, conn2)
+
+        self.iscsi_driver.terminate_connection(volume, conn2)
+        self.iscsi_driver.terminate_connection(volume, self._connector)
+
+
+class StorwizeSVCFcDriverTestCase(test.TestCase):
+    @mock.patch.object(time, 'sleep')
+    def setUp(self, mock_sleep):
+        super(StorwizeSVCFcDriverTestCase, self).setUp()
+        self.USESIM = True
+        if self.USESIM:
+            self.fc_driver = StorwizeSVCFcFakeDriver(
+                configuration=conf.Configuration(None))
+            self._def_flags = {'san_ip': 'hostname',
+                               'san_login': 'user',
+                               'san_password': 'pass',
+                               'storwize_svc_volpool_name': 'openstack',
+                               'storwize_svc_flashcopy_timeout': 20,
+                               'storwize_svc_flashcopy_rate': 49,
+                               'storwize_svc_multipath_enabled': False,
+                               'storwize_svc_allow_tenant_qos': True}
+            wwpns = [
+                six.text_type(random.randint(0, 9999999999999999)).zfill(16),
+                six.text_type(random.randint(0, 9999999999999999)).zfill(16)]
+            initiator = 'test.initiator.%s' % six.text_type(
+                random.randint(10000, 99999))
+            self._connector = {'ip': '1.234.56.78',
+                               'host': 'storwize-svc-test',
+                               'wwpns': wwpns,
+                               'initiator': initiator}
+            self.sim = StorwizeSVCManagementSimulator('openstack')
+
+            self.fc_driver.set_fake_storage(self.sim)
+            self.ctxt = context.get_admin_context()
+
+        self._reset_flags()
+        self.ctxt = context.get_admin_context()
+        db_driver = self.fc_driver.configuration.db_driver
+        self.db = importutils.import_module(db_driver)
+        self.fc_driver.db = self.db
+        self.fc_driver.do_setup(None)
+        self.fc_driver.check_for_setup_error()
+        self.fc_driver._helpers.check_fcmapping_interval = 0
+
+    def _set_flag(self, flag, value):
+        group = self.fc_driver.configuration.config_group
+        self.fc_driver.configuration.set_override(flag, value, group)
+
+    def _reset_flags(self):
+        self.fc_driver.configuration.local_conf.reset()
+        for k, v in self._def_flags.items():
+            self._set_flag(k, v)
+
+    def _create_volume(self, **kwargs):
+        vol = testutils.create_volume(self.ctxt, **kwargs)
+        self.fc_driver.create_volume(vol)
+        return vol
+
+    def _delete_volume(self, volume):
+        self.fc_driver.delete_volume(volume)
+        self.db.volume_destroy(self.ctxt, volume['id'])
+
+    def _generate_vol_info(self, vol_name, vol_id):
+        rand_id = six.text_type(random.randint(10000, 99999))
+        if vol_name:
+            return {'name': 'snap_volume%s' % rand_id,
+                    'volume_name': vol_name,
+                    'id': rand_id,
+                    'volume_id': vol_id,
+                    'volume_size': 10,
+                    'mdisk_grp_name': 'openstack'}
+        else:
+            return {'name': 'test_volume%s' % rand_id,
+                    'size': 10,
+                    'id': '%s' % rand_id,
+                    'volume_type_id': None,
+                    'mdisk_grp_name': 'openstack'}
+
+    def _assert_vol_exists(self, name, exists):
+        is_vol_defined = self.fc_driver._helpers.is_vdisk_defined(name)
+        self.assertEqual(exists, is_vol_defined)
+
+    def test_storwize_get_host_with_fc_connection(self):
+        # Create a FC host
+        del self._connector['initiator']
+        helper = self.fc_driver._helpers
+        host_name = helper.create_host(self._connector)
+
+        # Remove the first wwpn from connector, and then try get host
+        wwpns = self._connector['wwpns']
+        wwpns.remove(wwpns[0])
+        host_name = helper.get_host_from_connector(self._connector)
+
+        self.assertIsNotNone(host_name)
+
+    def test_storwize_initiator_multiple_wwpns_connected(self):
+
+        # Generate us a test volume
+        volume = self._create_volume()
+
+        # Fibre Channel volume type
+        extra_spec = {'capabilities:storage_protocol': '<in> FC'}
+        vol_type = volume_types.create(self.ctxt, 'FC', extra_spec)
+
+        volume['volume_type_id'] = vol_type['id']
+
+        # Make sure that the volumes have been created
+        self._assert_vol_exists(volume['name'], True)
+
+        # Set up one WWPN that won't match and one that will.
+        self.fc_driver._state['storage_nodes']['1']['WWPN'] = [
+            '123456789ABCDEF0', 'AABBCCDDEEFF0010']
+
+        wwpns = ['ff00000000000000', 'ff00000000000001']
+        connector = {'host': 'storwize-svc-test', 'wwpns': wwpns}
+
+        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                               'get_conn_fc_wwpns') as get_mappings:
+            mapped_wwpns = ['AABBCCDDEEFF0001', 'AABBCCDDEEFF0002',
+                            'AABBCCDDEEFF0010', 'AABBCCDDEEFF0012']
+            get_mappings.return_value = mapped_wwpns
+
+            # Initialize the connection
+            init_ret = self.fc_driver.initialize_connection(volume, connector)
+
+            # Make sure we return all wwpns which where mapped as part of the
+            # connection
+            self.assertEqual(mapped_wwpns,
+                             init_ret['data']['target_wwn'])
+
+    def test_storwize_svc_fc_validate_connector(self):
+        conn_neither = {'host': 'host'}
+        conn_iscsi = {'host': 'host', 'initiator': 'foo'}
+        conn_fc = {'host': 'host', 'wwpns': 'bar'}
+        conn_both = {'host': 'host', 'initiator': 'foo', 'wwpns': 'bar'}
+
+        self.fc_driver._state['enabled_protocols'] = set(['FC'])
+        self.fc_driver.validate_connector(conn_fc)
+        self.fc_driver.validate_connector(conn_both)
+        self.assertRaises(exception.InvalidConnectorException,
+                          self.fc_driver.validate_connector, conn_iscsi)
+        self.assertRaises(exception.InvalidConnectorException,
+                          self.fc_driver.validate_connector, conn_neither)
+
+        self.fc_driver._state['enabled_protocols'] = set(['iSCSI', 'FC'])
+        self.fc_driver.validate_connector(conn_fc)
+        self.fc_driver.validate_connector(conn_both)
+        self.assertRaises(exception.InvalidConnectorException,
+                          self.fc_driver.validate_connector, conn_neither)
+
+    def test_storwize_terminate_fc_connection(self):
+        # create a FC volume
+        volume_fc = self._create_volume()
+        extra_spec = {'capabilities:storage_protocol': '<in> FC'}
+        vol_type_fc = volume_types.create(self.ctxt, 'FC', extra_spec)
+        volume_fc['volume_type_id'] = vol_type_fc['id']
+
+        connector = {'host': 'storwize-svc-host',
+                     'wwnns': ['20000090fa17311e', '20000090fa17311f'],
+                     'wwpns': ['ff00000000000000', 'ff00000000000001'],
+                     'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
+
+        self.fc_driver.initialize_connection(volume_fc, connector)
+        self.fc_driver.terminate_connection(volume_fc, connector)
+
+    def test_storwize_initiator_target_map(self):
+        # Generate us a test volume
+        volume = self._create_volume()
+
+        # FIbre Channel volume type
+        extra_spec = {'capabilities:storage_protocol': '<in> FC'}
+        vol_type = volume_types.create(self.ctxt, 'FC', extra_spec)
+
+        volume['volume_type_id'] = vol_type['id']
+
+        # Make sure that the volumes have been created
+        self._assert_vol_exists(volume['name'], True)
+
+        wwpns = ['ff00000000000000', 'ff00000000000001']
+        connector = {'host': 'storwize-svc-test', 'wwpns': wwpns}
+
+        # Initialise the connection
+        init_ret = self.fc_driver.initialize_connection(volume, connector)
+
+        # Check that the initiator_target_map is as expected
+        init_data = {'driver_volume_type': 'fibre_channel',
+                     'data': {'initiator_target_map':
+                              {'ff00000000000000': ['AABBCCDDEEFF0011'],
+                               'ff00000000000001': ['AABBCCDDEEFF0011']},
+                              'target_discovered': False,
+                              'target_lun': 0,
+                              'target_wwn': ['AABBCCDDEEFF0011'],
+                              'volume_id': volume['id']
+                              }
+                     }
+
+        self.assertEqual(init_data, init_ret)
+
+        # Terminate connection
+        term_ret = self.fc_driver.terminate_connection(volume, connector)
+
+        # Check that the initiator_target_map is as expected
+        term_data = {'driver_volume_type': 'fibre_channel',
+                     'data': {'initiator_target_map':
+                              {'ff00000000000000': ['AABBCCDDEEFF0011'],
+                               'ff00000000000001': ['AABBCCDDEEFF0011']}
+                              }
+                     }
+
+        self.assertEqual(term_data, term_ret)
+
+    def test_storwize_svc_fc_host_maps(self):
+        # Create two volumes to be used in mappings
+
+        ctxt = context.get_admin_context()
+        volume1 = self._generate_vol_info(None, None)
+        self.fc_driver.create_volume(volume1)
+        volume2 = self._generate_vol_info(None, None)
+        self.fc_driver.create_volume(volume2)
+
+        # Create volume types that we created
+        types = {}
+        for protocol in ['FC']:
+            opts = {'storage_protocol': '<in> ' + protocol}
+            types[protocol] = volume_types.create(ctxt, protocol, opts)
+
+        expected = {'FC': {'driver_volume_type': 'fibre_channel',
+                           'data': {'target_lun': 0,
+                                    'target_wwn': ['AABBCCDDEEFF0011'],
+                                    'target_discovered': False}}}
+
+        volume1['volume_type_id'] = types[protocol]['id']
+        volume2['volume_type_id'] = types[protocol]['id']
+
+        # Check case where no hosts exist
+        if self.USESIM:
+            ret = self.fc_driver._helpers.get_host_from_connector(
+                self._connector)
+            self.assertIsNone(ret)
+
+        # Make sure that the volumes have been created
+        self._assert_vol_exists(volume1['name'], True)
+        self._assert_vol_exists(volume2['name'], True)
+
+        # Initialize connection from the first volume to a host
+        ret = self.fc_driver.initialize_connection(
+            volume1, self._connector)
+        self.assertEqual(expected[protocol]['driver_volume_type'],
+                         ret['driver_volume_type'])
+        for k, v in expected[protocol]['data'].items():
+            self.assertEqual(v, ret['data'][k])
+
+        # Initialize again, should notice it and do nothing
+        ret = self.fc_driver.initialize_connection(
+            volume1, self._connector)
+        self.assertEqual(expected[protocol]['driver_volume_type'],
+                         ret['driver_volume_type'])
+        for k, v in expected[protocol]['data'].items():
+            self.assertEqual(v, ret['data'][k])
+
+        # Try to delete the 1st volume (should fail because it is mapped)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.fc_driver.delete_volume,
+                          volume1)
+
+        # Check bad output from lsfabric for the 2nd volume
+        if protocol == 'FC' and self.USESIM:
+            for error in ['remove_field', 'header_mismatch']:
+                self.sim.error_injection('lsfabric', error)
+                self.assertRaises(exception.VolumeBackendAPIException,
+                                  self.fc_driver.initialize_connection,
+                                  volume2, self._connector)
+
+            with mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                                   'get_conn_fc_wwpns') as conn_fc_wwpns:
+                conn_fc_wwpns.return_value = []
+                ret = self.fc_driver.initialize_connection(volume2,
+                                                           self._connector)
+
+        ret = self.fc_driver.terminate_connection(volume1, self._connector)
+        if protocol == 'FC' and self.USESIM:
+            # For the first volume detach, ret['data'] should be empty
+            # only ret['driver_volume_type'] returned
+            self.assertEqual({}, ret['data'])
+            self.assertEqual('fibre_channel', ret['driver_volume_type'])
+            ret = self.fc_driver.terminate_connection(volume2,
+                                                      self._connector)
+            self.assertEqual('fibre_channel', ret['driver_volume_type'])
+            # wwpn is randomly created
+            self.assertNotEqual({}, ret['data'])
+        if self.USESIM:
+            ret = self.fc_driver._helpers.get_host_from_connector(
+                self._connector)
+            self.assertIsNone(ret)
+
+        # Test no preferred node
+        if self.USESIM:
+            self.sim.error_injection('lsvdisk', 'no_pref_node')
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.fc_driver.initialize_connection,
+                              volume1, self._connector)
+
+        # Initialize connection from the second volume to the host with no
+        # preferred node set if in simulation mode, otherwise, just
+        # another initialize connection.
+        if self.USESIM:
+            self.sim.error_injection('lsvdisk', 'blank_pref_node')
+        self.fc_driver.initialize_connection(volume2, self._connector)
+
+        # Try to remove connection from host that doesn't exist (should fail)
+        conn_no_exist = self._connector.copy()
+        conn_no_exist['initiator'] = 'i_dont_exist'
+        conn_no_exist['wwpns'] = ['0000000000000000']
+        self.assertRaises(exception.VolumeDriverException,
+                          self.fc_driver.terminate_connection,
+                          volume1,
+                          conn_no_exist)
+
+        # Try to remove connection from volume that isn't mapped (should print
+        # message but NOT fail)
+        unmapped_vol = self._generate_vol_info(None, None)
+        self.fc_driver.create_volume(unmapped_vol)
+        self.fc_driver.terminate_connection(unmapped_vol, self._connector)
+        self.fc_driver.delete_volume(unmapped_vol)
+
+        # Remove the mapping from the 1st volume and delete it
+        self.fc_driver.terminate_connection(volume1, self._connector)
+        self.fc_driver.delete_volume(volume1)
+        self._assert_vol_exists(volume1['name'], False)
+
+        # Make sure our host still exists
+        host_name = self.fc_driver._helpers.get_host_from_connector(
+            self._connector)
+        self.assertIsNotNone(host_name)
+
+        # Remove the mapping from the 2nd volume. The host should
+        # be automatically removed because there are no more mappings.
+        self.fc_driver.terminate_connection(volume2, self._connector)
+
+        # Check if we successfully terminate connections when the host is not
+        # specified (see bug #1244257)
+        fake_conn = {'ip': '127.0.0.1', 'initiator': 'iqn.fake'}
+        self.fc_driver.initialize_connection(volume2, self._connector)
+        host_name = self.fc_driver._helpers.get_host_from_connector(
+            self._connector)
+        self.assertIsNotNone(host_name)
+        self.fc_driver.terminate_connection(volume2, fake_conn)
+        host_name = self.fc_driver._helpers.get_host_from_connector(
+            self._connector)
+        self.assertIsNone(host_name)
+        self.fc_driver.delete_volume(volume2)
+        self._assert_vol_exists(volume2['name'], False)
+
+        # Delete volume types that we created
+        for protocol in ['FC']:
+            volume_types.destroy(ctxt, types[protocol]['id'])
+
+        # Check if our host still exists (it should not)
+        if self.USESIM:
+            ret = (self.fc_driver._helpers.get_host_from_connector(
+                self._connector))
+            self.assertIsNone(ret)
+
+    def test_storwize_svc_fc_multi_host_maps(self):
+        # We can't test connecting to multiple hosts from a single host when
+        # using real storage
+        if not self.USESIM:
+            return
+
+        # Create a volume to be used in mappings
+        ctxt = context.get_admin_context()
+        volume = self._generate_vol_info(None, None)
+        self.fc_driver.create_volume(volume)
+
+        # Create volume types for protocols
+        types = {}
+        for protocol in ['FC']:
+            opts = {'storage_protocol': '<in> ' + protocol}
+            types[protocol] = volume_types.create(ctxt, protocol, opts)
+
+        # Create a connector for the second 'host'
+        wwpns = [six.text_type(random.randint(0, 9999999999999999)).zfill(16),
+                 six.text_type(random.randint(0, 9999999999999999)).zfill(16)]
+        initiator = 'test.initiator.%s' % six.text_type(random.randint(10000,
+                                                                       99999))
+        conn2 = {'ip': '1.234.56.79',
+                 'host': 'storwize-svc-test2',
+                 'wwpns': wwpns,
+                 'initiator': initiator}
+
+        # Check protocols for FC
+
+        volume['volume_type_id'] = types[protocol]['id']
+
+        # Make sure that the volume has been created
+        self._assert_vol_exists(volume['name'], True)
+
+        self.fc_driver.initialize_connection(volume, self._connector)
+
+        self._set_flag('storwize_svc_multihostmap_enabled', False)
+        self.assertRaises(
+            exception.CinderException,
+            self.fc_driver.initialize_connection, volume, conn2)
+
+        self._set_flag('storwize_svc_multihostmap_enabled', True)
+        self.fc_driver.initialize_connection(volume, conn2)
+
+        self.fc_driver.terminate_connection(volume, conn2)
+        self.fc_driver.terminate_connection(volume, self._connector)
+
+
+class StorwizeSVCCommonDriverTestCase(test.TestCase):
+    @mock.patch.object(time, 'sleep')
+    def setUp(self, mock_sleep):
+        super(StorwizeSVCCommonDriverTestCase, self).setUp()
+        self.USESIM = True
+        if self.USESIM:
+            self.driver = StorwizeSVCISCSIFakeDriver(
+                configuration=conf.Configuration(None))
+
+            self._def_flags = {'san_ip': 'hostname',
+                               'san_login': 'user',
+                               'san_password': 'pass',
+                               'storwize_svc_volpool_name': 'openstack',
+                               'storwize_svc_flashcopy_timeout': 20,
+                               'storwize_svc_flashcopy_rate': 49,
+                               'storwize_svc_allow_tenant_qos': True}
+            wwpns = [
+                six.text_type(random.randint(0, 9999999999999999)).zfill(16),
+                six.text_type(random.randint(0, 9999999999999999)).zfill(16)]
+            initiator = 'test.initiator.%s' % six.text_type(
+                random.randint(10000, 99999))
             self._connector = {'ip': '1.234.56.78',
                                'host': 'storwize-svc-test',
                                'wwpns': wwpns,
@@ -1768,22 +2524,6 @@ class StorwizeSVCDriverTestCase(test.TestCase):
 
             self.driver.set_fake_storage(self.sim)
             self.ctxt = context.get_admin_context()
-        else:
-            self.driver = storwize_svc.StorwizeSVCDriver(
-                configuration=conf.Configuration(None))
-            self._def_flags = {'san_ip': '1.111.11.11',
-                               'san_login': 'user',
-                               'san_password': 'password',
-                               'storwize_svc_volpool_name': 'openstack',
-                               # Test ignore capitalization
-                               'storwize_svc_connection_protocol': 'iScSi',
-                               'storwize_svc_allow_tenant_qos': True,
-                               'ssh_conn_timeout': 0}
-            config_group = self.driver.configuration.config_group
-            self.driver.configuration.set_override('rootwrap_config',
-                                                   '/etc/cinder/rootwrap.conf',
-                                                   config_group)
-            self._connector = utils.brick_get_connector_properties()
 
         self._reset_flags()
         self.ctxt = context.get_admin_context()
@@ -1860,11 +2600,6 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                           self.driver.check_for_setup_error)
         self._reset_flags()
 
-        self._set_flag('storwize_svc_connection_protocol', 'foo')
-        self.assertRaises(exception.InvalidInput,
-                          self.driver.check_for_setup_error)
-        self._reset_flags()
-
         self._set_flag('storwize_svc_vol_iogrp', 5)
         self.assertRaises(exception.InvalidInput,
                           self.driver.check_for_setup_error)
@@ -1883,7 +2618,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         self.driver.do_setup(None)
 
     def _generate_vol_info(self, vol_name, vol_id):
-        rand_id = str(random.randint(10000, 99999))
+        rand_id = six.text_type(random.randint(10000, 99999))
         if vol_name:
             return {'name': 'snap_volume%s' % rand_id,
                     'volume_name': vol_name,
@@ -1965,7 +2700,8 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         return opt
 
     @mock.patch.object(storwize_svc_common.StorwizeHelpers, 'add_vdisk_qos')
-    @mock.patch.object(storwize_svc.StorwizeSVCDriver, '_get_vdisk_params')
+    @mock.patch.object(storwize_svc_common.StorwizeSVCCommonDriver,
+                       '_get_vdisk_params')
     def test_storwize_svc_create_volume_with_qos(self, get_vdisk_params,
                                                  add_vdisk_qos):
         vol = testutils.create_volume(self.ctxt)
@@ -2115,7 +2851,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
 
         # If the qos is empty, chvdisk should not be called
         # for create_volume_from_snapshot.
-        with mock.patch.object(storwize_svc.StorwizeSVCDriver,
+        with mock.patch.object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
                                '_get_vdisk_params') as get_vdisk_params:
             get_vdisk_params.return_value = fake_opts
             self.driver.create_volume_from_snapshot(vol2, snap1)
@@ -2236,7 +2972,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         chck_list.append({'-free_capacity': '0', 'compressed_copy': 'no',
                           'warning': '0', 'autoexpand': 'on',
                           'grainsize': '32', 'easy_tier': 'off',
-                          'IO_group_id': str(test_iogrp)})
+                          'IO_group_id': six.text_type(test_iogrp)})
         opts_list.append({'rsize': 2, 'compression': False, 'warning': 80,
                           'autoexpand': False, 'grainsize': 256,
                           'easytier': True})
@@ -2261,8 +2997,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                         raise
 
     def test_storwize_svc_unicode_host_and_volume_names(self):
-        # We'll check with iSCSI only - nothing protocol-dependednt here
-        self._set_flag('storwize_svc_connection_protocol', 'iSCSI')
+        # We'll check with iSCSI only - nothing protocol-dependent here
         self.driver.do_setup(None)
 
         rand_id = random.randint(10000, 99999)
@@ -2307,272 +3042,6 @@ class StorwizeSVCDriverTestCase(test.TestCase):
             host_name = self.driver._helpers.get_host_from_connector(tmpconn)
             self.assertIsNotNone(host_name)
             self.driver._helpers.delete_host(host_name)
-
-    def test_storwize_svc_validate_connector(self):
-        conn_neither = {'host': 'host'}
-        conn_iscsi = {'host': 'host', 'initiator': 'foo'}
-        conn_fc = {'host': 'host', 'wwpns': 'bar'}
-        conn_both = {'host': 'host', 'initiator': 'foo', 'wwpns': 'bar'}
-
-        self.driver._state['enabled_protocols'] = set(['iSCSI'])
-        self.driver.validate_connector(conn_iscsi)
-        self.driver.validate_connector(conn_both)
-        self.assertRaises(exception.InvalidConnectorException,
-                          self.driver.validate_connector, conn_fc)
-        self.assertRaises(exception.InvalidConnectorException,
-                          self.driver.validate_connector, conn_neither)
-
-        self.driver._state['enabled_protocols'] = set(['FC'])
-        self.driver.validate_connector(conn_fc)
-        self.driver.validate_connector(conn_both)
-        self.assertRaises(exception.InvalidConnectorException,
-                          self.driver.validate_connector, conn_iscsi)
-        self.assertRaises(exception.InvalidConnectorException,
-                          self.driver.validate_connector, conn_neither)
-
-        self.driver._state['enabled_protocols'] = set(['iSCSI', 'FC'])
-        self.driver.validate_connector(conn_iscsi)
-        self.driver.validate_connector(conn_fc)
-        self.driver.validate_connector(conn_both)
-        self.assertRaises(exception.InvalidConnectorException,
-                          self.driver.validate_connector, conn_neither)
-
-    def test_storwize_svc_host_maps(self):
-        # Create two volumes to be used in mappings
-
-        ctxt = context.get_admin_context()
-        volume1 = self._generate_vol_info(None, None)
-        self.driver.create_volume(volume1)
-        volume2 = self._generate_vol_info(None, None)
-        self.driver.create_volume(volume2)
-
-        # Create volume types that we created
-        types = {}
-        for protocol in ['FC', 'iSCSI']:
-            opts = {'storage_protocol': '<in> ' + protocol}
-            types[protocol] = volume_types.create(ctxt, protocol, opts)
-
-        expected = {'FC': {'driver_volume_type': 'fibre_channel',
-                           'data': {'target_lun': 0,
-                                    'target_wwn': ['AABBCCDDEEFF0011'],
-                                    'target_discovered': False}},
-                    'iSCSI': {'driver_volume_type': 'iscsi',
-                              'data': {'target_discovered': False,
-                                       'target_iqn':
-                                       'iqn.1982-01.com.ibm:1234.sim.node1',
-                                       'target_portal': '1.234.56.78:3260',
-                                       'target_lun': 0,
-                                       'auth_method': 'CHAP',
-                                       'discovery_auth_method': 'CHAP'}}}
-
-        for protocol in ['FC', 'iSCSI']:
-            volume1['volume_type_id'] = types[protocol]['id']
-            volume2['volume_type_id'] = types[protocol]['id']
-
-            # Check case where no hosts exist
-            if self.USESIM:
-                ret = self.driver._helpers.get_host_from_connector(
-                    self._connector)
-                self.assertIsNone(ret)
-
-            # Make sure that the volumes have been created
-            self._assert_vol_exists(volume1['name'], True)
-            self._assert_vol_exists(volume2['name'], True)
-
-            # Initialize connection from the first volume to a host
-            ret = self.driver.initialize_connection(volume1, self._connector)
-            self.assertEqual(expected[protocol]['driver_volume_type'],
-                             ret['driver_volume_type'])
-            for k, v in expected[protocol]['data'].items():
-                self.assertEqual(v, ret['data'][k])
-
-            # Initialize again, should notice it and do nothing
-            ret = self.driver.initialize_connection(volume1, self._connector)
-            self.assertEqual(expected[protocol]['driver_volume_type'],
-                             ret['driver_volume_type'])
-            for k, v in expected[protocol]['data'].items():
-                self.assertEqual(v, ret['data'][k])
-
-            # Try to delete the 1st volume (should fail because it is mapped)
-            self.assertRaises(exception.VolumeBackendAPIException,
-                              self.driver.delete_volume,
-                              volume1)
-
-            # Check bad output from lsfabric for the 2nd volume
-            if protocol == 'FC' and self.USESIM:
-                for error in ['remove_field', 'header_mismatch']:
-                    self.sim.error_injection('lsfabric', error)
-                    self.assertRaises(exception.VolumeBackendAPIException,
-                                      self.driver.initialize_connection,
-                                      volume2, self._connector)
-
-                with mock.patch.object(storwize_svc_common.StorwizeHelpers,
-                                       'get_conn_fc_wwpns') as conn_fc_wwpns:
-                    conn_fc_wwpns.return_value = []
-
-                    ret = self.driver.initialize_connection(volume2,
-                                                            self._connector)
-
-            ret = self.driver.terminate_connection(volume1, self._connector)
-
-            if protocol == 'FC' and self.USESIM:
-                # For the first volume detach, ret['data'] should be empty
-                # only ret['driver_volume_type'] returned
-                self.assertEqual({}, ret['data'])
-                self.assertEqual('fibre_channel', ret['driver_volume_type'])
-                ret = self.driver.terminate_connection(volume2,
-                                                       self._connector)
-                self.assertEqual('fibre_channel', ret['driver_volume_type'])
-                # wwpn is radom created
-                self.assertNotEqual({}, ret['data'])
-            if self.USESIM:
-                ret = self.driver._helpers.get_host_from_connector(
-                    self._connector)
-                self.assertIsNone(ret)
-
-        # Check cases with no auth set for host
-        if self.USESIM:
-            for auth_enabled in [True, False]:
-                for host_exists in ['yes-auth', 'yes-noauth', 'no']:
-                    self._set_flag('storwize_svc_iscsi_chap_enabled',
-                                   auth_enabled)
-                    case = 'en' + str(auth_enabled) + 'ex' + str(host_exists)
-                    conn_na = {'initiator': 'test:init:%s' %
-                                            random.randint(10000, 99999),
-                               'ip': '11.11.11.11',
-                               'host': 'host-%s' % case}
-                    if host_exists.startswith('yes'):
-                        self.sim._add_host_to_list(conn_na)
-                        if host_exists == 'yes-auth':
-                            kwargs = {'chapsecret': 'foo',
-                                      'obj': conn_na['host']}
-                            self.sim._cmd_chhost(**kwargs)
-                    volume1['volume_type_id'] = types['iSCSI']['id']
-
-                    init_ret = self.driver.initialize_connection(volume1,
-                                                                 conn_na)
-                    host_name = self.sim._host_in_list(conn_na['host'])
-                    chap_ret = self.driver._helpers.get_chap_secret_for_host(
-                        host_name)
-                    if auth_enabled or host_exists == 'yes-auth':
-                        self.assertIn('auth_password', init_ret['data'])
-                        self.assertIsNotNone(chap_ret)
-                    else:
-                        self.assertNotIn('auth_password', init_ret['data'])
-                        self.assertIsNone(chap_ret)
-                    self.driver.terminate_connection(volume1, conn_na)
-        self._set_flag('storwize_svc_iscsi_chap_enabled', True)
-
-        # Test no preferred node
-        if self.USESIM:
-            self.sim.error_injection('lsvdisk', 'no_pref_node')
-            self.assertRaises(exception.VolumeBackendAPIException,
-                              self.driver.initialize_connection,
-                              volume1, self._connector)
-
-        # Initialize connection from the second volume to the host with no
-        # preferred node set if in simulation mode, otherwise, just
-        # another initialize connection.
-        if self.USESIM:
-            self.sim.error_injection('lsvdisk', 'blank_pref_node')
-        self.driver.initialize_connection(volume2, self._connector)
-
-        # Try to remove connection from host that doesn't exist (should fail)
-        conn_no_exist = self._connector.copy()
-        conn_no_exist['initiator'] = 'i_dont_exist'
-        conn_no_exist['wwpns'] = ['0000000000000000']
-        self.assertRaises(exception.VolumeDriverException,
-                          self.driver.terminate_connection,
-                          volume1,
-                          conn_no_exist)
-
-        # Try to remove connection from volume that isn't mapped (should print
-        # message but NOT fail)
-        unmapped_vol = self._generate_vol_info(None, None)
-        self.driver.create_volume(unmapped_vol)
-        self.driver.terminate_connection(unmapped_vol, self._connector)
-        self.driver.delete_volume(unmapped_vol)
-
-        # Remove the mapping from the 1st volume and delete it
-        self.driver.terminate_connection(volume1, self._connector)
-        self.driver.delete_volume(volume1)
-        self._assert_vol_exists(volume1['name'], False)
-
-        # Make sure our host still exists
-        host_name = self.driver._helpers.get_host_from_connector(
-            self._connector)
-        self.assertIsNotNone(host_name)
-
-        # Remove the mapping from the 2nd volume. The host should
-        # be automatically removed because there are no more mappings.
-        self.driver.terminate_connection(volume2, self._connector)
-
-        # Check if we successfully terminate connections when the host is not
-        # specified (see bug #1244257)
-        fake_conn = {'ip': '127.0.0.1', 'initiator': 'iqn.fake'}
-        self.driver.initialize_connection(volume2, self._connector)
-        host_name = self.driver._helpers.get_host_from_connector(
-            self._connector)
-        self.assertIsNotNone(host_name)
-        self.driver.terminate_connection(volume2, fake_conn)
-        host_name = self.driver._helpers.get_host_from_connector(
-            self._connector)
-        self.assertIsNone(host_name)
-        self.driver.delete_volume(volume2)
-        self._assert_vol_exists(volume2['name'], False)
-
-        # Delete volume types that we created
-        for protocol in ['FC', 'iSCSI']:
-            volume_types.destroy(ctxt, types[protocol]['id'])
-
-        # Check if our host still exists (it should not)
-        if self.USESIM:
-            ret = self.driver._helpers.get_host_from_connector(self._connector)
-            self.assertIsNone(ret)
-
-    def test_storwize_svc_multi_host_maps(self):
-        # We can't test connecting to multiple hosts from a single host when
-        # using real storage
-        if not self.USESIM:
-            return
-
-        # Create a volume to be used in mappings
-        ctxt = context.get_admin_context()
-        volume = self._generate_vol_info(None, None)
-        self.driver.create_volume(volume)
-
-        # Create volume types for protocols
-        types = {}
-        for protocol in ['FC', 'iSCSI']:
-            opts = {'storage_protocol': '<in> ' + protocol}
-            types[protocol] = volume_types.create(ctxt, protocol, opts)
-
-        # Create a connector for the second 'host'
-        wwpns = [str(random.randint(0, 9999999999999999)).zfill(16),
-                 str(random.randint(0, 9999999999999999)).zfill(16)]
-        initiator = 'test.initiator.%s' % str(random.randint(10000, 99999))
-        conn2 = {'ip': '1.234.56.79',
-                 'host': 'storwize-svc-test2',
-                 'wwpns': wwpns,
-                 'initiator': initiator}
-
-        for protocol in ['FC', 'iSCSI']:
-            volume['volume_type_id'] = types[protocol]['id']
-
-            # Make sure that the volume has been created
-            self._assert_vol_exists(volume['name'], True)
-
-            self.driver.initialize_connection(volume, self._connector)
-
-            self._set_flag('storwize_svc_multihostmap_enabled', False)
-            self.assertRaises(exception.CinderException,
-                              self.driver.initialize_connection, volume, conn2)
-
-            self._set_flag('storwize_svc_multihostmap_enabled', True)
-            self.driver.initialize_connection(volume, conn2)
-
-            self.driver.terminate_connection(volume, conn2)
-            self.driver.terminate_connection(volume, self._connector)
 
     def test_storwize_svc_delete_volume_snapshots(self):
         # Create a volume with two snapshots
@@ -2738,8 +3207,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
                                                volume_metadata=None)
         self.assertEqual(expected_qos, params['qos'])
         # If type_id is none and volume_type is not none, it should work fine.
-        params = self.driver._get_vdisk_params(None,
-                                               volume_type=vol_type_qos,
+        params = self.driver._get_vdisk_params(None, volume_type=vol_type_qos,
                                                volume_metadata=None)
         self.assertEqual(expected_qos, params['qos'])
         # If both type_id and volume_type are none, no qos will be returned
@@ -2851,7 +3319,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         fake_opts_qos = self._get_default_opts()
         fake_opts_qos['qos'] = {'IOThrottling': 5000}
         self.driver.create_volume(volume)
-        with mock.patch.object(storwize_svc.StorwizeSVCDriver,
+        with mock.patch.object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
                                '_get_vdisk_params') as get_vdisk_params:
             # If qos is empty for both the source and target volumes,
             # add_vdisk_qos and disable_vdisk_qos will not be called for
@@ -2864,7 +3332,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
 
         self.driver.create_volume(volume)
         update_vdisk_qos.reset_mock()
-        with mock.patch.object(storwize_svc.StorwizeSVCDriver,
+        with mock.patch.object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
                                '_get_vdisk_params') as get_vdisk_params:
             # If qos is specified for both source and target volumes,
             # add_vdisk_qos will be called for retype, and disable_vdisk_qos
@@ -2878,7 +3346,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
 
         self.driver.create_volume(volume)
         update_vdisk_qos.reset_mock()
-        with mock.patch.object(storwize_svc.StorwizeSVCDriver,
+        with mock.patch.object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
                                '_get_vdisk_params') as get_vdisk_params:
             # If qos is empty for source and speficied for target volume,
             # add_vdisk_qos will be called for retype, and disable_vdisk_qos
@@ -2892,7 +3360,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
 
         self.driver.create_volume(volume)
         update_vdisk_qos.reset_mock()
-        with mock.patch.object(storwize_svc.StorwizeSVCDriver,
+        with mock.patch.object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
                                '_get_vdisk_params') as get_vdisk_params:
             # If qos is empty for target volume and specified for source
             # volume, add_vdisk_qos will not be called for retype, and
@@ -2976,7 +3444,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
         fake_opts_qos = self._get_default_opts()
         fake_opts_qos['qos'] = {'IOThrottling': 5000}
         self.driver.create_volume(volume)
-        with mock.patch.object(storwize_svc.StorwizeSVCDriver,
+        with mock.patch.object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
                                '_get_vdisk_params') as get_vdisk_params:
             # If qos is empty for both the source and target volumes,
             # add_vdisk_qos and disable_vdisk_qos will not be called for
@@ -2989,7 +3457,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
 
         self.driver.create_volume(volume)
         update_vdisk_qos.reset_mock()
-        with mock.patch.object(storwize_svc.StorwizeSVCDriver,
+        with mock.patch.object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
                                '_get_vdisk_params') as get_vdisk_params:
             # If qos is specified for both source and target volumes,
             # add_vdisk_qos will be called for retype, and disable_vdisk_qos
@@ -3003,7 +3471,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
 
         self.driver.create_volume(volume)
         update_vdisk_qos.reset_mock()
-        with mock.patch.object(storwize_svc.StorwizeSVCDriver,
+        with mock.patch.object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
                                '_get_vdisk_params') as get_vdisk_params:
             # If qos is empty for source and speficied for target volume,
             # add_vdisk_qos will be called for retype, and disable_vdisk_qos
@@ -3017,7 +3485,7 @@ class StorwizeSVCDriverTestCase(test.TestCase):
 
         self.driver.create_volume(volume)
         update_vdisk_qos.reset_mock()
-        with mock.patch.object(storwize_svc.StorwizeSVCDriver,
+        with mock.patch.object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
                                '_get_vdisk_params') as get_vdisk_params:
             # If qos is empty for target volume and specified for source
             # volume, add_vdisk_qos will not be called for retype, and
@@ -3087,123 +3555,6 @@ class StorwizeSVCDriverTestCase(test.TestCase):
             self.assertIn(volume['id'], self.driver._vdiskcopyops)
             self.driver.delete_volume(volume)
             self.assertNotIn(volume['id'], self.driver._vdiskcopyops)
-
-    def test_storwize_get_host_with_fc_connection(self):
-        # Create a FC host
-        del self._connector['initiator']
-        helper = self.driver._helpers
-        host_name = helper.create_host(self._connector)
-
-        # Remove the first wwpn from connector, and then try get host
-        wwpns = self._connector['wwpns']
-        wwpns.remove(wwpns[0])
-        host_name = helper.get_host_from_connector(self._connector)
-
-        self.assertIsNotNone(host_name)
-
-    def test_storwize_initiator_multiple_wwpns_connected(self):
-
-        # Generate us a test volume
-        volume = self._create_volume()
-
-        # Fibre Channel volume type
-        extra_spec = {'capabilities:storage_protocol': '<in> FC'}
-        vol_type = volume_types.create(self.ctxt, 'FC', extra_spec)
-
-        volume['volume_type_id'] = vol_type['id']
-
-        # Make sure that the volumes have been created
-        self._assert_vol_exists(volume['name'], True)
-
-        # Set up one WWPN that won't match and one that will.
-        self.driver._state['storage_nodes']['1']['WWPN'] = ['123456789ABCDEF0',
-                                                            'AABBCCDDEEFF0010']
-
-        wwpns = ['ff00000000000000', 'ff00000000000001']
-        connector = {'host': 'storwize-svc-test', 'wwpns': wwpns}
-
-        with mock.patch.object(storwize_svc_common.StorwizeHelpers,
-                               'get_conn_fc_wwpns') as get_mappings:
-            mapped_wwpns = ['AABBCCDDEEFF0001', 'AABBCCDDEEFF0002',
-                            'AABBCCDDEEFF0010', 'AABBCCDDEEFF0012']
-            get_mappings.return_value = mapped_wwpns
-
-            # Initialize the connection
-            init_ret = self.driver.initialize_connection(volume, connector)
-
-            # Make sure we return all wwpns which where mapped as part of the
-            # connection
-            self.assertEqual(mapped_wwpns,
-                             init_ret['data']['target_wwn'])
-
-    def test_storwize_terminate_connection(self):
-        # create a FC volume
-        volume_fc = self._create_volume()
-        extra_spec = {'capabilities:storage_protocol': '<in> FC'}
-        vol_type_fc = volume_types.create(self.ctxt, 'FC', extra_spec)
-        volume_fc['volume_type_id'] = vol_type_fc['id']
-
-        # create a iSCSI volume
-        volume_iSCSI = self._create_volume()
-        extra_spec = {'capabilities:storage_protocol': '<in> iSCSI'}
-        vol_type_iSCSI = volume_types.create(self.ctxt, 'iSCSI', extra_spec)
-        volume_iSCSI['volume_type_id'] = vol_type_iSCSI['id']
-
-        connector = {'host': 'storwize-svc-host',
-                     'wwnns': ['20000090fa17311e', '20000090fa17311f'],
-                     'wwpns': ['ff00000000000000', 'ff00000000000001'],
-                     'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
-
-        self.driver.initialize_connection(volume_fc, connector)
-        self.driver.initialize_connection(volume_iSCSI, connector)
-        self.driver.terminate_connection(volume_iSCSI, connector)
-        self.driver.terminate_connection(volume_fc, connector)
-
-    def test_storwize_initiator_target_map(self):
-        # Generate us a test volume
-        volume = self._create_volume()
-
-        # FIbre Channel volume type
-        extra_spec = {'capabilities:storage_protocol': '<in> FC'}
-        vol_type = volume_types.create(self.ctxt, 'FC', extra_spec)
-
-        volume['volume_type_id'] = vol_type['id']
-
-        # Make sure that the volumes have been created
-        self._assert_vol_exists(volume['name'], True)
-
-        wwpns = ['ff00000000000000', 'ff00000000000001']
-        connector = {'host': 'storwize-svc-test', 'wwpns': wwpns}
-
-        # Initialise the connection
-        init_ret = self.driver.initialize_connection(volume, connector)
-
-        # Check that the initiator_target_map is as expected
-        init_data = {'driver_volume_type': 'fibre_channel',
-                     'data': {'initiator_target_map':
-                              {'ff00000000000000': ['AABBCCDDEEFF0011'],
-                               'ff00000000000001': ['AABBCCDDEEFF0011']},
-                              'target_discovered': False,
-                              'target_lun': 0,
-                              'target_wwn': ['AABBCCDDEEFF0011'],
-                              'volume_id': volume['id']
-                              }
-                     }
-
-        self.assertEqual(init_data, init_ret)
-
-        # Terminate connection
-        term_ret = self.driver.terminate_connection(volume, connector)
-
-        # Check that the initiator_target_map is as expected
-        term_data = {'driver_volume_type': 'fibre_channel',
-                     'data': {'initiator_target_map':
-                              {'ff00000000000000': ['AABBCCDDEEFF0011'],
-                               'ff00000000000001': ['AABBCCDDEEFF0011']}
-                              }
-                     }
-
-        self.assertEqual(term_data, term_ret)
 
     def test_storwize_create_volume_with_replication_disable(self):
         volume = self._generate_vol_info(None, None)
