@@ -1,0 +1,3 @@
+---
+fixes:
+  - upload-to-image using Image API v2 now correctly handles custom image properties.

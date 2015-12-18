@@ -665,6 +665,52 @@ class TestGlanceImageService(test.TestCase):
 
         self.assertEqual(expected, actual)
 
+    def test_translate_to_glance(self):
+        self.flags(glance_api_version=1)
+        client = glance_stubs.StubGlanceClient()
+        service = self._create_image_service(client)
+
+        metadata = {
+            'id': 1,
+            'size': 2,
+            'min_disk': 2,
+            'min_ram': 2,
+            'properties': {'kernel_id': 'foo',
+                           'ramdisk_id': 'bar',
+                           'x_billinginfo': '123'},
+        }
+
+        actual = service._translate_to_glance(metadata)
+        expected = metadata
+        self.assertEqual(expected, actual)
+
+    def test_translate_to_glance_v2(self):
+        self.flags(glance_api_version=2)
+        client = glance_stubs.StubGlanceClient()
+        service = self._create_image_service(client)
+
+        metadata = {
+            'id': 1,
+            'size': 2,
+            'min_disk': 2,
+            'min_ram': 2,
+            'properties': {'kernel_id': 'foo',
+                           'ramdisk_id': 'bar',
+                           'x_billinginfo': '123'},
+        }
+
+        actual = service._translate_to_glance(metadata)
+        expected = {
+            'id': 1,
+            'size': 2,
+            'min_disk': 2,
+            'min_ram': 2,
+            'kernel_id': 'foo',
+            'ramdisk_id': 'bar',
+            'x_billinginfo': '123',
+        }
+        self.assertEqual(expected, actual)
+
 
 class TestGlanceClientVersion(test.TestCase):
     """Tests the version of the glance client generated."""
