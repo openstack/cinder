@@ -1,0 +1,3 @@
+---
+features:
+  - Added unmanaged v2 replication support to the HPE 3PAR driver.
