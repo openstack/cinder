@@ -34,6 +34,7 @@ from cinder.common import config as cinder_common_config
 import cinder.compute
 from cinder.compute import nova as cinder_compute_nova
 from cinder import context as cinder_context
+from cinder import coordination as cinder_coordination
 from cinder.db import api as cinder_db_api
 from cinder.db import base as cinder_db_base
 from cinder import exception as cinder_exception
@@ -331,6 +332,10 @@ def list_opts():
             itertools.chain(
                 cinder_zonemanager_drivers_brocade_brcdfabricopts.
                 brcd_zone_opts,
+            )),
+        ('COORDINATION',
+            itertools.chain(
+                cinder_coordination.coordination_opts,
             )),
         ('BACKEND',
             itertools.chain(

@@ -702,6 +702,14 @@ class EvaluatorParseException(Exception):
     message = _("Error during evaluator parsing: %(reason)s")
 
 
+class LockCreationFailed(CinderException):
+    message = _('Unable to create lock. Coordination backend not started.')
+
+
+class LockingFailed(CinderException):
+    message = _('Lock acquisition failed.')
+
+
 UnsupportedObjectError = obj_exc.UnsupportedObjectError
 OrphanedObjectError = obj_exc.OrphanedObjectError
 IncompatibleObjectVersion = obj_exc.IncompatibleObjectVersion
