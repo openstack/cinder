@@ -134,7 +134,7 @@ class ZFSSANFSDriver(nfs.NfsDriver):
         self.zfssa = factory_zfssa()
         self.zfssa.set_host(host, timeout=lcfg.zfssa_rest_timeout)
 
-        auth_str = base64.encode_as_text('%s:%s' % (user, password))[:-1]
+        auth_str = base64.encode_as_text('%s:%s' % (user, password))
         self.zfssa.login(auth_str)
 
         self.zfssa.create_project(lcfg.zfssa_nfs_pool, lcfg.zfssa_nfs_project,
