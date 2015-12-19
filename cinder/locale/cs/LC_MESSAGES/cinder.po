@@ -9,10 +9,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev82\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev107\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-16 06:24+0000\n"
-"PO-Revision-Date: 2015-12-15 08:32+0000\n"
+"POT-Creation-Date: 2015-12-19 06:26+0000\n"
+"PO-Revision-Date: 2015-12-18 10:27+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language: cs\n"
 "Language-Team: Czech\n"
@@ -1371,6 +1371,9 @@ msgstr "Převedeno na prosté, ale formát je nyní %s"
 #, python-format
 msgid "Converted to raw, but format is now %s."
 msgstr "Převedeno na prostý, ale formát je nyní %s."
+
+msgid "Coordinator uninitialized."
+msgstr "Koordinátor nezaveden."
 
 #, python-format
 msgid ""
@@ -4723,6 +4726,9 @@ msgstr "Cesta odkazu již existuje a není to symbolický odkaz."
 msgid "Linked clone of source volume not supported in state: %s."
 msgstr "Propojený klon zdrojového svazku není podporován ve stavu: %s."
 
+msgid "Lock acquisition failed."
+msgstr "Získání zámku selhalo."
+
 #, python-format
 msgid "Login error, reason is: %s."
 msgstr "Chyba přihlášení, důvod: %s."
@@ -5372,6 +5378,10 @@ msgstr "V úložišti Cloudbyte nebyly nalezeny žádné svazky."
 
 msgid "No weighed hosts available"
 msgstr "Žádní vážení hostitelé nejsou dostupní"
+
+#, python-format
+msgid "Not a valid string: %s"
+msgstr "%s není platný řetězec."
 
 msgid "Not a valid value for NaElement."
 msgstr "Neplatná hodnota pro NaElement."
@@ -6451,9 +6461,6 @@ msgstr "Dodatečná specifikace %s je neplatná."
 msgid "The extraspec: %(extraspec)s is not valid."
 msgstr "Dodatečná specifikace: %(extraspec)s není platná."
 
-msgid "The failed-over volume could not be deleted."
-msgstr "Záložní svazek nelze smazat."
-
 msgid "The failover array cannot be the primary array."
 msgstr "Záložní pole nemůže být hlavní."
 
@@ -6938,6 +6945,9 @@ msgstr "Nelze vytvořit klienta Barbican bez id projektu."
 msgid "Unable to create consistency group %s"
 msgstr "Nelze vytvořit skupinu jednotnosti %s"
 
+msgid "Unable to create lock. Coordination backend not started."
+msgstr "Nelze vytvořit zámek. Podpůrná vrstva koordinátora nebyla spuštěna."
+
 #, python-format
 msgid ""
 "Unable to create or get default storage group for FAST policy: "
@@ -7323,13 +7333,6 @@ msgstr "Neznámý směr řazení, musí být buď 'desc' nebo 'asc'."
 
 msgid "Unmanage volume not implemented."
 msgstr "Zrušení správy svazku není zavedeno."
-
-msgid ""
-"Unmanaged replication is not supported at this time. Please configure cinder."
-"conf for managed replication."
-msgstr ""
-"Nespravovaná replikace není v současnosti podporována. Prosím nastavte "
-"spravovanou replikaci v cinder.conf."
 
 #, python-format
 msgid "Unrecognized QOS keyword: \"%s\""

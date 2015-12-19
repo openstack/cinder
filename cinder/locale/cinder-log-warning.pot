@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev82\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev107\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-16 06:24+0000\n"
+"POT-Creation-Date: 2015-12-19 06:26+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,8 +17,13 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.1.1\n"
 
-#: cinder/context.py:203
+#: cinder/context.py:204
 msgid "Unable to get internal tenant context: Missing required config parameters."
+msgstr ""
+
+#: cinder/coordination.py:171
+#, python-format
+msgid "Reconnect attempt %(attempt)s failed. Next try in %(backoff).2fs."
 msgstr ""
 
 #: cinder/quota_utils.py:56
@@ -95,14 +100,14 @@ msgid ""
 "resource"
 msgstr ""
 
-#: cinder/backup/api.py:185
+#: cinder/backup/api.py:190
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create %(s_size)sG backup "
 "(%(d_consumed)dG of %(d_quota)dG already consumed)"
 msgstr ""
 
-#: cinder/backup/api.py:197
+#: cinder/backup/api.py:202
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create backups (%(d_consumed)d "
@@ -798,40 +803,40 @@ msgstr ""
 msgid "Volume: %(volumeName)s is not currently belonging to any storage group."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:1483
+#: cinder/volume/drivers/emc/emc_vmax_common.py:1484
 #, python-format
 msgid ""
 "Volume is masked but not to host %(host)s as expected. Returning empty "
 "dictionary."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:2169
+#: cinder/volume/drivers/emc/emc_vmax_common.py:2170
 #, python-format
 msgid ""
 "Pre check for deletion. Volume: %(volumeName)s is part of a storage "
 "group. Attempting removal from %(storageGroupInstanceNames)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:3035
+#: cinder/volume/drivers/emc/emc_vmax_common.py:3049
 #, python-format
 msgid "Volume : %(volumeName)s is not currently belonging to any storage group."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:3308
+#: cinder/volume/drivers/emc/emc_vmax_common.py:3322
 #, python-format
 msgid ""
 "The volume: %(volumename)s. was not first part of the default storage "
 "group for FAST policy %(fastPolicyName)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:3749
+#: cinder/volume/drivers/emc/emc_vmax_common.py:3763
 #, python-format
 msgid ""
 "Clone failed on V3. Cleaning up the target volume. Clone name: "
 "%(cloneName)s "
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_common.py:3960
+#: cinder/volume/drivers/emc/emc_vmax_common.py:3974
 #, python-format
 msgid "FAST is enabled. Policy: %(fastPolicyName)s."
 msgstr ""
@@ -845,7 +850,7 @@ msgstr ""
 msgid "Unable to get storage tiers from tier policy rule."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_fc.py:237
+#: cinder/volume/drivers/emc/emc_vmax_fc.py:240
 #, python-format
 msgid "Volume %(volume)s is not in any masking view."
 msgstr ""
@@ -901,7 +906,7 @@ msgstr ""
 msgid "No port group found in masking view %(mv)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_provision_v3.py:624
+#: cinder/volume/drivers/emc/emc_vmax_provision_v3.py:633
 #, python-format
 msgid ""
 "Remaining capacity %(remainingCapacityGb)s GBs is determined from SRP "
@@ -1335,48 +1340,48 @@ msgstr ""
 msgid "terminate_conn: provider location empty."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:392
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:409
 #, python-format
 msgid ""
 "srstatld requires WSAPI version '%(srstatld_version)s' version "
 "'%(version)s' is installed."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:516
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:528
 #, python-format
 msgid "Virtual Volume Set '%s' doesn't exist on array."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:628
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:2197
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:640
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:2212
 #, python-format
 msgid "Delete Snapshot id not found. Removing from cinder: %(id)s Ex: %(msg)s"
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:729
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:741
 #: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:958
 #, python-format
 msgid "Failed to manage virtual volume %(disp)s due to error during retype."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:1183
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:1198
 #, python-format
 msgid "3PAR vlun for volume %(name)s not found on host %(host)s"
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:1474
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:1489
 msgid ""
 "'hpe3par:cpg' is not supported as an extra spec in a volume type.  CPG's "
 "are chosen by the cinder scheduler, as a pool, from the cinder.conf entry"
 " 'hpe3par_cpg', which can be a list of CPGs."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:1814
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:1829
 #, python-format
 msgid "Delete volume id not found. Removing from cinder: %(id)s Ex: %(msg)s"
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:2736
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:2751
 msgid ""
 "The primary array is currently unreachable. All targets returned from "
 "list_replication_targets are pulled directly from cinder.conf and are not"
@@ -1384,7 +1389,7 @@ msgid ""
 "primary array."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:2804
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:2813
 #, python-format
 msgid ""
 "The target array and all of its secondary arrays must be on the same API "
@@ -1393,65 +1398,66 @@ msgid ""
 "replication target."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:2815
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:2824
 #, python-format
 msgid ""
 "'%s' is not a valid replication array. In order to be valid, "
 "target_device_id, replication_mode, hpe3par_api_url, hpe3par_username, "
-"hpe3par_password, cpg_map, and must be specified. If the target is "
-"managed, managed_backend_name must be set as well."
+"hpe3par_password, cpg_map, san_ip, san_login, and san_password must be "
+"specified. If the target is managed, managed_backend_name must be set as "
+"well."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_fc.py:118
-#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:129
+#: cinder/volume/drivers/hpe/hpe_3par_fc.py:119
+#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:130
 msgid ""
 "The primary array is not reachable at this time. Since replication is "
 "enabled, listing replication targets and failing over a volume can still "
 "be performed."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:197
+#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:199
 #, python-format
 msgid "Invalid IP address format '%s'"
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:230
+#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:231
 #, python-format
 msgid ""
 "Found invalid iSCSI IP address(s) in configuration option(s) "
 "hpe3par_iscsi_ips or iscsi_ip_address '%s.'"
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:363
+#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:374
 #, python-format
 msgid ""
 "iSCSI IP: '%s' was not found in hpe3par_iscsi_ips list defined in "
 "cinder.conf."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:401
+#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:412
 msgid "Least busy iSCSI port not found, using first iSCSI port in list."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:554
+#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:565
 msgid ""
 "Host exists without CHAP credentials set and has iSCSI attachments but "
 "CHAP is enabled. Updating host with new CHAP credentials."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:586
+#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:597
 msgid "Host has no CHAP key, but CHAP is enabled."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:590
+#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:601
 msgid "No host or VLUNs exist. Generating new CHAP key."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:619
+#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:630
 msgid "Non-iSCSI VLUN detected."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:623
+#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:634
 msgid "No VLUN contained CHAP credentials. Generating new CHAP key."
 msgstr ""
 

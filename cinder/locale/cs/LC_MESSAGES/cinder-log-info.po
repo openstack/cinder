@@ -7,10 +7,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev82\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev107\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-16 06:24+0000\n"
-"PO-Revision-Date: 2015-12-15 08:33+0000\n"
+"POT-Creation-Date: 2015-12-19 06:26+0000\n"
+"PO-Revision-Date: 2015-12-18 10:33+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language-Team: Czech\n"
 "Language: cs\n"
@@ -484,6 +484,9 @@ msgid ""
 msgstr ""
 "Převádění %(volume_name)s na mělké poskytování pomocí uživatele společné "
 "skupiny poskytování %(new_cpg)s"
+
+msgid "Coordination backend started successfully."
+msgstr "Podpůrná vrstva pro koordinaci byla úspěšně spuštěna."
 
 #, python-format
 msgid "Copied image %(img)s to volume %(vol)s using copy offload workflow."
@@ -1732,6 +1735,12 @@ msgstr ""
 #, python-format
 msgid "Re-using existing purity host %(host_name)r"
 msgstr "Znovu používání existujícího hostitele Purity %(host_name)r"
+
+msgid "Reconnected to coordination backend."
+msgstr "Znovu připojeno k podpůrné vrstvě pro koordinaci."
+
+msgid "Reconnecting to coordination backend."
+msgstr "Znovu připojování k podpůrné vrstvě pro koordinaci."
 
 #, python-format
 msgid "Registering image in cache %s"

@@ -8,10 +8,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev67\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev107\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-15 06:26+0000\n"
-"PO-Revision-Date: 2015-12-14 02:23+0000\n"
+"POT-Creation-Date: 2015-12-19 06:26+0000\n"
+"PO-Revision-Date: 2015-12-18 10:28+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language-Team: Czech\n"
 "Language: cs\n"
@@ -362,6 +362,10 @@ msgstr "Chyba při připojení k Flexvisor: %s."
 #, python-format
 msgid "Connect to Flexvisor failed: %s."
 msgstr "Připojení k Flexvisor selhalo: %s."
+
+msgid "Connection error while sending a heartbeat to coordination backend."
+msgstr ""
+"Chyba připojení při odesílání informací o aktivitě do vrstvy pro koordinaci."
 
 #, python-format
 msgid "Connection to %s failed and no secondary!"
@@ -1086,9 +1090,15 @@ msgstr ""
 "Chyba při plánování %(volume_id)s z poslední služby svazku: %(last_host)s : "
 "%(exc)s"
 
+msgid "Error sending a heartbeat to coordination backend."
+msgstr "Chyba při odesílání informací o aktivitě do vrstvy pro koordinaci."
+
 #, python-format
 msgid "Error setting Flash Cache policy to %s - exception"
 msgstr "Chyba při nastavování zásady mezipaměti Flash na %s - došlo k výjimce"
+
+msgid "Error starting coordination backend."
+msgstr "Chyba při spouštění podpůrné vrstvy pro koordinaci."
 
 msgid "Error storing key."
 msgstr "Chyba při ukládání klíče."
