@@ -7,10 +7,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev87\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev107\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-17 06:23+0000\n"
-"PO-Revision-Date: 2015-12-16 02:59+0000\n"
+"POT-Creation-Date: 2015-12-19 06:26+0000\n"
+"PO-Revision-Date: 2015-12-18 10:35+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language-Team: Czech\n"
 "Language: cs\n"
@@ -36,18 +36,6 @@ msgstr "%s již je připojeno"
 #, python-format
 msgid "%s not found!"
 msgstr "%s nenalezeno!"
-
-#, python-format
-msgid ""
-"'%s' is not a valid replication array. In order to be valid, "
-"target_device_id, replication_mode, hpe3par_api_url, hpe3par_username, "
-"hpe3par_password, cpg_map, and must be specified. If the target is managed, "
-"managed_backend_name must be set as well."
-msgstr ""
-"'%s' není platné pole replikace. Aby bylo platné, je třeba zadat "
-"target_device_id, replication_mode, hpe3par_api_url, hpe3par_username, "
-"hpe3par_password, cpg_map. Pokud cíl je spravován, musí být také zadáno "
-"managed_backend_name."
 
 msgid ""
 "'hpe3par:cpg' is not supported as an extra spec in a volume type.  CPG's are "
@@ -1155,6 +1143,11 @@ msgid ""
 msgstr ""
 "Obraz RBD zálohy %(backup)s svazku %(volume)s nenalezen. Mazání popisných "
 "dat zálohy."
+
+#, python-format
+msgid "Reconnect attempt %(attempt)s failed. Next try in %(backoff).2fs."
+msgstr ""
+"Pokus o znovu připojení %(attempt)s selhal. Další pokus za %(backoff).2fs."
 
 #, python-format
 msgid "Registration of image volume URI %(uri)s to image %(image_id)s failed."
