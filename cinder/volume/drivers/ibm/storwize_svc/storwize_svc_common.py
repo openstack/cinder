@@ -1209,6 +1209,59 @@ class StorwizeHelpers(object):
             return mapping_ready
         self._wait_for_a_condition(prepare_fc_consistgrp_success, timeout)
 
+    def create_cg_from_source(self, group, fc_consistgrp,
+                              sources, targets, state,
+                              config, timeout):
+        """Create consistence group from source"""
+        LOG.debug('Enter: create_cg_from_source: cg %(cg)s'
+                  ' source %(source)s, target %(target)s',
+                  {'cg': fc_consistgrp, 'source': sources, 'target': targets})
+        model_update = {'status': 'available'}
+        ctxt = context.get_admin_context()
+        try:
+            for source, target in zip(sources, targets):
+                opts = self.get_vdisk_params(config, state,
+                                             source['volume_type_id'])
+                self.create_flashcopy_to_consistgrp(source['name'],
+                                                    target['name'],
+                                                    fc_consistgrp,
+                                                    config, opts,
+                                                    True)
+            self.prepare_fc_consistgrp(fc_consistgrp, timeout)
+            self.start_fc_consistgrp(fc_consistgrp)
+            self.delete_fc_consistgrp(fc_consistgrp)
+            volumes_model_update = self._get_volume_model_updates(
+                ctxt, targets, group['id'], model_update['status'])
+        except exception.VolumeBackendAPIException as err:
+            model_update['status'] = 'error'
+            volumes_model_update = self._get_volume_model_updates(
+                ctxt, targets, group['id'], model_update['status'])
+            with excutils.save_and_reraise_exception():
+                # Release cg
+                self.delete_fc_consistgrp(fc_consistgrp)
+                LOG.error(_LE("Failed to create CG from CGsnapshot. "
+                              "Exception: %s"), err)
+            return model_update, volumes_model_update
+
+        LOG.debug('Leave: create_cg_from_source.')
+        return model_update, volumes_model_update
+
+    def _get_volume_model_updates(self, ctxt, volumes, cgId,
+                                  status='available'):
+        """Update the volume model's status and return it."""
+        volume_model_updates = []
+        LOG.info(_LI(
+            "Updating status for CG: %(id)s."),
+            {'id': cgId})
+        if volumes:
+            for volume in volumes:
+                volume_model_updates.append({'id': volume['id'],
+                                             'status': status})
+        else:
+            LOG.info(_LI("No volume found for CG: %(cg)s."),
+                     {'cg': cgId})
+        return volume_model_updates
+
     def run_flashcopy(self, source, target, timeout, copy_rate,
                       full_copy=True):
         """Create a FlashCopy mapping from the source to the target."""
@@ -2297,6 +2350,56 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                               "Exception: %(exception)s."),
                           {'vol': volume['name'], 'exception': err})
         return model_update, volumes
+
+    def update_consistencygroup(self, ctxt, group, add_volumes,
+                                remove_volumes):
+        """Adds or removes volume(s) to/from an existing consistency group."""
+
+        LOG.debug("Updating consistency group.")
+        return None, None, None
+
+    def create_consistencygroup_from_src(self, context, group, volumes,
+                                         cgsnapshot=None, snapshots=None,
+                                         source_cg=None, source_vols=None):
+        """Creates a consistencygroup from source.
+
+        :param context: the context of the caller.
+        :param group: the dictionary of the consistency group to be created.
+        :param volumes: a list of volume dictionaries in the group.
+        :param cgsnapshot: the dictionary of the cgsnapshot as source.
+        :param snapshots: a list of snapshot dictionaries in the cgsnapshot.
+        :param source_cg: the dictionary of a consistency group as source.
+        :param source_vols: a list of volume dictionaries in the source_cg.
+        :return model_update, volumes_model_update
+        """
+        LOG.debug('Enter: create_consistencygroup_from_src.')
+        if cgsnapshot and snapshots:
+            cg_name = 'cg-' + cgsnapshot.id
+            sources = snapshots
+
+        elif source_cg and source_vols:
+            cg_name = 'cg-' + source_cg.id
+            sources = source_vols
+
+        else:
+            error_msg = _("create_consistencygroup_from_src must be "
+                          "creating from a CG snapshot, or a source CG.")
+            raise exception.InvalidInput(reason=error_msg)
+
+        LOG.debug('create_consistencygroup_from_src: cg_name %(cg_name)s'
+                  ' %(sources)s', {'cg_name': cg_name, 'sources': sources})
+        self._helpers.create_fc_consistgrp(cg_name)
+        timeout = self.configuration.storwize_svc_flashcopy_timeout
+        model_update, snapshots_model = (
+            self._helpers.create_cg_from_source(group,
+                                                cg_name,
+                                                sources,
+                                                volumes,
+                                                self._state,
+                                                self.configuration,
+                                                timeout))
+        LOG.debug("Leave: create_consistencygroup_from_src.")
+        return model_update, snapshots_model
 
     def create_cgsnapshot(self, ctxt, cgsnapshot, snapshots):
         """Creates a cgsnapshot."""
