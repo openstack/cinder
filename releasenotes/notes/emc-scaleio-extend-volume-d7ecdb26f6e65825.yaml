@@ -1,0 +1,6 @@
+---
+fixes:
+  - ScaleIO volumes need to be sized in increments of
+    8G. Handling added to volume extend operations to
+    ensure the new size is rounded up to the nearest
+    size when needed.

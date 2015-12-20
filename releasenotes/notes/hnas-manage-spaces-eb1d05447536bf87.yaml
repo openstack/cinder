@@ -1,0 +1,3 @@
+---
+fixes:
+  - Allow spaces when managing existing volumes with the HNAS iSCSI driver.

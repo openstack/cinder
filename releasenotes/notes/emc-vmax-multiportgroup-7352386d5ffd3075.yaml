@@ -1,0 +1,4 @@
+---
+fixes:
+  - Removed restriction of hard coded iSCSI IP address to allow
+    the use of multiple iSCSI portgroups.

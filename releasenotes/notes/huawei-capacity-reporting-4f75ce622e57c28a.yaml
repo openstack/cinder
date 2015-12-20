@@ -1,0 +1,3 @@
+---
+fixes:
+  - Capacity reporting fixed with Huawei backend drivers.

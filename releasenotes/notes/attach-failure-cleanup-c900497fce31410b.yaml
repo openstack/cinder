@@ -1,0 +1,4 @@
+---
+fixes:
+  - If device attachment failed it could leave the volume partially
+    attached. Cinder now tries to clean up on failure.

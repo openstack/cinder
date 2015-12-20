@@ -1,0 +1,4 @@
+---
+fixes:
+  - Fixed issue with error being raised when performing a delete
+    quota operation in a subproject.

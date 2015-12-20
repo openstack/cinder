@@ -1,0 +1,4 @@
+---
+fixes:
+  - Fixed issue with the EMC ScaleIO driver not able to identify
+    a volume after a migration is performed.
