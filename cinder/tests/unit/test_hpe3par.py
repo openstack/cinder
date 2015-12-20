@@ -5211,9 +5211,15 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
         config.goodness_function = GOODNESS_FUNCTION
         mock_client = self.setup_driver(config=config)
         mock_client.getCPG.return_value = self.cpgs[0]
+        # Purposely left out the Priority Optimization license in
+        # getStorageSystemInfo to test that QoS_support returns False.
         mock_client.getStorageSystemInfo.return_value = {
             'id': self.CLIENT_ID,
-            'serialNumber': '1234'
+            'serialNumber': '1234',
+            'licenseInfo': {
+                'licenses': [{'name': 'Remote Copy'},
+                             {'name': 'Thin Provisioning (102400G)'}]
+            }
         }
 
         # cpg has no limit
@@ -5243,6 +5249,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
             self.assertEqual('FC', stats['storage_protocol'])
             self.assertTrue(stats['pools'][0]['thin_provisioning_support'])
             self.assertTrue(stats['pools'][0]['thick_provisioning_support'])
+            self.assertFalse(stats['pools'][0]['QoS_support'])
             self.assertEqual(86.0,
                              stats['pools'][0]['provisioned_capacity_gb'])
             self.assertEqual(24.0, stats['pools'][0]['total_capacity_gb'])
@@ -5285,6 +5292,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
             self.assertEqual('FC', stats['storage_protocol'])
             self.assertTrue(stats['pools'][0]['thin_provisioning_support'])
             self.assertTrue(stats['pools'][0]['thick_provisioning_support'])
+            self.assertFalse(stats['pools'][0]['QoS_support'])
             self.assertEqual(86.0,
                              stats['pools'][0]['provisioned_capacity_gb'])
             self.assertEqual(24.0, stats['pools'][0]['total_capacity_gb'])
@@ -5316,6 +5324,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
             self.assertEqual('FC', stats['storage_protocol'])
             self.assertTrue(stats['pools'][0]['thin_provisioning_support'])
             self.assertTrue(stats['pools'][0]['thick_provisioning_support'])
+            self.assertFalse(stats['pools'][0]['QoS_support'])
             total_capacity_gb = 8192 * const
             self.assertEqual(total_capacity_gb,
                              stats['pools'][0]['total_capacity_gb'])
@@ -5364,9 +5373,16 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
         config.goodness_function = GOODNESS_FUNCTION
         mock_client = self.setup_driver(config=config, wsapi_version=wsapi)
         mock_client.getCPG.return_value = self.cpgs[0]
+        # Purposely left out the Thin Provisioning license in
+        # getStorageSystemInfo to test that thin_provisioning_support returns
+        # False.
         mock_client.getStorageSystemInfo.return_value = {
             'id': self.CLIENT_ID,
-            'serialNumber': '1234'
+            'serialNumber': '1234',
+            'licenseInfo': {
+                'licenses': [{'name': 'Remote Copy'},
+                             {'name': 'Priority Optimization'}]
+            }
         }
 
         # cpg has no limit
@@ -5383,6 +5399,8 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
 
             stats = self.driver.get_volume_stats(True)
             self.assertEqual('FC', stats['storage_protocol'])
+            self.assertFalse(stats['pools'][0]['thin_provisioning_support'])
+            self.assertTrue(stats['pools'][0]['QoS_support'])
             self.assertEqual(24.0, stats['pools'][0]['total_capacity_gb'])
             self.assertEqual(3.0, stats['pools'][0]['free_capacity_gb'])
             self.assertEqual(87.5, stats['pools'][0]['capacity_utilization'])
