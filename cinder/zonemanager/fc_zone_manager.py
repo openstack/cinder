@@ -81,7 +81,7 @@ class ZoneManager(fc_common.FCCommon):
 
     def __new__(class_, *args, **kwargs):
         if not hasattr(class_, "_instance"):
-            class_._instance = object.__new__(class_, *args, **kwargs)
+            class_._instance = object.__new__(class_)
         return class_._instance
 
     def __init__(self, **kwargs):

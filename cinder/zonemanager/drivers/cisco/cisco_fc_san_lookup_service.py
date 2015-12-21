@@ -137,10 +137,10 @@ class CiscoFCSanLookupService(fc_service.FCSanLookupService):
                           formatted_initiator_list)
                 LOG.debug("Lookup service:target list from caller-%s",
                           formatted_target_list)
-                visible_targets = filter(lambda x: x in formatted_target_list,
-                                         nsinfo)
-                visible_initiators = filter(lambda x: x in
-                                            formatted_initiator_list, nsinfo)
+                visible_targets = [x for x in nsinfo
+                                   if x in formatted_target_list]
+                visible_initiators = [x for x in nsinfo
+                                      if x in formatted_initiator_list]
 
                 if visible_targets:
                     LOG.debug("Filtered targets is: %s", visible_targets)
