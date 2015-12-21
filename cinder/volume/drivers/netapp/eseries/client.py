@@ -731,17 +731,44 @@ class RestClient(WebserviceClient):
         path = ('/key-values/%s' % key)
         self._invoke('POST', path, json.dumps(data))
 
-    def get_firmware_version(self):
-        """Get firmware version information from the array."""
-        return self.list_storage_system()['fwVersion']
-
     def set_counter(self, key, value):
         path = ('/counters/%s/setCounter?value=%d' % (key, value))
         self._invoke('POST', path)
 
-    def _get_controllers(self):
-        """Get controller information from the array."""
-        return self.list_hardware_inventory()['controllers']
+    def get_asup_info(self):
+        """Returns a dictionary of relevant autosupport information.
+
+        Currently returned fields are:
+        model -- E-series model name
+        serial_numbers -- Serial number for each controller
+        firmware_version -- Version of active firmware
+        chassis_sn -- Serial number for whole chassis
+        """
+        asup_info = {}
+
+        controllers = self.list_hardware_inventory().get('controllers')
+        if controllers:
+            asup_info['model'] = controllers[0].get('modelName', 'unknown')
+            serial_numbers = [value['serialNumber'].rstrip()
+                              for __, value in enumerate(controllers)]
+            serial_numbers.sort()
+            for index, value in enumerate(serial_numbers):
+                if not value:
+                    serial_numbers[index] = 'unknown'
+            asup_info['serial_numbers'] = serial_numbers
+        else:
+            asup_info['model'] = 'unknown'
+            asup_info['serial_numbers'] = ['unknown', 'unknown']
+
+        system_info = self.list_storage_system()
+        if system_info:
+            asup_info['firmware_version'] = system_info['fwVersion']
+            asup_info['chassis_sn'] = system_info['chassisSerialNumber']
+        else:
+            asup_info['firmware_version'] = 'unknown'
+            asup_info['chassis_sn'] = 'unknown'
+
+        return asup_info
 
     def get_eseries_api_info(self, verify=False):
         """Get E-Series API information from the array."""
@@ -759,23 +786,3 @@ class RestClient(WebserviceClient):
         if mode_is_proxy:
             api_operating_mode = 'proxy'
         return api_operating_mode, about_response_dict['version']
-
-    def get_serial_numbers(self):
-        """Get the list of Serial Numbers from the array."""
-        controllers = self._get_controllers()
-        if not controllers:
-            return ['unknown', 'unknown']
-        serial_numbers = [value['serialNumber'].rstrip()
-                          for _, value in enumerate(controllers)]
-        serial_numbers.sort()
-        for index, value in enumerate(serial_numbers):
-            if not value:
-                serial_numbers[index] = 'unknown'
-        return serial_numbers
-
-    def get_model_name(self):
-        """Get Model Name from the array."""
-        controllers = self._get_controllers()
-        if not controllers:
-            return 'unknown'
-        return controllers[0].get('modelName', 'unknown')

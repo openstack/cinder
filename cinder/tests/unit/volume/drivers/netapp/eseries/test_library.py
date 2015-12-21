@@ -950,16 +950,8 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
             eseries_fake.FAKE_ASUP_DATA['operating-mode'])
         self.library._app_version = eseries_fake.FAKE_APP_VERSION
         self.mock_object(
-            self.library._client, 'get_firmware_version',
-            mock.Mock(return_value=(
-                eseries_fake.FAKE_ASUP_DATA['system-version'])))
-        self.mock_object(
-            self.library._client, 'get_serial_numbers',
-            mock.Mock(return_value=eseries_fake.FAKE_SERIAL_NUMBERS))
-        self.mock_object(
-            self.library._client, 'get_model_name',
-            mock.Mock(
-                return_value=eseries_fake.FAKE_CONTROLLERS[0]['modelName']))
+            self.library._client, 'get_asup_info',
+            mock.Mock(return_value=eseries_fake.GET_ASUP_RETURN))
         self.mock_object(
             self.library._client, 'set_counter',
             mock.Mock(return_value={'value': 1}))
