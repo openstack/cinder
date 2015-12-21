@@ -38,7 +38,7 @@ from cinder.volume import utils as volume_utils
 from cinder.zonemanager import utils as fczm_utils
 
 try:
-    import purestorage
+    from purestorage import purestorage
 except ImportError:
     purestorage = None
 
