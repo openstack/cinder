@@ -53,12 +53,3 @@ def upgrade(migrate_engine):
     except Exception:
         meta.drop_all(tables=[volume_glance_metadata])
         raise
-
-
-def downgrade(migrate_engine):
-    meta = MetaData()
-    meta.bind = migrate_engine
-
-    volume_glance_metadata = Table('volume_glance_metadata',
-                                   meta, autoload=True)
-    volume_glance_metadata.drop()

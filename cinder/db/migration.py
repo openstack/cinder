@@ -24,6 +24,9 @@ from oslo_db import options
 from stevedore import driver
 
 from cinder.db.sqlalchemy import api as db_api
+from cinder import exception
+from cinder.i18n import _
+
 
 INIT_VERSION = 000
 
@@ -55,6 +58,15 @@ def db_sync(version=None, init_version=INIT_VERSION, engine=None):
 
     if engine is None:
         engine = db_api.get_engine()
+
+    current_db_version = get_backend().db_version(engine,
+                                                  MIGRATE_REPO_PATH,
+                                                  init_version)
+
+    # TODO(e0ne): drop version validation when new oslo.db will be released
+    if version and int(version) < current_db_version:
+        msg = _('Database schema downgrade is not allowed.')
+        raise exception.InvalidInput(reason=msg)
     return get_backend().db_sync(engine=engine,
                                  abs_path=MIGRATE_REPO_PATH,
                                  version=version,

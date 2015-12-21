@@ -35,12 +35,3 @@ def upgrade(migrate_engine):
     )
 
     image_volume_cache.create()
-
-
-def downgrade(migrate_engine):
-    meta = MetaData()
-    meta.bind = migrate_engine
-    table_name = 'image_volume_cache_entries'
-    image_volume_cache = Table(table_name, meta, autoload=True)
-
-    image_volume_cache.drop()

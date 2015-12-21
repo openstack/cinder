@@ -36,14 +36,3 @@ def upgrade(migrate_engine):
                   reservations.c.deleted, reservations.c.expire)
 
     index.create(migrate_engine)
-
-
-def downgrade(migrate_engine):
-    meta = MetaData()
-    meta.bind = migrate_engine
-
-    reservations = Table('reservations', meta, autoload=True)
-
-    index = _get_deleted_expire_index(reservations)
-    if index:
-        index.drop(migrate_engine)

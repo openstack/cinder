@@ -37,12 +37,3 @@ def upgrade(migrate_engine):
     )
 
     volume_admin_metadata.create()
-
-
-def downgrade(migrate_engine):
-    meta = MetaData()
-    meta.bind = migrate_engine
-    volume_admin_metadata = Table('volume_admin_metadata',
-                                  meta,
-                                  autoload=True)
-    volume_admin_metadata.drop()

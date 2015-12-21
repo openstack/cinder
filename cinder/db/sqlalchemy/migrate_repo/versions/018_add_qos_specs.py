@@ -16,7 +16,6 @@
 
 from sqlalchemy import Boolean, Column, DateTime
 from sqlalchemy import ForeignKey, MetaData, String, Table
-from migrate import ForeignKeyConstraint
 
 
 def upgrade(migrate_engine):
@@ -47,30 +46,3 @@ def upgrade(migrate_engine):
 
     volume_types.create_column(qos_specs_id)
     volume_types.update().values(qos_specs_id=None).execute()
-
-
-def downgrade(migrate_engine):
-    """Remove volume_type_rate_limit table."""
-    meta = MetaData()
-    meta.bind = migrate_engine
-
-    qos_specs = Table('quality_of_service_specs', meta, autoload=True)
-
-    if migrate_engine.name == 'mysql':
-        # NOTE(alanmeadows): MySQL Cannot drop column qos_specs_id
-        # until the foreign key volumes_types_ibfk_1 is removed.  We
-        # remove the foreign key first, and then we drop the column.
-        table = Table('volume_types', meta, autoload=True)
-        ref_table = Table('volume_types', meta, autoload=True)
-        params = {'columns': [table.c['qos_specs_id']],
-                  'refcolumns': [ref_table.c['id']],
-                  'name': 'volume_types_ibfk_1'}
-
-        fkey = ForeignKeyConstraint(**params)
-        fkey.drop()
-
-    volume_types = Table('volume_types', meta, autoload=True)
-    qos_specs_id = Column('qos_specs_id', String(36))
-
-    volume_types.drop_column(qos_specs_id)
-    qos_specs.drop()

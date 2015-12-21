@@ -24,14 +24,3 @@ def upgrade(migrate_engine):
 
     consistencygroups.create_column(cgsnapshot_id)
     consistencygroups.update().values(cgsnapshot_id=None).execute()
-
-
-def downgrade(migrate_engine):
-    """Remove cgsnapshot_id column from consistencygroups."""
-    meta = MetaData()
-    meta.bind = migrate_engine
-
-    consistencygroups = Table('consistencygroups', meta, autoload=True)
-    cgsnapshot_id = consistencygroups.columns.cgsnapshot_id
-
-    consistencygroups.drop_column(cgsnapshot_id)

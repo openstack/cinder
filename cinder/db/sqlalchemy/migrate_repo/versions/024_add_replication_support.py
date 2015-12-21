@@ -32,16 +32,3 @@ def upgrade(migrate_engine):
     volumes.update().values(replication_status='disabled',
                             replication_extended_status=None,
                             replication_driver_data=None).execute()
-
-
-def downgrade(migrate_engine):
-    meta = MetaData()
-    meta.bind = migrate_engine
-
-    volumes = Table('volumes', meta, autoload=True)
-    replication_status = volumes.columns.replication_status
-    replication_extended_status = volumes.columns.replication_extended_status
-    replication_driver_data = volumes.columns.replication_driver_data
-    volumes.drop_column(replication_status)
-    volumes.drop_column(replication_extended_status)
-    volumes.drop_column(replication_driver_data)

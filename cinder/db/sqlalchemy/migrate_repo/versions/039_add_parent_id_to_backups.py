@@ -26,13 +26,3 @@ def upgrade(migrate_engine):
 
     backups.create_column(parent_id)
     backups.update().values(parent_id=None).execute()
-
-
-def downgrade(migrate_engine):
-    meta = MetaData()
-    meta.bind = migrate_engine
-
-    backups = Table('backups', meta, autoload=True)
-    parent_id = backups.columns.parent_id
-
-    backups.drop_column(parent_id)

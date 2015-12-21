@@ -38,10 +38,10 @@ class ExceptionTestCase(test.TestCase):
 
 class ProjectTestCase(test.TestCase):
     def test_all_migrations_have_downgrade(self):
-        topdir = os.path.normpath(os.path.dirname(__file__) + '/../../')
+        topdir = os.path.normpath(os.path.dirname(__file__) + '/../../../')
         py_glob = os.path.join(topdir, "cinder", "db", "sqlalchemy",
                                "migrate_repo", "versions", "*.py")
-        missing_downgrade = []
+        downgrades = []
         for path in glob.iglob(py_glob):
             has_upgrade = False
             has_downgrade = False
@@ -52,10 +52,11 @@ class ProjectTestCase(test.TestCase):
                     if 'def downgrade(' in line:
                         has_downgrade = True
 
-                if has_upgrade and not has_downgrade:
+                if has_upgrade and has_downgrade:
                     fname = os.path.basename(path)
-                    missing_downgrade.append(fname)
+                    downgrades.append(fname)
 
-        helpful_msg = (_("The following migrations are missing a downgrade:"
-                         "\n\t%s") % '\n\t'.join(sorted(missing_downgrade)))
-        self.assertFalse(missing_downgrade, msg=helpful_msg)
+        helpful_msg = (_("The following migrations have a downgrade, "
+                         "which are not allowed: "
+                         "\n\t%s") % '\n\t'.join(sorted(downgrades)))
+        self.assertFalse(downgrades, msg=helpful_msg)

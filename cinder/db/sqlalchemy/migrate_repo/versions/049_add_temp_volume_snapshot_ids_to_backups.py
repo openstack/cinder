@@ -29,15 +29,3 @@ def upgrade(migrate_engine):
 
     backups.create_column(temp_snapshot_id)
     backups.update().values(temp_snapshot_id=None).execute()
-
-
-def downgrade(migrate_engine):
-    meta = MetaData()
-    meta.bind = migrate_engine
-
-    backups = Table('backups', meta, autoload=True)
-    temp_volume_id = backups.columns.temp_volume_id
-    temp_snapshot_id = backups.columns.temp_snapshot_id
-
-    backups.drop_column(temp_volume_id)
-    backups.drop_column(temp_snapshot_id)

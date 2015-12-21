@@ -23,13 +23,3 @@ def upgrade(migrate_engine):
     provider_id = Column('provider_id', String(255))
     snapshots.create_column(provider_id)
     snapshots.update().values(provider_id=None).execute()
-
-
-def downgrade(migrate_engine):
-    """Remove provider_id column from snapshots."""
-    meta = MetaData()
-    meta.bind = migrate_engine
-
-    snapshots = Table('snapshots', meta, autoload=True)
-    provider_id = snapshots.columns.provider_id
-    snapshots.drop_column(provider_id)

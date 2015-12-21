@@ -62,27 +62,6 @@ def upgrade(migrate_engine):
         pkey.create()
 
 
-def downgrade(migrate_engine):
-    meta = MetaData()
-    meta.bind = migrate_engine
-
-    encryptions = Table('encryption', meta, autoload=True)
-    encryption_id_pk = PrimaryKeyConstraint(encryptions.columns.encryption_id)
-
-    encryption_id_pk.drop()
-    encryptions.drop_column(encryptions.columns.encryption_id)
-
-    volume_type_pk = PrimaryKeyConstraint(encryptions.columns.volume_type_id)
-    volume_type_pk.create()
-
-    ref_table = Table('volume_types', meta, autoload=True)
-    params = {'columns': [encryptions.c['volume_type_id']],
-              'refcolumns': [ref_table.c['id']],
-              'name': 'encryption_ibfk_1'}
-    volume_type_fk = ForeignKeyConstraint(**params)
-    volume_type_fk.create()
-
-
 def _upgrade_sqlite(meta, encryptions):
     new_encryptions = Table(
         'encryption_33', meta,

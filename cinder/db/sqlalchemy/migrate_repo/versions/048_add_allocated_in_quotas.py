@@ -23,12 +23,3 @@ def upgrade(migrate_engine):
     # Add a new column allocated to save allocated quota
     allocated = Column('allocated', Integer, default=0)
     quotas.create_column(allocated)
-
-
-def downgrade(migrate_engine):
-    """Remove allocated column from quotas."""
-    meta = MetaData()
-    meta.bind = migrate_engine
-
-    quotas = Table('quotas', meta, autoload=True)
-    quotas.drop_column('allocated')

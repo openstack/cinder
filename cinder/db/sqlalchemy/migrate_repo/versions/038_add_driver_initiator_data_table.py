@@ -34,11 +34,3 @@ def upgrade(migrate_engine):
     )
 
     initiator_data.create()
-
-
-def downgrade(migrate_engine):
-    meta = MetaData()
-    meta.bind = migrate_engine
-    table_name = 'driver_initiator_data'
-    initiator_data = Table(table_name, meta, autoload=True)
-    initiator_data.drop()
