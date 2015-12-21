@@ -191,7 +191,26 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
                 LOG.exception(_LE('Error cloning snapshot'))
 
     def create_cloned_volume(self, volume, src_vref):
-        raise NotImplemented
+        number = self._new_nbd_number(volume)
+        vol_url = (self.bucket_url + '/objects/' +
+                   src_vref['name'] + '/clone')
+        clone_body = {
+            'tenant_name': self.tenant,
+            'bucket_name': self.bucket,
+            'object_name': volume['name']
+        }
+        try:
+            self.restapi.post(vol_url, clone_body)
+            self.restapi.post('nbd', {
+                'objectPath': self.bucket_path + '/' + volume['name'],
+                'volSizeMB': int(src_vref['size']) * units.Ki,
+                'blockSize': self.blocksize,
+                'chunkSize': self.chunksize,
+                'number': number
+            })
+        except exception.VolumeBackendAPIException:
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_LE('Error creating cloned volume'))
 
     def migrate_volume(self, ctxt, volume, host, thin=False, mirror_count=0):
         raise NotImplemented
