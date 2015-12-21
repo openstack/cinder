@@ -40,130 +40,144 @@ FAKE_ERROR_RETURN = ("FAKE ERROR", 255)
 VERSION = emc_vnx_cli.EMCVnxCliBase.VERSION
 
 
+def build_provider_location(lun_id, lun_type, base_lun_name=None, system=None):
+    pl_dict = {'system': 'FNM11111' if system is None else system,
+               'type': six.text_type(lun_type),
+               'id': six.text_type(lun_id),
+               'base_lun_name': six.text_type(base_lun_name),
+               'version': VERSION}
+    return '|'.join([k + '^' + pl_dict[k] for k in pl_dict])
+
+
+def build_migration_dest_name(src_name):
+    return src_name + '_dest'
+
+
 class EMCVNXCLIDriverTestData(object):
 
+    base_lun_name = 'volume-1'
     test_volume = {
         'status': 'creating',
-        'name': 'vol1',
+        'name': 'volume-1',
         'size': 1,
-        'volume_name': 'vol1',
+        'volume_name': 'volume-1',
         'id': '1',
         'provider_auth': None,
         'host': "host@backendsec#unit_test_pool",
         'project_id': 'project',
-        'provider_location': 'system^FNM11111|type^lun|id^1|version^05.03.00',
-        'display_name': 'vol1',
+        'provider_location': build_provider_location(1, 'lun', base_lun_name),
+        'display_name': 'volume-1',
         'display_description': 'test volume',
         'volume_type_id': None,
         'consistencygroup_id': None
     }
 
     test_legacy_volume = {
-        'name': 'vol1',
+        'name': 'volume-1',
         'size': 1,
-        'volume_name': 'vol1',
+        'volume_name': 'volume-1',
         'id': '1',
         'provider_auth': None,
         'host': "host@backendsec#unit_test_pool",
         'project_id': 'project',
         'provider_location': 'system^FNM11111|type^lun|id^1',
-        'display_name': 'vol1',
+        'display_name': 'volume-1',
         'display_description': 'test volume',
         'volume_type_id': None,
         'consistencygroup_id': None
     }
 
     test_volume_clone_cg = {
-        'name': 'vol1',
+        'name': 'volume-1',
         'size': 1,
-        'volume_name': 'vol1',
+        'volume_name': 'volume-1',
         'id': '1',
         'provider_auth': None,
         'host': "host@backendsec#unit_test_pool",
         'project_id': 'project',
-        'display_name': 'vol1',
+        'display_name': 'volume-1',
         'display_description': 'test volume',
         'volume_type_id': None,
         'consistencygroup_id': None,
-        'provider_location': 'system^FNM11111|type^lun|id^1',
+        'provider_location': build_provider_location(1, 'lun', base_lun_name),
     }
 
     test_volume_cg = {
-        'name': 'vol1',
+        'name': 'volume-1',
         'size': 1,
-        'volume_name': 'vol1',
+        'volume_name': 'volume-1',
         'id': '1',
         'provider_auth': None,
         'host': "host@backendsec#unit_test_pool",
         'project_id': 'project',
-        'display_name': 'vol1',
+        'display_name': 'volume-1',
         'display_description': 'test volume',
         'volume_type_id': None,
-        'consistencygroup_id': 'cg_id'
+        'consistencygroup_id': 'cg_id',
+        'provider_location': build_provider_location(1, 'lun', base_lun_name),
     }
 
     test_volume_rw = {
-        'name': 'vol1',
+        'name': 'volume-1',
         'size': 1,
-        'volume_name': 'vol1',
+        'volume_name': 'volume-1',
         'id': '1',
         'provider_auth': None,
         'host': "host@backendsec#unit_test_pool",
         'project_id': 'project',
-        'display_name': 'vol1',
+        'display_name': 'volume-1',
         'display_description': 'test volume',
         'volume_type_id': None,
         'consistencygroup_id': None,
-        'provider_location': 'system^FNM11111|type^lun|id^1|version^05.03.00',
+        'provider_location': build_provider_location(1, 'lun', base_lun_name),
     }
 
     test_volume2 = {
-        'name': 'vol2',
+        'name': 'volume-2',
         'size': 1,
-        'volume_name': 'vol2',
-        'id': '1',
+        'volume_name': 'volume-2',
+        'id': '2',
         'provider_auth': None,
         'host': "host@backendsec#unit_test_pool",
         'project_id': 'project',
-        'display_name': 'vol2',
+        'display_name': 'volume-2',
         'consistencygroup_id': None,
         'display_description': 'test volume',
         'volume_type_id': None,
-        'provider_location': 'system^FNM11111|type^lun|id^1|version^05.03.00',
-        'metadata': {'key': 'lun_type', 'value': 'lun'}}
+        'provider_location': build_provider_location(1, 'lun', 'volume-2')}
 
     volume_in_cg = {
-        'name': 'vol2',
+        'name': 'volume-2',
         'size': 1,
-        'volume_name': 'vol2',
-        'id': '1',
+        'volume_name': 'volume-2',
+        'id': '2',
         'provider_auth': None,
         'host': "host@backendsec#unit_test_pool",
         'project_id': 'project',
-        'display_name': 'vol1_in_cg',
-        'provider_location': 'system^FNM11111|type^lun|id^1',
+        'display_name': 'volume-1_in_cg',
         'consistencygroup_id': 'consistencygroup_id',
         'display_description': 'test volume',
+        'provider_location': build_provider_location(1, 'lun', 'volume-2'),
         'volume_type_id': None}
 
     volume2_in_cg = {
-        'name': 'vol2',
+        'name': 'volume-3',
         'size': 1,
-        'volume_name': 'vol2',
+        'volume_name': 'volume-3',
         'id': '3',
         'provider_auth': None,
         'project_id': 'project',
-        'display_name': 'vol2_in_cg',
-        'provider_location': 'system^FNM11111|type^lun|id^3',
+        'display_name': 'volume-3_in_cg',
+        'provider_location': build_provider_location(3, 'lun', 'volume-3'),
         'consistencygroup_id': 'consistencygroup_id',
         'display_description': 'test volume',
         'volume_type_id': None}
 
     test_volume_with_type = {
-        'name': 'vol_with_type',
+        'name': 'volume-1',
         'size': 1,
-        'volume_name': 'vol_with_type',
-        'id': '1',
+        'volume_name': 'volume-1',
+        'id': 1,
         'provider_auth': None,
         'host': "host@backendsec#unit_test_pool",
         'project_id': 'project',
@@ -171,12 +185,13 @@ class EMCVNXCLIDriverTestData(object):
         'consistencygroup_id': None,
         'display_description': 'vol with type',
         'volume_type_id': 'abc1-2320-9013-8813-8941-1374-8112-1231',
-        'provider_location': 'system^FNM11111|type^lun|id^1'}
+        'provider_location': build_provider_location(1, 'smp', 'volume-1'),
+        'volume_metadata': [{'key': 'snapcopy', 'value': 'True'}]}
 
     test_failed_volume = {
-        'name': 'failed_vol1',
+        'name': 'volume-4',
         'size': 1,
-        'volume_name': 'failed_vol1',
+        'volume_name': 'volume-4',
         'id': '4',
         'provider_auth': None,
         'host': "host@backendsec#unit_test_pool",
@@ -187,9 +202,9 @@ class EMCVNXCLIDriverTestData(object):
         'volume_type_id': None}
 
     test_volume1_in_sg = {
-        'name': 'vol1_in_sg',
+        'name': 'volume-4',
         'size': 1,
-        'volume_name': 'vol1_in_sg',
+        'volume_name': 'volume-4',
         'id': '4',
         'provider_auth': None,
         'host': "host@backendsec#unit_test_pool",
@@ -197,12 +212,13 @@ class EMCVNXCLIDriverTestData(object):
         'display_name': 'failed_vol',
         'display_description': 'Volume 1 in SG',
         'volume_type_id': None,
-        'provider_location': 'system^fakesn|type^lun|id^4|version^05.03.00'}
+        'provider_location':
+            build_provider_location(4, 'lun', 'volume-4', 'fakesn')}
 
     test_volume2_in_sg = {
-        'name': 'vol2_in_sg',
+        'name': 'volume-5',
         'size': 1,
-        'volume_name': 'vol2_in_sg',
+        'volume_name': 'volume-5',
         'id': '5',
         'provider_auth': None,
         'host': "host@backendsec#unit_test_pool",
@@ -210,62 +226,63 @@ class EMCVNXCLIDriverTestData(object):
         'display_name': 'failed_vol',
         'display_description': 'Volume 2 in SG',
         'volume_type_id': None,
-        'provider_location': 'system^fakesn|type^lun|id^3|version^05.03.00'}
+        'provider_location':
+            build_provider_location(3, 'lun', 'volume-5', 'fakesn')}
 
     test_snapshot = {
-        'name': 'snapshot1',
+        'name': 'snapshot-4444',
         'size': 1,
         'id': '4444',
-        'volume_name': 'vol1',
+        'volume_name': test_volume['name'],
         'volume': test_volume,
         'volume_size': 1,
         'consistencygroup_id': None,
         'cgsnapshot_id': None,
         'project_id': 'project'}
-    test_failed_snapshot = {
-        'name': 'failed_snapshot',
+
+    test_snapshot1 = {
+        'name': 'snapshot-5555',
         'size': 1,
         'id': '5555',
-        'volume_name': 'vol-vol1',
+        'volume_name': test_volume['name'],
         'volume': test_volume,
         'volume_size': 1,
         'project_id': 'project'}
+
     test_clone = {
-        'name': 'clone1',
+        'name': 'volume-2',
         'size': 1,
         'id': '2',
-        'volume_name': 'vol1',
+        'volume_name': 'volume-2',
         'provider_auth': None,
         'host': "host@backendsec#unit_test_pool",
         'project_id': 'project',
-        'display_name': 'clone1',
+        'display_name': 'volume-2',
         'consistencygroup_id': None,
         'display_description': 'volume created from snapshot',
         'volume_type_id': '19fdd0dd-03b3-4d7c-b541-f4df46f308c8',
-        'provider_location': 'system^fakesn|type^lun|id^2|version^05.03.00'}
+        'provider_location': None,
+        'volume_metadata': [{'key': 'snapcopy', 'value': 'True'}]}
+
     test_clone_cg = {
-        'name': 'clone1',
+        'name': 'volume-2',
         'size': 1,
         'id': '2',
-        'volume_name': 'vol1',
+        'volume_name': 'volume-2',
         'provider_auth': None,
         'host': "host@backendsec#unit_test_pool",
         'project_id': 'project',
-        'display_name': 'clone1',
+        'display_name': 'volume-2',
         'consistencygroup_id': 'consistencygroup_id',
         'display_description': 'volume created from snapshot',
         'volume_type_id': None,
-        'provider_location': 'system^fakesn|type^lun|id^2|version^05.03.00'}
-    connector = {
-        'ip': '10.0.0.2',
-        'initiator': 'iqn.1993-08.org.debian:01:222',
-        'wwpns': ["1234567890123456", "1234567890543216"],
-        'wwnns': ["2234567890123456", "2234567890543216"],
-        'host': 'fakehost'}
+        'provider_location':
+            build_provider_location(2, 'lun', 'volume-2', 'fakesn')}
+
     test_volume3 = {
         'migration_status': None, 'availability_zone': 'nova',
-        'id': '1181d1b2-cea3-4f55-8fa8-3360d026ce24',
-        'name': 'vol3',
+        'id': '3',
+        'name': 'volume-3',
         'size': 2,
         'status': 'available',
         'volume_type_id':
@@ -278,8 +295,43 @@ class EMCVNXCLIDriverTestData(object):
         'volume_type': [],
         'volume_attachment': [],
         'provider_location':
-        'system^FNM11111|type^lun|id^1|version^05.03.00',
+        build_provider_location(1, 'lun', 'volume-3'),
         '_name_id': None, 'metadata': {}}
+
+    test_volume4 = {'migration_status': None, 'availability_zone': 'nova',
+                    'id': '4',
+                    'name': 'volume-4',
+                    'size': 2,
+                    'status': 'available',
+                    'volume_type_id':
+                    '19fdd0dd-03b3-4d7c-b541-f4df46f308c8',
+                    'deleted': False, 'provider_location':
+                    build_provider_location(4, 'lun', 'volume-4'),
+                    'host': 'ubuntu-server12@array_backend_1',
+                    'source_volid': None, 'provider_auth': None,
+                    'display_name': 'vol-test02',
+                    'volume_attachment': [],
+                    'attach_status': 'detached',
+                    'volume_type': [],
+                    '_name_id': None, 'metadata': {}}
+
+    test_volume5 = {'migration_status': None, 'availability_zone': 'nova',
+                    'id': '5',
+                    'name_id': '1181d1b2-cea3-4f55-8fa8-3360d026ce25',
+                    'name': 'volume-5',
+                    'size': 1,
+                    'status': 'available',
+                    'volume_type_id':
+                    '19fdd0dd-03b3-4d7c-b541-f4df46f308c8',
+                    'deleted': False, 'provider_location':
+                    build_provider_location(5, 'lun', 'volume-5'),
+                    'host': 'ubuntu-server12@array_backend_1#unit_test_pool',
+                    'source_volid': None, 'provider_auth': None,
+                    'display_name': 'vol-test05',
+                    'volume_attachment': [],
+                    'attach_status': 'detached',
+                    'volume_type': [],
+                    '_name_id': None, 'metadata': {}}
 
     test_new_type = {'name': 'voltype0', 'qos_specs_id': None,
                      'deleted': False,
@@ -297,40 +349,12 @@ class EMCVNXCLIDriverTestData(object):
                   'volume_backend_name': 'pool_backend_1',
                   'storage_protocol': 'iSCSI'}}
 
-    test_volume4 = {'migration_status': None, 'availability_zone': 'nova',
-                    'id': '1181d1b2-cea3-4f55-8fa8-3360d026ce24',
-                    'name': 'vol4',
-                    'size': 2,
-                    'status': 'available',
-                    'volume_type_id':
-                    '19fdd0dd-03b3-4d7c-b541-f4df46f308c8',
-                    'deleted': False, 'provider_location':
-                    'system^FNM11111|type^lun|id^4',
-                    'host': 'ubuntu-server12@array_backend_1',
-                    'source_volid': None, 'provider_auth': None,
-                    'display_name': 'vol-test02',
-                    'volume_attachment': [],
-                    'attach_status': 'detached',
-                    'volume_type': [],
-                    '_name_id': None, 'metadata': {}}
-
-    test_volume5 = {'migration_status': None, 'availability_zone': 'nova',
-                    'id': '1181d1b2-cea3-4f55-8fa8-3360d026ce25',
-                    'name_id': '1181d1b2-cea3-4f55-8fa8-3360d026ce25',
-                    'name': 'vol5',
-                    'size': 1,
-                    'status': 'available',
-                    'volume_type_id':
-                    '19fdd0dd-03b3-4d7c-b541-f4df46f308c8',
-                    'deleted': False, 'provider_location':
-                    'system^FNM11111|type^lun|id^5|version^05.02.00',
-                    'host': 'ubuntu-server12@array_backend_1#unit_test_pool',
-                    'source_volid': None, 'provider_auth': None,
-                    'display_name': 'vol-test05',
-                    'volume_attachment': [],
-                    'attach_status': 'detached',
-                    'volume_type': [],
-                    '_name_id': None, 'metadata': {}}
+    connector = {
+        'ip': '10.0.0.2',
+        'initiator': 'iqn.1993-08.org.debian:01:222',
+        'wwpns': ["1234567890123456", "1234567890543216"],
+        'wwnns': ["2234567890123456", "2234567890543216"],
+        'host': 'fakehost'}
 
     test_new_type2 = {'name': 'voltype0', 'qos_specs_id': None,
                       'deleted': False,
@@ -364,11 +388,23 @@ class EMCVNXCLIDriverTestData(object):
         'status': 'available'}
 
     test_member_cgsnapshot = {
-        'name': 'snapshot1',
+        'name': 'snapshot-1111',
         'size': 1,
-        'id': 'cgsnapshot_id',
+        'id': '1111',
         'volume': test_volume,
-        'volume_name': 'vol1',
+        'volume_name': 'volume-1',
+        'volume_size': 1,
+        'consistencygroup_id': 'consistencygroup_id',
+        'cgsnapshot_id': 'cgsnapshot_id',
+        'project_id': 'project'
+    }
+
+    test_member_cgsnapshot2 = {
+        'name': 'snapshot-2222',
+        'size': 1,
+        'id': '2222',
+        'volume': test_volume2,
+        'volume_name': 'volume-2',
         'volume_size': 1,
         'consistencygroup_id': 'consistencygroup_id',
         'cgsnapshot_id': 'cgsnapshot_id',
@@ -377,7 +413,7 @@ class EMCVNXCLIDriverTestData(object):
 
     test_lun_id = 1
     test_existing_ref = {'source-id': test_lun_id}
-    test_existing_ref_source_name = {'source-name': 'vol1'}
+    test_existing_ref_source_name = {'source-name': 'volume-1'}
     test_pool_name = 'unit_test_pool'
     device_map = {
         '1122334455667788': {
@@ -548,11 +584,11 @@ class EMCVNXCLIDriverTestData(object):
         Attached Snapshot:  N/A
     """
 
-    def SNAP_MP_CREATE_CMD(self, name='vol1', source='vol1'):
+    def SNAP_MP_CREATE_CMD(self, name='volume-1', source='volume-1'):
         return ('lun', '-create', '-type', 'snap', '-primaryLunName',
                 source, '-name', name)
 
-    def SNAP_ATTACH_CMD(self, name='vol1', snapName='snapshot1'):
+    def SNAP_ATTACH_CMD(self, name='volume-1', snapName='snapshot-4444'):
         return ('lun', '-attach', '-name', name, '-snapName', snapName)
 
     def SNAP_DELETE_CMD(self, name):
@@ -568,7 +604,7 @@ class EMCVNXCLIDriverTestData(object):
                 '-allowAutoDelete', 'yes')
 
     def SNAP_LIST_CMD(self, res_id=1):
-        cmd = ('snap', '-list', '-res', res_id)
+        cmd = ('snap', '-list', '-res', int(res_id))
         return cmd
 
     def LUN_DELETE_CMD(self, name):
@@ -587,13 +623,13 @@ class EMCVNXCLIDriverTestData(object):
                 '-attachedSnapshot')
 
     @staticmethod
-    def LUN_RENAME_CMD(lun_id):
-        return ('lun', '-modify', '-l', lun_id,
-                '-newName', 'vol_with_type', '-o')
+    def LUN_RENAME_CMD(lun_id, lun_name):
+        return ('lun', '-modify', '-l', int(lun_id),
+                '-newName', lun_name, '-o')
 
     @staticmethod
     def LUN_LIST_ALL_CMD(lun_id):
-        return ('lun', '-list', '-l', lun_id,
+        return ('lun', '-list', '-l', int(lun_id),
                 '-attachedSnapshot', '-userCap',
                 '-dedupState', '-initialTier',
                 '-isCompressed', '-isThinLUN',
@@ -602,7 +638,7 @@ class EMCVNXCLIDriverTestData(object):
 
     @staticmethod
     def LUN_LIST_SPECS_CMD(lun_id):
-        return ('lun', '-list', '-l', lun_id,
+        return ('lun', '-list', '-l', int(lun_id),
                 '-poolName', '-isThinLUN', '-isCompressed',
                 '-dedupState', '-initialTier', '-tieringPolicy')
 
@@ -1310,6 +1346,22 @@ IP Address:  192.168.4.53
                 '-sp', sp, '-spport', spport, '-spvport', vport,
                 '-ip', ip, '-host', gname, '-o')
 
+    @staticmethod
+    def convert_snapshot(snapshot, expected_attrs=['volume']):
+        if expected_attrs:
+            snapshot = snapshot.copy()
+            snapshot['volume'] = fake_volume.fake_volume_obj(
+                None, **snapshot['volume'])
+        snap = fake_snapshot.fake_snapshot_obj(
+            None, expected_attrs=expected_attrs, **snapshot)
+        return snap
+
+    @staticmethod
+    def convert_volume(volume):
+        vol = fake_volume.fake_volume_obj(
+            None, **volume)
+        return vol
+
 
 class DriverTestCaseBase(test.TestCase):
     def setUp(self):
@@ -1340,6 +1392,7 @@ class DriverTestCaseBase(test.TestCase):
                                            'volume_backend_name':
                                            'namedbackend'}))
         self.testData = EMCVNXCLIDriverTestData()
+
         self.navisecclicmd = '/opt/Navisphere/bin/naviseccli ' + \
             '-address 10.0.0.1 -user sysadmin -password sysadmin -scope 0 '
         self.configuration.iscsi_initiators = '{"fakehost": ["10.0.0.2"]}'
@@ -1375,19 +1428,20 @@ class DriverTestCaseBase(test.TestCase):
 
     def standard_fake_command_execute(self, *args, **kwargv):
         standard_commands = [
-            self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
-            self.testData.LUN_PROPERTY_ALL_CMD('vol2'),
-            self.testData.LUN_PROPERTY_ALL_CMD('vol2_dest'),
+            self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
+            self.testData.LUN_PROPERTY_ALL_CMD('volume-2'),
+            self.testData.LUN_PROPERTY_ALL_CMD(
+                build_migration_dest_name('volume-2')),
             self.testData.LUN_PROPERTY_ALL_CMD('vol-vol1'),
-            self.testData.LUN_PROPERTY_ALL_CMD('snapshot1'),
+            self.testData.LUN_PROPERTY_ALL_CMD('snapshot-4444'),
             self.testData.POOL_PROPERTY_CMD]
 
         standard_results = [
-            self.testData.LUN_PROPERTY('vol1'),
-            self.testData.LUN_PROPERTY('vol2'),
-            self.testData.LUN_PROPERTY('vol2_dest'),
+            self.testData.LUN_PROPERTY('volume-1'),
+            self.testData.LUN_PROPERTY('volume-2'),
+            self.testData.LUN_PROPERTY(build_migration_dest_name('volume-2')),
             self.testData.LUN_PROPERTY('vol-vol1'),
-            self.testData.LUN_PROPERTY('snapshot1'),
+            self.testData.LUN_PROPERTY('snapshot-4444'),
             self.testData.POOL_PROPERTY]
 
         standard_default = SUCCEED
@@ -1429,12 +1483,12 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
         self.driver.delete_volume(self.testData.test_volume)
         expect_cmd = [
             mock.call(*self.testData.LUN_CREATION_CMD(
-                'vol1', 1,
+                'volume-1', 1,
                 'unit_test_pool',
                 'thick', None, poll=False)),
-            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
                       poll=False),
-            mock.call(*self.testData.LUN_DELETE_CMD('vol1'))]
+            mock.call(*self.testData.LUN_DELETE_CMD('volume-1'))]
 
         fake_cli.assert_has_calls(expect_cmd)
 
@@ -1447,11 +1501,11 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
         self.driver.create_volume(self.testData.test_volume)
         expect_cmd = [
             mock.call(*self.testData.LUN_CREATION_CMD(
-                'vol1', 1,
+                'volume-1', 1,
                 'unit_test_pool',
                 'thick', None,
                 ignore_thresholds=True, poll=False)),
-            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
                       poll=False)]
 
         fake_cli.assert_has_calls(expect_cmd)
@@ -1464,11 +1518,11 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
         "get_volume_type_extra_specs",
         mock.Mock(return_value={'storagetype:provisioning': 'compressed'}))
     def test_create_volume_compressed(self):
-        commands = [self.testData.LUN_PROPERTY_ALL_CMD('vol_with_type'),
-                    self.testData.LUN_PROPERTY_ALL_CMD('vol_with_type'),
+        commands = [self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
+                    self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
                     self.testData.NDU_LIST_CMD]
-        results = [self.testData.LUN_PROPERTY('vol_with_type', True),
-                   self.testData.LUN_PROPERTY('vol_with_type', True),
+        results = [self.testData.LUN_PROPERTY('volume-1', True),
+                   self.testData.LUN_PROPERTY('volume-1', True),
                    self.testData.NDU_LIST_RESULT]
         fake_cli = self.driverSetup(commands, results)
         self.driver.cli.enablers = ['-Compression',
@@ -1480,13 +1534,13 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
         # verification
         expect_cmd = [
             mock.call(*self.testData.LUN_CREATION_CMD(
-                'vol_with_type', 1,
+                'volume-1', 1,
                 'unit_test_pool',
                 'compressed', None, poll=False)),
             mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
-                'vol_with_type'), poll=False),
+                'volume-1'), poll=False),
             mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
-                'vol_with_type'), poll=True),
+                'volume-1'), poll=True),
             mock.call(*self.testData.ENABLE_COMPRESSION_CMD(
                 1))]
         fake_cli.assert_has_calls(expect_cmd)
@@ -1500,9 +1554,9 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
         mock.Mock(return_value={'provisioning:type': 'thin',
                                 'storagetype:provisioning': 'thick'}))
     def test_create_volume_thin(self):
-        commands = [self.testData.LUN_PROPERTY_ALL_CMD('vol_with_type'),
+        commands = [self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
                     self.testData.NDU_LIST_CMD]
-        results = [self.testData.LUN_PROPERTY('vol_with_type', True),
+        results = [self.testData.LUN_PROPERTY('volume-1', True),
                    self.testData.NDU_LIST_RESULT]
         fake_cli = self.driverSetup(commands, results)
         self.driver.cli.enablers = ['-Compression',
@@ -1514,11 +1568,11 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
         # verification
         expect_cmd = [
             mock.call(*self.testData.LUN_CREATION_CMD(
-                'vol_with_type', 1,
+                'volume-1', 1,
                 'unit_test_pool',
                 'thin', None, poll=False)),
             mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
-                'vol_with_type'), poll=False)]
+                'volume-1'), poll=False)]
         fake_cli.assert_has_calls(expect_cmd)
 
     @mock.patch(
@@ -1529,9 +1583,9 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
         "get_volume_type_extra_specs",
         mock.Mock(return_value={'provisioning:type': 'thick'}))
     def test_create_volume_thick(self):
-        commands = [self.testData.LUN_PROPERTY_ALL_CMD('vol_with_type'),
+        commands = [self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
                     self.testData.NDU_LIST_CMD]
-        results = [self.testData.LUN_PROPERTY('vol_with_type', False),
+        results = [self.testData.LUN_PROPERTY('volume-1', False),
                    self.testData.NDU_LIST_RESULT]
         fake_cli = self.driverSetup(commands, results)
         self.driver.cli.enablers = ['-Compression',
@@ -1543,11 +1597,11 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
         # verification
         expect_cmd = [
             mock.call(*self.testData.LUN_CREATION_CMD(
-                'vol_with_type', 1,
+                'volume-1', 1,
                 'unit_test_pool',
                 'thick', None, poll=False)),
             mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
-                'vol_with_type'), poll=False)]
+                'volume-1'), poll=False)]
         fake_cli.assert_has_calls(expect_cmd)
 
     @mock.patch(
@@ -1559,11 +1613,11 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
         mock.Mock(return_value={'storagetype:provisioning': 'compressed',
                                 'storagetype:tiering': 'HighestAvailable'}))
     def test_create_volume_compressed_tiering_highestavailable(self):
-        commands = [self.testData.LUN_PROPERTY_ALL_CMD('vol_with_type'),
-                    self.testData.LUN_PROPERTY_ALL_CMD('vol_with_type'),
+        commands = [self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
+                    self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
                     self.testData.NDU_LIST_CMD]
-        results = [self.testData.LUN_PROPERTY('vol_with_type', True),
-                   self.testData.LUN_PROPERTY('vol_with_type', True),
+        results = [self.testData.LUN_PROPERTY('volume-1', True),
+                   self.testData.LUN_PROPERTY('volume-1', True),
                    self.testData.NDU_LIST_RESULT]
         fake_cli = self.driverSetup(commands, results)
         self.driver.cli.enablers = ['-Compression',
@@ -1576,13 +1630,13 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
         # verification
         expect_cmd = [
             mock.call(*self.testData.LUN_CREATION_CMD(
-                'vol_with_type', 1,
+                'volume-1', 1,
                 'unit_test_pool',
                 'compressed', 'highestavailable', poll=False)),
             mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
-                'vol_with_type'), poll=False),
+                'volume-1'), poll=False),
             mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
-                'vol_with_type'), poll=True),
+                'volume-1'), poll=True),
             mock.call(*self.testData.ENABLE_COMPRESSION_CMD(
                 1))]
         fake_cli.assert_has_calls(expect_cmd)
@@ -1595,11 +1649,11 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
         "get_volume_type_extra_specs",
         mock.Mock(return_value={'storagetype:provisioning': 'deduplicated'}))
     def test_create_volume_deduplicated(self):
-        commands = [self.testData.LUN_PROPERTY_ALL_CMD('vol_with_type'),
-                    self.testData.LUN_PROPERTY_ALL_CMD('vol_with_type'),
+        commands = [self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
+                    self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
                     self.testData.NDU_LIST_CMD]
-        results = [self.testData.LUN_PROPERTY('vol_with_type', True),
-                   self.testData.LUN_PROPERTY('vol_with_type', True),
+        results = [self.testData.LUN_PROPERTY('volume-1', True),
+                   self.testData.LUN_PROPERTY('volume-1', True),
                    self.testData.NDU_LIST_RESULT]
         fake_cli = self.driverSetup(commands, results)
         self.driver.cli.enablers = ['-Compression',
@@ -1612,7 +1666,7 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
         # verification
         expect_cmd = [
             mock.call(*self.testData.LUN_CREATION_CMD(
-                'vol_with_type', 1,
+                'volume-1', 1,
                 'unit_test_pool',
                 'deduplicated', None, poll=False))]
         fake_cli.assert_has_calls(expect_cmd)
@@ -1625,11 +1679,11 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
         "get_volume_type_extra_specs",
         mock.Mock(return_value={'storagetype:tiering': 'Auto'}))
     def test_create_volume_tiering_auto(self):
-        commands = [self.testData.LUN_PROPERTY_ALL_CMD('vol_with_type'),
-                    self.testData.LUN_PROPERTY_ALL_CMD('vol_with_type'),
+        commands = [self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
+                    self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
                     self.testData.NDU_LIST_CMD]
-        results = [self.testData.LUN_PROPERTY('vol_with_type', True),
-                   self.testData.LUN_PROPERTY('vol_with_type', True),
+        results = [self.testData.LUN_PROPERTY('volume-1', True),
+                   self.testData.LUN_PROPERTY('volume-1', True),
                    self.testData.NDU_LIST_RESULT]
         fake_cli = self.driverSetup(commands, results)
         self.driver.cli.enablers = ['-Compression',
@@ -1642,7 +1696,7 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
         # verification
         expect_cmd = [
             mock.call(*self.testData.LUN_CREATION_CMD(
-                'vol_with_type', 1,
+                'volume-1', 1,
                 'unit_test_pool',
                 None, 'auto', poll=False))]
         fake_cli.assert_has_calls(expect_cmd)
@@ -1653,9 +1707,9 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
         mock.Mock(return_value={'storagetype:tiering': 'Auto',
                                 'storagetype:provisioning': 'Deduplicated'}))
     def test_create_volume_deduplicated_tiering_auto(self):
-        commands = [self.testData.LUN_PROPERTY_ALL_CMD('vol_with_type'),
+        commands = [self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
                     self.testData.NDU_LIST_CMD]
-        results = [self.testData.LUN_PROPERTY('vol_with_type', True),
+        results = [self.testData.LUN_PROPERTY('volume-1', True),
                    self.testData.NDU_LIST_RESULT]
         self.driverSetup(commands, results)
         ex = self.assertRaises(
@@ -1671,9 +1725,9 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
         "get_volume_type_extra_specs",
         mock.Mock(return_value={'storagetype:provisioning': 'Compressed'}))
     def test_create_volume_compressed_no_enabler(self):
-        commands = [self.testData.LUN_PROPERTY_ALL_CMD('vol_with_type'),
+        commands = [self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
                     self.testData.NDU_LIST_CMD]
-        results = [self.testData.LUN_PROPERTY('vol_with_type', True),
+        results = [self.testData.LUN_PROPERTY('volume-1', True),
                    ('No package', 0)]
         self.driverSetup(commands, results)
         ex = self.assertRaises(
@@ -1683,19 +1737,6 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
         self.assertTrue(
             re.match(r".*Compression Enabler is not installed",
                      ex.msg))
-
-    @mock.patch(
-        "cinder.volume.volume_types."
-        "get_volume_type_extra_specs",
-        mock.Mock(return_value={'copytype:snap': 'true'}))
-    def test_create_volume_snapcopy_in_cg(self):
-        self.driverSetup()
-        vol = self.testData.test_volume_with_type.copy()
-        vol['consistencygroup_id'] = '7450764f-9d24-4c70-ad46-7cd90acd4292'
-        self.assertRaises(
-            exception.VolumeBackendAPIException,
-            self.driver.create_volume,
-            vol)
 
     def test_get_volume_stats(self):
         commands = [self.testData.NDU_LIST_CMD,
@@ -2004,8 +2045,7 @@ Time Remaining:  0 second(s)
     @mock.patch(
         "cinder.volume.volume_types."
         "get_volume_type_extra_specs",
-        mock.Mock(return_value={'storagetype:tiering': 'Auto',
-                                'copytype:snap': 'true'}))
+        mock.Mock(return_value={'storagetype:tiering': 'Auto'}))
     def test_volume_migration_smp(self):
 
         commands = [self.testData.MIGRATION_CMD(),
@@ -2029,9 +2069,11 @@ Time Remaining:  0 second(s)
                                       "unit_test_pool2|fakeSerial",
                                       'storage_protocol': 'iSCSI'}}
 
-        vol = self.testData.test_volume.copy()
+        vol = EMCVNXCLIDriverTestData.convert_volume(
+            self.testData.test_volume)
         vol['provider_location'] = 'system^FNM11111|type^smp|id^1'
-        tmp_snap = "snap-as-vol-%s" % vol['id']
+        vol['volume_metadata'] = [{'key': 'snapcopy', 'value': 'True'}]
+        tmp_snap = "tmp-snap-%s" % vol['id']
         ret = self.driver.migrate_volume(None,
                                          vol,
                                          fake_host)
@@ -2057,9 +2099,11 @@ Time Remaining:  0 second(s)
         self.driver.delete_snapshot(self.testData.test_snapshot)
 
         # verification
-        expect_cmd = [mock.call(*self.testData.SNAP_CREATE_CMD('snapshot1'),
+        expect_cmd = [mock.call(*self.testData.SNAP_CREATE_CMD(
+                                'snapshot-4444'),
                                 poll=False),
-                      mock.call(*self.testData.SNAP_DELETE_CMD('snapshot1'),
+                      mock.call(*self.testData.SNAP_DELETE_CMD(
+                                'snapshot-4444'),
                                 poll=True)]
 
         fake_cli.assert_has_calls(expect_cmd)
@@ -2067,28 +2111,28 @@ Time Remaining:  0 second(s)
     @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=utils.ZeroIntervalLoopingCall)
     def test_snapshot_preparing_volume(self):
-        commands = [self.testData.SNAP_CREATE_CMD('snapshot1'),
-                    self.testData.LUN_PROPERTY_ALL_CMD('vol1')]
+        commands = [self.testData.SNAP_CREATE_CMD('snapshot-4444'),
+                    self.testData.LUN_PROPERTY_ALL_CMD('volume-1')]
         results = [[self.testData.LUN_PREP_ERROR(), SUCCEED],
-                   [self.testData.LUN_PROPERTY('vol1', size=1,
+                   [self.testData.LUN_PROPERTY('volume-1', size=1,
                                                operation='Preparing'),
-                    self.testData.LUN_PROPERTY('vol1', size=1,
+                    self.testData.LUN_PROPERTY('volume-1', size=1,
                                                operation='Optimizing'),
-                    self.testData.LUN_PROPERTY('vol1', size=1,
+                    self.testData.LUN_PROPERTY('volume-1', size=1,
                                                operation='None')]]
 
         fake_cli = self.driverSetup(commands, results)
 
         self.driver.create_snapshot(self.testData.test_snapshot)
-        expected = [mock.call(*self.testData.SNAP_CREATE_CMD('snapshot1'),
+        expected = [mock.call(*self.testData.SNAP_CREATE_CMD('snapshot-4444'),
                               poll=False),
-                    mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
+                    mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
                               poll=True),
-                    mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
+                    mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
                               poll=False),
-                    mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
+                    mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
                               poll=False),
-                    mock.call(*self.testData.SNAP_CREATE_CMD('snapshot1'),
+                    mock.call(*self.testData.SNAP_CREATE_CMD('snapshot-4444'),
                               poll=False)]
         fake_cli.assert_has_calls(expected)
 
@@ -2467,7 +2511,7 @@ Time Remaining:  0 second(s)
 
     def test_create_volume_cli_failed(self):
         commands = [self.testData.LUN_CREATION_CMD(
-            'failed_vol1', 1, 'unit_test_pool', None, None, poll=False)]
+            'volume-4', 1, 'unit_test_pool', None, None, poll=False)]
         results = [FAKE_ERROR_RETURN]
         fake_cli = self.driverSetup(commands, results)
 
@@ -2475,7 +2519,7 @@ Time Remaining:  0 second(s)
                           self.driver.create_volume,
                           self.testData.test_failed_volume)
         expect_cmd = [mock.call(*self.testData.LUN_CREATION_CMD(
-            'failed_vol1', 1, 'unit_test_pool', None, None, poll=False))]
+            'volume-4', 1, 'unit_test_pool', None, None, poll=False))]
         fake_cli.assert_has_calls(expect_cmd)
 
     @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
@@ -2530,27 +2574,34 @@ Time Remaining:  0 second(s)
                                offline_volume)
 
     def test_create_volume_snapshot_failed(self):
-        commands = [self.testData.SNAP_CREATE_CMD('failed_snapshot')]
+        test_snapshot = EMCVNXCLIDriverTestData.convert_snapshot(
+            self.testData.test_snapshot1)
+        commands = [self.testData.SNAP_CREATE_CMD(test_snapshot.name)]
         results = [FAKE_ERROR_RETURN]
         fake_cli = self.driverSetup(commands, results)
-
         # case
         self.assertRaises(exception.EMCVnxCLICmdError,
                           self.driver.create_snapshot,
-                          self.testData.test_failed_snapshot)
+                          test_snapshot)
         # verification
         expect_cmd = [
             mock.call(
-                *self.testData.SNAP_CREATE_CMD('failed_snapshot'),
+                *self.testData.SNAP_CREATE_CMD(test_snapshot.name),
                 poll=False)]
 
         fake_cli.assert_has_calls(expect_cmd)
 
     def test_create_volume_from_snapshot(self):
-        # set up
-        cmd_dest = self.testData.LUN_PROPERTY_ALL_CMD("vol2_dest")
-        cmd_dest_np = self.testData.LUN_PROPERTY_ALL_CMD("vol2_dest")
-        output_dest = self.testData.LUN_PROPERTY("vol2_dest")
+        test_snapshot = EMCVNXCLIDriverTestData.convert_snapshot(
+            self.testData.test_snapshot)
+        test_volume = EMCVNXCLIDriverTestData.convert_volume(
+            self.testData.test_volume2)
+        cmd_dest = self.testData.LUN_PROPERTY_ALL_CMD(
+            build_migration_dest_name(test_volume.name))
+        cmd_dest_np = self.testData.LUN_PROPERTY_ALL_CMD(
+            build_migration_dest_name(test_volume.name))
+        output_dest = self.testData.LUN_PROPERTY(
+            build_migration_dest_name(test_volume.name))
         cmd_migrate = self.testData.MIGRATION_CMD(1, 1)
         output_migrate = ("", 0)
         cmd_migrate_verify = self.testData.MIGRATION_VERIFY_CMD(1)
@@ -2561,24 +2612,25 @@ Time Remaining:  0 second(s)
         results = [output_dest, output_dest, output_migrate,
                    output_migrate_verify]
         fake_cli1 = self.driverSetup(commands, results)
-
-        self.driver.create_volume_from_snapshot(self.testData.test_volume2,
-                                                self.testData.test_snapshot)
+        self.driver.create_volume_from_snapshot(test_volume,
+                                                test_snapshot)
         expect_cmd1 = [
-            mock.call(
-                *self.testData.SNAP_MP_CREATE_CMD(
-                    name='vol2', source='vol1'),
-                poll=False),
-            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol2'),
+            mock.call(*self.testData.SNAP_MP_CREATE_CMD(
+                      name=test_volume.name, source=test_snapshot.volume_name),
+                      poll=False),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(test_volume.name),
                       poll=True),
             mock.call(
                 *self.testData.SNAP_ATTACH_CMD(
-                    name='vol2', snapName='snapshot1')),
+                    name=test_volume.name, snapName=test_snapshot.name)),
             mock.call(*self.testData.LUN_CREATION_CMD(
-                'vol2_dest', 1, 'unit_test_pool', None, None)),
-            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol2_dest'),
+                build_migration_dest_name(test_volume.name),
+                1, 'unit_test_pool', None, None)),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
+                      build_migration_dest_name(test_volume.name)),
                       poll=False),
-            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol2_dest'),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
+                      build_migration_dest_name(test_volume.name)),
                       poll=False),
             mock.call(*self.testData.MIGRATION_CMD(1, 1),
                       retry_disable=True,
@@ -2589,53 +2641,62 @@ Time Remaining:  0 second(s)
 
         self.configuration.ignore_pool_full_threshold = True
         fake_cli2 = self.driverSetup(commands, results)
-        self.driver.create_volume_from_snapshot(self.testData.test_volume2,
-                                                self.testData.test_snapshot)
+        self.driver.create_volume_from_snapshot(test_volume,
+                                                test_snapshot)
         expect_cmd2 = [
             mock.call(*self.testData.LUN_CREATION_CMD(
-                'vol2_dest', 1, 'unit_test_pool', None, None,
+                build_migration_dest_name(test_volume.name), 1,
+                'unit_test_pool', None, None,
                 ignore_thresholds=True))]
         fake_cli2.assert_has_calls(expect_cmd2)
 
     @mock.patch(
         "cinder.volume.volume_types."
         "get_volume_type_extra_specs",
-        mock.Mock(return_value={'copytype:snap': 'true'}))
+        mock.Mock(return_value={'provisioning:type': 'thick'}))
     def test_create_volume_from_snapshot_smp(self):
         fake_cli = self.driverSetup()
-        vol = self.driver.create_volume_from_snapshot(
-            self.testData.test_volume_with_type,
+        test_snap = EMCVNXCLIDriverTestData.convert_snapshot(
             self.testData.test_snapshot)
-        self.assertIn('type^smp', vol['provider_location'])
+        new_volume = self.testData.test_volume_with_type.copy()
+        new_volume['name_id'] = new_volume['id']
+        vol = self.driver.create_volume_from_snapshot(
+            new_volume, test_snap)
+        self.assertTrue(
+            vol['provider_location'].find('type^smp') > 0)
         expect_cmd = [
             mock.call(
                 *self.testData.SNAP_COPY_CMD(
-                    src_snap='snapshot1',
-                    snap_name='snap-as-vol-%s' % '1')),
+                    src_snap=test_snap.name,
+                    snap_name='snap-as-vol-%s' % test_snap.volume.id)),
             mock.call(
                 *self.testData.SNAP_MODIFY_CMD(
-                    name='snap-as-vol-%s' % '1',
+                    name='snap-as-vol-%s' % test_snap.volume.id,
                     rw='yes')),
             mock.call(
                 *self.testData.SNAP_MP_CREATE_CMD(
-                    name='vol_with_type', source='vol1'),
+                    name=new_volume['name'], source=test_snap.volume_name),
                 poll=False),
-            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol_with_type'),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(new_volume['name']),
                       poll=True),
             mock.call(
                 *self.testData.SNAP_ATTACH_CMD(
-                    name='vol_with_type', snapName='snap-as-vol-%s' % '1'))]
+                    name=new_volume['name'],
+                    snapName='snap-as-vol-%s' % test_snap.volume.id))]
         fake_cli.assert_has_calls(expect_cmd)
 
     @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=utils.ZeroIntervalLoopingCall)
     def test_create_volume_from_snapshot_sync_failed(self):
 
-        cmd_dest = self.testData.LUN_PROPERTY_ALL_CMD("vol2_dest")
-        cmd_dest_np = self.testData.LUN_PROPERTY_ALL_CMD("vol2_dest")
-        output_dest = self.testData.LUN_PROPERTY("vol2_dest")
+        cmd_dest = self.testData.LUN_PROPERTY_ALL_CMD(
+            build_migration_dest_name('vol2'))
+        cmd_dest_np = self.testData.LUN_PROPERTY_ALL_CMD(
+            build_migration_dest_name('vol2'))
+        output_dest = self.testData.LUN_PROPERTY(
+            build_migration_dest_name('vol2'))
         cmd_migrate = self.testData.MIGRATION_CMD(1, 1)
-        cmd_detach_lun = ('lun', '-detach', '-name', 'vol2', '-o')
+        cmd_detach_lun = ('lun', '-detach', '-name', 'volume-2', '-o')
         output_migrate = ("", 0)
         cmd_migrate_verify = self.testData.MIGRATION_VERIFY_CMD(1)
         output_migrate_verify = (r'The specified source LUN '
@@ -2650,26 +2711,31 @@ Time Remaining:  0 second(s)
                    output_migrate_cancel]
 
         fake_cli = self.driverSetup(commands, results)
-
+        new_volume = EMCVNXCLIDriverTestData.convert_volume(
+            self.testData.test_volume2)
+        src_snapshot = EMCVNXCLIDriverTestData.convert_snapshot(
+            self.testData.test_snapshot)
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_volume_from_snapshot,
-                          self.testData.test_volume2,
-                          self.testData.test_snapshot)
+                          new_volume, src_snapshot)
+
         expect_cmd = [
             mock.call(
                 *self.testData.SNAP_MP_CREATE_CMD(
-                    name='vol2', source='vol1'),
+                    name='volume-2', source='volume-1'),
                 poll=False),
-            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol2'),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('volume-2'),
                       poll=True),
             mock.call(
                 *self.testData.SNAP_ATTACH_CMD(
-                    name='vol2', snapName='snapshot1')),
+                    name='volume-2', snapName=src_snapshot.name)),
             mock.call(*self.testData.LUN_CREATION_CMD(
-                'vol2_dest', 1, 'unit_test_pool', None, None)),
-            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol2_dest'),
-                      poll=False),
-            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol2_dest'),
+                build_migration_dest_name('volume-2'), 1,
+                'unit_test_pool', None, None)),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
+                build_migration_dest_name('volume-2')), poll=False),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
+                      build_migration_dest_name('volume-2')),
                       poll=False),
             mock.call(*self.testData.MIGRATION_CMD(1, 1),
                       retry_disable=True,
@@ -2679,52 +2745,63 @@ Time Remaining:  0 second(s)
             mock.call(*self.testData.MIGRATION_CANCEL_CMD(1)),
             mock.call(*self.testData.MIGRATION_VERIFY_CMD(1),
                       poll=False),
-            mock.call(*self.testData.LUN_DELETE_CMD('vol2_dest')),
+            mock.call(*self.testData.LUN_DELETE_CMD(
+                      build_migration_dest_name('volume-2'))),
             mock.call(*cmd_detach_lun),
-            mock.call(*self.testData.LUN_DELETE_CMD('vol2'))]
+            mock.call(*self.testData.LUN_DELETE_CMD('volume-2'))]
         fake_cli.assert_has_calls(expect_cmd)
 
     def test_create_vol_from_snap_failed_in_migrate_lun(self):
-        cmd_dest = self.testData.LUN_PROPERTY_ALL_CMD("vol2_dest")
-        output_dest = self.testData.LUN_PROPERTY("vol2_dest")
+        cmd_dest = self.testData.LUN_PROPERTY_ALL_CMD(
+            build_migration_dest_name('vol2'))
+        output_dest = self.testData.LUN_PROPERTY(
+            build_migration_dest_name('vol2'))
         cmd_migrate = self.testData.MIGRATION_CMD(1, 1)
-        cmd_detach_lun = ('lun', '-detach', '-name', 'vol2', '-o')
+        cmd_detach_lun = ('lun', '-detach', '-name', 'volume-2', '-o')
         commands = [cmd_dest, cmd_migrate]
         results = [output_dest, FAKE_ERROR_RETURN]
         fake_cli = self.driverSetup(commands, results)
 
+        test_snapshot = EMCVNXCLIDriverTestData.convert_snapshot(
+            self.testData.test_snapshot)
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_volume_from_snapshot,
                           self.testData.test_volume2,
-                          self.testData.test_snapshot)
+                          test_snapshot)
         expect_cmd = [
-            mock.call(
-                *self.testData.SNAP_MP_CREATE_CMD(
-                    name='vol2', source='vol1'), poll=False),
-            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol2'), poll=True),
-            mock.call(
-                *self.testData.SNAP_ATTACH_CMD(
-                    name='vol2', snapName='snapshot1')),
+            mock.call(*self.testData.SNAP_MP_CREATE_CMD(
+                      name='volume-2', source='volume-1'), poll=False),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('volume-2'),
+                      poll=True),
+            mock.call(*self.testData.SNAP_ATTACH_CMD(
+                      name='volume-2', snapName=test_snapshot.name)),
             mock.call(*self.testData.LUN_CREATION_CMD(
-                'vol2_dest', 1, 'unit_test_pool', None, None)),
-            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol2_dest'),
+                      build_migration_dest_name('volume-2'), 1,
+                      'unit_test_pool', None, None)),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
+                      build_migration_dest_name('volume-2')),
                       poll=False),
-            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol2_dest'),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
+                      build_migration_dest_name('volume-2')),
                       poll=False),
             mock.call(*self.testData.MIGRATION_CMD(1, 1),
                       poll=True,
                       retry_disable=True),
-            mock.call(*self.testData.LUN_DELETE_CMD('vol2_dest')),
+            mock.call(*self.testData.LUN_DELETE_CMD(
+                      build_migration_dest_name('volume-2'))),
             mock.call(*cmd_detach_lun),
-            mock.call(*self.testData.LUN_DELETE_CMD('vol2'))]
+            mock.call(*self.testData.LUN_DELETE_CMD('volume-2'))]
         fake_cli.assert_has_calls(expect_cmd)
 
     def test_create_cloned_volume(self):
-        cmd_dest = self.testData.LUN_PROPERTY_ALL_CMD("clone1_dest")
-        cmd_dest_p = self.testData.LUN_PROPERTY_ALL_CMD("clone1_dest")
-        output_dest = self.testData.LUN_PROPERTY("clone1_dest")
-        cmd_clone = self.testData.LUN_PROPERTY_ALL_CMD("clone1")
-        output_clone = self.testData.LUN_PROPERTY("clone1")
+        cmd_dest = self.testData.LUN_PROPERTY_ALL_CMD(
+            build_migration_dest_name('volume-2'))
+        cmd_dest_p = self.testData.LUN_PROPERTY_ALL_CMD(
+            build_migration_dest_name('volume-2'))
+        output_dest = self.testData.LUN_PROPERTY(
+            build_migration_dest_name('volume-2'))
+        cmd_clone = self.testData.LUN_PROPERTY_ALL_CMD("volume-2")
+        output_clone = self.testData.LUN_PROPERTY("volume-2")
         cmd_migrate = self.testData.MIGRATION_CMD(1, 1)
         output_migrate = ("", 0)
         cmd_migrate_verify = self.testData.MIGRATION_VERIFY_CMD(1)
@@ -2737,27 +2814,28 @@ Time Remaining:  0 second(s)
         fake_cli = self.driverSetup(commands, results)
 
         volume = self.testData.test_volume.copy()
-        volume['name'] = 'clone1'
-
+        volume['id'] = '2'
+        volume = EMCVNXCLIDriverTestData.convert_volume(volume)
         self.driver.create_cloned_volume(volume, self.testData.test_volume)
-        tmp_snap = 'tmp-snap-' + self.testData.test_volume['id']
+        tmp_snap = 'tmp-snap-' + volume.id
         expect_cmd = [
             mock.call(
                 *self.testData.SNAP_CREATE_CMD(tmp_snap), poll=False),
             mock.call(*self.testData.SNAP_MP_CREATE_CMD(
-                name='clone1',
-                source='vol1'), poll=False),
-            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('clone1'),
+                name='volume-2',
+                source='volume-1'), poll=False),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('volume-2'),
                       poll=True),
             mock.call(
                 *self.testData.SNAP_ATTACH_CMD(
-                    name='clone1', snapName=tmp_snap)),
+                    name='volume-2', snapName=tmp_snap)),
             mock.call(*self.testData.LUN_CREATION_CMD(
-                'clone1_dest', 1, 'unit_test_pool', None, None)),
-            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('clone1_dest'),
-                      poll=False),
-            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('clone1_dest'),
-                      poll=False),
+                build_migration_dest_name('volume-2'), 1,
+                'unit_test_pool', None, None)),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
+                build_migration_dest_name('volume-2')), poll=False),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
+                build_migration_dest_name('volume-2')), poll=False),
             mock.call(*self.testData.MIGRATION_CMD(1, 1),
                       poll=True,
                       retry_disable=True),
@@ -2770,11 +2848,13 @@ Time Remaining:  0 second(s)
     @mock.patch(
         "cinder.volume.volume_types."
         "get_volume_type_extra_specs",
-        mock.Mock(return_value={'copytype:snap': 'true'}))
+        mock.Mock(return_value={'provisioning:type': 'thick'}))
     def test_create_cloned_volume_smp(self):
         fake_cli = self.driverSetup()
+        test_clone = self.testData.test_clone.copy()
+        test_clone['name_id'] = test_clone['id']
         vol = self.driver.create_cloned_volume(
-            self.testData.test_clone,
+            test_clone,
             self.testData.test_volume_with_type)
         self.assertIn('type^smp', vol['provider_location'])
         expect_cmd = [
@@ -2784,29 +2864,29 @@ Time Remaining:  0 second(s)
                 poll=False),
             mock.call(
                 *self.testData.SNAP_MP_CREATE_CMD(
-                    name='clone1', source='vol_with_type'),
+                    name='volume-2', source='volume-1'),
                 poll=False),
-            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('clone1'),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('volume-2'),
                       poll=True),
             mock.call(
                 *self.testData.SNAP_ATTACH_CMD(
-                    name='clone1', snapName='snap-as-vol-%s' % '2'))]
+                    name='volume-2', snapName='snap-as-vol-%s' % '2'))]
         fake_cli.assert_has_calls(expect_cmd)
 
     def test_delete_volume_failed(self):
-        commands = [self.testData.LUN_DELETE_CMD('failed_vol1')]
+        commands = [self.testData.LUN_DELETE_CMD('volume-4')]
         results = [FAKE_ERROR_RETURN]
         fake_cli = self.driverSetup(commands, results)
 
         self.assertRaises(exception.EMCVnxCLICmdError,
                           self.driver.delete_volume,
                           self.testData.test_failed_volume)
-        expected = [mock.call(*self.testData.LUN_DELETE_CMD('failed_vol1'))]
+        expected = [mock.call(*self.testData.LUN_DELETE_CMD('volume-4'))]
         fake_cli.assert_has_calls(expected)
 
     def test_delete_volume_in_sg_failed(self):
-        commands = [self.testData.LUN_DELETE_CMD('vol1_in_sg'),
-                    self.testData.LUN_DELETE_CMD('vol2_in_sg')]
+        commands = [self.testData.LUN_DELETE_CMD('volume-4'),
+                    self.testData.LUN_DELETE_CMD('volume-5')]
         results = [self.testData.LUN_DELETE_IN_SG_ERROR(),
                    self.testData.LUN_DELETE_IN_SG_ERROR(False)]
         self.driverSetup(commands, results)
@@ -2818,13 +2898,13 @@ Time Remaining:  0 second(s)
                           self.testData.test_volume2_in_sg)
 
     def test_delete_volume_in_sg_force(self):
-        commands = [self.testData.LUN_DELETE_CMD('vol1_in_sg'),
+        commands = [self.testData.LUN_DELETE_CMD('volume-4'),
                     self.testData.STORAGEGROUP_LIST_CMD(),
                     self.testData.STORAGEGROUP_REMOVEHLU_CMD('fakehost1',
                                                              '41'),
                     self.testData.STORAGEGROUP_REMOVEHLU_CMD('fakehost1',
                                                              '42'),
-                    self.testData.LUN_DELETE_CMD('vol2_in_sg'),
+                    self.testData.LUN_DELETE_CMD('volume-5'),
                     self.testData.STORAGEGROUP_REMOVEHLU_CMD('fakehost2',
                                                              '31'),
                     self.testData.STORAGEGROUP_REMOVEHLU_CMD('fakehost2',
@@ -2843,28 +2923,30 @@ Time Remaining:  0 second(s)
         self.driver.cli.force_delete_lun_in_sg = True
         self.driver.delete_volume(self.testData.test_volume1_in_sg)
         self.driver.delete_volume(self.testData.test_volume2_in_sg)
-        expected = [mock.call(*self.testData.LUN_DELETE_CMD('vol1_in_sg')),
+        expected = [mock.call(*self.testData.LUN_DELETE_CMD('volume-4')),
                     mock.call(*self.testData.STORAGEGROUP_LIST_CMD(),
                               poll=True),
                     mock.call(*self.testData.STORAGEGROUP_REMOVEHLU_CMD(
                         'fakehost1', '41'), poll=False),
                     mock.call(*self.testData.STORAGEGROUP_REMOVEHLU_CMD(
                         'fakehost2', '42'), poll=False),
-                    mock.call(*self.testData.LUN_DELETE_CMD('vol1_in_sg')),
-                    mock.call(*self.testData.LUN_DELETE_CMD('vol2_in_sg')),
+                    mock.call(*self.testData.LUN_DELETE_CMD('volume-4')),
+                    mock.call(*self.testData.LUN_DELETE_CMD('volume-5')),
                     mock.call(*self.testData.STORAGEGROUP_LIST_CMD(),
                               poll=True),
                     mock.call(*self.testData.STORAGEGROUP_REMOVEHLU_CMD(
                         'fakehost1', '31'), poll=False),
                     mock.call(*self.testData.STORAGEGROUP_REMOVEHLU_CMD(
                         'fakehost2', '32'), poll=False),
-                    mock.call(*self.testData.LUN_DELETE_CMD('vol2_in_sg'))]
+                    mock.call(*self.testData.LUN_DELETE_CMD('volume-5'))]
         fake_cli.assert_has_calls(expected)
 
     def test_delete_volume_smp(self):
         fake_cli = self.driverSetup()
         vol = self.testData.test_volume_with_type.copy()
+        vol['metadata'] = [{'key': 'snapcopy', 'value': 'True'}]
         vol['provider_location'] = 'system^FNM11111|type^smp|id^1'
+        vol['name_id'] = vol['id']
         tmp_snap = 'snap-as-vol-%s' % vol['id']
         self.driver.delete_volume(vol)
         expected = [mock.call(*self.testData.LUN_DELETE_CMD(vol['name'])),
@@ -2873,20 +2955,20 @@ Time Remaining:  0 second(s)
         fake_cli.assert_has_calls(expected)
 
     def test_extend_volume(self):
-        commands = [self.testData.LUN_PROPERTY_ALL_CMD('vol1')]
-        results = [self.testData.LUN_PROPERTY('vol1', size=2)]
+        commands = [self.testData.LUN_PROPERTY_ALL_CMD('volume-1')]
+        results = [self.testData.LUN_PROPERTY('volume-1', size=2)]
         fake_cli = self.driverSetup(commands, results)
 
         # case
         self.driver.extend_volume(self.testData.test_volume, 2)
-        expected = [mock.call(*self.testData.LUN_EXTEND_CMD('vol1', 2),
+        expected = [mock.call(*self.testData.LUN_EXTEND_CMD('volume-1', 2),
                               poll=False),
-                    mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
+                    mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
                               poll=False)]
         fake_cli.assert_has_calls(expected)
 
     def test_extend_volume_has_snapshot(self):
-        commands = [self.testData.LUN_EXTEND_CMD('failed_vol1', 2)]
+        commands = [self.testData.LUN_EXTEND_CMD('volume-4', 2)]
         results = [FAKE_ERROR_RETURN]
         fake_cli = self.driverSetup(commands, results)
 
@@ -2894,15 +2976,15 @@ Time Remaining:  0 second(s)
                           self.driver.extend_volume,
                           self.testData.test_failed_volume,
                           2)
-        expected = [mock.call(*self.testData.LUN_EXTEND_CMD('failed_vol1', 2),
+        expected = [mock.call(*self.testData.LUN_EXTEND_CMD('volume-4', 2),
                               poll=False)]
         fake_cli.assert_has_calls(expected)
 
     @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=utils.ZeroIntervalLoopingCall)
     def test_extend_volume_failed(self):
-        commands = [self.testData.LUN_PROPERTY_ALL_CMD('failed_vol1')]
-        results = [self.testData.LUN_PROPERTY('failed_vol1', size=2)]
+        commands = [self.testData.LUN_PROPERTY_ALL_CMD('volume-4')]
+        results = [self.testData.LUN_PROPERTY('volume-4', size=2)]
         fake_cli = self.driverSetup(commands, results)
         self.driver.cli._client.timeout = 0
 
@@ -2912,40 +2994,40 @@ Time Remaining:  0 second(s)
                           3)
         expected = [
             mock.call(
-                *self.testData.LUN_EXTEND_CMD('failed_vol1', 3),
+                *self.testData.LUN_EXTEND_CMD('volume-4', 3),
                 poll=False),
             mock.call(
-                *self.testData.LUN_PROPERTY_ALL_CMD('failed_vol1'),
+                *self.testData.LUN_PROPERTY_ALL_CMD('volume-4'),
                 poll=False)]
         fake_cli.assert_has_calls(expected)
 
     @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=utils.ZeroIntervalLoopingCall)
     def test_extend_preparing_volume(self):
-        commands = [self.testData.LUN_EXTEND_CMD('vol1', 2),
-                    self.testData.LUN_PROPERTY_ALL_CMD('vol1')]
+        commands = [self.testData.LUN_EXTEND_CMD('volume-1', 2),
+                    self.testData.LUN_PROPERTY_ALL_CMD('volume-1')]
         results = [[self.testData.LUN_PREP_ERROR(), SUCCEED],
-                   [self.testData.LUN_PROPERTY('vol1', size=1,
+                   [self.testData.LUN_PROPERTY('volume-1', size=1,
                                                operation='Preparing'),
-                    self.testData.LUN_PROPERTY('vol1', size=1,
+                    self.testData.LUN_PROPERTY('volume-1', size=1,
                                                operation='Optimizing'),
-                    self.testData.LUN_PROPERTY('vol1', size=1,
+                    self.testData.LUN_PROPERTY('volume-1', size=1,
                                                operation='None'),
-                    self.testData.LUN_PROPERTY('vol1', size=2)]]
+                    self.testData.LUN_PROPERTY('volume-1', size=2)]]
         fake_cli = self.driverSetup(commands, results)
 
         self.driver.extend_volume(self.testData.test_volume, 2)
-        expected = [mock.call(*self.testData.LUN_EXTEND_CMD('vol1', 2),
+        expected = [mock.call(*self.testData.LUN_EXTEND_CMD('volume-1', 2),
                               poll=False),
-                    mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
+                    mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
                               poll=True),
-                    mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
+                    mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
                               poll=False),
-                    mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
+                    mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
                               poll=False),
-                    mock.call(*self.testData.LUN_EXTEND_CMD('vol1', 2),
+                    mock.call(*self.testData.LUN_EXTEND_CMD('volume-1', 2),
                               poll=False),
-                    mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
+                    mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
                               poll=False)]
         fake_cli.assert_has_calls(expected)
 
@@ -2955,14 +3037,16 @@ Time Remaining:  0 second(s)
         mock.Mock(return_value={}))
     def test_manage_existing(self):
         data = self.testData
-        lun_rename_cmd = data.LUN_RENAME_CMD(data.test_lun_id)
-        lun_list_cmd = data.LUN_LIST_ALL_CMD(data.test_lun_id)
+        test_volume = data.test_volume_with_type
+        lun_rename_cmd = data.LUN_RENAME_CMD(
+            test_volume['id'], test_volume['name'])
+        lun_list_cmd = data.LUN_LIST_ALL_CMD(test_volume['id'])
 
         commands = (lun_rename_cmd, lun_list_cmd)
         results = (SUCCEED, (data.LIST_LUN_1_ALL, 0))
 
-        self.configuration.storage_vnx_pool_name = \
-            self.testData.test_pool_name
+        self.configuration.storage_vnx_pool_name = (
+            self.testData.test_pool_name)
         fake_cli = self.driverSetup(commands, results)
         self.driver.manage_existing(
             self.testData.test_volume_with_type,
@@ -2976,8 +3060,10 @@ Time Remaining:  0 second(s)
         mock.Mock(return_value={}))
     def test_manage_existing_source_name(self):
         data = self.testData
-        lun_rename_cmd = data.LUN_RENAME_CMD(data.test_lun_id)
-        lun_list_cmd = data.LUN_LIST_ALL_CMD(data.test_lun_id)
+        test_volume = data.test_volume_with_type
+        lun_rename_cmd = data.LUN_RENAME_CMD(
+            test_volume['id'], test_volume['name'])
+        lun_list_cmd = data.LUN_LIST_ALL_CMD(test_volume['id'])
 
         commands = (lun_rename_cmd, lun_list_cmd)
         results = (SUCCEED, (data.LIST_LUN_1_ALL, 0))
@@ -2995,22 +3081,31 @@ Time Remaining:  0 second(s)
         mock.Mock(return_value={
             'storagetype:provisioning': 'compressed',
             'compression_support': 'True'}))
-    @mock.patch("time.time", mock.Mock(return_value=1))
+    @mock.patch("time.time", mock.Mock(return_value=123))
     def test_manage_existing_success_retype_with_migration(self):
         data = self.testData
-        lun_rename_cmd = data.LUN_RENAME_CMD(data.test_lun_id)
-        lun_list_cmd = data.LUN_LIST_ALL_CMD(data.test_lun_id)
-        snap_existing_cmd = data.SNAP_LIST_CMD(data.test_lun_id)
+        test_volume = EMCVNXCLIDriverTestData.convert_volume(
+            data.test_volume_with_type)
+        test_volume.metadata = {}
+        test_volume.provider_location = build_provider_location(
+            1, 'lun', test_volume.name)
+
+        lun_rename_cmd = data.LUN_RENAME_CMD(
+            test_volume['id'], test_volume['name'])
+        lun_list_cmd = data.LUN_LIST_ALL_CMD(test_volume['id'])
+        snap_existing_cmd = data.SNAP_LIST_CMD(test_volume['id'])
+        new_lun_name = test_volume['name'] + '-123'
         lun_create_cmd = data.LUN_CREATION_CMD(
-            'vol_with_type-1',
+            new_lun_name,
             1,
             'unit_test_pool',
             'compressed')
-        lun3_status_cmd = data.LUN_PROPERTY_ALL_CMD('vol_with_type-1')
+        lun3_status_cmd = data.LUN_PROPERTY_ALL_CMD(new_lun_name)
         compression_cmd = data.ENABLE_COMPRESSION_CMD(3)
-        lun1_status_cmd = data.LUN_PROPERTY_ALL_CMD('vol_with_type')
+        lun1_status_cmd = data.LUN_PROPERTY_ALL_CMD(test_volume['name'])
         migration_cmd = data.MIGRATION_CMD(1, 3)
         migration_verify_cmd = data.MIGRATION_VERIFY_CMD(1)
+
         commands = (lun_list_cmd,
                     snap_existing_cmd,
                     lun_create_cmd,
@@ -3024,8 +3119,8 @@ Time Remaining:  0 second(s)
         cmd_success = ('', 0)
         migrate_verify = ('The specified source LUN '
                           'is not currently migrating', 23)
-        lun3_status = data.LUN_PROPERTY('vol_with_type-1', lunid=3)
-        lun1_status = data.LUN_PROPERTY('vol_with_type', lunid=1)
+        lun3_status = data.LUN_PROPERTY(new_lun_name, lunid=3)
+        lun1_status = data.LUN_PROPERTY(test_volume['name'], lunid=1)
         results = ((data.LIST_LUN_1_ALL, 0),
                    ('no snap', 1023),
                    cmd_success,
@@ -3035,9 +3130,10 @@ Time Remaining:  0 second(s)
                    cmd_success,
                    migrate_verify,
                    cmd_success)
+
         fake_cli = self.driverSetup(commands, results)
         self.driver.manage_existing(
-            data.test_volume_with_type,
+            test_volume,
             {'source-id': 1})
 
         expected = [mock.call(*lun_list_cmd, poll=False),
@@ -3061,8 +3157,10 @@ Time Remaining:  0 second(s)
     @mock.patch("time.time", mock.Mock(return_value=1))
     def test_manage_existing_success_retype_change_tier(self):
         data = self.testData
-        lun_rename_cmd = data.LUN_RENAME_CMD(data.test_lun_id)
-        lun_list_cmd = data.LUN_LIST_ALL_CMD(data.test_lun_id)
+        test_volume = data.test_volume_with_type
+        lun_rename_cmd = data.LUN_RENAME_CMD(
+            test_volume['id'], test_volume['name'])
+        lun_list_cmd = data.LUN_LIST_ALL_CMD(test_volume['id'])
         lun_tier_cmd = data.LUN_MODIFY_TIER(data.test_lun_id,
                                             'optimizePool',
                                             'noMovement')
@@ -3124,8 +3222,8 @@ Time Remaining:  0 second(s)
         commands = [get_lun_cmd]
         results = [self.testData.LUN_PROPERTY('lun_name', size=test_size)]
 
-        self.configuration.storage_vnx_pool_name = \
-            self.testData.test_pool_name
+        self.configuration.storage_vnx_pool_name = (
+            self.testData.test_pool_name)
         fake_cli = self.driverSetup(commands, results)
 
         get_size = self.driver.manage_existing_get_size(
@@ -3196,8 +3294,8 @@ Time Remaining:  0 second(s)
         expect_cmd1 = [
             mock.call(*self.testData.SNAP_LIST_CMD(), poll=False),
             mock.call(*self.testData.LUN_CREATION_CMD(
-                'vol3-123456', 2, 'unit_test_pool', 'deduplicated', None)),
-            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol3-123456'),
+                'volume-3-123456', 2, 'unit_test_pool', 'deduplicated', None)),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('volume-3-123456'),
                       poll=False),
             mock.call(*self.testData.MIGRATION_CMD(1, None),
                       retry_disable=True,
@@ -3219,7 +3317,7 @@ Time Remaining:  0 second(s)
                            host_test_data)
         expect_cmd2 = [
             mock.call(*self.testData.LUN_CREATION_CMD(
-                'vol3-123456', 2, 'unit_test_pool', 'deduplicated', None,
+                'volume-3-123456', 2, 'unit_test_pool', 'deduplicated', None,
                 ignore_thresholds=True))]
         fake_cli2.assert_has_calls(expect_cmd2)
 
@@ -3272,7 +3370,7 @@ Time Remaining:  0 second(s)
         expect_cmd = [
             mock.call(*self.testData.SNAP_LIST_CMD(), poll=False),
             mock.call(*self.testData.ENABLE_COMPRESSION_CMD(1)),
-            mock.call(*self.testData.MODIFY_TIERING_CMD('vol3', 'auto'))
+            mock.call(*self.testData.MODIFY_TIERING_CMD('volume-3', 'auto'))
         ]
         fake_cli.assert_has_calls(expect_cmd)
 
@@ -3398,7 +3496,8 @@ Time Remaining:  0 second(s)
         expect_cmd = [
             mock.call(*self.testData.SNAP_LIST_CMD(), poll=False),
             mock.call(*self.testData.LUN_CREATION_CMD(
-                'vol3-123456', 2, 'unit_test_pool2', 'compressed', 'auto')),
+                'volume-3-123456', 2, 'unit_test_pool2',
+                'compressed', 'auto')),
             mock.call(*self.testData.ENABLE_COMPRESSION_CMD(1)),
             mock.call(*self.testData.MIGRATION_CMD(),
                       retry_disable=True,
@@ -3459,8 +3558,9 @@ Time Remaining:  0 second(s)
                            diff_data,
                            host_test_data)
         expect_cmd = [
-            mock.call('lun', '-modify', '-name', 'vol3', '-o', '-initialTier',
-                      'optimizePool', '-tieringPolicy', 'noMovement')]
+            mock.call(
+                'lun', '-modify', '-name', 'volume-3', '-o', '-initialTier',
+                'optimizePool', '-tieringPolicy', 'noMovement')]
         fake_cli.assert_has_calls(expect_cmd)
 
     @mock.patch(
@@ -3576,7 +3676,7 @@ Time Remaining:  0 second(s)
         expect_cmd = [
             mock.call(*self.testData.SNAP_LIST_CMD(), poll=False),
             mock.call(*self.testData.LUN_CREATION_CMD(
-                'vol3-123456', 2, 'unit_test_pool', 'deduplicated', None)),
+                'volume-3-123456', 2, 'unit_test_pool', 'deduplicated', None)),
             mock.call(*self.testData.MIGRATION_CMD(),
                       retry_disable=True,
                       poll=True),
@@ -3735,9 +3835,11 @@ Time Remaining:  0 second(s)
         emc_vnx_cli.CommandLineHelper.get_array_serial = mock.Mock(
             return_value={'array_serial': "FNM00124500890"})
 
-        vol = self.testData.test_volume3.copy()
+        vol = EMCVNXCLIDriverTestData.convert_volume(
+            self.testData.test_volume3)
         vol['provider_location'] = 'system^FNM11111|type^smp|id^1'
-        tmp_snap = 'snap-as-vol-%s' % vol['id']
+        vol['volume_metadata'] = [{'key': 'snapcopy', 'value': 'True'}]
+        tmp_snap = 'tmp-snap-%s' % vol['id']
         ret = self.driver.retype(None, vol,
                                  new_type_data,
                                  diff_data,
@@ -3759,15 +3861,15 @@ Time Remaining:  0 second(s)
         """Test creating volume with fastcache enabled."""
         commands = [self.testData.NDU_LIST_CMD,
                     self.testData.POOL_PROPERTY_W_FASTCACHE_CMD,
-                    self.testData.LUN_PROPERTY_ALL_CMD('vol_with_type'),
+                    self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
                     ]
         results = [self.testData.NDU_LIST_RESULT,
                    self.testData.POOL_PROPERTY_W_FASTCACHE,
-                   self.testData.LUN_PROPERTY('vol_with_type', True),
+                   self.testData.LUN_PROPERTY('volume-1', True),
                    ]
         fake_cli = self.driverSetup(commands, results)
 
-        lun_info = {'lun_name': "vol_with_type",
+        lun_info = {'lun_name': "volume-1",
                     'lun_id': 1,
                     'pool': "unit_test_pool",
                     'attached_snapshot': "N/A",
@@ -3802,8 +3904,7 @@ Time Remaining:  0 second(s)
             mock.call('-np', 'lun', '-create', '-capacity',
                       1, '-sq', 'gb', '-poolName',
                       self.testData.test_pool_name,
-                      '-name', 'vol_with_type', '-type', 'NonThin')
-        ]
+                      '-name', 'volume-1', '-type', 'NonThin')]
 
         fake_cli.assert_has_calls(expect_cmd)
 
@@ -3899,7 +4000,7 @@ Time Remaining:  0 second(s)
     def test_delete_consistency_group(self):
         cg_name = self.testData.test_cg['id']
         commands = [self.testData.DELETE_CONSISTENCYGROUP_CMD(cg_name),
-                    self.testData.LUN_DELETE_CMD('vol1')]
+                    self.testData.LUN_DELETE_CMD('volume-1')]
         results = [SUCCEED, SUCCEED]
         fake_cli = self.driverSetup(commands, results)
         self.driver.delete_consistencygroup(
@@ -3909,8 +4010,8 @@ Time Remaining:  0 second(s)
             mock.call(
                 *self.testData.DELETE_CONSISTENCYGROUP_CMD(
                     cg_name)),
-            mock.call(*self.testData.LUN_DELETE_CMD('vol1')),
-            mock.call(*self.testData.LUN_DELETE_CMD('vol1'))]
+            mock.call(*self.testData.LUN_DELETE_CMD('volume-1')),
+            mock.call(*self.testData.LUN_DELETE_CMD('volume-1'))]
         fake_cli.assert_has_calls(expect_cmd)
 
     def test_create_cgsnapshot(self):
@@ -3979,10 +4080,10 @@ Time Remaining:  0 second(s)
         "eventlet.event.Event.wait",
         mock.Mock(return_value=None))
     def test_add_volume_to_cg(self):
-        commands = [self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
+        commands = [self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
                     self.testData.ADD_LUN_TO_CG_CMD('cg_id', 1),
                     ]
-        results = [self.testData.LUN_PROPERTY('vol1', True),
+        results = [self.testData.LUN_PROPERTY('volume-1', True),
                    SUCCEED]
         fake_cli = self.driverSetup(commands, results)
 
@@ -3990,19 +4091,22 @@ Time Remaining:  0 second(s)
 
         expect_cmd = [
             mock.call(*self.testData.LUN_CREATION_CMD(
-                'vol1', 1,
+                'volume-1', 1,
                 'unit_test_pool',
                 None, None, poll=False)),
-            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
                       poll=False),
             mock.call(*self.testData.ADD_LUN_TO_CG_CMD(
                 'cg_id', 1), poll=False)]
         fake_cli.assert_has_calls(expect_cmd)
 
-    def test_create_cloned_volume_from_consistnecy_group(self):
-        cmd_dest = self.testData.LUN_PROPERTY_ALL_CMD("vol1_dest")
-        cmd_dest_p = self.testData.LUN_PROPERTY_ALL_CMD("vol1_dest")
-        output_dest = self.testData.LUN_PROPERTY("vol1_dest")
+    def test_create_cloned_volume_from_consistency_group(self):
+        cmd_dest = self.testData.LUN_PROPERTY_ALL_CMD(
+            build_migration_dest_name('volume-1'))
+        cmd_dest_p = self.testData.LUN_PROPERTY_ALL_CMD(
+            build_migration_dest_name('volume-1'))
+        output_dest = self.testData.LUN_PROPERTY(
+            build_migration_dest_name('volume-1'))
         cmd_migrate = self.testData.MIGRATION_CMD(1, 1)
         output_migrate = ("", 0)
         cmd_migrate_verify = self.testData.MIGRATION_VERIFY_CMD(1)
@@ -4015,28 +4119,31 @@ Time Remaining:  0 second(s)
         results = [output_dest, output_dest, output_migrate,
                    output_migrate_verify]
         fake_cli = self.driverSetup(commands, results)
-
-        self.driver.create_cloned_volume(self.testData.test_volume_clone_cg,
+        test_volume_clone_cg = EMCVNXCLIDriverTestData.convert_volume(
+            self.testData.test_volume_clone_cg)
+        self.driver.create_cloned_volume(test_volume_clone_cg,
                                          self.testData.test_clone_cg)
-        tmp_cgsnapshot = 'tmp-cgsnapshot-' + self.testData.test_volume['id']
+        tmp_cgsnapshot = 'tmp-snap-' + self.testData.test_volume['id']
         expect_cmd = [
             mock.call(
                 *self.testData.CREATE_CG_SNAPSHOT(cg_name, tmp_cgsnapshot)),
             mock.call(
                 *self.testData.GET_SNAP(tmp_cgsnapshot)),
-            mock.call(*self.testData.SNAP_MP_CREATE_CMD(name='vol1',
-                                                        source='clone1'),
+            mock.call(*self.testData.SNAP_MP_CREATE_CMD(name='volume-1',
+                                                        source='volume-2'),
                       poll=False),
-            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1'), poll=True),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
+                      poll=True),
             mock.call(
                 *self.testData.SNAP_ATTACH_CMD(
-                    name='vol1', snapName=tmp_cgsnapshot)),
+                    name='volume-1', snapName=tmp_cgsnapshot)),
             mock.call(*self.testData.LUN_CREATION_CMD(
-                'vol1_dest', 1, 'unit_test_pool', None, None)),
-            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1_dest'),
-                      poll=False),
-            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol1_dest'),
-                      poll=False),
+                build_migration_dest_name('volume-1'), 1,
+                'unit_test_pool', None, None)),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
+                build_migration_dest_name('volume-1')), poll=False),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
+                build_migration_dest_name('volume-1')), poll=False),
             mock.call(*self.testData.MIGRATION_CMD(1, 1),
                       retry_disable=True,
                       poll=True),
@@ -4046,9 +4153,12 @@ Time Remaining:  0 second(s)
         fake_cli.assert_has_calls(expect_cmd)
 
     def test_create_volume_from_cgsnapshot(self):
-        cmd_dest = self.testData.LUN_PROPERTY_ALL_CMD("vol2_dest")
-        cmd_dest_np = self.testData.LUN_PROPERTY_ALL_CMD("vol2_dest")
-        output_dest = self.testData.LUN_PROPERTY("vol2_dest")
+        cmd_dest = self.testData.LUN_PROPERTY_ALL_CMD(
+            build_migration_dest_name('vol2'))
+        cmd_dest_np = self.testData.LUN_PROPERTY_ALL_CMD(
+            build_migration_dest_name('vol2'))
+        output_dest = self.testData.LUN_PROPERTY(
+            build_migration_dest_name('vol2'))
         cmd_migrate = self.testData.MIGRATION_CMD(1, 1)
         output_migrate = ("", 0)
         cmd_migrate_verify = self.testData.MIGRATION_VERIFY_CMD(1)
@@ -4059,25 +4169,27 @@ Time Remaining:  0 second(s)
         results = [output_dest, output_dest, output_migrate,
                    output_migrate_verify]
         fake_cli = self.driverSetup(commands, results)
-
+        test_snapshot = EMCVNXCLIDriverTestData.convert_snapshot(
+            self.testData.test_member_cgsnapshot)
         self.driver.create_volume_from_snapshot(
-            self.testData.volume_in_cg, self.testData.test_member_cgsnapshot)
+            self.testData.volume_in_cg, test_snapshot)
         expect_cmd = [
             mock.call(
                 *self.testData.SNAP_MP_CREATE_CMD(
-                    name='vol2', source='vol1'),
+                    name='volume-2', source='volume-1'),
                 poll=False),
-            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol2'),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('volume-2'),
                       poll=True),
             mock.call(
                 *self.testData.SNAP_ATTACH_CMD(
-                    name='vol2', snapName='cgsnapshot_id')),
+                    name='volume-2', snapName='cgsnapshot_id')),
             mock.call(*self.testData.LUN_CREATION_CMD(
-                'vol2_dest', 1, 'unit_test_pool', None, None)),
-            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol2_dest'),
-                      poll=False),
-            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol2_dest'),
-                      poll=False),
+                build_migration_dest_name('volume-2'), 1,
+                'unit_test_pool', None, None)),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
+                build_migration_dest_name('volume-2')), poll=False),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
+                build_migration_dest_name('volume-2')), poll=False),
             mock.call(*self.testData.MIGRATION_CMD(1, 1),
                       retry_disable=True,
                       poll=True),
@@ -4090,7 +4202,6 @@ Time Remaining:  0 second(s)
         commands = [self.testData.GET_CG_BY_NAME_CMD(cg_name)]
         results = [self.testData.CG_PROPERTY(cg_name)]
         fake_cli = self.driverSetup(commands, results)
-
         (model_update, add_vols, remove_vols) = (
             self.driver.update_consistencygroup(None, self.testData.test_cg,
                                                 self.testData.
@@ -4162,37 +4273,28 @@ Time Remaining:  0 second(s)
         new_cg.id = 'new_cg_id'
         vol1_in_new_cg = self.testData.test_volume_cg.copy()
         vol1_in_new_cg.update(
-            {'name': 'vol1_in_cg',
+            {'name': 'volume-1_in_cg',
              'id': '111111',
              'consistencygroup_id': 'new_cg_id',
              'provider_location': None})
         vol2_in_new_cg = self.testData.test_volume_cg.copy()
         vol2_in_new_cg.update(
-            {'name': 'vol2_in_cg',
+            {'name': 'volume-2_in_cg',
              'id': '222222',
              'consistencygroup_id': 'new_cg_id',
              'provider_location': None})
         src_cgsnap = self.testData.test_cgsnapshot
-        snap1_in_src_cgsnap = self.testData.test_member_cgsnapshot.copy()
-        snap1_in_src_cgsnap.update(
-            {'volume': fake_volume.fake_volume_obj(
-             None, **self.testData.test_volume),
-             'expected_attrs': ['volume']})
-        snap1_in_src_cgsnap = fake_snapshot.fake_snapshot_obj(
-            None, **snap1_in_src_cgsnap)
-        snap2_in_src_cgsnap = self.testData.test_member_cgsnapshot.copy()
-        snap2_in_src_cgsnap.update(
-            {'volume': fake_volume.fake_volume_obj(
-             None, **self.testData.test_volume2),
-             'expected_attrs': ['volume']})
-        snap2_in_src_cgsnap = fake_snapshot.fake_snapshot_obj(
-            None, **snap2_in_src_cgsnap)
+
+        snap1_in_src_cgsnap = EMCVNXCLIDriverTestData.convert_snapshot(
+            self.testData.test_member_cgsnapshot)
+        snap2_in_src_cgsnap = EMCVNXCLIDriverTestData.convert_snapshot(
+            self.testData.test_member_cgsnapshot2)
         copied_snap_name = 'temp_snapshot_for_%s' % new_cg['id']
         td = self.testData
         commands = [td.SNAP_COPY_CMD(src_cgsnap['id'], copied_snap_name),
                     td.ALLOW_READWRITE_ON_SNAP_CMD(copied_snap_name),
                     td.SNAP_MP_CREATE_CMD(vol1_in_new_cg['name'],
-                                          snap1_in_src_cgsnap.volume_name),
+                                          self.testData.test_volume['name']),
                     td.SNAP_ATTACH_CMD(vol1_in_new_cg['name'],
                                        copied_snap_name),
                     td.LUN_CREATION_CMD(vol1_in_new_cg['name'] + '_dest',
@@ -4203,7 +4305,7 @@ Time Remaining:  0 second(s)
                     td.MIGRATION_CMD(6231, 1),
 
                     td.SNAP_MP_CREATE_CMD(vol2_in_new_cg['name'],
-                                          snap2_in_src_cgsnap.volume_name),
+                                          self.testData.test_volume2['name']),
                     td.SNAP_ATTACH_CMD(vol2_in_new_cg['name'],
                                        copied_snap_name),
                     td.LUN_CREATION_CMD(vol2_in_new_cg['name'] + '_dest',
@@ -4230,7 +4332,6 @@ Time Remaining:  0 second(s)
                    SUCCEED, SUCCEED]
 
         fake_cli = self.driverSetup(commands, results)
-
         cg_model_update, volumes_model_update = (
             self.driver.create_consistencygroup_from_src(
                 None, new_cg, [vol1_in_new_cg, vol2_in_new_cg],
@@ -4247,7 +4348,7 @@ Time Remaining:  0 second(s)
             mock.call(*td.SNAP_COPY_CMD(src_cgsnap['id'], copied_snap_name)),
             mock.call(*td.ALLOW_READWRITE_ON_SNAP_CMD(copied_snap_name)),
             mock.call(*td.SNAP_MP_CREATE_CMD(vol1_in_new_cg['name'],
-                      snap1_in_src_cgsnap.volume_name),
+                      self.testData.test_volume['name']),
                       poll=False),
             mock.call(*td.LUN_PROPERTY_ALL_CMD(vol1_in_new_cg['name']),
                       poll=True),
@@ -4263,7 +4364,7 @@ Time Remaining:  0 second(s)
             mock.call(*td.MIGRATION_CMD(6231, 1),
                       poll=True, retry_disable=True),
             mock.call(*td.SNAP_MP_CREATE_CMD(vol2_in_new_cg['name'],
-                      snap2_in_src_cgsnap.volume_name),
+                      self.testData.test_volume2['name']),
                       poll=False),
             mock.call(*td.LUN_PROPERTY_ALL_CMD(vol2_in_new_cg['name']),
                       poll=True),
@@ -4338,31 +4439,21 @@ Time Remaining:  0 second(s)
         new_cg.id = 'new_cg_id'
         vol1_in_new_cg = self.testData.test_volume_cg.copy()
         vol1_in_new_cg.update(
-            {'name': 'vol1_in_cg',
+            {'name': 'volume-1_in_cg',
              'id': '111111',
              'consistencygroup_id': 'new_cg_id',
              'provider_location': None})
         vol2_in_new_cg = self.testData.test_volume_cg.copy()
         vol2_in_new_cg.update(
-            {'name': 'vol2_in_cg',
+            {'name': 'volume-2_in_cg',
              'id': '222222',
              'consistencygroup_id': 'new_cg_id',
              'provider_location': None})
         src_cgsnap = self.testData.test_cgsnapshot
-        snap1_in_src_cgsnap = self.testData.test_member_cgsnapshot.copy()
-        snap1_in_src_cgsnap.update(
-            {'volume': fake_volume.fake_volume_obj(
-             None, **self.testData.test_volume),
-             'expected_attrs': ['volume']})
-        snap1_in_src_cgsnap = fake_snapshot.fake_snapshot_obj(
-            None, **snap1_in_src_cgsnap)
-        snap2_in_src_cgsnap = self.testData.test_member_cgsnapshot.copy()
-        snap2_in_src_cgsnap.update(
-            {'volume': fake_volume.fake_volume_obj(
-             None, **self.testData.test_volume2),
-             'expected_attrs': ['volume']})
-        snap2_in_src_cgsnap = fake_snapshot.fake_snapshot_obj(
-            None, **snap2_in_src_cgsnap)
+        snap1_in_src_cgsnap = EMCVNXCLIDriverTestData.convert_snapshot(
+            self.testData.test_member_cgsnapshot)
+        snap2_in_src_cgsnap = EMCVNXCLIDriverTestData.convert_snapshot(
+            self.testData.test_member_cgsnapshot2)
         copied_snap_name = 'temp_snapshot_for_%s' % new_cg['id']
         td = self.testData
         commands = [td.LUN_PROPERTY_ALL_CMD(vol1_in_new_cg['name'] + '_dest'),
@@ -4408,13 +4499,13 @@ Time Remaining:  0 second(s)
         new_cg.id = 'new_cg_id'
         vol1_in_new_cg = self.testData.test_volume_cg.copy()
         vol1_in_new_cg.update(
-            {'name': 'vol1_in_cg',
+            {'name': 'volume-1_in_cg',
              'id': '111111',
              'consistencygroup_id': 'new_cg_id',
              'provider_location': None})
         vol2_in_new_cg = self.testData.test_volume_cg.copy()
         vol2_in_new_cg.update(
-            {'name': 'vol2_in_cg',
+            {'name': 'volume-2_in_cg',
              'id': '222222',
              'consistencygroup_id': 'new_cg_id',
              'provider_location': None})
@@ -4423,16 +4514,18 @@ Time Remaining:  0 second(s)
         src_cg.id = 'src_cg_id'
         vol1_in_src_cg = self.testData.test_volume_cg.copy()
         vol1_in_src_cg.update(
-            {'name': 'vol1_in_src_cg',
+            {'name': 'volume-1_in_src_cg',
              'id': '111110000',
              'consistencygroup_id': 'src_cg_id',
-             'provider_location': None})
+             'provider_location': build_provider_location(
+                 1, 'lun', 'volume-1_in_src_cg')})
         vol2_in_src_cg = self.testData.test_volume_cg.copy()
         vol2_in_src_cg.update(
-            {'name': 'vol2_in_src_cg',
+            {'name': 'volume-2_in_src_cg',
              'id': '222220000',
              'consistencygroup_id': 'src_cg_id',
-             'provider_location': None})
+             'provider_location': build_provider_location(
+                 2, 'lun', 'volume-2_in_src_cg')})
         temp_snap_name = 'temp_snapshot_for_%s' % new_cg['id']
         td = self.testData
         commands = [td.CREATE_CG_SNAPSHOT(src_cg['id'], temp_snap_name),
@@ -4475,7 +4568,6 @@ Time Remaining:  0 second(s)
                    SUCCEED, SUCCEED]
 
         fake_cli = self.driverSetup(commands, results)
-
         cg_model_update, volumes_model_update = (
             self.driver.create_consistencygroup_from_src(
                 None, new_cg, [vol1_in_new_cg, vol2_in_new_cg],
@@ -4516,7 +4608,7 @@ Time Remaining:  0 second(s)
         new_cg.id = 'new_cg_id'
         vol1_in_new_cg = self.testData.test_volume_cg.copy()
         vol1_in_new_cg.update(
-            {'name': 'vol1_in_cg',
+            {'name': 'volume-1_in_cg',
              'id': '111111',
              'consistencygroup_id': 'new_cg_id',
              'provider_location': None})
@@ -4525,10 +4617,11 @@ Time Remaining:  0 second(s)
         src_cg.id = 'src_cg_id'
         vol1_in_src_cg = self.testData.test_volume_cg.copy()
         vol1_in_src_cg.update(
-            {'name': 'vol1_in_src_cg',
+            {'name': 'volume-1_in_src_cg',
              'id': '111110000',
              'consistencygroup_id': 'src_cg_id',
-             'provider_location': None})
+             'provider_location': build_provider_location(
+                 1, 'lun', 'volume-1_in_src_cg')})
         temp_snap_name = 'temp_snapshot_for_%s' % new_cg['id']
         td = self.testData
         commands = [td.CREATE_CG_SNAPSHOT(src_cg['id'], temp_snap_name),
@@ -4685,7 +4778,9 @@ Time Remaining:  0 second(s)
 
     def test_update_migrated_volume(self):
         self.driverSetup()
-        expected_update = {'metadata': {'lun_type': 'lun'}}
+        expected_update = {'provider_location':
+                           self.testData.test_volume2['provider_location'],
+                           'metadata': {'snapcopy': 'False'}}
         model_update = self.driver.update_migrated_volume(
             None, self.testData.test_volume,
             self.testData.test_volume2, 'available')
@@ -4838,8 +4933,8 @@ class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
         "get_volume_type_extra_specs",
         mock.Mock(return_value={'storagetype:provisioning': 'deduplicated'}))
     def test_create_volume_deduplicated(self):
-        commands = [self.testData.LUN_PROPERTY_ALL_CMD('vol_with_type')]
-        results = [self.testData.LUN_PROPERTY('vol_with_type', True)]
+        commands = [self.testData.LUN_PROPERTY_ALL_CMD('volume-1')]
+        results = [self.testData.LUN_PROPERTY('volume-1', True)]
 
         fake_cli = self.driverSetup(commands, results)
         self.driver.cli.enablers = ['-Compression',
@@ -4852,10 +4947,10 @@ class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
         # Verification
         expect_cmd = [
             mock.call(*self.testData.LUN_CREATION_CMD(
-                'vol_with_type', 1,
+                'volume-1', 1,
                 'unit_test_pool',
                 'deduplicated', None, poll=False)),
-            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('vol_with_type'),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
                       poll=False)]
         fake_cli.assert_has_calls(expect_cmd)
 
@@ -4937,8 +5032,11 @@ class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
         mock.Mock(return_value={}))
     def test_manage_existing(self):
         data = self.testData
-        lun_rename_cmd = data.LUN_RENAME_CMD(data.test_lun_id)
-        lun_list_cmd = data.LUN_LIST_ALL_CMD(data.test_lun_id)
+        test_volume = data.test_volume_with_type
+        lun_rename_cmd = data.LUN_RENAME_CMD(
+            test_volume['id'], test_volume['name'])
+        lun_list_cmd = data.LUN_LIST_ALL_CMD(test_volume['id'])
+
         commands = lun_rename_cmd, lun_list_cmd
         results = SUCCEED, (data.LIST_LUN_1_SPECS, 0)
         fake_cli = self.driverSetup(commands, results)
@@ -4957,11 +5055,11 @@ class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
         mock.Mock(return_value={'storagetype:provisioning': 'Compressed',
                                 'storagetype:pool': 'unit_test_pool'}))
     def test_create_compression_volume(self):
-        commands = [self.testData.LUN_PROPERTY_ALL_CMD('vol_with_type'),
-                    self.testData.LUN_PROPERTY_ALL_CMD('vol_with_type'),
+        commands = [self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
+                    self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
                     self.testData.NDU_LIST_CMD]
-        results = [self.testData.LUN_PROPERTY('vol_with_type', True),
-                   self.testData.LUN_PROPERTY('vol_with_type', True),
+        results = [self.testData.LUN_PROPERTY('volume-1', True),
+                   self.testData.LUN_PROPERTY('volume-1', True),
                    self.testData.NDU_LIST_RESULT]
 
         fake_cli = self.driverSetup(commands, results)
@@ -4976,13 +5074,13 @@ class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
         # Verification
         expect_cmd = [
             mock.call(*self.testData.LUN_CREATION_CMD(
-                'vol_with_type', 1,
+                'volume-1', 1,
                 'unit_test_pool',
                 'compressed', None, poll=False)),
             mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
-                'vol_with_type'), poll=False),
+                'volume-1'), poll=False),
             mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
-                'vol_with_type'), poll=True),
+                'volume-1'), poll=True),
             mock.call(*self.testData.ENABLE_COMPRESSION_CMD(
                 1))]
         fake_cli.assert_has_calls(expect_cmd)
@@ -5133,8 +5231,8 @@ class EMCVNXCLIDriverFCTestCase(DriverTestCaseBase):
                    ('', 0),
                    self.testData.FC_PORTS]
         fake_cli = self.driverSetup(commands, results)
-        self.driver.cli.zonemanager_lookup_service =\
-            fc_service.FCSanLookupService(configuration=self.configuration)
+        self.driver.cli.zonemanager_lookup_service = (
+            fc_service.FCSanLookupService(configuration=self.configuration))
 
         conn_info = self.driver.initialize_connection(
             self.testData.test_volume,
@@ -5256,8 +5354,8 @@ class EMCVNXCLIDriverFCTestCase(DriverTestCaseBase):
         cli_helper.get_storage_group = mock.Mock(
             return_value=data)
         cli_helper.remove_hlu_from_storagegroup = mock.Mock()
-        self.driver.cli.zonemanager_lookup_service =\
-            fc_service.FCSanLookupService(configuration=self.configuration)
+        self.driver.cli.zonemanager_lookup_service = (
+            fc_service.FCSanLookupService(configuration=self.configuration))
         connection_info = self.driver.terminate_connection(
             self.testData.test_volume,
             self.testData.connector)
@@ -5282,8 +5380,8 @@ class EMCVNXCLIDriverFCTestCase(DriverTestCaseBase):
         cli_helper.get_storage_group = mock.Mock(
             return_value=data)
         cli_helper.remove_hlu_from_storagegroup = mock.Mock()
-        self.driver.cli.zonemanager_lookup_service =\
-            fc_service.FCSanLookupService(configuration=self.configuration)
+        self.driver.cli.zonemanager_lookup_service = (
+            fc_service.FCSanLookupService(configuration=self.configuration))
         connection_info = self.driver.terminate_connection(
             self.testData.test_volume,
             self.testData.connector)
