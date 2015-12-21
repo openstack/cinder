@@ -731,10 +731,11 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         # Form requirements for datastore selection.
         req = {}
         req[hub.DatastoreSelector.SIZE_BYTES] = image_size_in_bytes
-        # vSAN datastores don't support virtual disk with
+        # vSAN/VVOL datastores don't support virtual disk with
         # flat extent; skip such datastores.
         req[hub.DatastoreSelector.HARD_AFFINITY_DS_TYPE] = (
-            hub.DatastoreType.get_all_types() - {hub.DatastoreType.VSAN})
+            hub.DatastoreType.get_all_types() -
+            {hub.DatastoreType.VSAN, hub.DatastoreType.VVOL})
 
         # Select datastore satisfying the requirements.
         (host_ref, _resource_pool, summary) = self._select_datastore(req)

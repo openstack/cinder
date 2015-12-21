@@ -687,6 +687,32 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             dc_ref, src_path, dc_ref, dest_path)
         self.assertEqual(dest_path, ret)
 
+    @mock.patch.object(VMDK_DRIVER, '_select_datastore')
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    def test_get_temp_image_folder(self, vops, select_datastore):
+        host = mock.sentinel.host
+        resource_pool = mock.sentinel.rp
+        summary = mock.Mock()
+        ds_name = mock.sentinel.ds_name
+        summary.name = ds_name
+        select_datastore.return_value = (host, resource_pool, summary)
+
+        dc = mock.sentinel.dc
+        vops.get_dc.return_value = dc
+
+        image_size = 2 * units.Gi
+        ret = self._driver._get_temp_image_folder(image_size)
+
+        self.assertEqual((dc, ds_name, vmdk.TMP_IMAGES_DATASTORE_FOLDER_PATH),
+                         ret)
+        exp_req = {
+            hub.DatastoreSelector.SIZE_BYTES: image_size,
+            hub.DatastoreSelector.HARD_AFFINITY_DS_TYPE:
+                {hub.DatastoreType.VMFS, hub.DatastoreType.NFS}}
+        select_datastore.assert_called_once_with(exp_req)
+        vops.create_datastore_folder.assert_called_once_with(
+            ds_name, vmdk.TMP_IMAGES_DATASTORE_FOLDER_PATH, dc)
+
     @mock.patch.object(VMDK_DRIVER, '_select_ds_for_volume')
     @mock.patch.object(VMDK_DRIVER, '_get_storage_profile_id')
     @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
