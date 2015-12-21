@@ -24,6 +24,7 @@ supported XtremIO version 2.4 and up
 1.0.5 - add support for XtremIO 4.0
 1.0.6 - add support for iSCSI multipath, CA validation, consistency groups,
         R/O snapshots, CHAP discovery authentication
+1.0.7 - cache glance images on the array
 """
 
 import json
@@ -37,6 +38,7 @@ from oslo_log import log as logging
 from oslo_utils import units
 import six
 
+from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder import objects
@@ -59,7 +61,10 @@ XTREMIO_OPTS = [
                help='Number of retries in case array is busy'),
     cfg.IntOpt('xtremio_array_busy_retry_interval',
                default=5,
-               help='Interval between retries in case array is busy')]
+               help='Interval between retries in case array is busy'),
+    cfg.IntOpt('xtremio_volumes_per_glance_cache',
+               default=100,
+               help='Number of volumes created from each cached glance image')]
 
 CONF.register_opts(XTREMIO_OPTS)
 
@@ -69,6 +74,9 @@ VOL_NOT_UNIQUE_ERR = 'vol_obj_name_not_unique'
 VOL_OBJ_NOT_FOUND_ERR = 'vol_obj_not_found'
 ALREADY_MAPPED_ERR = 'already_mapped'
 SYSTEM_BUSY = 'system_is_busy'
+TOO_MANY_OBJECTS = 'too_many_objs'
+TOO_MANY_SNAPSHOTS_PER_VOL = 'too_many_snapshots_per_vol'
+
 
 XTREMIO_OID_NAME = 1
 XTREMIO_OID_INDEX = 2
@@ -157,6 +165,8 @@ class XtremIOClient(object):
                 raise exception.XtremIOAlreadyMappedError()
             elif err_msg == SYSTEM_BUSY:
                 raise exception.XtremIOArrayBusy()
+            elif err_msg in (TOO_MANY_OBJECTS, TOO_MANY_SNAPSHOTS_PER_VOL):
+                raise exception.XtremIOSnapshotsLimitExceeded()
         msg = _('Bad response from XMS, %s') % response.text
         LOG.error(msg)
         raise exception.VolumeBackendAPIException(message=msg)
@@ -336,7 +346,7 @@ class XtremIOClient4(XtremIOClient):
 class XtremIOVolumeDriver(san.SanDriver):
     """Executes commands relating to Volumes."""
 
-    VERSION = '1.0.6'
+    VERSION = '1.0.7'
     driver_name = 'XtremIO'
     MIN_XMS_VERSION = [3, 0, 0]
 
@@ -410,7 +420,18 @@ class XtremIOVolumeDriver(san.SanDriver):
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
-        self.client.create_snapshot(src_vref['id'], volume['id'])
+        vol = self.client.req('volumes', name=src_vref['id'])['content']
+        ctxt = context.get_admin_context()
+        cache = self.db.image_volume_cache_get_by_volume_id(ctxt,
+                                                            src_vref['id'])
+        limit = self.configuration.safe_get('xtremio_volumes_per_glance_cache')
+        if cache and limit and limit > 0 and limit <= vol['num-of-dest-snaps']:
+            raise exception.CinderException('Exceeded the configured limit of '
+                                            '%d snapshots per volume' % limit)
+        try:
+            self.client.create_snapshot(src_vref['id'], volume['id'])
+        except exception.XtremIOSnapshotsLimitExceeded as e:
+            raise exception.CinderException(e.message)
 
         if volume.get('consistencygroup_id') and self.client is XtremIOClient4:
             self.client.add_vol_to_cg(volume['id'],

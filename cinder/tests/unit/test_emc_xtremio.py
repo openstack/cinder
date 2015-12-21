@@ -296,9 +296,11 @@ class EMCXIODriverISCSITestCase(test.TestCase):
         config.san_ip = ''
         config.xtremio_cluster_name = 'brick1'
         config.xtremio_provisioning_factor = 20.0
+        config.max_over_subscription_ratio = 20.0
+        config.xtremio_volumes_per_glance_cache = 100
 
         def safe_get(key):
-            getattr(config, key)
+            return getattr(config, key)
 
         config.safe_get = safe_get
         self.driver = xtremio.XtremIOISCSIDriver(configuration=config)
@@ -351,11 +353,48 @@ class EMCXIODriverISCSITestCase(test.TestCase):
 
     def test_clone_volume(self, req):
         req.side_effect = xms_request
+        self.driver.db = mock.Mock()
+        (self.driver.db.
+         image_volume_cache_get_by_volume_id.return_value) = mock.MagicMock()
         self.driver.create_volume(self.data.test_volume)
+        vol = xms_data['volumes'][1]
+        vol['num-of-dest-snaps'] = 200
+        self.assertRaises(exception.CinderException,
+                          self.driver.create_cloned_volume,
+                          self.data.test_clone,
+                          self.data.test_volume)
+
+        vol['num-of-dest-snaps'] = 50
         self.driver.create_cloned_volume(self.data.test_clone,
                                          self.data.test_volume)
         self.driver.delete_volume(self.data.test_clone)
         self.driver.delete_volume(self.data.test_volume)
+
+        mock.patch.object(self.driver.client,
+                          'create_snapshot',
+                          mock.Mock(side_effect=
+                                    exception.XtremIOSnapshotsLimitExceeded()))
+        self.assertRaises(exception.CinderException,
+                          self.driver.create_cloned_volume,
+                          self.data.test_clone,
+                          self.data.test_volume)
+
+        response = mock.MagicMock()
+        response.status_code = 400
+        response.json.return_value = {
+            "message": "too_many_snapshots_per_vol",
+            "error_code": 400
+        }
+        self.assertRaises(exception.XtremIOSnapshotsLimitExceeded,
+                          self.driver.client.handle_errors,
+                          response, '', '')
+        response.json.return_value = {
+            "message": "too_many_objs",
+            "error_code": 400
+        }
+        self.assertRaises(exception.XtremIOSnapshotsLimitExceeded,
+                          self.driver.client.handle_errors,
+                          response, '', '')
 
     def test_duplicate_volume(self, req):
         req.side_effect = xms_request
