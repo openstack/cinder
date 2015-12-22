@@ -160,6 +160,43 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
 
         self.assertEqual(expected_wwpns, actual_wwpns)
 
+    def test_get_host_group_by_name(self):
+        groups = copy.deepcopy(eseries_fake.HOST_GROUPS)
+        group = groups[0]
+        self.mock_object(self.my_client, 'list_host_groups',
+                         new_attr=mock.Mock(return_value=groups))
+
+        result = self.my_client.get_host_group_by_name(group['label'])
+
+        self.assertEqual(group, result)
+
+    def test_move_volume_mapping_via_symbol(self):
+        invoke = self.mock_object(self.my_client, '_invoke',
+                                  mock.Mock(return_value='ok'))
+        host_ref = 'host'
+        cluster_ref = 'cluster'
+        lun_id = 10
+        expected_data = {'lunMappingRef': host_ref, 'lun': lun_id,
+                         'mapRef': cluster_ref}
+
+        result = self.my_client.move_volume_mapping_via_symbol(host_ref,
+                                                               cluster_ref,
+                                                               lun_id)
+
+        invoke.assert_called_once_with('POST', '/storage-systems/{system-id}/'
+                                               'symbol/moveLUNMapping',
+                                       expected_data)
+
+        self.assertEqual({'lun': lun_id}, result)
+
+    def test_move_volume_mapping_via_symbol_fail(self):
+        self.mock_object(self.my_client, '_invoke',
+                         mock.Mock(return_value='failure'))
+
+        self.assertRaises(
+            exception.NetAppDriverException,
+            self.my_client.move_volume_mapping_via_symbol, '1', '2', 10)
+
     def test_create_host_from_ports_fc(self):
         label = 'fake_host'
         host_type = 'linux'

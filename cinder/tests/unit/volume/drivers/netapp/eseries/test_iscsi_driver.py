@@ -1,4 +1,5 @@
 # Copyright (c) 2015 Alex Meade.  All rights reserved.
+# Copyright (c) 2015 Michael Price.  All rights reserved.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -13,17 +14,20 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 import mock
 
 from cinder import test
-import cinder.volume.drivers.netapp.eseries.iscsi_driver as iscsi
-from cinder.volume.drivers.netapp import utils as na_utils
+
+from cinder.tests.unit.volume.drivers.netapp.eseries import test_driver
+from cinder.volume.drivers.netapp.eseries import iscsi_driver as iscsi
+import cinder.volume.drivers.netapp.utils as na_utils
 
 
-class NetAppESeriesISCSIDriverTestCase(test.TestCase):
+@ddt.ddt
+class NetAppESeriesIscsiDriverTestCase(test_driver.NetAppESeriesDriverTestCase,
+                                       test.TestCase):
 
     @mock.patch.object(na_utils, 'validate_instantiation')
     def test_instantiation(self, mock_validate_instantiation):
         iscsi.NetAppEseriesISCSIDriver(configuration=mock.Mock())
-
-        self.assertTrue(mock_validate_instantiation.called)
