@@ -90,31 +90,37 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
                 LOG.exception(_LE('Error verifying container %(bkt)s'),
                               {'bkt': self.bucket_path})
 
-    def _get_nbd_devices(self):
+    def _get_nbd_devices(self, host):
         try:
-            rsp = self.restapi.get('sysconfig/nbd/devices')
+            rsp = self.restapi.get('sysconfig/nbd/devices' +
+                                   self._get_remote_url(host))
         except exception.VolumeBackendAPIException:
             with excutils.save_and_reraise_exception():
                 LOG.exception(_LE('Error getting NBD list'))
         return json.loads(rsp['value'])
 
     def _get_nbd_number(self, volume):
-        nbds = self._get_nbd_devices()
+        host = volutils.extract_host(volume['host'], 'host')
+        nbds = self._get_nbd_devices(host)
         for dev in nbds:
             if dev['objectPath'] == self.bucket_path + '/' + volume['name']:
                 return dev['number']
         return -1
 
-    def _new_nbd_number(self, volume):
-        nbds = self._get_nbd_devices()
-        devmap = {}
-        for dev in nbds:
-            devmap[dev['number']] = True
-        for i in range(1, 4096):
-            if i in devmap and devmap[i]:
-                continue
-            return i
+    def _get_host_info(self, host):
+        try:
+            res = self.restapi.get('system/stats')
+            servers = res['stats']['servers']
+            for sid in servers:
+                if host == sid or host == servers[sid]['hostname']:
+                    return servers[sid]
+        except exception.VolumeBackendAPIException:
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_LE('Error creating volume'))
         raise Exception  # FIXME
+
+    def _get_remote_url(self, host):
+        return '?remote=' + str(self._get_host_info(host)['ipv6addr'])
 
     def local_path(self, volume):
         number = self._get_nbd_number(volume)
@@ -123,14 +129,13 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
         return '/dev/nbd' + str(number)
 
     def create_volume(self, volume):
-        number = self._new_nbd_number(volume)
+        host = volutils.extract_host(volume['host'], 'host')
         try:
-            self.restapi.post('nbd', {
+            self.restapi.post('nbd' + self._get_remote_url(host), {
                 'objectPath': self.bucket_path + '/' + volume['name'],
                 'volSizeMB': int(volume['size']) * units.Ki,
                 'blockSize': self.blocksize,
-                'chunkSize': self.chunksize,
-                'number': number
+                'chunkSize': self.chunksize
             })
         except exception.VolumeBackendAPIException:
             with excutils.save_and_reraise_exception():
@@ -140,8 +145,9 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
         number = self._get_nbd_number(volume)
         if number == -1:
             return
+        host = volutils.extract_host(volume['host'], 'host')
         try:
-            self.restapi.delete('nbd', {
+            self.restapi.delete('nbd' + self._get_remote_url(host), {
                 'objectPath': self.bucket_path + '/' + volume['name'],
                 'number': number
             })
@@ -150,8 +156,9 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
                 LOG.exception(_LE('Error deleting volume'))
 
     def extend_volume(self, volume, new_size):
+        host = volutils.extract_host(volume['host'], 'host')
         try:
-            self.restapi.put('nbd/resize', {
+            self.restapi.put('nbd/resize' + self._get_remote_url(host), {
                 'objectPath': self.bucket_path + '/' + volume['name'],
                 'newSizeMB': new_size * units.Ki
             })
@@ -180,8 +187,10 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
                 LOG.exception(_LE('Error deleting snapshot'))
 
     def create_volume_from_snapshot(self, volume, snapshot):
+        host = volutils.extract_host(volume['host'], 'host')
+        remotehost = self._get_remote_url(host)
         try:
-            self.restapi.put('nbd/snapshot/clone', {
+            self.restapi.put('nbd/snapshot/clone' + remotehost, {
                 'objectPath': self.bucket_path + '/' + snapshot['volume_name'],
                 'snapName': snapshot['name'],
                 'clonePath': self.bucket_path + '/' + volume['name']
@@ -191,7 +200,6 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
                 LOG.exception(_LE('Error cloning snapshot'))
 
     def create_cloned_volume(self, volume, src_vref):
-        number = self._new_nbd_number(volume)
         vol_url = (self.bucket_url + '/objects/' +
                    src_vref['name'] + '/clone')
         clone_body = {
@@ -199,14 +207,14 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
             'bucket_name': self.bucket,
             'object_name': volume['name']
         }
+        host = volutils.extract_host(volume['host'], 'host')
         try:
             self.restapi.post(vol_url, clone_body)
-            self.restapi.post('nbd', {
+            self.restapi.post('nbd' + self._get_remote_url(host), {
                 'objectPath': self.bucket_path + '/' + volume['name'],
                 'volSizeMB': int(src_vref['size']) * units.Ki,
                 'blockSize': self.blocksize,
-                'chunkSize': self.chunksize,
-                'number': number
+                'chunkSize': self.chunksize
             })
         except exception.VolumeBackendAPIException:
             with excutils.save_and_reraise_exception():
