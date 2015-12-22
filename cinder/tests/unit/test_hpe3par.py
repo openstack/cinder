@@ -3459,14 +3459,17 @@ class HPE3PARBaseDriver(object):
 
         new_comment = Comment({
             "display_name": "snap",
-            "volume_name": "volume-007dbfce-7579-40bc-8f90-a20b3902283e",
-            "volume_id": "007dbfce-7579-40bc-8f90-a20b3902283e",
+            "volume_name": self.VOLUME_NAME,
+            "volume_id": self.VOLUME_ID,
             "description": "",
         })
+
+        volume = {'id': self.VOLUME_ID}
+
         snapshot = {
             'display_name': None,
-            'id': '007dbfce-7579-40bc-8f90-a20b3902283e',
-            'volume_id': self.VOLUME_ID,
+            'id': self.SNAPSHOT_ID,
+            'volume': volume,
         }
 
         mock_client.getVolume.return_value = {
@@ -3492,7 +3495,6 @@ class HPE3PARBaseDriver(object):
                                        {'newName': oss_matcher,
                                         'comment': new_comment}),
             ]
-
             mock_client.assert_has_calls(
                 self.standard_login +
                 expected +
@@ -3502,10 +3504,12 @@ class HPE3PARBaseDriver(object):
     def test_manage_existing_snapshot_invalid_parent(self):
         mock_client = self.setup_driver()
 
+        volume = {'id': self.VOLUME_ID}
+
         snapshot = {
             'display_name': None,
             'id': '007dbfce-7579-40bc-8f90-a20b3902283e',
-            'volume_id': self.VOLUME_ID,
+            'volume': volume,
         }
 
         mock_client.getVolume.return_value = {
@@ -3534,6 +3538,38 @@ class HPE3PARBaseDriver(object):
                 self.standard_login +
                 expected +
                 self.standard_logout)
+
+    def test_manage_existing_snapshot_failed_over_volume(self):
+        mock_client = self.setup_driver()
+
+        volume = {
+            'id': self.VOLUME_ID,
+            'replication_status': 'failed-over',
+        }
+
+        snapshot = {
+            'display_name': None,
+            'id': '007dbfce-7579-40bc-8f90-a20b3902283e',
+            'volume': volume,
+        }
+
+        mock_client.getVolume.return_value = {
+            "comment": "{'display_name': 'snap'}",
+            'copyOf': self.VOLUME_NAME_3PAR,
+        }
+
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            common = self.driver._login()
+
+            ums_matcher = common._get_3par_ums_name(snapshot['id'])
+            existing_ref = {'source-name': ums_matcher}
+
+            self.assertRaises(exception.InvalidInput,
+                              self.driver.manage_existing_snapshot,
+                              snapshot=snapshot,
+                              existing_ref=existing_ref)
 
     def test_manage_existing_get_size(self):
         mock_client = self.setup_driver()
@@ -3729,6 +3765,22 @@ class HPE3PARBaseDriver(object):
                 self.standard_login +
                 expected +
                 self.standard_logout)
+
+    def test_unmanage_snapshot_failed_over_volume(self):
+        mock_client = self.setup_driver()
+
+        volume = {'replication_status': 'failed-over', }
+        snapshot = {'id': self.SNAPSHOT_ID,
+                    'display_name': 'fake_snap',
+                    'volume': volume, }
+
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+
+            self.assertRaises(exception.SnapshotIsBusy,
+                              self.driver.unmanage_snapshot,
+                              snapshot=snapshot)
 
     def test__safe_hostname(self):
         long_hostname = "abc123abc123abc123abc123abc123abc123"
