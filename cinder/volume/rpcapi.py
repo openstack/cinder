@@ -85,6 +85,8 @@ class VolumeAPI(object):
         1.35 - Adds support for sending objects over RPC in extend_volume().
         1.36 - Adds support for sending objects over RPC in migrate_volume(),
                migrate_volume_completion(), and update_migrated_volume().
+        1.37 - Adds old_reservations parameter to retype to support quota
+               checks in the API.
     """
 
     BASE_RPC_API_VERSION = '1.0'
@@ -279,17 +281,22 @@ class VolumeAPI(object):
         return cctxt.call(ctxt, 'migrate_volume_completion', **msg_args)
 
     def retype(self, ctxt, volume, new_type_id, dest_host,
-               migration_policy='never', reservations=None):
+               migration_policy='never', reservations=None,
+               old_reservations=None):
         host_p = {'host': dest_host.host,
                   'capabilities': dest_host.capabilities}
         msg_args = {'volume_id': volume.id, 'new_type_id': new_type_id,
                     'host': host_p, 'migration_policy': migration_policy,
                     'reservations': reservations}
-        if self.client.can_send_version('1.34'):
-            version = '1.34'
-            msg_args['volume'] = volume
+        if self.client.can_send_version('1.37'):
+            version = '1.37'
+            msg_args.update(volume=volume, old_reservations=old_reservations)
         else:
-            version = '1.12'
+            if self.client.can_send_version('1.34'):
+                version = '1.34'
+                msg_args['volume'] = volume
+            else:
+                version = '1.12'
 
         new_host = utils.extract_host(volume.host)
         cctxt = self.client.prepare(server=new_host, version=version)
