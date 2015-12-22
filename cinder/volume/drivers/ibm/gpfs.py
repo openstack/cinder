@@ -542,12 +542,11 @@ class GPFSDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
         # check if the snapshot lies in the same CG as the volume to be created
         # if yes, clone the volume from the snapshot, else perform full copy
         clone = False
-        if volume['consistencygroup_id'] is not None:
-            ctxt = context.get_admin_context()
-            snap_parent_vol = self.db.volume_get(ctxt, snapshot['volume_id'])
-            if (volume['consistencygroup_id'] ==
-                    snap_parent_vol['consistencygroup_id']):
-                clone = True
+        ctxt = context.get_admin_context()
+        snap_parent_vol = self.db.volume_get(ctxt, snapshot['volume_id'])
+        if (volume['consistencygroup_id'] ==
+                snap_parent_vol['consistencygroup_id']):
+            clone = True
         volume_path = self._get_volume_path(volume)
         if clone:
             self._create_gpfs_copy(src=snapshot_path, dest=volume_path)
