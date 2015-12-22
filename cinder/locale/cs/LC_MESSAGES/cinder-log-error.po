@@ -8,10 +8,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev107\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev134\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-19 06:26+0000\n"
-"PO-Revision-Date: 2015-12-18 10:28+0000\n"
+"POT-Creation-Date: 2015-12-22 06:20+0000\n"
+"PO-Revision-Date: 2015-12-21 12:13+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language-Team: Czech\n"
 "Language: cs\n"
@@ -712,7 +712,7 @@ msgstr "Chyba při uzavírání kanálu."
 msgid ""
 "Error contacting glance server '%(netloc)s' for '%(method)s', %(extra)s."
 msgstr ""
-"Chyba při kontaktování serveru glance '%(netloc)s' pro'%(method)s', "
+"Chyba při kontaktování serveru glance '%(netloc)s' pro '%(method)s', "
 "%(extra)s."
 
 msgid "Error copying key."
@@ -1973,9 +1973,6 @@ msgstr "Nelze aktualizovat využití při mazání snímku."
 
 msgid "Failed to update usages deleting volume."
 msgstr "Nelze aktualizovat využití při mazání svazku."
-
-msgid "Failed to update usages while retyping volume."
-msgstr "Nelze aktualizovat využití při přetypování svazku."
 
 #, python-format
 msgid "Failed to update volume status: %s"

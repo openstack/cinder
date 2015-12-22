@@ -8,9 +8,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev32\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev134\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-10 06:20+0000\n"
+"POT-Creation-Date: 2015-12-22 06:20+0000\n"
 "PO-Revision-Date: 2015-09-16 08:22+0000\n"
 "Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
 "Language-Team: Turkish (Turkey)\n"
@@ -1462,9 +1462,6 @@ msgstr "Anlık sistem görüntüsü silinirken kullanımlar güncellenemedi"
 
 msgid "Failed to update usages deleting volume."
 msgstr "Mantıksal sürücü silme kullanımları güncellenemedi."
-
-msgid "Failed to update usages while retyping volume."
-msgstr "Mantıksal sürücü yeniden yazılırken kullanımlar güncellenemedi."
 
 #, python-format
 msgid "Failed to update volume status: %s"

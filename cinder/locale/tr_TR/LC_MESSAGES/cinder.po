@@ -7,9 +7,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev67\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev134\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-15 06:26+0000\n"
+"POT-Creation-Date: 2015-12-22 06:20+0000\n"
 "PO-Revision-Date: 2015-09-16 08:16+0000\n"
 "Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
 "Language: tr_TR\n"
@@ -2535,9 +2535,6 @@ msgstr "Ağ bilgisi alma başarısız."
 #, python-format
 msgid "Failed to get new part id in new pool: %(pool_id)s."
 msgstr "Yeni havuzda yeni bölüm kimliği alınamadı: %(pool_id)s."
-
-msgid "Failed to get old volume type quota reservations"
-msgstr "Eski mantıksal sürücü türü kota koşulları alınamadı"
 
 msgid "Failed to get partition info."
 msgstr "Bölüm bilgisi alınamadı."
@@ -5149,14 +5146,6 @@ msgstr "%(src)s den %(dest)s e dosya kopyalama başarısız."
 #, python-format
 msgid "The following elements are required: %s"
 msgstr "Aşağıdaki ögeler gereklidir: %s"
-
-#, python-format
-msgid ""
-"The following migrations are missing a downgrade:\n"
-"\t%s"
-msgstr ""
-"Şu göçlerin geri alması yok:\n"
-"\t%s"
 
 msgid "The host group or iSCSI target could not be added."
 msgstr "İstemci grubu veya iSCSI hedefi eklenemedi."

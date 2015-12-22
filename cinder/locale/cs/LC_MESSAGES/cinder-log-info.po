@@ -7,10 +7,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev107\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev134\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-19 06:26+0000\n"
-"PO-Revision-Date: 2015-12-18 10:33+0000\n"
+"POT-Creation-Date: 2015-12-22 06:20+0000\n"
+"PO-Revision-Date: 2015-12-21 12:05+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language-Team: Czech\n"
 "Language: cs\n"
@@ -565,15 +565,6 @@ msgstr "Vytváření svazku %(volume_id)s dokončeno."
 msgid "Create Volume %(volume_id)s from snapshot %(snapshot_id)s completed."
 msgstr ""
 "Vytváření svazku %(volume_id)s ze snímku %(snapshot_id)s bylo dokončeno."
-
-#, python-format
-msgid ""
-"Create Volume: %(volume)s  Size: %(size)s pool: %(pool)s provisioning: "
-"%(provisioning)s tiering: %(tiering)s snapcopy: %(snapcopy)s."
-msgstr ""
-"Vytvoření svazku: %(volume)s, velikost: %(size)s, zásoba: %(pool)s, "
-"poskytování: %(provisioning)s, vrstvení: %(tiering)s, kopie snímku: "
-"%(snapcopy)s."
 
 #, python-format
 msgid "Create a new lun %s for migration."
@@ -2126,6 +2117,18 @@ msgstr ""
 "%(allocated)s"
 
 #, python-format
+msgid "Snapshot %(disp)s '%(new)s' is now being managed."
+msgstr "Snímek %(disp)s '%(new)s' je nyní spravován."
+
+#, python-format
+msgid ""
+"Snapshot %(disp)s '%(vol)s' is no longer managed. Snapshot renamed to "
+"'%(new)s'."
+msgstr ""
+"Snímek %(disp)s '%(vol)s' již není spravován. Snímek přejmenován na "
+"'%(new)s'."
+
+#, python-format
 msgid "Snapshot %s created successfully."
 msgstr "Snímek %s úspěšně vytvořen."
 
@@ -2140,6 +2143,10 @@ msgstr "Snímek %s nenalezen"
 #, python-format
 msgid "Snapshot %s was deleted successfully."
 msgstr "Snímek %s byl úspěšně smazán."
+
+#, python-format
+msgid "Snapshot '%(ref)s' renamed to '%(new)s'."
+msgstr "Snímek '%(ref)s' přejmenován na '%(new)s'. "
 
 msgid "Snapshot create request issued successfully."
 msgstr "Žádost o vytvoření snímku úspěšně zadána."

@@ -7,10 +7,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev107\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev134\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-19 06:26+0000\n"
-"PO-Revision-Date: 2015-12-18 10:35+0000\n"
+"POT-Creation-Date: 2015-12-22 06:20+0000\n"
+"PO-Revision-Date: 2015-12-21 12:06+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language-Team: Czech\n"
 "Language: cs\n"
@@ -36,6 +36,19 @@ msgstr "%s již je připojeno"
 #, python-format
 msgid "%s not found!"
 msgstr "%s nenalezeno!"
+
+#, python-format
+msgid ""
+"'%s' is not a valid replication array. In order to be valid, "
+"target_device_id, replication_mode, hpe3par_api_url, hpe3par_username, "
+"hpe3par_password, cpg_map, san_ip, san_login, and san_password must be "
+"specified. If the target is managed, managed_backend_name must be set as "
+"well."
+msgstr ""
+"'%s' není platné pole replikace. Aby bylo platné, je třeba zadat "
+"target_device_id, replication_mode, hpe3par_api_url, hpe3par_username, "
+"hpe3par_password, cpg_map, san_ip, san_login, a san_password. Pokud cíl je "
+"spravován, musí být také zadáno managed_backend_name."
 
 msgid ""
 "'hpe3par:cpg' is not supported as an extra spec in a volume type.  CPG's are "
