@@ -286,7 +286,9 @@ class RestClient(object):
 
     def activate_snapshot(self, snapshot_id):
         url = "/snapshot/activate"
-        data = {"SNAPSHOTLIST": [snapshot_id]}
+        data = ({"SNAPSHOTLIST": snapshot_id}
+                if type(snapshot_id) in (list, tuple)
+                else {"SNAPSHOTLIST": [snapshot_id]})
         result = self.call(url, data)
         self._assert_rest_result(result, _('Activate snapshot error.'))
 
@@ -1156,6 +1158,7 @@ class RestClient(object):
                 smartcache=True,
                 smartpartition=True,
                 hypermetro=True,
+                consistencygroup_support=True,
             ))
             data['pools'].append(pool)
         return data
@@ -1885,7 +1888,8 @@ class RestClient(object):
 
         msg = _('get_hypermetro_by_id error.')
         self._assert_rest_result(result, msg)
-        return result
+        self._assert_data_in_result(result, msg)
+        return result['data']
 
     def check_hypermetro_exist(self, metro_id):
         url = "/HyperMetroPair/" + metro_id
@@ -1936,8 +1940,97 @@ class RestClient(object):
         if 'data' in result:
             return result["data"]["AVAILABLEHOSTLUNIDLIST"]
 
+    def get_metrogroup_by_name(self, name):
+        url = "/HyperMetro_ConsistentGroup?type='15364'"
+        result = self.call(url, None, "GET")
+
+        msg = _('Get hypermetro group by name error.')
+        self._assert_rest_result(result, msg)
+        return self._get_id_from_result(result, name, 'NAME')
+
+    def get_metrogroup_by_id(self, id):
+        url = "/HyperMetro_ConsistentGroup/" + id
+        result = self.call(url, None, "GET")
+
+        msg = _('Get hypermetro group by id error.')
+        self._assert_rest_result(result, msg)
+        self._assert_data_in_result(result, msg)
+        return result['data']
+
+    def create_metrogroup(self, name, description, domain_id):
+        url = "/HyperMetro_ConsistentGroup"
+        data = {"NAME": name,
+                "TYPE": "15364",
+                "DESCRIPTION": description,
+                "RECOVERYPOLICY": "1",
+                "SPEED": "2",
+                "PRIORITYSTATIONTYPE": "0",
+                "DOMAINID": domain_id}
+        result = self.call(url, data, "POST")
+
+        msg = _('create hypermetro group error.')
+        self._assert_rest_result(result, msg)
+        if 'data' in result:
+            return result["data"]["ID"]
+
+    def delete_metrogroup(self, metrogroup_id):
+        url = "/HyperMetro_ConsistentGroup/" + metrogroup_id
+        result = self.call(url, None, "DELETE")
+
+        msg = _('Delete hypermetro group error.')
+        self._assert_rest_result(result, msg)
+
+    def get_metrogroup(self, metrogroup_id):
+        url = "/HyperMetro_ConsistentGroup/" + metrogroup_id
+        result = self.call(url, None, "GET")
+
+        msg = _('Get hypermetro group error.')
+        self._assert_rest_result(result, msg)
+
+    def stop_metrogroup(self, metrogroup_id):
+        url = "/HyperMetro_ConsistentGroup/stop"
+        data = {"TYPE": "15364",
+                "ID": metrogroup_id
+                }
+        result = self.call(url, data, "PUT")
+
+        msg = _('stop hypermetro group error.')
+        self._assert_rest_result(result, msg)
+
+    def sync_metrogroup(self, metrogroup_id):
+        url = "/HyperMetro_ConsistentGroup/sync"
+        data = {"TYPE": "15364",
+                "ID": metrogroup_id
+                }
+        result = self.call(url, data, "PUT")
+
+        msg = _('sync hypermetro group error.')
+        self._assert_rest_result(result, msg)
+
+    def add_metro_to_metrogroup(self, metrogroup_id, metro_id):
+        url = "/hyperMetro/associate/pair"
+        data = {"TYPE": "15364",
+                "ID": metrogroup_id,
+                "ASSOCIATEOBJTYPE": "15361",
+                "ASSOCIATEOBJID": metro_id}
+        result = self.call(url, data, "POST")
+
+        msg = _('Add hypermetro to metrogroup error.')
+        self._assert_rest_result(result, msg)
+
+    def remove_metro_from_metrogroup(self, metrogroup_id, metro_id):
+        url = "/hyperMetro/associate/pair"
+        data = {"TYPE": "15364",
+                "ID": metrogroup_id,
+                "ASSOCIATEOBJTYPE": "15361",
+                "ASSOCIATEOBJID": metro_id}
+        result = self.call(url, data, "DELETE")
+
+        msg = _('Delete hypermetro from metrogroup error.')
+        self._assert_rest_result(result, msg)
+
     def get_hypermetro_pairs(self):
-        url = "/HyperMetroPair?range=[0-65535]"
+        url = "/HyperMetroPair?range=[0-4095]"
         result = self.call(url, None, "GET")
         msg = _('Get HyperMetroPair error.')
         self._assert_rest_result(result, msg)
@@ -1945,7 +2038,7 @@ class RestClient(object):
         return result.get('data', [])
 
     def get_split_mirrors(self):
-        url = "/splitmirror?range=[0-512]"
+        url = "/splitmirror?range=[0-8191]"
         result = self.call(url, None, "GET")
         if result['error']['code'] == constants.NO_SPLITMIRROR_LICENSE:
             msg = _('License is unavailable.')

@@ -51,6 +51,21 @@ huawei_opts = [
     cfg.StrOpt('hypermetro_devices',
                default=None,
                help='The remote device hypermetro will use.'),
+    cfg.StrOpt('metro_san_user',
+               default=None,
+               help='The remote metro device san user.'),
+    cfg.StrOpt('metro_san_password',
+               default=None,
+               help='The remote metro device san password.'),
+    cfg.StrOpt('metro_domain_name',
+               default=None,
+               help='The remote metro device domain name.'),
+    cfg.StrOpt('metro_san_address',
+               default=None,
+               help='The remote metro device request url.'),
+    cfg.StrOpt('metro_storage_pools',
+               default=None,
+               help='The remote metro device pool names.'),
 ]
 
 CONF = cfg.CONF
@@ -110,14 +125,17 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         metro_san_user = self.configuration.safe_get("metro_san_user")
         metro_san_password = self.configuration.safe_get("metro_san_password")
         if metro_san_address and metro_san_user and metro_san_password:
-            self.metro_flag = True
             metro_san_address = metro_san_address.split(";")
             self.rmt_client = rest_client.RestClient(self.configuration,
                                                      metro_san_address,
                                                      metro_san_user,
                                                      metro_san_password)
-            self.rmt_client.login()
 
+            self.rmt_client.login()
+            self.metro_flag = True
+        else:
+            self.metro_flag = False
+            LOG.warning(_LW("Remote device not configured in cinder.conf"))
         # init replication manager
         if replica_client_conf:
             self.replica_client = rest_client.RestClient(self.configuration,
@@ -133,16 +151,26 @@ class HuaweiBaseDriver(driver.VolumeDriver):
     def get_volume_stats(self, refresh=False):
         """Get volume status and reload huawei config file."""
         self.huawei_conf.update_config_value()
-        if self.metro_flag:
-            self.rmt_client.get_all_pools()
-
         stats = self.client.update_volume_stats()
+        stats = self.update_hypermetro_capability(stats)
 
         if self.replica:
             stats = self.replica.update_replica_capability(stats)
             targets = [self.replica_dev_conf['backend_id']]
             stats['replication_targets'] = targets
             stats['replication_enabled'] = True
+
+        return stats
+
+    def update_hypermetro_capability(self, stats):
+        if self.metro_flag:
+            version = self.client.find_array_version()
+            rmt_version = self.rmt_client.find_array_version()
+            if (version >= constants.ARRAY_VERSION
+                    and rmt_version >= constants.ARRAY_VERSION):
+                for pool in stats['pools']:
+                    pool['hypermetro'] = True
+                    pool['consistencygroup_support'] = True
 
         return stats
 
@@ -162,6 +190,17 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             specs = dict(volume_type).get('extra_specs')
 
         opts = self._get_volume_params_from_specs(specs)
+        return opts
+
+    def _get_consistencygroup_type(self, group):
+        specs = {}
+        opts = {}
+        type_id = group['volume_type_id'].split(",")
+        if type_id[0] and len(type_id) == 2:
+            ctxt = context.get_admin_context()
+            volume_type = volume_types.get_volume_type(ctxt, type_id[0])
+            specs = dict(volume_type).get('extra_specs')
+            opts = self._get_volume_params_from_specs(specs)
         return opts
 
     def _get_volume_params_from_specs(self, specs):
@@ -1480,6 +1519,134 @@ class HuaweiBaseDriver(driver.VolumeDriver):
            self.client.is_host_associated_to_hostgroup(host_id)):
             self.client.remove_host(host_id)
 
+    def create_consistencygroup(self, context, group):
+        """Creates a consistencygroup."""
+        model_update = {'status': 'available'}
+        opts = self._get_consistencygroup_type(group)
+        if (opts.get('hypermetro') == 'true'):
+            metro = hypermetro.HuaweiHyperMetro(self.client,
+                                                self.rmt_client,
+                                                self.configuration)
+            metro.create_consistencygroup(group)
+            return model_update
+
+        # Array will create CG at create_cgsnapshot time. Cinder will
+        # maintain the CG and volumes relationship in the db.
+        return model_update
+
+    def delete_consistencygroup(self, context, group, volumes):
+        opts = self._get_consistencygroup_type(group)
+        if opts.get('hypermetro') == 'true':
+            metro = hypermetro.HuaweiHyperMetro(self.client,
+                                                self.rmt_client,
+                                                self.configuration)
+            return metro.delete_consistencygroup(context, group, volumes)
+
+        model_update = {}
+        volumes_model_update = []
+        model_update.update({'status': group['status']})
+
+        for volume_ref in volumes:
+            try:
+                self.delete_volume(volume_ref)
+                volumes_model_update.append(
+                    {'id': volume_ref['id'], 'status': 'deleted'})
+            except Exception:
+                volumes_model_update.append(
+                    {'id': volume_ref['id'], 'status': 'error_deleting'})
+
+        return model_update, volumes_model_update
+
+    def update_consistencygroup(self, context, group,
+                                add_volumes,
+                                remove_volumes):
+        model_update = {'status': 'available'}
+        opts = self._get_consistencygroup_type(group)
+        if opts.get('hypermetro') == 'true':
+            metro = hypermetro.HuaweiHyperMetro(self.client,
+                                                self.rmt_client,
+                                                self.configuration)
+            metro.update_consistencygroup(context, group,
+                                          add_volumes,
+                                          remove_volumes)
+            return model_update, None, None
+
+        # Array will create CG at create_cgsnapshot time. Cinder will
+        # maintain the CG and volumes relationship in the db.
+        return model_update, None, None
+
+    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
+        """Create cgsnapshot."""
+        LOG.info(_LI('Create cgsnapshot for consistency group'
+                     ': %(group_id)s'),
+                 {'group_id': cgsnapshot['consistencygroup_id']})
+
+        model_update = {}
+        snapshots_model_update = []
+        added_snapshots_info = []
+
+        try:
+            for snapshot in snapshots:
+                volume = snapshot.get('volume')
+                if not volume:
+                    msg = (_("Can't get volume id from snapshot, "
+                             "snapshot: %(id)s") % {"id": snapshot['id']})
+                    LOG.error(msg)
+                    raise exception.VolumeBackendAPIException(data=msg)
+
+                volume_name = huawei_utils.encode_name(volume['id'])
+
+                lun_id = self.client.get_lun_id(volume, volume_name)
+                snapshot_name = huawei_utils.encode_name(snapshot['id'])
+                snapshot_description = snapshot['id']
+                info = self.client.create_snapshot(lun_id,
+                                                   snapshot_name,
+                                                   snapshot_description)
+                snapshot_model_update = {'id': snapshot['id'],
+                                         'status': 'available',
+                                         'provider_location': info['ID']}
+                snapshots_model_update.append(snapshot_model_update)
+                added_snapshots_info.append(info)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE("Create cgsnapshots failed. "
+                              "Cgsnapshot id: %s."), cgsnapshot['id'])
+        snapshot_ids = [added_snapshot['ID']
+                        for added_snapshot in added_snapshots_info]
+        try:
+            self.client.activate_snapshot(snapshot_ids)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE("Active cgsnapshots failed. "
+                              "Cgsnapshot id: %s."), cgsnapshot['id'])
+
+        model_update['status'] = 'available'
+
+        return model_update, snapshots_model_update
+
+    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
+        """Delete consistency group snapshot."""
+        LOG.info(_LI('Delete cgsnapshot %(snap_id)s for consistency group: '
+                     '%(group_id)s'),
+                 {'snap_id': cgsnapshot['id'],
+                  'group_id': cgsnapshot['consistencygroup_id']})
+
+        model_update = {}
+        snapshots_model_update = []
+        model_update['status'] = cgsnapshot['status']
+
+        for snapshot in snapshots:
+            try:
+                self.delete_snapshot(snapshot)
+                snapshots_model_update.append({'id': snapshot['id'],
+                                               'status': 'deleted'})
+            except Exception:
+                with excutils.save_and_reraise_exception():
+                    LOG.error(_LE("Delete cg snapshots failed. "
+                                  "Cgsnapshot id: %s"), cgsnapshot['id'])
+
+        return model_update, snapshots_model_update
+
     def _classify_volume(self, volumes):
         normal_volumes = []
         replica_volumes = []
@@ -1608,9 +1775,13 @@ class HuaweiISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
         2.0.3 - Manage/unmanage snapshot support
         2.0.5 - Replication V2 support
         2.0.6 - Support iSCSI configuration in Replication
+        2.0.7 - Hypermetro support
+                Hypermetro consistency group support
+                Consistency group support
+                Cgsnapshot support
     """
 
-    VERSION = "2.0.6"
+    VERSION = "2.0.7"
 
     def __init__(self, *args, **kwargs):
         super(HuaweiISCSIDriver, self).__init__(*args, **kwargs)
@@ -1801,9 +1972,13 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
         2.0.3 - Manage/unmanage snapshot support
         2.0.4 - Balanced FC port selection
         2.0.5 - Replication V2 support
+        2.0.7 - Hypermetro support
+                Hypermetro consistency group support
+                Consistency group support
+                Cgsnapshot support
     """
 
-    VERSION = "2.0.5"
+    VERSION = "2.0.7"
 
     def __init__(self, *args, **kwargs):
         super(HuaweiFCDriver, self).__init__(*args, **kwargs)
