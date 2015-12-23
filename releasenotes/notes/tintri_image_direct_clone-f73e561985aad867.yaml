@@ -1,0 +1,8 @@
+---
+fixes:
+  - Fix for Tintri image direct clone feature. Fix for the bug 1400966 prevents
+    user from specifying image "nfs share location" as location value for an
+    image. Now, in order to use Tintri image direct clone, user can specify
+    "provider_location" in image metadata to specify image nfs share location.
+    NFS share which hosts images should be specified in a file using
+    tintri_image_shares_config config option.

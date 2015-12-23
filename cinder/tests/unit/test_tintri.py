@@ -33,6 +33,7 @@ class FakeImage(object):
     def __init__(self):
         self.id = 'image-id'
         self.name = 'image-name'
+        self.properties = {'provider_location': 'nfs://share'}
 
     def __getitem__(self, key):
         return self.__dict__[key]
@@ -203,7 +204,8 @@ class TintriDriverTestCase(test.TestCase):
         self.assertEqual(({'provider_location': self._provider_location,
                            'bootable': True}, True),
                          self._driver.clone_image(
-                         None, volume, 'image-name', FakeImage(), None))
+                         None, volume, 'image-name', FakeImage().__dict__,
+                         None))
 
     @mock.patch.object(TClient, 'clone_volume', mock.Mock(
                        side_effect=exception.VolumeDriverException))
@@ -212,7 +214,8 @@ class TintriDriverTestCase(test.TestCase):
         self.assertEqual(({'provider_location': None,
                            'bootable': False}, False),
                          self._driver.clone_image(
-                         None, volume, 'image-name', FakeImage(), None))
+                         None, volume, 'image-name', FakeImage().__dict__,
+                         None))
 
     def test_manage_existing(self):
         volume = fake_volume.fake_volume_obj(self.context)
