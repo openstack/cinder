@@ -63,7 +63,7 @@ ERR_MSG_PENDING_ERADICATION = "has been destroyed"
 CONNECT_LOCK_NAME = 'PureVolumeDriver_connect'
 
 UNMANAGED_SUFFIX = '-unmanaged'
-MANAGE_SNAP_REQUIRED_API_VERSIONS = ['1.4']
+MANAGE_SNAP_REQUIRED_API_VERSIONS = ['1.4', '1.5']
 
 
 def log_debug_trace(f):
@@ -82,7 +82,7 @@ def log_debug_trace(f):
 class PureBaseVolumeDriver(san.SanDriver):
     """Performs volume management on Pure Storage FlashArray."""
 
-    SUPPORTED_REST_API_VERSIONS = ['1.2', '1.3', '1.4']
+    SUPPORTED_REST_API_VERSIONS = ['1.2', '1.3', '1.4', '1.5']
 
     def __init__(self, *args, **kwargs):
         execute = kwargs.pop("execute", utils.execute)
