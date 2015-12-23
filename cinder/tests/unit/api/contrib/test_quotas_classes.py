@@ -86,7 +86,7 @@ class QuotaClassSetsControllerTest(test.TestCase):
         self.controller = quota_classes.QuotaClassSetsController()
 
         self.ctxt = context.get_admin_context()
-        self.req = self.mox.CreateMockAnything()
+        self.req = mock.Mock()
         self.req.environ = {'cinder.context': self.ctxt}
         self.req.environ['cinder.context'].is_admin = True
 
@@ -158,7 +158,7 @@ class QuotaClassesSerializerTest(test.TestCase):
 
     def setUp(self):
         super(QuotaClassesSerializerTest, self).setUp()
-        self.req = self.mox.CreateMockAnything()
+        self.req = mock.Mock()
         self.req.environ = {'cinder.context': context.get_admin_context()}
 
     def test_update_serializer(self):

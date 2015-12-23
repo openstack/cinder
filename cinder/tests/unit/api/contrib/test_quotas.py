@@ -88,11 +88,9 @@ class QuotaSetsControllerTest(test.TestCase):
         super(QuotaSetsControllerTest, self).setUp()
         self.controller = quotas.QuotaSetsController()
 
-        self.req = self.mox.CreateMockAnything()
+        self.req = mock.Mock()
         self.req.environ = {'cinder.context': context.get_admin_context()}
         self.req.environ['cinder.context'].is_admin = True
-        self.req.environ['cinder.context'].auth_token = uuid.uuid4().hex
-        self.req.environ['cinder.context'].project_id = 'foo'
 
         self._create_project_hierarchy()
 
@@ -572,7 +570,7 @@ class QuotaSerializerTest(test.TestCase):
 
     def setUp(self):
         super(QuotaSerializerTest, self).setUp()
-        self.req = self.mox.CreateMockAnything()
+        self.req = mock.Mock()
         self.req.environ = {'cinder.context': context.get_admin_context()}
 
     def test_update_serializer(self):
