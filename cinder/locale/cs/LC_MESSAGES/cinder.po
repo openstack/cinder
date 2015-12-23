@@ -9,10 +9,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev134\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev138\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-22 06:20+0000\n"
-"PO-Revision-Date: 2015-12-21 12:04+0000\n"
+"POT-Creation-Date: 2015-12-23 06:26+0000\n"
+"PO-Revision-Date: 2015-12-22 03:18+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language: cs\n"
 "Language-Team: Czech\n"
@@ -1621,6 +1621,9 @@ msgstr "Nelze zjistit verzi API Data ONTAP."
 msgid "Data ONTAP operating in 7-Mode does not support QoS policy groups."
 msgstr "Data ONTAP pracuje v režimu 7, který nepodporuje skupiny zásad QoS."
 
+msgid "Database schema downgrade is not allowed."
+msgstr "Snížení verze schématu databáze na nižší verzi není povoleno."
+
 #, python-format
 msgid ""
 "Dedup is a valid provisioning type, but requires WSAPI version "
@@ -2593,6 +2596,9 @@ msgid ""
 msgstr ""
 "Překročen maximální počet pokusů %(max_attempts)d pro svazek %(volume_id)s."
 
+msgid "Exceeded the limit of snapshots per volume"
+msgstr "Překročeno omezení snímků na svazek"
+
 #, python-format
 msgid "Exception appending meta volume to target volume %(volumename)s."
 msgstr ""
@@ -3544,6 +3550,9 @@ msgstr ""
 "Nelze aktualizovat specifikace qos: %(specs_id)s se specifikacemi "
 "%(qos_specs)s."
 
+msgid "Failed to update quota usage while retyping volume."
+msgstr "Nelze aktualizovat využití kvóty při přetypování svazku."
+
 #, python-format
 msgid "Failed updating model with driver provided model %(model)s"
 msgstr "Nelze aktualizovat model s ovladačem poskytnutým modelem %(model)s"
@@ -4166,7 +4175,7 @@ msgstr "Vstupní nebo zdrojové svazky jsou neplatné."
 
 #, python-format
 msgid "Instance %(uuid)s could not be found."
-msgstr "Instance %(uuid)s nemohla být nastavena."
+msgstr "Instance %(uuid)s nemohla být nalezena."
 
 msgid "Insufficient free space available to extend volume."
 msgstr "Pro rozšíření svazku není dostatek volného místa."
@@ -6478,6 +6487,14 @@ msgstr "Kopírování souboru z %(src)s do %(dest)s selhalo."
 #, python-format
 msgid "The following elements are required: %s"
 msgstr "Jsou vyžadovány následující prvky: %s"
+
+#, python-format
+msgid ""
+"The following migrations have a downgrade, which are not allowed: \n"
+"\t%s"
+msgstr ""
+"Následující přesuny mají snížení na nižší verzi, což není povoleno:\n"
+"\t%s"
 
 msgid "The host group or iSCSI target could not be added."
 msgstr "Skupina hostitele nebo cíl iSCSI nemohly být přidány."

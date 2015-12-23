@@ -7,10 +7,10 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev134\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev138\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-22 06:20+0000\n"
-"PO-Revision-Date: 2015-12-21 12:06+0000\n"
+"POT-Creation-Date: 2015-12-23 06:26+0000\n"
+"PO-Revision-Date: 2015-12-22 01:37+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language-Team: Czech\n"
 "Language: cs\n"
@@ -1881,6 +1881,9 @@ msgstr "Úkol obnovy starého ssc probíhá. Vrácení..."
 
 msgid "san_secondary_ip is configured as the same value as san_ip."
 msgstr "san_secondary_ip je nastaven na stejnou hodnotu jako san_ip."
+
+msgid "snapcopy metadata is ignored when creating volume."
+msgstr "popisná data kopie snímku jsou při vytváření snímku ignorována."
 
 #, python-format
 msgid "snapshot: %s not found, skipping delete operation"
