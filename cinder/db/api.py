@@ -275,6 +275,10 @@ def volume_update_status_based_on_attachment(context, volume_id):
     return IMPL.volume_update_status_based_on_attachment(context, volume_id)
 
 
+def volume_has_attachments_filter():
+    return IMPL.volume_has_attachments_filter()
+
+
 ####################
 
 
@@ -406,10 +410,11 @@ def volume_admin_metadata_delete(context, volume_id, key):
     return IMPL.volume_admin_metadata_delete(context, volume_id, key)
 
 
-def volume_admin_metadata_update(context, volume_id, metadata, delete):
+def volume_admin_metadata_update(context, volume_id, metadata, delete,
+                                 add=True, update=True):
     """Update metadata if it exists, otherwise create it."""
     return IMPL.volume_admin_metadata_update(context, volume_id, metadata,
-                                             delete)
+                                             delete, add, update)
 
 
 ##################
