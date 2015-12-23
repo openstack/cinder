@@ -21,6 +21,6 @@ testresources>=0.2.4
 testscenarios>=0.4
 oslosphinx!=3.4.0,>=2.5.0 # Apache-2.0
 os-testr>=0.4.1
-tempest-lib>=0.11.0
+tempest-lib>=0.12.0
 bandit>=0.13.2
 reno>=0.1.1 # Apache2
