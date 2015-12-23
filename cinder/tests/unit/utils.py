@@ -171,7 +171,9 @@ def create_backup(ctxt,
                   status='creating',
                   parent_id=None,
                   temp_volume_id=None,
-                  temp_snapshot_id=None):
+                  temp_snapshot_id=None,
+                  snapshot_id=None,
+                  data_timestamp=None):
     backup = {}
     backup['volume_id'] = volume_id
     backup['user_id'] = ctxt.user_id
@@ -189,6 +191,8 @@ def create_backup(ctxt,
     backup['object_count'] = 22
     backup['temp_volume_id'] = temp_volume_id
     backup['temp_snapshot_id'] = temp_snapshot_id
+    backup['snapshot_id'] = snapshot_id
+    backup['data_timestamp'] = data_timestamp
     return db.backup_create(ctxt, backup)
 
 

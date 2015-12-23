@@ -108,6 +108,7 @@ def _usage_from_backup(backup_ref, **kw):
                       fail_reason=backup_ref['fail_reason'],
                       parent_id=backup_ref['parent_id'],
                       num_dependent_backups=num_dependent_backups,
+                      snapshot_id=backup_ref['snapshot_id'],
                       )
 
     usage_info.update(kw)

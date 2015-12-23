@@ -1901,7 +1901,8 @@ class DBAPIBackupTestCase(BaseTest):
 
     """Tests for db.api.backup_* methods."""
 
-    _ignored_keys = ['id', 'deleted', 'deleted_at', 'created_at', 'updated_at']
+    _ignored_keys = ['id', 'deleted', 'deleted_at', 'created_at',
+                     'updated_at', 'data_timestamp']
 
     def setUp(self):
         super(DBAPIBackupTestCase, self).setUp()
@@ -1927,7 +1928,8 @@ class DBAPIBackupTestCase(BaseTest):
             'object_count': 100,
             'temp_volume_id': 'temp_volume_id',
             'temp_snapshot_id': 'temp_snapshot_id',
-            'num_dependent_backups': 0, }
+            'num_dependent_backups': 0,
+            'snapshot_id': 'snapshot_id', }
         if one:
             return base_values
 

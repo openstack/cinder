@@ -78,6 +78,8 @@ class ViewBuilder(common.ViewBuilder):
                 'links': self._get_links(request, backup['id']),
                 'is_incremental': backup.is_incremental,
                 'has_dependent_backups': backup.has_dependent_backups,
+                'snapshot_id': backup.snapshot_id,
+                'data_timestamp': backup.data_timestamp,
             }
         }
 

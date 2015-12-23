@@ -385,6 +385,7 @@ class NotifyUsageTestCase(test.TestCase):
             'fail_reason': None,
             'parent_id': 'fake_parent_id',
             'num_dependent_backups': 0,
+            'snapshot_id': None,
         }
 
         # Make it easier to find out differences between raw and expected.
