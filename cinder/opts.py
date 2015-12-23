@@ -111,7 +111,12 @@ from cinder.volume.drivers.ibm import flashsystem_iscsi as \
 from cinder.volume.drivers.ibm import gpfs as cinder_volume_drivers_ibm_gpfs
 from cinder.volume.drivers.ibm import ibmnas as \
     cinder_volume_drivers_ibm_ibmnas
-import cinder.volume.drivers.ibm.storwize_svc
+from cinder.volume.drivers.ibm.storwize_svc import storwize_svc_common as \
+    cinder_volume_drivers_ibm_storwize_svc_storwizesvccommon
+from cinder.volume.drivers.ibm.storwize_svc import storwize_svc_fc as \
+    cinder_volume_drivers_ibm_storwize_svc_storwizesvcfc
+from cinder.volume.drivers.ibm.storwize_svc import storwize_svc_iscsi as \
+    cinder_volume_drivers_ibm_storwize_svc_storwizesvciscsi
 from cinder.volume.drivers.ibm import xiv_ds8k as \
     cinder_volume_drivers_ibm_xivds8k
 from cinder.volume.drivers.infortrend.eonstor_ds_cli import common_cli as \
@@ -205,19 +210,20 @@ def list_opts():
                 cinder_volume_drivers_netapp_options.netapp_eseries_opts,
                 cinder_volume_drivers_netapp_options.netapp_nfs_extra_opts,
                 cinder_volume_drivers_netapp_options.netapp_san_opts,
+                cinder_volume_drivers_ibm_storwize_svc_storwizesvciscsi.
+                storwize_svc_iscsi_opts,
                 cinder_backup_drivers_glusterfs.glusterfsbackup_service_opts,
                 cinder_backup_drivers_tsm.tsm_opts,
                 cinder_volume_drivers_san_hp_hpxpopts.FC_VOLUME_OPTS,
                 cinder_volume_drivers_san_hp_hpxpopts.COMMON_VOLUME_OPTS,
                 cinder_volume_drivers_san_hp_hpxpopts.HORCM_VOLUME_OPTS,
                 cinder_test.test_opts,
-                cinder.volume.drivers.ibm.storwize_svc.storwize_svc_opts,
+                cinder_volume_drivers_ibm_gpfs.gpfs_opts,
                 cinder_volume_drivers_violin_v7000common.violin_opts,
                 cinder_exception.exc_log_opts,
                 cinder_common_config.global_opts,
                 cinder_scheduler_weights_capacity.capacity_weight_opts,
                 cinder_volume_drivers_sheepdog.sheepdog_opts,
-                cinder_volume_drivers_ibm_gpfs.gpfs_opts,
                 [cinder_api_middleware_sizelimit.max_request_body_size_opt],
                 cinder_volume_drivers_solidfire.sf_opts,
                 cinder_volume_drivers_ibm_ibmnas.platform_opts,
@@ -254,6 +260,8 @@ def list_opts():
                 volume_number_weight_opts,
                 cinder_volume_drivers_coho.coho_opts,
                 cinder_volume_drivers_xio.XIO_OPTS,
+                cinder_volume_drivers_ibm_storwize_svc_storwizesvcfc.
+                storwize_svc_fc_opts,
                 cinder_volume_drivers_zfssa_zfssaiscsi.ZFSSA_OPTS,
                 cinder_volume_driver.volume_opts,
                 cinder_volume_driver.iser_opts,
@@ -282,6 +290,8 @@ def list_opts():
                 cinder_volume_drivers_tintri.tintri_opts,
                 cinder_volume_drivers_hitachi_hbsdhorcm.volume_opts,
                 cinder_backup_manager.backup_manager_opts,
+                cinder_volume_drivers_ibm_storwize_svc_storwizesvccommon.
+                storwize_svc_opts,
                 cinder_volume_drivers_hitachi_hbsdfc.volume_opts,
                 cinder_quota.quota_opts,
                 cinder_volume_drivers_huawei_huaweidriver.huawei_opts,

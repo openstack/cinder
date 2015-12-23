@@ -1,0 +1,5 @@
+---
+upgrade:
+  - Split up __init__.py into storwize_svc_iscsi.py,storwize_svc_fc.py, and storwize_svc_common.py.
+  - Moved iSCSI/FC config options to respective files. Moved all other config options to storwize_svc_common.py. Removed storwize_svc_connection_protocol config option.
+  - Users will now need to set different values for volume_driver in cinder.conf. FC:volume_driver = cinder.volume.drivers.ibm.storwize_svc.storwize_svc_fc.StorwizeSVCFCDriver iSCSI:volume_driver = cinder.volume.drivers.ibm.storwize_svc.storwize_svc_iscsi.StorwizeSVCISCSIDriver
