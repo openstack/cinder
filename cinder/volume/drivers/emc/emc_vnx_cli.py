@@ -712,7 +712,8 @@ class CommandLineHelper(object):
                         'san_ip is not set.')
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
-
+        # Lock file name for this specific back-end
+        self.toggle_lock_name = configuration.config_group
         self.credentials = ()
         storage_username = configuration.san_login
         storage_password = configuration.san_password
@@ -1992,44 +1993,48 @@ class CommandLineHelper(object):
         return target_portals
 
     def _is_sp_unavailable_error(self, out):
-        error_pattern = '(^Error.*Message.*End of data stream.*)|'\
-                        '(.*Message.*connection refused.*)|'\
-                        '(^Error.*Message.*Service Unavailable.*)|'\
-                        '(^A network error occurred while trying to'\
-                        ' connect.* )|'\
-                        '(^Exception: Error occurred because of time out\s*)'
+        error_pattern = ('(^Error.*Message.*End of data stream.*)|'
+                         '(.*Message.*connection refused.*)|'
+                         '(^Error.*Message.*Service Unavailable.*)|'
+                         '(^A network error occurred while trying to'
+                         ' connect.* )|'
+                         '(^Exception: Error occurred because of time out\s*)')
         pattern = re.compile(error_pattern)
         return pattern.match(out)
 
-    def command_execute(self, *command, **kwargv):
+    @utils.retry(exception.EMCSPUnavailableException, retries=5,
+                 interval=30, backoff_rate=1)
+    def command_execute(self, *command, **kwargs):
         """Executes command against the VNX array.
 
         When there is named parameter poll=False, the command will be sent
         alone with option -np.
         """
-        # NOTE: retry_disable need to be removed from kwargv
+        # NOTE: retry_disable need to be removed from kwargs
         # before it pass to utils.execute, otherwise exception will thrown
-        retry_disable = kwargv.pop('retry_disable', False)
-        out, rc = self._command_execute_on_active_ip(*command, **kwargv)
+        retry_disable = kwargs.pop('retry_disable', False)
+        # get active ip before execute command
+        current_ip = self.active_storage_ip
+        out, rc = self._command_execute_on_active_ip(*command, **kwargs)
         if not retry_disable and self._is_sp_unavailable_error(out):
             # When active sp is unavailable, switch to another sp
             # and set it to active and force a poll
-            if self._toggle_sp():
+            if self._toggle_sp(current_ip):
                 LOG.debug('EMC: Command Exception: %(rc)s %(result)s. '
                           'Retry on another SP.', {'rc': rc,
                                                    'result': out})
-                kwargv['poll'] = True
-                out, rc = self._command_execute_on_active_ip(*command,
-                                                             **kwargv)
+                # Raise exception for retry
+                raise exception.EMCSPUnavailableException(
+                    cmd=command, rc=rc, out=out.split('\n'))
 
         return out, rc
 
-    def _command_execute_on_active_ip(self, *command, **kwargv):
-        if "check_exit_code" not in kwargv:
-            kwargv["check_exit_code"] = True
+    def _command_execute_on_active_ip(self, *command, **kwargs):
+        if "check_exit_code" not in kwargs:
+            kwargs["check_exit_code"] = True
         rc = 0
         out = ""
-        need_poll = kwargv.pop('poll', True)
+        need_poll = kwargs.pop('poll', True)
         if "-np" not in command and not need_poll:
             command = ("-np",) + command
 
@@ -2040,7 +2045,7 @@ class CommandLineHelper(object):
                   + active_ip
                   + self.credentials
                   + command),
-                **kwargv)
+                **kwargs)
         except processutils.ProcessExecutionError as pe:
             rc = pe.exit_code
             out = pe.stdout
@@ -2052,24 +2057,29 @@ class CommandLineHelper(object):
 
         return out, rc
 
-    def _toggle_sp(self):
+    def _toggle_sp(self, current_ip):
         """Toggle the storage IP.
 
-        Address between primary IP and secondary IP, if no SP IP address has
-        exchanged, return False, otherwise True will be returned.
-        """
-        if self.secondary_storage_ip is None:
-            return False
-        old_ip = self.active_storage_ip
-        self.active_storage_ip = self.secondary_storage_ip if\
-            self.active_storage_ip == self.primary_storage_ip else\
-            self.primary_storage_ip
+        :param current_ip: active ip before toggle
+        :returns True or False: if toggle happens, return True, otherwise False
 
-        LOG.info(_LI('Toggle storage_vnx_ip_address from %(old)s to '
-                     '%(new)s.'),
-                 {'old': old_ip,
-                  'new': self.active_storage_ip})
-        return True
+        """
+        @lockutils.synchronized(
+            'vnx-toggle-' + self.toggle_lock_name, 'vnx-toggle-', True)
+        def inner():
+            if self.secondary_storage_ip is None:
+                return False
+            self.active_storage_ip = (
+                self.secondary_storage_ip
+                if current_ip == self.primary_storage_ip
+                else self.primary_storage_ip)
+
+            LOG.info(_LI('Toggle san_ip from %(current)s to '
+                         '%(new)s.'),
+                     {'current': current_ip,
+                      'new': self.active_storage_ip})
+            return True
+        return inner()
 
     def get_enablers_on_array(self, poll=False):
         """The function would get all the enablers installed on array."""
