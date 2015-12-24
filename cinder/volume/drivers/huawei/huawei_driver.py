@@ -1451,13 +1451,14 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
         2.0.1 - Manage/unmanage volume support
         2.0.2 - Refactor HuaweiFCDriver
         2.0.3 - Manage/unmanage snapshot support
+        2.0.4 - Balanced FC port selection
     """
 
-    VERSION = "2.0.3"
+    VERSION = "2.0.4"
 
     def __init__(self, *args, **kwargs):
         super(HuaweiFCDriver, self).__init__(*args, **kwargs)
-        self.fcsan_lookup_service = None
+        self.fcsan = None
 
     def get_volume_stats(self, refresh=False):
         """Get volume status."""
@@ -1481,23 +1482,23 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
              'volume': volume_name},)
 
         lun_id = self.client.get_lun_id(volume, volume_name)
+        portg_id = None
 
         original_host_name = connector['host']
         host_name = huawei_utils.encode_host_name(original_host_name)
         host_id = self.client.add_host_with_check(host_name,
                                                   original_host_name)
 
-        if not self.fcsan_lookup_service:
-            self.fcsan_lookup_service = fczm_utils.create_lookup_service()
+        if not self.fcsan:
+            self.fcsan = fczm_utils.create_lookup_service()
 
-        if self.fcsan_lookup_service:
+        if self.fcsan:
             # Use FC switch.
-            host_id = self.client.add_host_with_check(
-                host_name, original_host_name)
-            zone_helper = fc_zone_helper.FCZoneHelper(
-                self.fcsan_lookup_service, self.client)
-            (tgt_port_wwns, init_targ_map) = (
-                zone_helper.build_ini_targ_map(wwns))
+            host_id = self.client.add_host_with_check(host_name,
+                                                      original_host_name)
+            zone_helper = fc_zone_helper.FCZoneHelper(self.fcsan, self.client)
+            (tgt_port_wwns, portg_id, init_targ_map) = (
+                zone_helper.build_ini_targ_map(wwns, host_id, lun_id))
             for ini in init_targ_map:
                 self.client.ensure_fc_initiator_added(ini, host_id)
         else:
@@ -1530,9 +1531,8 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
 
         # Add host into hostgroup.
         hostgroup_id = self.client.add_host_to_hostgroup(host_id)
-        map_info = self.client.do_mapping(lun_id,
-                                          hostgroup_id,
-                                          host_id)
+        map_info = self.client.do_mapping(lun_id, hostgroup_id,
+                                          host_id, portg_id)
         host_lun_id = self.client.get_host_lun_id(host_id, lun_id)
 
         # Return FC properties.
@@ -1654,15 +1654,16 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
             fc_info = {'driver_volume_type': 'fibre_channel',
                        'data': {}}
         else:
-            if not self.fcsan_lookup_service:
-                self.fcsan_lookup_service = fczm_utils.create_lookup_service()
+            portg_id = None
+            if not self.fcsan:
+                self.fcsan = fczm_utils.create_lookup_service()
 
-            if self.fcsan_lookup_service:
-                zone_helper = fc_zone_helper.FCZoneHelper(
-                    self.fcsan_lookup_service, self.client)
+            if self.fcsan:
+                zone_helper = fc_zone_helper.FCZoneHelper(self.fcsan,
+                                                          self.client)
 
-                (tgt_port_wwns, init_targ_map) = (
-                    zone_helper.build_ini_targ_map(wwns))
+                (tgt_port_wwns, portg_id, init_targ_map) = (
+                    zone_helper.get_init_targ_map(wwns, host_id))
             else:
                 (tgt_port_wwns, init_targ_map) = (
                     self.client.get_init_targ_map(wwns))
@@ -1676,6 +1677,12 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
                     self.client.delete_lungroup_mapping_view(view_id,
                                                              lungroup_id)
                 self.client.delete_lungroup(lungroup_id)
+            if portg_id:
+                if view_id and self.client.is_portgroup_associated_to_view(
+                        view_id, portg_id):
+                    self.client.delete_portgroup_mapping_view(view_id,
+                                                              portg_id)
+                    self.client.delete_portgroup(portg_id)
 
             if host_id:
                 hostgroup_name = constants.HOSTGROUP_PREFIX + host_id
