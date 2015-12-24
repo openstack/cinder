@@ -1323,3 +1323,41 @@ class LogTracingTestCase(test.TestCase):
 
         self.assertEqual('OK', result)
         self.assertEqual(2, mock_log.debug.call_count)
+
+    def test_utils_calculate_virtual_free_capacity_with_thick(self):
+        host_stat = {'total_capacity_gb': 30.01,
+                     'free_capacity_gb': 28.01,
+                     'provisioned_capacity_gb': 2.0,
+                     'max_over_subscription_ratio': 1.0,
+                     'thin_provisioning_support': False,
+                     'thick_provisioning_support': True,
+                     'reserved_percentage': 5}
+
+        free = utils.calculate_virtual_free_capacity(
+            host_stat['total_capacity_gb'],
+            host_stat['free_capacity_gb'],
+            host_stat['provisioned_capacity_gb'],
+            host_stat['thin_provisioning_support'],
+            host_stat['max_over_subscription_ratio'],
+            host_stat['reserved_percentage'])
+
+        self.assertEqual(27.01, free)
+
+    def test_utils_calculate_virtual_free_capacity_with_thin(self):
+        host_stat = {'total_capacity_gb': 20.01,
+                     'free_capacity_gb': 18.01,
+                     'provisioned_capacity_gb': 2.0,
+                     'max_over_subscription_ratio': 2.0,
+                     'thin_provisioning_support': True,
+                     'thick_provisioning_support': False,
+                     'reserved_percentage': 5}
+
+        free = utils.calculate_virtual_free_capacity(
+            host_stat['total_capacity_gb'],
+            host_stat['free_capacity_gb'],
+            host_stat['provisioned_capacity_gb'],
+            host_stat['thin_provisioning_support'],
+            host_stat['max_over_subscription_ratio'],
+            host_stat['reserved_percentage'])
+
+        self.assertEqual(37.02, free)
