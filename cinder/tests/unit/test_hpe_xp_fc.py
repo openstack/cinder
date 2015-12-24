@@ -21,8 +21,8 @@ from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.volume import configuration as conf
 from cinder.volume import driver
-from cinder.volume.drivers.san.hp import hp_xp_fc
-from cinder.volume.drivers.san.hp import hp_xp_opts
+from cinder.volume.drivers.hpe import hpe_xp_fc
+from cinder.volume.drivers.hpe import hpe_xp_opts
 
 from oslo_config import cfg
 from oslo_utils import importutils
@@ -35,8 +35,8 @@ EXISTING_POOL_REF = {
 }
 
 
-class HPXPFakeCommon(object):
-    """Fake HPXP Common."""
+class HPEXPFakeCommon(object):
+    """Fake HPEXP Common."""
 
     def __init__(self, conf, storage_protocol, **kwargs):
         self.conf = conf
@@ -50,8 +50,8 @@ class HPXPFakeCommon(object):
             'hba_id': 'wwpns',
             'hba_id_type': 'World Wide Name',
             'msg_id': {'target': 308},
-            'volume_backend_name': 'HPXPFC',
-            'volume_opts': hp_xp_opts.FC_VOLUME_OPTS,
+            'volume_backend_name': 'HPEXPFC',
+            'volume_opts': hpe_xp_opts.FC_VOLUME_OPTS,
             'volume_type': 'fibre_channel',
         }
 
@@ -123,10 +123,10 @@ class HPXPFakeCommon(object):
         if refresh:
             d = {}
             d['volume_backend_name'] = self.driver_info['volume_backend_name']
-            d['vendor_name'] = 'Hewlett-Packard'
-            d['driver_version'] = '1.3.0-0_2015.1'
+            d['vendor_name'] = 'Hewlett Packard Enterprise'
+            d['driver_version'] = '1.1.0'
             d['storage_protocol'] = self.storage_info['protocol']
-            pool_info = POOL_INFO.get(self.conf.hpxp_pool)
+            pool_info = POOL_INFO.get(self.conf.hpexp_pool)
             if pool_info is None:
                 return self._stats
             d['total_capacity_gb'] = pool_info['total_gb']
@@ -231,7 +231,7 @@ class HPXPFakeCommon(object):
             del self.volumes[volume['provider_location']]
 
     def get_pool_id(self):
-        pool = self.conf.hpxp_pool
+        pool = self.conf.hpexp_pool
         if pool.isdigit():
             return int(pool)
         return None
@@ -242,7 +242,7 @@ class HPXPFakeCommon(object):
         if self.storage_info['pool_id'] is None:
             raise exception.VolumeBackendAPIException(
                 data='A pool could not be found. (pool: %(pool)s)' %
-                {'pool': self.conf.hpxp_pool})
+                {'pool': self.conf.hpexp_pool})
 
     def initialize_connection(self, volume, connector):
         ldev = volume.get('provider_location')
@@ -306,8 +306,8 @@ class HPXPFakeCommon(object):
         pass
 
 
-class HPXPFCDriverTest(test.TestCase):
-    """Test HPXPFCDriver."""
+class HPEXPFCDriverTest(test.TestCase):
+    """Test HPEXPFCDriver."""
 
     _VOLUME = {'size': 128,
                'name': 'test1',
@@ -341,22 +341,22 @@ class HPXPFCDriverTest(test.TestCase):
     _TOO_BIG_VOLUME_SIZE = 100000
 
     def __init__(self, *args, **kwargs):
-        super(HPXPFCDriverTest, self).__init__(*args, **kwargs)
+        super(HPEXPFCDriverTest, self).__init__(*args, **kwargs)
 
     def setUp(self):
         self._setup_config()
         self._setup_driver()
-        super(HPXPFCDriverTest, self).setUp()
+        super(HPEXPFCDriverTest, self).setUp()
 
     def _setup_config(self):
         self.configuration = mock.Mock(conf.Configuration)
-        self.configuration.hpxp_storage_id = "00000"
-        self.configuration.hpxp_pool = "30"
+        self.configuration.hpexp_storage_id = "00000"
+        self.configuration.hpexp_pool = "30"
 
     @mock.patch.object(importutils, 'import_object', return_value=None)
     def _setup_driver(self, arg1):
-        self.driver = hp_xp_fc.HPXPFCDriver(configuration=self.configuration)
-        self.driver.common = HPXPFakeCommon(self.configuration, 'FC')
+        self.driver = hpe_xp_fc.HPEXPFCDriver(configuration=self.configuration)
+        self.driver.common = HPEXPFakeCommon(self.configuration, 'FC')
         self.driver.do_setup(None)
 
     # API test cases
@@ -495,9 +495,8 @@ class HPXPFCDriverTest(test.TestCase):
         self.assertTrue(has_volume)
 
     def test_create_volume_from_snapshot_error_on_non_existing_snapshot(self):
-        """Test create_volume_from_snapshot.
+        """Test create_volume_from_snapshot is error on non existing snapshot.
 
-        Test create_volume_from_snapshot is error on non existing snapshot.
         """
         volume2 = fake_volume.fake_db_volume(**self._VOLUME2)
         snapshot = fake_snapshot.fake_db_snapshot(**self._TEST_SNAPSHOT)
@@ -561,11 +560,11 @@ class HPXPFCDriverTest(test.TestCase):
     def test_get_volume_stats(self):
         """Test get_volume_stats."""
         rc = self.driver.get_volume_stats(True)
-        self.assertEqual("Hewlett-Packard", rc['vendor_name'])
+        self.assertEqual("Hewlett Packard Enterprise", rc['vendor_name'])
 
     def test_get_volume_stats_error_on_non_existing_pool_id(self):
         """Test get_volume_stats is error on non existing pool id."""
-        self.configuration.hpxp_pool = 29
+        self.configuration.hpexp_pool = 29
         rc = self.driver.get_volume_stats(True)
         self.assertEqual({}, rc)
 
@@ -829,7 +828,7 @@ class HPXPFCDriverTest(test.TestCase):
 
     def test_do_setup_error_on_invalid_pool_id(self):
         """Test do_setup is error on invalid pool id."""
-        self.configuration.hpxp_pool = 'invalid'
+        self.configuration.hpexp_pool = 'invalid'
 
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.do_setup, None)

@@ -100,6 +100,8 @@ from cinder.volume.drivers.hpe import hpe_3par_common as \
     cinder_volume_drivers_hpe_hpe3parcommon
 from cinder.volume.drivers.hpe import hpe_lefthand_iscsi as \
     cinder_volume_drivers_hpe_hpelefthandiscsi
+from cinder.volume.drivers.hpe import hpe_xp_opts as \
+    cinder_volume_drivers_hpe_hpexpopts
 from cinder.volume.drivers.huawei import huawei_driver as \
     cinder_volume_drivers_huawei_huaweidriver
 from cinder.volume.drivers.ibm import flashsystem_common as \
@@ -136,8 +138,6 @@ from cinder.volume.drivers import pure as cinder_volume_drivers_pure
 from cinder.volume.drivers import quobyte as cinder_volume_drivers_quobyte
 from cinder.volume.drivers import rbd as cinder_volume_drivers_rbd
 from cinder.volume.drivers import remotefs as cinder_volume_drivers_remotefs
-from cinder.volume.drivers.san.hp import hp_xp_opts as \
-    cinder_volume_drivers_san_hp_hpxpopts
 from cinder.volume.drivers.san.hp import hpmsa_common as \
     cinder_volume_drivers_san_hp_hpmsacommon
 from cinder.volume.drivers.san import san as cinder_volume_drivers_san_san
@@ -214,9 +214,6 @@ def list_opts():
                 storwize_svc_iscsi_opts,
                 cinder_backup_drivers_glusterfs.glusterfsbackup_service_opts,
                 cinder_backup_drivers_tsm.tsm_opts,
-                cinder_volume_drivers_san_hp_hpxpopts.FC_VOLUME_OPTS,
-                cinder_volume_drivers_san_hp_hpxpopts.COMMON_VOLUME_OPTS,
-                cinder_volume_drivers_san_hp_hpxpopts.HORCM_VOLUME_OPTS,
                 cinder_test.test_opts,
                 cinder_volume_drivers_ibm_gpfs.gpfs_opts,
                 cinder_volume_drivers_violin_v7000common.violin_opts,
@@ -309,6 +306,9 @@ def list_opts():
                 cinder_compute_nova.nova_opts,
                 cinder_volume_drivers_ibm_flashsystemfc.flashsystem_fc_opts,
                 cinder_volume_drivers_prophetstor_options.DPL_OPTS,
+                cinder_volume_drivers_hpe_hpexpopts.FC_VOLUME_OPTS,
+                cinder_volume_drivers_hpe_hpexpopts.COMMON_VOLUME_OPTS,
+                cinder_volume_drivers_hpe_hpexpopts.HORCM_VOLUME_OPTS,
                 cinder_volume_drivers_hitachi_hbsdiscsi.volume_opts,
                 cinder_volume_manager.volume_manager_opts,
                 cinder_volume_drivers_nexenta_nexentaedge_iscsi.
