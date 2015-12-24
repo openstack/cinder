@@ -365,8 +365,9 @@ class API(base.Base):
         # Setting the status here rather than setting at start and unrolling
         # for each error condition, it should be a very small window
         backup.status = fields.BackupStatus.RESTORING
+        backup.restore_volume_id = volume.id
         backup.save()
-        volume_host = volume_utils.extract_host(volume['host'], 'host')
+        volume_host = volume_utils.extract_host(volume.host, 'host')
         self.db.volume_update(context, volume_id, {'status':
                                                    'restoring-backup'})
 

@@ -37,6 +37,7 @@ fake_backup = {
     'temp_snapshot_id': None,
     'snapshot_id': None,
     'data_timestamp': None,
+    'restore_volume_id': None,
 }
 
 
@@ -93,6 +94,11 @@ class TestBackup(test_objects.BaseObjectsTestCase):
         backup = objects.Backup(context=self.context,
                                 snapshot_id='2')
         self.assertEqual('2', backup.snapshot_id)
+
+    def test_obj_field_restore_volume_id(self):
+        backup = objects.Backup(context=self.context,
+                                restore_volume_id='2')
+        self.assertEqual('2', backup.restore_volume_id)
 
     def test_import_record(self):
         utils.replace_obj_loader(self, objects.Backup)

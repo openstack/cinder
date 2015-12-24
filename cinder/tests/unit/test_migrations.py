@@ -725,6 +725,11 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         self.assertIsInstance(volume_type_projects.c.id.type,
                               self.INTEGER_TYPE)
 
+    def _check_064(self, engine, data):
+        backups = db_utils.get_table(engine, 'backups')
+        self.assertIsInstance(backups.c.restore_volume_id.type,
+                              self.VARCHAR_TYPE)
+
     def test_walk_versions(self):
         self.walk_versions(False, False)
 
