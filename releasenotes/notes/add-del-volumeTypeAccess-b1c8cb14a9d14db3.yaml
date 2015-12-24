@@ -1,0 +1,4 @@
+---
+upgrade:
+  - Adding or removing volume_type_access from any project during DB migration 62 must not be performed.
+  - When running PostgreSQL it is required to upgrade and restart all the cinder-api services along with DB migration 62.

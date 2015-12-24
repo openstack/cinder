@@ -717,6 +717,12 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         self.assertIsInstance(backups.c.data_timestamp.type,
                               self.TIME_TYPE)
 
+    def _check_062(self, engine, data):
+        volume_type_projects = db_utils.get_table(engine,
+                                                  'volume_type_projects')
+        self.assertIsInstance(volume_type_projects.c.id.type,
+                              sqlalchemy.types.INTEGER)
+
     def test_walk_versions(self):
         self.walk_versions(False, False)
 
