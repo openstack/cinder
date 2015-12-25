@@ -353,41 +353,28 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         :param path: path to parent filesystem
         :param filesystem: filesystem that needs to be shared
         """
-        # temporary workaround to get share to state 'online'. 
-        # we need to delete existing share and create it again.
-        # try:
-        #     LOG.debug('deleting offline share')
-        #     url = 'nas/nfs/%s' % ('/'.join([path, filesystem]).replace('/', '%2F'))
-        #     nef(url, method='DELETE')
-        # except exception.NexentaException as exc:
-        #     if 'does not exist' or 'is not shared' in exc:
-        #         LOG.debug('Share does not exist or is not shared')
-        #     else:
-        #         raise
 
-        # LOG.debug('Sharing filesystem %s on Nexenta Store', filesystem)
-        # url = 'nas/nfs'
-        # data = {
-        #     'filesystem': '%s/%s' % (path, filesystem),
-        #     'anon': 'cinder',
-        #     'securityContexts': [{
-        #         'securityModes': ['sys'],
-        #     }],
-        #     "gidMap": [
-        #         {
-        #             "client": 0,
-        #             "server": "cinder",
-        #             "access": [
-        #                 {
-        #                 "allow": True,
-        #                 "etype": "fqnip",
-        #                 "entity": "*"
-        #                 }
-        #             ]
-        #         }
-        #     ],
-        # }
-        # nef(url, data)
+        LOG.debug('Sharing filesystem %s on Nexenta Store', filesystem)
+        url = 'nas/nfs'
+        data = {
+            'filesystem': '%s/%s' % (path, filesystem),
+            'securityContexts': [{
+                'securityModes': ['sys'],
+                'root': [
+                    {
+                        'entity': '*',
+                        'etype': 'network'
+                    }
+                ],
+                'readWriteList': [
+                    {
+                        'entity': '*',
+                        'etype': 'network'
+                    }
+                ]
+            }]
+        }
+        nef(url, data)
 
         pool = path.split('/')[0]
         LOG.debug('Creating ACL for filesystem %s on Nexenta Store', filesystem)
@@ -395,7 +382,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             pool, '%2F'.join((path.strip(pool).lstrip('/'), filesystem)))
         data = {
             "type": "allow",
-            "principal": "user:cinder",
+            "principal": "everyone@",
             "permissions": [
                 "list_directory",
                 "read_data",
