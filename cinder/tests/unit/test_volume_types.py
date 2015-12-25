@@ -178,7 +178,7 @@ class VolumeTypeTestCase(test.TestCase):
 
         vol_types = volume_types.get_all_types(
             self.ctxt,
-            search_opts={'extra_specs': {"key1": "val1"}})
+            filters={'extra_specs': {"key1": "val1"}})
         self.assertEqual(1, len(vol_types))
         self.assertIn("type1", vol_types.keys())
         self.assertEqual({"key1": "val1", "key2": "val2"},
@@ -186,14 +186,14 @@ class VolumeTypeTestCase(test.TestCase):
 
         vol_types = volume_types.get_all_types(
             self.ctxt,
-            search_opts={'extra_specs': {"key2": "val2"}})
+            filters={'extra_specs': {"key2": "val2"}})
         self.assertEqual(2, len(vol_types))
         self.assertIn("type1", vol_types.keys())
         self.assertIn("type2", vol_types.keys())
 
         vol_types = volume_types.get_all_types(
             self.ctxt,
-            search_opts={'extra_specs': {"key3": "val3"}})
+            filters={'extra_specs': {"key3": "val3"}})
         self.assertEqual(1, len(vol_types))
         self.assertIn("type2", vol_types.keys())
 
@@ -210,8 +210,7 @@ class VolumeTypeTestCase(test.TestCase):
 
         vol_types = volume_types.get_all_types(
             self.ctxt,
-            search_opts={'extra_specs': {"key1": "val1",
-                                         "key3": "val3"}})
+            filters={'extra_specs': {"key1": "val1", "key3": "val3"}})
         self.assertEqual(2, len(vol_types))
         self.assertIn("type1", vol_types.keys())
         self.assertIn("type3", vol_types.keys())

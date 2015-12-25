@@ -100,3 +100,19 @@ class TestVolumeTypeList(test_objects.BaseObjectsTestCase):
         volume_types = objects.VolumeTypeList.get_all(self.context)
         self.assertEqual(1, len(volume_types))
         TestVolumeType._compare(self, db_volume_type, volume_types[0])
+
+    @mock.patch('cinder.volume.volume_types.get_all_types')
+    def test_get_all_with_pagination(self, get_all_types):
+        db_volume_type = fake_volume.fake_db_volume_type()
+        get_all_types.return_value = {db_volume_type['name']: db_volume_type}
+
+        volume_types = objects.VolumeTypeList.get_all(self.context,
+                                                      filters={'is_public':
+                                                               True},
+                                                      marker=None,
+                                                      limit=1,
+                                                      sort_keys='id',
+                                                      sort_dirs='desc',
+                                                      offset=None)
+        self.assertEqual(1, len(volume_types))
+        TestVolumeType._compare(self, db_volume_type, volume_types[0])

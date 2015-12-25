@@ -100,7 +100,9 @@ class VolumeType(base.CinderPersistentObject, base.CinderObject,
 
 @base.CinderObjectRegistry.register
 class VolumeTypeList(base.ObjectListBase, base.CinderObject):
-    VERSION = '1.0'
+    # Version 1.0: Initial version
+    # Version 1.1: Add pagination support to volume type
+    VERSION = '1.1'
 
     fields = {
         'objects': fields.ListOfObjectsField('VolumeType'),
@@ -108,11 +110,16 @@ class VolumeTypeList(base.ObjectListBase, base.CinderObject):
 
     child_versions = {
         '1.0': '1.0',
+        '1.1': '1.0',
     }
 
     @base.remotable_classmethod
-    def get_all(cls, context, inactive=0, search_opts=None):
-        types = volume_types.get_all_types(context, inactive, search_opts)
+    def get_all(cls, context, inactive=0, filters=None, marker=None,
+                limit=None, sort_keys=None, sort_dirs=None, offset=None):
+        types = volume_types.get_all_types(context, inactive, filters,
+                                           marker=marker, limit=limit,
+                                           sort_keys=sort_keys,
+                                           sort_dirs=sort_dirs, offset=offset)
         expected_attrs = ['extra_specs', 'projects']
         return base.obj_make_list(context, cls(context),
                                   objects.VolumeType, types.values(),

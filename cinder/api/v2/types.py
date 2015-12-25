@@ -18,6 +18,7 @@
 from oslo_utils import strutils
 from webob import exc
 
+from cinder.api import common
 from cinder.api.openstack import wsgi
 from cinder.api.v2.views import types as views_types
 from cinder.api import xmlutil
@@ -125,6 +126,12 @@ class VolumeTypesController(wsgi.Controller):
 
     def _get_volume_types(self, req):
         """Helper function that returns a list of type dicts."""
+        params = req.params.copy()
+        marker, limit, offset = common.get_pagination_params(params)
+        sort_keys, sort_dirs = common.get_sort_params(params)
+        # NOTE(wanghao): Currently, we still only support to filter by
+        # is_public. If we want to filter by more args, we should set params
+        # to filters.
         filters = {}
         context = req.environ['cinder.context']
         if not context.is_admin and self._validate_policy(context):
@@ -135,9 +142,22 @@ class VolumeTypesController(wsgi.Controller):
                 req.params.get('is_public', None))
         else:
             filters['is_public'] = True
-        limited_types = volume_types.get_all_types(
-            context, search_opts=filters).values()
+        utils.remove_invalid_filter_options(context,
+                                            filters,
+                                            self._get_vol_type_filter_options()
+                                            )
+        limited_types = volume_types.get_all_types(context,
+                                                   filters=filters,
+                                                   marker=marker, limit=limit,
+                                                   sort_keys=sort_keys,
+                                                   sort_dirs=sort_dirs,
+                                                   offset=offset,
+                                                   list_result=True)
         return limited_types
+
+    def _get_vol_type_filter_options(self):
+        """Return volume type search options allowed by non-admin."""
+        return ['is_public']
 
 
 def create_resource():
