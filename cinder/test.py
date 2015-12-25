@@ -33,7 +33,6 @@ from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_config import fixture as config_fixture
 from oslo_log.fixture import logging_error as log_fixture
-from oslo_log import log
 from oslo_messaging import conffixture as messaging_conffixture
 from oslo_utils import strutils
 from oslo_utils import timeutils
@@ -53,8 +52,6 @@ from cinder.tests.unit import fake_notifier
 
 
 CONF = cfg.CONF
-
-LOG = log.getLogger(__name__)
 
 _DB_CACHE = None
 

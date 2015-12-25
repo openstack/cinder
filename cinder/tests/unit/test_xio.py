@@ -14,7 +14,6 @@
 #    under the License.
 
 import mock
-from oslo_log import log as logging
 
 from cinder import context
 from cinder import exception
@@ -24,7 +23,6 @@ from cinder.volume.drivers import xio
 from cinder.volume import qos_specs
 from cinder.volume import volume_types
 
-LOG = logging.getLogger("cinder.volume.driver")
 
 ISE_IP1 = '10.12.12.1'
 ISE_IP2 = '10.11.12.2'

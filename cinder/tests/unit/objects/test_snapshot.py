@@ -16,8 +16,6 @@ import copy
 import mock
 import six
 
-from oslo_log import log as logging
-
 from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder import objects
@@ -26,9 +24,6 @@ from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import objects as test_objects
-
-
-LOG = logging.getLogger(__name__)
 
 
 fake_db_snapshot = fake_snapshot.fake_db_snapshot(

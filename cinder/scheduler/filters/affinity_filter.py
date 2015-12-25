@@ -14,13 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from oslo_log import log as logging
 from oslo_utils import uuidutils
 
 from cinder.scheduler import filters
 from cinder.volume import api as volume
-
-LOG = logging.getLogger(__name__)
 
 
 class AffinityFilter(filters.BaseHostFilter):

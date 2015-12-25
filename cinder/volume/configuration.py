@@ -40,11 +40,9 @@ and registered in the group in which they are used.
 
 
 from oslo_config import cfg
-from oslo_log import log as logging
 
 
 CONF = cfg.CONF
-LOG = logging.getLogger(__name__)
 
 
 class Configuration(object):

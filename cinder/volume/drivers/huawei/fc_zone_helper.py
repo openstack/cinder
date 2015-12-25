@@ -21,6 +21,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder.volume.drivers.huawei import constants
 
+
 LOG = logging.getLogger(__name__)
 
 

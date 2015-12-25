@@ -16,14 +16,10 @@
 Volume driver for NetApp E-Series FibreChannel storage systems.
 """
 
-from oslo_log import log as logging
-
 from cinder.volume import driver
 from cinder.volume.drivers.netapp.eseries import library
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.zonemanager import utils as fczm_utils
-
-LOG = logging.getLogger(__name__)
 
 
 class NetAppEseriesFibreChannelDriver(driver.BaseVD,

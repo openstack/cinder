@@ -14,13 +14,10 @@
 
 """The Extended Snapshot Attributes API extension."""
 
-from oslo_log import log as logging
-
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 
 
-LOG = logging.getLogger(__name__)
 authorize = extensions.soft_extension_authorizer(
     'volume',
     'extended_snapshot_attributes')

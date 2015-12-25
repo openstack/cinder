@@ -14,7 +14,6 @@
 
 
 from oslo_config import cfg
-from oslo_log import log as logging
 import oslo_messaging as messaging
 from oslo_utils import encodeutils
 from oslo_utils import strutils
@@ -30,7 +29,6 @@ from cinder import utils
 from cinder import volume
 
 
-LOG = logging.getLogger(__name__)
 CONF = cfg.CONF
 
 

@@ -22,8 +22,6 @@ import tempfile
 import time
 from xml.dom import minidom
 
-from oslo_log import log as logging
-
 from cinder import exception
 from cinder import test
 from cinder.tests.unit import utils
@@ -38,7 +36,6 @@ from cinder.volume.drivers.huawei import replication
 from cinder.volume.drivers.huawei import rest_client
 from cinder.volume.drivers.huawei import smartx
 
-LOG = logging.getLogger(__name__)
 
 hypermetro_devices = """{
     "remote_device": {

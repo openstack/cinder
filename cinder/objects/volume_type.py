@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_log import log as logging
 from oslo_versionedobjects import fields
 
 from cinder import exception
@@ -21,8 +20,8 @@ from cinder import objects
 from cinder.objects import base
 from cinder.volume import volume_types
 
+
 OPTIONAL_FIELDS = ['extra_specs', 'projects']
-LOG = logging.getLogger(__name__)
 
 
 @base.CinderObjectRegistry.register

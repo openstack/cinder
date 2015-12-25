@@ -12,13 +12,10 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
-from oslo_log import log as logging
-
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 
 
-LOG = logging.getLogger(__name__)
 authorize = extensions.soft_extension_authorizer('volume',
                                                  'volume_host_attribute')
 
