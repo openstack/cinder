@@ -461,7 +461,7 @@ class API(base.Base):
 
         # NOTE(thangp): Update is called by various APIs, some of which are
         # not yet using oslo_versionedobjects.  We need to handle the case
-        # where volume is either a dict or a oslo_versionedobject.
+        # where volume is either a dict or an oslo_versionedobject.
         if isinstance(volume, objects_base.CinderObject):
             volume.update(fields)
             volume.save()

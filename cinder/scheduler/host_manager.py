@@ -221,7 +221,7 @@ class HostState(object):
                 self._append_backend_info(capability)
                 self.pools[pool_name] = single_pool
             else:
-                # this is a update from legacy driver
+                # this is an update from legacy driver
                 try:
                     single_pool = self.pools[pool_name]
                 except KeyError:

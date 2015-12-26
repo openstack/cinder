@@ -786,7 +786,7 @@ class EMCVMAXMasking(object):
     def _create_or_get_initiator_group(
             self, conn, controllerConfigService, igGroupName,
             connector, storageSystemName, extraSpecs):
-        """Attempt to create a initiatorGroup.
+        """Attempt to create an initiatorGroup.
 
         If one already exists with the same Initiator/wwns then get it.
         Check to see if an initiatorGroup already exists, that matches the

@@ -282,7 +282,7 @@ def last_completed_audit_period(unit=None):
 
 
 def list_of_dicts_to_dict(seq, key):
-    """Convert list of dicts to a indexted dict.
+    """Convert list of dicts to an indexted dict.
 
     Takes a list of dicts, and converts it a nested dict
     indexed by <key>
