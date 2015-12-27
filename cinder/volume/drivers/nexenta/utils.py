@@ -17,7 +17,6 @@
 =========================================================
 
 .. automodule:: nexenta.utils
-.. moduleauthor:: Nexenta OpenStack Developers <openstack.team@nexenta.com>
 """
 
 import re
@@ -67,7 +66,7 @@ def get_rrmgr_cmd(src, dst, compression=None, tcp_buf_size=None,
     """Returns rrmgr command for source and destination."""
     cmd = ['rrmgr', '-s', 'zfs']
     if compression:
-        cmd.extend(['-c', '%s' % str(compression)])
+        cmd.extend(['-c', '%s' % compression])
     cmd.append('-q')
     cmd.append('-e')
     if tcp_buf_size:

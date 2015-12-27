@@ -1,4 +1,4 @@
-# Copyright 2013 Nexenta Systems, Inc.
+# Copyright 2015 Nexenta Systems, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -17,19 +17,43 @@
 =============================================================================
 
 .. automodule:: nexenta.options
-.. moduleauthor:: Victor Rodionov <victor.rodionov@nexenta.com>
-.. moduleauthor:: Yuriy Taraday <yorik.sar@gmail.com>
 """
 
 from oslo_config import cfg
 
+
+NEXENTA_EDGE_OPTS = [
+    cfg.StrOpt('nexenta_rest_address',
+               default='',
+               help='IP address of NexentaEdge management REST API endpoint'),
+    cfg.StrOpt('nexenta_rest_user',
+               default='admin',
+               help='User name to connect to NexentaEdge'),
+    cfg.StrOpt('nexenta_rest_password',
+               default='nexenta',
+               help='Password to connect to NexentaEdge',
+               secret=True),
+    cfg.StrOpt('nexenta_lun_container',
+               default='',
+               help='NexentaEdge logical path of bucket for LUNs'),
+    cfg.StrOpt('nexenta_iscsi_service',
+               default='',
+               help='NexentaEdge iSCSI service name'),
+    cfg.StrOpt('nexenta_client_address',
+               default='',
+               help='NexentaEdge iSCSI Gateway client '
+               'address for non-VIP service'),
+    cfg.StrOpt('nexenta_chunksize',
+               default=16384,
+               help='NexentaEdge iSCSI LUN object chunk size')
+]
 
 NEXENTA_CONNECTION_OPTS = [
     cfg.StrOpt('nexenta_host',
                default='',
                help='IP address of Nexenta SA'),
     cfg.IntOpt('nexenta_rest_port',
-               default=2000,
+               default=8080,
                help='HTTP port to connect to Nexenta REST API server'),
     cfg.StrOpt('nexenta_rest_protocol',
                default='auto',
@@ -93,7 +117,7 @@ NEXENTA_DATASET_OPTS = [
                default='',
                help='Human-readable description for the folder.'),
     cfg.StrOpt('nexenta_blocksize',
-               default='',
+               default=4096,
                help='Block size for datasets'),
     cfg.IntOpt('nexenta_ns5_blocksize',
                default=32,
@@ -126,3 +150,4 @@ CONF.register_opts(NEXENTA_ISCSI_OPTS)
 CONF.register_opts(NEXENTA_DATASET_OPTS)
 CONF.register_opts(NEXENTA_NFS_OPTS)
 CONF.register_opts(NEXENTA_RRMGR_OPTS)
+CONF.register_opts(NEXENTA_EDGE_OPTS)

@@ -68,7 +68,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             self.configuration.append_config_values(
                 options.NEXENTA_NFS_OPTS)
             self.configuration.append_config_values(
-                options.NEXENTA_VOLUME_OPTS)
+                options.NEXENTA_DATASET_OPTS)
             self.configuration.append_config_values(
                 options.NEXENTA_RRMGR_OPTS)
 
@@ -77,9 +77,11 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         self.rrmgr_tcp_buf_size = self.configuration.nexenta_rrmgr_tcp_buf_size
         self.rrmgr_connections = self.configuration.nexenta_rrmgr_connections
         self.nfs_mount_point_base = self.configuration.nexenta_mount_point_base
-        self.volume_compression = self.configuration.nexenta_volume_compression
-        self.volume_deduplication = self.configuration.nexenta_volume_dedup
-        self.volume_description = self.configuration.nexenta_volume_description
+        self.volume_compression = (
+            self.configuration.nexenta_dataset_compression)
+        self.volume_deduplication = self.configuration.nexenta_dataset_dedup
+        self.volume_description = (
+            self.configuration.nexenta_dataset_description)
         self.sparsed_volumes = self.configuration.nexenta_sparsed_volumes
         self._nms2volroot = {}
         self.share2nms = {}
@@ -317,7 +319,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         LOG.debug('Creating folder on Nexenta Store %s', folder)
         nms.folder.create_with_props(
             vol, folder,
-            {'compression': self.configuration.nexenta_volume_compression}
+            {'compression': self.configuration.nexenta_dataset_compression}
         )
 
         volume_path = self.remote_path(volume)
@@ -565,7 +567,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             }
         )
 
-        LOG.info(_LI('Regular file: %s created.') % path)
+        LOG.info(_LI('Regular file: %s created.'), path)
 
     def _set_rw_permissions_for_all(self, nms, path):
         """Sets 666 permissions for the path.
@@ -695,7 +697,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                               'count': num_attempts})
                     raise exception.NfsException(e)
                 LOG.warning(
-                    _LW('Mount attempt %(attempt)d failed: %(error)s.'
+                    _LW('Mount attempt %(attempt)d failed: %(error)s. '
                         'Retrying mount ...'), {
                         'attempt': attempt,
                         'error': e})
