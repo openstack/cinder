@@ -272,7 +272,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                 snap_url = ('storage/pools/%(pool)s/'
                             'filesystems/%(fs)s/snapshots/%(snap)s') % {
                     'pool': pool,
-                    'fs': origin.split('@')[-2].split('/')[-1],
+                    'fs': fs,
                     'snap': origin.split('@')[-1]
                 }
                 nef(snap_url, method='DELETE')
