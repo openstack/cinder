@@ -1861,3 +1861,23 @@ class QuotaVolumeTypeReservationTestCase(test.TestCase):
                                              project_id='vol_project_id',
                                              gigabytes='1',
                                              volumes=1)
+
+    @mock.patch.object(quota.QUOTAS, 'reserve')
+    def test_volume_type_reservation_with_type_only(self, mock_reserve):
+        my_context = FakeContext('MyProject', None)
+        volume = {'name': 'my_vol_name',
+                  'id': 'my_vol_id',
+                  'size': '1',
+                  'project_id': 'vol_project_id',
+                  }
+        quota_utils.get_volume_type_reservation(my_context,
+                                                volume,
+                                                self.volume_type['id'],
+                                                reserve_vol_type_only=True)
+        vtype_volume_quota = "%s_%s" % ('volumes', self.volume_type['name'])
+        vtype_size_quota = "%s_%s" % ('gigabytes', self.volume_type['name'])
+        reserve_opts = {vtype_volume_quota: 1,
+                        vtype_size_quota: volume['size']}
+        mock_reserve.assert_called_once_with(my_context,
+                                             project_id='vol_project_id',
+                                             **reserve_opts)
