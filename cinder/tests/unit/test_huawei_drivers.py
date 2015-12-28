@@ -12,7 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""Tests for huawei 18000 storage."""
+"""Tests for huawei drivers."""
 import json
 import mock
 import os
@@ -121,7 +121,7 @@ test_host = {'host': 'ubuntu001@backend001#OpenStack_Pool',
                               'timestamp': '2015-07-13T11:41:00.513549',
                               'smartpartition': True,
                               'allocated_capacity_gb': 0,
-                              'volume_backend_name': 'Huawei18000FCDriver',
+                              'volume_backend_name': 'HuaweiFCDriver',
                               'free_capacity_gb': 20.0,
                               'driver_version': '1.1.0',
                               'total_capacity_gb': 20.0,
@@ -1395,7 +1395,7 @@ def Fake_sleep(time):
     pass
 
 
-class Fake18000Client(rest_client.RestClient):
+class FakeClient(rest_client.RestClient):
 
     def __init__(self, configuration):
         rest_client.RestClient.__init__(self, configuration)
@@ -1476,7 +1476,7 @@ class Fake18000Client(rest_client.RestClient):
         return json.loads(data)
 
 
-class Fake18000ISCSIStorage(huawei_driver.Huawei18000ISCSIDriver):
+class FakeISCSIStorage(huawei_driver.HuaweiISCSIDriver):
     """Fake Huawei Storage, Rewrite some methods of HuaweiISCSIDriver."""
 
     def __init__(self, configuration):
@@ -1484,10 +1484,10 @@ class Fake18000ISCSIStorage(huawei_driver.Huawei18000ISCSIDriver):
         self.xml_file_path = self.configuration.cinder_huawei_conf_file
 
     def do_setup(self):
-        self.restclient = Fake18000Client(configuration=self.configuration)
+        self.restclient = FakeClient(configuration=self.configuration)
 
 
-class Fake18000FCStorage(huawei_driver.Huawei18000FCDriver):
+class FakeFCStorage(huawei_driver.HuaweiFCDriver):
     """Fake Huawei Storage, Rewrite some methods of HuaweiISCSIDriver."""
 
     def __init__(self, configuration):
@@ -1496,13 +1496,13 @@ class Fake18000FCStorage(huawei_driver.Huawei18000FCDriver):
         self.fcsan_lookup_service = None
 
     def do_setup(self):
-        self.restclient = Fake18000Client(configuration=self.configuration)
+        self.restclient = FakeClient(configuration=self.configuration)
 
 
-class Huawei18000ISCSIDriverTestCase(test.TestCase):
+class HuaweiISCSIDriverTestCase(test.TestCase):
 
     def setUp(self):
-        super(Huawei18000ISCSIDriverTestCase, self).setUp()
+        super(HuaweiISCSIDriverTestCase, self).setUp()
         self.tmp_dir = tempfile.mkdtemp()
         self.fake_conf_file = self.tmp_dir + '/cinder_huawei_conf.xml'
         self.addCleanup(shutil.rmtree, self.tmp_dir)
@@ -1513,7 +1513,7 @@ class Huawei18000ISCSIDriverTestCase(test.TestCase):
         self.xml_file_path = self.configuration.cinder_huawei_conf_file
         self.configuration.hypermetro_devices = hypermetro_devices
         self.stubs.Set(time, 'sleep', Fake_sleep)
-        driver = Fake18000ISCSIStorage(configuration=self.configuration)
+        driver = FakeISCSIStorage(configuration=self.configuration)
         self.driver = driver
         self.driver.do_setup()
         self.portgroup = 'portgroup-test'
@@ -1610,7 +1610,7 @@ class Huawei18000ISCSIDriverTestCase(test.TestCase):
     def test_get_volume_status(self):
         self.driver.restclient.login()
         data = self.driver.get_volume_stats()
-        self.assertEqual('1.1.1', data['driver_version'])
+        self.assertEqual('2.0.0', data['driver_version'])
 
     def test_extend_volume(self):
         self.driver.restclient.login()
@@ -2082,10 +2082,10 @@ class FCSanLookupService(object):
         return fake_fabric_mapping
 
 
-class Huawei18000FCDriverTestCase(test.TestCase):
+class HuaweiFCDriverTestCase(test.TestCase):
 
     def setUp(self):
-        super(Huawei18000FCDriverTestCase, self).setUp()
+        super(HuaweiFCDriverTestCase, self).setUp()
         self.tmp_dir = tempfile.mkdtemp()
         self.fake_conf_file = self.tmp_dir + '/cinder_huawei_conf.xml'
         self.addCleanup(shutil.rmtree, self.tmp_dir)
@@ -2096,7 +2096,7 @@ class Huawei18000FCDriverTestCase(test.TestCase):
         self.xml_file_path = self.configuration.cinder_huawei_conf_file
         self.configuration.hypermetro_devices = hypermetro_devices
         self.stubs.Set(time, 'sleep', Fake_sleep)
-        driver = Fake18000FCStorage(configuration=self.configuration)
+        driver = FakeFCStorage(configuration=self.configuration)
         self.driver = driver
         self.driver.do_setup()
 
@@ -2153,7 +2153,7 @@ class Huawei18000FCDriverTestCase(test.TestCase):
     def test_get_volume_status(self):
         self.driver.restclient.login()
         data = self.driver.get_volume_stats()
-        self.assertEqual('1.1.1', data['driver_version'])
+        self.assertEqual('2.0.0', data['driver_version'])
 
     def test_extend_volume(self):
         self.driver.restclient.login()
@@ -2310,7 +2310,7 @@ class Huawei18000FCDriverTestCase(test.TestCase):
                          'capabilities':
                              {'location_info': '210235G7J20000000000',
                               'allocated_capacity_gb': 0,
-                              'volume_backend_name': 'Huawei18000FCDriver',
+                              'volume_backend_name': 'HuaweiFCDriver',
                               'storage_protocol': 'FC'}}
         is_valid = self.driver._check_migration_valid(invalid_host1,
                                                       test_volume)
@@ -2321,7 +2321,7 @@ class Huawei18000FCDriverTestCase(test.TestCase):
                              {'location_info': '210235G7J20000000001',
                               'allocated_capacity_gb': 0,
                               'pool_name': 'OpenStack_Pool',
-                              'volume_backend_name': 'Huawei18000FCDriver',
+                              'volume_backend_name': 'HuaweiFCDriver',
                               'storage_protocol': 'FC'}}
         is_valid = self.driver._check_migration_valid(invalid_host2,
                                                       test_volume)
@@ -2340,7 +2340,7 @@ class Huawei18000FCDriverTestCase(test.TestCase):
                              {'location_info': '210235G7J20000000001',
                               'allocated_capacity_gb': 0,
                               'pool_name': 'OpenStack_Pool',
-                              'volume_backend_name': 'Huawei18000FCDriver',
+                              'volume_backend_name': 'HuaweiFCDriver',
                               'storage_protocol': 'iSCSI'}}
         is_valid = self.driver._check_migration_valid(invalid_host2,
                                                       volume_in_use)
@@ -2351,7 +2351,7 @@ class Huawei18000FCDriverTestCase(test.TestCase):
                              {'location_info': '210235G7J20000000001',
                               'allocated_capacity_gb': 0,
                               'pool_name': '',
-                              'volume_backend_name': 'Huawei18000FCDriver',
+                              'volume_backend_name': 'HuaweiFCDriver',
                               'storage_protocol': 'iSCSI'}}
         is_valid = self.driver._check_migration_valid(invalid_host3,
                                                       test_volume)

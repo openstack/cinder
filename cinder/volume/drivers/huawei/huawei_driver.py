@@ -226,7 +226,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                     if constants.MIGRATION_COMPLETE == item['RUNNINGSTATUS']:
                         return True
                     if constants.MIGRATION_FAULT == item['RUNNINGSTATUS']:
-                        err_msg = _('Lun migration error.')
+                        err_msg = _("Lun migration error.")
                         LOG.error(err_msg)
                         raise exception.VolumeBackendAPIException(data=err_msg)
         if not found_migration_task:
@@ -839,8 +839,8 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         self.restclient.delete_luncopy(luncopy_id)
 
 
-class Huawei18000ISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
-    """ISCSI driver for Huawei OceanStor 18000 storage arrays.
+class HuaweiISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
+    """ISCSI driver for Huawei storage arrays.
 
     Version history:
         1.0.0 - Initial driver
@@ -852,12 +852,13 @@ class Huawei18000ISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
                 SmartX support
                 Volume migration support
                 Volume retype support
+        2.0.0 - Rename to HuaweiISCSIDriver
     """
 
-    VERSION = "1.1.1"
+    VERSION = "2.0.0"
 
     def __init__(self, *args, **kwargs):
-        super(Huawei18000ISCSIDriver, self).__init__(*args, **kwargs)
+        super(HuaweiISCSIDriver, self).__init__(*args, **kwargs)
 
     def get_volume_stats(self, refresh=False):
         """Get volume status."""
@@ -1036,8 +1037,8 @@ class Huawei18000ISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
             self.restclient.delete_mapping_view(view_id)
 
 
-class Huawei18000FCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
-    """FC driver for Huawei OceanStor 18000 storage arrays.
+class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
+    """FC driver for Huawei storage arrays.
 
     Version history:
         1.0.0 - Initial driver
@@ -1049,12 +1050,13 @@ class Huawei18000FCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
                 Volume retype support
                 FC zone enhancement
                 Volume hypermetro support
+        2.0.0 - Rename to HuaweiFCDriver
     """
 
-    VERSION = "1.1.1"
+    VERSION = "2.0.0"
 
     def __init__(self, *args, **kwargs):
-        super(Huawei18000FCDriver, self).__init__(*args, **kwargs)
+        super(HuaweiFCDriver, self).__init__(*args, **kwargs)
         self.fcsan_lookup_service = None
 
     def get_volume_stats(self, refresh=False):
