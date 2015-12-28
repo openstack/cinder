@@ -637,31 +637,21 @@ class NfsDriverTestCase(test.TestCase):
 
     def test_find_share(self):
         """_find_share simple use case."""
-        mox = self.mox
         drv = self._driver
-
         drv._mounted_shares = [self.TEST_NFS_EXPORT1, self.TEST_NFS_EXPORT2]
 
-        mox.StubOutWithMock(drv, '_get_capacity_info')
-        drv._get_capacity_info(self.TEST_NFS_EXPORT1).\
-            AndReturn((5 * units.Gi, 2 * units.Gi,
-                       2 * units.Gi))
-        drv._get_capacity_info(self.TEST_NFS_EXPORT1).\
-            AndReturn((5 * units.Gi, 2 * units.Gi,
-                       2 * units.Gi))
-        drv._get_capacity_info(self.TEST_NFS_EXPORT2).\
-            AndReturn((10 * units.Gi, 3 * units.Gi,
-                       1 * units.Gi))
-        drv._get_capacity_info(self.TEST_NFS_EXPORT2).\
-            AndReturn((10 * units.Gi, 3 * units.Gi,
-                       1 * units.Gi))
-
-        mox.ReplayAll()
-
-        self.assertEqual(self.TEST_NFS_EXPORT2,
-                         drv._find_share(self.TEST_SIZE_IN_GB))
-
-        mox.VerifyAll()
+        with mock.patch.object(drv, '_get_capacity_info')\
+                as mock_get_capacity_info:
+            mock_get_capacity_info.side_effect = [
+                (5 * units.Gi, 2 * units.Gi, 2 * units.Gi),
+                (10 * units.Gi, 3 * units.Gi, 1 * units.Gi)]
+            self.assertEqual(self.TEST_NFS_EXPORT2,
+                             drv._find_share(self.TEST_SIZE_IN_GB))
+            self.assertTrue(mock.call(self.TEST_NFS_EXPORT1) in
+                            mock_get_capacity_info.call_args_list)
+            self.assertTrue(mock.call(self.TEST_NFS_EXPORT2) in
+                            mock_get_capacity_info.call_args_list)
+            self.assertEqual(mock_get_capacity_info.call_count, 2)
 
     def test_find_share_should_throw_error_if_there_is_not_enough_space(self):
         """_find_share should throw error if there is no share to host vol."""
