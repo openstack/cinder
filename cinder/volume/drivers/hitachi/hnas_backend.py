@@ -356,7 +356,7 @@ class HnasBackend(object):
             tgt_list.append(tgt)
 
         if tgtalias is not None:
-            # We tried to find  'tgtalias' but didn't find. Return a empty
+            # We tried to find  'tgtalias' but didn't find. Return an empty
             # list.
             LOG.debug("There's no target %(alias)s in EVS %(evsid)s.",
                       {'alias': tgtalias, 'evsid': evsid})
