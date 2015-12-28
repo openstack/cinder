@@ -26,6 +26,7 @@ import six
 
 from cinder import exception
 from cinder.i18n import _
+from cinder.objects import fields
 from cinder import test
 from cinder.volume.drivers.emc import emc_vmax_common
 from cinder.volume.drivers.emc import emc_vmax_fast
@@ -459,7 +460,7 @@ class EMCVMAXCommonData(object):
     test_CG = {'name': 'myCG1',
                'id': '12345abcde',
                'volume_type_id': 'abc',
-               'status': 'available'
+               'status': fields.ConsistencyGroupStatus.AVAILABLE
                }
     test_snapshot = {'name': 'myCG1',
                      'id': '12345abcde',
@@ -3600,7 +3601,8 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
             self.driver.create_consistencygroup_from_src(
                 self.data.test_ctxt, self.data.test_CG, volumes,
                 self.data.test_CG_snapshot, snapshots))
-        self.assertEqual({'status': 'available'}, model_update)
+        self.assertEqual({'status': fields.ConsistencyGroupStatus.AVAILABLE},
+                         model_update)
         self.assertEqual([{'status': 'available', 'id': '2'}],
                          volumes_model_update)
 

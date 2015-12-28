@@ -34,6 +34,7 @@ from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LW
 from cinder.image import image_utils
+from cinder.objects import fields
 from cinder.volume.drivers.san import san
 from cinder.volume import qos_specs
 from cinder.volume.targets import iscsi as iscsi_driver
@@ -1277,7 +1278,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         # volume associations. So, we're just going to play along with the
         # consistency group song and dance. There will be a lot of no-ops
         # because of this.
-        return {'status': 'available'}
+        return {'status': fields.ConsistencyGroupStatus.AVAILABLE}
 
     def create_consistencygroup_from_src(self, ctxt, group, volumes,
                                          cgsnapshot, snapshots,
@@ -1294,7 +1295,8 @@ class SolidFireDriver(san.SanISCSIDriver):
                     snap['id'],
                     sf_group_snap,
                     vol))
-            return {'status': 'available'}, vol_models
+            return ({'status': fields.ConsistencyGroupStatus.AVAILABLE},
+                    vol_models)
 
         elif source_cg and source_vols:
             # Create temporary group snapshot.

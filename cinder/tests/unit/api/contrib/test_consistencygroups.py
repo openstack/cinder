@@ -29,6 +29,7 @@ from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v2 import stubs
@@ -53,7 +54,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             volume_type_id='123456',
             availability_zone='az1',
             host='fakehost',
-            status='creating'):
+            status=fields.ConsistencyGroupStatus.CREATING):
         """Create a consistency group object."""
         ctxt = ctxt or self.ctxt
         consistencygroup = objects.ConsistencyGroup(ctxt)
@@ -366,7 +367,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                          res_dict['badRequest']['message'])
 
     def test_delete_consistencygroup_available(self):
-        consistencygroup = self._create_consistencygroup(status='available')
+        consistencygroup = self._create_consistencygroup(
+            status=fields.ConsistencyGroupStatus.AVAILABLE)
         req = webob.Request.blank('/v2/fake/consistencygroups/%s/delete' %
                                   consistencygroup.id)
         req.method = 'POST'
@@ -378,7 +380,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         consistencygroup = objects.ConsistencyGroup.get_by_id(
             self.ctxt, consistencygroup.id)
         self.assertEqual(202, res.status_int)
-        self.assertEqual('deleting', consistencygroup.status)
+        self.assertEqual(fields.ConsistencyGroupStatus.DELETING,
+                         consistencygroup.status)
 
         consistencygroup.destroy()
 
@@ -396,7 +399,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                          res_dict['itemNotFound']['message'])
 
     def test_delete_consistencygroup_with_Invalidconsistencygroup(self):
-        consistencygroup = self._create_consistencygroup(status='invalid')
+        consistencygroup = self._create_consistencygroup(
+            status=fields.ConsistencyGroupStatus.IN_USE)
         req = webob.Request.blank('/v2/fake/consistencygroups/%s/delete' %
                                   consistencygroup.id)
         req.method = 'POST'
@@ -409,7 +413,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
         msg = (_('Invalid ConsistencyGroup: Consistency group status must be '
-                 'available or error, but current status is: invalid'))
+                 'available or error, but current status is: in-use'))
         self.assertEqual(msg, res_dict['badRequest']['message'])
 
         consistencygroup.destroy()
@@ -417,7 +421,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
     def test_delete_consistencygroup_no_host(self):
         consistencygroup = self._create_consistencygroup(
             host=None,
-            status='error')
+            status=fields.ConsistencyGroupStatus.ERROR)
         req = webob.Request.blank('/v2/fake/consistencygroups/%s/delete' %
                                   consistencygroup.id)
         req.method = 'POST'
@@ -430,7 +434,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         cg = objects.ConsistencyGroup.get_by_id(
             context.get_admin_context(read_deleted='yes'),
             consistencygroup.id)
-        self.assertEqual('deleted', cg.status)
+        self.assertEqual(fields.ConsistencyGroupStatus.DELETED, cg.status)
         self.assertIsNone(cg.host)
 
     def test_create_delete_consistencygroup_update_quota(self):
@@ -449,20 +453,21 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                                 fake_type['name'])
         self.cg_api.update_quota.assert_called_once_with(
             self.ctxt, cg, 1)
-        self.assertEqual('creating', cg.status)
+        self.assertEqual(fields.ConsistencyGroupStatus.CREATING, cg.status)
         self.assertIsNone(cg.host)
         self.cg_api.update_quota.reset_mock()
-        cg.status = 'error'
+        cg.status = fields.ConsistencyGroupStatus.ERROR
         self.cg_api.delete(self.ctxt, cg)
         self.cg_api.update_quota.assert_called_once_with(
             self.ctxt, cg, -1, self.ctxt.project_id)
         cg = objects.ConsistencyGroup.get_by_id(
             context.get_admin_context(read_deleted='yes'),
             cg.id)
-        self.assertEqual('deleted', cg.status)
+        self.assertEqual(fields.ConsistencyGroupStatus.DELETED, cg.status)
 
     def test_delete_consistencygroup_with_invalid_body(self):
-        consistencygroup = self._create_consistencygroup(status='available')
+        consistencygroup = self._create_consistencygroup(
+            status=fields.ConsistencyGroupStatus.AVAILABLE)
         req = webob.Request.blank('/v2/fake/consistencygroups/%s/delete' %
                                   consistencygroup.id)
         req.method = 'POST'
@@ -474,7 +479,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         self.assertEqual(400, res.status_int)
 
     def test_delete_consistencygroup_with_invalid_force_value_in_body(self):
-        consistencygroup = self._create_consistencygroup(status='available')
+        consistencygroup = self._create_consistencygroup(
+            status=fields.ConsistencyGroupStatus.AVAILABLE)
         req = webob.Request.blank('/v2/fake/consistencygroups/%s/delete' %
                                   consistencygroup.id)
         req.method = 'POST'
@@ -486,7 +492,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         self.assertEqual(400, res.status_int)
 
     def test_delete_consistencygroup_with_empty_force_value_in_body(self):
-        consistencygroup = self._create_consistencygroup(status='available')
+        consistencygroup = self._create_consistencygroup(
+            status=fields.ConsistencyGroupStatus.AVAILABLE)
         req = webob.Request.blank('/v2/fake/consistencygroups/%s/delete' %
                                   consistencygroup.id)
         req.method = 'POST'
@@ -519,8 +526,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
     def test_update_consistencygroup_success(self, mock_validate):
         volume_type_id = '123456'
-        consistencygroup = self._create_consistencygroup(status='available',
-                                                         host='test_host')
+        consistencygroup = self._create_consistencygroup(
+            status=fields.ConsistencyGroupStatus.AVAILABLE,
+            host='test_host')
 
         remove_volume_id = utils.create_volume(
             self.ctxt,
@@ -531,7 +539,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             volume_type_id=volume_type_id,
             consistencygroup_id=consistencygroup.id)['id']
 
-        self.assertEqual('available', consistencygroup.status)
+        self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
+                         consistencygroup.status)
 
         cg_volumes = db.volume_get_all_by_group(self.ctxt.elevated(),
                                                 consistencygroup.id)
@@ -564,13 +573,15 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             self.ctxt, consistencygroup.id)
         self.assertEqual(202, res.status_int)
         self.assertTrue(mock_validate.called)
-        self.assertEqual('updating', consistencygroup.status)
+        self.assertEqual(fields.ConsistencyGroupStatus.UPDATING,
+                         consistencygroup.status)
 
         consistencygroup.destroy()
 
     def test_update_consistencygroup_add_volume_not_found(self):
-        consistencygroup = self._create_consistencygroup(ctxt=self.ctxt,
-                                                         status='available')
+        consistencygroup = self._create_consistencygroup(
+            ctxt=self.ctxt,
+            status=fields.ConsistencyGroupStatus.AVAILABLE)
         req = webob.Request.blank('/v2/fake/consistencygroups/%s/update' %
                                   consistencygroup.id)
         req.method = 'PUT'
@@ -594,8 +605,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         consistencygroup.destroy()
 
     def test_update_consistencygroup_remove_volume_not_found(self):
-        consistencygroup = self._create_consistencygroup(ctxt=self.ctxt,
-                                                         status='available')
+        consistencygroup = self._create_consistencygroup(
+            ctxt=self.ctxt,
+            status=fields.ConsistencyGroupStatus.AVAILABLE)
         req = webob.Request.blank('/v2/fake/consistencygroups/%s/update' %
                                   consistencygroup.id)
         req.method = 'PUT'
@@ -619,8 +631,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         consistencygroup.destroy()
 
     def test_update_consistencygroup_empty_parameters(self):
-        consistencygroup = self._create_consistencygroup(ctxt=self.ctxt,
-                                                         status='available')
+        consistencygroup = self._create_consistencygroup(
+            ctxt=self.ctxt,
+            status=fields.ConsistencyGroupStatus.AVAILABLE)
         req = webob.Request.blank('/v2/fake/consistencygroups/%s/update' %
                                   consistencygroup.id)
         req.method = 'PUT'
@@ -640,8 +653,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
     def test_update_consistencygroup_add_volume_invalid_state(self):
         volume_type_id = '123456'
-        consistencygroup = self._create_consistencygroup(ctxt=self.ctxt,
-                                                         status='available')
+        consistencygroup = self._create_consistencygroup(
+            ctxt=self.ctxt,
+            status=fields.ConsistencyGroupStatus.AVAILABLE)
         add_volume_id = utils.create_volume(
             self.ctxt,
             volume_type_id=volume_type_id,
@@ -673,8 +687,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         consistencygroup.destroy()
 
     def test_update_consistencygroup_add_volume_invalid_volume_type(self):
-        consistencygroup = self._create_consistencygroup(ctxt=self.ctxt,
-                                                         status='available')
+        consistencygroup = self._create_consistencygroup(
+            ctxt=self.ctxt,
+            status=fields.ConsistencyGroupStatus.AVAILABLE)
         wrong_type = 'wrong-volume-type-id'
         add_volume_id = utils.create_volume(
             self.ctxt,
@@ -705,8 +720,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         consistencygroup.destroy()
 
     def test_update_consistencygroup_add_volume_already_in_cg(self):
-        consistencygroup = self._create_consistencygroup(ctxt=self.ctxt,
-                                                         status='available')
+        consistencygroup = self._create_consistencygroup(
+            ctxt=self.ctxt,
+            status=fields.ConsistencyGroupStatus.AVAILABLE)
         add_volume_id = utils.create_volume(
             self.ctxt,
             consistencygroup_id='some_other_cg')['id']
@@ -730,9 +746,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         consistencygroup.destroy()
 
     def test_update_consistencygroup_invalid_state(self):
-        wrong_status = 'wrong_status'
-        consistencygroup = self._create_consistencygroup(status=wrong_status,
-                                                         ctxt=self.ctxt)
+        consistencygroup = self._create_consistencygroup(
+            status=fields.ConsistencyGroupStatus.IN_USE,
+            ctxt=self.ctxt)
         req = webob.Request.blank('/v2/fake/consistencygroups/%s/update' %
                                   consistencygroup.id)
         req.method = 'PUT'
@@ -748,7 +764,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
         msg = _("Invalid ConsistencyGroup: Consistency group status must be "
-                "available, but current status is: %s.") % wrong_status
+                "available, but current status is: %s.") % (
+            fields.ConsistencyGroupStatus.IN_USE)
         self.assertEqual(msg, res_dict['badRequest']['message'])
 
         consistencygroup.destroy()

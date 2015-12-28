@@ -23,6 +23,7 @@ from oslo_config import cfg
 from cinder import context
 from cinder import db
 from cinder import exception
+from cinder.objects import fields
 from cinder.scheduler import driver
 from cinder.scheduler import filter_scheduler
 from cinder.scheduler import manager
@@ -279,7 +280,8 @@ class SchedulerManagerTestCase(test.TestCase):
                               consistencygroup_obj)
             self.assertTrue(LOG.exception.call_count > 0)
             db.consistencygroup_update.assert_called_once_with(
-                self.context, group_id, {'status': 'error'})
+                self.context, group_id, {'status': (
+                    fields.ConsistencyGroupStatus.ERROR)})
 
             mock_cg.reset_mock()
             LOG.exception.reset_mock()
@@ -291,7 +293,8 @@ class SchedulerManagerTestCase(test.TestCase):
                 self.context, 'volume', consistencygroup_obj)
             self.assertTrue(LOG.error.call_count > 0)
             db.consistencygroup_update.assert_called_once_with(
-                self.context, group_id, {'status': 'error'})
+                self.context, group_id, {'status': (
+                    fields.ConsistencyGroupStatus.ERROR)})
 
             self.manager.driver = original_driver
 

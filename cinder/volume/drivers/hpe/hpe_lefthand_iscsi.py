@@ -43,6 +43,7 @@ from oslo_utils import units
 from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
+from cinder.objects import fields
 from cinder.volume import driver
 from cinder.volume import utils
 from cinder.volume import volume_types
@@ -291,7 +292,7 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
 
     def create_consistencygroup(self, context, group):
         """Creates a consistencygroup."""
-        model_update = {'status': 'available'}
+        model_update = {'status': fields.ConsistencyGroupStatus.AVAILABLE}
         return model_update
 
     def create_consistencygroup_from_src(self, context, group, volumes,

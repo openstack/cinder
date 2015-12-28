@@ -21,6 +21,7 @@ from oslo_utils import units
 from six.moves import http_client
 
 from cinder import exception
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit import fake_snapshot
 from cinder.volume import configuration as conf
@@ -683,7 +684,8 @@ class TestProphetStorDPLDriver(test.TestCase):
         self.DPL_MOCK.create_vg.assert_called_once_with(
             self._conver_uuid2hex(DATA_IN_GROUP['id']), DATA_IN_GROUP['name'],
             DATA_IN_GROUP['description'])
-        self.assertDictMatch({'status': 'available'}, model_update)
+        self.assertDictMatch({'status': (
+            fields.ConsistencyGroupStatus.AVAILABLE)}, model_update)
 
     def test_delete_consistency_group(self):
         self.DB_MOCK.volume_get_all_by_group.return_value = (
@@ -696,7 +698,8 @@ class TestProphetStorDPLDriver(test.TestCase):
             self._conver_uuid2hex(DATA_IN_GROUP['id']))
         self.DPL_MOCK.delete_vdev.assert_called_once_with(
             self._conver_uuid2hex((DATA_IN_VOLUME_VG['id'])))
-        self.assertDictMatch({'status': 'deleted'}, model_update)
+        self.assertDictMatch({'status': (
+            fields.ConsistencyGroupStatus.DELETED)}, model_update)
 
     def test_update_consistencygroup(self):
         self.DPL_MOCK.get_vg.return_value = (0, DATA_OUT_CG)
@@ -715,7 +718,8 @@ class TestProphetStorDPLDriver(test.TestCase):
         self.DPL_MOCK.leave_vg.assert_called_once_with(
             self._conver_uuid2hex(remove_vol['id']),
             self._conver_uuid2hex(DATA_IN_GROUP['id']))
-        self.assertDictMatch({'status': 'available'}, model_update)
+        self.assertDictMatch({'status': (
+            fields.ConsistencyGroupStatus.AVAILABLE)}, model_update)
 
     def test_update_consistencygroup_exception_join(self):
         self.DPL_MOCK.get_vg.return_value = (0, DATA_OUT_CG)

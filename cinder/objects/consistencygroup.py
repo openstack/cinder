@@ -17,6 +17,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import objects
 from cinder.objects import base
+from cinder.objects import fields as c_fields
 from oslo_versionedobjects import fields
 
 OPTIONAL_FIELDS = ['cgsnapshots', 'volumes']
@@ -27,7 +28,8 @@ class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
                        base.CinderObjectDictCompat):
     # Version 1.0: Initial version
     # Version 1.1: Added cgsnapshots and volumes relationships
-    VERSION = '1.1'
+    # Version 1.2: Changed 'status' field to use ConsistencyGroupStatusField
+    VERSION = '1.2'
 
     fields = {
         'id': fields.UUIDField(),
@@ -38,7 +40,7 @@ class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
         'name': fields.StringField(nullable=True),
         'description': fields.StringField(nullable=True),
         'volume_type_id': fields.UUIDField(nullable=True),
-        'status': fields.StringField(nullable=True),
+        'status': c_fields.ConsistencyGroupStatusField(nullable=True),
         'cgsnapshot_id': fields.UUIDField(nullable=True),
         'source_cgid': fields.UUIDField(nullable=True),
         'cgsnapshots': fields.ObjectField('CGSnapshotList', nullable=True),

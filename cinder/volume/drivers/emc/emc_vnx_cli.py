@@ -40,6 +40,7 @@ from taskflow.types import failure
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
+from cinder.objects import fields
 from cinder import utils
 from cinder.volume import configuration as config
 from cinder.volume.drivers.san import san
@@ -3055,7 +3056,7 @@ class EMCVnxCliBase(object):
 
         self._consistencygroup_creation_check(group)
 
-        model_update = {'status': 'available'}
+        model_update = {'status': fields.ConsistencyGroupStatus.AVAILABLE}
         try:
             self._client.create_consistencygroup(group['id'])
         except Exception:
@@ -3096,7 +3097,7 @@ class EMCVnxCliBase(object):
                                 add_volumes,
                                 remove_volumes):
         """Adds or removes LUN(s) to/from an existing consistency group"""
-        model_update = {'status': 'available'}
+        model_update = {'status': fields.ConsistencyGroupStatus.AVAILABLE}
         cg_name = group['id']
         add_ids = [six.text_type(self.get_lun_id(vol))
                    for vol in add_volumes] if add_volumes else []

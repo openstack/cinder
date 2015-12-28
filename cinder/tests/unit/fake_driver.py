@@ -15,6 +15,7 @@
 from oslo_utils import timeutils
 
 from cinder import exception
+from cinder.objects import fields
 from cinder.tests.unit.brick import fake_lvm
 from cinder.volume import driver
 from cinder.volume.drivers import lvm
@@ -227,7 +228,8 @@ class FakeGateDriver(lvm.LVMVolumeDriver):
         # A consistencygroup entry is already created in db
         # This driver just returns a status
         now = timeutils.utcnow()
-        model_update = {'status': 'available', 'updated_at': now}
+        model_update = {'status': fields.ConsistencyGroupStatus.AVAILABLE,
+                        'updated_at': now}
 
         return model_update
 
@@ -268,7 +270,7 @@ class FakeGateDriver(lvm.LVMVolumeDriver):
                 volume_model_update['status'] = 'available'
             except Exception:
                 volume_model_update['status'] = 'error'
-                model_update['status'] = 'error'
+                model_update['status'] = fields.ConsistencyGroupStatus.ERROR
             volume_model_updates.append(volume_model_update)
 
         return model_update, volume_model_updates

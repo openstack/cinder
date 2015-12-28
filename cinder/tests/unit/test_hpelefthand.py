@@ -20,6 +20,7 @@ from oslo_utils import units
 
 from cinder import context
 from cinder import exception
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit import fake_hpe_lefthand_client as hpelefthandclient
 from cinder.volume.drivers.hpe import hpe_lefthand_iscsi
@@ -1628,7 +1629,8 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
             group = self.fake_consistencygroup_object()
             cg = self.driver.create_consistencygroup(ctxt, group)
 
-            self.assertEqual('available', cg['status'])
+            self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
+                             cg['status'])
 
     def test_delete_consistencygroup(self):
         ctxt = context.get_admin_context()
@@ -1645,13 +1647,15 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
             # create a consistency group
             group = self.fake_consistencygroup_object()
             cg = self.driver.create_consistencygroup(ctxt, group)
-            self.assertEqual('available', cg['status'])
+            self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
+                             cg['status'])
 
             # delete the consistency group
-            group.status = 'deleting'
+            group.status = fields.ConsistencyGroupStatus.DELETING
             cg, vols = self.driver.delete_consistencygroup(ctxt, group,
                                                            volumes)
-            self.assertEqual('deleting', cg['status'])
+            self.assertEqual(fields.ConsistencyGroupStatus.DELETING,
+                             cg['status'])
 
     def test_update_consistencygroup_add_vol_delete_cg(self):
         ctxt = context.get_admin_context()
@@ -1675,17 +1679,19 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
             # create a consistency group
             group = self.fake_consistencygroup_object()
             cg = self.driver.create_consistencygroup(ctxt, group)
-            self.assertEqual('available', cg['status'])
+            self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
+                             cg['status'])
 
             # add volume to consistency group
             cg = self.driver.update_consistencygroup(
                 ctxt, group, add_volumes=[self.volume], remove_volumes=None)
 
             # delete the consistency group
-            group.status = 'deleting'
+            group.status = fields.ConsistencyGroupStatus.DELETING
             cg, vols = self.driver.delete_consistencygroup(ctxt, group,
                                                            volumes)
-            self.assertEqual('deleting', cg['status'])
+            self.assertEqual(fields.ConsistencyGroupStatus.DELETING,
+                             cg['status'])
 
     def test_update_consistencygroup_remove_vol_delete_cg(self):
         ctxt = context.get_admin_context()
@@ -1709,7 +1715,8 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
             # create a consistency group
             group = self.fake_consistencygroup_object()
             cg = self.driver.create_consistencygroup(ctxt, group)
-            self.assertEqual('available', cg['status'])
+            self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
+                             cg['status'])
 
             # add volume to consistency group
             cg = self.driver.update_consistencygroup(
@@ -1720,10 +1727,11 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                 ctxt, group, add_volumes=None, remove_volumes=[self.volume])
 
             # delete the consistency group
-            group.status = 'deleting'
+            group.status = fields.ConsistencyGroupStatus.DELETING
             cg, vols = self.driver.delete_consistencygroup(ctxt, group,
                                                            volumes)
-            self.assertEqual('deleting', cg['status'])
+            self.assertEqual(fields.ConsistencyGroupStatus.DELETING,
+                             cg['status'])
 
     def test_create_cgsnapshot(self):
         ctxt = context.get_admin_context()
@@ -1745,7 +1753,8 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
             # create a consistency group
             group = self.fake_consistencygroup_object()
             cg = self.driver.create_consistencygroup(ctxt, group)
-            self.assertEqual('available', cg['status'])
+            self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
+                             cg['status'])
 
             # create volume and add it to the consistency group
             self.driver.update_consistencygroup(
@@ -1777,7 +1786,8 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
             # create a consistency group
             group = self.fake_consistencygroup_object()
             cg = self.driver.create_consistencygroup(ctxt, group)
-            self.assertEqual('available', cg['status'])
+            self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
+                             cg['status'])
 
             # create volume and add it to the consistency group
             self.driver.update_consistencygroup(

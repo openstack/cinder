@@ -31,6 +31,7 @@ from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder import objects
+from cinder.objects import fields
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
@@ -408,7 +409,7 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         self._array.create_pgroup(self._get_pgroup_name_from_id(group.id))
 
-        model_update = {'status': 'available'}
+        model_update = {'status': fields.ConsistencyGroupStatus.AVAILABLE}
         return model_update
 
     def _create_cg_from_cgsnap(self, volumes, snapshots):

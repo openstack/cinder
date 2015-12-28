@@ -41,3 +41,25 @@ class BackupStatus(Enum):
 
 class BackupStatusField(BaseEnumField):
     AUTO_TYPE = BackupStatus()
+
+
+class ConsistencyGroupStatus(Enum):
+    ERROR = 'error'
+    AVAILABLE = 'available'
+    CREATING = 'creating'
+    DELETING = 'deleting'
+    DELETED = 'deleted'
+    UPDATING = 'updating'
+    IN_USE = 'in-use'
+    ERROR_DELETING = 'error_deleting'
+
+    ALL = (ERROR, AVAILABLE, CREATING, DELETING, DELETED,
+           UPDATING, IN_USE, ERROR_DELETING)
+
+    def __init__(self):
+        super(ConsistencyGroupStatus, self).__init__(
+            valid_values=ConsistencyGroupStatus.ALL)
+
+
+class ConsistencyGroupStatusField(BaseEnumField):
+    AUTO_TYPE = ConsistencyGroupStatus()

@@ -27,6 +27,7 @@ from oslo_config import cfg
 from cinder import context
 from cinder import exception
 from cinder.i18n import _
+from cinder.objects import fields
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.ibm import xiv_ds8k
@@ -204,7 +205,7 @@ class XIVDS8KFakeProxyDriver(object):
             raise exception.CinderException(
                 message='The consistency group id of volume may be wrong.')
 
-        return {'status': 'available'}
+        return {'status': fields.ConsistencyGroupStatus.AVAILABLE}
 
     def delete_consistencygroup(self, ctxt, group, volumes):
         for volume in self.volumes.values():
@@ -233,7 +234,7 @@ class XIVDS8KFakeProxyDriver(object):
             self, context, group,
             add_volumes, remove_volumes):
 
-        model_update = {'status': 'available'}
+        model_update = {'status': fields.ConsistencyGroupStatus.AVAILABLE}
         return model_update, None, None
 
     def create_consistencygroup_from_src(
@@ -685,7 +686,7 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
         # Create consistency group
         model_update = self.driver.create_consistencygroup(ctxt, CONSISTGROUP)
 
-        self.assertEqual('available',
+        self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
                          model_update['status'],
                          "Consistency Group created failed")
 
@@ -723,7 +724,7 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
                 ctxt, CONSISTGROUP, [CG_VOLUME])
 
         # Verify the result
-        self.assertEqual('deleted',
+        self.assertEqual(fields.ConsistencyGroupStatus.DELETED,
                          model_update['status'],
                          'Consistency Group deleted failed')
         for volume in volumes:
@@ -872,7 +873,7 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
         model_update, added, removed = self.driver.update_consistencygroup(
             ctxt, CONSISTGROUP, [], [])
 
-        self.assertEqual('available',
+        self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
                          model_update['status'],
                          "Consistency Group update failed")
         self.assertFalse(added,
@@ -891,7 +892,7 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
         model_update, added, removed = self.driver.update_consistencygroup(
             ctxt, CONSISTGROUP, [VOLUME], [VOLUME2])
 
-        self.assertEqual('available',
+        self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
                          model_update['status'],
                          "Consistency Group update failed")
         self.assertFalse(added,
@@ -913,7 +914,7 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
 
         # model_update can be None or return available in status
         if model_update:
-            self.assertEqual('available',
+            self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
                              model_update['status'],
                              "Consistency Group create from source failed")
         # volumes_model_update can be None or return available in status
@@ -935,7 +936,7 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
 
         # model_update can be None or return available in status
         if model_update:
-            self.assertEqual('available',
+            self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
                              model_update['status'],
                              "Consistency Group create from source failed")
         # volumes_model_update can be None or return available in status

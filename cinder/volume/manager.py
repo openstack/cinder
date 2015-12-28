@@ -62,6 +62,7 @@ from cinder.image import cache as image_cache
 from cinder.image import glance
 from cinder import manager
 from cinder import objects
+from cinder.objects import fields
 from cinder import quota
 from cinder import utils
 from cinder import volume as cinder_volume
@@ -2371,7 +2372,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         """Creates the consistency group."""
         context = context.elevated()
 
-        status = 'available'
+        status = fields.ConsistencyGroupStatus.AVAILABLE
         model_update = None
 
         self._notify_about_consistencygroup_usage(
@@ -2385,7 +2386,8 @@ class VolumeManager(manager.SchedulerDependentManager):
                                                                group)
 
             if model_update:
-                if model_update['status'] == 'error':
+                if (model_update['status'] ==
+                        fields.ConsistencyGroupStatus.ERROR):
                     msg = (_('Create consistency group failed.'))
                     LOG.error(msg,
                               resource={'type': 'consistency_group',
@@ -2396,7 +2398,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                     group.save()
         except Exception:
             with excutils.save_and_reraise_exception():
-                group.status = 'error'
+                group.status = fields.ConsistencyGroupStatus.ERROR
                 group.save()
                 LOG.error(_LE("Consistency group %s: create failed"),
                           group.name)
@@ -2864,7 +2866,8 @@ class VolumeManager(manager.SchedulerDependentManager):
                     self.db.volume_update(context, update['id'], update)
 
             if model_update:
-                if model_update['status'] in ['error']:
+                if model_update['status'] in (
+                        [fields.ConsistencyGroupStatus.ERROR]):
                     msg = (_('Error occurred when updating consistency group '
                              '%s.') % group.id)
                     LOG.error(msg)

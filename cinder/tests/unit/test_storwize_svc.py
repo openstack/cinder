@@ -31,6 +31,7 @@ import six
 from cinder import context
 from cinder import exception
 from cinder.i18n import _
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit import utils as testutils
 from cinder import utils
@@ -2650,7 +2651,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         cg = self._create_consistencygroup_in_db(**kwargs)
 
         model_update = self.driver.create_consistencygroup(self.ctxt, cg)
-        self.assertEqual('available',
+        self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
                          model_update['status'],
                          "CG created failed")
         return cg
@@ -3806,7 +3807,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
         model_update = self.driver.create_consistencygroup(self.ctxt, cg)
 
-        self.assertEqual('available',
+        self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
                          model_update['status'],
                          "CG created failed")
         # Add volumes to CG
@@ -3829,7 +3830,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
         model_update = self.driver.delete_consistencygroup(self.ctxt, cg, [])
 
-        self.assertEqual('deleted', model_update[0]['status'])
+        self.assertEqual(fields.ConsistencyGroupStatus.DELETED,
+                         model_update[0]['status'])
         for volume in model_update[1]:
             self.assertEqual('deleted', volume['status'])
 
@@ -3890,21 +3892,24 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
         model_update = self.driver.delete_consistencygroup(self.ctxt, cg, [])
 
-        self.assertEqual('deleted', model_update[0]['status'])
+        self.assertEqual(fields.ConsistencyGroupStatus.DELETED,
+                         model_update[0]['status'])
         for volume in model_update[1]:
             self.assertEqual('deleted', volume['status'])
 
         model_update = (
             self.driver.delete_consistencygroup(self.ctxt, source_cg, []))
 
-        self.assertEqual('deleted', model_update[0]['status'])
+        self.assertEqual(fields.ConsistencyGroupStatus.DELETED,
+                         model_update[0]['status'])
         for volume in model_update[1]:
             self.assertEqual('deleted', volume['status'])
 
         model_update = (
             self.driver.delete_consistencygroup(self.ctxt, cgsnapshot, []))
 
-        self.assertEqual('deleted', model_update[0]['status'])
+        self.assertEqual(fields.ConsistencyGroupStatus.DELETED,
+                         model_update[0]['status'])
         for volume in model_update[1]:
             self.assertEqual('deleted', volume['status'])
 
@@ -3945,7 +3950,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                                                          None, None,
                                                          source_cg,
                                                          source_vols))
-        self.assertEqual('available',
+        self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
                          model_update['status'],
                          "CG create from src created failed")
 
@@ -3955,7 +3960,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                                                            cg,
                                                            [])
 
-        self.assertEqual('deleted', model_update[0]['status'])
+        self.assertEqual(fields.ConsistencyGroupStatus.DELETED,
+                         model_update[0]['status'])
         for each_vol in model_update[1]:
             self.assertEqual('deleted', each_vol['status'])
 
@@ -3967,7 +3973,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                                                          cgsnapshot,
                                                          snapshots,
                                                          None, None))
-        self.assertEqual('available',
+        self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
                          model_update['status'],
                          "CG create from src created failed")
 
@@ -3977,7 +3983,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         model_update = self.driver.delete_consistencygroup(self.ctxt,
                                                            cg, [])
 
-        self.assertEqual('deleted', model_update[0]['status'])
+        self.assertEqual(fields.ConsistencyGroupStatus.DELETED,
+                         model_update[0]['status'])
         for each_vol in model_update[1]:
             self.assertEqual('deleted', each_vol['status'])
 
@@ -3985,7 +3992,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                                                            cgsnapshot,
                                                            [])
 
-        self.assertEqual('deleted', model_update[0]['status'])
+        self.assertEqual(fields.ConsistencyGroupStatus.DELETED,
+                         model_update[0]['status'])
         for volume in model_update[1]:
             self.assertEqual('deleted', volume['status'])
 
@@ -3993,7 +4001,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                                                            source_cg,
                                                            [])
 
-        self.assertEqual('deleted', model_update[0]['status'])
+        self.assertEqual(fields.ConsistencyGroupStatus.DELETED,
+                         model_update[0]['status'])
         for each_vol in model_update[1]:
             self.assertEqual('deleted', each_vol['status'])
 
