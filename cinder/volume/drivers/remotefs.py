@@ -1024,7 +1024,7 @@ class RemoteFSSnapDriver(RemoteFSDriver, driver.SnapshotVD):
             #      T0       |        T1         |
             #     base      |   snapshot_file   | None
             # (guaranteed to|  (being deleted,  |
-            #    exist)     |   commited down)  |
+            #    exist)     |  committed down)  |
 
             self._img_commit(snapshot_path)
             # Active file has changed
@@ -1033,7 +1033,7 @@ class RemoteFSSnapDriver(RemoteFSDriver, driver.SnapshotVD):
             #      T0        |      T1         |     T2         |      T3
             #     base       |  snapshot_file  |  higher_file   | highest_file
             # (guaranteed to | (being deleted, | (guaranteed to |  (may exist)
-            #   exist, not   |  commited down) |  exist, needs  |
+            #   exist, not   | committed down) |  exist, needs  |
             #   used here)   |                 |   ptr update)  |
 
             backing_chain = self._get_backing_chain_for_path(
