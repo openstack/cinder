@@ -7647,3 +7647,75 @@ class ImageVolumeCacheTestCase(BaseVolumeTestCase):
         entry = db.image_volume_cache_get_by_volume_id(self.context,
                                                        volume['id'])
         self.assertIsNone(entry)
+
+
+@ddt.ddt
+class DiscardFlagTestCase(BaseVolumeTestCase):
+
+    def setUp(self):
+        super(DiscardFlagTestCase, self).setUp()
+        self.volume.driver = mock.MagicMock()
+        self.mock_db = mock.MagicMock()
+        self.volume.db = self.mock_db
+
+    @ddt.data(dict(config_discard_flag=True,
+                   driver_discard_flag=None,
+                   expected_flag=True),
+              dict(config_discard_flag=False,
+                   driver_discard_flag=None,
+                   expected_flag=None),
+              dict(config_discard_flag=True,
+                   driver_discard_flag=True,
+                   expected_flag=True),
+              dict(config_discard_flag=False,
+                   driver_discard_flag=True,
+                   expected_flag=True),
+              dict(config_discard_flag=False,
+                   driver_discard_flag=False,
+                   expected_flag=False),
+              dict(config_discard_flag=None,
+                   driver_discard_flag=True,
+                   expected_flag=True),
+              dict(config_discard_flag=None,
+                   driver_discard_flag=False,
+                   expected_flag=False))
+    @ddt.unpack
+    def test_initialize_connection_discard_flag(self,
+                                                config_discard_flag,
+                                                driver_discard_flag,
+                                                expected_flag):
+        volume_properties = {'volume_type_id': None}
+
+        def _get_item(key):
+            return volume_properties[key]
+
+        mock_volume = mock.MagicMock()
+        mock_volume.__getitem__.side_effect = _get_item
+        self.mock_db.volume_get.return_value = mock_volume
+        self.mock_db.volume_update.return_value = mock_volume
+        self.volume.driver.create_export.return_value = None
+        connector = {'ip': 'IP', 'initiator': 'INITIATOR'}
+
+        conn_info = {
+            'driver_volume_type': 'iscsi',
+            'data': {'access_mode': 'rw',
+                     'encrypted': False}
+        }
+
+        if driver_discard_flag is not None:
+            conn_info['data']['discard'] = driver_discard_flag
+
+        self.volume.driver.initialize_connection.return_value = conn_info
+
+        def _safe_get(key):
+            if key is 'report_discard_supported':
+                return config_discard_flag
+            else:
+                return None
+
+        self.volume.driver.configuration.safe_get.side_effect = _safe_get
+
+        conn_info = self.volume.initialize_connection(self.context, 'id',
+                                                      connector)
+
+        self.assertEqual(expected_flag, conn_info['data'].get('discard'))

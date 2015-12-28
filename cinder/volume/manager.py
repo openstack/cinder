@@ -1407,6 +1407,14 @@ class VolumeManager(manager.SchedulerDependentManager):
             encrypted = bool(volume.get('encryption_key_id'))
             conn_info['data']['encrypted'] = encrypted
 
+        # Add discard flag to connection_info if not set in the driver and
+        # configured to be reported.
+        if conn_info['data'].get('discard') is None:
+            discard_supported = (self.driver.configuration
+                                 .safe_get('report_discard_supported'))
+            if discard_supported:
+                conn_info['data']['discard'] = True
+
         LOG.info(_LI("Initialize volume connection completed successfully."),
                  resource=volume)
         return conn_info

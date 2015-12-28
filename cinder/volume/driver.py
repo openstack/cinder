@@ -243,6 +243,12 @@ volume_opts = [
                default=0,
                help='Max number of entries allowed in the image volume cache. '
                     '0 => unlimited.'),
+    cfg.BoolOpt('report_discard_supported',
+                default=False,
+                help='Report to clients of Cinder that the backend supports '
+                     'discard (aka. trim/unmap). This will not actually '
+                     'change the behavior of the backend or the client '
+                     'directly, it will only notify that it can be used.'),
 ]
 
 # for backward compatibility
