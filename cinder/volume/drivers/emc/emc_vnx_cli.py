@@ -272,6 +272,13 @@ class VNXError(_Enum):
                     for error_code in error_codes])
 
 
+class VNXMigrationRate(_Enum):
+    LOW = 'low'
+    MEDIUM = 'medium'
+    HIGH = 'high'
+    ASAP = 'asap'
+
+
 class VNXProvisionEnum(_Enum):
     THIN = 'thin'
     THICK = 'thick'
@@ -1269,11 +1276,11 @@ class CommandLineHelper(object):
 
         return rc
 
-    def migrate_lun(self, src_id, dst_id):
+    def migrate_lun(self, src_id, dst_id, rate=VNXMigrationRate.HIGH):
         command_migrate_lun = ('migrate', '-start',
                                '-source', src_id,
                                '-dest', dst_id,
-                               '-rate', 'high',
+                               '-rate', rate,
                                '-o')
         # SP HA is not supported by LUN migration
         out, rc = self.command_execute(*command_migrate_lun,
@@ -1286,9 +1293,10 @@ class CommandLineHelper(object):
         return rc
 
     def migrate_lun_without_verification(self, src_id, dst_id,
-                                         dst_name=None):
+                                         dst_name=None,
+                                         rate=VNXMigrationRate.HIGH):
         try:
-            self.migrate_lun(src_id, dst_id)
+            self.migrate_lun(src_id, dst_id, rate)
             return True
         except exception.EMCVnxCLICmdError as ex:
             migration_succeed = False
@@ -1398,9 +1406,10 @@ class CommandLineHelper(object):
 
     def migrate_lun_with_verification(self, src_id,
                                       dst_id,
-                                      dst_name=None):
+                                      dst_name=None,
+                                      rate=VNXMigrationRate.HIGH):
         migration_started = self.migrate_lun_without_verification(
-            src_id, dst_id, dst_name)
+            src_id, dst_id, dst_name, rate)
         if not migration_started:
             return False
 
@@ -2368,6 +2377,18 @@ class EMCVnxCliBase(object):
         specs = self.get_volumetype_extraspecs(volume)
         self._get_and_validate_extra_specs(specs)
 
+    def _get_migration_rate(self, volume):
+        metadata = self._get_volume_metadata(volume)
+        rate = metadata.get('migrate_rate', VNXMigrationRate.HIGH)
+        if rate:
+            if rate.lower() in VNXMigrationRate.get_all():
+                return rate.lower()
+            else:
+                LOG.warning(_LW('Unknown migration rate specified, '
+                                'using [high] as migration rate.'))
+
+        return VNXMigrationRate.HIGH
+
     def _get_and_validate_extra_specs(self, specs):
         """Checks on extra specs combinations."""
         if "storagetype:pool" in specs:
@@ -2614,7 +2635,8 @@ class EMCVnxCliBase(object):
 
         dst_id = data['lun_id']
         moved = self._client.migrate_lun_with_verification(
-            src_id, dst_id, new_volume_name)
+            src_id, dst_id, new_volume_name,
+            rate=self._get_migration_rate(volume))
 
         lun_type = self._extract_provider_location(
             volume['provider_location'], 'type')
@@ -2929,6 +2951,7 @@ class EMCVnxCliBase(object):
                 new_lun_id, 'smp', base_lun_name)
             volume_metadata['snapcopy'] = 'True'
         else:
+            store_spec.update({'rate': self._get_migration_rate(volume)})
             work_flow.add(CreateSMPTask(),
                           AttachSnapTask(),
                           CreateDestLunTask(),
@@ -3005,6 +3028,7 @@ class EMCVnxCliBase(object):
                 new_lun_id, 'smp', base_lun_name)
         else:
             # snapcopy feature disabled, need to migrate
+            store_spec.update({'rate': self._get_migration_rate(volume)})
             work_flow.add(CreateSnapshotTask(),
                           CreateSMPTask(),
                           AttachSnapTask(),
@@ -4480,15 +4504,16 @@ class MigrateLunTask(task.Task):
                                              rebind=rebind)
         self.wait_for_completion = wait_for_completion
 
-    def execute(self, client, new_smp_id, lun_data, *args, **kwargs):
+    def execute(self, client, new_smp_id, lun_data, rate=VNXMigrationRate.HIGH,
+                *args, **kwargs):
         LOG.debug('MigrateLunTask.execute')
         dest_vol_lun_id = lun_data['lun_id']
-
         LOG.debug('Migrating Mount Point Volume ID: %s', new_smp_id)
         if self.wait_for_completion:
             migrated = client.migrate_lun_with_verification(new_smp_id,
                                                             dest_vol_lun_id,
-                                                            None)
+                                                            None,
+                                                            rate)
         else:
             migrated = client.migrate_lun_without_verification(
                 new_smp_id, dest_vol_lun_id, None)
