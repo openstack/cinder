@@ -83,6 +83,7 @@ def common_mocks(f):
             inst.mock_rbd.ImageBusy = MockImageBusyException
             inst.mock_rbd.ImageNotFound = MockImageNotFoundException
             inst.mock_rbd.ImageExists = MockImageExistsException
+            inst.mock_rbd.InvalidArgument = MockImageNotFoundException
 
             inst.driver.rbd = inst.mock_rbd
             inst.driver.rados = inst.mock_rados
@@ -384,6 +385,16 @@ class RBDTestCase(test.TestCase):
 
         proxy.remove_snap.assert_called_with(self.snapshot_name)
         proxy.unprotect_snap.assert_called_with(self.snapshot_name)
+
+    @common_mocks
+    def test_delete_unprotected_snapshot(self):
+        proxy = self.mock_proxy.return_value
+        proxy.__enter__.return_value = proxy
+        proxy.unprotect_snap.side_effect = self.mock_rbd.InvalidArgument
+
+        self.driver.delete_snapshot(self.snapshot)
+        self.assertTrue(proxy.unprotect_snap.called)
+        self.assertTrue(proxy.remove_snap.called)
 
     @common_mocks
     def test_delete_busy_snapshot(self):
