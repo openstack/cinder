@@ -21,8 +21,9 @@ import mock
 from oslo_utils import units
 
 from cinder import context
-from cinder.db.sqlalchemy import models
 from cinder import exception
+from cinder.objects import snapshot as csnap
+from cinder.objects import volume as cvol
 from cinder import test
 from cinder.tests.unit import fake_vmem_client as vmemclient
 from cinder.volume import configuration as conf
@@ -244,7 +245,7 @@ class V6000ISCSIDriverTestCase(test.TestCase):
         tgt = self.driver.array_info[0]
         iqn = "%s%s:%s" % (self.conf.iscsi_target_prefix,
                            tgt['node'], target_name)
-        volume = mock.MagicMock(spec=models.Volume)
+        volume = mock.MagicMock(spec=cvol.Volume)
 
         def getitem(name):
             return VOLUME[name]
@@ -273,7 +274,7 @@ class V6000ISCSIDriverTestCase(test.TestCase):
         tgt = self.driver.array_info[0]
         iqn = "%s%s:%s" % (self.conf.iscsi_target_prefix,
                            tgt['node'], target_name)
-        snapshot = mock.MagicMock(spec=models.Snapshot)
+        snapshot = mock.MagicMock(spec=csnap.Snapshot)
 
         def getitem(name):
             return SNAPSHOT[name]
@@ -303,7 +304,7 @@ class V6000ISCSIDriverTestCase(test.TestCase):
         tgt = self.driver.array_info[0]
         iqn = "%s%s:%s" % (self.conf.iscsi_target_prefix,
                            tgt['node'], target_name)
-        volume = mock.MagicMock(spec=models.Volume)
+        volume = mock.MagicMock(spec=cvol.Volume)
 
         def getitem(name):
             return VOLUME[name]
@@ -332,7 +333,7 @@ class V6000ISCSIDriverTestCase(test.TestCase):
         self.assertEqual(volume['id'], props['data']['volume_id'])
 
     def test_terminate_connection(self):
-        volume = mock.MagicMock(spec=models.Volume)
+        volume = mock.MagicMock(spec=cvol.Volume)
 
         self.driver.common.vip = self.setup_mock_vshare()
         self.driver._unexport_lun = mock.Mock()
@@ -344,7 +345,7 @@ class V6000ISCSIDriverTestCase(test.TestCase):
         self.assertTrue(result is None)
 
     def test_terminate_connection_with_snapshot_object(self):
-        snapshot = mock.MagicMock(spec=models.Snapshot)
+        snapshot = mock.MagicMock(spec=csnap.Snapshot)
 
         self.driver.common.vip = self.setup_mock_vshare()
         self.driver._unexport_snapshot = mock.Mock()

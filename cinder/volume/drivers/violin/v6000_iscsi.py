@@ -41,7 +41,6 @@ from oslo_service import loopingcall
 from oslo_utils import units
 
 from cinder import context
-from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder import utils
@@ -183,10 +182,10 @@ class V6000ISCSIDriver(driver.ISCSIDriver):
         tgt = self._get_iscsi_target()
         target_name = self.TARGET_GROUP_NAME
 
-        if isinstance(volume, models.Volume):
-            lun = self._export_lun(volume, connector, igroup)
-        else:
+        if hasattr(volume, 'volume_id'):
             lun = self._export_snapshot(volume, connector, igroup)
+        else:
+            lun = self._export_lun(volume, connector, igroup)
 
         iqn = "%s%s:%s" % (self.configuration.iscsi_target_prefix,
                            tgt['node'], target_name)
@@ -207,10 +206,10 @@ class V6000ISCSIDriver(driver.ISCSIDriver):
 
     def terminate_connection(self, volume, connector, force=False, **kwargs):
         """Terminates the connection (target<-->initiator)."""
-        if isinstance(volume, models.Volume):
-            self._unexport_lun(volume)
-        else:
+        if hasattr(volume, 'volume_id'):
             self._unexport_snapshot(volume)
+        else:
+            self._unexport_lun(volume)
         self.common.vip.basic.save_config()
 
     def get_volume_stats(self, refresh=False):

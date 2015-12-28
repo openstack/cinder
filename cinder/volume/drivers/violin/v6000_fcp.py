@@ -40,7 +40,6 @@ from oslo_utils import units
 from six.moves import range
 
 from cinder import context
-from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder import utils
@@ -155,10 +154,11 @@ class V6000FCDriver(driver.FibreChannelDriver):
             igroup = self.common._get_igroup(volume, connector)
             self._add_igroup_member(connector, igroup)
 
-        if isinstance(volume, models.Volume):
-            lun_id = self._export_lun(volume, connector, igroup)
-        else:
+        if hasattr(volume, 'volume_id'):
             lun_id = self._export_snapshot(volume, connector, igroup)
+        else:
+            lun_id = self._export_lun(volume, connector, igroup)
+
         self.common.vip.basic.save_config()
 
         target_wwns, init_targ_map = self._build_initiator_target_map(
@@ -179,10 +179,10 @@ class V6000FCDriver(driver.FibreChannelDriver):
     def terminate_connection(self, volume, connector, force=False, **kwargs):
         """Terminates the connection (target<-->initiator)."""
 
-        if isinstance(volume, models.Volume):
-            self._unexport_lun(volume)
-        else:
+        if hasattr(volume, 'volume_id'):
             self._unexport_snapshot(volume)
+        else:
+            self._unexport_lun(volume)
 
         self.common.vip.basic.save_config()
 
