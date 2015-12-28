@@ -256,7 +256,13 @@ class CinderObjectDictCompat(base.VersionedObjectDictCompat):
                 not self.obj_attr_is_set(key)):
             return value
         else:
-            return getattr(self, key)
+            try:
+                return getattr(self, key)
+            except (exception.ObjectActionError, NotImplementedError):
+                # Exception when haven't set a value for non-lazy
+                # loadable attribute, but to mimic typical dict 'get'
+                # behavior we should still return None
+                return None
 
     def __contains__(self, name):
         try:
