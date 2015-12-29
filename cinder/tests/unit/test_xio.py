@@ -863,7 +863,6 @@ class XIOISEDriverTestCase(object):
             protocol = 'iSCSI'
         else:
             protocol = 'fibre_channel'
-        exp_result = {}
         exp_result = {'vendor_name': "X-IO",
                       'driver_version': "1.1.3",
                       'volume_backend_name': backend_name,

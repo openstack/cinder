@@ -674,7 +674,6 @@ class XIOISEDriver(object):
         # Set up params with volume name, host name and target lun, if
         # specified.
         target_lun = lun
-        params = {}
         params = {'volumename': volume['name'],
                   'hostname': hostname}
         # Fill in LUN if specified.
@@ -801,7 +800,6 @@ class XIOISEDriver(object):
         LOG.debug("Create host %(host)s; %(endpoint)s",
                   {'host': hostname, 'endpoint': endpoint_str})
         # Issue REST call to create host entry of OpenStack type.
-        params = {}
         params = {'name': hostname, 'endpoint': endpoint_str,
                   'os': 'openstack'}
         url = '/storage/arrays/%s/hosts' % (self._get_ise_globalid())
@@ -1016,8 +1014,7 @@ class XIOISEDriver(object):
             # count volumes
             volumes = child.find('volumes')
             if volumes is not None:
-                for volume in volumes:
-                    vol_cnt += 1
+                vol_cnt += len(volumes)
         return (pools, vol_cnt)
 
     def _update_volume_stats(self):
@@ -1419,7 +1416,6 @@ class XIOISEISCSIDriver(driver.ISCSIDriver):
         self.driver.create_volume(volume)
         # Volume created successfully. Fill in CHAP information.
         model_update = {}
-        chap = {}
         chap = self.driver.find_target_chap()
         if chap['chap_user'] != '':
             model_update['provider_auth'] = 'CHAP %s %s' % \
