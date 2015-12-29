@@ -268,14 +268,21 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                     'fs': '%2F'.join([fs, volume['name']])
                 }
             nef(url, method='DELETE')
-            if origin and self._is_clone_snapshot_name(origin):
-                snap_url = ('storage/pools/%(pool)s/'
-                            'filesystems/%(fs)s/snapshots/%(snap)s') % {
-                    'pool': pool,
-                    'fs': '%2F'.join([fs, volume['name']]),
-                    'snap': origin.split('@')[-1]
-                }
-                nef(snap_url, method='DELETE')
+            try:
+                if origin and self._is_clone_snapshot_name(origin):
+                    path, snap = origin.split('@')
+                    pool, fs = path.split('/', 1)
+                    snap_url = ('storage/pools/%(pool)s/'
+                                'filesystems/%(fs)s/snapshots/%(snap)s') % {
+                        'pool': pool,
+                        'fs': fs,
+                        'snap': snap
+                    }
+                    nef(snap_url, method='DELETE')
+            except exception.NexentaException as exc:
+                if 'does not exist' in exc:
+                    LOG.debug('Volume %s does not exist on appliance', '/'.join(
+                        [pool, fs]))
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot.
