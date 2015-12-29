@@ -502,7 +502,7 @@ class EntryCreateTask(flow_utils.CinderTask):
             return
 
         if optional_args['is_quota_committed']:
-            # If quota got commited we shouldn't rollback as the volume has
+            # If quota got committed we shouldn't rollback as the volume has
             # already been created and the quota has already been absorbed.
             return
 

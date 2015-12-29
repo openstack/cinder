@@ -1877,7 +1877,7 @@ def _volume_x_metadata_update(context, volume_id, metadata, delete, model,
 
     with session.begin(subtransactions=True):
         # Set existing metadata to deleted if delete argument is True.  This is
-        # commited immediately to the DB
+        # committed immediately to the DB
         if delete:
             expected_values = {'volume_id': volume_id}
             # We don't want to delete keys we are going to update
