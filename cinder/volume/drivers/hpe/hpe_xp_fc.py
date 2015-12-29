@@ -1,4 +1,4 @@
-# Copyright (C) 2014, 2015, Hitachi, Ltd.
+# Copyright (C) 2014-2015, Hitachi, Ltd.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -12,26 +12,26 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """
-Fibre channel Cinder volume driver for Hewlett-Packard storage.
+Fibre channel Cinder volume driver for Hewlett Packard Enterprise storage.
 
 """
 
 from oslo_utils import importutils
 
 from cinder.volume import driver
-from cinder.volume.drivers.san.hp import hp_xp_opts as opts
+from cinder.volume.drivers.hpe import hpe_xp_opts as opts
 from cinder.zonemanager import utils as fczm_utils
 
-_DRIVER_DIR = 'cinder.volume.drivers.san.hp'
-_DRIVER_CLASS = 'hp_xp_horcm_fc.HPXPHORCMFC'
+_DRIVER_DIR = 'cinder.volume.drivers.hpe'
+_DRIVER_CLASS = 'hpe_xp_horcm_fc.HPEXPHORCMFC'
 
 
-class HPXPFCDriver(driver.FibreChannelDriver):
-    """OpenStack Fibre Channel driver to enable HP XP storage."""
+class HPEXPFCDriver(driver.FibreChannelDriver):
+    """OpenStack Fibre Channel driver to enable HPE XP storage."""
 
     def __init__(self, *args, **kwargs):
         """Initialize the driver."""
-        super(HPXPFCDriver, self).__init__(*args, **kwargs)
+        super(HPEXPFCDriver, self).__init__(*args, **kwargs)
 
         self.configuration.append_config_values(opts.FC_VOLUME_OPTS)
         self.configuration.append_config_values(opts.COMMON_VOLUME_OPTS)
@@ -80,7 +80,7 @@ class HPXPFCDriver(driver.FibreChannelDriver):
         Call copy_volume_data() of super class and
         carry out original postprocessing.
         """
-        super(HPXPFCDriver, self).copy_volume_data(
+        super(HPEXPFCDriver, self).copy_volume_data(
             context, src_vol, dest_vol, remote)
         self.common.copy_volume_data(context, src_vol, dest_vol, remote)
 
@@ -90,7 +90,7 @@ class HPXPFCDriver(driver.FibreChannelDriver):
         Call copy_image_to_volume() of super class and
         carry out original postprocessing.
         """
-        super(HPXPFCDriver, self).copy_image_to_volume(
+        super(HPEXPFCDriver, self).copy_image_to_volume(
             context, volume, image_service, image_id)
         self.common.copy_image_to_volume(
             context, volume, image_service, image_id)
@@ -101,7 +101,7 @@ class HPXPFCDriver(driver.FibreChannelDriver):
         Call restore_backup() of super class and
         carry out original postprocessing.
         """
-        super(HPXPFCDriver, self).restore_backup(
+        super(HPEXPFCDriver, self).restore_backup(
             context, backup, volume, backup_service)
         self.common.restore_backup(context, backup, volume, backup_service)
 
@@ -110,7 +110,7 @@ class HPXPFCDriver(driver.FibreChannelDriver):
         self.common.extend_volume(volume, new_size)
 
     def manage_existing(self, volume, existing_ref):
-        """Manage an existing HP XP storage volume.
+        """Manage an existing HPE XP storage volume.
 
         existing_ref is a dictionary of the form:
 
@@ -128,7 +128,7 @@ class HPXPFCDriver(driver.FibreChannelDriver):
         self.common.unmanage(volume)
 
     def do_setup(self, context):
-        """Setup and verify HP XP storage connection."""
+        """Setup and verify HPE XP storage connection."""
         self.common.do_setup(context)
 
     def ensure_export(self, context, volume):

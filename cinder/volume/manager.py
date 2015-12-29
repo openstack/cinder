@@ -133,6 +133,8 @@ MAPPING = {
     'cinder.volume.drivers.hpe.hpe_3par_iscsi.HPE3PARISCSIDriver',
     'cinder.volume.drivers.san.hp.hp_lefthand_iscsi.HPLeftHandISCSIDriver':
     'cinder.volume.drivers.hpe.hpe_lefthand_iscsi.HPELeftHandISCSIDriver',
+    'cinder.volume.drivers.san.hp.hp_xp_fc.HPXPFCDriver':
+    'cinder.volume.drivers.hpe.hpe_xp_fc.HPEXPFCDriver',
 }
 
 
