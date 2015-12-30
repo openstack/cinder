@@ -20,13 +20,13 @@ Handles all requests relating to the volume backups service.
 """
 
 from datetime import datetime
-
 from eventlet import greenthread
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import strutils
 from pytz import timezone
+import random
 
 from cinder.backup import rpcapi as backup_rpcapi
 from cinder import context
@@ -39,9 +39,15 @@ import cinder.policy
 from cinder import quota
 from cinder import utils
 import cinder.volume
-from cinder.volume import utils as volume_utils
+
+backup_api_opts = [
+    cfg.BoolOpt('backup_use_same_backend',
+                default=False,
+                help='Backup services use same backend.')
+]
 
 CONF = cfg.CONF
+CONF.register_opts(backup_api_opts)
 LOG = logging.getLogger(__name__)
 QUOTAS = quota.QUOTAS
 
@@ -92,9 +98,6 @@ class API(base.Base):
                                                              backup.host):
             msg = _('force delete')
             raise exception.NotSupportedOperation(operation=msg)
-        if not self._is_backup_service_enabled(backup['availability_zone'],
-                                               backup.host):
-            raise exception.ServiceNotFound(service_id='cinder-backup')
 
         # Don't allow backup to be deleted if there are incremental
         # backups dependent on it.
@@ -104,6 +107,8 @@ class API(base.Base):
             raise exception.InvalidBackup(reason=msg)
 
         backup.status = fields.BackupStatus.DELETING
+        backup.host = self._get_available_backup_service_host(
+            backup.host, backup.availability_zone)
         backup.save()
         self.backup_rpcapi.delete_backup(context, backup)
 
@@ -130,6 +135,10 @@ class API(base.Base):
 
         return backups
 
+    def _az_matched(self, service, availability_zone):
+        return ((not availability_zone) or
+                service.availability_zone == availability_zone)
+
     def _is_backup_service_enabled(self, availability_zone, host):
         """Check if there is a backup service available."""
         topic = CONF.backup_topic
@@ -137,11 +146,41 @@ class API(base.Base):
         services = objects.ServiceList.get_all_by_topic(
             ctxt, topic, disabled=False)
         for srv in services:
-            if (srv.availability_zone == availability_zone and
+            if (self._az_matched(srv, availability_zone) and
                     srv.host == host and
                     utils.service_is_up(srv)):
                 return True
         return False
+
+    def _get_any_available_backup_service(self, availability_zone):
+        """Get an available backup service host.
+
+        Get an available backup service host in the specified
+        availability zone.
+        """
+        services = [srv for srv in self._list_backup_services()]
+        random.shuffle(services)
+        # Get the next running service with matching availability zone.
+        idx = 0
+        while idx < len(services):
+            srv = services[idx]
+            if(self._az_matched(srv, availability_zone) and
+               utils.service_is_up(srv)):
+                return srv.host
+            idx = idx + 1
+        return None
+
+    def _get_available_backup_service_host(self, host, availability_zone):
+        """Return an appropriate backup service host."""
+        backup_host = None
+        if host and self._is_backup_service_enabled(availability_zone, host):
+            backup_host = host
+        if not backup_host and (not host or CONF.backup_use_same_backend):
+            backup_host = self._get_any_available_backup_service(
+                availability_zone)
+        if not backup_host:
+            raise exception.ServiceNotFound(service_id='cinder-backup')
+        return backup_host
 
     def _list_backup_services(self):
         """List all enabled backup services.
@@ -150,8 +189,14 @@ class API(base.Base):
         """
         topic = CONF.backup_topic
         ctxt = context.get_admin_context()
-        services = objects.ServiceList.get_all_by_topic(ctxt, topic)
-        return [srv.host for srv in services if not srv.disabled]
+        services = objects.ServiceList.get_all_by_topic(
+            ctxt, topic, disabled=False)
+        return services
+
+    def _list_backup_hosts(self):
+        services = self._list_backup_services()
+        return [srv.host for srv in services
+                if not srv.disabled and utils.service_is_up(srv)]
 
     def create(self, context, name, description, volume_id,
                container, incremental=False, availability_zone=None,
@@ -179,10 +224,8 @@ class API(base.Base):
             raise exception.InvalidSnapshot(reason=msg)
 
         previous_status = volume['status']
-        volume_host = volume_utils.extract_host(volume['host'], 'host')
-        if not self._is_backup_service_enabled(volume['availability_zone'],
-                                               volume_host):
-            raise exception.ServiceNotFound(service_id='cinder-backup')
+        host = self._get_available_backup_service_host(
+            None, volume.availability_zone)
 
         # Reserve a quota before setting volume status and backup status
         try:
@@ -284,7 +327,7 @@ class API(base.Base):
                 'container': container,
                 'parent_id': parent_id,
                 'size': volume['size'],
-                'host': volume_host,
+                'host': host,
                 'snapshot_id': snapshot_id,
                 'data_timestamp': data_timestamp,
             }
@@ -364,14 +407,15 @@ class API(base.Base):
 
         # Setting the status here rather than setting at start and unrolling
         # for each error condition, it should be a very small window
+        backup.host = self._get_available_backup_service_host(
+            backup.host, backup.availability_zone)
         backup.status = fields.BackupStatus.RESTORING
         backup.restore_volume_id = volume.id
         backup.save()
-        volume_host = volume_utils.extract_host(volume.host, 'host')
         self.db.volume_update(context, volume_id, {'status':
                                                    'restoring-backup'})
 
-        self.backup_rpcapi.restore_backup(context, volume_host, backup,
+        self.backup_rpcapi.restore_backup(context, backup.host, backup,
                                           volume_id)
 
         d = {'backup_id': backup_id,
@@ -391,6 +435,9 @@ class API(base.Base):
         """
         # get backup info
         backup = self.get(context, backup_id)
+        backup.host = self._get_available_backup_service_host(
+            backup.host, backup.availability_zone)
+        backup.save()
         # send to manager to do reset operation
         self.backup_rpcapi.reset_status(ctxt=context, backup=backup,
                                         status=status)
@@ -418,6 +465,10 @@ class API(base.Base):
                   {'ctx': context,
                    'host': backup['host'],
                    'id': backup['id']})
+
+        backup.host = self._get_available_backup_service_host(
+            backup.host, backup.availability_zone)
+        backup.save()
         export_data = self.backup_rpcapi.export_record(context, backup)
 
         return export_data
@@ -502,7 +553,7 @@ class API(base.Base):
         # We  send it to the first backup service host, and the backup manager
         # on that host will forward it to other hosts on the hosts list if it
         # cannot support correct service itself.
-        hosts = self._list_backup_services()
+        hosts = self._list_backup_hosts()
         if len(hosts) == 0:
             raise exception.ServiceNotFound(service_id=backup_service)
 

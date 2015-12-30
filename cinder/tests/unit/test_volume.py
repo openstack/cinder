@@ -5832,6 +5832,32 @@ class ConsistencyGroupTestCase(BaseVolumeTestCase):
                               vol_api.delete,
                               self.context, volume)
 
+    @mock.patch.object(driver.BaseVD, 'get_backup_device')
+    @mock.patch.object(driver.BaseVD, 'secure_file_operations_enabled')
+    def test_get_backup_device(self, mock_secure, mock_get_backup):
+        vol = tests_utils.create_volume(self.context)
+        backup = tests_utils.create_backup(self.context, vol['id'])
+        mock_secure.return_value = False
+        mock_get_backup.return_value = (vol, False)
+        result = self.volume.get_backup_device(self.context,
+                                               backup)
+
+        mock_get_backup.assert_called_once_with(self.context, backup)
+        mock_secure.assert_called_once_with()
+        expected_result = {'backup_device': vol,
+                           'secure_enabled': False,
+                           'is_snapshot': False}
+        self.assertEqual(expected_result, result)
+
+    @mock.patch.object(driver.BaseVD, 'secure_file_operations_enabled')
+    def test_secure_file_operations_enabled(self, mock_secure):
+        mock_secure.return_value = True
+        vol = tests_utils.create_volume(self.context)
+        result = self.volume.secure_file_operations_enabled(self.context,
+                                                            vol)
+        mock_secure.assert_called_once_with()
+        self.assertTrue(result)
+
 
 class CopyVolumeToImageTestCase(BaseVolumeTestCase):
     def fake_local_path(self, volume):
@@ -6455,6 +6481,43 @@ class GenericVolumeDriverTestCase(DriverTestCase):
             backup_service.restore.assert_called_with(backup, vol['id'],
                                                       volume_file)
             self.assertEqual(i, backup_service.restore.call_count)
+
+    def test_get_backup_device_available(self):
+        vol = tests_utils.create_volume(self.context)
+        self.context.user_id = 'fake'
+        self.context.project_id = 'fake'
+        backup = tests_utils.create_backup(self.context,
+                                           vol['id'])
+        backup_obj = objects.Backup.get_by_id(self.context, backup.id)
+        (backup_device, is_snapshot) = self.volume.driver.get_backup_device(
+            self.context, backup_obj)
+        volume = objects.Volume.get_by_id(self.context, vol.id)
+        self.assertEqual(volume, backup_device)
+        self.assertFalse(is_snapshot)
+        backup_obj = objects.Backup.get_by_id(self.context, backup.id)
+        self.assertIsNone(backup.temp_volume_id)
+
+    def test_get_backup_device_in_use(self):
+        vol = tests_utils.create_volume(self.context,
+                                        status='backing-up',
+                                        previous_status='in-use')
+        temp_vol = tests_utils.create_volume(self.context)
+        self.context.user_id = 'fake'
+        self.context.project_id = 'fake'
+        backup = tests_utils.create_backup(self.context,
+                                           vol['id'])
+        backup_obj = objects.Backup.get_by_id(self.context, backup.id)
+        with mock.patch.object(
+                self.volume.driver,
+                '_create_temp_cloned_volume') as mock_create_temp:
+            mock_create_temp.return_value = temp_vol
+            (backup_device, is_snapshot) = (
+                self.volume.driver.get_backup_device(self.context,
+                                                     backup_obj))
+            self.assertEqual(temp_vol, backup_device)
+            self.assertFalse(is_snapshot)
+            backup_obj = objects.Backup.get_by_id(self.context, backup.id)
+            self.assertEqual(temp_vol.id, backup_obj.temp_volume_id)
 
     def test_enable_replication_invalid_state(self):
         volume_api = cinder.volume.api.API()

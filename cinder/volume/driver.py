@@ -1081,6 +1081,113 @@ class BaseVD(object):
     def backup_use_temp_snapshot(self):
         return False
 
+    def snapshot_remote_attachable(self):
+        # TODO(lixiaoy1): the method will be deleted later when remote
+        # attach snapshot is implemented.
+        return False
+
+    def get_backup_device(self, context, backup):
+        """Get a backup device from an existing volume.
+
+        The function returns a volume or snapshot to backup service,
+        and then backup service attaches the device and does backup.
+        """
+        backup_device = None
+        is_snapshot = False
+        if (self.backup_use_temp_snapshot() and
+                self.snapshot_remote_attachable()):
+            (backup_device, is_snapshot) = (
+                self._get_backup_volume_temp_snapshot(context, backup))
+        else:
+            backup_device = self._get_backup_volume_temp_volume(
+                context, backup)
+            is_snapshot = False
+        return (backup_device, is_snapshot)
+
+    def _get_backup_volume_temp_volume(self, context, backup):
+        """Return a volume to do backup.
+
+        To backup a snapshot, create a temp volume from the snapshot and
+        back it up.
+
+        Otherwise to backup an in-use volume, create a temp volume and
+        back it up.
+        """
+        volume = objects.Volume.get_by_id(context, backup.volume_id)
+        snapshot = None
+        if backup.snapshot_id:
+            snapshot = objects.Snapshot.get_by_id(context, backup.snapshot_id)
+
+        LOG.debug('Creating a new backup for volume %s.', volume['name'])
+
+        temp_vol_ref = None
+        device_to_backup = volume
+
+        # NOTE(xyang): If it is to backup from snapshot, create a temp
+        # volume from the source snapshot, backup the temp volume, and
+        # then clean up the temp volume.
+        if snapshot:
+            temp_vol_ref = self._create_temp_volume_from_snapshot(
+                context, volume, snapshot)
+            backup.temp_volume_id = temp_vol_ref['id']
+            backup.save()
+            device_to_backup = temp_vol_ref
+
+        else:
+            # NOTE(xyang): Check volume status if it is not to backup from
+            # snapshot; if 'in-use', create a temp volume from the source
+            # volume, backup the temp volume, and then clean up the temp
+            # volume; if 'available', just backup the volume.
+            previous_status = volume.get('previous_status')
+            if previous_status == "in-use":
+                temp_vol_ref = self._create_temp_cloned_volume(
+                    context, volume)
+                backup.temp_volume_id = temp_vol_ref['id']
+                backup.save()
+                device_to_backup = temp_vol_ref
+
+        return device_to_backup
+
+    def _get_backup_volume_temp_snapshot(self, context, backup):
+        """Return a device to backup.
+
+        If it is to backup from snapshot, back it up directly.
+
+        Otherwise for in-use volume, create a temp snapshot and back it up.
+        """
+        volume = self.db.volume_get(context, backup.volume_id)
+        snapshot = None
+        if backup.snapshot_id:
+            snapshot = objects.Snapshot.get_by_id(context, backup.snapshot_id)
+
+        LOG.debug('Creating a new backup for volume %s.', volume['name'])
+
+        device_to_backup = volume
+        is_snapshot = False
+        temp_snapshot = None
+
+        # NOTE(xyang): If it is to backup from snapshot, back it up
+        # directly. No need to clean it up.
+        if snapshot:
+            device_to_backup = snapshot
+            is_snapshot = True
+
+        else:
+            # NOTE(xyang): If it is not to backup from snapshot, check volume
+            # status. If the volume status is 'in-use', create a temp snapshot
+            # from the source volume, backup the temp snapshot, and then clean
+            # up the temp snapshot; if the volume status is 'available', just
+            # backup the volume.
+            previous_status = volume.get('previous_status')
+            if previous_status == "in-use":
+                temp_snapshot = self._create_temp_snapshot(context, volume)
+                backup.temp_snapshot_id = temp_snapshot.id
+                backup.save()
+                device_to_backup = temp_snapshot
+                is_snapshot = True
+
+        return (device_to_backup, is_snapshot)
+
     def backup_volume(self, context, backup, backup_service):
         """Create a new backup from an existing volume."""
         # NOTE(xyang): _backup_volume_temp_snapshot and
@@ -1294,6 +1401,8 @@ class BaseVD(object):
             'user_id': context.user_id,
             'project_id': context.project_id,
             'status': 'creating',
+            'attach_status': 'detached',
+            'availability_zone': volume.availability_zone,
         }
         temp_vol_ref = self.db.volume_create(context, temp_volume)
         try:
