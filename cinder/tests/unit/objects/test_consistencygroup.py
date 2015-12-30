@@ -184,3 +184,30 @@ class TestConsistencyGroupList(test_objects.BaseObjectsTestCase):
         self.assertEqual(1, len(consistencygroups))
         TestConsistencyGroup._compare(self, fake_consistencygroup,
                                       consistencygroups[0])
+
+    @mock.patch('cinder.db.consistencygroup_get_all',
+                return_value=[fake_consistencygroup])
+    def test_get_all_with_pagination(self, consistencygroup_get_all):
+        consistencygroups = objects.ConsistencyGroupList.get_all(
+            self.context, filters={'id': 'fake'}, marker=None, limit=1,
+            offset=None, sort_keys='id', sort_dirs='asc')
+        self.assertEqual(1, len(consistencygroups))
+        consistencygroup_get_all.assert_called_once_with(
+            self.context, filters={'id': 'fake'}, marker=None, limit=1,
+            offset=None, sort_keys='id', sort_dirs='asc')
+        TestConsistencyGroup._compare(self, fake_consistencygroup,
+                                      consistencygroups[0])
+
+    @mock.patch('cinder.db.consistencygroup_get_all_by_project',
+                return_value=[fake_consistencygroup])
+    def test_get_all_by_project_with_pagination(
+            self, consistencygroup_get_all_by_project):
+        consistencygroups = objects.ConsistencyGroupList.get_all_by_project(
+            self.context, self.project_id, filters={'id': 'fake'}, marker=None,
+            limit=1, offset=None, sort_keys='id', sort_dirs='asc')
+        self.assertEqual(1, len(consistencygroups))
+        consistencygroup_get_all_by_project.assert_called_once_with(
+            self.context, self.project_id, filters={'id': 'fake'}, marker=None,
+            limit=1, offset=None, sort_keys='id', sort_dirs='asc')
+        TestConsistencyGroup._compare(self, fake_consistencygroup,
+                                      consistencygroups[0])

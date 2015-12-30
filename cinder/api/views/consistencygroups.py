@@ -72,6 +72,11 @@ class ViewBuilder(common.ViewBuilder):
         consistencygroups_list = [
             func(request, consistencygroup)['consistencygroup']
             for consistencygroup in consistencygroups]
+        cg_links = self._get_collection_links(request,
+                                              consistencygroups,
+                                              self._collection_name)
         consistencygroups_dict = dict(consistencygroups=consistencygroups_list)
+        if cg_links:
+            consistencygroups_dict['consistencygroup_links'] = cg_links
 
         return consistencygroups_dict

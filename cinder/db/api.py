@@ -946,9 +946,13 @@ def consistencygroup_get(context, consistencygroup_id):
     return IMPL.consistencygroup_get(context, consistencygroup_id)
 
 
-def consistencygroup_get_all(context):
+def consistencygroup_get_all(context, filters=None, marker=None, limit=None,
+                             offset=None, sort_keys=None, sort_dirs=None):
     """Get all consistencygroups."""
-    return IMPL.consistencygroup_get_all(context)
+    return IMPL.consistencygroup_get_all(context, filters=filters,
+                                         marker=marker, limit=limit,
+                                         offset=offset, sort_keys=sort_keys,
+                                         sort_dirs=sort_dirs)
 
 
 def consistencygroup_create(context, values):
@@ -956,9 +960,16 @@ def consistencygroup_create(context, values):
     return IMPL.consistencygroup_create(context, values)
 
 
-def consistencygroup_get_all_by_project(context, project_id):
+def consistencygroup_get_all_by_project(context, project_id, filters=None,
+                                        marker=None, limit=None, offset=None,
+                                        sort_keys=None, sort_dirs=None):
     """Get all consistencygroups belonging to a project."""
-    return IMPL.consistencygroup_get_all_by_project(context, project_id)
+    return IMPL.consistencygroup_get_all_by_project(context, project_id,
+                                                    filters=filters,
+                                                    marker=marker, limit=limit,
+                                                    offset=offset,
+                                                    sort_keys=sort_keys,
+                                                    sort_dirs=sort_dirs)
 
 
 def consistencygroup_update(context, consistencygroup_id, values):
