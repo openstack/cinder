@@ -25,16 +25,6 @@ def upgrade(migrate_engine):
     data_timestamp = Column('data_timestamp', DateTime)
 
     backups.create_column(snapshot_id)
-    backups.update().values(snapshot_id=None).execute()
 
     backups.create_column(data_timestamp)
-    backups.update().values(data_timestamp=None).execute()
-
-    # Copy existing created_at timestamp to data_timestamp
-    # in the backups table.
-    backups_list = list(backups.select().execute())
-    for backup in backups_list:
-        backup_id = backup.id
-        backups.update().\
-            where(backups.c.id == backup_id).\
-            values(data_timestamp=backup.created_at).execute()
+    backups.update().values(data_timestamp=backups.c.created_at).execute()
