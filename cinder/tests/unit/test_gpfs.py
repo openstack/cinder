@@ -855,6 +855,9 @@ class GPFSDriverTestCase(test.TestCase):
         mock_resize_volume_file.return_value = 5 * units.Gi
         volume = self._fake_volume()
         volume['consistencygroup_id'] = None
+        self.driver.db = mock.Mock()
+        self.driver.db.volume_get = mock.Mock()
+        self.driver.db.volume_get.return_value = volume
         snapshot = self._fake_snapshot()
         mock_snapshot_path.return_value = "/tmp/fakepath"
         self.assertEqual({'size': 5.0},
@@ -885,6 +888,9 @@ class GPFSDriverTestCase(test.TestCase):
         mock_resize_volume_file.return_value = 5 * units.Gi
         volume = self._fake_volume()
         volume['consistencygroup_id'] = None
+        self.driver.db = mock.Mock()
+        self.driver.db.volume_get = mock.Mock()
+        self.driver.db.volume_get.return_value = volume
         snapshot = self._fake_snapshot()
         mock_snapshot_path.return_value = "/tmp/fakepath"
         mock_set_volume_attributes.return_value = True
