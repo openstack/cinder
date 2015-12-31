@@ -23,6 +23,7 @@ def fake_db_consistencygroup(**updates):
         'user_id': '2',
         'project_id': '3',
         'host': 'FakeHost',
+        'volumes': [],
     }
     for name, field in objects.ConsistencyGroup.fields.items():
         if name in db_values:
