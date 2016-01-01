@@ -32,7 +32,7 @@ Guidelines for writing new hacking checks
 """
 
 # NOTE(thangp): Ignore N323 pep8 error caused by importing cinder objects
-UNDERSCORE_IMPORT_FILES = ['./cinder/objects/__init__.py']
+UNDERSCORE_IMPORT_FILES = ['cinder/objects/__init__.py']
 
 translated_log = re.compile(
     r"(.)*LOG\.(audit|error|info|warn|warning|critical|exception)"
@@ -161,10 +161,11 @@ def check_explicit_underscore_import(logical_line, filename):
 
     # Build a list of the files that have _ imported.  No further
     # checking needed once it is found.
-    if filename in UNDERSCORE_IMPORT_FILES:
-        pass
-    elif (underscore_import_check.match(logical_line) or
-          custom_underscore_check.match(logical_line)):
+    for file in UNDERSCORE_IMPORT_FILES:
+        if file in filename:
+            return
+    if (underscore_import_check.match(logical_line) or
+            custom_underscore_check.match(logical_line)):
         UNDERSCORE_IMPORT_FILES.append(filename)
     elif(translated_log.match(logical_line) or
          string_translation.match(logical_line)):
