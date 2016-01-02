@@ -22,6 +22,7 @@
 import hashlib
 import os
 import re
+import six
 
 from eventlet import greenthread
 from oslo_log import log as logging
@@ -695,7 +696,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                                   '%(count)d attempts.'), {
                               'share': nfs_share,
                               'count': num_attempts})
-                    raise exception.NfsException(e)
+                    raise exception.NfsException(six.text_type(e))
                 LOG.warning(
                     _LW('Mount attempt %(attempt)d failed: %(error)s. '
                         'Retrying mount ...'), {
@@ -797,7 +798,6 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             'share': share
         }
         nms_url = self.share2nms[share].url
-        reserve = 100 - self.configuration.nexenta_capacitycheck
         self._stats = {
             'vendor_name': 'Nexenta',
             'dedup': self.volume_deduplication,
@@ -809,7 +809,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             'storage_protocol': 'NFS',
             'total_capacity_gb': total_space,
             'free_capacity_gb': free_space,
-            'reserved_percentage': reserve,
+            'reserved_percentage': self.configuration.reserved_percentage,
             'QoS_support': False,
             'location_info': location_info,
             'volume_backend_name': self.backend_name,

@@ -665,7 +665,6 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
             'host': self.nms_host,
             'volume': self.volume
         }
-        reserve = 100 - self.configuration.nexenta_capacitycheck
         self._stats = {
             'vendor_name': 'Nexenta',
             'dedup': self.volume_deduplication,
@@ -675,7 +674,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
             'storage_protocol': 'iSCSI',
             'total_capacity_gb': total_amount,
             'free_capacity_gb': free_amount,
-            'reserved_percentage': reserve,
+            'reserved_percentage': self.configuration.reserved_percentage,
             'QoS_support': False,
             'volume_backend_name': self.backend_name,
             'location_info': location_info,
