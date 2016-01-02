@@ -71,9 +71,9 @@ def get_rrmgr_cmd(src, dst, compression=None, tcp_buf_size=None,
     cmd.append('-q')
     cmd.append('-e')
     if tcp_buf_size:
-        cmd.extend(['-w',  six.text_type(tcp_buf_size)])
+        cmd.extend(['-w', six.text_type(tcp_buf_size)])
     if connections:
-        cmd.extend(['-n',  six.text_type(connections)])
+        cmd.extend(['-n', six.text_type(connections)])
     cmd.extend([src, dst])
     return ' '.join(cmd)
 
