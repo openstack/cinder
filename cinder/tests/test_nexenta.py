@@ -76,7 +76,7 @@ class TestNexentaISCSIDriver(test.TestCase):
         self.configuration.nexenta_rrmgr_compression = 1
         self.configuration.nexenta_rrmgr_tcp_buf_size = 1024
         self.configuration.nexenta_rrmgr_connections = 2
-        self.configuration.nexenta_capacitycheck = 80
+        self.configuration.reserved_percentage = 20
         self.nms_mock = self.mox.CreateMockAnything()
         for mod in ['volume', 'zvol', 'iscsitarget', 'appliance',
                     'stmf', 'scsidisk', 'snapshot']:
@@ -344,10 +344,9 @@ class TestNexentaNfsDriver(test.TestCase):
         self.configuration.nas_mount_options = None
         self.configuration.nexenta_nms_cache_volroot = False
         self.configuration.nfs_mount_attempts = 3
-        self.configuration.nexenta_capacitycheck = 80
+        self.configuration.reserved_percentage = 20
         self.configuration.nfs_used_ratio = .95
         self.configuration.nfs_oversub_ratio = 1.0
-        self.configuration.reserved_percentage = 0
         self.configuration.max_over_subscription_ratio = 20.0
         self.nms_mock = self.mox.CreateMockAnything()
         for mod in ('appliance', 'folder', 'server', 'volume', 'netstorsvc',
