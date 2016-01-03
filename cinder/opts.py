@@ -157,6 +157,7 @@ from cinder.volume.drivers import vzstorage as cinder_volume_drivers_vzstorage
 from cinder.volume.drivers.windows import windows as \
     cinder_volume_drivers_windows_windows
 from cinder.volume.drivers import xio as cinder_volume_drivers_xio
+from cinder.volume.drivers import zadara as cinder_volume_drivers_zadara
 from cinder.volume.drivers.zfssa import zfssaiscsi as \
     cinder_volume_drivers_zfssa_zfssaiscsi
 from cinder.volume.drivers.zfssa import zfssanfs as \
@@ -331,6 +332,7 @@ def list_opts():
                 cinder_volume_drivers_ibm_xivds8k.xiv_ds8k_opts,
                 cinder_volume_drivers_hpe_hpe3parcommon.hpe3par_opts,
                 cinder_volume_drivers_datera.d_opts,
+                cinder_volume_drivers_zadara.zadara_opts,
                 cinder_volume_drivers_blockdevice.volume_opts,
                 cinder_volume_drivers_quobyte.volume_opts,
                 cinder_volume_drivers_vzstorage.vzstorage_opts,
