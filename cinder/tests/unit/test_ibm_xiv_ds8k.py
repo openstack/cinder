@@ -876,10 +876,10 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
         self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
                          model_update['status'],
                          "Consistency Group update failed")
-        self.assertFalse(added,
-                         "added volumes list is not empty")
-        self.assertFalse(removed,
-                         "removed volumes list is not empty")
+        self.assertIsNone(added,
+                          "added volumes list is not empty")
+        self.assertIsNone(removed,
+                          "removed volumes list is not empty")
 
     def test_update_consistencygroup_with_volumes(self):
         """Test update_consistencygroup when there are volumes specified."""
@@ -895,10 +895,10 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
         self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
                          model_update['status'],
                          "Consistency Group update failed")
-        self.assertFalse(added,
-                         "added volumes list is not empty")
-        self.assertFalse(removed,
-                         "removed volumes list is not empty")
+        self.assertIsNone(added,
+                          "added volumes list is not empty")
+        self.assertIsNone(removed,
+                          "removed volumes list is not empty")
 
     def test_create_consistencygroup_from_src_without_volumes(self):
         """Test create_consistencygroup_from_src with no volumes specified."""
