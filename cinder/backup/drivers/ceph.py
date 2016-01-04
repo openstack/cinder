@@ -642,12 +642,7 @@ class CephBackupDriver(driver.BackupDriver):
         LOG.debug("Creating backup snapshot='%s'", new_snap)
         source_rbd_image.create_snap(new_snap)
 
-        # Attempt differential backup. If this fails, perhaps because librbd
-        # or Ceph cluster version does not support it, do a full backup
-        # instead.
-        #
-        # TODO(dosaboy): find a way to determine if the operation is supported
-        #                rather than brute force approach.
+        # Attempt differential backup
         try:
             before = time.time()
             self._rbd_diff_transfer(volume_name, rbd_pool, base_name,
