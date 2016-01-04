@@ -219,10 +219,11 @@ class HPE3PARCommon(object):
         3.0.5 - Adds v2 unmanaged replication support
         3.0.6 - Adding manage/unmanage snapshot support
         3.0.7 - Enable standard capabilities based on 3PAR licenses
+        3.0.8 - Optimize array ID retrieval
 
     """
 
-    VERSION = "3.0.7"
+    VERSION = "3.0.8"
 
     stats = {}
 
@@ -378,7 +379,7 @@ class HPE3PARCommon(object):
         if client is not None:
             client.logout()
 
-    def do_setup(self, context, volume=None, timeout=None):
+    def do_setup(self, context, volume=None, timeout=None, stats=None):
         if hpe3parclient is None:
             msg = _('You must install hpe3parclient before using 3PAR'
                     ' drivers. Run "pip install python-3parclient" to'
@@ -430,15 +431,19 @@ class HPE3PARCommon(object):
             LOG.error(msg)
             raise exception.InvalidInput(message=msg)
 
-        # get the client ID for provider_location
-        try:
-            self.client_login()
-            info = self.client.getStorageSystemInfo()
-            self.client.id = six.text_type(info['id'])
-        except Exception:
-            self.client.id = 0
-        finally:
-            self.client_logout()
+        # Get the client ID for provider_location. We only need to retrieve
+        # the ID directly from the array if the driver stats are not provided.
+        if not stats:
+            try:
+                self.client_login()
+                info = self.client.getStorageSystemInfo()
+                self.client.id = six.text_type(info['id'])
+            except Exception:
+                self.client.id = 0
+            finally:
+                self.client_logout()
+        else:
+            self.client.id = stats['array_id']
 
     def check_for_setup_error(self):
         if self.client:
@@ -1267,6 +1272,7 @@ class HPE3PARCommon(object):
                       'storage_protocol': None,
                       'vendor_name': 'Hewlett Packard Enterprise',
                       'volume_backend_name': None,
+                      'array_id': info['id'],
                       'pools': pools}
 
     def _check_license_enabled(self, valid_licenses,

@@ -95,10 +95,11 @@ class HPE3PARFCDriver(driver.TransferVD,
         3.0.2 - Adds v2 managed replication support
         3.0.3 - Adds v2 unmanaged replication support
         3.0.4 - Adding manage/unmanage snapshot support
+        3.0.5 - Optimize array ID retrieval
 
     """
 
-    VERSION = "3.0.4"
+    VERSION = "3.0.5"
 
     def __init__(self, *args, **kwargs):
         super(HPE3PARFCDriver, self).__init__(*args, **kwargs)
@@ -114,7 +115,8 @@ class HPE3PARFCDriver(driver.TransferVD,
         # If replication is enabled and we cannot login, we do not want to
         # raise an exception so a failover can still be executed.
         try:
-            common.do_setup(None, volume, timeout=timeout)
+            common.do_setup(None, volume=volume, timeout=timeout,
+                            stats=self._stats)
             common.client_login()
         except Exception:
             if common._replication_enabled:
