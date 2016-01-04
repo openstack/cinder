@@ -34,7 +34,7 @@ scheduler_driver_opts = [
                help='The scheduler host manager class to use'),
     cfg.IntOpt('scheduler_max_attempts',
                default=3,
-               help='Maximum number of attempts to schedule an volume'),
+               help='Maximum number of attempts to schedule a volume'),
 ]
 
 CONF = cfg.CONF

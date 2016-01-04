@@ -241,7 +241,7 @@ def volume_get_iscsi_target_num(context, volume_id):
 
 
 def volume_update(context, volume_id, values):
-    """Set the given properties on an volume and update it.
+    """Set the given properties on a volume and update it.
 
     Raises NotFound if volume does not exist.
 

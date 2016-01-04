@@ -265,7 +265,7 @@ class HostState(object):
         self.updated = capability['timestamp']
 
     def consume_from_volume(self, volume):
-        """Incrementally update host state from an volume."""
+        """Incrementally update host state from a volume."""
         volume_gb = volume['size']
         self.allocated_capacity_gb += volume_gb
         self.provisioned_capacity_gb += volume_gb

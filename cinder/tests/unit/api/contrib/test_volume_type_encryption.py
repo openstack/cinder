@@ -481,7 +481,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
 
     def test_delete_with_no_encryption(self):
         volume_type = self._default_volume_type
-        # create an volume type
+        # create a volume type
         db.volume_type_create(context.get_admin_context(), volume_type)
 
         # without creating encryption type, try to delete

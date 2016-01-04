@@ -43,7 +43,7 @@ class ViewBuilder(common.ViewBuilder):
                                self._collection_name + '/detail')
 
     def summary(self, request, volume):
-        """Generic, non-detailed view of an volume."""
+        """Generic, non-detailed view of a volume."""
         return {
             'volume': {
                 'id': volume['id'],

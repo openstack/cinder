@@ -612,7 +612,7 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
         return (None, None, None)
 
     def _get_children_info(self, volume, snap):
-        """List children for the given snapshot of an volume(image).
+        """List children for the given snapshot of a volume(image).
 
         Returns a list of (pool, image).
         """
