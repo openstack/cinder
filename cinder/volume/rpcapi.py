@@ -19,11 +19,13 @@ Client side of the volume RPC API.
 from oslo_config import cfg
 from oslo_serialization import jsonutils
 
+from cinder import quota
 from cinder import rpc
 from cinder.volume import utils
 
 
 CONF = cfg.CONF
+QUOTAS = quota.QUOTAS
 
 
 class VolumeAPI(rpc.RPCAPI):
@@ -265,6 +267,8 @@ class VolumeAPI(rpc.RPCAPI):
             version = '1.37'
             msg_args.update(volume=volume, old_reservations=old_reservations)
         else:
+            if old_reservations is not None:
+                QUOTAS.rollback(ctxt, old_reservations)
             if self.client.can_send_version('1.34'):
                 version = '1.34'
                 msg_args['volume'] = volume

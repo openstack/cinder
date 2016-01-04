@@ -453,7 +453,8 @@ class VolumeRpcAPITestCase(test.TestCase):
 
     @mock.patch('oslo_messaging.RPCClient.can_send_version',
                 return_value=True)
-    def test_retype(self, can_send_version):
+    @mock.patch('cinder.quota.DbQuotaDriver.rollback')
+    def test_retype(self, rollback, can_send_version):
         class FakeHost(object):
             def __init__(self):
                 self.host = 'host'
@@ -468,9 +469,11 @@ class VolumeRpcAPITestCase(test.TestCase):
                               reservations=self.fake_reservations,
                               old_reservations=self.fake_reservations,
                               version='1.37')
+        rollback.assert_not_called()
         can_send_version.assert_called_once_with('1.37')
 
-    def test_retype_version_134(self):
+    @mock.patch('cinder.quota.DbQuotaDriver.rollback')
+    def test_retype_version_134(self, rollback):
         class FakeHost(object):
             def __init__(self):
                 self.host = 'host'
@@ -488,10 +491,12 @@ class VolumeRpcAPITestCase(test.TestCase):
                                   reservations=self.fake_reservations,
                                   old_reservations=self.fake_reservations,
                                   version='1.34')
+        self.assertTrue(rollback.called)
         can_send_version.assert_any_call('1.37')
         can_send_version.assert_any_call('1.34')
 
-    def test_retype_version_112(self):
+    @mock.patch('cinder.quota.DbQuotaDriver.rollback')
+    def test_retype_version_112(self, rollback):
         class FakeHost(object):
             def __init__(self):
                 self.host = 'host'
@@ -509,6 +514,7 @@ class VolumeRpcAPITestCase(test.TestCase):
                                   reservations=self.fake_reservations,
                                   old_reservations=self.fake_reservations,
                                   version='1.12')
+            self.assertTrue(rollback.called)
             can_send_version.assert_any_call('1.37')
             can_send_version.assert_any_call('1.34')
 
