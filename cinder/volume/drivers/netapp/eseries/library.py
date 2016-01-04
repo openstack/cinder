@@ -692,7 +692,6 @@ class NetAppESeriesLibrary(object):
                     'target_discovered': True,
                     'target_lun': 1,
                     'target_wwn': '500a098280feeba5',
-                    'access_mode': 'rw',
                     'initiator_target_map': {
                         '21000024ff406cc3': ['500a098280feeba5'],
                         '21000024ff406cc2': ['500a098280feeba5']
@@ -709,7 +708,6 @@ class NetAppESeriesLibrary(object):
                     'target_lun': 1,
                     'target_wwn': ['500a098280feeba5', '500a098290feeba5',
                                    '500a098190feeba5', '500a098180feeba5'],
-                    'access_mode': 'rw',
                     'initiator_target_map': {
                         '21000024ff406cc3': ['500a098280feeba5',
                                              '500a098290feeba5'],
@@ -744,7 +742,6 @@ class NetAppESeriesLibrary(object):
                        'data': {'target_discovered': True,
                                 'target_lun': int(lun_id),
                                 'target_wwn': target_wwpns,
-                                'access_mode': 'rw',
                                 'initiator_target_map': initiator_target_map}}
 
         return target_info
