@@ -132,7 +132,13 @@ class FakeRequestWithHostBinary(object):
 
 
 def fake_service_get_all(context, filters=None):
-    return fake_services_list
+    filters = filters or {}
+    host = filters.get('host')
+    binary = filters.get('binary')
+    return [s for s in fake_services_list
+            if (not host or s['host'] == host or
+                s['host'].startswith(host + '@'))
+            and (not binary or s['binary'] == binary)]
 
 
 def fake_service_get_by_host_binary(context, host, binary):

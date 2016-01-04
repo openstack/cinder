@@ -99,7 +99,8 @@ def _list_hosts(req, service=None):
     """Returns a summary list of hosts."""
     curr_time = timeutils.utcnow(with_timezone=True)
     context = req.environ['cinder.context']
-    services = objects.ServiceList.get_all(context, False)
+    filters = {'disabled': False}
+    services = objects.ServiceList.get_all(context, filters)
     zone = ''
     if 'zone' in req.GET:
         zone = req.GET['zone']

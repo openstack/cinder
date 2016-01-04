@@ -106,9 +106,9 @@ def service_get_by_host_and_topic(context, host, topic):
     return IMPL.service_get_by_host_and_topic(context, host, topic)
 
 
-def service_get_all(context, disabled=None):
+def service_get_all(context, filters=None):
     """Get all services."""
-    return IMPL.service_get_all(context, disabled)
+    return IMPL.service_get_all(context, filters)
 
 
 def service_get_all_by_topic(context, topic, disabled=None):
