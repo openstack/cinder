@@ -81,9 +81,9 @@ class SBSBackupDriver(driver.BackupDriver):
         super(SBSBackupDriver, self).__init__(context, db_driver)
         self.rbd = rbd
         self._execute = execute or utils.execute
-	self._access_key = encodeutils.safe_encode(CONF.sbs_access_key)
-	self._secret_key = encodeutils.safe_encode(CONF.sbs_secret_key)
-	self._container = encodeutils.safe_encode(CONF.sbs_container)
+        self._access_key = encodeutils.safe_encode(CONF.sbs_access_key)
+        self._secret_key = encodeutils.safe_encode(CONF.sbs_secret_key)
+        self._container = encodeutils.safe_encode(CONF.sbs_container)
 
     def _get_backup_base_name(self, volume_id, backup_id=None,
                               diff_format=False):
@@ -160,7 +160,7 @@ class SBSBackupDriver(driver.BackupDriver):
         upload/store snapshot
     """
 
-    def _check_create_base(self, volume_file, base_name, from_snap):
+    def _check_create_base(self, volume_id, volume_file, base_name, from_snap):
 
         #Create an incremental backup from an RBD image.
         rbd_user = volume_file.rbd_user
@@ -185,6 +185,17 @@ class SBSBackupDriver(driver.BackupDriver):
             #Create new base image and upload it, so from-snap also becomes base
             from_snap = base_name
             source_rbd_image.create_snap(base_name)
+            desc = (_("Base image of volume '%(volume)s'") % {'volume':volume_id})
+            options = {'user_id': self.context.user_id,
+                       'project_id': self.context.project_id,
+                       'display_name': base_name,
+                       'display_description': desc,
+                       'volume_id': volume_id,
+                       'id': volume_id,
+                       'status': 'available',
+                       'container': self._container,
+                      }
+            backup = self.db.backup_create(self.context, options)
             self._upload_to_DSS(base_name)
         else:
             # If a from_snap is defined but does not exist in the back base
@@ -219,7 +230,8 @@ class SBSBackupDriver(driver.BackupDriver):
                      'base': base_name})
 
         #check base snap and from_snap and create base if missing
-        base_name, from_snap = self._check_create_base(volume_file, base_name, from_snap)
+        base_name, from_snap = self._check_create_base(volume_id, volume_file,
+                                                       base_name, from_snap)
 
         # Snapshot source volume so that we have a new point-in-time
         new_snap = self._get_new_snap_name(backup_id)
@@ -227,6 +239,10 @@ class SBSBackupDriver(driver.BackupDriver):
         source_rbd_image.create_snap(new_snap)
         # export diff now
         self._upload_to_DSS(new_snap, from_snap)
+
+        #shishir: change volume_id to latest snap_id
+        self.db.backup_update(self.context, backup_id,
+                              {'parent_id': volume_id})
 
         self.db.backup_update(self.context, backup_id,
                               {'container': self._container})
