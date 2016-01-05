@@ -19,7 +19,4 @@
 .. automodule:: cinder.scheduler
    :platform: Unix
    :synopsis: Module that picks a volume node to create a volume.
-.. moduleauthor:: Sandy Walsh <sandy.walsh@rackspace.com>
-.. moduleauthor:: Ed Leafe <ed@leafe.com>
-.. moduleauthor:: Chris Behrens <cbehrens@codestud.com>
 """
