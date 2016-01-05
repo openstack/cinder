@@ -37,7 +37,6 @@ import subprocess
 import time
 #import boto
 #import boto.s3.connection
-
 import eventlet
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -147,9 +146,20 @@ class SBSBackupDriver(driver.BackupDriver):
         #Return True if snapshot exists in base image
         return False
 
-    def _upload_to_DSS(self, snap_name, from_snap=None):
+    def _upload_to_DSS(self, snap_name, volume_name, ceph_args, from_snap=None):
+        cmd = ['rbd', 'export-diff'] + ceph_args
         #if from_snap is None, do full upload
+        if from_snap is not None:
+            cmd.extend(['--from-snap', from_snap])
+        path = encodeutils.safe_encode("%s@%s" %
+                                      (volume_name, snap_name))
+        loc = encodeutils.safe_encode("/tmp/%s" % (snap_name))
+        cmd.extend([path, loc])
+	LOG.info(cmd)
+        self._execute (*cmd, run_as_root=True)
+        #shishir: boto to upload the file from loc
         return
+
     """
     1. If 1st snapshot or missing base or missing incr snap
         create new snapshot (without incr) and treat it as base
@@ -160,14 +170,14 @@ class SBSBackupDriver(driver.BackupDriver):
         upload/store snapshot
     """
 
-    def _check_create_base(self, volume_id, volume_file, base_name, from_snap):
+    def _check_create_base(self, volume_id, volume_file, volume_name, 
+			   base_name, ceph_args, from_snap=None):
 
         #Create an incremental backup from an RBD image.
         rbd_user = volume_file.rbd_user
         rbd_pool = volume_file.rbd_pool
         rbd_conf = volume_file.rbd_conf
         source_rbd_image = volume_file.rbd_image
-
         # Check if base image exists in dest
         found_base_image = self._lookup_base_in_dest(base_name)
 
@@ -183,7 +193,6 @@ class SBSBackupDriver(driver.BackupDriver):
                 from_snap = None
 
             #Create new base image and upload it, so from-snap also becomes base
-            from_snap = base_name
             source_rbd_image.create_snap(base_name)
             desc = (_("Base image of volume '%(volume)s'") % {'volume':volume_id})
             options = {'user_id': self.context.user_id,
@@ -196,7 +205,8 @@ class SBSBackupDriver(driver.BackupDriver):
                        'container': self._container,
                       }
             backup = self.db.backup_create(self.context, options)
-            self._upload_to_DSS(base_name)
+            self._upload_to_DSS(base_name, volume_name, ceph_args)
+            from_snap = base_name
         else:
             # If a from_snap is defined but does not exist in the back base
             # then we cannot proceed (see above)
@@ -213,8 +223,33 @@ class SBSBackupDriver(driver.BackupDriver):
 
         return (base_name, from_snap)
 
+    def _validate_string_args(self, *args):
+        """Ensure all args are non-None and non-empty."""
+        return all(args)
+
+    def _ceph_args(self, user, conf=None, pool=None):
+        """Create default ceph args for executing rbd commands.
+
+        If no --conf is provided, rbd will look in the default locations e.g.
+        /etc/ceph/ceph.conf
+        """
+
+        # Make sure user arg is valid since rbd command may not fail if
+        # invalid/no user provided, resulting in unexpected behaviour.
+        if not self._validate_string_args(user):
+            raise exception.BackupInvalidCephArgs(_("invalid user '%s'") %
+                                                  user)
+
+        args = ['--id', user]
+        if conf:
+            args.extend(['--conf', conf])
+        if pool:
+            args.extend(['--pool', pool])
+
+        return args
+
     def _backup_rbd(self, backup_id, volume_id, volume_file, volume_name,
-				    length):
+		    length):
         #Create an incremental backup from an RBD image.
         rbd_user = volume_file.rbd_user
         rbd_pool = volume_file.rbd_pool
@@ -228,17 +263,19 @@ class SBSBackupDriver(driver.BackupDriver):
                   "volume %(volume)s, with base image '%s(base)s'.",
                     {'snap': from_snap, 'volume': volume_id,
                      'base': base_name})
+        ceph_args = self._ceph_args(rbd_user, rbd_conf, pool=rbd_pool)
 
         #check base snap and from_snap and create base if missing
         base_name, from_snap = self._check_create_base(volume_id, volume_file,
-                                                       base_name, from_snap)
+                                                       volume_name, base_name,
+						       ceph_args, from_snap)
 
         # Snapshot source volume so that we have a new point-in-time
         new_snap = self._get_new_snap_name(backup_id)
         LOG.debug("Creating backup snapshot='%s'", new_snap)
         source_rbd_image.create_snap(new_snap)
         # export diff now
-        self._upload_to_DSS(new_snap, from_snap)
+        self._upload_to_DSS(new_snap, volume_name, ceph_args, from_snap)
 
         #shishir: change volume_id to latest snap_id
         self.db.backup_update(self.context, backup_id,
