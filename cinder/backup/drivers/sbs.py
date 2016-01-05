@@ -122,21 +122,7 @@ class SBSBackupDriver(driver.BackupDriver):
         NOTE: this call is made public since these snapshots must be deleted
               before the base volume can be deleted.
         """
-        snaps = rbd_image.list_snaps()
-
-        backup_snaps = []
-        for snap in snaps:
-            search_key = cls.backup_snapshot_name_pattern()
-            result = re.search(search_key, snap['name'])
-            if result:
-                backup_snaps.append({'name': result.group(0),
-                                     'backup_id': result.group(1),
-                                     'timestamp': result.group(2)})
-
-        if sort:
-            # Sort into ascending order of timestamp
-            backup_snaps.sort(key=lambda x: x['timestamp'], reverse=True)
-
+        backup_snaps=None
         return backup_snaps
 
     def _get_most_recent_snap(self, rbd_image):
@@ -152,15 +138,18 @@ class SBSBackupDriver(driver.BackupDriver):
         return backup_snaps[0]['name']
 
 	# shishir change this to work out of s3 or db 
-    def _lookup_base_in_dest(base_name):
+    def _lookup_base_in_dest(self, base_name):
         #Return True if snapshot exists in base image.
 		return False
 
 	# shishir change this to work out of s3 or db 
     def _snap_exists(self, base_name, snap_name):
-        #Return True if snapshot exists in base image.
+        #Return True if snapshot exists in base image
         return False
 
+    def _upload_to_DSS(self, snap_name, from_snap=None):
+        #if from_snap is None, do full upload
+        return
     """
     1. If 1st snapshot or missing base or missing incr snap
         create new snapshot (without incr) and treat it as base
@@ -170,22 +159,14 @@ class SBSBackupDriver(driver.BackupDriver):
         create incr snapshot w.r.t latest snap
         upload/store snapshot
     """
-    def _backup_rbd(self, backup_id, volume_id, volume_file, volume_name,
-				    length):
+
+    def _check_create_base(self, volume_file, base_name, from_snap):
+
         #Create an incremental backup from an RBD image.
         rbd_user = volume_file.rbd_user
         rbd_pool = volume_file.rbd_pool
         rbd_conf = volume_file.rbd_conf
         source_rbd_image = volume_file.rbd_image
-
-        # Identify our --from-snap point (if one exists)
-        from_snap = self._get_most_recent_snap(source_rbd_image)
-        base_name = self._get_backup_base_name(volume_id, diff_format=True)
-        LOG.debug("Using --from-snap '%(snap)s' for incremental backup of "
-                  "volume %(volume)s, with base image '%s(base)'.",
-                    {'snap': from_snap, 'volume': volume_id,
-                     'base': base_name})
-        image_created = False
 
         # Check if base image exists in dest
         found_base_image = self._lookup_base_in_dest(base_name)
@@ -201,13 +182,10 @@ class SBSBackupDriver(driver.BackupDriver):
                 source_rbd_image.remove_snap(base_name)
                 from_snap = None
 
-            # Create new base image
+            #Create new base image and upload it, so from-snap also becomes base
             from_snap = base_name
             source_rbd_image.create_snap(base_name)
             self._upload_to_DSS(base_name)
-            #self.db.backup_update(self.context, base_name,
-            #                      {'container': self._container})
-
         else:
             # If a from_snap is defined but does not exist in the back base
             # then we cannot proceed (see above)
@@ -220,6 +198,28 @@ class SBSBackupDriver(driver.BackupDriver):
                 # Raise this exception so that caller can try another
                 # approach
                 raise exception.BackupRBDOperationFailed(errmsg)
+
+
+        return (base_name, from_snap)
+
+    def _backup_rbd(self, backup_id, volume_id, volume_file, volume_name,
+				    length):
+        #Create an incremental backup from an RBD image.
+        rbd_user = volume_file.rbd_user
+        rbd_pool = volume_file.rbd_pool
+        rbd_conf = volume_file.rbd_conf
+        source_rbd_image = volume_file.rbd_image
+
+        # Identify our --from-snap point (if one exists)
+        from_snap = self._get_most_recent_snap(source_rbd_image)
+        base_name = self._get_backup_base_name(volume_id, diff_format=True)
+        LOG.debug("Using --from-snap '%(snap)s' for incremental backup of "
+                  "volume %(volume)s, with base image '%s(base)s'.",
+                    {'snap': from_snap, 'volume': volume_id,
+                     'base': base_name})
+
+        #check base snap and from_snap and create base if missing
+        base_name, from_snap = self._check_create_base(volume_file, base_name, from_snap)
 
         # Snapshot source volume so that we have a new point-in-time
         new_snap = self._get_new_snap_name(backup_id)
@@ -244,7 +244,7 @@ class SBSBackupDriver(driver.BackupDriver):
         volume_file.seek(0)
         length = self._get_volume_size_gb(volume)
 
-        self._backup_rbd(backup_id, volume_id, volume_file, length)
+        self._backup_rbd(backup_id, volume_id, volume_file, volume_name, length)
 
         self.db.backup_update(self.context, backup_id,
                               {'container': self._container})
