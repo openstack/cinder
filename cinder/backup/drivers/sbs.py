@@ -124,27 +124,33 @@ class SBSBackupDriver(driver.BackupDriver):
         backup_snaps=None
         return backup_snaps
 
-    def _get_most_recent_snap(self, rbd_image):
+    def _get_most_recent_snap(self, volume_id):
         """Get the most recent backup snapshot of the provided image.
 
         Returns name of most recent backup snapshot or None if there are no
         backup snapshots.
         """
-        backup_snaps = self.get_backup_snaps(rbd_image, sort=True)
-        if not backup_snaps:
-            return None
+        latest_backup = None
+        backups = self.db.backup_get_all_by_volume(self.context.elevated(),
+                                                   volume_id)
+        if backups:
+            latest_backup = max(backups, key=lambda x: x['created_at'])
 
-        return backup_snaps[0]['name']
+        return latest_backup['name']
 
 	# shishir change this to work out of s3 or db 
-    def _lookup_base_in_dest(self, base_name):
-        #Return True if snapshot exists in base image.
-		return False
+    def _lookup_base_in_dest(self, snap_id):
+        base = self.db.backup_get(self.context, snap_id)
+
+        if base:
+            return True
+        else:
+		    return False
 
 	# shishir change this to work out of s3 or db 
     def _snap_exists(self, base_name, snap_name):
         #Return True if snapshot exists in base image
-        return False
+        return True
 
     def _upload_to_DSS(self, snap_name, volume_name, ceph_args, from_snap=None):
         cmd = ['rbd', 'export-diff'] + ceph_args
@@ -155,7 +161,7 @@ class SBSBackupDriver(driver.BackupDriver):
                                       (volume_name, snap_name))
         loc = encodeutils.safe_encode("/tmp/%s" % (snap_name))
         cmd.extend([path, loc])
-	LOG.info(cmd)
+        LOG.info(cmd)
         self._execute (*cmd, run_as_root=True)
         #shishir: boto to upload the file from loc
         return
@@ -179,7 +185,7 @@ class SBSBackupDriver(driver.BackupDriver):
         rbd_conf = volume_file.rbd_conf
         source_rbd_image = volume_file.rbd_image
         # Check if base image exists in dest
-        found_base_image = self._lookup_base_in_dest(base_name)
+        found_base_image = self._lookup_base_in_dest(volume_id)
 
         #If base image not found, create base image, might be 1st snap
         if not found_base_image:
@@ -257,7 +263,7 @@ class SBSBackupDriver(driver.BackupDriver):
         source_rbd_image = volume_file.rbd_image
 
         # Identify our --from-snap point (if one exists)
-        from_snap = self._get_most_recent_snap(source_rbd_image)
+        from_snap = self._get_most_recent_snap(volume_id)
         base_name = self._get_backup_base_name(volume_id, diff_format=True)
         LOG.debug("Using --from-snap '%(snap)s' for incremental backup of "
                   "volume %(volume)s, with base image '%s(base)s'.",
@@ -268,7 +274,7 @@ class SBSBackupDriver(driver.BackupDriver):
         #check base snap and from_snap and create base if missing
         base_name, from_snap = self._check_create_base(volume_id, volume_file,
                                                        volume_name, base_name,
-						       ceph_args, from_snap)
+                                                       ceph_args, from_snap)
 
         # Snapshot source volume so that we have a new point-in-time
         new_snap = self._get_new_snap_name(backup_id)
