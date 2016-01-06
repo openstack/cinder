@@ -114,6 +114,31 @@ class SBSBackupDriver(driver.BackupDriver):
 
         return int(volume['size']) * units.Gi
 
+    def _validate_string_args(self, *args):
+        """Ensure all args are non-None and non-empty."""
+        return all(args)
+
+    def _ceph_args(self, user, conf=None, pool=None):
+        """Create default ceph args for executing rbd commands.
+
+        If no --conf is provided, rbd will look in the default locations e.g.
+        /etc/ceph/ceph.conf
+        """
+
+        # Make sure user arg is valid since rbd command may not fail if
+        # invalid/no user provided, resulting in unexpected behaviour.
+        if not self._validate_string_args(user):
+            raise exception.BackupInvalidCephArgs(_("invalid user '%s'") %
+                                                  user)
+
+        args = ['--id', user]
+        if conf:
+            args.extend(['--conf', conf])
+        if pool:
+            args.extend(['--pool', pool])
+
+        return args
+
     @classmethod
     def get_backup_snaps(cls, rbd_image, sort=False):
         """Get all backup snapshots for the given rbd image.
@@ -240,31 +265,6 @@ class SBSBackupDriver(driver.BackupDriver):
 
         return (base_name, from_snap)
 
-    def _validate_string_args(self, *args):
-        """Ensure all args are non-None and non-empty."""
-        return all(args)
-
-    def _ceph_args(self, user, conf=None, pool=None):
-        """Create default ceph args for executing rbd commands.
-
-        If no --conf is provided, rbd will look in the default locations e.g.
-        /etc/ceph/ceph.conf
-        """
-
-        # Make sure user arg is valid since rbd command may not fail if
-        # invalid/no user provided, resulting in unexpected behaviour.
-        if not self._validate_string_args(user):
-            raise exception.BackupInvalidCephArgs(_("invalid user '%s'") %
-                                                  user)
-
-        args = ['--id', user]
-        if conf:
-            args.extend(['--conf', conf])
-        if pool:
-            args.extend(['--pool', pool])
-
-        return args
-
     def _backup_rbd(self, backup_id, volume_id, volume_file, volume_name,
 		    length):
         #Create an incremental backup from an RBD image.
@@ -303,8 +303,12 @@ class SBSBackupDriver(driver.BackupDriver):
                               {'display_name': new_snap})
         self.db.backup_update(self.context, backup_id,
                               {'container': self._container})
+
+        # Remove older from-snap from src, as new snap will be "New" from-snap
+        source_rbd_image.remove_snap(from_snap)
         return
 
+    #shishir: Generate/update _container/bucket name and use that in DSS
     def backup(self, backup, volume_file, backup_metadata=False):
         backup_id = backup['id']
         volume = self.db.volume_get(self.context,backup['volume_id'])
@@ -323,8 +327,88 @@ class SBSBackupDriver(driver.BackupDriver):
                               {'container': self._container})
         return
 
+    #return sorted list with base as [0], and backup as last[n-1]
+    def _list_incr_backups(self, backup):
+        parent_id = backup['parent_id']
+
+        backup_tree = []
+        backup_tree.append(backup)
+
+        curr_backup = backup
+
+        while curr_backup['parent_id']:
+            parent_backup = self.db.backup_get(self.context,
+                                               curr_backup['parent_id'])
+            backup_tree.append(parent_backup)
+            curr = parent_backup
+
+        backup_tree.reverse()
+        return backup_tree
+
+    def _download_from_DSS(self, snap_name, volume_name, ceph_args):
+        cmd = ['rbd', 'import-diff'] + ceph_args
+        #if from_snap is None, do full upload
+        path = encodeutils.safe_encode("%s" % (volume_name))
+        loc = encodeutils.safe_encode("/tmp/%s" % (snap_name))
+        cmd.extend([path, loc])
+        LOG.info(cmd)
+        self._execute (*cmd, run_as_root=False)
+        #shishir: boto to upload the file from loc
+        return
+
+    def _restore_rbd(self, backup, volume_id, volume_file, ceph_args):
+        volume_name = volume['name']
+        backup_id = backup['id']
+        backup_volume_id = backup['volume_id']
+        backup_name = backup['display_name']
+        length = int(volume['size']) * units.Gi
+
+        # If the volume we are restoring to is the volume the backup was
+        # made from, force a full restore since a diff will not work in
+        # this case.
+        if volume_id == backup_id:
+            LOG.debug("Destination volume is same as backup source volume "
+                      "%s - forcing full copy.", volume['id'])
+            return False
+
+        self._restore_rbd(backup_name, volume_name, ceph_args) 
+        return
+
+    """
+        Get backup and all its parent leading upto base
+        Replay in reverse order, from base to specified backup
+        resize image to original size, as it might get shrunk
+        due to replay of diffs
+    """
     def restore(self, backup, volume_id, volume_file):
-		return
+        backup_tree = self._list_incr_backups(backup)
+        ceph_args = self._ceph_args(rbd_user, rbd_conf, pool=rbd_pool)
+        backup_layers = len(backup_tree)
+        try:
+            i = 0
+            while i < backup_layers:
+                backup_diff = backup_tree[i]
+                self._restore_rbd(backup_diff, volume_id, volume_file,
+                                  ceph_args)
+                i = i+1
+
+            # Be tolerant of IO implementations that do not support fileno()
+            try:
+                fileno = volume_file.fileno()
+            except IOError:
+                LOG.debug("Restore target I/O object does not support "
+                          "fileno() - skipping call to fsync().")
+            else:
+                os.fsync(fileno)
+
+            LOG.debug('restore %(backup_id)s to %(volume_id)s finished.',
+                      {'backup_id': backup_id, 'volume_id': volume_id})
+
+        except exception.BackupOperationError as e:
+            LOG.error(_LE('Restore to volume %(volume)s finished with error - '
+                          '%(error)s.'), {'error': e, 'volume': volume_id})
+            raise
+        return
 
     def delete(self, backup):
         return
