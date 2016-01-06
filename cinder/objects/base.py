@@ -223,6 +223,13 @@ class CinderObject(base.VersionedObject):
                     self[field] = current[field]
         self.obj_reset_changes()
 
+    def __contains__(self, name):
+        # We're using obj_extra_fields to provide aliases for some fields while
+        # in transition period. This override is to make these aliases pass
+        # "'foo' in obj" tests.
+        return name in self.obj_extra_fields or super(CinderObject,
+                                                      self).__contains__(name)
+
 
 class CinderObjectDictCompat(base.VersionedObjectDictCompat):
     """Mix-in to provide dictionary key access compat.
@@ -263,13 +270,6 @@ class CinderObjectDictCompat(base.VersionedObjectDictCompat):
                 # loadable attribute, but to mimic typical dict 'get'
                 # behavior we should still return None
                 return None
-
-    def __contains__(self, name):
-        try:
-            # Overriding this to make extra fields pass "'foo' in obj" tests
-            return name in self.obj_extra_fields or self.obj_attr_is_set(name)
-        except AttributeError:
-            return False
 
 
 class CinderPersistentObject(object):

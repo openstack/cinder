@@ -35,8 +35,8 @@ class TestVolume(test_objects.BaseObjectsTestCase):
         db_volume = fake_volume.fake_db_volume()
         volume_get.return_value = db_volume
         volume = objects.Volume.get_by_id(self.context, 1)
-        self._compare(self, db_volume, volume)
         volume_get.assert_called_once_with(self.context, 1)
+        self._compare(self, db_volume, volume)
 
     @mock.patch('cinder.db.sqlalchemy.api.model_query')
     def test_get_by_id_no_existing_id(self, model_query):
@@ -140,7 +140,9 @@ class TestVolume(test_objects.BaseObjectsTestCase):
 
     def test_obj_fields(self):
         volume = objects.Volume(context=self.context, id=2, _name_id=2)
-        self.assertEqual(['name', 'name_id'], volume.obj_extra_fields)
+        self.assertEqual(['name', 'name_id', 'volume_metadata',
+                          'volume_admin_metadata', 'volume_glance_metadata'],
+                         volume.obj_extra_fields)
         self.assertEqual('volume-2', volume.name)
         self.assertEqual('2', volume.name_id)
 
@@ -180,9 +182,9 @@ class TestVolume(test_objects.BaseObjectsTestCase):
         mock_metadata_get.assert_called_once_with(self.context, volume.id)
 
         # Test glance_metadata lazy-loaded field
-        glance_metadata = {'foo': 'bar'}
+        glance_metadata = [{'key': 'foo', 'value': 'bar'}]
         mock_glance_metadata_get.return_value = glance_metadata
-        self.assertEqual(glance_metadata, volume.glance_metadata)
+        self.assertEqual({'foo': 'bar'}, volume.glance_metadata)
         mock_glance_metadata_get.assert_called_once_with(
             self.context, volume.id)
 
@@ -292,6 +294,33 @@ class TestVolume(test_objects.BaseObjectsTestCase):
         volume_get.assert_has_calls([mock.call(self.context, '1'),
                                      mock.call.__nonzero__(),
                                      mock.call(self.context, '1')])
+
+    def test_metadata_aliases(self):
+        volume = objects.Volume(context=self.context)
+        # metadata<->volume_metadata
+        volume.metadata = {'abc': 'def'}
+        self.assertEqual([{'key': 'abc', 'value': 'def'}],
+                         volume.volume_metadata)
+
+        md = [{'key': 'def', 'value': 'abc'}]
+        volume.volume_metadata = md
+        self.assertEqual({'def': 'abc'}, volume.metadata)
+
+        # admin_metadata<->volume_admin_metadata
+        volume.admin_metadata = {'foo': 'bar'}
+        self.assertEqual([{'key': 'foo', 'value': 'bar'}],
+                         volume.volume_admin_metadata)
+
+        volume.volume_admin_metadata = [{'key': 'xyz', 'value': '42'}]
+        self.assertEqual({'xyz': '42'}, volume.admin_metadata)
+
+        # glance_metadata<->volume_glance_metadata
+        volume.glance_metadata = {'jkl': 'mno'}
+        self.assertEqual([{'key': 'jkl', 'value': 'mno'}],
+                         volume.volume_glance_metadata)
+
+        volume.volume_glance_metadata = [{'key': 'prs', 'value': 'tuw'}]
+        self.assertEqual({'prs': 'tuw'}, volume.glance_metadata)
 
 
 class TestVolumeList(test_objects.BaseObjectsTestCase):

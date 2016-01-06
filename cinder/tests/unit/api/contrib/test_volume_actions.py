@@ -69,6 +69,10 @@ class VolumeActionsTest(test.TestCase):
         self.mock_volume_update = self.update_patcher.start()
         self.addCleanup(self.update_patcher.stop)
         self.mock_volume_update.return_value = vol
+        self.db_get_patcher = mock.patch('cinder.db.sqlalchemy.api.volume_get')
+        self.mock_volume_db_get = self.db_get_patcher.start()
+        self.addCleanup(self.db_get_patcher.stop)
+        self.mock_volume_db_get.return_value = vol
 
         self.flags(rpc_backend='cinder.openstack.common.rpc.impl_fake')
 
