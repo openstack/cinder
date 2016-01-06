@@ -44,14 +44,14 @@ quota_opts = [
                default=10,
                help='Number of consistencygroups allowed per project'),
     cfg.IntOpt('quota_gigabytes',
-               default=120000,
+               default=122880,
                help='Total amount of storage, in gigabytes, allowed '
                     'for volumes and snapshots per project'),
     cfg.IntOpt('quota_backups',
                default=240,
                help='Number of volume backups allowed per project'),
     cfg.IntOpt('quota_backup_gigabytes',
-               default=28800000,
+               default=245760,
                help='Total amount of storage, in gigabytes, allowed '
                     'for backups per project'),
     cfg.IntOpt('reservation_expire',
@@ -71,7 +71,7 @@ quota_opts = [
                 help='Enables or disables use of default quota class '
                      'with default quota.'),
     cfg.IntOpt('per_volume_size_limit',
-               default=1000,
+               default=1024,
                help='Max size allowed per volume, in gigabytes'), ]
 
 CONF = cfg.CONF
