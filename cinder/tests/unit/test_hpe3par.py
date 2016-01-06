@@ -546,8 +546,13 @@ class HPE3PARBaseDriver(object):
                                      'minor': 4,
                                      'revision': 2}
 
+    wsapi_version_for_remote_copy = {'major': 1,
+                                     'build': 30202290,
+                                     'minor': 5,
+                                     'revision': 0}
+
     # Use this to point to latest version of wsapi
-    wsapi_version_latest = wsapi_version_for_flash_cache
+    wsapi_version_latest = wsapi_version_for_remote_copy
 
     standard_login = [
         mock.call.login(HPE3PAR_USER_NAME, HPE3PAR_USER_PASS),
