@@ -30,9 +30,9 @@ from cinder.volume import driver
 CONF = cfg.CONF
 
 
-class VolumeReplicationTestCase(test.TestCase):
+class VolumeReplicationTestCaseBase(test.TestCase):
     def setUp(self):
-        super(VolumeReplicationTestCase, self).setUp()
+        super(VolumeReplicationTestCaseBase, self).setUp()
         self.ctxt = context.RequestContext('user', 'fake', False)
         self.adm_ctxt = context.RequestContext('admin', 'fake', True)
         self.manager = importutils.import_object(CONF.volume_manager)
@@ -42,6 +42,8 @@ class VolumeReplicationTestCase(test.TestCase):
                                                 spec=driver.VolumeDriver)
         self.driver = self.driver_patcher.start()
 
+
+class VolumeReplicationTestCase(VolumeReplicationTestCaseBase):
     @mock.patch('cinder.utils.require_driver_initialized')
     def test_promote_replica_uninit_driver(self, _init):
         """Test promote replication when driver is not initialized."""
@@ -111,3 +113,183 @@ class VolumeReplicationTestCase(test.TestCase):
                           self.manager.reenable_replication,
                           self.adm_ctxt,
                           vol['id'])
+
+
+class VolumeManagerReplicationV2Tests(VolumeReplicationTestCaseBase):
+    mock_driver = None
+    mock_db = None
+    vol = None
+
+    def setUp(self):
+        super(VolumeManagerReplicationV2Tests, self).setUp()
+        self.mock_db = mock.Mock()
+        self.mock_driver = mock.Mock()
+        self.vol = test_utils.create_volume(self.ctxt,
+                                            status='available',
+                                            replication_status='enabling')
+        self.manager.driver = self.mock_driver
+        self.mock_driver.replication_enable.return_value = \
+            {'replication_status': 'enabled'}
+        self.mock_driver.replication_disable.return_value = \
+            {'replication_status': 'disabled'}
+        self.manager.db = self.mock_db
+        self.mock_db.volume_get.return_value = self.vol
+        self.mock_db.volume_update.return_value = self.vol
+
+    # enable_replication tests
+    @mock.patch('cinder.utils.require_driver_initialized')
+    def test_enable_replication_uninitialized_driver(self,
+                                                     mock_require_driver_init):
+        mock_require_driver_init.side_effect = exception.DriverNotInitialized
+        self.assertRaises(exception.DriverNotInitialized,
+                          self.manager.enable_replication,
+                          self.ctxt,
+                          self.vol)
+
+    def test_enable_replication_error_state(self):
+        self.vol['replication_status'] = 'error'
+        self.assertRaises(exception.InvalidVolume,
+                          self.manager.enable_replication,
+                          self.ctxt,
+                          self.vol)
+
+    def test_enable_replication_driver_raises_cinder_exception(self):
+        self.mock_driver.replication_enable.side_effect = \
+            exception.CinderException
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.manager.enable_replication,
+                          self.ctxt,
+                          self.vol)
+        self.mock_db.volume_update.assert_called_with(
+            self.ctxt,
+            self.vol['id'],
+            {'replication_status': 'error'})
+
+    def test_enable_replication_driver_raises_exception(self):
+        self.mock_driver.replication_enable.side_effect = Exception
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.manager.enable_replication,
+                          self.ctxt,
+                          self.vol)
+        self.mock_db.volume_update.assert_called_with(
+            self.ctxt,
+            self.vol['id'],
+            {'replication_status': 'error'})
+
+    def test_enable_replication_success(self):
+        self.manager.enable_replication(self.ctxt, self.vol)
+        # volume_update is called multiple times
+        self.mock_db.volume_update.side_effect = [self.vol, self.vol]
+        self.mock_db.volume_update.assert_called_with(
+            self.ctxt,
+            self.vol['id'],
+            {'replication_status': 'enabled'})
+
+    # disable_replication tests
+    @mock.patch('cinder.utils.require_driver_initialized')
+    def test_disable_replication_uninitialized_driver(self,
+                                                      mock_req_driver_init):
+        mock_req_driver_init.side_effect = exception.DriverNotInitialized
+        self.assertRaises(exception.DriverNotInitialized,
+                          self.manager.disable_replication,
+                          self.ctxt,
+                          self.vol)
+
+    def test_disable_replication_error_state(self):
+        self.vol['replication_status'] = 'error'
+        self.assertRaises(exception.InvalidVolume,
+                          self.manager.disable_replication,
+                          self.ctxt,
+                          self.vol)
+
+    def test_disable_replication_driver_raises_cinder_exception(self):
+        self.vol['replication_status'] = 'disabling'
+        self.mock_driver.replication_disable.side_effect = \
+            exception.CinderException
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.manager.disable_replication,
+                          self.ctxt,
+                          self.vol)
+        self.mock_db.volume_update.assert_called_with(
+            self.ctxt,
+            self.vol['id'],
+            {'replication_status': 'error'})
+
+    def test_disable_replication_driver_raises_exception(self):
+        self.vol['replication_status'] = 'disabling'
+        self.mock_driver.replication_disable.side_effect = Exception
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.manager.disable_replication,
+                          self.ctxt,
+                          self.vol)
+        self.mock_db.volume_update.assert_called_with(
+            self.ctxt,
+            self.vol['id'],
+            {'replication_status': 'error'})
+
+    def test_disable_replication_success(self):
+        self.vol['replication_status'] = 'disabling'
+        self.manager.disable_replication(self.ctxt, self.vol)
+        # volume_update is called multiple times
+        self.mock_db.volume_update.side_effect = [self.vol, self.vol]
+        self.mock_db.volume_update.assert_called_with(
+            self.ctxt,
+            self.vol['id'],
+            {'replication_status': 'disabled'})
+
+    # failover_replication tests
+    @mock.patch('cinder.utils.require_driver_initialized')
+    def test_failover_replication_uninitialized_driver(self,
+                                                       mock_driver_init):
+        self.vol['replication_status'] = 'enabling_secondary'
+        # validate that driver is called even if uninitialized
+        mock_driver_init.side_effect = exception.DriverNotInitialized
+        self.manager.failover_replication(self.ctxt, self.vol)
+        # volume_update is called multiple times
+        self.mock_db.volume_update.side_effect = [self.vol, self.vol]
+        self.mock_db.volume_update.assert_called_with(
+            self.ctxt,
+            self.vol['id'],
+            {'replication_status': 'failed-over'})
+
+    def test_failover_replication_error_state(self):
+        self.vol['replication_status'] = 'error'
+        self.assertRaises(exception.InvalidVolume,
+                          self.manager.failover_replication,
+                          self.ctxt,
+                          self.vol)
+
+    def test_failover_replication_driver_raises_cinder_exception(self):
+        self.vol['replication_status'] = 'enabling_secondary'
+        self.mock_driver.replication_failover.side_effect = \
+            exception.CinderException
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.manager.failover_replication,
+                          self.ctxt,
+                          self.vol)
+        self.mock_db.volume_update.assert_called_with(
+            self.ctxt,
+            self.vol['id'],
+            {'replication_status': 'error'})
+
+    def test_failover_replication_driver_raises_exception(self):
+        self.vol['replication_status'] = 'enabling_secondary'
+        self.mock_driver.replication_failover.side_effect = Exception
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.manager.failover_replication,
+                          self.ctxt,
+                          self.vol)
+        self.mock_db.volume_update.assert_called_with(
+            self.ctxt,
+            self.vol['id'],
+            {'replication_status': 'error'})
+
+    def test_failover_replication_success(self):
+        self.vol['replication_status'] = 'enabling_secondary'
+        self.manager.failover_replication(self.ctxt, self.vol)
+        # volume_update is called multiple times
+        self.mock_db.volume_update.side_effect = [self.vol, self.vol]
+        self.mock_db.volume_update.assert_called_with(
+            self.ctxt,
+            self.vol['id'],
+            {'replication_status': 'failed-over'})
