@@ -714,24 +714,23 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                                                             volume_ref,
                                                             image_location,
                                                             image_meta)
-
         # Try and use the image cache.
         should_create_cache_entry = False
-        internal_context = cinder_context.get_internal_tenant_context()
-        if not internal_context:
-            LOG.warning(_LW('Unable to get Cinder internal context, will '
-                            'not use image-volume cache.'))
-
-        if not cloned and internal_context and self.image_volume_cache:
-            model_update, cloned = self._create_from_image_cache(
-                context,
-                internal_context,
-                volume_ref,
-                image_id,
-                image_meta
-            )
-            if not cloned:
-                should_create_cache_entry = True
+        if self.image_volume_cache and not cloned:
+            internal_context = cinder_context.get_internal_tenant_context()
+            if not internal_context:
+                LOG.info(_LI('Unable to get Cinder internal context, will '
+                             'not use image-volume cache.'))
+            else:
+                model_update, cloned = self._create_from_image_cache(
+                    context,
+                    internal_context,
+                    volume_ref,
+                    image_id,
+                    image_meta
+                )
+                if not cloned:
+                    should_create_cache_entry = True
 
         # Fall back to default behavior of creating volume,
         # download the image data and copy it into the volume.
