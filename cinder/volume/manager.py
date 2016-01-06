@@ -1079,11 +1079,11 @@ class VolumeManager(manager.SchedulerDependentManager):
         reserve_opts = {'volumes': 1, 'gigabytes': volume.size}
         QUOTAS.add_volume_type_opts(ctx, reserve_opts, volume_type_id)
         reservations = QUOTAS.reserve(ctx, **reserve_opts)
-
         try:
             new_vol_values = dict(volume.items())
             new_vol_values.pop('id', None)
             new_vol_values.pop('_name_id', None)
+            new_vol_values.pop('name_id', None)
             new_vol_values.pop('volume_type', None)
             new_vol_values.pop('name', None)
 
@@ -1128,7 +1128,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                           {'volume_id': volume.id,
                            'image_id': image_meta['id']})
             try:
-                self.delete_volume(ctx, image_volume)
+                self.delete_volume(ctx, image_volume.id)
             except exception.CinderException:
                 LOG.exception(_LE('Could not delete the image volume %(id)s.'),
                               {'id': volume.id})
