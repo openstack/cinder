@@ -26,6 +26,7 @@ from cinder.volume import configuration as conf
 
 with mock.patch.dict('sys.modules', pywbem=mock.Mock()):
     from cinder.volume.drivers.fujitsu import eternus_dx_common as dx_common
+    from cinder.volume.drivers.fujitsu import eternus_dx_fc as dx_fc
     from cinder.volume.drivers.fujitsu import eternus_dx_iscsi as dx_iscsi
 
 CONFIG_FILE_NAME = 'cinder_fujitsu_eternus_dx.xml'
@@ -691,6 +692,119 @@ class FakeEternusConnection(object):
         instance = {}
         instance['IPv4Address'] = '10.0.0.3'
         return instance
+
+
+class FJFCDriverTestCase(test.TestCase):
+    def __init__(self, *args, **kwargs):
+        super(FJFCDriverTestCase, self).__init__(*args, **kwargs)
+
+    def setUp(self):
+        super(FJFCDriverTestCase, self).setUp()
+
+        # Make fake xml-configuration file.
+        self.config_file = tempfile.NamedTemporaryFile("w+", suffix='.xml')
+        self.addCleanup(self.config_file.close)
+        self.config_file.write(CONF)
+        self.config_file.flush()
+
+        # Make fake Object by using mock as configuration object.
+        self.configuration = mock.Mock(spec=conf.Configuration)
+        self.configuration.cinder_eternus_config_file = self.config_file.name
+
+        self.stubs.Set(dx_common.FJDXCommon, '_get_eternus_connection',
+                       self.fake_eternus_connection)
+
+        instancename = FakeCIMInstanceName()
+        self.stubs.Set(dx_common.FJDXCommon, '_create_eternus_instance_name',
+                       instancename.fake_create_eternus_instance_name)
+
+        # Set iscsi driver to self.driver.
+        driver = dx_fc.FJDXFCDriver(configuration=self.configuration)
+        self.driver = driver
+
+    def fake_eternus_connection(self):
+        conn = FakeEternusConnection()
+        return conn
+
+    def test_get_volume_stats(self):
+        ret = self.driver.get_volume_stats(True)
+        stats = {'vendor_name': ret['vendor_name'],
+                 'total_capacity_gb': ret['total_capacity_gb'],
+                 'free_capacity_gb': ret['free_capacity_gb']}
+        self.assertEqual(FAKE_STATS, stats)
+
+    def test_create_and_delete_volume(self):
+        model_info = self.driver.create_volume(TEST_VOLUME)
+        self.assertEqual(FAKE_MODEL_INFO1, model_info)
+
+        self.driver.delete_volume(TEST_VOLUME)
+
+    @mock.patch.object(dx_common.FJDXCommon, '_get_mapdata')
+    def test_map_unmap(self, mock_mapdata):
+        fake_data = {'target_wwn': FC_TARGET_WWN,
+                     'target_lun': 0}
+
+        mock_mapdata.return_value = fake_data
+        fake_mapdata = dict(fake_data)
+        fake_mapdata['initiator_target_map'] = {
+            initiator: FC_TARGET_WWN for initiator in TEST_WWPN
+        }
+
+        fake_mapdata['volume_id'] = TEST_VOLUME['id']
+        fake_mapdata['target_discovered'] = True
+        fake_info = {'driver_volume_type': 'fibre_channel',
+                     'data': fake_mapdata}
+
+        model_info = self.driver.create_volume(TEST_VOLUME)
+        self.assertEqual(FAKE_MODEL_INFO1, model_info)
+
+        info = self.driver.initialize_connection(TEST_VOLUME,
+                                                 TEST_CONNECTOR)
+        self.assertEqual(fake_info, info)
+        self.driver.terminate_connection(TEST_VOLUME,
+                                         TEST_CONNECTOR)
+        self.driver.delete_volume(TEST_VOLUME)
+
+    def test_create_and_delete_snapshot(self):
+        model_info = self.driver.create_volume(TEST_VOLUME)
+        self.assertEqual(FAKE_MODEL_INFO1, model_info)
+
+        snap_info = self.driver.create_snapshot(TEST_SNAP)
+        self.assertEqual(FAKE_SNAP_INFO, snap_info)
+
+        self.driver.delete_snapshot(TEST_SNAP)
+        self.driver.delete_volume(TEST_VOLUME)
+
+    def test_create_volume_from_snapshot(self):
+        model_info = self.driver.create_volume(TEST_VOLUME)
+        self.assertEqual(FAKE_MODEL_INFO1, model_info)
+
+        snap_info = self.driver.create_snapshot(TEST_SNAP)
+        self.assertEqual(FAKE_SNAP_INFO, snap_info)
+
+        model_info = self.driver.create_volume_from_snapshot(TEST_CLONE,
+                                                             TEST_SNAP)
+        self.assertEqual(FAKE_MODEL_INFO2, model_info)
+
+        self.driver.delete_snapshot(TEST_SNAP)
+        self.driver.delete_volume(TEST_CLONE)
+        self.driver.delete_volume(TEST_VOLUME)
+
+    def test_create_cloned_volume(self):
+        model_info = self.driver.create_volume(TEST_VOLUME)
+        self.assertEqual(FAKE_MODEL_INFO1, model_info)
+
+        model_info = self.driver.create_cloned_volume(TEST_CLONE, TEST_VOLUME)
+        self.assertEqual(FAKE_MODEL_INFO2, model_info)
+
+        self.driver.delete_volume(TEST_CLONE)
+        self.driver.delete_volume(TEST_VOLUME)
+
+    def test_extend_volume(self):
+        model_info = self.driver.create_volume(TEST_VOLUME)
+        self.assertEqual(FAKE_MODEL_INFO1, model_info)
+
+        self.driver.extend_volume(TEST_VOLUME, 10)
 
 
 class FJISCSIDriverTestCase(test.TestCase):

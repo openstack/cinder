@@ -705,7 +705,10 @@ class FJDXCommon(object):
         mapdata['target_discovered'] = True
         mapdata['volume_id'] = volume['id']
 
-        if self.protocol == 'iSCSI':
+        if self.protocol == 'fc':
+            device_info = {'driver_volume_type': 'fibre_channel',
+                           'data': mapdata}
+        elif self.protocol == 'iSCSI':
             device_info = {'driver_volume_type': 'iscsi',
                            'data': mapdata}
 
@@ -725,6 +728,37 @@ class FJDXCommon(object):
 
         LOG.debug('terminate_connection, map_exist: %s.', map_exist)
         return map_exist
+
+    def build_fc_init_tgt_map(self, connector, target_wwn=None):
+        """Build parameter for Zone Manager"""
+        LOG.debug('build_fc_init_tgt_map, target_wwn: %s.', target_wwn)
+
+        initiatorlist = self._find_initiator_names(connector)
+
+        if target_wwn is None:
+            target_wwn = []
+            target_portlist = self._get_target_port()
+            for target_port in target_portlist:
+                target_wwn.append(target_port['Name'])
+
+        init_tgt_map = {initiator: target_wwn for initiator in initiatorlist}
+
+        LOG.debug('build_fc_init_tgt_map, '
+                  'initiator target mapping: %s.', init_tgt_map)
+        return init_tgt_map
+
+    def check_attached_volume_in_zone(self, connector):
+        """Check Attached Volume in Same FC Zone or not"""
+        LOG.debug('check_attached_volume_in_zone, connector: %s.', connector)
+
+        aglist = self._find_affinity_group(connector)
+        if not aglist:
+            attached = False
+        else:
+            attached = True
+
+        LOG.debug('check_attached_volume_in_zone, attached: %s.', attached)
+        return attached
 
     @lockutils.synchronized('ETERNUS-vol', 'cinder-', True)
     def extend_volume(self, volume, new_size):
@@ -836,6 +870,8 @@ class FJDXCommon(object):
                    'eternus_pool': eternus_pool,
                    'pooltype': POOL_TYPE_dic[pooltype]})
 
+        return eternus_pool
+
     @lockutils.synchronized('ETERNUS-update', 'cinder-', True)
     def update_volume_stats(self):
         """get pool capacity."""
@@ -890,11 +926,65 @@ class FJDXCommon(object):
         if not aglist:
             LOG.debug('_get_mapdata, ag_list:%s.', aglist)
         else:
-            if self.protocol == 'iSCSI':
+            if self.protocol == 'fc':
+                mapdata = self._get_mapdata_fc(aglist, vol_instance,
+                                               target_portlist)
+            elif self.protocol == 'iSCSI':
                 mapdata = self._get_mapdata_iscsi(aglist, vol_instance,
                                                   multipath)
 
         LOG.debug('_get_mapdata, mapdata: %s.', mapdata)
+        return mapdata
+
+    def _get_mapdata_fc(self, aglist, vol_instance, target_portlist):
+        """_get_mapdata for FibreChannel."""
+        target_wwn = []
+
+        try:
+            ag_volmaplist = self._reference_eternus_names(
+                aglist[0],
+                ResultClass='CIM_ProtocolControllerForUnit')
+            vo_volmaplist = self._reference_eternus_names(
+                vol_instance.path,
+                ResultClass='CIM_ProtocolControllerForUnit')
+        except pywbem.CIM_Error:
+            msg = (_('_get_mapdata_fc, '
+                     'getting host-affinity from aglist/vol_instance failed, '
+                     'affinitygroup: %(ag)s, '
+                     'ReferenceNames, '
+                     'cannot connect to ETERNUS.')
+                   % {'ag': aglist[0]})
+            LOG.exception(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        volmap = None
+        for vo_volmap in vo_volmaplist:
+            if vo_volmap in ag_volmaplist:
+                volmap = vo_volmap
+                break
+
+        try:
+            volmapinstance = self._get_eternus_instance(
+                volmap,
+                LocalOnly=False)
+        except pywbem.CIM_Error:
+            msg = (_('_get_mapdata_fc, '
+                     'getting host-affinity instance failed, '
+                     'volmap: %(volmap)s, '
+                     'GetInstance, '
+                     'cannot connect to ETERNUS.')
+                   % {'volmap': volmap})
+            LOG.exception(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        target_lun = int(volmapinstance['DeviceNumber'], 16)
+
+        for target_port in target_portlist:
+            target_wwn.append(target_port['Name'])
+
+        mapdata = {'target_wwn': target_wwn,
+                   'target_lun': target_lun}
+        LOG.debug('_get_mapdata_fc, mapdata: %s.', mapdata)
         return mapdata
 
     def _get_mapdata_iscsi(self, aglist, vol_instance, multipath):
@@ -1502,7 +1592,10 @@ class FJDXCommon(object):
         LOG.debug('_get_target_port, protocol: %s.', self.protocol)
 
         target_portlist = []
-        if self.protocol == 'iSCSI':
+        if self.protocol == 'fc':
+            prtcl_endpoint = 'FUJITSU_SCSIProtocolEndpoint'
+            connection_type = 2
+        elif self.protocol == 'iSCSI':
             prtcl_endpoint = 'FUJITSU_iSCSIProtocolEndpoint'
             connection_type = 7
 
@@ -1673,7 +1766,11 @@ class FJDXCommon(object):
 
         initiatornamelist = []
 
-        if self.protocol == 'iSCSI' and connector['initiator']:
+        if self.protocol == 'fc' and connector['wwpns']:
+            LOG.debug('_find_initiator_names, wwpns: %s.',
+                      connector['wwpns'])
+            initiatornamelist = connector['wwpns']
+        elif self.protocol == 'iSCSI' and connector['initiator']:
             LOG.debug('_find_initiator_names, initiator: %s.',
                       connector['initiator'])
             initiatornamelist.append(connector['initiator'])
