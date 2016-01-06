@@ -135,10 +135,11 @@ class ScalityDriver(remotefs_drv.RemoteFSSnapDriver):
         if not self._sofs_is_mounted():
             self._execute('mount', '-t', 'sofs', self.sofs_config,
                           self.sofs_mount_point, run_as_root=True)
-        if not self._sofs_is_mounted():
-            msg = _("Cannot mount Scality SOFS, check syslog for errors")
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+            # Check whether the mount command succeeded
+            if not self._sofs_is_mounted():
+                msg = _("Cannot mount Scality SOFS, check syslog for errors")
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
 
         fileutils.ensure_tree(self.sofs_abs_volume_dir)
 
