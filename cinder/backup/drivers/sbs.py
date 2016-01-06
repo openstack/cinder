@@ -121,31 +121,42 @@ class SBSBackupDriver(driver.BackupDriver):
         NOTE: this call is made public since these snapshots must be deleted
               before the base volume can be deleted.
         """
-        backup_snaps=None
+        snaps = rbd_image.list_snaps()
+
+        backup_snaps = []
+        for snap in snaps:
+            search_key = cls.backup_snapshot_name_pattern()
+            result = re.search(search_key, snap['name'])
+            if result:
+                backup_snaps.append({'name': result.group(0),
+                                     'backup_id': result.group(1),
+                                     'timestamp': result.group(2)})
+
+        if sort:
+            # Sort into ascending order of timestamp
+            backup_snaps.sort(key=lambda x: x['timestamp'], reverse=True)
+
         return backup_snaps
 
-    def _get_most_recent_snap(self, volume_id):
+    def _get_most_recent_snap(self, rbd_image):
         """Get the most recent backup snapshot of the provided image.
 
         Returns name of most recent backup snapshot or None if there are no
         backup snapshots.
         """
-        latest_backup = None
-        backups = self.db.backup_get_all_by_volume(self.context.elevated(),
-                                                   volume_id)
-        if backups:
-            latest_backup = max(backups, key=lambda x: x['created_at'])
+        backup_snaps = self.get_backup_snaps(rbd_image, sort=True)
+        if not backup_snaps:
+            return None
 
-        return latest_backup['name']
+        return backup_snaps[0]['name']
 
-	# shishir change this to work out of s3 or db 
-    def _lookup_base_in_dest(self, snap_id):
-        base = self.db.backup_get(self.context, snap_id)
 
-        if base:
-            return True
-        else:
-		    return False
+    def _lookup_base(self, rbd_image):
+        backup_snaps = self.get_backup_snaps(rbd_image, sort=False)
+        if not backup_snaps:
+            return None
+        backup_snaps.sort(key=lambda x: x['timestamp'], reverse=False)
+        return backup_snaps[0]['name']
 
 	# shishir change this to work out of s3 or db 
     def _snap_exists(self, base_name, snap_name):
@@ -162,7 +173,7 @@ class SBSBackupDriver(driver.BackupDriver):
         loc = encodeutils.safe_encode("/tmp/%s" % (snap_name))
         cmd.extend([path, loc])
         LOG.info(cmd)
-        self._execute (*cmd, run_as_root=True)
+        self._execute (*cmd, run_as_root=False)
         #shishir: boto to upload the file from loc
         return
 
@@ -185,7 +196,7 @@ class SBSBackupDriver(driver.BackupDriver):
         rbd_conf = volume_file.rbd_conf
         source_rbd_image = volume_file.rbd_image
         # Check if base image exists in dest
-        found_base_image = self._lookup_base_in_dest(volume_id)
+        found_base_image = self._lookup_base(source_rbd_image)
 
         #If base image not found, create base image, might be 1st snap
         if not found_base_image:
@@ -263,7 +274,7 @@ class SBSBackupDriver(driver.BackupDriver):
         source_rbd_image = volume_file.rbd_image
 
         # Identify our --from-snap point (if one exists)
-        from_snap = self._get_most_recent_snap(volume_id)
+        from_snap = self._get_most_recent_snap(source_rbd_image)
         base_name = self._get_backup_base_name(volume_id, diff_format=True)
         LOG.debug("Using --from-snap '%(snap)s' for incremental backup of "
                   "volume %(volume)s, with base image '%s(base)s'.",
@@ -281,12 +292,15 @@ class SBSBackupDriver(driver.BackupDriver):
         LOG.debug("Creating backup snapshot='%s'", new_snap)
         source_rbd_image.create_snap(new_snap)
         # export diff now
+        #shishir: for now when not 1st snap, make sure from_snap is actual
+        # name, not id from db. May be set display-name correctly
         self._upload_to_DSS(new_snap, volume_name, ceph_args, from_snap)
 
         #shishir: change volume_id to latest snap_id
         self.db.backup_update(self.context, backup_id,
                               {'parent_id': volume_id})
-
+        self.db.backup_update(self.context, backup_id,
+                              {'display_name': new_snap})
         self.db.backup_update(self.context, backup_id,
                               {'container': self._container})
         return
