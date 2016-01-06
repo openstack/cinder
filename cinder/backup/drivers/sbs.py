@@ -234,6 +234,7 @@ class SBSBackupDriver(driver.BackupDriver):
                 source_rbd_image.remove_snap(base_name)
                 from_snap = None
 
+            #shishir: update size
             #Create new base image and upload it, so from-snap also becomes base
             source_rbd_image.create_snap(base_name)
             desc = (_("Base image of volume '%(volume)s'") % {'volume':volume_id})
@@ -245,6 +246,9 @@ class SBSBackupDriver(driver.BackupDriver):
                        'id': volume_id,
                        'status': 'available',
                        'container': self._container,
+                       'host': self.host,
+                       'service':self.driver_name,
+                       'size': "2",
                       }
             backup = self.db.backup_create(self.context, options)
             self._upload_to_DSS(base_name, volume_name, ceph_args)
