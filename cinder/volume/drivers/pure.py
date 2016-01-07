@@ -210,11 +210,12 @@ class PureBaseVolumeDriver(san.SanDriver):
             self._array.destroy_volume(snap_name)
         except purestorage.PureHTTPError as err:
             with excutils.save_and_reraise_exception() as ctxt:
-                if err.code == 400:
+                if err.code == 400 and (
+                        ERR_MSG_NOT_EXIST in err.text):
                     # Happens if the snapshot does not exist.
                     ctxt.reraise = False
-                    LOG.error(_LE("Snapshot deletion failed with message:"
-                                  " %s"), err.text)
+                    LOG.warning(_LW("Snapshot deletion failed with "
+                                    "message: %s"), err.text)
 
     def ensure_export(self, context, volume):
         pass
