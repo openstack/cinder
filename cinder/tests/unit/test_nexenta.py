@@ -285,7 +285,7 @@ class TestNexentaISCSIDriver(test.TestCase):
         self.assertEqual(5368709120.0, stats['total_capacity_gb'])
         self.assertEqual(5368709120.0, stats['free_capacity_gb'])
         self.assertEqual(20, stats['reserved_percentage'])
-        self.assertEqual(False, stats['QoS_support'])
+        self.assertFalse(stats['QoS_support'])
 
     def _create_volume_db_entry(self):
         vol = {

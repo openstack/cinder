@@ -558,7 +558,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         block_count = size * units.Gi / (block_size_mb * units.Mi)
 
         LOG.info(_LI('Creating regular file: %s.'
-                     'This may take some time.') % path)
+                     'This may take some time.'), path)
 
         nms.appliance.execute(
             'dd if=/dev/zero of=%(path)s bs=%(bs)dM count=%(count)d' % {
