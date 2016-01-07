@@ -1,4 +1,3 @@
-# Copyright 2013 Canonical Ltd.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -12,7 +11,9 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-
+# Copyright (c) 2016 Reliance JIO Corporation
+# Copyright (c) 2016 Shishir Gowda <shishir.gowda@ril.com>
+# Most of this work is directly derived from ceph, swift and chunked drivers
 """Ceph Backup Service Implementation.
 
 This driver supports backuping up ceph volumes to a s3 like object store.
@@ -37,6 +38,7 @@ import subprocess
 import time
 #import boto
 #import boto.s3.connection
+import pdb
 import eventlet
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -213,7 +215,7 @@ class SBSBackupDriver(driver.BackupDriver):
     """
 
     def _check_create_base(self, volume_id, volume_file, volume_name, 
-			   base_name, ceph_args, from_snap=None):
+			   base_name, ceph_args, backup_host, backup_service, from_snap=None):
 
         #Create an incremental backup from an RBD image.
         rbd_user = volume_file.rbd_user
@@ -222,7 +224,6 @@ class SBSBackupDriver(driver.BackupDriver):
         source_rbd_image = volume_file.rbd_image
         # Check if base image exists in dest
         found_base_image = self._lookup_base(source_rbd_image)
-
         #If base image not found, create base image, might be 1st snap
         if not found_base_image:
             # since base image is missing, default to full snap.Cleanup too
@@ -246,8 +247,8 @@ class SBSBackupDriver(driver.BackupDriver):
                        'id': volume_id,
                        'status': 'available',
                        'container': self._container,
-                       'host': self.host,
-                       'service':self.driver_name,
+		       'host': backup_host,
+		       'service': 'cinder.backup.drivers.sbs',
                        'size': "2",
                       }
             backup = self.db.backup_create(self.context, options)
@@ -269,13 +270,17 @@ class SBSBackupDriver(driver.BackupDriver):
 
         return (base_name, from_snap)
 
-    def _backup_rbd(self, backup_id, volume_id, volume_file, volume_name,
-		    length):
+    def _backup_rbd(self, backup, volume_file, volume):
         #Create an incremental backup from an RBD image.
         rbd_user = volume_file.rbd_user
         rbd_pool = volume_file.rbd_pool
         rbd_conf = volume_file.rbd_conf
         source_rbd_image = volume_file.rbd_image
+        backup_id = backup['id']
+ 	backup_host = backup['host']
+	backup_service = backup['service']
+        volume_id = volume['id']
+        volume_name = volume['name']
 
         # Identify our --from-snap point (if one exists)
         from_snap = self._get_most_recent_snap(source_rbd_image)
@@ -289,7 +294,8 @@ class SBSBackupDriver(driver.BackupDriver):
         #check base snap and from_snap and create base if missing
         base_name, from_snap = self._check_create_base(volume_id, volume_file,
                                                        volume_name, base_name,
-                                                       ceph_args, from_snap)
+                                                       ceph_args, backup_host,
+						       backup_service, from_snap)
 
         # Snapshot source volume so that we have a new point-in-time
         new_snap = self._get_new_snap_name(backup_id)
@@ -309,7 +315,9 @@ class SBSBackupDriver(driver.BackupDriver):
                               {'container': self._container})
 
         # Remove older from-snap from src, as new snap will be "New" from-snap
-        source_rbd_image.remove_snap(from_snap)
+	# Do this is from-snap is not same as base snap, as it will be the first
+	if from_snap != base_name:
+        	source_rbd_image.remove_snap(from_snap)
         return
 
     #shishir: Generate/update _container/bucket name and use that in DSS
@@ -317,7 +325,6 @@ class SBSBackupDriver(driver.BackupDriver):
         backup_id = backup['id']
         volume = self.db.volume_get(self.context,backup['volume_id'])
         volume_id = volume['id']
-        volume_name = volume['name']
 
         LOG.debug("Starting backup of volume='%s'.", volume_id)
 
@@ -325,7 +332,7 @@ class SBSBackupDriver(driver.BackupDriver):
         volume_file.seek(0)
         length = self._get_volume_size_gb(volume)
 
-        self._backup_rbd(backup_id, volume_id, volume_file, volume_name, length)
+        self._backup_rbd(backup, volume_file, volume)
 
         self.db.backup_update(self.context, backup_id,
                               {'container': self._container})
@@ -338,11 +345,11 @@ class SBSBackupDriver(driver.BackupDriver):
         backup_tree = []
         backup_tree.append(backup)
 
-        curr_backup = backup
+        curr = backup
 
-        while curr_backup['parent_id']:
+        while curr['parent_id']:
             parent_backup = self.db.backup_get(self.context,
-                                               curr_backup['parent_id'])
+                                               curr['parent_id'])
             backup_tree.append(parent_backup)
             curr = parent_backup
 
@@ -354,19 +361,19 @@ class SBSBackupDriver(driver.BackupDriver):
         #if from_snap is None, do full upload
         path = encodeutils.safe_encode("%s" % (volume_name))
         loc = encodeutils.safe_encode("/tmp/%s" % (snap_name))
-        cmd.extend([path, loc])
+        cmd.extend([loc, path])
         LOG.info(cmd)
         self._execute (*cmd, run_as_root=False)
         #shishir: boto to upload the file from loc
         return
 
     def _restore_rbd(self, backup, volume_id, volume_file, ceph_args):
-        volume_name = volume['name']
         backup_id = backup['id']
         backup_volume_id = backup['volume_id']
         backup_name = backup['display_name']
+	volume = self.db.volume_get(self.context,volume_id)
         length = int(volume['size']) * units.Gi
-
+	volume_name = (_("volume-%s" % (volume['id'])))
         # If the volume we are restoring to is the volume the backup was
         # made from, force a full restore since a diff will not work in
         # this case.
@@ -375,7 +382,7 @@ class SBSBackupDriver(driver.BackupDriver):
                       "%s - forcing full copy.", volume['id'])
             return False
 
-        self._restore_rbd(backup_name, volume_name, ceph_args) 
+        self._download_from_DSS(backup_name, volume_name, ceph_args) 
         return
 
     """
@@ -385,9 +392,15 @@ class SBSBackupDriver(driver.BackupDriver):
         due to replay of diffs
     """
     def restore(self, backup, volume_id, volume_file):
+	    #pdb.set_trace()
+        backup_id = backup['id']
+        rbd_user = volume_file.rbd_user
+        rbd_pool = volume_file.rbd_pool
+        rbd_conf = volume_file.rbd_conf
         backup_tree = self._list_incr_backups(backup)
         ceph_args = self._ceph_args(rbd_user, rbd_conf, pool=rbd_pool)
         backup_layers = len(backup_tree)
+	    #pdb.set_trace()
         try:
             i = 0
             while i < backup_layers:
