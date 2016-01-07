@@ -147,8 +147,6 @@ from cinder.volume.drivers import smbfs as cinder_volume_drivers_smbfs
 from cinder.volume.drivers import solidfire as cinder_volume_drivers_solidfire
 from cinder.volume.drivers import tegile as cinder_volume_drivers_tegile
 from cinder.volume.drivers import tintri as cinder_volume_drivers_tintri
-from cinder.volume.drivers.violin import v6000_common as \
-    cinder_volume_drivers_violin_v6000common
 from cinder.volume.drivers.violin import v7000_common as \
     cinder_volume_drivers_violin_v7000common
 from cinder.volume.drivers.vmware import vmdk as \
@@ -276,7 +274,6 @@ def list_opts():
                 cinder_volume_drivers_emc_emcvmaxcommon.emc_opts,
                 cinder_volume_drivers_remotefs.nas_opts,
                 cinder_volume_drivers_remotefs.volume_opts,
-                cinder_volume_drivers_violin_v6000common.violin_opts,
                 cinder_volume_drivers_emc_xtremio.XTREMIO_OPTS,
                 [cinder_api_middleware_auth.use_forwarded_for_opt],
                 cinder_volume_drivers_hitachi_hbsdcommon.volume_opts,
