@@ -92,9 +92,10 @@ class VolumeAPI(rpc.RPCAPI):
         1.38 - Scaling backup service, add get_backup_device() and
                secure_file_operations_enabled()
         1.39 - Update replication methods to reflect new backend rep strategy
+        1.40 - Add cascade option to delete_volume().
     """
 
-    RPC_API_VERSION = '1.39'
+    RPC_API_VERSION = '1.40'
     TOPIC = CONF.volume_topic
     BINARY = 'cinder-volume'
 
@@ -152,13 +153,22 @@ class VolumeAPI(rpc.RPCAPI):
         request_spec_p = jsonutils.to_primitive(request_spec)
         cctxt.cast(ctxt, 'create_volume', **msg_args)
 
-    def delete_volume(self, ctxt, volume, unmanage_only=False):
+    def delete_volume(self, ctxt, volume, unmanage_only=False, cascade=False):
         msg_args = {'volume_id': volume.id, 'unmanage_only': unmanage_only}
+
+        version = '1.15'
+
         if self.client.can_send_version('1.33'):
             version = '1.33'
             msg_args['volume'] = volume
-        else:
-            version = '1.15'
+
+        if self.client.can_send_version('1.40'):
+            version = '1.40'
+            if cascade:
+                msg_args['cascade'] = cascade
+        elif cascade:
+            msg = _('Cascade option is not supported.')
+            raise exception.Invalid(reason=msg)
 
         cctxt = self._get_cctxt(volume.host, version)
         cctxt.cast(ctxt, 'delete_volume', **msg_args)

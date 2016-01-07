@@ -1283,7 +1283,8 @@ class VolumeApiTest(test.TestCase):
         self.assertEqual(202, resp.status_int)
 
     def test_volume_delete_attached(self):
-        def stub_volume_attached(self, context, volume, force=False):
+        def stub_volume_attached(self, context, volume,
+                                 force=False, cascade=False):
             raise exception.VolumeAttached(volume_id=volume['id'])
         self.stubs.Set(volume_api.API, "delete", stub_volume_attached)
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)

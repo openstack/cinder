@@ -291,8 +291,9 @@ class VolumeRpcAPITestCase(test.TestCase):
                               rpc_method='cast',
                               volume=self.fake_volume_obj,
                               unmanage_only=False,
-                              version='1.33')
-        can_send_version.assert_called_once_with('1.33')
+                              cascade=False,
+                              version='1.40')
+        can_send_version.assert_any_call('1.40')
 
     @mock.patch('oslo_messaging.RPCClient.can_send_version',
                 return_value=False)
@@ -302,7 +303,19 @@ class VolumeRpcAPITestCase(test.TestCase):
                               volume=self.fake_volume_obj,
                               unmanage_only=False,
                               version='1.15')
-        can_send_version.assert_called_once_with('1.33')
+        can_send_version.assert_any_call('1.33')
+
+    @mock.patch('oslo_messaging.RPCClient.can_send_version',
+                return_value=True)
+    def test_delete_volume_cascade(self, can_send_version):
+        self._test_volume_api('delete_volume',
+                              rpc_method='cast',
+                              volume=self.fake_volume_obj,
+                              unmanage_only=False,
+                              cascade=True,
+                              version='1.40')
+        can_send_version.assert_any_call('1.33')
+        can_send_version.assert_any_call('1.40')
 
     def test_create_snapshot(self):
         self._test_volume_api('create_snapshot',

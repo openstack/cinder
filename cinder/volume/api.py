@@ -329,7 +329,10 @@ class API(base.Base):
             return vref
 
     @wrap_check_policy
-    def delete(self, context, volume, force=False, unmanage_only=False):
+    def delete(self, context, volume,
+               force=False,
+               unmanage_only=False,
+               cascade=False):
         if context.is_admin and context.project_id != volume.project_id:
             project_id = volume.project_id
         else:
@@ -374,8 +377,12 @@ class API(base.Base):
             expected['status'] = ('available', 'error', 'error_restoring',
                                   'error_extending')
 
-        # Volume cannot have snapshots if we want to delete it
-        filters = [~db.volume_has_snapshots_filter()]
+        if cascade:
+            # Allow deletion if all snapshots are in an expected state
+            filters = [~db.volume_has_undeletable_snapshots_filter()]
+        else:
+            # Don't allow deletion of volume with snapshots
+            filters = [~db.volume_has_snapshots_filter()]
         values = {'status': 'deleting', 'terminated_at': timeutils.utcnow()}
 
         result = volume.conditional_update(values, expected, filters)
@@ -387,6 +394,22 @@ class API(base.Base):
                     'consistency group or have snapshots.') % status
             LOG.info(msg)
             raise exception.InvalidVolume(reason=msg)
+
+        if cascade:
+            values = {'status': 'deleting'}
+            expected = {'status': ('available', 'error', 'deleting'),
+                        'cgsnapshot_id': None}
+            snapshots = objects.snapshot.SnapshotList.get_all_for_volume(
+                context, volume.id)
+            for s in snapshots:
+                result = s.conditional_update(values, expected, filters)
+
+                if not result:
+                    volume.update({'status': 'error_deleting'})
+                    volume.save()
+
+                    msg = _('Failed to update snapshot.')
+                    raise exception.InvalidVolume(reason=msg)
 
         cache = image_cache.ImageVolumeCache(self.db, self)
         entry = cache.get_by_image_volume(context, volume.id)
@@ -404,7 +427,10 @@ class API(base.Base):
                 msg = _("Unable to delete encrypted volume: %s.") % e.msg
                 raise exception.InvalidVolume(reason=msg)
 
-        self.volume_rpcapi.delete_volume(context, volume, unmanage_only)
+        self.volume_rpcapi.delete_volume(context,
+                                         volume,
+                                         unmanage_only,
+                                         cascade)
         LOG.info(_LI("Delete volume request issued successfully."),
                  resource=volume)
 
