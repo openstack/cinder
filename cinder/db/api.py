@@ -117,7 +117,7 @@ def service_get_all_by_topic(context, topic, disabled=None):
 
 
 def service_get_by_args(context, host, binary):
-    """Get the state of an service by node name and binary."""
+    """Get the state of a service by node name and binary."""
     return IMPL.service_get_by_args(context, host, binary)
 
 
