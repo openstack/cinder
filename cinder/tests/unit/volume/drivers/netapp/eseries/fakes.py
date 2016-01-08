@@ -48,6 +48,15 @@ FAKE_CINDER_SNAPSHOT = {
     'volume': FAKE_CINDER_VOLUME
 }
 
+FAKE_CINDER_CG = {
+    'id': '78f95b9d-3f02-4781-a512-1a1c951d48a2',
+}
+
+FAKE_CINDER_CG_SNAPSHOT = {
+    'id': '78f95b9d-4d13-4781-a512-1a1c951d6a6',
+    'consistencygroup_id': FAKE_CINDER_CG['id'],
+}
+
 MULTIATTACH_HOST_GROUP = {
     'clusterRef': '8500000060080E500023C7340036035F515B78FC',
     'label': utils.MULTI_ATTACH_HOST_GROUP_NAME,
@@ -693,7 +702,8 @@ SNAPSHOT_IMAGE = {
     'activeCOW': True,
     'isRollbackSource': False,
     'pitRef': '3400000060080E500023BB3400631F335294A5A8',
-    'pitSequenceNumber': '19'
+    'pitSequenceNumber': '19',
+    'consistencyGroupId': '0000000000000000000000000000000000000000',
 }
 
 SNAPSHOT_VOLUME = {
@@ -1011,6 +1021,46 @@ FAKE_CLIENT_PARAMS = {
     'password': 'rw',
 }
 
+FAKE_CONSISTENCY_GROUP = {
+    'cgRef': '2A000000600A0980006077F8008702F45480F41A',
+    'label': '5BO5GPO4PFGRPMQWEXGTILSAUI',
+    'repFullPolicy': 'failbasewrites',
+    'fullWarnThreshold': 75,
+    'autoDeleteLimit': 0,
+    'rollbackPriority': 'medium',
+    'uniqueSequenceNumber': [8940, 8941, 8942],
+    'creationPendingStatus': 'none',
+    'name': '5BO5GPO4PFGRPMQWEXGTILSAUI',
+    'id': '2A000000600A0980006077F8008702F45480F41A'
+}
+
+FAKE_CONSISTENCY_GROUP_MEMBER = {
+    'consistencyGroupId': '2A000000600A0980006077F8008702F45480F41A',
+    'volumeId': '02000000600A0980006077F8000002F55480F421',
+    'volumeWwn': '600A0980006077F8000002F55480F421',
+    'baseVolumeName': 'I5BHHNILUJGZHEUD4S36GCOQYA',
+    'clusterSize': 65536,
+    'totalRepositoryVolumes': 1,
+    'totalRepositoryCapacity': '4294967296',
+    'usedRepositoryCapacity': '5636096',
+    'fullWarnThreshold': 75,
+    'totalSnapshotImages': 3,
+    'totalSnapshotVolumes': 2,
+    'autoDeleteSnapshots': False,
+    'autoDeleteLimit': 0,
+    'pitGroupId': '33000000600A0980006077F8000002F85480F435',
+    'repositoryVolume': '36000000600A0980006077F8000002F75480F435'
+}
+FAKE_CONSISTENCY_GROUP_SNAPSHOT_VOLUME = {
+    'id': '2C00000060080E500034194F002C96A256BD50F9',
+    'name': '6TRZHKDG75DVLBC2JU5J647RME',
+    'cgViewRef': '2C00000060080E500034194F002C96A256BD50F9',
+    'groupRef': '2A00000060080E500034194F0087969856BD2D67',
+    'label': '6TRZHKDG75DVLBC2JU5J647RME',
+    'viewTime': '1455221060',
+    'viewSequenceNumber': '10',
+}
+
 
 def list_snapshot_groups(numGroups):
     snapshots = []
@@ -1179,8 +1229,11 @@ class FakeEseriesClient(object):
     def list_snapshot_images(self):
         return [SNAPSHOT_IMAGE]
 
-    def list_snapshot_image(self):
+    def list_snapshot_image(self, *args, **kwargs):
         return SNAPSHOT_IMAGE
+
+    def create_cg_snapshot_view(self, *args, **kwargs):
+        return SNAPSHOT_VOLUME
 
     def list_host_types(self):
         return [
@@ -1277,8 +1330,32 @@ class FakeEseriesClient(object):
     def restart_snapshot_volume(self, *args, **kwargs):
         pass
 
+    def create_consistency_group(self, *args, **kwargs):
+        return FAKE_CONSISTENCY_GROUP
+
+    def delete_consistency_group(self, *args, **kwargs):
+        pass
+
+    def list_consistency_groups(self, *args, **kwargs):
+        return [FAKE_CONSISTENCY_GROUP]
+
+    def remove_consistency_group_member(self, *args, **kwargs):
+        pass
+
+    def add_consistency_group_member(self, *args, **kwargs):
+        pass
+
     def list_backend_store(self, key):
         return {}
 
     def save_backend_store(self, key, val):
+        pass
+
+    def create_consistency_group_snapshot(self, *args, **kwargs):
+        return [SNAPSHOT_IMAGE]
+
+    def get_consistency_group_snapshots(self, *args, **kwargs):
+        return [SNAPSHOT_IMAGE]
+
+    def delete_consistency_group_snapshot(self, *args, **kwargs):
         pass

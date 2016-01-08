@@ -126,6 +126,33 @@ class RestClient(WebserviceClient):
         'snapshot_images': '/storage-systems/{system-id}/snapshot-images',
         'snapshot_image':
             '/storage-systems/{system-id}/snapshot-images/{object-id}',
+        'cgroup':
+            '/storage-systems/{system-id}/consistency-groups/{object-id}',
+        'cgroups': '/storage-systems/{system-id}/consistency-groups',
+        'cgroup_members':
+            '/storage-systems/{system-id}/consistency-groups/{object-id}'
+            '/member-volumes',
+        'cgroup_member':
+            '/storage-systems/{system-id}/consistency-groups/{object-id}'
+            '/member-volumes/{vol-id}',
+        'cgroup_snapshots':
+            '/storage-systems/{system-id}/consistency-groups/{object-id}'
+            '/snapshots',
+        'cgroup_snapshot':
+            '/storage-systems/{system-id}/consistency-groups/{object-id}'
+            '/snapshots/{seq-num}',
+        'cgroup_snapshots_by_seq':
+            '/storage-systems/{system-id}/consistency-groups/{object-id}'
+            '/snapshots/{seq-num}',
+        'cgroup_cgsnap_view':
+            '/storage-systems/{system-id}/consistency-groups/{object-id}'
+            '/views/{seq-num}',
+        'cgroup_cgsnap_views':
+            '/storage-systems/{system-id}/consistency-groups/{object-id}'
+            '/views/',
+        'cgroup_snapshot_views':
+            '/storage-systems/{system-id}/consistency-groups/{object-id}'
+            '/views/{view-id}/views',
         'persistent-stores': '/storage-systems/{'
                              'system-id}/persistent-records/',
         'persistent-store': '/storage-systems/{'
@@ -446,6 +473,131 @@ class RestClient(WebserviceClient):
             path = self.RESOURCE_PATHS.get('volume')
         data = {'name': label}
         return self._invoke('POST', path, data, **{'object-id': object_id})
+
+    def create_consistency_group(self, name, warn_at_percent_full=75,
+                                 rollback_priority='medium',
+                                 full_policy='failbasewrites'):
+        """Define a new consistency group"""
+        path = self.RESOURCE_PATHS.get('cgroups')
+        data = {
+            'name': name,
+            'fullWarnThresholdPercent': warn_at_percent_full,
+            'repositoryFullPolicy': full_policy,
+            # A non-zero threshold enables auto-deletion
+            'autoDeleteThreshold': 0,
+            'rollbackPriority': rollback_priority,
+        }
+
+        return self._invoke('POST', path, data)
+
+    def get_consistency_group(self, object_id):
+        """Retrieve the consistency group identified by object_id"""
+        path = self.RESOURCE_PATHS.get('cgroup')
+
+        return self._invoke('GET', path, **{'object-id': object_id})
+
+    def list_consistency_groups(self):
+        """Retrieve all consistency groups defined on the array"""
+        path = self.RESOURCE_PATHS.get('cgroups')
+
+        return self._invoke('GET', path)
+
+    def delete_consistency_group(self, object_id):
+        path = self.RESOURCE_PATHS.get('cgroup')
+
+        self._invoke('DELETE', path, **{'object-id': object_id})
+
+    def add_consistency_group_member(self, volume_id, cg_id,
+                                     repo_percent=20.0):
+        """Add a volume to a consistency group
+
+        :param volume_id the eseries volume id
+        :param cg_id: the eseries cg id
+        :param repo_percent: percentage capacity of the volume to use for
+        capacity of the copy-on-write repository
+        """
+        path = self.RESOURCE_PATHS.get('cgroup_members')
+        data = {'volumeId': volume_id, 'repositoryPercent': repo_percent}
+
+        return self._invoke('POST', path, data, **{'object-id': cg_id})
+
+    def remove_consistency_group_member(self, volume_id, cg_id):
+        """Remove a volume from a consistency group"""
+        path = self.RESOURCE_PATHS.get('cgroup_member')
+
+        self._invoke('DELETE', path, **{'object-id': cg_id,
+                                        'vol-id': volume_id})
+
+    def create_consistency_group_snapshot(self, cg_id):
+        """Define a consistency group snapshot"""
+        path = self.RESOURCE_PATHS.get('cgroup_snapshots')
+
+        return self._invoke('POST', path, **{'object-id': cg_id})
+
+    def delete_consistency_group_snapshot(self, cg_id, seq_num):
+        """Define a consistency group snapshot"""
+        path = self.RESOURCE_PATHS.get('cgroup_snapshot')
+
+        return self._invoke('DELETE', path, **{'object-id': cg_id,
+                                               'seq-num': seq_num})
+
+    def get_consistency_group_snapshots(self, cg_id):
+        """Retrieve all snapshots defined for a consistency group"""
+        path = self.RESOURCE_PATHS.get('cgroup_snapshots')
+
+        return self._invoke('GET', path, **{'object-id': cg_id})
+
+    def create_cg_snapshot_view(self, cg_id, name, snap_id):
+        """Define a snapshot view for the cgsnapshot
+
+        In order to define a snapshot view for a snapshot defined under a
+        consistency group, the view must be defined at the cgsnapshot
+        level.
+
+        :param cg_id: E-Series cg identifier
+        :param name: the label for the view
+        :param snap_id: E-Series snapshot view to locate
+        :raise NetAppDriverException: if the snapshot view cannot be
+        located for the snapshot identified by snap_id
+        :return snapshot view for snapshot identified by snap_id
+        """
+        path = self.RESOURCE_PATHS.get('cgroup_cgsnap_views')
+
+        data = {
+            'name': name,
+            'accessMode': 'readOnly',
+            # Only define a view for this snapshot
+            'pitId': snap_id,
+        }
+        # Define a view for the cgsnapshot
+        cgsnapshot_view = self._invoke(
+            'POST', path, data, **{'object-id': cg_id})
+
+        # Retrieve the snapshot views associated with our cgsnapshot view
+        views = self.list_cg_snapshot_views(cg_id, cgsnapshot_view[
+            'cgViewRef'])
+        # Find the snapshot view defined for our snapshot
+        for view in views:
+            if view['basePIT'] == snap_id:
+                return view
+        else:
+            try:
+                self.delete_cg_snapshot_view(cg_id, cgsnapshot_view['id'])
+            finally:
+                raise exception.NetAppDriverException(
+                    'Unable to create snapshot view.')
+
+    def list_cg_snapshot_views(self, cg_id, view_id):
+        path = self.RESOURCE_PATHS.get('cgroup_snapshot_views')
+
+        return self._invoke('GET', path, **{'object-id': cg_id,
+                                            'view-id': view_id})
+
+    def delete_cg_snapshot_view(self, cg_id, view_id):
+        path = self.RESOURCE_PATHS.get('cgroup_snap_view')
+
+        return self._invoke('DELETE', path, **{'object-id': cg_id,
+                                               'view-id': view_id})
 
     def get_pool_operation_progress(self, object_id):
         """Retrieve the progress long-running operations on a storage pool
