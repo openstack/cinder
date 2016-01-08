@@ -109,7 +109,6 @@ test_snap = {'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0635',
              'display_description': 'test volume',
              'volume_type_id': None,
              'provider_location': '11',
-             'volume': {"volume_id": '21ec7341-9256-497b-97d9-ef48edcf0635'},
              'volume': {'provider_location': '12'},
              }
 
