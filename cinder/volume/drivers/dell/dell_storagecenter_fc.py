@@ -98,9 +98,9 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
                                              'target_discovered': True,
                                              'target_wwn': targets,
                                              'initiator_target_map':
-                                             init_targ_map}}
-                            LOG.debug('Return FC data:')
-                            LOG.debug(data)
+                                             init_targ_map,
+                                             'discard': True}}
+                            LOG.debug('Return FC data: %s', data)
                             return data
                         LOG.error(_LE('Lun mapping returned null!'))
 

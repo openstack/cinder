@@ -123,6 +123,7 @@ class DellStorageCenterISCSIDriver(dell_storagecenter_common.DellCommonDriver,
                                                                 port))
 
                         # Return our iscsi properties.
+                        iscsiprops['discard'] = True
                         return {'driver_volume_type': 'iscsi',
                                 'data': iscsiprops}
             # Re-raise any backend exception.
