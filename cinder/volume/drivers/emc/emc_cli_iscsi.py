@@ -135,7 +135,6 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
                     'target_iqn': 'iqn.2010-10.org.openstack:volume-00000001',
                     'target_portal': '127.0.0.0.1:3260',
                     'target_lun': 1,
-                    'access_mode': 'rw'
                 }
             }
 
@@ -149,7 +148,6 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
                                     'iqn.2010-10.org.openstack:volume-00002'],
                     'target_portals': ['127.0.0.1:3260', '127.0.1.1:3260'],
                     'target_luns': [1, 1],
-                    'access_mode': 'rw'
                 }
             }
 

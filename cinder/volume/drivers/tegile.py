@@ -528,7 +528,6 @@ class TegileISCSIDriver(TegileIntelliFlashVolumeDriver, san.SanISCSIDriver):
         connection_data['target_lun'] = target_lun
         connection_data['target_discovered'] = False,
         connection_data['volume_id'] = volume['id'],
-        connection_data['access_mode'] = 'rw'
         connection_data['discard'] = False
         if getattr(self.configuration, 'use_chap_auth', False):
             connection_data['auth_method'] = 'CHAP'
@@ -622,7 +621,6 @@ class TegileFCDriver(TegileIntelliFlashVolumeDriver,
             'data': {
                 'encrypted': False,
                 'target_discovered': False,
-                'access_mode': 'rw',
                 'target_lun': target_info['target_lun'],
                 'target_wwn': ast.literal_eval(target_info['target_wwn']),
                 'initiator_target_map': ast.literal_eval(initiator_target_map)

@@ -38,7 +38,6 @@ class DPLISCSIDriver(dplcommon.DPLCOMMONDriver,
         properties['target_portal'] = ''
         properties['target_iqn'] = None
         properties['volume_id'] = volume['id']
-        properties['access_mode'] = 'rw'
 
         dpl_server = self.configuration.san_ip
         dpl_iscsi_port = self.configuration.iscsi_port

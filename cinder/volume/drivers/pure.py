@@ -875,7 +875,6 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
             "driver_volume_type": "iscsi",
             "data": {
                 "target_discovered": False,
-                "access_mode": "rw",
                 "discard": True,
             },
         }
@@ -1030,7 +1029,6 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
                 'target_discovered': True,
                 "target_lun": connection["lun"],
                 "target_wwn": target_wwns,
-                'access_mode': 'rw',
                 'initiator_target_map': init_targ_map,
                 "discard": True,
             }

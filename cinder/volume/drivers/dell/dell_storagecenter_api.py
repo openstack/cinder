@@ -1272,7 +1272,6 @@ class StorageCenterApi(object):
         # Our mutable process object.
         pdata = {'active': -1,
                  'up': -1,
-                 'access_mode': 'rw',
                  'ip': ip,
                  'port': port}
         # Our output lists.
@@ -1281,7 +1280,7 @@ class StorageCenterApi(object):
         iqns = []
 
         # Process just looks for the best port to return.
-        def process(lun, iqn, address, port, readonly, status, active):
+        def process(lun, iqn, address, port, status, active):
             """Process this mapping information.
 
             :param lun: SCSI Lun.
@@ -1312,7 +1311,6 @@ class StorageCenterApi(object):
                 # but we don't actually need the state to be
                 # up at this point.
                 if pdata['up'] == -1:
-                    pdata['access_mode'] = 'rw' if readonly is False else 'ro'
                     if active:
                         pdata['active'] = len(iqns) - 1
                         if status == 'Up':
@@ -1336,7 +1334,6 @@ class StorageCenterApi(object):
                 # The lun, ro mode and status are in the mapping.
                 LOG.debug('mapping: %s', mapping)
                 lun = mapping.get('lun')
-                ro = mapping.get('readOnly', False)
                 status = mapping.get('status')
                 # Get our IQN from our mapping.
                 iqn = self._get_iqn(mapping)
@@ -1354,7 +1351,7 @@ class StorageCenterApi(object):
                             portnumber = dom.get('portNumber')
                             # We have all our information. Process this portal.
                             process(lun, iqn, ipaddress, portnumber,
-                                    ro, status, isactive)
+                                    status, isactive)
                 # Else we are in legacy mode.
                 elif iqn:
                     # Need to get individual ports
@@ -1368,7 +1365,7 @@ class StorageCenterApi(object):
                         portnumber = cpconfig.get('portNumber')
                         # We have all our information.  Process this portal.
                         process(lun, iqn, ipaddress, portnumber,
-                                ro, status, isactive)
+                                status, isactive)
 
         # We've gone through all our mappings.
         # Make sure we found something to return.
@@ -1398,7 +1395,6 @@ class StorageCenterApi(object):
                 'target_portals': portals,
                 'target_lun': luns[pdata['active']],
                 'target_luns': luns,
-                'access_mode': pdata['access_mode']
                 }
         LOG.debug('find_iscsi_properties return: %s',
                   data)

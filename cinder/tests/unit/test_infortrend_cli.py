@@ -176,7 +176,6 @@ class InfortrendCLITestData(object):
             'target_discovered': True,
             'target_lun': fake_lun_map[0],
             'target_wwn': fake_target_wwpns[0:2],
-            'access_mode': 'rw',
             'initiator_target_map': test_initiator_target_map,
         },
     }
@@ -192,7 +191,6 @@ class InfortrendCLITestData(object):
             'target_discovered': True,
             'target_lun': fake_lun_map[0],
             'target_wwn': [fake_target_wwpns[1]],
-            'access_mode': 'rw',
             'initiator_target_map': test_initiator_target_map_specific_channel,
         },
     }
@@ -215,7 +213,6 @@ class InfortrendCLITestData(object):
             'target_discovered': True,
             'target_lun': fake_lun_map[0],
             'target_wwn': test_target_wwpns_map_multipath_r_model[:],
-            'access_mode': 'rw',
             'initiator_target_map':
                 test_initiator_target_map_multipath_r_model,
         },
@@ -234,7 +231,6 @@ class InfortrendCLITestData(object):
             'target_discovered': True,
             'target_lun': fake_lun_map[0],
             'target_wwn': [x.lower() for x in fake_target_wwpns[0:2]],
-            'access_mode': 'rw',
             'initiator_target_map': test_initiator_target_map_zoning,
         },
     }
@@ -252,7 +248,6 @@ class InfortrendCLITestData(object):
             'target_discovered': True,
             'target_lun': fake_lun_map[0],
             'target_wwn': [x.lower() for x in fake_target_wwpns[1:3]],
-            'access_mode': 'rw',
             'initiator_target_map': test_initiator_target_map_zoning_r_model,
         },
     }
