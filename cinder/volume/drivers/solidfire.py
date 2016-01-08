@@ -447,35 +447,13 @@ class SolidFireDriver(san.SanISCSIDriver):
                                             self.cluster_uuid))
         return model_update
 
-    def _do_clone_volume(self, src_uuid,
-                         src_project_id,
-                         vref):
-        """Create a clone of an existing volume or snapshot."""
-
-        attributes = {}
-        qos = {}
-
-        sf_accounts = self._get_sfaccounts_for_tenant(vref['project_id'])
-        if not sf_accounts:
-            sf_account = self._create_sfaccount(vref['project_id'])
-        else:
-            # Check availability for creates
-            sf_account = self._get_account_create_availability(sf_accounts)
-            if not sf_account:
-                # TODO(jdg): We're not doing tertiaries, so fail
-                msg = _('volumes/account exceeded on both primary '
-                        'and secondary SolidFire accounts')
-                raise exception.SolidFireDriverException(msg)
-
-        params = {'name': '%s%s' % (self.configuration.sf_volume_prefix,
-                                    vref['id']),
-                  'newAccountID': sf_account['accountID']}
-
+    def _snapshot_discovery(self, src_uuid, params, vref):
         # NOTE(jdg): First check the SF snapshots
         # if we don't find a snap by the given name, just move on to check
         # volumes.  This may be a running system that was updated from
         # before we did snapshots, so need to check both
         is_clone = False
+        sf_vol = None
         snap_name = '%s%s' % (self.configuration.sf_volume_prefix, src_uuid)
         snaps = self._get_sf_snapshots()
         snap = next((s for s in snaps if s["name"] == snap_name), None)
@@ -490,38 +468,54 @@ class SolidFireDriver(san.SanISCSIDriver):
             params['volumeID'] = int(sf_vol['volumeID'])
             params['newSize'] = int(vref['size'] * units.Gi)
             is_clone = True
+        return params, is_clone, sf_vol
 
+    def _do_clone_volume(self, src_uuid,
+                         vref, sf_src_snap=None):
+        """Create a clone of an existing volume or snapshot."""
+
+        attributes = {}
+        sf_account = self._get_create_account(vref['project_id'])
+        params = {'name': '%(prefix)s%(id)s' %
+                  {'prefix': self.configuration.sf_volume_prefix,
+                   'id': vref['id']},
+                  'newAccountID': sf_account['accountID']}
+
+        is_clone = False
+        sf_vol = None
+        if sf_src_snap:
+            # In some scenarios we are passed the snapshot information that we
+            # are supposed to clone.
+            params['snapshotID'] = sf_src_snap['snapshotID']
+            params['volumeID'] = sf_src_snap['volumeID']
+            params['newSize'] = int(vref['size'] * units.Gi)
+        else:
+            params, is_clone, sf_vol = self._snapshot_discovery(src_uuid,
+                                                                params,
+                                                                vref)
         data = self._issue_api_request('CloneVolume', params, version='6.0')
         if (('result' not in data) or ('volumeID' not in data['result'])):
             msg = _("API response: %s") % data
             raise exception.SolidFireAPIException(msg)
 
         sf_volume_id = data['result']['volumeID']
-        if (self.configuration.sf_allow_tenant_qos and
-                vref.get('volume_metadata')is not None):
-            qos = self._set_qos_presets(vref)
-
-        ctxt = context.get_admin_context()
-        type_id = vref.get('volume_type_id', None)
-        if type_id is not None:
-            qos = self._set_qos_by_volume_type(ctxt, type_id)
+        qos = self._retrieve_qos_setting(vref)
 
         # NOTE(jdg): all attributes are copied via clone, need to do an update
         # to set any that were provided
-        params = {'volumeID': sf_volume_id}
-
+        qos_params = {'volumeID': sf_volume_id}
         create_time = vref['created_at'].isoformat()
         attributes = {'uuid': vref['id'],
                       'is_clone': 'True',
                       'src_uuid': src_uuid,
                       'created_at': create_time}
         if qos:
-            params['qos'] = qos
+            qos_params['qos'] = qos
             for k, v in qos.items():
                 attributes[k] = str(v)
 
-        params['attributes'] = attributes
-        data = self._issue_api_request('ModifyVolume', params)
+        qos_params['attributes'] = attributes
+        data = self._issue_api_request('ModifyVolume', qos_params)
 
         model_update = self._get_model_info(sf_account, sf_volume_id)
         if model_update is None:
@@ -810,6 +804,21 @@ class SolidFireDriver(san.SanISCSIDriver):
             return sfaccount
         return None
 
+    def _get_create_account(self, proj_id):
+        # Retrieve SolidFire accountID to be used for creating volumes.
+        sf_accounts = self._get_sfaccounts_for_tenant(proj_id)
+        if not sf_accounts:
+            sf_account = self._create_sfaccount(proj_id)
+        else:
+            # Check availability for creates
+            sf_account = self._get_account_create_availability(sf_accounts)
+            if not sf_account:
+                # TODO(jdg): We're not doing tertiaries, so fail.
+                msg = _('Volumes/account exceeded on both primary and '
+                        'secondary SolidFire accounts.')
+                raise exception.SolidFireDriverException(msg)
+        return sf_account
+
     def _get_volumes_for_account(self, sf_account_id, cinder_uuid=None):
         # ListVolumesForAccount gives both Active and Deleted
         # we require the solidfire accountID, uuid of volume
@@ -1007,10 +1016,8 @@ class SolidFireDriver(san.SanISCSIDriver):
         except exception.SolidFireAPIException:
             return None, False
 
-        account = self.configuration.sf_template_account_name
         try:
             (data, sfaccount, model) = self._do_clone_volume(image_meta['id'],
-                                                             account,
                                                              volume)
         except exception.VolumeNotFound:
             if self._create_image_volume(context,
@@ -1022,10 +1029,21 @@ class SolidFireDriver(san.SanISCSIDriver):
 
             # Ok, should be good to go now, try it again
             (data, sfaccount, model) = self._do_clone_volume(image_meta['id'],
-                                                             account,
                                                              volume)
 
         return model, True
+
+    def _retrieve_qos_setting(self, volume):
+        qos = {}
+        if (self.configuration.sf_allow_tenant_qos and
+                volume.get('volume_metadata')is not None):
+            qos = self._set_qos_presets(volume)
+
+        ctxt = context.get_admin_context()
+        type_id = volume.get('volume_type_id', None)
+        if type_id is not None:
+            qos = self._set_qos_by_volume_type(ctxt, type_id)
+        return qos
 
     def create_volume(self, volume):
         """Create volume on SolidFire device.
@@ -1043,16 +1061,9 @@ class SolidFireDriver(san.SanISCSIDriver):
         """
         slice_count = 1
         attributes = {}
-        qos = {}
 
-        if (self.configuration.sf_allow_tenant_qos and
-                volume.get('volume_metadata')is not None):
-            qos = self._set_qos_presets(volume)
-
-        ctxt = context.get_admin_context()
-        type_id = volume['volume_type_id']
-        if type_id is not None:
-            qos = self._set_qos_by_volume_type(ctxt, type_id)
+        sf_account = self._get_create_account(volume['project_id'])
+        qos = self._retrieve_qos_setting(volume)
 
         create_time = volume['created_at'].isoformat()
         attributes = {'uuid': volume['id'],
@@ -1061,12 +1072,6 @@ class SolidFireDriver(san.SanISCSIDriver):
         if qos:
             for k, v in qos.items():
                 attributes[k] = str(v)
-
-        sf_accounts = self._get_sfaccounts_for_tenant(volume['project_id'])
-        if not sf_accounts:
-            sf_account = self._create_sfaccount(volume['project_id'])
-        else:
-            sf_account = self._get_account_create_availability(sf_accounts)
 
         vname = '%s%s' % (self.configuration.sf_volume_prefix, volume['id'])
         params = {'name': vname,
@@ -1092,7 +1097,6 @@ class SolidFireDriver(san.SanISCSIDriver):
         """Create a clone of an existing volume."""
         (_data, _sfaccount, model) = self._do_clone_volume(
             src_vref['id'],
-            src_vref['project_id'],
             volume)
 
         return model
@@ -1175,10 +1179,174 @@ class SolidFireDriver(san.SanISCSIDriver):
         """Create a volume from the specified snapshot."""
         (_data, _sfaccount, model) = self._do_clone_volume(
             snapshot['id'],
-            snapshot['project_id'],
             volume)
 
         return model
+
+    # Consistency group helpers
+    def _create_group_snapshot(self, name, sf_volumes):
+        # Group snapshot is our version of a consistency group snapshot.
+        vol_ids = [vol['volumeID'] for vol in sf_volumes]
+        params = {'name': name,
+                  'volumes': vol_ids}
+        snapshot_id = self._issue_api_request('CreateGroupSnapshot',
+                                              params,
+                                              version='7.0')
+        return snapshot_id['result']
+
+    def _group_snapshot_creator(self, gsnap_name, src_vol_ids):
+        # Common helper that takes in an array of OpenStack Volume UUIDs and
+        # creates a SolidFire group snapshot with them.
+        vol_names = [self.configuration.sf_volume_prefix + vol_id
+                     for vol_id in src_vol_ids]
+        active_sf_vols = self._get_all_active_volumes()
+        target_vols = [vol for vol in active_sf_vols
+                       if vol['name'] in vol_names]
+        if len(src_vol_ids) != len(target_vols):
+            msg = (_("Retrieved a different amount of SolidFire volumes for "
+                     "the provided Cinder volumes. Retrieved: %(ret)s "
+                     "Desired: %(des)s") % {"ret": len(target_vols),
+                                            "des": len(src_vol_ids)})
+            raise exception.SolidFireDriverException(msg)
+
+        result = self._create_group_snapshot(gsnap_name, target_vols)
+        return result
+
+    def _create_temp_group_snapshot(self, source_cg, source_vols):
+        # Take a temporary snapshot to create the volumes for a new
+        # consistency group.
+        gsnap_name = ("%(prefix)s%(id)s-tmp" %
+                      {"prefix": self.configuration.sf_volume_prefix,
+                       "id": source_cg['id']})
+        vol_ids = [vol['id'] for vol in source_vols]
+        self._group_snapshot_creator(gsnap_name, vol_ids)
+        return gsnap_name
+
+    def _list_group_snapshots(self):
+        result = self._issue_api_request('ListGroupSnapshots',
+                                         {},
+                                         version='7.0')
+        return result['result']['groupSnapshots']
+
+    def _get_group_snapshot_by_name(self, name):
+        target_snaps = self._list_group_snapshots()
+        target = next((snap for snap in target_snaps
+                       if snap['name'] == name), None)
+        return target
+
+    def _delete_group_snapshot(self, gsnapid):
+        params = {'groupSnapshotID': gsnapid}
+        self._issue_api_request('DeleteGroupSnapshot',
+                                params,
+                                version='7.0')
+
+    def _delete_cgsnapshot_by_name(self, snap_name):
+        # Common function used to find and delete a snapshot.
+        target = self._get_group_snapshot_by_name(snap_name)
+        if not target:
+            msg = _("Failed to find group snapshot named: %s") % snap_name
+            raise exception.SolidFireDriverException(msg)
+        self._delete_group_snapshot(target['groupSnapshotID'])
+
+    def _find_linked_snapshot(self, target_uuid, group_snap):
+        # Because group snapshots name each individual snapshot the group
+        # snapshot name, we have to trawl through the SolidFire snapshots to
+        # find the SolidFire snapshot from the group that is linked with the
+        # SolidFire volumeID that is linked to the Cinder snapshot source
+        # volume.
+        source_vol = self._get_sf_volume(target_uuid)
+        target_snap = next((sn for sn in group_snap['members']
+                            if sn['volumeID'] == source_vol['volumeID']), None)
+        return target_snap
+
+    def _create_clone_from_sf_snapshot(self, target_uuid, src_uuid,
+                                       sf_group_snap, vol):
+        # Find the correct SolidFire backing snapshot.
+        sf_src_snap = self._find_linked_snapshot(target_uuid,
+                                                 sf_group_snap)
+        _data, _sfaccount, model = self._do_clone_volume(src_uuid,
+                                                         vol,
+                                                         sf_src_snap)
+        model['id'] = vol['id']
+        model['status'] = 'available'
+        return model
+
+    # Required consistency group functions
+    def create_consistencygroup(self, ctxt, group):
+        # SolidFire does not have a viable means for storing consistency group
+        # volume associations. So, we're just going to play along with the
+        # consistency group song and dance. There will be a lot of no-ops
+        # because of this.
+        return {'status': 'available'}
+
+    def create_consistencygroup_from_src(self, ctxt, group, volumes,
+                                         cgsnapshot, snapshots,
+                                         source_cg, source_vols):
+        if cgsnapshot and snapshots:
+            sf_name = self.configuration.sf_volume_prefix + cgsnapshot['id']
+            sf_group_snap = self._get_group_snapshot_by_name(sf_name)
+
+            # Go about creating volumes from provided snaps.
+            vol_models = []
+            for vol, snap in zip(volumes, snapshots):
+                vol_models.append(self._create_clone_from_sf_snapshot(
+                    snap['volume_id'],
+                    snap['id'],
+                    sf_group_snap,
+                    vol))
+            return {'status': 'available'}, vol_models
+
+        elif source_cg and source_vols:
+            # Create temporary group snapshot.
+            gsnap_name = self._create_temp_group_snapshot(source_cg,
+                                                          source_vols)
+            try:
+                sf_group_snap = self._get_group_snapshot_by_name(gsnap_name)
+                # For each temporary snapshot clone the volume.
+                vol_models = []
+                for vol in volumes:
+                    vol_models.append(self._create_clone_from_sf_snapshot(
+                        vol['source_volid'],
+                        vol['source_volid'],
+                        sf_group_snap,
+                        vol))
+            finally:
+                self._delete_cgsnapshot_by_name(gsnap_name)
+            return {'status': 'available'}, vol_models
+
+    def create_cgsnapshot(self, ctxt, cgsnapshot, snapshots):
+        vol_ids = [snapshot['volume_id'] for snapshot in snapshots]
+        vol_names = [self.configuration.sf_volume_prefix + vol_id
+                     for vol_id in vol_ids]
+        active_sf_vols = self._get_all_active_volumes()
+        target_vols = [vol for vol in active_sf_vols
+                       if vol['name'] in vol_names]
+        if len(snapshots) != len(target_vols):
+            msg = (_("Retrieved a different amount of SolidFire volumes for "
+                     "the provided Cinder snapshots. Retrieved: %(ret)s "
+                     "Desired: %(des)s") % {"ret": len(target_vols),
+                                            "des": len(snapshots)})
+            raise exception.SolidFireDriverException(msg)
+        snap_name = self.configuration.sf_volume_prefix + cgsnapshot['id']
+        self._create_group_snapshot(snap_name, target_vols)
+        return None, None
+
+    def update_consistencygroup(self, context, group,
+                                add_volumes=None, remove_volumes=None):
+        # Similar to create_consistencygroup, SolidFire's lack of a consistency
+        # group object means there is nothing to update on the cluster.
+        return None, None, None
+
+    def delete_cgsnapshot(self, ctxt, cgsnapshot, snapshots):
+        snap_name = self.configuration.sf_volume_prefix + cgsnapshot['id']
+        self._delete_cgsnapshot_by_name(snap_name)
+        return None, None
+
+    def delete_consistencygroup(self, ctxt, group, volumes):
+        for vol in volumes:
+            self.delete_volume(vol)
+
+        return None, None
 
     def get_volume_stats(self, refresh=False):
         """Get volume status.
@@ -1234,6 +1402,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         data["vendor_name"] = 'SolidFire Inc'
         data["driver_version"] = self.VERSION
         data["storage_protocol"] = 'iSCSI'
+        data['consistencygroup_support'] = True
 
         data['total_capacity_gb'] = (
             float(results['maxProvisionedSpace'] / units.Gi))
@@ -1396,15 +1565,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         sfaccount = self._create_sfaccount(volume['project_id'])
 
         attributes = {}
-        qos = {}
-        if (self.configuration.sf_allow_tenant_qos and
-                volume.get('volume_metadata')is not None):
-            qos = self._set_qos_presets(volume)
-
-        ctxt = context.get_admin_context()
-        type_id = volume.get('volume_type_id', None)
-        if type_id is not None:
-            qos = self._set_qos_by_volume_type(ctxt, type_id)
+        qos = self._retrieve_qos_setting(volume)
 
         import_time = volume['created_at'].isoformat()
         attributes = {'uuid': volume['id'],

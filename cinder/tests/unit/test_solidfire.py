@@ -1517,3 +1517,228 @@ class SolidFireVolumeTestCase(test.TestCase):
             # and features the openstack attribute.
             self.assertEqual(1, rem_vag.call_count)
             rem_vag.assert_called_with(1)
+
+    def test_create_group_snapshot(self):
+        # Sunny day group snapshot creation.
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        name = 'great_gsnap_name'
+        sf_volumes = [{'volumeID': 1}, {'volumeID': 42}]
+        expected_params = {'name': name,
+                           'volumes': [1, 42]}
+        fake_result = {'result': 'contrived_test'}
+        with mock.patch.object(sfv,
+                               '_issue_api_request',
+                               return_value=fake_result) as fake_api:
+            res = sfv._create_group_snapshot(name, sf_volumes)
+            self.assertEqual('contrived_test', res)
+            fake_api.assert_called_with('CreateGroupSnapshot',
+                                        expected_params,
+                                        version='7.0')
+
+    def test_group_snapshot_creator_sunny(self):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        gsnap_name = 'great_gsnap_name'
+        prefix = sfv.configuration.sf_volume_prefix
+        vol_uuids = ['one', 'two', 'three']
+        active_vols = [{'name': prefix + 'one'},
+                       {'name': prefix + 'two'},
+                       {'name': prefix + 'three'}]
+        with mock.patch.object(sfv,
+                               '_get_all_active_volumes',
+                               return_value=active_vols),\
+            mock.patch.object(sfv,
+                              '_create_group_snapshot',
+                              return_value=None) as create:
+            sfv._group_snapshot_creator(gsnap_name, vol_uuids)
+            create.assert_called_with(gsnap_name,
+                                      active_vols)
+
+    def test_group_snapshot_creator_rainy(self):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        gsnap_name = 'great_gsnap_name'
+        prefix = sfv.configuration.sf_volume_prefix
+        vol_uuids = ['one', 'two', 'three']
+        active_vols = [{'name': prefix + 'one'},
+                       {'name': prefix + 'two'}]
+        with mock.patch.object(sfv,
+                               '_get_all_active_volumes',
+                               return_value=active_vols):
+            self.assertRaises(exception.SolidFireDriverException,
+                              sfv._group_snapshot_creator,
+                              gsnap_name,
+                              vol_uuids)
+
+    def test_create_temp_group_snapshot(self):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        cg = {'id': 'great_gsnap_name'}
+        prefix = sfv.configuration.sf_volume_prefix
+        tmp_name = prefix + cg['id'] + '-tmp'
+        vols = [{'id': 'one'},
+                {'id': 'two'},
+                {'id': 'three'}]
+        with mock.patch.object(sfv,
+                               '_group_snapshot_creator',
+                               return_value=None) as create:
+            sfv._create_temp_group_snapshot(cg, vols)
+            create.assert_called_with(tmp_name, ['one', 'two', 'three'])
+
+    def test_list_group_snapshots(self):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        res = {'result': {'groupSnapshots': 'a_thing'}}
+        with mock.patch.object(sfv,
+                               '_issue_api_request',
+                               return_value=res):
+            result = sfv._list_group_snapshots()
+            self.assertEqual('a_thing', result)
+
+    def test_get_group_snapshot_by_name(self):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        fake_snaps = [{'name': 'a_fantastic_name'}]
+        with mock.patch.object(sfv,
+                               '_list_group_snapshots',
+                               return_value=fake_snaps):
+            result = sfv._get_group_snapshot_by_name('a_fantastic_name')
+            self.assertEqual(fake_snaps[0], result)
+
+    def test_delete_group_snapshot(self):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        gsnap_id = 1
+        with mock.patch.object(sfv,
+                               '_issue_api_request') as api_req:
+            sfv._delete_group_snapshot(gsnap_id)
+            api_req.assert_called_with('DeleteGroupSnapshot',
+                                       {'groupSnapshotID': gsnap_id},
+                                       version='7.0')
+
+    def test_delete_cgsnapshot_by_name(self):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        fake_gsnap = {'groupSnapshotID': 42}
+        with mock.patch.object(sfv,
+                               '_get_group_snapshot_by_name',
+                               return_value=fake_gsnap),\
+            mock.patch.object(sfv,
+                              '_delete_group_snapshot') as del_stuff:
+            sfv._delete_cgsnapshot_by_name('does not matter')
+            del_stuff.assert_called_with(fake_gsnap['groupSnapshotID'])
+
+    def test_delete_cgsnapshot_by_name_rainy(self):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        with mock.patch.object(sfv,
+                               '_get_group_snapshot_by_name',
+                               return_value=None):
+            self.assertRaises(exception.SolidFireDriverException,
+                              sfv._delete_cgsnapshot_by_name,
+                              'does not matter')
+
+    def test_find_linked_snapshot(self):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        group_snap = {'members': [{'volumeID': 1}, {'volumeID': 2}]}
+        source_vol = {'volumeID': 1}
+        with mock.patch.object(sfv,
+                               '_get_sf_volume',
+                               return_value=source_vol) as get_vol:
+            res = sfv._find_linked_snapshot('fake_uuid', group_snap)
+            self.assertEqual(source_vol, res)
+            get_vol.assert_called_with('fake_uuid')
+
+    def test_create_consisgroup_from_src_cgsnapshot(self):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        ctxt = None
+        group = {}
+        volumes = [{'id': 'one'}, {'id': 'two'}, {'id': 'three'}]
+        cgsnapshot = {'id': 'great_uuid'}
+        snapshots = [{'id': 'snap_id_1', 'volume_id': 'one'},
+                     {'id': 'snap_id_2', 'volume_id': 'two'},
+                     {'id': 'snap_id_3', 'volume_id': 'three'}]
+        source_cg = None
+        source_vols = None
+        group_snap = {}
+        name = sfv.configuration.sf_volume_prefix + cgsnapshot['id']
+        kek = (None, None, {})
+        with mock.patch.object(sfv,
+                               '_get_group_snapshot_by_name',
+                               return_value=group_snap) as get_snap,\
+            mock.patch.object(sfv,
+                              '_find_linked_snapshot'),\
+            mock.patch.object(sfv,
+                              '_do_clone_volume',
+                              return_value=kek):
+            model, vol_models = sfv.create_consistencygroup_from_src(
+                ctxt, group, volumes,
+                cgsnapshot, snapshots,
+                source_cg, source_vols)
+            get_snap.assert_called_with(name)
+            self.assertEqual({'status': 'available'}, model)
+
+    def test_create_consisgroup_from_src_source_cg(self):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        ctxt = None
+        group = {}
+        volumes = [{'id': 'one', 'source_volid': 'source_one'},
+                   {'id': 'two', 'source_volid': 'source_two'},
+                   {'id': 'three', 'source_volid': 'source_three'}]
+        cgsnapshot = {'id': 'great_uuid'}
+        snapshots = None
+        source_cg = {'id': 'fantastic_cg'}
+        source_vols = [1, 2, 3]
+        source_snap = None
+        group_snap = {}
+        kek = (None, None, {})
+        with mock.patch.object(sfv,
+                               '_create_temp_group_snapshot',
+                               return_value=source_cg['id']),\
+            mock.patch.object(sfv,
+                              '_get_group_snapshot_by_name',
+                              return_value=group_snap) as get_snap,\
+            mock.patch.object(sfv,
+                              '_find_linked_snapshot',
+                              return_value=source_snap),\
+            mock.patch.object(sfv,
+                              '_do_clone_volume',
+                              return_value=kek),\
+            mock.patch.object(sfv,
+                              '_delete_cgsnapshot_by_name'):
+            model, vol_models = sfv.create_consistencygroup_from_src(
+                ctxt, group, volumes,
+                cgsnapshot, snapshots,
+                source_cg,
+                source_vols)
+            get_snap.assert_called_with(source_cg['id'])
+            self.assertEqual({'status': 'available'}, model)
+
+    def test_create_cgsnapshot(self):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        ctxt = None
+        cgsnapshot = {'id': 'acceptable_cgsnap_id'}
+        snapshots = [{'volume_id': 'one'},
+                     {'volume_id': 'two'}]
+        pfx = sfv.configuration.sf_volume_prefix
+        active_vols = [{'name': pfx + 'one'},
+                       {'name': pfx + 'two'}]
+        with mock.patch.object(sfv,
+                               '_get_all_active_volumes',
+                               return_value=active_vols),\
+            mock.patch.object(sfv,
+                              '_create_group_snapshot') as create_gsnap:
+            sfv.create_cgsnapshot(ctxt, cgsnapshot, snapshots)
+            create_gsnap.assert_called_with(pfx + cgsnapshot['id'],
+                                            active_vols)
+
+    def test_create_cgsnapshot_rainy(self):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        ctxt = None
+        cgsnapshot = {'id': 'acceptable_cgsnap_id'}
+        snapshots = [{'volume_id': 'one'},
+                     {'volume_id': 'two'}]
+        pfx = sfv.configuration.sf_volume_prefix
+        active_vols = [{'name': pfx + 'one'}]
+        with mock.patch.object(sfv,
+                               '_get_all_active_volumes',
+                               return_value=active_vols),\
+            mock.patch.object(sfv,
+                              '_create_group_snapshot'):
+            self.assertRaises(exception.SolidFireDriverException,
+                              sfv.create_cgsnapshot,
+                              ctxt,
+                              cgsnapshot,
+                              snapshots)
