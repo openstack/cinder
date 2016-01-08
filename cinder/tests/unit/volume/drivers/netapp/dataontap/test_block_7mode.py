@@ -298,6 +298,26 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
             '/vol/fake/fakeLUN', '/vol/fake/newFakeLUN', 'fakeLUN',
             'newFakeLUN', 'false', block_count=0, dest_block=0, src_block=0)
 
+    def test_clone_lun_blocks(self):
+        """Test for when clone lun is passed block information."""
+        block_count = 10
+        src_block = 10
+        dest_block = 30
+        self.library._get_lun_attr = mock.Mock(return_value={
+            'Volume': 'fakeLUN', 'Path': '/vol/fake/fakeLUN'})
+        self.library.zapi_client = mock.Mock()
+        self.library.zapi_client.get_lun_by_args.return_value = [fake.FAKE_LUN]
+        self.library._add_lun_to_table = mock.Mock()
+
+        self.library._clone_lun('fakeLUN', 'newFakeLUN', 'false',
+                                block_count=block_count, src_block=src_block,
+                                dest_block=dest_block)
+
+        self.library.zapi_client.clone_lun.assert_called_once_with(
+            '/vol/fake/fakeLUN', '/vol/fake/newFakeLUN', 'fakeLUN',
+            'newFakeLUN', 'false', block_count=block_count,
+            dest_block=dest_block, src_block=src_block)
+
     def test_clone_lun_no_space_reservation(self):
         """Test for when space_reservation is not passed."""
         self.library._get_lun_attr = mock.Mock(return_value={
