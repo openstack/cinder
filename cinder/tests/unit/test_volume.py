@@ -134,6 +134,7 @@ class BaseVolumeTestCase(test.TestCase):
                              'pools': {}}
         # keep ordered record of what we execute
         self.called = []
+        self.volume_api = cinder.volume.api.API()
 
     def _cleanup(self):
         try:
@@ -937,25 +938,17 @@ class VolumeTestCase(BaseVolumeTestCase):
 
     @mock.patch.object(keymgr, 'API', new=fake_keymgr.fake_api)
     def test_create_delete_volume_with_encrypted_volume_type(self):
-        ctxt = context.get_admin_context()
-
-        db.volume_type_create(ctxt,
-                              {'id': '61298380-0c12-11e3-bfd6-4b48424183be',
-                               'name': 'LUKS'})
+        db_vol_type = db.volume_type_create(self.context,
+                                            {'id': 'type-id', 'name': 'LUKS'})
         db.volume_type_encryption_create(
-            ctxt,
-            '61298380-0c12-11e3-bfd6-4b48424183be',
+            self.context, 'type-id',
             {'control_location': 'front-end', 'provider': ENCRYPTION_PROVIDER})
 
-        volume_api = cinder.volume.api.API()
-
-        db_vol_type = db.volume_type_get_by_name(ctxt, 'LUKS')
-
-        volume = volume_api.create(self.context,
-                                   1,
-                                   'name',
-                                   'description',
-                                   volume_type=db_vol_type)
+        volume = self.volume_api.create(self.context,
+                                        1,
+                                        'name',
+                                        'description',
+                                        volume_type=db_vol_type)
 
         self.assertIsNotNone(volume.get('encryption_key_id', None))
         self.assertEqual(db_vol_type.get('id'), volume['volume_type_id'])
@@ -963,7 +956,8 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         volume['host'] = 'fake_host'
         volume['status'] = 'available'
-        volume_api.delete(self.context, volume)
+        db.volume_update(self.context, volume['id'], {'status': 'available'})
+        self.volume_api.delete(self.context, volume)
 
         volume = db.volume_get(self.context, volume['id'])
         self.assertEqual('deleting', volume['status'])
@@ -2990,10 +2984,11 @@ class VolumeTestCase(BaseVolumeTestCase):
         pass
 
     @staticmethod
-    def _create_snapshot(volume_id, size=1, metadata=None):
+    def _create_snapshot(volume_id, size=1, metadata=None, ctxt=None,
+                         **kwargs):
         """Create a snapshot object."""
         metadata = metadata or {}
-        snap = objects.Snapshot(context.get_admin_context())
+        snap = objects.Snapshot(ctxt or context.get_admin_context())
         snap.volume_size = size
         snap.user_id = 'fake'
         snap.project_id = 'fake'
@@ -3001,6 +2996,8 @@ class VolumeTestCase(BaseVolumeTestCase):
         snap.status = "creating"
         if metadata is not None:
             snap.metadata = metadata
+        snap.update(kwargs)
+
         snap.create()
         return snap
 
@@ -3172,16 +3169,12 @@ class VolumeTestCase(BaseVolumeTestCase):
     def _test_cannot_delete_volume(self, status):
         """Test volume can't be deleted in invalid stats."""
         # create a volume and assign to host
-        volume = tests_utils.create_volume(self.context, **self.volume_params)
-        self.volume.create_volume(self.context, volume['id'])
-        volume['status'] = status
-        volume['host'] = 'fakehost'
-
-        volume_api = cinder.volume.api.API()
+        volume = tests_utils.create_volume(self.context, CONF.host,
+                                           status=status)
 
         # 'in-use' status raises InvalidVolume
         self.assertRaises(exception.InvalidVolume,
-                          volume_api.delete,
+                          self.volume_api.delete,
                           self.context,
                           volume)
 
@@ -3191,20 +3184,17 @@ class VolumeTestCase(BaseVolumeTestCase):
     def test_force_delete_volume(self):
         """Test volume can be forced to delete."""
         # create a volume and assign to host
+        self.volume_params['status'] = 'error_deleting'
         volume = tests_utils.create_volume(self.context, **self.volume_params)
-        self.volume.create_volume(self.context, volume['id'])
-        volume['status'] = 'error_deleting'
-
-        volume_api = cinder.volume.api.API()
 
         # 'error_deleting' volumes can't be deleted
         self.assertRaises(exception.InvalidVolume,
-                          volume_api.delete,
+                          self.volume_api.delete,
                           self.context,
                           volume)
 
         # delete with force
-        volume_api.delete(self.context, volume, force=True)
+        self.volume_api.delete(self.context, volume, force=True)
 
         # status is deleting
         volume = objects.Volume.get_by_id(context.get_admin_context(),
@@ -3216,21 +3206,17 @@ class VolumeTestCase(BaseVolumeTestCase):
 
     def test_cannot_force_delete_attached_volume(self):
         """Test volume can't be force delete in attached state."""
-        volume = tests_utils.create_volume(self.context, **self.volume_params)
-        self.volume.create_volume(self.context, volume['id'])
-        volume['status'] = 'in-use'
-        volume['attach_status'] = 'attached'
-        volume['host'] = 'fakehost'
+        volume = tests_utils.create_volume(self.context, CONF.host,
+                                           status='in-use',
+                                           attach_status = 'attached')
 
-        volume_api = cinder.volume.api.API()
-
-        self.assertRaises(exception.VolumeAttached,
-                          volume_api.delete,
+        self.assertRaises(exception.InvalidVolume,
+                          self.volume_api.delete,
                           self.context,
                           volume,
                           force=True)
 
-        self.volume.delete_volume(self.context, volume['id'])
+        db.volume_destroy(self.context, volume.id)
 
     def test_cannot_delete_volume_with_snapshots(self):
         """Test volume can't be deleted with dependent snapshots."""
@@ -3256,22 +3242,20 @@ class VolumeTestCase(BaseVolumeTestCase):
 
     def test_can_delete_errored_snapshot(self):
         """Test snapshot can be created and deleted."""
-        volume = tests_utils.create_volume(self.context, **self.volume_params)
-        self.volume.create_volume(self.context, volume['id'])
-        snapshot = self._create_snapshot(volume['id'], size=volume['size'])
-        self.volume.create_snapshot(self.context, volume['id'], snapshot)
-
-        volume_api = cinder.volume.api.API()
-
-        snapshot.status = 'badstatus'
+        volume = tests_utils.create_volume(self.context, CONF.host)
+        snapshot = self._create_snapshot(volume.id, size=volume['size'],
+                                         ctxt=self.context, status='bad')
         self.assertRaises(exception.InvalidSnapshot,
-                          volume_api.delete_snapshot,
+                          self.volume_api.delete_snapshot,
                           self.context,
                           snapshot)
 
         snapshot.status = 'error'
-        self.volume.delete_snapshot(self.context, snapshot)
-        self.volume.delete_volume(self.context, volume['id'])
+        snapshot.save()
+        self.volume_api.delete_snapshot(self.context, snapshot)
+
+        self.assertEqual('deleting', snapshot.status)
+        self.volume.delete_volume(self.context, volume.id)
 
     def test_create_snapshot_force(self):
         """Test snapshot in use can be created forcibly."""
@@ -4971,12 +4955,11 @@ class VolumeMigrationTestCase(VolumeTestCase):
 class ConsistencyGroupTestCase(BaseVolumeTestCase):
     def test_delete_volume_in_consistency_group(self):
         """Test deleting a volume that's tied to a consistency group fails."""
-        volume_api = cinder.volume.api.API()
-        volume = tests_utils.create_volume(self.context, **self.volume_params)
         consistencygroup_id = '12345678-1234-5678-1234-567812345678'
-        volume = db.volume_update(self.context, volume['id'],
-                                  {'status': 'available',
+        volume_api = cinder.volume.api.API()
+        self.volume_params.update({'status': 'available',
                                    'consistencygroup_id': consistencygroup_id})
+        volume = tests_utils.create_volume(self.context, **self.volume_params)
         self.assertRaises(exception.InvalidVolume,
                           volume_api.delete, self.context, volume)
 

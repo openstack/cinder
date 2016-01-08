@@ -17,90 +17,13 @@ from oslo_serialization import jsonutils
 import webob
 
 from cinder import context
-from cinder import exception
+from cinder import db
+from cinder import objects
 from cinder import test
 from cinder.tests.unit.api import fakes
-from cinder.tests.unit import fake_snapshot
-from cinder.tests.unit import fake_volume
+from cinder.tests.unit import utils
 
 
-# This list of fake volumes is used by our tests.  Each is configured in a
-# slightly different way, and includes only the properties that are required
-# for these particular tests to function correctly.
-snapshot_vol_id = 'ffffffff-0000-ffff-0000-fffffffffffd'
-detached_vol_id = 'ffffffff-0000-ffff-0000-fffffffffffe'
-attached_vol_id = 'ffffffff-0000-ffff-0000-ffffffffffff'
-bad_vol_id = 'ffffffff-0000-ffff-0000-fffffffffff0'
-
-vols = {snapshot_vol_id: {'id': snapshot_vol_id,
-                          'status': 'available',
-                          'attach_status': 'detached',
-                          'host': 'fake_host',
-                          'project_id': 'fake_project',
-                          'migration_status': None,
-                          'consistencygroup_id': None,
-                          'encryption_key_id': None},
-        detached_vol_id: {'id': detached_vol_id,
-                          'status': 'available',
-                          'attach_status': 'detached',
-                          'host': 'fake_host',
-                          'project_id': 'fake_project',
-                          'migration_status': None,
-                          'consistencygroup_id': None,
-                          'encryption_key_id': None},
-        attached_vol_id: {'id': attached_vol_id,
-                          'status': 'available',
-                          'attach_status': 'attached',
-                          'host': 'fake_host',
-                          'project_id': 'fake_project',
-                          'migration_status': None,
-                          'consistencygroup_id': None,
-                          'encryption_key_id': None}
-        }
-
-
-def app():
-    # no auth, just let environ['cinder.context'] pass through
-    api = fakes.router.APIRouter()
-    mapper = fakes.urlmap.URLMap()
-    mapper['/v2'] = api
-    return mapper
-
-
-def api_get(self, context, volume_id):
-    """Replacement for cinder.volume.api.API.get.
-
-    We stub the cinder.volume.api.API.get method to check for the existence
-    of volume_id in our list of fake volumes and raise an exception if the
-    specified volume ID is not in our list.
-    """
-    vol = vols.get(volume_id, None)
-
-    if not vol:
-        raise exception.VolumeNotFound(volume_id)
-
-    return fake_volume.fake_volume_obj(context, **vol)
-
-
-def db_snapshot_get_all_for_volume(context, volume_id):
-    """Replacement for cinder.db.snapshot_get_all_for_volume.
-
-    We stub the cinder.db.snapshot_get_all_for_volume method because when we
-    go to unmanage a volume, the code checks for snapshots and won't unmanage
-    volumes with snapshots.  For these tests, only the snapshot_vol_id reports
-    any snapshots.  The delete code just checks for array length, doesn't
-    inspect the contents.
-    """
-    if volume_id == snapshot_vol_id:
-        db_snapshot = {'volume_id': volume_id}
-        snapshot = fake_snapshot.fake_db_snapshot(**db_snapshot)
-        return [snapshot]
-    return []
-
-
-@mock.patch('cinder.volume.api.API.get', api_get)
-@mock.patch('cinder.db.snapshot_get_all_for_volume',
-            db_snapshot_get_all_for_volume)
 class VolumeUnmanageTest(test.TestCase):
     """Test cases for cinder/api/contrib/volume_unmanage.py
 
@@ -117,50 +40,54 @@ class VolumeUnmanageTest(test.TestCase):
 
     def setUp(self):
         super(VolumeUnmanageTest, self).setUp()
+        self.ctxt = context.RequestContext('admin', 'fake_project', True)
+
+        api = fakes.router.APIRouter()
+        self.app = fakes.urlmap.URLMap()
+        self.app['/v2'] = api
 
     def _get_resp(self, volume_id):
         """Helper to build an os-unmanage req for the specified volume_id."""
-        req = webob.Request.blank('/v2/fake/volumes/%s/action' % volume_id)
+        req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+                                  (self.ctxt.project_id, volume_id))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.environ['cinder.context'] = context.RequestContext('admin',
-                                                               'fake',
-                                                               True)
+        req.environ['cinder.context'] = self.ctxt
         body = {'os-unmanage': ''}
         req.body = jsonutils.dump_as_bytes(body)
-        res = req.get_response(app())
+        res = req.get_response(self.app)
         return res
 
-    @mock.patch('cinder.db.volume_update')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.delete_volume')
-    def test_unmanage_volume_ok(self, mock_rpcapi, mock_db):
+    def test_unmanage_volume_ok(self, mock_rpcapi):
         """Return success for valid and unattached volume."""
-        res = self._get_resp(detached_vol_id)
-
-        # volume_update is (context, id, new_data)
-        self.assertEqual(1, mock_db.call_count)
-        self.assertEqual(3, len(mock_db.call_args[0]), mock_db.call_args)
-        self.assertEqual(detached_vol_id, mock_db.call_args[0][1])
-
-        # delete_volume is (context, status, unmanageOnly)
-        self.assertEqual(1, mock_rpcapi.call_count)
-        self.assertEqual(3, len(mock_rpcapi.call_args[0]))
-        self.assertTrue(mock_rpcapi.call_args[0][2])
-
+        vol = utils.create_volume(self.ctxt)
+        res = self._get_resp(vol.id)
         self.assertEqual(202, res.status_int, res)
+
+        mock_rpcapi.called_once_with(self.ctxt, mock.ANY, unmanage_only=True)
+        vol = objects.volume.Volume.get_by_id(self.ctxt, vol.id)
+        self.assertEqual('deleting', vol.status)
+        db.volume_destroy(self.ctxt, vol.id)
 
     def test_unmanage_volume_bad_volume_id(self):
         """Return 404 if the volume does not exist."""
-        res = self._get_resp(bad_vol_id)
+        res = self._get_resp('nonexistent-volume-id')
         self.assertEqual(404, res.status_int, res)
 
-    def test_unmanage_volume_attached_(self):
+    def test_unmanage_volume_attached(self):
         """Return 400 if the volume exists but is attached."""
-        res = self._get_resp(attached_vol_id)
+        vol = utils.create_volume(self.ctxt, status='in-use',
+                                  attach_status='attached')
+        res = self._get_resp(vol.id)
         self.assertEqual(400, res.status_int, res)
+        db.volume_destroy(self.ctxt, vol.id)
 
-    @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
-    def test_unmanage_volume_with_snapshots(self, metadata_get):
+    def test_unmanage_volume_with_snapshots(self):
         """Return 400 if the volume exists but has snapshots."""
-        res = self._get_resp(snapshot_vol_id)
+        vol = utils.create_volume(self.ctxt)
+        snap = utils.create_snapshot(self.ctxt, vol.id)
+        res = self._get_resp(vol.id)
         self.assertEqual(400, res.status_int, res)
+        db.volume_destroy(self.ctxt, vol.id)
+        db.snapshot_destroy(self.ctxt, snap.id)

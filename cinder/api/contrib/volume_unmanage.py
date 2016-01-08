@@ -19,7 +19,7 @@ from webob import exc
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder import exception
-from cinder.i18n import _, _LI
+from cinder.i18n import _LI
 from cinder import volume
 
 LOG = logging.getLogger(__name__)
@@ -58,9 +58,6 @@ class VolumeUnmanageController(wsgi.Controller):
             self.volume_api.delete(context, vol, unmanage_only=True)
         except exception.VolumeNotFound as error:
             raise exc.HTTPNotFound(explanation=error.msg)
-        except exception.VolumeAttached:
-            msg = _("Volume cannot be deleted while in attached state")
-            raise exc.HTTPBadRequest(explanation=msg)
         return webob.Response(status_int=202)
 
 

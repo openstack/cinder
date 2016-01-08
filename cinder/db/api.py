@@ -275,6 +275,10 @@ def volume_update_status_based_on_attachment(context, volume_id):
     return IMPL.volume_update_status_based_on_attachment(context, volume_id)
 
 
+def volume_has_snapshots_filter():
+    return IMPL.volume_has_snapshots_filter()
+
+
 def volume_has_attachments_filter():
     return IMPL.volume_has_attachments_filter()
 

@@ -352,22 +352,21 @@ class API(base.Base):
 
     @wrap_check_policy
     def delete(self, context, volume, force=False, unmanage_only=False):
-        if context.is_admin and context.project_id != volume['project_id']:
-            project_id = volume['project_id']
+        if context.is_admin and context.project_id != volume.project_id:
+            project_id = volume.project_id
         else:
             project_id = context.project_id
 
-        volume_id = volume['id']
-        if not volume['host']:
+        if not volume.host:
             volume_utils.notify_about_volume_usage(context,
                                                    volume, "delete.start")
             # NOTE(vish): scheduling failed, so delete it
             # Note(zhiteng): update volume quota reservation
             try:
-                reserve_opts = {'volumes': -1, 'gigabytes': -volume['size']}
+                reserve_opts = {'volumes': -1, 'gigabytes': -volume.size}
                 QUOTAS.add_volume_type_opts(context,
                                             reserve_opts,
-                                            volume['volume_type_id'])
+                                            volume.volume_type_id)
                 reservations = QUOTAS.reserve(context,
                                               project_id=project_id,
                                               **reserve_opts)
@@ -384,51 +383,35 @@ class API(base.Base):
                                                    volume, "delete.end")
             LOG.info(_LI("Delete volume request issued successfully."),
                      resource={'type': 'volume',
-                               'id': volume_id})
+                               'id': volume.id})
             return
-        if volume['attach_status'] == "attached":
-            # Volume is still attached, need to detach first
-            LOG.info(_LI('Unable to delete volume: %s, '
-                         'volume is attached.'), volume['id'])
-            raise exception.VolumeAttached(volume_id=volume_id)
 
-        if not force and volume['status'] not in ["available", "error",
-                                                  "error_restoring",
-                                                  "error_extending"]:
-            msg = _("Volume status must be available or error, "
-                    "but current status is: %s.") % volume['status']
-            LOG.info(_LI('Unable to delete volume: %(vol_id)s, '
-                         'volume must be available or '
-                         'error, but is %(vol_status)s.'),
-                     {'vol_id': volume['id'],
-                      'vol_status': volume['status']})
-            raise exception.InvalidVolume(reason=msg)
+        # Build required conditions for conditional update
+        expected = {'attach_status': db.Not('attached'),
+                    'migration_status': self.AVAILABLE_MIGRATION_STATUS,
+                    'consistencygroup_id': None}
 
-        if self._is_volume_migrating(volume):
-            # Volume is migrating, wait until done
-            LOG.info(_LI('Unable to delete volume: %s, '
-                         'volume is currently migrating.'), volume['id'])
-            msg = _("Volume cannot be deleted while migrating")
-            raise exception.InvalidVolume(reason=msg)
+        # If not force deleting we have status conditions
+        if not force:
+            expected['status'] = ('available', 'error', 'error_restoring',
+                                  'error_extending')
 
-        if volume['consistencygroup_id'] is not None:
-            msg = _("Volume cannot be deleted while in a consistency group.")
-            LOG.info(_LI('Unable to delete volume: %s, '
-                         'volume is currently part of a '
-                         'consistency group.'), volume['id'])
-            raise exception.InvalidVolume(reason=msg)
+        # Volume cannot have snapshots if we want to delete it
+        filters = [~db.volume_has_snapshots_filter()]
+        values = {'status': 'deleting', 'terminated_at': timeutils.utcnow()}
 
-        snapshots = objects.SnapshotList.get_all_for_volume(context,
-                                                            volume_id)
-        if len(snapshots):
-            LOG.info(_LI('Unable to delete volume: %s, '
-                         'volume currently has snapshots.'), volume['id'])
-            msg = _("Volume still has %d dependent "
-                    "snapshots.") % len(snapshots)
+        result = volume.conditional_update(values, expected, filters)
+
+        if not result:
+            status = utils.build_or_str(expected.get('status'),
+                                        _(' status must be %s and '))
+            msg = _('Volume%s must not be migrating, attached, belong to a '
+                    'consistency group or have snapshots.') % status
+            LOG.info(msg)
             raise exception.InvalidVolume(reason=msg)
 
         cache = image_cache.ImageVolumeCache(self.db, self)
-        entry = cache.get_by_image_volume(context, volume_id)
+        entry = cache.get_by_image_volume(context, volume.id)
         if entry:
             cache.evict(context, entry)
 
@@ -442,10 +425,6 @@ class API(base.Base):
             except Exception as e:
                 msg = _("Unable to delete encrypted volume: %s.") % e.msg
                 raise exception.InvalidVolume(reason=msg)
-
-        volume.status = 'deleting'
-        volume.terminated_at = timeutils.utcnow()
-        volume.save()
 
         self.volume_rpcapi.delete_volume(context, volume, unmanage_only)
         LOG.info(_LI("Delete volume request issued successfully."),
@@ -949,29 +928,24 @@ class API(base.Base):
     @wrap_check_policy
     def delete_snapshot(self, context, snapshot, force=False,
                         unmanage_only=False):
-        if not force and snapshot.status not in ["available", "error"]:
-            LOG.error(_LE('Unable to delete snapshot: %(snap_id)s, '
-                          'due to invalid status. '
-                          'Status must be available or '
-                          'error, not %(snap_status)s.'),
-                      {'snap_id': snapshot.id,
-                       'snap_status': snapshot.status})
-            msg = _("Volume Snapshot status must be available or error.")
-            raise exception.InvalidSnapshot(reason=msg)
-        cgsnapshot_id = snapshot.cgsnapshot_id
-        if cgsnapshot_id:
-            msg = _('Unable to delete snapshot %s because it is part of a '
-                    'consistency group.') % snapshot.id
+        # Build required conditions for conditional update
+        expected = {'cgsnapshot_id': None}
+        # If not force deleting we have status conditions
+        if not force:
+            expected['status'] = ('available', 'error')
+
+        result = snapshot.conditional_update({'status': 'deleting'}, expected)
+        if not result:
+            status = utils.build_or_str(expected.get('status'),
+                                        _(' status must be %s and '))
+            msg = (_('Snapshot%s must not be part of a consistency group.') %
+                   status)
             LOG.error(msg)
             raise exception.InvalidSnapshot(reason=msg)
 
-        snapshot_obj = self.get_snapshot(context, snapshot.id)
-        snapshot_obj.status = 'deleting'
-        snapshot_obj.save()
-
-        volume = self.db.volume_get(context, snapshot_obj.volume_id)
-        self.volume_rpcapi.delete_snapshot(context, snapshot_obj,
-                                           volume['host'],
+        # Make RPC call to the right host
+        volume = objects.Volume.get_by_id(context, snapshot.volume_id)
+        self.volume_rpcapi.delete_snapshot(context, snapshot, volume.host,
                                            unmanage_only=unmanage_only)
         LOG.info(_LI("Snapshot delete request issued successfully."),
                  resource=snapshot)
