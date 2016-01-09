@@ -8,9 +8,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev134\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev238\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-22 06:20+0000\n"
+"POT-Creation-Date: 2016-01-09 06:44+0000\n"
 "PO-Revision-Date: 2015-09-16 08:22+0000\n"
 "Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
 "Language-Team: Turkish (Turkey)\n"
@@ -1909,10 +1909,6 @@ msgstr ""
 msgid "Snapshot %s: has clones"
 msgstr "Anlık sistem görüntüsü %s: kopyalara sahip"
 
-#, python-format
-msgid "Snapshot deletion failed with message: %s"
-msgstr "Anlık sistem görüntüsü silme işlemi şu ileti ile başarısız oldu: %s"
-
 msgid "Snapshot did not exist. It will not be deleted"
 msgstr "Anlık sistem görüntüsü olmasaydı silinemeyecekti"
 
@@ -2048,14 +2044,6 @@ msgstr ""
 #, python-format
 msgid "Unable to delete profile %(cg)s : %(reason)s"
 msgstr "%(cg)s profili silinemedi: %(reason)s"
-
-#, python-format
-msgid ""
-"Unable to delete snapshot: %(snap_id)s, due to invalid status. Status must "
-"be available or error, not %(snap_status)s."
-msgstr ""
-"Geçersiz durum nedeniyle anlık sistem görüntüsü silinemedi: %(snap_id)s. "
-"Durum kullanılabilir ya da hata olmalıdır, %(snap_status)s değil."
 
 msgid ""
 "Unable to delete the destination volume during volume migration, (NOTE: "

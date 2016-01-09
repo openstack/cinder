@@ -7,9 +7,9 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev138\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev238\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-23 06:26+0000\n"
+"POT-Creation-Date: 2016-01-09 06:44+0000\n"
 "PO-Revision-Date: 2015-12-22 01:35+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language-Team: Czech\n"
@@ -1394,10 +1394,6 @@ msgstr "Zaveden ovladač %(name)s s verzí: %(vers)s"
 msgid "Initialized driver %(name)s version: %(vers)s."
 msgstr "Zaveden ovladač %(name)s s verzí: %(vers)s."
 
-#, python-format
-msgid "Initialized driver for IBMNAS Platform: %s."
-msgstr "Ovladač platformy IBMNAS %s zaveden."
-
 msgid "Initializing extension manager."
 msgstr "Zavádění správce rozšíření."
 
@@ -2582,31 +2578,6 @@ msgstr "Nelze vytvořit snímek svazku, protože je v údržbě."
 
 msgid "Unable to delete the volume metadata, because it is in maintenance."
 msgstr "Popisná data svazku nelze smazat, protože svazek je v režimu údržby."
-
-#, python-format
-msgid ""
-"Unable to delete volume: %(vol_id)s, volume must be available or error, but "
-"is %(vol_status)s."
-msgstr ""
-"Nelze smazat svazek: %(vol_id)s, svazek musí být ve stavu available,  nebo "
-"error, ale je %(vol_status)s."
-
-#, python-format
-msgid "Unable to delete volume: %s, volume currently has snapshots."
-msgstr "Nelze smazat svazek %s, svazek má v současnosti snímky."
-
-#, python-format
-msgid "Unable to delete volume: %s, volume is attached."
-msgstr "Nelze smazat svazek %s, svazek je připojen."
-
-#, python-format
-msgid "Unable to delete volume: %s, volume is currently migrating."
-msgstr "Nelze smazat svazek %s, svazek je nyní přenášen."
-
-#, python-format
-msgid ""
-"Unable to delete volume: %s, volume is currently part of a consistency group."
-msgstr "Nelze smazat svazek %s, svazek je nyní součástí skupiny jednotnosti."
 
 msgid "Unable to detach volume, because it is in maintenance."
 msgstr "Nelze odpojit svazek, protože je v údržbě."

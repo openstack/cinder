@@ -7,9 +7,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev82\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev238\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-16 06:24+0000\n"
+"POT-Creation-Date: 2016-01-09 06:44+0000\n"
 "PO-Revision-Date: 2015-09-16 08:22+0000\n"
 "Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
 "Language-Team: Turkish (Turkey)\n"
@@ -1134,10 +1134,6 @@ msgstr "Sürücü %(name)s sürüm: %(vers)s ilklendirildi"
 msgid "Initialized driver %(name)s version: %(vers)s."
 msgstr "Sürücü %(name)s sürüm: %(vers)s ilklendirildi."
 
-#, python-format
-msgid "Initialized driver for IBMNAS Platform: %s."
-msgstr "IBMNAS Platformu için sürücü ilklendirildi: %s."
-
 msgid "Initializing extension manager."
 msgstr "Genişletme yöneticisi başlatılıyor"
 
@@ -2063,34 +2059,6 @@ msgid "Trying to unmap volume from all sdcs before deletion: %s."
 msgstr ""
 "Silmeden önce tüm sdc'lerden mantıksal sürücü eşleştirmesini kaldırmaya "
 "çalışılıyor: %s."
-
-#, python-format
-msgid ""
-"Unable to delete volume: %(vol_id)s, volume must be available or error, but "
-"is %(vol_status)s."
-msgstr ""
-"Mantıksal sürücü silinemedi: %(vol_id)s, mantıksal sürücü kullanılabilir ya "
-"da hata olmalı, ama %(vol_status)s."
-
-#, python-format
-msgid "Unable to delete volume: %s, volume currently has snapshots."
-msgstr ""
-"Mantıksal sürücü silinemiyor: %s, mantıksal sürücünün anlık görüntüleri var."
-
-#, python-format
-msgid "Unable to delete volume: %s, volume is attached."
-msgstr "Mantıksal sürücü: %s silinemedi, mantıksal sürücü ekli durumda."
-
-#, python-format
-msgid "Unable to delete volume: %s, volume is currently migrating."
-msgstr "Mantıksal sürücü silinemiyor: %s, mantıksal sürücü şu an göç ediyor."
-
-#, python-format
-msgid ""
-"Unable to delete volume: %s, volume is currently part of a consistency group."
-msgstr ""
-"Mantıksal sürücü silinemiyor: %s, mantıksal sürücü şu an bir tutarlılık "
-"grubu parçası."
 
 msgid "Unable to parse XML input."
 msgstr "XML girdisi ayrıştırılamadı."

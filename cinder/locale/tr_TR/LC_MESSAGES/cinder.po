@@ -1,15 +1,13 @@
 # Turkish (Turkey) translations for cinder.
-# Copyright (C) 2015 ORGANIZATION
+# Copyright (C) 2016 ORGANIZATION
 # This file is distributed under the same license as the cinder project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2016.
 #
-# Translators:
-# Andreas Jaeger <jaegerandi@gmail.com>, 2015. #zanata
-# OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev134\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev238\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-22 06:20+0000\n"
+"POT-Creation-Date: 2016-01-09 06:44+0000\n"
 "PO-Revision-Date: 2015-09-16 08:16+0000\n"
 "Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
 "Language: tr_TR\n"
@@ -18,7 +16,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.1.1\n"
+"Generated-By: Babel 2.2.0\n"
 
 #, python-format
 msgid "\t%s"
@@ -2071,17 +2069,6 @@ msgid "Failed getting details for pool %s."
 msgstr "%s havuzu için detayların getirilmesi başarısız."
 
 #, python-format
-msgid "Failed in _delete_snapfiles. Error: %s"
-msgstr "_delete_snapfiles'de başarısız olundu. Hata: %s"
-
-#, python-format
-msgid ""
-"Failed in _ssh_operation while execution of ssh_cmd:%(cmd)s. Error: %(error)s"
-msgstr ""
-"ssh_cmd:%(cmd)s çalıştırma sırasında _ssh_operation sırasında başarısız "
-"olundu. Hata: %(error)s"
-
-#, python-format
 msgid "Failed removing connection for fabric=%(fabric)s: Error: %(err)s"
 msgstr "fabric=%(fabric)s için bağlantı kaldırma başarısız: Hata: %(err)s"
 
@@ -2724,12 +2711,6 @@ msgstr ""
 "%(err_msg)s"
 
 #, python-format
-msgid "Failed to resize volume %(volume_id)s, error: %(error)s"
-msgstr ""
-"%(volume_id)s mantıksal sürücüsünün yeniden boyutlandırılması başarısız, "
-"hata: %(error)s"
-
-#, python-format
 msgid "Failed to retrieve active zoning configuration %s"
 msgstr "Etkin bölgeleme yapılandırması %s alınamadı"
 
@@ -3213,14 +3194,6 @@ msgid ""
 msgstr ""
 "Sıkıştırma True olarak ayarlanırsa, rsize da ayrıca ayarlanmalı (-1 e eşit "
 "değil)."
-
-#, python-format
-msgid ""
-"Illegal value %(prot)s specified for storwize_svc_connection_protocol: valid "
-"values are %(enabled)s."
-msgstr ""
-"storwize_svc_connection_protocol için geçersiz değer %(prot)s belirtildi: "
-"geçerli değerler %(enabled)s."
 
 #, python-format
 msgid ""
@@ -4343,13 +4316,6 @@ msgstr ""
 #, python-format
 msgid "ParseException: %s"
 msgstr "ParseException: %s"
-
-msgid ""
-"Password or SSH private key is required for authentication: set either "
-"nas_password or nas_private_key option"
-msgstr ""
-"Yetkilendirme için parola ya da SSH özel anahtarı gerekli: ya nas_password "
-"ya da nas_private_key seçeneğini ayarlayın"
 
 msgid ""
 "Password or SSH private key is required for authentication: set either "
@@ -5503,24 +5469,8 @@ msgid "Unable to delete snapshot %(id)s, status: %(status)s."
 msgstr "%(id)s anlık sistem görüntüsü silinemedi, durum: %(status)s."
 
 #, python-format
-msgid "Unable to delete snapshot %s because it is part of a consistency group."
-msgstr ""
-"%s anlık sistem görüntüsü silinemedi çünkü tutarlılık grubunun bir "
-"parçasıdır."
-
-#, python-format
 msgid "Unable to delete snapshot policy on volume %s."
 msgstr "%s mantıksal sürücüsü üzerindeki anlık görüntü ilkesi silinemedi."
-
-#, python-format
-msgid ""
-"Unable to detach volume. Volume status must be 'in-use' and attach_status "
-"must be 'attached' to detach. Currently: status: '%(status)s', "
-"attach_status: '%(attach_status)s.'"
-msgstr ""
-"Mantıksal sürücü ayrılamadı. Mantıksal sürücü durumu 'in-use' ve "
-"attach_status durumu ayırmak için 'attached' olmalıdır. Şu anda: durum:  "
-"'%(status)s', attach_status: '%(attach_status)s.'"
 
 msgid "Unable to determine system id."
 msgstr "Sistem kimliği belirlenemiyor."
@@ -5848,13 +5798,6 @@ msgstr ""
 "yüksek üretici yazılımı kullandığından emin olun"
 
 #, python-format
-msgid ""
-"Unsupported ibmnas_platform_type: %(given)s. Supported platforms: %(valid)s"
-msgstr ""
-"Desteklenmeyen ibmnas_platform_type: %(given)s. Desteklenen platformlar: "
-"%(valid)s"
-
-#, python-format
 msgid "Unsupported virtual disk extension: %s"
 msgstr "Desteklenmeyen sanal disk uzantısı: %s"
 
@@ -6081,11 +6024,6 @@ msgstr "Mantıksal sürücü (%s) dizide zaten mevcut."
 msgid "Volume Group %s does not exist"
 msgstr "Mantıksal Sürücü %s yok"
 
-msgid "Volume Snapshot status must be available or error."
-msgstr ""
-"Mantıksal sürücü anlık sistem görüntüsü durumu kullanılabilir ya da hata "
-"olmalıdır."
-
 #, python-format
 msgid "Volume Type %(id)s already exists."
 msgstr "Mantıksal Sürücü Türü %(id)s zaten var."
@@ -6131,15 +6069,6 @@ msgstr ""
 
 msgid "Volume by this name already exists"
 msgstr "Bu isimde mantıksal sürücü zaten mevcut"
-
-msgid "Volume cannot be deleted while in a consistency group."
-msgstr "Mantıksal sürücü bir tutarlılık grubundayken silinemez."
-
-msgid "Volume cannot be deleted while in attached state"
-msgstr "Eklenmiş durumdayken mantıksal sürücü silinemez"
-
-msgid "Volume cannot be deleted while migrating"
-msgstr "Taşıma sırasında mantıksal sürücü silinemiyor"
 
 msgid "Volume cannot be restored since it contains snapshots."
 msgstr "Mantıksal sürücü anlık görüntüler içerdiğinden geri yüklenemiyor."
@@ -6209,9 +6138,6 @@ msgid "Volume must be in the same availability zone as the source volume"
 msgstr ""
 "Mantıksal sürücü kaynak mantıksal sürücüyle aynı kullanılabilir bölgede "
 "olmalı"
-
-msgid "Volume must be multiattachable to reserve again."
-msgstr "Mantıksal sürücü yeniden ayırmak için çoklu eklenebilir olmalıdır."
 
 msgid "Volume must not be part of a consistency group."
 msgstr "Mantıksal sürücü bir tutarlılık grubunun parçası olmamalıdır."
@@ -6297,19 +6223,6 @@ msgstr "Mantıksal sürücü durumu \"available\" ya da \"in-use\" olmalıdır."
 
 msgid "Volume status must be 'available'."
 msgstr "Mantıksal sürücü durumu 'available' olmalıdır."
-
-#, python-format
-msgid "Volume status must be available or error, but current status is: %s."
-msgstr ""
-"Mantıksal sürücü durumu kullanılabilir ya da hata olmalıdır ancak mevcut "
-"durum: %s."
-
-msgid "Volume status must be available to reserve."
-msgstr "Ayırmak için mantıksal sürücü durumu kullanılabilir olmalıdır."
-
-#, python-format
-msgid "Volume still has %d dependent snapshots."
-msgstr "Mantıksal sürücü hala %d bağımlı anlık sistem görüntülerine sahip."
 
 msgid "Volume to Initiator Group mapping already exists"
 msgstr "Başlatıcı Gruba mantıksal sürücü eşleme zaten var"
@@ -7292,8 +7205,3 @@ msgstr "volume_types, tutarlılık grubu %(name)s oluşturmak için verilmelidir
 #, python-format
 msgid "volume_types must be provided to create consistency group %s."
 msgstr "%s tutarlılık grubu oluşturmak için volume_types verilmelidir."
-
-msgid ""
-"volumes/account exceeded on both primary and secondary SolidFire accounts"
-msgstr ""
-"mantıksal sürücü/hesap hem birincil hem ikincil SolidFire hesaplarında aşıldı"

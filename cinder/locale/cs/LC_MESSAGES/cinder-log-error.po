@@ -8,9 +8,9 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev134\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev238\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-12-22 06:20+0000\n"
+"POT-Creation-Date: 2016-01-09 06:44+0000\n"
 "PO-Revision-Date: 2015-12-21 12:13+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language-Team: Czech\n"
@@ -2608,10 +2608,6 @@ msgstr "Vytvoření snímku %s selhalo"
 msgid "Snapshot %s: has clones"
 msgstr "Snímek %s má klony"
 
-#, python-format
-msgid "Snapshot deletion failed with message: %s"
-msgstr "Smazání snímku selhalo se zprávou: %s"
-
 msgid "Snapshot did not exist. It will not be deleted"
 msgstr "Snímek neexistuje. Nebude smazán"
 
@@ -2809,14 +2805,6 @@ msgstr "Nelze smazat kvůli existujícímu snímku svazku. %s"
 #, python-format
 msgid "Unable to delete profile %(cg)s : %(reason)s"
 msgstr "Nelze smazat profil %(cg)s : %(reason)s"
-
-#, python-format
-msgid ""
-"Unable to delete snapshot: %(snap_id)s, due to invalid status. Status must "
-"be available or error, not %(snap_status)s."
-msgstr ""
-"Nelze smazat snímek: %(snap_id)s, kvůli neplatnému stavu. Stav musí být "
-"available nebo error, ne %(snap_status)s."
 
 msgid ""
 "Unable to delete the destination volume during volume migration, (NOTE: "
