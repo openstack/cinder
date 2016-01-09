@@ -17,8 +17,6 @@
 Utility functions related to the Zone Manager.
 
 """
-import logging
-
 from oslo_log import log
 
 from cinder.i18n import _LI, _LW
@@ -28,7 +26,6 @@ from cinder.zonemanager import fc_san_lookup_service
 from cinder.zonemanager import fc_zone_manager
 
 LOG = log.getLogger(__name__)
-LOG.logger.setLevel(logging.DEBUG)
 
 
 def create_zone_manager():
