@@ -179,6 +179,16 @@ class VolumeActionsTest(test.TestCase):
         res = req.get_response(fakes.wsgi_app())
         self.assertEqual(202, res.status_int)
 
+        body = {'os-attach': {'instance_uuid': 'fake',
+                              'host_name': 'fake_host',
+                              'mountpoint': '/dev/vdc'}}
+        req = webob.Request.blank('/v2/fake/volumes/1/action')
+        req.method = "POST"
+        req.headers["content-type"] = "application/json"
+        req.body = jsonutils.dumps(body)
+        res = req.get_response(fakes.wsgi_app())
+        self.assertEqual(202, res.status_int)
+
     def test_attach_to_host(self):
         # using 'read-write' mode attach volume by default
         body = {'os-attach': {'host_name': 'fake_host',
@@ -270,17 +280,6 @@ class VolumeActionsTest(test.TestCase):
     def test_attach_with_invalid_arguments(self):
         # Invalid request to attach volume an invalid target
         body = {'os-attach': {'mountpoint': '/dev/vdc'}}
-        req = webob.Request.blank('/v2/fake/volumes/1/action')
-        req.method = "POST"
-        req.headers["content-type"] = "application/json"
-        req.body = jsonutils.dumps(body)
-        res = req.get_response(fakes.wsgi_app())
-        self.assertEqual(400, res.status_int)
-
-        # Invalid request to attach volume to an instance and a host
-        body = {'os-attach': {'instance_uuid': 'fake',
-                              'host_name': 'fake_host',
-                              'mountpoint': '/dev/vdc'}}
         req = webob.Request.blank('/v2/fake/volumes/1/action')
         req.method = "POST"
         req.headers["content-type"] = "application/json"
