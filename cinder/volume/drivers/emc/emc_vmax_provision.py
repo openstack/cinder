@@ -228,7 +228,7 @@ class EMCVMAXProvision(object):
 
     def _find_new_storage_group(
             self, conn, maskingGroupDict, storageGroupName):
-        """After creating an new storage group find it and return it.
+        """After creating a new storage group find it and return it.
 
         :param conn: connection the ecom server
         :param maskingGroupDict: the maskingGroupDict dict
