@@ -462,7 +462,8 @@ class BackupManager(manager.SchedulerDependentManager):
             LOG.exception(_LE("Failed to update usages deleting backup"))
 
         context = context.elevated()
-        self.db.backup_destroy(context, backup_id)
+        #deletion is now handled @ driver itself
+        #self.db.backup_destroy(context, backup_id)
 
         # Commit the reservations
         if reservations:

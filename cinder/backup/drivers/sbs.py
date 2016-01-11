@@ -448,7 +448,20 @@ class SBSBackupDriver(driver.BackupDriver):
             raise
         return
 
+    def _remove_from_DSS(self, backup):
+        cmd = ['rm', '-rf'] + ceph_args
+        snap_name = backup['display_name']
+        loc = encodeutils.safe_encode("/tmp/%s" % (snap_name))
+        cmd.extend(loc)
+        LOG.info("Deleting backups %s" % (cmd))
+        self._execute (*cmd, run_as_root=False)
+        return
+
     def _delete_backups(self, backup_list):
+        backup = backup_list
+        while backup:
+            self._remove_from_DSS(backup)
+            self.db.backup_destroy(self.context, backup['id'])
         return
 
     def _mark_backup_for_deletion(self, backup):
@@ -483,7 +496,7 @@ class SBSBackupDriver(driver.BackupDriver):
         if backup['id'] != lastet_backup['id']:
             while curr['parent_id']:
                 #if any snap till given snap is not marked for deletion, fail
-                if curr['deleted'] == False:
+                if curr['deleting'] == False:
                     can_delete = False
                     break
                 parent_backup = self.db.backup_get(self.context,
