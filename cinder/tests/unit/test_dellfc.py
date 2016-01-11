@@ -158,6 +158,11 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                               'vendor_name': 'Dell',
                               'storage_protocol': 'FC'}
 
+        # Start with none.  Add in the specific tests later.
+        # Mock tests bozo this.
+        self.driver.backends = None
+        self.driver.replication_enabled = False
+
         self.volid = '5729f1db-4c45-416c-bc15-c8ea13a4465d'
         self.volume_name = "volume" + self.volid
         self.connector = {'ip': '192.168.0.77',

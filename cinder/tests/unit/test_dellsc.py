@@ -19,7 +19,6 @@ from cinder import context
 from cinder import exception
 from cinder import test
 from cinder.volume.drivers.dell import dell_storagecenter_api
-from cinder.volume.drivers.dell import dell_storagecenter_common
 from cinder.volume.drivers.dell import dell_storagecenter_iscsi
 from cinder.volume import volume_types
 
@@ -234,6 +233,11 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                               'vendor_name': 'Dell',
                               'storage_protocol': 'iSCSI'}
 
+        # Start with none.  Add in the specific tests later.
+        # Mock tests bozo this.
+        self.driver.backends = None
+        self.driver.replication_enabled = False
+
         self.volid = str(uuid.uuid4())
         self.volume_name = "volume" + self.volid
         self.connector = {
@@ -268,6 +272,120 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
             #                self.configuration.eqlx_chap_password)
         }
 
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_get_volume_extra_specs')
+    def test__create_replications(self,
+                                  mock_get_volume_extra_specs,
+                                  mock_close_connection,
+                                  mock_open_connection,
+                                  mock_init):
+        backends = self.driver.backends
+        mock_get_volume_extra_specs.return_value = {
+            'replication_enabled': '<is> True'}
+        model_update = {'replication_status': 'enabled',
+                        'replication_driver_data': '12345,67890'}
+
+        vol = {'id': 'guid', 'replication_driver_data': ''}
+        scvol = {'name': 'guid'}
+        self.driver.backends = [{'target_device_id': '12345',
+                                 'managed_backend_name': 'host@dell1',
+                                 'qosnode': 'cinderqos'},
+                                {'target_device_id': '67890',
+                                 'managed_backend_name': 'host@dell2',
+                                 'qosnode': 'otherqos'}]
+        mock_api = mock.MagicMock()
+        mock_api.create_replication = mock.MagicMock(
+            return_value={'instanceId': '1'})
+        # Create regular replication test.
+        res = self.driver._create_replications(mock_api, vol, scvol)
+        mock_api.create_replication.assert_any_call(
+            scvol, '12345', 'cinderqos', False, None, False)
+        mock_api.create_replication.assert_any_call(
+            scvol, '67890', 'otherqos', False, None, False)
+        self.assertEqual(model_update, res)
+        # Create replication with activereplay set.
+        mock_get_volume_extra_specs.return_value = {
+            'replication:activereplay': '<is> True',
+            'replication_enabled': '<is> True'}
+        res = self.driver._create_replications(mock_api, vol, scvol)
+        mock_api.create_replication.assert_any_call(
+            scvol, '12345', 'cinderqos', False, None, True)
+        mock_api.create_replication.assert_any_call(
+            scvol, '67890', 'otherqos', False, None, True)
+        self.assertEqual(model_update, res)
+        # Create replication with sync set.
+        mock_get_volume_extra_specs.return_value = {
+            'replication:activereplay': '<is> True',
+            'replication_enabled': '<is> True',
+            'replication_type': '<in> sync'}
+        res = self.driver._create_replications(mock_api, vol, scvol)
+        mock_api.create_replication.assert_any_call(
+            scvol, '12345', 'cinderqos', True, None, True)
+        mock_api.create_replication.assert_any_call(
+            scvol, '67890', 'otherqos', True, None, True)
+        self.assertEqual(model_update, res)
+        # Create replication with disk folder set.
+        self.driver.backends = [{'target_device_id': '12345',
+                                 'managed_backend_name': 'host@dell1',
+                                 'qosnode': 'cinderqos',
+                                 'diskfolder': 'ssd'},
+                                {'target_device_id': '67890',
+                                 'managed_backend_name': 'host@dell2',
+                                 'qosnode': 'otherqos',
+                                 'diskfolder': 'ssd'}]
+        mock_get_volume_extra_specs.return_value = {
+            'replication:activereplay': '<is> True',
+            'replication_enabled': '<is> True',
+            'replication_type': '<in> sync'}
+        res = self.driver._create_replications(mock_api, vol, scvol)
+        mock_api.create_replication.assert_any_call(
+            scvol, '12345', 'cinderqos', True, 'ssd', True)
+        mock_api.create_replication.assert_any_call(
+            scvol, '67890', 'otherqos', True, 'ssd', True)
+        self.assertEqual(model_update, res)
+        # Failed to create replication test.
+        mock_api.create_replication.return_value = None
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver._create_replications,
+                          mock_api,
+                          vol,
+                          scvol)
+        # Replication not enabled test
+        mock_get_volume_extra_specs.return_value = {}
+        res = self.driver._create_replications(mock_api, vol, scvol)
+        self.assertEqual({}, res)
+        self.driver.backends = backends
+
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_get_volume_extra_specs')
+    def test__delete_replications(self,
+                                  mock_get_volume_extra_specs,
+                                  mock_close_connection,
+                                  mock_open_connection,
+                                  mock_init):
+        backends = self.driver.backends
+        vol = {'id': 'guid'}
+        scvol = {'instanceId': '1'}
+        mock_api = mock.MagicMock()
+        mock_api.delete_replication = mock.MagicMock()
+        mock_api.find_volume = mock.MagicMock(return_value=scvol)
+        # Start replication disabled. Should fail immediately.
+        mock_get_volume_extra_specs.return_value = {}
+        self.driver._delete_replications(mock_api, vol)
+        self.assertFalse(mock_api.delete_replication.called)
+        # Replication enabled. No replications listed.
+        mock_get_volume_extra_specs.return_value = {
+            'replication_enabled': '<is> True'}
+        vol = {'id': 'guid', 'replication_driver_data': ''}
+        self.driver._delete_replications(mock_api, vol)
+        self.assertFalse(mock_api.delete_replication.called)
+        # Something to call.
+        vol = {'id': 'guid', 'replication_driver_data': '12345,67890'}
+        self.driver._delete_replications(mock_api, vol)
+        mock_api.delete_replication.assert_any_call(scvol, 12345)
+        mock_api.delete_replication.assert_any_call(scvol, 67890)
+        self.driver.backends = backends
+
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'create_volume',
                        return_value=VOLUME)
@@ -284,6 +402,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.driver.create_volume(volume)
         mock_create_volume.assert_called_once_with(self.volume_name,
                                                    1,
+                                                   None,
                                                    None)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -310,6 +429,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.driver.create_volume(volume)
         mock_create_volume.assert_called_once_with(self.volume_name,
                                                    1,
+                                                   None,
                                                    None)
         self.assertTrue(mock_find_replay_profile.called)
         self.assertTrue(mock_update_cg_volumes.called)
@@ -335,7 +455,80 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.driver.create_volume(volume)
         mock_create_volume.assert_called_once_with(self.volume_name,
                                                    1,
-                                                   "HighPriority")
+                                                   "HighPriority",
+                                                   None)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'create_volume',
+                       return_value=VOLUME)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_sc',
+                       return_value=12345)
+    @mock.patch.object(
+        volume_types,
+        'get_volume_type_extra_specs',
+        return_value={'storagetype:replayprofiles': 'Daily'})
+    def test_create_volume_replay_profiles(self,
+                                           mock_extra,
+                                           mock_find_sc,
+                                           mock_create_volume,
+                                           mock_close_connection,
+                                           mock_open_connection,
+                                           mock_init):
+        volume = {'id': self.volume_name, 'size': 1, 'volume_type_id': 'abc'}
+        self.driver.create_volume(volume)
+        mock_create_volume.assert_called_once_with(self.volume_name,
+                                                   1,
+                                                   None,
+                                                   'Daily')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'create_volume',
+                       return_value=VOLUME)
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_create_replications',
+                       return_value={'replication_status': 'enabled',
+                                     'replication_driver_data': 'ssn'})
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_sc',
+                       return_value=12345)
+    def test_create_volume_replication(self,
+                                       mock_find_sc,
+                                       mock_create_replications,
+                                       mock_create_volume,
+                                       mock_close_connection,
+                                       mock_open_connection,
+                                       mock_init):
+        volume = {'id': self.volume_name, 'size': 1}
+        ret = self.driver.create_volume(volume)
+        self.assertEqual({'replication_status': 'enabled',
+                          'replication_driver_data': 'ssn'}, ret)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'create_volume',
+                       return_value=VOLUME)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'delete_volume')
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_create_replications')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_sc',
+                       return_value=12345)
+    def test_create_volume_replication_raises(self,
+                                              mock_find_sc,
+                                              mock_create_replications,
+                                              mock_delete_volume,
+                                              mock_create_volume,
+                                              mock_close_connection,
+                                              mock_open_connection,
+                                              mock_init):
+        volume = {'id': self.volume_name, 'size': 1}
+        mock_create_replications.side_effect = (
+            exception.VolumeBackendAPIException(data='abc'))
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_volume,
+                          volume)
+        self.assertTrue(mock_delete_volume.called)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'create_volume',
@@ -353,6 +546,8 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_volume, volume)
 
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_delete_replications')
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'delete_volume',
                        return_value=True)
@@ -362,13 +557,17 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
     def test_delete_volume(self,
                            mock_find_sc,
                            mock_delete_volume,
+                           mock_delete_replications,
                            mock_close_connection,
                            mock_open_connection,
                            mock_init):
         volume = {'id': self.volume_name, 'size': 1}
         self.driver.delete_volume(volume)
         mock_delete_volume.assert_called_once_with(self.volume_name)
+        self.assertTrue(mock_delete_replications.called)
 
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_delete_replications')
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'delete_volume',
                        return_value=False)
@@ -378,6 +577,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
     def test_delete_volume_failure(self,
                                    mock_find_sc,
                                    mock_delete_volume,
+                                   mock_delete_replications,
                                    mock_close_connection,
                                    mock_open_connection,
                                    mock_init):
@@ -385,6 +585,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertRaises(exception.VolumeIsBusy,
                           self.driver.delete_volume,
                           volume)
+        self.assertTrue(mock_delete_replications.called)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_sc',
@@ -420,7 +621,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertEqual('iscsi', data['driver_volume_type'])
         # verify find_volume has been called and that is has been called twice
         mock_find_volume.assert_any_call(self.volume_name)
-        assert mock_find_volume.call_count == 2
+        self.assertEqual(2, mock_find_volume.call_count)
         expected = {'data': self.ISCSI_PROPERTIES,
                     'driver_volume_type': 'iscsi'}
         self.assertEqual(expected, data, 'Unexpected return value')
@@ -461,7 +662,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertEqual('iscsi', data['driver_volume_type'])
         # verify find_volume has been called and that is has been called twice
         mock_find_volume.assert_any_call(self.volume_name)
-        assert mock_find_volume.call_count == 2
+        self.assertEqual(2, mock_find_volume.call_count)
         props = self.ISCSI_PROPERTIES
         expected = {'data': props,
                     'driver_volume_type': 'iscsi'}
@@ -773,6 +974,8 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           self.driver.create_snapshot,
                           snapshot)
 
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_create_replications')
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_replay_profile')
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -793,18 +996,27 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                          mock_find_volume,
                                          mock_find_sc,
                                          mock_find_replay_profile,
+                                         mock_create_replications,
                                          mock_close_connection,
                                          mock_open_connection,
                                          mock_init):
+        model_update = {'something': 'something'}
+        mock_create_replications.return_value = model_update
         volume = {'id': 'fake'}
         snapshot = {'id': 'fake', 'volume_id': 'fake'}
-        self.driver.create_volume_from_snapshot(volume, snapshot)
+        res = self.driver.create_volume_from_snapshot(volume, snapshot)
         mock_create_view_volume.assert_called_once_with('fake',
-                                                        'fake')
+                                                        'fake',
+                                                        None)
         self.assertTrue(mock_find_replay.called)
         self.assertTrue(mock_find_volume.called)
         self.assertFalse(mock_find_replay_profile.called)
+        # This just makes sure that we created
+        self.assertTrue(mock_create_replications.called)
+        self.assertEqual(model_update, res)
 
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_create_replications')
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_replay_profile',
                        return_value='fake')
@@ -829,18 +1041,25 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                             mock_find_sc,
                                             mock_update_cg_volumes,
                                             mock_find_replay_profile,
+                                            mock_create_replications,
                                             mock_close_connection,
                                             mock_open_connection,
                                             mock_init):
+        model_update = {'something': 'something'}
+        mock_create_replications.return_value = model_update
         volume = {'id': 'fake', 'consistencygroup_id': 'guid'}
         snapshot = {'id': 'fake', 'volume_id': 'fake'}
-        self.driver.create_volume_from_snapshot(volume, snapshot)
+        res = self.driver.create_volume_from_snapshot(volume, snapshot)
         mock_create_view_volume.assert_called_once_with('fake',
-                                                        'fake')
+                                                        'fake',
+                                                        None)
         self.assertTrue(mock_find_replay.called)
         self.assertTrue(mock_find_volume.called)
         self.assertTrue(mock_find_replay_profile.called)
         self.assertTrue(mock_update_cg_volumes.called)
+        # This just makes sure that we created
+        self.assertTrue(mock_create_replications.called)
+        self.assertEqual(model_update, res)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_sc',
@@ -852,10 +1071,13 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                        'find_replay',
                        return_value='fake')
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_replay_profile')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'create_view_volume',
                        return_value=None)
     def test_create_volume_from_snapshot_failed(self,
                                                 mock_create_view_volume,
+                                                mock_find_replay_profile,
                                                 mock_find_replay,
                                                 mock_find_volume,
                                                 mock_find_sc,
@@ -867,6 +1089,45 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_volume_from_snapshot,
                           volume, snapshot)
+        self.assertTrue(mock_find_replay.called)
+        self.assertTrue(mock_find_volume.called)
+        self.assertFalse(mock_find_replay_profile.called)
+
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_create_replications')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_sc',
+                       return_value=12345)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_volume',
+                       return_value=VOLUME)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_replay',
+                       return_value='fake')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'create_view_volume',
+                       return_value=VOLUME)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'delete_volume')
+    def test_create_volume_from_snapshot_failed_replication(
+            self,
+            mock_delete_volume,
+            mock_create_view_volume,
+            mock_find_replay,
+            mock_find_volume,
+            mock_find_sc,
+            mock_create_replications,
+            mock_close_connection,
+            mock_open_connection,
+            mock_init):
+        mock_create_replications.side_effect = (
+            exception.VolumeBackendAPIException(data='abc'))
+        volume = {'id': 'fake'}
+        snapshot = {'id': 'fake', 'volume_id': 'fake'}
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_volume_from_snapshot,
+                          volume, snapshot)
+        self.assertTrue(mock_delete_volume.called)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_sc',
@@ -897,6 +1158,9 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertTrue(mock_find_replay.called)
         self.assertFalse(mock_create_view_volume.called)
 
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_create_replications',
+                       return_value={})
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_sc',
                        return_value=12345)
@@ -910,16 +1174,50 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                   mock_create_cloned_volume,
                                   mock_find_volume,
                                   mock_find_sc,
+                                  mock_create_replications,
                                   mock_close_connection,
                                   mock_open_connection,
                                   mock_init):
         volume = {'id': self.volume_name + '_clone'}
         src_vref = {'id': self.volume_name}
-        self.driver.create_cloned_volume(volume, src_vref)
+        ret = self.driver.create_cloned_volume(volume, src_vref)
         mock_create_cloned_volume.assert_called_once_with(
             self.volume_name + '_clone',
-            self.VOLUME)
+            self.VOLUME,
+            None)
         self.assertTrue(mock_find_volume.called)
+        self.assertEqual({}, ret)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'delete_volume')
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_create_replications')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_sc',
+                       return_value=12345)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_volume',
+                       return_value=VOLUME)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'create_cloned_volume',
+                       return_value=VOLUME)
+    def test_create_cloned_volume_replication_fail(self,
+                                                   mock_create_cloned_volume,
+                                                   mock_find_volume,
+                                                   mock_find_sc,
+                                                   mock_create_replications,
+                                                   mock_delete_volume,
+                                                   mock_close_connection,
+                                                   mock_open_connection,
+                                                   mock_init):
+        mock_create_replications.side_effect = (
+            exception.VolumeBackendAPIException(data='abc'))
+        volume = {'id': self.volume_name + '_clone'}
+        src_vref = {'id': self.volume_name}
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_cloned_volume,
+                          volume, src_vref)
+        self.assertTrue(mock_delete_volume.called)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_replay_profile',
@@ -950,7 +1248,8 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.driver.create_cloned_volume(volume, src_vref)
         mock_create_cloned_volume.assert_called_once_with(
             self.volume_name + '_clone',
-            self.VOLUME)
+            self.VOLUME,
+            None)
         self.assertTrue(mock_find_volume.called)
         self.assertTrue(mock_find_replay_profile.called)
         self.assertTrue(mock_update_cg_volumes.called)
@@ -1135,7 +1434,32 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                               mock_init):
         stats = self.driver.get_volume_stats(True)
         self.assertEqual('iSCSI', stats['storage_protocol'])
-        mock_get_storage_usage.called_once_with(64702)
+        self.assertTrue(mock_get_storage_usage.called)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_sc',
+                       return_value=64702)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'get_storage_usage',
+                       return_value={'availableSpace': 100, 'freeSpace': 50})
+    def test_update_volume_stats_with_refresh_and_repl(
+            self,
+            mock_get_storage_usage,
+            mock_find_sc,
+            mock_close_connection,
+            mock_open_connection,
+            mock_init):
+        backends = self.driver.backends
+        repliation_enabled = self.driver.replication_enabled
+        self.driver.backends = [{'a': 'a'}, {'b': 'b'}, {'c': 'c'}]
+        self.driver.replication_enabled = True
+        stats = self.driver.get_volume_stats(True)
+        self.assertEqual(3, stats['replication_count'])
+        self.assertEqual(['async', 'sync'], stats['replication_type'])
+        self.assertTrue(stats['replication_enabled'])
+        self.assertTrue(mock_get_storage_usage.called)
+        self.driver.backends = backends
+        self.driver.replication_enabled = repliation_enabled
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_sc',
@@ -1151,7 +1475,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                          mock_init):
         stats = self.driver.get_volume_stats(False)
         self.assertEqual('iSCSI', stats['storage_protocol'])
-        assert mock_get_storage_usage.called is False
+        self.assertFalse(mock_get_storage_usage.called)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_sc',
@@ -1561,9 +1885,17 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                                       cgsnap['id'])
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_volume',
+                       return_value={'id': 'guid'})
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_create_replications',
+                       return_value=None)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'manage_existing')
     def test_manage_existing(self,
                              mock_manage_existing,
+                             mock_create_replications,
+                             mock_find_volume,
                              mock_close_connection,
                              mock_open_connection,
                              mock_init):
@@ -1576,9 +1908,17 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                                      existing_ref)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_volume',
+                       return_value={'id': 'guid'})
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_create_replications',
+                       return_value=None)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'manage_existing')
     def test_manage_existing_id(self,
                                 mock_manage_existing,
+                                mock_create_replications,
+                                mock_find_volume,
                                 mock_close_connection,
                                 mock_open_connection,
                                 mock_init):
@@ -1644,46 +1984,140 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           volume,
                           existing_ref)
 
-    def test_retype_not_extra_specs(self,
-                                    mock_close_connection,
-                                    mock_open_connection,
-                                    mock_init):
-        res = self.driver.retype(
-            None, None, None, {'extra_specs': None}, None)
-        self.assertFalse(res)
-
-    def test_retype_not_storage_profile(self,
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_volume',
+                       return_value=VOLUME)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'update_storage_profile')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'update_replay_profiles')
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_create_replications')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'update_replicate_active_replay')
+    def test_retype_not_our_extra_specs(self,
+                                        mock_update_replicate_active_replay,
+                                        mock_create_replications,
+                                        mock_update_replay_profile,
+                                        mock_update_storage_profile,
+                                        mock_find_volume,
                                         mock_close_connection,
                                         mock_open_connection,
                                         mock_init):
         res = self.driver.retype(
-            None, None, None, {'extra_specs': {'something': 'else'}}, None)
+            None, {'id': 'guid'}, None, {'extra_specs': None}, None)
+        self.assertTrue(res)
+        self.assertFalse(mock_update_replicate_active_replay.called)
+        self.assertFalse(mock_create_replications.called)
+        self.assertFalse(mock_update_replay_profile.called)
+        self.assertFalse(mock_update_storage_profile.called)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_volume',
+                       return_value=VOLUME)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'update_replay_profiles')
+    def test_retype_replay_profiles(self,
+                                    mock_update_replay_profiles,
+                                    mock_find_volume,
+                                    mock_close_connection,
+                                    mock_open_connection,
+                                    mock_init):
+        mock_update_replay_profiles.side_effect = [True, False]
+        # Normal successful run.
+        res = self.driver.retype(
+            None, {'id': 'guid'}, None,
+            {'extra_specs': {'storagetype:replayprofiles': ['A', 'B']}},
+            None)
+        mock_update_replay_profiles.assert_called_once_with(self.VOLUME, 'B')
+        self.assertTrue(res)
+        # Run fails.  Make sure this returns False.
+        res = self.driver.retype(
+            None, {'id': 'guid'}, None,
+            {'extra_specs': {'storagetype:replayprofiles': ['B', 'A']}},
+            None)
         self.assertFalse(res)
 
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_volume',
+                       return_value=VOLUME)
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_create_replications',
+                       return_value={'replication_status': 'enabled',
+                                     'replication_driver_data': '54321'})
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_delete_replications')
+    def test_retype_create_replications(self,
+                                        mock_delete_replications,
+                                        mock_create_replications,
+                                        mock_find_volume,
+                                        mock_close_connection,
+                                        mock_open_connection,
+                                        mock_init):
+
+        res = self.driver.retype(
+            None, {'id': 'guid'}, None,
+            {'extra_specs': {'replication_enabled': [False, True]}},
+            None)
+        self.assertTrue(mock_create_replications.called)
+        self.assertFalse(mock_delete_replications.called)
+        self.assertEqual({'replication_status': 'enabled',
+                          'replication_driver_data': '54321'}, res)
+        res = self.driver.retype(
+            None, {'id': 'guid'}, None,
+            {'extra_specs': {'replication_enabled': [True, False]}},
+            None)
+        self.assertTrue(mock_delete_replications.called)
+        self.assertEqual({'replication_status': 'disabled',
+                          'replication_driver_data': ''}, res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'update_replicate_active_replay')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_volume',
+                       return_value=VOLUME)
+    def test_retype_active_replay(self,
+                                  mock_find_volume,
+                                  mock_update_replicate_active_replay,
+                                  mock_close_connection,
+                                  mock_open_connection,
+                                  mock_init):
+        # Success, Success, Not called and fail.
+        mock_update_replicate_active_replay.side_effect = [True, True, False]
+        res = self.driver.retype(
+            None, {'id': 'guid'}, None,
+            {'extra_specs': {'replication:activereplay': ['', '<is> True']}},
+            None)
+        self.assertTrue(res)
+        res = self.driver.retype(
+            None, {'id': 'guid'}, None,
+            {'extra_specs': {'replication:activereplay': ['<is> True', '']}},
+            None)
+        self.assertTrue(res)
+        res = self.driver.retype(
+            None, {'id': 'guid'}, None,
+            {'extra_specs': {'replication:activereplay': ['', '']}},
+            None)
+        self.assertTrue(res)
+        res = self.driver.retype(
+            None, {'id': 'guid'}, None,
+            {'extra_specs': {'replication:activereplay': ['', '<is> True']}},
+            None)
+        self.assertFalse(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_volume',
+                       return_value=VOLUME)
     def test_retype_same(self,
+                         mock_find_volume,
                          mock_close_connection,
                          mock_open_connection,
                          mock_init):
         res = self.driver.retype(
-            None, None, None,
+            None, {'id': 'guid'}, None,
             {'extra_specs': {'storagetype:storageprofile': ['A', 'A']}},
             None)
         self.assertTrue(res)
-
-    def test_retype_malformed(self,
-                              mock_close_connection,
-                              mock_open_connection,
-                              mock_init):
-        LOG = self.mock_object(dell_storagecenter_common, "LOG")
-        res = self.driver.retype(
-            None, None, None,
-            {'extra_specs': {
-                'storagetype:storageprofile': ['something',
-                                               'not',
-                                               'right']}},
-            None)
-        self.assertFalse(res)
-        self.assertEqual(1, LOG.warning.call_count)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_volume',
@@ -1739,3 +2173,327 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         mock_update_storage_profile.ssert_called_once_with(
             self.VOLUME, 'B')
         self.assertTrue(res)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'resume_replication')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_volume',
+                       return_value=VOLUME)
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_do_repl')
+    def test_replication_enable(self,
+                                mock_do_repl,
+                                mock_find_volume,
+                                mock_resume_replication,
+                                mock_close_connection,
+                                mock_open_connection,
+                                mock_init):
+        # Note that since we do nothing with sync or async here
+        # at all we do not bother testing it.
+        mock_do_repl.side_effect = [(False, False),  # No run.
+                                    (True, False),   # Good run.
+                                    (True, False),   # Bad run.
+                                    (True, False),   # Multiple replications.
+                                    (True, False)]   # Multiple fail.
+        mock_resume_replication.side_effect = [True,   # Good run.
+                                               False,  # Bad run.
+                                               True,   # Multiple replications.
+                                               True,
+                                               False]  # Multiple fail.
+        vref = {'replication_driver_data': '',
+                'id': 'guid'}
+        model_update = {}
+        # No run
+        ret = self.driver.replication_enable({}, vref)
+        self.assertEqual(model_update, ret)
+        # we didn't try to resume, right?
+        self.assertEqual(0, mock_resume_replication.call_count)
+        # Good run
+        vref = {'replication_driver_data': '12345',
+                'id': 'guid'}
+        ret = self.driver.replication_enable({}, vref)
+        self.assertEqual(model_update, ret)
+        # Hard to distinguish good from bad. Make sure we tried.
+        self.assertEqual(1, mock_resume_replication.call_count)
+        # Bad run
+        model_update = {'replication_status': 'error'}
+        ret = self.driver.replication_enable({}, vref)
+        self.assertEqual(model_update, ret)
+        # Make sure we actually sent this down.
+        self.assertEqual(2, mock_resume_replication.call_count)
+        mock_resume_replication.assert_called_with(self.VOLUME, 12345)
+        # Multiple replications.
+        vref = {'replication_driver_data': '12345,67890',
+                'id': 'guid'}
+        model_update = {}
+        ret = self.driver.replication_enable({}, vref)
+        self.assertEqual(model_update, ret)
+        # Should be called two more times.
+        self.assertEqual(4, mock_resume_replication.call_count)
+        # This checks the last call
+        mock_resume_replication.assert_called_with(self.VOLUME, 67890)
+        # Multiple fail.
+        model_update = {'replication_status': 'error'}
+        ret = self.driver.replication_enable({}, vref)
+        self.assertEqual(model_update, ret)
+        # We are set to fail on the first call so one more.
+        self.assertEqual(5, mock_resume_replication.call_count)
+        # This checks the last call.
+        mock_resume_replication.assert_called_with(self.VOLUME, 12345)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'pause_replication')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_volume',
+                       return_value=VOLUME)
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_do_repl')
+    def test_replication_disable(self,
+                                 mock_do_repl,
+                                 mock_find_volume,
+                                 mock_pause_replication,
+                                 mock_close_connection,
+                                 mock_open_connection,
+                                 mock_init):
+        # Note that since we do nothing with sync or async here
+        # at all we do not bother testing it.
+        mock_do_repl.side_effect = [(False, False),  # No run.
+                                    (True, False),   # Good run.
+                                    (True, False),   # Bad run.
+                                    (True, False),   # Multiple replications.
+                                    (True, False)]   # Multiple fail.
+        mock_pause_replication.side_effect = [True,   # Good run.
+                                              False,  # Bad run.
+                                              True,   # Multiple replications.
+                                              True,
+                                              False]  # Multiple fail.
+        vref = {'replication_driver_data': '',
+                'id': 'guid'}
+        model_update = {}
+        # No run
+        ret = self.driver.replication_disable({}, vref)
+        self.assertEqual(model_update, ret)
+        # we didn't try to resume, right?
+        self.assertEqual(0, mock_pause_replication.call_count)
+        # Good run
+        vref = {'replication_driver_data': '12345',
+                'id': 'guid'}
+        ret = self.driver.replication_disable({}, vref)
+        self.assertEqual(model_update, ret)
+        # Hard to distinguish good from bad. Make sure we tried.
+        self.assertEqual(1, mock_pause_replication.call_count)
+        # Bad run
+        model_update = {'replication_status': 'error'}
+        ret = self.driver.replication_disable({}, vref)
+        self.assertEqual(model_update, ret)
+        # Make sure we actually sent this down.
+        self.assertEqual(2, mock_pause_replication.call_count)
+        mock_pause_replication.assert_called_with(self.VOLUME, 12345)
+        # Multiple replications.
+        vref = {'replication_driver_data': '12345,67890',
+                'id': 'guid'}
+        model_update = {}
+        ret = self.driver.replication_disable({}, vref)
+        self.assertEqual(model_update, ret)
+        # Should be called two more times.
+        self.assertEqual(4, mock_pause_replication.call_count)
+        # This checks the last call
+        mock_pause_replication.assert_called_with(self.VOLUME, 67890)
+        # Multiple fail.
+        model_update = {'replication_status': 'error'}
+        ret = self.driver.replication_disable({}, vref)
+        self.assertEqual(model_update, ret)
+        # We are set to fail on the first call so one more.
+        self.assertEqual(5, mock_pause_replication.call_count)
+        # This checks the last call.
+        mock_pause_replication.assert_called_with(self.VOLUME, 12345)
+
+    def test__find_host(self,
+                        mock_close_connection,
+                        mock_open_connection,
+                        mock_init):
+        backends = self.driver.backends
+        self.driver.backends = [{'target_device_id': '12345',
+                                 'managed_backend_name': 'host@dell1',
+                                 'qosnode': 'cinderqos'},
+                                {'target_device_id': '67890',
+                                 'managed_backend_name': 'host@dell2',
+                                 'qosnode': 'cinderqos'}]
+        # Just make sure we are turning the correct bit..
+        # Good run
+        expected = 'host@dell2'
+        ret = self.driver._find_host('67890')
+        self.assertEqual(expected, ret)
+        # Bad run
+        ret = self.driver._find_host('54321')
+        self.assertIsNone(ret)
+        self.driver.backends = backends
+
+    def test__parse_secondary(self,
+                              mock_close_connection,
+                              mock_open_connection,
+                              mock_init):
+        backends = self.driver.backends
+        vref = {'id': 'guid', 'replication_driver_data': '67890'}
+        self.driver.backends = [{'target_device_id': '12345',
+                                 'managed_backend_name': 'host@dell1',
+                                 'qosnode': 'cinderqos'},
+                                {'target_device_id': '67890',
+                                 'managed_backend_name': 'host@dell2',
+                                 'qosnode': 'cinderqos'}]
+        mock_api = mock.MagicMock()
+        # Good run.  Secondary in replication_driver_data and backend.  sc up.
+        destssn, host = self.driver._parse_secondary(mock_api, vref, '67890')
+        self.assertEqual(67890, destssn)
+        self.assertEqual('host@dell2', host)
+        # Bad run.  Secondary not in replication_driver_data
+        destssn, host = self.driver._parse_secondary(mock_api, vref, '12345')
+        self.assertIsNone(destssn)
+        self.assertIsNone(host)
+        # Bad run.  Secondary not in backend.
+        vref['replication_driver_data'] = '67891'
+        destssn, host = self.driver._parse_secondary(mock_api, vref, '67890')
+        self.assertIsNone(destssn)
+        self.assertIsNone(host)
+        # Bad run.  no driver data
+        vref['replication_driver_data'] = ''
+        destssn, host = self.driver._parse_secondary(mock_api, vref, '67890')
+        self.assertIsNone(destssn)
+        self.assertIsNone(host)
+        # Good run.  No secondary selected.
+        vref['replication_driver_data'] = '12345'
+        destssn, host = self.driver._parse_secondary(mock_api, vref, '12345')
+        self.assertEqual(12345, destssn)
+        self.assertEqual('host@dell1', host)
+        self.driver.backends = backends
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_sc')
+    def test__parse_secondary_sc_down(self,
+                                      mock_find_sc,
+                                      mock_close_connection,
+                                      mock_open_connection,
+                                      mock_init):
+        backends = self.driver.backends
+        vref = {'id': 'guid', 'replication_driver_data': '12345'}
+        self.driver.backends = [{'target_device_id': '12345',
+                                 'managed_backend_name': 'host@dell1',
+                                 'qosnode': 'cinderqos'},
+                                {'target_device_id': '67890',
+                                 'managed_backend_name': 'host@dell2',
+                                 'qosnode': 'cinderqos'}]
+        mock_api = mock.MagicMock()
+        # Bad run.  Good selection.  SC down.
+        vref['replication_driver_data'] = '12345'
+        mock_api.find_sc = mock.MagicMock(
+            side_effect=exception.VolumeBackendAPIException(data='1234'))
+        destssn, host = self.driver._parse_secondary(mock_api, vref, '12345')
+        self.assertIsNone(destssn)
+        self.assertIsNone(host)
+        self.driver.backends = backends
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'break_replication')
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_parse_secondary')
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_do_repl')
+    def test_replication_failover(self,
+                                  mock_do_repl,
+                                  mock_parse_secondary,
+                                  mock_break_replication,
+                                  mock_close_connection,
+                                  mock_open_connection,
+                                  mock_init):
+        mock_parse_secondary.side_effect = [(12345, 'host@host#be'),    # Good.
+                                            (12345, 'host@host#be'),    # Bad.
+                                            (None, None)]       # Not found.
+        mock_break_replication.side_effect = [True,     # Good run.
+                                              False]    # Bad run.
+        mock_do_repl.side_effect = [(False, False),  # No run.
+                                    (True, False),   # Good run.
+                                    (True, False),   # Bad run.
+                                    (True, False)]   # Secondary not found.
+        vref = {'id': 'guid'}
+        # No run. Not doing repl.  Should raise.
+        self.assertRaises(exception.ReplicationError,
+                          self.driver.replication_failover,
+                          {},
+                          vref,
+                          '12345')
+        # Good run
+        expected = {'host': 'host@host#be',
+                    'replication_driver_data': None}
+        ret = self.driver.replication_failover({}, vref, '12345')
+        self.assertEqual(expected, ret)
+        # Bad run. (break_replication fails)
+        self.assertRaises(exception.ReplicationError,
+                          self.driver.replication_failover,
+                          {},
+                          vref,
+                          '12345')
+        # Secondary not found.
+        self.assertRaises(exception.ReplicationError,
+                          self.driver.replication_failover,
+                          {},
+                          vref,
+                          '54321')
+
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_do_repl')
+    def test_list_replication_targets(self,
+                                      mock_do_repl,
+                                      mock_close_connection,
+                                      mock_open_connection,
+                                      mock_init):
+        mock_do_repl.side_effect = [(False, False),  # No repl.
+                                    (True, False),   # Good run.
+                                    (True, False)]   # Target not found.
+        backends = self.driver.backends
+        self.driver.backends = [{'target_device_id': '12345',
+                                 'managed_backend_name': 'host@dell1',
+                                 'qosnode': 'cinderqos'},
+                                {'target_device_id': '67890',
+                                 'managed_backend_name': 'host@dell2',
+                                 'qosnode': 'cinderqos'}]
+        # No repl.
+        expected = {'volume_id': 'guid',
+                    'targets': []}
+        vref = {'replication_driver_data': '',
+                'id': 'guid'}
+        ret = self.driver.list_replication_targets({}, vref)
+        self.assertEqual(expected, ret)
+        # Good run.
+        expected = {'volume_id': 'guid',
+                    'targets': [{'type': 'managed',
+                                 'target_device_id': '12345',
+                                 'backend_name': 'host@dell1'},
+                                {'type': 'managed',
+                                 'target_device_id': '67890',
+                                 'backend_name': 'host@dell2'}]}
+        vref = {'replication_driver_data': '12345,67890',
+                'id': 'guid'}
+        ret = self.driver.list_replication_targets({}, vref)
+        self.assertEqual(expected, ret)
+        # Target not found.
+        # We find one target but not another.  This could happen for a variety
+        # of reasons most of them administrator negligence.  But the main one
+        # is that someone reconfigured their backends without taking into
+        # account how this would affect the children.
+        expected = {'volume_id': 'guid',
+                    'targets': [{'type': 'managed',
+                                 'target_device_id': '12345',
+                                 'backend_name': 'host@dell1'}]}
+        vref = {'replication_driver_data': '12345,99999',
+                'id': 'guid'}
+        ret = self.driver.list_replication_targets({}, vref)
+        self.assertEqual(expected, ret)
+
+        self.driver.backends = backends
+
+    def test_get_replication_updates(self,
+                                     mock_close_connection,
+                                     mock_open_connection,
+                                     mock_init):
+        ret = self.driver.get_replication_updates({})
+        self.assertEqual([], ret)

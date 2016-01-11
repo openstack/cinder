@@ -44,9 +44,10 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
         2.2.0 - Driver retype support for switching volume's Storage Profile
         2.3.0 - Added Legacy Port Mode Support
         2.3.1 - Updated error handling.
+        2.4.0 - Added Replication V2 support.
     """
 
-    VERSION = '2.3.1'
+    VERSION = '2.4.0'
 
     def __init__(self, *args, **kwargs):
         super(DellStorageCenterFCDriver, self).__init__(*args, **kwargs)
