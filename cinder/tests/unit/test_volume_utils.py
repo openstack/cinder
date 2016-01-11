@@ -445,6 +445,20 @@ class OdirectSupportTestCase(test.TestCase):
         mock_exec.assert_called_once_with('dd', 'count=0', 'if=/dev/abc',
                                           'of=/dev/def', 'iflag=direct',
                                           run_as_root=True)
+        mock_exec.reset_mock()
+
+        output = volume_utils.check_for_odirect_support('/dev/zero',
+                                                        '/dev/def',
+                                                        'iflag=direct')
+        self.assertFalse(output)
+        mock_exec.reset_mock()
+
+        output = volume_utils.check_for_odirect_support('/dev/zero',
+                                                        '/dev/def')
+        self.assertTrue(output)
+        mock_exec.assert_called_once_with('dd', 'count=0', 'if=/dev/zero',
+                                          'of=/dev/def', 'oflag=direct',
+                                          run_as_root=True)
 
     @mock.patch('cinder.utils.execute',
                 side_effect=processutils.ProcessExecutionError)
@@ -452,6 +466,13 @@ class OdirectSupportTestCase(test.TestCase):
         output = volume_utils.check_for_odirect_support('/dev/abc', '/dev/def')
         self.assertFalse(output)
         mock_exec.assert_called_once_with('dd', 'count=0', 'if=/dev/abc',
+                                          'of=/dev/def', 'oflag=direct',
+                                          run_as_root=True)
+        mock_exec.reset_mock()
+        output = volume_utils.check_for_odirect_support('/dev/zero',
+                                                        '/dev/def')
+        self.assertFalse(output)
+        mock_exec.assert_called_once_with('dd', 'count=0', 'if=/dev/zero',
                                           'of=/dev/def', 'oflag=direct',
                                           run_as_root=True)
 
