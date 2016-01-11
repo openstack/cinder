@@ -448,7 +448,61 @@ class SBSBackupDriver(driver.BackupDriver):
             raise
         return
 
+    def _delete_backups(self, backup_list):
+        return
+
+    def _mark_backup_for_deletion(self, backup):
+        self.db.backup_update(self.context, backup_id,
+                              {'deleted': True})
+        return
+
+    """
+    Mark snaps as deleted, but keep them if they are parent of another existing
+    snap. Delete the snap only if there are no dependencies on it
+    """
     def delete(self, backup):
+        """Delete the given backup from Ceph object store."""
+        LOG.debug('Delete started for backup=%s', backup['id'])
+
+        # Don't allow backup to be deleted if there are incremental
+        # backups dependent on it, mark it for deleted.
+        # Find all the dependencies. Only when all dependents are
+        # marked for deletion, we can do delete all
+        volume_id = backup['volume_id']
+        latest_backup = None
+        backups = self.db.backup_get_all_by_volume(context.elevated(),
+                                                   volume_id)
+        if backups:
+            latest_backup = max(backups, key=lambda x: x['created_at'])
+            curr = latest_backup
+
+        can_delete = True
+        #backups = self.get_all(context, {'parent_id': backup['id']})
+
+        # if lasted backup is not same, then check for dependencies
+        if backup['id'] != lastet_backup['id']:
+            while curr['parent_id']:
+                #if any snap till given snap is not marked for deletion, fail
+                if curr['deleted'] == False:
+                    can_delete = False
+                    break
+                parent_backup = self.db.backup_get(self.context,
+                                                   curr['parent_id'])
+                LOG.debug("Got parent of backup %s as %s" % (curr['id'], curr['parent_id']))
+                backup_list.append(curr)
+                if curr['parent_id'] == backup['id']:
+                    break
+        else:
+            backup_list.append(backup)
+
+        if can_delete == True:
+            self._delete_backups(backup_list)
+        else:
+            self._mark_backups_for_deletion(backup)
+
+        LOG.debug("Delete of backup '%(backup)s' for volume "
+                  "'%(volume)s' finished.",
+                  {'backup': backup['id'], 'volume': backup['volume_id']})
         return
 
 def get_backup_driver(context):
