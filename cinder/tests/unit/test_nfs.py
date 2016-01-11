@@ -1142,15 +1142,15 @@ class NfsDriverDoSetupTestCase(test.TestCase):
             errno.ENOENT, 'No such file or directory.')
 
         with self.assertRaisesRegex(exception.NfsException,
-                                    '/sbin/mount.nfs is not installed'):
+                                    'mount.nfs is not installed'):
             drv.do_setup(self.context)
 
         mock_os_path_exists.assert_has_calls(
             [mock.call(self.configuration.nfs_shares_config)])
         mock_execute.assert_has_calls(
-            [mock.call('/sbin/mount.nfs',
+            [mock.call('mount.nfs',
                        check_exit_code=False,
-                       run_as_root=False)])
+                       run_as_root=True)])
 
     def test_setup_should_throw_exception_if_mount_nfs_command_fails(self):
         """do_setup should throw error if mount.nfs fails with OSError
@@ -1172,9 +1172,9 @@ class NfsDriverDoSetupTestCase(test.TestCase):
         mock_os_path_exists.assert_has_calls(
             [mock.call(self.configuration.nfs_shares_config)])
         mock_execute.assert_has_calls(
-            [mock.call('/sbin/mount.nfs',
+            [mock.call('mount.nfs',
                        check_exit_code=False,
-                       run_as_root=False)])
+                       run_as_root=True)])
 
     @mock.patch.object(os, 'rename')
     def test_update_migrated_available_volume(self, rename_volume):

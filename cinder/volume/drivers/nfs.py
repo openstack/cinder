@@ -142,17 +142,13 @@ class NfsDriver(driver.ExtendVD, remotefs.RemoteFSDriver):
 
         self.shares = {}  # address : options
 
-        # Check if /sbin/mount.nfs is installed on this system;
-        # note that we don't need to be root, to see if the package
-        # is installed.
-        # We rely on the absolute path /sbin/mount.nfs; this seems to be
-        # common on most distributions (SUSE, RedHat, CentOS, Ubuntu, Debian)
-        # and it does not depend on correct PATH of the executing user,
-        # when trying to find the relative binary.
-        package = '/sbin/mount.nfs'
+        # Check if mount.nfs is installed on this system; note that we
+        # need to be root, to also find mount.nfs on distributions, where
+        # it is not located in an unprivileged users PATH (e.g. /sbin).
+        package = 'mount.nfs'
         try:
             self._execute(package, check_exit_code=False,
-                          run_as_root=False)
+                          run_as_root=True)
         except OSError as exc:
             if exc.errno == errno.ENOENT:
                 msg = _('%s is not installed') % package
