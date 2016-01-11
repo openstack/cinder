@@ -1101,8 +1101,11 @@ def volume_create(context, values):
     volume_ref.update(values)
 
     session = get_session()
-    with session.begin():
-        session.add(volume_ref)
+    try:
+        with session.begin():
+            session.add(volume_ref)
+    except db_exc.DBDataError:
+        raise exception.Invalid()
 
     return _volume_get(context, values['id'], session=session)
 
