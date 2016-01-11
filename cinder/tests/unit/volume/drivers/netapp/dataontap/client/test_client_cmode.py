@@ -58,6 +58,20 @@ class NetAppCmodeClientTestCase(test.TestCase):
     def tearDown(self):
         super(NetAppCmodeClientTestCase, self).tearDown()
 
+    def test_has_records(self):
+
+        result = self.client._has_records(netapp_api.NaElement(
+            fake_client.QOS_POLICY_GROUP_GET_ITER_RESPONSE))
+
+        self.assertTrue(result)
+
+    def test_has_records_not_found(self):
+
+        result = self.client._has_records(
+            netapp_api.NaElement(fake_client.NO_RECORDS_RESPONSE))
+
+        self.assertFalse(result)
+
     def test_get_iscsi_target_details_no_targets(self):
         response = netapp_api.NaElement(
             etree.XML("""<results status="passed">
@@ -525,14 +539,67 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
         self.assertEqual(0, self.connection.qos_policy_group_create.call_count)
 
-    def test_provision_qos_policy_group_with_qos_spec(self):
+    def test_provision_qos_policy_group_with_qos_spec_create(self):
 
+        self.mock_object(self.client,
+                         'qos_policy_group_exists',
+                         mock.Mock(return_value=False))
         self.mock_object(self.client, 'qos_policy_group_create')
+        self.mock_object(self.client, 'qos_policy_group_modify')
 
         self.client.provision_qos_policy_group(fake.QOS_POLICY_GROUP_INFO)
 
         self.client.qos_policy_group_create.assert_has_calls([
             mock.call(fake.QOS_POLICY_GROUP_NAME, fake.MAX_THROUGHPUT)])
+        self.assertFalse(self.client.qos_policy_group_modify.called)
+
+    def test_provision_qos_policy_group_with_qos_spec_modify(self):
+
+        self.mock_object(self.client,
+                         'qos_policy_group_exists',
+                         mock.Mock(return_value=True))
+        self.mock_object(self.client, 'qos_policy_group_create')
+        self.mock_object(self.client, 'qos_policy_group_modify')
+
+        self.client.provision_qos_policy_group(fake.QOS_POLICY_GROUP_INFO)
+
+        self.assertFalse(self.client.qos_policy_group_create.called)
+        self.client.qos_policy_group_modify.assert_has_calls([
+            mock.call(fake.QOS_POLICY_GROUP_NAME, fake.MAX_THROUGHPUT)])
+
+    def test_qos_policy_group_exists(self):
+
+        self.mock_send_request.return_value = netapp_api.NaElement(
+            fake_client.QOS_POLICY_GROUP_GET_ITER_RESPONSE)
+
+        result = self.client.qos_policy_group_exists(
+            fake.QOS_POLICY_GROUP_NAME)
+
+        api_args = {
+            'query': {
+                'qos-policy-group-info': {
+                    'policy-group': fake.QOS_POLICY_GROUP_NAME,
+                },
+            },
+            'desired-attributes': {
+                'qos-policy-group-info': {
+                    'policy-group': None,
+                },
+            },
+        }
+        self.mock_send_request.assert_has_calls([
+            mock.call('qos-policy-group-get-iter', api_args, False)])
+        self.assertTrue(result)
+
+    def test_qos_policy_group_exists_not_found(self):
+
+        self.mock_send_request.return_value = netapp_api.NaElement(
+            fake_client.NO_RECORDS_RESPONSE)
+
+        result = self.client.qos_policy_group_exists(
+            fake.QOS_POLICY_GROUP_NAME)
+
+        self.assertFalse(result)
 
     def test_qos_policy_group_create(self):
 
@@ -547,6 +614,19 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
         self.mock_send_request.assert_has_calls([
             mock.call('qos-policy-group-create', api_args, False)])
+
+    def test_qos_policy_group_modify(self):
+
+        api_args = {
+            'policy-group': fake.QOS_POLICY_GROUP_NAME,
+            'max-throughput': fake.MAX_THROUGHPUT,
+        }
+
+        self.client.qos_policy_group_modify(
+            fake.QOS_POLICY_GROUP_NAME, fake.MAX_THROUGHPUT)
+
+        self.mock_send_request.assert_has_calls([
+            mock.call('qos-policy-group-modify', api_args, False)])
 
     def test_qos_policy_group_delete(self):
 

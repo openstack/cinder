@@ -206,8 +206,11 @@ CLONE_DESTINATION = {
     'id': CLONE_DESTINATION_ID,
 }
 
+SNAPSHOT_NAME = 'fake_snapshot_name'
+SNAPSHOT_LUN_HANDLE = 'fake_snapshot_lun_handle'
+
 SNAPSHOT = {
-    'name': 'fake_snapshot_name',
+    'name': SNAPSHOT_NAME,
     'volume_size': SIZE,
     'volume_id': 'fake_volume_id',
 }

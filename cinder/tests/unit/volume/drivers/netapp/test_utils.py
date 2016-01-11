@@ -238,6 +238,19 @@ class NetAppDriverUtilsTestCase(test.TestCase):
 
         self.assertEqual(expected, result)
 
+    def test_map_qos_spec_maxiopspergib(self):
+        qos_spec = {'maxIOPSperGiB': 1000}
+        mock_get_name = self.mock_object(na_utils, 'get_qos_policy_group_name')
+        mock_get_name.return_value = 'fake_qos_policy'
+        expected = {
+            'policy_name': 'fake_qos_policy',
+            'max_throughput': '42000iops',
+        }
+
+        result = na_utils.map_qos_spec(qos_spec, fake.VOLUME)
+
+        self.assertEqual(expected, result)
+
     def test_map_qos_spec_maxbps(self):
         qos_spec = {'maxBPS': 1000000}
         mock_get_name = self.mock_object(na_utils, 'get_qos_policy_group_name')
@@ -245,6 +258,19 @@ class NetAppDriverUtilsTestCase(test.TestCase):
         expected = {
             'policy_name': 'fake_qos_policy',
             'max_throughput': '1000000B/s',
+        }
+
+        result = na_utils.map_qos_spec(qos_spec, fake.VOLUME)
+
+        self.assertEqual(expected, result)
+
+    def test_map_qos_spec_maxbpspergib(self):
+        qos_spec = {'maxBPSperGiB': 100000}
+        mock_get_name = self.mock_object(na_utils, 'get_qos_policy_group_name')
+        mock_get_name.return_value = 'fake_qos_policy'
+        expected = {
+            'policy_name': 'fake_qos_policy',
+            'max_throughput': '4200000B/s',
         }
 
         result = na_utils.map_qos_spec(qos_spec, fake.VOLUME)

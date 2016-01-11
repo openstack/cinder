@@ -384,6 +384,11 @@ class NetAppBlockStorage7modeLibrary(block_base.NetAppBlockStorageLibrary):
         self.vol_refresh_voluntary = True
         LOG.debug('Deleted LUN with name %s', volume['name'])
 
+    def delete_snapshot(self, snapshot):
+        """Driver entry point for deleting a snapshot."""
+        super(NetAppBlockStorage7modeLibrary, self).delete_snapshot(snapshot)
+        self.vol_refresh_voluntary = True
+
     def _is_lun_valid_on_storage(self, lun):
         """Validate LUN specific to storage system."""
         if self.volume_list:
