@@ -29,7 +29,6 @@ from cinder import db
 from cinder import exception
 from cinder.i18n import _, _LI, _LE, _LW
 from cinder.volume import driver
-from cinder.volume.drivers import nexenta
 from cinder.volume.drivers.nexenta.ns5 import jsonrpc
 from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
@@ -71,9 +70,6 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         self.dataset_compression = self.configuration.nexenta_dataset_compression
         self.dataset_deduplication = self.configuration.nexenta_dataset_dedup
         self.dataset_description = self.configuration.nexenta_dataset_description
-        self.rrmgr_compression = self.configuration.nexenta_rrmgr_compression
-        self.rrmgr_tcp_buf_size = self.configuration.nexenta_rrmgr_tcp_buf_size
-        self.rrmgr_connections = self.configuration.nexenta_rrmgr_connections
         self.iscsi_target_portal_port = \
             self.configuration.nexenta_iscsi_target_portal_port
 
@@ -98,11 +94,11 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         data = {
             'name': self.dataset_group,
             'defaultVolumeBlockSize': (
-                self.configuration.nexenta_dataset_blocksize * units.Ki)
+                self.configuration.nexenta_ns5_blocksize * units.Ki)
         }
         try:
             self.nef(url, data)
-        except nexenta.NexentaException as e:
+        except exception.NexentaException as e:
             LOG.debug(e)
         url = 'services/iscsit/enable'
         self.nef(url, method='POST')
@@ -125,7 +121,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         for service in services['data']:
             if service['name'] == 'iscsit':
                 if service['state'] != 'online':
-                    raise nexenta.NexentaException(
+                    raise exception.NexentaException(
                         'iSCSI service is not running on NS appliance')
                 break
 
@@ -167,7 +163,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 self.targets[target_name].append(volume['name'])
             if not(self.targetgroups.get(target_name)):
                 url = 'san/iscsi/targets'
-                data = self.nef(url, data).get('data')
+                data = self.nef(url).get('data')
                 target_alias = data[0]['alias']
                 self.targetgroups[target_name] = target_alias
         elif not(target_names):
@@ -210,8 +206,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             'name': volume['name'],
             'volumeSize': volume['size'] * units.Gi,
             'volumeBlockSize': (
-                self.configuration.nexenta_dataset_blocksize * units.Ki),
-            'sparseVolume': self.configuration.nexenta_dataset_sparse
+                self.configuration.nexenta_ns5_blocksize * units.Ki),
+            'sparseVolume': self.configuration.nexenta_sparsed_volumes
         }
         self.nef(url, data)
 
@@ -229,7 +225,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         }
         try:
             self.nef(url, method='DELETE')
-        except nexenta.NexentaException as exc:
+        except exception.NexentaException as exc:
             # We assume that volume is gone
             LOG.warning(_LW('Got error trying to delete volume %(volume)s,'
                             ' assuming it is already gone: %(exc)s'),
@@ -258,18 +254,18 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :param snapshot: snapshot reference
         """
         snapshot_vol = self._get_snapshot_volume(snapshot)
-        LOG.info(_LI('Creating snapshot %(snap)s of volume %(vol)s') % {
+        LOG.info(_LI('Creating snapshot %(snap)s of volume %(vol)s'), {
             'snap': snapshot['name'],
             'vol': snapshot_vol['name']
         })
         volume_path = self._get_volume_path(snapshot_vol)
         pool, group, volume = volume_path.split('/')
-        url = 'storage/pools/%(pool)s/datasetGroups/%(group)s/' \
-              'volumes/%(volume)s/snapshots' % {
-                  'pool': pool,
-                  'group': group,
-                  'volume': snapshot_vol['name']
-              }
+        url = ('storage/pools/%(pool)s/datasetGroups/%(group)s/'
+               'volumes/%(volume)s/snapshots') % {
+            'pool': pool,
+            'group': group,
+            'volume': snapshot_vol['name']
+        }
         self.nef(url, {'name': snapshot['name']})
 
     def delete_snapshot(self, snapshot):
@@ -277,7 +273,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
         :param snapshot: snapshot reference
         """
-        LOG.info(_LI('Deleting snapshot: %s') % snapshot['name'])
+        LOG.info(_LI('Deleting snapshot: %s'), snapshot['name'])
         snapshot_vol = self._get_snapshot_volume(snapshot)
         volume_path = self._get_volume_path(snapshot_vol)
         pool, group, volume = volume_path.split('/')
@@ -290,10 +286,10 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         }
         try:
             self.nef(url, method='DELETE')
-        except nexenta.NexentaException as exc:
+        except exception.NexentaException as exc:
             if 'EBUSY' is exc:
                 LOG.warning(_LW(
-                    'Could not delete snapshot %s - it has dependencies') %
+                    'Could not delete snapshot %s - it has dependencies'),
                     snapshot['name'])
 
     def create_volume_from_snapshot(self, volume, snapshot):
@@ -302,7 +298,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :param volume: reference of volume to be created
         :param snapshot: reference of source snapshot
         """
-        LOG.info(_LI('Creating volume from snapshot: %s') % snapshot['name'])
+        LOG.info(_LI('Creating volume from snapshot: %s'), snapshot['name'])
         snapshot_vol = self._get_snapshot_volume(snapshot)
         volume_path = self._get_volume_path(snapshot_vol)
         pool, group, snapshot_vol = volume_path.split('/')
@@ -334,12 +330,12 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         self.create_snapshot(snapshot)
         try:
             self.create_volume_from_snapshot(volume, snapshot)
-        except nexenta.NexentaException:
+        except exception.NexentaException:
             LOG.error(_LE('Volume creation failed, deleting created snapshot '
                           '%(volume_name)s@%(name)s'), snapshot)
             try:
                 self.delete_snapshot(snapshot)
-            except (nexenta.NexentaException, exception.SnapshotIsBusy):
+            except (exception.NexentaException, exception.SnapshotIsBusy):
                 LOG.warning(_LW('Failed to delete zfs snapshot '
                                 '%(volume_name)s@%(name)s'), snapshot)
             raise
@@ -463,7 +459,6 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
         :param volume: reference of volume to be unexported
         """
-        volume_path = self._get_volume_path(volume)
         try:
             lun_id = self._get_lun_id(volume)
         except LookupError:
