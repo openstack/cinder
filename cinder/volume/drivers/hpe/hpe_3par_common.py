@@ -223,10 +223,11 @@ class HPE3PARCommon(object):
         3.0.7 - Enable standard capabilities based on 3PAR licenses
         3.0.8 - Optimize array ID retrieval
         3.0.9 - Bump minimum API version for volume replication
+        3.0.10 - Added additional volumes checks to the manage snapshot API
 
     """
 
-    VERSION = "3.0.9"
+    VERSION = "3.0.10"
 
     stats = {}
 
@@ -793,6 +794,15 @@ class HPE3PARCommon(object):
         existing_ref is a dictionary of the form:
         {'source-name': <name of the snapshot>}
         """
+        # Potential parent volume for the snapshot
+        volume = snapshot['volume']
+
+        # Do not allow for managing of snapshots for 'failed-over' volumes.
+        if volume.get('replication_status') == 'failed-over':
+            err = (_("Managing of snapshots to failed-over volumes is "
+                     "not allowed."))
+            raise exception.InvalidInput(reason=err)
+
         target_snap_name = self._get_existing_volume_ref_name(existing_ref,
                                                               is_snapshot=True)
 
@@ -806,7 +816,7 @@ class HPE3PARCommon(object):
             raise exception.InvalidInput(reason=err)
 
         # Make sure the snapshot is being associated with the correct volume.
-        parent_vol_name = self._get_3par_vol_name(snapshot['volume_id'])
+        parent_vol_name = self._get_3par_vol_name(volume['id'])
         if parent_vol_name != snap['copyOf']:
             err = (_("The provided snapshot '%s' is not a snapshot of "
                      "the provided volume.") % target_snap_name)
@@ -830,8 +840,8 @@ class HPE3PARCommon(object):
 
         # Generate the new snapshot information based on the new ID.
         new_snap_name = self._get_3par_snap_name(snapshot['id'])
-        new_comment['volume_id'] = snapshot['id']
-        new_comment['volume_name'] = 'volume-' + snapshot['id']
+        new_comment['volume_id'] = volume['id']
+        new_comment['volume_name'] = 'volume-' + volume['id']
         if snapshot.get('display_description', None):
             new_comment['description'] = snapshot['display_description']
         else:
@@ -923,6 +933,18 @@ class HPE3PARCommon(object):
 
     def unmanage_snapshot(self, snapshot):
         """Removes the specified snapshot from Cinder management."""
+        # Parent volume for the snapshot
+        volume = snapshot['volume']
+
+        # Do not allow unmanaging of snapshots from 'failed-over' volumes.
+        if volume.get('replication_status') == 'failed-over':
+            err = (_("Unmanaging of snapshots from failed-over volumes is "
+                     "not allowed."))
+            LOG.error(err)
+            # TODO(leeantho) Change this exception to Invalid when the volume
+            # manager supports handling that.
+            raise exception.SnapshotIsBusy(snapshot_name=snapshot['id'])
+
         # Rename the snapshots's name to ums-* format so that it can be
         # easily found later.
         snap_name = self._get_3par_snap_name(snapshot['id'])
