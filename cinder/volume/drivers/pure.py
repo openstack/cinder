@@ -30,7 +30,6 @@ from oslo_utils import units
 from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder import objects
 from cinder.objects import fields
 from cinder import utils
 from cinder.volume import driver
@@ -483,15 +482,17 @@ class PureBaseVolumeDriver(san.SanDriver):
                     LOG.warning(_LW("Unable to delete Protection Group: %s"),
                                 err.text)
 
-        volumes = self.db.volume_get_all_by_group(context, group.id)
-
+        volume_updates = []
         for volume in volumes:
             self.delete_volume(volume)
-            volume.status = 'deleted'
+            volume_updates.append({
+                'id': volume.id,
+                'status': 'deleted'
+            })
 
         model_update = {'status': group['status']}
 
-        return model_update, volumes
+        return model_update, volume_updates
 
     @log_debug_trace
     def update_consistencygroup(self, context, group,
@@ -522,15 +523,16 @@ class PureBaseVolumeDriver(san.SanDriver):
         pgsnap_suffix = self._get_pgroup_snap_suffix(cgsnapshot)
         self._array.create_pgroup_snapshot(pgroup_name, suffix=pgsnap_suffix)
 
-        snapshots = objects.SnapshotList().get_all_for_cgsnapshot(
-            context, cgsnapshot.id)
-
+        snapshot_updates = []
         for snapshot in snapshots:
-            snapshot.status = 'available'
+            snapshot_updates.append({
+                'id': snapshot.id,
+                'status': 'available'
+            })
 
         model_update = {'status': 'available'}
 
-        return model_update, snapshots
+        return model_update, snapshot_updates
 
     def _delete_pgsnapshot(self, pgsnap_name):
         try:
@@ -555,15 +557,16 @@ class PureBaseVolumeDriver(san.SanDriver):
         pgsnap_name = self._get_pgroup_snap_name(cgsnapshot)
         self._delete_pgsnapshot(pgsnap_name)
 
-        snapshots = objects.SnapshotList.get_all_for_cgsnapshot(
-            context, cgsnapshot.id)
-
+        snapshot_updates = []
         for snapshot in snapshots:
-            snapshot.status = 'deleted'
+            snapshot_updates.append({
+                'id': snapshot.id,
+                'status': 'deleted',
+            })
 
         model_update = {'status': cgsnapshot.status}
 
-        return model_update, snapshots
+        return model_update, snapshot_updates
 
     def _validate_manage_existing_ref(self, existing_ref, is_snap=False):
         """Ensure that an existing_ref is valid and return volume info
