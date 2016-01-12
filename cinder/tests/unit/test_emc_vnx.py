@@ -17,6 +17,7 @@ import json
 import os
 import re
 
+import eventlet
 import mock
 from oslo_concurrency import processutils
 import six
@@ -64,6 +65,7 @@ class EMCVNXCLIDriverTestData(object):
     base_lun_name = 'volume-1'
     replication_metadata = {'host': 'host@backendsec#unit_test_pool',
                             'system': 'fake_serial'}
+    fake_wwn = 'fake_wwn'
     test_volume = {
         'status': 'creating',
         'name': 'volume-1',
@@ -585,6 +587,10 @@ class EMCVNXCLIDriverTestData(object):
     NDU_LIST_RESULT_WO_LICENSE = (
         "Name of the software package:   -Unisphere ",
         0)
+
+    LUN_NOT_IN_MIGRATING = (
+        'The specified source LUN is not currently migrating', 23)
+
     MIGRATE_PROPERTY_MIGRATING = """\
         Source LU Name:  volume-f6247ae1-8e1c-4927-aa7e-7f8e272e5c3d
         Source LU ID:  63950
@@ -616,9 +622,12 @@ class EMCVNXCLIDriverTestData(object):
         Tiering Policy:  Auto Tier
         Initial Tier:  Highest Available
     """
-    LIST_LUN_1_ALL = """
-        LOGICAL UNIT NUMBER 1
+
+    def LIST_LUN_1_ALL(self, lun_id=1, wwn=fake_wwn):
+        return ("""
+        LOGICAL UNIT NUMBER %(lun_id)s
         Name:  os-044e89e9-3aeb-46eb-a1b0-946f0a13545c
+        UID: %(wwn)s
         Current Owner:  SP A
         User Capacity (Blocks):  46137344
         User Capacity (GBs):  1.000
@@ -638,7 +647,7 @@ class EMCVNXCLIDriverTestData(object):
         Tiering Policy:  Auto Tier
         Initial Tier:  Highest Available
         Attached Snapshot:  N/A
-    """
+    """ % {'lun_id': lun_id, 'wwn': wwn}, 0)
 
     def SNAP_MP_CREATE_CMD(self, name='volume-1', source='volume-1'):
         return ('lun', '-create', '-type', 'snap', '-primaryLunName',
@@ -676,7 +685,12 @@ class EMCVNXCLIDriverTestData(object):
     def LUN_PROPERTY_ALL_CMD(self, lunname):
         return ('lun', '-list', '-name', lunname,
                 '-state', '-status', '-opDetails', '-userCap', '-owner',
-                '-attachedSnapshot')
+                '-attachedSnapshot', '-uid')
+
+    def LUN_PROPERTY_BY_ID(self, lun_id):
+        return ('lun', '-list', '-l', lun_id,
+                '-state', '-status', '-opDetails', '-userCap', '-owner',
+                '-attachedSnapshot', '-uid')
 
     @staticmethod
     def LUN_RENAME_CMD(lun_id, lun_name):
@@ -690,13 +704,15 @@ class EMCVNXCLIDriverTestData(object):
                 '-dedupState', '-initialTier',
                 '-isCompressed', '-isThinLUN',
                 '-opDetails', '-owner', '-poolName',
-                '-state', '-status', '-tieringPolicy')
+                '-state', '-status', '-tieringPolicy',
+                '-uid')
 
     @staticmethod
     def LUN_LIST_SPECS_CMD(lun_id):
         return ('lun', '-list', '-l', int(lun_id),
                 '-poolName', '-isThinLUN', '-isCompressed',
-                '-dedupState', '-initialTier', '-tieringPolicy')
+                '-dedupState', '-initialTier', '-tieringPolicy',
+                '-uid')
 
     @staticmethod
     def LUN_MODIFY_TIER(lun_id, tier=None, policy=None):
@@ -1218,11 +1234,12 @@ IP Address:  192.168.4.53
 
     def LUN_PROPERTY(self, name, is_thin=False, has_snap=False, size=1,
                      state='Ready', faulted='false', operation='None',
-                     lunid=1, pool_name='unit_test_pool'):
+                     lunid=1, pool_name='unit_test_pool',
+                     wwn='fake_wwn'):
         return ("""
                LOGICAL UNIT NUMBER %(lunid)s
                Name:  %(name)s
-               UID:  60:06:01:60:09:20:32:00:13:DF:B4:EF:C2:63:E3:11
+               UID:  %(wwn)s
                Current Owner:  SP A
                Default Owner:  SP A
                Allocation Owner:  SP A
@@ -1249,7 +1266,8 @@ IP Address:  192.168.4.53
             'state': state,
             'faulted': faulted,
             'operation': operation,
-            'is_thin': 'Yes' if is_thin else 'No'}, 0)
+            'is_thin': 'Yes' if is_thin else 'No',
+            'wwn': wwn}, 0)
 
     def STORAGE_GROUP_ISCSI_FC_HBA(self, sgname):
 
@@ -1543,6 +1561,7 @@ class DriverTestCaseBase(test.TestCase):
                                            'unit_test_pool',
                                            'volume_backend_name':
                                            'namedbackend'}))
+        self.stubs.Set(eventlet, 'sleep', mock.Mock())
         self.testData = EMCVNXCLIDriverTestData()
 
         self.navisecclicmd = '/opt/Navisphere/bin/naviseccli ' + \
@@ -1624,12 +1643,14 @@ class DriverTestCaseBase(test.TestCase):
 
 @ddt.ddt
 class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
+    def setUp(self):
+        super(EMCVNXCLIDriverISCSITestCase, self).setUp()
+
     def generate_driver(self, conf):
         return emc_cli_iscsi.EMCCLIISCSIDriver(configuration=conf)
 
-    @mock.patch(
-        "eventlet.event.Event.wait",
-        mock.Mock(return_value=None))
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=utils.ZeroIntervalLoopingCall)
     def test_create_destroy_volume_without_extra_spec(self):
         fake_cli = self.driverSetup()
         self.driver.create_volume(self.testData.test_volume)
@@ -1641,13 +1662,14 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
                 'thick', None, poll=False)),
             mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
                       poll=False),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
+                      poll=False),
             mock.call(*self.testData.LUN_DELETE_CMD('volume-1'))]
 
         fake_cli.assert_has_calls(expect_cmd)
 
-    @mock.patch(
-        "eventlet.event.Event.wait",
-        mock.Mock(return_value=None))
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=utils.ZeroIntervalLoopingCall)
     def test_create_volume_ignore_thresholds(self):
         self.configuration.ignore_pool_full_threshold = True
         fake_cli = self.driverSetup()
@@ -1659,13 +1681,14 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
                 'thick', None,
                 ignore_thresholds=True, poll=False)),
             mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
+                      poll=False),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
                       poll=False)]
 
         fake_cli.assert_has_calls(expect_cmd)
 
-    @mock.patch(
-        "eventlet.event.Event.wait",
-        mock.Mock(return_value=None))
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=utils.ZeroIntervalLoopingCall)
     @mock.patch(
         "cinder.volume.volume_types."
         "get_volume_type_extra_specs",
@@ -1690,6 +1713,8 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
                 'volume-1', 1,
                 'unit_test_pool',
                 'compressed', None, poll=False)),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
+                'volume-1'), poll=False),
             mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
                 'volume-1'), poll=False),
             mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
@@ -1757,9 +1782,8 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
                 'volume-1'), poll=False)]
         fake_cli.assert_has_calls(expect_cmd)
 
-    @mock.patch(
-        "eventlet.event.Event.wait",
-        mock.Mock(return_value=None))
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=utils.ZeroIntervalLoopingCall)
     @mock.patch(
         "cinder.volume.volume_types."
         "get_volume_type_extra_specs",
@@ -1789,14 +1813,15 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
             mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
                 'volume-1'), poll=False),
             mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
+                'volume-1'), poll=False),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
                 'volume-1'), poll=True),
             mock.call(*self.testData.ENABLE_COMPRESSION_CMD(
                 1))]
         fake_cli.assert_has_calls(expect_cmd)
 
-    @mock.patch(
-        "eventlet.event.Event.wait",
-        mock.Mock(return_value=None))
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=utils.ZeroIntervalLoopingCall)
     @mock.patch(
         "cinder.volume.volume_types."
         "get_volume_type_extra_specs",
@@ -1824,9 +1849,8 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
                 'deduplicated', None, poll=False))]
         fake_cli.assert_has_calls(expect_cmd)
 
-    @mock.patch(
-        "eventlet.event.Event.wait",
-        mock.Mock(return_value=None))
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=utils.ZeroIntervalLoopingCall)
     @mock.patch(
         "cinder.volume.volume_types."
         "get_volume_type_extra_specs",
@@ -1989,7 +2013,8 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
 
     @mock.patch("cinder.volume.drivers.emc.emc_vnx_cli."
                 "CommandLineHelper.create_lun_by_cmd",
-                mock.Mock(return_value={'lun_id': 1}))
+                mock.Mock(return_value={'lun_id': 1,
+                                        'wwn': 'fake_wwn'}))
     @mock.patch(
         "cinder.volume.drivers.emc.emc_vnx_cli.EMCVnxCliBase.get_lun_id",
         mock.Mock(
@@ -2002,7 +2027,6 @@ A network error occurred while trying to connect: '10.244.213.142'.
 Message : Error occurred because connection refused. \
 Unable to establish a secure connection to the Management Server.
 """
-        FAKE_ERROR_MSG = FAKE_ERROR_MSG.replace('\n', ' ')
         FAKE_MIGRATE_PROPERTY = """\
 Source LU Name:  volume-f6247ae1-8e1c-4927-aa7e-7f8e272e5c3d
 Source LU ID:  63950
@@ -2032,15 +2056,19 @@ Time Remaining:  0 second(s)
                       mock.call(*self.testData.MIGRATION_VERIFY_CMD(1),
                                 poll=True),
                       mock.call(*self.testData.MIGRATION_VERIFY_CMD(1),
-                                poll=True),
+                                poll=False),
                       mock.call(*self.testData.MIGRATION_VERIFY_CMD(1),
-                                poll=False)]
+                                poll=False),
+                      mock.call(*self.testData.LUN_PROPERTY_BY_ID(1),
+                                poll=True)]
         fake_cli.assert_has_calls(expect_cmd)
 
     @mock.patch("cinder.volume.drivers.emc.emc_vnx_cli."
                 "CommandLineHelper.create_lun_by_cmd",
                 mock.Mock(
-                    return_value={'lun_id': 1}))
+                    return_value={'lun_id': 1, 'state': 'Ready',
+                                  'operation': 'None',
+                                  'wwn': 'fake_wwn'}))
     @mock.patch(
         "cinder.volume.drivers.emc.emc_vnx_cli.EMCVnxCliBase.get_lun_id",
         mock.Mock(
@@ -2082,8 +2110,8 @@ Time Remaining:  0 second(s)
 
     @mock.patch("cinder.volume.drivers.emc.emc_vnx_cli."
                 "CommandLineHelper.create_lun_by_cmd",
-                mock.Mock(
-                    return_value={'lun_id': 1}))
+                mock.Mock(return_value={'lun_id': 1,
+                                        'wwn': 'fake_wwn'}))
     @mock.patch(
         "cinder.volume.drivers.emc.emc_vnx_cli.EMCVnxCliBase.get_lun_id",
         mock.Mock(
@@ -2128,7 +2156,9 @@ Time Remaining:  0 second(s)
     @mock.patch("cinder.volume.drivers.emc.emc_vnx_cli."
                 "CommandLineHelper.create_lun_by_cmd",
                 mock.Mock(
-                    return_value={'lun_id': 5}))
+                    return_value={'lun_id': 5, 'state': 'Ready',
+                                  'operation': 'None',
+                                  'wwn': 'fake_wwn'}))
     @mock.patch(
         "cinder.volume.volume_types."
         "get_volume_type_extra_specs",
@@ -2171,21 +2201,30 @@ Time Remaining:  0 second(s)
     @mock.patch("cinder.volume.drivers.emc.emc_vnx_cli."
                 "CommandLineHelper.create_lun_by_cmd",
                 mock.Mock(
-                    return_value={'lun_id': 1}))
+                    return_value={'lun_id': 1, 'state': 'Ready',
+                                  'operation': 'None',
+                                  'wwn': 'fake_wwn'}))
     @mock.patch(
         "cinder.volume.drivers.emc.emc_vnx_cli.EMCVnxCliBase.get_lun_id",
         mock.Mock(
             side_effect=[1, 1]))
     def test_volume_migration_failed(self):
-        commands = [self.testData.MIGRATION_CMD()]
-        results = [FAKE_ERROR_RETURN]
+        commands = [self.testData.MIGRATION_CMD(),
+                    self.testData.MIGRATION_VERIFY_CMD(1),
+                    self.testData.LUN_PROPERTY_BY_ID(1)]
+        results = [FAKE_ERROR_RETURN,
+                   ('The specified source LUN is not currently migrating',
+                    23),
+                   self.testData.LIST_LUN_1_ALL(1, 'fake_wwn')]
         fake_cli = self.driverSetup(commands, results)
         fakehost = {'capabilities': {'location_info':
                                      'unit_test_pool2|fake_serial',
                                      'storage_protocol': 'iSCSI'}}
-        ret = self.driver.migrate_volume(None, self.testData.test_volume,
-                                         fakehost)[0]
-        self.assertFalse(ret)
+        self.assertRaisesRegex(exception.EMCVnxCLICmdError,
+                               r'LUN is not currently migrating',
+                               self.driver.migrate_volume,
+                               None, self.testData.test_volume,
+                               fakehost)
         # verification
         expect_cmd = [mock.call(*self.testData.MIGRATION_CMD(),
                                 retry_disable=True,
@@ -2195,7 +2234,43 @@ Time Remaining:  0 second(s)
     @mock.patch("cinder.volume.drivers.emc.emc_vnx_cli."
                 "CommandLineHelper.create_lun_by_cmd",
                 mock.Mock(
-                    return_value={'lun_id': 1}))
+                    return_value={'lun_id': 1, 'state': 'Ready',
+                                  'operation': 'None',
+                                  'wwn': 'fake_wwn'}))
+    @mock.patch(
+        "cinder.volume.drivers.emc.emc_vnx_cli.EMCVnxCliBase.get_lun_id",
+        mock.Mock(
+            side_effect=[1, 1]))
+    def test_volume_migration_sp_down_success(self):
+        FAKE_ERROR_MSG = """\
+Error occurred during HTTP request/response from the target: '10.244.213.142'.
+Message : HTTP/1.1 503 Service Unavailable"""
+        commands = [self.testData.MIGRATION_CMD(),
+                    self.testData.MIGRATION_VERIFY_CMD(1),
+                    self.testData.LUN_PROPERTY_BY_ID(1)]
+        results = [(FAKE_ERROR_MSG, 255),
+                   ('The specified source LUN is not '
+                    'currently migrating', 23),
+                   self.testData.LIST_LUN_1_ALL(wwn='new_wwn')]
+        fake_cli = self.driverSetup(commands, results)
+        fakehost = {'capabilities': {'location_info':
+                                     'unit_test_pool2|fake_serial',
+                                     'storage_protocol': 'iSCSI'}}
+        ret = self.driver.migrate_volume(None, self.testData.test_volume,
+                                         fakehost)[0]
+        self.assertTrue(ret)
+        # verification
+        expect_cmd = [mock.call(*self.testData.MIGRATION_CMD(),
+                                retry_disable=True,
+                                poll=True)]
+        fake_cli.assert_has_calls(expect_cmd)
+
+    @mock.patch("cinder.volume.drivers.emc.emc_vnx_cli."
+                "CommandLineHelper.create_lun_by_cmd",
+                mock.Mock(
+                    return_value={'lun_id': 1, 'state': 'Ready',
+                                  'operation': 'None',
+                                  'wwn': 'fake_wwn'}))
     @mock.patch(
         "cinder.volume.drivers.emc.emc_vnx_cli.EMCVnxCliBase.get_lun_id",
         mock.Mock(
@@ -2237,7 +2312,9 @@ Time Remaining:  0 second(s)
     @mock.patch("cinder.volume.drivers.emc.emc_vnx_cli."
                 "CommandLineHelper.create_lun_by_cmd",
                 mock.Mock(
-                    return_value={'lun_id': 1}))
+                    return_value={'lun_id': 1, 'state': 'Ready',
+                                  'operation': 'None',
+                                  'wwn': 'fake_wwn'}))
     @mock.patch(
         "cinder.volume.drivers.emc.emc_vnx_cli.EMCVnxCliBase.get_lun_id",
         mock.Mock(
@@ -2287,6 +2364,8 @@ Time Remaining:  0 second(s)
                                 poll=True),
                       mock.call(*self.testData.MIGRATION_VERIFY_CMD(1),
                                 poll=False),
+                      mock.call(*self.testData.LUN_PROPERTY_BY_ID(1),
+                                poll=True),
                       mock.call(*self.testData.SNAP_DELETE_CMD(tmp_snap),
                                 poll=True)]
         fake_cli.assert_has_calls(expect_cmd)
@@ -2943,9 +3022,6 @@ Time Remaining:  0 second(s)
                       poll=True),
             mock.call(*self.testData.MIGRATION_VERIFY_CMD(1),
                       poll=True),
-            mock.call(*self.testData.MIGRATION_CANCEL_CMD(1)),
-            mock.call(*self.testData.MIGRATION_VERIFY_CMD(1),
-                      poll=False),
             mock.call(*self.testData.LUN_DELETE_CMD(
                       build_migration_dest_name('volume-2'))),
             mock.call(*cmd_detach_lun),
@@ -2957,17 +3033,21 @@ Time Remaining:  0 second(s)
             build_migration_dest_name('vol2'))
         output_dest = self.testData.LUN_PROPERTY(
             build_migration_dest_name('vol2'))
+        output_not_migrating = self.testData.LUN_NOT_IN_MIGRATING
         cmd_migrate = self.testData.MIGRATION_CMD(1, 1)
+        cmd_verify = self.testData.MIGRATION_VERIFY_CMD(1)
         cmd_detach_lun = ('lun', '-detach', '-name', 'volume-2', '-o')
-        commands = [cmd_dest, cmd_migrate]
-        results = [output_dest, FAKE_ERROR_RETURN]
+        commands = [cmd_dest, cmd_migrate, cmd_verify,
+                    self.testData.LUN_PROPERTY_BY_ID(1)]
+        results = [output_dest, FAKE_ERROR_RETURN, output_not_migrating,
+                   self.testData.LIST_LUN_1_ALL(1)]
         fake_cli = self.driverSetup(commands, results)
-
+        src_vol = self.testData.test_volume2
         test_snapshot = EMCVNXCLIDriverTestData.convert_snapshot(
             self.testData.test_snapshot)
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_volume_from_snapshot,
-                          self.testData.test_volume2,
+                          src_vol,
                           test_snapshot)
         expect_cmd = [
             mock.call(*self.testData.SNAP_MP_CREATE_CMD(
@@ -2988,6 +3068,8 @@ Time Remaining:  0 second(s)
             mock.call(*self.testData.MIGRATION_CMD(1, 1),
                       poll=True,
                       retry_disable=True),
+            mock.call(*self.testData.MIGRATION_VERIFY_CMD(1), poll=True),
+            mock.call(*self.testData.LUN_PROPERTY_BY_ID(1), poll=True),
             mock.call(*self.testData.LUN_DELETE_CMD(
                       build_migration_dest_name('volume-2'))),
             mock.call(*cmd_detach_lun),
@@ -3045,6 +3127,8 @@ Time Remaining:  0 second(s)
                       poll=True,
                       retry_disable=True),
             mock.call(*self.testData.MIGRATION_VERIFY_CMD(1),
+                      poll=True),
+            mock.call(*self.testData.LUN_PROPERTY_BY_ID(1),
                       poll=True),
             mock.call(*self.testData.SNAP_DELETE_CMD(tmp_snap),
                       poll=True)]
@@ -3163,12 +3247,13 @@ Time Remaining:  0 second(s)
                               poll=True)]
         fake_cli.assert_has_calls(expected)
 
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=utils.ZeroIntervalLoopingCall)
     def test_extend_volume(self):
         commands = [self.testData.LUN_PROPERTY_ALL_CMD('volume-1')]
         results = [self.testData.LUN_PROPERTY('volume-1', size=2)]
         fake_cli = self.driverSetup(commands, results)
 
-        # case
         self.driver.extend_volume(self.testData.test_volume, 2)
         expected = [mock.call(*self.testData.LUN_EXTEND_CMD('volume-1', 2),
                               poll=False),
@@ -3252,7 +3337,7 @@ Time Remaining:  0 second(s)
         lun_list_cmd = data.LUN_LIST_ALL_CMD(test_volume['id'])
 
         commands = (lun_rename_cmd, lun_list_cmd)
-        results = (SUCCEED, (data.LIST_LUN_1_ALL, 0))
+        results = (SUCCEED, data.LIST_LUN_1_ALL())
 
         self.configuration.storage_vnx_pool_name = (
             self.testData.test_pool_name)
@@ -3275,7 +3360,7 @@ Time Remaining:  0 second(s)
         lun_list_cmd = data.LUN_LIST_ALL_CMD(test_volume['id'])
 
         commands = (lun_rename_cmd, lun_list_cmd)
-        results = (SUCCEED, (data.LIST_LUN_1_ALL, 0))
+        results = (SUCCEED, data.LIST_LUN_1_ALL())
 
         fake_cli = self.driverSetup(commands, results)
         self.driver.manage_existing(
@@ -3330,7 +3415,7 @@ Time Remaining:  0 second(s)
                           'is not currently migrating', 23)
         lun3_status = data.LUN_PROPERTY(new_lun_name, lunid=3)
         lun1_status = data.LUN_PROPERTY(test_volume['name'], lunid=1)
-        results = ((data.LIST_LUN_1_ALL, 0),
+        results = (data.LIST_LUN_1_ALL(),
                    ('no snap', 1023),
                    cmd_success,
                    lun3_status,
@@ -3354,6 +3439,8 @@ Time Remaining:  0 second(s)
                     mock.call(*compression_cmd),
                     mock.call(*migration_cmd, poll=True, retry_disable=True),
                     mock.call(*migration_verify_cmd, poll=True),
+                    mock.call(*self.testData.LUN_PROPERTY_BY_ID(
+                        3), poll=True),
                     mock.call(*lun_rename_cmd, poll=False)]
         fake_cli.assert_has_calls(expected)
 
@@ -3381,7 +3468,7 @@ Time Remaining:  0 second(s)
         cmd_success = ('', 0)
 
         results = (cmd_success,
-                   (data.LIST_LUN_1_ALL, 0),
+                   data.LIST_LUN_1_ALL(),
                    cmd_success)
         fake_cli = self.driverSetup(commands, results)
         self.driver.manage_existing(
@@ -3451,9 +3538,14 @@ Time Remaining:  0 second(s)
     @mock.patch(
         "cinder.volume.drivers.emc.emc_vnx_cli.EMCVnxCliBase.get_lun_id",
         mock.Mock(return_value=1))
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=utils.ZeroIntervalLoopingCall)
     @mock.patch(
-        "eventlet.event.Event.wait",
-        mock.Mock(return_value=None))
+        "cinder.volume.drivers.emc.emc_vnx_cli.CommandLineHelper." +
+        "get_lun_by_name",
+        mock.Mock(return_value={'lun_id': 1, 'state': 'Ready',
+                                'operation': 'None',
+                                'wwn': 'fake_wwn'}))
     @mock.patch(
         "time.time",
         mock.Mock(return_value=123456))
@@ -3485,10 +3577,12 @@ Time Remaining:  0 second(s)
                                  'is not currently migrating', 23)
         commands = [self.testData.NDU_LIST_CMD,
                     self.testData.SNAP_LIST_CMD(),
-                    cmd_migrate_verify]
+                    cmd_migrate_verify,
+                    self.testData.LUN_PROPERTY_BY_ID(1)]
         results = [self.testData.NDU_LIST_RESULT,
                    ('No snap', 1023),
-                   output_migrate_verify]
+                   output_migrate_verify,
+                   self.testData.LIST_LUN_1_ALL(1, 'new_wwn')]
         fake_cli1 = self.driverSetup(commands, results)
         self.driver.cli.enablers = ['-Compression',
                                     '-Deduplication',
@@ -3496,7 +3590,8 @@ Time Remaining:  0 second(s)
                                     '-FAST']
         emc_vnx_cli.CommandLineHelper.get_array_serial = mock.Mock(
             return_value={'array_serial': "FNM00124500890"})
-        self.driver.retype(None, self.testData.test_volume3,
+        src_vol = self.testData.test_volume3
+        self.driver.retype(None, src_vol,
                            new_type_data,
                            diff_data,
                            host_test_data)
@@ -3504,10 +3599,12 @@ Time Remaining:  0 second(s)
             mock.call(*self.testData.SNAP_LIST_CMD(), poll=False),
             mock.call(*self.testData.LUN_CREATION_CMD(
                 'volume-3-123456', 2, 'unit_test_pool', 'deduplicated', None)),
-            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('volume-3-123456'),
-                      poll=False),
-            mock.call(*self.testData.MIGRATION_CMD(1, None),
+            mock.call(*self.testData.MIGRATION_CMD(1, 1),
                       retry_disable=True,
+                      poll=True),
+            mock.call(*self.testData.MIGRATION_VERIFY_CMD(1),
+                      poll=True),
+            mock.call(*self.testData.LUN_PROPERTY_BY_ID(1),
                       poll=True)]
         fake_cli1.assert_has_calls(expect_cmd1)
 
@@ -3537,9 +3634,8 @@ Time Remaining:  0 second(s)
         "cinder.volume.drivers.emc.emc_vnx_cli.CommandLineHelper." +
         "get_lun_by_name",
         mock.Mock(return_value={'lun_id': 1}))
-    @mock.patch(
-        "eventlet.event.Event.wait",
-        mock.Mock(return_value=None))
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=utils.ZeroIntervalLoopingCall)
     @mock.patch(
         "time.time",
         mock.Mock(return_value=123456))
@@ -3595,9 +3691,8 @@ Time Remaining:  0 second(s)
         "cinder.volume.drivers.emc.emc_vnx_cli.CommandLineHelper." +
         "get_lun_by_name",
         mock.Mock(return_value={'lun_id': 1}))
-    @mock.patch(
-        "eventlet.event.Event.wait",
-        mock.Mock(return_value=None))
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=utils.ZeroIntervalLoopingCall)
     @mock.patch(
         "time.time",
         mock.Mock(return_value=123456))
@@ -3642,10 +3737,11 @@ Time Remaining:  0 second(s)
     @mock.patch(
         "cinder.volume.drivers.emc.emc_vnx_cli.CommandLineHelper." +
         "get_lun_by_name",
-        mock.Mock(return_value={'lun_id': 1}))
-    @mock.patch(
-        "eventlet.event.Event.wait",
-        mock.Mock(return_value=None))
+        mock.Mock(return_value={'lun_id': 1, 'state': 'Ready',
+                                'operation': 'None',
+                                'wwn': 'fake_wwn'}))
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=utils.ZeroIntervalLoopingCall)
     @mock.patch(
         "time.time",
         mock.Mock(return_value=123456))
@@ -3686,10 +3782,12 @@ Time Remaining:  0 second(s)
 
         commands = [self.testData.NDU_LIST_CMD,
                     self.testData.SNAP_LIST_CMD(),
-                    self.testData.MIGRATION_VERIFY_CMD(1)]
+                    self.testData.MIGRATION_VERIFY_CMD(1),
+                    self.testData.LUN_PROPERTY_BY_ID(1)]
         results = [self.testData.NDU_LIST_RESULT,
                    ('No snap', 1023),
-                   ('The specified source LUN is not currently migrating', 23)]
+                   ('The specified source LUN is not currently migrating', 23),
+                   self.testData.LIST_LUN_1_ALL(1, 'new_wwn')]
         fake_cli = self.driverSetup(commands, results)
         self.driver.cli.enablers = ['-Compression',
                                     '-Deduplication',
@@ -3697,8 +3795,8 @@ Time Remaining:  0 second(s)
                                     '-FAST']
         emc_vnx_cli.CommandLineHelper.get_array_serial = mock.Mock(
             return_value={'array_serial': "FNM00124500890"})
-
-        self.driver.retype(None, self.testData.test_volume3,
+        src_vol = self.testData.test_volume3
+        self.driver.retype(None, src_vol,
                            new_type_data,
                            diff_data,
                            host_test_data)
@@ -3712,6 +3810,8 @@ Time Remaining:  0 second(s)
                       retry_disable=True,
                       poll=True),
             mock.call(*self.testData.MIGRATION_VERIFY_CMD(1),
+                      poll=True),
+            mock.call(*self.testData.LUN_PROPERTY_BY_ID(1),
                       poll=True)]
         fake_cli.assert_has_calls(expect_cmd)
 
@@ -3829,10 +3929,11 @@ Time Remaining:  0 second(s)
     @mock.patch(
         "cinder.volume.drivers.emc.emc_vnx_cli.CommandLineHelper." +
         "get_lun_by_name",
-        mock.Mock(return_value={'lun_id': 1}))
-    @mock.patch(
-        "eventlet.event.Event.wait",
-        mock.Mock(return_value=None))
+        mock.Mock(return_value={'lun_id': 1, 'state': 'Ready',
+                                'operation': 'None',
+                                'wwn': 'fake_wwn'}))
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=utils.ZeroIntervalLoopingCall)
     @mock.patch(
         "time.time",
         mock.Mock(return_value=123456))
@@ -3866,10 +3967,12 @@ Time Remaining:  0 second(s)
 
         commands = [self.testData.NDU_LIST_CMD,
                     self.testData.SNAP_LIST_CMD(),
-                    self.testData.MIGRATION_VERIFY_CMD(1)]
+                    self.testData.MIGRATION_VERIFY_CMD(1),
+                    self.testData.LUN_PROPERTY_BY_ID(1)]
         results = [self.testData.NDU_LIST_RESULT,
                    ('No snap', 1023),
-                   ('The specified source LUN is not currently migrating', 23)]
+                   ('The specified source LUN is not currently migrating', 23),
+                   self.testData.LIST_LUN_1_ALL(1, 'new_wwn')]
         fake_cli = self.driverSetup(commands, results)
         self.driver.cli.enablers = ['-Compression',
                                     '-Deduplication',
@@ -3877,8 +3980,8 @@ Time Remaining:  0 second(s)
                                     '-FAST']
         emc_vnx_cli.CommandLineHelper.get_array_serial = mock.Mock(
             return_value={'array_serial': "FNM00124500890"})
-
-        self.driver.retype(None, self.testData.test_volume3,
+        src_vol = self.testData.test_volume3
+        self.driver.retype(None, src_vol,
                            new_type_data,
                            diff_data,
                            host_test_data)
@@ -3890,6 +3993,8 @@ Time Remaining:  0 second(s)
                       retry_disable=True,
                       poll=True),
             mock.call(*self.testData.MIGRATION_VERIFY_CMD(1),
+                      poll=True),
+            mock.call(*self.testData.LUN_PROPERTY_BY_ID(1),
                       poll=True)]
         fake_cli.assert_has_calls(expect_cmd)
 
@@ -3899,7 +4004,8 @@ Time Remaining:  0 second(s)
     @mock.patch(
         "cinder.volume.drivers.emc.emc_vnx_cli.CommandLineHelper." +
         "get_lun_by_name",
-        mock.Mock(return_value={'lun_id': 1}))
+        mock.Mock(return_value={'lun_id': 1, 'state': 'Ready',
+                                'operation': 'None'}))
     @mock.patch(
         "cinder.volume.volume_types."
         "get_volume_type_extra_specs",
@@ -3954,7 +4060,8 @@ Time Remaining:  0 second(s)
     @mock.patch(
         "cinder.volume.drivers.emc.emc_vnx_cli.CommandLineHelper." +
         "get_lun_by_name",
-        mock.Mock(return_value={'lun_id': 1}))
+        mock.Mock(return_value={'lun_id': 1, 'state': 'Ready',
+                                'operation': 'None'}))
     @mock.patch(
         "cinder.volume.volume_types."
         "get_volume_type_extra_specs",
@@ -4003,7 +4110,8 @@ Time Remaining:  0 second(s)
     @mock.patch(
         "cinder.volume.drivers.emc.emc_vnx_cli.CommandLineHelper."
         "create_lun_with_advance_feature",
-        mock.Mock(return_value={'lun_id': '1'}))
+        mock.Mock(return_value={'lun_id': '1',
+                                'wwn': 'fake_wwn'}))
     @mock.patch(
         "cinder.volume.volume_types."
         "get_volume_type_extra_specs",
@@ -4287,9 +4395,8 @@ Time Remaining:  0 second(s)
                     snap_name))]
         fake_cli.assert_has_calls(expect_cmd)
 
-    @mock.patch(
-        "eventlet.event.Event.wait",
-        mock.Mock(return_value=None))
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=utils.ZeroIntervalLoopingCall)
     def test_add_volume_to_cg(self):
         commands = [self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
                     self.testData.ADD_LUN_TO_CG_CMD('cg_id', 1),
@@ -4305,6 +4412,8 @@ Time Remaining:  0 second(s)
                 'volume-1', 1,
                 'unit_test_pool',
                 None, None, poll=False)),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
+                      poll=False),
             mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
                       poll=False),
             mock.call(*self.testData.ADD_LUN_TO_CG_CMD(
@@ -4360,6 +4469,7 @@ Time Remaining:  0 second(s)
                       poll=True),
             mock.call(*self.testData.MIGRATION_VERIFY_CMD(1),
                       poll=True),
+            mock.call(*self.testData.LUN_PROPERTY_BY_ID(1), poll=True),
             mock.call(*self.testData.DELETE_CG_SNAPSHOT(tmp_cgsnapshot))]
         fake_cli.assert_has_calls(expect_cmd)
 
@@ -4594,7 +4704,9 @@ Time Remaining:  0 second(s)
             mock.call(*td.MIGRATION_CMD(6232, 2),
                       poll=True, retry_disable=True),
             mock.call(*td.MIGRATION_VERIFY_CMD(6231), poll=True),
+            mock.call(*td.LUN_PROPERTY_BY_ID(1), poll=True),
             mock.call(*td.MIGRATION_VERIFY_CMD(6232), poll=True),
+            mock.call(*td.LUN_PROPERTY_BY_ID(2), poll=True),
             mock.call(*td.CREATE_CONSISTENCYGROUP_CMD(
                       new_cg['id'], [6231, 6232]), poll=True),
             mock.call(*td.GET_CG_BY_NAME_CMD(new_cg.id)),
@@ -4647,7 +4759,7 @@ Time Remaining:  0 second(s)
             new_cg, [vol1_in_new_cg],
             src_cgsnap, None, src_cg, None)
 
-    def test_create_cg_from_cgsnapshot_migrate_failed(self):
+    def test_create_cg_from_cgsnapshot_migrate_verify_failed(self):
         new_cg = fake_consistencygroup.fake_consistencyobject_obj(
             None, **self.testData.test_cg)
         new_cg.id = 'new_cg_id'
@@ -4669,29 +4781,34 @@ Time Remaining:  0 second(s)
         snap2_in_src_cgsnap = EMCVNXCLIDriverTestData.convert_snapshot(
             self.testData.test_member_cgsnapshot2)
         copied_snap_name = 'temp_snapshot_for_%s' % new_cg['id']
+        output_migrate_verify = (r'The specified source LUN '
+                                 'is not currently migrating', 23)
         td = self.testData
         commands = [td.LUN_PROPERTY_ALL_CMD(vol1_in_new_cg['name'] + '_dest'),
                     td.LUN_PROPERTY_ALL_CMD(vol1_in_new_cg['name']),
                     td.LUN_PROPERTY_ALL_CMD(vol2_in_new_cg['name'] + '_dest'),
                     td.LUN_PROPERTY_ALL_CMD(vol2_in_new_cg['name']),
-                    td.MIGRATION_CMD(6232, 2)]
+                    td.MIGRATION_CMD(6231, 1),
+                    td.MIGRATION_VERIFY_CMD(6231),
+                    td.LUN_PROPERTY_BY_ID(1)]
         results = [td.LUN_PROPERTY(vol1_in_new_cg['name'] + '_dest',
                                    lunid=1),
                    td.LUN_PROPERTY(vol1_in_new_cg['name'], lunid=6231),
                    td.LUN_PROPERTY(vol2_in_new_cg['name'] + '_dest',
                                    lunid=2),
                    td.LUN_PROPERTY(vol2_in_new_cg['name'], lunid=6232),
-                   FAKE_ERROR_RETURN]
+                   FAKE_ERROR_RETURN,
+                   output_migrate_verify,
+                   td.LIST_LUN_1_ALL(2, td.fake_wwn)]
 
         fake_cli = self.driverSetup(commands, results)
-        self.assertRaisesRegex(exception.VolumeBackendAPIException,
-                               'Migrate volume failed',
-                               self.driver.create_consistencygroup_from_src,
-                               None, new_cg, [vol1_in_new_cg, vol2_in_new_cg],
-                               cgsnapshot=src_cgsnap,
-                               snapshots=[snap1_in_src_cgsnap,
-                                          snap2_in_src_cgsnap],
-                               source_cg=None, source_vols=None)
+        self.assertRaises(exception.EMCVnxCLICmdError,
+                          self.driver.create_consistencygroup_from_src,
+                          None, new_cg, [vol1_in_new_cg, vol2_in_new_cg],
+                          cgsnapshot=src_cgsnap,
+                          snapshots=[snap1_in_src_cgsnap,
+                                     snap2_in_src_cgsnap],
+                          source_cg=None, source_vols=None)
 
         expect_cmd = [
             mock.call(*self.testData.LUN_DELETE_CMD(
@@ -5147,9 +5264,8 @@ class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
             stats['pools'][4]['free_capacity_gb'] == 0,
             "free_capacity_gb is incorrect")
 
-    @mock.patch(
-        "eventlet.event.Event.wait",
-        mock.Mock(return_value=None))
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=utils.ZeroIntervalLoopingCall)
     @mock.patch(
         "cinder.volume.volume_types."
         "get_volume_type_extra_specs",
@@ -5172,6 +5288,8 @@ class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
                 'volume-1', 1,
                 'unit_test_pool',
                 'deduplicated', None, poll=False)),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
+                      poll=False),
             mock.call(*self.testData.LUN_PROPERTY_ALL_CMD('volume-1'),
                       poll=False)]
         fake_cli.assert_has_calls(expect_cmd)
@@ -5268,9 +5386,8 @@ class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
         expected = [mock.call(*lun_rename_cmd, poll=False)]
         fake_cli.assert_has_calls(expected)
 
-    @mock.patch(
-        "eventlet.event.Event.wait",
-        mock.Mock(return_value=None))
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=utils.ZeroIntervalLoopingCall)
     @mock.patch(
         "cinder.volume.volume_types."
         "get_volume_type_extra_specs",
@@ -5299,6 +5416,8 @@ class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
                 'volume-1', 1,
                 'unit_test_pool',
                 'compressed', None, poll=False)),
+            mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
+                'volume-1'), poll=False),
             mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
                 'volume-1'), poll=False),
             mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
