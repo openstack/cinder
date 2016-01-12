@@ -48,7 +48,6 @@ CONF.register_opts(exc_log_opts)
 
 
 class ConvertedException(webob.exc.WSGIHTTPException):
-
     def __init__(self, code=500, title="", explanation=""):
         self.code = code
         # There is a strict rule about constructing status line for HTTP:
@@ -1040,3 +1039,8 @@ class CohoException(VolumeDriverException):
 # Tegile Storage drivers
 class TegileAPIException(VolumeBackendAPIException):
     message = _("Unexpected response from Tegile IntelliFlash API")
+
+
+# NexentaStor driver exception
+class NexentaException(VolumeDriverException):
+    message = _("%(message)s")
