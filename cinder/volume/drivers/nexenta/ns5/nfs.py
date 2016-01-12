@@ -60,9 +60,11 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                 options.NEXENTA_DATASET_OPTS)
 
         self.nfs_mount_point_base = self.configuration.nexenta_mount_point_base
-        self.dataset_compression = self.configuration.nexenta_dataset_compression
+        self.dataset_compression = (
+            self.configuration.nexenta_dataset_compression)
         self.dataset_deduplication = self.configuration.nexenta_dataset_dedup
-        self.dataset_description = self.configuration.nexenta_dataset_description
+        self.dataset_description = (
+            self.configuration.nexenta_dataset_description)
         self.sparsed_volumes = self.configuration.nexenta_sparsed_volumes
         self.share2nef = {}
         self.shares = {}
@@ -158,7 +160,8 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                     # on disk.
                     nef(url, {'compressionMode': 'off'}, method='PUT')
                 try:
-                    self._create_regular_file(self.local_path(volume), volume_size)
+                    self._create_regular_file(
+                        self.local_path(volume), volume_size)
                 finally:
                     if compression != 'off':
                         # Backup default compression value if it was changed.
@@ -173,7 +176,8 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             except exception.NexentaException:
                 LOG.warning(_LW("Cannot destroy created folder: "
                                 "%(vol)s/%(folder)s"),
-                            {'vol': pool, 'folder': '/'.join([fs, volume['name']])})
+                            {'vol': pool, 'folder': '/'.join(
+                                [fs, volume['name']])})
             raise exc
 
     def create_volume_from_snapshot(self, volume, snapshot):
@@ -192,7 +196,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         pool, fs = self._get_share_datasets(nfs_share)
         dataset_path = '%s/%s' % (pool, fs)
         url = ('storage/pools/%(pool)s/'
-            'filesystems/%(fs)s/snapshots/%(snap)s/clone') % {
+               'filesystems/%(fs)s/snapshots/%(snap)s/clone') % {
             'pool': pool,
             'fs': '%2F'.join([fs, snapshot_vol['name']]),
             'snap': snapshot['name']
@@ -263,10 +267,10 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             }
             origin = nef(url).get('originalSnapshot')
             url = ('storage/pools/%(pool)s/filesystems/'
-                '%(fs)s?snapshots=true') % {
-                    'pool': pool,
-                    'fs': '%2F'.join([fs, volume['name']])
-                }
+                   '%(fs)s?snapshots=true') % {
+                'pool': pool,
+                'fs': '%2F'.join([fs, volume['name']])
+            }
             nef(url, method='DELETE')
             try:
                 if origin and self._is_clone_snapshot_name(origin):
@@ -281,8 +285,9 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                     nef(snap_url, method='DELETE')
             except exception.NexentaException as exc:
                 if 'does not exist' in exc:
-                    LOG.debug('Volume %s does not exist on appliance', '/'.join(
-                        [pool, fs]))
+                    LOG.debug(
+                        'Volume %s does not exist on appliance', '/'.join(
+                            [pool, fs]))
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot.
@@ -360,31 +365,9 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         :param path: path to parent filesystem
         :param filesystem: filesystem that needs to be shared
         """
-        # Commented code only for nfs < 4
-        # LOG.debug('Sharing filesystem %s on Nexenta Store', filesystem)
-        # url = 'nas/nfs'
-        # data = {
-        #     'filesystem': '%s/%s' % (path, filesystem),
-        #     'securityContexts': [{
-        #         'securityModes': ['sys'],
-        #         'root': [
-        #             {
-        #                 'entity': '*',
-        #                 'etype': 'network'
-        #             }
-        #         ],
-        #         'readWriteList': [
-        #             {
-        #                 'entity': '*',
-        #                 'etype': 'network'
-        #             }
-        #         ]
-        #     }]
-        # }
-        # nef(url, data)
-
         pool = path.split('/')[0]
-        LOG.debug('Creating ACL for filesystem %s on Nexenta Store', filesystem)
+        LOG.debug(
+            'Creating ACL for filesystem %s on Nexenta Store', filesystem)
         url = 'storage/pools/%s/filesystems/%s/acl' % (
             pool, '%2F'.join((path.strip(pool).lstrip('/'), filesystem)))
         data = {
@@ -416,7 +399,9 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         }
         nef(url, data)
 
-        LOG.debug('Successfully shared filesystem %s' % '/'.join([path, filesystem]))
+        LOG.debug(
+            'Successfully shared filesystem %s' % '/'.join(
+                [path, filesystem]))
 
     def _load_shares_config(self, share_file):
         for line in self._read_config_file(share_file):
@@ -434,11 +419,13 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
 
             share_address = share_info[0].strip()   # .decode('unicode_escape')
             nef_url = share_info[1].strip()
-            share_opts = share_info[2].strip() if len(share_info) > 2 else None
+            share_opts = (
+                share_info[2].strip() if len(share_info) > 2 else None)
 
             if not re.match(r'.+:/.+', share_address):
-                LOG.warning(_LW("Share %s ignored due to invalid format. Must "
-                                "be of form address:/export.") % share_address)
+                LOG.warning(_LW(
+                    "Share %s ignored due to invalid format. Must "
+                    "be of form address:/export.") % share_address)
                 continue
 
             self.shares[share_address] = share_opts

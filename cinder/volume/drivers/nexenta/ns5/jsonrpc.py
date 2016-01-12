@@ -23,12 +23,11 @@
 import time
 import urllib2
 
+from cinder import exception
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
-from cinder import exception
 
 LOG = logging.getLogger(__name__)
-
 
 
 class NexentaJSONProxy(object):

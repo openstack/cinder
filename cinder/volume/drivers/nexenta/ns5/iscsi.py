@@ -67,9 +67,11 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         self.nef_password = self.configuration.nexenta_password
         self.storage_pool = self.configuration.nexenta_pool
         self.dataset_group = self.configuration.nexenta_dataset_group
-        self.dataset_compression = self.configuration.nexenta_dataset_compression
+        self.dataset_compression = (
+            self.configuration.nexenta_dataset_compression)
         self.dataset_deduplication = self.configuration.nexenta_dataset_dedup
-        self.dataset_description = self.configuration.nexenta_dataset_description
+        self.dataset_description = (
+            self.configuration.nexenta_dataset_description)
         self.iscsi_target_portal_port = \
             self.configuration.nexenta_iscsi_target_portal_port
 
@@ -115,8 +117,9 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         try:
             self.nef(url)
         except jsonrpc.NexentaJSONException:
-            raise LookupError(_("Dataset group %s/%s not found at Nexenta SA"),
-                              self.storage_pool, self.dataset_group)
+            raise LookupError(_(
+                "Dataset group %s not found at Nexenta SA"), '/'.join(
+                [self.storage_pool, self.dataset_group]))
         services = self.nef('services')
         for service in services['data']:
             if service['name'] == 'iscsit':
