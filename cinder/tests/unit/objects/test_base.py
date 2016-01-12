@@ -601,6 +601,7 @@ class TestCinderDictObject(test_objects.BaseObjectsTestCase):
         obj.abc = 'val2'
         self.assertEqual('val2', obj.get('abc', 'val'))
         self.assertEqual(42, obj.get('foo'))
+        self.assertEqual(42, obj.get('foo', None))
 
         self.assertTrue('foo' in obj)
         self.assertTrue('abc' in obj)

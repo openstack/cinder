@@ -326,6 +326,7 @@ class CinderObjectDictCompat(base.VersionedObjectDictCompat):
                        'attribute_name': key})
             return None
         if (value != base._NotSpecifiedSentinel and
+                key not in self.obj_extra_fields and
                 not self.obj_attr_is_set(key)):
             return value
         else:
