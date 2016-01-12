@@ -150,8 +150,8 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                        self.driver_prefix + '_sparsed_volumes'):
                 self._create_sparsed_file(self.local_path(volume), volume_size)
             else:
-                url = 'storage/pools/%s/filesystems/%s/%s' % (
-                    pool, fs, volume['name'])
+                url = 'storage/pools/%s/filesystems/%s' % (
+                    pool, '%2F'.join([fs, volume['name']]))
                 compression = nef(url).get('compressionMode')
                 if compression != 'off':
                     # Disable compression, because otherwise will not use space
@@ -168,7 +168,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         except exception.NexentaException as exc:
             try:
                 url = 'storage/pools/%s/filesystems/%s/%s' % (
-                    pool, fs, volume['name'])
+                    pool, '%2F'.join([fs, volume['name']]))
                 nef(url, method='DELETE')
             except exception.NexentaException:
                 LOG.warning(_LW("Cannot destroy created folder: "
