@@ -459,15 +459,34 @@ class SBSBackupDriver(driver.BackupDriver):
 
     def _delete_backups(self, backup_list):
         backup = backup_list
+        last_backup = backup['id']
         while backup:
+            LOG.debug("Deleting backup %s" % backup['id'])
             self._remove_from_DSS(backup)
             self.db.backup_destroy(self.context, backup['id'])
-        return
+            last_backup = backup['id']
+        LOG.debug("Last backup deleted %s" % last_backup['id'])
+        return last_backup
 
     def _mark_backup_for_deletion(self, backup):
         self.db.backup_update(self.context, backup_id,
                               {'deleted': True})
         return
+
+    def _incr_backups_to_delete(self, curr, backup, backup_list):
+        can_delete = True
+        while curr['parent_id']:
+            #if any snap till given snap is not marked for deletion, fail
+            if curr['deleting'] == False:
+                can_delete = False
+                break
+            parent_backup = self.db.backup_get(self.context,
+                                               curr['parent_id'])
+            LOG.debug("Got parent of backup %s as %s" % (curr['id'], curr['parent_id']))
+            backup_list.append(curr)
+            if curr['parent_id'] == backup_id:
+                break
+        return (can_delete, backup_list)
 
     """
     Mark snaps as deleted, but keep them if they are parent of another existing
@@ -491,27 +510,24 @@ class SBSBackupDriver(driver.BackupDriver):
 
         can_delete = True
         #backups = self.get_all(context, {'parent_id': backup['id']})
+        backup_list = []
 
-        # if lasted backup is not same, then check for dependencies
-        if backup['id'] != lastet_backup['id']:
-            while curr['parent_id']:
-                #if any snap till given snap is not marked for deletion, fail
-                if curr['deleting'] == False:
-                    can_delete = False
-                    break
-                parent_backup = self.db.backup_get(self.context,
-                                                   curr['parent_id'])
-                LOG.debug("Got parent of backup %s as %s" % (curr['id'], curr['parent_id']))
-                backup_list.append(curr)
-                if curr['parent_id'] == backup['id']:
-                    break
+        # if latest backup is not same, then check for dependencies
+        if backup['id'] != latest_backup['id']:
+           can_delete, backup_list  = _incr_backups_to_delete(curr, backup['id'], backup_list) 
         else:
             backup_list.append(backup)
-
+        last_backup = None
         if can_delete == True:
-            self._delete_backups(backup_list)
+            last_backup = self._delete_backups(backup_list)
         else:
             self._mark_backups_for_deletion(backup)
+        #see if we can clean up more incr backups due to deletion of these snaps
+        tmp_list = []
+        if last_backup:
+            can_delete, tmp_list = _incr_backups_to_delete(last_backup, None, tmp_list)
+        if tmp_list:
+            tmp = self._delete_backups(tmp_list)
 
         LOG.debug("Delete of backup '%(backup)s' for volume "
                   "'%(volume)s' finished.",
