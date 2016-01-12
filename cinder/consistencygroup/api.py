@@ -29,6 +29,7 @@ from cinder.db import base
 from cinder import exception
 from cinder.i18n import _, _LE, _LW
 from cinder import objects
+from cinder.objects import fields as c_fields
 import cinder.policy
 from cinder import quota
 from cinder.scheduler import rpcapi as scheduler_rpcapi
@@ -42,7 +43,8 @@ CONF = cfg.CONF
 
 LOG = logging.getLogger(__name__)
 CGQUOTAS = quota.CGQUOTAS
-VALID_REMOVE_VOL_FROM_CG_STATUS = ('available', 'in-use',)
+VALID_REMOVE_VOL_FROM_CG_STATUS = (c_fields.ConsistencyGroupStatus.AVAILABLE,
+                                   c_fields.ConsistencyGroupStatus.IN_USE)
 
 
 def wrap_check_policy(func):
@@ -130,7 +132,7 @@ class API(base.Base):
         kwargs = {'user_id': context.user_id,
                   'project_id': context.project_id,
                   'availability_zone': availability_zone,
-                  'status': "creating",
+                  'status': c_fields.ConsistencyGroupStatus.CREATING,
                   'name': name,
                   'description': description,
                   'volume_type_id': req_volume_type_ids}
@@ -194,7 +196,7 @@ class API(base.Base):
         kwargs = {
             'user_id': context.user_id,
             'project_id': context.project_id,
-            'status': "creating",
+            'status': c_fields.ConsistencyGroupStatus.CREATING,
             'name': name,
             'description': description,
             'cgsnapshot_id': cgsnapshot_id,
@@ -440,7 +442,9 @@ class API(base.Base):
 
             return
 
-        if not force and group.status not in ["available", "error"]:
+        if not force and group.status not in (
+                [c_fields.ConsistencyGroupStatus.AVAILABLE,
+                 c_fields.ConsistencyGroupStatus.ERROR]):
             msg = _("Consistency group status must be available or error, "
                     "but current status is: %s") % group.status
             raise exception.InvalidConsistencyGroup(reason=msg)
@@ -477,7 +481,7 @@ class API(base.Base):
                 LOG.error(msg)
                 raise exception.InvalidConsistencyGroup(reason=msg)
 
-        group.status = 'deleting'
+        group.status = c_fields.ConsistencyGroupStatus.DELETING
         group.terminated_at = timeutils.utcnow()
         group.save()
 
@@ -486,7 +490,7 @@ class API(base.Base):
     def update(self, context, group, name, description,
                add_volumes, remove_volumes):
         """Update consistency group."""
-        if group.status != 'available':
+        if group.status != c_fields.ConsistencyGroupStatus.AVAILABLE:
             msg = _("Consistency group status must be available, "
                     "but current status is: %s.") % group.status
             raise exception.InvalidConsistencyGroup(reason=msg)

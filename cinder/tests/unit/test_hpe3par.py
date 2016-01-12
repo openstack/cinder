@@ -23,6 +23,7 @@ from oslo_utils import units
 
 from cinder import context
 from cinder import exception
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit import fake_hpe_3par_client as hpe3parclient
 from cinder.volume.drivers.hpe import hpe_3par_common as hpecommon
@@ -3893,7 +3894,7 @@ class HPE3PARBaseDriver(object):
             mock_client.reset_mock()
 
             # remove the consistency group
-            group.status = 'deleting'
+            group.status = fields.ConsistencyGroupStatus.DELETING
             self.driver.delete_consistencygroup(context.get_admin_context(),
                                                 group, [])
 

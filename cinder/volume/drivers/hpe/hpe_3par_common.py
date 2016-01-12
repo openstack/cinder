@@ -61,6 +61,7 @@ from cinder import context
 from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _, _LE, _LI, _LW
+from cinder.objects import fields
 from cinder.volume import qos_specs
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
@@ -519,7 +520,7 @@ class HPE3PARCommon(object):
         self.client.createVolumeSet(cg_name, domain=domain,
                                     comment=six.text_type(extra))
 
-        model_update = {'status': 'available'}
+        model_update = {'status': fields.ConsistencyGroupStatus.AVAILABLE}
         return model_update
 
     def create_consistencygroup_from_src(self, context, group, volumes,

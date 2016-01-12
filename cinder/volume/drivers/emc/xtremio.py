@@ -42,6 +42,7 @@ from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder import objects
+from cinder.objects import fields
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
@@ -599,7 +600,7 @@ class XtremIOVolumeDriver(san.SanDriver):
         create_data = {'consistency-group-name': group['id']}
         self.client.req('consistency-groups', 'POST', data=create_data,
                         ver='v2')
-        return {'status': 'available'}
+        return {'status': fields.ConsistencyGroupStatus.AVAILABLE}
 
     def delete_consistencygroup(self, context, group, volumes):
         """Deletes a consistency group."""

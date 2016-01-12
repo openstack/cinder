@@ -22,6 +22,7 @@ from oslo_utils import units
 
 from cinder import context
 from cinder import exception
+from cinder.objects import fields
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import solidfire
@@ -1668,7 +1669,8 @@ class SolidFireVolumeTestCase(test.TestCase):
                 cgsnapshot, snapshots,
                 source_cg, source_vols)
             get_snap.assert_called_with(name)
-            self.assertEqual({'status': 'available'}, model)
+            self.assertEqual(
+                {'status': fields.ConsistencyGroupStatus.AVAILABLE}, model)
 
     def test_create_consisgroup_from_src_source_cg(self):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
@@ -1704,7 +1706,8 @@ class SolidFireVolumeTestCase(test.TestCase):
                 source_cg,
                 source_vols)
             get_snap.assert_called_with(source_cg['id'])
-            self.assertEqual({'status': 'available'}, model)
+            self.assertEqual(
+                {'status': fields.ConsistencyGroupStatus.AVAILABLE}, model)
 
     def test_create_cgsnapshot(self):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)

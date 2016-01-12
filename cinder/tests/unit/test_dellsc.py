@@ -17,6 +17,7 @@ import uuid
 
 from cinder import context
 from cinder import exception
+from cinder.objects import fields
 from cinder import test
 from cinder.volume.drivers.dell import dell_storagecenter_api
 from cinder.volume.drivers.dell import dell_storagecenter_iscsi
@@ -1603,7 +1604,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.driver.db.volume_get_all_by_group.return_value = expected_volumes
         context = {}
         group = {'id': 'fc8f2fec-fab2-4e34-9148-c094c913b9a3',
-                 'status': 'deleted'}
+                 'status': fields.ConsistencyGroupStatus.DELETED}
         model_update, volumes = self.driver.delete_consistencygroup(context,
                                                                     group,
                                                                     [])
@@ -1633,7 +1634,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.driver.db.volume_get_all_by_group.return_value = expected_volumes
         context = {}
         group = {'id': 'fc8f2fec-fab2-4e34-9148-c094c913b9a3',
-                 'status': 'deleted'}
+                 'status': fields.ConsistencyGroupStatus.DELETED}
         model_update, volumes = self.driver.delete_consistencygroup(context,
                                                                     group,
                                                                     [])

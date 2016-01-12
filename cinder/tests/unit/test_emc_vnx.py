@@ -21,6 +21,7 @@ import six
 
 from cinder import context
 from cinder import exception
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit import fake_consistencygroup
 from cinder.tests.unit import fake_snapshot
@@ -373,11 +374,11 @@ class EMCVNXCLIDriverTestData(object):
 
     test_cg = {'id': 'consistencygroup_id',
                'name': 'group_name',
-               'status': 'deleting'}
+               'status': fields.ConsistencyGroupStatus.DELETING}
 
     test_cg_with_type = {'id': 'consistencygroup_id',
                          'name': 'group_name',
-                         'status': 'creating',
+                         'status': fields.ConsistencyGroupStatus.CREATING,
                          'volume_type_id':
                          'abc1-2320-9013-8813-8941-1374-8112-1231,'
                          '19fdd0dd-03b3-4d7c-b541-f4df46f308c8,'}
@@ -3952,7 +3953,8 @@ Time Remaining:  0 second(s)
 
         model_update = self.driver.create_consistencygroup(
             None, self.testData.test_cg)
-        self.assertDictMatch({'status': 'available'}, model_update)
+        self.assertDictMatch({'status': (
+            fields.ConsistencyGroupStatus.AVAILABLE)}, model_update)
         expect_cmd = [
             mock.call(
                 *self.testData.CREATE_CONSISTENCYGROUP_CMD(
@@ -3971,7 +3973,8 @@ Time Remaining:  0 second(s)
         fake_cli = self.driverSetup(commands, results)
         model_update = self.driver.create_consistencygroup(
             None, self.testData.test_cg)
-        self.assertDictMatch({'status': 'available'}, model_update)
+        self.assertDictMatch({'status': (
+            fields.ConsistencyGroupStatus.AVAILABLE)}, model_update)
         expect_cmd = [
             mock.call(
                 *self.testData.CREATE_CONSISTENCYGROUP_CMD(
@@ -4211,7 +4214,8 @@ Time Remaining:  0 second(s)
             mock.call(*self.testData.REPLACE_LUNS_IN_CG_CMD(
                 cg_name, ['4', '5']), poll=False)]
         fake_cli.assert_has_calls(expect_cmd)
-        self.assertEqual('available', model_update['status'])
+        self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
+                         model_update['status'])
 
     def test_update_consistencygroup_remove_all(self):
         cg_name = self.testData.test_cg['id']
@@ -4227,7 +4231,8 @@ Time Remaining:  0 second(s)
             mock.call(*self.testData.REMOVE_LUNS_FROM_CG_CMD(
                 cg_name, ['1', '3']), poll=False)]
         fake_cli.assert_has_calls(expect_cmd)
-        self.assertEqual('available', model_update['status'])
+        self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
+                         model_update['status'])
 
     def test_update_consistencygroup_remove_not_in_cg(self):
         cg_name = self.testData.test_cg['id']
@@ -4244,7 +4249,8 @@ Time Remaining:  0 second(s)
             mock.call(*self.testData.REPLACE_LUNS_IN_CG_CMD(
                 cg_name, ['1', '3']), poll=False)]
         fake_cli.assert_has_calls(expect_cmd)
-        self.assertEqual('available', model_update['status'])
+        self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
+                         model_update['status'])
 
     def test_update_consistencygroup_error(self):
         cg_name = self.testData.test_cg['id']

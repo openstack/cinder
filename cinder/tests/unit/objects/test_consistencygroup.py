@@ -16,6 +16,7 @@ import mock
 
 from cinder import exception
 from cinder import objects
+from cinder.objects import fields
 from cinder.tests.unit import objects as test_objects
 
 fake_consistencygroup = {
@@ -27,7 +28,7 @@ fake_consistencygroup = {
     'name': 'fake_name',
     'description': 'fake_description',
     'volume_type_id': 'fake_volume_type_id',
-    'status': 'creating',
+    'status': fields.ConsistencyGroupStatus.CREATING,
     'cgsnapshot_id': 'fake_id',
     'source_cgid': None,
 }
@@ -78,11 +79,12 @@ class TestConsistencyGroup(test_objects.BaseObjectsTestCase):
     def test_save(self, consistencygroup_update):
         consistencygroup = objects.ConsistencyGroup._from_db_object(
             self.context, objects.ConsistencyGroup(), fake_consistencygroup)
-        consistencygroup.status = 'active'
+        consistencygroup.status = fields.ConsistencyGroupStatus.AVAILABLE
         consistencygroup.save()
-        consistencygroup_update.assert_called_once_with(self.context,
-                                                        consistencygroup.id,
-                                                        {'status': 'active'})
+        consistencygroup_update.assert_called_once_with(
+            self.context,
+            consistencygroup.id,
+            {'status': fields.ConsistencyGroupStatus.AVAILABLE})
 
     def test_save_with_cgsnapshots(self):
         consistencygroup = objects.ConsistencyGroup._from_db_object(

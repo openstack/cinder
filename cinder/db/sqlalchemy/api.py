@@ -3883,7 +3883,7 @@ def consistencygroup_destroy(context, consistencygroup_id):
     with session.begin():
         model_query(context, models.ConsistencyGroup, session=session).\
             filter_by(id=consistencygroup_id).\
-            update({'status': 'deleted',
+            update({'status': fields.ConsistencyGroupStatus.DELETED,
                     'deleted': True,
                     'deleted_at': timeutils.utcnow(),
                     'updated_at': literal_column('updated_at')})

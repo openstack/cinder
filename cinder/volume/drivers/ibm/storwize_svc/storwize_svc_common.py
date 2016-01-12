@@ -33,6 +33,7 @@ import six
 from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
+from cinder.objects import fields
 from cinder.volume import driver
 from cinder.volume.drivers.ibm.storwize_svc import (
     replication as storwize_rep)
@@ -1216,7 +1217,7 @@ class StorwizeHelpers(object):
         LOG.debug('Enter: create_cg_from_source: cg %(cg)s'
                   ' source %(source)s, target %(target)s',
                   {'cg': fc_consistgrp, 'source': sources, 'target': targets})
-        model_update = {'status': 'available'}
+        model_update = {'status': fields.ConsistencyGroupStatus.AVAILABLE}
         ctxt = context.get_admin_context()
         try:
             for source, target in zip(sources, targets):
@@ -1233,7 +1234,7 @@ class StorwizeHelpers(object):
             volumes_model_update = self._get_volume_model_updates(
                 ctxt, targets, group['id'], model_update['status'])
         except exception.VolumeBackendAPIException as err:
-            model_update['status'] = 'error'
+            model_update['status'] = fields.ConsistencyGroupStatus.ERROR
             volumes_model_update = self._get_volume_model_updates(
                 ctxt, targets, group['id'], model_update['status'])
             with excutils.save_and_reraise_exception():
@@ -2325,7 +2326,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         db will maintain the volumes and CG relationship.
         """
         LOG.debug("Creating consistency group.")
-        model_update = {'status': 'available'}
+        model_update = {'status': fields.ConsistencyGroupStatus.AVAILABLE}
         return model_update
 
     def delete_consistencygroup(self, context, group, volumes):
@@ -2335,7 +2336,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         """
         LOG.debug("Deleting consistency group.")
         model_update = {}
-        model_update['status'] = 'deleted'
+        model_update['status'] = fields.ConsistencyGroupStatus.DELETED
         volumes = self.db.volume_get_all_by_group(context, group['id'])
 
         for volume in volumes:

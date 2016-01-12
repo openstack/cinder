@@ -31,6 +31,7 @@ from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI
 from cinder.image import image_utils
+from cinder.objects import fields
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers import nfs
@@ -1162,7 +1163,7 @@ class GPFSDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-        model_update = {'status': 'available'}
+        model_update = {'status': fields.ConsistencyGroupStatus.AVAILABLE}
         return model_update
 
     def delete_consistencygroup(self, context, group, volumes):

@@ -35,6 +35,7 @@ from six.moves import http_client
 from cinder import exception
 from cinder.i18n import _, _LI, _LW, _LE
 from cinder import objects
+from cinder.objects import fields
 from cinder.volume import driver
 from cinder.volume.drivers.prophetstor import options
 from cinder.volume.drivers.san import san
@@ -868,7 +869,7 @@ class DPLCOMMONDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
         LOG.info(_LI('Start to create consistency group: %(group_name)s '
                      'id: %(id)s'),
                  {'group_name': group['name'], 'id': group['id']})
-        model_update = {'status': 'available'}
+        model_update = {'status': fields.ConsistencyGroupStatus.AVAILABLE}
         try:
             ret, output = self.dpl.create_vg(
                 self._conver_uuid2hex(group['id']),
@@ -911,9 +912,10 @@ class DPLCOMMONDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
             except Exception:
                 ret = errno.EFAULT
                 volume_ref['status'] = 'error_deleting'
-                model_update['status'] = 'error_deleting'
+                model_update['status'] = (
+                    fields.ConsistencyGroupStatus.ERROR_DELETING)
         if ret == 0:
-            model_update['status'] = 'deleted'
+            model_update['status'] = fields.ConsistencyGroupStatus.DELETED
         return model_update, volumes
 
     def create_cgsnapshot(self, context, cgsnapshot, snapshots):
@@ -974,7 +976,7 @@ class DPLCOMMONDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
         removevollist = []
         cgid = group['id']
         vid = ''
-        model_update = {'status': 'available'}
+        model_update = {'status': fields.ConsistencyGroupStatus.AVAILABLE}
         # Get current group info in backend storage.
         ret, output = self.dpl.get_vg(self._conver_uuid2hex(cgid))
         if ret == 0:

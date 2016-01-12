@@ -23,6 +23,7 @@ from oslo_utils import units
 
 from cinder import context
 from cinder import exception
+from cinder.objects import fields
 from cinder import test
 from cinder import utils
 from cinder.volume import configuration as conf
@@ -1682,7 +1683,7 @@ class GPFSDriverTestCase(test.TestCase):
     def test_delete_consistencygroup(self, mock_exec):
         ctxt = self.context
         group = self._fake_group()
-        group['status'] = 'available'
+        group['status'] = fields.ConsistencyGroupStatus.AVAILABLE
         volume = self._fake_volume()
         volume['status'] = 'available'
         volumes = []
@@ -1703,7 +1704,7 @@ class GPFSDriverTestCase(test.TestCase):
     def test_delete_consistencygroup_fail(self, mock_exec):
         ctxt = self.context
         group = self._fake_group()
-        group['status'] = 'available'
+        group['status'] = fields.ConsistencyGroupStatus.AVAILABLE
         self.driver.db = mock.Mock()
         self.driver.db.volume_get_all_by_group = mock.Mock()
         self.driver.db.volume_get_all_by_group.return_value = []
