@@ -112,6 +112,7 @@ class HttpClient(object):
 
     @utils.retry(exceptions=(requests.ConnectionError,))
     def get(self, url):
+        LOG.debug('get: %(url)s', {'url': url})
         return self.session.get(
             self.__formatUrl(url),
             headers=self.header,
@@ -119,6 +120,9 @@ class HttpClient(object):
 
     @utils.retry(exceptions=(requests.ConnectionError,))
     def post(self, url, payload):
+        LOG.debug('post: %(url)s data: %(payload)s',
+                  {'url': url,
+                   'payload': payload})
         return self.session.post(
             self.__formatUrl(url),
             data=json.dumps(payload,
@@ -128,6 +132,9 @@ class HttpClient(object):
 
     @utils.retry(exceptions=(requests.ConnectionError,))
     def put(self, url, payload):
+        LOG.debug('put: %(url)s data: %(payload)s',
+                  {'url': url,
+                   'payload': payload})
         return self.session.put(
             self.__formatUrl(url),
             data=json.dumps(payload,
@@ -137,6 +144,7 @@ class HttpClient(object):
 
     @utils.retry(exceptions=(requests.ConnectionError,))
     def delete(self, url):
+        LOG.debug('delete: %(url)s', {'url': url})
         return self.session.delete(
             self.__formatUrl(url),
             headers=self.header,
