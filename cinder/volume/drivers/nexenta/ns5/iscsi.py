@@ -184,7 +184,6 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 self.targets[target_name].append(volume['name'])
         return target_name
 
-    @staticmethod
     def _get_targetgroup_name(self, volume):
         target_name = self._get_target_name(volume)
         return self.targetgroups[target_name]
