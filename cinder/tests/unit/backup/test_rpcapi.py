@@ -87,7 +87,8 @@ class BackupRpcAPITestCase(test.TestCase):
         self._test_backup_api('create_backup',
                               rpc_method='cast',
                               server=self.fake_backup_obj.host,
-                              backup=self.fake_backup_obj)
+                              backup=self.fake_backup_obj,
+                              version='1.1')
 
     def test_restore_backup(self):
         self._test_backup_api('restore_backup',
@@ -95,19 +96,22 @@ class BackupRpcAPITestCase(test.TestCase):
                               server='fake_volume_host',
                               volume_host='fake_volume_host',
                               backup=self.fake_backup_obj,
-                              volume_id='fake_volume_id')
+                              volume_id='fake_volume_id',
+                              version='1.1')
 
     def test_delete_backup(self):
         self._test_backup_api('delete_backup',
                               rpc_method='cast',
                               server=self.fake_backup_obj.host,
-                              backup=self.fake_backup_obj)
+                              backup=self.fake_backup_obj,
+                              version='1.1')
 
     def test_export_record(self):
         self._test_backup_api('export_record',
                               rpc_method='call',
                               server=self.fake_backup_obj.host,
-                              backup=self.fake_backup_obj)
+                              backup=self.fake_backup_obj,
+                              version='1.1')
 
     def test_import_record(self):
         self._test_backup_api('import_record',
@@ -117,11 +121,13 @@ class BackupRpcAPITestCase(test.TestCase):
                               backup=self.fake_backup_obj,
                               backup_service='fake_service',
                               backup_url='fake_url',
-                              backup_hosts=['fake_host1', 'fake_host2'])
+                              backup_hosts=['fake_host1', 'fake_host2'],
+                              version='1.1')
 
     def test_reset_status(self):
         self._test_backup_api('reset_status',
                               rpc_method='cast',
                               server=self.fake_backup_obj.host,
                               backup=self.fake_backup_obj,
-                              status='error')
+                              status='error',
+                              version='1.1')
