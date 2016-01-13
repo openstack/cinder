@@ -209,7 +209,8 @@ class DellSCSanFCDriverTestCase(test.TestCase):
         connector = self.connector
         res = self.driver.initialize_connection(volume, connector)
         expected = {'data':
-                    {'initiator_target_map':
+                    {'discard': True,
+                     'initiator_target_map':
                      {u'21000024FF30441C': [u'5000D31000FCBE35'],
                       u'21000024FF30441D': [u'5000D31000FCBE3D']},
                      'target_discovered': True,
