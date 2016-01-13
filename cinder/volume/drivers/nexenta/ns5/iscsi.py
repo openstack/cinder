@@ -208,7 +208,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             'volumeSize': volume['size'] * units.Gi,
             'volumeBlockSize': (
                 self.configuration.nexenta_ns5_blocksize * units.Ki),
-            'sparseVolume': self.configuration.nexenta_sparsed_volumes
+            'sparseVolume': self.configuration.nexenta_sparse
         }
         self.nef(url, data)
 
