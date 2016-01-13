@@ -184,6 +184,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 self.targets[target_name].append(volume['name'])
         return target_name
 
+    @staticmethod
     def _get_targetgroup_name(self, volume):
         target_name = self._get_target_name(volume)
         return self.targetgroups[target_name]
@@ -292,6 +293,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 LOG.warning(_LW(
                     'Could not delete snapshot %s - it has dependencies'),
                     snapshot['name'])
+            else:
+                LOG.warning(_LW(exc))
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create new volume from other's snapshot on appliance.
@@ -323,7 +326,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                     'volume_id': src_vref['id'],
                     'name': self._get_clone_snapshot_name(volume)}
         LOG.debug('Creating temp snapshot of the original volume: '
-                  '%(volume_name)s@%(name)s', snapshot)
+                  '%s@%s', snapshot['volume_name'], snapshot['name'])
         # We don't delete this snapshot, because this snapshot will be origin
         # of new volume. This snapshot will be automatically promoted by NEF
         # when user will delete origin volume. But when cloned volume deleted
@@ -333,12 +336,12 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             self.create_volume_from_snapshot(volume, snapshot)
         except exception.NexentaException:
             LOG.error(_LE('Volume creation failed, deleting created snapshot '
-                          '%(volume_name)s@%(name)s'), snapshot)
+                          '%s@%s'), snapshot['volume_name'], snapshot['name'])
             try:
                 self.delete_snapshot(snapshot)
             except (exception.NexentaException, exception.SnapshotIsBusy):
                 LOG.warning(_LW('Failed to delete zfs snapshot '
-                                '%(volume_name)s@%(name)s'), snapshot)
+                                '%s@%s'), snapshot['volume_name'], snapshot['name'])
             raise
 
     def _get_snapshot_volume(self, snapshot):
@@ -364,10 +367,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :return: True if target group exist, else False
         """
         url = 'san/targetgroups?name=%s' % target_group
-        if self.nef(url).get('data'):
-            return True
-        else:
-            return False
+        return bool(self.nef(url).get('data'))
 
     def _lu_exists(self, volume):
         """Check if LU exists on appliance.
