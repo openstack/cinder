@@ -2925,7 +2925,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         snap1 = self._generate_vol_info(vol1['name'], vol1['id'])
         self.driver.create_snapshot(snap1)
         vol2 = self._generate_vol_info(None, None)
-        vol3 = self._generate_vol_info(None, None)
+        vol3 = testutils.create_volume(self.ctxt)
+        vol4 = testutils.create_volume(self.ctxt)
 
         # Try to create a volume from a non-existing snapshot
         snap_novol = self._generate_vol_info('undefined-vol', '12345')
@@ -2958,14 +2959,15 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.driver.create_volume_from_snapshot(vol2, snap1)
         self._assert_vol_exists(vol2['name'], True)
 
-        # Try to clone where source size != target size
-        vol3['size'] += 1
+        # Try to clone where source size > target size
+        vol2['size'] = vol3['size'] + 1
         self.assertRaises(exception.InvalidInput,
                           self.driver.create_cloned_volume,
                           vol3, vol2)
         self._assert_vol_exists(vol3['name'], False)
-        vol3['size'] -= 1
 
+        # Try to clone where source size = target size
+        vol2['size'] = vol3['size']
         if self.USESIM:
             self.sim.error_injection('lsfcmap', 'speed_up')
         self.driver.create_cloned_volume(vol3, vol2)
@@ -2976,7 +2978,21 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                     self.assertEqual('49', fcmap['copyrate'])
         self._assert_vol_exists(vol3['name'], True)
 
+        # Try to clone where  source size < target size
+        vol4['size'] = vol2['size'] + 1
+        if self.USESIM:
+            self.sim.error_injection('lsfcmap', 'speed_up')
+        self.driver.create_cloned_volume(vol4, vol2)
+        if self.USESIM:
+            # Validate copyrate was set on the flash copy
+            for i, fcmap in self.sim._fcmappings_list.items():
+                if fcmap['target'] == vol2['name']:
+                    self.assertEqual('49', fcmap['copyrate'])
+        self._assert_vol_exists(vol4['name'], True)
+
         # Delete in the 'opposite' order to make sure it works
+        self.driver.delete_volume(vol4)
+        self._assert_vol_exists(vol4['name'], False)
         self.driver.delete_volume(vol3)
         self._assert_vol_exists(vol3['name'], False)
         self.driver.delete_volume(vol2)
