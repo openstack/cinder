@@ -45,6 +45,7 @@ from oslo_log import log as logging
 from oslo_utils import encodeutils
 from oslo_utils import excutils
 from oslo_utils import units
+from oslo_utils import timeutils
 
 from cinder.backup import driver
 from cinder import exception
@@ -325,6 +326,10 @@ class SBSBackupDriver(driver.BackupDriver):
             result = re.search(search_key, from_snap)
             if result:
                 par_id = result.group(1)
+	#make sure snap is newer than base
+	now = timeutils.utcnow()
+        self.db.backup_update(self.context, backup_id,
+			      {'created_at': now})
 
         self.db.backup_update(self.context, backup_id,
                               {'parent_id': par_id})
@@ -449,7 +454,7 @@ class SBSBackupDriver(driver.BackupDriver):
         return
 
     def _remove_from_DSS(self, backup):
-        cmd = ['rm', '-rf'] + ceph_args
+        cmd = ['rm', '-rf']
         snap_name = backup['display_name']
         loc = encodeutils.safe_encode("/tmp/%s" % (snap_name))
         cmd.extend(loc)
@@ -458,34 +463,44 @@ class SBSBackupDriver(driver.BackupDriver):
         return
 
     def _delete_backups(self, backup_list):
-        backup = backup_list
-        last_backup = backup['id']
-        while backup:
+
+        last_backup = None
+        length = len(backup_list)
+        i = 0
+        while i < length:
+	    backup = backup_list[i]
             LOG.debug("Deleting backup %s" % backup['id'])
             self._remove_from_DSS(backup)
             self.db.backup_destroy(self.context, backup['id'])
-            last_backup = backup['id']
+            last_backup = backup
+            i = i+1
         LOG.debug("Last backup deleted %s" % last_backup['id'])
         return last_backup
 
     def _mark_backup_for_deletion(self, backup):
-        self.db.backup_update(self.context, backup_id,
-                              {'deleted': True})
+        self.db.backup_update(self.context, backup['id'],
+                              {'status': "deleting"})
         return
 
-    def _incr_backups_to_delete(self, curr, backup, backup_list):
+    def _incr_backups_to_delete(self, curr, backup_id, backup_list):
         can_delete = True
         while curr['parent_id']:
             #if any snap till given snap is not marked for deletion, fail
-            if curr['deleting'] == False:
+            if curr['status'] != "deleting":
                 can_delete = False
                 break
-            parent_backup = self.db.backup_get(self.context,
-                                               curr['parent_id'])
-            LOG.debug("Got parent of backup %s as %s" % (curr['id'], curr['parent_id']))
-            backup_list.append(curr)
+	         #if parent is given backup to be deleted, do not add it
             if curr['parent_id'] == backup_id:
                 break
+
+            backup_list.append(curr)
+
+            LOG.debug("Got parent of backup %s as %s" % (curr['id'], curr['parent_id']))
+
+            parent_backup = self.db.backup_get(self.context,
+                                               curr['parent_id'])
+            curr = parent_backup
+
         return (can_delete, backup_list)
 
     """
@@ -495,14 +510,13 @@ class SBSBackupDriver(driver.BackupDriver):
     def delete(self, backup):
         """Delete the given backup from Ceph object store."""
         LOG.debug('Delete started for backup=%s', backup['id'])
-
         # Don't allow backup to be deleted if there are incremental
         # backups dependent on it, mark it for deleted.
         # Find all the dependencies. Only when all dependents are
         # marked for deletion, we can do delete all
         volume_id = backup['volume_id']
         latest_backup = None
-        backups = self.db.backup_get_all_by_volume(context.elevated(),
+        backups = self.db.backup_get_all_by_volume(self.context.elevated(),
                                                    volume_id)
         if backups:
             latest_backup = max(backups, key=lambda x: x['created_at'])
@@ -512,20 +526,26 @@ class SBSBackupDriver(driver.BackupDriver):
         #backups = self.get_all(context, {'parent_id': backup['id']})
         backup_list = []
 
-        # if latest backup is not same, then check for dependencies
+        # if latest backup is not same, then check for dependencies,
+        # identify and delete backups till given backup if possible
         if backup['id'] != latest_backup['id']:
-           can_delete, backup_list  = _incr_backups_to_delete(curr, backup['id'], backup_list) 
+           can_delete, backup_list  = self._incr_backups_to_delete(curr, backup['id'], backup_list) 
         else:
             backup_list.append(backup)
+
         last_backup = None
         if can_delete == True:
             last_backup = self._delete_backups(backup_list)
         else:
-            self._mark_backups_for_deletion(backup)
+            self._mark_backup_for_deletion(backup)
+
         #see if we can clean up more incr backups due to deletion of these snaps
         tmp_list = []
-        if last_backup:
-            can_delete, tmp_list = _incr_backups_to_delete(last_backup, None, tmp_list)
+        if (last_backup and last_backup['parent_id']):
+            parent_backup = self.db.backup_get(self.context,
+                                               last_backup['parent_id']) 
+            can_delete, tmp_list = self._incr_backups_to_delete(parent_backup, None, tmp_list)
+	    #currently list has the latest backup too, remove it later
         if tmp_list:
             tmp = self._delete_backups(tmp_list)
 
