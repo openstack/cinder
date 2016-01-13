@@ -293,7 +293,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                     'Could not delete snapshot %s - it has dependencies'),
                     snapshot['name'])
             else:
-                LOG.warning(_LW(exc))
+                LOG.warning(exc)
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create new volume from other's snapshot on appliance.
@@ -335,12 +335,14 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             self.create_volume_from_snapshot(volume, snapshot)
         except exception.NexentaException:
             LOG.error(_LE('Volume creation failed, deleting created snapshot '
-                          '%s@%s'), snapshot['volume_name'], snapshot['name'])
+                          '%s'), '@'.join(
+                [snapshot['volume_name'], snapshot['name']]))
             try:
                 self.delete_snapshot(snapshot)
             except (exception.NexentaException, exception.SnapshotIsBusy):
                 LOG.warning(_LW('Failed to delete zfs snapshot '
-                                '%s@%s'), snapshot['volume_name'], snapshot['name'])
+                                '%s'), '@'.join(
+                    [snapshot['volume_name'], snapshot['name']]))
             raise
 
     def _get_snapshot_volume(self, snapshot):
