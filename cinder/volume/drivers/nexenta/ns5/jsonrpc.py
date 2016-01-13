@@ -17,9 +17,8 @@
 =====================================================================
 
 .. automodule:: nexenta.jsonrpc
-.. moduleauthor:: Yuriy Taraday <yorik.sar@gmail.com>
-.. moduleauthor:: Victor Rodionov <victor.rodionov@nexenta.com>
 """
+
 import time
 import urllib2
 

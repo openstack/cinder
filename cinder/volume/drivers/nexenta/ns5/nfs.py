@@ -505,7 +505,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             'storage_protocol': 'NFS',
             'total_capacity_gb': total_space,
             'free_capacity_gb': free_space,
-            'reserved_percentage': 0,
+            'reserved_percentage': self.configuration.reserved_percentage,
             'QoS_support': False,
             'location_info': location_info,
             'volume_backend_name': self.backend_name,

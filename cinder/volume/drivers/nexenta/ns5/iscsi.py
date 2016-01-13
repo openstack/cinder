@@ -17,8 +17,6 @@
 =====================================================================
 
 .. automodule:: nexenta.volume
-.. moduleauthor:: Alexey Khodos <alexey.khodos@nexenta.com>
-.. moduleauthor:: Mikhail Khodos <mikhail.khodos@nexenta.com>
 """
 
 from oslo_log import log as logging
@@ -65,8 +63,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         self.nef_port = self.configuration.nexenta_rest_port
         self.nef_user = self.configuration.nexenta_user
         self.nef_password = self.configuration.nexenta_password
-        self.storage_pool = self.configuration.nexenta_pool
-        self.dataset_group = self.configuration.nexenta_dataset_group
+        self.storage_pool = self.configuration.nexenta_volume
+        self.volume_group = self.configuration.nexenta_volume_group
         self.dataset_compression = (
             self.configuration.nexenta_dataset_compression)
         self.dataset_deduplication = self.configuration.nexenta_dataset_dedup
@@ -92,9 +90,9 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         self.nef = jsonrpc.NexentaJSONProxy(
             protocol, self.nef_host, self.nef_port, self.nef_user,
             self.nef_password, auto=auto)
-        url = 'storage/pools/%s/datasetGroups' % self.storage_pool
+        url = 'storage/pools/%s/volumeGroups' % self.storage_pool
         data = {
-            'name': self.dataset_group,
+            'name': self.volume_group,
             'defaultVolumeBlockSize': (
                 self.configuration.nexenta_ns5_blocksize * units.Ki)
         }
@@ -110,16 +108,16 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
         :raise: :py:exc:`LookupError`
         """
-        url = 'storage/pools/%(pool)s/datasetGroups/%(group)s' % {
+        url = 'storage/pools/%(pool)s/volumeGroups/%(group)s' % {
             'pool': self.storage_pool,
-            'group': self.dataset_group,
+            'group': self.volume_group,
         }
         try:
             self.nef(url)
-        except jsonrpc.NexentaJSONException:
+        except exception.NexentaException:
             raise LookupError(_(
                 "Dataset group %s not found at Nexenta SA"), '/'.join(
-                [self.storage_pool, self.dataset_group]))
+                [self.storage_pool, self.volume_group]))
         services = self.nef('services')
         for service in services['data']:
             if service['name'] == 'iscsit':
@@ -130,10 +128,10 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
 
     def _get_volume_path(self, volume):
         """Return zfs volume name that corresponds given volume name."""
-        return '%s/%s/%s' % (self.storage_pool, self.dataset_group,
+        return '%s/%s/%s' % (self.storage_pool, self.volume_group,
                              volume['name'])
 
-    def _create_target(self, volume, target_idx):
+    def _create_target(self, target_idx):
         target_alias = '%s-%i' % (
             self.nef_host,
             target_idx
@@ -171,7 +169,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 self.targetgroups[target_name] = target_alias
         elif not(target_names):
             # create first target and target group
-            target_name = self._create_target(volume, 0)
+            target_name = self._create_target(0)
             self.targets[target_name].append(volume['name'])
         else:
             target_name = target_names[0]
@@ -181,7 +179,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                     target_name = target
             if len(self.targets[target_name]) >= 20:
                 # create new target and target group
-                target_name = self._create_target(volume, len(target_names))
+                target_name = self._create_target(len(target_names))
             if not(volume['name'] in self.targets[target_name]):
                 self.targets[target_name].append(volume['name'])
         return target_name
@@ -201,9 +199,9 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :param volume: volume reference
         :return: model update dict for volume reference
         """
-        url = 'storage/pools/%(pool)s/datasetGroups/%(group)s/volumes' % {
+        url = 'storage/pools/%(pool)s/volumeGroups/%(group)s/volumes' % {
             'pool': self.storage_pool,
-            'group': self.dataset_group,
+            'group': self.volume_group,
         }
         data = {
             'name': volume['name'],
@@ -220,7 +218,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :param volume: volume reference
         """
         pool, group, name = self._get_volume_path(volume).split('/')
-        url = ('storage/pools/%(pool)s/datasetGroups/%(group)s'
+        url = ('storage/pools/%(pool)s/volumeGroups/%(group)s'
                '/volumes/%(name)s?snapshots=true') % {
             'pool': pool,
             'group': group,
@@ -243,7 +241,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         LOG.info(_LI('Extending volume: %(id)s New size: %(size)s GB'),
                  {'id': volume['id'], 'size': new_size})
         pool, group, name = self._get_volume_path(volume).split('/')
-        url = ('storage/pools/%(pool)s/datasetGroups/%(group)s/'
+        url = ('storage/pools/%(pool)s/volumeGroups/%(group)s/'
                'volumes/%(name)s') % {
             'pool': pool,
             'group': group,
@@ -263,7 +261,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         })
         volume_path = self._get_volume_path(snapshot_vol)
         pool, group, volume = volume_path.split('/')
-        url = ('storage/pools/%(pool)s/datasetGroups/%(group)s/'
+        url = ('storage/pools/%(pool)s/volumeGroups/%(group)s/'
                'volumes/%(volume)s/snapshots') % {
             'pool': pool,
             'group': group,
@@ -280,7 +278,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         snapshot_vol = self._get_snapshot_volume(snapshot)
         volume_path = self._get_volume_path(snapshot_vol)
         pool, group, volume = volume_path.split('/')
-        url = ('storage/pools/%(pool)s/datasetGroups/%(group)s/'
+        url = ('storage/pools/%(pool)s/volumeGroups/%(group)s/'
                'volumes/%(volume)s/snapshots/%(snapshot)s') % {
             'pool': pool,
             'group': group,
@@ -305,7 +303,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         snapshot_vol = self._get_snapshot_volume(snapshot)
         volume_path = self._get_volume_path(snapshot_vol)
         pool, group, snapshot_vol = volume_path.split('/')
-        url = ('storage/pools/%(pool)s/datasetGroups/%(group)s/'
+        url = ('storage/pools/%(pool)s/volumeGroups/%(group)s/'
                'volumes/%(volume)s/snapshots/%(snapshot)s/clone') % {
             'pool': pool,
             'group': group,
@@ -485,9 +483,9 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         """Retrieve stats info for NexentaStor appliance."""
         LOG.debug('Updating volume stats')
 
-        url = 'storage/pools/%(pool)s/datasetGroups/%(group)s' % {
+        url = 'storage/pools/%(pool)s/volumeGroups/%(group)s' % {
             'pool': self.storage_pool,
-            'group': self.dataset_group,
+            'group': self.volume_group,
         }
         stats = self.nef(url)
         total_amount = utils.str2gib_size(
@@ -498,9 +496,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             'driver': self.__class__.__name__,
             'host': self.nef_host,
             'pool': self.storage_pool,
-            'group': self.dataset_group,
+            'group': self.volume_group,
         }
-        reserve = 100 - self.configuration.nexenta_dataset_capacitycheck
         self._stats = {
             'vendor_name': 'Nexenta',
             'dedup': self.dataset_deduplication,
@@ -510,7 +507,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             'storage_protocol': 'iSCSI',
             'total_capacity_gb': total_amount,
             'free_capacity_gb': free_amount,
-            'reserved_percentage': reserve,
+            'reserved_percentage': self.configuration.reserved_percentage,
             'QoS_support': False,
             'volume_backend_name': self.backend_name,
             'location_info': location_info,
