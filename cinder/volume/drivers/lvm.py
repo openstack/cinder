@@ -60,7 +60,15 @@ volume_opts = [
                help='LVM conf file to use for the LVM driver in Cinder; '
                     'this setting is ignored if the specified file does '
                     'not exist (You can also specify \'None\' to not use '
-                    'a conf file even if one exists).')
+                    'a conf file even if one exists).'),
+    cfg.FloatOpt('lvm_max_over_subscription_ratio',
+                 # This option exists to provide a default value for the
+                 # LVM driver which is different than the global default.
+                 default=1.0,
+                 help='max_over_subscription_ratio setting for the LVM '
+                      'driver.  If set, this takes precedence over the '
+                      'general max_over_subscription_ratio option.  If '
+                      'None, the general option is used.')
 ]
 
 CONF = cfg.CONF
@@ -100,6 +108,10 @@ class LVMVolumeDriver(driver.VolumeDriver):
             executor=self._execute)
         self.protocol = self.target_driver.protocol
         self._sparse_copy_volume = False
+
+        if self.configuration.lvm_max_over_subscription_ratio is not None:
+            self.configuration.max_over_subscription_ratio = \
+                self.configuration.lvm_max_over_subscription_ratio
 
     def _sizestr(self, size_in_g):
         return '%sg' % size_in_g
