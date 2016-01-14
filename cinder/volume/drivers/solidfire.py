@@ -1425,9 +1425,11 @@ class SolidFireDriver(san.SanISCSIDriver):
 
            Optionally checks and utilizes volume access groups.
         """
-        return self._sf_initialize_connection(volume,
-                                              connector,
-                                              initiator_data)
+        properties = self._sf_initialize_connection(volume,
+                                                    connector,
+                                                    initiator_data)
+        properties['data']['discard'] = True
+        return properties
 
     def attach_volume(self, context, volume,
                       instance_uuid, host_name,

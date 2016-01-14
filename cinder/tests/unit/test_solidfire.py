@@ -445,6 +445,7 @@ class SolidFireVolumeTestCase(test.TestCase):
         properties = sfv.initialize_connection(testvol, connector)
         self.assertEqual('4096', properties['data']['physical_block_size'])
         self.assertEqual('4096', properties['data']['logical_block_size'])
+        self.assertTrue(properties['data']['discard'])
 
     def test_create_volume_fails(self):
         # NOTE(JDG) This test just fakes update_cluster_status
