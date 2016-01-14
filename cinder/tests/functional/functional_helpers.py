@@ -14,7 +14,7 @@
 #    under the License.
 
 """
-Provides common functionality for integrated unit tests
+Provides common functionality for functional tests
 """
 import os.path
 import random
@@ -24,15 +24,13 @@ import uuid
 import fixtures
 import mock
 from oslo_config import cfg
-from oslo_log import log as logging
 
 from cinder import service
 from cinder import test  # For the flags
-from cinder.tests.unit.integrated.api import client
+from cinder.tests.functional.api import client
 
 
 CONF = cfg.CONF
-LOG = logging.getLogger(__name__)
 
 
 def generate_random_alphanumeric(length):
@@ -56,12 +54,11 @@ def generate_new_element(items, prefix, numeric=False):
             candidate = prefix + generate_random_alphanumeric(8)
         if candidate not in items:
             return candidate
-        LOG.debug("Random collision on %s", candidate)
 
 
-class _IntegratedTestBase(test.TestCase):
+class _FunctionalTestBase(test.TestCase):
     def setUp(self):
-        super(_IntegratedTestBase, self).setUp()
+        super(_FunctionalTestBase, self).setUp()
 
         f = self._get_flags()
         self.flags(**f)
@@ -83,7 +80,7 @@ class _IntegratedTestBase(test.TestCase):
 
     def _start_api_service(self):
         default_conf = os.path.abspath(os.path.join(
-            os.path.dirname(__file__), '..', '..', '..', '..',
+            os.path.dirname(__file__), '..', '..', '..',
             'etc/cinder/api-paste.ini'))
         CONF.api_paste_config = default_conf
         self.osapi = service.WSGIService("osapi_volume")
@@ -91,7 +88,6 @@ class _IntegratedTestBase(test.TestCase):
         # FIXME(ja): this is not the auth url - this is the service url
         # FIXME(ja): this needs fixed in nova as well
         self.auth_url = 'http://%s:%s/v2' % (self.osapi.host, self.osapi.port)
-        LOG.warning(self.auth_url)
 
     def _get_flags(self):
         """An opportunity to setup flags, before the services are started."""
@@ -122,7 +118,6 @@ class _IntegratedTestBase(test.TestCase):
         server = {}
 
         image = self.api.get_images()[0]
-        LOG.debug("Image: %s", image)
 
         if 'imageRef' in image:
             image_href = image['imageRef']
@@ -135,7 +130,6 @@ class _IntegratedTestBase(test.TestCase):
 
         # Set a valid flavorId
         flavor = self.api.get_flavors()[0]
-        LOG.debug("Using flavor: %s", flavor)
         server['flavorRef'] = 'http://fake.server/%s' % flavor['id']
 
         # Set a valid server name

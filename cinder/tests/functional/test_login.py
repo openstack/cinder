@@ -13,17 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_log import log as logging
-
-from cinder.tests.unit.integrated import integrated_helpers
+from cinder.tests.functional import functional_helpers
 
 
-LOG = logging.getLogger(__name__)
-
-
-class LoginTest(integrated_helpers._IntegratedTestBase):
+class LoginTest(functional_helpers._FunctionalTestBase):
     def test_login(self):
         """Simple check - we list volumes - so we know we're logged in."""
         volumes = self.api.get_volumes()
-        for volume in volumes:
-            LOG.debug("volume: %s" % volume)
+        self.assertIsNotNone(volumes)
