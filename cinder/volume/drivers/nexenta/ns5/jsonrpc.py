@@ -32,27 +32,30 @@ LOG = logging.getLogger(__name__)
 
 class NexentaJSONProxy(object):
 
-    def __init__(self, scheme, host, port, user, password, auto=False):
+    def __init__(
+        self, scheme, host, port, user, password, auto=False, method=None):
         self.scheme = scheme
         self.host = host
         self.port = port
         self.user = user
         self.password = password
         self.auto = True
+        self.method = method
 
     @property
     def url(self):
         return '%s://%s:%s/' % (self.scheme, self.host, self.port)
 
     def __getattr__(self, name=None):
-        if not self.method:
-            method = name
-        else:
-            raise exception.VolumeDriverException(
-                'Wrong resource call syntax')
-        return NexentaJSONProxy(
-            self.scheme, self.host, self.port,
-            self.user, self.password, self.auto, method)
+        if name:
+            if not self.method:
+                method = name
+            else:
+                raise exception.VolumeDriverException(
+                    'Wrong resource call syntax')
+            return NexentaJSONProxy(
+                self.scheme, self.host, self.port,
+                self.user, self.password, self.auto, method)
 
     def __hash__(self):
         return self.url.__hash__()
@@ -60,25 +63,25 @@ class NexentaJSONProxy(object):
     def __repr__(self):
         return 'NEF proxy: %s' % self.url
 
-    def __call__(self, path, data=None, method='get'):
+    def __call__(self, path, data=None, method=None):
         auth = ('%s:%s' % (self.user, self.password)).encode('base64')[:-1]
         headers = {
             'Content-Type': 'application/json',
             'Authorization': 'Basic %s' % auth
         }
+        url = self.url + path
+
+        if not method:
+            method = 'post' if data else 'get'
+        if data:
+            data = jsonutils.dumps(data)
+
         LOG.debug(('Sending JSON to url: %(path)s, data: %(data)s,'
                    ' method: %(method)s') % {
             'path': path,
             'data': data,
             'method': method
         })
-        url = self.url + path
-        if data:
-            data = jsonutils.dumps(data)
-
-        if not method:
-            method = 'post' if data else 'get'
-
         if method == 'get':
             resp = requests.get(url, headers=headers)
         if method == 'post':
@@ -88,22 +91,22 @@ class NexentaJSONProxy(object):
         if method == 'delete':
             resp = requests.delete(url, data=data, headers=headers)
 
-        response = resp.json()
-        resp.close()
-
-        if resp.status_code in (200, 201) and not response:
+        if resp.status_code == 201:
             LOG.debug('Got response: Success')
             return 'Success'
+
+        response = resp.json()
+        resp.close()
         if response and resp.status_code == 202:
-            # response = jsonutils.loads(response)
             url = self.url + response['links'][0]['href']
             while resp.status_code == 202:
                 time.sleep(1)
-                resp = requests.get(url, data, headers)
-                response = resp.json()
-                resp.close
-                if resp.status_code in (200, 201) and not response:
+                resp = requests.get(url)
+                if resp.status_code == 201:
                     LOG.debug('Got response: Success')
                     return 'Success'
+                else:
+                    response = resp.json()
+                resp.close
         LOG.debug('Got response: %s', response)
         return response

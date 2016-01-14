@@ -101,7 +101,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         except exception.NexentaException as e:
             LOG.debug(e)
         url = 'services/iscsit/enable'
-        self.nef(url, method='post')
+        self.nef.post(url)
 
     def check_for_setup_error(self):
         """Verify that the zfs volumes exist.
