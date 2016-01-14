@@ -158,16 +158,16 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         target_names = self.targets.keys()
         if provider_location:
             target_name = provider_location.split(',1 ')[1].split(' ')[0]
-            if not(self.targets.get(target_name)):
+            if not self.targets.get(target_name):
                 self.targets[target_name] = []
             if not(volume['name'] in self.targets[target_name]):
                 self.targets[target_name].append(volume['name'])
-            if not(self.targetgroups.get(target_name)):
+            if not self.targetgroups.get(target_name):
                 url = 'san/iscsi/targets'
                 data = self.nef(url).get('data')
                 target_alias = data[0]['alias']
                 self.targetgroups[target_name] = target_alias
-        elif not(target_names):
+        elif not target_names:
             # create first target and target group
             target_name = self._create_target(0)
             self.targets[target_name].append(volume['name'])
