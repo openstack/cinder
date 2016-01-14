@@ -36,8 +36,8 @@ import os
 import re
 import subprocess
 import time
-#import boto
-#import boto.s3.connection
+import boto
+import boto.s3.connection
 import pdb
 import eventlet
 from oslo_config import cfg
@@ -65,9 +65,10 @@ service_opts = [
                help='Access key for S3 store.'),
     cfg.StrOpt('sbs_secret_key', default='',
                help='Secrete key for S3 store.'),
-    cfg.StrOpt('sbs_container', default='backups',
-               help='Container in S3 store to save backups.'),
-
+    cfg.StrOpt('sbs_container', default='backup-shishir',
+               help='Bucket in S3 store to save backups.'),
+    cfg.StrOpt('sbs_region', default='us-west-2',
+               help='Region where the buckets are'),
 ]
 
 CONF = cfg.CONF
@@ -86,6 +87,7 @@ class SBSBackupDriver(driver.BackupDriver):
         self._access_key = encodeutils.safe_encode(CONF.sbs_access_key)
         self._secret_key = encodeutils.safe_encode(CONF.sbs_secret_key)
         self._container = encodeutils.safe_encode(CONF.sbs_container)
+        self._region = encodeutils.safe_encode(CONF.sbs_region)
 
     def _get_backup_base_name(self, volume_id, backup_id=None,
                               diff_format=False):
@@ -199,17 +201,50 @@ class SBSBackupDriver(driver.BackupDriver):
         #Return True if snapshot exists in base image
         return True
 
+    def _connect_to_DSS(self, bucket_name):
+        conn = boto.s3.connect_to_region(self._region,aws_access_key_id=self._access_key,
+                                         aws_secret_access_key=self._secret_key,
+                                         calling_format = boto.s3.connection.OrdinaryCallingFormat(),)
+
+        backup_bucket = conn.get_bucket(bucket_name, True)
+        if backup_bucket == None:
+            backup_bucket = conn.create_bucket(bucket_name)
+        return backup_bucket
+    #currently broken, not used
+    def _multi_part_upload(self, bucket, key, loc):
+        size = os.stat(loc).st_size
+        mp = bucket.initiate_multipart_upload(key)
+        chunk_size = 52428800
+        chunk_count = int(math.ceil(size/float(chunk_size)))
+
+        for i in range(chunk_count):
+            off_set = chunk_size * i
+            bytes = min(chunk_size, size - offset)
+            #with FileChunkIO(loc, 'r', offset=off_set, bytes=bytes) as fp:
+            #    mp.upload_part_from_file(fp,part_num=i+1)
+
+        mp.complete_upload()
+
     def _upload_to_DSS(self, snap_name, volume_name, ceph_args, from_snap=None):
+        tmp_cmd = ['mkdir', '-p', '/tmp/uploads']
+        self._execute(*tmp_cmd, run_as_root=False)
         cmd = ['rbd', 'export-diff'] + ceph_args
         #if from_snap is None, do full upload
         if from_snap is not None:
             cmd.extend(['--from-snap', from_snap])
         path = encodeutils.safe_encode("%s@%s" %
                                       (volume_name, snap_name))
-        loc = encodeutils.safe_encode("/tmp/%s" % (snap_name))
+        loc = encodeutils.safe_encode("/tmp/uploads/%s" % (snap_name))
         cmd.extend([path, loc])
         LOG.info(cmd)
         self._execute (*cmd, run_as_root=False)
+        bucket = self._connect_to_DSS(self._container)
+        key = bucket.new_key(snap_name)
+        if key == None:
+            return
+
+        key.set_contents_from_filename(loc)
+        os.remove(loc)
         #shishir: boto to upload the file from loc
         return
 
@@ -326,8 +361,8 @@ class SBSBackupDriver(driver.BackupDriver):
             result = re.search(search_key, from_snap)
             if result:
                 par_id = result.group(1)
-	#make sure snap is newer than base
-	now = timeutils.utcnow()
+        #make sure snap is newer than base
+        now = timeutils.utcnow()
         self.db.backup_update(self.context, backup_id,
 			      {'created_at': now})
 
@@ -341,8 +376,10 @@ class SBSBackupDriver(driver.BackupDriver):
                               {'container': self._container})
 
         # Remove older from-snap from src, as new snap will be "New" from-snap
-	# Do this is from-snap is not same as base snap, as it will be the first
-	if from_snap != base_name:
+        # Do this is from-snap is not same as base snap, as it will be the first
+        if from_snap != base_name:
+            #currently we do not want to remove snaps to support out of order
+            # deletion
         	source_rbd_image.remove_snap(from_snap)
         return
 
@@ -382,14 +419,27 @@ class SBSBackupDriver(driver.BackupDriver):
         return backup_tree
 
     def _download_from_DSS(self, snap_name, volume_name, ceph_args):
+
+        tmp_cmd = ['mkdir', '-p', '/tmp/downloads']
+        self._execute(*tmp_cmd, run_as_root=False)
+        loc = encodeutils.safe_encode("/tmp/downloads/%s" % (snap_name))
+        open(loc,'a').close
+
+        bucket = self._connect_to_DSS(self._container)
+        key = bucket.get_key(snap_name)
+        if key == None:
+            return
+
+        key.get_contents_to_filename(loc)
+
         cmd = ['rbd', 'import-diff'] + ceph_args
         #if from_snap is None, do full upload
-        path = encodeutils.safe_encode("%s" % (volume_name))
-        loc = encodeutils.safe_encode("/tmp/%s" % (snap_name))
-        cmd.extend([loc, path])
+        volume_name = encodeutils.safe_encode("%s" % (volume_name))
+        cmd.extend([loc, volume_name])
         LOG.info("Downloading backups %s" % (cmd))
+
         self._execute (*cmd, run_as_root=False)
-        #shishir: boto to upload the file from loc
+        os.remove(loc)
         return
 
     def _restore_rbd(self, backup, volume_id, volume_file, ceph_args):
