@@ -67,6 +67,9 @@ EXTRA_CONFIG_VOLUME_ID_KEY = "cinder.volume.id"
 vmdk_opts = [
     cfg.StrOpt('vmware_host_ip',
                help='IP address for connecting to VMware vCenter server.'),
+    cfg.PortOpt('vmware_host_port',
+                default=443,
+                help='Port number for connecting to VMware vCenter server.'),
     cfg.StrOpt('vmware_host_username',
                help='Username for authenticating with VMware vCenter '
                     'server.'),
@@ -255,7 +258,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                            'vmware_host_password']
         for param in required_params:
             if not getattr(self.configuration, param, None):
-                raise exception.InvalidInput(_("%s not set.") % param)
+                reason = _("%s not set.") % param
+                raise exception.InvalidInput(reason=reason)
 
     def check_for_setup_error(self):
         pass
@@ -665,6 +669,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
         timeout = self.configuration.vmware_image_transfer_timeout_secs
         host_ip = self.configuration.vmware_host_ip
+        port = self.configuration.vmware_host_port
         ca_file = self.configuration.vmware_ca_file
         insecure = self.configuration.vmware_insecure
         cookies = self.session.vim.client.options.transport.cookiejar
@@ -687,7 +692,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                                            image_id,
                                            image_size=image_size_in_bytes,
                                            host=host_ip,
-                                           port=443,
+                                           port=port,
                                            data_center_name=dc_name,
                                            datastore_name=ds_name,
                                            cookies=cookies,
@@ -1016,6 +1021,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             # fetching image from glance will also create the backing
             timeout = self.configuration.vmware_image_transfer_timeout_secs
             host_ip = self.configuration.vmware_host_ip
+            port = self.configuration.vmware_host_port
             LOG.debug("Fetching glance image: %(id)s to server: %(host)s.",
                       {'id': image_id, 'host': host_ip})
             backing = image_transfer.download_stream_optimized_image(
@@ -1025,7 +1031,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                 image_id,
                 session=self.session,
                 host=host_ip,
-                port=443,
+                port=port,
                 resource_pool=rp,
                 vm_folder=folder,
                 vm_import_spec=vm_import_spec,
@@ -1169,6 +1175,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         # Upload image from vmdk
         timeout = self.configuration.vmware_image_transfer_timeout_secs
         host_ip = self.configuration.vmware_host_ip
+        port = self.configuration.vmware_host_port
 
         image_transfer.upload_image(context,
                                     timeout,
@@ -1177,7 +1184,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                                     volume['project_id'],
                                     session=self.session,
                                     host=host_ip,
-                                    port=443,
+                                    port=port,
                                     vm=backing,
                                     vmdk_file_path=vmdk_file_path,
                                     vmdk_size=volume['size'] * units.Gi,
@@ -1432,6 +1439,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         """Download virtual disk in streamOptimized format."""
         timeout = self.configuration.vmware_image_transfer_timeout_secs
         host_ip = self.configuration.vmware_host_ip
+        port = self.configuration.vmware_host_port
         vmdk_ds_file_path = self.volumeops.get_vmdk_path(backing)
 
         with open(tmp_file_path, "wb") as tmp_file:
@@ -1441,7 +1449,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                 tmp_file,
                 session=self.session,
                 host=host_ip,
-                port=443,
+                port=port,
                 vm=backing,
                 vmdk_file_path=vmdk_ds_file_path,
                 vmdk_size=volume['size'] * units.Gi)
@@ -1506,6 +1514,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
         timeout = self.configuration.vmware_image_transfer_timeout_secs
         host_ip = self.configuration.vmware_host_ip
+        port = self.configuration.vmware_host_port
         try:
             with open(tmp_file_path, "rb") as tmp_file:
                 vm_ref = image_transfer.download_stream_optimized_data(
@@ -1514,7 +1523,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                     tmp_file,
                     session=self.session,
                     host=host_ip,
-                    port=443,
+                    port=port,
                     resource_pool=rp,
                     vm_folder=folder,
                     vm_import_spec=vm_import_spec,
@@ -1740,6 +1749,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
     def session(self):
         if not self._session:
             ip = self.configuration.vmware_host_ip
+            port = self.configuration.vmware_host_port
             username = self.configuration.vmware_host_username
             password = self.configuration.vmware_host_password
             api_retry_count = self.configuration.vmware_api_retry_count
@@ -1753,6 +1763,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                                                  task_poll_interval,
                                                  wsdl_loc=wsdl_loc,
                                                  pbm_wsdl_loc=pbm_wsdl,
+                                                 port=port,
                                                  cacert=ca_file,
                                                  insecure=insecure)
         return self._session
