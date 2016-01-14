@@ -17,10 +17,8 @@ Client side of the volume RPC API.
 """
 
 from oslo_config import cfg
-import oslo_messaging as messaging
 from oslo_serialization import jsonutils
 
-from cinder.objects import base as objects_base
 from cinder import rpc
 from cinder.volume import utils
 
@@ -28,7 +26,7 @@ from cinder.volume import utils
 CONF = cfg.CONF
 
 
-class VolumeAPI(object):
+class VolumeAPI(rpc.RPCAPI):
     """Client side of the volume rpc API.
 
     API version history:
@@ -89,18 +87,9 @@ class VolumeAPI(object):
                checks in the API.
     """
 
-    BASE_RPC_API_VERSION = '1.0'
-
-    def __init__(self, topic=None):
-        super(VolumeAPI, self).__init__()
-        target = messaging.Target(topic=CONF.volume_topic,
-                                  version=self.BASE_RPC_API_VERSION)
-        serializer = objects_base.CinderObjectSerializer()
-
-        # NOTE(thangp): Until version pinning is impletemented, set the client
-        # version_cap to None
-        self.client = rpc.get_client(target, version_cap=None,
-                                     serializer=serializer)
+    RPC_API_VERSION = '1.37'
+    TOPIC = CONF.volume_topic
+    BINARY = 'cinder-volume'
 
     def create_consistencygroup(self, ctxt, group, host):
         new_host = utils.extract_host(host)

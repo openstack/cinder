@@ -209,6 +209,18 @@ class DBAPIServiceTestCase(BaseTest):
         real = db.service_get_all_by_topic(self.ctxt, 't1')
         self._assertEqualListsOfObjects(expected, real)
 
+    def test_service_get_all_by_binary(self):
+        values = [
+            {'host': 'host1', 'binary': 'b1'},
+            {'host': 'host2', 'binary': 'b1'},
+            {'host': 'host4', 'disabled': True, 'binary': 'b1'},
+            {'host': 'host3', 'binary': 'b2'}
+        ]
+        services = [self._create_service(vals) for vals in values]
+        expected = services[:3]
+        real = db.service_get_all_by_binary(self.ctxt, 'b1')
+        self._assertEqualListsOfObjects(expected, real)
+
     def test_service_get_by_args(self):
         values = [
             {'host': 'host1', 'binary': 'a'},

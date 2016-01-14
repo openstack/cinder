@@ -96,6 +96,7 @@ OBJ_VERSIONS.add('1.0', {'Backup': '1.3', 'BackupImport': '1.3',
                          'ConsistencyGroup': '1.2',
                          'ConsistencyGroupList': '1.1', 'Service': '1.1',
                          'Volume': '1.3', 'VolumeTypeList': '1.1'})
+OBJ_VERSIONS.add('1.1', {'Service': '1.2', 'ServiceList': '1.1'})
 
 
 class CinderObjectRegistry(base.VersionedObjectRegistry):
@@ -385,3 +386,23 @@ class ObjectListBase(base.ObjectListBase):
 
 class CinderObjectSerializer(base.VersionedObjectSerializer):
     OBJ_BASE_CLASS = CinderObject
+
+    def __init__(self, version_cap=None):
+        super(CinderObjectSerializer, self).__init__()
+        self.version_cap = version_cap
+
+    def _get_capped_obj_version(self, obj):
+        objname = obj.obj_name()
+        objver = OBJ_VERSIONS.get(self.version_cap, {})
+        return objver.get(objname, None)
+
+    def serialize_entity(self, context, entity):
+        if isinstance(entity, (tuple, list, set, dict)):
+            entity = self._process_iterable(context, self.serialize_entity,
+                                            entity)
+        elif (hasattr(entity, 'obj_to_primitive') and
+              callable(entity.obj_to_primitive)):
+            # NOTE(dulek): Backport outgoing object to the capped version.
+            backport_ver = self._get_capped_obj_version(entity)
+            entity = entity.obj_to_primitive(backport_ver)
+        return entity

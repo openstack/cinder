@@ -20,18 +20,15 @@ Client side of the volume backup RPC API.
 
 from oslo_config import cfg
 from oslo_log import log as logging
-import oslo_messaging as messaging
 
-from cinder.objects import base as objects_base
 from cinder import rpc
 
 
 CONF = cfg.CONF
-
 LOG = logging.getLogger(__name__)
 
 
-class BackupAPI(object):
+class BackupAPI(rpc.RPCAPI):
     """Client side of the volume rpc API.
 
     API version history:
@@ -40,16 +37,9 @@ class BackupAPI(object):
         1.1 - Changed methods to accept backup objects instead of IDs.
     """
 
-    BASE_RPC_API_VERSION = '1.0'
     RPC_API_VERSION = '1.1'
-
-    def __init__(self):
-        super(BackupAPI, self).__init__()
-        target = messaging.Target(topic=CONF.backup_topic,
-                                  version=self.BASE_RPC_API_VERSION)
-        serializer = objects_base.CinderObjectSerializer()
-        self.client = rpc.get_client(target, self.RPC_API_VERSION,
-                                     serializer=serializer)
+    TOPIC = CONF.backup_topic
+    BINARY = 'cinder-backup'
 
     def create_backup(self, ctxt, backup):
         LOG.debug("create_backup in rpcapi backup_id %s", backup.id)

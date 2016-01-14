@@ -17,17 +17,15 @@ Client side of the scheduler manager RPC API.
 """
 
 from oslo_config import cfg
-import oslo_messaging as messaging
 from oslo_serialization import jsonutils
 
-from cinder.objects import base as objects_base
 from cinder import rpc
 
 
 CONF = cfg.CONF
 
 
-class SchedulerAPI(object):
+class SchedulerAPI(rpc.RPCAPI):
     """Client side of the scheduler rpc API.
 
     API version history:
@@ -48,18 +46,9 @@ class SchedulerAPI(object):
                migrate_volume_to_host()
     """
 
-    RPC_API_VERSION = '1.0'
-
-    def __init__(self):
-        super(SchedulerAPI, self).__init__()
-        target = messaging.Target(topic=CONF.scheduler_topic,
-                                  version=self.RPC_API_VERSION)
-        serializer = objects_base.CinderObjectSerializer()
-
-        # NOTE(thangp): Until version pinning is impletemented, set the client
-        # version_cap to None
-        self.client = rpc.get_client(target, version_cap=None,
-                                     serializer=serializer)
+    RPC_API_VERSION = '1.11'
+    TOPIC = CONF.scheduler_topic
+    BINARY = 'cinder-scheduler'
 
     def create_consistencygroup(self, ctxt, topic, group,
                                 request_spec_list=None,
