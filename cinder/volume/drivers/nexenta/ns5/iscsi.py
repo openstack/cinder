@@ -101,7 +101,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         except exception.NexentaException as e:
             LOG.debug(e)
         url = 'services/iscsit/enable'
-        self.nef(url, method='post')
+        self.nef.post(url)
 
     def check_for_setup_error(self):
         """Verify that the zfs volumes exist.
@@ -155,7 +155,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
     def _get_target_name(self, volume):
         """Return iSCSI target name with least LUs."""
         provider_location = volume.get('provider_location')
-        target_names = self.targets.keys()
+        target_names = list(self.targets)
         if provider_location:
             target_name = provider_location.split(',1 ')[1].split(' ')[0]
             if not self.targets.get(target_name):

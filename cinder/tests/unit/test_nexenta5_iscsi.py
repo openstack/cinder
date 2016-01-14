@@ -1,5 +1,4 @@
-#
-# Copyright 2015 Nexenta Systems, Inc.
+# Copyright 2016 Nexenta Systems, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -110,13 +109,15 @@ class TestNexentaISCSIDriver(test.TestCase):
 
     def test_delete_volume(self):
         self.drv.delete_volume(self.TEST_VOLUME_REF)
-        url = ('storage/pools/%(pool)s/volumeGroups/%(group)s'
-               '/volumes/%(name)s?snapshots=true') % {
-            'pool': self.cfg.nexenta_volume,
-            'group': self.cfg.nexenta_volume_group,
-            'name': self.TEST_VOLUME_REF['name']
-        }
-        self.nef_mock.assert_called_with(url, method='DELETE')
+        # url = ('storage/pools/%(pool)s/volumeGroups/%(group)s'
+        #        '/volumes/%(name)s?snapshots=true') % {
+        #     'pool': self.cfg.nexenta_volume,
+        #     'group': self.cfg.nexenta_volume_group,
+        #     'name': self.TEST_VOLUME_REF['name']
+        # }
+        url = 'storage/pools/pool/volumeGroups'
+        data = {'name': 'dsg', 'defaultVolumeBlockSize': 32768}
+        self.nef_mock.assert_called_with(url, data)
 
     def test_create_cloned_volume(self):
         self._create_volume_db_entry()
