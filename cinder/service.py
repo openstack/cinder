@@ -150,6 +150,10 @@ class Service(service.Service):
         try:
             service_ref = objects.Service.get_by_args(
                 ctxt, self.host, self.binary)
+            service_ref.rpc_current_version = self.manager.RPC_API_VERSION
+            obj_version = objects_base.OBJ_VERSIONS.get_current()
+            service_ref.object_current_version = obj_version
+            service_ref.save()
             self.service_id = service_ref.id
         except exception.NotFound:
             self._create_service_ref(ctxt)
@@ -203,11 +207,15 @@ class Service(service.Service):
 
     def _create_service_ref(self, context):
         zone = CONF.storage_availability_zone
-        kwargs = {'host': self.host,
-                  'binary': self.binary,
-                  'topic': self.topic,
-                  'report_count': 0,
-                  'availability_zone': zone}
+        kwargs = {
+            'host': self.host,
+            'binary': self.binary,
+            'topic': self.topic,
+            'report_count': 0,
+            'availability_zone': zone,
+            'rpc_current_version': self.manager.RPC_API_VERSION,
+            'object_current_version': objects_base.OBJ_VERSIONS.get_current(),
+        }
         service_ref = objects.Service(context=context, **kwargs)
         service_ref.create()
         self.service_id = service_ref.id
