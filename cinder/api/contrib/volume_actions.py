@@ -98,15 +98,7 @@ class VolumeActionsController(wsgi.Controller):
         else:
             mode = 'rw'
 
-        if instance_uuid and host_name:
-            msg = _("Invalid request to attach volume to an "
-                    "instance %(instance_uuid)s and a "
-                    "host %(host_name)s simultaneously") % {
-                'instance_uuid': instance_uuid,
-                'host_name': host_name,
-            }
-            raise webob.exc.HTTPBadRequest(explanation=msg)
-        elif instance_uuid is None and host_name is None:
+        if instance_uuid is None and host_name is None:
             msg = _("Invalid request to attach volume to an invalid target")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
