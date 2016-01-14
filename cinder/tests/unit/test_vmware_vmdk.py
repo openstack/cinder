@@ -54,7 +54,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     """Unit tests for VMwareVcVmdkDriver."""
 
     IP = 'localhost'
-    PORT = 443
+    PORT = 2321
     USERNAME = 'username'
     PASSWORD = 'password'
     VOLUME_FOLDER = 'cinder-volumes'
@@ -84,6 +84,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
 
         self._config = mock.Mock(spec=configuration.Configuration)
         self._config.vmware_host_ip = self.IP
+        self._config.vmware_host_port = self.PORT
         self._config.vmware_host_username = self.USERNAME
         self._config.vmware_host_password = self.PASSWORD
         self._config.vmware_wsdl_location = None
@@ -790,7 +791,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             image_id,
             session=session,
             host=self._config.vmware_host_ip,
-            port=443,
+            port=self._config.vmware_host_port,
             resource_pool=rp,
             vm_folder=folder,
             vm_import_spec=import_spec,
@@ -849,7 +850,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             volume['project_id'],
             session=session,
             host=self._config.vmware_host_ip,
-            port=443,
+            port=self._config.vmware_host_port,
             vm=backing,
             vmdk_file_path=vmdk_file_path,
             vmdk_size=volume['size'] * units.Gi,
@@ -1362,9 +1363,11 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             extra_config=extra_config)
         file_open.assert_called_once_with(tmp_file_path, "rb")
         download_data.assert_called_once_with(
-            context, self.IMG_TX_TIMEOUT, tmp_file, session=session,
-            host=self.IP, port=self.PORT, resource_pool=rp, vm_folder=folder,
-            vm_import_spec=import_spec, image_size=file_size_bytes)
+            context, self._config.vmware_image_transfer_timeout_secs, tmp_file,
+            session=session, host=self._config.vmware_host_ip,
+            port=self._config.vmware_host_port, resource_pool=rp,
+            vm_folder=folder, vm_import_spec=import_spec,
+            image_size=file_size_bytes)
 
         download_data.side_effect = exceptions.VimException("error")
         backing = mock.sentinel.backing
@@ -2028,10 +2031,18 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         vops.get_entity_name.assert_called_once_with(dc_ref)
         cookies = session.vim.client.options.transport.cookiejar
         download_flat_image.assert_called_once_with(
-            context, self.IMG_TX_TIMEOUT, image_service, image_id,
-            image_size=image_size_in_bytes, host=self.IP, port=self.PORT,
-            data_center_name=dc_name, datastore_name=ds_name, cookies=cookies,
-            file_path=upload_file_path, cacerts=expected_cacerts)
+            context,
+            self._config.vmware_image_transfer_timeout_secs,
+            image_service,
+            image_id,
+            image_size=image_size_in_bytes,
+            host=self._config.vmware_host_ip,
+            port=self._config.vmware_host_port,
+            data_center_name=dc_name,
+            datastore_name=ds_name,
+            cookies=cookies,
+            file_path=upload_file_path,
+            cacerts=expected_cacerts)
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch.object(VMDK_DRIVER, 'session')
@@ -2481,6 +2492,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             self._config.vmware_task_poll_interval,
             wsdl_loc=self._config.safe_get('vmware_wsdl_location'),
             pbm_wsdl_loc=None,
+            port=self._config.vmware_host_port,
             cacert=self._config.vmware_ca_file,
             insecure=self._config.vmware_insecure)
 
