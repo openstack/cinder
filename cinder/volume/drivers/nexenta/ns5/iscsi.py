@@ -101,7 +101,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         except exception.NexentaException as e:
             LOG.debug(e)
         url = 'services/iscsit/enable'
-        self.nef(url, method='POST')
+        self.nef(url, method='post')
 
     def check_for_setup_error(self):
         """Verify that the zfs volumes exist.
@@ -225,7 +225,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             'name': name
         }
         try:
-            self.nef(url, method='DELETE')
+            self.nef.delete(url)
         except exception.NexentaException as exc:
             # We assume that volume is gone
             LOG.warning(_LW('Got error trying to delete volume %(volume)s,'
@@ -247,7 +247,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             'group': group,
             'name': name
         }
-        self.nef(url, {'volumeSize': new_size * units.Gi}, method='PUT')
+        self.nef.put(url, {'volumeSize': new_size * units.Gi})
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot.
@@ -286,7 +286,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             'snapshot': snapshot['name']
         }
         try:
-            self.nef(url, method='DELETE')
+            self.nef.delete(url)
         except exception.NexentaException as exc:
             if 'EBUSY' is exc:
                 LOG.warning(_LW(
@@ -468,7 +468,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         targetgroup_name = self._get_targetgroup_name(volume)
         url = 'san/targetgroups/%s/luns/%s' % (
             targetgroup_name, lun_id)
-        self.nef(url, method='DELETE')
+        self.nef.delete(url)
 
     def get_volume_stats(self, refresh=False):
         """Get volume stats.

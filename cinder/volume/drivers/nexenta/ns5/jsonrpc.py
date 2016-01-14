@@ -21,6 +21,7 @@
 
 import time
 import urllib2
+import requests
 
 from cinder import exception
 from oslo_log import log as logging
@@ -43,13 +44,23 @@ class NexentaJSONProxy(object):
     def url(self):
         return '%s://%s:%s/' % (self.scheme, self.host, self.port)
 
+    def __getattr__(self, name=None):
+        if not self.method:
+            method = name
+        else:
+            raise exception.VolumeDriverException(
+                'Wrong resource call syntax')
+        return NexentaJSONProxy(
+            self.scheme, self.host, self.port,
+            self.user, self.password, self.auto, method)
+
     def __hash__(self):
         return self.url.__hash__()
 
     def __repr__(self):
         return 'NEF proxy: %s' % self.url
 
-    def __call__(self, path, data=None, method=None):
+    def __call__(self, path, data=None, method='get'):
         auth = ('%s:%s' % (self.user, self.password)).encode('base64')[:-1]
         headers = {
             'Content-Type': 'application/json',
@@ -64,31 +75,35 @@ class NexentaJSONProxy(object):
         url = self.url + path
         if data:
             data = jsonutils.dumps(data)
-        try:
-            request = urllib2.Request(url, data, headers)
-            if method:
-                request.get_method = lambda: method
-            response_obj = urllib2.urlopen(request)
-            response_data = response_obj.read()
-        except urllib2.HTTPError as error:
-            raise exception.NexentaException(error.read())
-        if response_obj.code in (200, 201) and not response_data:
+
+        if not method:
+            method = 'post' if data else 'get'
+
+        if method == 'get':
+            resp = requests.get(url, headers=headers)
+        if method == 'post':
+            resp = requests.post(url, data=data, headers=headers)
+        if method == 'put':
+            resp = requests.put(url, data=data, headers=headers)
+        if method == 'delete':
+            resp = requests.delete(url, data=data, headers=headers)
+
+        response = resp.json()
+        resp.close()
+
+        if resp.status_code in (200, 201) and not response:
             LOG.debug('Got response: Success')
             return 'Success'
-        if response_data and response_obj.code == 202:
-            response = jsonutils.loads(response_data)
+        if response and resp.status_code == 202:
+            # response = jsonutils.loads(response)
             url = self.url + response['links'][0]['href']
-            while response_obj.code == 202:
-                try:
-                    time.sleep(1)
-                    request = urllib2.Request(url, None, headers)
-                    response_obj = urllib2.urlopen(request)
-                    response_data = response_obj.read()
-                except urllib2.HTTPError as error:
-                    raise exception.NexentaException(error.read())
-                if response_obj.code in (200, 201) and not response_data:
+            while resp.status_code == 202:
+                time.sleep(1)
+                resp = requests.get(url, data, headers)
+                response = resp.json()
+                resp.close
+                if resp.status_code in (200, 201) and not response:
                     LOG.debug('Got response: Success')
                     return 'Success'
-        LOG.debug('Got response: %s', response_data)
-        response = jsonutils.loads(response_data)
+        LOG.debug('Got response: %s', response)
         return response
