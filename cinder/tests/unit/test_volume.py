@@ -4280,6 +4280,19 @@ class VolumeTestCase(BaseVolumeTestCase):
         volume = db.volume_get(context.get_admin_context(), test_vol_id)
         self.assertEqual('error', volume['status'])
 
+    def test__get_driver_initiator_data(self):
+        manager = vol_manager.VolumeManager()
+
+        data = manager._get_driver_initiator_data(None, {'key': 'val'})
+        self.assertIsNone(data)
+
+        connector = {'initiator': {'key': 'val'}}
+
+        self.assertRaises(exception.InvalidInput,
+                          manager._get_driver_initiator_data,
+                          None,
+                          connector)
+
 
 @ddt.ddt
 class VolumeMigrationTestCase(VolumeTestCase):
