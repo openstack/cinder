@@ -253,7 +253,8 @@ class BackupSwiftTestCase(test.TestCase):
         backup = objects.Backup.get_by_id(self.ctxt, 123)
         service.backup(backup, self.volume_file)
 
-    def test_backup_default_container(self):
+    @mock.patch.object(db, 'backup_update', wraps=db.backup_update)
+    def test_backup_default_container(self, backup_update_mock):
         volume_id = '9552017f-c8b9-4e4e-a876-00000053349c'
         self._create_backup_db_entry(volume_id=volume_id,
                                      container=None)
@@ -263,6 +264,38 @@ class BackupSwiftTestCase(test.TestCase):
         service.backup(backup, self.volume_file)
         backup = objects.Backup.get_by_id(self.ctxt, 123)
         self.assertEqual('volumebackups', backup['container'])
+        self.assertEqual(3, backup_update_mock.call_count)
+
+    @mock.patch.object(db, 'backup_update', wraps=db.backup_update)
+    def test_backup_db_container(self, backup_update_mock):
+        volume_id = '9552017f-c8b9-4e4e-a876-00000053349c'
+        self._create_backup_db_entry(volume_id=volume_id,
+                                     container='existing_name')
+        service = swift_dr.SwiftBackupDriver(self.ctxt)
+        self.volume_file.seek(0)
+        backup = objects.Backup.get_by_id(self.ctxt, 123)
+
+        service.backup(backup, self.volume_file)
+        backup = objects.Backup.get_by_id(self.ctxt, 123)
+        self.assertEqual('existing_name', backup['container'])
+        # Make sure we are not making a DB update when we are using the same
+        # value that's already in the DB.
+        self.assertEqual(2, backup_update_mock.call_count)
+
+    @mock.patch.object(db, 'backup_update', wraps=db.backup_update)
+    def test_backup_driver_container(self, backup_update_mock):
+        volume_id = '9552017f-c8b9-4e4e-a876-00000053349c'
+        self._create_backup_db_entry(volume_id=volume_id,
+                                     container=None)
+        service = swift_dr.SwiftBackupDriver(self.ctxt)
+        self.volume_file.seek(0)
+        backup = objects.Backup.get_by_id(self.ctxt, 123)
+        with mock.patch.object(service, 'update_container_name',
+                               return_value='driver_name'):
+            service.backup(backup, self.volume_file)
+        backup = objects.Backup.get_by_id(self.ctxt, 123)
+        self.assertEqual('driver_name', backup['container'])
+        self.assertEqual(3, backup_update_mock.call_count)
 
     @mock.patch('cinder.backup.drivers.swift.SwiftBackupDriver.'
                 '_send_progress_end')
