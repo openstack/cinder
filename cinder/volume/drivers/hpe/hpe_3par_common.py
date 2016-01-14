@@ -72,7 +72,6 @@ from taskflow.patterns import linear_flow
 LOG = logging.getLogger(__name__)
 
 MIN_CLIENT_VERSION = '4.1.0'
-MIN_REP_CLIENT_VERSION = '4.0.2'
 DEDUP_API_VERSION = 30201120
 FLASH_CACHE_API_VERSION = 30201200
 SRSTATLD_API_VERSION = 30201200
@@ -225,10 +224,11 @@ class HPE3PARCommon(object):
         3.0.9 - Bump minimum API version for volume replication
         3.0.10 - Added additional volumes checks to the manage snapshot API
         3.0.11 - Fix the image cache capability bug #1491088
+        3.0.12 - Remove client version checks for replication
 
     """
 
-    VERSION = "3.0.11"
+    VERSION = "3.0.12"
 
     stats = {}
 
@@ -305,12 +305,7 @@ class HPE3PARCommon(object):
 
     def _create_client(self, timeout=None):
         hpe3par_api_url = self._client_conf['hpe3par_api_url']
-        # Timeout is only supported in version 4.0.2 and greater of the
-        # python-3parclient.
-        if hpe3parclient.version >= MIN_REP_CLIENT_VERSION:
-            cl = client.HPE3ParClient(hpe3par_api_url, timeout=timeout)
-        else:
-            cl = client.HPE3ParClient(hpe3par_api_url)
+        cl = client.HPE3ParClient(hpe3par_api_url, timeout=timeout)
         client_version = hpe3parclient.version
 
         if client_version < MIN_CLIENT_VERSION:
@@ -416,8 +411,7 @@ class HPE3PARCommon(object):
         except hpeexceptions.UnsupportedVersion as ex:
             # In the event we cannot contact the configured primary array,
             # we want to allow a failover if replication is enabled.
-            if hpe3parclient.version >= MIN_REP_CLIENT_VERSION:
-                self._do_replication_setup()
+            self._do_replication_setup()
             if self._replication_enabled:
                 self.client = None
             raise exception.InvalidInput(ex)
@@ -1294,8 +1288,7 @@ class HPE3PARCommon(object):
                     'consistencygroup_support': True,
                     }
 
-            if (hpe3parclient.version >= MIN_REP_CLIENT_VERSION
-                    and remotecopy_support):
+            if remotecopy_support:
                 pool['replication_enabled'] = self._replication_enabled
                 pool['replication_type'] = ['sync', 'periodic']
                 pool['replication_count'] = len(self._replication_targets)
@@ -3155,8 +3148,7 @@ class HPE3PARCommon(object):
         return ret_mode
 
     def _get_3par_config(self, volume):
-        if hpe3parclient.version >= MIN_REP_CLIENT_VERSION:
-            self._do_replication_setup()
+        self._do_replication_setup()
         conf = None
         if self._replication_enabled and volume:
             provider_location = volume.get('provider_location')
