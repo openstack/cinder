@@ -1,4 +1,4 @@
-# Copyright 2015 Nexenta Systems, Inc.
+# Copyright 2016 Nexenta Systems, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -124,8 +124,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         :param volume: volume reference
         :param connector: connector reference
         """
-        export = '%s/%s' % (volume['provider_location'], volume['name'])
-        data = {'export': export, 'name': 'volume'}
+        data = {'export': volume['provider_location'], 'name': 'volume'}
         if volume['provider_location'] in self.shares:
             data['options'] = self.shares[volume['provider_location']]
         return {
@@ -153,11 +152,10 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             'dedupMode': self.dataset_deduplication,
         }
         self.nef(url, data)
-        volume['provider_location'] = '%s:/%s' % (
-            self.nef_host, self.share)
+        volume['provider_location'] = '%s:/%s/%s' % (
+            self.nef_host, self.share, volume['name'])
         try:
-            path = '%s/%s' % (pool, fs)
-            self._share_folder(path, volume['name'])
+            self._share_folder(fs, volume['name'])
             self._ensure_share_mounted('%s:/%s/%s' % (
                 self.nef_host, self.share, volume['name']))
 
@@ -336,7 +334,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         """
         nfs_share = volume['provider_location']
         return os.path.join(self._get_mount_point_for_share(nfs_share),
-                            volume['name'], 'volume')
+                            'volume')
 
     def _get_mount_point_for_share(self, nfs_share):
         """Returns path to mount point NFS share.
@@ -346,15 +344,6 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         return os.path.join(self.configuration.nexenta_mount_point_base,
                             hashlib.md5(nfs_share).hexdigest())
 
-    def remote_path(self, volume):
-        """Get volume path (mounted remotely fs path) for given volume.
-
-        :param volume: volume reference
-        """
-        nfs_share = volume['provider_location']
-        share = nfs_share.split(':')[1].rstrip('/')
-        return '%s/%s/volume' % (share, volume['name'])
-
     def _share_folder(self, path, filesystem):
         """Share NFS filesystem on NexentaStor Appliance.
 
@@ -362,11 +351,11 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         :param path: path to parent filesystem
         :param filesystem: filesystem that needs to be shared
         """
-        pool = path.split('/')[0]
+        pool = self.share.split('/')[0]
         LOG.debug(
             'Creating ACL for filesystem %s on Nexenta Store', filesystem)
         url = 'storage/pools/%s/filesystems/%s/acl' % (
-            pool, '%2F'.join((path.strip(pool).lstrip('/'), filesystem)))
+            pool, '%2F'.join([path.replace('/', '%2F'), filesystem]))
         data = {
             "type": "allow",
             "principal": "everyone@",

@@ -17,54 +17,65 @@ import errno
 import os
 import time
 
+from os_brick.remotefs import remotefs as remotefs_brick
 from oslo_concurrency import processutils as putils
 from oslo_config import cfg
+from oslo_log import log as logging
+from oslo_log import versionutils
 from oslo_utils import units
 import six
 
-from cinder.brick.remotefs import remotefs as remotefs_brick
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
-from cinder.openstack.common import log as logging
 from cinder import utils
+from cinder.volume import driver
 from cinder.volume.drivers import remotefs
 
-VERSION = '1.2.0'
+VERSION = '1.3.0'
 
 LOG = logging.getLogger(__name__)
+
+NFS_USED_RATIO_DEFAULT = 0.95
+NFS_OVERSUB_RATIO_DEFAULT = 1.0
 
 nfs_opts = [
     cfg.StrOpt('nfs_shares_config',
                default='/etc/cinder/nfs_shares',
-               help='File with the list of available nfs shares'),
+               help='File with the list of available NFS shares'),
     cfg.BoolOpt('nfs_sparsed_volumes',
                 default=True,
                 help=('Create volumes as sparsed files which take no space.'
                       'If set to False volume is created as regular file.'
                       'In such case volume creation takes a lot of time.')),
+    # TODO(tbarron): remove nfs_used_ratio in the Mitaka release.
     cfg.FloatOpt('nfs_used_ratio',
-                 default=0.95,
+                 default=NFS_USED_RATIO_DEFAULT,
                  help=('Percent of ACTUAL usage of the underlying volume '
                        'before no new volumes can be allocated to the volume '
-                       'destination.')),
+                       'destination. Note that this option is deprecated '
+                       'in favor of "reserved_percentage" and will be removed '
+                       'in the Mitaka release.')),
+    # TODO(tbarron): remove nfs_oversub_ratio in the Mitaka release.
     cfg.FloatOpt('nfs_oversub_ratio',
-                 default=1.0,
+                 default=NFS_OVERSUB_RATIO_DEFAULT,
                  help=('This will compare the allocated to available space on '
                        'the volume destination.  If the ratio exceeds this '
-                       'number, the destination will no longer be valid.')),
+                       'number, the destination will no longer be valid. '
+                       'Note that this option is deprecated in favor of '
+                       '"max_oversubscription_ratio" and will be removed '
+                       'in the Mitaka release.')),
     cfg.StrOpt('nfs_mount_point_base',
                default='$state_path/mnt',
-               help=('Base dir containing mount points for nfs shares.')),
+               help=('Base dir containing mount points for NFS shares.')),
     cfg.StrOpt('nfs_mount_options',
-               default=None,
-               help=('Mount options passed to the nfs client. See section '
-                     'of the nfs man page for details.')),
+               help=('Mount options passed to the NFS client. See section '
+                     'of the NFS man page for details.')),
     cfg.IntOpt('nfs_mount_attempts',
                default=3,
-               help=('The number of attempts to mount nfs shares before '
+               help=('The number of attempts to mount NFS shares before '
                      'raising an error.  At least one attempt will be '
-                     'made to mount an nfs share, regardless of the '
+                     'made to mount an NFS share, regardless of the '
                      'value specified.')),
 ]
 
@@ -72,9 +83,10 @@ CONF = cfg.CONF
 CONF.register_opts(nfs_opts)
 
 
-class NfsDriver(remotefs.RemoteFSDriver):
-    """NFS based cinder driver. Creates file on NFS share for using it
-    as block device on hypervisor.
+class NfsDriver(driver.ExtendVD, remotefs.RemoteFSDriver):
+    """NFS based cinder driver.
+
+    Creates file on NFS share for using it as block device on hypervisor.
     """
 
     driver_volume_type = 'nfs'
@@ -91,6 +103,7 @@ class NfsDriver(remotefs.RemoteFSDriver):
         self.base = getattr(self.configuration,
                             'nfs_mount_point_base',
                             CONF.nfs_mount_point_base)
+        self.base = os.path.realpath(self.base)
         opts = getattr(self.configuration,
                        'nfs_mount_options',
                        CONF.nfs_mount_options)
@@ -107,10 +120,9 @@ class NfsDriver(remotefs.RemoteFSDriver):
             nfs_mount_point_base=self.base,
             nfs_mount_options=opts)
 
-    def set_execute(self, execute):
-        super(NfsDriver, self).set_execute(execute)
-        if self._remotefsclient:
-            self._remotefsclient.set_execute(execute)
+        self._sparse_copy_volume_data = True
+        self.reserved_percentage = self._get_reserved_percentage()
+        self.over_subscription_ratio = self._get_over_subscription_ratio()
 
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
@@ -120,47 +132,36 @@ class NfsDriver(remotefs.RemoteFSDriver):
         if not config:
             msg = (_("There's no NFS config file configured (%s)") %
                    'nfs_shares_config')
-            LOG.warn(msg)
+            LOG.warning(msg)
             raise exception.NfsException(msg)
         if not os.path.exists(config):
             msg = (_("NFS config file at %(config)s doesn't exist") %
                    {'config': config})
-            LOG.warn(msg)
-            raise exception.NfsException(msg)
-        if not self.configuration.nfs_oversub_ratio > 0:
-            msg = _("NFS config 'nfs_oversub_ratio' invalid.  Must be > 0: "
-                    "%s") % self.configuration.nfs_oversub_ratio
-
-            LOG.error(msg)
-            raise exception.NfsException(msg)
-
-        if ((not self.configuration.nfs_used_ratio > 0) and
-                (self.configuration.nfs_used_ratio <= 1)):
-            msg = _("NFS config 'nfs_used_ratio' invalid.  Must be > 0 "
-                    "and <= 1.0: %s") % self.configuration.nfs_used_ratio
-            LOG.error(msg)
+            LOG.warning(msg)
             raise exception.NfsException(msg)
 
         self.shares = {}  # address : options
 
-        # Check if mount.nfs is installed on this system; note that we don't
-        # need to be root to see if the package is installed.
+        # Check if mount.nfs is installed on this system; note that we
+        # need to be root, to also find mount.nfs on distributions, where
+        # it is not located in an unprivileged users PATH (e.g. /sbin).
         package = 'mount.nfs'
         try:
             self._execute(package, check_exit_code=False,
-                          run_as_root=False)
+                          run_as_root=True)
         except OSError as exc:
             if exc.errno == errno.ENOENT:
                 msg = _('%s is not installed') % package
                 raise exception.NfsException(msg)
             else:
-                raise exc
+                raise
 
         # Now that all configuration data has been loaded (shares),
         # we can "set" our final NAS file security options.
         self.set_nas_security_options(self._is_voldb_empty_at_startup)
 
     def _ensure_share_mounted(self, nfs_share):
+        LOG.warning(nfs_share)
         mnt_flags = []
         if self.shares.get(nfs_share) is not None:
             mnt_flags = self.shares[nfs_share].split()
@@ -172,12 +173,13 @@ class NfsDriver(remotefs.RemoteFSDriver):
             except Exception as e:
                 if attempt == (num_attempts - 1):
                     LOG.error(_LE('Mount failure for %(share)s after '
-                                  '%(count)d attempts.') % {
+                                  '%(count)d attempts.'), {
                               'share': nfs_share,
                               'count': num_attempts})
-                    raise exception.NfsException(e)
-                LOG.debug('Mount attempt %d failed: %s.\nRetrying mount ...' %
-                          (attempt, six.text_type(e)))
+                    raise exception.NfsException(six.text_type(e))
+                LOG.debug('Mount attempt %(attempt)d failed: %(exc)s.\n'
+                          'Retrying mount ...',
+                          {'attempt': attempt, 'exc': e})
                 time.sleep(1)
 
     def _find_share(self, volume_size_in_gib):
@@ -196,10 +198,15 @@ class NfsDriver(remotefs.RemoteFSDriver):
         target_share_reserved = 0
 
         for nfs_share in self._mounted_shares:
-            if not self._is_share_eligible(nfs_share, volume_size_in_gib):
+            total_size, total_available, total_allocated = (
+                self._get_capacity_info(nfs_share))
+            share_info = {'total_size': total_size,
+                          'total_available': total_available,
+                          'total_allocated': total_allocated,
+                          }
+            if not self._is_share_eligible(nfs_share, volume_size_in_gib,
+                                           share_info):
                 continue
-            _total_size, _total_available, total_allocated = \
-                self._get_capacity_info(nfs_share)
             if target_share is not None:
                 if target_share_reserved > total_allocated:
                     target_share = nfs_share
@@ -212,11 +219,12 @@ class NfsDriver(remotefs.RemoteFSDriver):
             raise exception.NfsNoSuitableShareFound(
                 volume_size=volume_size_in_gib)
 
-        LOG.debug('Selected %s as target nfs share.', target_share)
+        LOG.debug('Selected %s as target NFS share.', target_share)
 
         return target_share
 
-    def _is_share_eligible(self, nfs_share, volume_size_in_gib):
+    def _is_share_eligible(self, nfs_share, volume_size_in_gib,
+                           share_info=None):
         """Verifies NFS share is eligible to host volume with given size.
 
         First validation step: ratio of actual space (used_space / total_space)
@@ -226,20 +234,41 @@ class NfsDriver(remotefs.RemoteFSDriver):
         space (total_available * nfs_oversub_ratio) to ensure enough space is
         available for the new volume.
 
-        :param nfs_share: nfs share
+        :param nfs_share: NFS share
         :param volume_size_in_gib: int size in GB
         """
+        # Because the generic NFS driver aggregates over all shares
+        # when reporting capacity and usage stats to the scheduler,
+        # we still have to perform some scheduler-like capacity
+        # checks here, and these have to take into account
+        # configuration for reserved space and oversubscription.
+        # It would be better to do all this in the scheduler, but
+        # this requires either pool support for the generic NFS
+        # driver or limiting each NFS backend driver to a single share.
 
-        used_ratio = self.configuration.nfs_used_ratio
-        oversub_ratio = self.configuration.nfs_oversub_ratio
+        # 'nfs_used_ratio' is deprecated, so derive used_ratio from
+        # reserved_percentage.
+        if share_info is None:
+            total_size, total_available, total_allocated = (
+                self._get_capacity_info(nfs_share))
+            share_info = {'total_size': total_size,
+                          'total_available': total_available,
+                          'total_allocated': total_allocated,
+                          }
+        used_percentage = 100 - self.reserved_percentage
+        used_ratio = used_percentage / 100.0
+
+        oversub_ratio = self.over_subscription_ratio
         requested_volume_size = volume_size_in_gib * units.Gi
 
-        total_size, total_available, total_allocated = \
-            self._get_capacity_info(nfs_share)
-        apparent_size = max(0, total_size * oversub_ratio)
-        apparent_available = max(0, apparent_size - total_allocated)
-        used = (total_size - total_available) / total_size
-        if used > used_ratio:
+        apparent_size = max(0, share_info['total_size'] * oversub_ratio)
+        apparent_available = max(0, apparent_size -
+                                 share_info['total_allocated'])
+
+        actual_used_ratio = ((share_info['total_size'] -
+                              share_info['total_available']) /
+                             float(share_info['total_size']))
+        if actual_used_ratio > used_ratio:
             # NOTE(morganfainberg): We check the used_ratio first since
             # with oversubscription it is possible to not have the actual
             # available space but be within our oversubscription limit
@@ -250,7 +279,8 @@ class NfsDriver(remotefs.RemoteFSDriver):
         if apparent_available <= requested_volume_size:
             LOG.debug('%s is above nfs_oversub_ratio', nfs_share)
             return False
-        if total_allocated / total_size >= oversub_ratio:
+        if share_info['total_allocated'] / share_info['total_size'] >= (
+                oversub_ratio):
             LOG.debug('%s reserved space is above nfs_oversub_ratio',
                       nfs_share)
             return False
@@ -318,8 +348,8 @@ class NfsDriver(remotefs.RemoteFSDriver):
 
         :param is_new_cinder_install: bool indication of new Cinder install
         """
-        doc_html = "http://docs.openstack.org/admin-guide-cloud/content" \
-                   "/nfs_backend.html"
+        doc_html = "http://docs.openstack.org/admin-guide-cloud" \
+                   "/blockstorage_nfs_backend.html"
 
         self._ensure_shares_mounted()
         if not self._mounted_shares:
@@ -332,16 +362,16 @@ class NfsDriver(remotefs.RemoteFSDriver):
                 self.configuration.nas_secure_file_permissions,
                 nfs_mount, is_new_cinder_install)
 
-        LOG.debug('NAS variable secure_file_permissions setting is: %s' %
+        LOG.debug('NAS variable secure_file_permissions setting is: %s',
                   self.configuration.nas_secure_file_permissions)
 
         if self.configuration.nas_secure_file_permissions == 'false':
-            LOG.warn(_LW("The NAS file permissions mode will be 666 (allowing "
-                         "other/world read & write access). "
-                         "This is considered an insecure NAS environment. "
-                         "Please see %s for information on a secure "
-                         "NFS configuration.") %
-                     doc_html)
+            LOG.warning(_LW("The NAS file permissions mode will be 666 "
+                            "(allowing other/world read & write access). "
+                            "This is considered an insecure NAS environment. "
+                            "Please see %s for information on a secure "
+                            "NFS configuration."),
+                        doc_html)
 
         self.configuration.nas_secure_file_operations = \
             self._determine_nas_security_option_setting(
@@ -353,13 +383,119 @@ class NfsDriver(remotefs.RemoteFSDriver):
         if self.configuration.nas_secure_file_operations == 'true':
             self._execute_as_root = False
 
-        LOG.debug('NAS variable secure_file_operations setting is: %s' %
+        LOG.debug('NAS variable secure_file_operations setting is: %s',
                   self.configuration.nas_secure_file_operations)
 
         if self.configuration.nas_secure_file_operations == 'false':
-            LOG.warn(_LW("The NAS file operations will be run as "
-                         "root: allowing root level access at the storage "
-                         "backend. This is considered an insecure NAS "
-                         "environment. Please see %s "
-                         "for information on a secure NAS configuration.") %
-                     doc_html)
+            LOG.warning(_LW("The NAS file operations will be run as "
+                            "root: allowing root level access at the storage "
+                            "backend. This is considered an insecure NAS "
+                            "environment. Please see %s "
+                            "for information on a secure NAS configuration."),
+                        doc_html)
+
+    def update_migrated_volume(self, ctxt, volume, new_volume,
+                               original_volume_status):
+        """Return the keys and values updated from NFS for migrated volume.
+
+        This method should rename the back-end volume name(id) on the
+        destination host back to its original name(id) on the source host.
+
+        :param ctxt: The context used to run the method update_migrated_volume
+        :param volume: The original volume that was migrated to this backend
+        :param new_volume: The migration volume object that was created on
+                           this backend as part of the migration process
+        :param original_volume_status: The status of the original volume
+        :returns: model_update to update DB with any needed changes
+        """
+        # TODO(vhou) This method may need to be updated after
+        # NFS snapshots are introduced.
+        name_id = None
+        if original_volume_status == 'available':
+            current_name = CONF.volume_name_template % new_volume['id']
+            original_volume_name = CONF.volume_name_template % volume['id']
+            current_path = self.local_path(new_volume)
+            # Replace the volume name with the original volume name
+            original_path = current_path.replace(current_name,
+                                                 original_volume_name)
+            try:
+                os.rename(current_path, original_path)
+            except OSError:
+                LOG.error(_LE('Unable to rename the logical volume '
+                              'for volume: %s'), volume['id'])
+                # If the rename fails, _name_id should be set to the new
+                # volume id and provider_location should be set to the
+                # one from the new volume as well.
+                name_id = new_volume['_name_id'] or new_volume['id']
+        else:
+            # The back-end will not be renamed.
+            name_id = new_volume['_name_id'] or new_volume['id']
+        return {'_name_id': name_id,
+                'provider_location': new_volume['provider_location']}
+
+    def _update_volume_stats(self):
+        """Retrieve stats info from volume group."""
+
+        super(NfsDriver, self)._update_volume_stats()
+        self._stats['sparse_copy_volume'] = True
+        data = self._stats
+
+        global_capacity = data['total_capacity_gb']
+        global_free = data['free_capacity_gb']
+
+        thin_enabled = self.configuration.nfs_sparsed_volumes
+        if thin_enabled:
+            provisioned_capacity = self._get_provisioned_capacity()
+        else:
+            provisioned_capacity = round(global_capacity - global_free, 2)
+
+        data['provisioned_capacity_gb'] = provisioned_capacity
+        data['max_over_subscription_ratio'] = self.over_subscription_ratio
+        data['reserved_percentage'] = self.reserved_percentage
+        data['thin_provisioning_support'] = thin_enabled
+        data['thick_provisioning_support'] = not thin_enabled
+
+        self._stats = data
+
+    def _get_over_subscription_ratio(self):
+        legacy_oversub_ratio = self.configuration.nfs_oversub_ratio
+        if legacy_oversub_ratio == NFS_OVERSUB_RATIO_DEFAULT:
+            return self.configuration.max_over_subscription_ratio
+
+        # Honor legacy option if its value is not the default.
+        msg = _LW("The option 'nfs_oversub_ratio' is deprecated and will "
+                  "be removed in the Mitaka release.  Please set "
+                  "'max_over_subscription_ratio = %s' instead.") % (
+                      self.configuration.nfs_oversub_ratio)
+        versionutils.report_deprecated_feature(LOG, msg)
+
+        if not self.configuration.nfs_oversub_ratio > 0:
+            msg = _("NFS config 'nfs_oversub_ratio' invalid.  Must be > 0: "
+                    "%s.") % self.configuration.nfs_oversub_ratio
+            LOG.error(msg)
+            raise exception.InvalidConfigurationValue(msg)
+
+        return legacy_oversub_ratio
+
+    def _get_reserved_percentage(self):
+        legacy_used_ratio = self.configuration.nfs_used_ratio
+        legacy_reserved_ratio = 1 - legacy_used_ratio
+        legacy_percentage = legacy_reserved_ratio * 100
+        if legacy_used_ratio == NFS_USED_RATIO_DEFAULT:
+            return self.configuration.reserved_percentage
+
+        # Honor legacy option if its value is not the default.
+        msg = _LW("The option 'nfs_used_ratio' is deprecated and will "
+                  "be removed in the Mitaka release.  Please set "
+                  "'reserved_percentage = %d' instead.") % (
+                      legacy_percentage)
+        versionutils.report_deprecated_feature(LOG, msg)
+
+        if not ((self.configuration.nfs_used_ratio > 0) and
+                (self.configuration.nfs_used_ratio <= 1)):
+            msg = _("NFS config 'nfs_used_ratio' invalid.  Must be > 0 "
+                    "and <= 1.0: %s.") % self.configuration.nfs_used_ratio
+            LOG.error(msg)
+            raise exception.InvalidConfigurationValue(msg)
+
+        return legacy_percentage
