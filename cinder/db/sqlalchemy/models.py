@@ -498,22 +498,6 @@ class SnapshotMetadata(BASE, CinderBase):
                             'SnapshotMetadata.deleted == False)')
 
 
-class IscsiTarget(BASE, CinderBase):
-    """Represents an iscsi target for a given host."""
-    __tablename__ = 'iscsi_targets'
-    __table_args__ = (schema.UniqueConstraint("target_num", "host"),
-                      {'mysql_engine': 'InnoDB'})
-    id = Column(Integer, primary_key=True)
-    target_num = Column(Integer)
-    host = Column(String(255))
-    volume_id = Column(String(36), ForeignKey('volumes.id'), nullable=True)
-    volume = relationship(Volume,
-                          backref=backref('iscsi_target', uselist=False),
-                          foreign_keys=volume_id,
-                          primaryjoin='and_(IscsiTarget.volume_id==Volume.id,'
-                          'IscsiTarget.deleted==False)')
-
-
 class Backup(BASE, CinderBase):
     """Represents a backup of a volume to Swift."""
     __tablename__ = 'backups'

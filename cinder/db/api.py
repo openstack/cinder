@@ -135,25 +135,6 @@ def service_update(context, service_id, values):
     return IMPL.service_update(context, service_id, values)
 
 
-###################
-
-
-def iscsi_target_count_by_host(context, host):
-    """Return count of export devices."""
-    return IMPL.iscsi_target_count_by_host(context, host)
-
-
-def iscsi_target_create_safe(context, values):
-    """Create an iscsi_target from the values dictionary.
-
-    The device is not returned. If the create violates the unique
-    constraints because the iscsi_target and host already exist,
-    no exception is raised.
-
-    """
-    return IMPL.iscsi_target_create_safe(context, values)
-
-
 ###############
 
 
@@ -233,11 +214,6 @@ def volume_get_all_by_project(context, project_id, marker, limit,
                                           sort_dirs=sort_dirs,
                                           filters=filters,
                                           offset=offset)
-
-
-def volume_get_iscsi_target_num(context, volume_id):
-    """Get the target num (tid) allocated to the volume."""
-    return IMPL.volume_get_iscsi_target_num(context, volume_id)
 
 
 def volume_update(context, volume_id, values):

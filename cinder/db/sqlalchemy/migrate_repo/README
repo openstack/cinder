@@ -1,4 +1,7 @@
 This is a database migration repository.
 
-More information at
-http://code.google.com/p/sqlalchemy-migrate/
+More information at:
+    https://github.com/openstack/sqlalchemy-migrate
+
+Original project is no longer maintained at:
+    http://code.google.com/p/sqlalchemy-migrate/

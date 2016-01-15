@@ -491,33 +491,6 @@ def _dict_with_extra_specs_if_authorized(context, inst_type_query):
 ###################
 
 
-@require_admin_context
-def iscsi_target_count_by_host(context, host):
-    return model_query(context, models.IscsiTarget).\
-        filter_by(host=host).\
-        count()
-
-
-@require_admin_context
-def iscsi_target_create_safe(context, values):
-    iscsi_target_ref = models.IscsiTarget()
-
-    for (key, value) in values.items():
-        iscsi_target_ref[key] = value
-    session = get_session()
-
-    try:
-        with session.begin():
-            session.add(iscsi_target_ref)
-            return iscsi_target_ref
-    except db_exc.DBDuplicateEntry:
-        LOG.debug("Can not add duplicate IscsiTarget.")
-        return None
-
-
-###################
-
-
 @require_context
 def _quota_get(context, project_id, resource, session=None):
     result = model_query(context, models.Quota, session=session,
@@ -1254,9 +1227,6 @@ def volume_destroy(context, volume_id):
                     'deleted_at': now,
                     'updated_at': literal_column('updated_at'),
                     'migration_status': None})
-        model_query(context, models.IscsiTarget, session=session).\
-            filter_by(volume_id=volume_id).\
-            update({'volume_id': None})
         model_query(context, models.VolumeMetadata, session=session).\
             filter_by(volume_id=volume_id).\
             update({'deleted': True,
@@ -1757,18 +1727,6 @@ def process_sort_params(sort_keys, sort_dirs, default_keys=None,
             result_dirs.append(default_dir_value)
 
     return result_keys, result_dirs
-
-
-@require_admin_context
-def volume_get_iscsi_target_num(context, volume_id):
-    result = model_query(context, models.IscsiTarget, read_deleted="yes").\
-        filter_by(volume_id=volume_id).\
-        first()
-
-    if not result:
-        raise exception.ISCSITargetNotFoundForVolume(volume_id=volume_id)
-
-    return result.target_num
 
 
 @require_context

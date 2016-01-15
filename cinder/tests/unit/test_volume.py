@@ -2956,27 +2956,6 @@ class VolumeTestCase(BaseVolumeTestCase):
         db_volume = db.volume_get(self.context, volume.id)
         self.assertEqual('available', db_volume.status)
 
-    def test_concurrent_volumes_get_different_targets(self):
-        """Ensure multiple concurrent volumes get different targets."""
-        volume_ids = []
-        targets = []
-
-        def _check(volume_id):
-            """Make sure targets aren't duplicated."""
-            volume_ids.append(volume_id)
-            admin_context = context.get_admin_context()
-            iscsi_target = db.volume_get_iscsi_target_num(admin_context,
-                                                          volume_id)
-            self.assertNotIn(iscsi_target, targets)
-            targets.append(iscsi_target)
-
-        # FIXME(jdg): What is this actually testing?
-        # We never call the internal _check method?
-        for _index in range(100):
-            tests_utils.create_volume(self.context, **self.volume_params)
-        for volume_id in volume_ids:
-            self.volume.delete_volume(self.context, volume_id)
-
     def test_multi_node(self):
         # TODO(termie): Figure out how to test with two nodes,
         # each of them having a different FLAG for storage_node
