@@ -28,10 +28,11 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.i18n import _, _LE
-
+from cinder import quota
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
+QUOTAS = quota.QUOTAS
 
 
 def create(context,
@@ -62,12 +63,20 @@ def update(context, id, name, description, is_public=None):
     if id is None:
         msg = _("id cannot be None")
         raise exception.InvalidVolumeType(reason=msg)
+    old_volume_type = get_volume_type(context, id)
     try:
         type_updated = db.volume_type_update(context,
                                              id,
                                              dict(name=name,
                                                   description=description,
                                                   is_public=is_public))
+        # Rename resource in quota if volume type name is changed.
+        if name:
+            old_type_name = old_volume_type.get('name')
+            if old_type_name != name:
+                QUOTAS.update_quota_resource(context,
+                                             old_type_name,
+                                             name)
     except db_exc.DBError:
         LOG.exception(_LE('DB error:'))
         raise exception.VolumeTypeUpdateFailed(id=id)

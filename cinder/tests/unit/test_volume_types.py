@@ -15,6 +15,7 @@
 
 
 import datetime
+import mock
 import time
 
 from oslo_config import cfg
@@ -83,6 +84,23 @@ class VolumeTypeTestCase(test.TestCase):
         self.assertEqual(prev_all_vtypes,
                          new_all_vtypes,
                          'drive type was not deleted')
+
+    @mock.patch('cinder.quota.VolumeTypeQuotaEngine.'
+                'update_quota_resource')
+    def test_update_volume_type_name(self, mock_update_quota):
+        type_ref = volume_types.create(self.ctxt,
+                                       self.vol_type1_name,
+                                       self.vol_type1_specs,
+                                       description=self.vol_type1_description)
+        new_type_name = self.vol_type1_name + '_updated'
+        volume_types.update(self.ctxt,
+                            type_ref.id,
+                            new_type_name,
+                            None)
+        mock_update_quota.assert_called_once_with(self.ctxt,
+                                                  self.vol_type1_name,
+                                                  new_type_name)
+        volume_types.destroy(self.ctxt, type_ref.id)
 
     def test_create_volume_type_with_invalid_params(self):
         """Ensure exception will be returned."""

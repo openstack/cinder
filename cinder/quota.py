@@ -942,6 +942,30 @@ class VolumeTypeQuotaEngine(QuotaEngine):
     def register_resources(self, resources):
         raise NotImplementedError(_("Cannot register resources"))
 
+    def update_quota_resource(self, context, old_type_name, new_type_name):
+        """Update resource in quota.
+
+        This is to update resource in quotas, quota_classes, and
+        quota_usages once the name of a volume type is changed.
+
+        :param context: The request context, for access checks.
+        :param old_type_name: old name of volume type.
+        :param new_type_name: new name of volume type.
+        """
+
+        for quota in ('volumes', 'gigabytes', 'snapshots'):
+            old_res = "%s_%s" % (quota, old_type_name)
+            new_res = "%s_%s" % (quota, new_type_name)
+            db.quota_usage_update_resource(context,
+                                           old_res,
+                                           new_res)
+            db.quota_class_update_resource(context,
+                                           old_res,
+                                           new_res)
+            db.quota_update_resource(context,
+                                     old_res,
+                                     new_res)
+
 
 class CGQuotaEngine(QuotaEngine):
     """Represent the consistencygroup quotas."""
