@@ -198,7 +198,16 @@ class SBSBackupDriver(driver.BackupDriver):
 
 	# shishir change this to work out of s3 or db 
     def _snap_exists(self, base_name, snap_name):
-        #Return True if snapshot exists in base image
+        bucket = self._connect_to_DSS(self._container)
+        if base_name:
+            key_base = bucket.get_key(base_name)
+            if key_base == None:
+                return False
+
+        if snap_name:
+            key_snap = bucket.get_key(snap_name)
+            if key_snap == None:
+                return False
         return True
 
     def _connect_to_DSS(self, bucket_name):
@@ -504,12 +513,11 @@ class SBSBackupDriver(driver.BackupDriver):
         return
 
     def _remove_from_DSS(self, backup):
-        cmd = ['rm', '-rf']
         snap_name = backup['display_name']
-        loc = encodeutils.safe_encode("/tmp/%s" % (snap_name))
-        cmd.extend(loc)
         LOG.info("Deleting backups %s" % (cmd))
-        self._execute (*cmd, run_as_root=False)
+        bucket = self._connect_to_DSS(self._container)
+        if bucket != None:
+            bucket.delete(snap_name)
         return
 
     def _delete_backups(self, backup_list):
