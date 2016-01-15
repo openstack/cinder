@@ -56,6 +56,7 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
               - Last volume in SG fix
               - _remove_last_vol_and_delete_sg is not being called
                 for VMAX3 (bug #1520549)
+              - necessary updates for CG changes (#1534616)
     """
 
     VERSION = "2.3.0"
@@ -353,11 +354,11 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
 
     def create_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Creates a cgsnapshot."""
-        return self.common.create_cgsnapshot(context, cgsnapshot, self.db)
+        return self.common.create_cgsnapshot(context, cgsnapshot, snapshots)
 
     def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Deletes a cgsnapshot."""
-        return self.common.delete_cgsnapshot(context, cgsnapshot, self.db)
+        return self.common.delete_cgsnapshot(context, cgsnapshot, snapshots)
 
     def manage_existing(self, volume, external_ref):
         """Manages an existing VMAX Volume (import to Cinder).
@@ -406,4 +407,5 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
         :param source_vols: a list of volume dictionaries in the source_cg.
         """
         return self.common.create_consistencygroup_from_src(
-            context, group, volumes, cgsnapshot, snapshots, self.db)
+            context, group, volumes, cgsnapshot, snapshots, source_cg,
+            source_vols)

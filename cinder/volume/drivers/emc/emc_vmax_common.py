@@ -2496,18 +2496,19 @@ class EMCVMAXCommon(object):
                 modelUpdate['status'] = 'error_deleting'
         return volumes, modelUpdate
 
-    def create_cgsnapshot(self, context, cgsnapshot, db):
+    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Creates a cgsnapshot.
 
         :param context: the context
         :param cgsnapshot: the consistency group snapshot to be created
-        :param db: cinder database
+        :param snapshots: snapshots
         :returns: dict -- modelUpdate
         :returns: list -- list of snapshots
         :raises: VolumeBackendAPIException
         """
-        consistencyGroup = db.consistencygroup_get(
-            context, cgsnapshot['consistencygroup_id'])
+        consistencyGroup = cgsnapshot.get('consistencygroup')
+
+        snapshots_model_update = []
 
         LOG.info(_LI(
             "Create snapshot for Consistency Group %(cgId)s "
@@ -2517,8 +2518,6 @@ class EMCVMAXCommon(object):
 
         cgName = self.utils.truncate_string(
             cgsnapshot['consistencygroup_id'], 8)
-
-        modelUpdate = {'status': 'available'}
 
         volumeTypeId = consistencyGroup['volume_type_id'].replace(",", "")
         extraSpecs = self._initial_setup(None, volumeTypeId)
@@ -2621,41 +2620,39 @@ class EMCVMAXCommon(object):
                                                          extraSpecs)
 
         except Exception:
-            modelUpdate['status'] = 'error'
-            self.utils.populate_cgsnapshot_status(
-                context, db, cgsnapshot['id'], modelUpdate['status'])
             exceptionMessage = (_("Failed to create snapshot for cg:"
                                   " %(cgName)s.")
                                 % {'cgName': cgName})
             LOG.exception(exceptionMessage)
             raise exception.VolumeBackendAPIException(data=exceptionMessage)
 
-        snapshots = self.utils.populate_cgsnapshot_status(
-            context, db, cgsnapshot['id'], modelUpdate['status'])
-        return modelUpdate, snapshots
+        for snapshot in snapshots:
+            snapshots_model_update.append(
+                {'id': snapshot['id'], 'status': 'available'})
+        modelUpdate = {'status': fields.ConsistencyGroupStatus.AVAILABLE}
 
-    def delete_cgsnapshot(self, context, cgsnapshot, db):
+        return modelUpdate, snapshots_model_update
+
+    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Delete a cgsnapshot.
 
         :param context: the context
         :param cgsnapshot: the consistency group snapshot to be created
-        :param db: cinder database
+        :param snapshots: snapshots
         :returns: dict -- modelUpdate
         :returns: list -- list of snapshots
         :raises: VolumeBackendAPIException
         """
-        consistencyGroup = db.consistencygroup_get(
-            context, cgsnapshot['consistencygroup_id'])
-        snapshots = db.snapshot_get_all_for_cgsnapshot(
-            context, cgsnapshot['id'])
-
+        consistencyGroup = cgsnapshot.get('consistencygroup')
+        model_update = {}
+        snapshots_model_update = []
         LOG.info(_LI(
             "Delete snapshot for source CG %(cgId)s "
             "cgsnapshotID: %(cgsnapshot)s."),
             {'cgsnapshot': cgsnapshot['id'],
              'cgId': cgsnapshot['consistencygroup_id']})
 
-        modelUpdate = {'status': 'deleted'}
+        model_update['status'] = cgsnapshot['status']
         volumeTypeId = consistencyGroup['volume_type_id'].replace(",", "")
         extraSpecs = self._initial_setup(None, volumeTypeId)
         self.conn = self._get_ecom_connection()
@@ -2665,22 +2662,20 @@ class EMCVMAXCommon(object):
 
         try:
             targetCgName = self.utils.truncate_string(cgsnapshot['id'], 8)
-            modelUpdate, snapshots = self._delete_cg_and_members(
-                storageSystem, targetCgName, modelUpdate,
+            model_update, snapshots = self._delete_cg_and_members(
+                storageSystem, targetCgName, model_update,
                 snapshots, extraSpecs)
+            for snapshot in snapshots:
+                snapshots_model_update.append(
+                    {'id': snapshot['id'], 'status': 'deleted'})
         except Exception:
-            modelUpdate['status'] = 'error_deleting'
-            self.utils.populate_cgsnapshot_status(
-                context, db, cgsnapshot['id'], modelUpdate['status'])
             exceptionMessage = (_("Failed to delete snapshot for cg: "
                                   "%(cgId)s.")
                                 % {'cgId': cgsnapshot['consistencygroup_id']})
             LOG.exception(exceptionMessage)
             raise exception.VolumeBackendAPIException(data=exceptionMessage)
 
-        snapshots = self.utils.populate_cgsnapshot_status(
-            context, db, cgsnapshot['id'], modelUpdate['status'])
-        return modelUpdate, snapshots
+        return model_update, snapshots_model_update
 
     def _find_consistency_group(self, replicationService, cgName):
         """Finds a CG given its name.
@@ -4219,7 +4214,8 @@ class EMCVMAXCommon(object):
         return volumeInstanceNames
 
     def create_consistencygroup_from_src(self, context, group, volumes,
-                                         cgsnapshot, snapshots, db):
+                                         cgsnapshot, snapshots, source_cg,
+                                         source_vols):
         """Creates the consistency group from source.
 
         Currently the source can only be a cgsnapshot.
@@ -4229,7 +4225,8 @@ class EMCVMAXCommon(object):
         :param volumes: volumes in the consistency group
         :param cgsnapshot: the source consistency group snapshot
         :param snapshots: snapshots of the source volumes
-        :param db: database
+        :param source_cg: the source consistency group
+        :param source_vols: the source vols
         :returns: model_update, volumes_model_update
                   model_update is a dictionary of cg status
                   volumes_model_update is a list of dictionaries of volume
@@ -4338,21 +4335,16 @@ class EMCVMAXCommon(object):
                     self.provision.delete_clone_relationship(
                         self.conn, replicationService,
                         rgSyncInstanceName, extraSpecs)
-        except Exception as ex:
-            modelUpdate['status'] = 'error'
+        except Exception:
             cgSnapshotId = cgsnapshot['consistencygroup_id']
-            volumes_model_update = self.utils.get_volume_model_updates(
-                context, db, group['id'], modelUpdate['status'])
-            LOG.error(_LE("Exception: %(ex)s."), {'ex': ex})
             exceptionMessage = (_("Failed to create CG %(cgName)s "
                                   "from snapshot %(cgSnapshot)s.")
                                 % {'cgName': targetCgName,
                                    'cgSnapshot': cgSnapshotId})
-            LOG.error(exceptionMessage)
-            return modelUpdate, volumes_model_update
-
+            LOG.exception(exceptionMessage)
+            raise exception.VolumeBackendAPIException(data=exceptionMessage)
         volumes_model_update = self.utils.get_volume_model_updates(
-            context, db, group['id'], modelUpdate['status'])
+            context, volumes, group['id'], modelUpdate['status'])
 
         return modelUpdate, volumes_model_update
 
