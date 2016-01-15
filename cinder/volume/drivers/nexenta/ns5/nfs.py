@@ -193,6 +193,77 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                                 [fs, volume['name']])})
             raise exc
 
+    def delete_volume(self, volume):
+        """Deletes a logical volume.
+
+        :param volume: volume reference
+        """
+        super(NexentaNfsDriver, self).delete_volume(volume)
+
+        pool, fs = self._get_share_datasets(self.share)
+        url = ('storage/pools/%(pool)s/filesystems/%(fs)s') % {
+            'pool': pool,
+            'fs': '%2F'.join([fs, volume['name']])
+        }
+        origin = self.nef(url).get('originalSnapshot')
+        url = ('storage/pools/%(pool)s/filesystems/'
+               '%(fs)s?snapshots=true') % {
+            'pool': pool,
+            'fs': '%2F'.join([fs, volume['name']])
+        }
+        self.nef.delete(url)
+        try:
+            if origin and self._is_clone_snapshot_name(origin):
+                path, snap = origin.split('@')
+                pool, fs = path.split('/', 1)
+                snap_url = ('storage/pools/%(pool)s/'
+                            'filesystems/%(fs)s/snapshots/%(snap)s') % {
+                    'pool': pool,
+                    'fs': fs,
+                    'snap': snap
+                }
+                self.nef.delete(snap_url)
+        except exception.NexentaException as exc:
+            if 'does not exist' in exc:
+                LOG.debug(
+                    'Volume %s does not exist on appliance', '/'.join(
+                        [pool, fs]))
+
+    def create_snapshot(self, snapshot):
+        """Creates a snapshot.
+
+        :param snapshot: snapshot reference
+        """
+        volume = self._get_snapshot_volume(snapshot)
+        pool, fs = self._get_share_datasets(self.share)
+        url = 'storage/pools/%(pool)s/filesystems/%(fs)s/snapshots' % {
+            'pool': pool,
+            'fs': '%2F'.join([fs, volume['name']]),
+        }
+        data = {'name': snapshot['name']}
+        self.nef(url, data)
+
+    def delete_snapshot(self, snapshot):
+        """Deletes a snapshot.
+
+        :param snapshot: snapshot reference
+        """
+        volume = self._get_snapshot_volume(snapshot)
+        pool, fs = self._get_share_datasets(self.share)
+        url = ('storage/pools/%(pool)s/'
+               'filesystems/%(fs)s/snapshots/%(snap)s') % {
+            'pool': pool,
+            'fs': '%2F'.join([fs, volume['name']]),
+            'snap': snapshot['name']
+        }
+        try:
+            self.nef.delete(url)
+        except exception.NexentaException as exc:
+            if 'EBUSY' is exc:
+                LOG.warning(_LW(
+                    'Could not delete snapshot %s - it has dependencies') %
+                    snapshot['name'])
+
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create new volume from other's snapshot on appliance.
 
@@ -257,77 +328,6 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                 LOG.warning(_LW('Failed to delete zfs snapshot '
                                 '%(volume_name)s@%(name)s'), snapshot)
             raise
-
-    def delete_volume(self, volume):
-        """Deletes a logical volume.
-
-        :param volume: volume reference
-        """
-        super(NexentaNfsDriver, self).delete_volume(volume)
-
-        pool, fs = self._get_share_datasets(self.share)
-        url = ('storage/pools/%(pool)s/filesystems/%(fs)s') % {
-            'pool': pool,
-            'fs': '%2F'.join([fs, volume['name']])
-        }
-        origin = self.nef(url).get('originalSnapshot')
-        url = ('storage/pools/%(pool)s/filesystems/'
-               '%(fs)s?snapshots=true') % {
-            'pool': pool,
-            'fs': '%2F'.join([fs, volume['name']])
-        }
-        self.nef.delete(url)
-        try:
-            if origin and self._is_clone_snapshot_name(origin):
-                path, snap = origin.split('@')
-                pool, fs = path.split('/', 1)
-                snap_url = ('storage/pools/%(pool)s/'
-                            'filesystems/%(fs)s/snapshots/%(snap)s') % {
-                    'pool': pool,
-                    'fs': fs,
-                    'snap': snap
-                }
-                self.nef.delete(snap_url)
-        except exception.NexentaException as exc:
-            if 'does not exist' in exc:
-                LOG.debug(
-                    'Volume %s does not exist on appliance', '/'.join(
-                        [pool, fs]))
-
-    def create_snapshot(self, snapshot):
-        """Creates a snapshot.
-
-        :param snapshot: snapshot reference
-        """
-        volume = self._get_snapshot_volume(snapshot)
-        pool, fs = self._get_share_datasets(self.share)
-        url = 'storage/pools/%(pool)s/filesystems/%(fs)s/snapshots' % {
-            'pool': pool,
-            'fs': '%2F'.join([fs, volume['name']]),
-        }
-        data = {'name': snapshot['name']}
-        self.nef(url, data)
-
-    def delete_snapshot(self, snapshot):
-        """Deletes a snapshot.
-
-        :param snapshot: snapshot reference
-        """
-        volume = self._get_snapshot_volume(snapshot)
-        pool, fs = self._get_share_datasets(self.share)
-        url = ('storage/pools/%(pool)s/'
-               'filesystems/%(fs)s/snapshots/%(snap)s') % {
-            'pool': pool,
-            'fs': volume['name'],
-            'snap': snapshot['name']
-        }
-        try:
-            self.nef.delete(url)
-        except exception.NexentaException as exc:
-            if 'EBUSY' is exc:
-                LOG.warning(_LW(
-                    'Could not delete snapshot %s - it has dependencies') %
-                    snapshot['name'])
 
     def local_path(self, volume):
         """Get volume path (mounted locally fs path) for given volume.
@@ -408,10 +408,10 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         pool, fs = self._get_share_datasets(path)
         url = 'storage/pools/%s/filesystems/%s' % (
             pool, fs)
-        dataset_props = self.nef(url)
-        free = utils.str2size(dataset_props['bytesAvailable'])
-        allocated = utils.str2size(dataset_props['bytesUsed'])
-        total = free + allocated
+        data = self.nef(url)
+        total = utils.str2size(data['bytesAvailable'])
+        allocated = utils.str2size(data['bytesUsed'])
+        free = total - allocated
         return total, free, allocated
 
     def _get_snapshot_volume(self, snapshot):
