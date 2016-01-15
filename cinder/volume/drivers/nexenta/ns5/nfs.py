@@ -196,8 +196,6 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
 
         :param volume: volume reference
         """
-        super(NexentaNfsDriver, self).delete_volume(volume)
-
         pool, fs = self._get_share_datasets(self.share)
         url = ('storage/pools/%(pool)s/filesystems/%(fs)s') % {
             'pool': pool,
