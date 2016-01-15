@@ -1257,6 +1257,9 @@ class VolumeManager(manager.SchedulerDependentManager):
         data = None
         initiator = connector.get('initiator', False)
         if initiator:
+            if not isinstance(initiator, six.string_types):
+                msg = _('Invalid initiator value received')
+                raise exception.InvalidInput(reason=msg)
             namespace = self._driver_data_namespace()
             try:
                 data = self.db.driver_initiator_data_get(
