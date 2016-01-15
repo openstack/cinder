@@ -63,7 +63,7 @@ nfs_opts = [
                        'the volume destination.  If the ratio exceeds this '
                        'number, the destination will no longer be valid. '
                        'Note that this option is deprecated in favor of '
-                       '"max_oversubscription_ratio" and will be removed '
+                       '"max_over_subscription_ratio" and will be removed '
                        'in the Mitaka release.')),
     cfg.StrOpt('nfs_mount_point_base',
                default='$state_path/mnt',
