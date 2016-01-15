@@ -348,12 +348,12 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
         return res, vol
 
     def local_path(self, volume):
-        dres, dvol = self._resource_name_volnr_for_volume(volume)
+        d_res_name, d_vol_nr = self._resource_name_volnr_for_volume(volume)
 
         res, data = self.call_or_reconnect(self.odm.text_query,
                                            [dm_const.TQ_GET_PATH,
-                                            dres,
-                                            str(dvol)])
+                                            d_res_name,
+                                            str(d_vol_nr)])
         self._check_result(res)
 
         if len(data) == 1:
@@ -370,10 +370,10 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
         """
 
         # TODO(PM): consistency groups
-        dres = self.is_clean_volume_name(volume['id'], DM_VN_PREFIX)
+        d_res_name = self.is_clean_volume_name(volume['id'], DM_VN_PREFIX)
 
         res = self.call_or_reconnect(self.odm.create_resource,
-                                     dres,
+                                     d_res_name,
                                      self.empty_dict)
         self._check_result(res, ignore=[dm_exc.DM_EEXIST], ret=None)
 
@@ -387,7 +387,7 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
             props = self._priv_hash_from_volume(volume)
             # TODO(PM): properties - redundancy, etc
             res = self.call_or_reconnect(self.odm.create_volume,
-                                         dres,
+                                         d_res_name,
                                          self._vol_size_to_dm(volume['size']),
                                          props)
             self._check_result(res)
@@ -395,18 +395,18 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
         # If we crashed between create_volume and the deploy call,
         # the volume might be defined but not exist on any server. Oh my.
         res = self.call_or_reconnect(self.odm.auto_deploy,
-                                     dres, self.drbdmanage_redundancy,
+                                     d_res_name, self.drbdmanage_redundancy,
                                      0, True)
         self._check_result(res)
 
         # TODO(pm): CG
-        self._wait_for_node_assignment(dres, 0, self.empty_list)
+        self._wait_for_node_assignment(d_res_name, 0, self.empty_list)
 
         if self.drbdmanage_devs_on_controller:
             # TODO(pm): CG
             res = self.call_or_reconnect(self.odm.assign,
                                          socket.gethostname(),
-                                         dres,
+                                         d_res_name,
                                          self.empty_dict)
             self._check_result(res, ignore=[dm_exc.DM_EEXIST])
 
@@ -414,20 +414,21 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
 
     def delete_volume(self, volume):
         """Deletes a resource."""
-        dres, dvol = self._resource_name_volnr_for_volume(
+        d_res_name, d_vol_nr = self._resource_name_volnr_for_volume(
             volume,
             empty_ok=True)
 
-        if not dres:
+        if not d_res_name:
             # OK, already gone.
             return True
 
         # TODO(PM): check if in use? Ask whether Primary, or just check result?
-        res = self.call_or_reconnect(self.odm.remove_volume, dres, dvol, False)
+        res = self.call_or_reconnect(self.odm.remove_volume,
+                                     d_res_name, d_vol_nr, False)
         self._check_result(res, ignore=[dm_exc.DM_ENOENT])
 
         res, rl = self.call_or_reconnect(self.odm.list_volumes,
-                                         [dres],
+                                         [d_res_name],
                                          0,
                                          self.empty_dict,
                                          self.empty_list)
@@ -439,12 +440,13 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
         # version (errorneously, IMO) returns no *resource*, too.
         if len(rl) > 1:
             message = _('DRBDmanage expected one resource ("%(res)s"), '
-                        'got %(n)d') % {'res': dres, 'n': len(rl)}
+                        'got %(n)d') % {'res': d_res_name, 'n': len(rl)}
             raise exception.VolumeBackendAPIException(data=message)
 
         # Delete resource, if empty
         if (not rl) or (not rl[0]) or (len(rl[0][2]) == 0):
-            res = self.call_or_reconnect(self.odm.remove_resource, dres, False)
+            res = self.call_or_reconnect(self.odm.remove_resource,
+                                         d_res_name, False)
             self._check_result(res, ignore=[dm_exc.DM_ENOENT])
 
     def create_volume_from_snapshot(self, volume, snapshot):
@@ -453,7 +455,7 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
         LOG.debug("create vol from snap: from %(snap)s make %(vol)s",
                   {'snap': snapshot['id'], 'vol': volume['id']})
         # TODO(PM): Consistency groups.
-        dres, sname, sprop = self._resource_and_snap_data_from_snapshot(
+        d_res_name, sname, sprop = self._resource_and_snap_data_from_snapshot(
             snapshot)
 
         new_res = self.is_clean_volume_name(volume['id'], DM_VN_PREFIX)
@@ -464,7 +466,7 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
 
         res = self.call_or_reconnect(self.odm.restore_snapshot,
                                      new_res,
-                                     dres,
+                                     d_res_name,
                                      sname,
                                      r_props,
                                      v_props)
@@ -528,10 +530,10 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
         return self._stats
 
     def extend_volume(self, volume, new_size):
-        dres, dvol = self._resource_name_volnr_for_volume(volume)
+        d_res_name, d_vol_nr = self._resource_name_volnr_for_volume(volume)
 
         res = self.call_or_reconnect(self.odm.resize_volume,
-                                     dres, dvol, -1,
+                                     d_res_name, d_vol_nr, -1,
                                      {"size": self._vol_size_to_dm(new_size)},
                                      0)
         self._check_result(res)
@@ -541,12 +543,12 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
         """Creates a snapshot."""
         sn_name = self.snapshot_name_from_cinder_snapshot(snapshot)
 
-        dres, dvol = self._resource_name_volnr_for_volume(
+        d_res_name, d_vol_nr = self._resource_name_volnr_for_volume(
             snapshot["volume_id"])
 
         res, data = self.call_or_reconnect(self.odm.list_assignments,
                                            self.empty_dict,
-                                           [dres],
+                                           [d_res_name],
                                            0,
                                            self.empty_dict,
                                            self.empty_list)
@@ -556,20 +558,20 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
         if len(nodes) < 1:
             raise exception.VolumeBackendAPIException(
                 _('Snapshot res "%s" that is not deployed anywhere?') %
-                (dres))
+                (d_res_name))
 
         props = self._priv_hash_from_volume(snapshot)
         res = self.call_or_reconnect(self.odm.create_snapshot,
-                                     dres, sn_name, nodes, props)
+                                     d_res_name, sn_name, nodes, props)
         self._check_result(res)
 
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot."""
 
-        dres, sname, _ = self._resource_and_snap_data_from_snapshot(
+        d_res_name, sname, _ = self._resource_and_snap_data_from_snapshot(
             snapshot, empty_ok=True)
 
-        if not dres:
+        if not d_res_name:
             # resource already gone?
             LOG.warning(_LW("snapshot: %s not found, "
                             "skipping delete operation"), snapshot['id'])
@@ -577,7 +579,7 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
             return True
 
         res = self.call_or_reconnect(self.odm.remove_snapshot,
-                                     dres, sname, True)
+                                     d_res_name, sname, True)
         return self._check_result(res, ignore=[dm_exc.DM_ENOENT])
 
 
@@ -659,7 +661,7 @@ class DrbdManageDrbdDriver(DrbdManageBaseDriver):
         return self._stats
 
     def _return_local_access(self, nodename, volume,
-                             dres=None, volume_path=None):
+                             d_res_name=None, volume_path=None):
 
         if not volume_path:
             volume_path = self.local_path(volume)
@@ -672,14 +674,14 @@ class DrbdManageDrbdDriver(DrbdManageBaseDriver):
         }
 
     def _return_drbdadm_config(self, volume, nodename,
-                               dres=None, volume_path=None):
+                               d_res_name=None, volume_path=None):
 
-        if not dres:
-            dres, dvol = self._resource_name_volnr_for_volume(volume)
+        if not d_res_name:
+            d_res_name, d_vol_nr = self._resource_name_volnr_for_volume(volume)
 
         res, data = self.call_or_reconnect(
             self.odm.text_query,
-            ['export_conf_split_up', nodename, dres])
+            ['export_conf_split_up', nodename, d_res_name])
         self._check_result(res)
 
         config = six.text_type(data.pop(0))
@@ -700,7 +702,7 @@ class DrbdManageDrbdDriver(DrbdManageBaseDriver):
                 'devices': [volume_path],
                 'provider_auth': subst_data['shared-secret'],
                 'config': config,
-                'name': dres,
+                'name': d_res_name,
             }
         }
 
@@ -731,14 +733,16 @@ class DrbdManageDrbdDriver(DrbdManageBaseDriver):
         return getattr(nodeattr, dm_const.FLAG_EXTERNAL,
                        dm_const.BOOL_FALSE) == dm_const.BOOL_TRUE
 
-    def _return_connection_data(self, nodename, volume, dres=None):
+    def _return_connection_data(self, nodename, volume, d_res_name=None):
         if self._is_external_node(nodename):
-            return self._return_drbdadm_config(nodename, volume, dres=dres)
+            return self._return_drbdadm_config(nodename,
+                                               volume,
+                                               d_res_name=d_res_name)
         else:
             return self._return_local_access(nodename, volume)
 
     def create_export(self, context, volume, connector):
-        dres, dvol = self._resource_name_volnr_for_volume(volume)
+        d_res_name, d_vol_nr = self._resource_name_volnr_for_volume(volume)
 
         nodename = connector["host"]
 
@@ -767,7 +771,7 @@ class DrbdManageDrbdDriver(DrbdManageBaseDriver):
         }))
 
         res = self.call_or_reconnect(
-            self.odm.assign, nodename, dres, assg_prop)
+            self.odm.assign, nodename, d_res_name, assg_prop)
         self._check_result(res, ignore=[dm_exc.DM_EEXIST])
 
         # Wait for DRBDmanage to have completed that action.
@@ -778,7 +782,7 @@ class DrbdManageDrbdDriver(DrbdManageBaseDriver):
         # (ie. they're now ready to receive the connection).
         if self._is_external_node(nodename):
             self._wait_for_node_assignment(
-                dres, dvol, [],
+                d_res_name, d_vol_nr, [],
                 check_vol_deployed=False,
                 filter_props={
                     # must be deployed
@@ -790,7 +794,7 @@ class DrbdManageDrbdDriver(DrbdManageBaseDriver):
                 })
         else:
             self._wait_for_node_assignment(
-                dres, dvol, [nodename],
+                d_res_name, d_vol_nr, [nodename],
                 check_vol_deployed=True,
                 filter_props={
                     CS_DEPLOYED: dm_const.BOOL_TRUE,
@@ -813,9 +817,9 @@ class DrbdManageDrbdDriver(DrbdManageBaseDriver):
 
     def terminate_connection(self, volume, connector,
                              force=False, **kwargs):
-        dres, dvol = self._resource_name_volnr_for_volume(
+        d_res_name, d_vol_nr = self._resource_name_volnr_for_volume(
             volume, empty_ok=True)
-        if not dres:
+        if not d_res_name:
             return
 
         nodename = connector["host"]
@@ -824,7 +828,7 @@ class DrbdManageDrbdDriver(DrbdManageBaseDriver):
         # if it has local storage, we keep it.
         res, data = self.call_or_reconnect(
             self.odm.list_assignments,
-            [nodename], [dres], 0,
+            [nodename], [d_res_name], 0,
             self.empty_list, self.empty_list)
         self._check_result(res, ignore=[dm_exc.DM_ENOENT])
 
@@ -853,7 +857,7 @@ class DrbdManageDrbdDriver(DrbdManageBaseDriver):
                 #           remove until *all* volumes are detached
 
                 res = self.call_or_reconnect(self.odm.unassign,
-                                             nodename, dres, force)
+                                             nodename, d_res_name, force)
                 self._check_result(res, ignore=[dm_exc.DM_ENOENT])
         else:
             # more than one assignment?
