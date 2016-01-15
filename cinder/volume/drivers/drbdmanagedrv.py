@@ -17,14 +17,16 @@
 """
 
 This driver connects Cinder to an installed DRBDmanage instance, see
-  http://oss.linbit.com/drbdmanage/
-  http://git.linbit.com/drbdmanage.git/
+  http://drbd.linbit.com/users-guide-9.0/ch-openstack.html
 for more details.
 
 """
 
+
+import eventlet
 import six
 import socket
+import time
 import uuid
 
 from oslo_config import cfg
@@ -34,7 +36,7 @@ from oslo_utils import units
 
 
 from cinder import exception
-from cinder.i18n import _, _LW, _LI
+from cinder.i18n import _, _LW, _LI, _LE
 from cinder.volume import driver
 
 try:
@@ -43,6 +45,7 @@ try:
     import drbdmanage.exceptions as dm_exc
     import drbdmanage.utils as dm_utils
 except ImportError:
+    # Used for the tests, when no DRBDmanage is installed
     dbus = None
     dm_const = None
     dm_exc = None
@@ -52,8 +55,8 @@ except ImportError:
 LOG = logging.getLogger(__name__)
 
 drbd_opts = [
-    cfg.StrOpt('drbdmanage_redundancy',
-               default='1',
+    cfg.IntOpt('drbdmanage_redundancy',
+               default=1,
                help='Number of nodes that should replicate the data.'),
     cfg.BoolOpt('drbdmanage_devs_on_controller',
                 default=True,
@@ -72,21 +75,30 @@ CONF.register_opts(drbd_opts)
 
 
 AUX_PROP_CINDER_VOL_ID = "cinder-id"
+AUX_PROP_TEMP_CLIENT = "cinder-is-temp-client"
 DM_VN_PREFIX = 'CV_'  # sadly 2CV isn't allowed by DRBDmanage
 DM_SN_PREFIX = 'SN_'
 
 
-class DrbdManageDriver(driver.VolumeDriver):
+# Need to be set later, so that the tests can fake
+CS_DEPLOYED = None
+CS_DISKLESS = None
+CS_UPD_CON = None
+
+
+class DrbdManageBaseDriver(driver.VolumeDriver):
     """Cinder driver that uses DRBDmanage for storage."""
 
-    VERSION = '1.0.0'
+    VERSION = '1.1.0'
     drbdmanage_dbus_name = 'org.drbd.drbdmanaged'
     drbdmanage_dbus_interface = '/interface'
 
     def __init__(self, *args, **kwargs):
         self.empty_list = dbus.Array([], signature="a(s)")
         self.empty_dict = dbus.Array([], signature="a(ss)")
-        super(DrbdManageDriver, self).__init__(*args, **kwargs)
+
+        super(DrbdManageBaseDriver, self).__init__(*args, **kwargs)
+
         self.configuration.append_config_values(drbd_opts)
         if not self.drbdmanage_dbus_name:
             self.drbdmanage_dbus_name = 'org.drbd.drbdmanaged'
@@ -100,20 +112,15 @@ class DrbdManageDriver(driver.VolumeDriver):
                     True))
         self.dm_control_vol = ".drbdctrl"
 
-        # Copied from the LVM driver, see
-        # I43190d1dac33748fe55fa00f260f32ab209be656
-        target_driver = self.target_mapping[
-            self.configuration.safe_get('iscsi_helper')]
+        self.backend_name = self.configuration.safe_get(
+            'volume_backend_name') or 'drbdmanage'
 
-        LOG.debug('Attempting to initialize DRBD driver with the '
-                  'following target_driver: %s',
-                  target_driver)
-
-        self.target_driver = importutils.import_object(
-            target_driver,
-            configuration=self.configuration,
-            db=self.db,
-            executor=self._execute)
+        # needed as per pep8:
+        #   F841 local variable 'CS_DEPLOYED' is assigned to but never used
+        global CS_DEPLOYED, CS_DISKLESS, CS_UPD_CON
+        CS_DEPLOYED = dm_const.CSTATE_PREFIX + dm_const.FLAG_DEPLOY
+        CS_DISKLESS = dm_const.CSTATE_PREFIX + dm_const.FLAG_DISKLESS
+        CS_UPD_CON = dm_const.CSTATE_PREFIX + dm_const.FLAG_UPD_CON
 
     def dbus_connect(self):
         self.odm = dbus.SystemBus().get_object(self.drbdmanage_dbus_name,
@@ -132,7 +139,7 @@ class DrbdManageDriver(driver.VolumeDriver):
 
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
-        super(DrbdManageDriver, self).do_setup(context)
+        super(DrbdManageBaseDriver, self).do_setup(context)
         self.dbus_connect()
 
     def check_for_setup_error(self):
@@ -199,6 +206,48 @@ class DrbdManageDriver(driver.VolumeDriver):
         except ValueError:
             return None
 
+    def _wait_for_node_assignment(self, res_name, vol_nr, nodenames,
+                                  filter_props=None, timeout=90,
+                                  check_vol_deployed=True):
+        """Return True as soon as one assignment matches the filter."""
+
+        if not filter_props:
+            filter_props = self.empty_dict
+
+        end_time = time.time() + timeout
+
+        retry = 0
+        while time.time() < end_time:
+            res, assgs = self.call_or_reconnect(self.odm.list_assignments,
+                                                nodenames, [res_name], 0,
+                                                filter_props, self.empty_list)
+            self._check_result(res)
+
+            if len(assgs) > 0:
+                for assg in assgs:
+                    vols = assg[3]
+
+                    for v_nr, v_prop in vols:
+                        if (v_nr == vol_nr):
+                            if not check_vol_deployed:
+                                # no need to check
+                                return True
+
+                            if v_prop[CS_DEPLOYED] == dm_const.BOOL_TRUE:
+                                return True
+
+            retry += 1
+            # Not yet
+            LOG.warning(_LW('Try #%(try)d: Volume "%(res)s"/%(vol)d '
+                            'not yet deployed on "%(host)s", waiting.'),
+                        {'try': retry, 'host': nodenames,
+                         'res': res_name, 'vol': vol_nr})
+
+            eventlet.sleep(min(0.5 + retry / 5, 2))
+
+        # Timeout
+        return False
+
     def _priv_hash_from_volume(self, volume):
         return dm_utils.dict_to_aux_props({
             AUX_PROP_CINDER_VOL_ID: volume['id'],
@@ -254,7 +303,7 @@ class DrbdManageDriver(driver.VolumeDriver):
 
         LOG.debug("volume %(uuid)s is %(res)s/%(nr)d; %(rprop)s, %(vprop)s",
                   {'uuid': v_uuid, 'res': r_name, 'nr': v_nr,
-                   'rprop': r_props, 'vprop': v_props})
+                   'rprop': dict(r_props), 'vprop': dict(v_props)})
 
         return r_name, v_nr, r_props, v_props
 
@@ -295,7 +344,7 @@ class DrbdManageDriver(driver.VolumeDriver):
         return r_name, s_name, s_props
 
     def _resource_name_volnr_for_volume(self, volume, empty_ok=False):
-        res, vol, _, _ = self._res_and_vl_data_for_volume(volume, empty_ok)
+        res, vol, __, __ = self._res_and_vl_data_for_volume(volume, empty_ok)
         return res, vol
 
     def local_path(self, volume):
@@ -306,8 +355,10 @@ class DrbdManageDriver(driver.VolumeDriver):
                                             dres,
                                             str(dvol)])
         self._check_result(res)
+
         if len(data) == 1:
             return data[0]
+
         message = _('Got bad path information from DRBDmanage! (%s)') % data
         raise exception.VolumeBackendAPIException(data=message)
 
@@ -330,8 +381,8 @@ class DrbdManageDriver(driver.VolumeDriver):
         # deploy gave an error on a previous try (like ENOSPC).
         # Still, there might or might not be the volume in the resource -
         # we have to check that explicitly.
-        (_, drbd_vol) = self._resource_name_volnr_for_volume(volume,
-                                                             empty_ok=True)
+        (__, drbd_vol) = self._resource_name_volnr_for_volume(volume,
+                                                              empty_ok=True)
         if not drbd_vol:
             props = self._priv_hash_from_volume(volume)
             # TODO(PM): properties - redundancy, etc
@@ -348,15 +399,18 @@ class DrbdManageDriver(driver.VolumeDriver):
                                      0, True)
         self._check_result(res)
 
+        # TODO(pm): CG
+        self._wait_for_node_assignment(dres, 0, self.empty_list)
+
         if self.drbdmanage_devs_on_controller:
-            # FIXME: Consistency groups, vol#
+            # TODO(pm): CG
             res = self.call_or_reconnect(self.odm.assign,
                                          socket.gethostname(),
                                          dres,
                                          self.empty_dict)
             self._check_result(res, ignore=[dm_exc.DM_EEXIST])
 
-        return 0
+        return {}
 
     def delete_volume(self, volume):
         """Deletes a resource."""
@@ -431,19 +485,29 @@ class DrbdManageDriver(driver.VolumeDriver):
 
         data["vendor_name"] = 'Open Source'
         data["driver_version"] = self.VERSION
-        data["storage_protocol"] = self.target_driver.protocol
         # This has to match the name set in the cinder volume driver spec,
         # so keep it lowercase
-        data["volume_backend_name"] = "drbdmanage"
+        data["volume_backend_name"] = self.backend_name
         data["pools"] = []
 
         res, free, total = self.call_or_reconnect(self.odm.cluster_free_query,
                                                   self.drbdmanage_redundancy)
         self._check_result(res)
 
-        location_info = ('DrbdManageDriver:%(cvol)s:%(dbus)s' %
+        location_info = ('DrbdManageBaseDriver:%(cvol)s:%(dbus)s' %
                          {'cvol': self.dm_control_vol,
                           'dbus': self.drbdmanage_dbus_name})
+
+        # add volumes
+        res, rl = self.call_or_reconnect(self.odm.list_volumes,
+                                         self.empty_list,
+                                         0,
+                                         self.empty_dict,
+                                         self.empty_list)
+        self._check_result(res)
+        total_volumes = 0
+        for res in rl:
+            total_volumes += len(res[2])
 
         # TODO(PM): multiple DRBDmanage instances and/or multiple pools
         single_pool = {}
@@ -453,16 +517,14 @@ class DrbdManageDriver(driver.VolumeDriver):
             total_capacity_gb=self._vol_size_to_cinder(total),
             reserved_percentage=self.configuration.reserved_percentage,
             location_info=location_info,
+            total_volumes=total_volumes,
+            filter_function=self.get_filter_function(),
+            goodness_function=self.get_goodness_function(),
             QoS_support=False))
 
         data["pools"].append(single_pool)
 
         self._stats = data
-
-    def get_volume_stats(self, refresh=True):
-        """Get volume status."""
-
-        self._update_volume_stats()
         return self._stats
 
     def extend_volume(self, volume, new_size):
@@ -487,7 +549,7 @@ class DrbdManageDriver(driver.VolumeDriver):
                                            [dres],
                                            0,
                                            self.empty_dict,
-                                           self.empty_dict)
+                                           self.empty_list)
         self._check_result(res)
 
         nodes = [d[0] for d in data]
@@ -518,7 +580,33 @@ class DrbdManageDriver(driver.VolumeDriver):
                                      dres, sname, True)
         return self._check_result(res, ignore=[dm_exc.DM_ENOENT])
 
-    # #######  Interface methods for DataPath (Target Driver) ########
+
+# Class with iSCSI interface methods
+
+class DrbdManageIscsiDriver(DrbdManageBaseDriver):
+    """Cinder driver that uses the iSCSI protocol. """
+
+    def __init__(self, *args, **kwargs):
+        super(DrbdManageIscsiDriver, self).__init__(*args, **kwargs)
+        target_driver = self.target_mapping[
+            self.configuration.safe_get('iscsi_helper')]
+
+        LOG.debug('Attempting to initialize DRBD driver with the '
+                  'following target_driver: %s',
+                  target_driver)
+
+        self.target_driver = importutils.import_object(
+            target_driver,
+            configuration=self.configuration,
+            db=self.db,
+            executor=self._execute)
+
+    def get_volume_stats(self, refresh=False):
+        """Get volume status."""
+
+        self._update_volume_stats()
+        self._stats["storage_protocol"] = "iSCSI"
+        return self._stats
 
     def ensure_export(self, context, volume):
         volume_path = self.local_path(volume)
@@ -547,4 +635,230 @@ class DrbdManageDriver(driver.VolumeDriver):
         return self.target_driver.validate_connector(connector)
 
     def terminate_connection(self, volume, connector, **kwargs):
+        return self.target_driver.terminate_connection(volume,
+                                                       connector,
+                                                       **kwargs)
         return None
+
+# for backwards compatibility keep the old class name, too
+DrbdManageDriver = DrbdManageIscsiDriver
+
+
+# Class with DRBD transport mode
+class DrbdManageDrbdDriver(DrbdManageBaseDriver):
+    """Cinder driver that uses the DRBD protocol. """
+
+    def __init__(self, *args, **kwargs):
+        super(DrbdManageDrbdDriver, self).__init__(*args, **kwargs)
+
+    def get_volume_stats(self, refresh=False):
+        """Get volume status."""
+
+        self._update_volume_stats()
+        self._stats["storage_protocol"] = "DRBD"
+        return self._stats
+
+    def _return_local_access(self, nodename, volume,
+                             dres=None, volume_path=None):
+
+        if not volume_path:
+            volume_path = self.local_path(volume)
+
+        return {
+            'driver_volume_type': 'local',
+            'data': {
+                "device_path": volume_path
+            }
+        }
+
+    def _return_drbdadm_config(self, volume, nodename,
+                               dres=None, volume_path=None):
+
+        if not dres:
+            dres, dvol = self._resource_name_volnr_for_volume(volume)
+
+        res, data = self.call_or_reconnect(
+            self.odm.text_query,
+            ['export_conf_split_up', nodename, dres])
+        self._check_result(res)
+
+        config = six.text_type(data.pop(0))
+        subst_data = {}
+        while len(data):
+            k = data.pop(0)
+            subst_data[k] = data.pop(0)
+
+        if not volume_path:
+            volume_path = self.local_path(volume)
+
+        return {
+            'driver_volume_type': 'drbd',
+            'data': {
+                'provider_location': ' '.join('drbd', nodename),
+                'device': volume_path,
+                # TODO(pm): consistency groups
+                'devices': [volume_path],
+                'provider_auth': subst_data['shared-secret'],
+                'config': config,
+                'name': dres,
+            }
+        }
+
+    def _is_external_node(self, nodename):
+        """Return whether the given node is an "external" node."""
+
+        # If the node accessing the data (the "initiator" in iSCSI speak,
+        # "client" or "target" otherwise) is marked as an FLAG_EXTERNAL
+        # node, it does not have DRBDmanage active - and that means
+        # we have to send the necessary DRBD configuration.
+        #
+        # If DRBDmanage is running there, just pushing the (client)
+        # assignment is enough to make the local path available.
+
+        res, nodes = self.call_or_reconnect(self.odm.list_nodes,
+                                            [nodename], 0,
+                                            self.empty_dict,
+                                            [dm_const.FLAG_EXTERNAL])
+        self._check_result(res)
+
+        if len(nodes) != 1:
+            msg = _('Expected exactly one node called "%s"') % nodename
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
+
+        __, nodeattr = nodes[0]
+
+        return getattr(nodeattr, dm_const.FLAG_EXTERNAL,
+                       dm_const.BOOL_FALSE) == dm_const.BOOL_TRUE
+
+    def _return_connection_data(self, nodename, volume, dres=None):
+        if self._is_external_node(nodename):
+            return self._return_drbdadm_config(nodename, volume, dres=dres)
+        else:
+            return self._return_local_access(nodename, volume)
+
+    def create_export(self, context, volume, connector):
+        dres, dvol = self._resource_name_volnr_for_volume(volume)
+
+        nodename = connector["host"]
+
+        # Ensure the node is known to DRBDmanage.
+        # Note that this does *not* mean that DRBDmanage has to
+        # be installed on it!
+        # This is just so that DRBD allows the IP to connect.
+        node_prop = {
+            dm_const.NODE_ADDR: connector["ip"],
+            dm_const.FLAG_DRBDCTRL: dm_const.BOOL_FALSE,
+            dm_const.FLAG_STORAGE: dm_const.BOOL_FALSE,
+            dm_const.FLAG_EXTERNAL: dm_const.BOOL_TRUE,
+        }
+        res = self.call_or_reconnect(
+            self.odm.create_node, nodename, node_prop)
+        self._check_result(res, ignore=[dm_exc.DM_EEXIST])
+
+        # Ensure the data is accessible, by creating an assignment.
+        assg_prop = {
+            dm_const.FLAG_DISKLESS: dm_const.BOOL_TRUE,
+        }
+        # If we create the assignment here, it's temporary -
+        # and has to be removed later on again.
+        assg_prop.update(dm_utils.aux_props_to_dict({
+            AUX_PROP_TEMP_CLIENT: dm_const.BOOL_TRUE,
+        }))
+
+        res = self.call_or_reconnect(
+            self.odm.assign, nodename, dres, assg_prop)
+        self._check_result(res, ignore=[dm_exc.DM_EEXIST])
+
+        # Wait for DRBDmanage to have completed that action.
+
+        # A DRBDmanage controlled node will set the cstate:deploy flag;
+        # an external node will not be available to change it, so we have
+        # to wait for the storage nodes to remove the upd_con flag
+        # (ie. they're now ready to receive the connection).
+        if self._is_external_node(nodename):
+            self._wait_for_node_assignment(
+                dres, dvol, [],
+                check_vol_deployed=False,
+                filter_props={
+                    # must be deployed
+                    CS_DEPLOYED: dm_const.BOOL_TRUE,
+                    # must be a storage node (not diskless),
+                    CS_DISKLESS: dm_const.BOOL_FALSE,
+                    # connection must be available, no need for updating
+                    CS_UPD_CON: dm_const.BOOL_FALSE,
+                })
+        else:
+            self._wait_for_node_assignment(
+                dres, dvol, [nodename],
+                check_vol_deployed=True,
+                filter_props={
+                    CS_DEPLOYED: dm_const.BOOL_TRUE,
+                })
+
+        return self._return_connection_data(nodename, volume)
+
+    def ensure_export(self, context, volume):
+
+        fields = context['provider_location'].split(" ")
+        nodename = fields[1]
+
+        return self._return_connection_data(nodename, volume)
+
+    def initialize_connection(self, volume, connector):
+
+        nodename = connector["host"]
+
+        return self._return_connection_data(nodename, volume)
+
+    def terminate_connection(self, volume, connector,
+                             force=False, **kwargs):
+        dres, dvol = self._resource_name_volnr_for_volume(
+            volume, empty_ok=True)
+        if not dres:
+            return
+
+        nodename = connector["host"]
+
+        # If the DRBD volume is diskless on that node, we remove it;
+        # if it has local storage, we keep it.
+        res, data = self.call_or_reconnect(
+            self.odm.list_assignments,
+            [nodename], [dres], 0,
+            self.empty_list, self.empty_list)
+        self._check_result(res, ignore=[dm_exc.DM_ENOENT])
+
+        if len(data) < 1:
+            # already removed?!
+            LOG.info(_LI('DRBD connection for %s already removed'),
+                     volume['id'])
+        elif len(data) == 1:
+            __, __, props, __ = data[0]
+            my_props = dm_utils.dict_to_aux_props(props)
+            diskless = getattr(props,
+                               dm_const.FLAG_DISKLESS,
+                               dm_const.BOOL_FALSE)
+            temp_cli = getattr(my_props,
+                               AUX_PROP_TEMP_CLIENT,
+                               dm_const.BOOL_FALSE)
+            # If diskless assigned,
+            if ((diskless == dm_const.BOOL_TRUE) and
+                    (temp_cli == dm_const.BOOL_TRUE)):
+                # remove the assignment
+
+                # TODO(pm): does it make sense to relay "force" here?
+                #           What are the semantics?
+
+                # TODO(pm): consistency groups shouldn't really
+                #           remove until *all* volumes are detached
+
+                res = self.call_or_reconnect(self.odm.unassign,
+                                             nodename, dres, force)
+                self._check_result(res, ignore=[dm_exc.DM_ENOENT])
+        else:
+            # more than one assignment?
+            LOG.error(_LE("DRBDmanage: too many assignments returned."))
+        return
+
+    def remove_export(self, context, volume):
+        pass
