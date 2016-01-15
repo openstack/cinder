@@ -366,7 +366,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         LOG.debug(
             'Creating ACL for filesystem %s on Nexenta Store', filesystem)
         url = 'storage/pools/%s/filesystems/%s/acl' % (
-            pool, '%2F'.join((path.strip(pool).lstrip('/'), filesystem)))
+            pool, '%2F'.join([self.share, filesystem]))
         data = {
             "type": "allow",
             "principal": "everyone@",
