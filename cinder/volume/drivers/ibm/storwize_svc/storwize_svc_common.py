@@ -3077,7 +3077,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
     def create_cgsnapshot(self, ctxt, cgsnapshot, snapshots):
         """Creates a cgsnapshot."""
         # Use cgsnapshot id as cg name
-        cg_name = 'cg_snap-' + cgsnapshot['id']
+        cg_name = 'cg_snap-' + cgsnapshot.id
         # Create new cg as cg_snapshot
         self._helpers.create_fc_consistgrp(cg_name)
 
