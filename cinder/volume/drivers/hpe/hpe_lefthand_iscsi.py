@@ -1,4 +1,4 @@
-#    (c) Copyright 2014-2015 Hewlett Packard Enterprise Development LP
+#    (c) Copyright 2014-2016 Hewlett Packard Enterprise Development LP
 #    All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -36,6 +36,7 @@ LeftHand array.
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_serialization import jsonutils as json
 from oslo_utils import excutils
 from oslo_utils import importutils
 from oslo_utils import units
@@ -45,13 +46,13 @@ from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.objects import fields
 from cinder.volume import driver
+from cinder.volume.drivers.san import san
 from cinder.volume import utils
 from cinder.volume import volume_types
 
-import six
-
 import math
 import re
+import six
 
 LOG = logging.getLogger(__name__)
 
@@ -88,6 +89,9 @@ hpelefthand_opts = [
                 default=False,
                 help="Enable HTTP debugging to LeftHand",
                 deprecated_name='hplefthand_debug'),
+    cfg.PortOpt('hpelefthand_ssh_port',
+                default=16022,
+                help="Port number of SSH service."),
 
 ]
 
@@ -96,6 +100,7 @@ CONF.register_opts(hpelefthand_opts)
 
 MIN_API_VERSION = "1.1"
 MIN_CLIENT_VERSION = '2.0.0'
+MIN_REP_CLIENT_VERSION = '2.0.1'
 
 # map the extra spec key to the REST client option key
 extra_specs_key_map = {
@@ -141,24 +146,41 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         1.0.14 - Removed the old CLIQ based driver
         2.0.0 - Rebranded HP to HPE
         2.0.1 - Remove db access for consistency groups
+        2.0.2 - Adds v2 managed replication support
     """
 
-    VERSION = "2.0.1"
+    VERSION = "2.0.2"
 
     device_stats = {}
+
+    # v2 replication constants
+    EXTRA_SPEC_REP_SYNC_PERIOD = "replication:sync_period"
+    EXTRA_SPEC_REP_RETENTION_COUNT = "replication:retention_count"
+    EXTRA_SPEC_REP_REMOTE_RETENTION_COUNT = (
+        "replication:remote_retention_count")
+    MIN_REP_SYNC_PERIOD = 1800
+    DEFAULT_RETENTION_COUNT = 5
+    MAX_RETENTION_COUNT = 50
+    DEFAULT_REMOTE_RETENTION_COUNT = 5
+    MAX_REMOTE_RETENTION_COUNT = 50
+    REP_SNAPSHOT_SUFFIX = "_SS"
+    REP_SCHEDULE_SUFFIX = "_SCHED"
 
     def __init__(self, *args, **kwargs):
         super(HPELeftHandISCSIDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(hpelefthand_opts)
+        self.configuration.append_config_values(san.san_opts)
         if not self.configuration.hpelefthand_api_url:
             raise exception.NotFound(_("HPELeftHand url not found"))
 
         # blank is the only invalid character for cluster names
         # so we need to use it as a separator
         self.DRIVER_LOCATION = self.__class__.__name__ + ' %(cluster)s %(vip)s'
+        self._replication_targets = []
+        self._replication_enabled = False
 
-    def _login(self):
-        client = self._create_client()
+    def _login(self, timeout=None):
+        client = self._create_client(timeout=timeout)
         try:
             if self.configuration.hpelefthand_debug:
                 client.debug_rest(True)
@@ -173,6 +195,26 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
             virtual_ips = cluster_info['virtualIPAddresses']
             self.cluster_vip = virtual_ips[0]['ipV4Address']
 
+            # SSH is only available in the 2.0.1 release of the
+            # python-lefthandclient.
+            if hpelefthandclient.version >= MIN_REP_CLIENT_VERSION:
+                # Extract IP address from API URL
+                ssh_ip = self._extract_ip_from_url(
+                    self.configuration.hpelefthand_api_url)
+                known_hosts_file = CONF.ssh_hosts_key_file
+                policy = "AutoAddPolicy"
+                if CONF.strict_ssh_host_key_policy:
+                    policy = "RejectPolicy"
+                client.setSSHOptions(
+                    ssh_ip,
+                    self.configuration.hpelefthand_username,
+                    self.configuration.hpelefthand_password,
+                    port=self.configuration.hpelefthand_ssh_port,
+                    conn_timeout=self.configuration.ssh_conn_timeout,
+                    privatekey=self.configuration.san_private_key,
+                    missing_key_policy=policy,
+                    known_hosts_file=known_hosts_file)
+
             return client
         except hpeexceptions.HTTPNotFound:
             raise exception.DriverNotInitialized(
@@ -181,11 +223,60 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
             raise exception.DriverNotInitialized(ex)
 
     def _logout(self, client):
-        client.logout()
+        if client is not None:
+            client.logout()
 
-    def _create_client(self):
-        return hpe_lh_client.HPELeftHandClient(
-            self.configuration.hpelefthand_api_url)
+    def _create_client(self, timeout=None):
+        # Timeout is only supported in version 2.0.1 and greater of the
+        # python-lefthandclient.
+        if hpelefthandclient.version >= MIN_REP_CLIENT_VERSION:
+            client = hpe_lh_client.HPELeftHandClient(
+                self.configuration.hpelefthand_api_url, timeout=timeout)
+        else:
+            client = hpe_lh_client.HPELeftHandClient(
+                self.configuration.hpelefthand_api_url)
+        return client
+
+    def _create_replication_client(self, remote_array):
+        cl = hpe_lh_client.HPELeftHandClient(
+            remote_array['hpelefthand_api_url'])
+        try:
+            cl.login(
+                remote_array['hpelefthand_username'],
+                remote_array['hpelefthand_password'])
+
+            # Extract IP address from API URL
+            ssh_ip = self._extract_ip_from_url(
+                remote_array['hpelefthand_api_url'])
+            known_hosts_file = CONF.ssh_hosts_key_file
+            policy = "AutoAddPolicy"
+            if CONF.strict_ssh_host_key_policy:
+                policy = "RejectPolicy"
+            cl.setSSHOptions(
+                ssh_ip,
+                remote_array['hpelefthand_username'],
+                remote_array['hpelefthand_password'],
+                port=remote_array['hpelefthand_ssh_port'],
+                conn_timeout=remote_array['ssh_conn_timeout'],
+                privatekey=remote_array['san_private_key'],
+                missing_key_policy=policy,
+                known_hosts_file=known_hosts_file)
+
+            return cl
+        except hpeexceptions.HTTPNotFound:
+            raise exception.DriverNotInitialized(
+                _('LeftHand cluster not found'))
+        except Exception as ex:
+            raise exception.DriverNotInitialized(ex)
+
+    def _destroy_replication_client(self, client):
+        if client is not None:
+            client.logout()
+
+    def _extract_ip_from_url(self, url):
+        result = re.search("://(.*):", url)
+        ip = result.group(1)
+        return ip
 
     def do_setup(self, context):
         """Set up LeftHand client."""
@@ -199,6 +290,10 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
                          'minimum': MIN_CLIENT_VERSION})
             LOG.error(ex_msg)
             raise exception.InvalidInput(reason=ex_msg)
+
+        # v2 replication check
+        if hpelefthandclient.version >= MIN_REP_CLIENT_VERSION:
+            self._do_replication_setup()
 
     def check_for_setup_error(self):
         """Checks for incorrect LeftHand API being used on backend."""
@@ -257,7 +352,16 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
                 volume['size'] * units.Gi,
                 optional)
 
-            return self._update_provider(volume_info)
+            model_update = self._update_provider(volume_info)
+
+            # v2 replication check
+            if self._volume_of_replicated_type(volume) and (
+               self._do_volume_replication_setup(volume, client, optional)):
+                model_update['replication_status'] = 'enabled'
+                model_update['replication_driver_data'] = (json.dumps(
+                    {'location': self.configuration.hpelefthand_api_url}))
+
+            return model_update
         except Exception as ex:
             raise exception.VolumeBackendAPIException(data=ex)
         finally:
@@ -266,6 +370,13 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
     def delete_volume(self, volume):
         """Deletes a volume."""
         client = self._login()
+        # v2 replication check
+        # If the volume type is replication enabled, we want to call our own
+        # method of deconstructing the volume and its dependencies
+        if self._volume_of_replicated_type(volume):
+            self._do_volume_replication_destroy(volume, client)
+            return
+
         try:
             volume_info = client.getVolumeByName(volume['name'])
             client.deleteVolume(volume_info['id'])
@@ -520,6 +631,11 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         data['goodness_function'] = self.get_goodness_function()
         data['consistencygroup_support'] = True
 
+        if hpelefthandclient.version >= MIN_REP_CLIENT_VERSION:
+            data['replication_enabled'] = self._replication_enabled
+            data['replication_type'] = ['periodic']
+            data['replication_count'] = len(self._replication_targets)
+
         self.device_stats = data
 
     def initialize_connection(self, volume, connector):
@@ -597,7 +713,17 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
             volume_info = client.cloneSnapshot(
                 volume['name'],
                 snap_info['id'])
-            return self._update_provider(volume_info)
+
+            model_update = self._update_provider(volume_info)
+
+            # v2 replication check
+            if self._volume_of_replicated_type(volume) and (
+               self._do_volume_replication_setup(volume, client)):
+                model_update['replication_status'] = 'enabled'
+                model_update['replication_driver_data'] = (json.dumps(
+                    {'location': self.configuration.hpelefthand_api_url}))
+
+            return model_update
         except Exception as ex:
             raise exception.VolumeBackendAPIException(ex)
         finally:
@@ -608,7 +734,17 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         try:
             volume_info = client.getVolumeByName(src_vref['name'])
             clone_info = client.cloneVolume(volume['name'], volume_info['id'])
-            return self._update_provider(clone_info)
+
+            model_update = self._update_provider(clone_info)
+
+            # v2 replication check
+            if self._volume_of_replicated_type(volume) and (
+               self._do_volume_replication_setup(volume, client)):
+                model_update['replication_status'] = 'enabled'
+                model_update['replication_driver_data'] = (json.dumps(
+                    {'location': self.configuration.hpelefthand_api_url}))
+
+            return model_update
         except Exception as ex:
             raise exception.VolumeBackendAPIException(ex)
         finally:
@@ -654,10 +790,12 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
                           {'value': value, 'key': key})
         return client_options
 
-    def _update_provider(self, volume_info):
+    def _update_provider(self, volume_info, cluster_vip=None):
+        if not cluster_vip:
+            cluster_vip = self.cluster_vip
         # TODO(justinsb): Is this always 1? Does it matter?
         cluster_interface = '1'
-        iscsi_portal = self.cluster_vip + ":3260," + cluster_interface
+        iscsi_portal = cluster_vip + ":3260," + cluster_interface
 
         return {'provider_location': (
             "%s %s %s" % (iscsi_portal, volume_info['iscsiIqn'], 0))}
@@ -1061,3 +1199,459 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
     def _get_volume_type(self, type_id):
         ctxt = context.get_admin_context()
         return volume_types.get_volume_type(ctxt, type_id)
+
+    # v2 replication methods
+    def get_replication_updates(self, context):
+        # TODO(aorourke): the manager does not do anything with these updates.
+        # When that is changed, I will modify this as well.
+        errors = []
+        return errors
+
+    def replication_enable(self, context, volume):
+        """Enable replication on a replication capable volume."""
+        model_update = {}
+        # If replication is not enabled and the volume is of replicated type,
+        # we treat this as an error.
+        if not self._replication_enabled:
+            msg = _LE("Enabling replication failed because replication is "
+                      "not properly configured.")
+            LOG.error(msg)
+            model_update['replication_status'] = "error"
+        else:
+            client = self._login()
+            try:
+                if self._do_volume_replication_setup(volume, client):
+                    model_update['replication_status'] = "enabled"
+                else:
+                    model_update['replication_status'] = "error"
+            finally:
+                self._logout(client)
+
+        return model_update
+
+    def replication_disable(self, context, volume):
+        """Disable replication on the specified volume."""
+        model_update = {}
+        # If replication is not enabled and the volume is of replicated type,
+        # we treat this as an error.
+        if self._replication_enabled:
+            model_update['replication_status'] = 'disabled'
+            vol_name = volume['name']
+
+            client = self._login()
+            try:
+                name = vol_name + self.REP_SCHEDULE_SUFFIX + "_Pri"
+                client.stopRemoteSnapshotSchedule(name)
+            except Exception as ex:
+                msg = (_LE("There was a problem disabling replication on "
+                           "volume '%(name)s': %(error)s") %
+                       {'name': vol_name,
+                        'error': six.text_type(ex)})
+                LOG.error(msg)
+                model_update['replication_status'] = 'disable_failed'
+            finally:
+                self._logout(client)
+        else:
+            msg = _LE("Disabling replication failed because replication is "
+                      "not properly configured.")
+            LOG.error(msg)
+            model_update['replication_status'] = 'error'
+
+        return model_update
+
+    def replication_failover(self, context, volume, secondary):
+        """Force failover to a secondary replication target."""
+        failover_target = None
+        for target in self._replication_targets:
+            if target['target_device_id'] == secondary:
+                failover_target = target
+                break
+
+        if not failover_target:
+            msg = _("A valid secondary target MUST be specified in order "
+                    "to failover.")
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        # Try and stop the remote snapshot schedule. If the priamry array is
+        # down, we will continue with the failover.
+        client = None
+        try:
+            client = self._login(timeout=30)
+            name = volume['name'] + self.REP_SCHEDULE_SUFFIX + "_Pri"
+            client.stopRemoteSnapshotSchedule(name)
+        except Exception:
+            LOG.warning(_LW("The primary array is currently offline, remote "
+                            "copy has been automatically paused."))
+            pass
+        finally:
+            self._logout(client)
+
+        # Update provider location to the new array.
+        cl = None
+        model_update = {}
+        try:
+            cl = self._create_replication_client(failover_target)
+            # Make the volume primary so it can be attached after a fail-over.
+            cl.makeVolumePrimary(volume['name'])
+            # Stop snapshot schedule
+            try:
+                name = volume['name'] + self.REP_SCHEDULE_SUFFIX + "_Rmt"
+                cl.stopRemoteSnapshotSchedule(name)
+            except Exception:
+                pass
+            # Update the provider info for a proper fail-over.
+            volume_info = cl.getVolumeByName(volume['name'])
+            model_update = self._update_provider(
+                volume_info, cluster_vip=failover_target['cluster_vip'])
+        except Exception as ex:
+            msg = (_("The fail-over was unsuccessful: %s") %
+                   six.text_type(ex))
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        finally:
+            self._destroy_replication_client(cl)
+
+        rep_data = json.loads(volume['replication_driver_data'])
+        rep_data['location'] = failover_target['hpelefthand_api_url']
+        replication_driver_data = json.dumps(rep_data)
+        model_update['replication_driver_data'] = replication_driver_data
+        if failover_target['managed_backend_name']:
+            # We want to update the volumes host if our target is managed.
+            model_update['host'] = failover_target['managed_backend_name']
+
+        return model_update
+
+    def list_replication_targets(self, context, volume):
+        """Provides a means to obtain replication targets for a volume."""
+        client = None
+        try:
+            client = self._login(timeout=30)
+        except Exception:
+            pass
+        finally:
+            self._logout(client)
+
+        replication_targets = []
+        for target in self._replication_targets:
+            list_vals = {}
+            list_vals['target_device_id'] = (
+                target.get('target_device_id'))
+            replication_targets.append(list_vals)
+
+        return {'volume_id': volume['id'],
+                'targets': replication_targets}
+
+    def _do_replication_setup(self):
+        default_san_ssh_port = self.configuration.hpelefthand_ssh_port
+        default_ssh_conn_timeout = self.configuration.ssh_conn_timeout
+        default_san_private_key = self.configuration.san_private_key
+
+        replication_targets = []
+        replication_devices = self.configuration.replication_device
+        if replication_devices:
+            # We do not want to fail if we cannot log into the client here
+            # as a failover can still occur, so we need out replication
+            # devices to exist.
+            for dev in replication_devices:
+                remote_array = {}
+                is_managed = dev.get('managed_backend_name')
+                if not is_managed:
+                    msg = _("Unmanaged replication is not supported at this "
+                            "time. Please configure cinder.conf for managed "
+                            "replication.")
+                    LOG.error(msg)
+                    raise exception.VolumeBackendAPIException(data=msg)
+
+                remote_array['managed_backend_name'] = is_managed
+                remote_array['target_device_id'] = (
+                    dev.get('target_device_id'))
+                remote_array['hpelefthand_api_url'] = (
+                    dev.get('hpelefthand_api_url'))
+                remote_array['hpelefthand_username'] = (
+                    dev.get('hpelefthand_username'))
+                remote_array['hpelefthand_password'] = (
+                    dev.get('hpelefthand_password'))
+                remote_array['hpelefthand_clustername'] = (
+                    dev.get('hpelefthand_clustername'))
+                remote_array['hpelefthand_ssh_port'] = (
+                    dev.get('hpelefthand_ssh_port', default_san_ssh_port))
+                remote_array['ssh_conn_timeout'] = (
+                    dev.get('ssh_conn_timeout', default_ssh_conn_timeout))
+                remote_array['san_private_key'] = (
+                    dev.get('san_private_key', default_san_private_key))
+                remote_array['cluster_id'] = None
+                remote_array['cluster_vip'] = None
+                array_name = remote_array['target_device_id']
+
+                # Make sure we can log into the array, that it has been
+                # correctly configured, and its API version meets the
+                # minimum requirement.
+                cl = None
+                try:
+                    cl = self._create_replication_client(remote_array)
+                    api_version = cl.getApiVersion()
+                    cluster_info = cl.getClusterByName(
+                        remote_array['hpelefthand_clustername'])
+                    remote_array['cluster_id'] = cluster_info['id']
+                    virtual_ips = cluster_info['virtualIPAddresses']
+                    remote_array['cluster_vip'] = virtual_ips[0]['ipV4Address']
+
+                    if api_version < MIN_API_VERSION:
+                        msg = (_LW("The secondary array must have an API "
+                                   "version of %(min_ver)s or higher. "
+                                   "Array '%(target)s' is on %(target_ver)s, "
+                                   "therefore it will not be added as a valid "
+                                   "replication target.") %
+                               {'min_ver': MIN_API_VERSION,
+                                'target': array_name,
+                                'target_ver': api_version})
+                        LOG.warning(msg)
+                    elif not self._is_valid_replication_array(remote_array):
+                        msg = (_LW("'%s' is not a valid replication array. "
+                                   "In order to be valid, target_device_id, "
+                                   "hpelefthand_api_url, "
+                                   "hpelefthand_username, "
+                                   "hpelefthand_password, and "
+                                   "hpelefthand_clustername, "
+                                   "must be specified. If the target is "
+                                   "managed, managed_backend_name must be set "
+                                   "as well.") % array_name)
+                        LOG.warning(msg)
+                    else:
+                        replication_targets.append(remote_array)
+                except Exception:
+                    msg = (_LE("Could not log in to LeftHand array (%s) with "
+                               "the provided credentials.") % array_name)
+                    LOG.error(msg)
+                finally:
+                    self._destroy_replication_client(cl)
+
+            self._replication_targets = replication_targets
+            if self._is_replication_configured_correct():
+                self._replication_enabled = True
+
+    def _is_valid_replication_array(self, target):
+        for k, v in target.items():
+            if v is None:
+                return False
+        return True
+
+    def _is_replication_configured_correct(self):
+        rep_flag = True
+        # Make sure there is at least one replication target.
+        if len(self._replication_targets) < 1:
+            LOG.error(_LE("There must be at least one valid replication "
+                          "device configured."))
+            rep_flag = False
+        return rep_flag
+
+    def _volume_of_replicated_type(self, volume):
+        replicated_type = False
+        volume_type_id = volume.get('volume_type_id')
+        if volume_type_id:
+            volume_type = self._get_volume_type(volume_type_id)
+
+            extra_specs = volume_type.get('extra_specs')
+            if extra_specs and 'replication_enabled' in extra_specs:
+                rep_val = extra_specs['replication_enabled']
+                replicated_type = (rep_val == "<is> True")
+
+        return replicated_type
+
+    def _does_snapshot_schedule_exist(self, schedule_name, client):
+        try:
+            exists = client.doesRemoteSnapshotScheduleExist(schedule_name)
+        except Exception:
+            exists = False
+        return exists
+
+    def _do_volume_replication_setup(self, volume, client, optional=None):
+        """This function will do or ensure the following:
+
+        -Create volume on main array (already done in create_volume)
+        -Create volume on secondary array
+        -Make volume remote on secondary array
+        -Create the snapshot schedule
+
+        If anything here fails, we will need to clean everything up in
+        reverse order, including the original volume.
+        """
+        schedule_name = volume['name'] + self.REP_SCHEDULE_SUFFIX
+        # If there is already a snapshot schedule, the volume is setup
+        # for replication on the backend. Start the schedule and return
+        # success.
+        if self._does_snapshot_schedule_exist(schedule_name + "_Pri", client):
+            try:
+                client.startRemoteSnapshotSchedule(schedule_name + "_Pri")
+            except Exception:
+                pass
+            return True
+
+        # Grab the extra_spec entries for replication and make sure they
+        # are set correctly.
+        volume_type = self._get_volume_type(volume["volume_type_id"])
+        extra_specs = volume_type.get("extra_specs")
+
+        # Get and check replication sync period
+        replication_sync_period = extra_specs.get(
+            self.EXTRA_SPEC_REP_SYNC_PERIOD)
+        if replication_sync_period:
+            replication_sync_period = int(replication_sync_period)
+            if replication_sync_period < self.MIN_REP_SYNC_PERIOD:
+                msg = (_("The replication sync period must be at least %s "
+                         "seconds.") % self.MIN_REP_SYNC_PERIOD)
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+        else:
+            # If there is no extra_spec value for replication sync period, we
+            # will default it to the required minimum and log a warning.
+            replication_sync_period = self.MIN_REP_SYNC_PERIOD
+            LOG.warning(_LW("There was no extra_spec value for %(spec_name)s, "
+                            "so the default value of %(def_val)s will be "
+                            "used. To overwrite this, set this value in the "
+                            "volume type extra_specs."),
+                        {'spec_name': self.EXTRA_SPEC_REP_SYNC_PERIOD,
+                         'def_val': self.MIN_REP_SYNC_PERIOD})
+
+        # Get and check retention count
+        retention_count = extra_specs.get(
+            self.EXTRA_SPEC_REP_RETENTION_COUNT)
+        if retention_count:
+            retention_count = int(retention_count)
+            if retention_count > self.MAX_RETENTION_COUNT:
+                msg = (_("The retention count must be %s or less.") %
+                       self.MAX_RETENTION_COUNT)
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+        else:
+            # If there is no extra_spec value for retention count, we
+            # will default it and log a warning.
+            retention_count = self.DEFAULT_RETENTION_COUNT
+            LOG.warning(_LW("There was no extra_spec value for %(spec_name)s, "
+                            "so the default value of %(def_val)s will be "
+                            "used. To overwrite this, set this value in the "
+                            "volume type extra_specs."),
+                        {'spec_name': self.EXTRA_SPEC_REP_RETENTION_COUNT,
+                         'def_val': self.DEFAULT_RETENTION_COUNT})
+
+        # Get and checkout remote retention count
+        remote_retention_count = extra_specs.get(
+            self.EXTRA_SPEC_REP_REMOTE_RETENTION_COUNT)
+        if remote_retention_count:
+            remote_retention_count = int(remote_retention_count)
+            if remote_retention_count > self.MAX_REMOTE_RETENTION_COUNT:
+                msg = (_("The remote retention count must be %s or less.") %
+                       self.MAX_REMOTE_RETENTION_COUNT)
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+        else:
+            # If there is no extra_spec value for remote retention count, we
+            # will default it and log a warning.
+            remote_retention_count = self.DEFAULT_REMOTE_RETENTION_COUNT
+            spec_name = self.EXTRA_SPEC_REP_REMOTE_RETENTION_COUNT
+            LOG.warning(_LW("There was no extra_spec value for %(spec_name)s, "
+                            "so the default value of %(def_val)s will be "
+                            "used. To overwrite this, set this value in the "
+                            "volume type extra_specs."),
+                        {'spec_name': spec_name,
+                         'def_val': self.DEFAULT_REMOTE_RETENTION_COUNT})
+
+        cl = None
+        try:
+            # Create volume on secondary system
+            for remote_target in self._replication_targets:
+                cl = self._create_replication_client(remote_target)
+
+                if optional:
+                    optional['clusterName'] = (
+                        remote_target['hpelefthand_clustername'])
+                cl.createVolume(volume['name'],
+                                remote_target['cluster_id'],
+                                volume['size'] * units.Gi,
+                                optional)
+
+                # Make secondary volume a remote volume
+                # NOTE: The snapshot created when making a volume remote is
+                # not managed by cinder. This snapshot will be removed when
+                # _do_volume_replication_destroy is called.
+                snap_name = volume['name'] + self.REP_SNAPSHOT_SUFFIX
+                cl.makeVolumeRemote(volume['name'], snap_name)
+
+                # A remote IP address is needed from the cluster in order to
+                # create the snapshot schedule.
+                remote_ip = cl.getIPFromCluster(
+                    remote_target['hpelefthand_clustername'])
+
+                # Destroy remote client
+                self._destroy_replication_client(cl)
+
+                # Create remote snapshot schedule on the primary system.
+                # We want to start the remote snapshot schedule instantly; a
+                # date in the past will do that. We will use the Linux epoch
+                # date formatted to ISO 8601 (YYYY-MM-DDTHH:MM:SSZ).
+                start_date = "1970-01-01T00:00:00Z"
+                remote_vol_name = volume['name']
+
+                client.createRemoteSnapshotSchedule(
+                    volume['name'],
+                    schedule_name,
+                    replication_sync_period,
+                    start_date,
+                    retention_count,
+                    remote_target['hpelefthand_clustername'],
+                    remote_retention_count,
+                    remote_vol_name,
+                    remote_ip,
+                    remote_target['hpelefthand_username'],
+                    remote_target['hpelefthand_password'])
+
+            return True
+        except Exception as ex:
+            # Destroy the replication client that was created
+            self._destroy_replication_client(cl)
+            # Deconstruct what we tried to create
+            self._do_volume_replication_destroy(volume, client)
+            msg = (_("There was an error setting up a remote schedule "
+                     "on the LeftHand arrays: ('%s'). The volume will not be "
+                     "recognized as replication type.") %
+                   six.text_type(ex))
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    def _do_volume_replication_destroy(self, volume, client):
+        """This will remove all dependencies of a replicated volume
+
+        It should be used when deleting a replication enabled volume
+        or if setting up a remote copy group fails. It will try and do the
+        following:
+        -Delete the snapshot schedule
+        -Delete volume and snapshots on secondary array
+        -Delete volume and snapshots on primary array
+        """
+        # Delete snapshot schedule
+        try:
+            schedule_name = volume['name'] + self.REP_SCHEDULE_SUFFIX
+            client.deleteRemoteSnapshotSchedule(schedule_name)
+        except Exception:
+            pass
+
+        # Delete volume on secondary array(s)
+        remote_vol_name = volume['name']
+        for remote_target in self._replication_targets:
+            try:
+                cl = self._create_replication_client(remote_target)
+                volume_info = cl.getVolumeByName(remote_vol_name)
+                cl.deleteVolume(volume_info['id'])
+            except Exception:
+                pass
+            finally:
+                # Destroy the replication client that was created
+                self._destroy_replication_client(cl)
+
+        # Delete volume on primary array
+        try:
+            volume_info = client.getVolumeByName(volume['name'])
+            client.deleteVolume(volume_info['id'])
+        except Exception:
+            pass
