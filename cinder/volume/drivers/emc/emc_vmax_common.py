@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ast
 import inspect
 import os.path
 
@@ -1325,7 +1326,7 @@ class EMCVMAXCommon(object):
             self.conn = self._get_ecom_connection()
 
         if isinstance(loc, six.string_types):
-            name = eval(loc)
+            name = ast.literal_eval(loc)
             keys = name['keybindings']
             systemName = keys['SystemName']
 
@@ -3948,7 +3949,7 @@ class EMCVMAXCommon(object):
         version = None
         try:
             if isinstance(loc, six.string_types):
-                name = eval(loc)
+                name = ast.literal_eval(loc)
                 version = name['version']
         except KeyError:
             pass

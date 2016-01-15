@@ -19,6 +19,7 @@
 """
 Cinder Volume driver for Fujitsu ETERNUS DX S3 series.
 """
+import ast
 import base64
 import hashlib
 import six
@@ -1293,7 +1294,7 @@ class FJDXCommon(object):
         volumename = self._create_volume_name(volume['id'])
 
         try:
-            location = eval(volume['provider_location'])
+            location = ast.literal_eval(volume['provider_location'])
             classname = location['classname']
             bindings = location['keybindings']
 
