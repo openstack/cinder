@@ -102,10 +102,8 @@ class TestNexentaNfsDriver(test.TestCase):
             LookupError, lambda: self.drv.check_for_setup_error())
 
     def test_initialize_connection(self):
-        # self.drv.shares = {self.TEST_SHARE: 'vers=4'}
-        export = '%s/%s' % (
-            self.TEST_VOLUME['provider_location'], self.TEST_VOLUME['name'])
-        data = {'export': export, 'name': 'volume'}
+        data = {
+            'export': self.TEST_VOLUME['provider_location'], 'name': 'volume'}
         self.assertEqual({
             'driver_volume_type': self.drv.driver_volume_type,
             'data': data
