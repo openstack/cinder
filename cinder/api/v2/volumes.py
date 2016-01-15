@@ -38,12 +38,14 @@ from cinder.volume import volume_types
 
 query_volume_filters_opt = cfg.ListOpt('query_volume_filters',
                                        default=['name', 'status', 'metadata',
-                                                'availability_zone'],
+                                                'availability_zone',
+                                                'bootable'],
                                        help="Volume filter options which "
                                             "non-admin user could use to "
                                             "query volumes. Default values "
                                             "are: ['name', 'status', "
-                                            "'metadata', 'availability_zone']")
+                                            "'metadata', 'availability_zone',"
+                                            "'bootable']")
 
 CONF = cfg.CONF
 CONF.register_opt(query_volume_filters_opt)
