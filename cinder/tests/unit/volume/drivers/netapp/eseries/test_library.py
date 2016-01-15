@@ -24,6 +24,8 @@ import time
 import mock
 from oslo_utils import units
 import six
+from six.moves import range
+from six.moves import reduce
 
 from cinder import exception
 from cinder import test
@@ -152,7 +154,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
                          new_attr=mock.Mock(return_value=system))
         self.mock_object(self.library._client, 'update_stored_system_password')
         self.mock_object(time, 'time', new_attr = mock.Mock(
-            side_effect=xrange(0, 60, 5)))
+            side_effect=range(0, 60, 5)))
 
         self.assertRaisesRegexp(exception.NetAppDriverException,
                                 'bad.*?status',
@@ -1327,7 +1329,7 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         """Test volume extend with a thick-provisioned volume"""
 
         def get_copy_progress():
-            for eta in xrange(5, -1, -1):
+            for eta in range(5, -1, -1):
                 action_status = 'none' if eta == 0 else 'remappingDve'
                 complete = action_status == 'none'
                 yield complete, action_status, eta
