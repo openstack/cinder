@@ -151,6 +151,7 @@ cinder.tests.unit.test_vzstorage
 cinder.tests.unit.test_xio
 cinder.tests.unit.test_zfssa
 cinder.tests.unit.volume.drivers.emc.scaleio
+cinder.tests.unit.volume.drivers.netapp.eseries.test_library
 cinder.tests.unit.volume.drivers.test_fujitsu
 cinder.tests.unit.volume.flows.test_create_volume_flow
 cinder.tests.unit.windows.test_smbfs

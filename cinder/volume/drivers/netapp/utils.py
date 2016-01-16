@@ -490,3 +490,10 @@ class FeatureState(object):
         :returns: True if the feature is supported, otherwise False
         """
         return self.supported
+
+    def __bool__(self):
+        """py3 Allow a FeatureState object to be tested for truth value
+
+        :returns: True if the feature is supported, otherwise False
+        """
+        return self.supported
