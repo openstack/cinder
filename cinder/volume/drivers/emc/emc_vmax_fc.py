@@ -47,6 +47,8 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
               - get_short_host_name needs to be called in find_device_number
                 (bug #1520635)
               - Proper error handling for invalid SLOs (bug #1512795)
+              - Extend Volume for VMAX3, SE8.1.0.3
+              https://blueprints.launchpad.net/cinder/+spec/vmax3-extend-volume
     """
 
     VERSION = "2.3.0"

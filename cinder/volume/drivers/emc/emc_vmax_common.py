@@ -520,10 +520,14 @@ class EMCVMAXCommon(object):
         additionalVolumeSize = self.utils.convert_gb_to_bits(
             additionalVolumeSize)
 
-        # This is V2
-        rc, modifiedVolumeDict = self._extend_composite_volume(
-            volumeInstance, volumeName, newSize, additionalVolumeSize,
-            extraSpecs)
+        if extraSpecs[ISV3]:
+            rc, modifiedVolumeDict = self._extend_v3_volume(
+                volumeInstance, volumeName, newSize, extraSpecs)
+        else:
+            # This is V2.
+            rc, modifiedVolumeDict = self._extend_composite_volume(
+                volumeInstance, volumeName, newSize, additionalVolumeSize,
+                extraSpecs)
 
         # Check the occupied space of the new extended volume.
         extendedVolumeInstance = self.utils.find_volume_instance(
@@ -4362,3 +4366,23 @@ class EMCVMAXCommon(object):
                             conn, ipendpointinstancename))
                     foundipaddresses.append(ipaddress)
         return foundipaddresses
+
+    def _extend_v3_volume(self, volumeInstance, volumeName, newSize,
+                          extraSpecs):
+        """Extends a VMAX3 volume.
+
+        :param volumeInstance: volume instance
+        :param volumeName: volume name
+        :param newSize: new size the volume will be increased to
+        :param extraSpecs: extra specifications
+        :returns: int -- return code
+        :returns: volumeDict
+        """
+        new_size_in_bits = int(self.utils.convert_gb_to_bits(newSize))
+        storageConfigService = self.utils.find_storage_configuration_service(
+            self.conn, volumeInstance['SystemName'])
+        volumeDict, rc = self.provisionv3.extend_volume_in_SG(
+            self.conn, storageConfigService, volumeInstance.path,
+            volumeName, new_size_in_bits, extraSpecs)
+
+        return rc, volumeDict

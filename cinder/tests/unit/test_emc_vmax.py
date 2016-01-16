@@ -724,17 +724,40 @@ class FakeEcomConnection(object):
     def AssociatorNames(self, objectpath,
                         ResultClass='default', AssocClass='default'):
         result = None
+        if objectpath == 'point_to_storage_instance_names':
+            result = ['FirstStorageTierInstanceNames']
 
+        if ResultClass != 'default':
+            result = self.ResultClassHelper(ResultClass, objectpath)
+
+        if result is None and AssocClass != 'default':
+            result = self.AssocClassHelper(AssocClass, objectpath)
+        if result is None:
+            result = self._default_assocnames(objectpath)
+        return result
+
+    def AssocClassHelper(self, AssocClass, objectpath):
+        if AssocClass == 'CIM_HostedService':
+            result = self._assocnames_hostedservice()
+        elif AssocClass == 'CIM_AssociatedTierPolicy':
+            result = self._assocnames_assoctierpolicy()
+        elif AssocClass == 'CIM_OrderedMemberOfCollection':
+            result = self._enum_storagevolumes()
+        elif AssocClass == 'CIM_BindsTo':
+            result = self._assocnames_bindsto()
+        elif AssocClass == 'CIM_MemberOfCollection':
+            result = self._assocnames_memberofcollection()
+        else:
+            result = None
+        return result
+
+    def ResultClassHelper(self, ResultClass, objectpath):
         if ResultClass == 'EMC_LunMaskingSCSIProtocolController':
             result = self._assocnames_lunmaskctrl()
-        elif AssocClass == 'CIM_HostedService':
-            result = self._assocnames_hostedservice()
         elif ResultClass == 'CIM_TierPolicyServiceCapabilities':
             result = self._assocnames_policyCapabilities()
         elif ResultClass == 'Symm_TierPolicyRule':
             result = self._assocnames_policyrule()
-        elif AssocClass == 'CIM_AssociatedTierPolicy':
-            result = self._assocnames_assoctierpolicy()
         elif ResultClass == 'CIM_StoragePool':
             result = self._assocnames_storagepool()
         elif ResultClass == 'EMC_VirtualProvisioningPool':
@@ -757,8 +780,6 @@ class FakeEcomConnection(object):
             result = self._enum_repservcpbls()
         elif ResultClass == 'CIM_ReplicationGroup':
             result = self._enum_repgroups()
-        elif AssocClass == 'CIM_OrderedMemberOfCollection':
-            result = self._enum_storagevolumes()
         elif ResultClass == 'Symm_FCSCSIProtocolEndpoint':
             result = self._enum_fcscsiendpoint()
         elif ResultClass == 'Symm_SRPStoragePool':
@@ -775,12 +796,12 @@ class FakeEcomConnection(object):
             result = self._enum_maskingView()
         elif ResultClass == 'EMC_Meta':
             result = self._enum_metavolume()
-        elif AssocClass == 'CIM_BindsTo':
-            result = self._assocnames_bindsto()
-        elif AssocClass == 'CIM_MemberOfCollection':
-            result = self._assocnames_memberofcollection()
+        elif ResultClass == 'EMC_FrontEndSCSIProtocolController':
+            result = self._enum_maskingView()
+        elif ResultClass == 'CIM_TierPolicyRule':
+            result = self._assocnames_tierpolicy(objectpath)
         else:
-            result = self._default_assocnames(objectpath)
+            result = None
         return result
 
     def ReferenceNames(self, objectpath,
@@ -6094,6 +6115,68 @@ class EMCV3DriverTestCase(test.TestCase):
             self.data.remainingSLOCapacity)
         self.assertEqual(remainingSLOCapacityGb, remainingCapacityGb)
 
+    @mock.patch.object(
+        emc_vmax_utils.EMCVMAXUtils,
+        'get_volume_size',
+        return_value='2147483648')
+    def test_extend_volume(self, mock_volume_size):
+        newSize = '2'
+        self.driver.common._initial_setup = mock.Mock(
+            return_value=self.default_extraspec())
+        self.driver.extend_volume(self.data.test_volume_v3, newSize)
+
+    def test_extend_volume_smaller_size_exception(self):
+        test_local_volume = {'name': 'vol1',
+                             'size': 4,
+                             'volume_name': 'vol1',
+                             'id': 'vol1',
+                             'device_id': '1',
+                             'provider_auth': None,
+                             'project_id': 'project',
+                             'display_name': 'vol1',
+                             'display_description': 'test volume',
+                             'volume_type_id': 'abc',
+                             'provider_location': six.text_type(
+                                 self.data.provider_location),
+                             'status': 'available',
+                             'host': self.data.fake_host_v3,
+                             'NumberOfBlocks': 100,
+                             'BlockSize': self.data.block_size
+                             }
+        newSize = '2'
+        self.driver.common._initial_setup = mock.Mock(
+            return_value=self.default_extraspec())
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.driver.extend_volume,
+            test_local_volume, newSize)
+
+    def test_extend_volume_exception(self):
+        common = self.driver.common
+        newsize = '2'
+        common._initial_setup = mock.Mock(return_value=None)
+        common._find_lun = mock.Mock(return_value=None)
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            common.extend_volume,
+            self.data.test_volume, newsize)
+
+    def test_extend_volume_size_tally_exception(self):
+        common = self.driver.common
+        newsize = '2'
+        self.driver.common._initial_setup = mock.Mock(
+            return_value=self.data.extra_specs)
+        vol = {'SystemName': self.data.storage_system}
+        common._find_lun = mock.Mock(return_value=vol)
+        common._extend_v3_volume = mock.Mock(return_value=(0, vol))
+        common.utils.find_volume_instance = mock.Mock(
+            return_value='2147483648')
+        common.utils.get_volume_size = mock.Mock(return_value='2147483646')
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            common.extend_volume,
+            self.data.test_volume, newsize)
+
     def _cleanup(self):
         bExists = os.path.exists(self.config_file_path)
         if bExists:
@@ -7031,3 +7114,63 @@ class EMCVMAXProvisionV3Test(test.TestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           provisionv3.get_storage_pool_setting,
                           conn, storagePoolCapability, slo, workload)
+
+    def test_extend_volume_in_SG(self):
+        provisionv3 = self.driver.common.provisionv3
+        conn = FakeEcomConnection()
+        storageConfigService = {
+            'CreationClassName': 'Symm_ElementCompositionService',
+            'SystemName': 'SYMMETRIX+000195900551'}
+        theVolumeInstanceName = (
+            conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
+        inVolumeInstanceName = (
+            conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
+        volumeSize = 3
+
+        extraSpecs = {'volume_backend_name': 'GOLD_BE',
+                      'isV3': True}
+        job = {
+            'Job': {'InstanceID': '9999', 'status': 'success', 'type': None}}
+        conn.InvokeMethod = mock.Mock(return_value=(4096, job))
+        provisionv3.utils.wait_for_job_complete = mock.Mock(return_value=(
+            0, 'Success'))
+        volumeDict = {'classname': u'Symm_StorageVolume',
+                      'keybindings': EMCVMAXCommonData.keybindings}
+        provisionv3.get_volume_dict_from_job = (
+            mock.Mock(return_value=volumeDict))
+        result = provisionv3.extend_volume_in_SG(conn, storageConfigService,
+                                                 theVolumeInstanceName,
+                                                 inVolumeInstanceName,
+                                                 volumeSize, extraSpecs)
+        self.assertEqual(
+            ({'classname': u'Symm_StorageVolume',
+              'keybindings': {
+                  'CreationClassName': u'Symm_StorageVolume',
+                  'DeviceID': u'1',
+                  'SystemCreationClassName': u'Symm_StorageSystem',
+                  'SystemName': u'SYMMETRIX+000195900551'}}, 0), result)
+
+    def test_extend_volume_in_SG_with_Exception(self):
+        provisionv3 = self.driver.common.provisionv3
+        conn = FakeEcomConnection()
+        storageConfigService = {
+            'CreationClassName': 'Symm_ElementCompositionService',
+            'SystemName': 'SYMMETRIX+000195900551'}
+        theVolumeInstanceName = (
+            conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
+        inVolumeInstanceName = (
+            conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
+        volumeSize = 3
+
+        extraSpecs = {'volume_backend_name': 'GOLD_BE',
+                      'isV3': True}
+        job = {
+            'Job': {'InstanceID': '9999', 'status': 'success', 'type': None}}
+        conn.InvokeMethod = mock.Mock(return_value=(4096, job))
+        provisionv3.utils.wait_for_job_complete = mock.Mock(return_value=(
+            2, 'Failure'))
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            provisionv3.extend_volume_in_SG, conn, storageConfigService,
+            theVolumeInstanceName, inVolumeInstanceName, volumeSize,
+            extraSpecs)
