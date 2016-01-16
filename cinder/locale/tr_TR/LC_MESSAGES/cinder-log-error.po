@@ -8,19 +8,19 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 7.0.1.dev5\n"
+"Project-Id-Version: cinder 7.0.2.dev6\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-10-23 06:07+0000\n"
-"PO-Revision-Date: 2015-09-16 08:22+0000\n"
-"Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
-"Language-Team: Turkish (Turkey)\n"
-"Language: tr-TR\n"
+"POT-Creation-Date: 2016-01-15 17:56+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"PO-Revision-Date: 2015-09-16 08:22+0000\n"
+"Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
+"Language: tr-TR\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 "Generated-By: Babel 2.0\n"
-"X-Generator: Zanata 3.7.1\n"
+"X-Generator: Zanata 3.7.3\n"
+"Language-Team: Turkish (Turkey)\n"
 
 #, python-format
 msgid ""
@@ -2434,9 +2434,6 @@ msgstr ""
 #, python-format
 msgid "XML exception reading parameter: %s"
 msgstr "XML okuma parametresi istisnası: %s"
-
-msgid "You must set your iscsi_ip_address in cinder.conf."
-msgstr "cinder.conf dosyasında iscsi_ip_address bilgisini ayarlamalısınız."
 
 msgid "_find_mappings: volume is not active"
 msgstr "_find_mappings: mantıksal sürücü etkin değil"

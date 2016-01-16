@@ -7,19 +7,19 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 7.0.1.dev5\n"
+"Project-Id-Version: cinder 7.0.2.dev6\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-10-23 06:07+0000\n"
-"PO-Revision-Date: 2015-08-26 03:31+0000\n"
-"Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
-"Language-Team: Turkish (Turkey)\n"
-"Language: tr-TR\n"
+"POT-Creation-Date: 2016-01-15 17:55+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"PO-Revision-Date: 2015-08-26 03:31+0000\n"
+"Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
+"Language: tr-TR\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 "Generated-By: Babel 2.0\n"
-"X-Generator: Zanata 3.7.1\n"
+"X-Generator: Zanata 3.7.3\n"
+"Language-Team: Turkish (Turkey)\n"
 
 #, python-format
 msgid "%(path)s is being set with open permissions: %(perm)s"
@@ -1479,13 +1479,6 @@ msgid ""
 msgstr ""
 "Mantıksal sürücü: %(volumeName)s %(defaultSgGroupName)s depolama grubuna ait "
 "değil."
-
-#, python-format
-msgid ""
-"Volume: %(volumeName)s is already part of storage group %(sgGroupName)s."
-msgstr ""
-"Mantıksal sürücü: %(volumeName)s zaten %(sgGroupName)s depolama grubunun "
-"parçası."
 
 #, python-format
 msgid "Volume: %(volumeName)s is not currently belonging to any storage group."
