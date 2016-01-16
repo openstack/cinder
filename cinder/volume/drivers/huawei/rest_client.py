@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ast
 import json
 import six
 import socket
@@ -1653,9 +1654,11 @@ class RestClient(object):
 
         return initiators
 
-    def rename_lun(self, lun_id, new_name):
+    def rename_lun(self, lun_id, new_name, description=None):
         url = "/lun/" + lun_id
         data = json.dumps({"NAME": new_name})
+        if description:
+            data.update({"DESCRIPTION": description})
         result = self.call(url, data, "PUT")
         msg = _('Rename lun on array error.')
         self._assert_rest_result(result, msg)
@@ -1842,3 +1845,59 @@ class RestClient(object):
         self._assert_rest_result(result, msg)
         if 'data' in result:
             return result["data"]["AVAILABLEHOSTLUNIDLIST"]
+
+    def get_hypermetro_pairs(self):
+        url = "/HyperMetroPair?range=[0-100]"
+        result = self.call(url, None, "GET")
+        msg = _('Get HyperMetroPair error.')
+        self._assert_rest_result(result, msg)
+
+        return result.get('data', [])
+
+    def get_split_mirrors(self):
+        url = "/splitmirror?range=[0-100]"
+        result = self.call(url, None, "GET")
+        if result['error']['code'] == constants.NO_SPLITMIRROR_LICENSE:
+            msg = _('License is unavailable.')
+            raise exception.VolumeBackendAPIException(data=msg)
+        msg = _('Get SplitMirror error.')
+        self._assert_rest_result(result, msg)
+
+        return result.get('data', [])
+
+    def get_target_luns(self, id):
+        url = ("/SPLITMIRRORTARGETLUN/targetLUN?TYPE=228&PARENTID=%s&"
+               "PARENTTYPE=220") % id
+        result = self.call(url, None, "GET")
+        msg = _('Get target LUN of SplitMirror error.')
+        self._assert_rest_result(result, msg)
+
+        target_luns = []
+        for item in result.get('data', []):
+            target_luns.append(item.get('ID'))
+        return target_luns
+
+    def get_migration_task(self):
+        url = "/LUN_MIGRATION?range=[0-100]"
+        result = self.call(url, None, "GET")
+        if result['error']['code'] == constants.NO_MIGRATION_LICENSE:
+            msg = _('License is unavailable.')
+            raise exception.VolumeBackendAPIException(data=msg)
+        msg = _('Get migration task error.')
+        self._assert_rest_result(result, msg)
+
+        return result.get('data', [])
+
+    def is_lun_in_mirror(self, lun_id):
+        url = "/lun?range=[0-65535]"
+        result = self.call(url, None, "GET")
+        self._assert_rest_result(result, _('Get volume by name error.'))
+        if 'data' in result:
+            for item in result['data']:
+                rss_obj = item.get('HASRSSOBJECT')
+                if rss_obj:
+                    rss_obj = ast.literal_eval(rss_obj)
+                    if (item.get('ID') == lun_id and
+                            rss_obj.get('LUNMirror') == 'TRUE'):
+                        return True
+        return False
