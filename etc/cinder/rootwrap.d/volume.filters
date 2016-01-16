@@ -27,6 +27,7 @@ lvdisplay_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, lvdisplay
 # os-brick.filters file instead and clean out stale brick values from
 # this file.
 scsi_id: CommandFilter, /lib/udev/scsi_id, root
+drbdadm: CommandFilter, drbdadm, root
 
 # cinder/brick/local_dev/lvm.py: 'vgcreate', vg_name, pv_list
 vgcreate: CommandFilter, vgcreate, root
