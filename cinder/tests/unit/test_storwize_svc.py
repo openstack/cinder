@@ -3409,6 +3409,50 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.driver.delete_volume(vol1)
         self._assert_vol_exists(vol1['name'], False)
 
+    def test_storwize_svc_delete_vol_with_fcmap(self):
+        vol1 = self._create_volume()
+        # create two snapshots
+        snap1 = self._generate_vol_info(vol1['name'], vol1['id'])
+        snap2 = self._generate_vol_info(vol1['name'], vol1['id'])
+        self.driver.create_snapshot(snap1)
+        self.driver.create_snapshot(snap2)
+        vol2 = self._generate_vol_info(None, None)
+        vol3 = self._generate_vol_info(None, None)
+
+        # Create vol from the second snapshot
+        if self.USESIM:
+            self.sim.error_injection('lsfcmap', 'speed_up')
+        self.driver.create_volume_from_snapshot(vol2, snap2)
+        if self.USESIM:
+            # validate copyrate was set on the flash copy
+            for i, fcmap in self.sim._fcmappings_list.items():
+                if fcmap['target'] == vol2['name']:
+                    self.assertEqual('copying', fcmap['status'])
+        self._assert_vol_exists(vol2['name'], True)
+
+        if self.USESIM:
+            self.sim.error_injection('lsfcmap', 'speed_up')
+        self.driver.create_cloned_volume(vol3, vol2)
+
+        if self.USESIM:
+            # validate copyrate was set on the flash copy
+            for i, fcmap in self.sim._fcmappings_list.items():
+                if fcmap['target'] == vol3['name']:
+                    self.assertEqual('copying', fcmap['status'])
+        self._assert_vol_exists(vol3['name'], True)
+
+        # Delete in the 'opposite' order to make sure it works
+        self.driver.delete_volume(vol3)
+        self._assert_vol_exists(vol3['name'], False)
+        self.driver.delete_volume(vol2)
+        self._assert_vol_exists(vol2['name'], False)
+        self.driver.delete_snapshot(snap2)
+        self._assert_vol_exists(snap2['name'], False)
+        self.driver.delete_snapshot(snap1)
+        self._assert_vol_exists(snap1['name'], False)
+        self.driver.delete_volume(vol1)
+        self._assert_vol_exists(vol1['name'], False)
+
     def test_storwize_svc_volumes(self):
         # Create a first volume
         volume = self._generate_vol_info(None, None)

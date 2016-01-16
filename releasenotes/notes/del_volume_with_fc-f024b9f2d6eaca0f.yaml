@@ -1,0 +1,4 @@
+---
+fixes:
+  - Fixed StorWize/SVC error causing volume deletion to get
+    stuck in the 'deleting' state when using FlashCopy.
