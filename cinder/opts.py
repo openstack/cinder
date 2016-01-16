@@ -69,6 +69,8 @@ from cinder.volume.drivers import coho as cinder_volume_drivers_coho
 from cinder.volume.drivers import datera as cinder_volume_drivers_datera
 from cinder.volume.drivers.dell import dell_storagecenter_common as \
     cinder_volume_drivers_dell_dellstoragecentercommon
+from cinder.volume.drivers.disco import disco as \
+    cinder_volume_drivers_disco_disco
 from cinder.volume.drivers.dothill import dothill_common as \
     cinder_volume_drivers_dothill_dothillcommon
 from cinder.volume.drivers import drbdmanagedrv as \
@@ -306,6 +308,7 @@ def list_opts():
                 [cinder_scheduler_scheduleroptions.
                     scheduler_json_config_location_opt],
                 cinder_volume_drivers_zfssa_zfssanfs.ZFSSA_OPTS,
+                cinder_volume_drivers_disco_disco.disco_opts,
                 cinder_volume_drivers_hgst.hgst_opts,
                 cinder_image_imageutils.image_helper_opts,
                 cinder_compute_nova.nova_opts,
