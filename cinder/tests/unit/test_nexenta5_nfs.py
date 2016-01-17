@@ -160,13 +160,11 @@ class TestNexentaNfsDriver(test.TestCase):
            'NexentaNfsDriver._share_folder')
     def test_create_volume_from_snapshot(self, share):
         self._create_volume_db_entry()
-        url = ('storage/pools/pool/'
-               'filesystems/share%2Fvolume-1/snapshots/snapshot1/clone')
-        data = {'targetPath': 'pool/share/volume2'}
+        url = ('storage/filesystems/pool/share/volume2/promote')
 
         self.drv.create_volume_from_snapshot(
             self.TEST_VOLUME2, self.TEST_SNAPSHOT)
-        self.nef_mock.assert_called_with(url, data)
+        self.nef_mock.post.assert_called_with(url)
 
     def test_get_capacity_info(self):
         self.nef_mock.return_value = {

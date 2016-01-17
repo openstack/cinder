@@ -70,8 +70,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         self.dataset_deduplication = self.configuration.nexenta_dataset_dedup
         self.dataset_description = (
             self.configuration.nexenta_dataset_description)
-        self.iscsi_target_portal_port = \
-            self.configuration.nexenta_iscsi_target_portal_port
+        self.iscsi_target_portal_port = (
+            self.configuration.nexenta_iscsi_target_portal_port)
 
     @property
     def backend_name(self):
@@ -99,9 +99,10 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         try:
             self.nef(url, data)
         except exception.NexentaException as e:
-            LOG.debug(e)
-        url = 'services/iscsit/enable'
-        self.nef.post(url)
+            if 'EEXIST' in e.args[0]:
+                LOG.debug('volumeGroup already exists, skipping')
+            else:
+                raise
 
     def check_for_setup_error(self):
         """Verify that the zfs volumes exist.
@@ -395,7 +396,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             targetgroup_name, volume_path.replace('/', '%2F'))
         data = self.nef(url).get('data')
         if not data:
-            raise LookupError(_("LU does not exist for volume: %s"),
+            raise LookupError(_('LU does not exist for volume: %s'),
                               volume['name'])
         else:
             return data[0]['guid']
@@ -410,7 +411,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             targetgroup_name, lun_id)
         data = self.nef(url).get('data')
         if not data:
-            raise LookupError(_("No views found for LUN: %s"), lun_id)
+            raise LookupError(_('No views found for LUN: %s'), lun_id)
         return data[0]['lunNumber']
 
     def _do_export(self, _ctx, volume):

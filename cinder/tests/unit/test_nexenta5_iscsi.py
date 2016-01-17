@@ -82,6 +82,7 @@ class TestNexentaISCSIDriver(test.TestCase):
             configuration=self.cfg)
         self.drv.db = db
         self.drv.do_setup(self.ctxt)
+        self.addCleanup(self.nef_mock)
 
     def _create_volume_db_entry(self):
         vol = {
@@ -116,8 +117,8 @@ class TestNexentaISCSIDriver(test.TestCase):
         #     'name': self.TEST_VOLUME_REF['name']
         # }
         url = 'storage/pools/pool/volumeGroups'
-        data = {'name': 'dsg', 'defaultVolumeBlockSize': 32768}
-        self.nef_mock.assert_called_with(url, data)
+        data = {'name': 'dsg', 'volumeBlockSize': 32768}
+        self.nef_mock.post.assert_called_with(url, data)
 
     def test_create_cloned_volume(self):
         self._create_volume_db_entry()
@@ -125,21 +126,15 @@ class TestNexentaISCSIDriver(test.TestCase):
         src_vref = self.TEST_VOLUME_REF
 
         self.drv.create_cloned_volume(vol, src_vref)
-        url = ('storage/pools/%(pool)s/volumeGroups/%(group)s/'
-               'volumes/%(volume)s/snapshots/%(snap_name)s/clone') % {
-            'pool': self.cfg.nexenta_volume,
-            'group': self.cfg.nexenta_volume_group,
-            'volume': 'volume-1',
-            'snap_name': 'cinder-clone-snapshot-2'
-        }
-        self.nef_mock.assert_called_with(
-            url, {'targetPath': 'pool/dsg/volume2'})
+        url = 'storage/pools/pool/volumeGroups/dsg/volumes/volume2/promote'
+        self.nef_mock.post.assert_called_with(url)
 
     def test_create_snapshot(self):
         self._create_volume_db_entry()
         self.drv.create_snapshot(self.TEST_SNAPSHOT_REF)
-        url = 'storage/pools/pool/volumeGroups/dsg/volumes/volume-1/snapshots'
-        self.nef_mock.assert_called_with(url, {'name': 'snapshot1'})
+        url = 'storage/pools/pool/volumeGroups'
+        self.nef_mock.post.assert_called_with(
+            url, {'name': 'dsg', 'volumeBlockSize': 32768})
 
     def test_get_target_by_alias(self):
         self.nef_mock.return_value = {'data': []}

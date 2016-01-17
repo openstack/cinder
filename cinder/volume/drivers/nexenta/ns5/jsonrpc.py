@@ -19,12 +19,13 @@
 .. automodule:: nexenta.jsonrpc
 """
 
-import requests
 import time
 
-from cinder import exception
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
+import requests
+
+from cinder import exception
 
 LOG = logging.getLogger(__name__)
 
@@ -75,13 +76,9 @@ class NexentaJSONProxy(object):
         if data:
             data = jsonutils.dumps(data)
 
-        LOG.debug(('Sending JSON to url: %(path)s, data: %(data)s,'
-                   ' method: %(method)s') % {
-            'path': path,
-            'data': data,
-            'method': method
-        })
-        if method == 'get':
+        LOG.debug('Sending JSON to url: %s, data: %s, method: %s',
+                  path, data, self.method)
+        if self.method == 'get':
             resp = requests.get(url, headers=headers)
         if method == 'post':
             resp = requests.post(url, data=data, headers=headers)
@@ -90,7 +87,8 @@ class NexentaJSONProxy(object):
         if method == 'delete':
             resp = requests.delete(url, data=data, headers=headers)
 
-        if resp.status_code == 201:
+        if resp.status_code == 201 or (
+                resp.status_code == 200 and not resp.content):
             LOG.debug('Got response: Success')
             return 'Success'
 
@@ -101,7 +99,8 @@ class NexentaJSONProxy(object):
             while resp.status_code == 202:
                 time.sleep(1)
                 resp = requests.get(url)
-                if resp.status_code == 201:
+                if resp.status_code == 201 or (
+                        resp.status_code == 200 and not resp.content):
                     LOG.debug('Got response: Success')
                     return 'Success'
                 else:
