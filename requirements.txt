@@ -2,15 +2,15 @@
 # of appearance. Changing the order has an impact on the overall integration
 # process, which may cause wedges in the gate later.
 
-pbr>=1.6
-anyjson>=0.3.3
-Babel>=1.3
-enum34;python_version=='2.7' or python_version=='2.6' or python_version=='3.3'
-eventlet>=0.17.4
-greenlet>=0.3.2
-iso8601>=0.1.9
-keystonemiddleware>=4.0.0
-lxml>=2.3
+pbr>=1.6 # Apache-2.0
+anyjson>=0.3.3 # BSD
+Babel>=1.3 # BSD
+enum34;python_version=='2.7' or python_version=='2.6' or python_version=='3.3' # BSD
+eventlet>=0.17.4 # MIT
+greenlet>=0.3.2 # MIT
+iso8601>=0.1.9 # MIT
+keystonemiddleware>=4.0.0 # Apache-2.0
+lxml>=2.3 # BSD
 oslo.config>=3.2.0 # Apache-2.0
 oslo.concurrency>=2.3.0 # Apache-2.0
 oslo.context>=0.2.0 # Apache-2.0
@@ -24,30 +24,30 @@ oslo.rootwrap>=2.0.0 # Apache-2.0
 oslo.serialization>=1.10.0 # Apache-2.0
 oslo.service>=1.0.0 # Apache-2.0
 oslo.utils>=3.2.0 # Apache-2.0
-oslo.versionedobjects>=0.13.0
-osprofiler>=0.3.1 # Apache-2.0
-paramiko>=1.13.0
-Paste
-PasteDeploy>=1.5.0
-pycrypto>=2.6
-pyparsing>=2.0.1
-python-barbicanclient>=3.3.0
-python-glanceclient>=1.2.0
-python-keystoneclient!=1.8.0,>=1.6.0
-python-novaclient!=2.33.0,>=2.29.0
-python-swiftclient>=2.2.0
-requests!=2.9.0,>=2.8.1
+oslo.versionedobjects>=0.13.0 # Apache-2.0
+osprofiler>=0.4.0 # Apache-2.0
+paramiko>=1.13.0 # LGPL
+Paste # MIT
+PasteDeploy>=1.5.0 # MIT
+pycrypto>=2.6 # Public Domain
+pyparsing>=2.0.1 # MIT
+python-barbicanclient>=3.3.0 # Apache-2.0
+python-glanceclient>=1.2.0 # Apache-2.0
+python-keystoneclient!=1.8.0,>=1.6.0 # Apache-2.0
+python-novaclient!=2.33.0,>=2.29.0 # Apache-2.0
+python-swiftclient>=2.2.0 # Apache-2.0
+requests!=2.9.0,>=2.8.1 # Apache-2.0
 retrying!=1.3.0,>=1.2.3 # Apache-2.0
-Routes!=2.0,!=2.1,>=1.12.3;python_version=='2.7'
-Routes!=2.0,>=1.12.3;python_version!='2.7'
-taskflow>=1.25.0
-rtslib-fb>=2.1.41
-six>=1.9.0
-SQLAlchemy<1.1.0,>=1.0.10
-sqlalchemy-migrate>=0.9.6
+Routes!=2.0,!=2.1,>=1.12.3;python_version=='2.7' # MIT
+Routes!=2.0,>=1.12.3;python_version!='2.7' # MIT
+taskflow>=1.25.0 # Apache-2.0
+rtslib-fb>=2.1.41 # Apache-2.0
+six>=1.9.0 # MIT
+SQLAlchemy<1.1.0,>=1.0.10 # MIT
+sqlalchemy-migrate>=0.9.6 # Apache-2.0
 stevedore>=1.5.0 # Apache-2.0
-suds-jurko>=0.6
-WebOb>=1.2.3
+suds-jurko>=0.6 # LGPL
+WebOb>=1.2.3 # MIT
 oslo.i18n>=1.5.0 # Apache-2.0
 oslo.vmware>=1.16.0 # Apache-2.0
 os-brick>=0.4.0 # Apache-2.0
