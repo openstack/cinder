@@ -27,13 +27,13 @@ def upgrade(migrate_engine):
     meta.bind = migrate_engine
 
     backups = Table('backups', meta, autoload=True)
-    deleted = Column('deleted', String(length=36))
+    time_stamp = Column('time_stamp', String(length=36))
 
     try:
-        backups.create_column(deleted)
-        backups.update().values(deleted=None).execute()
+        backups.create_column(time_stamp)
+        backups.update().values(time_stamp=None).execute()
     except Exception:
-        LOG.error(_LE("Adding deleted column to backups table failed."))
+        LOG.error(_LE("Adding time_stamp column to backups table failed."))
         raise
 
 
@@ -42,10 +42,10 @@ def downgrade(migrate_engine):
     meta.bind = migrate_engine
 
     backups = Table('backups', meta, autoload=True)
-    deleted = backups.columns.deleted
+    time_stamp = backups.columns.time_stamp
 
     try:
-        backups.drop_column(deleted)
+        backups.drop_column(time_stamp)
     except Exception:
-        LOG.error(_LE("Dropping deleted column from backups table failed."))
+        LOG.error(_LE("Dropping time_stamp column from backups table failed."))
         raise

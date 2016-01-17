@@ -98,7 +98,7 @@ class SBSBackupDriver(driver.BackupDriver):
 
     def _get_rbd_image_name(backup):
         rbd_image_name =  encodeutils.safe_encode("backup.%s.snap.%s" %
-                                                 (backup['id'], backup['created_at']))
+                                                 (backup['id'], backup['time_stamp']))
         LOG.debug("rbd image name: %s", rbd_image_name)
         return rbd_image_name
 
@@ -113,8 +113,9 @@ class SBSBackupDriver(driver.BackupDriver):
 
 
     def _get_new_snap_name(self, backup_id):
-        return encodeutils.safe_encode("backup.%s.snap.%s" %
-                                       (backup_id, time.time()))
+        time_stamp = time.time()
+        return (time_stamp, encodeutils.safe_encode("backup.%s.snap.%s" %
+                                                   (backup_id, time_stamp)))
 
     def _get_volume_size_gb(self, volume):
         """Return the size in gigabytes of the given volume.
@@ -348,10 +349,11 @@ class SBSBackupDriver(driver.BackupDriver):
                                                        backup_service, from_snap)
 
         # Snapshot source volume so that we have a new point-in-time
-        if backup['display_name']:
-            new_snap = backup['display_name']
-        else:
-            new_snap = self._get_new_snap_name(backup_id)
+        #if backup['display_name']:
+        #    new_snap = backup['display_name']
+        #else:
+        #    time_stamp, new_snap = self._get_new_snap_name(backup_id)
+        time_stamp, new_snap = self._get_new_snap_name(backup_id)
         LOG.debug("Creating backup %s", new_snap)
         source_rbd_image.create_snap(new_snap)
         LOG.debug("Using --from-snap '%(snap)s' for incremental backup of "
@@ -374,23 +376,25 @@ class SBSBackupDriver(driver.BackupDriver):
         now = timeutils.utcnow()
         self.db.backup_update(self.context, backup_id,
 			      {'created_at': now})
+        self.db.backup_update(self.context, backup_id,
+			      {'time_stamp': time_stamp})
 
         self.db.backup_update(self.context, backup_id,
                               {'parent_id': par_id})
         #ideally, we should be building snap name from backup id
         # _get_rbd_image_name does this, but wrong timestamp
-        self.db.backup_update(self.context, backup_id,
-                              {'display_name': new_snap})
+        #self.db.backup_update(self.context, backup_id,
+        #                      {'display_name': new_snap})
         self.db.backup_update(self.context, backup_id,
                               {'container': self._container})
 
         # Remove older from-snap from src, as new snap will be "New" from-snap
         # Do this is from-snap is not same as base snap, as it will be the first
-        if from_snap != base_name:
+        #if from_snap != base_name:
             #currently we do not want to remove snaps to support out of order
             # deletion
-        	source_rbd_image.remove_snap(from_snap)
-        return
+        	#source_rbd_image.remove_snap(from_snap)
+        #return
 
     #shishir: Generate/update _container/bucket name and use that in DSS
     def backup(self, backup, volume_file, backup_metadata=False):
@@ -455,8 +459,7 @@ class SBSBackupDriver(driver.BackupDriver):
         backup_id = backup['id']
         backup_volume_id = backup['volume_id']
         # issue here is, we cant resolve timestamp suffix of rbd image
-        #backup_name = self._get_rbd_image_name(backup)
-        backup_name = backup['display_name']
+        backup_name = self._get_rbd_image_name(backup)
         volume = self.db.volume_get(self.context,volume_id)
         length = int(volume['size']) * units.Gi
         volume_name = (_("volume-%s" % (volume['id'])))
