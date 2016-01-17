@@ -921,15 +921,6 @@ class DBAPIVolumeTestCase(BaseTest):
             self.assertRaises(exception.InvalidInput, db.volume_get_all,
                               self.ctxt, None, None, sort_keys=keys)
 
-    def test_volume_get_iscsi_target_num(self):
-        db.iscsi_target_create_safe(self.ctxt, {'volume_id': 42,
-                                                'target_num': 43})
-        self.assertEqual(43, db.volume_get_iscsi_target_num(self.ctxt, 42))
-
-    def test_volume_get_iscsi_target_num_nonexistent(self):
-        self.assertRaises(exception.ISCSITargetNotFoundForVolume,
-                          db.volume_get_iscsi_target_num, self.ctxt, 42)
-
     def test_volume_update(self):
         volume = db.volume_create(self.ctxt, {'host': 'h1'})
         ref_a = db.volume_update(self.ctxt, volume['id'],
@@ -1866,35 +1857,6 @@ class DBAPIQuotaTestCase(BaseTest):
                     'gigabytes': {'in_use': 0, 'reserved': 2}}
         self.assertEqual(expected, db.quota_usage_get_all_by_project(
                          self.ctxt, 'p1'))
-
-
-class DBAPIIscsiTargetTestCase(BaseTest):
-
-    """Unit tests for cinder.db.api.iscsi_target_*."""
-
-    def _get_base_values(self):
-        return {'target_num': 10, 'host': 'fake_host'}
-
-    def test_iscsi_target_create_safe(self):
-        target = db.iscsi_target_create_safe(self.ctxt,
-                                             self._get_base_values())
-        self.assertTrue(target['id'])
-        self.assertEqual('fake_host', target['host'])
-        self.assertEqual(10, target['target_num'])
-
-    def test_iscsi_target_count_by_host(self):
-        for i in range(3):
-            values = self._get_base_values()
-            values['target_num'] += i
-            db.iscsi_target_create_safe(self.ctxt, values)
-        self.assertEqual(3,
-                         db.iscsi_target_count_by_host(self.ctxt, 'fake_host'))
-
-    def test_integrity_error(self):
-        values = self._get_base_values()
-        values['id'] = 1
-        db.iscsi_target_create_safe(self.ctxt, values)
-        self.assertFalse(db.iscsi_target_create_safe(self.ctxt, values))
 
 
 class DBAPIBackupTestCase(BaseTest):
