@@ -58,7 +58,7 @@ class NexentaJSONProxy(object):
     def __repr__(self):
         return 'NEF proxy: %s' % self.url
 
-    def __call__(self, path, data=None, method=None):
+    def __call__(self, path, data=None):
         auth = ('%s:%s' % (self.user, self.password)).encode('base64')[:-1]
         headers = {
             'Content-Type': 'application/json',
@@ -99,5 +99,7 @@ class NexentaJSONProxy(object):
                 else:
                     response = resp.json()
                 resp.close()
+        if resp.get('code'):
+            raise exception.NexentaException(response)
         LOG.debug('Got response: %s', response)
         return response
