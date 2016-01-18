@@ -220,7 +220,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         """
         pool, group, name = self._get_volume_path(volume).split('/')
         url = ('storage/pools/%(pool)s/volumeGroups/%(group)s'
-               '/volumes/%(name)s?snapshots=true') % {
+               '/volumes/%(name)s') % {
             'pool': pool,
             'group': group,
             'name': name

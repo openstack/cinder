@@ -207,7 +207,13 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             'pool': pool,
             'fs': '%2F'.join([fs, volume['name']])
         }
-        self.nef.delete(url)
+        try:
+            self.nef.delete(url)
+        except exception.NexentaException as exc:
+            if 'Failed to destroy snapshot' in exc.args[0]:
+                LOG.debug('Snapshot has dependent clones, skipping')
+            else:
+                raise
         try:
             if origin and self._is_clone_snapshot_name(origin):
                 path, snap = origin.split('@')
@@ -313,9 +319,6 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         snapshot = {'volume_name': src_vref['name'],
                     'volume_id': src_vref['id'],
                     'name': self._get_clone_snapshot_name(volume)}
-        # We don't delete this snapshot, because this snapshot will be origin
-        # of new volume. This snapshot will be automatically promoted by nef
-        # when user will delete its origin.
         self.create_snapshot(snapshot)
         try:
             return self.create_volume_from_snapshot(volume, snapshot)
@@ -328,6 +331,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                 LOG.warning(_LW('Failed to delete zfs snapshot '
                                 '%(volume_name)s@%(name)s'), snapshot)
             raise
+        self.delete_snapshot(snapshot)
 
     def local_path(self, volume):
         """Get volume path (mounted locally fs path) for given volume.
