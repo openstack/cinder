@@ -61,5 +61,7 @@ mock_client_conf = [
     'client.create_client',
     'client.delete_client',
     'adapter',
-    'adapter.get_fc_info'
+    'adapter.get_fc_info',
+    'pool',
+    'utility',
 ]
