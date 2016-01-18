@@ -93,11 +93,11 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         url = 'storage/pools/%s/volumeGroups' % self.storage_pool
         data = {
             'name': self.volume_group,
-            'defaultVolumeBlockSize': (
+            'volumeBlockSize': (
                 self.configuration.nexenta_ns5_blocksize * units.Ki)
         }
         try:
-            self.nef(url, data)
+            self.nef.post(url, data)
         except exception.NexentaException as e:
             if 'EEXIST' in e.args[0]:
                 LOG.debug('volumeGroup already exists, skipping')
@@ -114,12 +114,12 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             'group': self.volume_group,
         }
         try:
-            self.nef(url)
+            self.nef.get(url)
         except exception.NexentaException:
             raise LookupError(_(
                 "Dataset group %s not found at Nexenta SA"), '/'.join(
                 [self.storage_pool, self.volume_group]))
-        services = self.nef('services')
+        services = self.nef.get('services')
         for service in services['data']:
             if service['name'] == 'iscsit':
                 if service['state'] != 'online':
@@ -142,12 +142,12 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         if not target:
             url = 'san/iscsi/targets'
             data = {'alias': target_alias}
-            self.nef(url, data)
+            self.nef.post(url, data)
             target = self._get_target_by_alias(target_alias)
         if not self._target_group_exists(target_alias):
             url = 'san/targetgroups'
             data = {'name': target_alias, 'targets': [target['name']]}
-            self.nef(url, data)
+            self.nef.post(url, data)
 
         self.targetgroups[target['name']] = target_alias
         self.targets[target['name']] = []
@@ -165,7 +165,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 self.targets[target_name].append(volume['name'])
             if not self.targetgroups.get(target_name):
                 url = 'san/iscsi/targets'
-                data = self.nef(url).get('data')
+                data = self.nef.get(url).get('data')
                 target_alias = data[0]['alias']
                 self.targetgroups[target_name] = target_alias
         elif not target_names:
@@ -211,7 +211,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
                 self.configuration.nexenta_ns5_blocksize * units.Ki),
             'sparseVolume': self.configuration.nexenta_sparse
         }
-        self.nef(url, data)
+        self.nef.post(url, data)
 
     def delete_volume(self, volume):
         """Destroy a zfs volume on appliance.
@@ -315,6 +315,13 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         }
         targetPath = self._get_volume_path(volume)
         self.nef(url, {'targetPath': targetPath})
+        url = ('storage/pools/%(pool)s/volumeGroups/'
+               '%(group)s/volumes/%(name)s/promote') % {
+            'pool': pool,
+            'group': group,
+            'name': volume['name'],
+        }
+        self.nef.post(url)
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume.
@@ -357,7 +364,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :return: First found target, else None
         """
         url = 'san/iscsi/targets?alias=%s' % alias
-        targets = self.nef(url).get('data')
+        targets = self.nef.get(url).get('data')
         if not targets:
             return None
         return targets[0]
@@ -369,7 +376,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         :return: True if target group exist, else False
         """
         url = 'san/targetgroups?name=%s' % target_group
-        return bool(self.nef(url).get('data'))
+        return bool(self.nef.get(url).get('data'))
 
     def _lu_exists(self, volume):
         """Check if LU exists on appliance.
@@ -394,9 +401,9 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         targetgroup_name = self._get_targetgroup_name(volume)
         url = 'san/targetgroups/%s/luns?volume=%s' % (
             targetgroup_name, volume_path.replace('/', '%2F'))
-        data = self.nef(url).get('data')
+        data = self.nef.get(url).get('data')
         if not data:
-            raise LookupError(_('LU does not exist for volume: %s'),
+            raise LookupError(_("LU does not exist for volume: %s"),
                               volume['name'])
         else:
             return data[0]['guid']
@@ -409,9 +416,9 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         targetgroup_name = self._get_targetgroup_name(volume)
         url = 'san/targetgroups/%s/luns/%s/views' % (
             targetgroup_name, lun_id)
-        data = self.nef(url).get('data')
+        data = self.nef.get(url).get('data')
         if not data:
-            raise LookupError(_('No views found for LUN: %s'), lun_id)
+            raise LookupError(_("No views found for LUN: %s"), lun_id)
         return data[0]['lunNumber']
 
     def _do_export(self, _ctx, volume):
@@ -427,7 +434,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         if not self._lu_exists(volume):
             url = 'san/targetgroups/%s/luns' % targetgroup_name
             data = {'volume': volume_path}
-            self.nef(url, data)
+            self.nef.post(url, data)
             entry['lun'] = self._get_lun(volume)
 
         model_update = {}
@@ -489,7 +496,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             'pool': self.storage_pool,
             'group': self.volume_group,
         }
-        stats = self.nef(url)
+        stats = self.nef.get(url)
         total_amount = utils.str2gib_size(
             stats['bytesAvailable'] + stats['bytesUsed'])
         free_amount = utils.str2gib_size(stats['bytesAvailable'])

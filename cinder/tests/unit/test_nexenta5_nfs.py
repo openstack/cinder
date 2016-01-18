@@ -97,7 +97,7 @@ class TestNexentaNfsDriver(test.TestCase):
         return db.volume_create(self.ctxt, vol)['id']
 
     def test_check_for_setup_error(self):
-        self.nef_mock.return_value = {'data': []}
+        self.nef_mock.get.return_value = {'data': []}
         self.assertRaises(
             LookupError, lambda: self.drv.check_for_setup_error())
 
@@ -120,7 +120,7 @@ class TestNexentaNfsDriver(test.TestCase):
     def test_do_create_volume(self, share, ensure, sparsed, regular):
         ensure.return_value = True
         share.return_value = True
-        self.nef_mock.return_value = 'on'
+        self.nef_mock.get.return_value = 'on'
         self.drv._do_create_volume(self.TEST_VOLUME)
 
         url = 'storage/pools/pool/filesystems'
@@ -129,13 +129,13 @@ class TestNexentaNfsDriver(test.TestCase):
             'compressionMode': 'on',
             'dedupMode': 'off',
         }
-        self.nef_mock.assert_called_with(url, data)
+        self.nef_mock.post.assert_called_with(url, data)
 
     @patch('cinder.volume.drivers.nexenta.ns5.nfs.'
            'NexentaNfsDriver._ensure_share_mounted')
     def test_delete_volume(self, ensure):
         self._create_volume_db_entry()
-        self.nef_mock.return_value = {}
+        self.nef_mock.get.return_value = {}
         self.drv.delete_volume(self.TEST_VOLUME)
         self.nef_mock.delete.assert_called_with(
             'storage/pools/pool/filesystems/'
@@ -146,7 +146,7 @@ class TestNexentaNfsDriver(test.TestCase):
         self.drv.create_snapshot(self.TEST_SNAPSHOT)
         url = 'storage/pools/pool/filesystems/share%2Fvolume-1/snapshots'
         data = {'name': self.TEST_SNAPSHOT['name']}
-        self.nef_mock.assert_called_with(url, data)
+        self.nef_mock.post.assert_called_with(url, data)
 
     def test_delete_snapshot(self):
         self._create_volume_db_entry()
@@ -167,7 +167,7 @@ class TestNexentaNfsDriver(test.TestCase):
         self.nef_mock.post.assert_called_with(url)
 
     def test_get_capacity_info(self):
-        self.nef_mock.return_value = {
+        self.nef_mock.get.return_value = {
             'bytesAvailable': 1000,
             'bytesUsed': 100}
 

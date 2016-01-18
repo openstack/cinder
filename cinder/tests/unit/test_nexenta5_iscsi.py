@@ -82,7 +82,6 @@ class TestNexentaISCSIDriver(test.TestCase):
             configuration=self.cfg)
         self.drv.db = db
         self.drv.do_setup(self.ctxt)
-        self.addCleanup(self.nef_mock)
 
     def _create_volume_db_entry(self):
         vol = {
@@ -94,7 +93,7 @@ class TestNexentaISCSIDriver(test.TestCase):
         return db.volume_create(self.ctxt, vol)['id']
 
     def check_for_setup_error(self):
-        self.nef_mock.return_value = {
+        self.nef_mock.get.return_value = {
             'services': {'data': {'iscsit': {'state': 'offline'}}}}
         self.assertRaises(
             exception.NexentaException, self.drv.check_for_setup_error)
@@ -102,7 +101,7 @@ class TestNexentaISCSIDriver(test.TestCase):
     def test_create_volume(self):
         self.drv.create_volume(self.TEST_VOLUME_REF)
         url = 'storage/pools/pool/volumeGroups/dsg/volumes'
-        self.nef_mock.assert_called_with(url, {
+        self.nef_mock.post.assert_called_with(url, {
             'name': self.TEST_VOLUME_REF['name'],
             'volumeSize': 1 * units.Gi,
             'volumeBlockSize': 32768,
@@ -110,12 +109,6 @@ class TestNexentaISCSIDriver(test.TestCase):
 
     def test_delete_volume(self):
         self.drv.delete_volume(self.TEST_VOLUME_REF)
-        # url = ('storage/pools/%(pool)s/volumeGroups/%(group)s'
-        #        '/volumes/%(name)s?snapshots=true') % {
-        #     'pool': self.cfg.nexenta_volume,
-        #     'group': self.cfg.nexenta_volume_group,
-        #     'name': self.TEST_VOLUME_REF['name']
-        # }
         url = 'storage/pools/pool/volumeGroups'
         data = {'name': 'dsg', 'volumeBlockSize': 32768}
         self.nef_mock.post.assert_called_with(url, data)
@@ -137,19 +130,19 @@ class TestNexentaISCSIDriver(test.TestCase):
             url, {'name': 'dsg', 'volumeBlockSize': 32768})
 
     def test_get_target_by_alias(self):
-        self.nef_mock.return_value = {'data': []}
+        self.nef_mock.get.return_value = {'data': []}
         self.assertIsNone(self.drv._get_target_by_alias('1.1.1.1-0'))
 
-        self.nef_mock.return_value = {'data': [{'name': 'iqn-0'}]}
+        self.nef_mock.get.return_value = {'data': [{'name': 'iqn-0'}]}
         self.assertEqual(
             {'name': 'iqn-0'}, self.drv._get_target_by_alias('1.1.1.1-0'))
 
     def test_target_group_exists(self):
-        self.nef_mock.return_value = {'data': []}
+        self.nef_mock.get.return_value = {'data': []}
         self.assertFalse(
             self.drv._target_group_exists({'data': [{'name': 'iqn-0'}]}))
 
-        self.nef_mock.return_value = {'data': [{'name': '1.1.1.1-0'}]}
+        self.nef_mock.get.return_value = {'data': [{'name': '1.1.1.1-0'}]}
         self.assertTrue(self.drv._target_group_exists(
             {'data': [{'name': 'iqn-0'}]}))
 
@@ -170,7 +163,7 @@ class TestNexentaISCSIDriver(test.TestCase):
 
         volume = self.TEST_VOLUME_REF
         volume['provider_location'] = '1.1.1.1:8080,1 iqn-0 0'
-        self.nef_mock.return_value = {'data': [{'alias': '1.1.1.1-0'}]}
+        self.nef_mock.get.return_value = {'data': [{'alias': '1.1.1.1-0'}]}
         self.assertEqual(
             'iqn-0', self.drv._get_target_name(self.TEST_VOLUME_REF))
         self.assertEqual('1.1.1.1-0', self.drv.targetgroups['iqn-0'])
@@ -179,7 +172,7 @@ class TestNexentaISCSIDriver(test.TestCase):
            'NexentaISCSIDriver._get_targetgroup_name')
     def test_get_lun_id(self, targetgroup):
         targetgroup.return_value = '1.1.1.1-0'
-        self.nef_mock.return_value = {'data': [{'guid': '0'}]}
+        self.nef_mock.get.return_value = {'data': [{'guid': '0'}]}
         self.assertEqual('0', self.drv._get_lun_id(self.TEST_VOLUME_REF))
 
     @patch('cinder.volume.drivers.nexenta.ns5.iscsi.'
@@ -197,7 +190,7 @@ class TestNexentaISCSIDriver(test.TestCase):
     def test_get_lun(self, targetgroup, lun_id):
         lun_id.return_value = '0'
         targetgroup.return_value = '1.1.1.1-0'
-        self.nef_mock.return_value = {'data': [{'lunNumber': 0}]}
+        self.nef_mock.get.return_value = {'data': [{'lunNumber': 0}]}
         self.assertEqual(0, self.drv._get_lun(self.TEST_VOLUME_REF))
 
     @patch('cinder.volume.drivers.nexenta.ns5.iscsi.'

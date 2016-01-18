@@ -98,25 +98,25 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         """
         pool_name, fs = self._get_share_datasets(self.share)
         url = 'storage/pools/%s' % (pool_name)
-        if not self.nef(url):
+        if not self.nef.get(url):
             raise LookupError(_("Pool %s does not exist in Nexenta "
-                                "Store appliance"), pool_name)
+                                "Store appliance") % pool_name)
         url = 'storage/pools/%s/filesystems/%s' % (
             pool_name, fs)
-        if not self.nef(url):
+        if not self.nef.get(url):
             raise LookupError(_("filesystem %s does not exist in "
-                                "Nexenta Store appliance"), fs)
+                                "Nexenta Store appliance") % fs)
 
         path = '/'.join([pool_name, fs])
         shared = False
-        response = self.nef('nas/nfs')
+        response = self.nef.get('nas/nfs')
         for share in response['data']:
             if share.get('filesystem') == path:
                 shared = True
                 break
         if not shared:
             raise LookupError(_("Dataset %s is not shared in Nexenta "
-                                "Store appliance"), path)
+                                "Store appliance") % path)
 
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info.
@@ -151,7 +151,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             'compressionMode': self.dataset_compression,
             'dedupMode': self.dataset_deduplication,
         }
-        self.nef(url, data)
+        self.nef.post(url, data)
         volume['provider_location'] = '%s:/%s/%s' % (
             self.nef_host, self.share, volume['name'])
         try:
@@ -166,7 +166,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             else:
                 url = 'storage/pools/%s/filesystems/%s' % (
                     pool, '%2F'.join([fs, volume['name']]))
-                compression = self.nef(url).get('compressionMode')
+                compression = self.nef.get(url).get('compressionMode')
                 if compression != 'off':
                     # Disable compression, because otherwise will not use space
                     # on disk.
@@ -179,7 +179,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                         # Backup default compression value if it was changed.
                         self.nef.put(url, {'compressionMode': compression})
 
-        except exception.NexentaException as exc:
+        except exception.NexentaException:
             try:
                 url = 'storage/pools/%s/filesystems/%s/%s' % (
                     pool, '%2F'.join([fs, volume['name']]))
@@ -189,7 +189,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                                 "%(vol)s/%(folder)s"),
                             {'vol': pool, 'folder': '/'.join(
                                 [fs, volume['name']])})
-            raise exc
+            raise
 
     def delete_volume(self, volume):
         """Deletes a logical volume.
@@ -201,7 +201,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             'pool': pool,
             'fs': '%2F'.join([fs, volume['name']])
         }
-        origin = self.nef(url).get('originalSnapshot')
+        origin = self.nef.get(url).get('originalSnapshot')
         url = ('storage/pools/%(pool)s/filesystems/'
                '%(fs)s?snapshots=true') % {
             'pool': pool,
@@ -237,7 +237,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             'fs': '%2F'.join([fs, volume['name']]),
         }
         data = {'name': snapshot['name']}
-        self.nef(url, data)
+        self.nef.post(url, data)
 
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot.
@@ -257,7 +257,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         except exception.NexentaException as exc:
             if 'EBUSY' is exc:
                 LOG.warning(_LW(
-                    'Could not delete snapshot %s - it has dependencies') %
+                    'Could not delete snapshot %s - it has dependencies'),
                     snapshot['name'])
 
     def create_volume_from_snapshot(self, volume, snapshot):
@@ -277,15 +277,18 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             'fs': '%2F'.join([fs, snapshot_vol['name']]),
             'snap': snapshot['name']
         }
-        data = {'targetPath': '/'.join([pool, fs, volume['name']])}
-        self.nef(url, data)
+        path = '/'.join([pool, fs, volume['name']])
+        data = {'targetPath': path}
+        self.nef.post(url, data)
+        url = 'storage/filesystems/%s/promote' % path
+        self.nef.post(url)
 
         try:
             self._share_folder(dataset_path, volume['name'])
         except exception.NexentaException:
             try:
                 url = ('storage/pools/%(pool)s/'
-                       'filesystems/%(fs)s'), {
+                       'filesystems/%(fs)s') % {
                     'pool': pool,
                     'fs': volume['name']
                 }
@@ -382,10 +385,10 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                 "dir_inherit"
             ]
         }
-        self.nef(url, data)
+        self.nef.post(url, data)
 
         LOG.debug(
-            'Successfully shared filesystem %s' % '/'.join(
+            'Successfully shared filesystem %s', '/'.join(
                 [path, filesystem]))
 
     def _get_capacity_info(self, path):
@@ -396,7 +399,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         pool, fs = self._get_share_datasets(path)
         url = 'storage/pools/%s/filesystems/%s' % (
             pool, fs)
-        data = self.nef(url)
+        data = self.nef.get(url)
         total = utils.str2size(data['bytesAvailable'])
         allocated = utils.str2size(data['bytesUsed'])
         free = total - allocated
