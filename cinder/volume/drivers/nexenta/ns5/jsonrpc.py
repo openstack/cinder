@@ -46,13 +46,8 @@ class NexentaJSONProxy(object):
     def url(self):
         return '%s://%s:%s/' % (self.scheme, self.host, self.port)
 
-    def __getattr__(self, name=None):
-        if name:
-            if not self.method:
-                method = name
-            else:
-                raise exception.VolumeDriverException(
-                    'Wrong resource call syntax')
+    def __getattr__(self, method=None):
+        if method:
             return NexentaJSONProxy(
                 self.scheme, self.host, self.port,
                 self.user, self.password, self.auto, method)
@@ -105,6 +100,6 @@ class NexentaJSONProxy(object):
                     return 'Success'
                 else:
                     response = resp.json()
-                resp.close
+                resp.close()
         LOG.debug('Got response: %s', response)
         return response

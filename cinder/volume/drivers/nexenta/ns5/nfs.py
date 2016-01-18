@@ -220,7 +220,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                 }
                 self.nef.delete(snap_url)
         except exception.NexentaException as exc:
-            if 'does not exist' in exc:
+            if 'does not exist' in exc.args[0]:
                 LOG.debug(
                     'Volume %s does not exist on appliance', '/'.join(
                         [pool, fs]))
