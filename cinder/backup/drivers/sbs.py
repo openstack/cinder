@@ -55,8 +55,10 @@ import cinder.volume.drivers.rbd as rbd_driver
 
 try:
     import rbd
+    import rados
 except ImportError:
     rbd = None
+    rados = None
 
 LOG = logging.getLogger(__name__)
 
@@ -69,6 +71,16 @@ service_opts = [
                help='Bucket in S3 store to save backups.'),
     cfg.StrOpt('sbs_region', default='us-west-2',
                help='Region where the buckets are'),
+    cfg.StrOpt('backup_ceph_user', default='cinder',
+		help='user'),
+    cfg.StrOpt('backup_ceph_pool', default='sbs',
+		help='pool sbs'),
+    cfg.StrOpt('backup_ceph_conf', default='/etc/ceph/ceph.conf',
+		help='ceph conf'),
+
+
+
+
 ]
 
 CONF = cfg.CONF
@@ -83,12 +95,40 @@ class SBSBackupDriver(driver.BackupDriver):
     def __init__(self, context, db_driver=None, execute=None):
         super(SBSBackupDriver, self).__init__(context, db_driver)
         self.rbd = rbd
+        self.rados = rados
         self._execute = execute or utils.execute
         self._access_key = encodeutils.safe_encode(CONF.sbs_access_key)
         self._secret_key = encodeutils.safe_encode(CONF.sbs_secret_key)
         self._container = encodeutils.safe_encode(CONF.sbs_container)
         self._region = encodeutils.safe_encode(CONF.sbs_region)
+        self._ceph_backup_user = encodeutils.safe_encode(CONF.backup_ceph_user)
+        self._ceph_backup_pool = encodeutils.safe_encode(CONF.backup_ceph_pool)
+        self._ceph_backup_conf = encodeutils.safe_encode(CONF.backup_ceph_conf)
 
+    #Routine used to connect to ceph cluster called by rbd_driver.RADOSClient
+    def _connect_to_rados(self, pool=None):
+        """Establish connection to the backup Ceph cluster."""
+        client = self.rados.Rados(rados_id=self._ceph_backup_user,
+                                  conffile=self._ceph_backup_conf)
+        try:
+            client.connect()
+            pool_to_open = encodeutils.safe_encode(pool or
+                                                   self._ceph_backup_pool)
+            ioctx = client.open_ioctx(pool_to_open)
+            return client, ioctx
+        except self.rados.Error:
+            # shutdown cannot raise an exception
+            client.shutdown()
+            raise
+
+    #Routine use to disconnect from ceph cluster
+    def _disconnect_from_rados(self, client, ioctx):
+        """Terminate connection with the backup Ceph cluster."""
+        # closing an ioctx cannot raise an exception
+        ioctx.close()
+        client.shutdown()
+
+    #Returns base image name as: volume-<volume_id>.backup.base
     def _get_backup_base_name(self, volume_id, backup_id=None,
                               diff_format=False):
         # Ensure no unicode
@@ -96,12 +136,14 @@ class SBSBackupDriver(driver.BackupDriver):
         LOG.debug("rbd base image name: %s", rbd_image_name)
         return rbd_image_name
 
-    def _get_rbd_image_name(backup):
+    #Returns rbd images name as: backup.<backup_id>.snap.time_stamp
+    def _get_rbd_image_name(self, backup):
         rbd_image_name =  encodeutils.safe_encode("backup.%s.snap.%s" %
                                                  (backup['id'], backup['time_stamp']))
         LOG.debug("rbd image name: %s", rbd_image_name)
         return rbd_image_name
 
+    #RBD snapshot naming pattern: backup.<backup_id>.snap.time_stamp
     @staticmethod
     def backup_snapshot_name_pattern():
         """Returns the pattern used to match backup snapshots.
@@ -111,9 +153,9 @@ class SBSBackupDriver(driver.BackupDriver):
         """
         return r"^backup\.([a-z0-9\-]+?)\.snap\.(.+)$"
 
-
+    #Returns snap name as: backup.<backup_id>.snap.<%0.2f time_stamp>
     def _get_new_snap_name(self, backup_id):
-        time_stamp = time.time()
+        time_stamp = (_("%0.2f" % time.time()))
         return (time_stamp, encodeutils.safe_encode("backup.%s.snap.%s" %
                                                    (backup_id, time_stamp)))
 
@@ -132,6 +174,7 @@ class SBSBackupDriver(driver.BackupDriver):
         """Ensure all args are non-None and non-empty."""
         return all(args)
 
+    #Returns args with --id, --conf, --pool for connecting to ceph
     def _ceph_args(self, user, conf=None, pool=None):
         """Create default ceph args for executing rbd commands.
 
@@ -153,6 +196,7 @@ class SBSBackupDriver(driver.BackupDriver):
 
         return args
 
+    #Also called by volume delete API, to remove all snaps
     @classmethod
     def get_backup_snaps(cls, rbd_image, sort=False):
         """Get all backup snapshots for the given rbd image.
@@ -189,7 +233,7 @@ class SBSBackupDriver(driver.BackupDriver):
 
         return backup_snaps[0]['name']
 
-
+    #First snap created is the base
     def _lookup_base(self, rbd_image):
         backup_snaps = self.get_backup_snaps(rbd_image, sort=False)
         if not backup_snaps:
@@ -197,29 +241,54 @@ class SBSBackupDriver(driver.BackupDriver):
         backup_snaps.sort(key=lambda x: x['timestamp'], reverse=False)
         return backup_snaps[0]['name']
 
-	# shishir change this to work out of s3 or db 
+    #returns a handle to snap with key_name = snap_name
+    def _get_snap_handle_from_DSS(bucket, key_name):
+        if (bucket == None) or (snap_name == None):
+            return
+        try:
+            key = bucket.get_key(key_name)
+        except Exception e:
+            Log.warn("Failed to get handle for snap %s" % key_name)
+        return key
+
+    #Check if base and/or snapshot
     def _snap_exists(self, base_name, snap_name):
-        bucket = self._connect_to_DSS(self._container)
-        if base_name:
-            key_base = bucket.get_key(base_name)
+        conn = self._connect_to_DSS()
+        if conn != None:
+            bucket = self._get_bucket(conn, self._container)
+        if (base_name != None) and (bucket != None):
+            key_base = self._get_snap_handle_from_DSS(bucket, base_name)
             if key_base == None:
                 return False
 
         if snap_name:
-            key_snap = bucket.get_key(snap_name)
+            key_snap = self._get_snap_handle_from_DSS(bucket, snap_name)
             if key_snap == None:
                 return False
         return True
 
-    def _connect_to_DSS(self, bucket_name):
-        conn = boto.s3.connect_to_region(self._region,aws_access_key_id=self._access_key,
-                                         aws_secret_access_key=self._secret_key,
-                                         calling_format = boto.s3.connection.OrdinaryCallingFormat(),)
+    #connect to object store and return handle
+    def _connect_to_DSS(self):
+        try:
+            conn = boto.s3.connect_to_region(self._region,aws_access_key_id=self._access_key,
+                                             aws_secret_access_key=self._secret_key,
+                                             calling_format = boto.s3.connection.OrdinaryCallingFormat(),)
+        except Exception e:
+            LOG.warn("Exception getting connection to object store")
+            return None
+        return conn
 
-        backup_bucket = conn.get_bucket(bucket_name, True)
-        if backup_bucket == None:
-            backup_bucket = conn.create_bucket(bucket_name)
+    #return handle to the bucket
+    def _get_bucket(self, conn, bucket_name):
+        backup_bucket = None
+        if (conn != None) and (bucket_name != None):
+            try:
+                backup_bucket = conn.create_bucket(bucket_name)
+            except Exception e:
+                LOG.warn("Exception creating/getting bucket %s" % bucket_name)
+                return None
         return backup_bucket
+
     #currently broken, not used
     def _multi_part_upload(self, bucket, key, loc):
         size = os.stat(loc).st_size
@@ -248,7 +317,12 @@ class SBSBackupDriver(driver.BackupDriver):
         cmd.extend([path, loc])
         LOG.info(cmd)
         self._execute (*cmd, run_as_root=False)
-        bucket = self._connect_to_DSS(self._container)
+        conn = self._connect_to_DSS()
+        if conn != None:
+            bucket = self._get_bucket(conn, self._container)
+        if bucket == None:
+            return
+
         key = bucket.new_key(snap_name)
         if key == None:
             return
@@ -432,19 +506,26 @@ class SBSBackupDriver(driver.BackupDriver):
         return backup_tree
 
     def _download_from_DSS(self, snap_name, volume_name, ceph_args):
-
         tmp_cmd = ['mkdir', '-p', '/tmp/downloads']
         self._execute(*tmp_cmd, run_as_root=False)
         loc = encodeutils.safe_encode("/tmp/downloads/%s" % (snap_name))
         open(loc,'a').close
 
-        bucket = self._connect_to_DSS(self._container)
-        key = bucket.get_key(snap_name)
+        conn = self._connect_to_DSS()
+        if conn != None:
+            bucket = self._get_bucket(conn, self._container)
+
+        if bucket == None:
+            return
+        key = _get_snap_handle_from_DSS(bucket, snap_name)
         if key == None:
             return
 
-        key.get_contents_to_filename(loc)
-
+        try:
+            key.get_contents_to_filename(loc)
+        except Exception e:
+            LOG.warn("Failed to get contents of backup %s from object store" % snap_name)
+            return
         cmd = ['rbd', 'import-diff'] + ceph_args
         #if from_snap is None, do full upload
         volume_name = encodeutils.safe_encode("%s" % (volume_name))
@@ -516,15 +597,35 @@ class SBSBackupDriver(driver.BackupDriver):
         return
 
     def _remove_from_DSS(self, backup):
-        snap_name = backup['display_name']
-        LOG.info("Deleting backups %s" % (cmd))
-        bucket = self._connect_to_DSS(self._container)
+	snap_name = self._get_rbd_image_name(backup)
+        #snap_name = backup['display_name']
+        LOG.info("Deleting backups %s from container %s" % (snap_name, self._container))
+
+        conn = self._connect_to_DSS()
+        if conn != None:
+            bucket = self._get_bucket(conn, self._container)
+
         if bucket != None:
-            bucket.delete(snap_name)
+            try:
+                bucket.delete_key(snap_name)
+            except Exception e:
+                Log.warn("Failed to delete backup %s from object store" % snap_name)
+
+        return
+
+    def _delete_snap_from_src(self, backup):
+        volume_name = encodeutils.safe_encode("volume-%s" % (backup['volume_id']))
+        backup_name = self._get_rbd_image_name(backup)
+        LOG.info("Deleting backups %s from src pool" % (backup_name))
+        with rbd_driver.RADOSClient(self, self._ceph_backup_pool) as client:
+            backup_rbd = self.rbd.Image(client.ioctx, volume_name, read_only=False)
+            try:
+                backup_rbd.remove_snap(backup_name)
+            finally:
+                backup_rbd.close()
         return
 
     def _delete_backups(self, backup_list):
-
         last_backup = None
         length = len(backup_list)
         i = 0
@@ -532,6 +633,7 @@ class SBSBackupDriver(driver.BackupDriver):
 	    backup = backup_list[i]
             LOG.debug("Deleting backup %s" % backup['id'])
             self._remove_from_DSS(backup)
+            self._delete_snap_from_src(backup)
             self.db.backup_destroy(self.context, backup['id'])
             last_backup = backup
             i = i+1

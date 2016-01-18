@@ -27,7 +27,7 @@ def upgrade(migrate_engine):
     meta.bind = migrate_engine
 
     backups = Table('backups', meta, autoload=True)
-    time_stamp = Column('time_stamp', String(length=36))
+    time_stamp = Column('time_stamp', String(length=255))
 
     try:
         backups.create_column(time_stamp)
