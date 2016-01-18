@@ -990,7 +990,7 @@ class NetAppESeriesLibrary(object):
             cinder_pool["QoS_support"] = False
             cinder_pool["reserved_percentage"] = (
                 self.configuration.reserved_percentage)
-            cinder_pool["max_oversubscription_ratio"] = (
+            cinder_pool["max_over_subscription_ratio"] = (
                 self.configuration.max_over_subscription_ratio)
             tot_bytes = int(storage_pool.get("totalRaidedSpace", 0))
             used_bytes = int(storage_pool.get("usedSpace", 0))

@@ -455,7 +455,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         self.assertEqual(fake_pool['label'], pool_stats.get('pool_name'))
         self.assertEqual(reserved_pct, pool_stats['reserved_percentage'])
         self.assertEqual(over_subscription_ratio,
-                         pool_stats['max_oversubscription_ratio'])
+                         pool_stats['max_over_subscription_ratio'])
         self.assertEqual(total_gb, pool_stats.get('total_capacity_gb'))
         self.assertEqual(used_gb, pool_stats.get('provisioned_capacity_gb'))
         self.assertEqual(free_gb, pool_stats.get('free_capacity_gb'))
