@@ -280,6 +280,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         path = '/'.join([pool, fs, volume['name']])
         data = {'targetPath': path}
         self.nef.post(url, data)
+        path = '%2F'.join([pool, fs, volume['name']])
         url = 'storage/filesystems/%s/promote' % path
         self.nef.post(url)
 
