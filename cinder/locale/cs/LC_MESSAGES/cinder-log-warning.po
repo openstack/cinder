@@ -7,19 +7,19 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev238\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev281\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-01-09 06:44+0000\n"
-"PO-Revision-Date: 2015-12-22 01:37+0000\n"
-"Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
-"Language-Team: Czech\n"
-"Language: cs\n"
+"POT-Creation-Date: 2016-01-17 23:35+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"PO-Revision-Date: 2015-12-22 01:37+0000\n"
+"Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
+"Language: cs\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
 "Generated-By: Babel 2.0\n"
 "X-Generator: Zanata 3.7.3\n"
+"Language-Team: Czech\n"
 
 #, python-format
 msgid "%(path)s is being set with open permissions: %(perm)s"
@@ -588,12 +588,6 @@ msgstr ""
 msgid "Failed to query pool %(id)s status %(ret)d."
 msgstr "Dotaz na stav %(ret)d zásoby %(id)s selhal."
 
-msgid "Failed to receive update for free_gb stat!"
-msgstr "Nelze získat aktualizaci pro statistiku počtu volných GB!"
-
-msgid "Failed to receive update for total_gb stat!"
-msgstr "Nelze získat aktualizaci pro statistiku celkového počtu GB!"
-
 #, python-format
 msgid "Failed to refresh mounts, reason=%s"
 msgstr "Nelze obnovit připojení, důvod=%s"
@@ -898,18 +892,6 @@ msgstr ""
 "Nejméně zaneprázdněný port iSCSI nenalezen, použit první port v seznamu."
 
 #, python-format
-msgid "Logout error: %(code)d %(reason)s"
-msgstr "Chyba odhlášení: %(code)d %(reason)s"
-
-#, python-format
-msgid "Lun %s has dependent snapshots, skipping."
-msgstr "Lun %s má závislé snímky, přeskakování."
-
-#, python-format
-msgid "Lun create for %s failed!"
-msgstr "Vytvoření LUN pro %s selhalo!"
-
-#, python-format
 msgid ""
 "Lun is not in lungroup. Lun id: %(lun_id)s, lungroup id: %(lungroup_id)s"
 msgstr ""
@@ -1175,12 +1157,6 @@ msgstr "Požadovaný obraz není dostupný současnému nájemníku."
 
 msgid "Returning as clean tmp vol job already running."
 msgstr "Probíhá vrácení protože úkol čištění dočasného svazku již probíhá."
-
-#, python-format
-msgid "ScServerOperatingSystem GetList return: %(code)d %(reason)s"
-msgstr ""
-"Získání seznamu od operačního systému serveru centra úložiště vrátilo: "
-"%(code)d %(reason)s"
 
 #, python-format
 msgid ""
@@ -1549,14 +1525,6 @@ msgstr "Nelze se dotázat na prostor bez clusteru."
 #, python-format
 msgid "Unable to rename %(old_name)s, error message: %(error)s"
 msgstr "Nelze přejmenovat %(old_name)s, chybová zpráva: %(error)s"
-
-#, python-format
-msgid ""
-"Unable to retype Storage Profile, expected to receive current and requested "
-"storagetype:storageprofile values. Value received: %s"
-msgstr ""
-"Nezle přetypovat profil úložiště, očekáváno předání současných a "
-"požadovaných hodnot typu a profilu úložiště. Předané hodnoty: %s"
 
 #, python-format
 msgid "Unable to update host type for host with label %(l)s. %(e)s"

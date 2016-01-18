@@ -1,22 +1,28 @@
-# Czech translations for cinder.
-# Copyright (C) 2016 ORGANIZATION
+# Translations template for cinder.
+# Copyright (C) 2015 ORGANIZATION
 # This file is distributed under the same license as the cinder project.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2016.
 #
+# Translators:
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2011
+# Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015
+# OpenStack Infra <zanata@openstack.org>, 2015. #zanata
+# Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
+# Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev238\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev281\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-01-09 06:44+0000\n"
+"POT-Creation-Date: 2016-01-17 23:35+0000\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
 "PO-Revision-Date: 2016-01-08 01:43+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language: cs\n"
+"Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
+"Generated-By: Babel 2.0\n"
+"X-Generator: Zanata 3.7.3\n"
 "Language-Team: Czech\n"
-"Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2\n"
-"MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=utf-8\n"
-"Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.2.0\n"
 
 #, python-format
 msgid "\t%s"
@@ -2323,10 +2329,6 @@ msgid "Error deleting replay profile."
 msgstr "Chyba při mazání profilu rychlého načtení."
 
 #, python-format
-msgid "Error deleting volume %(ssn)s: %(volume)s: %(code)d %(reason)s"
-msgstr "Chyba při mazání svazku %(ssn)s: %(volume)s: %(code)d %(reason)s"
-
-#, python-format
 msgid "Error deleting volume %(vol)s: %(err)s."
 msgstr "Chyba při mazání svazku %(vol)s: %(err)s."
 
@@ -2754,10 +2756,6 @@ msgstr ""
 msgid "Failed to add %(vol)s into %(sg)s after %(retries)s tries."
 msgstr "Nelze přidat %(vol)s do %(sg)s po %(retries)s pokusech."
 
-#, python-format
-msgid "Failed to add igroup member: %(code)d, %(message)s"
-msgstr "Nelze přidat člena igroup: %(code)d, %(message)s"
-
 msgid "Failed to add the logical device."
 msgstr "Nelze přidat logické zařízení."
 
@@ -2805,9 +2803,6 @@ msgstr "Nelze klonovat svazek ze snímku %s."
 #, python-format
 msgid "Failed to connect to %(vendor_name)s Array %(host)s: %(err)s"
 msgstr "Nelze se připojit k %(vendor_name)s Pole %(host)s: %(err)s"
-
-msgid "Failed to connect to Enterprise Manager"
-msgstr "Nelze se připojit k Enterprise Manager"
 
 msgid "Failed to connect to array"
 msgstr "Nelze se připojit k poli"
@@ -3836,17 +3831,8 @@ msgstr "Dostupná volná kvóta je %s."
 msgid "GPFS is not running, state: %s."
 msgstr "GPFS neběží, stav: %s."
 
-msgid "Gateway MG-A IP option 'gateway_mga' is not set"
-msgstr "Volba brány MG-A IP 'gateway_mga' není nastavena"
-
-msgid "Gateway MG-B IP option 'gateway_mgb' is not set"
-msgstr "Volba brány MG-B IP 'gateway_mgb' není nastavena"
-
 msgid "Gateway VIP is not set"
 msgstr "Brána VIP není nastavena"
-
-msgid "Gateway VIP option 'san_ip' is not set"
-msgstr "Volba brány VIP 'san_ip' není nastavena"
 
 msgid "Get FC ports from array error."
 msgstr "Chyba při získávání portů FC z pole."
@@ -3942,10 +3928,6 @@ msgstr ""
 #, python-format
 msgid "Glance metadata for volume/snapshot %(id)s cannot be found."
 msgstr "Popisná data Glance pro svazek/snímek %(id)s nemohla být nalezena."
-
-msgid "Global timeout option 'request_timeout' must be greater than 0"
-msgstr ""
-"Volba všeobecného časového limitu 'request_timeout' musí být větší než 0"
 
 #, python-format
 msgid "Gluster config file at %(config)s doesn't exist"
@@ -4193,13 +4175,6 @@ msgstr "Neplatný snímek skupiny jednotnosti: %(reason)s"
 msgid "Invalid ConsistencyGroup: %(reason)s"
 msgstr "Neplatná skupina jednotnosti: %(reason)s"
 
-msgid ""
-"Invalid ConsistencyGroup: Consistency group status must be available or "
-"error, but current status is: invalid"
-msgstr ""
-"Neplatná skupina jednotnosti: Stav skupiny jednotnosti musí být dostupný "
-"nebo chybný, ale současný stav je: neplatný"
-
 #, python-format
 msgid ""
 "Invalid ConsistencyGroup: Consistency group status must be available, but "
@@ -4404,14 +4379,6 @@ msgstr "Neplatné číslo portu %(config)s pro port RPC Coho"
 #, python-format
 msgid "Invalid qos specs: %(reason)s"
 msgstr "Neplatné specifikace qos: %(reason)s"
-
-#, python-format
-msgid ""
-"Invalid request to attach volume to an instance %(instance_uuid)s and a host "
-"%(host_name)s simultaneously"
-msgstr ""
-"Neplatná žádost o připojení svazku k instanci %(instance_uuid)s a současně k "
-"hostiteli %(host_name)s"
 
 msgid "Invalid request to attach volume to an invalid target"
 msgstr "Neplatná žádost o připojení svazku k neplatnému hostiteli"
@@ -5028,10 +4995,6 @@ msgstr "Musíte zadat název nebo id ochranné domény."
 
 msgid "Must specify readonly in request."
 msgstr "V žádosti musíte zadat readonly."
-
-#, python-format
-msgid "Must specify source-name or source-id. (%s)"
-msgstr "Musíte zadat název nebo id zdroje. (%s)"
 
 msgid "Must specify storage pool name or id."
 msgstr "Název nebo id zásoby úložiště musí být zadáno."
@@ -7336,6 +7299,13 @@ msgstr "Neznámý směr řazení, musí být buď 'desc' nebo 'asc'."
 msgid "Unmanage volume not implemented."
 msgstr "Zrušení správy svazku není zavedeno."
 
+msgid ""
+"Unmanaged replication is not supported at this time. Please configure cinder."
+"conf for managed replication."
+msgstr ""
+"Nespravovaná replikace není v současnosti podporována. Prosím nastavte "
+"spravovanou replikaci v cinder.conf."
+
 #, python-format
 msgid "Unrecognized QOS keyword: \"%s\""
 msgstr "Nerozpoznané klíčové slovo QoS: \"%s\""
@@ -7444,9 +7414,6 @@ msgstr "Zpětné vrácení V2, svazek není v žádné skupině úložiště."
 
 msgid "V3 rollback"
 msgstr "Zpětné vrácení V3"
-
-msgid "VMOS version is not supported"
-msgstr "Verze VMOS není podporována"
 
 #, python-format
 msgid "VV Set %s does not exist."
@@ -7817,14 +7784,6 @@ msgstr "Svazek nebyl nalezen v nastavených zásobách úložiště."
 
 msgid "Volume not found."
 msgstr "Svazek nenalezen."
-
-#, python-format
-msgid "Volume not found.  (%s)"
-msgstr "Svazek nenalezen. (%s)"
-
-#, python-format
-msgid "Volume not unique.  (%s)"
-msgstr "Svazek není jedinečný. (%s)"
 
 msgid "Volume not yet assigned to host."
 msgstr "Svazek ještě není přidělen k hostiteli."
@@ -8335,9 +8294,6 @@ msgstr "skupina jednotnosti přidělena"
 msgid "consistencygroup changed"
 msgstr "skupina jednotnosti změněna"
 
-msgid "container is missing"
-msgstr "kontejner chybí"
-
 msgid "control_location must be defined"
 msgstr "ovládací umístění musí být zadáno"
 
@@ -8656,9 +8612,6 @@ msgstr ""
 "Služba http mohla být uprostřed operace náhle ukončena, nebo převedena do "
 "stavu údržby."
 
-msgid "iSCSI is not enabled"
-msgstr "iSCSI není povoleno"
-
 msgid "id cannot be None"
 msgstr "id nemůže být None"
 
@@ -8760,12 +8713,6 @@ msgstr "naviseccli_path:  Nelze najít nástroj NAVISECCLI %(path)s."
 msgid "no REPLY but %r"
 msgstr "Žádná odpověď ale %r"
 
-msgid "no available iSCSI IPs on mga"
-msgstr "V mga nejsou dostupné žádné IP adresy iSCSI"
-
-msgid "no available iSCSI IPs on mgb"
-msgstr "V mgb nejsou dostupné žádné IP adresy iSCSI"
-
 #, python-format
 msgid "no snapshot with id %s found in drbdmanage"
 msgstr "v drbdmanage nenalezen žádný snímek s id %s"
@@ -8799,9 +8746,6 @@ msgstr "promote_replica není zavedeno."
 
 msgid "provider must be defined"
 msgstr "poskytovatel musí být zadán"
-
-msgid "provisioned space threshold is not equal to usable space."
-msgstr "Prah poskytnutého prostoru se nerovná využitelnému prostoru."
 
 #, python-format
 msgid ""
@@ -8934,13 +8878,6 @@ msgstr "id zdrojového svazku:%s nenalezeno"
 #, python-format
 msgid "source volume id:%s is not replicated"
 msgstr "id zdrojového svazku:%s není replikováno"
-
-msgid ""
-"space reclamation threshold is enabled but not supported by Cinder "
-"infrastructure."
-msgstr ""
-"Prah vymáhaní prostoru je povolen, ale není podporován infrastrukturou "
-"Cinder."
 
 msgid "status must be available"
 msgstr "stav musí být dostupný"

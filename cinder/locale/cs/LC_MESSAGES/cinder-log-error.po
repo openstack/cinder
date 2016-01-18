@@ -8,19 +8,19 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev238\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev281\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-01-09 06:44+0000\n"
-"PO-Revision-Date: 2015-12-21 12:13+0000\n"
-"Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
-"Language-Team: Czech\n"
-"Language: cs\n"
+"POT-Creation-Date: 2016-01-17 23:35+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"PO-Revision-Date: 2015-12-21 12:13+0000\n"
+"Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
+"Language: cs\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
 "Generated-By: Babel 2.0\n"
 "X-Generator: Zanata 3.7.3\n"
+"Language-Team: Czech\n"
 
 #, python-format
 msgid ""
@@ -93,10 +93,6 @@ msgid ""
 msgstr ""
 "Účet pro svazek s ID %s nebyl nalezen v clusteru SoldFire, při pokusu o "
 "provedení operace zrušení správy!"
-
-#, python-format
-msgid "AddHba error: %(wwn)s to %(srvname)s : %(code)d %(reason)s"
-msgstr "Chyba přidání HBA: %(wwn)s do %(srvname)s : %(code)d %(reason)s"
 
 #, python-format
 msgid "Array Serial Number must be in the file %(fileName)s."
@@ -524,10 +520,6 @@ msgid "Create volume notification failed: %s"
 msgstr "Oznámení o vytvoření svazku selhalo: %s"
 
 #, python-format
-msgid "CreateReplay error: %(code)d %(reason)s"
-msgstr "Chyba vytváření zpětného načtení: %(code)d %(reason)s"
-
-#, python-format
 msgid "Creation of snapshot failed for volume: %s"
 msgstr "Vytvoření snímku selhalo u svazku: %s"
 
@@ -691,14 +683,6 @@ msgid "Error attaching volume %s"
 msgstr "Chyba při připojování svazku %s"
 
 #, python-format
-msgid ""
-"Error changing Storage Profile for volume %(original)s to %(name)s: %(code)d "
-"%(reason)s %(text)s"
-msgstr ""
-"Chyba při změně profilu úložiště pro svazek %(original)s na %(name)s: "
-"%(code)d %(reason)s %(text)s"
-
-#, python-format
 msgid "Error cleaning up failed volume creation.  Msg - %s."
 msgstr "Chyba při čištění selhaného vytváření svazku. Zpráva - %s"
 
@@ -797,10 +781,6 @@ msgstr "Chyba při provádění příkazu pomocí ssh."
 msgid "Error executing command via ssh: %s"
 msgstr "Chyba při provádění příkazu pomocí ssh: %s"
 
-#, python-format
-msgid "Error expanding volume %(name)s: %(code)d %(reason)s"
-msgstr "Chyba při rozšiřování svazku %(name)s: %(code)d %(reason)s"
-
 msgid "Error extending Volume"
 msgstr "Chyba při rozšiřování svazku"
 
@@ -818,9 +798,6 @@ msgstr "Chyba při rozšiřování svazku: %(vol)s. Výjimka: %(ex)s"
 #, python-format
 msgid "Error finding target pool instance name for pool: %(targetPoolName)s."
 msgstr "Chyba při hledání cílového názvu instance zásoby: %(targetPoolName)s."
-
-msgid "Error getting FaultDomainList"
-msgstr "Chyba při získávání seznamu zástupných domén při selhání"
 
 #, python-format
 msgid "Error getting LUN attribute. Exception: %s"
@@ -862,10 +839,6 @@ msgstr "Při získávání informací o zobrazení databáze fcns nastala chyba.
 
 msgid "Error getting target pool name and array."
 msgstr "Chyba při získávání názvu cílového pole a zásoby."
-
-#, python-format
-msgid "Error getting user preferences: %(code)d %(reason)s %(text)s"
-msgstr "Chyba při získávání nastavení uživatele: %(code)d %(reason)s %(text)s"
 
 #, python-format
 msgid "Error happened during storage pool querying, %s."
@@ -1058,11 +1031,6 @@ msgstr "Chyba při dotazování mělké zásoby o procentech dat"
 
 msgid "Error renaming logical volume"
 msgstr "Chyba při přejmenování logického svazku"
-
-#, python-format
-msgid "Error renaming volume %(original)s to %(name)s: %(code)d %(reason)s"
-msgstr ""
-"Chyba při přejmenování svazku %(original)s na %(name)s: %(code)d %(reason)s"
 
 #, python-format
 msgid "Error resolving host %(host)s. Error - %(e)s."
@@ -1390,9 +1358,6 @@ msgstr "Nelze připojit svazek %(vol)s."
 msgid "Failed to authenticate user."
 msgstr "Nelze ověřit uživatele."
 
-msgid "Failed to bind iSCSI targets!"
-msgstr "Nelze svázat cíle iSCSI!"
-
 #, python-format
 msgid "Failed to check cluster status.(command: %s)"
 msgstr "Nelze zkontrolovat stav clusteru. (příkaz: %s)"
@@ -1531,9 +1496,6 @@ msgstr "Nelze vytvořit cílové iscsi pro svazek s id: %s"
 #, python-format
 msgid "Failed to create iscsi target for volume id:%s."
 msgstr "Nelze vytvořit cílové iscsi pro svazek s id: %s."
-
-msgid "Failed to create iscsi target!"
-msgstr "Nelze vytvořit cíl iscsi!"
 
 #, python-format
 msgid "Failed to create manage_existing flow: %(object_type)s %(object_id)s."
@@ -2187,31 +2149,11 @@ msgstr "Chyba přesunu JSON: %s."
 msgid "LUN %(path)s geometry failed. Message - %(msg)s"
 msgstr "Geometrie LUN %(path)s selhala. Zpráva - %(msg)s"
 
-#, python-format
-msgid "LUN export for %s failed!"
-msgstr "Export LUn pro %s selhal!"
-
 msgid "LUN extend failed!"
 msgstr "Rozšíření LUN selhalo!"
 
-#, python-format
-msgid "LUN extend for %s failed!"
-msgstr "Rozšíření LUN pro %s selhalo!"
-
-#, python-format
-msgid "LUN snapshot create for %s failed!"
-msgstr "Vytvoření snímku LUN pro %s selhalo!"
-
-#, python-format
-msgid "LUN snapshot delete for %s failed!"
-msgstr "Smazání snímku LUN pro %s selhalo!"
-
 msgid "LUN unexport failed!"
 msgstr "Zrušení exportu LUN selhalo!"
-
-#, python-format
-msgid "LUN unexport for %s failed!"
-msgstr "Zrušení exportu LUN pro %s selhalo!"
 
 #, python-format
 msgid ""
@@ -2231,10 +2173,6 @@ msgstr ""
 #, python-format
 msgid "Login error, reason is: %s."
 msgstr "Chyba přihlášení, důvod: %s."
-
-#, python-format
-msgid "Login error: %(code)d %(reason)s"
-msgstr "Chyba přihlášení: %(code)d %(reason)s"
 
 #, python-format
 msgid "Looks like masking view: %(maskingViewName)s has recently been deleted."
@@ -2531,34 +2469,6 @@ msgstr ""
 "SLO: %(slo)s není platné. Platné hodnoty jsou Bronze, Silver, Gold, "
 "Platinum, Diamond, Optimized, NONE."
 
-#, python-format
-msgid "ScPhysicalServer create error: %(wwn)s: %(code)d %(reason)s"
-msgstr ""
-"Chyba vytvoření fyzického serveru datového úložiště: %(wwn)s: %(code)d "
-"%(reason)s"
-
-#, python-format
-msgid "ScReplay CreateView error: %(code)d %(reason)s"
-msgstr ""
-"Chyba vytvoření zobrazení zpětného načtení datového úložiště: %(code)d "
-"%(reason)s"
-
-#, python-format
-msgid "ScReplay Expire error: %(code)d %(reason)s"
-msgstr "Chyba vypršení zpětného načtení datového úložiště: %(code)d %(reason)s"
-
-#, python-format
-msgid "ScServer error: %(code)d %(reason)s"
-msgstr "Chyba ScServeru: %(code)d %(reason)s"
-
-#, python-format
-msgid "ScVolume create error %(name)s: %(code)d %(reason)s"
-msgstr "ScVolume chyba při vytváření %(name)s: %(code)d %(reason)s"
-
-#, python-format
-msgid "ScVolume error on rename: %(code)d %(reason)s"
-msgstr "Chyba svazku datového úložiště při přejmenování: %(code)d %(reason)s"
-
 msgid ""
 "ScVolume returned success with empty payload.  Attempting to locate volume"
 msgstr ""
@@ -2610,14 +2520,6 @@ msgstr "Snímek %s má klony"
 
 msgid "Snapshot did not exist. It will not be deleted"
 msgstr "Snímek neexistuje. Nebude smazán"
-
-#, python-format
-msgid "Snapshot export for %s failed!"
-msgstr "Export snímku pro %s selhal!"
-
-#, python-format
-msgid "Snapshot unexport for %s failed!"
-msgstr "Zrušení exportu snímku pro %s selhalo!"
 
 #, python-format
 msgid ""
@@ -2802,10 +2704,6 @@ msgstr "Nelze smazat zaneprázdněný svazek."
 msgid "Unable to delete due to existing snapshot for volume: %s"
 msgstr "Nelze smazat kvůli existujícímu snímku svazku. %s"
 
-#, python-format
-msgid "Unable to delete profile %(cg)s : %(reason)s"
-msgstr "Nelze smazat profil %(cg)s : %(reason)s"
-
 msgid ""
 "Unable to delete the destination volume during volume migration, (NOTE: "
 "database record needs to be deleted)."
@@ -2844,10 +2742,6 @@ msgstr ""
 #, python-format
 msgid "Unable to find service: %(service)s for given host: %(host)s."
 msgstr "Nelze najít službu: %(service)s pro daného hostitele: %(host)s."
-
-#, python-format
-msgid "Unable to find volume mappings: %s"
-msgstr "Nelze najít mapování svazku: %s"
 
 msgid "Unable to get associated pool of volume."
 msgstr "Nelze získat přidruženou zásobu svazku."
@@ -3259,10 +3153,6 @@ msgid "cinder-rtstool is not installed correctly"
 msgstr "cinder-rtstool není správně nainstalováno"
 
 #, python-format
-msgid "create_replay_profile failed %s"
-msgstr "Vytvoření profilu rychlého načtení selhalo %s"
-
-#, python-format
 msgid ""
 "delete: %(vol_id)s failed with stdout: %(out)s\n"
 " stderr: %(err)s"
@@ -3283,10 +3173,6 @@ msgstr "chyba při otevírání obrazu rbd %s"
 
 msgid "error refreshing volume stats"
 msgstr "Při obnově statistik svazku došlo k chybě"
-
-#, python-format
-msgid "find_replay_profile error %s"
-msgstr "Chyba při hledání profilu rychlého načtení: %s"
 
 msgid "horcm command timeout."
 msgstr "Příkazu horcm vypršel časový limit."
@@ -3348,10 +3234,6 @@ msgstr "san_password musí být nastaveno!"
 msgid "single_user auth mode enabled, but %(param)s not set"
 msgstr ""
 "Povolen režim ověření pomocí jednoho uživatele, ale %(param)s není nastaveno"
-
-#, python-format
-msgid "snap_cg error: %(code)d %(reason)s"
-msgstr "Chyba při vytváření snímku skupin jednotnosti: %(code)d %(reason)s"
 
 msgid "snm2 command timeout."
 msgstr "Příkazu snm2 vypršel časový limit."

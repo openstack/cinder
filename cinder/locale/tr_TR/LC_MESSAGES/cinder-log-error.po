@@ -8,19 +8,19 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev238\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev281\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-01-09 06:44+0000\n"
-"PO-Revision-Date: 2015-09-16 08:22+0000\n"
-"Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
-"Language-Team: Turkish (Turkey)\n"
-"Language: tr-TR\n"
+"POT-Creation-Date: 2016-01-17 23:35+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"PO-Revision-Date: 2015-09-16 08:22+0000\n"
+"Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
+"Language: tr-TR\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 "Generated-By: Babel 2.0\n"
 "X-Generator: Zanata 3.7.3\n"
+"Language-Team: Turkish (Turkey)\n"
 
 #, python-format
 msgid ""
@@ -86,10 +86,6 @@ msgid ""
 msgstr ""
 "unmanage işlemi denenirken SolidFire Kümesinde Mantıksal Sürücü Kimliği %s "
 "için hesap bulunamadı!"
-
-#, python-format
-msgid "AddHba error: %(wwn)s to %(srvname)s : %(code)d %(reason)s"
-msgstr "AddHba hatası: %(srvname)s sunucusuna %(wwn)s : %(code)d %(reason)s"
 
 #, python-format
 msgid "Array mismatch %(myid)s vs %(arid)s"
@@ -340,10 +336,6 @@ msgid "Create volume notification failed: %s"
 msgstr "Mantıksal sürücü bildirimi oluşturma başarısız oldu: %s"
 
 #, python-format
-msgid "CreateReplay error: %(code)d %(reason)s"
-msgstr "CreateReplay hatası: %(code)d %(reason)s"
-
-#, python-format
 msgid "Creation of snapshot failed for volume: %s"
 msgstr ""
 "Mantıksal sürücü için anlık sistem görüntüsü oluşturma başarısız oldu: %s"
@@ -528,10 +520,6 @@ msgstr "ssh yoluyla komut yürütürken hata."
 msgid "Error executing command via ssh: %s"
 msgstr "ssh üzerinden komut yürütülürken hata: %s"
 
-#, python-format
-msgid "Error expanding volume %(name)s: %(code)d %(reason)s"
-msgstr "Mantıksal sürücü %(name)s genişletilirken hata: %(code)d %(reason)s"
-
 msgid "Error extending Volume"
 msgstr "Mantıksal sürücü genişletilirken hata"
 
@@ -546,9 +534,6 @@ msgstr "Mantıksal sürücü genişletilirken hata: %(vol)s. İstisna: %(ex)s"
 #, python-format
 msgid "Error finding target pool instance name for pool: %(targetPoolName)s."
 msgstr "Havuz için hedef havuz örnek adı bulunurken hata: %(targetPoolName)s."
-
-msgid "Error getting FaultDomainList"
-msgstr "FaultDomainList alınırken hata"
 
 #, python-format
 msgid "Error getting LUN attribute. Exception: %s"
@@ -764,12 +749,6 @@ msgstr "data_percent ile ilgili ince havuz sorgularken hata"
 
 msgid "Error renaming logical volume"
 msgstr "Mantıksal sürücü yeniden adlandırılırken hata"
-
-#, python-format
-msgid "Error renaming volume %(original)s to %(name)s: %(code)d %(reason)s"
-msgstr ""
-"Mantıksal sürücüyü %(original)s özgün adından %(name)s adına yeniden "
-"adlandırırken hata: %(code)d %(reason)s"
 
 #, python-format
 msgid "Error resolving host %(host)s. Error - %(e)s."
@@ -1016,9 +995,6 @@ msgstr "Disk bölümü %(vol)s ekleme başarısız"
 msgid "Failed to authenticate user."
 msgstr "Kullanıcı kimlik doğrulaması yapılamadı."
 
-msgid "Failed to bind iSCSI targets!"
-msgstr "ISCSI hedefleri bağlanamadı!"
-
 #, python-format
 msgid "Failed to close disk device %s"
 msgstr "Disk aygıtı %s kapatılamadı"
@@ -1124,9 +1100,6 @@ msgstr "Mantıksal sürücü kimliği için iscsi hedefi oluşturulamadı:%s"
 #, python-format
 msgid "Failed to create iscsi target for volume id:%s."
 msgstr "Mantıksal sürücü kimliği için iscsi hedefi oluşturulamadı:%s."
-
-msgid "Failed to create iscsi target!"
-msgstr "Iscsi hedefi oluşturulamadı!"
 
 #, python-format
 msgid "Failed to create snapshot of volume \"%s\"."
@@ -1609,24 +1582,8 @@ msgstr "JSON aktarım hatası: %s."
 msgid "LUN %(path)s geometry failed. Message - %(msg)s"
 msgstr "LUN %(path)s geometrisi başarısız oldu. İleti - %(msg)s"
 
-#, python-format
-msgid "LUN export for %s failed!"
-msgstr "%s için LUN dışa aktarımı başarısız oldu!"
-
 msgid "LUN extend failed!"
 msgstr "LUN genişletme işlemi başarısız oldu!"
-
-#, python-format
-msgid "LUN extend for %s failed!"
-msgstr "%s için LUN genişletme başarısız oldu!"
-
-#, python-format
-msgid "LUN snapshot create for %s failed!"
-msgstr "%s için LUN anlık sistem görüntüsü oluşturma başarısız!"
-
-#, python-format
-msgid "LUN snapshot delete for %s failed!"
-msgstr "%s için LUN anlık sistem görüntüsü silme başarısız oldu!"
 
 msgid ""
 "Logging into the Datera cluster failed. Please check your username and "
@@ -1635,10 +1592,6 @@ msgstr ""
 "Datera kümesine giriş başarısız oldu. Lütfen kullanıcı adı ve parolanın "
 "cinder.conf dosyasındaki ayarını kontrol edin ve cinder-volumeservice "
 "servisini tekrar başlatın."
-
-#, python-format
-msgid "Login error: %(code)d %(reason)s"
-msgstr "Giriş hatası: %(code)d %(reason)s"
 
 #, python-format
 msgid "Looks like masking view: %(maskingViewName)s has recently been deleted."
@@ -1857,26 +1810,6 @@ msgstr ""
 "SLO: %(slo)s geçersiz. Geçerli değerler Bronz, Gümüş, Altın, Platin, Elmas, "
 "Optimize Edilmiş, HİÇBİRİ."
 
-#, python-format
-msgid "ScPhysicalServer create error: %(wwn)s: %(code)d %(reason)s"
-msgstr "ScPhysicalServer oluşturma hatası: %(wwn)s: %(code)d %(reason)s"
-
-#, python-format
-msgid "ScReplay CreateView error: %(code)d %(reason)s"
-msgstr "ScReplay CreateView hatası: %(code)d %(reason)s"
-
-#, python-format
-msgid "ScReplay Expire error: %(code)d %(reason)s"
-msgstr "ScReplay Geçerlilik hatası: %(code)d %(reason)s"
-
-#, python-format
-msgid "ScServer error: %(code)d %(reason)s"
-msgstr "ScServer hatası: %(code)d %(reason)s"
-
-#, python-format
-msgid "ScVolume create error %(name)s: %(code)d %(reason)s"
-msgstr "ScVolume oluşturma hatası %(name)s: %(code)d %(reason)s"
-
 msgid ""
 "ScVolume returned success with empty payload.  Attempting to locate volume"
 msgstr ""
@@ -1911,10 +1844,6 @@ msgstr "Anlık sistem görüntüsü %s: kopyalara sahip"
 
 msgid "Snapshot did not exist. It will not be deleted"
 msgstr "Anlık sistem görüntüsü olmasaydı silinemeyecekti"
-
-#, python-format
-msgid "Snapshot export for %s failed!"
-msgstr "%s için anlık sistem görüntüsü dışa aktarımı başarısız oldu!"
 
 #, python-format
 msgid "Source snapshot %(snapshot_id)s cannot be found."
@@ -2041,10 +1970,6 @@ msgid "Unable to delete due to existing snapshot for volume: %s"
 msgstr ""
 "Mantıksal sürücü için varolan anlık sistem görüntüsü nedeniyle silinemedi: %s"
 
-#, python-format
-msgid "Unable to delete profile %(cg)s : %(reason)s"
-msgstr "%(cg)s profili silinemedi: %(reason)s"
-
 msgid ""
 "Unable to delete the destination volume during volume migration, (NOTE: "
 "database record needs to be deleted)."
@@ -2076,10 +2001,6 @@ msgid ""
 "Unable to find default storage group for FAST policy : %(fastPolicyName)s."
 msgstr ""
 "FAST ilkesi için öntanımlı depolama grubu bulunamadı : %(fastPolicyName)s."
-
-#, python-format
-msgid "Unable to find volume mappings: %s"
-msgstr "Mantıksal sürücü eşleştirmeleri bulunamadı: %s"
 
 msgid "Unable to get associated pool of volume."
 msgstr "Mantıksal sürücünün ilişkili olduğu havuz alınamadı."
@@ -2426,10 +2347,6 @@ msgid "cinder-rtstool is not installed correctly"
 msgstr "cinder-rtstool doğru bir şekilde kurulu değil"
 
 #, python-format
-msgid "create_replay_profile failed %s"
-msgstr "create_replay_profile başarısız oldu %s"
-
-#, python-format
 msgid ""
 "delete: %(vol_id)s failed with stdout: %(out)s\n"
 " stderr: %(err)s"
@@ -2450,10 +2367,6 @@ msgstr "rbd imajı %s açma hatası"
 
 msgid "error refreshing volume stats"
 msgstr "mantıksal sürücü durum bilgisi tazeleme hatası"
-
-#, python-format
-msgid "find_replay_profile error %s"
-msgstr "find_replay_profile hatası %s"
 
 msgid "horcm command timeout."
 msgstr "horcm komutu zaman aşımı."
@@ -2484,10 +2397,6 @@ msgstr "Model sunucusu gitti."
 #, python-format
 msgid "single_user auth mode enabled, but %(param)s not set"
 msgstr "single_user kimlik doğrulama kipi etkin, fakat %(param)s ayarlı değil"
-
-#, python-format
-msgid "snap_cg error: %(code)d %(reason)s"
-msgstr "snap_cg hatası: %(code)d %(reason)s"
 
 msgid "snm2 command timeout."
 msgstr "snm2 komutu zaman aşımı."
