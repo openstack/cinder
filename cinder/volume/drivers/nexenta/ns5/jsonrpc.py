@@ -99,7 +99,7 @@ class NexentaJSONProxy(object):
                 else:
                     response = resp.json()
                 resp.close()
-        if resp.get('code'):
+        if response.get('code'):
             raise exception.NexentaException(response)
         LOG.debug('Got response: %s', response)
         return response
