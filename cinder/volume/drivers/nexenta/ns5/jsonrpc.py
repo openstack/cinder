@@ -66,8 +66,6 @@ class NexentaJSONProxy(object):
         }
         url = self.url + path
 
-        if not method:
-            method = 'post' if data else 'get'
         if data:
             data = jsonutils.dumps(data)
 
@@ -75,11 +73,11 @@ class NexentaJSONProxy(object):
                   path, data, self.method)
         if self.method == 'get':
             resp = requests.get(url, headers=headers)
-        if method == 'post':
+        if self.method == 'post':
             resp = requests.post(url, data=data, headers=headers)
-        if method == 'put':
+        if self.method == 'put':
             resp = requests.put(url, data=data, headers=headers)
-        if method == 'delete':
+        if self.method == 'delete':
             resp = requests.delete(url, data=data, headers=headers)
 
         if resp.status_code == 201 or (
