@@ -98,6 +98,7 @@ class NetApp7modeNfsDriver(nfs_base.NetAppNfsDriver):
         data['driver_version'] = self.VERSION
         data['storage_protocol'] = 'nfs'
         data['pools'] = self._get_pool_stats()
+        data['sparse_copy_volume'] = True
 
         self._spawn_clean_cache_job()
         self.zapi_client.provide_ems(self, netapp_backend, self._app_version,
