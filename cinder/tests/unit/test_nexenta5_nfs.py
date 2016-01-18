@@ -138,8 +138,7 @@ class TestNexentaNfsDriver(test.TestCase):
         self.nef_mock.get.return_value = {}
         self.drv.delete_volume(self.TEST_VOLUME)
         self.nef_mock.delete.assert_called_with(
-            'storage/pools/pool/filesystems/'
-            'share%2Fvolume1')
+            'storage/pools/pool/filesystems/share%2Fvolume1?snapshots=true')
 
     def test_create_snapshot(self):
         self._create_volume_db_entry()
@@ -160,7 +159,7 @@ class TestNexentaNfsDriver(test.TestCase):
            'NexentaNfsDriver._share_folder')
     def test_create_volume_from_snapshot(self, share):
         self._create_volume_db_entry()
-        url = ('storage/filesystems/pool/share/volume2/promote')
+        url = ('storage/filesystems/pool%2Fshare%2Fvolume2/promote')
 
         self.drv.create_volume_from_snapshot(
             self.TEST_VOLUME2, self.TEST_SNAPSHOT)

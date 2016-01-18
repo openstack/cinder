@@ -125,9 +125,9 @@ class TestNexentaISCSIDriver(test.TestCase):
     def test_create_snapshot(self):
         self._create_volume_db_entry()
         self.drv.create_snapshot(self.TEST_SNAPSHOT_REF)
-        url = 'storage/pools/pool/volumeGroups'
+        url = 'storage/pools/pool/volumeGroups/dsg/volumes/volume-1/snapshots'
         self.nef_mock.post.assert_called_with(
-            url, {'name': 'dsg', 'volumeBlockSize': 32768})
+            url, {'name': 'snapshot1'})
 
     def test_get_target_by_alias(self):
         self.nef_mock.get.return_value = {'data': []}
