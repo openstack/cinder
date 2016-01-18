@@ -268,7 +268,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             'group': group,
             'volume': snapshot_vol['name']
         }
-        self.nef(url, {'name': snapshot['name']})
+        self.nef.post(url, {'name': snapshot['name']})
 
     def delete_snapshot(self, snapshot):
         """Delete volume's snapshot on appliance.
@@ -314,7 +314,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             'snapshot': snapshot['name']
         }
         targetPath = self._get_volume_path(volume)
-        self.nef(url, {'targetPath': targetPath})
+        self.nef.post(url, {'targetPath': targetPath})
         url = ('storage/pools/%(pool)s/volumeGroups/'
                '%(group)s/volumes/%(name)s/promote') % {
             'pool': pool,
