@@ -285,7 +285,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         self.nef.post(url)
 
         try:
-            self._share_folder(dataset_path, volume['name'])
+            self._share_folder(fs, volume['name'])
         except exception.NexentaException:
             try:
                 url = ('storage/pools/%(pool)s/'
