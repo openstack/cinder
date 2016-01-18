@@ -88,9 +88,8 @@ class TestDeleteSnapShot(scaleio.TestScaleIODriver):
         self.driver.delete_snapshot(self.snapshot)
 
     def test_delete_invalid_snapshot(self):
-        self.set_https_response_mode(self.RESPONSE_MODE.Invalid)
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.delete_snapshot, self.snapshot)
+        self.set_https_response_mode(self.RESPONSE_MODE.Valid)
+        self.driver.delete_snapshot(self.snapshot)
 
     def test_delete_snapshot(self):
         """Setting the unmap volume before delete flag for tests """
