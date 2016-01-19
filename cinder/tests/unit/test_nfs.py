@@ -330,8 +330,6 @@ class NfsDriverTestCase(test.TestCase):
         self.configuration.reserved_percentage = 5
         self.configuration.nfs_shares_config = None
         self.configuration.nfs_sparsed_volumes = True
-        self.configuration.nfs_used_ratio = 0.95
-        self.configuration.nfs_oversub_ratio = 1.0
         self.configuration.nfs_reserved_percentage = 5.0
         self.configuration.nfs_mount_point_base = self.TEST_MNT_POINT_BASE
         self.configuration.nfs_mount_options = None
@@ -751,8 +749,8 @@ class NfsDriverTestCase(test.TestCase):
     @ddt.data(True, False)
     def test_update_volume_stats(self, thin):
 
-        self._driver.over_subscription_ratio = 20.0
-        self._driver.reserved_percentage = 5.0
+        self._driver.configuration.max_over_subscription_ratio = 20.0
+        self._driver.configuration.reserved_percentage = 5.0
         self._driver.configuration.nfs_sparsed_volumes = thin
 
         remotefs_volume_stats = {
@@ -787,44 +785,6 @@ class NfsDriverTestCase(test.TestCase):
         self.assertEqual(expected, self._driver._stats)
         self.assertEqual(thin, mock_get_provisioned_capacity.called)
 
-    @ddt.data({'nfs_oversub_ratio': 1.0},
-              {'nfs_oversub_ratio': 1.5})
-    @ddt.unpack
-    def test_get_over_subscription_ratio(self, nfs_oversub_ratio):
-        self.configuration.nfs_oversub_ratio = nfs_oversub_ratio
-        self._driver.configuration = self.configuration
-        self.mock_object(nfs, 'LOG')
-
-        oversub_ratio = self._driver._get_over_subscription_ratio()
-
-        if nfs_oversub_ratio == 1.0:
-            self.assertEqual(1.0, oversub_ratio)
-            self.assertFalse(nfs.LOG.warn.called)
-        else:
-            self.assertEqual(nfs_oversub_ratio, oversub_ratio)
-            self.assertTrue(nfs.LOG.warn.called)
-
-    @ddt.data({'nfs_used_ratio': 0.95, 'nfs_reserved_percentage': 0.05},
-              {'nfs_used_ratio': 0.80, 'nfs_reserved_percentage': 0.20})
-    @ddt.unpack
-    def test_get_reserved_percentage(self, nfs_used_ratio,
-                                     nfs_reserved_percentage):
-        self.configuration.nfs_used_ratio = nfs_used_ratio
-        self.configuration.nfs_reserved_percentage = nfs_reserved_percentage
-        self._driver.configuration = self.configuration
-        self.mock_object(nfs, 'LOG')
-
-        reserved_percentage = self._driver._get_reserved_percentage()
-
-        if nfs_used_ratio == 0.95:
-            self.assertEqual(self._driver.configuration.reserved_percentage,
-                             reserved_percentage)
-            self.assertFalse(nfs.LOG.warn.called)
-        else:
-            expected = (1 - self._driver.configuration.nfs_used_ratio) * 100
-            self.assertEqual(expected, reserved_percentage)
-            self.assertTrue(nfs.LOG.warn.called)
-
     def _check_is_share_eligible(self, total_size, total_available,
                                  total_allocated, requested_volume_size):
         with mock.patch.object(self._driver, '_get_capacity_info')\
@@ -846,7 +806,7 @@ class NfsDriverTestCase(test.TestCase):
                                                       total_allocated,
                                                       requested_volume_size))
 
-    def test_is_share_eligible_above_used_ratio(self):
+    def test_share_eligibility_with_reserved_percentage(self):
         total_size = 100.0 * units.Gi
         total_available = 4.0 * units.Gi
         total_allocated = 96.0 * units.Gi
@@ -1073,33 +1033,6 @@ class NfsDriverDoSetupTestCase(test.TestCase):
         config = conf.Configuration(None)
         config.append_config_values(nfs.nfs_opts)
         self.configuration = config
-
-    def test_init_should_throw_error_if_oversub_ratio_less_than_zero(self):
-        """__init__ should throw error if nfs_oversub_ratio is less than 0."""
-
-        self.override_config('nfs_oversub_ratio', -1)
-
-        with self.assertRaisesRegex(exception.InvalidConfigurationValue,
-                                    ".*'nfs_oversub_ratio' invalid.*"):
-            nfs.NfsDriver(configuration=self.configuration)
-
-    def test_init_should_throw_error_if_used_ratio_less_than_zero(self):
-        """__init__ should throw error if nfs_used_ratio is less than 0."""
-
-        self.override_config('nfs_used_ratio', -1)
-
-        with self.assertRaisesRegex(exception.InvalidConfigurationValue,
-                                    ".*'nfs_used_ratio' invalid.*"):
-            nfs.NfsDriver(configuration=self.configuration)
-
-    def test_init_should_throw_error_if_used_ratio_greater_than_one(self):
-        """__init__ should throw error if nfs_used_ratio is greater than 1."""
-
-        self.override_config('nfs_used_ratio', 2)
-
-        with self.assertRaisesRegex(exception.InvalidConfigurationValue,
-                                    ".*'nfs_used_ratio' invalid.*"):
-            nfs.NfsDriver(configuration=self.configuration)
 
     def test_setup_should_throw_error_if_shares_config_not_configured(self):
         """do_setup should throw error if shares config is not configured."""

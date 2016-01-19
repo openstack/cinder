@@ -766,8 +766,6 @@ class TestZFSSANFSDriver(test.TestCase):
         self.configuration.zfssa_nfs_share_compression = nfs_compression
         self.configuration.zfssa_nfs_mount_options = ''
         self.configuration.zfssa_rest_timeout = '30'
-        self.configuration.nfs_oversub_ratio = 1
-        self.configuration.nfs_used_ratio = 1
         self.configuration.zfssa_enable_local_cache = True
         self.configuration.zfssa_cache_directory = zfssa_cache_dir
 

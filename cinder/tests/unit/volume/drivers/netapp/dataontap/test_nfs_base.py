@@ -41,8 +41,8 @@ class NetAppNfsDriverTestCase(test.TestCase):
         configuration = mock.Mock()
         configuration.reserved_percentage = 0
         configuration.nfs_mount_point_base = '/mnt/test'
-        configuration.nfs_used_ratio = 1.0
-        configuration.nfs_oversub_ratio = 1.1
+        configuration.reserved_percentage = 0
+        configuration.max_over_subscription_ratio = 1.1
 
         kwargs = {'configuration': configuration}
 
@@ -70,7 +70,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
         expected_free_capacity_gb = (na_utils.round_down(
             fake.AVAILABLE_BYTES / units.Gi, '0.01'))
         expected_reserved_percentage = round(
-            100 * (1 - self.driver.configuration.nfs_used_ratio))
+            self.driver.configuration.reserved_percentage)
 
         result = self.driver._get_share_capacity_info(fake.NFS_SHARE)
 
@@ -375,7 +375,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
                                return_value=(
                                    total_bytes, available_bytes)):
             with mock.patch.object(self.driver,
-                                   'over_subscription_ratio',
+                                   'max_over_subscription_ratio',
                                    over):
                 with mock.patch.object(self.driver,
                                        'reserved_percentage',
@@ -404,7 +404,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
         mock_get_capacity.return_value = (total_bytes, available_bytes)
 
         with mock.patch.object(self.driver,
-                               'over_subscription_ratio',
+                               'max_over_subscription_ratio',
                                over):
             with mock.patch.object(self.driver,
                                    'reserved_percentage',

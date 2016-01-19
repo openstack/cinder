@@ -348,8 +348,6 @@ class TestNexentaNfsDriver(test.TestCase):
         self.cfg.nexenta_nms_cache_volroot = False
         self.cfg.nfs_mount_attempts = 3
         self.cfg.reserved_percentage = 20
-        self.cfg.nfs_used_ratio = .95
-        self.cfg.nfs_oversub_ratio = 1.0
         self.cfg.max_over_subscription_ratio = 20.0
         self.nms_mock = mock.Mock()
         for mod in ('appliance', 'folder', 'server', 'volume', 'netstorsvc',

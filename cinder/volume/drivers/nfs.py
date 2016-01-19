@@ -21,7 +21,6 @@ from os_brick.remotefs import remotefs as remotefs_brick
 from oslo_concurrency import processutils as putils
 from oslo_config import cfg
 from oslo_log import log as logging
-from oslo_log import versionutils
 from oslo_utils import units
 import six
 
@@ -32,12 +31,10 @@ from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers import remotefs
 
-VERSION = '1.3.0'
+VERSION = '1.3.1'
 
 LOG = logging.getLogger(__name__)
 
-NFS_USED_RATIO_DEFAULT = 0.95
-NFS_OVERSUB_RATIO_DEFAULT = 1.0
 
 nfs_opts = [
     cfg.StrOpt('nfs_shares_config',
@@ -48,23 +45,6 @@ nfs_opts = [
                 help=('Create volumes as sparsed files which take no space.'
                       'If set to False volume is created as regular file.'
                       'In such case volume creation takes a lot of time.')),
-    # TODO(tbarron): remove nfs_used_ratio in the Mitaka release.
-    cfg.FloatOpt('nfs_used_ratio',
-                 default=NFS_USED_RATIO_DEFAULT,
-                 help=('Percent of ACTUAL usage of the underlying volume '
-                       'before no new volumes can be allocated to the volume '
-                       'destination. Note that this option is deprecated '
-                       'in favor of "reserved_percentage" and will be removed '
-                       'in the Mitaka release.')),
-    # TODO(tbarron): remove nfs_oversub_ratio in the Mitaka release.
-    cfg.FloatOpt('nfs_oversub_ratio',
-                 default=NFS_OVERSUB_RATIO_DEFAULT,
-                 help=('This will compare the allocated to available space on '
-                       'the volume destination.  If the ratio exceeds this '
-                       'number, the destination will no longer be valid. '
-                       'Note that this option is deprecated in favor of '
-                       '"max_over_subscription_ratio" and will be removed '
-                       'in the Mitaka release.')),
     cfg.StrOpt('nfs_mount_point_base',
                default='$state_path/mnt',
                help=('Base dir containing mount points for NFS shares.')),
@@ -121,8 +101,9 @@ class NfsDriver(driver.ExtendVD, remotefs.RemoteFSDriver):
             nfs_mount_options=opts)
 
         self._sparse_copy_volume_data = True
-        self.reserved_percentage = self._get_reserved_percentage()
-        self.over_subscription_ratio = self._get_over_subscription_ratio()
+        self.reserved_percentage = self.configuration.reserved_percentage
+        self.max_over_subscription_ratio = (
+            self.configuration.max_over_subscription_ratio)
 
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
@@ -227,10 +208,10 @@ class NfsDriver(driver.ExtendVD, remotefs.RemoteFSDriver):
         """Verifies NFS share is eligible to host volume with given size.
 
         First validation step: ratio of actual space (used_space / total_space)
-        is less than 'nfs_used_ratio'. Second validation step: apparent space
+        is less than used_ratio. Second validation step: apparent space
         allocated (differs from actual space used when using sparse files)
         and compares the apparent available
-        space (total_available * nfs_oversub_ratio) to ensure enough space is
+        space (total_available * oversub_ratio) to ensure enough space is
         available for the new volume.
 
         :param nfs_share: NFS share
@@ -245,8 +226,7 @@ class NfsDriver(driver.ExtendVD, remotefs.RemoteFSDriver):
         # this requires either pool support for the generic NFS
         # driver or limiting each NFS backend driver to a single share.
 
-        # 'nfs_used_ratio' is deprecated, so derive used_ratio from
-        # reserved_percentage.
+        # derive used_ratio from reserved percentage
         if share_info is None:
             total_size, total_available, total_allocated = (
                 self._get_capacity_info(nfs_share))
@@ -257,10 +237,11 @@ class NfsDriver(driver.ExtendVD, remotefs.RemoteFSDriver):
         used_percentage = 100 - self.reserved_percentage
         used_ratio = used_percentage / 100.0
 
-        oversub_ratio = self.over_subscription_ratio
         requested_volume_size = volume_size_in_gib * units.Gi
 
-        apparent_size = max(0, share_info['total_size'] * oversub_ratio)
+        apparent_size = max(0, share_info['total_size'] *
+                            self.max_over_subscription_ratio)
+
         apparent_available = max(0, apparent_size -
                                  share_info['total_allocated'])
 
@@ -273,14 +254,18 @@ class NfsDriver(driver.ExtendVD, remotefs.RemoteFSDriver):
             # available space but be within our oversubscription limit
             # therefore allowing this share to still be selected as a valid
             # target.
-            LOG.debug('%s is above nfs_used_ratio', nfs_share)
+            LOG.debug('%s is not eligible - used ratio exceeded.',
+                      nfs_share)
             return False
         if apparent_available <= requested_volume_size:
-            LOG.debug('%s is above nfs_oversub_ratio', nfs_share)
+            LOG.debug('%s is not eligible - insufficient (apparent) available '
+                      'space.',
+                      nfs_share)
             return False
         if share_info['total_allocated'] / share_info['total_size'] >= (
-                oversub_ratio):
-            LOG.debug('%s reserved space is above nfs_oversub_ratio',
+                self.max_over_subscription_ratio):
+            LOG.debug('%s is not eligible - utilization exceeds max '
+                      'over subscription ratio.',
                       nfs_share)
             return False
         return True
@@ -449,52 +434,9 @@ class NfsDriver(driver.ExtendVD, remotefs.RemoteFSDriver):
             provisioned_capacity = round(global_capacity - global_free, 2)
 
         data['provisioned_capacity_gb'] = provisioned_capacity
-        data['max_over_subscription_ratio'] = self.over_subscription_ratio
+        data['max_over_subscription_ratio'] = self.max_over_subscription_ratio
         data['reserved_percentage'] = self.reserved_percentage
         data['thin_provisioning_support'] = thin_enabled
         data['thick_provisioning_support'] = not thin_enabled
 
         self._stats = data
-
-    def _get_over_subscription_ratio(self):
-        legacy_oversub_ratio = self.configuration.nfs_oversub_ratio
-        if legacy_oversub_ratio == NFS_OVERSUB_RATIO_DEFAULT:
-            return self.configuration.max_over_subscription_ratio
-
-        # Honor legacy option if its value is not the default.
-        msg = _LW("The option 'nfs_oversub_ratio' is deprecated and will "
-                  "be removed in the Mitaka release.  Please set "
-                  "'max_over_subscription_ratio = %s' instead.") % (
-                      self.configuration.nfs_oversub_ratio)
-        versionutils.report_deprecated_feature(LOG, msg)
-
-        if not self.configuration.nfs_oversub_ratio > 0:
-            msg = _("NFS config 'nfs_oversub_ratio' invalid.  Must be > 0: "
-                    "%s.") % self.configuration.nfs_oversub_ratio
-            LOG.error(msg)
-            raise exception.InvalidConfigurationValue(msg)
-
-        return legacy_oversub_ratio
-
-    def _get_reserved_percentage(self):
-        legacy_used_ratio = self.configuration.nfs_used_ratio
-        legacy_reserved_ratio = 1 - legacy_used_ratio
-        legacy_percentage = legacy_reserved_ratio * 100
-        if legacy_used_ratio == NFS_USED_RATIO_DEFAULT:
-            return self.configuration.reserved_percentage
-
-        # Honor legacy option if its value is not the default.
-        msg = _LW("The option 'nfs_used_ratio' is deprecated and will "
-                  "be removed in the Mitaka release.  Please set "
-                  "'reserved_percentage = %d' instead.") % (
-                      legacy_percentage)
-        versionutils.report_deprecated_feature(LOG, msg)
-
-        if not ((self.configuration.nfs_used_ratio > 0) and
-                (self.configuration.nfs_used_ratio <= 1)):
-            msg = _("NFS config 'nfs_used_ratio' invalid.  Must be > 0 "
-                    "and <= 1.0: %s.") % self.configuration.nfs_used_ratio
-            LOG.error(msg)
-            raise exception.InvalidConfigurationValue(msg)
-
-        return legacy_percentage

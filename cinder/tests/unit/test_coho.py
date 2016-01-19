@@ -100,8 +100,6 @@ class CohoDriverTest(test.TestCase):
         self.configuration.nas_ip = None
         self.configuration.nas_share_path = None
         self.configuration.nas_mount_options = None
-        self.configuration.nfs_used_ratio = .95
-        self.configuration.nfs_oversub_ratio = 1.0
 
     def test_setup_failure_when_rpc_port_unconfigured(self):
         self.configuration.coho_rpc_port = None

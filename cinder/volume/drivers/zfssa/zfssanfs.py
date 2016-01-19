@@ -92,16 +92,9 @@ class ZFSSANFSDriver(nfs.NfsDriver):
         self._stats = None
 
     def do_setup(self, context):
-        if not self.configuration.nfs_oversub_ratio > 0:
-            msg = _("NFS config 'nfs_oversub_ratio' invalid. Must be > 0: "
-                    "%s") % self.configuration.nfs_oversub_ratio
-            LOG.error(msg)
-            raise exception.NfsException(msg)
-
-        if ((not self.configuration.nfs_used_ratio > 0) and
-                (self.configuration.nfs_used_ratio <= 1)):
-            msg = _("NFS config 'nfs_used_ratio' invalid. Must be > 0 "
-                    "and <= 1.0: %s") % self.configuration.nfs_used_ratio
+        if not self.configuration.max_over_subscription_ratio > 0:
+            msg = _("Config 'max_over_subscription_ratio' invalid. Must be > "
+                    "0: %s") % self.configuration.max_over_subscription_ratio
             LOG.error(msg)
             raise exception.NfsException(msg)
 
@@ -551,8 +544,10 @@ class ZFSSANFSDriver(nfs.NfsDriver):
         data['QoS_support'] = False
         data['reserved_percentage'] = 0
 
-        if ratio_used > self.configuration.nfs_used_ratio or \
-           ratio_used >= self.configuration.nfs_oversub_ratio:
+        used_percentage_limit = 100 - self.configuration.reserved_percentage
+        used_ratio_limit = used_percentage_limit / 100.0
+        if (ratio_used > used_ratio_limit or
+                ratio_used >= self.configuration.max_over_subscription_ratio):
             data['reserved_percentage'] = 100
 
         data['total_capacity_gb'] = float(capacity) / units.Gi
