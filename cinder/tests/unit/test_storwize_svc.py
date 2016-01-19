@@ -2089,6 +2089,13 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
         self.iscsi_driver.terminate_connection(volume, conn2)
         self.iscsi_driver.terminate_connection(volume, self._connector)
 
+    def test_add_vdisk_copy_iscsi(self):
+        # Ensure only iSCSI is available
+        self.iscsi_driver._state['enabled_protocols'] = set(['iSCSI'])
+        volume = self._generate_vol_info(None, None)
+        self.iscsi_driver.create_volume(volume)
+        self.iscsi_driver.add_vdisk_copy(volume['name'], 'fake-pool', None)
+
 
 class StorwizeSVCFcDriverTestCase(test.TestCase):
     @mock.patch.object(time, 'sleep')
@@ -2495,6 +2502,13 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
         self.fc_driver.terminate_connection(volume, conn2)
         self.fc_driver.terminate_connection(volume, self._connector)
 
+    def test_add_vdisk_copy_fc(self):
+        # Ensure only FC is available
+        self.fc_driver._state['enabled_protocols'] = set(['FC'])
+        volume = self._generate_vol_info(None, None)
+        self.fc_driver.create_volume(volume)
+        self.fc_driver.add_vdisk_copy(volume['name'], 'fake-pool', None)
+
 
 class StorwizeSVCCommonDriverTestCase(test.TestCase):
     @mock.patch.object(time, 'sleep')
@@ -2717,7 +2731,6 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                'grainsize': 256,
                'compression': False,
                'easytier': True,
-               'protocol': 'iSCSI',
                'iogrp': 0,
                'qos': None,
                'replication': False,
