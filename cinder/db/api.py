@@ -167,11 +167,6 @@ def volume_data_get_for_project(context, project_id):
     return IMPL.volume_data_get_for_project(context, project_id)
 
 
-def finish_volume_migration(context, src_vol_id, dest_vol_id):
-    """Perform database updates upon completion of volume migration."""
-    return IMPL.finish_volume_migration(context, src_vol_id, dest_vol_id)
-
-
 def volume_destroy(context, volume_id):
     """Destroy the volume or raise if it does not exist."""
     return IMPL.volume_destroy(context, volume_id)

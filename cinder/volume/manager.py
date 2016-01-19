@@ -1794,11 +1794,12 @@ class VolumeManager(manager.SchedulerDependentManager):
         # the current host and driver object is for the "existing" volume.
         rpcapi.update_migrated_volume(ctxt, volume, new_volume,
                                       orig_volume_status)
+        volume.refresh()
+        new_volume.refresh()
 
         # Swap src and dest DB records so we can continue using the src id and
         # asynchronously delete the destination id
-        __, updated_new = self.db.finish_volume_migration(
-            ctxt, volume.id, new_volume.id)
+        updated_new = volume.finish_volume_migration(new_volume)
         updates = {'status': orig_volume_status,
                    'previous_status': volume.status,
                    'migration_status': 'success'}
@@ -1834,7 +1835,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         if volume is None:
             # For older clients, mimic the old behavior and look up the volume
             # by its volume_id.
-            volume = objects.Volume.get_by_id(context, volume_id)
+            volume = objects.Volume.get_by_id(ctxt, volume_id)
 
         try:
             # NOTE(flaper87): Verify the driver is enabled
