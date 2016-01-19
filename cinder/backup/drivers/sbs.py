@@ -12,7 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 # Copyright (c) 2016 Reliance JIO Corporation
-# Copyright (c) 2016 Shishir Gowda <shishir.gowda@ril.com>
+# Copyright (c) 2016 Shishir Gowda <TODO.gowda@ril.com>
 # Most of this work is directly derived from ceph, swift and chunked drivers
 """Ceph Backup Service Implementation.
 
@@ -67,7 +67,7 @@ service_opts = [
                help='Access key for S3 store.'),
     cfg.StrOpt('sbs_secret_key', default='',
                help='Secrete key for S3 store.'),
-    cfg.StrOpt('sbs_container', default='backup-shishir',
+    cfg.StrOpt('sbs_container', default='backup-TODO',
                help='Bucket in S3 store to save backups.'),
     cfg.StrOpt('sbs_region', default='us-west-2',
                help='Region where the buckets are'),
@@ -219,18 +219,17 @@ class SBSBackupDriver(driver.BackupDriver):
               before the base volume can be deleted.
         """
         snaps = rbd_image.list_snaps()
-
+        #first search for base snaps: multiple if restored volume
         backup_snaps = []
-	for snap in snaps:
-	    base_name_pattern = cls.backup_base_name_pattern()
-	    result = re.search(base_name_pattern, snap['name'])
-	    if result:
-		backup_snaps.append({'name':result.group(0),
-				     'backup_id':result.group(1),
-				     'timestamp': '0'})
-		break
+        for snap in snaps:
+            base_name_pattern = cls.backup_base_name_pattern()
+            result = re.search(base_name_pattern, snap['name'])
+            if result:
+            backup_snaps.append({'name':result.group(0),
+                         'backup_id':result.group(1),
+                         'timestamp': '0'})
 
-
+        #find the remaining backups
         for snap in snaps:
             search_key = cls.backup_snapshot_name_pattern()
             result = re.search(search_key, snap['name'])
@@ -244,7 +243,9 @@ class SBSBackupDriver(driver.BackupDriver):
             backup_snaps.sort(key=lambda x: x['timestamp'], reverse=True)
 
         return backup_snaps
-
+    
+    #TODO: fix this to only return most_recent backup taken for same volume
+    #If restored volume, latest might defer
     def _get_most_recent_snap(self, rbd_image):
         """Get the most recent backup snapshot of the provided image.
 
@@ -258,12 +259,25 @@ class SBSBackupDriver(driver.BackupDriver):
         return backup_snaps[0]['name']
 
     #First snap created is the base
-    def _lookup_base(self, rbd_image):
+    def _lookup_base(self, rbd_image, volume_id):
         backup_snaps = self.get_backup_snaps(rbd_image, sort=False)
         if not backup_snaps:
             return None
         backup_snaps.sort(key=lambda x: x['timestamp'], reverse=False)
-        return backup_snaps[0]['name']
+        found_base = False
+        length = len(backup_snaps)
+        #Find the actual base. If we are taking backup of restored volumes
+        #then we will have multiple volume-id.base.snap. Match id to current
+        # volume id
+        for i in range(length):
+            if backup_snaps[i]['backup_id'] == volume_id:
+                found_base = True
+		break
+
+        if found_base:
+            return backup_snaps[i]['name']
+        else:
+            return None
 
     #returns a handle to snap with key_name = snap_name
     def _get_snap_handle_from_DSS(self, bucket, key_name):
@@ -275,7 +289,7 @@ class SBSBackupDriver(driver.BackupDriver):
             Log.warn("Failed to get handle for snap %s" % key_name)
         return key
 
-    #Check if base and/or snapshot
+    #Check if base and/or snapshot exists in DSS
     def _snap_exists(self, base_name, snap_name):
         conn = self._connect_to_DSS()
         if conn != None:
@@ -353,7 +367,6 @@ class SBSBackupDriver(driver.BackupDriver):
 
         key.set_contents_from_filename(loc)
         os.remove(loc)
-        #shishir: boto to upload the file from loc
         return
 
     """
@@ -375,19 +388,20 @@ class SBSBackupDriver(driver.BackupDriver):
         rbd_conf = volume_file.rbd_conf
         source_rbd_image = volume_file.rbd_image
         # Check if base image exists in dest
-        found_base_image = self._lookup_base(source_rbd_image)
+        found_base_image = self._lookup_base(source_rbd_image, volume_id)
         #If base image not found, create base image, might be 1st snap
         if not found_base_image:
             # since base image is missing, default to full snap.Cleanup too
             if from_snap:
                 LOG.debug("Source snapshot '%(snapshot)s' of volume "
-                          "%(volume)s is stale so deleting.",
+                          "%(volume)s is stale.",
                           {'snapshot': from_snap, 'volume': volume_id})
-                source_rbd_image.remove_snap(from_snap)
-                source_rbd_image.remove_snap(base_name)
+		        #do not delete snaps: backups of restored volumes
+                #source_rbd_image.remove_snap(from_snap)
+                #source_rbd_image.remove_snap(base_name)
                 from_snap = None
 
-            #shishir: update size
+            #TODO: update size
             #Create new base image and upload it, so from-snap also becomes base
             LOG.debug ("Creating base image %s for volume %s" % (base_name, volume_id))
             source_rbd_image.create_snap(base_name)
@@ -400,8 +414,8 @@ class SBSBackupDriver(driver.BackupDriver):
                        'id': volume_id,
                        'status': 'available',
                        'container': self._container,
-		       'host': backup_host,
-		       'service': 'cinder.backup.drivers.sbs',
+                       'host': backup_host,
+                       'service': 'cinder.backup.drivers.sbs',
                        'size': "2",
                       }
             backup = self.db.backup_create(self.context, options)
@@ -447,10 +461,6 @@ class SBSBackupDriver(driver.BackupDriver):
                                                        backup_service, from_snap)
 
         # Snapshot source volume so that we have a new point-in-time
-        #if backup['display_name']:
-        #    new_snap = backup['display_name']
-        #else:
-        #    time_stamp, new_snap = self._get_new_snap_name(backup_id)
         time_stamp, new_snap = self._get_new_snap_name(backup_id)
         LOG.debug("Creating backup %s", new_snap)
         source_rbd_image.create_snap(new_snap)
@@ -462,10 +472,11 @@ class SBSBackupDriver(driver.BackupDriver):
         # export diff now
         self._upload_to_DSS(new_snap, volume_name, ceph_args, from_snap)
 
-        #shishir: change volume_id to latest snap_id
+        #if from_snap is same as base, then parent is base
         if from_snap == base_name:
             par_id = volume_id
         else:
+            #extract out the id from the snap name
             search_key = SBSBackupDriver.backup_snapshot_name_pattern()
             result = re.search(search_key, from_snap)
             if result:
@@ -479,22 +490,17 @@ class SBSBackupDriver(driver.BackupDriver):
 
         self.db.backup_update(self.context, backup_id,
                               {'parent_id': par_id})
-        #ideally, we should be building snap name from backup id
-        # _get_rbd_image_name does this, but wrong timestamp
-        #self.db.backup_update(self.context, backup_id,
-        #                      {'display_name': new_snap})
         self.db.backup_update(self.context, backup_id,
                               {'container': self._container})
 
         # Remove older from-snap from src, as new snap will be "New" from-snap
         # Do this is from-snap is not same as base snap, as it will be the first
+        #currently we do not want to remove snaps to support out of order deletion
         #if from_snap != base_name:
-            #currently we do not want to remove snaps to support out of order
-            # deletion
         	#source_rbd_image.remove_snap(from_snap)
         #return
 
-    #shishir: Generate/update _container/bucket name and use that in DSS
+    #TODO: Generate/update _container/bucket name and use that in DSS
     def backup(self, backup, volume_file, backup_metadata=False):
         backup_id = backup['id']
         volume = self.db.volume_get(self.context,backup['volume_id'])
@@ -572,9 +578,10 @@ class SBSBackupDriver(driver.BackupDriver):
         # If the volume we are restoring to is the volume the backup was
         # made from, force a full restore since a diff will not work in
         # this case.
+
+        #TODO: handle restoring on same source volume
         if volume_id == backup_id:
-            LOG.debug("Destination volume is same as backup source volume "
-                      "%s - forcing full copy.", volume['id'])
+            LOG.debug("Destination volume is same as backup source volume")
             return False
 
         self._download_from_DSS(backup_name, volume_name, ceph_args) 
@@ -621,8 +628,7 @@ class SBSBackupDriver(driver.BackupDriver):
         return
 
     def _remove_from_DSS(self, backup):
-	snap_name = self._get_rbd_image_name(backup)
-        #snap_name = backup['display_name']
+        snap_name = self._get_rbd_image_name(backup)
         LOG.info("Deleting backups %s from container %s" % (snap_name, self._container))
 
         conn = self._connect_to_DSS()
@@ -714,7 +720,6 @@ class SBSBackupDriver(driver.BackupDriver):
             curr = latest_backup
 
         can_delete = True
-        #backups = self.get_all(context, {'parent_id': backup['id']})
         backup_list = []
 
         # if latest backup is not same, then check for dependencies,
