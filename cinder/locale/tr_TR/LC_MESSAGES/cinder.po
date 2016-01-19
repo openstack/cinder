@@ -1,22 +1,25 @@
-# Turkish (Turkey) translations for cinder.
-# Copyright (C) 2016 ORGANIZATION
+# Translations template for cinder.
+# Copyright (C) 2015 ORGANIZATION
 # This file is distributed under the same license as the cinder project.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2016.
 #
+# Translators:
+# Andreas Jaeger <jaegerandi@gmail.com>, 2015. #zanata
+# OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev238\n"
+"Project-Id-Version: cinder 8.0.0.0b2.dev281\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-01-09 06:44+0000\n"
+"POT-Creation-Date: 2016-01-17 23:35+0000\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
 "PO-Revision-Date: 2015-09-16 08:16+0000\n"
 "Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
-"Language: tr_TR\n"
+"Language: tr-TR\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"Generated-By: Babel 2.0\n"
+"X-Generator: Zanata 3.7.3\n"
 "Language-Team: Turkish (Turkey)\n"
-"Plural-Forms: nplurals=1; plural=0\n"
-"MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=utf-8\n"
-"Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.2.0\n"
 
 #, python-format
 msgid "\t%s"
@@ -1776,11 +1779,6 @@ msgid "Error deleting replay profile."
 msgstr "Yeniden oynatma profilinin silinmesinde hata."
 
 #, python-format
-msgid "Error deleting volume %(ssn)s: %(volume)s: %(code)d %(reason)s"
-msgstr ""
-"%(ssn)s mantıksal sürücüsü silme hatası: %(volume)s: %(code)d %(reason)s"
-
-#, python-format
 msgid "Error deleting volume %(vol)s: %(err)s."
 msgstr "%(vol)s mantıksal sürücüsünün silinmesinde hata: %(err)s."
 
@@ -2100,10 +2098,6 @@ msgid "Failed to add %(vol)s into %(sg)s after %(retries)s tries."
 msgstr ""
 "%(vol)s in %(sg)s e eklenmesi %(retries)s denemeden sonra başarısız oldu."
 
-#, python-format
-msgid "Failed to add igroup member: %(code)d, %(message)s"
-msgstr "Igroup üyesi eklenemedi: %(code)d, %(message)s"
-
 msgid "Failed to add the logical device."
 msgstr "Mantıksal aygıt ekleme başarısız."
 
@@ -2145,9 +2139,6 @@ msgstr "%s anlık sistem görüntüsünden mantıksal sürücü kopyalanamadı."
 #, python-format
 msgid "Failed to connect to %(vendor_name)s Array %(host)s: %(err)s"
 msgstr "%(vendor_name)s dizisine bağlantı başarısız %(host)s: %(err)s"
-
-msgid "Failed to connect to Enterprise Manager"
-msgstr "Kurumsal Yöneticiye bağlanamadı"
 
 msgid "Failed to connect to array"
 msgstr "Diziye bağlanma başarısız"
@@ -3070,17 +3061,8 @@ msgstr ""
 msgid "GPFS is not running, state: %s."
 msgstr "GPFS çalışmıyor, durum: %s."
 
-msgid "Gateway MG-A IP option 'gateway_mga' is not set"
-msgstr "Geçit MG-A IP seçeneği 'gateway_mga' ayarlanmamış"
-
-msgid "Gateway MG-B IP option 'gateway_mgb' is not set"
-msgstr "Geçit MG-B IP seçeneği 'gateway_mgb' ayarlanmamış"
-
 msgid "Gateway VIP is not set"
 msgstr "Geçit VIP ayarlanmamış"
-
-msgid "Gateway VIP option 'san_ip' is not set"
-msgstr "Geçit VIP seçeneği 'san_ip' ayarlanmamış"
 
 #, python-format
 msgid ""
@@ -3095,9 +3077,6 @@ msgid "Glance metadata for volume/snapshot %(id)s cannot be found."
 msgstr ""
 "Mantıksal sürücü/anlık sistem görüntüsü %(id)s için glance metadata "
 "bulunamaz."
-
-msgid "Global timeout option 'request_timeout' must be greater than 0"
-msgstr "Genel zaman aşımı seçeneği 'request_timeout' 0'dan büyük olmalı"
 
 #, python-format
 msgid "Gluster config file at %(config)s doesn't exist"
@@ -3287,13 +3266,6 @@ msgstr "Geçersiz CgSnapshot: %(reason)s"
 msgid "Invalid ConsistencyGroup: %(reason)s"
 msgstr "Geçersiz TutarlılıkGrubu: %(reason)s"
 
-msgid ""
-"Invalid ConsistencyGroup: Consistency group status must be available or "
-"error, but current status is: invalid"
-msgstr ""
-"Geçersiz TutarlılıkGrubu: Tutarlılık grubu durumu kullanılabilir ya da hata "
-"olmalıdır ancak mevcut durum: geçersiz"
-
 #, python-format
 msgid ""
 "Invalid ConsistencyGroup: Consistency group status must be available, but "
@@ -3447,14 +3419,6 @@ msgstr "Retype için geçersiz yeni snapCPG ismi.  new_snap_cpg='%s'."
 #, python-format
 msgid "Invalid qos specs: %(reason)s"
 msgstr "Geçersiz qos özellikleri: %(reason)s"
-
-#, python-format
-msgid ""
-"Invalid request to attach volume to an instance %(instance_uuid)s and a host "
-"%(host_name)s simultaneously"
-msgstr ""
-"Aynı anda bir sunucu %(instance_uuid)s ve istemciye %(host_name)s mantıksal "
-"sürücü ekleme isteği geçersiz"
 
 msgid "Invalid request to attach volume to an invalid target"
 msgstr "Geçersiz bir hedefe geçersiz mantıksal sürücü ekleme isteği"
@@ -5835,9 +5799,6 @@ msgstr "V2 rollback, mantıksal sürücü herhangi bir depolama grubunda değil.
 msgid "V3 rollback"
 msgstr "V3 geridönüş"
 
-msgid "VMOS version is not supported"
-msgstr "VMOS sürümü desteklenmiyor"
-
 #, python-format
 msgid "VV Set %s does not exist."
 msgstr "VV Kümesi %s mevcut değil."
@@ -6543,9 +6504,6 @@ msgstr "check_for_setup_error: dinleyen iSCSI trafiği yok."
 msgid "clone depth exceeds limit of %s"
 msgstr "çoğaltma derinliği %s sınırını aşıyor"
 
-msgid "container is missing"
-msgstr "kap eksik"
-
 msgid "control_location must be defined"
 msgstr "control_location tanımlanmalıdır"
 
@@ -6823,9 +6781,6 @@ msgstr ""
 "http servisi bu işlemin ortasında ansızın kapatılmış ya da bakım durumuna "
 "alınmış olabilir."
 
-msgid "iSCSI is not enabled"
-msgstr "iSCSI etkin değil"
-
 msgid "id cannot be None"
 msgstr "id Hiçbiri olamaz"
 
@@ -6927,12 +6882,6 @@ msgstr "ad Hiçbiri olamaz"
 msgid "naviseccli_path: Could not find NAVISECCLI tool %(path)s."
 msgstr "naviseccli_path: NAVISECCLI araç %(path)s bulunamadı."
 
-msgid "no available iSCSI IPs on mga"
-msgstr "mga'da kullanılabilir iSCSI IP'si yok"
-
-msgid "no available iSCSI IPs on mgb"
-msgstr "mgb'de kullanılabilir İSCSI IP'si yok"
-
 #, python-format
 msgid "no snapshot with id %s found in drbdmanage"
 msgstr "drbdmanage içinde %s anlık sistem görüntüsü bulunamadı"
@@ -6966,9 +6915,6 @@ msgstr "promote_replica uygulanmadı."
 
 msgid "provider must be defined"
 msgstr "sağlayıcı tanımlanmalıdır"
-
-msgid "provisioned space threshold is not equal to usable space."
-msgstr "hazırlanan alan eşiği kullanılabilir alana eşit değil."
 
 #, python-format
 msgid ""
@@ -7094,12 +7040,6 @@ msgstr "kaynak mantıksal sürücü kimliği:%s bulunamadı"
 #, python-format
 msgid "source volume id:%s is not replicated"
 msgstr "kaynak mantıksal sürücü kimliği:%s çoğaltılmamıştır"
-
-msgid ""
-"space reclamation threshold is enabled but not supported by Cinder "
-"infrastructure."
-msgstr ""
-"alan geri alma eşiği etkin ama Cinder altyapısı tarafından desteklenmiyor."
 
 msgid "status must be available"
 msgstr "durum kullanılabilir olmalıdır"
