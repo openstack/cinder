@@ -138,7 +138,12 @@ class SBSBackupDriver(driver.BackupDriver):
 
     #Returns rbd images name as: backup.<backup_id>.snap.time_stamp
     def _get_rbd_image_name(self, backup):
-        rbd_image_name =  encodeutils.safe_encode("backup.%s.snap.%s" %
+	#if base image, then volume id == backup id
+	if backup['id'] == backup['volume_id']:
+	    rbd_image_name = encodeutils.safe_encode("volume-%s.backup.base"
+							 % backup['id'])
+	else:
+            rbd_image_name =  encodeutils.safe_encode("backup.%s.snap.%s" %
                                                  (backup['id'], backup['time_stamp']))
         LOG.debug("rbd image name: %s", rbd_image_name)
         return rbd_image_name
@@ -152,6 +157,15 @@ class SBSBackupDriver(driver.BackupDriver):
         do not have this name format.
         """
         return r"^backup\.([a-z0-9\-]+?)\.snap\.(.+)$"
+
+    @staticmethod
+    def backup_base_name_pattern():
+        """Returns the pattern used to match base of backup.
+
+        It is essential that snapshots created for purposes other than backups
+        do not have this name format.
+        """
+        return r"^volume-([a-z0-9\-]+?)\.backup\.base$"
 
     #Returns snap name as: backup.<backup_id>.snap.<%0.2f time_stamp>
     def _get_new_snap_name(self, backup_id):
@@ -207,6 +221,16 @@ class SBSBackupDriver(driver.BackupDriver):
         snaps = rbd_image.list_snaps()
 
         backup_snaps = []
+	for snap in snaps:
+	    base_name_pattern = cls.backup_base_name_pattern()
+	    result = re.search(base_name_pattern, snap['name'])
+	    if result:
+		backup_snaps.append({'name':result.group(0),
+				     'backup_id':result.group(1),
+				     'timestamp': '0'})
+		break
+
+
         for snap in snaps:
             search_key = cls.backup_snapshot_name_pattern()
             result = re.search(search_key, snap['name'])
@@ -242,12 +266,12 @@ class SBSBackupDriver(driver.BackupDriver):
         return backup_snaps[0]['name']
 
     #returns a handle to snap with key_name = snap_name
-    def _get_snap_handle_from_DSS(bucket, key_name):
-        if (bucket == None) or (snap_name == None):
+    def _get_snap_handle_from_DSS(self, bucket, key_name):
+        if (bucket == None) or (key_name == None):
             return
         try:
             key = bucket.get_key(key_name)
-        except Exception e:
+        except Exception as e:
             Log.warn("Failed to get handle for snap %s" % key_name)
         return key
 
@@ -273,7 +297,7 @@ class SBSBackupDriver(driver.BackupDriver):
             conn = boto.s3.connect_to_region(self._region,aws_access_key_id=self._access_key,
                                              aws_secret_access_key=self._secret_key,
                                              calling_format = boto.s3.connection.OrdinaryCallingFormat(),)
-        except Exception e:
+        except Exception as e:
             LOG.warn("Exception getting connection to object store")
             return None
         return conn
@@ -283,9 +307,9 @@ class SBSBackupDriver(driver.BackupDriver):
         backup_bucket = None
         if (conn != None) and (bucket_name != None):
             try:
-                backup_bucket = conn.create_bucket(bucket_name)
-            except Exception e:
-                LOG.warn("Exception creating/getting bucket %s" % bucket_name)
+                backup_bucket = conn.get_bucket(bucket_name)
+            except Exception as e:
+                LOG.warn("Exception getting bucket %s" % bucket_name)
                 return None
         return backup_bucket
 
@@ -517,13 +541,13 @@ class SBSBackupDriver(driver.BackupDriver):
 
         if bucket == None:
             return
-        key = _get_snap_handle_from_DSS(bucket, snap_name)
+        key = self._get_snap_handle_from_DSS(bucket, snap_name)
         if key == None:
             return
 
         try:
             key.get_contents_to_filename(loc)
-        except Exception e:
+        except Exception as e:
             LOG.warn("Failed to get contents of backup %s from object store" % snap_name)
             return
         cmd = ['rbd', 'import-diff'] + ceph_args
@@ -608,7 +632,7 @@ class SBSBackupDriver(driver.BackupDriver):
         if bucket != None:
             try:
                 bucket.delete_key(snap_name)
-            except Exception e:
+            except Exception as e:
                 Log.warn("Failed to delete backup %s from object store" % snap_name)
 
         return
