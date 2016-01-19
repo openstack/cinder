@@ -43,7 +43,7 @@ NEXENTA_EDGE_OPTS = [
                default='',
                help='NexentaEdge iSCSI Gateway client '
                'address for non-VIP service'),
-    cfg.StrOpt('nexenta_chunksize',
+    cfg.IntOpt('nexenta_chunksize',
                default=16384,
                help='NexentaEdge iSCSI LUN object chunk size')
 ]
@@ -119,7 +119,7 @@ NEXENTA_DATASET_OPTS = [
     cfg.StrOpt('nexenta_dataset_description',
                default='',
                help='Human-readable description for the folder.'),
-    cfg.StrOpt('nexenta_blocksize',
+    cfg.IntOpt('nexenta_blocksize',
                default=4096,
                help='Block size for datasets'),
     cfg.IntOpt('nexenta_ns5_blocksize',
