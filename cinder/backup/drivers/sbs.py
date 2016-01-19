@@ -642,11 +642,15 @@ class SBSBackupDriver(driver.BackupDriver):
         backup_name = self._get_rbd_image_name(backup)
         LOG.info("Deleting backups %s from src pool" % (backup_name))
         with rbd_driver.RADOSClient(self, self._ceph_backup_pool) as client:
-            backup_rbd = self.rbd.Image(client.ioctx, volume_name, read_only=False)
+	    backup_rbd = None
             try:
+                backup_rbd = self.rbd.Image(client.ioctx, volume_name, read_only=False)
                 backup_rbd.remove_snap(backup_name)
+	    except self.rbd.ImageNotFound:
+                LOG.info(_LI("volume %s no longer exists in backend") % volume_name)
             finally:
-                backup_rbd.close()
+		if backup_rbd != None:
+                    backup_rbd.close()
         return
 
     def _delete_backups(self, backup_list):
