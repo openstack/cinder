@@ -103,20 +103,6 @@ To run the `ToPrimitiveTestCase.test_dict` test method in
     ./run_tests.sh test_utils.ToPrimitiveTestCase.test_dict
 
 
-Suppressing logging output when tests fail
-------------------------------------------
-
-By default, when one or more unit test fails, all of the data sent to the
-logger during the failed tests will appear on standard output, which typically
-consists of many lines of texts. The logging output can make it difficult to
-identify which specific tests have failed, unless your terminal has a large
-scrollback buffer or you have redirected output to a file.
-
-You can suppress the logging output by calling ``run_tests.sh`` with the nose
-flag::
-
-    --nologcapture
-
 Virtualenv
 ----------
 
