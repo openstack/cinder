@@ -202,6 +202,7 @@ class API(base.Base):
                         'incremental backup.')
                 raise exception.InvalidBackup(reason=msg)
 
+        orig_status = volume['status']
         self.db.volume_update(context, volume_id, {'status': 'backing-up'})
         options = {'user_id': context.user_id,
                    'project_id': context.project_id,
@@ -229,7 +230,8 @@ class API(base.Base):
         self.backup_rpcapi.create_backup(context,
                                          backup['host'],
                                          backup['id'],
-                                         volume_id)
+                                         volume_id,
+                                         orig_status)
 
         return backup
 

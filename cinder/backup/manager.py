@@ -240,7 +240,7 @@ class BackupManager(manager.SchedulerDependentManager):
                 LOG.info(_LI('Resuming delete on backup: %s.'), backup['id'])
                 self.delete_backup(ctxt, backup['id'])
 
-    def create_backup(self, context, backup_id):
+    def create_backup(self, context, backup_id, orig_status='available'):
         """Create volume backups using configured backup service."""
         backup = self.db.backup_get(context, backup_id)
         volume_id = backup['volume_id']
@@ -277,7 +277,7 @@ class BackupManager(manager.SchedulerDependentManager):
                 'expected_status': expected_status,
                 'actual_status': actual_status,
             }
-            self.db.volume_update(context, volume_id, {'status': 'available'})
+            self.db.volume_update(context, volume_id, {'status': orig_status})
             self.db.backup_update(context, backup_id, {'status': 'error',
                                                        'fail_reason': err})
             raise exception.InvalidBackup(reason=err)
@@ -295,12 +295,12 @@ class BackupManager(manager.SchedulerDependentManager):
         except Exception as err:
             with excutils.save_and_reraise_exception():
                 self.db.volume_update(context, volume_id,
-                                      {'status': 'available'})
+                                      {'status': orig_status})
                 self.db.backup_update(context, backup_id,
                                       {'status': 'error',
                                        'fail_reason': six.text_type(err)})
 
-        self.db.volume_update(context, volume_id, {'status': 'available'})
+        self.db.volume_update(context, volume_id, {'status': orig_status})
         backup = self.db.backup_update(context, backup_id,
                                        {'status': 'available',
                                         'size': volume['size'],

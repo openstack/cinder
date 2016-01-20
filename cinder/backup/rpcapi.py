@@ -46,10 +46,11 @@ class BackupAPI(object):
                                   version=self.BASE_RPC_API_VERSION)
         self.client = rpc.get_client(target, '1.0')
 
-    def create_backup(self, ctxt, host, backup_id, volume_id):
+    def create_backup(self, ctxt, host, backup_id, volume_id, orig_status):
         LOG.debug("create_backup in rpcapi backup_id %s", backup_id)
         cctxt = self.client.prepare(server=host)
-        cctxt.cast(ctxt, 'create_backup', backup_id=backup_id)
+        cctxt.cast(ctxt, 'create_backup', backup_id=backup_id,
+                   orig_status=orig_status)
 
     def restore_backup(self, ctxt, host, backup_id, volume_id):
         LOG.debug("restore_backup in rpcapi backup_id %s", backup_id)
