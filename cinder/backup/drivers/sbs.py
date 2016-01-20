@@ -244,9 +244,9 @@ class SBSBackupDriver(driver.BackupDriver):
 
         return backup_snaps
     
-    #TODO: fix this to only return most_recent backup taken for same volume
+    #return most_recent backup taken for same volume
     #If restored volume, latest might defer
-    def _get_most_recent_snap(self, rbd_image):
+    def _get_most_recent_snap(self, rbd_image, volume_id):
         """Get the most recent backup snapshot of the provided image.
 
         Returns name of most recent backup snapshot or None if there are no
@@ -255,8 +255,22 @@ class SBSBackupDriver(driver.BackupDriver):
         backup_snaps = self.get_backup_snaps(rbd_image, sort=True)
         if not backup_snaps:
             return None
+        num_snaps = len(backup_snaps)
 
-        return backup_snaps[0]['name']
+        #get backup info from db. If does not exist, do not use it as from_snap
+        # if exists, but volume is different, then it is part of restored op
+        # Do not use the above too. 
+        for i in range(num_snaps):
+            backup = self.db.backup_get(self.context,backup_snaps[i]['backup_id']
+            if backup == None:
+                del backup_snaps[i]
+            elif backup['volume_id'] != volume_id:
+                del backup_snaps[i]
+        #if all of the snaps are either deleted or not part of same volume, return none
+        if len(backup_snapsleast) == 0:
+            return None
+        else
+            return backup_snaps[0]['name']
 
     #First snap created is the base
     def _lookup_base(self, rbd_image, volume_id):
@@ -272,7 +286,7 @@ class SBSBackupDriver(driver.BackupDriver):
         for i in range(length):
             if backup_snaps[i]['backup_id'] == volume_id:
                 found_base = True
-		break
+                break
 
         if found_base:
             return backup_snaps[i]['name']
@@ -291,13 +305,24 @@ class SBSBackupDriver(driver.BackupDriver):
 
     #Check if base and/or snapshot exists in DSS
     def _snap_exists(self, base_name, snap_name):
+        if base_name == None:
+            return False
+
         conn = self._connect_to_DSS()
         if conn != None:
             bucket = self._get_bucket(conn, self._container)
-        if (base_name != None) and (bucket != None):
+        else:
+            return False
+
+        if bucket != None:
             key_base = self._get_snap_handle_from_DSS(bucket, base_name)
             if key_base == None:
                 return False
+        else:
+            return False
+
+        if base_name == snap_name:
+            return True
 
         if snap_name:
             key_snap = self._get_snap_handle_from_DSS(bucket, snap_name)
@@ -450,7 +475,7 @@ class SBSBackupDriver(driver.BackupDriver):
         volume_name = volume['name']
 
         # Identify our --from-snap point (if one exists)
-        from_snap = self._get_most_recent_snap(source_rbd_image)
+        from_snap = self._get_most_recent_snap(source_rbd_image, volume_id)
         base_name = self._get_backup_base_name(volume_id, diff_format=True)
         ceph_args = self._ceph_args(rbd_user, rbd_conf, pool=rbd_pool)
 
