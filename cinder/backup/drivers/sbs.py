@@ -12,7 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 # Copyright (c) 2016 Reliance JIO Corporation
-# Copyright (c) 2016 Shishir Gowda <TODO.gowda@ril.com>
+# Copyright (c) 2016 Shishir Gowda <shishir.gowda@ril.com>
 # Most of this work is directly derived from ceph, swift and chunked drivers
 """Ceph Backup Service Implementation.
 
@@ -67,7 +67,7 @@ service_opts = [
                help='Access key for S3 store.'),
     cfg.StrOpt('sbs_secret_key', default='',
                help='Secrete key for S3 store.'),
-    cfg.StrOpt('sbs_container', default='backup-TODO',
+    cfg.StrOpt('sbs_container', default='backup-shishir',
                help='Bucket in S3 store to save backups.'),
     cfg.StrOpt('sbs_region', default='us-west-2',
                help='Region where the buckets are'),
@@ -225,7 +225,7 @@ class SBSBackupDriver(driver.BackupDriver):
             base_name_pattern = cls.backup_base_name_pattern()
             result = re.search(base_name_pattern, snap['name'])
             if result:
-            backup_snaps.append({'name':result.group(0),
+                backup_snaps.append({'name':result.group(0),
                          'backup_id':result.group(1),
                          'timestamp': '0'})
 
@@ -260,17 +260,17 @@ class SBSBackupDriver(driver.BackupDriver):
         #get backup info from db. If does not exist, do not use it as from_snap
         # if exists, but volume is different, then it is part of restored op
         # Do not use the above too. 
+	tmp_list = []
         for i in range(num_snaps):
-            backup = self.db.backup_get(self.context,backup_snaps[i]['backup_id']
-            if backup == None:
-                del backup_snaps[i]
-            elif backup['volume_id'] != volume_id:
-                del backup_snaps[i]
+            backup = self.db.backup_get(self.context,backup_snaps[i]['backup_id'])
+            if (backup != None) and (backup['volume_id'] == volume_id):
+		tmp_list.append(backup_snaps[i])
+
         #if all of the snaps are either deleted or not part of same volume, return none
-        if len(backup_snapsleast) == 0:
+        if len(tmp_list) == 0:
             return None
-        else
-            return backup_snaps[0]['name']
+        else:
+            return tmp_list[0]['name']
 
     #First snap created is the base
     def _lookup_base(self, rbd_image, volume_id):
