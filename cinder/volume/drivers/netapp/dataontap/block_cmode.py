@@ -191,6 +191,7 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary):
         data['driver_version'] = self.VERSION
         data['storage_protocol'] = self.driver_protocol
         data['pools'] = self._get_pool_stats()
+        data['sparse_copy_volume'] = True
 
         self.zapi_client.provide_ems(self, self.driver_name, self.app_version)
         self._stats = data
