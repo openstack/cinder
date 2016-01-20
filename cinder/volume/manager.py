@@ -78,7 +78,14 @@ LOG = logging.getLogger(__name__)
 
 QUOTAS = quota.QUOTAS
 CGQUOTAS = quota.CGQUOTAS
-VALID_REMOVE_VOL_FROM_CG_STATUS = ('available', 'in-use',)
+VALID_REMOVE_VOL_FROM_CG_STATUS = (
+    'available',
+    'in-use',
+    'error',
+    'error_deleting')
+VALID_ADD_VOL_TO_CG_STATUS = (
+    'available',
+    'in-use')
 VALID_CREATE_CG_SRC_SNAP_STATUS = ('available',)
 VALID_CREATE_CG_SRC_CG_STATUS = ('available',)
 
@@ -2805,14 +2812,14 @@ class VolumeManager(manager.SchedulerDependentManager):
                           resource={'type': 'consistency_group',
                                     'id': group.id})
                 raise
-            if add_vol_ref['status'] not in ['in-use', 'available']:
+            if add_vol_ref['status'] not in VALID_ADD_VOL_TO_CG_STATUS:
                 msg = (_("Cannot add volume %(volume_id)s to consistency "
                          "group %(group_id)s because volume is in an invalid "
                          "state: %(status)s. Valid states are: %(valid)s.") %
                        {'volume_id': add_vol_ref['id'],
                         'group_id': group.id,
                         'status': add_vol_ref['status'],
-                        'valid': VALID_REMOVE_VOL_FROM_CG_STATUS})
+                        'valid': VALID_ADD_VOL_TO_CG_STATUS})
                 raise exception.InvalidVolume(reason=msg)
             # self.host is 'host@backend'
             # volume_ref['host'] is 'host@backend#pool'
@@ -2834,6 +2841,15 @@ class VolumeManager(manager.SchedulerDependentManager):
                           resource={'type': 'consistency_group',
                                     'id': group.id})
                 raise
+            if remove_vol_ref['status'] not in VALID_REMOVE_VOL_FROM_CG_STATUS:
+                msg = (_("Cannot remove volume %(volume_id)s from consistency "
+                         "group %(group_id)s because volume is in an invalid "
+                         "state: %(status)s. Valid states are: %(valid)s.") %
+                       {'volume_id': remove_vol_ref['id'],
+                        'group_id': group.id,
+                        'status': remove_vol_ref['status'],
+                        'valid': VALID_REMOVE_VOL_FROM_CG_STATUS})
+                raise exception.InvalidVolume(reason=msg)
             remove_volumes_ref.append(remove_vol_ref)
 
         self._notify_about_consistencygroup_usage(

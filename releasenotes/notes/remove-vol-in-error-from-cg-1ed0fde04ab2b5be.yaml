@@ -1,0 +1,7 @@
+---
+fixes:
+  - Previously the only way to remove volumes in error
+    states from a consistency-group was to delete the
+    consistency group and create it again. Now it is
+    possible to remove volumes in error and error_deleting
+    states.

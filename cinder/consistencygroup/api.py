@@ -43,8 +43,14 @@ CONF = cfg.CONF
 
 LOG = logging.getLogger(__name__)
 CGQUOTAS = quota.CGQUOTAS
-VALID_REMOVE_VOL_FROM_CG_STATUS = (c_fields.ConsistencyGroupStatus.AVAILABLE,
-                                   c_fields.ConsistencyGroupStatus.IN_USE)
+VALID_REMOVE_VOL_FROM_CG_STATUS = (
+    'available',
+    'in-use',
+    'error',
+    'error_deleting')
+VALID_ADD_VOL_TO_CG_STATUS = (
+    'available',
+    'in-use')
 
 
 def wrap_check_policy(func):
@@ -648,7 +654,7 @@ class API(base.Base):
                             'volume_type': add_vol_type_id})
                     raise exception.InvalidVolume(reason=msg)
                 if (add_vol_ref['status'] not in
-                        VALID_REMOVE_VOL_FROM_CG_STATUS):
+                        VALID_ADD_VOL_TO_CG_STATUS):
                     msg = (_("Cannot add volume %(volume_id)s to consistency "
                              "group %(group_id)s because volume is in an "
                              "invalid state: %(status)s. Valid states are: "
@@ -656,7 +662,7 @@ class API(base.Base):
                            {'volume_id': add_vol_ref['id'],
                             'group_id': group.id,
                             'status': add_vol_ref['status'],
-                            'valid': VALID_REMOVE_VOL_FROM_CG_STATUS})
+                            'valid': VALID_ADD_VOL_TO_CG_STATUS})
                     raise exception.InvalidVolume(reason=msg)
 
                 # group.host and add_vol_ref['host'] are in this format:

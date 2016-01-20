@@ -668,7 +668,13 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         remove_volume_id2 = utils.create_volume(
             self.ctxt,
             volume_type_id=volume_type_id,
-            consistencygroup_id=consistencygroup.id)['id']
+            consistencygroup_id=consistencygroup.id,
+            status='error')['id']
+        remove_volume_id3 = utils.create_volume(
+            self.ctxt,
+            volume_type_id=volume_type_id,
+            consistencygroup_id=consistencygroup.id,
+            status='error_deleting')['id']
 
         self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
                          consistencygroup.status)
@@ -678,6 +684,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         cg_vol_ids = [cg_vol['id'] for cg_vol in cg_volumes]
         self.assertIn(remove_volume_id, cg_vol_ids)
         self.assertIn(remove_volume_id2, cg_vol_ids)
+        self.assertIn(remove_volume_id3, cg_vol_ids)
 
         add_volume_id = utils.create_volume(
             self.ctxt,
@@ -692,7 +699,8 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         name = 'newcg'
         description = 'New Consistency Group Description'
         add_volumes = add_volume_id + "," + add_volume_id2
-        remove_volumes = remove_volume_id + "," + remove_volume_id2
+        remove_volumes = ','.join(
+            [remove_volume_id, remove_volume_id2, remove_volume_id3])
         body = {"consistencygroup": {"name": name,
                                      "description": description,
                                      "add_volumes": add_volumes,
