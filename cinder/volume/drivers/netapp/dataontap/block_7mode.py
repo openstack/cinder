@@ -205,8 +205,9 @@ class NetAppBlockStorage7modeLibrary(block_base.NetAppBlockStorageLibrary):
         clone_path = '%s/%s' % (parent, new_name)
 
         self.zapi_client.clone_lun(path, clone_path, name, new_name,
-                                   space_reserved, src_block=0,
-                                   dest_block=0, block_count=0)
+                                   space_reserved, src_block=src_block,
+                                   dest_block=dest_block,
+                                   block_count=block_count)
 
         self.vol_refresh_voluntary = True
         luns = self.zapi_client.get_lun_by_args(path=clone_path)
