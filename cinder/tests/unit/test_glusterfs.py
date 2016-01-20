@@ -216,7 +216,7 @@ class GlusterFsDriverTestCase(test.TestCase):
     def test_update_volume_stats_thin(self):
         """_update_volume_stats_thin with qcow2 files."""
         drv = self._driver
-        rfsdriver = remotefs_drv.RemoteFSSnapDriver
+        rfsdriver = remotefs_drv.RemoteFSSnapDriverBase
 
         with mock.patch.object(rfsdriver, '_update_volume_stats') as \
                 mock_update_volume_stats,\
@@ -240,7 +240,7 @@ class GlusterFsDriverTestCase(test.TestCase):
     def test_update_volume_stats_thick(self):
         """_update_volume_stats_thick with raw files."""
         drv = self._driver
-        rfsdriver = remotefs_drv.RemoteFSSnapDriver
+        rfsdriver = remotefs_drv.RemoteFSSnapDriverBase
 
         with mock.patch.object(rfsdriver, '_update_volume_stats') as \
                 mock_update_volume_stats:
