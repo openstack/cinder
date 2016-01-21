@@ -119,7 +119,8 @@ class SBSBackupDriver(driver.BackupDriver):
         except self.rados.Error:
             # shutdown cannot raise an exception
             client.shutdown()
-            raise
+            errmsg = _("Failed to connect to rados cluster")
+            raise exception.InvalidBackup(reason=errmsg)
 
     #Routine use to disconnect from ceph cluster
     def _disconnect_from_rados(self, client, ioctx):
@@ -168,12 +169,14 @@ class SBSBackupDriver(driver.BackupDriver):
         return r"^volume-([a-z0-9\-]+?)\.backup\.base$"
 
     #Returns snap name as: backup.<backup_id>.snap.<%0.2f time_stamp>
-    def _get_new_snap_name(self, backup_id):
+    @staticmethod
+    def _get_new_snap_name(backup_id):
         time_stamp = (_("%0.2f" % time.time()))
         return (time_stamp, encodeutils.safe_encode("backup.%s.snap.%s" %
                                                    (backup_id, time_stamp)))
 
-    def _get_volume_size_gb(self, volume):
+    @staticmethod
+    def _get_volume_size_gb(volume):
         """Return the size in gigabytes of the given volume.
 
         Raises exception.InvalidParameterValue if volume size is 0.
@@ -300,7 +303,9 @@ class SBSBackupDriver(driver.BackupDriver):
         try:
             key = bucket.get_key(key_name)
         except Exception as e:
-            Log.warn("Failed to get handle for snap %s" % key_name)
+            errmsg = (_("Failed to get handle for snap %s") % key_name)
+            LOG.error(errmsg)
+            raise exception.InvalidBackup(reason=errmsg)
         return key
 
     #Check if base and/or snapshot exists in DSS
@@ -384,13 +389,24 @@ class SBSBackupDriver(driver.BackupDriver):
         if conn != None:
             bucket = self._get_bucket(conn, self._container)
         if bucket == None:
+            os.remove(loc)
             return
 
         key = bucket.new_key(snap_name)
         if key == None:
+            os.remove(loc)
+            msg = (_("Failed to create backup entry %s in object store") % (snap_name))
+            LOG.error(msg)
+            raise exception.BackupOperationError(msg)
             return
+        try:
+            key.set_contents_from_filename(loc)
+        except exception as e:
+            os.remove(loc)
+            msg = (_("Failed to upload backup % to object store") % (snap_name))
+            LOG.error(msg)
+            raise exception.BackupOperationError(msg)
 
-        key.set_contents_from_filename(loc)
         os.remove(loc)
         return
 
@@ -454,7 +470,7 @@ class SBSBackupDriver(driver.BackupDriver):
                             "image='%(base)s' - aborting incremental "
                             "backup") %
                           {'snap': from_snap, 'base': base_name})
-                LOG.info(errmsg)
+                LOG.error(errmsg)
                 # Raise this exception so that caller can try another
                 # approach
                 raise exception.BackupRBDOperationFailed(errmsg)
@@ -506,6 +522,12 @@ class SBSBackupDriver(driver.BackupDriver):
             result = re.search(search_key, from_snap)
             if result:
                 par_id = result.group(1)
+            else:
+                msg = (_("backup id of parent not found for snap '%(snap)s'")
+                          % backup['id'])
+                LOG.err(msg)
+                raise exception.BackupOperationError(mesg)
+
         #make sure snap is newer than base
         now = timeutils.utcnow()
         self.db.backup_update(self.context, backup_id,
@@ -572,6 +594,7 @@ class SBSBackupDriver(driver.BackupDriver):
 
         if bucket == None:
             return
+
         key = self._get_snap_handle_from_DSS(bucket, snap_name)
         if key == None:
             return
@@ -579,7 +602,9 @@ class SBSBackupDriver(driver.BackupDriver):
         try:
             key.get_contents_to_filename(loc)
         except Exception as e:
-            LOG.warn("Failed to get contents of backup %s from object store" % snap_name)
+            errmsg = (_("Failed to get contents of backup %s from object store") % (snap_name))
+            LOG.error(errmsg)
+            raise exception.InvalidBackup(reason=errmsg)
             return
         cmd = ['rbd', 'import-diff'] + ceph_args
         #if from_snap is None, do full upload
@@ -605,7 +630,7 @@ class SBSBackupDriver(driver.BackupDriver):
         # this case.
 
         #TODO: handle restoring on same source volume
-        if volume_id == backup_id:
+        if volume_id == backup_volume_id:
             LOG.debug("Destination volume is same as backup source volume")
             return False
 
@@ -659,12 +684,19 @@ class SBSBackupDriver(driver.BackupDriver):
         conn = self._connect_to_DSS()
         if conn != None:
             bucket = self._get_bucket(conn, self._container)
+        else:
+            errmsg = _("Failed to connect to object store")
+            LOG.error(errmsg)
+            raise exception.InvalidBackup(reason=errmsg)
+            return
 
         if bucket != None:
             try:
                 bucket.delete_key(snap_name)
             except Exception as e:
-                Log.warn("Failed to delete backup %s from object store" % snap_name)
+                errmsg = (_("Failed to delete backup %s from object store") % (snap_name))
+                LOG.error(errmsg)
+                raise exception.InvalidBackup(reason=errmsg)
 
         return
 
@@ -677,10 +709,11 @@ class SBSBackupDriver(driver.BackupDriver):
             try:
                 backup_rbd = self.rbd.Image(client.ioctx, volume_name, read_only=False)
                 backup_rbd.remove_snap(backup_name)
-	    except self.rbd.ImageNotFound:
+            except self.rbd.ImageNotFound:
                 LOG.info(_LI("volume %s no longer exists in backend") % volume_name)
+                raise
             finally:
-		if backup_rbd != None:
+                if backup_rbd != None:
                     backup_rbd.close()
         return
 
