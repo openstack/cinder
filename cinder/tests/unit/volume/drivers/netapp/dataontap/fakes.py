@@ -101,7 +101,6 @@ FC_FABRIC_MAP = {'fabricB':
 FC_TARGET_INFO = {'driver_volume_type': 'fibre_channel',
                   'data': {'target_lun': 1,
                            'initiator_target_map': FC_I_T_MAP,
-                           'access_mode': 'rw',
                            'target_wwn': FC_TARGET_WWPNS,
                            'target_discovered': True}}
 

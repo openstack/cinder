@@ -830,7 +830,6 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
                 'target_discovered': True,
                 'target_lun': 0,
                 'target_wwn': [eseries_fake.WWPN_2],
-                'access_mode': 'rw',
                 'initiator_target_map': {
                     eseries_fake.WWPN: [eseries_fake.WWPN_2]
                 },
