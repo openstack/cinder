@@ -163,43 +163,18 @@ class CiscoFCZoneDriver(fc_zone_driver.FCZoneDriver):
             zone_names = []
             if cfgmap_from_fabric.get('zones'):
                 zone_names = cfgmap_from_fabric['zones'].keys()
-                # based on zoning policy, create zone member list and
-                # push changes to fabric.
-                for initiator_key in initiator_target_map.keys():
-                    zone_map = {}
-                    initiator = initiator_key.lower()
-                    t_list = initiator_target_map[initiator_key]
-                    if zoning_policy == 'initiator-target':
-                        for t in t_list:
-                            target = t.lower()
-                            zone_members = [
-                                zm_utils.get_formatted_wwn(initiator),
-                                zm_utils.get_formatted_wwn(target)]
-                            zone_name = (
-                                driver_utils.get_friendly_zone_name(
-                                    zoning_policy,
-                                    initiator,
-                                    target,
-                                    host_name,
-                                    storage_system,
-                                    self.configuration.cisco_zone_name_prefix,
-                                    SUPPORTED_CHARS))
-                            if (len(cfgmap_from_fabric) == 0 or (
-                                    zone_name not in zone_names)):
-                                zone_map[zone_name] = zone_members
-                            else:
-                                # This is I-T zoning, skip if zone exists.
-                                LOG.info(_LI("Zone exists in I-T mode. "
-                                             "Skipping zone creation %s"),
-                                         zone_name)
-                    elif zoning_policy == 'initiator':
+            # based on zoning policy, create zone member list and
+            # push changes to fabric.
+            for initiator_key in initiator_target_map.keys():
+                zone_map = {}
+                initiator = initiator_key.lower()
+                t_list = initiator_target_map[initiator_key]
+                if zoning_policy == 'initiator-target':
+                    for t in t_list:
+                        target = t.lower()
                         zone_members = [
-                            zm_utils.get_formatted_wwn(initiator)]
-                        for t in t_list:
-                            target = t.lower()
-                            zone_members.append(
-                                zm_utils.get_formatted_wwn(target))
-
+                            zm_utils.get_formatted_wwn(initiator),
+                            zm_utils.get_formatted_wwn(target)]
                         zone_name = (
                             driver_utils.get_friendly_zone_name(
                                 zoning_policy,
@@ -209,45 +184,66 @@ class CiscoFCZoneDriver(fc_zone_driver.FCZoneDriver):
                                 storage_system,
                                 self.configuration.cisco_zone_name_prefix,
                                 SUPPORTED_CHARS))
+                        if (len(cfgmap_from_fabric) == 0 or (
+                                zone_name not in zone_names)):
+                            zone_map[zone_name] = zone_members
+                        else:
+                            # This is I-T zoning, skip if zone exists.
+                            LOG.info(_LI("Zone exists in I-T mode. "
+                                         "Skipping zone creation %s"),
+                                     zone_name)
+                elif zoning_policy == 'initiator':
+                    zone_members = [
+                        zm_utils.get_formatted_wwn(initiator)]
+                    for t in t_list:
+                        target = t.lower()
+                        zone_members.append(
+                            zm_utils.get_formatted_wwn(target))
+                    zone_name = (
+                        driver_utils.get_friendly_zone_name(
+                            zoning_policy,
+                            initiator,
+                            target,
+                            host_name,
+                            storage_system,
+                            self.configuration.cisco_zone_name_prefix,
+                            SUPPORTED_CHARS))
 
-                        if len(zone_names) > 0 and (zone_name in zone_names):
-                            zone_members = zone_members + filter(
-                                lambda x: x not in zone_members,
-                                cfgmap_from_fabric['zones'][zone_name])
-                        zone_map[zone_name] = zone_members
-                    else:
-                        msg = _("Zoning Policy: %s, not"
-                                " recognized") % zoning_policy
-                        LOG.error(msg)
-                        raise exception.FCZoneDriverException(msg)
+                    if len(zone_names) > 0 and (zone_name in zone_names):
+                        zone_members = zone_members + filter(
+                            lambda x: x not in zone_members,
+                            cfgmap_from_fabric['zones'][zone_name])
+                    zone_map[zone_name] = zone_members
+                else:
+                    msg = _("Zoning Policy: %s, not"
+                            " recognized") % zoning_policy
+                    LOG.error(msg)
+                    raise exception.FCZoneDriverException(msg)
 
-                LOG.info(_LI("Zone map to add: %s"), zone_map)
-
-                if len(zone_map) > 0:
-                    conn = None
-                    try:
-                        conn = importutils.import_object(
-                            self.configuration.cisco_sb_connector,
-                            ipaddress=fabric_ip,
-                            username=fabric_user,
-                            password=fabric_pwd,
-                            port=fabric_port,
-                            vsan=zoning_vsan)
-                        conn.add_zones(
-                            zone_map, self.configuration.cisco_zone_activate,
-                            zoning_vsan, cfgmap_from_fabric,
-                            statusmap_from_fabric)
-                        conn.cleanup()
-                    except exception.CiscoZoningCliException as cisco_ex:
-                        msg = _("Exception: %s") % six.text_type(cisco_ex)
-                        raise exception.FCZoneDriverException(msg)
-                    except Exception:
-                        msg = _("Failed to add zoning configuration.")
-                        LOG.exception(msg)
-                        raise exception.FCZoneDriverException(msg)
+            if len(zone_map) > 0:
+                LOG.debug("Zone map to add: %s", zone_map)
+                conn = None
+                try:
+                    conn = importutils.import_object(
+                        self.configuration.cisco_sb_connector,
+                        ipaddress=fabric_ip,
+                        username=fabric_user,
+                        password=fabric_pwd,
+                        port=fabric_port,
+                        vsan=zoning_vsan)
+                    conn.add_zones(
+                        zone_map, self.configuration.cisco_zone_activate,
+                        zoning_vsan, cfgmap_from_fabric,
+                        statusmap_from_fabric)
+                    conn.cleanup()
+                except exception.CiscoZoningCliException as cisco_ex:
+                    msg = _("Exception: %s") % six.text_type(cisco_ex)
+                    raise exception.FCZoneDriverException(msg)
+                except Exception:
+                    msg = _("Failed to add zoning configuration.")
+                    LOG.exception(msg)
+                    raise exception.FCZoneDriverException(msg)
                 LOG.debug("Zones added successfully: %s", zone_map)
-            else:
-                LOG.debug("Zoning session exists VSAN: %s", zoning_vsan)
 
     @lockutils.synchronized('cisco', 'fcfabric-', True)
     def delete_connection(self, fabric, initiator_target_map, host_name=None,
