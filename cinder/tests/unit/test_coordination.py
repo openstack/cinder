@@ -46,6 +46,7 @@ class MockToozLock(tooz.locking.Lock):
 @mock.patch('eventlet.tpool.execute', lambda f: f())
 @mock.patch.object(coordination.Coordinator, 'heartbeat')
 @mock.patch('tooz.coordination.get_coordinator')
+@mock.patch('random.uniform', lambda _a, _b: 0)
 class CoordinatorTestCase(test.TestCase):
     def test_coordinator_start(self, get_coordinator, heartbeat):
         crd = get_coordinator.return_value
