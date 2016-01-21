@@ -17,6 +17,8 @@
 
 """Unit tests for Cisco fc zone client cli."""
 
+import time
+
 import mock
 from oslo_concurrency import processutils
 from six.moves import range
@@ -196,7 +198,8 @@ class TestCiscoFCZoneClientCLI(cli.CiscoFCZoneClientCLI, test.TestCase):
         run_ssh_mock.assert_called_once_with(cmd_list, True)
 
     @mock.patch.object(cli.CiscoFCZoneClientCLI, '_run_ssh')
-    def test__cfg_save_with_retry(self, run_ssh_mock):
+    @mock.patch.object(time, 'sleep')
+    def test__cfg_save_with_retry(self, mock_sleep, run_ssh_mock):
         cmd_list = ['copy', 'running-config', 'startup-config']
         run_ssh_mock.side_effect = [
             processutils.ProcessExecutionError,
@@ -212,7 +215,8 @@ class TestCiscoFCZoneClientCLI(cli.CiscoFCZoneClientCLI, test.TestCase):
         ])
 
     @mock.patch.object(cli.CiscoFCZoneClientCLI, '_run_ssh')
-    def test__cfg_save_with_error(self, run_ssh_mock):
+    @mock.patch.object(time, 'sleep')
+    def test__cfg_save_with_error(self, mock_sleep, run_ssh_mock):
         cmd_list = ['copy', 'running-config', 'startup-config']
         run_ssh_mock.side_effect = processutils.ProcessExecutionError
 
