@@ -530,39 +530,6 @@ class QuobyteDriverTestCase(test.TestCase):
         drv._ensure_shares_mounted.assert_called_once_with()
         drv._find_share.assert_called_once_with(self.TEST_SIZE_IN_GB)
 
-    def test_create_cloned_volume(self):
-        drv = self._driver
-
-        drv._create_snapshot = mock.Mock()
-        drv._copy_volume_from_snapshot = mock.Mock()
-        drv._delete_snapshot = mock.Mock()
-
-        volume = self._simple_volume()
-        src_vref = self._simple_volume()
-        src_vref['id'] = '375e32b2-804a-49f2-b282-85d1d5a5b9e1'
-        src_vref['name'] = 'volume-%s' % src_vref['id']
-        volume_ref = {'id': volume['id'],
-                      'name': volume['name'],
-                      'status': volume['status'],
-                      'provider_location': volume['provider_location'],
-                      'size': volume['size']}
-
-        snap_ref = {'volume_name': src_vref['name'],
-                    'name': 'clone-snap-%s' % src_vref['id'],
-                    'size': src_vref['size'],
-                    'volume_size': src_vref['size'],
-                    'volume_id': src_vref['id'],
-                    'id': 'tmp-snap-%s' % src_vref['id'],
-                    'volume': src_vref}
-
-        drv.create_cloned_volume(volume, src_vref)
-
-        drv._create_snapshot.assert_called_once_with(snap_ref)
-        drv._copy_volume_from_snapshot.assert_called_once_with(snap_ref,
-                                                               volume_ref,
-                                                               volume['size'])
-        drv._delete_snapshot.assert_called_once_with(mock.ANY)
-
     @mock.patch('oslo_utils.fileutils.delete_if_exists')
     def test_delete_volume(self, mock_delete_if_exists):
         volume = self._simple_volume()
