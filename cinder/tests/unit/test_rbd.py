@@ -68,16 +68,18 @@ def common_mocks(f):
     mocks that can't/don't get unset.
     """
     def _common_inner_inner1(inst, *args, **kwargs):
+        @mock.patch('time.sleep')
         @mock.patch('cinder.volume.drivers.rbd.RBDVolumeProxy')
         @mock.patch('cinder.volume.drivers.rbd.RADOSClient')
         @mock.patch('cinder.backup.drivers.ceph.rbd')
         @mock.patch('cinder.backup.drivers.ceph.rados')
         def _common_inner_inner2(mock_rados, mock_rbd, mock_client,
-                                 mock_proxy):
+                                 mock_proxy, mock_sleep):
             inst.mock_rbd = mock_rbd
             inst.mock_rados = mock_rados
             inst.mock_client = mock_client
             inst.mock_proxy = mock_proxy
+            inst.mock_sleep = mock_sleep
             inst.mock_rbd.RBD.Error = Exception
             inst.mock_rados.Error = Exception
             inst.mock_rbd.ImageBusy = MockImageBusyException
