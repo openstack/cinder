@@ -110,10 +110,10 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
         active_file = self.get_active_image_from_info(volume)
         active_file_path = os.path.join(self._local_volume_dir(volume),
                                         active_file)
-        info = self._qemu_img_info(active_file_path, volume['name'])
+        info = self._qemu_img_info(active_file_path, volume.name)
         fmt = info.file_format
 
-        data = {'export': volume['provider_location'],
+        data = {'export': volume.provider_location,
                 'format': fmt,
                 'name': active_file,
                 }
@@ -228,7 +228,7 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
 
     @remotefs_drv.locked_volume_id_operation
     def extend_volume(self, volume, size_gb):
-        LOG.info(_LI('Extending volume %s.'), volume['id'])
+        LOG.info(_LI('Extending volume %s.'), volume.id)
         self._extend_volume(volume, size_gb)
 
     def _extend_volume(self, volume, size_gb):
@@ -257,12 +257,12 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
                     'driver when no snapshots exist.')
             raise exception.InvalidVolume(msg)
 
-        extend_by = int(size_gb) - volume['size']
-        if not self._is_share_eligible(volume['provider_location'],
+        extend_by = int(size_gb) - volume.size
+        if not self._is_share_eligible(volume.provider_location,
                                        extend_by):
             raise exception.ExtendVolumeError(reason='Insufficient space to '
                                               'extend volume %s to %sG.'
-                                              % (volume['id'], size_gb))
+                                              % (volume.id, size_gb))
 
     def _is_file_size_equal(self, path, size):
         """Checks if file size at path is equal to size."""
@@ -279,23 +279,23 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
 
         LOG.debug("_copy_volume_from_snapshot: snapshot: %(snap)s, "
                   "volume: %(vol)s, volume_size: %(size)s.",
-                  {'snap': snapshot['id'],
-                   'vol': volume['id'],
+                  {'snap': snapshot.id,
+                   'vol': volume.id,
                    'size': volume_size,
                    })
 
-        info_path = self._local_path_volume_info(snapshot['volume'])
+        info_path = self._local_path_volume_info(snapshot.volume)
         snap_info = self._read_info_file(info_path)
-        vol_dir = self._local_volume_dir(snapshot['volume'])
+        vol_dir = self._local_volume_dir(snapshot.volume)
         out_format = "raw"
 
-        forward_file = snap_info[snapshot['id']]
+        forward_file = snap_info[snapshot.id]
         forward_path = os.path.join(vol_dir, forward_file)
 
         # Find the file which backs this file, which represents the point
         # when this snapshot was created.
         img_info = self._qemu_img_info(forward_path,
-                                       snapshot['volume']['name'])
+                                       snapshot.volume.name)
         path_to_snap_img = os.path.join(vol_dir, img_info.backing_file)
 
         LOG.debug("_copy_volume_from_snapshot: will copy "
@@ -309,13 +309,13 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
     @remotefs_drv.locked_volume_id_operation
     def delete_volume(self, volume):
         """Deletes a logical volume."""
-        if not volume['provider_location']:
+        if not volume.provider_location:
             msg = (_('Volume %s does not have provider_location '
-                     'specified, skipping.') % volume['name'])
+                     'specified, skipping.') % volume.name)
             LOG.error(msg)
             raise exception.VzStorageException(msg)
 
-        self._ensure_share_mounted(volume['provider_location'])
+        self._ensure_share_mounted(volume.provider_location)
         volume_dir = self._local_volume_dir(volume)
         mounted_path = os.path.join(volume_dir,
                                     self.get_active_image_from_info(volume))

@@ -300,13 +300,13 @@ class NfsDriver(driver.ExtendVD, remotefs.RemoteFSDriver):
 
     def extend_volume(self, volume, new_size):
         """Extend an existing volume to the new size."""
-        LOG.info(_LI('Extending volume %s.'), volume['id'])
-        extend_by = int(new_size) - volume['size']
-        if not self._is_share_eligible(volume['provider_location'],
+        LOG.info(_LI('Extending volume %s.'), volume.id)
+        extend_by = int(new_size) - volume.size
+        if not self._is_share_eligible(volume.provider_location,
                                        extend_by):
             raise exception.ExtendVolumeError(reason='Insufficient space to'
                                               ' extend volume %s to %sG'
-                                              % (volume['id'], new_size))
+                                              % (volume.id, new_size))
         path = self.local_path(volume)
         LOG.info(_LI('Resizing file to %sG...'), new_size)
         image_utils.resize_image(path, new_size,
@@ -396,8 +396,8 @@ class NfsDriver(driver.ExtendVD, remotefs.RemoteFSDriver):
         # NFS snapshots are introduced.
         name_id = None
         if original_volume_status == 'available':
-            current_name = CONF.volume_name_template % new_volume['id']
-            original_volume_name = CONF.volume_name_template % volume['id']
+            current_name = CONF.volume_name_template % new_volume.id
+            original_volume_name = CONF.volume_name_template % volume.id
             current_path = self.local_path(new_volume)
             # Replace the volume name with the original volume name
             original_path = current_path.replace(current_name,
@@ -406,16 +406,16 @@ class NfsDriver(driver.ExtendVD, remotefs.RemoteFSDriver):
                 os.rename(current_path, original_path)
             except OSError:
                 LOG.error(_LE('Unable to rename the logical volume '
-                              'for volume: %s'), volume['id'])
+                              'for volume: %s'), volume.id)
                 # If the rename fails, _name_id should be set to the new
                 # volume id and provider_location should be set to the
                 # one from the new volume as well.
-                name_id = new_volume['_name_id'] or new_volume['id']
+                name_id = new_volume._name_id or new_volume.id
         else:
             # The back-end will not be renamed.
-            name_id = new_volume['_name_id'] or new_volume['id']
+            name_id = new_volume._name_id or new_volume.id
         return {'_name_id': name_id,
-                'provider_location': new_volume['provider_location']}
+                'provider_location': new_volume.provider_location}
 
     def _update_volume_stats(self):
         """Retrieve stats info from volume group."""

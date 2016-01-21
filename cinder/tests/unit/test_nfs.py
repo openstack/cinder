@@ -21,23 +21,14 @@ import os
 import mock
 from oslo_utils import units
 
+from cinder import context
 from cinder import exception
 from cinder.image import image_utils
 from cinder import test
+from cinder.tests.unit import fake_volume
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import nfs
 from cinder.volume.drivers import remotefs
-
-
-class DumbVolume(object):
-    # TODO(eharney): replace this with an autospecced mock class
-    fields = {}
-
-    def __setitem__(self, key, value):
-        self.fields[key] = value
-
-    def __getitem__(self, item):
-        return self.fields[item]
 
 
 class RemoteFsDriverTestCase(test.TestCase):
@@ -346,18 +337,19 @@ class NfsDriverTestCase(test.TestCase):
         mock_exc = mock.patch.object(self._driver, '_execute')
         self._execute = mock_exc.start()
         self.addCleanup(mock_exc.stop)
+        self.context = context.get_admin_context()
 
     def test_local_path(self):
         """local_path common use case."""
         self.configuration.nfs_mount_point_base = self.TEST_MNT_POINT_BASE
         drv = self._driver
 
-        volume = DumbVolume()
-        volume['provider_location'] = self.TEST_NFS_EXPORT1
-        volume['name'] = 'volume-123'
+        volume = fake_volume.fake_volume_obj(
+            self.context,
+            provider_location=self.TEST_NFS_EXPORT1)
 
         self.assertEqual(
-            '/mnt/test/2f4f60214cf43c595666dd815f0360a4/volume-123',
+            '/mnt/test/2f4f60214cf43c595666dd815f0360a4/%s' % volume.name,
             drv.local_path(volume))
 
     @mock.patch.object(image_utils, 'qemu_img_info')
@@ -366,8 +358,9 @@ class NfsDriverTestCase(test.TestCase):
     def test_copy_image_to_volume(self, mock_fetch, mock_resize, mock_qemu):
         """resize_image common case usage."""
         drv = self._driver
-        TEST_IMG_SOURCE = 'foo.img'
-        volume = {'size': self.TEST_SIZE_IN_GB, 'name': TEST_IMG_SOURCE}
+        volume = fake_volume.fake_volume_obj(self.context,
+                                             size=self.TEST_SIZE_IN_GB)
+        TEST_IMG_SOURCE = 'volume-%s' % volume.id
 
         with mock.patch.object(drv, 'local_path',
                                return_value=TEST_IMG_SOURCE):
@@ -581,12 +574,10 @@ class NfsDriverTestCase(test.TestCase):
             self.assertEqual(2, mock_get_capacity_info.call_count)
 
     def _simple_volume(self):
-        volume = DumbVolume()
-        volume['provider_location'] = '127.0.0.1:/mnt'
-        volume['name'] = 'volume_name'
-        volume['size'] = 10
-
-        return volume
+        return fake_volume.fake_volume_obj(self.context,
+                                           display_name='volume_name',
+                                           provider_location='127.0.0.1:/mnt',
+                                           size=10)
 
     def test_create_sparsed_volume(self):
         drv = self._driver
@@ -626,13 +617,14 @@ class NfsDriverTestCase(test.TestCase):
         """create_volume ensures shares provided in config are mounted."""
         drv = self._driver
         drv._find_share = mock.Mock()
+        drv._find_share.return_value = self.TEST_NFS_EXPORT1
         drv._do_create_volume = mock.Mock()
 
         with mock.patch.object(
                 drv, '_ensure_share_mounted') as mock_ensure_share:
             drv._ensure_share_mounted()
-            volume = DumbVolume()
-            volume['size'] = self.TEST_SIZE_IN_GB
+            volume = fake_volume.fake_volume_obj(self.context,
+                                                 size=self.TEST_SIZE_IN_GB)
             drv.create_volume(volume)
 
             mock_ensure_share.assert_called_once_with()
@@ -646,8 +638,8 @@ class NfsDriverTestCase(test.TestCase):
 
         with mock.patch.object(drv, '_find_share') as mock_find_share:
             mock_find_share.return_value = self.TEST_NFS_EXPORT1
-            volume = DumbVolume()
-            volume['size'] = self.TEST_SIZE_IN_GB
+            volume = fake_volume.fake_volume_obj(self.context,
+                                                 size=self.TEST_SIZE_IN_GB)
             result = drv.create_volume(volume)
             self.assertEqual(self.TEST_NFS_EXPORT1,
                              result['provider_location'])
@@ -658,9 +650,10 @@ class NfsDriverTestCase(test.TestCase):
         drv = self._driver
         drv._ensure_share_mounted = mock.Mock()
 
-        volume = DumbVolume()
-        volume['name'] = 'volume-123'
-        volume['provider_location'] = self.TEST_NFS_EXPORT1
+        volume = fake_volume.fake_volume_obj(
+            self.context,
+            display_name='volume-123',
+            provider_location=self.TEST_NFS_EXPORT1)
 
         with mock.patch.object(drv, 'local_path') as mock_local_path:
             mock_local_path.return_value = self.TEST_LOCAL_PATH
@@ -673,9 +666,10 @@ class NfsDriverTestCase(test.TestCase):
     def test_delete_should_ensure_share_mounted(self):
         """delete_volume should ensure that corresponding share is mounted."""
         drv = self._driver
-        volume = DumbVolume()
-        volume['name'] = 'volume-123'
-        volume['provider_location'] = self.TEST_NFS_EXPORT1
+        volume = fake_volume.fake_volume_obj(
+            self.context,
+            display_name='volume-123',
+            provider_location=self.TEST_NFS_EXPORT1)
 
         with mock.patch.object(
                 drv, '_ensure_share_mounted') as mock_ensure_share:
@@ -685,9 +679,9 @@ class NfsDriverTestCase(test.TestCase):
     def test_delete_should_not_delete_if_provider_location_not_provided(self):
         """delete_volume shouldn't delete if provider_location missed."""
         drv = self._driver
-        volume = DumbVolume()
-        volume['name'] = 'volume-123'
-        volume['provider_location'] = None
+        volume = fake_volume.fake_volume_obj(self.context,
+                                             name='volume-123',
+                                             provider_location=None)
 
         with mock.patch.object(drv, '_ensure_share_mounted'):
             drv.delete_volume(volume)
@@ -846,8 +840,11 @@ class NfsDriverTestCase(test.TestCase):
     def test_extend_volume(self):
         """Extend a volume by 1."""
         drv = self._driver
-        volume = {'id': '80ee16b6-75d2-4d54-9539-ffc1b4b0fb10', 'size': 1,
-                  'provider_location': 'nfs_share'}
+        volume = fake_volume.fake_volume_obj(
+            self.context,
+            id='80ee16b6-75d2-4d54-9539-ffc1b4b0fb10',
+            size=1,
+            provider_location='nfs_share')
         path = 'path'
         newSize = volume['size'] + 1
 
@@ -865,8 +862,11 @@ class NfsDriverTestCase(test.TestCase):
     def test_extend_volume_failure(self):
         """Error during extend operation."""
         drv = self._driver
-        volume = {'id': '80ee16b6-75d2-4d54-9539-ffc1b4b0fb10', 'size': 1,
-                  'provider_location': 'nfs_share'}
+        volume = fake_volume.fake_volume_obj(
+            self.context,
+            id='80ee16b6-75d2-4d54-9539-ffc1b4b0fb10',
+            size=1,
+            provider_location='nfs_share')
 
         with mock.patch.object(image_utils, 'resize_image'):
             with mock.patch.object(drv, 'local_path', return_value='path'):
@@ -880,8 +880,11 @@ class NfsDriverTestCase(test.TestCase):
     def test_extend_volume_insufficient_space(self):
         """Insufficient space on nfs_share during extend operation."""
         drv = self._driver
-        volume = {'id': '80ee16b6-75d2-4d54-9539-ffc1b4b0fb10', 'size': 1,
-                  'provider_location': 'nfs_share'}
+        volume = fake_volume.fake_volume_obj(
+            self.context,
+            id='80ee16b6-75d2-4d54-9539-ffc1b4b0fb10',
+            size=1,
+            provider_location='nfs_share')
 
         with mock.patch.object(image_utils, 'resize_image'):
             with mock.patch.object(drv, 'local_path', return_value='path'):
@@ -1125,8 +1128,8 @@ class NfsDriverDoSetupTestCase(test.TestCase):
     def _test_update_migrated_volume(self, volume_status, rename_volume,
                                      rename_exception=False):
         drv = nfs.NfsDriver(configuration=self.configuration)
-        fake_volume_id = 'vol1'
-        fake_new_volume_id = 'vol2'
+        fake_volume_id = 'f51b5730-13b7-11e6-a238-fa163e67a298'
+        fake_new_volume_id = '12341234-13b7-11e6-a238-fa163e67a298'
         fake_provider_source = 'fake_provider_source'
         fake_provider = 'fake_provider'
         base_dir = '/dir_base/'
@@ -1135,27 +1138,34 @@ class NfsDriverDoSetupTestCase(test.TestCase):
         current_name = volume_name_template % fake_new_volume_id
         original_volume_path = base_dir + original_volume_name
         current_path = base_dir + current_name
-        fake_volume = {'size': 1, 'id': fake_volume_id,
-                       'provider_location': fake_provider_source,
-                       '_name_id': None}
-        fake_new_volume = {'size': 1, 'id': fake_new_volume_id,
-                           'provider_location': fake_provider,
-                           '_name_id': None}
+        volume = fake_volume.fake_volume_obj(
+            self.context,
+            id=fake_volume_id,
+            size=1,
+            provider_location=fake_provider_source,
+            _name_id=None)
+
+        new_volume = fake_volume.fake_volume_obj(
+            self.context,
+            id=fake_new_volume_id,
+            size=1,
+            provider_location=fake_provider,
+            _name_id=None)
 
         with mock.patch.object(drv, 'local_path') as local_path:
             local_path.return_value = base_dir + current_name
             if volume_status == 'in-use':
                 update = drv.update_migrated_volume(self.context,
-                                                    fake_volume,
-                                                    fake_new_volume,
+                                                    volume,
+                                                    new_volume,
                                                     volume_status)
                 self.assertEqual({'_name_id': fake_new_volume_id,
                                   'provider_location': fake_provider}, update)
             elif rename_exception:
                 rename_volume.side_effect = OSError
                 update = drv.update_migrated_volume(self.context,
-                                                    fake_volume,
-                                                    fake_new_volume,
+                                                    volume,
+                                                    new_volume,
                                                     volume_status)
                 rename_volume.assert_called_once_with(current_path,
                                                       original_volume_path)
@@ -1163,8 +1173,8 @@ class NfsDriverDoSetupTestCase(test.TestCase):
                                   'provider_location': fake_provider}, update)
             else:
                 update = drv.update_migrated_volume(self.context,
-                                                    fake_volume,
-                                                    fake_new_volume,
+                                                    volume,
+                                                    new_volume,
                                                     volume_status)
                 rename_volume.assert_called_once_with(current_path,
                                                       original_volume_path)
@@ -1175,7 +1185,7 @@ class NfsDriverDoSetupTestCase(test.TestCase):
         "Ensure that driver.retype() is there."""
 
         drv = nfs.NfsDriver(configuration=self.configuration)
-        v1 = DumbVolume()
+        v1 = fake_volume.fake_volume_obj(self.context)
 
         ret = drv.retype(self.context,
                          v1,
