@@ -1473,6 +1473,20 @@ class VolumeApiTest(test.TestCase):
             offset=0)
 
     @mock.patch('cinder.volume.api.API.get_all')
+    def test_get_volumes_filter_with_bootable(self, get_all):
+        req = mock.MagicMock()
+        ctxt = context.RequestContext('fake', 'fake', auth_token=True)
+        req.environ = {'cinder.context': ctxt}
+        req.params = {'bootable': 1}
+        self.controller._view_builder.detail_list = mock.Mock()
+        self.controller._get_volumes(req, True)
+        get_all.assert_called_once_with(
+            ctxt, None, CONF.osapi_max_limit,
+            sort_keys=['created_at'], sort_dirs=['desc'],
+            filters={'bootable': True}, viewable_admin_meta=True,
+            offset=0)
+
+    @mock.patch('cinder.volume.api.API.get_all')
     def test_get_volumes_filter_with_invalid_filter(self, get_all):
         req = mock.MagicMock()
         ctxt = context.RequestContext('fake', 'fake', auth_token=True)
@@ -1503,9 +1517,10 @@ class VolumeApiTest(test.TestCase):
             sort_keys=['display_name'], filters={}, offset=0)
 
     def test_get_volume_filter_options_using_config(self):
-        self.override_config('query_volume_filters', ['name', 'status',
-                                                      'metadata'])
-        self.assertEqual(['name', 'status', 'metadata'],
+        filter_list = ['name', 'status', 'metadata', 'bootable',
+                       'availability_zone']
+        self.override_config('query_volume_filters', filter_list)
+        self.assertEqual(filter_list,
                          self.controller._get_volume_filter_options())
 
 
