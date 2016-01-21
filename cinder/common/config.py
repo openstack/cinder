@@ -171,7 +171,8 @@ global_opts = [
     cfg.StrOpt('auth_strategy',
                default='keystone',
                choices=['noauth', 'keystone'],
-               help='The strategy to use for auth. Supports noauth or keystone.'),
+               help='The strategy to use for auth. Supports noauth or '
+                    'keystone.'),
     cfg.ListOpt('enabled_backends',
                 help='A list of backend names to use. These backend names '
                      'should be backed by a unique [CONFIG] group '
