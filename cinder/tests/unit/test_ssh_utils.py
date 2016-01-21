@@ -175,7 +175,7 @@ class SSHPoolTestCase(test.TestCase):
     @mock.patch('six.moves.builtins.open')
     @mock.patch('paramiko.SSHClient')
     def test_closed_reopened_ssh_connections(self, mock_sshclient, mock_open):
-        mock_sshclient.return_value = eval('FakeSSHClient')()
+        mock_sshclient.return_value = FakeSSHClient()
         sshpool = ssh_utils.SSHPool("127.0.0.1", 22, 10,
                                     "test",
                                     password="test",

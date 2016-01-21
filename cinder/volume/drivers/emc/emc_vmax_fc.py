@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ast
+
 from oslo_log import log as logging
 import six
 
@@ -203,7 +205,7 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
         data = {'driver_volume_type': 'fibre_channel',
                 'data': {}}
         loc = volume['provider_location']
-        name = eval(loc)
+        name = ast.literal_eval(loc)
         storage_system = name['keybindings']['SystemName']
         LOG.debug("Start FC detach process for volume: %(volume)s.",
                   {'volume': volume['name']})
