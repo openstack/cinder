@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import time
+
 import mock
 
 from cinder import exception
@@ -580,6 +582,7 @@ class EMCXIODriverTestCase(test.TestCase):
 
         self.data = CommonData()
 
+    @mock.patch.object(time, 'sleep', mock.Mock(return_value=0))
     def test_retry_request(self, req):
         busy_response = mock.MagicMock()
         busy_response.status_code = 400
