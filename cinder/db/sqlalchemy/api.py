@@ -2347,7 +2347,7 @@ def volume_type_create(context, values, projects=None):
         return volume_type_ref
 
 
-def _volume_type_get_query(context, session=None, read_deleted=None,
+def _volume_type_get_query(context, session=None, read_deleted='no',
                            expected_fields=None):
     expected_fields = expected_fields or []
     query = model_query(context,
@@ -2367,6 +2367,41 @@ def _volume_type_get_query(context, session=None, read_deleted=None,
         ])
         query = query.filter(or_(*the_filter))
 
+    return query
+
+
+def _process_volume_types_filters(query, filters):
+    context = filters.pop('context', None)
+    if 'is_public' in filters and filters['is_public'] is not None:
+        the_filter = [models.VolumeTypes.is_public == filters['is_public']]
+        if filters['is_public'] and context.project_id is not None:
+            projects_attr = getattr(models.VolumeTypes, 'projects')
+            the_filter.extend([
+                projects_attr.any(project_id=context.project_id, deleted=0)
+            ])
+        if len(the_filter) > 1:
+            query = query.filter(or_(*the_filter))
+        else:
+            query = query.filter(the_filter[0])
+    if 'is_public' in filters:
+        del filters['is_public']
+    if filters:
+        # Ensure that filters' keys exist on the model
+        if not is_valid_model_filters(models.VolumeTypes, filters):
+            return
+        if filters.get('extra_specs') is not None:
+            the_filter = []
+            searchdict = filters.get('extra_specs')
+            extra_specs = getattr(models.VolumeTypes, 'extra_specs')
+            for k, v in searchdict.items():
+                the_filter.extend([extra_specs.any(key=k, value=v,
+                                                   deleted=False)])
+            if len(the_filter) > 1:
+                query = query.filter(and_(*the_filter))
+            else:
+                query = query.filter(the_filter[0])
+            del filters['extra_specs']
+        query = query.filter_by(**filters)
     return query
 
 
@@ -2415,34 +2450,55 @@ def volume_type_update(context, volume_type_id, values):
 
 
 @require_context
-def volume_type_get_all(context, inactive=False, filters=None):
-    """Returns a dict describing all volume_types with name as key."""
-    filters = filters or {}
+def volume_type_get_all(context, inactive=False, filters=None, marker=None,
+                        limit=None, sort_keys=None, sort_dirs=None,
+                        offset=None, list_result=False):
+    """Returns a dict describing all volume_types with name as key.
 
-    read_deleted = "yes" if inactive else "no"
+    If no sort parameters are specified then the returned volume types are
+    sorted first by the 'created_at' key and then by the 'id' key in descending
+    order.
 
-    query = _volume_type_get_query(context, read_deleted=read_deleted)
+    :param context: context to query under
+    :param marker: the last item of the previous page, used to determine the
+                   next page of results to return
+    :param limit: maximum number of items to return
+    :param sort_keys: list of attributes by which results should be sorted,
+                      paired with corresponding item in sort_dirs
+    :param sort_dirs: list of directions in which results should be sorted,
+                      paired with corresponding item in sort_keys
+    :param filters: dictionary of filters; values that are in lists, tuples,
+                    or sets cause an 'IN' operation, while exact matching
+                    is used for other values, see _process_volume_type_filters
+                    function for more information
+    :param list_result: For compatibility, if list_result = True, return a list
+                        instead of dict.
+    :returns: list/dict of matching volume types
+    """
+    session = get_session()
+    with session.begin():
+        # Add context for _process_volume_types_filters
+        filters = filters or {}
+        filters['context'] = context
+        # Generate the query
+        query = _generate_paginate_query(context, session, marker, limit,
+                                         sort_keys, sort_dirs, filters, offset,
+                                         models.VolumeTypes)
+        # No volume types would match, return empty dict or list
+        if query is None:
+            if list_result:
+                return []
+            return {}
 
-    if 'is_public' in filters and filters['is_public'] is not None:
-        the_filter = [models.VolumeTypes.is_public == filters['is_public']]
-        if filters['is_public'] and context.project_id is not None:
-            projects_attr = getattr(models.VolumeTypes, 'projects')
-            the_filter.extend([
-                projects_attr.any(project_id=context.project_id, deleted=0)
-            ])
-        if len(the_filter) > 1:
-            query = query.filter(or_(*the_filter))
-        else:
-            query = query.filter(the_filter[0])
-
-    rows = query.order_by("name").all()
-
-    result = {}
-    for row in rows:
-        result[row['name']] = _dict_with_extra_specs_if_authorized(context,
-                                                                   row)
-
-    return result
+        rows = query.all()
+        if list_result:
+            result = [_dict_with_extra_specs_if_authorized(context, row)
+                      for row in rows]
+            return result
+        result = {row['name']: _dict_with_extra_specs_if_authorized(context,
+                                                                    row)
+                  for row in rows}
+        return result
 
 
 def _volume_type_get_id_from_volume_type_query(context, id, session=None):
@@ -2460,16 +2516,22 @@ def _volume_type_get_id_from_volume_type(context, id, session=None):
     return result[0]
 
 
-@require_context
-def _volume_type_get(context, id, session=None, inactive=False,
-                     expected_fields=None):
-    expected_fields = expected_fields or []
+def _volume_type_get_db_object(context, id, session=None, inactive=False,
+                               expected_fields=None):
     read_deleted = "yes" if inactive else "no"
     result = _volume_type_get_query(
         context, session, read_deleted, expected_fields).\
         filter_by(id=id).\
         first()
+    return result
 
+
+@require_context
+def _volume_type_get(context, id, session=None, inactive=False,
+                     expected_fields=None):
+    expected_fields = expected_fields or []
+    result = _volume_type_get_db_object(context, id, session, inactive,
+                                        expected_fields)
     if not result:
         raise exception.VolumeTypeNotFound(volume_type_id=id)
 
@@ -4001,7 +4063,9 @@ PAGINATION_HELPERS = {
     models.Snapshot: (_snaps_get_query, _process_snaps_filters, _snapshot_get),
     models.Backup: (_backups_get_query, _process_backups_filters, _backup_get),
     models.QualityOfServiceSpecs: (_qos_specs_get_query,
-                                   _process_qos_specs_filters, _qos_specs_get)
+                                   _process_qos_specs_filters, _qos_specs_get),
+    models.VolumeTypes: (_volume_type_get_query, _process_volume_types_filters,
+                         _volume_type_get_db_object)
 }
 
 

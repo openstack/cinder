@@ -35,4 +35,9 @@ class ViewBuilder(common.ViewBuilder):
         """Index over trimmed volume types."""
         volume_types_list = [self.show(request, volume_type, True)
                              for volume_type in volume_types]
-        return dict(volume_types=volume_types_list)
+        volume_type_links = self._get_collection_links(request, volume_types,
+                                                       'types')
+        volume_types_dict = dict(volume_types=volume_types_list)
+        if volume_type_links:
+            volume_types_dict['volume_type_links'] = volume_type_links
+        return volume_types_dict

@@ -404,12 +404,23 @@ def volume_type_update(context, volume_type_id, values):
     return IMPL.volume_type_update(context, volume_type_id, values)
 
 
-def volume_type_get_all(context, inactive=False, filters=None):
+def volume_type_get_all(context, inactive=False, filters=None, marker=None,
+                        limit=None, sort_keys=None, sort_dirs=None,
+                        offset=None, list_result=False):
     """Get all volume types.
 
     :param context: context to query under
     :param inactive: Include inactive volume types to the result set
     :param filters: Filters for the query in the form of key/value.
+    :param marker: the last item of the previous page, used to determine the
+                   next page of results to return
+    :param limit: maximum number of items to return
+    :param sort_keys: list of attributes by which results should be sorted,
+                      paired with corresponding item in sort_dirs
+    :param sort_dirs: list of directions in which results should be sorted,
+                      paired with corresponding item in sort_keys
+    :param list_result: For compatibility, if list_result = True, return a list
+                        instead of dict.
 
         :is_public: Filter volume types based on visibility:
 
@@ -417,10 +428,13 @@ def volume_type_get_all(context, inactive=False, filters=None):
             * **False**: List private volume types only
             * **None**: List both public and private volume types
 
-    :returns: list of matching volume types
+    :returns: list/dict of matching volume types
     """
 
-    return IMPL.volume_type_get_all(context, inactive, filters)
+    return IMPL.volume_type_get_all(context, inactive, filters, marker=marker,
+                                    limit=limit, sort_keys=sort_keys,
+                                    sort_dirs=sort_dirs, offset=offset,
+                                    list_result=list_result)
 
 
 def volume_type_get(context, id, inactive=False, expected_fields=None):

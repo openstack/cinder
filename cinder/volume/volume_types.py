@@ -83,48 +83,19 @@ def destroy(context, id):
         db.volume_type_destroy(context, id)
 
 
-def get_all_types(context, inactive=0, search_opts=None):
+def get_all_types(context, inactive=0, filters=None, marker=None,
+                  limit=None, sort_keys=None, sort_dirs=None,
+                  offset=None, list_result=False):
     """Get all non-deleted volume_types.
 
     Pass true as argument if you want deleted volume types returned also.
 
     """
-    search_opts = search_opts or {}
-    filters = {}
-
-    if 'is_public' in search_opts:
-        filters['is_public'] = search_opts['is_public']
-        del search_opts['is_public']
-
-    vol_types = db.volume_type_get_all(context, inactive, filters=filters)
-
-    if search_opts:
-        LOG.debug("Searching by: %s", search_opts)
-
-        def _check_extra_specs_match(vol_type, searchdict):
-            for k, v in searchdict.items():
-                if (k not in vol_type['extra_specs'].keys()
-                        or vol_type['extra_specs'][k] != v):
-                    return False
-            return True
-
-        # search_option to filter_name mapping.
-        filter_mapping = {'extra_specs': _check_extra_specs_match}
-
-        result = {}
-        for type_name, type_args in vol_types.items():
-            # go over all filters in the list
-            for opt, values in search_opts.items():
-                try:
-                    filter_func = filter_mapping[opt]
-                except KeyError:
-                    # no such filter - ignore it, go to next filter
-                    continue
-                else:
-                    if filter_func(type_args, values):
-                        result[type_name] = type_args
-                        break
-        vol_types = result
+    vol_types = db.volume_type_get_all(context, inactive, filters=filters,
+                                       marker=marker, limit=limit,
+                                       sort_keys=sort_keys,
+                                       sort_dirs=sort_dirs, offset=offset,
+                                       list_result=list_result)
     return vol_types
 
 
