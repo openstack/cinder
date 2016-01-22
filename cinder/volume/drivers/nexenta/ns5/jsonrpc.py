@@ -71,14 +71,8 @@ class NexentaJSONProxy(object):
 
         LOG.debug('Sending JSON to url: %s, data: %s, method: %s',
                   path, data, self.method)
-        if self.method == 'get':
-            resp = requests.get(url, headers=headers)
-        if self.method == 'post':
-            resp = requests.post(url, data=data, headers=headers)
-        if self.method == 'put':
-            resp = requests.put(url, data=data, headers=headers)
-        if self.method == 'delete':
-            resp = requests.delete(url, data=data, headers=headers)
+
+        resp = getattr(requests, self.method)(url, data=data, headers=headers)
 
         if resp.status_code == 201 or (
                 resp.status_code == 200 and not resp.content):

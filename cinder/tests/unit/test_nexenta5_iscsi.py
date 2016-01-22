@@ -19,6 +19,8 @@ Unit tests for OpenStack Cinder volume driver
 import mock
 from mock import patch
 from oslo_utils import units
+from oslo_serialization import jsonutils
+import requests
 
 from cinder import context
 from cinder import db
@@ -209,3 +211,40 @@ class TestNexentaISCSIDriver(test.TestCase):
         self.assertEqual(
             {'provider_location': '1.1.1.1:8080,1 iqn-0 0'},
             self.drv._do_export({}, self.TEST_VOLUME_REF))
+
+
+class TestNexentaJSONProxy(test.TestCase):
+
+    def __init__(self, method):
+        super(TestNexentaJSONProxy, self).__init__(method)
+
+    @patch('requests.Response.close')
+    @patch('requests.get')
+    @patch('requests.post')
+    def test_call(self, post, get, close):
+        nef_get = jsonrpc.NexentaJSONProxy(
+            'http', '1.1.1.1', '8080', 'user', 'pass', method='get')
+        nef_post = jsonrpc.NexentaJSONProxy(
+            'http', '1.1.1.1', '8080', 'user', 'pass', method='post')
+        data = {'key': 'value'}
+        get.return_value = requests.Response()
+        post.return_value = requests.Response()
+
+        get.return_value.__setstate__({
+            'status_code': 200, '_content': jsonutils.dumps(data)})
+        self.assertEqual(nef_get('url'), {'key': 'value'})
+
+        get.return_value.__setstate__({
+            'status_code': 201, '_content': ''})        
+        self.assertEqual(nef_get('url'), 'Success')
+
+        data2 = {'links': [{'href': 'redirect_url'}]}
+        post.return_value.__setstate__({
+            'status_code': 202, '_content': jsonutils.dumps(data2)})
+        get.return_value.__setstate__({
+            'status_code': 200, '_content': jsonutils.dumps(data)})
+        self.assertEqual(nef_post('url'), {'key': 'value'})
+
+        get.return_value.__setstate__({
+            'status_code': 200, '_content': ''})
+        self.assertEqual(nef_post('url'), 'Success')

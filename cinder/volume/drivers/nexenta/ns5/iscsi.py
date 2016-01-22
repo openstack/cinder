@@ -476,7 +476,13 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         targetgroup_name = self._get_targetgroup_name(volume)
         url = 'san/targetgroups/%s/luns/%s' % (
             targetgroup_name, lun_id)
-        self.nef.delete(url)
+        try:
+            self.nef.delete(url)
+        except exception.NexentaException as exc:
+            if 'No such logical unit in target group' in exc.args[0]:
+                LOG.debug('LU already deleted from appliance')
+            else:
+                raise
 
     def get_volume_stats(self, refresh=False):
         """Get volume stats.
