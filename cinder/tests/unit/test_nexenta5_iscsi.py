@@ -94,11 +94,25 @@ class TestNexentaISCSIDriver(test.TestCase):
         }
         return db.volume_create(self.ctxt, vol)['id']
 
-    def check_for_setup_error(self):
+    def test_do_setup(self):
+        self.nef_mock.post.side_effect = exception.NexentaException(
+            'Could not create volume group')
+        self.assertRaises(
+            exception.NexentaException,
+            self.drv.do_setup, self.ctxt)
+
+        self.nef_mock.post.side_effect = exception.NexentaException(
+            '{"code": "EEXIST"}')
+        self.assertIsNone(self.drv.do_setup(self.ctxt))
+
+    def test_check_for_setup_error(self):
         self.nef_mock.get.return_value = {
-            'services': {'data': {'iscsit': {'state': 'offline'}}}}
+            'data': [{'name': 'iscsit', 'state': 'offline'}]}
         self.assertRaises(
             exception.NexentaException, self.drv.check_for_setup_error)
+
+        self.nef_mock.get.side_effect = exception.NexentaException()
+        self.assertRaises(LookupError, self.drv.check_for_setup_error)
 
     def test_create_volume(self):
         self.drv.create_volume(self.TEST_VOLUME_REF)
@@ -110,19 +124,41 @@ class TestNexentaISCSIDriver(test.TestCase):
             'sparseVolume': self.cfg.nexenta_sparse})
 
     def test_delete_volume(self):
-        self.drv.delete_volume(self.TEST_VOLUME_REF)
+        self.nef_mock.delete.side_effect = exception.NexentaException()
+        self.assertIsNone(self.drv.delete_volume(self.TEST_VOLUME_REF))
         url = 'storage/pools/pool/volumeGroups'
         data = {'name': 'dsg', 'volumeBlockSize': 32768}
         self.nef_mock.post.assert_called_with(url, data)
 
-    def test_create_cloned_volume(self):
+    def test_extend_volume(self):
+        self.nef_mock.put.side_effect = exception.NexentaException()
+        self.assertRaises(
+            exception.NexentaException,
+            self.drv.extend_volume, self.TEST_VOLUME_REF, 2)
+
+    def test_delete_snapshot(self):
+        self._create_volume_db_entry()
+        self.nef_mock.delete.side_effect = exception.NexentaException('EBUSY')
+        self.drv.delete_snapshot(self.TEST_SNAPSHOT_REF)
+        url = ('storage/pools/pool/volumeGroups/dsg/'
+               'volumes/volume-1/snapshots/snapshot1')
+        self.nef_mock.delete.assert_called_with(url)
+
+    @patch('cinder.volume.drivers.nexenta.ns5.iscsi.'
+           'NexentaISCSIDriver.create_snapshot')
+    @patch('cinder.volume.drivers.nexenta.ns5.iscsi.'
+           'NexentaISCSIDriver.delete_snapshot')
+    @patch('cinder.volume.drivers.nexenta.ns5.iscsi.'
+           'NexentaISCSIDriver.create_volume_from_snapshot')
+    def test_create_cloned_volume(self, crt_snap, crt_vol, dlt_snap):
         self._create_volume_db_entry()
         vol = self.TEST_VOLUME_REF2
         src_vref = self.TEST_VOLUME_REF
-
-        self.drv.create_cloned_volume(vol, src_vref)
-        url = 'storage/pools/pool/volumeGroups/dsg/volumes/volume2/promote'
-        self.nef_mock.post.assert_called_with(url)
+        crt_vol.side_effect = exception.NexentaException()
+        dlt_snap.side_effect = exception.NexentaException()
+        self.assertRaises(
+            exception.NexentaException,
+            self.drv.create_cloned_volume, vol, src_vref)
 
     def test_create_snapshot(self):
         self._create_volume_db_entry()
@@ -151,8 +187,12 @@ class TestNexentaISCSIDriver(test.TestCase):
     @patch('cinder.volume.drivers.nexenta.ns5.iscsi.'
            'NexentaISCSIDriver._get_target_by_alias')
     def test_create_target(self, target):
+        self.nef_mock.get.return_value = {}
         target.return_value = {'name': 'iqn-0'}
         self.assertEqual('iqn-0', self.drv._create_target(0))
+
+        target.return_value = None
+        self.assertRaises(TypeError, self.drv._create_target, 0)
 
     @patch('cinder.volume.drivers.nexenta.ns5.iscsi.'
            'NexentaISCSIDriver._create_target')
@@ -170,12 +210,29 @@ class TestNexentaISCSIDriver(test.TestCase):
             'iqn-0', self.drv._get_target_name(self.TEST_VOLUME_REF))
         self.assertEqual('1.1.1.1-0', self.drv.targetgroups['iqn-0'])
 
+        self.drv.targets = []
+        self.assertEqual('1.1.1.1-0', self.drv.targetgroups['iqn-0'])
+
+    @patch('cinder.volume.drivers.nexenta.ns5.iscsi.'
+           'NexentaISCSIDriver._create_target')
+    def test_get_targetgroup_name(self, target_name):
+        self.TEST_VOLUME_REF['provider_location'] = '1.1.1.1:8080,1 iqn-0 0'
+        self._create_volume_db_entry()
+        target_name = 'iqn-0'
+        self.drv.targetgroups[target_name] = '1.1.1.1-0'
+        self.assertEqual('1.1.1.1-0',
+            self.drv._get_targetgroup_name(self.TEST_VOLUME_REF))
+
     @patch('cinder.volume.drivers.nexenta.ns5.iscsi.'
            'NexentaISCSIDriver._get_targetgroup_name')
     def test_get_lun_id(self, targetgroup):
         targetgroup.return_value = '1.1.1.1-0'
         self.nef_mock.get.return_value = {'data': [{'guid': '0'}]}
         self.assertEqual('0', self.drv._get_lun_id(self.TEST_VOLUME_REF))
+
+        self.nef_mock.get.return_value = {}
+        self.assertRaises(
+            LookupError, self.drv._get_lun_id, self.TEST_VOLUME_REF)
 
     @patch('cinder.volume.drivers.nexenta.ns5.iscsi.'
            'NexentaISCSIDriver._get_lun_id')
@@ -194,6 +251,14 @@ class TestNexentaISCSIDriver(test.TestCase):
         targetgroup.return_value = '1.1.1.1-0'
         self.nef_mock.get.return_value = {'data': [{'lunNumber': 0}]}
         self.assertEqual(0, self.drv._get_lun(self.TEST_VOLUME_REF))
+
+        self.nef_mock.get.return_value = {}
+        self.assertRaises(
+            LookupError, self.drv._get_lun, self.TEST_VOLUME_REF)
+
+        lun_id.side_effect = LookupError()
+        self.assertIsNone(self.drv._get_lun(self.TEST_VOLUME_REF))
+
 
     @patch('cinder.volume.drivers.nexenta.ns5.iscsi.'
            'NexentaISCSIDriver._get_target_name')
@@ -232,19 +297,24 @@ class TestNexentaJSONProxy(test.TestCase):
 
         get.return_value.__setstate__({
             'status_code': 200, '_content': jsonutils.dumps(data)})
-        self.assertEqual(nef_get('url'), {'key': 'value'})
+        self.assertEqual({'key': 'value'}, nef_get('url'))
 
         get.return_value.__setstate__({
             'status_code': 201, '_content': ''})        
-        self.assertEqual(nef_get('url'), 'Success')
+        self.assertEqual('Success', nef_get('url'))
 
         data2 = {'links': [{'href': 'redirect_url'}]}
         post.return_value.__setstate__({
             'status_code': 202, '_content': jsonutils.dumps(data2)})
         get.return_value.__setstate__({
             'status_code': 200, '_content': jsonutils.dumps(data)})
-        self.assertEqual(nef_post('url'), {'key': 'value'})
+        self.assertEqual({'key': 'value'}, nef_post('url'))
 
         get.return_value.__setstate__({
             'status_code': 200, '_content': ''})
-        self.assertEqual(nef_post('url'), 'Success')
+        self.assertEqual('Success', nef_post('url', data))
+
+        get.return_value.__setstate__({
+            'status_code': 400,
+            '_content': jsonutils.dumps({'code': 'ENOENT'})})
+        self.assertRaises(exception.NexentaException, lambda: nef_get('url'))
