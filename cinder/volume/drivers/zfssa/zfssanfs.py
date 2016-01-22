@@ -1,4 +1,4 @@
-# Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -17,6 +17,7 @@ ZFS Storage Appliance NFS Cinder Volume Driver
 import datetime as dt
 import errno
 import math
+import os
 
 from oslo_config import cfg
 from oslo_log import log
@@ -59,7 +60,10 @@ ZFSSA_OPTS = [
                 help='Flag to enable local caching: True, False.'),
     cfg.StrOpt('zfssa_cache_directory', default='os-cinder-cache',
                help='Name of directory inside zfssa_nfs_share where cache '
-                    'volumes are stored.')
+                    'volumes are stored.'),
+    cfg.StrOpt('zfssa_manage_policy', default='loose',
+               choices=['loose', 'strict'],
+               help='Driver policy for volume manage.')
 ]
 
 LOG = log.getLogger(__name__)
@@ -79,8 +83,10 @@ class ZFSSANFSDriver(nfs.NfsDriver):
     1.0.1:
         Backend enabled volume migration.
         Local cache feature.
+    1.0.2:
+        Volume manage/unmanage support.
     """
-    VERSION = '1.0.1'
+    VERSION = '1.0.2'
     volume_backend_name = 'ZFSSA_NFS'
     protocol = driver_prefix = driver_volume_type = 'nfs'
 
@@ -200,6 +206,10 @@ class ZFSSANFSDriver(nfs.NfsDriver):
                                 lcfg.zfssa_nfs_share)
         self.zfssa.verify_service('http')
         self.zfssa.verify_service('nfs')
+
+    def create_volume(self, volume):
+        super(ZFSSANFSDriver, self).create_volume(volume)
+        self.zfssa.set_file_props(volume['name'], {'cinder_managed': 'True'})
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot of a volume."""
@@ -635,3 +645,119 @@ class ZFSSANFSDriver(nfs.NfsDriver):
                                                     method='MOVE')
         provider_location = new_volume['provider_location']
         return {'_name_id': None, 'provider_location': provider_location}
+
+    def manage_existing(self, volume, existing_ref):
+        """Manage an existing volume in the ZFSSA backend.
+
+        :param volume: Reference to the new volume.
+        :param existing_ref: Reference to the existing volume to be managed.
+        """
+        existing_vol_name = self._get_existing_vol_name(existing_ref)
+        try:
+            vol_props = self.zfssa.get_volume(existing_vol_name)
+        except exception.VolumeNotFound:
+            err_msg = (_("Volume %s doesn't exist on the ZFSSA backend.") %
+                       existing_vol_name)
+            LOG.error(err_msg)
+            raise exception.InvalidInput(reason=err_msg)
+
+        self._verify_volume_to_manage(existing_vol_name, vol_props)
+
+        try:
+            self.zfssa.rename_volume(existing_vol_name, volume['name'])
+        except Exception:
+            LOG.error(_LE("Failed to rename volume %(existing)s to %(new)s. "
+                          "Volume manage failed."),
+                      {'existing': existing_vol_name,
+                       'new': volume['name']})
+            raise
+
+        try:
+            self.zfssa.set_file_props(volume['name'],
+                                      {'cinder_managed': 'True'})
+        except Exception:
+            self.zfssa.rename_volume(volume['name'], existing_vol_name)
+            LOG.error(_LE("Failed to set properties for volume %(existing)s. "
+                          "Volume manage failed."),
+                      {'existing': volume['name']})
+            raise
+
+        return {'provider_location': self.mount_path}
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        """Return size of the volume to be managed by manage_existing."""
+        existing_vol_name = self._get_existing_vol_name(existing_ref)
+
+        # The ZFSSA NFS driver only has one mounted share.
+        local_share_mount = self._get_mount_point_for_share(
+            self._mounted_shares[0])
+        local_vol_path = os.path.join(local_share_mount, existing_vol_name)
+
+        try:
+            if os.path.isfile(local_vol_path):
+                size = int(math.ceil(float(
+                    utils.get_file_size(local_vol_path)) / units.Gi))
+        except (OSError, ValueError):
+            err_msg = (_("Failed to get size of existing volume: %(vol). "
+                         "Volume Manage failed."), {'vol': existing_vol_name})
+            LOG.error(err_msg)
+            raise exception.VolumeBackendAPIException(data=err_msg)
+
+        LOG.debug("Size volume: %(vol)s to be migrated is: %(size)s.",
+                  {'vol': existing_vol_name, 'size': size})
+
+        return size
+
+    def _verify_volume_to_manage(self, name, vol_props):
+        lcfg = self.configuration
+
+        if lcfg.zfssa_manage_policy != 'strict':
+            return
+
+        if vol_props['cinder_managed'] == "":
+            err_msg = (_("Unknown if the volume: %s to be managed is "
+                         "already being managed by Cinder. Aborting manage "
+                         "volume. Please add 'cinder_managed' custom schema "
+                         "property to the volume and set its value to False. "
+                         "Alternatively, Set the value of cinder config "
+                         "policy 'zfssa_manage_policy' to 'loose' to "
+                         "remove this restriction.") % name)
+            LOG.error(err_msg)
+            raise exception.InvalidInput(reason=err_msg)
+
+        if vol_props['cinder_managed'] == 'True':
+            msg = (_("Volume: %s is already being managed by Cinder.") % name)
+            LOG.error(msg)
+            raise exception.ManageExistingAlreadyManaged(volume_ref=name)
+
+    def unmanage(self, volume):
+        """Remove an existing volume from cinder management.
+
+        :param volume: Reference to the volume to be unmanaged.
+        """
+        new_name = 'unmanaged-' + volume['name']
+        try:
+            self.zfssa.rename_volume(volume['name'], new_name)
+        except Exception:
+            LOG.error(_LE("Failed to rename volume %(existing)s to %(new)s. "
+                          "Volume unmanage failed."),
+                      {'existing': volume['name'],
+                       'new': new_name})
+            raise
+
+        try:
+            self.zfssa.set_file_props(new_name, {'cinder_managed': 'False'})
+        except Exception:
+            self.zfssa.rename_volume(new_name, volume['name'])
+            LOG.error(_LE("Failed to set properties for volume %(existing)s. "
+                          "Volume unmanage failed."),
+                      {'existing': volume['name']})
+            raise
+
+    def _get_existing_vol_name(self, existing_ref):
+        if 'source-name' not in existing_ref:
+            msg = _("Reference to volume to be managed must contain "
+                    "source-name.")
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref, reason=msg)
+        return existing_ref['source-name']

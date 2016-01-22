@@ -1,4 +1,4 @@
-# Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -747,6 +747,7 @@ class ZFSSAApi(object):
 
         val = json.loads(ret.data)
         ret = {
+            'name': val['lun']['name'],
             'guid': val['lun']['lunguid'],
             'number': val['lun']['assignednumber'],
             'initiatorgroup': val['lun']['initiatorgroup'],
@@ -759,6 +760,8 @@ class ZFSSAApi(object):
         if 'custom:image_id' in val['lun']:
             ret.update({'image_id': val['lun']['custom:image_id']})
             ret.update({'updated_at': val['lun']['custom:updated_at']})
+        if 'custom:cinder_managed' in val['lun']:
+            ret.update({'cinder_managed': val['lun']['custom:cinder_managed']})
 
         return ret
 
@@ -922,6 +925,9 @@ class ZFSSAApi(object):
             project + '/luns/' + lun
         if kargs is None:
             return
+
+        if 'schema' in kargs:
+            kargs.update(kargs.pop('schema'))
 
         ret = self.rclient.put(svc, kargs)
         if ret.status != restclient.Status.ACCEPTED:
@@ -1251,6 +1257,7 @@ class ZFSSANfsApi(ZFSSAApi):
             'updated_at': self._parse_prop(resp, 'updated_at'),
             'image_id': self._parse_prop(resp, 'image_id'),
             'origin': self._parse_prop(resp, 'origin'),
+            'cinder_managed': self._parse_prop(resp, 'cinder_managed'),
         }
         return result
 
@@ -1288,3 +1295,7 @@ class ZFSSANfsApi(ZFSSAApi):
             except Exception:
                 exception_msg = (_('Cannot create directory %s.'), dirname)
                 raise exception.VolumeBackendAPIException(data=exception_msg)
+
+    def rename_volume(self, src, dst):
+        return self.webdavclient.request(src_file=src, dst_file=dst,
+                                         method='MOVE')

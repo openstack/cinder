@@ -1,4 +1,4 @@
-# Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -169,6 +169,7 @@ class TestZFSSAISCSIDriver(test.TestCase):
         self.configuration.zfssa_cache_project = zfssa_cache_dir
         self.configuration.safe_get = self.fake_safe_get
         self.configuration.zfssa_replication_ip = '1.1.1.1'
+        self.configuration.zfssa_manage_policy = 'loose'
 
     def _util_migrate_volume_exceptions(self):
         self.drv.zfssa.get_lun.return_value = (
@@ -739,6 +740,120 @@ class TestZFSSAISCSIDriver(test.TestCase):
             lcfg.zfssa_cache_project,
             volname)
 
+    @mock.patch.object(iscsi.ZFSSAISCSIDriver, '_get_existing_vol')
+    @mock.patch.object(iscsi.ZFSSAISCSIDriver, '_verify_volume_to_manage')
+    def test_volume_manage(self, _get_existing_vol, _verify_volume_to_manage):
+        lcfg = self.configuration
+        lcfg.zfssa_manage_policy = 'loose'
+        test_vol = self.test_vol
+        self.drv._get_existing_vol.return_value = test_vol
+        self.drv._verify_volume_to_manage.return_value = None
+        self.drv.zfssa.set_lun_props.return_value = True
+        self.assertIsNone(self.drv.manage_existing({'name': 'volume-123'},
+                                                   {'source-name':
+                                                       'volume-567'}))
+        self.drv._get_existing_vol.assert_called_once_with({'source-name':
+                                                            'volume-567'})
+        self.drv._verify_volume_to_manage.assert_called_once_with(test_vol)
+        self.drv.zfssa.set_lun_props.assert_called_once_with(
+            lcfg.zfssa_pool,
+            lcfg.zfssa_project,
+            test_vol['name'],
+            name='volume-123',
+            schema={"custom:cinder_managed": True})
+
+        # Case when zfssa_manage_policy is 'loose' and 'cinder_managed' is
+        # set to true.
+        test_vol.update({'cinder_managed': False})
+        self.assertIsNone(self.drv.manage_existing({'name': 'volume-123'},
+                                                   {'source-name':
+                                                       'volume-567'}))
+
+        # Another case is when the zfssa_manage_policy is set to 'strict'
+        lcfg.zfssa_manage_policy = 'strict'
+        test_vol.update({'cinder_managed': False})
+        self.assertIsNone(self.drv.manage_existing({'name': 'volume-123'},
+                                                   {'source-name':
+                                                       'volume-567'}))
+
+    def test_volume_manage_negative(self):
+        lcfg = self.configuration
+        lcfg.zfssa_manage_policy = 'strict'
+        test_vol = self.test_vol
+
+        if 'cinder_managed' in test_vol:
+            del test_vol['cinder_managed']
+
+        self.drv.zfssa.get_lun.return_value = test_vol
+        self.assertRaises(exception.InvalidInput,
+                          self.drv.manage_existing, {'name': 'cindervol'},
+                          {'source-name': 'volume-567'})
+
+        test_vol.update({'cinder_managed': True})
+        self.drv.zfssa.get_lun.return_value = test_vol
+        self.assertRaises(exception.ManageExistingAlreadyManaged,
+                          self.drv.manage_existing, {'name': 'cindervol'},
+                          {'source-name': 'volume-567'})
+
+        test_vol.update({'cinder_managed': False})
+        self.drv.zfssa.get_lun.return_value = test_vol
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.drv.manage_existing, {'name': 'cindervol'},
+                          {'source-id': 'volume-567'})
+
+        lcfg.zfssa_manage_policy = 'loose'
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.drv.manage_existing, {'name': 'cindervol'},
+                          {'source-id': 'volume-567'})
+
+    @mock.patch.object(iscsi.ZFSSAISCSIDriver, '_verify_volume_to_manage')
+    def test_volume_manage_negative_api_exception(self,
+                                                  _verify_volume_to_manage):
+        lcfg = self.configuration
+        lcfg.zfssa_manage_policy = 'loose'
+        self.drv.zfssa.get_lun.return_value = self.test_vol
+        self.drv._verify_volume_to_manage.return_value = None
+        self.drv.zfssa.set_lun_props.side_effect = \
+            exception.VolumeBackendAPIException(data='fake exception')
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.drv.manage_existing, {'name': 'volume-123'},
+                          {'source-name': 'volume-567'})
+
+    def test_volume_unmanage(self):
+        lcfg = self.configuration
+        self.drv.zfssa.set_lun_props.return_value = True
+        self.assertIsNone(self.drv.unmanage({'name': 'volume-123'}))
+        self.drv.zfssa.set_lun_props.assert_called_once_with(
+            lcfg.zfssa_pool,
+            lcfg.zfssa_project,
+            'volume-123',
+            name='unmanaged-volume-123',
+            schema={"custom:cinder_managed": False})
+
+    def test_volume_unmanage_negative(self):
+        self.drv.zfssa.set_lun_props.side_effect = \
+            exception.VolumeBackendAPIException(data='fake exception')
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.drv.unmanage, {'name': 'volume-123'})
+
+    @mock.patch.object(iscsi.ZFSSAISCSIDriver, '_get_existing_vol')
+    def test_manage_existing_get_size(self, _get_existing_vol):
+        test_vol = self.test_vol
+        test_vol['size'] = 3 * units.Gi
+        self.drv._get_existing_vol.return_value = test_vol
+        self.assertEqual(3, self.drv.manage_existing_get_size(
+                         {'name': 'volume-123'},
+                         {'source-name': 'volume-567'}))
+
+    @mock.patch.object(iscsi.ZFSSAISCSIDriver, '_get_existing_vol')
+    def test_manage_existing_get_size_negative(self, _get_existing_vol):
+        self.drv._get_existing_vol.side_effect = \
+            exception.VolumeNotFound(volume_id='123')
+        self.assertRaises(exception.VolumeNotFound,
+                          self.drv.manage_existing_get_size,
+                          {'name': 'volume-123'},
+                          {'source-name': 'volume-567'})
+
 
 class TestZFSSANFSDriver(test.TestCase):
 
@@ -791,6 +906,7 @@ class TestZFSSANFSDriver(test.TestCase):
         self.configuration.zfssa_enable_local_cache = True
         self.configuration.zfssa_cache_directory = zfssa_cache_dir
         self.configuration.nfs_sparsed_volumes = 'true'
+        self.configuration.zfssa_manage_policy = 'strict'
 
     def test_migrate_volume(self):
         self.drv.zfssa.get_asn.return_value = (
@@ -1081,6 +1197,152 @@ class TestZFSSANFSDriver(test.TestCase):
                           img_props_nfs)
         self.drv.zfssa.delete_file.assert_called_once_with(
             img_props_nfs['name'])
+
+    def test_volume_manage(self):
+        lcfg = self.configuration
+        lcfg.zfssa_manage_policy = 'loose'
+        test_vol = self.test_vol
+
+        self.drv.zfssa.get_volume.return_value = test_vol
+        self.drv.zfssa.rename_volume.return_value = None
+        self.drv.zfssa.set_file_props.return_value = None
+        self.drv.mount_path = lcfg.zfssa_data_ip + ':' + 'fake_mountpoint'
+        self.assertEqual({'provider_location': self.drv.mount_path},
+                         self.drv.manage_existing({'name': 'volume-123'},
+                                                  {'source-name':
+                                                      'volume-567'}))
+
+        self.drv.zfssa.get_volume.assert_called_once_with('volume-567')
+        self.drv.zfssa.rename_volume.assert_called_once_with('volume-567',
+                                                             'volume-123')
+        self.drv.zfssa.set_file_props.assert_called_once_with(
+            'volume-123', {'cinder_managed': 'True'})
+        # Test when 'zfssa_manage_policy' is set to 'strict'.
+        lcfg.zfssa_manage_policy = 'strict'
+        test_vol.update({'cinder_managed': 'False'})
+        self.drv.zfssa.get_volume.return_value = test_vol
+        self.assertEqual({'provider_location': self.drv.mount_path},
+                         self.drv.manage_existing({'name': 'volume-123'},
+                                                  {'source-name':
+                                                      'volume-567'}))
+
+    def test_volume_manage_negative_no_source_name(self):
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.drv.manage_existing,
+                          {'name': 'volume-123'},
+                          {'source-id': 'volume-567'})
+
+    def test_volume_manage_negative_backend_exception(self):
+        self.drv.zfssa.get_volume.side_effect = \
+            exception.VolumeNotFound(volume_id='volume-567')
+        self.assertRaises(exception.InvalidInput,
+                          self.drv.manage_existing,
+                          {'name': 'volume-123'},
+                          {'source-name': 'volume-567'})
+
+    def test_volume_manage_negative_verify_fail(self):
+        lcfg = self.configuration
+        lcfg.zfssa_manage_policy = 'strict'
+        test_vol = self.test_vol
+        test_vol['cinder_managed'] = ''
+
+        self.drv.zfssa.get_volume.return_value = test_vol
+        self.assertRaises(exception.InvalidInput,
+                          self.drv.manage_existing,
+                          {'name': 'volume-123'},
+                          {'source-name': 'volume-567'})
+
+        test_vol.update({'cinder_managed': 'True'})
+        self.drv.zfssa.get_volume.return_value = test_vol
+        self.assertRaises(exception.ManageExistingAlreadyManaged,
+                          self.drv.manage_existing,
+                          {'name': 'volume-123'},
+                          {'source-name': 'volume-567'})
+
+    @mock.patch.object(zfssanfs.ZFSSANFSDriver, '_verify_volume_to_manage')
+    def test_volume_manage_negative_rename_fail(self,
+                                                _verify_volume_to_manage):
+        test_vol = self.test_vol
+        test_vol.update({'cinder_managed': 'False'})
+        self.drv.zfssa.get_volume.return_value = test_vol
+        self.drv._verify_volume_to_manage.return_value = None
+        self.drv.zfssa.rename_volume.side_effect = \
+            exception.VolumeBackendAPIException(data="fake exception")
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.drv.manage_existing, {'name': 'volume-123'},
+                          {'source-name': 'volume-567'})
+
+    @mock.patch.object(zfssanfs.ZFSSANFSDriver, '_verify_volume_to_manage')
+    def test_volume_manage_negative_set_prop_fail(self,
+                                                  _verify_volume_to_manage):
+        test_vol = self.test_vol
+        test_vol.update({'cinder_managed': 'False'})
+        self.drv.zfssa.get_volume.return_value = test_vol
+        self.drv._verify_volume_to_manage.return_value = None
+        self.drv.zfssa.rename_volume.return_value = None
+        self.drv.zfssa.set_file_props.side_effect = \
+            exception.VolumeBackendAPIException(data="fake exception")
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.drv.manage_existing, {'name': 'volume-123'},
+                          {'source-name': 'volume-567'})
+
+    def test_volume_unmanage(self):
+        test_vol = self.test_vol
+        test_vol.update({'cinder_managed': 'True'})
+        self.drv.zfssa.rename_volume.return_value = None
+        self.drv.zfssa.set_file_props.return_value = None
+        self.assertIsNone(self.drv.unmanage(test_vol))
+        new_vol_name = 'unmanaged-' + test_vol['name']
+        self.drv.zfssa.rename_volume.assert_called_once_with(test_vol['name'],
+                                                             new_vol_name)
+        self.drv.zfssa.set_file_props.assert_called_once_with(
+            new_vol_name, {'cinder_managed': 'False'})
+
+    def test_volume_unmanage_negative_rename_fail(self):
+        test_vol = self.test_vol
+        test_vol.update({'cinder_managed': 'True'})
+        self.drv.zfssa.rename_volume.side_effect = \
+            exception.VolumeBackendAPIException(data="fake exception")
+        self.drv.zfssa.set_file_props.return_value = None
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.drv.unmanage, test_vol)
+
+    def test_volume_unmanage_negative_set_prop_fail(self):
+        test_vol = self.test_vol
+        test_vol.update({'cinder_managed': 'True'})
+        self.drv.zfssa.rename_volume.return_value = None
+        self.drv.zfssa.set_file_props.side_effect = \
+            exception.VolumeBackendAPIException(data="fake exception")
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.drv.unmanage, test_vol)
+
+    @mock.patch.object(zfssanfs.ZFSSANFSDriver, '_get_mount_point_for_share')
+    def test_manage_existing_get_size(self, _get_mount_point_for_share):
+        self.drv._get_mount_point_for_share.return_value = \
+            '/fake/mnt/fake_share/'
+        self.drv._mounted_shares = []
+        self.drv._mounted_shares.append('fake_share')
+        file = mock.Mock(st_size=123 * units.Gi)
+        with mock.patch('os.path.isfile', return_value=True):
+            with mock.patch('os.stat', return_value=file):
+                self.assertEqual(float(file.st_size / units.Gi),
+                                 self.drv.manage_existing_get_size(
+                                     {'name': 'volume-123'},
+                                     {'source-name': 'volume-567'}))
+
+    @mock.patch.object(zfssanfs.ZFSSANFSDriver, '_get_mount_point_for_share')
+    def test_manage_existing_get_size_negative(self,
+                                               _get_mount_point_for_share):
+        self.drv._get_mount_point_for_share.return_value = \
+            '/fake/mnt/fake_share/'
+        self.drv._mounted_shares = []
+        self.drv._mounted_shares.append('fake_share')
+        with mock.patch('os.path.isfile', return_value=True):
+            with mock.patch('os.stat', side_effect=OSError):
+                self.assertRaises(exception.VolumeBackendAPIException,
+                                  self.drv.manage_existing_get_size,
+                                  {'name': 'volume-123'},
+                                  {'source-name': 'volume-567'})
 
 
 class TestZFSSAApi(test.TestCase):
