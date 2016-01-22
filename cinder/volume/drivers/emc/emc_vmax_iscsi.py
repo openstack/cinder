@@ -57,6 +57,7 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
               - Proper error handling for invalid SLOs (bug #1512795)
               - Extend Volume for VMAX3, SE8.1.0.3
               https://blueprints.launchpad.net/cinder/+spec/vmax3-extend-volume
+              - Incorrect SG selected on an attach (#1515176)
     """
 
     VERSION = "2.3.0"
