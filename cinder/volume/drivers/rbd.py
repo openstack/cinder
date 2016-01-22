@@ -336,8 +336,8 @@ class RBDDriver(driver.VolumeDriver):
         # issues between the rbd driver and the ceph backup driver. These
         # issues only seem to occur when NOT using them together and are
         # triggered when the ceph backup driver imports the rbd volume driver.
-        from cinder.backup.drivers import ceph
-        return ceph.CephBackupDriver.get_backup_snaps(rbd_image)
+        from cinder.backup.drivers import sbs
+        return sbs.SBSBackupDriver.get_backup_snaps(rbd_image)
 
     def _get_mon_addrs(self):
         args = ['ceph', 'mon', 'dump', '--format=json']

@@ -525,6 +525,7 @@ class Backup(BASE, CinderBase):
     service = Column(String(255))
     size = Column(Integer)
     object_count = Column(Integer)
+    time_stamp = Column(String(255))
 
     @validates('fail_reason')
     def validate_fail_reason(self, key, fail_reason):

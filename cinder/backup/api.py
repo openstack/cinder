@@ -73,10 +73,10 @@ class API(base.Base):
 
         # Don't allow backup to be deleted if there are incremental
         # backups dependent on it.
-        deltas = self.get_all(context, {'parent_id': backup['id']})
-        if deltas and len(deltas):
-            msg = _('Incremental backups exist for this backup.')
-            raise exception.InvalidBackup(reason=msg)
+        #deltas = self.get_all(context, {'parent_id': backup['id']})
+        #if deltas and len(deltas):
+        #    msg = _('Incremental backups exist for this backup.')
+        #    raise exception.InvalidBackup(reason=msg)
 
         self.db.backup_update(context, backup_id, {'status': 'deleting'})
         self.backup_rpcapi.delete_backup(context,
