@@ -1,4 +1,4 @@
-# Copyright (c) 2015 Huawei Technologies Co., Ltd.
+# Copyright (c) 2016 Huawei Technologies Co., Ltd.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may

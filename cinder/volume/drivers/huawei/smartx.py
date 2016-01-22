@@ -1,4 +1,4 @@
-# Copyright (c) 2015 Huawei Technologies Co., Ltd.
+# Copyright (c) 2016 Huawei Technologies Co., Ltd.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -16,10 +16,11 @@
 from oslo_log import log as logging
 from oslo_utils import excutils
 
+from cinder import context
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LI
 from cinder.volume.drivers.huawei import constants
-from cinder.volume.drivers.huawei import huawei_utils
+from cinder.volume import qos_specs
 
 LOG = logging.getLogger(__name__)
 
@@ -28,11 +29,52 @@ class SmartQos(object):
     def __init__(self, client):
         self.client = client
 
-    def create_qos(self, qos, lun_id):
+    @staticmethod
+    def get_qos_by_volume_type(volume_type):
+        # We prefer the qos_specs association
+        # and override any existing extra-specs settings
+        # if present.
+        if not volume_type:
+            return {}
+
+        qos_specs_id = volume_type.get('qos_specs_id')
+        if not qos_specs_id:
+            return {}
+
+        qos = {}
+        ctxt = context.get_admin_context()
+        kvs = qos_specs.get_qos_specs(ctxt, qos_specs_id)['specs']
+        LOG.info(_LI('The QoS sepcs is: %s.'), kvs)
+        for k, v in kvs.items():
+            if k not in constants.HUAWEI_VALID_KEYS:
+                continue
+
+            if k.upper() != 'IOTYPE' and int(v) <= 0:
+                msg = _('QoS config is wrong. %s must > 0.') % k
+                LOG.error(msg)
+                raise exception.InvalidInput(reason=msg)
+            elif k.upper() == 'IOTYPE' and v not in ['0', '1', '2']:
+                msg = _('Illegal value specified for IOTYPE: 0, 1, or 2.')
+                LOG.error(msg)
+                raise exception.InvalidInput(reason=msg)
+            else:
+                qos[k.upper()] = v
+
+        return qos
+
+    def _is_high_priority(self, qos):
+        """Check QoS priority."""
+        for key, value in qos.items():
+            if (key.find('MIN') == 0) or (key.find('LATENCY') == 0):
+                return True
+
+        return False
+
+    def add(self, qos, lun_id):
         policy_id = None
         try:
             # Check QoS priority.
-            if huawei_utils.check_qos_high_priority(qos):
+            if self._is_high_priority(qos):
                 self.client.change_lun_priority(lun_id)
             # Create QoS policy and activate it.
             version = self.client.find_array_version()
@@ -51,13 +93,17 @@ class SmartQos(object):
                 if policy_id is not None:
                     self.client.delete_qos_policy(policy_id)
 
-    def delete_qos(self, qos_id):
+    def remove(self, qos_id, lun_id):
         qos_info = self.client.get_qos_info(qos_id)
-        qos_status = qos_info['RUNNINGSTATUS']
-        # 2: Active status.
-        if qos_status == constants.STATUS_QOS_ACTIVE:
-            self.client.activate_deactivate_qos(qos_id, False)
-        self.client.delete_qos_policy(qos_id)
+        lun_list = self.client.get_lun_list_in_qos(qos_id, qos_info)
+        if len(lun_list) <= 1:
+            qos_status = qos_info['RUNNINGSTATUS']
+            # 2: Active status.
+            if qos_status == constants.STATUS_QOS_ACTIVE:
+                self.client.activate_deactivate_qos(qos_id, False)
+            self.client.delete_qos_policy(qos_id)
+        else:
+            self.client.remove_lun_from_qos(lun_id, lun_list, qos_id)
 
 
 class SmartPartition(object):
@@ -132,9 +178,9 @@ class SmartX(object):
                     reason=(_('Illegal value specified for thin: '
                               'Can not set thin and thick at the same time.')))
             else:
-                opts['LUNType'] = 1
+                opts['LUNType'] = constants.THIN_LUNTYPE
         if opts['thick_provisioning_support'] == 'true':
-            opts['LUNType'] = 0
+            opts['LUNType'] = constants.THICK_LUNTYPE
 
         return opts
 
