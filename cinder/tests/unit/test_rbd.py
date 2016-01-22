@@ -15,7 +15,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-
+import ddt
 import math
 import os
 import tempfile
@@ -122,6 +122,7 @@ CEPH_MON_DUMP = """dumped monmap epoch 1
 """
 
 
+@ddt.ddt
 class RBDTestCase(test.TestCase):
 
     def setUp(self):
@@ -153,6 +154,17 @@ class RBDTestCase(test.TestCase):
         self.volume = dict(name=self.volume_name, size=self.volume_size)
         self.snapshot = dict(volume_name=self.volume_name,
                              name=self.snapshot_name)
+
+    @ddt.data({'cluster_name': None, 'pool_name': 'rbd'},
+              {'cluster_name': 'volumes', 'pool_name': None})
+    @ddt.unpack
+    def test_min_config(self, cluster_name, pool_name):
+        self.cfg.rbd_cluster_name = cluster_name
+        self.cfg.rbd_pool = pool_name
+
+        with mock.patch('cinder.volume.drivers.rbd.rados'):
+            self.assertRaises(exception.InvalidConfigurationValue,
+                              self.driver.check_for_setup_error)
 
     @common_mocks
     def test_create_volume(self):
