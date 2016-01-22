@@ -62,6 +62,12 @@ class LioAdm(iscsi.ISCSITarget):
 
         return None
 
+    def _get_targets(self):
+        (out, err) = self._execute('cinder-rtstool',
+                                   'get-targets',
+                                   run_as_root=True)
+        return out
+
     def _get_iscsi_target(self, context, vol_id):
         return 0
 
@@ -80,6 +86,15 @@ class LioAdm(iscsi.ISCSITarget):
             LOG.warning(_LW("Failed to save iscsi LIO configuration when "
                             "modifying volume id: %(vol_id)s."),
                         {'vol_id': vol_id})
+
+    def _restore_configuration(self):
+        try:
+            self._execute('cinder-rtstool', 'restore', run_as_root=True)
+
+        # On persistence failure we don't raise an exception, as target has
+        # been successfully created.
+        except putils.ProcessExecutionError:
+            LOG.warning(_LW("Failed to restore iscsi LIO configuration."))
 
     def create_iscsi_target(self, name, tid, lun, path,
                             chap_auth=None, **kwargs):
@@ -188,3 +203,14 @@ class LioAdm(iscsi.ISCSITarget):
 
         # We make changes persistent
         self._persist_configuration(volume['id'])
+
+    def ensure_export(self, context, volume, volume_path):
+        """Recreate exports for logical volumes."""
+
+        # Restore saved configuration file if no target exists.
+        if not self._get_targets():
+            LOG.info(_LI('Restoring iSCSI target from configuration file'))
+            self._restore_configuration()
+            return
+
+        LOG.info(_LI("Skipping ensure_export. Found existing iSCSI target."))

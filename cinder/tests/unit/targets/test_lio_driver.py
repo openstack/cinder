@@ -201,23 +201,30 @@ class TestLioAdmDriver(tf.TargetDriverFixture):
         # Ensure there have been no calls to persist configuration
         self.assertFalse(mpersist_cfg.called)
 
-    @mock.patch.object(lio.LioAdm, '_get_target_chap_auth')
-    @mock.patch.object(lio.LioAdm, 'create_iscsi_target')
-    def test_ensure_export(self, _mock_create, mock_get_chap):
+    @mock.patch.object(lio.LioAdm, '_get_targets')
+    @mock.patch.object(lio.LioAdm, '_execute', side_effect=lio.LioAdm._execute)
+    @mock.patch('cinder.utils.execute')
+    def test_ensure_export(self, mock_exec, mock_execute, mock_get_targets):
 
         ctxt = context.get_admin_context()
-        mock_get_chap.return_value = ('foo', 'bar')
+        mock_get_targets.return_value = None
         self.target.ensure_export(ctxt,
                                   self.testvol,
                                   self.fake_volumes_dir)
 
-        _mock_create.assert_called_once_with(
-            self.iscsi_target_prefix + 'testvol',
-            0, 0, self.fake_volumes_dir, ('foo', 'bar'),
-            check_exit_code=False,
-            old_name=None,
-            portals_ips=[self.configuration.iscsi_ip_address],
-            portals_port=self.configuration.iscsi_port)
+        expected_args = ('cinder-rtstool', 'restore')
+        mock_exec.assert_called_once_with(*expected_args, run_as_root=True)
+
+    @mock.patch.object(lio.LioAdm, '_get_targets')
+    @mock.patch.object(lio.LioAdm, '_restore_configuration')
+    def test_ensure_export_target_exist(self, mock_restore, mock_get_targets):
+
+        ctxt = context.get_admin_context()
+        mock_get_targets.return_value = 'target'
+        self.target.ensure_export(ctxt,
+                                  self.testvol,
+                                  self.fake_volumes_dir)
+        self.assertFalse(mock_restore.called)
 
     @mock.patch.object(lio.LioAdm, '_execute', side_effect=lio.LioAdm._execute)
     @mock.patch.object(lio.LioAdm, '_persist_configuration')
