@@ -1,0 +1,2 @@
+features:
+  - Added backend driver for NexentaStor5 NFS storage.
