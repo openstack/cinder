@@ -289,7 +289,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         try:
             self.nef.delete(url)
         except exception.NexentaException as exc:
-            if 'EBUSY' is exc:
+            if 'EBUSY' in exc.args[0]:
                 LOG.warning(_LW(
                     'Could not delete snapshot %s - it has dependencies'),
                     snapshot['name'])
@@ -503,9 +503,9 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
             'group': self.volume_group,
         }
         stats = self.nef.get(url)
-        total_amount = utils.str2gib_size(
-            stats['bytesAvailable'] + stats['bytesUsed'])
-        free_amount = utils.str2gib_size(stats['bytesAvailable'])
+        total_amount = utils.str2gib_size(stats['bytesAvailable'])
+        free_amount = utils.str2gib_size(
+            stats['bytesAvailable'] - stats['bytesUsed'])
 
         location_info = '%(driver)s:%(host)s:%(pool)s/%(group)s' % {
             'driver': self.__class__.__name__,
