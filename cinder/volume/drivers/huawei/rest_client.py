@@ -392,7 +392,7 @@ class RestClient(object):
             return True
         return False
 
-    def do_mapping(self, lun_id, hostgroup_id, host_id, tgtportgroup_id=None):
+    def do_mapping(self, lun_id, hostgroup_id, host_id, portgroup_id=None):
         """Add hostgroup and lungroup to mapping view."""
         lungroup_name = constants.LUNGROUP_PREFIX + host_id
         mapping_view_name = constants.MAPPING_VIEW_PREFIX + host_id
@@ -420,19 +420,19 @@ class RestClient(object):
                 view_id = self._add_mapping_view(mapping_view_name)
                 self._associate_hostgroup_to_view(view_id, hostgroup_id)
                 self._associate_lungroup_to_view(view_id, lungroup_id)
-                if tgtportgroup_id:
-                    self._associate_portgroup_to_view(view_id, tgtportgroup_id)
+                if portgroup_id:
+                    self._associate_portgroup_to_view(view_id, portgroup_id)
 
             else:
                 if not self.hostgroup_associated(view_id, hostgroup_id):
                     self._associate_hostgroup_to_view(view_id, hostgroup_id)
                 if not self.lungroup_associated(view_id, lungroup_id):
                     self._associate_lungroup_to_view(view_id, lungroup_id)
-                if tgtportgroup_id:
+                if portgroup_id:
                     if not self._portgroup_associated(view_id,
-                                                      tgtportgroup_id):
+                                                      portgroup_id):
                         self._associate_portgroup_to_view(view_id,
-                                                          tgtportgroup_id)
+                                                          portgroup_id)
 
             version = self.find_array_version()
             if version >= constants.ARRAY_VERSION:
@@ -1802,11 +1802,6 @@ class RestClient(object):
 
         return True
 
-    def get_volume_by_name(self, name):
-        url = "/lun?range=[0-65535]"
-        result = self.call(url, None, "GET")
-        self._assert_rest_result(result, _('Get volume by name error.'))
-
     def change_hostlun_id(self, map_info, hostlun_id):
         url = "/mappingview"
         view_id = six.text_type(map_info['view_id'])
@@ -1879,14 +1874,13 @@ class RestClient(object):
         url = "/lun?range=[0-65535]"
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Get volume by name error.'))
-        if 'data' in result:
-            for item in result['data']:
-                rss_obj = item.get('HASRSSOBJECT')
-                if rss_obj:
-                    rss_obj = ast.literal_eval(rss_obj)
-                    if (item.get('ID') == lun_id and
-                            rss_obj.get('LUNMirror') == 'TRUE'):
-                        return True
+        for item in result.get('data', []):
+            rss_obj = item.get('HASRSSOBJECT')
+            if rss_obj:
+                rss_obj = ast.literal_eval(rss_obj)
+                if (item.get('ID') == lun_id and
+                        rss_obj.get('LUNMirror') == 'TRUE'):
+                    return True
         return False
 
     def get_portgs_by_portid(self, port_id):

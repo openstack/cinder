@@ -303,8 +303,6 @@ class HuaweiBaseDriver(driver.VolumeDriver):
 
         self._delete_volume(volume)
 
-        return True
-
     def _delete_lun_with_check(self, lun_id):
         if not lun_id:
             return
@@ -611,9 +609,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
              'oldsize': old_size,
              'newsize': new_size})
 
-        lun_info = self.client.extend_lun(lun_id, new_size)
-        return {'provider_location': lun_info['ID'],
-                'lun_info': lun_info}
+        self.client.extend_lun(lun_id, new_size)
 
     def create_snapshot(self, snapshot):
         volume = snapshot.get('volume')
@@ -940,6 +936,14 @@ class HuaweiBaseDriver(driver.VolumeDriver):
 
     def _check_lun_valid_for_manage(self, lun_info, external_ref):
         lun_id = lun_info.get('ID')
+
+        # Check whether the LUN is already in LUN group.
+        if lun_info.get('ISADD2LUNGROUP') == 'true':
+            msg = (_("Can't import LUN %s to Cinder. Already exists in a LUN "
+                     "group.") % lun_id)
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=external_ref, reason=msg)
+
         # Check whether the LUN is Normal.
         if lun_info.get('HEALTHSTATUS') != constants.STATUS_HEALTH:
             msg = _("Can't import LUN %s to Cinder. LUN status is not "
@@ -1032,19 +1036,12 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             raise exception.ManageExistingInvalidReference(
                 existing_ref=external_ref, reason=msg)
 
-        # Check whether the LUN has already in LUN group.
-        if lun_info.get('ISADD2LUNGROUP') == 'true':
-            msg = (_("Can't import LUN %s to Cinder. Already exists in a LUN "
-                     "group.") % lun_id)
-            raise exception.ManageExistingInvalidReference(
-                existing_ref=external_ref, reason=msg)
-
     def manage_existing(self, volume, external_ref):
         """Manage an existing volume on the backend storage."""
         # Check whether the LUN is belonged to the specified pool.
         pool = volume_utils.extract_host(volume['host'], 'pool')
         LOG.debug("Pool specified is: %s.", pool)
-        lun_info = self._get_lun_by_ref(external_ref)
+        lun_info = self._get_lun_info_by_ref(external_ref)
         lun_id = lun_info.get('ID')
         description = lun_info.get('DESCRIPTION', '')
         if len(description) <= (
@@ -1092,7 +1089,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
 
         return {'provider_location': lun_id}
 
-    def _get_lun_by_ref(self, external_ref):
+    def _get_lun_info_by_ref(self, external_ref):
         LOG.debug("Get external_ref: %s", external_ref)
         name = external_ref.get('source-name')
         id = external_ref.get('source-id')
@@ -1101,7 +1098,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             raise exception.ManageExistingInvalidReference(
                 existing_ref=external_ref, reason=msg)
 
-        lun_id = id or self.client.get_volume_by_name(name)
+        lun_id = id or self.client.get_lun_id_by_name(name)
         if not lun_id:
             msg = _("Can't find LUN on the array, please check the "
                     "source-name or source-id.")
@@ -1116,7 +1113,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         volume_id = volume['id']
         LOG.debug("Unmanage volume: %s.", volume_id)
         lun_name = huawei_utils.encode_name(volume_id)
-        lun_id = self.client.get_volume_by_name(lun_name)
+        lun_id = self.client.get_lun_id_by_name(lun_name)
         if not lun_id:
             LOG.error(_LE("Can't find LUN on the array for volume: %s."),
                       volume_id)
@@ -1134,7 +1131,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
 
     def manage_existing_get_size(self, volume, external_ref):
         """Get the size of the existing volume."""
-        lun_info = self._get_lun_by_ref(external_ref)
+        lun_info = self._get_lun_info_by_ref(external_ref)
         size = float(lun_info.get('CAPACITY')) // constants.CAPACITY_UNIT
         remainder = float(lun_info.get('CAPACITY')) % constants.CAPACITY_UNIT
         if int(remainder) > 0:
