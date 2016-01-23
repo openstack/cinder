@@ -40,12 +40,14 @@ import boto
 import boto.s3.connection
 import pdb
 import eventlet
+import math
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import encodeutils
 from oslo_utils import excutils
 from oslo_utils import units
 from oslo_utils import timeutils
+from filechunkio import FileChunkIO
 
 from cinder.backup import driver
 from cinder import exception
@@ -67,20 +69,16 @@ service_opts = [
                help='Access key for S3 store.'),
     cfg.StrOpt('sbs_secret_key', default='',
                help='Secrete key for S3 store.'),
-    cfg.StrOpt('sbs_container', default='backup-shishir',
+    cfg.StrOpt('sbs_container', default='sbs-backup',
                help='Bucket in S3 store to save backups.'),
-    cfg.StrOpt('sbs_region', default='us-west-2',
-               help='Region where the buckets are'),
     cfg.StrOpt('backup_ceph_user', default='cinder',
 		help='user'),
     cfg.StrOpt('backup_ceph_pool', default='sbs',
 		help='pool sbs'),
     cfg.StrOpt('backup_ceph_conf', default='/etc/ceph/ceph.conf',
 		help='ceph conf'),
-
-
-
-
+    cfg.StrOpt('sbs_dss_host', default='',
+        help='endpoint of object store gateway'),
 ]
 
 CONF = cfg.CONF
@@ -100,10 +98,10 @@ class SBSBackupDriver(driver.BackupDriver):
         self._access_key = encodeutils.safe_encode(CONF.sbs_access_key)
         self._secret_key = encodeutils.safe_encode(CONF.sbs_secret_key)
         self._container = encodeutils.safe_encode(CONF.sbs_container)
-        self._region = encodeutils.safe_encode(CONF.sbs_region)
         self._ceph_backup_user = encodeutils.safe_encode(CONF.backup_ceph_user)
         self._ceph_backup_pool = encodeutils.safe_encode(CONF.backup_ceph_pool)
         self._ceph_backup_conf = encodeutils.safe_encode(CONF.backup_ceph_conf)
+        self._dss_host = encodeutils.safe_encode(CONF.sbs_dss_host)
 
     #Routine used to connect to ceph cluster called by rbd_driver.RADOSClient
     def _connect_to_rados(self, pool=None):
@@ -338,11 +336,14 @@ class SBSBackupDriver(driver.BackupDriver):
     #connect to object store and return handle
     def _connect_to_DSS(self):
         try:
-            conn = boto.s3.connect_to_region(self._region,aws_access_key_id=self._access_key,
-                                             aws_secret_access_key=self._secret_key,
-                                             calling_format = boto.s3.connection.OrdinaryCallingFormat(),)
+            LOG.info("Connecting to dss @ %s" % self._dss_host)
+            conn = boto.connect_s3(host=self._dss_host,aws_access_key_id=self._access_key,
+                                   aws_secret_access_key=self._secret_key, is_secure=True,
+                                   calling_format = boto.s3.connection.OrdinaryCallingFormat(),)
         except Exception as e:
-            LOG.warn("Exception getting connection to object store")
+            errmsg = (_("Exception getting connection to object store %s") % e)
+            LOG.error(errmsg)
+            raise exception.BackupRBDOperationFailed(errmsg)
             return None
         return conn
 
@@ -366,9 +367,9 @@ class SBSBackupDriver(driver.BackupDriver):
 
         for i in range(chunk_count):
             off_set = chunk_size * i
-            bytes = min(chunk_size, size - offset)
-            #with FileChunkIO(loc, 'r', offset=off_set, bytes=bytes) as fp:
-            #    mp.upload_part_from_file(fp,part_num=i+1)
+            bytes = min(chunk_size, size - off_set)
+            with FileChunkIO(loc, 'r', offset=off_set, bytes=bytes) as fp:
+                mp.upload_part_from_file(fp,part_num=i+1)
 
         mp.complete_upload()
 
@@ -386,6 +387,7 @@ class SBSBackupDriver(driver.BackupDriver):
         LOG.info(cmd)
         self._execute (*cmd, run_as_root=False)
         conn = self._connect_to_DSS()
+        bucket = None
         if conn != None:
             bucket = self._get_bucket(conn, self._container)
         if bucket == None:
@@ -400,7 +402,8 @@ class SBSBackupDriver(driver.BackupDriver):
             raise exception.BackupOperationError(msg)
             return
         try:
-            key.set_contents_from_filename(loc)
+            self._multi_part_upload(bucket, key, loc)
+            #key.set_contents_from_filename(loc)
         except exception as e:
             os.remove(loc)
             msg = (_("Failed to upload backup % to object store") % (snap_name))
@@ -589,6 +592,7 @@ class SBSBackupDriver(driver.BackupDriver):
         open(loc,'a').close
 
         conn = self._connect_to_DSS()
+        bucket = None
         if conn != None:
             bucket = self._get_bucket(conn, self._container)
 
