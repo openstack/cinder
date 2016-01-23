@@ -3034,6 +3034,12 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         op.get_replica_info(replica_id)
         op._is_status(None, {'key': 'volue'}, None)
 
+    @mock.patch.object(rest_client.RestClient, 'call',
+                       return_value={"error": {"code": 0}})
+    def test_get_tgt_port_group_no_portg_exist(self, mock_call):
+        portg = self.driver.client.get_tgt_port_group('test_portg')
+        self.assertIsNone(portg)
+
 
 class FCSanLookupService(object):
 
