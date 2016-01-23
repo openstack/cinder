@@ -583,16 +583,15 @@ class ReplicaPairManager(object):
             self.rmt_driver.enable(pair_id)
 
             lun_info = self.rmt_client.get_lun_info(rmt_lun_id)
-            lun_wwn = lun_info.get('WWN')
-            metadata = huawei_utils.get_volume_metadata(v)
-            metadata.update({'lun_wwn': lun_wwn})
+            admin_metadata = v['admin_metadata']
+            admin_metadata.update({'huawei_lun_wwn': lun_info['WWN']})
             new_drv_data = {'pair_id': pair_id,
                             'rmt_lun_id': v['provider_location']}
             new_drv_data = to_string(new_drv_data)
             v_update['updates'] = {'provider_location': rmt_lun_id,
                                    'replication_status': 'available',
                                    'replication_driver_data': new_drv_data,
-                                   'metadata': metadata}
+                                   'admin_metadata': admin_metadata}
             volumes_update.append(v_update)
 
         return volumes_update
@@ -624,16 +623,16 @@ class ReplicaPairManager(object):
             self.rmt_driver.failover(pair_id)
 
             lun_info = self.rmt_client.get_lun_info(rmt_lun_id)
-            lun_wwn = lun_info.get('WWN')
-            metadata = huawei_utils.get_volume_metadata(v)
-            metadata.update({'lun_wwn': lun_wwn})
+            admin_metadata = v['admin_metadata']
+            admin_metadata.update({'huawei_lun_wwn': lun_info['WWN']})
+
             new_drv_data = {'pair_id': pair_id,
                             'rmt_lun_id': v['provider_location']}
             new_drv_data = to_string(new_drv_data)
             v_update['updates'] = {'provider_location': rmt_lun_id,
                                    'replication_status': 'failed-over',
                                    'replication_driver_data': new_drv_data,
-                                   'metadata': metadata}
+                                   'admin_metadata': admin_metadata}
             volumes_update.append(v_update)
 
         return volumes_update
