@@ -16,6 +16,7 @@
     "volume:update_volume_admin_metadata": "rule:admin_api",
     "volume:get_snapshot": "rule:admin_or_owner",
     "volume:get_all_snapshots": "rule:admin_or_owner",
+    "volume:create_snapshot": "rule:admin_or_owner",
     "volume:delete_snapshot": "rule:admin_or_owner",
     "volume:update_snapshot": "rule:admin_or_owner",
     "volume:extend": "rule:admin_or_owner",
