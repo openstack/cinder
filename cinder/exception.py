@@ -256,6 +256,12 @@ class APITimeout(APIException):
     message = _("Timeout while requesting %(service)s API.")
 
 
+class RPCTimeout(CinderException):
+    message = _("Timeout while requesting capabilities from backend "
+                "%(service)s.")
+    code = 502
+
+
 class NotFound(CinderException):
     message = _("Resource could not be found.")
     code = 404
