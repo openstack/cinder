@@ -1017,11 +1017,12 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             qos_info = self.client.get_qos_info(qos_id)
 
         for key, value in qos_info.items():
-            if key.upper() in constants.QOS_KEYS:
-                if key.upper() == 'LATENCY' and value == '0':
+            key = key.upper()
+            if key in constants.QOS_KEYS:
+                if key == 'LATENCY' and value == '0':
                     continue
                 else:
-                    qos[key.upper()] = value
+                    qos[key] = value
         return qos
 
     def create_export(self, context, volume, connector):
