@@ -47,7 +47,7 @@ test_volume = {'host': 'node#testPool',
 test_snapshot = {'name': 'testSnap',
                  'id': '07ae9978-5445-405e-8881-28f2adfee732',
                  'volume': {'host': 'node#testPool',
-                            'size': '1',
+                            'size': 1,
                             '_name_id': 'testvol'
                             }
                  }
