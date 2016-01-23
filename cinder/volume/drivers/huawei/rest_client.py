@@ -1034,7 +1034,8 @@ class RestClient(object):
         wwns = []
         if 'data' in result:
             for item in result['data']:
-                wwns.append(item['ID'])
+                if item['RUNNINGSTATUS'] == constants.FC_INIT_ONLINE:
+                    wwns.append(item['ID'])
 
         return wwns
 
