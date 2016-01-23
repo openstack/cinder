@@ -266,6 +266,9 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         lun_info = self.client.create_lun(lun_params)
         model_update['provider_location'] = lun_info['ID']
 
+        admin_metadata = volume['admin_metadata']
+        admin_metadata.update({'huawei_lun_wwn': lun_info['WWN']})
+        model_update['admin_metadata'] = admin_metadata
         metadata = huawei_utils.get_volume_metadata(volume)
         model_update['metadata'] = metadata
         return lun_info, model_update
@@ -367,9 +370,9 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         Secondly, remove associate from QoS policy.
         Thirdly, remove the lun.
         """
-        lun_id = volume.get('provider_location')
-        if not lun_id or not self.client.check_lun_exist(lun_id):
-            LOG.warning(_LW("Can't find lun %s on the array."), lun_id)
+        lun_id = self._check_volume_exist_on_array(
+            volume, constants.VOLUME_NOT_EXISTS_WARN)
+        if not lun_id:
             return
 
         qos_id = self.client.get_qosid_by_lunid(lun_id)
@@ -386,6 +389,8 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                 metro.delete_hypermetro(volume)
             except exception.VolumeBackendAPIException as err:
                 LOG.error(_LE('Delete hypermetro error: %s.'), err)
+                # We have checked the LUN WWN above,
+                # no need to check again here.
                 self._delete_volume(volume)
                 raise
 
@@ -401,11 +406,11 @@ class HuaweiBaseDriver(driver.VolumeDriver):
 
         self._delete_volume(volume)
 
-    def _delete_lun_with_check(self, lun_id):
+    def _delete_lun_with_check(self, lun_id, lun_wwn=None):
         if not lun_id:
             return
 
-        if self.client.check_lun_exist(lun_id):
+        if self.client.check_lun_exist(lun_id, lun_wwn):
             qos_id = self.client.get_qosid_by_lunid(lun_id)
             if qos_id:
                 smart_qos = smartx.SmartQos(self.client)
@@ -512,6 +517,8 @@ class HuaweiBaseDriver(driver.VolumeDriver):
 
     def migrate_volume(self, ctxt, volume, host, new_type=None):
         """Migrate a volume within the same array."""
+        self._check_volume_exist_on_array(volume,
+                                          constants.VOLUME_NOT_EXISTS_RAISE)
 
         # NOTE(jlc): Replication volume can't migrate. But retype
         # can remove replication relationship first then do migrate.
@@ -681,11 +688,8 @@ class HuaweiBaseDriver(driver.VolumeDriver):
 
     def create_cloned_volume(self, volume, src_vref):
         """Clone a new volume from an existing volume."""
-        if src_vref.get('provider_location') is None:
-            msg = (_("Can't find lun id from db, volume: %(id)s") %
-                   {"id": volume['id']})
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+        self._check_volume_exist_on_array(src_vref,
+                                          constants.VOLUME_NOT_EXISTS_RAISE)
 
         # Form the snapshot structure.
         snapshot = {'id': uuid.uuid4().__str__(),
@@ -710,6 +714,42 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                      'volume_id': src_vref['id']},)
 
         return model_update
+
+    def _check_volume_exist_on_array(self, volume, action):
+        """Check whether the volume exists on the array.
+
+        If the volume exists on the array, return the LUN ID.
+        If not exists, raise or log warning.
+        """
+        # Firstly, try to find LUN ID by volume['provider_location'].
+        lun_id = volume.get('provider_location')
+        # If LUN ID not recorded, find LUN ID by LUN NAME.
+        if not lun_id:
+            volume_name = huawei_utils.encode_name(volume['id'])
+            lun_id = self.client.get_lun_id_by_name(volume_name)
+            if not lun_id:
+                msg = (_("Volume %s does not exist on the array.")
+                       % volume['id'])
+                if action == constants.VOLUME_NOT_EXISTS_WARN:
+                    LOG.warning(msg)
+                if action == constants.VOLUME_NOT_EXISTS_RAISE:
+                    raise exception.VolumeBackendAPIException(data=msg)
+                return
+
+        metadata = volume['admin_metadata']
+        lun_wwn = metadata.get('huawei_lun_wwn') if metadata else None
+        if not lun_wwn:
+            LOG.debug("No LUN WWN recorded for volume %s.", volume['id'])
+
+        if not self.client.check_lun_exist(lun_id, lun_wwn):
+            msg = (_("Volume %s does not exist on the array.")
+                   % volume['id'])
+            if action == constants.VOLUME_NOT_EXISTS_WARN:
+                LOG.warning(msg)
+            if action == constants.VOLUME_NOT_EXISTS_RAISE:
+                raise exception.VolumeBackendAPIException(data=msg)
+            return
+        return lun_id
 
     def extend_volume(self, volume, new_size):
         """Extend a volume."""
@@ -807,6 +847,8 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                                                     'new_type': new_type,
                                                     'diff': diff,
                                                     'host': host})
+        self._check_volume_exist_on_array(
+            volume, constants.VOLUME_NOT_EXISTS_RAISE)
 
         # Check what changes are needed
         migration, change_opts, lun_id = self.determine_changes_when_retype(
@@ -1267,8 +1309,11 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                   {'old_name': lun_info.get('NAME'),
                    'new_name': new_name})
         self.client.rename_lun(lun_id, new_name, description)
+        metadata = volume['admin_metadata']
+        metadata.update({'huawei_lun_wwn': lun_info['WWN']})
 
         model_update = {}
+        model_update.update({'admin_metadata': metadata})
         model_update.update({'provider_location': lun_id})
 
         if new_opts and new_opts.get('replication_enabled'):
@@ -1305,14 +1350,14 @@ class HuaweiBaseDriver(driver.VolumeDriver):
 
     def unmanage(self, volume):
         """Export Huawei volume from Cinder."""
-        volume_id = volume['id']
-        LOG.debug("Unmanage volume: %s.", volume_id)
-        lun_name = huawei_utils.encode_name(volume_id)
-        lun_id = self.client.get_lun_id_by_name(lun_name)
+        LOG.debug("Unmanage volume: %s.", volume['id'])
+
+        lun_id = self._check_volume_exist_on_array(
+            volume, constants.VOLUME_NOT_EXISTS_WARN)
         if not lun_id:
-            LOG.error(_LE("Can't find LUN on the array for volume: %s."),
-                      volume_id)
             return
+
+        lun_name = huawei_utils.encode_name(volume['id'])
         new_name = 'unmged_' + lun_name
         LOG.debug("Rename LUN %(lun_name)s to %(new_name)s.",
                   {'lun_name': lun_name,
@@ -1574,15 +1619,15 @@ class HuaweiISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
     @utils.synchronized('huawei', external=True)
     def initialize_connection(self, volume, connector):
         """Map a volume to a host and return target iSCSI information."""
-        LOG.info(_LI('Enter initialize_connection.'))
-        initiator_name = connector['initiator']
-        volume_name = huawei_utils.encode_name(volume['id'])
+        lun_id = self._check_volume_exist_on_array(
+            volume, constants.VOLUME_NOT_EXISTS_RAISE)
 
+        initiator_name = connector['initiator']
         LOG.info(_LI(
             'initiator name: %(initiator_name)s, '
-            'volume name: %(volume)s.'),
+            'LUN ID: %(lun_id)s.'),
             {'initiator_name': initiator_name,
-             'volume': volume_name})
+             'lun_id': lun_id})
 
         (iscsi_iqns,
          target_ips,
@@ -1604,8 +1649,6 @@ class HuaweiISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
         self.client.ensure_initiator_added(initiator_name,
                                            host_id)
         hostgroup_id = self.client.add_host_to_hostgroup(host_id)
-
-        lun_id = self.client.get_lun_id(volume, volume_name)
 
         # Mapping lungroup and hostgroup to view.
         self.client.do_mapping(lun_id, hostgroup_id,
@@ -1649,18 +1692,16 @@ class HuaweiISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
     @utils.synchronized('huawei', external=True)
     def terminate_connection(self, volume, connector, **kwargs):
         """Delete map between a volume and a host."""
+        lun_id = self._check_volume_exist_on_array(
+            volume, constants.VOLUME_NOT_EXISTS_WARN)
         initiator_name = connector['initiator']
-        volume_name = huawei_utils.encode_name(volume['id'])
-        lun_id = volume.get('provider_location')
         host_name = connector['host']
         lungroup_id = None
 
         LOG.info(_LI(
-            'terminate_connection: volume name: %(volume)s, '
-            'initiator name: %(ini)s, '
-            'lun_id: %(lunid)s.'),
-            {'volume': volume_name,
-             'ini': initiator_name,
+            'terminate_connection: initiator name: %(ini)s, '
+            'LUN ID: %(lunid)s.'),
+            {'ini': initiator_name,
              'lunid': lun_id},)
 
         portgroup = None
@@ -1685,20 +1726,17 @@ class HuaweiISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
                 lungroup_id = self.client.find_lungroup_from_map(view_id)
 
         # Remove lun from lungroup.
-        if lun_id and self.client.check_lun_exist(lun_id):
-            if lungroup_id:
-                lungroup_ids = self.client.get_lungroupids_by_lunid(lun_id)
-                if lungroup_id in lungroup_ids:
-                    self.client.remove_lun_from_lungroup(lungroup_id,
-                                                         lun_id)
-                else:
-                    LOG.warning(_LW("Lun is not in lungroup. "
-                                    "Lun id: %(lun_id)s. "
-                                    "lungroup id: %(lungroup_id)s."),
-                                {"lun_id": lun_id,
-                                 "lungroup_id": lungroup_id})
-        else:
-            LOG.warning(_LW("Can't find lun on the array."))
+        if lun_id and lungroup_id:
+            lungroup_ids = self.client.get_lungroupids_by_lunid(lun_id)
+            if lungroup_id in lungroup_ids:
+                self.client.remove_lun_from_lungroup(lungroup_id,
+                                                     lun_id)
+            else:
+                LOG.warning(_LW("LUN is not in lungroup. "
+                                "LUN ID: %(lun_id)s. "
+                                "Lungroup id: %(lungroup_id)s."),
+                            {"lun_id": lun_id,
+                             "lungroup_id": lungroup_id})
 
         # Remove portgroup from mapping view if no lun left in lungroup.
         if lungroup_id:
@@ -1771,15 +1809,16 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
     @utils.synchronized('huawei', external=True)
     @fczm_utils.AddFCZone
     def initialize_connection(self, volume, connector):
+        lun_id = self._check_volume_exist_on_array(
+            volume, constants.VOLUME_NOT_EXISTS_RAISE)
+
         wwns = connector['wwpns']
-        volume_name = huawei_utils.encode_name(volume['id'])
         LOG.info(_LI(
             'initialize_connection, initiator: %(wwpns)s,'
-            ' volume name: %(volume)s.'),
+            ' LUN ID: %(lun_id)s.'),
             {'wwpns': wwns,
-             'volume': volume_name},)
+             'lun_id': lun_id},)
 
-        lun_id = self.client.get_lun_id(volume, volume_name)
         portg_id = None
 
         original_host_name = connector['host']
@@ -1906,19 +1945,18 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
     @fczm_utils.RemoveFCZone
     def terminate_connection(self, volume, connector, **kwargs):
         """Delete map between a volume and a host."""
+        lun_id = self._check_volume_exist_on_array(
+            volume, constants.VOLUME_NOT_EXISTS_WARN)
+
         wwns = connector['wwpns']
-        volume_name = huawei_utils.encode_name(volume['id'])
-        lun_id = volume.get('provider_location')
+
         host_name = connector['host']
         left_lunnum = -1
         lungroup_id = None
         view_id = None
-        LOG.info(_LI('terminate_connection: volume name: %(volume)s, '
-                     'wwpns: %(wwns)s, '
-                     'lun_id: %(lunid)s.'),
-                 {'volume': volume_name,
-                  'wwns': wwns,
-                  'lunid': lun_id},)
+        LOG.info(_LI('terminate_connection: wwpns: %(wwns)s, '
+                     'LUN ID: %(lun_id)s.'),
+                 {'wwns': wwns, 'lun_id': lun_id})
 
         host_name = huawei_utils.encode_host_name(host_name)
         host_id = self.client.get_host_id_by_name(host_name)
@@ -1928,19 +1966,17 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
             if view_id:
                 lungroup_id = self.client.find_lungroup_from_map(view_id)
 
-        if (lun_id is not None
-                and self.client.check_lun_exist(lun_id)):
-            if lungroup_id:
-                lungroup_ids = self.client.get_lungroupids_by_lunid(lun_id)
-                if lungroup_id in lungroup_ids:
-                    self.client.remove_lun_from_lungroup(lungroup_id,
-                                                         lun_id)
-                else:
-                    LOG.warning(_LW("Lun is not in lungroup. "
-                                    "Lun id: %(lun_id)s. "
-                                    "Lungroup id: %(lungroup_id)s."),
-                                {"lun_id": lun_id,
-                                 "lungroup_id": lungroup_id})
+        if lun_id and lungroup_id:
+            lungroup_ids = self.client.get_lungroupids_by_lunid(lun_id)
+            if lungroup_id in lungroup_ids:
+                self.client.remove_lun_from_lungroup(lungroup_id,
+                                                     lun_id)
+            else:
+                LOG.warning(_LW("LUN is not in lungroup. "
+                                "LUN ID: %(lun_id)s. "
+                                "Lungroup id: %(lungroup_id)s."),
+                            {"lun_id": lun_id,
+                             "lungroup_id": lungroup_id})
 
         else:
             LOG.warning(_LW("Can't find lun on the array."))

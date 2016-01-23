@@ -206,11 +206,16 @@ class RestClient(object):
 
         return result['data']
 
-    def check_lun_exist(self, lun_id):
+    def check_lun_exist(self, lun_id, lun_wwn=None):
         url = "/lun/" + lun_id
         result = self.call(url, None, "GET")
         error_code = result['error']['code']
         if error_code != 0:
+            return False
+
+        if lun_wwn and result['data']['WWN'] != lun_wwn:
+            LOG.debug("LUN ID %(id)s with WWN %(wwn)s does not exist on "
+                      "the array.", {"id": lun_id, "wwn": lun_wwn})
             return False
 
         return True
