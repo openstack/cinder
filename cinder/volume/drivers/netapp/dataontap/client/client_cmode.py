@@ -52,8 +52,12 @@ class Client(client_base.Client):
 
         ontapi_version = self.get_ontapi_version()   # major, minor
 
+        ontapi_1_2x = (1, 20) <= ontapi_version < (1, 30)
         ontapi_1_30 = ontapi_version >= (1, 30)
+        self.features.add_feature('SYSTEM_METRICS', supported=ontapi_1_2x)
         self.features.add_feature('FAST_CLONE_DELETE', supported=ontapi_1_30)
+        self.features.add_feature('SYSTEM_CONSTITUENT_METRICS',
+                                  supported=ontapi_1_30)
 
     def _invoke_vserver_api(self, na_element, vserver):
         server = copy.copy(self.connection)
@@ -669,3 +673,134 @@ class Client(client_base.Client):
         if self.features.FAST_CLONE_DELETE:
             api_args['is-clone-file'] = 'true'
         self.send_request('file-delete-file', api_args, True)
+
+    def _get_aggregates(self, aggregate_names=None, desired_attributes=None):
+
+        query = {
+            'aggr-attributes': {
+                'aggregate-name': '|'.join(aggregate_names),
+            }
+        } if aggregate_names else None
+
+        api_args = {}
+        if query:
+            api_args['query'] = query
+        if desired_attributes:
+            api_args['desired-attributes'] = desired_attributes
+
+        result = self.send_request('aggr-get-iter',
+                                   api_args,
+                                   enable_tunneling=False)
+        if not self._has_records(result):
+            return []
+        else:
+            return result.get_child_by_name('attributes-list').get_children()
+
+    def get_node_for_aggregate(self, aggregate_name):
+        """Get home node for the specified aggregate.
+
+        This API could return None, most notably if it was sent
+        to a Vserver LIF, so the caller must be able to handle that case.
+        """
+
+        if not aggregate_name:
+            return None
+
+        desired_attributes = {
+            'aggr-attributes': {
+                'aggregate-name': None,
+                'aggr-ownership-attributes': {
+                    'home-name': None,
+                },
+            },
+        }
+
+        try:
+            aggrs = self._get_aggregates(aggregate_names=[aggregate_name],
+                                         desired_attributes=desired_attributes)
+        except netapp_api.NaApiError as e:
+            if e.code == netapp_api.EAPINOTFOUND:
+                return None
+            else:
+                raise e
+
+        if len(aggrs) < 1:
+            return None
+
+        aggr_ownership_attrs = aggrs[0].get_child_by_name(
+            'aggr-ownership-attributes') or netapp_api.NaElement('none')
+        return aggr_ownership_attrs.get_child_content('home-name')
+
+    def get_performance_instance_uuids(self, object_name, node_name):
+        """Get UUIDs of performance instances for a cluster node."""
+
+        api_args = {
+            'objectname': object_name,
+            'query': {
+                'instance-info': {
+                    'uuid': node_name + ':*',
+                }
+            }
+        }
+
+        result = self.send_request('perf-object-instance-list-info-iter',
+                                   api_args,
+                                   enable_tunneling=False)
+
+        uuids = []
+
+        instances = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('None')
+
+        for instance_info in instances.get_children():
+            uuids.append(instance_info.get_child_content('uuid'))
+
+        return uuids
+
+    def get_performance_counters(self, object_name, instance_uuids,
+                                 counter_names):
+        """Gets or or more cDOT performance counters."""
+
+        api_args = {
+            'objectname': object_name,
+            'instance-uuids': [
+                {'instance-uuid': instance_uuid}
+                for instance_uuid in instance_uuids
+            ],
+            'counters': [
+                {'counter': counter} for counter in counter_names
+            ],
+        }
+
+        result = self.send_request('perf-object-get-instances',
+                                   api_args,
+                                   enable_tunneling=False)
+
+        counter_data = []
+
+        timestamp = result.get_child_content('timestamp')
+
+        instances = result.get_child_by_name(
+            'instances') or netapp_api.NaElement('None')
+        for instance in instances.get_children():
+
+            instance_name = instance.get_child_content('name')
+            instance_uuid = instance.get_child_content('uuid')
+            node_name = instance_uuid.split(':')[0]
+
+            counters = instance.get_child_by_name(
+                'counters') or netapp_api.NaElement('None')
+            for counter in counters.get_children():
+
+                counter_name = counter.get_child_content('name')
+                counter_value = counter.get_child_content('value')
+
+                counter_data.append({
+                    'instance-name': instance_name,
+                    'instance-uuid': instance_uuid,
+                    'node-name': node_name,
+                    'timestamp': timestamp,
+                    counter_name: counter_value,
+                })
+
+        return counter_data

@@ -63,7 +63,15 @@ class NetApp7modeISCSIDriver(driver.BaseVD,
         self.library.delete_snapshot(snapshot)
 
     def get_volume_stats(self, refresh=False):
-        return self.library.get_volume_stats(refresh)
+        return self.library.get_volume_stats(refresh,
+                                             self.get_filter_function(),
+                                             self.get_goodness_function())
+
+    def get_default_filter_function(self):
+        return self.library.get_default_filter_function()
+
+    def get_default_goodness_function(self):
+        return self.library.get_default_goodness_function()
 
     def extend_volume(self, volume, new_size):
         self.library.extend_volume(volume, new_size)

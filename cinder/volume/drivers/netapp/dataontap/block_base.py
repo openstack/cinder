@@ -84,6 +84,8 @@ class NetAppBlockStorageLibrary(object):
                                  'xen', 'hyper_v']
     DEFAULT_LUN_OS = 'linux'
     DEFAULT_HOST_TYPE = 'linux'
+    DEFAULT_FILTER_FUNCTION = 'capabilities.utilization < 70'
+    DEFAULT_GOODNESS_FUNCTION = '100 - capabilities.utilization'
 
     def __init__(self, driver_name, driver_protocol, **kwargs):
 
@@ -470,19 +472,29 @@ class NetAppBlockStorageLibrary(object):
     def _get_fc_target_wwpns(self, include_partner=True):
         raise NotImplementedError()
 
-    def get_volume_stats(self, refresh=False):
+    def get_volume_stats(self, refresh=False, filter_function=None,
+                         goodness_function=None):
         """Get volume stats.
 
-        If 'refresh' is True, run update the stats first.
+        If 'refresh' is True, update the stats first.
         """
 
         if refresh:
-            self._update_volume_stats()
-
+            self._update_volume_stats(filter_function=filter_function,
+                                      goodness_function=goodness_function)
         return self._stats
 
-    def _update_volume_stats(self):
+    def _update_volume_stats(self, filter_function=None,
+                             goodness_function=None):
         raise NotImplementedError()
+
+    def get_default_filter_function(self):
+        """Get the default filter_function string."""
+        return self.DEFAULT_FILTER_FUNCTION
+
+    def get_default_goodness_function(self):
+        """Get the default goodness_function string."""
+        return self.DEFAULT_GOODNESS_FUNCTION
 
     def extend_volume(self, volume, new_size):
         """Driver entry point to increase the size of a volume."""

@@ -58,6 +58,9 @@ class NetAppCmodeClientTestCase(test.TestCase):
     def tearDown(self):
         super(NetAppCmodeClientTestCase, self).tearDown()
 
+    def _mock_api_error(self, code='fake'):
+        return mock.Mock(side_effect=netapp_api.NaApiError(code=code))
+
     def test_has_records(self):
 
         result = self.client._has_records(netapp_api.NaElement(
@@ -952,3 +955,207 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
         self.assertEqual(expected_total_size, total_size)
         self.assertEqual(expected_available_size, available_size)
+
+    def test_get_aggregates(self):
+
+        api_response = netapp_api.NaElement(
+            fake_client.AGGR_GET_ITER_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client._get_aggregates()
+
+        self.client.send_request.assert_has_calls([
+            mock.call('aggr-get-iter', {}, enable_tunneling=False)])
+        self.assertListEqual(
+            [aggr.to_string() for aggr in api_response.get_child_by_name(
+                'attributes-list').get_children()],
+            [aggr.to_string() for aggr in result])
+
+    def test_get_aggregates_with_filters(self):
+
+        api_response = netapp_api.NaElement(
+            fake_client.AGGR_GET_SPACE_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        desired_attributes = {
+            'aggr-attributes': {
+                'aggregate-name': None,
+                'aggr-space-attributes': {
+                    'size-total': None,
+                    'size-available': None,
+                }
+            }
+        }
+
+        result = self.client._get_aggregates(
+            aggregate_names=fake_client.VOLUME_AGGREGATE_NAMES,
+            desired_attributes=desired_attributes)
+
+        aggr_get_iter_args = {
+            'query': {
+                'aggr-attributes': {
+                    'aggregate-name': '|'.join(
+                        fake_client.VOLUME_AGGREGATE_NAMES),
+                }
+            },
+            'desired-attributes': desired_attributes
+        }
+
+        self.client.send_request.assert_has_calls([
+            mock.call('aggr-get-iter', aggr_get_iter_args,
+                      enable_tunneling=False)])
+        self.assertListEqual(
+            [aggr.to_string() for aggr in api_response.get_child_by_name(
+                'attributes-list').get_children()],
+            [aggr.to_string() for aggr in result])
+
+    def test_get_aggregates_not_found(self):
+
+        api_response = netapp_api.NaElement(fake_client.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client._get_aggregates()
+
+        self.client.send_request.assert_has_calls([
+            mock.call('aggr-get-iter', {}, enable_tunneling=False)])
+        self.assertListEqual([], result)
+
+    def test_get_node_for_aggregate(self):
+
+        api_response = netapp_api.NaElement(
+            fake_client.AGGR_GET_NODE_RESPONSE).get_child_by_name(
+            'attributes-list').get_children()
+        self.mock_object(self.client,
+                         '_get_aggregates',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_node_for_aggregate(
+            fake_client.VOLUME_AGGREGATE_NAME)
+
+        desired_attributes = {
+            'aggr-attributes': {
+                'aggregate-name': None,
+                'aggr-ownership-attributes': {
+                    'home-name': None,
+                },
+            },
+        }
+
+        self.client._get_aggregates.assert_has_calls([
+            mock.call(
+                aggregate_names=[fake_client.VOLUME_AGGREGATE_NAME],
+                desired_attributes=desired_attributes)])
+
+        self.assertEqual(fake_client.NODE_NAME, result)
+
+    def test_get_node_for_aggregate_none_requested(self):
+
+        result = self.client.get_node_for_aggregate(None)
+
+        self.assertIsNone(result)
+
+    def test_get_node_for_aggregate_api_not_found(self):
+
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(side_effect=self._mock_api_error(
+                             netapp_api.EAPINOTFOUND)))
+
+        result = self.client.get_node_for_aggregate(
+            fake_client.VOLUME_AGGREGATE_NAME)
+
+        self.assertIsNone(result)
+
+    def test_get_node_for_aggregate_api_error(self):
+
+        self.mock_object(self.client, 'send_request', self._mock_api_error())
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.get_node_for_aggregate,
+                          fake_client.VOLUME_AGGREGATE_NAME)
+
+    def test_get_node_for_aggregate_not_found(self):
+
+        api_response = netapp_api.NaElement(fake_client.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_node_for_aggregate(
+            fake_client.VOLUME_AGGREGATE_NAME)
+
+        self.assertIsNone(result)
+
+    def test_get_performance_instance_uuids(self):
+
+        self.mock_send_request.return_value = netapp_api.NaElement(
+            fake_client.PERF_OBJECT_INSTANCE_LIST_INFO_ITER_RESPONSE)
+
+        result = self.client.get_performance_instance_uuids(
+            'system', fake_client.NODE_NAME)
+
+        expected = [fake_client.NODE_NAME + ':kernel:system']
+        self.assertEqual(expected, result)
+
+        perf_object_instance_list_info_iter_args = {
+            'objectname': 'system',
+            'query': {
+                'instance-info': {
+                    'uuid': fake_client.NODE_NAME + ':*',
+                }
+            }
+        }
+        self.mock_send_request.assert_called_once_with(
+            'perf-object-instance-list-info-iter',
+            perf_object_instance_list_info_iter_args, enable_tunneling=False)
+
+    def test_get_performance_counters(self):
+
+        self.mock_send_request.return_value = netapp_api.NaElement(
+            fake_client.PERF_OBJECT_GET_INSTANCES_SYSTEM_RESPONSE_CMODE)
+
+        instance_uuids = [
+            fake_client.NODE_NAMES[0] + ':kernel:system',
+            fake_client.NODE_NAMES[1] + ':kernel:system',
+        ]
+        counter_names = ['avg_processor_busy']
+        result = self.client.get_performance_counters('system',
+                                                      instance_uuids,
+                                                      counter_names)
+
+        expected = [
+            {
+                'avg_processor_busy': '5674745133134',
+                'instance-name': 'system',
+                'instance-uuid': instance_uuids[0],
+                'node-name': fake_client.NODE_NAMES[0],
+                'timestamp': '1453412013',
+            }, {
+                'avg_processor_busy': '4077649009234',
+                'instance-name': 'system',
+                'instance-uuid': instance_uuids[1],
+                'node-name': fake_client.NODE_NAMES[1],
+                'timestamp': '1453412013'
+            },
+        ]
+        self.assertEqual(expected, result)
+
+        perf_object_get_instances_args = {
+            'objectname': 'system',
+            'instance-uuids': [
+                {'instance-uuid': instance_uuid}
+                for instance_uuid in instance_uuids
+            ],
+            'counters': [
+                {'counter': counter} for counter in counter_names
+            ],
+        }
+        self.mock_send_request.assert_called_once_with(
+            'perf-object-get-instances', perf_object_get_instances_args,
+            enable_tunneling=False)

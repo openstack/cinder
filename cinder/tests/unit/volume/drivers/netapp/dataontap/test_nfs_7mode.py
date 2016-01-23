@@ -43,6 +43,7 @@ class NetApp7modeNfsDriverTestCase(test.TestCase):
                 self.driver._mounted_shares = [fake.NFS_SHARE]
                 self.driver.ssc_vols = True
                 self.driver.zapi_client = mock.Mock()
+                self.driver.perf_library = mock.Mock()
 
     def get_config_7mode(self):
         config = na_fakes.create_configuration_cmode()
@@ -77,8 +78,12 @@ class NetApp7modeNfsDriverTestCase(test.TestCase):
         self.mock_object(self.driver,
                          '_get_share_capacity_info',
                          mock.Mock(return_value=capacity))
+        self.mock_object(self.driver.perf_library,
+                         'get_node_utilization',
+                         mock.Mock(return_value=30.0))
 
-        result = self.driver._get_pool_stats()
+        result = self.driver._get_pool_stats(filter_function='filter',
+                                             goodness_function='goodness')
 
         expected = [{'pool_name': '192.168.99.24:/fake/export/path',
                      'QoS_support': False,
@@ -88,7 +93,10 @@ class NetApp7modeNfsDriverTestCase(test.TestCase):
                      'total_capacity_gb': 4468.0,
                      'reserved_percentage': 7,
                      'max_over_subscription_ratio': 19.0,
-                     'provisioned_capacity_gb': 4456.0}]
+                     'provisioned_capacity_gb': 4456.0,
+                     'utilization': 30.0,
+                     'filter_function': 'filter',
+                     'goodness_function': 'goodness'}]
 
         self.assertEqual(expected, result)
 

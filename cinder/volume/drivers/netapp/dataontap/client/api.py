@@ -34,6 +34,7 @@ from cinder import utils
 
 LOG = logging.getLogger(__name__)
 
+EAPINOTFOUND = '13005'
 ESIS_CLONE_NOT_LICENSED = '14956'
 
 

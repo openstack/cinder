@@ -31,6 +31,7 @@ from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_cmode
 from cinder.volume.drivers.netapp.dataontap import nfs_base
 from cinder.volume.drivers.netapp.dataontap import nfs_cmode
+from cinder.volume.drivers.netapp.dataontap.performance import perf_cmode
 from cinder.volume.drivers.netapp.dataontap import ssc_cmode
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume.drivers import nfs
@@ -53,6 +54,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
                 self.driver.ssc_vols = True
                 self.driver.vserver = fake.VSERVER_NAME
                 self.driver.ssc_enabled = True
+                self.driver.perf_library = mock.Mock()
 
     def get_config_cmode(self):
         config = na_fakes.create_configuration_cmode()
@@ -65,6 +67,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         config.netapp_vserver = fake.VSERVER_NAME
         return config
 
+    @mock.patch.object(perf_cmode, 'PerformanceCmodeLibrary', mock.Mock())
     @mock.patch.object(client_cmode, 'Client', mock.Mock())
     @mock.patch.object(nfs.NfsDriver, 'do_setup')
     @mock.patch.object(na_utils, 'check_flags')
@@ -133,8 +136,11 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         self.mock_object(self.driver,
                          '_get_share_capacity_info',
                          mock.Mock(return_value=capacity))
+        self.driver.perf_library.get_node_utilization_for_pool = (
+            mock.Mock(return_value=30.0))
 
-        result = self.driver._get_pool_stats()
+        result = self.driver._get_pool_stats(filter_function='filter',
+                                             goodness_function='goodness')
 
         expected = [{'pool_name': '192.168.99.24:/fake/export/path',
                      'netapp_unmirrored': 'true',
@@ -154,7 +160,10 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
                      'netapp_disk_type': 'SSD',
                      'netapp_nodedup': 'true',
                      'max_over_subscription_ratio': 19.0,
-                     'provisioned_capacity_gb': 4456.0}]
+                     'provisioned_capacity_gb': 4456.0,
+                     'utilization': 30.0,
+                     'filter_function': 'filter',
+                     'goodness_function': 'goodness'}]
 
         self.assertEqual(expected, result)
 

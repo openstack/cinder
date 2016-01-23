@@ -21,6 +21,8 @@ import mock
 import six
 
 from cinder import test
+from cinder.tests.unit.volume.drivers.netapp.dataontap.client import (
+    fakes as fake_client)
 from cinder.tests.unit.volume.drivers.netapp.dataontap import fakes as fake
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_7mode
@@ -667,3 +669,63 @@ class NetApp7modeClientTestCase(test.TestCase):
 
         self.assertEqual(expected_total_bytes, total_bytes)
         self.assertEqual(expected_available_bytes, available_bytes)
+
+    def test_get_performance_instance_names(self):
+
+        mock_send_request = self.mock_object(self.client, 'send_request')
+        mock_send_request.return_value = netapp_api.NaElement(
+            fake_client.PERF_OBJECT_INSTANCE_LIST_INFO_RESPONSE)
+
+        result = self.client.get_performance_instance_names('processor')
+
+        expected = ['processor0', 'processor1']
+        self.assertEqual(expected, result)
+
+        perf_object_instance_list_info_args = {'objectname': 'processor'}
+        mock_send_request.assert_called_once_with(
+            'perf-object-instance-list-info',
+            perf_object_instance_list_info_args, enable_tunneling=False)
+
+    def test_get_performance_counters(self):
+
+        mock_send_request = self.mock_object(self.client, 'send_request')
+        mock_send_request.return_value = netapp_api.NaElement(
+            fake_client.PERF_OBJECT_GET_INSTANCES_SYSTEM_RESPONSE_7MODE)
+
+        instance_names = ['system']
+        counter_names = ['avg_processor_busy']
+        result = self.client.get_performance_counters('system',
+                                                      instance_names,
+                                                      counter_names)
+
+        expected = [
+            {
+                'avg_processor_busy': '13215732322',
+                'instance-name': 'system',
+                'timestamp': '1454146292',
+            }
+        ]
+        self.assertEqual(expected, result)
+
+        perf_object_get_instances_args = {
+            'objectname': 'system',
+            'instances': [
+                {'instance': instance} for instance in instance_names
+            ],
+            'counters': [
+                {'counter': counter} for counter in counter_names
+            ],
+        }
+        mock_send_request.assert_called_once_with(
+            'perf-object-get-instances', perf_object_get_instances_args,
+            enable_tunneling=False)
+
+    def test_get_system_name(self):
+
+        mock_send_request = self.mock_object(self.client, 'send_request')
+        mock_send_request.return_value = netapp_api.NaElement(
+            fake_client.SYSTEM_GET_INFO_RESPONSE)
+
+        result = self.client.get_system_name()
+
+        self.assertEqual(fake_client.NODE_NAME, result)

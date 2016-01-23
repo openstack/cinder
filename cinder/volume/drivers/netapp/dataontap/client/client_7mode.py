@@ -43,6 +43,15 @@ class Client(client_base.Client):
         self.connection.set_api_version(major, minor)
 
         self.volume_list = volume_list
+        self._init_features()
+
+    def _init_features(self):
+        super(Client, self)._init_features()
+
+        ontapi_version = self.get_ontapi_version()   # major, minor
+
+        ontapi_1_20 = ontapi_version >= (1, 20)
+        self.features.add_feature('SYSTEM_METRICS', supported=ontapi_1_20)
 
     def _invoke_vfiler_api(self, na_element, vfiler):
         server = copy.copy(self.connection)
@@ -417,3 +426,76 @@ class Client(client_base.Client):
             flexvol_info.get_child_content('size-available'))
 
         return total_bytes, available_bytes
+
+    def get_performance_instance_names(self, object_name):
+        """Get names of performance instances for a node."""
+
+        api_args = {'objectname': object_name}
+
+        result = self.send_request('perf-object-instance-list-info',
+                                   api_args,
+                                   enable_tunneling=False)
+
+        instance_names = []
+
+        instances = result.get_child_by_name(
+            'instances') or netapp_api.NaElement('None')
+
+        for instance_info in instances.get_children():
+            instance_names.append(instance_info.get_child_content('name'))
+
+        return instance_names
+
+    def get_performance_counters(self, object_name, instance_names,
+                                 counter_names):
+        """Gets or or more 7-mode Data ONTAP performance counters."""
+
+        api_args = {
+            'objectname': object_name,
+            'instances': [
+                {'instance': instance} for instance in instance_names
+            ],
+            'counters': [
+                {'counter': counter} for counter in counter_names
+            ],
+        }
+
+        result = self.send_request('perf-object-get-instances',
+                                   api_args,
+                                   enable_tunneling=False)
+
+        counter_data = []
+
+        timestamp = result.get_child_content('timestamp')
+
+        instances = result.get_child_by_name(
+            'instances') or netapp_api.NaElement('None')
+        for instance in instances.get_children():
+
+            instance_name = instance.get_child_content('name')
+
+            counters = instance.get_child_by_name(
+                'counters') or netapp_api.NaElement('None')
+            for counter in counters.get_children():
+
+                counter_name = counter.get_child_content('name')
+                counter_value = counter.get_child_content('value')
+
+                counter_data.append({
+                    'instance-name': instance_name,
+                    'timestamp': timestamp,
+                    counter_name: counter_value,
+                })
+
+        return counter_data
+
+    def get_system_name(self):
+        """Get the name of the 7-mode Data ONTAP controller."""
+
+        result = self.send_request('system-get-info',
+                                   {},
+                                   enable_tunneling=False)
+
+        system_info = result.get_child_by_name('system-info')
+        system_name = system_info.get_child_content('system-name')
+        return system_name

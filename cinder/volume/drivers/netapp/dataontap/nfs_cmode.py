@@ -35,6 +35,7 @@ from cinder.image import image_utils
 from cinder import utils
 from cinder.volume.drivers.netapp.dataontap.client import client_cmode
 from cinder.volume.drivers.netapp.dataontap import nfs_base
+from cinder.volume.drivers.netapp.dataontap.performance import perf_cmode
 from cinder.volume.drivers.netapp.dataontap import ssc_cmode
 from cinder.volume.drivers.netapp import options as na_opts
 from cinder.volume.drivers.netapp import utils as na_utils
@@ -73,6 +74,8 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
         self.ssc_enabled = True
         self.ssc_vols = None
         self.stale_vols = set()
+        self.perf_library = perf_cmode.PerformanceCmodeLibrary(
+            self.zapi_client)
 
     def check_for_setup_error(self):
         """Check that the driver is working and can communicate."""
@@ -158,15 +161,20 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
         data['vendor_name'] = 'NetApp'
         data['driver_version'] = self.VERSION
         data['storage_protocol'] = 'nfs'
-        data['pools'] = self._get_pool_stats()
+        data['pools'] = self._get_pool_stats(
+            filter_function=self.get_filter_function(),
+            goodness_function=self.get_goodness_function())
         data['sparse_copy_volume'] = True
 
         self._spawn_clean_cache_job()
         self.zapi_client.provide_ems(self, netapp_backend, self._app_version)
         self._stats = data
 
-    def _get_pool_stats(self):
+    def _get_pool_stats(self, filter_function=None, goodness_function=None):
         """Retrieve pool (i.e. NFS share) stats info from SSC volumes."""
+
+        self.perf_library.update_performance_cache(
+            self.ssc_vols.get('all', []))
 
         pools = []
 
@@ -208,6 +216,12 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
                          not self.configuration.nfs_sparsed_volumes)
                 pool['thick_provisioning_support'] = thick
                 pool['thin_provisioning_support'] = not thick
+
+                utilization = self.perf_library.get_node_utilization_for_pool(
+                    vol.id['name'])
+                pool['utilization'] = na_utils.round_down(utilization, '0.01')
+                pool['filter_function'] = filter_function
+                pool['goodness_function'] = goodness_function
 
             pools.append(pool)
 
