@@ -129,7 +129,7 @@ class RestClient(object):
 
         return device_id
 
-    @utils.synchronized('huawei_cinder_call', external=True)
+    @utils.synchronized('huawei_cinder_call')
     def call(self, url, data=None, method=None):
         """Send requests to server.
 
