@@ -623,6 +623,14 @@ def extract_host(host, level='backend', default_pool_name=False):
             return None
 
 
+def get_volume_rpc_host(host):
+    if CONF.rpc_backend and CONF.rpc_backend == "zmq":
+        # ZeroMQ RPC driver requires only the hostname.
+        # So, return just that.
+        return extract_host(host, 'host')
+    return extract_host(host)
+
+
 def append_host(host, pool):
     """Encode pool into host info."""
     if not host or not pool:
