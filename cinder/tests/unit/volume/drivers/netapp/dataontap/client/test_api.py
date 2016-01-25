@@ -106,7 +106,7 @@ class NetAppApiServerTests(test.TestCase):
     @ddt.unpack
     def test_invoke_successfully_naapi_error(self, params):
         """Tests invoke successfully raising NaApiError"""
-        self.mock_object(self.root, 'invoke_elem',
+        self.mock_object(self.root, 'send_http_request',
                          mock.Mock(return_value=params['result']))
 
         self.assertRaises(netapp_api.NaApiError,
@@ -115,7 +115,7 @@ class NetAppApiServerTests(test.TestCase):
 
     def test_invoke_successfully_no_error(self):
         """Tests invoke successfully with no errors"""
-        self.mock_object(self.root, 'invoke_elem', mock.Mock(
+        self.mock_object(self.root, 'send_http_request', mock.Mock(
             return_value=zapi_fakes.FAKE_RESULT_SUCCESS))
 
         self.assertEqual(zapi_fakes.FAKE_RESULT_SUCCESS.to_string(),
@@ -187,12 +187,12 @@ class NetAppApiServerTests(test.TestCase):
         self.assertTrue(mock_invoke.called)
 
     @ddt.data(None, zapi_fakes.FAKE_XML_STR)
-    def test_invoke_elem_value_error(self, na_element):
+    def test_send_http_request_value_error(self, na_element):
         """Tests whether invalid NaElement parameter causes error"""
 
-        self.assertRaises(ValueError, self.root.invoke_elem, na_element)
+        self.assertRaises(ValueError, self.root.send_http_request, na_element)
 
-    def test_invoke_elem_http_error(self):
+    def test_send_http_request_http_error(self):
         """Tests handling of HTTPError"""
         na_element = zapi_fakes.FAKE_NA_ELEMENT
         self.mock_object(self.root, '_create_request', mock.Mock(
@@ -205,10 +205,10 @@ class NetAppApiServerTests(test.TestCase):
                                                fp=None, code='401',
                                                msg='httperror')))
 
-        self.assertRaises(netapp_api.NaApiError, self.root.invoke_elem,
+        self.assertRaises(netapp_api.NaApiError, self.root.send_http_request,
                           na_element)
 
-    def test_invoke_elem_unknown_exception(self):
+    def test_send_http_request_unknown_exception(self):
         """Tests handling of Unknown Exception"""
         na_element = zapi_fakes.FAKE_NA_ELEMENT
         self.mock_object(self.root, '_create_request', mock.Mock(
@@ -219,11 +219,11 @@ class NetAppApiServerTests(test.TestCase):
         self.mock_object(self.root._opener, 'open', mock.Mock(
             side_effect=Exception))
 
-        self.assertRaises(netapp_api.NaApiError, self.root.invoke_elem,
+        self.assertRaises(netapp_api.NaApiError, self.root.send_http_request,
                           na_element)
 
-    def test_invoke_elem_valid(self):
-        """Tests the method invoke_elem with valid parameters"""
+    def test_send_http_request_valid(self):
+        """Tests the method send_http_request with valid parameters"""
         na_element = zapi_fakes.FAKE_NA_ELEMENT
         self.root._trace = True
         self.mock_object(self.root, '_create_request', mock.Mock(
@@ -237,7 +237,7 @@ class NetAppApiServerTests(test.TestCase):
             self.root._opener, 'open', mock.Mock())
         opener_mock.read.side_effect = ['resp1', 'resp2']
 
-        self.root.invoke_elem(na_element)
+        self.root.send_http_request(na_element)
 
 
 class NetAppApiElementTransTests(test.TestCase):

@@ -30,6 +30,7 @@ from six.moves import urllib
 
 from cinder import exception
 from cinder.i18n import _
+from cinder import utils
 
 LOG = logging.getLogger(__name__)
 
@@ -196,7 +197,8 @@ class NaServer(object):
         self._password = password
         self._refresh_conn = True
 
-    def invoke_elem(self, na_element, enable_tunneling=False):
+    @utils.trace_api
+    def send_http_request(self, na_element, enable_tunneling=False):
         """Invoke the API on the server."""
         if not na_element or not isinstance(na_element, NaElement):
             raise ValueError('NaElement must be supplied to invoke API')
@@ -230,7 +232,7 @@ class NaServer(object):
         tunneling. The vserver or vfiler should be set before this call
         otherwise tunneling remains disabled.
         """
-        result = self.invoke_elem(na_element, enable_tunneling)
+        result = self.send_http_request(na_element, enable_tunneling)
         if result.has_attr('status') and result.get_attr('status') == 'passed':
             return result
         code = result.get_attr('errno')\
