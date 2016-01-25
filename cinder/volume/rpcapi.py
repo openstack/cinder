@@ -158,7 +158,7 @@ class VolumeAPI(object):
                    snapshot=snapshot)
 
     def delete_snapshot(self, ctxt, snapshot, host):
-        cctxt = self._get_cctxt(volume['host'])
+        cctxt = self._get_cctxt(host)
         cctxt.cast(ctxt, 'delete_snapshot', snapshot=snapshot)
 
     def attach_volume(self, ctxt, volume, instance_uuid, host_name,
