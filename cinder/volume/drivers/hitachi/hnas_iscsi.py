@@ -18,13 +18,13 @@
 iSCSI Cinder Volume driver for Hitachi Unified Storage (HUS-HNAS) platform.
 """
 import os
+import re
 import six
 from xml.etree import ElementTree as ETree
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
-from oslo_utils import excutils
 from oslo_utils import units
 
 
@@ -36,7 +36,7 @@ from cinder.volume.drivers.hitachi import hnas_backend
 from cinder.volume import utils
 from cinder.volume import volume_types
 
-HDS_HNAS_ISCSI_VERSION = '4.0.0'
+HDS_HNAS_ISCSI_VERSION = '4.1.0'
 
 LOG = logging.getLogger(__name__)
 
@@ -75,23 +75,30 @@ def _loc_info(loc):
 def _xml_read(root, element, check=None):
     """Read an xml element."""
 
-    try:
-        val = root.findtext(element)
-        LOG.info(_LI("%(element)s: %(val)s"),
-                 {'element': element,
-                  'val': val if element != 'password' else '***'})
-        if val:
-            return val.strip()
-        if check:
-            raise exception.ParameterNotFound(param=element)
+    val = root.findtext(element)
+
+    # mandatory parameter not found
+    if val is None and check:
+        raise exception.ParameterNotFound(param=element)
+
+    # tag not found
+    if val is None:
         return None
-    except ETree.ParseError:
-        if check:
-            with excutils.save_and_reraise_exception():
-                LOG.error(_LE("XML exception reading parameter: %s"), element)
+
+    svc_tag_pattern = re.compile("svc_[0-3]$")
+    # tag found but empty parameter.
+    if not val.strip():
+        # Service tags are empty
+        if svc_tag_pattern.search(element):
+            return ""
         else:
-            LOG.info(_LI("XML exception reading parameter: %s"), element)
-            return None
+            raise exception.ParameterNotFound(param=element)
+
+    LOG.debug(_LI("%(element)s: %(val)s"),
+              {'element': element,
+               'val': val if element != 'password' else '***'})
+
+    return val.strip()
 
 
 def _read_config(xml_config_file):
@@ -111,7 +118,7 @@ def _read_config(xml_config_file):
     config = {}
     arg_prereqs = ['mgmt_ip0', 'username']
     for req in arg_prereqs:
-        config[req] = _xml_read(root, req, 'check')
+        config[req] = _xml_read(root, req, True)
 
     # optional parameters
     opt_parameters = ['hnas_cmd', 'ssh_enabled', 'chap_enabled',
@@ -123,14 +130,14 @@ def _read_config(xml_config_file):
         config['chap_enabled'] = HNAS_DEFAULT_CONFIG['chap_enabled']
 
     if config['ssh_enabled'] == 'True':
-        config['ssh_private_key'] = _xml_read(root, 'ssh_private_key', 'check')
+        config['ssh_private_key'] = _xml_read(root, 'ssh_private_key', True)
         config['ssh_port'] = _xml_read(root, 'ssh_port')
         config['password'] = _xml_read(root, 'password')
         if config['ssh_port'] is None:
             config['ssh_port'] = HNAS_DEFAULT_CONFIG['ssh_port']
     else:
         # password is mandatory when not using SSH
-        config['password'] = _xml_read(root, 'password', 'check')
+        config['password'] = _xml_read(root, 'password', True)
 
     if config['hnas_cmd'] is None:
         config['hnas_cmd'] = HNAS_DEFAULT_CONFIG['hnas_cmd']
@@ -146,7 +153,7 @@ def _read_config(xml_config_file):
 
         # none optional
         for arg in ['volume_type', 'hdp', 'iscsi_ip']:
-            service[arg] = _xml_read(root, svc + '/' + arg, 'check')
+            service[arg] = _xml_read(root, svc + '/' + arg, True)
         config['services'][service['volume_type']] = service
         config['hdp'][service['hdp']] = service['hdp']
 
@@ -166,6 +173,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
                    Fixed concurrency errors
     Version 3.3.0: Fixed iSCSI target limitation error
     Version 4.0.0: Added manage/unmanage features
+    Version 4.1.0: Fixed XML parser checks on blank options
     """
 
     def __init__(self, *args, **kwargs):
