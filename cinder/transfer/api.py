@@ -161,6 +161,12 @@ class API(base.Base):
 
         volume_id = transfer['volume_id']
         vol_ref = self.db.volume_get(context.elevated(), volume_id)
+        if vol_ref['consistencygroup_id']:
+            msg = _("Volume %s must not be part of a consistency "
+                    "group.") % vol_ref['id']
+            LOG.error(msg)
+            raise exception.InvalidVolume(reason=msg)
+
         volume_utils.notify_about_volume_usage(context, vol_ref,
                                                "transfer.accept.start")
 
