@@ -40,6 +40,8 @@ except ImportError:
 STORAGEGROUPTYPE = 4
 POSTGROUPTYPE = 3
 CLONE_REPLICATION_TYPE = 10
+MAX_POOL_LENGTH = 16
+MAX_FASTPOLICY_LENGTH = 14
 
 EMC_ROOT = 'root/emc'
 CONCATENATED = 'concatenated'
@@ -2363,7 +2365,7 @@ class EMCVMAXUtils(object):
         :param poolName: long pool name
         :returns: truncated pool name
         """
-        if poolName and len(poolName) > 16:
+        if poolName and len(poolName) > MAX_POOL_LENGTH:
             return (
                 ("%(first)s_%(last)s"
                  % {'first': poolName[:8],
@@ -2377,7 +2379,7 @@ class EMCVMAXUtils(object):
         :param fastPolicyName: long fast policy name
         :returns: truncated fast policy name
         """
-        if fastPolicyName and len(fastPolicyName) > 14:
+        if fastPolicyName and len(fastPolicyName) > MAX_FASTPOLICY_LENGTH:
             return (
                 ("%(first)s_%(last)s"
                  % {'first': fastPolicyName[:7],
