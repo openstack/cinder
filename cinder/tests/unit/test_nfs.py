@@ -239,7 +239,7 @@ class RemoteFsDriverTestCase(test.TestCase):
     def test_determine_nas_security_options_when_admin_set_false(self):
         """Test the setting of the NAS Security Option
 
-        In this test case, the Admin set the flag to 'true'.
+        In this test case, the Admin set the flag to 'false'.
         """
         drv = self._driver
         drv._mounted_shares = [self.TEST_EXPORT]
