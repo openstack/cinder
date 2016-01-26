@@ -173,7 +173,7 @@ class TestCinderObjectConditionalUpdate(test.TestCase):
         self.assertEqual(status, volume.status)
         self.assertEqual(size, volume.size)
         dirty = volume.cinder_obj_get_changes()
-        self.assertEqual(list(dirty_keys), dirty.keys())
+        self.assertEqual(list(dirty_keys), list(dirty.keys()))
         for key, value in kwargs.items():
             self.assertEqual(value, getattr(volume, key))
 

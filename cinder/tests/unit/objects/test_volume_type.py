@@ -13,6 +13,7 @@
 #    under the License.
 
 import mock
+import six
 
 from cinder import objects
 from cinder.tests.unit import fake_volume
@@ -86,8 +87,12 @@ class TestVolumeType(test_objects.BaseObjectsTestCase):
         # value for that field
         volume_type.refresh()
         self._compare(self, db_type2, volume_type)
+        if six.PY3:
+            call_bool = mock.call.__bool__()
+        else:
+            call_bool = mock.call.__nonzero__()
         volume_type_get.assert_has_calls([mock.call(self.context, '1'),
-                                          mock.call.__nonzero__(),
+                                          call_bool,
                                           mock.call(self.context, '1')])
 
 

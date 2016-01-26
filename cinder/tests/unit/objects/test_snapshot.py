@@ -14,6 +14,7 @@
 
 import copy
 import mock
+import six
 
 from oslo_log import log as logging
 
@@ -183,8 +184,12 @@ class TestSnapshot(test_objects.BaseObjectsTestCase):
         # value for that field
         snapshot.refresh()
         self._compare(self, db_snapshot2, snapshot)
+        if six.PY3:
+            call_bool = mock.call.__bool__()
+        else:
+            call_bool = mock.call.__nonzero__()
         snapshot_get.assert_has_calls([mock.call(self.context, '1'),
-                                       mock.call.__nonzero__(),
+                                       call_bool,
                                        mock.call(self.context, '1')])
 
 

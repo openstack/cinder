@@ -12,15 +12,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import base64
-import binascii
-
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_serialization import base64
 from oslo_serialization import jsonutils
 from oslo_utils import versionutils
 from oslo_versionedobjects import fields
-import six
 
 from cinder import db
 from cinder import exception
@@ -136,8 +133,8 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
         :raises: InvalidInput
         """
         try:
-            return jsonutils.loads(base64.decodestring(backup_url))
-        except binascii.Error:
+            return jsonutils.loads(base64.decode_as_text(backup_url))
+        except TypeError:
             msg = _("Can't decode backup record.")
         except ValueError:
             msg = _("Can't parse backup record.")
@@ -153,10 +150,8 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
         # We must update kwargs instead of record to ensure we don't overwrite
         # "real" data from the backup
         kwargs.update(record)
-        retval = jsonutils.dumps(kwargs)
-        if six.PY3:
-            retval = retval.encode('utf-8')
-        return base64.encodestring(retval)
+        retval = jsonutils.dump_as_bytes(kwargs)
+        return base64.encode_as_text(retval)
 
 
 @base.CinderObjectRegistry.register

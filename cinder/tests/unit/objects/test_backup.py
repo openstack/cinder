@@ -13,6 +13,7 @@
 #    under the License.
 
 import mock
+import six
 
 from cinder.db.sqlalchemy import models
 from cinder import exception
@@ -164,8 +165,12 @@ class TestBackup(test_objects.BaseObjectsTestCase):
         # for that field
         backup.refresh()
         self._compare(self, db_backup2, backup)
+        if six.PY3:
+            call_bool = mock.call.__bool__()
+        else:
+            call_bool = mock.call.__nonzero__()
         backup_get.assert_has_calls([mock.call(self.context, '1'),
-                                     mock.call.__nonzero__(),
+                                     call_bool,
                                      mock.call(self.context, '1')])
 
 

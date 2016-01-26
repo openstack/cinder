@@ -36,6 +36,17 @@ cinder.tests.unit.keymgr.test_key
 cinder.tests.unit.keymgr.test_key_mgr
 cinder.tests.unit.keymgr.test_mock_key_mgr
 cinder.tests.unit.keymgr.test_not_implemented_key_mgr
+cinder.tests.unit.objects.test_backup
+cinder.tests.unit.objects.test_base
+cinder.tests.unit.objects.test_cgsnapshot
+cinder.tests.unit.objects.test_consistencygroup
+cinder.tests.unit.objects.test_fields
+cinder.tests.unit.objects.test_objects
+cinder.tests.unit.objects.test_service
+cinder.tests.unit.objects.test_snapshot
+cinder.tests.unit.objects.test_volume
+cinder.tests.unit.objects.test_volume_attachment
+cinder.tests.unit.objects.test_volume_type
 cinder.tests.unit.scheduler.test_allocated_capacity_weigher
 cinder.tests.unit.scheduler.test_capacity_weigher
 cinder.tests.unit.scheduler.test_chance_weigher

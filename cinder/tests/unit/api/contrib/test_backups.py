@@ -23,6 +23,7 @@ from xml.dom import minidom
 import ddt
 import mock
 from oslo_utils import timeutils
+import six
 import webob
 
 # needed for stubs to work
@@ -1792,6 +1793,8 @@ class BackupsAPITestCase(test.TestCase):
         _mock_list_services.return_value = [backup_service]
 
         req = webob.Request.blank('/v2/fake/backups/import_record')
+        if six.PY2:
+            backup_url = backup_url.encode('utf-8')
         req.body = ('<backup-record backup_service="%(backup_service)s" '
                     'backup_url="%(backup_url)s"/>') \
             % {'backup_url': backup_url,
