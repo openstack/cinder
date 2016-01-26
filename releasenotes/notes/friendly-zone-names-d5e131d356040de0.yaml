@@ -1,0 +1,10 @@
+---
+features:
+  - Cinder FC Zone Manager Friendly Zone Names
+    This feature adds support for Fibre Channel user
+    friendly zone names if implemented by the volume driver.
+    If the volume driver passes the host name and
+    storage system to the Fibre Channel Zone Manager
+    in the conn_info structure, the zone manager
+    will use these names in structuring the zone
+    name to provide a user friendly zone name.

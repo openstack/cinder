@@ -41,6 +41,7 @@ brcd_zone_opts = [
                 default=True,
                 help='overridden zoning activation state'),
     cfg.StrOpt('zone_name_prefix',
+               default='openstack',
                help='overridden zone name prefix'),
     cfg.StrOpt('principal_switch_wwn',
                help='Principal switch WWN of the fabric'),
@@ -55,7 +56,8 @@ def load_fabric_configurations(fabric_names):
     fabric_configs = {}
     for fabric_name in fabric_names:
         config = configuration.Configuration(brcd_zone_opts, fabric_name)
-        LOG.debug("Loaded FC fabric config %s", fabric_name)
+        LOG.debug("Loaded FC fabric config %(fabricname)s",
+                  {'fabricname': fabric_name})
         fabric_configs[fabric_name] = config
 
     return fabric_configs
