@@ -713,7 +713,7 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
         iscsi_properties['target_discovered'] = False
         iscsi_properties['target_portal'] = target_portal
         iscsi_properties['target_iqn'] = iqn
-        iscsi_properties['target_lun'] = lun
+        iscsi_properties['target_lun'] = int(lun)
         iscsi_properties['volume_id'] = volume['id']
 
         if 'provider_auth' in provider:
