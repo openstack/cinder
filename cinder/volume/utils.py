@@ -446,6 +446,17 @@ def generate_username(length=20, symbolgroups=DEFAULT_PASSWORD_SYMBOLS):
 DEFAULT_POOL_NAME = '_pool0'
 
 
+def only_hostname_required():
+    """Returns True if the RPC backend requires only hostname.
+
+    ZeroMQ RPC driver requires only the hostname.
+    So, return True if the RPC backend is ZeroMQ.
+    """
+    if CONF.rpc_backend and CONF.rpc_backend == "zmq":
+        return True
+    return False
+
+
 def extract_host(host, level='backend', default_pool_name=False):
     """Extract Host, Backend or Pool information from host string.
 
