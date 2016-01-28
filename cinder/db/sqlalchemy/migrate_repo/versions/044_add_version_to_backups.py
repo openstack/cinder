@@ -15,7 +15,7 @@
 # Copyright (c) 2016 Shishir Gowda <shishir.gowda@ril.com>
 
 from oslo_log import log as logging
-from sqlalchemy import Column, MetaData, String, Table
+from sqlalchemy import Column, MetaData, Table, Float
 
 from cinder.i18n import _LE
 
@@ -27,13 +27,13 @@ def upgrade(migrate_engine):
     meta.bind = migrate_engine
 
     backups = Table('backups', meta, autoload=True)
-    time_stamp = Column('time_stamp', String(length=255))
+    version = Column('version', Float(precision='3,1'))
 
     try:
-        backups.create_column(time_stamp)
-        backups.update().values(time_stamp=None).execute()
+        backups.create_column(version)
+        backups.update().values(version=None).execute()
     except Exception:
-        LOG.error(_LE("Adding time_stamp column to backups table failed."))
+        LOG.error(_LE("Adding version column to backups table failed."))
         raise
 
 
@@ -42,10 +42,10 @@ def downgrade(migrate_engine):
     meta.bind = migrate_engine
 
     backups = Table('backups', meta, autoload=True)
-    time_stamp = backups.columns.time_stamp
+    version = backups.columns.version
 
     try:
-        backups.drop_column(time_stamp)
+        backups.drop_column(version)
     except Exception:
-        LOG.error(_LE("Dropping time_stamp column from backups table failed."))
+        LOG.error(_LE("Dropping version column from backups table failed."))
         raise

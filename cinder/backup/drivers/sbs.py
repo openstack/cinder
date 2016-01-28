@@ -90,6 +90,12 @@ class SBSBackupDriver(driver.BackupDriver):
     The backup will be performed using incremental differential backups which
 	 *should* give a performance gain.
     """
+
+    #Update version number if change in behavior, and add new func to MAPPINGS
+    DRIVER_VERSION = 1.0
+    DRIVER_RESTORE_VERSION_MAPPING = {'1.0':'_restore_v1'}
+    DRIVER_DELETE_VERSION_MAPPING = {'1.0':'_delete_v1'}
+
     def __init__(self, context, db_driver=None, execute=None):
         super(SBSBackupDriver, self).__init__(context, db_driver)
         self.rbd = rbd
@@ -310,7 +316,6 @@ class SBSBackupDriver(driver.BackupDriver):
     def _snap_exists(self, base_name, snap_name):
         if base_name == None:
             return False
-
         conn = self._connect_to_DSS()
         if conn != None:
             bucket = self._get_bucket(conn, self._container)
@@ -326,7 +331,18 @@ class SBSBackupDriver(driver.BackupDriver):
 
         if base_name == snap_name:
             return True
+        #check if versions match
+        search_key = SBSBackupDriver.backup_snapshot_name_pattern()
+        result = re.search(search_key, snap_name)
+        if result:
+            backup_id= result.group(1)
+            backup_snap = self.db.backup_get(self.context, backup_id)
+            if backup_snap['version'] != self.DRIVER_VERSION:
+                LOG.error("Differing version of from_snap %s",
+                          backup_snap['version'])
+                return False
 
+        #check if it exists in object store
         if snap_name:
             key_snap = self._get_snap_handle_from_DSS(bucket, snap_name)
             if key_snap == None:
@@ -461,11 +477,19 @@ class SBSBackupDriver(driver.BackupDriver):
                        'host': backup_host,
                        'service': 'cinder.backup.drivers.sbs',
                        'size': "2",
+		       'version':self.DRIVER_VERSION,
                       }
             backup = self.db.backup_create(self.context, options)
             self._upload_to_DSS(base_name, volume_name, ceph_args)
             from_snap = base_name
         else:
+            #check if base and from snap are of same version of backup
+            base_backup = self.db.backup_get(self.context, volume_id)
+            if base_backup['version'] != self.DRIVER_VERSION:
+                errmsg = (_("Incremental snapshot are of older version %s" % base_backup['version']))
+                LOG.debug(errmsg)
+                raise exception.BackupRBDOperationFailed(errmsg)
+
             # If a from_snap is defined but does not exist in the back base
             # then we cannot proceed (see above)
             if not self._snap_exists(base_name, from_snap):
@@ -566,6 +590,8 @@ class SBSBackupDriver(driver.BackupDriver):
 
         self.db.backup_update(self.context, backup_id,
                               {'container': self._container})
+        self.db.backup_update(self.context, backup_id,
+                              {'version':self.DRIVER_VERSION})
         return
 
     #return sorted list with base as [0], and backup as last[n-1]
@@ -647,7 +673,8 @@ class SBSBackupDriver(driver.BackupDriver):
         resize image to original size, as it might get shrunk
         due to replay of diffs
     """
-    def restore(self, backup, volume_id, volume_file):
+
+    def _restore_v1(self, backup, volume_id, volume_file):
         backup_id = backup['id']
         rbd_user = volume_file.rbd_user
         rbd_pool = volume_file.rbd_pool
@@ -679,6 +706,30 @@ class SBSBackupDriver(driver.BackupDriver):
             LOG.error(_LE('Restore to volume %(volume)s finished with error - '
                           '%(error)s.'), {'error': e, 'volume': volume_id})
             raise
+        return
+
+    def _get_restore_func(self, version):
+        try:
+            restore_func = getattr(self, self.DRIVER_RESTORE_VERSION_MAPPING.get(
+                                   str(version)))
+        except TypeError:
+            err = (_('No support for backup version %s')
+                   % version)
+            raise exception.InvalidBackup(reason=err)
+
+        return restore_func
+
+
+    def restore(self, backup, volume_id, volume_file):
+
+        backup_version = backup['version']
+        LOG.debug('Restoring backup version %s', backup_version)
+
+        restore_func = self._get_restore_func(backup_version)
+
+        if restore_func != None:
+            restore_func(backup, volume_id, volume_file)
+
         return
 
     def _remove_from_DSS(self, backup):
@@ -766,7 +817,7 @@ class SBSBackupDriver(driver.BackupDriver):
     Mark snaps as deleted, but keep them if they are parent of another existing
     snap. Delete the snap only if there are no dependencies on it
     """
-    def delete(self, backup):
+    def _delete_v1(self, backup):
         """Delete the given backup from Ceph object store."""
         LOG.debug('Delete started for backup=%s', backup['id'])
         # Don't allow backup to be deleted if there are incremental
@@ -810,6 +861,29 @@ class SBSBackupDriver(driver.BackupDriver):
         LOG.debug("Delete of backup '%(backup)s' for volume "
                   "'%(volume)s' finished.",
                   {'backup': backup['id'], 'volume': backup['volume_id']})
+        return
+
+    def _get_delete_func(self, version):
+        try:
+            delete_func = getattr(self, self.DRIVER_DELETE_VERSION_MAPPING.get(
+                                   str(version)))
+        except TypeError:
+            err = (_('No support for backup version %s')
+                   % version)
+            raise exception.InvalidBackup(reason=err)
+
+        return delete_func
+
+
+    def delete(self, backup):
+        backup_version = backup['version']
+        LOG.debug('Deleting verion %s', backup_version)
+
+        delete_func = self._get_delete_func(backup_version)
+
+        if delete_func != None:
+            delete_func(backup)
+
         return
 
 def get_backup_driver(context):
