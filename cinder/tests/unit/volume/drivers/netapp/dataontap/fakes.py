@@ -231,8 +231,8 @@ FAKE_CMODE_POOLS = [
         'pool_name': 'open123',
         'reserved_percentage': 0,
         'total_capacity_gb': 4.65,
-        'thin_provisioned_support': True,
-        'thick_provisioned_support': False,
+        'thin_provisioning_support': True,
+        'thick_provisioning_support': False,
         'provisioned_capacity_gb': 0.93,
         'max_over_subscription_ratio': 20.0,
     }
@@ -334,8 +334,8 @@ FAKE_7MODE_POOLS = [
         'total_capacity_gb': 0.0,
         'free_capacity_gb': 0.0,
         'max_over_subscription_ratio': 20.0,
-        'thin_provisioned_support': False,
-        'thick_provisioned_support': True,
+        'thin_provisioning_support': False,
+        'thick_provisioning_support': True,
         'provisioned_capacity_gb': 0.0,
     }
 ]

@@ -247,8 +247,8 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary):
             thick = (not thin and
                      self.configuration.netapp_lun_space_reservation
                      == 'enabled')
-            pool['thick_provisioned_support'] = thick
-            pool['thin_provisioned_support'] = not thick
+            pool['thick_provisioning_support'] = thick
+            pool['thin_provisioning_support'] = not thick
 
             pools.append(pool)
 
