@@ -124,7 +124,7 @@ def get_obj(typ, name, idx):
         return {"content": xms_data[typ][idx]}
 
 
-def xms_request(object_type='volumes', request_typ='GET', data=None,
+def xms_request(object_type='volumes', method='GET', data=None,
                 name=None, idx=None, ver='v1'):
     if object_type == 'snapshots':
         object_type = 'volumes'
@@ -133,7 +133,7 @@ def xms_request(object_type='volumes', request_typ='GET', data=None,
         res = xms_data[object_type]
     except KeyError:
         raise exception.VolumeDriverException
-    if request_typ == 'GET':
+    if method == 'GET':
         if name or idx:
             return get_obj(object_type, name, idx)
         else:
@@ -144,7 +144,7 @@ def xms_request(object_type='volumes', request_typ='GET', data=None,
                                                            obj['index']),
                                        "name": obj.get('name')}
                                       for obj in res.values()]}
-    elif request_typ == 'POST':
+    elif method == 'POST':
         data = fix_data(data, object_type)
         name_key = get_xms_obj_key(data)
         try:
@@ -164,7 +164,7 @@ def xms_request(object_type='volumes', request_typ='GET', data=None,
 
         return {"links": [{"href": "/%s/%d" %
                           (object_type, data[typ2id[object_type]][2])}]}
-    elif request_typ == 'DELETE':
+    elif method == 'DELETE':
         if object_type == 'consistency-group-volumes':
             data = [cgv for cgv in
                     xms_data['consistency-group-volumes'].values()
@@ -176,34 +176,34 @@ def xms_request(object_type='volumes', request_typ='GET', data=None,
             del xms_data[object_type][data['index']]
         else:
             raise exception.NotFound()
-    elif request_typ == 'PUT':
+    elif method == 'PUT':
         obj = get_obj(object_type, name, idx)['content']
         data = fix_data(data, object_type)
         del data['index']
         obj.update(data)
 
 
-def xms_bad_request(object_type='volumes', request_typ='GET', data=None,
+def xms_bad_request(object_type='volumes', method='GET', data=None,
                     name=None, idx=None, ver='v1'):
-    if request_typ == 'GET':
+    if method == 'GET':
         raise exception.NotFound()
-    elif request_typ == 'POST':
+    elif method == 'POST':
         raise exception.VolumeBackendAPIException('Failed to create ig')
 
 
 def xms_failed_rename_snapshot_request(object_type='volumes',
-                                       request_typ='GET', data=None,
+                                       method='GET', data=None,
                                        name=None, idx=None, ver='v1'):
-    if request_typ == 'POST':
+    if method == 'POST':
         xms_data['volumes'][27] = {}
         return {
             "links": [
                 {
                     "href": "https://host/api/json/v2/types/snapshots/27",
                     "rel": "self"}]}
-    elif request_typ == 'PUT':
+    elif method == 'PUT':
         raise exception.VolumeBackendAPIException(data='Failed to delete')
-    elif request_typ == 'DELETE':
+    elif method == 'DELETE':
         del xms_data['volumes'][27]
 
 
@@ -319,6 +319,12 @@ class EMCXIODriverISCSITestCase(test.TestCase):
                           self.driver.check_for_setup_error)
         xms_data['clusters'] = clusters
         self.driver.check_for_setup_error()
+
+    def test_client4_uses_v2(self, req):
+        def base_req(*args, **kwargs):
+            self.assertIn('v2', args)
+        req.side_effect = base_req
+        self.driver.client.req('volumes')
 
     def test_create_extend_delete_volume(self, req):
         req.side_effect = xms_request

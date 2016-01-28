@@ -104,7 +104,7 @@ class XtremIOClient(object):
     @utils.retry(exception.XtremIOArrayBusy,
                  CONF.xtremio_array_busy_retry_count,
                  CONF.xtremio_array_busy_retry_interval, 1)
-    def req(self, object_type='volumes', request_typ='GET', data=None,
+    def req(self, object_type='volumes', method='GET', data=None,
             name=None, idx=None, ver='v1'):
         if not data:
             data = {}
@@ -122,15 +122,15 @@ class XtremIOClient(object):
         elif idx:
             url = '%s/%d' % (url, idx)
             key = str(idx)
-        if request_typ in ('GET', 'DELETE'):
+        if method in ('GET', 'DELETE'):
             params.update(data)
             self.update_url(params, self.cluster_id)
-        if request_typ != 'GET':
+        if method != 'GET':
             self.update_data(data, self.cluster_id)
             LOG.debug('data: %s', data)
-        LOG.debug('%(type)s %(url)s', {'type': request_typ, 'url': url})
+        LOG.debug('%(type)s %(url)s', {'type': method, 'url': url})
         try:
-            response = requests.request(request_typ, url, params=params,
+            response = requests.request(method, url, params=params,
                                         data=json.dumps(data),
                                         verify=self.verify,
                                         auth=(self.configuration.san_login,
@@ -140,7 +140,7 @@ class XtremIOClient(object):
             raise exception.VolumeDriverException(message=msg)
 
         if 200 <= response.status_code < 300:
-            if request_typ in ('GET', 'POST'):
+            if method in ('GET', 'POST'):
                 return response.json()
             else:
                 return ''
@@ -278,6 +278,11 @@ class XtremIOClient4(XtremIOClient):
     def __init__(self, configuration, cluster_id):
         super(XtremIOClient4, self).__init__(configuration, cluster_id)
         self._cluster_name = None
+
+    def req(self, object_type='volumes', method='GET', data=None,
+            name=None, idx=None, ver='v2'):
+        return super(XtremIOClient4, self).req(object_type, method, data,
+                                               name, idx, ver)
 
     def get_extra_capabilities(self):
         return {'consistencygroup_support': True}
