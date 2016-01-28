@@ -317,8 +317,12 @@ class RestClient(object):
 
     def get_snapshot_id_by_name(self, name):
         url = "/snapshot?range=[0-32767]"
+        description = 'The snapshot license file is unavailable.'
         result = self.call(url, None, "GET")
-        self._assert_rest_result(result, _('Get snapshot id error.'))
+        if 'error' in result:
+            if description == result['error']['description']:
+                return
+            self._assert_rest_result(result, _('Get snapshot id error.'))
 
         return self._get_id_from_result(result, name, 'NAME')
 
@@ -1386,6 +1390,16 @@ class RestClient(object):
 
         return result['data']
 
+    def get_snapshot_info(self, snapshot_id):
+        url = "/snapshot/" + snapshot_id
+        result = self.call(url, None, "GET")
+
+        msg = _('Get snapshot error.')
+        self._assert_rest_result(result, msg)
+        self._assert_data_in_result(result, msg)
+
+        return result['data']
+
     def extend_lun(self, lun_id, new_volume_size):
         url = "/lun/expand"
         data = {"TYPE": 11, "ID": lun_id,
@@ -1618,6 +1632,16 @@ class RestClient(object):
         data = {"NAME": new_name}
         result = self.call(url, data, "PUT")
         msg = _('Rename lun on array error.')
+        self._assert_rest_result(result, msg)
+        self._assert_data_in_result(result, msg)
+
+    def rename_snapshot(self, snapshot_id, new_name, description=None):
+        url = "/snapshot/" + snapshot_id
+        data = {"NAME": new_name}
+        if description:
+            data.update({"DESCRIPTION": description})
+        result = self.call(url, data, "PUT")
+        msg = _('Rename snapshot on array error.')
         self._assert_rest_result(result, msg)
         self._assert_data_in_result(result, msg)
 

@@ -1142,6 +1142,103 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             raise exception.VolumeBackendAPIException(data=msg)
         return int(size)
 
+    def _check_snapshot_valid_for_manage(self, snapshot_info, external_ref):
+        snapshot_id = snapshot_info.get('ID')
+
+        # Check whether the snapshot is normal.
+        if snapshot_info.get('HEALTHSTATUS') != constants.STATUS_HEALTH:
+            msg = _("Can't import snapshot %s to Cinder. "
+                    "Snapshot status is not normal"
+                    " or running status is not online.") % snapshot_id
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=external_ref, reason=msg)
+
+        if snapshot_info.get('EXPOSEDTOINITIATOR') != 'false':
+            msg = _("Can't import snapshot %s to Cinder. "
+                    "Snapshot is exposed to initiator.") % snapshot_id
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=external_ref, reason=msg)
+
+    def _get_snapshot_info_by_ref(self, external_ref):
+        LOG.debug("Get snapshot external_ref: %s.", external_ref)
+        name = external_ref.get('source-name')
+        id = external_ref.get('source-id')
+        if not (name or id):
+            msg = _('Must specify snapshot source-name or source-id.')
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=external_ref, reason=msg)
+
+        snapshot_id = id or self.client.get_snapshot_id_by_name(name)
+        if not snapshot_id:
+            msg = _("Can't find snapshot on array, please check the "
+                    "source-name or source-id.")
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=external_ref, reason=msg)
+
+        snapshot_info = self.client.get_snapshot_info(snapshot_id)
+        return snapshot_info
+
+    def manage_existing_snapshot(self, snapshot, existing_ref):
+        snapshot_info = self._get_snapshot_info_by_ref(existing_ref)
+        snapshot_id = snapshot_info.get('ID')
+        volume = snapshot.get('volume')
+        lun_id = volume.get('provider_location')
+        if lun_id != snapshot_info.get('PARENTID'):
+            msg = (_("Can't import snapshot %s to Cinder. "
+                     "Snapshot doesn't belong to volume."), snapshot_id)
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref, reason=msg)
+
+        # Check whether this snapshot can be imported.
+        self._check_snapshot_valid_for_manage(snapshot_info, existing_ref)
+
+        # Rename the snapshot to make it manageable for Cinder.
+        description = snapshot['id']
+        snapshot_name = huawei_utils.encode_name(snapshot['id'])
+        self.client.rename_snapshot(snapshot_id, snapshot_name, description)
+        if snapshot_info.get('RUNNINGSTATUS') != constants.STATUS_ACTIVE:
+            self.client.activate_snapshot(snapshot_id)
+
+        LOG.debug("Rename snapshot %(old_name)s to %(new_name)s.",
+                  {'old_name': snapshot_info.get('NAME'),
+                   'new_name': snapshot_name})
+
+        return {'provider_location': snapshot_id}
+
+    def manage_existing_snapshot_get_size(self, snapshot, existing_ref):
+        """Get the size of the existing snapshot."""
+        snapshot_info = self._get_snapshot_info_by_ref(existing_ref)
+        size = (float(snapshot_info.get('USERCAPACITY'))
+                // constants.CAPACITY_UNIT)
+        remainder = (float(snapshot_info.get('USERCAPACITY'))
+                     % constants.CAPACITY_UNIT)
+        if int(remainder) > 0:
+            msg = _("Snapshot size must be multiple of 1 GB.")
+            raise exception.VolumeBackendAPIException(data=msg)
+        return int(size)
+
+    def unmanage_snapshot(self, snapshot):
+        """Unmanage the specified snapshot from Cinder management."""
+        LOG.debug("Unmanage snapshot: %s.", snapshot['id'])
+        snapshot_name = huawei_utils.encode_name(snapshot['id'])
+        snapshot_id = self.client.get_snapshot_id_by_name(snapshot_name)
+        if not snapshot_id:
+            LOG.warning(_LW("Can't find snapshot on the array: %s."),
+                        snapshot_name)
+            return
+        new_name = 'unmged_' + snapshot_name
+        LOG.debug("Rename snapshot %(snapshot_name)s to %(new_name)s.",
+                  {'snapshot_name': snapshot_name,
+                   'new_name': new_name})
+
+        try:
+            self.client.rename_snapshot(snapshot_id, new_name)
+        except Exception:
+            LOG.warning(_LW("Failed to rename snapshot %(snapshot_id)s, "
+                            "snapshot name on array is %(snapshot_name)s."),
+                        {'snapshot_id': snapshot['id'],
+                         'snapshot_name': snapshot_name})
+
 
 class HuaweiISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
     """ISCSI driver for Huawei storage arrays.
@@ -1159,9 +1256,10 @@ class HuaweiISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
         2.0.0 - Rename to HuaweiISCSIDriver
         2.0.1 - Manage/unmanage volume support
         2.0.2 - Refactor HuaweiISCSIDriver
+        2.0.3 - Manage/unmanage snapshot support
     """
 
-    VERSION = "2.0.2"
+    VERSION = "2.0.3"
 
     def __init__(self, *args, **kwargs):
         super(HuaweiISCSIDriver, self).__init__(*args, **kwargs)
@@ -1352,9 +1450,10 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
         2.0.0 - Rename to HuaweiFCDriver
         2.0.1 - Manage/unmanage volume support
         2.0.2 - Refactor HuaweiFCDriver
+        2.0.3 - Manage/unmanage snapshot support
     """
 
-    VERSION = "2.0.2"
+    VERSION = "2.0.3"
 
     def __init__(self, *args, **kwargs):
         super(HuaweiFCDriver, self).__init__(*args, **kwargs)
