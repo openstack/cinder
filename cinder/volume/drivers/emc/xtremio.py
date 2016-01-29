@@ -88,8 +88,12 @@ class XtremIOClient(object):
         self.configuration = configuration
         self.cluster_id = cluster_id
         self.verify = (self.configuration.
-                       safe_get('driver_ssl_cert_verify')
-                       or False)
+                       safe_get('driver_ssl_cert_verify') or False)
+        if self.verify:
+            verify_path = (self.configuration.
+                           safe_get('driver_ssl_cert_path') or None)
+            if verify_path:
+                self.verify = verify_path
 
     def get_base_url(self, ver):
         if ver == 'v1':

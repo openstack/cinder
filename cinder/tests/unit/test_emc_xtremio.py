@@ -573,9 +573,11 @@ class EMCXIODriverTestCase(test.TestCase):
         configuration.san_password = ''
         configuration.san_ip = ''
         configuration.xtremio_cluster_name = ''
+        configuration.driver_ssl_cert_verify = True
+        configuration.driver_ssl_cert_path = '/test/path/root_ca.crt'
 
         def safe_get(key):
-            getattr(configuration, key)
+            return getattr(configuration, key)
 
         configuration.safe_get = safe_get
         self.driver = xtremio.XtremIOISCSIDriver(configuration=configuration)
@@ -603,6 +605,17 @@ class EMCXIODriverTestCase(test.TestCase):
 
         req.side_effect = busy_request
         self.driver.create_volume(self.data.test_volume)
+
+    def test_verify_cert(self, req):
+        good_response = mock.MagicMock()
+        good_response.status_code = 200
+
+        def request_verify_cert(*args, **kwargs):
+            self.assertEqual(kwargs['verify'], '/test/path/root_ca.crt')
+            return good_response
+
+        req.side_effect = request_verify_cert
+        self.driver.client.req('volumes')
 
 
 @mock.patch('cinder.volume.drivers.emc.xtremio.XtremIOClient.req')
