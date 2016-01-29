@@ -1569,3 +1569,47 @@ class VMwareVolumeOps(object):
             host_refs.extend(hosts.ManagedObjectReference)
 
         return host_refs
+
+    def get_entity_by_inventory_path(self, path):
+        """Returns the managed object identified by the given inventory path.
+
+        :param path: Inventory path
+        :return: Reference to the managed object
+        """
+        return self._session.invoke_api(
+            self._session.vim,
+            "FindByInventoryPath",
+            self._session.vim.service_content.searchIndex,
+            inventoryPath=path)
+
+    def _get_disk_devices(self, vm):
+        disk_devices = []
+        hardware_devices = self._session.invoke_api(vim_util,
+                                                    'get_object_property',
+                                                    self._session.vim,
+                                                    vm,
+                                                    'config.hardware.device')
+
+        if hardware_devices.__class__.__name__ == "ArrayOfVirtualDevice":
+            hardware_devices = hardware_devices.VirtualDevice
+
+        for device in hardware_devices:
+            if device.__class__.__name__ == "VirtualDisk":
+                disk_devices.append(device)
+
+        return disk_devices
+
+    def get_disk_device(self, vm, vmdk_path):
+        """Get the disk device of the VM which corresponds to the given path.
+
+        :param vm: VM reference
+        :param vmdk_path: Datastore path of virtual disk
+        :return: Matching disk device
+        """
+        disk_devices = self._get_disk_devices(vm)
+
+        for disk_device in disk_devices:
+            backing = disk_device.backing
+            if (backing.__class__.__name__ == "VirtualDiskFlatVer2BackingInfo"
+                    and backing.fileName == vmdk_path):
+                return disk_device

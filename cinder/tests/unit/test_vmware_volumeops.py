@@ -1791,6 +1791,53 @@ class VolumeOpsTestCase(test.TestCase):
             'ClusterComputeResource', self.MAX_OBJECTS)
         continue_retrieval.assert_called_once_with(retrieve_result)
 
+    def test_get_entity_by_inventory_path(self):
+        self.session.invoke_api.return_value = mock.sentinel.ref
+
+        path = mock.sentinel.path
+        ret = self.vops.get_entity_by_inventory_path(path)
+        self.assertEqual(mock.sentinel.ref, ret)
+        self.session.invoke_api.assert_called_once_with(
+            self.session.vim,
+            "FindByInventoryPath",
+            self.session.vim.service_content.searchIndex,
+            inventoryPath=path)
+
+    def test_get_disk_devices(self):
+        disk_device = mock.Mock()
+        disk_device.__class__.__name__ = 'VirtualDisk'
+
+        controller_device = mock.Mock()
+        controller_device.__class__.__name__ = 'VirtualLSILogicController'
+
+        devices = mock.Mock()
+        devices.__class__.__name__ = "ArrayOfVirtualDevice"
+        devices.VirtualDevice = [disk_device, controller_device]
+        self.session.invoke_api.return_value = devices
+
+        vm = mock.sentinel.vm
+        self.assertEqual([disk_device], self.vops._get_disk_devices(vm))
+        self.session.invoke_api.assert_called_once_with(
+            vim_util, 'get_object_property', self.session.vim,
+            vm, 'config.hardware.device')
+
+    def _create_disk_device(self, file_name):
+        backing = mock.Mock(fileName=file_name)
+        backing.__class__.__name__ = 'VirtualDiskFlatVer2BackingInfo'
+        return mock.Mock(backing=backing)
+
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                '_get_disk_devices')
+    def test_get_disk_device(self, get_disk_devices):
+        dev_1 = self._create_disk_device('[ds1] foo/foo.vmdk')
+        dev_2 = self._create_disk_device('[ds1] foo/foo_1.vmdk')
+        get_disk_devices.return_value = [dev_1, dev_2]
+
+        vm = mock.sentinel.vm
+        self.assertEqual(dev_2,
+                         self.vops.get_disk_device(vm, '[ds1] foo/foo_1.vmdk'))
+        get_disk_devices.assert_called_once_with(vm)
+
 
 class VirtualDiskPathTest(test.TestCase):
     """Unit tests for VirtualDiskPath."""
