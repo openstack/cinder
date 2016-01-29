@@ -2921,7 +2921,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         self._notify_about_consistencygroup_usage(
             context, group, "update.end")
-        LOG.info(_LI("Delete consistency group "
+        LOG.info(_LI("Update consistency group "
                      "completed successfully."),
                  resource={'type': 'consistency_group',
                            'id': group.id})
