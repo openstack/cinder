@@ -4293,3 +4293,25 @@ class StorwizeHelpersTestCase(test.TestCase):
         self.assertTrue(self.storwize_svc_common.compression_enabled())
 
         self.assertTrue(self.storwize_svc_common.compression_enabled())
+
+
+class StorwizeSSHTestCase(test.TestCase):
+    def setUp(self):
+        super(StorwizeSSHTestCase, self).setUp()
+        self.storwize_ssh = storwize_svc_common.StorwizeSSH(None)
+
+    def test_mkvdiskhostmap(self):
+        # mkvdiskhostmap should not be returning anything
+        with mock.patch.object(
+                storwize_svc_common.StorwizeSSH,
+                'run_ssh_check_created') as run_ssh_check_created:
+            run_ssh_check_created.return_value = None
+            ret = self.storwize_ssh.mkvdiskhostmap('HOST1', 9999, 511, False)
+            self.assertIsNone(ret)
+            ret = self.storwize_ssh.mkvdiskhostmap('HOST2', 9999, 511, True)
+            self.assertIsNone(ret)
+            ex = exception.VolumeBackendAPIException(data='CMMVC6071E')
+            run_ssh_check_created.side_effect = ex
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.storwize_ssh.mkvdiskhostmap,
+                              'HOST3', 9999, 511, True)

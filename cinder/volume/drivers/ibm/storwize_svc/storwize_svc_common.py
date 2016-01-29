@@ -247,24 +247,21 @@ class StorwizeSSH(object):
         """
         ssh_cmd = ['svctask', 'mkvdiskhostmap', '-host', '"%s"' % host,
                    '-scsi', lun, vdisk]
-        out, err = self._ssh(ssh_cmd, check_exit_code=False)
-        if 'successfully created' in out:
-            return
-        if not err:
-            msg = (_('Did not find success message nor error for %(fun)s: '
-                     '%(out)s.') % {'out': out, 'fun': ssh_cmd})
-            raise exception.VolumeBackendAPIException(data=msg)
-        if err.startswith('CMMVC6071E'):
-            if not multihostmap:
+        if multihostmap:
+            ssh_cmd.insert(ssh_cmd.index('mkvdiskhostmap') + 1, '-force')
+        try:
+            self.run_ssh_check_created(ssh_cmd)
+        except Exception as ex:
+            if (not multihostmap and hasattr(ex, 'message') and
+                    'CMMVC6071E' in ex.message):
                 LOG.error(_LE('storwize_svc_multihostmap_enabled is set '
                               'to False, not allowing multi host mapping.'))
                 raise exception.VolumeDriverException(
                     message=_('CMMVC6071E The VDisk-to-host mapping was not '
                               'created because the VDisk is already mapped '
                               'to a host.\n"'))
-
-        ssh_cmd.insert(ssh_cmd.index('mkvdiskhostmap') + 1, '-force')
-        return self.run_ssh_check_created(ssh_cmd)
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE('Error mapping VDisk-to-host'))
 
     def rmvdiskhostmap(self, host, vdisk):
         ssh_cmd = ['svctask', 'rmvdiskhostmap', '-host', '"%s"' % host, vdisk]
