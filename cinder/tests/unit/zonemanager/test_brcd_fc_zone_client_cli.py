@@ -1,8 +1,6 @@
 #    (c) Copyright 2014 Brocade Communications Systems Inc.
 #    All Rights Reserved.
 #
-#    Copyright 2014 OpenStack Foundation
-#
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
 #    a copy of the License at
@@ -24,9 +22,9 @@ from oslo_concurrency import processutils
 
 from cinder import exception
 from cinder import test
-from cinder.zonemanager.drivers.brocade \
-    import brcd_fc_zone_client_cli as client_cli
-import cinder.zonemanager.drivers.brocade.fc_zone_constants as ZoneConstant
+from cinder.zonemanager.drivers.brocade import (brcd_fc_zone_client_cli
+                                                as client_cli)
+import cinder.zonemanager.drivers.brocade.fc_zone_constants as zone_constant
 
 
 nsshow = '20:1a:00:05:1e:e8:e3:29'
@@ -78,7 +76,7 @@ class TestBrcdFCZoneClientCLI(client_cli.BrcdFCZoneClientCLI, test.TestCase):
 
     @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_get_switch_info')
     def test_get_active_zone_set(self, get_switch_info_mock):
-        cmd_list = [ZoneConstant.GET_ACTIVE_ZONE_CFG]
+        cmd_list = [zone_constant.GET_ACTIVE_ZONE_CFG]
         get_switch_info_mock.return_value = cfgactvshow
         active_zoneset_returned = self.get_active_zone_set()
         get_switch_info_mock.assert_called_once_with(cmd_list)
@@ -178,7 +176,6 @@ class TestBrcdFCZoneClientCLI(client_cli.BrcdFCZoneClientCLI, test.TestCase):
 
     @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_get_switch_info')
     def test_get_nameserver_info(self, get_switch_info_mock):
-        ns_info_list = []
         ns_info_list_expected = ['20:1a:00:05:1e:e8:e3:29']
         get_switch_info_mock.return_value = (switch_data)
         ns_info_list = self.get_nameserver_info()
@@ -192,7 +189,7 @@ class TestBrcdFCZoneClientCLI(client_cli.BrcdFCZoneClientCLI, test.TestCase):
 
     @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_ssh_execute')
     def test__cfg_save(self, ssh_execute_mock):
-        cmd_list = [ZoneConstant.CFG_SAVE]
+        cmd_list = [zone_constant.CFG_SAVE]
         self._cfg_save()
         ssh_execute_mock.assert_called_once_with(cmd_list, True, 1)
 
@@ -205,7 +202,7 @@ class TestBrcdFCZoneClientCLI(client_cli.BrcdFCZoneClientCLI, test.TestCase):
 
     @mock.patch.object(client_cli.BrcdFCZoneClientCLI, 'apply_zone_change')
     def test__cfg_trans_abort(self, apply_zone_change_mock):
-        cmd_list = [ZoneConstant.CFG_ZONE_TRANS_ABORT]
+        cmd_list = [zone_constant.CFG_ZONE_TRANS_ABORT]
         with mock.patch.object(self, '_is_trans_abortable') \
                 as is_trans_abortable_mock:
             is_trans_abortable_mock.return_value = True
@@ -215,8 +212,8 @@ class TestBrcdFCZoneClientCLI(client_cli.BrcdFCZoneClientCLI, test.TestCase):
 
     @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_run_ssh')
     def test__is_trans_abortable_true(self, run_ssh_mock):
-        cmd_list = [ZoneConstant.CFG_SHOW_TRANS]
-        run_ssh_mock.return_value = (Stream(ZoneConstant.TRANS_ABORTABLE),
+        cmd_list = [zone_constant.CFG_SHOW_TRANS]
+        run_ssh_mock.return_value = (Stream(zone_constant.TRANS_ABORTABLE),
                                      None)
         data = self._is_trans_abortable()
         self.assertTrue(data)
@@ -230,7 +227,7 @@ class TestBrcdFCZoneClientCLI(client_cli.BrcdFCZoneClientCLI, test.TestCase):
 
     @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_run_ssh')
     def test__is_trans_abortable_false(self, run_ssh_mock):
-        cmd_list = [ZoneConstant.CFG_SHOW_TRANS]
+        cmd_list = [zone_constant.CFG_SHOW_TRANS]
         cfgtransshow = 'There is no outstanding zoning transaction'
         run_ssh_mock.return_value = (Stream(cfgtransshow), None)
         data = self._is_trans_abortable()
@@ -239,14 +236,14 @@ class TestBrcdFCZoneClientCLI(client_cli.BrcdFCZoneClientCLI, test.TestCase):
 
     @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_run_ssh')
     def test_apply_zone_change(self, run_ssh_mock):
-        cmd_list = [ZoneConstant.CFG_SAVE]
+        cmd_list = [zone_constant.CFG_SAVE]
         run_ssh_mock.return_value = (None, None)
         self.apply_zone_change(cmd_list)
         run_ssh_mock.assert_called_once_with(cmd_list, True, 1)
 
     @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_run_ssh')
     def test__get_switch_info(self, run_ssh_mock):
-        cmd_list = [ZoneConstant.NS_SHOW]
+        cmd_list = [zone_constant.NS_SHOW]
         nsshow_list = [nsshow]
         run_ssh_mock.return_value = (Stream(nsshow), Stream())
         switch_data = self._get_switch_info(cmd_list)
@@ -255,7 +252,6 @@ class TestBrcdFCZoneClientCLI(client_cli.BrcdFCZoneClientCLI, test.TestCase):
 
     def test__parse_ns_output(self):
         invalid_switch_data = [' N 011a00;20:1a:00:05:1e:e8:e3:29']
-        return_wwn_list = []
         expected_wwn_list = ['20:1a:00:05:1e:e8:e3:29']
         return_wwn_list = self._parse_ns_output(switch_data)
         self.assertEqual(expected_wwn_list, return_wwn_list)

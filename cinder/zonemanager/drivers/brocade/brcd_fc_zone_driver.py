@@ -1,8 +1,6 @@
 #    (c) Copyright 2015 Brocade Communications Systems Inc.
 #    All Rights Reserved.
 #
-#    Copyright 2015 OpenStack Foundation
-#
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
 #    a copy of the License at
@@ -41,17 +39,18 @@ import string
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.zonemanager.drivers.brocade import brcd_fabric_opts as fabric_opts
+from cinder.zonemanager.drivers.brocade import fc_zone_constants
 from cinder.zonemanager.drivers import driver_utils
 from cinder.zonemanager.drivers import fc_zone_driver
+from cinder.zonemanager import utils
 
 LOG = logging.getLogger(__name__)
 
 SUPPORTED_CHARS = string.ascii_letters + string.digits + '_'
 brcd_opts = [
     cfg.StrOpt('brcd_sb_connector',
-               default='cinder.zonemanager.drivers.brocade'
-               '.brcd_fc_zone_client_cli.BrcdFCZoneClientCLI',
-               help='Southbound connector for zoning operation'),
+               default=fc_zone_constants.HTTP.upper(),
+               help='South bound connector for zoning operation'),
 ]
 
 CONF = cfg.CONF
@@ -68,9 +67,10 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
         1.0 - Initial Brocade FC zone driver
         1.1 - Implements performance enhancements
         1.2 - Added support for friendly zone name
+        1.3 - Added HTTP connector support
     """
 
-    VERSION = "1.2"
+    VERSION = "1.3"
 
     def __init__(self, **kwargs):
         super(BrcdFCZoneDriver, self).__init__(**kwargs)
@@ -102,15 +102,6 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
             if fabric_names:
                 self.fabric_configs = fabric_opts.load_fabric_configurations(
                     fabric_names)
-
-    def get_formatted_wwn(self, wwn_str):
-        """Utility API that formats WWN to insert ':'."""
-        wwn_str = wwn_str.encode('ascii')
-        if len(wwn_str) != 16:
-            return wwn_str
-        else:
-            return b':'.join(
-                [wwn_str[i:i + 2] for i in range(0, len(wwn_str), 2)])
 
     @lockutils.synchronized('brcd', 'fcfabric-', True)
     def add_connection(self, fabric, initiator_target_map, host_name=None,
@@ -147,8 +138,8 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
                          "no zoning will be performed."))
             return
 
-        cli_client = self._get_cli_client(fabric)
-        cfgmap_from_fabric = self._get_active_zone_set(cli_client)
+        client = self._get_southbound_client(fabric)
+        cfgmap_from_fabric = self._get_active_zone_set(client)
 
         zone_names = []
         if cfgmap_from_fabric.get('zones'):
@@ -158,12 +149,11 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
         for initiator_key in initiator_target_map.keys():
             zone_map = {}
             initiator = initiator_key.lower()
-            t_list = initiator_target_map[initiator_key]
+            target_list = initiator_target_map[initiator_key]
             if zoning_policy == 'initiator-target':
-                for t in t_list:
-                    target = t.lower()
-                    zone_members = [self.get_formatted_wwn(initiator),
-                                    self.get_formatted_wwn(target)]
+                for target in target_list:
+                    zone_members = [utils.get_formatted_wwn(initiator),
+                                    utils.get_formatted_wwn(target)]
                     zone_name = driver_utils.get_friendly_zone_name(
                         zoning_policy,
                         initiator,
@@ -172,8 +162,7 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
                         storage_system,
                         zone_name_prefix,
                         SUPPORTED_CHARS)
-                    if (
-                        len(cfgmap_from_fabric) == 0 or (
+                    if (len(cfgmap_from_fabric) == 0 or (
                             zone_name not in zone_names)):
                         zone_map[zone_name] = zone_members
                     else:
@@ -182,10 +171,9 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
                                      "zone creation for %(zonename)s"),
                                  {'zonename': zone_name})
             elif zoning_policy == 'initiator':
-                zone_members = [self.get_formatted_wwn(initiator)]
-                for t in t_list:
-                    target = t.lower()
-                    zone_members.append(self.get_formatted_wwn(target))
+                zone_members = [utils.get_formatted_wwn(initiator)]
+                for target in target_list:
+                    zone_members.append(utils.get_formatted_wwn(target))
 
                 zone_name = driver_utils.get_friendly_zone_name(
                     zoning_policy,
@@ -208,11 +196,12 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
 
             if len(zone_map) > 0:
                 try:
-                    cli_client.add_zones(
+                    client.add_zones(
                         zone_map, zone_activate,
                         cfgmap_from_fabric)
-                    cli_client.cleanup()
-                except exception.BrocadeZoningCliException as brocade_ex:
+                    client.cleanup()
+                except (exception.BrocadeZoningCliException,
+                        exception.BrocadeZoningHttpException) as brocade_ex:
                     raise exception.FCZoneDriverException(brocade_ex)
                 except Exception:
                     msg = _("Failed to add zoning configuration.")
@@ -248,7 +237,7 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
             zoning_policy = zoning_policy_fab
         LOG.info(_LI("Zoning policy for fabric %(policy)s"),
                  {'policy': zoning_policy})
-        conn = self._get_cli_client(fabric)
+        conn = self._get_southbound_client(fabric)
         cfgmap_from_fabric = self._get_active_zone_set(conn)
 
         zone_names = []
@@ -262,7 +251,7 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
                   {'cfgmap': cfgmap_from_fabric})
         for initiator_key in initiator_target_map.keys():
             initiator = initiator_key.lower()
-            formatted_initiator = self.get_formatted_wwn(initiator)
+            formatted_initiator = utils.get_formatted_wwn(initiator)
             zone_map = {}
             zones_to_delete = []
             t_list = initiator_target_map[initiator_key]
@@ -290,7 +279,7 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
                 zone_members = [formatted_initiator]
                 for t in t_list:
                     target = t.lower()
-                    zone_members.append(self.get_formatted_wwn(target))
+                    zone_members.append(utils.get_formatted_wwn(target))
 
                 zone_name = driver_utils.get_friendly_zone_name(
                     zoning_policy,
@@ -353,8 +342,12 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
                         zone_name_string, zone_activate,
                         cfgmap_from_fabric)
                 conn.cleanup()
+            except (exception.BrocadeZoningCliException,
+                    exception.BrocadeZoningHttpException) as brocade_ex:
+                raise exception.FCZoneDriverException(brocade_ex)
             except Exception:
-                msg = _("Failed to update or delete zoning configuration")
+                msg = _("Failed to update or delete zoning "
+                        "configuration.")
                 LOG.exception(msg)
                 raise exception.FCZoneDriverException(msg)
 
@@ -364,7 +357,6 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
         Look up each SAN configured and return a map of SAN (fabric IP) to
         list of target WWNs visible to the fabric.
         """
-        # TODO(Santhosh Kolathur): consider refactoring to use lookup service.
         formatted_target_list = []
         fabric_map = {}
         fc_fabric_names = self.configuration.fc_fabric_names
@@ -374,11 +366,11 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
                   {'targetwwns': target_wwn_list})
         if len(fabrics) > 0:
             for t in target_wwn_list:
-                formatted_target_list.append(self.get_formatted_wwn(t.lower()))
+                formatted_target_list.append(utils.get_formatted_wwn(t))
             LOG.debug("Formatted target WWN list: %(targetlist)s",
                       {'targetlist': formatted_target_list})
             for fabric_name in fabrics:
-                conn = self._get_cli_client(fabric_name)
+                conn = self._get_southbound_client(fabric_name)
 
                 # Get name server data from fabric and get the targets
                 # logged in.
@@ -388,12 +380,13 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
                     LOG.debug("Name server info from fabric: %(nsinfo)s",
                               {'nsinfo': nsinfo})
                     conn.cleanup()
-                except exception.BrocadeZoningCliException:
+                except (exception.BrocadeZoningCliException,
+                        exception.BrocadeZoningHttpException):
                     if not conn.is_supported_firmware():
                         msg = _("Unsupported firmware on switch %s. Make sure "
                                 "switch is running firmware v6.4 or higher"
                                 ) % conn.switch_ip
-                        LOG.error(msg)
+                        LOG.exception(msg)
                         raise exception.FCZoneDriverException(msg)
                     with excutils.save_and_reraise_exception():
                         LOG.exception(_LE("Error getting name server info."))
@@ -425,41 +418,47 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
         cfgmap = None
         try:
             cfgmap = conn.get_active_zone_set()
-        except exception.BrocadeZoningCliException:
+        except (exception.BrocadeZoningCliException,
+                exception.BrocadeZoningHttpException):
             if not conn.is_supported_firmware():
                 msg = _("Unsupported firmware on switch %s. Make sure "
                         "switch is running firmware v6.4 or higher"
                         ) % conn.switch_ip
                 LOG.error(msg)
                 raise exception.FCZoneDriverException(msg)
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_LE("Error getting name server info."))
         except Exception as e:
             msg = (_("Failed to retrieve active zoning configuration %s")
                    % six.text_type(e))
+            LOG.error(msg)
             raise exception.FCZoneDriverException(msg)
         LOG.debug("Active zone set from fabric: %(cfgmap)s",
                   {'cfgmap': cfgmap})
         return cfgmap
 
-    def _get_cli_client(self, fabric):
-        fabric_ip = self.fabric_configs[fabric].safe_get('fc_fabric_address')
-        fabric_user = self.fabric_configs[fabric].safe_get('fc_fabric_user')
-        fabric_pwd = self.fabric_configs[fabric].safe_get('fc_fabric_password')
-        fabric_port = self.fabric_configs[fabric].safe_get('fc_fabric_port')
-        cli_client = None
+    def _get_southbound_client(self, fabric):
+        """Implementation to get SouthBound Connector.
+
+         South bound connector will be
+         dynamically selected based on the configuration
+
+        :param fabric: fabric information
+        """
+        fabric_info = self.fabric_configs[fabric]
+        fc_ip = fabric_info.safe_get('fc_fabric_address')
+        sb_connector = fabric_info.safe_get('fc_southbound_protocol')
+        if sb_connector is None:
+            sb_connector = self.configuration.brcd_sb_connector
         try:
-            cli_client = self.sb_conn_map.get(fabric_ip)
-            if not cli_client:
-                LOG.debug("CLI client not found, creating for %(ip)s",
-                          {'ip': fabric_ip})
-                cli_client = importutils.import_object(
-                    self.configuration.brcd_sb_connector,
-                    ipaddress=fabric_ip,
-                    username=fabric_user,
-                    password=fabric_pwd,
-                    port=fabric_port)
-                self.sb_conn_map[fabric_ip] = cli_client
-        except Exception as e:
-            LOG.error(e)
-            msg = _("Failed to create sb connector for %s") % fabric_ip
+            conn_factory = importutils.import_object(
+                "cinder.zonemanager.drivers.brocade."
+                "brcd_fc_zone_connector_factory."
+                "BrcdFCZoneFactory")
+            client = conn_factory.get_connector(fabric_info,
+                                                sb_connector.upper())
+        except Exception:
+            msg = _("Failed to create south bound connector for %s.") % fc_ip
+            LOG.exception(msg)
             raise exception.FCZoneDriverException(msg)
-        return cli_client
+        return client

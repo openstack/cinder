@@ -1,8 +1,6 @@
 #    (c) Copyright 2013 Brocade Communications Systems Inc.
 #    All Rights Reserved.
 #
-#    Copyright 2014 OpenStack Foundation
-#
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
 #    a copy of the License at
@@ -15,7 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 #
-
 
 """Unit tests for fc san lookup service."""
 
