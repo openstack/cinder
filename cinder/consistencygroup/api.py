@@ -687,30 +687,25 @@ class API(base.Base):
         check_policy(context, 'get', group)
         return group
 
-    def get_all(self, context, marker=None, limit=None, sort_key='created_at',
-                sort_dir='desc', filters=None):
+    def get_all(self, context, filters=None, marker=None, limit=None,
+                offset=None, sort_keys=None, sort_dirs=None):
         check_policy(context, 'get_all')
         if filters is None:
             filters = {}
-
-        try:
-            if limit is not None:
-                limit = int(limit)
-                if limit < 0:
-                    msg = _('limit param must be positive')
-                    raise exception.InvalidInput(reason=msg)
-        except ValueError:
-            msg = _('limit param must be an integer')
-            raise exception.InvalidInput(reason=msg)
 
         if filters:
             LOG.debug("Searching by: %s", filters)
 
         if (context.is_admin and 'all_tenants' in filters):
-            groups = objects.ConsistencyGroupList.get_all(context)
+            del filters['all_tenants']
+            groups = objects.ConsistencyGroupList.get_all(
+                context, filters=filters, marker=marker, limit=limit,
+                offset=offset, sort_keys=sort_keys, sort_dirs=sort_dirs)
         else:
             groups = objects.ConsistencyGroupList.get_all_by_project(
-                context, context.project_id)
+                context, context.project_id, filters=filters, marker=marker,
+                limit=limit, offset=offset, sort_keys=sort_keys,
+                sort_dirs=sort_dirs)
         return groups
 
     def create_cgsnapshot(self, context, group, name, description):

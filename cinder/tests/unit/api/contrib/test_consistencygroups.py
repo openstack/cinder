@@ -17,6 +17,7 @@
 Tests for consistency group code.
 """
 
+import ddt
 import json
 from xml.dom import minidom
 
@@ -37,6 +38,7 @@ from cinder.tests.unit import utils
 from cinder.volume import api as volume_api
 
 
+@ddt.ddt
 class ConsistencyGroupsAPITestCase(test.TestCase):
     """Test Case for consistency groups API."""
 
@@ -153,7 +155,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         res_dict = json.loads(res.body)
 
         self.assertEqual(200, res.status_int)
-        self.assertEqual(consistencygroup1.id,
+        self.assertEqual(consistencygroup3.id,
                          res_dict['consistencygroups'][0]['id'])
         self.assertEqual('test_consistencygroup',
                          res_dict['consistencygroups'][0]['name'])
@@ -161,7 +163,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                          res_dict['consistencygroups'][1]['id'])
         self.assertEqual('test_consistencygroup',
                          res_dict['consistencygroups'][1]['name'])
-        self.assertEqual(consistencygroup3.id,
+        self.assertEqual(consistencygroup1.id,
                          res_dict['consistencygroups'][2]['id'])
         self.assertEqual('test_consistencygroup',
                          res_dict['consistencygroups'][2]['name'])
@@ -185,16 +187,145 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         dom = minidom.parseString(res.body)
         consistencygroup_list = dom.getElementsByTagName('consistencygroup')
 
-        self.assertEqual(consistencygroup1.id,
+        self.assertEqual(consistencygroup3.id,
                          consistencygroup_list.item(0).getAttribute('id'))
         self.assertEqual(consistencygroup2.id,
                          consistencygroup_list.item(1).getAttribute('id'))
-        self.assertEqual(consistencygroup3.id,
+        self.assertEqual(consistencygroup1.id,
                          consistencygroup_list.item(2).getAttribute('id'))
 
         consistencygroup3.destroy()
         consistencygroup2.destroy()
         consistencygroup1.destroy()
+
+    @ddt.data(False, True)
+    def test_list_consistencygroups_with_limit(self, is_detail):
+        consistencygroup1 = self._create_consistencygroup()
+        consistencygroup2 = self._create_consistencygroup()
+        consistencygroup3 = self._create_consistencygroup()
+        url = '/v2/fake/consistencygroups?limit=1'
+        if is_detail:
+            url = '/v2/fake/consistencygroups/detail?limit=1'
+        req = webob.Request.blank(url)
+        req.method = 'GET'
+        req.headers['Content-Type'] = 'application/json'
+        res = req.get_response(fakes.wsgi_app())
+        res_dict = json.loads(res.body)
+
+        self.assertEqual(200, res.status_int)
+        self.assertEqual(1, len(res_dict['consistencygroups']))
+        self.assertEqual(consistencygroup3.id,
+                         res_dict['consistencygroups'][0]['id'])
+        next_link = ('http://localhost/v2/fake/consistencygroups?limit='
+                     '1&marker=%s') % res_dict['consistencygroups'][0]['id']
+        self.assertEqual(next_link,
+                         res_dict['consistencygroup_links'][0]['href'])
+        consistencygroup1.destroy()
+        consistencygroup2.destroy()
+        consistencygroup3.destroy()
+
+    @ddt.data(False, True)
+    def test_list_consistencygroups_with_offset(self, is_detail):
+        consistencygroup1 = self._create_consistencygroup()
+        consistencygroup2 = self._create_consistencygroup()
+        consistencygroup3 = self._create_consistencygroup()
+        url = '/v2/fake/consistencygroups?offset=1'
+        if is_detail:
+            url = '/v2/fake/consistencygroups/detail?offset=1'
+        req = webob.Request.blank(url)
+        req.method = 'GET'
+        req.headers['Content-Type'] = 'application/json'
+        res = req.get_response(fakes.wsgi_app())
+        res_dict = json.loads(res.body)
+
+        self.assertEqual(200, res.status_int)
+        self.assertEqual(2, len(res_dict['consistencygroups']))
+        self.assertEqual(consistencygroup2.id,
+                         res_dict['consistencygroups'][0]['id'])
+        self.assertEqual(consistencygroup1.id,
+                         res_dict['consistencygroups'][1]['id'])
+        consistencygroup1.destroy()
+        consistencygroup2.destroy()
+        consistencygroup3.destroy()
+
+    @ddt.data(False, True)
+    def test_list_consistencygroups_with_limit_and_offset(self, is_detail):
+        consistencygroup1 = self._create_consistencygroup()
+        consistencygroup2 = self._create_consistencygroup()
+        consistencygroup3 = self._create_consistencygroup()
+        url = '/v2/fake/consistencygroups?limit=2&offset=1'
+        if is_detail:
+            url = '/v2/fake/consistencygroups/detail?limit=2&offset=1'
+        req = webob.Request.blank(url)
+        req.method = 'GET'
+        req.headers['Content-Type'] = 'application/json'
+        res = req.get_response(fakes.wsgi_app())
+        res_dict = json.loads(res.body)
+
+        self.assertEqual(200, res.status_int)
+        self.assertEqual(2, len(res_dict['consistencygroups']))
+        self.assertEqual(consistencygroup2.id,
+                         res_dict['consistencygroups'][0]['id'])
+        self.assertEqual(consistencygroup1.id,
+                         res_dict['consistencygroups'][1]['id'])
+        consistencygroup1.destroy()
+        consistencygroup2.destroy()
+        consistencygroup3.destroy()
+
+    @ddt.data(False, True)
+    def test_list_consistencygroups_with_filter(self, is_detail):
+        consistencygroup1 = self._create_consistencygroup()
+        consistencygroup2 = self._create_consistencygroup()
+        common_ctxt = context.RequestContext('fake', 'fake', auth_token=True,
+                                             is_admin=False)
+        consistencygroup3 = self._create_consistencygroup(ctxt=common_ctxt)
+        url = ('/v2/fake/consistencygroups?'
+               'all_tenants=True&id=%s') % consistencygroup3.id
+        if is_detail:
+            url = ('/v2/fake/consistencygroups/detail?'
+                   'all_tenants=True&id=%s') % consistencygroup3.id
+        req = webob.Request.blank(url)
+        req.method = 'GET'
+        req.headers['Content-Type'] = 'application/json'
+        res = req.get_response(fakes.wsgi_app(fake_auth_context=self.ctxt))
+        res_dict = json.loads(res.body)
+
+        self.assertEqual(200, res.status_int)
+        self.assertEqual(1, len(res_dict['consistencygroups']))
+        self.assertEqual(consistencygroup3.id,
+                         res_dict['consistencygroups'][0]['id'])
+        consistencygroup1.destroy()
+        consistencygroup2.destroy()
+        consistencygroup3.destroy()
+
+    @ddt.data(False, True)
+    def test_list_consistencygroups_with_sort(self, is_detail):
+        consistencygroup1 = self._create_consistencygroup()
+        consistencygroup2 = self._create_consistencygroup()
+        consistencygroup3 = self._create_consistencygroup()
+        url = '/v2/fake/consistencygroups?sort=id:asc'
+        if is_detail:
+            url = '/v2/fake/consistencygroups/detail?sort=id:asc'
+        req = webob.Request.blank(url)
+        req.method = 'GET'
+        req.headers['Content-Type'] = 'application/json'
+        res = req.get_response(fakes.wsgi_app())
+        res_dict = json.loads(res.body)
+        expect_result = [consistencygroup1.id, consistencygroup2.id,
+                         consistencygroup3.id]
+        expect_result.sort()
+
+        self.assertEqual(200, res.status_int)
+        self.assertEqual(3, len(res_dict['consistencygroups']))
+        self.assertEqual(expect_result[0],
+                         res_dict['consistencygroups'][0]['id'])
+        self.assertEqual(expect_result[1],
+                         res_dict['consistencygroups'][1]['id'])
+        self.assertEqual(expect_result[2],
+                         res_dict['consistencygroups'][2]['id'])
+        consistencygroup1.destroy()
+        consistencygroup2.destroy()
+        consistencygroup3.destroy()
 
     def test_list_consistencygroups_detail_json(self):
         consistencygroup1 = self._create_consistencygroup()
@@ -216,11 +347,11 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                          res_dict['consistencygroups'][0]['description'])
         self.assertEqual('test_consistencygroup',
                          res_dict['consistencygroups'][0]['name'])
-        self.assertEqual(consistencygroup1.id,
+        self.assertEqual(consistencygroup3.id,
                          res_dict['consistencygroups'][0]['id'])
         self.assertEqual('creating',
                          res_dict['consistencygroups'][0]['status'])
-        self.assertEqual(['123456'],
+        self.assertEqual(['uuid1', 'uuid2'],
                          res_dict['consistencygroups'][0]['volume_types'])
 
         self.assertEqual('az1',
@@ -242,11 +373,11 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                          res_dict['consistencygroups'][2]['description'])
         self.assertEqual('test_consistencygroup',
                          res_dict['consistencygroups'][2]['name'])
-        self.assertEqual(consistencygroup3.id,
+        self.assertEqual(consistencygroup1.id,
                          res_dict['consistencygroups'][2]['id'])
         self.assertEqual('creating',
                          res_dict['consistencygroups'][2]['status'])
-        self.assertEqual(['uuid1', 'uuid2'],
+        self.assertEqual(['123456'],
                          res_dict['consistencygroups'][2]['volume_types'])
 
         consistencygroup1.destroy()
@@ -278,7 +409,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             'test_consistencygroup',
             consistencygroup_detail.item(0).getAttribute('name'))
         self.assertEqual(
-            consistencygroup1.id,
+            consistencygroup3.id,
             consistencygroup_detail.item(0).getAttribute('id'))
         self.assertEqual(
             'creating',
@@ -310,7 +441,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             'test_consistencygroup',
             consistencygroup_detail.item(2).getAttribute('name'))
         self.assertEqual(
-            consistencygroup3.id,
+            consistencygroup1.id,
             consistencygroup_detail.item(2).getAttribute('id'))
         self.assertEqual(
             'creating',

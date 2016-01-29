@@ -3795,17 +3795,99 @@ def consistencygroup_get(context, consistencygroup_id):
     return _consistencygroup_get(context, consistencygroup_id)
 
 
+def _consistencygroups_get_query(context, session=None, project_only=False):
+    return model_query(context, models.ConsistencyGroup, session=session,
+                       project_only=project_only)
+
+
+def _process_consistencygroups_filters(query, filters):
+    if filters:
+        # Ensure that filters' keys exist on the model
+        if not is_valid_model_filters(models.ConsistencyGroup, filters):
+            return
+        query = query.filter_by(**filters)
+    return query
+
+
+def _consistencygroup_get_all(context, filters=None, marker=None, limit=None,
+                              offset=None, sort_keys=None, sort_dirs=None):
+    if filters and not is_valid_model_filters(models.ConsistencyGroup,
+                                              filters):
+        return []
+
+    session = get_session()
+    with session.begin():
+        # Generate the paginate query
+        query = _generate_paginate_query(context, session, marker,
+                                         limit, sort_keys, sort_dirs, filters,
+                                         offset, models.ConsistencyGroup)
+        if query is None:
+            return []
+        return query.all()
+
+
 @require_admin_context
-def consistencygroup_get_all(context):
-    return model_query(context, models.ConsistencyGroup).all()
+def consistencygroup_get_all(context, filters=None, marker=None, limit=None,
+                             offset=None, sort_keys=None, sort_dirs=None):
+    """Retrieves all consistency groups.
+
+    If no sort parameters are specified then the returned cgs are sorted
+    first by the 'created_at' key and then by the 'id' key in descending
+    order.
+
+    :param context: context to query under
+    :param marker: the last item of the previous page, used to determine the
+                   next page of results to return
+    :param limit: maximum number of items to return
+    :param sort_keys: list of attributes by which results should be sorted,
+                      paired with corresponding item in sort_dirs
+    :param sort_dirs: list of directions in which results should be sorted,
+                      paired with corresponding item in sort_keys
+    :param filters: dictionary of filters; values that are in lists, tuples,
+                    or sets cause an 'IN' operation, while exact matching
+                    is used for other values, see
+                    _process_consistencygroups_filters function for more
+                    information
+    :returns: list of matching consistency groups
+    """
+    return _consistencygroup_get_all(context, filters, marker, limit, offset,
+                                     sort_keys, sort_dirs)
 
 
 @require_context
-def consistencygroup_get_all_by_project(context, project_id):
-    authorize_project_context(context, project_id)
+def consistencygroup_get_all_by_project(context, project_id, filters=None,
+                                        marker=None, limit=None, offset=None,
+                                        sort_keys=None, sort_dirs=None):
+    """Retrieves all consistency groups in a project.
 
-    return model_query(context, models.ConsistencyGroup).\
-        filter_by(project_id=project_id).all()
+    If no sort parameters are specified then the returned cgs are sorted
+    first by the 'created_at' key and then by the 'id' key in descending
+    order.
+
+    :param context: context to query under
+    :param marker: the last item of the previous page, used to determine the
+                   next page of results to return
+    :param limit: maximum number of items to return
+    :param sort_keys: list of attributes by which results should be sorted,
+                      paired with corresponding item in sort_dirs
+    :param sort_dirs: list of directions in which results should be sorted,
+                      paired with corresponding item in sort_keys
+    :param filters: dictionary of filters; values that are in lists, tuples,
+                    or sets cause an 'IN' operation, while exact matching
+                    is used for other values, see
+                    _process_consistencygroups_filters function for more
+                    information
+    :returns: list of matching consistency groups
+    """
+    authorize_project_context(context, project_id)
+    if not filters:
+        filters = {}
+    else:
+        filters = filters.copy()
+
+    filters['project_id'] = project_id
+    return _consistencygroup_get_all(context, filters, marker, limit, offset,
+                                     sort_keys, sort_dirs)
 
 
 @require_context
@@ -4068,7 +4150,10 @@ PAGINATION_HELPERS = {
     models.QualityOfServiceSpecs: (_qos_specs_get_query,
                                    _process_qos_specs_filters, _qos_specs_get),
     models.VolumeTypes: (_volume_type_get_query, _process_volume_types_filters,
-                         _volume_type_get_db_object)
+                         _volume_type_get_db_object),
+    models.ConsistencyGroup: (_consistencygroups_get_query,
+                              _process_consistencygroups_filters,
+                              _consistencygroup_get)
 }
 
 

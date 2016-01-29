@@ -136,26 +136,35 @@ class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
 
 @base.CinderObjectRegistry.register
 class ConsistencyGroupList(base.ObjectListBase, base.CinderObject):
-    VERSION = '1.0'
+    # Version 1.0: Initial version
+    # Version 1.1: Add pagination support to consistency group
+    VERSION = '1.1'
 
     fields = {
         'objects': fields.ListOfObjectsField('ConsistencyGroup')
     }
     child_version = {
-        '1.0': '1.0'
+        '1.0': '1.0',
+        '1.1': '1.1',
     }
 
     @base.remotable_classmethod
-    def get_all(cls, context):
-        consistencygroups = db.consistencygroup_get_all(context)
+    def get_all(cls, context, filters=None, marker=None, limit=None,
+                offset=None, sort_keys=None, sort_dirs=None):
+        consistencygroups = db.consistencygroup_get_all(
+            context, filters=filters, marker=marker, limit=limit,
+            offset=offset, sort_keys=sort_keys, sort_dirs=sort_dirs)
         return base.obj_make_list(context, cls(context),
                                   objects.ConsistencyGroup,
                                   consistencygroups)
 
     @base.remotable_classmethod
-    def get_all_by_project(cls, context, project_id):
-        consistencygroups = db.consistencygroup_get_all_by_project(context,
-                                                                   project_id)
+    def get_all_by_project(cls, context, project_id, filters=None, marker=None,
+                           limit=None, offset=None, sort_keys=None,
+                           sort_dirs=None):
+        consistencygroups = db.consistencygroup_get_all_by_project(
+            context, project_id, filters=filters, marker=marker, limit=limit,
+            offset=offset, sort_keys=sort_keys, sort_dirs=sort_dirs)
         return base.obj_make_list(context, cls(context),
                                   objects.ConsistencyGroup,
                                   consistencygroups)
