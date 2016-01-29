@@ -1694,6 +1694,45 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         (_vm, disk) = self._get_existing(existing_ref)
         return int(math.ceil(disk.capacityInKB * units.Ki / float(units.Gi)))
 
+    def manage_existing(self, volume, existing_ref):
+        """Brings an existing virtual disk under Cinder management.
+
+        Detaches the virtual disk identified by existing_ref and attaches
+        it to a volume backing.
+
+        :param volume: Cinder volume to manage
+        :param existing_ref: Driver-specific information used to identify a
+        volume
+        """
+        (vm, disk) = self._get_existing(existing_ref)
+
+        # Create a backing for the volume.
+        create_params = {CREATE_PARAM_DISK_LESS: True}
+        backing = self._create_backing(volume, create_params=create_params)
+
+        # Detach the disk to be managed from the source VM.
+        self.volumeops.detach_disk_from_backing(vm, disk)
+
+        # Move the disk to the datastore folder of volume backing.
+        src_dc = self.volumeops.get_dc(vm)
+        dest_dc = self.volumeops.get_dc(backing)
+        (ds_name, folder_path) = self._get_ds_name_folder_path(backing)
+        dest_path = volumeops.VirtualDiskPath(
+            ds_name, folder_path, volume['name'])
+        self.volumeops.move_vmdk_file(src_dc,
+                                      disk.backing.fileName,
+                                      dest_path.get_descriptor_ds_file_path(),
+                                      dest_dc_ref=dest_dc)
+
+        # Attach the disk to be managed to volume backing.
+        self.volumeops.attach_disk_to_backing(
+            backing,
+            disk.capacityInKB,
+            VMwareVcVmdkDriver._get_disk_type(volume),
+            'lsiLogic',
+            dest_path.get_descriptor_ds_file_path())
+        self.volumeops.update_backing_disk_uuid(backing, volume['id'])
+
     @property
     def session(self):
         if not self._session:

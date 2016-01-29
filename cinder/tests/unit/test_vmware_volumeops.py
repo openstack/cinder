@@ -1326,6 +1326,39 @@ class VolumeOpsTestCase(test.TestCase):
                                                         spec=reconfig_spec)
         self.session.wait_for_task.assert_called_once_with(task)
 
+    def test_create_spec_for_disk_remove(self):
+        disk_spec = mock.Mock()
+        self.session.vim.client.factory.create.return_value = disk_spec
+
+        disk_device = mock.sentinel.disk_device
+        self.vops._create_spec_for_disk_remove(disk_device)
+
+        self.session.vim.client.factory.create.assert_called_once_with(
+            'ns0:VirtualDeviceConfigSpec')
+        self.assertEqual('remove', disk_spec.operation)
+        self.assertEqual(disk_device, disk_spec.device)
+
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                '_create_spec_for_disk_remove')
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                '_reconfigure_backing')
+    def test_detach_disk_from_backing(self, reconfigure_backing, create_spec):
+        disk_spec = mock.sentinel.disk_spec
+        create_spec.return_value = disk_spec
+
+        reconfig_spec = mock.Mock()
+        self.session.vim.client.factory.create.return_value = reconfig_spec
+
+        backing = mock.sentinel.backing
+        disk_device = mock.sentinel.disk_device
+        self.vops.detach_disk_from_backing(backing, disk_device)
+
+        create_spec.assert_called_once_with(disk_device)
+        self.session.vim.client.factory.create.assert_called_once_with(
+            'ns0:VirtualMachineConfigSpec')
+        self.assertEqual([disk_spec], reconfig_spec.deviceChange)
+        reconfigure_backing.assert_called_once_with(backing, reconfig_spec)
+
     def test_rename_backing(self):
         task = mock.sentinel.task
         self.session.invoke_api.return_value = task
@@ -1650,6 +1683,31 @@ class VolumeOpsTestCase(test.TestCase):
                                            sourceDatacenter=src_dc_ref,
                                            destName=dest_vmdk_file_path,
                                            destDatacenter=src_dc_ref,
+                                           force=True)
+        self.session.wait_for_task.assert_called_once_with(task)
+
+    def test_move_vmdk_file(self):
+        task = mock.sentinel.task
+        invoke_api = self.session.invoke_api
+        invoke_api.return_value = task
+
+        disk_mgr = self.session.vim.service_content.virtualDiskManager
+        src_dc_ref = mock.sentinel.src_dc_ref
+        src_vmdk_file_path = mock.sentinel.src_vmdk_file_path
+        dest_dc_ref = mock.sentinel.dest_dc_ref
+        dest_vmdk_file_path = mock.sentinel.dest_vmdk_file_path
+        self.vops.move_vmdk_file(src_dc_ref,
+                                 src_vmdk_file_path,
+                                 dest_vmdk_file_path,
+                                 dest_dc_ref=dest_dc_ref)
+
+        invoke_api.assert_called_once_with(self.session.vim,
+                                           'MoveVirtualDisk_Task',
+                                           disk_mgr,
+                                           sourceName=src_vmdk_file_path,
+                                           sourceDatacenter=src_dc_ref,
+                                           destName=dest_vmdk_file_path,
+                                           destDatacenter=dest_dc_ref,
                                            force=True)
         self.session.wait_for_task.assert_called_once_with(task)
 
