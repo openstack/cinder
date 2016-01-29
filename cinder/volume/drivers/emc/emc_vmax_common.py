@@ -3691,6 +3691,15 @@ class EMCVMAXCommon(object):
         return self.masking.get_port_group_from_masking_view(
             self.conn, maskingViewInstanceName)
 
+    def get_initiator_group_from_masking_view(self, maskingViewInstanceName):
+        """Get the initiator group in a masking view.
+
+        :param maskingViewInstanceName: masking view instance name
+        :returns: initiatorGroupInstanceName
+        """
+        return self.masking.get_initiator_group_from_masking_view(
+            self.conn, maskingViewInstanceName)
+
     def get_masking_view_by_volume(self, volume, connector):
         """Given volume, retrieve the masking view instance name.
 
@@ -3714,6 +3723,18 @@ class EMCVMAXCommon(object):
                   {'pg': portGroupInstanceName})
         return self.masking.get_masking_views_by_port_group(
             self.conn, portGroupInstanceName)
+
+    def get_masking_views_by_initiator_group(
+            self, initiatorGroupInstanceName):
+        """Given initiator group, retrieve the masking view instance name.
+
+        :param initiatorGroupInstanceName: initiator group instance name
+        :returns: list -- maskingViewInstanceNames
+        """
+        LOG.debug("Finding Masking Views for initiator group %(ig)s.",
+                  {'ig': initiatorGroupInstanceName})
+        return self.masking.get_masking_views_by_initiator_group(
+            self.conn, initiatorGroupInstanceName)
 
     def _create_replica_v3(
             self, repServiceInstanceName, cloneVolume,
