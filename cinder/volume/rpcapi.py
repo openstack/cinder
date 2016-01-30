@@ -173,13 +173,13 @@ class VolumeAPI(object):
 
     def create_snapshot(self, ctxt, volume, snapshot):
         new_host = utils.extract_host(volume['host'])
-        cctxt = self.client.prepare(server=new_host)
+        cctxt = self.client.prepare(server=new_host, version='1.20')
         cctxt.cast(ctxt, 'create_snapshot', volume_id=volume['id'],
                    snapshot=snapshot)
 
     def delete_snapshot(self, ctxt, snapshot, host, unmanage_only=False):
         new_host = utils.extract_host(host)
-        cctxt = self.client.prepare(server=new_host)
+        cctxt = self.client.prepare(server=new_host, version='1.20')
         cctxt.cast(ctxt, 'delete_snapshot', snapshot=snapshot,
                    unmanage_only=unmanage_only)
 
@@ -209,14 +209,14 @@ class VolumeAPI(object):
 
     def initialize_connection(self, ctxt, volume, connector):
         new_host = utils.extract_host(volume['host'])
-        cctxt = self.client.prepare(server=new_host)
+        cctxt = self.client.prepare(server=new_host, version='1.0')
         return cctxt.call(ctxt, 'initialize_connection',
                           volume_id=volume['id'],
                           connector=connector)
 
     def terminate_connection(self, ctxt, volume, connector, force=False):
         new_host = utils.extract_host(volume['host'])
-        cctxt = self.client.prepare(server=new_host)
+        cctxt = self.client.prepare(server=new_host, version='1.0')
         return cctxt.call(ctxt, 'terminate_connection', volume_id=volume['id'],
                           connector=connector, force=force)
 

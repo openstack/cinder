@@ -295,21 +295,24 @@ class VolumeRpcAPITestCase(test.TestCase):
         self._test_volume_api('create_snapshot',
                               rpc_method='cast',
                               volume=self.fake_volume,
-                              snapshot=self.fake_snapshot)
+                              snapshot=self.fake_snapshot,
+                              version='1.20')
 
     def test_delete_snapshot(self):
         self._test_volume_api('delete_snapshot',
                               rpc_method='cast',
                               snapshot=self.fake_snapshot,
                               host='fake_host',
-                              unmanage_only=False)
+                              unmanage_only=False,
+                              version='1.20')
 
     def test_delete_snapshot_with_unmanage_only(self):
         self._test_volume_api('delete_snapshot',
                               rpc_method='cast',
                               snapshot=self.fake_snapshot,
                               host='fake_host',
-                              unmanage_only=True)
+                              unmanage_only=True,
+                              version='1.20')
 
     def test_attach_volume_to_instance(self):
         self._test_volume_api('attach_volume',
@@ -351,14 +354,16 @@ class VolumeRpcAPITestCase(test.TestCase):
         self._test_volume_api('initialize_connection',
                               rpc_method='call',
                               volume=self.fake_volume,
-                              connector='fake_connector')
+                              connector='fake_connector',
+                              version='1.0')
 
     def test_terminate_connection(self):
         self._test_volume_api('terminate_connection',
                               rpc_method='call',
                               volume=self.fake_volume,
                               connector='fake_connector',
-                              force=False)
+                              force=False,
+                              version='1.0')
 
     def test_accept_transfer(self):
         self._test_volume_api('accept_transfer',

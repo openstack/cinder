@@ -147,7 +147,7 @@ class SchedulerAPI(object):
                                     service_name, host,
                                     capabilities):
         # FIXME(flaper87): What to do with fanout?
-        cctxt = self.client.prepare(fanout=True)
+        cctxt = self.client.prepare(fanout=True, version='1.0')
         cctxt.cast(ctxt, 'update_service_capabilities',
                    service_name=service_name, host=host,
                    capabilities=capabilities)
