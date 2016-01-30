@@ -45,7 +45,7 @@ class BackupRpcAPITestCase(test.TestCase):
         target = {
             "server": server,
             "fanout": fanout,
-            "version": kwargs.pop('version', rpcapi.BASE_RPC_API_VERSION)
+            "version": kwargs.pop('version', rpcapi.RPC_API_VERSION)
         }
 
         expected_msg = copy.deepcopy(kwargs)

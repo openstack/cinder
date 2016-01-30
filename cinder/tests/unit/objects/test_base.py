@@ -17,6 +17,7 @@ import mock
 import uuid
 
 from iso8601 import iso8601
+from oslo_utils import versionutils
 from oslo_versionedobjects import fields
 from sqlalchemy import sql
 
@@ -30,11 +31,20 @@ from cinder.tests.unit import objects as test_objects
 
 @objects.base.CinderObjectRegistry.register_if(False)
 class TestObject(objects.base.CinderObject):
+    VERSION = '1.1'
+
     fields = {
         'scheduled_at': objects.base.fields.DateTimeField(nullable=True),
         'uuid': objects.base.fields.UUIDField(),
         'text': objects.base.fields.StringField(nullable=True),
     }
+
+    def obj_make_compatible(self, primitive, target_version):
+        super(TestObject, self).obj_make_compatible(primitive,
+                                                    target_version)
+        target_version = versionutils.convert_version_to_tuple(target_version)
+        if target_version < (1, 1):
+            primitive.pop('text', None)
 
 
 class TestCinderObject(test_objects.BaseObjectsTestCase):
@@ -595,3 +605,23 @@ class TestCinderDictObject(test_objects.BaseObjectsTestCase):
         self.assertTrue('foo' in obj)
         self.assertTrue('abc' in obj)
         self.assertFalse('def' in obj)
+
+
+@mock.patch('cinder.objects.base.OBJ_VERSIONS', {'1.0': {'TestObject': '1.0'},
+                                                 '1.1': {'TestObject': '1.1'},
+                                                 })
+class TestCinderObjectSerializer(test_objects.BaseObjectsTestCase):
+    def setUp(self):
+        super(TestCinderObjectSerializer, self).setUp()
+        self.obj = TestObject(scheduled_at=None, uuid=uuid.uuid4(),
+                              text='text')
+
+    def test_serialize_entity_backport(self):
+        serializer = objects.base.CinderObjectSerializer('1.0')
+        primitive = serializer.serialize_entity(self.context, self.obj)
+        self.assertEqual('1.0', primitive['versioned_object.version'])
+
+    def test_serialize_entity_unknown_version(self):
+        serializer = objects.base.CinderObjectSerializer('0.9')
+        primitive = serializer.serialize_entity(self.context, self.obj)
+        self.assertEqual('1.1', primitive['versioned_object.version'])

@@ -14,6 +14,7 @@
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import versionutils
 from oslo_versionedobjects import fields
 
 from cinder import db
@@ -33,7 +34,8 @@ class Service(base.CinderPersistentObject, base.CinderObject,
               base.CinderComparableObject):
     # Version 1.0: Initial version
     # Version 1.1: Add rpc_current_version and object_current_version fields
-    VERSION = '1.1'
+    # Version 1.2: Add get_minimum_rpc_version() and get_minimum_obj_version()
+    VERSION = '1.2'
 
     fields = {
         'id': fields.IntegerField(),
@@ -100,16 +102,49 @@ class Service(base.CinderPersistentObject, base.CinderObject,
         with self.obj_as_admin():
             db.service_destroy(self._context, self.id)
 
+    @classmethod
+    def _get_minimum_version(cls, attribute, context, binary):
+        services = ServiceList.get_all_by_binary(context, binary)
+        min_ver = None
+        min_ver_str = None
+        for s in services:
+            ver_str = getattr(s, attribute)
+            if ver_str is None:
+                # FIXME(dulek) None in *_current_version means that this
+                # service is in Liberty version, so we must assume this is the
+                # lowest one. We use handy and easy to remember token to
+                # indicate that. This may go away as soon as we drop
+                # compatibility with Liberty, possibly in early N.
+                return 'liberty'
+            ver = versionutils.convert_version_to_int(ver_str)
+            if min_ver is None or ver < min_ver:
+                min_ver = ver
+                min_ver_str = ver_str
+
+        return min_ver_str
+
+    @base.remotable_classmethod
+    def get_minimum_rpc_version(cls, context, binary):
+        return cls._get_minimum_version('rpc_current_version', context, binary)
+
+    @base.remotable_classmethod
+    def get_minimum_obj_version(cls, context, binary):
+        return cls._get_minimum_version('object_current_version', context,
+                                        binary)
+
 
 @base.CinderObjectRegistry.register
 class ServiceList(base.ObjectListBase, base.CinderObject):
-    VERSION = '1.0'
+    # Version 1.0: Initial version
+    # Version 1.1: Service object 1.2
+    VERSION = '1.1'
 
     fields = {
         'objects': fields.ListOfObjectsField('Service'),
     }
     child_versions = {
-        '1.0': '1.0'
+        '1.0': '1.0',
+        '1.1': '1.2',
     }
 
     @base.remotable_classmethod
@@ -122,5 +157,12 @@ class ServiceList(base.ObjectListBase, base.CinderObject):
     def get_all_by_topic(cls, context, topic, disabled=None):
         services = db.service_get_all_by_topic(context, topic,
                                                disabled=disabled)
+        return base.obj_make_list(context, cls(context), objects.Service,
+                                  services)
+
+    @base.remotable_classmethod
+    def get_all_by_binary(cls, context, binary, disabled=None):
+        services = db.service_get_all_by_binary(context, binary,
+                                                disabled=disabled)
         return base.obj_make_list(context, cls(context), objects.Service,
                                   services)

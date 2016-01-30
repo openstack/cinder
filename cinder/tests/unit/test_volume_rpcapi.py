@@ -110,7 +110,7 @@ class VolumeRpcAPITestCase(test.TestCase):
         expected_retval = 'foo' if method == 'call' else None
 
         target = {
-            "version": kwargs.pop('version', rpcapi.BASE_RPC_API_VERSION)
+            "version": kwargs.pop('version', rpcapi.RPC_API_VERSION)
         }
 
         if 'request_spec' in kwargs:
