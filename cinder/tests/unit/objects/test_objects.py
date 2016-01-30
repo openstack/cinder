@@ -28,7 +28,7 @@ object_data = {
     'CGSnapshotList': '1.0-e8c3f4078cd0ee23487b34d173eec776',
     'ConsistencyGroup': '1.2-ed7f90a6871991a19af716ade7337fc9',
     'ConsistencyGroupList': '1.1-73916823b697dfa0c7f02508d87e0f28',
-    'Service': '1.0-64baeb4911dbab1153064dd1c87edb9f',
+    'Service': '1.1-9eb00cbd8e2bfb7371343429af54d6e8',
     'ServiceList': '1.0-d242d3384b68e5a5a534e090ff1d5161',
     'Snapshot': '1.0-a6c33eefeadefb324d79f72f66c54e9a',
     'SnapshotList': '1.0-71661e7180ef6cc51501704a9bea4bf1',
@@ -51,3 +51,20 @@ class TestObjectVersions(test.TestCase):
                          'Some objects have changed; please make sure the '
                          'versions have been bumped, and then update their '
                          'hashes in the object_data map in this test module.')
+
+    def test_versions_history(self):
+        classes = base.CinderObjectRegistry.obj_classes()
+        versions = base.OBJ_VERSIONS.get_current_versions()
+        expected = {}
+        actual = {}
+        for name, cls in classes.items():
+            if name not in versions:
+                expected[name] = cls[0].VERSION
+            elif cls[0].VERSION != versions[name]:
+                expected[name] = cls[0].VERSION
+                actual[name] = versions[name]
+
+        self.assertEqual(expected, actual,
+                         'Some objects versions have changed; please make '
+                         'sure a new objects history version was added in '
+                         'cinder.objects.base.OBJ_VERSIONS.')

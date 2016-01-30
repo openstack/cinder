@@ -32,7 +32,8 @@ class Service(base.CinderPersistentObject, base.CinderObject,
               base.CinderObjectDictCompat,
               base.CinderComparableObject):
     # Version 1.0: Initial version
-    VERSION = '1.0'
+    # Version 1.1: Add rpc_current_version and object_current_version fields
+    VERSION = '1.1'
 
     fields = {
         'id': fields.IntegerField(),
@@ -46,6 +47,8 @@ class Service(base.CinderPersistentObject, base.CinderObject,
         'disabled_reason': fields.StringField(nullable=True),
 
         'modified_at': fields.DateTimeField(nullable=True),
+        'rpc_current_version': fields.StringField(nullable=True),
+        'object_current_version': fields.StringField(nullable=True),
     }
 
     def obj_make_compatible(self, primitive, target_version):
