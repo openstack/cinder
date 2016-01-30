@@ -50,8 +50,7 @@ DEPRECATED_SSC_SPECS = {'netapp_unmirrored': 'netapp_mirrored',
                         'netapp_nodedup': 'netapp_dedup',
                         'netapp_nocompression': 'netapp_compression',
                         'netapp_thick_provisioned': 'netapp_thin_provisioned'}
-QOS_KEYS = frozenset(
-    ['maxIOPS', 'total_iops_sec', 'maxBPS', 'total_bytes_sec'])
+QOS_KEYS = frozenset(['maxIOPS', 'maxBPS'])
 BACKEND_QOS_CONSUMERS = frozenset(['back-end', 'both'])
 
 
@@ -204,9 +203,9 @@ def map_qos_spec(qos_spec, volume):
     spec = dict(policy_name=get_qos_policy_group_name(volume),
                 max_throughput=None)
     # IOPS and BPS specifications are exclusive of one another.
-    if 'maxiops' in qos_spec or 'total_iops_sec' in qos_spec:
+    if 'maxiops' in qos_spec:
         spec['max_throughput'] = '%siops' % qos_spec['maxiops']
-    elif 'maxbps' in qos_spec or 'total_bytes_sec' in qos_spec:
+    elif 'maxbps' in qos_spec:
         spec['max_throughput'] = '%sB/s' % qos_spec['maxbps']
     return spec
 
