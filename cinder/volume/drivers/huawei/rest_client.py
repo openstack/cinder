@@ -922,13 +922,16 @@ class RestClient(object):
 
     def get_lunnum_from_lungroup(self, lungroup_id):
         """Check if there are still other luns associated to the lungroup."""
+        lunnum = 0
+        if not lungroup_id:
+            return lunnum
+
         url = ("/lun/count?TYPE=11&ASSOCIATEOBJTYPE=256&"
                "ASSOCIATEOBJID=%s" % lungroup_id)
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Find lun number error.'))
-        lunnum = -1
         if 'data' in result:
-            lunnum = result['data']['COUNT']
+            lunnum = int(result['data']['COUNT'])
         return lunnum
 
     def is_portgroup_associated_to_view(self, view_id, portgroup_id):
@@ -1885,3 +1888,129 @@ class RestClient(object):
                             rss_obj.get('LUNMirror') == 'TRUE'):
                         return True
         return False
+
+    def get_portgs_by_portid(self, port_id):
+        portgs = []
+        if not port_id:
+            return portgs
+        url = ("/portgroup/associate/fc_port?TYPE=257&ASSOCIATEOBJTYPE=212&"
+               "ASSOCIATEOBJID=%s") % port_id
+        result = self.call(url, None, "GET")
+        self._assert_rest_result(result, _('Get port groups by port error.'))
+        for item in result.get("data", []):
+            portgs.append(item["ID"])
+        return portgs
+
+    def get_views_by_portg(self, portg_id):
+        views = []
+        if not portg_id:
+            return views
+        url = ("/mappingview/associate/portgroup?TYPE=245&ASSOCIATEOBJTYPE="
+               "257&ASSOCIATEOBJID=%s") % portg_id
+        result = self.call(url, None, "GET")
+        self._assert_rest_result(result, _('Get views by port group error.'))
+        for item in result.get("data", []):
+            views.append(item["ID"])
+        return views
+
+    def get_lungroup_by_view(self, view_id):
+        if not view_id:
+            return None
+        url = ("/lungroup/associate/mappingview?TYPE=256&ASSOCIATEOBJTYPE="
+               "245&ASSOCIATEOBJID=%s") % view_id
+        result = self.call(url, None, "GET")
+        self._assert_rest_result(result, _('Get LUN group by view error.'))
+        for item in result.get("data", []):
+            # In fact, there is just one lungroup in a view.
+            return item["ID"]
+
+    def get_portgroup_by_view(self, view_id):
+        if not view_id:
+            return None
+        url = ("/portgroup/associate/mappingview?TYPE=257&ASSOCIATEOBJTYPE="
+               "245&ASSOCIATEOBJID=%s") % view_id
+        result = self.call(url, None, "GET")
+        self._assert_rest_result(result, _('Get port group by view error.'))
+        return result.get("data", [])
+
+    def get_fc_ports_by_portgroup(self, portg_id):
+        ports = {}
+        if not portg_id:
+            return ports
+        url = ("/fc_port/associate/portgroup?TYPE=212&ASSOCIATEOBJTYPE=257"
+               "&ASSOCIATEOBJID=%s") % portg_id
+        result = self.call(url, None, "GET")
+        self._assert_rest_result(result, _('Get FC ports by port group '
+                                           'error.'))
+        for item in result.get("data", []):
+            ports[item["WWN"]] = item["ID"]
+        return ports
+
+    def create_portg(self, portg_name, description=""):
+        url = "/PortGroup"
+        data = {"DESCRIPTION": description,
+                "NAME": portg_name,
+                "TYPE": 257}
+        result = self.call(url, data, "POST")
+        self._assert_rest_result(result, _('Create port group error.'))
+        if "data" in result:
+            return result['data']['ID']
+
+    def add_port_to_portg(self, portg_id, port_id):
+        url = "/port/associate/portgroup"
+        data = {"ASSOCIATEOBJID": port_id,
+                "ASSOCIATEOBJTYPE": 212,
+                "ID": portg_id,
+                "TYPE": 257}
+        result = self.call(url, data, "POST")
+        self._assert_rest_result(result, _('Add port to port group error.'))
+
+    def delete_portgroup(self, portg_id):
+        url = "/PortGroup/%s" % portg_id
+        result = self.call(url, None, "DELETE")
+        self._assert_rest_result(result, _('Delete port group error.'))
+
+    def remove_port_from_portgroup(self, portg_id, port_id):
+        url = (("/port/associate/portgroup?ID=%(portg_id)s&TYPE=257&"
+               "ASSOCIATEOBJTYPE=212&ASSOCIATEOBJID=%(port_id)s")
+               % {"portg_id": portg_id, "port_id": port_id})
+        result = self.call(url, None, "DELETE")
+        self._assert_rest_result(result, _('Remove port from port group'
+                                           ' error.'))
+
+    def get_all_engines(self):
+        url = "/storageengine"
+        result = self.call(url, None, "GET")
+        self._assert_rest_result(result, _('Get engines error.'))
+
+        return result.get("data", [])
+
+    def get_portg_info(self, portg_id):
+        url = "/portgroup/%s" % portg_id
+        result = self.call(url, None, "GET")
+        self._assert_rest_result(result, _('Get port group error.'))
+
+        return result.get("data", {})
+
+    def append_portg_desc(self, portg_id, description):
+        portg_info = self.get_portg_info(portg_id)
+        new_description = portg_info.get('DESCRIPTION') + ',' + description
+        url = "/portgroup/%s" % portg_id
+        data = {"DESCRIPTION": new_description,
+                "ID": portg_id,
+                "TYPE": 257}
+        result = self.call(url, data, "PUT")
+        self._assert_rest_result(result, _('Append port group description'
+                                           ' error.'))
+
+    def get_ports_by_portg(self, portg_id):
+        wwns = []
+        url = ("/fc_port/associate?TYPE=213&ASSOCIATEOBJTYPE=257"
+               "&ASSOCIATEOBJID=%s" % portg_id)
+        result = self.call(url, None, "GET")
+
+        msg = _('Get ports by port group error.')
+        self._assert_rest_result(result, msg)
+        for item in result.get('data', []):
+            wwns.append(item['WWN'])
+        return wwns
