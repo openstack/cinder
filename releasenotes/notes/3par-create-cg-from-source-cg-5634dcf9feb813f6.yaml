@@ -1,0 +1,4 @@
+---
+features:
+  - Added support for creating a consistency group from a source consistency group
+    in the HPE 3PAR driver.
