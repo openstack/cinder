@@ -199,9 +199,9 @@ class BackupManager(manager.SchedulerDependentManager):
             backend = self._get_volume_backend(host=volume_host)
             attachments = volume['volume_attachment']
             if attachments:
-                if volume['status'] == 'backing-up':
+                if (volume['status'].startswith( 'backing-up' )) :
                     LOG.info(_LI('Resetting volume %s to available '
-                                 '(was backing-up).'), volume['id'])
+                                 '(was %s).'), volume['id'], volume['status'])
                     mgr = self._get_manager(backend)
                     for attachment in attachments:
                         if (attachment['attached_host'] == self.host and
@@ -259,7 +259,7 @@ class BackupManager(manager.SchedulerDependentManager):
 
         expected_status = 'backing-up'
         actual_status = volume['status']
-        if actual_status != expected_status:
+        if not actual_status.startswith(expected_status) :
             err = _('Create backup aborted, expected volume status '
                     '%(expected_status)s but got %(actual_status)s.') % {
                 'expected_status': expected_status,

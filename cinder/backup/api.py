@@ -203,7 +203,8 @@ class API(base.Base):
                 raise exception.InvalidBackup(reason=msg)
 
         orig_status = volume['status']
-        self.db.volume_update(context, volume_id, {'status': 'backing-up'})
+        new_status = 'backing-up-' + orig_status
+        self.db.volume_update(context, volume_id, {'status': new_status})
         options = {'user_id': context.user_id,
                    'project_id': context.project_id,
                    'display_name': name,
@@ -235,7 +236,7 @@ class API(base.Base):
 
         return backup
 
-    def restore(self, context, backup_id, volume_id=None):
+    def restore(self, context, backup_id, volume_id=None, volume_size=None):
         """Make the RPC call to restore a volume backup."""
         check_policy(context, 'restore')
         backup = self.get(context, backup_id)
@@ -251,14 +252,23 @@ class API(base.Base):
         # Create a volume if none specified. If a volume is specified check
         # it is large enough for the backup
         if volume_id is None:
+
+            vol_size = size
+            if volume_size is not None :
+                if vol_size > volume_size :
+                    msg = _('Size of Volume should be greater than size of backup')
+                    raise exception.InvalidVolume(reason=msg)
+                else :
+                    vol_size = volume_size
+               
             name = 'restore_backup_%s' % backup_id
             description = 'auto-created_from_restore_from_backup'
 
             LOG.info(_LI("Creating volume of %(size)s GB for restore of "
                          "backup %(backup_id)s"),
-                     {'size': size, 'backup_id': backup_id},
+                     {'size': vol_size, 'backup_id': backup_id},
                      context=context)
-            volume = self.volume_api.create(context, size, name, description)
+            volume = self.volume_api.create(context, vol_size, name, description)
             volume_id = volume['id']
 
             while True:
