@@ -997,6 +997,11 @@ class VolumeManager(manager.SchedulerDependentManager):
             # and the volume status updated.
             utils.require_driver_initialized(self.driver)
 
+            LOG.debug('Detaching volume %(volume_id)s from instance '
+                      '%(instance)s.',
+                      {'volume_id': volume_id,
+                       'instance': attachment.get('instance_uuid')},
+                      resource=volume)
             self.driver.detach_volume(context, volume, attachment)
         except Exception:
             with excutils.save_and_reraise_exception():
