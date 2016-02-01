@@ -101,11 +101,20 @@ class VolumeAPI(rpc.RPCAPI):
         2.0  - Remove 1.x compatibility
         2.1  - Add get_manageable_volumes() and get_manageable_snapshots().
         2.2 - Adds support for sending objects over RPC in manage_existing().
+        2.3  - Adds support for sending objects over RPC in
+               initialize_connection().
     """
 
-    RPC_API_VERSION = '2.2'
+    RPC_API_VERSION = '2.3'
     TOPIC = CONF.volume_topic
     BINARY = 'cinder-volume'
+
+    def _compat_ver(self, current, *legacy):
+        versions = (current,) + legacy
+        for version in versions[:-1]:
+            if self.client.can_send_version(version):
+                return version
+        return versions[-1]
 
     def _get_cctxt(self, host, version):
         new_host = utils.get_volume_rpc_host(host)
@@ -190,10 +199,15 @@ class VolumeAPI(rpc.RPCAPI):
                    image_meta=image_meta)
 
     def initialize_connection(self, ctxt, volume, connector):
-        cctxt = self._get_cctxt(volume['host'], '2.0')
-        return cctxt.call(ctxt, 'initialize_connection',
-                          volume_id=volume['id'],
-                          connector=connector)
+        version = self._compat_ver('2.3', '2.0')
+        msg_args = {'volume_id': volume.id, 'connector': connector,
+                    'volume': volume}
+
+        if version == '2.0':
+            del msg_args['volume']
+
+        cctxt = self._get_cctxt(volume['host'], version=version)
+        return cctxt.call(ctxt, 'initialize_connection', **msg_args)
 
     def terminate_connection(self, ctxt, volume, connector, force=False):
         cctxt = self._get_cctxt(volume['host'], '2.0')

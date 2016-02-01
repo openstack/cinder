@@ -658,7 +658,7 @@ class API(base.Base):
 
     @wrap_check_policy
     def initialize_connection(self, context, volume, connector):
-        if volume['status'] == 'maintenance':
+        if volume.status == 'maintenance':
             LOG.info(_LI('Unable to initialize the connection for '
                          'volume, because it is in '
                          'maintenance.'), resource=volume)

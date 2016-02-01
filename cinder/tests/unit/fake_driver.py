@@ -15,6 +15,7 @@
 from oslo_utils import timeutils
 
 from cinder import exception
+from cinder import objects
 from cinder.objects import fields
 from cinder.tests.unit.brick import fake_lvm
 from cinder.volume import driver
@@ -36,10 +37,16 @@ class FakeISCSIDriver(lvm.LVMVolumeDriver):
         pass
 
     def initialize_connection(self, volume, connector):
-        volume_metadata = {}
-
-        for metadata in volume['volume_admin_metadata']:
-            volume_metadata[metadata['key']] = metadata['value']
+        # NOTE(thangp): There are several places in the core cinder code where
+        # the volume passed through is a dict and not an oslo_versionedobject.
+        # We need to react appropriately to what type of volume is passed in,
+        # until the switch over to oslo_versionedobjects is complete.
+        if isinstance(volume, objects.Volume):
+            volume_metadata = volume.admin_metadata
+        else:
+            volume_metadata = {}
+            for metadata in volume['volume_admin_metadata']:
+                volume_metadata[metadata['key']] = metadata['value']
 
         access_mode = volume_metadata.get('attached_mode')
         if access_mode is None:

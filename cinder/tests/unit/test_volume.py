@@ -2165,16 +2165,19 @@ class VolumeTestCase(BaseVolumeTestCase):
                                             _mock_volume_admin_metadata_get,
                                             mock_get_target):
         """Make sure initialize_connection returns correct information."""
-        _fake_admin_meta = {'fake-key': 'fake-value'}
+        _fake_admin_meta = [{'key': 'fake-key', 'value': 'fake-value'}]
         _fake_volume = {'volume_type_id': fake.VOLUME_TYPE_ID,
                         'name': 'fake_name',
                         'host': 'fake_host',
                         'id': fake.VOLUME_ID,
                         'volume_admin_metadata': _fake_admin_meta}
+        fake_volume_obj = fake_volume.fake_volume_obj(self.context,
+                                                      **_fake_volume)
 
         _mock_volume_get.return_value = _fake_volume
         _mock_volume_update.return_value = _fake_volume
-        _mock_volume_admin_metadata_get.return_value = _fake_admin_meta
+        _mock_volume_admin_metadata_get.return_value = {
+            'fake-key': 'fake-value'}
 
         connector = {'ip': 'IP', 'initiator': 'INITIATOR'}
         qos_values = {'consumer': 'front-end',
@@ -2194,53 +2197,42 @@ class VolumeTestCase(BaseVolumeTestCase):
                                   'key2': 'value2'}
             # initialize_connection() passes qos_specs that is designated to
             # be consumed by front-end or both front-end and back-end
-            conn_info = self.volume.initialize_connection(self.context,
-                                                          fake.VOLUME_ID,
-                                                          connector)
+            conn_info = self.volume.initialize_connection(
+                self.context, fake.VOLUME_ID, connector,
+                volume=fake_volume_obj)
             self.assertDictMatch(qos_specs_expected,
                                  conn_info['data']['qos_specs'])
 
             qos_values.update({'consumer': 'both'})
-            conn_info = self.volume.initialize_connection(self.context,
-                                                          fake.VOLUME_ID,
-                                                          connector)
+            conn_info = self.volume.initialize_connection(
+                self.context, fake.VOLUME_ID, connector,
+                volume=fake_volume_obj)
             self.assertDictMatch(qos_specs_expected,
                                  conn_info['data']['qos_specs'])
             # initialize_connection() skips qos_specs that is designated to be
             # consumed by back-end only
             qos_values.update({'consumer': 'back-end'})
             type_qos.return_value = dict(qos_specs=qos_values)
-            conn_info = self.volume.initialize_connection(self.context,
-                                                          fake.VOLUME_ID,
-                                                          connector)
+            conn_info = self.volume.initialize_connection(
+                self.context, fake.VOLUME_ID, connector,
+                volume=fake_volume_obj)
             self.assertIsNone(conn_info['data']['qos_specs'])
 
     @mock.patch.object(fake_driver.FakeISCSIDriver, 'create_export')
-    @mock.patch.object(db.sqlalchemy.api, 'volume_get')
-    @mock.patch.object(db, 'volume_update')
     def test_initialize_connection_export_failure(self,
-                                                  _mock_volume_update,
-                                                  _mock_volume_get,
                                                   _mock_create_export):
         """Test exception path for create_export failure."""
-        _fake_admin_meta = {'fake-key': 'fake-value'}
-        _fake_volume = {'volume_type_id': fake.VOLUME_TYPE_ID,
-                        'name': 'fake_name',
-                        'host': 'fake_host',
-                        'id': fake.VOLUME_ID,
-                        'volume_admin_metadata': _fake_admin_meta}
-
-        _mock_volume_get.return_value = _fake_volume
-        _mock_volume_update.return_value = _fake_volume
+        volume = tests_utils.create_volume(
+            self.context, admin_metadata={'fake-key': 'fake-value'},
+            volume_type_id=fake.VOLUME_TYPE_ID, **self.volume_params)
         _mock_create_export.side_effect = exception.CinderException
 
         connector = {'ip': 'IP', 'initiator': 'INITIATOR'}
 
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.volume.initialize_connection,
-                          self.context,
-                          fake.VOLUME_ID,
-                          connector)
+                          self.context, fake.VOLUME_ID, connector,
+                          volume=volume)
 
     def test_run_attach_detach_volume_for_instance(self):
         """Make sure volume can be attached and detached from instance."""
@@ -6325,8 +6317,6 @@ class DiscardFlagTestCase(BaseVolumeTestCase):
     def setUp(self):
         super(DiscardFlagTestCase, self).setUp()
         self.volume.driver = mock.MagicMock()
-        self.mock_db = mock.MagicMock()
-        self.volume.db = self.mock_db
 
     @ddt.data(dict(config_discard_flag=True,
                    driver_discard_flag=None,
@@ -6354,15 +6344,6 @@ class DiscardFlagTestCase(BaseVolumeTestCase):
                                                 config_discard_flag,
                                                 driver_discard_flag,
                                                 expected_flag):
-        volume_properties = {'volume_type_id': None}
-
-        def _get_item(key):
-            return volume_properties[key]
-
-        mock_volume = mock.MagicMock()
-        mock_volume.__getitem__.side_effect = _get_item
-        self.mock_db.volume_get.return_value = mock_volume
-        self.mock_db.volume_update.return_value = mock_volume
         self.volume.driver.create_export.return_value = None
         connector = {'ip': 'IP', 'initiator': 'INITIATOR'}
 
@@ -6385,7 +6366,13 @@ class DiscardFlagTestCase(BaseVolumeTestCase):
 
         self.volume.driver.configuration.safe_get.side_effect = _safe_get
 
-        conn_info = self.volume.initialize_connection(self.context, 'id',
-                                                      connector)
+        with mock.patch.object(objects, 'Volume') as mock_vol:
+            volume = tests_utils.create_volume(self.context)
+            volume.volume_type_id = None
+            mock_vol.get_by_id.return_value = volume
+
+            conn_info = self.volume.initialize_connection(self.context,
+                                                          volume.id,
+                                                          connector)
 
         self.assertEqual(expected_flag, conn_info['data'].get('discard'))
