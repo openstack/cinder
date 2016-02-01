@@ -594,6 +594,8 @@ VOLUME_MAPPING_TO_MULTIATTACH_GROUP.update(
 )
 
 STORAGE_SYSTEM = {
+    'chassisSerialNumber': 1,
+    'fwVersion': '08.10.15.00',
     'freePoolSpace': 11142431623168,
     'driveCount': 24,
     'hostSparesUsed': 0, 'id':
@@ -666,7 +668,26 @@ SNAPSHOT_IMAGE = {
     'pitSequenceNumber': '19'
 }
 
+HARDWARE_INVENTORY_SINGLE_CONTROLLER = {
+    'controllers': [
+        {
+            'modelName': '2752',
+            'serialNumber': '021436001321'
+        }
+    ]
+}
+
 HARDWARE_INVENTORY = {
+    'controllers': [
+        {
+            'modelName': '2752',
+            'serialNumber': '021436000943'
+        },
+        {
+            'modelName': '2752',
+            'serialNumber': '021436001321'
+        }
+    ],
     'iscsiPorts': [
         {
             'controllerId':
@@ -790,6 +811,21 @@ HARDWARE_INVENTORY = {
     ]
 }
 
+FAKE_POOL_ACTION_PROGRESS = [
+    {
+        "volumeRef": "0200000060080E50002998A00000945355C37C19",
+        "progressPercentage": 55,
+        "estimatedTimeToCompletion": 1,
+        "currentAction": "initializing"
+    },
+    {
+        "volumeRef": "0200000060080E50002998A00000945355C37C18",
+        "progressPercentage": 0,
+        "estimatedTimeToCompletion": 0,
+        "currentAction": "progressDve"
+    },
+]
+
 FAKE_RESOURCE_URL = '/devmgr/v2/devmgr/utils/about'
 FAKE_APP_VERSION = '2015.2|2015.2.dev59|vendor|Linux-3.13.0-24-generic'
 FAKE_BACKEND = 'eseriesiSCSI'
@@ -823,8 +859,17 @@ FAKE_ASUP_DATA = {
     'model': FAKE_CONTROLLERS[0]['modelName'],
     'controller2-serial': FAKE_CONTROLLERS[1]['serialNumber'],
     'controller1-serial': FAKE_CONTROLLERS[0]['serialNumber'],
+    'chassis-serial-number': FAKE_SERIAL_NUMBER[0],
     'operating-mode': 'proxy',
 }
+
+GET_ASUP_RETURN = {
+    'model': FAKE_CONTROLLERS[0]['modelName'],
+    'serial_numbers': FAKE_SERIAL_NUMBERS,
+    'firmware_version': FAKE_ASUP_DATA['system-version'],
+    'chassis_sn': FAKE_ASUP_DATA['chassis-serial-number'],
+}
+
 FAKE_POST_INVOKE_DATA = ('POST', '/key-values/%s' % FAKE_KEY,
                          json.dumps(FAKE_ASUP_DATA))
 

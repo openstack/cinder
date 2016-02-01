@@ -1025,12 +1025,14 @@ class NetAppESeriesLibrary(object):
             LOG.info(msg % self._client.api_version)
             return
 
-        firmware_version = self._client.get_firmware_version()
         event_source = ("Cinder driver %s" % self.DRIVER_NAME)
         category = "provisioning"
         event_description = "OpenStack Cinder connected to E-Series proxy"
-        model = self._client.get_model_name()
-        serial_numbers = self._client.get_serial_numbers()
+        asup_info = self._client.get_asup_info()
+        model = asup_info.get('model')
+        firmware_version = asup_info.get('firmware_version')
+        serial_numbers = asup_info.get('serial_numbers')
+        chassis_sn = asup_info.get('chassis_sn')
 
         key = ("openstack-%s-%s-%s"
                % (cinder_host, serial_numbers[0], serial_numbers[1]))
@@ -1048,6 +1050,7 @@ class NetAppESeriesLibrary(object):
             'event-description': event_description,
             'controller1-serial': serial_numbers[0],
             'controller2-serial': serial_numbers[1],
+            'chassis-serial-number': chassis_sn,
             'model': model,
             'system-version': firmware_version,
             'operating-mode': self._client.api_operating_mode
