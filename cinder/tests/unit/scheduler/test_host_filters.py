@@ -287,6 +287,28 @@ class CapacityFilterTestCase(HostFiltersTestCase):
         self.assertFalse(filt_cls.host_passes(host, filter_properties))
 
     @mock.patch('cinder.utils.service_is_up')
+    def test_filter_over_subscription_equal_to_1(self, _mock_serv_is_up):
+        _mock_serv_is_up.return_value = True
+        filt_cls = self.class_map['CapacityFilter']()
+        filter_properties = {'size': 150,
+                             'capabilities:thin_provisioning_support':
+                                 '<is> True',
+                             'capabilities:thick_provisioning_support':
+                                 '<is> False'}
+        service = {'disabled': False}
+        host = fakes.FakeHostState('host1',
+                                   {'total_capacity_gb': 500,
+                                    'free_capacity_gb': 200,
+                                    'provisioned_capacity_gb': 400,
+                                    'max_over_subscription_ratio': 1.0,
+                                    'reserved_percentage': 0,
+                                    'thin_provisioning_support': True,
+                                    'thick_provisioning_support': False,
+                                    'updated_at': None,
+                                    'service': service})
+        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+
+    @mock.patch('cinder.utils.service_is_up')
     def test_filter_over_subscription_fails(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
