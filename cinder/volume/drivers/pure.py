@@ -66,6 +66,15 @@ PURE_OPTS = [
     cfg.IntOpt("pure_replica_retention_long_term_default", default=7,
                help="Retain snapshots per day on target for this time "
                     "(in days.)"),
+    cfg.BoolOpt("pure_eradicate_on_delete",
+                default=False,
+                help="When enabled, all Pure volumes, snapshots, and "
+                     "protection groups will be eradicated at the time of "
+                     "deletion in Cinder. Data will NOT be recoverable after "
+                     "a delete with this set to True! When disabled, volumes "
+                     "and snapshots will go into pending eradication state "
+                     "and can be recovered."
+                )
 ]
 
 CONF = cfg.CONF
@@ -348,6 +357,8 @@ class PureBaseVolumeDriver(san.SanDriver):
                 host_name = host_info["host"]
                 self._disconnect_host(current_array, host_name, vol_name)
             current_array.destroy_volume(vol_name)
+            if self.configuration.pure_eradicate_on_delete:
+                current_array.eradicate_volume(vol_name)
         except purestorage.PureHTTPError as err:
             with excutils.save_and_reraise_exception() as ctxt:
                 if (err.code == 400 and
@@ -377,6 +388,8 @@ class PureBaseVolumeDriver(san.SanDriver):
         snap_name = self._get_snap_name(snapshot)
         try:
             current_array.destroy_volume(snap_name)
+            if self.configuration.pure_eradicate_on_delete:
+                current_array.eradicate_volume(snap_name)
         except purestorage.PureHTTPError as err:
             with excutils.save_and_reraise_exception() as ctxt:
                 if err.code == 400 and (
@@ -654,7 +667,10 @@ class PureBaseVolumeDriver(san.SanDriver):
         """Deletes a consistency group."""
 
         try:
-            self._array.destroy_pgroup(self._get_pgroup_name_from_id(group.id))
+            pgroup_name = self._get_pgroup_name_from_id(group.id)
+            self._array.destroy_pgroup(pgroup_name)
+            if self.configuration.pure_eradicate_on_delete:
+                self._array.eradicate_pgroup(pgroup_name)
         except purestorage.PureHTTPError as err:
             with excutils.save_and_reraise_exception() as ctxt:
                 if (err.code == 400 and
@@ -724,6 +740,8 @@ class PureBaseVolumeDriver(san.SanDriver):
             # FlashArray.destroy_pgroup is also used for deleting
             # pgroup snapshots. The underlying REST API is identical.
             self._array.destroy_pgroup(pgsnap_name)
+            if self.configuration.pure_eradicate_on_delete:
+                self._array.eradicate_pgroup(pgsnap_name)
         except purestorage.PureHTTPError as err:
             with excutils.save_and_reraise_exception() as ctxt:
                 if (err.code == 400 and
