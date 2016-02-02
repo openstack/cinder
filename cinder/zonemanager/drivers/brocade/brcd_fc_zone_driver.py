@@ -68,9 +68,10 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
         1.1 - Implements performance enhancements
         1.2 - Added support for friendly zone name
         1.3 - Added HTTP connector support
+        1.4 - Adds support to zone in Virtual Fabrics
     """
 
-    VERSION = "1.3"
+    VERSION = "1.4"
 
     def __init__(self, **kwargs):
         super(BrcdFCZoneDriver, self).__init__(**kwargs)

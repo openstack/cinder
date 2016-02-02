@@ -17,6 +17,7 @@
 """Unit tests for brcd fc zone client http(s)."""
 import time
 
+import mock
 from mock import patch
 
 from cinder import exception
@@ -47,6 +48,7 @@ session = None
 active_cfg = 'openstack_cfg'
 activate = True
 no_activate = False
+vf_enable = True
 ns_info = ['10:00:00:05:1e:7c:64:96']
 nameserver_info = """
 <HTML>
@@ -253,6 +255,157 @@ didOffset=96
 swFWVersion=v7.3.0b_rc1_bld06
 swDomain=2
 """
+parsed_session_info_vf = """
+sessionId=524461483
+user=admin
+userRole=admin
+isAdminRole=Yes
+authSource=0
+sessionIp=172.26.1.146
+valid=yes
+adName=
+adId=128
+adCapable=1
+currentAD=AD0
+currentADId=0
+homeAD=AD0
+trueADEnvironment=0
+adList=
+adIdList=
+pfAdmin=0
+switchIsMember=0
+definedADList=AD0,Physical Fabric
+definedADIdList=0,255,
+effectiveADList=AD0,Physical Fabric
+rc=0
+err=
+contextType=1
+vfEnabled=true
+vfSupported=true
+HomeVF=128
+sessionLFId=2
+isContextManageable=1
+manageableLFList=2,128,
+activeLFList=128,2,
+"""
+session_info_vf = """
+<BODY>
+<PRE>
+--BEGIN SESSION
+sessionId=524461483
+user=admin
+userRole=admin
+isAdminRole=Yes
+authSource=0
+sessionIp=172.26.1.146
+valid=yes
+adName=
+adId=128
+adCapable=1
+currentAD=AD0
+currentADId=0
+homeAD=AD0
+trueADEnvironment=0
+adList=
+adIdList=
+pfAdmin=0
+switchIsMember=0
+definedADList=AD0,Physical Fabric
+definedADIdList=0,255,
+effectiveADList=AD0,Physical Fabric
+rc=0
+err=
+contextType=1
+vfEnabled=true
+vfSupported=true
+HomeVF=128
+sessionLFId=2
+isContextManageable=1
+manageableLFList=2,128,
+activeLFList=128,2,
+--END SESSION
+</PRE>
+</BODY>
+"""
+session_info_vf_not_changed = """
+<BODY>
+<PRE>
+--BEGIN SESSION
+sessionId=524461483
+user=admin
+userRole=admin
+isAdminRole=Yes
+authSource=0
+sessionIp=172.26.1.146
+User-Agent=Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML,
+valid=yes
+adName=
+adId=128
+adCapable=1
+currentAD=AD0
+currentADId=0
+homeAD=AD0
+trueADEnvironment=0
+adList=
+adIdList=
+pfAdmin=0
+switchIsMember=0
+definedADList=AD0,Physical Fabric
+definedADIdList=0,255,
+effectiveADList=AD0,Physical Fabric
+rc=0
+err=
+contextType=1
+vfEnabled=true
+vfSupported=true
+HomeVF=128
+sessionLFId=128
+isContextManageable=1
+manageableLFList=2,128,
+activeLFList=128,2,
+--END SESSION
+</PRE>
+</BODY>
+"""
+session_info_AD = """<HTML>
+<HEAD>
+<META HTTP-EQUIV="Pragma" CONTENT="no-cache">
+<META HTTP-EQUIV="Expires" CONTENT="-1">
+<TITLE>Webtools Session Info</TITLE>
+</HEAD>
+<BODY>
+<PRE>
+--BEGIN SESSION
+sessionId=-2096740776
+user=
+userRole=root
+isAdminRole=No
+authSource=0
+sessionIp=
+User-Agent=
+valid=no
+adName=
+adId=0
+adCapable=1
+currentAD=AD0
+currentADId=0
+homeAD=AD0
+trueADEnvironment=0
+adList=
+adIdList=
+pfAdmin=0
+switchIsMember=1
+definedADList=AD0,Physical Fabric
+definedADIdList=0,255,
+effectiveADList=AD0,Physical Fabric
+rc=-2
+err=Could not obtain session data from store
+contextType=0
+--END SESSION
+</PRE>
+</BODY>
+</HTML>
+"""
 zone_info = """<HTML>
 <HEAD>
 <META HTTP-EQUIV="Pragma" CONTENT="no-cache">
@@ -366,6 +519,70 @@ class TestBrcdHttpFCZoneClient(client.BrcdHTTPFCZoneClient, test.TestCase):
                           self.get_nvp_value,
                           parsed_value,
                           invalid_keyname)
+
+    def test_get_managable_vf_list(self):
+        manageable_list = ['2', '128']
+        self.assertEqual(
+            manageable_list, self.get_managable_vf_list(session_info_vf))
+        self.assertRaises(exception.BrocadeZoningHttpException,
+                          self.get_managable_vf_list, session_info_AD)
+
+    @mock.patch.object(client.BrcdHTTPFCZoneClient, 'is_vf_enabled')
+    def test_check_change_vf_context_vf_enabled(self, is_vf_enabled_mock):
+        is_vf_enabled_mock.return_value = (True, session_info_vf)
+        self.vfid = None
+        self.assertRaises(
+            exception.BrocadeZoningHttpException,
+            self.check_change_vf_context)
+        self.vfid = "2"
+        with mock.patch.object(self, 'change_vf_context') \
+                as change_vf_context_mock:
+            self.check_change_vf_context()
+            change_vf_context_mock.assert_called_once_with(
+                self.vfid, session_info_vf)
+
+    @mock.patch.object(client.BrcdHTTPFCZoneClient, 'is_vf_enabled')
+    def test_check_change_vf_context_vf_disabled(self, is_vf_enabled_mock):
+        is_vf_enabled_mock.return_value = (False, session_info_AD)
+        self.vfid = "128"
+        self.assertRaises(
+            exception.BrocadeZoningHttpException,
+            self.check_change_vf_context)
+
+    @mock.patch.object(client.BrcdHTTPFCZoneClient, 'get_managable_vf_list')
+    @mock.patch.object(client.BrcdHTTPFCZoneClient, 'connect')
+    def test_change_vf_context_valid(self, connect_mock,
+                                     get_managable_vf_list_mock):
+        get_managable_vf_list_mock.return_value = ['2', '128']
+        connect_mock.return_value = session_info_vf
+        self.assertIsNone(self.change_vf_context("2", session_info_vf))
+        data = zone_constant.CHANGE_VF.format(vfid="2")
+        headers = {zone_constant.AUTH_HEADER: self.auth_header}
+        connect_mock.assert_called_once_with(
+            zone_constant.POST_METHOD, zone_constant.SESSION_PAGE,
+            data, headers)
+
+    @mock.patch.object(client.BrcdHTTPFCZoneClient, 'get_managable_vf_list')
+    @mock.patch.object(client.BrcdHTTPFCZoneClient, 'connect')
+    def test_change_vf_context_vf_not_changed(self,
+                                              connect_mock,
+                                              get_managable_vf_list_mock):
+        get_managable_vf_list_mock.return_value = ['2', '128']
+        connect_mock.return_value = session_info_vf_not_changed
+        self.assertRaises(exception.BrocadeZoningHttpException,
+                          self.change_vf_context, "2", session_info_vf)
+        data = zone_constant.CHANGE_VF.format(vfid="2")
+        headers = {zone_constant.AUTH_HEADER: self.auth_header}
+        connect_mock.assert_called_once_with(
+            zone_constant.POST_METHOD, zone_constant.SESSION_PAGE,
+            data, headers)
+
+    @mock.patch.object(client.BrcdHTTPFCZoneClient, 'get_managable_vf_list')
+    def test_change_vf_context_vfid_not_managaed(self,
+                                                 get_managable_vf_list_mock):
+        get_managable_vf_list_mock.return_value = ['2', '128']
+        self.assertRaises(exception.BrocadeZoningHttpException,
+                          self.change_vf_context, "12", session_info_vf)
 
     @patch.object(client.BrcdHTTPFCZoneClient, 'connect')
     def test_is_supported_firmware(self, connect_mock):
@@ -498,6 +715,11 @@ class TestBrcdHttpFCZoneClient(client.BrcdHTTPFCZoneClient, test.TestCase):
     def test_get_nameserver_info(self, connect_mock):
         connect_mock.return_value = nameserver_info
         self.assertEqual(ns_info, self.get_nameserver_info())
+
+    @patch.object(client.BrcdHTTPFCZoneClient, 'get_session_info')
+    def test_is_vf_enabled(self, get_session_info_mock):
+        get_session_info_mock.return_value = session_info_vf
+        self.assertEqual((True, parsed_session_info_vf), self.is_vf_enabled())
 
     def test_delete_update_zones_cfgs(self):
 

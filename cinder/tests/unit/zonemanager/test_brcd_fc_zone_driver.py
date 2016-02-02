@@ -121,6 +121,7 @@ class TestBrcdFcZoneDriver(BrcdFcZoneDriverBaseTest, test.TestCase):
             password="password",
             key="/home/stack/.ssh/id_rsa",
             port=22,
+            vfid="2",
             protocol=protocol
         )
         return client
@@ -217,7 +218,7 @@ class FakeClient(object):
 
 class FakeBrcdFCZoneClientCLI(FakeClient):
     def __init__(self, ipaddress, username,
-                 password, port, key, protocol):
+                 password, port, key, vfid, protocol):
         self.firmware_supported = True
         if not GlobalVars._is_normal_test:
             raise paramiko.SSHException("Unable to connect to fabric.")
@@ -226,7 +227,7 @@ class FakeBrcdFCZoneClientCLI(FakeClient):
 class FakeBrcdHttpFCZoneClient(FakeClient):
 
     def __init__(self, ipaddress, username,
-                 password, port, key, protocol):
+                 password, port, key, vfid, protocol):
         self.firmware_supported = True
         if not GlobalVars._is_normal_test:
             raise requests.exception.HTTPError("Unable to connect to fabric")

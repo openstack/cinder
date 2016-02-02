@@ -24,7 +24,7 @@ import six
 import time
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LI
 import cinder.zonemanager.drivers.brocade.fc_zone_constants as zone_constant
 
 
@@ -34,22 +34,24 @@ LOG = logging.getLogger(__name__)
 class BrcdHTTPFCZoneClient(object):
 
     def __init__(self, ipaddress, username,
-                 password, port, protocol):
+                 password, port, vfid, protocol):
         """Initializing the client with the parameters passed.
 
         Creates authentication token and authenticate with switch
-        to ensure the credentials are correct.
+        to ensure the credentials are correct and change the VF context.
 
         :param ipaddress: IP Address of the device.
         :param username: User id to login.
         :param password: User password.
         :param port: Device Communication port
+        :param vfid: Virtual Fabric ID.
         :param protocol: Communication Protocol.
         """
         self.switch_ip = ipaddress
         self.switch_user = username
         self.switch_pwd = password
         self.protocol = protocol
+        self.vfid = vfid
         self.cfgs = {}
         self.zones = {}
         self.alias = {}
@@ -67,6 +69,7 @@ class BrcdHTTPFCZoneClient(object):
         # If authenticated successfully, save the auth status and
         # create auth header for future communication with the device.
         self.is_auth, self.auth_header = self.authenticate()
+        self.check_change_vf_context()
 
     def connect(self, requestType, requestURL, payload='', header=None):
         """Connect to the switch using HTTP/HTTPS protocol.
@@ -256,6 +259,71 @@ class BrcdHTTPFCZoneClient(object):
             return (temp[:end].lstrip('= '))
         except ValueError as e:
             msg = (_("Error while getting nvp value: %s.") % six.text_type(e))
+            LOG.error(msg)
+            raise exception.BrocadeZoningHttpException(reason=msg)
+
+    def get_managable_vf_list(self, session_info):
+        """List of VFIDs that can be managed.
+
+        :param session_info: Session information from the switch
+        :returns: manageable VF list
+        :raises: BrocadeZoningHttpException
+        """
+        try:
+            # Check the value of manageableLFList NVP,
+            # throw exception as not supported if the nvp not available
+            vf_list = self.get_nvp_value(session_info,
+                                         zone_constant.MANAGEABLE_VF)
+            if vf_list:
+                vf_list = vf_list.split(",")  # convert the string to list
+        except exception.BrocadeZoningHttpException as e:
+            msg = (_("Error while checking whether "
+                     "VF is available for management %s.") % six.text_type(e))
+            LOG.error(msg)
+            raise exception.BrocadeZoningHttpException(reason=msg)
+        return vf_list[:-1]
+
+    def change_vf_context(self, vfid, session_data):
+        """Change the VF context in the session.
+
+        :param vfid: VFID to which context should be changed.
+        :param session_data: Session information from the switch
+        :raises: BrocadeZoningHttpException
+        """
+        try:
+            managable_vf_list = self.get_managable_vf_list(session_data)
+            LOG.debug("Manageable VF IDs are %(vflist)s.",
+                      {'vflist': managable_vf_list})
+            # proceed changing the VF context
+            # if VF id can be managed if not throw exception
+            if vfid in managable_vf_list:
+                headers = {zone_constant.AUTH_HEADER: self.auth_header}
+                data = zone_constant.CHANGE_VF.format(vfid=vfid)
+                response = self.connect(zone_constant.POST_METHOD,
+                                        zone_constant.SESSION_PAGE,
+                                        data,
+                                        headers)
+                parsed_info = self.get_parsed_data(response,
+                                                   zone_constant.SESSION_BEGIN,
+                                                   zone_constant.SESSION_END)
+                session_LF_Id = self.get_nvp_value(parsed_info,
+                                                   zone_constant.SESSION_LF_ID)
+                if session_LF_Id == vfid:
+                    LOG.info(_LI("VF context is changed in the session."))
+                else:
+                    msg = _("Cannot change VF context in the session.")
+                    LOG.error(msg)
+                    raise exception.BrocadeZoningHttpException(reason=msg)
+
+            else:
+                msg = (_("Cannot change VF context, "
+                         "specified VF is not available "
+                         "in the manageable VF list %(vf_list)s.")
+                       % {'vf_list': managable_vf_list})
+                LOG.error(msg)
+                raise exception.BrocadeZoningHttpException(reason=msg)
+        except exception.BrocadeZoningHttpException as e:
+            msg = (_("Error while changing VF context %s.") % six.text_type(e))
             LOG.error(msg)
             raise exception.BrocadeZoningHttpException(reason=msg)
 
@@ -568,6 +636,23 @@ class BrcdHTTPFCZoneClient(object):
             raise exception.BrocadeZoningHttpException(reason=msg)
         return zones, cfgs, active_cfg
 
+    def is_vf_enabled(self):
+        """To check whether VF is enabled or not.
+
+        :returns: boolean to indicate VF enabled and session information
+        """
+        session_info = self.get_session_info()
+        parsed_data = self.get_parsed_data(session_info,
+                                           zone_constant.SESSION_BEGIN,
+                                           zone_constant.SESSION_END)
+        try:
+            is_vf_enabled = bool(self.get_nvp_value(
+                parsed_data, zone_constant.VF_ENABLED))
+        except exception.BrocadeZoningHttpException:
+            is_vf_enabled = False
+            parsed_data = None
+        return is_vf_enabled, parsed_data
+
     def get_nameserver_info(self):
         """Get name server data from fabric.
 
@@ -728,6 +813,26 @@ class BrcdHTTPFCZoneClient(object):
             errorMessage = self.get_nvp_value(parsed_data_txn,
                                               zone_constant.ZONE_ERROR_MSG)
         return errorCode, errorMessage
+
+    def check_change_vf_context(self):
+        """Check whether VF related configurations is valid and proceed."""
+        vf_enabled, session_data = self.is_vf_enabled()
+        # VF enabled will be false if vf is disable or not supported
+        LOG.debug("VF enabled on switch: %(vfenabled)s.",
+                  {'vfenabled': vf_enabled})
+        # Change the VF context in the session
+        if vf_enabled:
+            if self.vfid is None:
+                msg = _("No VF ID is defined in the configuration file.")
+                LOG.error(msg)
+                raise exception.BrocadeZoningHttpException(reason=msg)
+            elif self.vfid != 128:
+                self.change_vf_context(self.vfid, session_data)
+        else:
+            if self.vfid is not None:
+                msg = _("VF is not enabled.")
+                LOG.error(msg)
+                raise exception.BrocadeZoningHttpException(reason=msg)
 
     def cleanup(self):
         """Close session."""
