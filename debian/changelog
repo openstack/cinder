@@ -1,3 +1,49 @@
+cinder (1:2015.1.1-0v1.0.1) RELEASED; urgency=medium
+  *4522e92 (HEAD, origin/kilo_sbs, kilo_sbs) Merge pull request #19 from shishirng/driver_versioning
+        - 260945c Support versioning of backup drivers
+        - 487e8a7 Merge pull request #18 from vivekdhayaal/kilo_sbs
+        - 06af2b1 cinder HA
+        - c78b6cd cinder HA
+        - 8cdabef Merge pull request #17 from shishirng/backup_to_s3
+        - 0545d30 support multipart upload
+        - c2ef817 Merge pull request #16 from shishirng/backup_to_s3
+        - 16d9c08a review comment fixes
+        - 16a1418 Merge pull request #14 from shishirng/backup_to_s3
+        - cc3c355 Merge pull request #15 from shishirng/backup-vol-status
+        - 668a7f5 Volume-status: Set correct status post backup
+        - 26653a8 fixes for support backup of restored volume
+        - 1786e0b snapshot of restored volume
+        - c441f04 handle backup of restored volumes
+        - ea6a626 backup-deletion: Handle deleted source volume
+        - 654da46 Handle deletion of base image
+        - 998324b deletion: remove snapshot from src too
+        - 38e6f78 support user given display-name
+        - fc13590 volume-deletion - remove backups existing on ceph image
+        - ec14a74 Deletion: Remove backups from Object store
+        - 34bf286 push and retrieve objects from s3 store
+        - 6534472 deletion: support for deletion of marked for backups
+        - e00ea41 deletion: Identify dependent backups higher in chain
+        - 581d627 backup: Use cinder backups 'deleting' state to mark deletion
+        - e53745b Delete: Initial framework
+        - 382b70b fix parent_id in backups
+        - aa0db73 restore: restore from a given backup
+        - b54b030 update base records with size and service name
+        - 7eea302 restore
+        - b08bdce Take incremental snaps
+        - db08025 incremental backup
+        - 9d91043 upload base file and 1st snap
+        - 175a134 db updates for backups
+        - 2e4d095 refactor _backup_rbd
+        - 13f0c50 sbs driver first commit
+        - 307c86b Merge pull request #12 from JioCloud/limits
+        - 8428268 (origin/limits) Limits: update to default limits
+        - 1744bb1 Merge pull request #11 from JioCloud/limits_fix
+        - ebe8d89 Set default quota limits
+        - 3723214 Merge pull request #10 from JioCloud/force_backup
+        - 53a7dd0 Backup: Use force option as default
+
+ -- Shishir Gowda <shishir.gowda@ril.com>  Tue, 02 Feb 2016 12:30:16 -0400
+
 cinder (1:2015.1.1-0sbs1) UNRELEASED; urgency=medium
 
   * debian rule file added
