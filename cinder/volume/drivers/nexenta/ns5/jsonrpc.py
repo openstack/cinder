@@ -20,6 +20,7 @@
 """
 
 import base64
+import json
 import time
 
 from oslo_log import log as logging
@@ -81,7 +82,7 @@ class NexentaJSONProxy(object):
             LOG.debug('Got response: Success')
             return 'Success'
 
-        response = resp.json()
+        response = json.loads(resp.content)
         resp.close()
         if response and resp.status_code == 202:
             url = self.url + response['links'][0]['href']
@@ -93,7 +94,7 @@ class NexentaJSONProxy(object):
                     LOG.debug('Got response: Success')
                     return 'Success'
                 else:
-                    response = resp.json()
+                    response = json.loads(resp.content)
                 resp.close()
         if response.get('code'):
             raise exception.NexentaException(response)
