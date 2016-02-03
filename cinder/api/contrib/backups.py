@@ -52,6 +52,7 @@ def make_backup(elem):
 def make_backup_restore(elem):
     elem.set('backup_id')
     elem.set('volume_id')
+    elem.set('volume_size')
 
 
 def make_backup_export_import_record(elem):
@@ -128,6 +129,8 @@ class RestoreDeserializer(wsgi.MetadataXMLDeserializer):
         restore_node = self.find_first_child_named(node, 'restore')
         if restore_node.getAttribute('volume_id'):
             restore['volume_id'] = restore_node.getAttribute('volume_id')
+        if restore_node.getAttribute('volume_size'):
+            restore['volume_size'] = restore_node.getAttribute('volume_size')
         return restore
 
 
@@ -290,6 +293,7 @@ class BackupsController(wsgi.Controller):
         context = req.environ['cinder.context']
         restore = body['restore']
         volume_id = restore.get('volume_id', None)
+        volume_size = restore.get('volume_size', None)
 
         LOG.info(_LI("Restoring backup %(backup_id)s to volume %(volume_id)s"),
                  {'backup_id': id, 'volume_id': volume_id},
@@ -298,7 +302,7 @@ class BackupsController(wsgi.Controller):
         try:
             new_restore = self.backup_api.restore(context,
                                                   backup_id=id,
-                                                  volume_id=volume_id)
+                                                  volume_id=volume_id, volume_size=volume_size)
         except exception.InvalidInput as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
         except exception.InvalidVolume as error:
