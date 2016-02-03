@@ -227,10 +227,11 @@ class HPE3PARCommon(object):
         3.0.12 - Remove client version checks for replication
         3.0.13 - Support creating a cg from a source cg
         3.0.14 - Comparison of WWNs now handles case difference. bug #1546453
+        3.0.15 - Update replication to version 2.1
 
     """
 
-    VERSION = "3.0.14"
+    VERSION = "3.0.15"
 
     stats = {}
 
@@ -253,6 +254,11 @@ class HPE3PARCommon(object):
     EXTRA_SPEC_REP_MODE = "replication:mode"
     EXTRA_SPEC_REP_SYNC_PERIOD = "replication:sync_period"
     RC_ACTION_CHANGE_TO_PRIMARY = 7
+    DEFAULT_REP_MODE = 'periodic'
+    DEFAULT_SYNC_PERIOD = 900
+    RC_GROUP_STARTED = 3
+    SYNC_STATUS_COMPLETED = 3
+    FAILBACK_VALUE = 'default'
 
     # License values for reported capabilities
     PRIORITY_OPT_LIC = "Priority Optimization"
@@ -279,13 +285,14 @@ class HPE3PARCommon(object):
     hpe3par_valid_keys = ['cpg', 'snap_cpg', 'provisioning', 'persona', 'vvs',
                           'flash_cache']
 
-    def __init__(self, config):
+    def __init__(self, config, active_backend_id=None):
         self.config = config
         self.client = None
         self.uuid = uuid.uuid4()
         self._client_conf = {}
         self._replication_targets = []
         self._replication_enabled = False
+        self._active_backend_id = active_backend_id
 
     def get_version(self):
         return self.VERSION
@@ -381,7 +388,7 @@ class HPE3PARCommon(object):
         if client is not None:
             client.logout()
 
-    def do_setup(self, context, volume=None, timeout=None, stats=None):
+    def do_setup(self, context, timeout=None, stats=None):
         if hpe3parclient is None:
             msg = _('You must install hpe3parclient before using 3PAR'
                     ' drivers. Run "pip install python-3parclient" to'
@@ -393,7 +400,7 @@ class HPE3PARCommon(object):
             # to communicate with the 3PAR array. It will contain either
             # the values for the primary array or secondary array in the
             # case of a fail-over.
-            self._get_3par_config(volume)
+            self._get_3par_config()
             self.client = self._create_client(timeout=timeout)
             wsapi_version = self.client.getWsApiVersion()
             self.API_VERSION = wsapi_version['build']
@@ -452,7 +459,7 @@ class HPE3PARCommon(object):
         if self.client:
             self.client_login()
             try:
-                cpg_names = self.config.hpe3par_cpg
+                cpg_names = self._client_conf['hpe3par_cpg']
                 for cpg_name in cpg_names:
                     self.validate_cpg(cpg_name)
 
@@ -1218,7 +1225,7 @@ class HPE3PARCommon(object):
                     valid_licenses, self.REMOTE_COPY_LIC,
                     "Replication")
 
-        for cpg_name in self.config.hpe3par_cpg:
+        for cpg_name in self._client_conf['hpe3par_cpg']:
             try:
                 cpg = self.client.getCPG(cpg_name)
                 if (self.API_VERSION >= SRSTATLD_API_VERSION):
@@ -1315,6 +1322,8 @@ class HPE3PARCommon(object):
                       'vendor_name': 'Hewlett Packard Enterprise',
                       'volume_backend_name': None,
                       'array_id': info['id'],
+                      'replication_enabled': self._replication_enabled,
+                      'replication_targets': self._get_replication_targets(),
                       'pools': pools}
 
     def _check_license_enabled(self, valid_licenses,
@@ -1678,7 +1687,7 @@ class HPE3PARCommon(object):
 
         # Default to pool extracted from host.
         # If that doesn't work use the 1st CPG in the config as the default.
-        default_cpg = pool or self.config.hpe3par_cpg[0]
+        default_cpg = pool or self._client_conf['hpe3par_cpg'][0]
 
         cpg = self._get_key_value(hpe3par_keys, 'cpg', default_cpg)
         if cpg is not default_cpg:
@@ -2158,8 +2167,8 @@ class HPE3PARCommon(object):
             flash_cache = self.get_flash_cache_policy(hpe3par_keys)
 
             if qos or vvs_name or flash_cache is not None:
-                cpg_names = self._get_key_value(hpe3par_keys, 'cpg',
-                                                self.config.hpe3par_cpg)
+                cpg_names = self._get_key_value(
+                    hpe3par_keys, 'cpg', self._client_conf['hpe3par_cpg'])
                 try:
                     self._add_volume_to_volume_set(volume, volume_name,
                                                    cpg_names[0], vvs_name,
@@ -2850,172 +2859,142 @@ class HPE3PARCommon(object):
         return existing_vluns
 
     # v2 replication methods
-    def replication_enable(self, context, volume):
-        """Enable replication on a replication capable volume."""
-        if not self._volume_of_replicated_type(volume):
-            msg = _("Unable to enable volume replication because volume is "
-                    "not of replicated type.")
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-
-        model_update = {"provider_location": self.client.id}
-        # If replication is not enabled and the volume is of replicated type,
-        # we treat this as an error.
-        if not self._replication_enabled:
-            msg = _LE("Enabling replication failed because replication is "
-                      "not properly configured.")
-            LOG.error(msg)
-            model_update['replication_status'] = "error"
-        else:
-            if self._do_volume_replication_setup(volume):
-                model_update['replication_status'] = "enabled"
-            else:
-                model_update['replication_status'] = "error"
-
-        return model_update
-
-    def replication_disable(self, context, volume):
-        """Disable replication on the specified volume."""
-        if not self._volume_of_replicated_type(volume):
-            msg = _("Unable to disable volume replication because volume is "
-                    "not of replicated type.")
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-
-        model_update = {}
-        # If replication is not enabled and the volume is of replicated type,
-        # we treat this as an error.
-        if self._replication_enabled:
-            model_update['replication_status'] = 'disabled'
-            rcg_name = self._get_3par_rcg_name(volume['id'])
-            vol_name = self._get_3par_vol_name(volume['id'])
-
-            try:
-                self.client.stopRemoteCopy(rcg_name)
-            except Exception as ex:
-                msg = (_LE("There was a problem disabling replication on "
-                           "volume '%(name)s': %(error)s") %
-                       {'name': vol_name,
-                        'error': six.text_type(ex)})
-                LOG.error(msg)
-                model_update['replication_status'] = 'disable_failed'
-        else:
-            msg = _LE("Disabling replication failed because replication is "
-                      "not properly configured.")
-            LOG.error(msg)
-            model_update['replication_status'] = 'error'
-
-        return model_update
-
-    def replication_failover(self, context, volume, secondary):
+    def failover_host(self, context, volumes, secondary_backend_id):
         """Force failover to a secondary replication target."""
-        if not self._volume_of_replicated_type(volume):
-            msg = _("Unable to failover because volume is not of "
-                    "replicated type.")
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-
-        # If replication is not enabled and the volume is of replicated type,
-        # we treat this as an error.
+        # Ensure replication is enabled before we try and failover.
         if not self._replication_enabled:
             msg = _LE("Issuing a fail-over failed because replication is "
                       "not properly configured.")
             LOG.error(msg)
-            model_update = {"replication_status": "error"}
-            return model_update
-
-        failover_target = None
-        for target in self._replication_targets:
-            if target['target_device_id'] == secondary:
-                failover_target = target
-                break
-
-        if not failover_target:
-            msg = _("A valid secondary target MUST be specified in order "
-                    "to failover.")
-            LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-        if self.client is not None and failover_target['id'] == self.client.id:
-            msg = _("The failover array cannot be the primary array.")
+        # Check to see if the user requested to failback.
+        if secondary_backend_id == self.FAILBACK_VALUE:
+            volume_update_list = self._replication_failback(volumes)
+            target_id = None
+        else:
+            # Find the failover target.
+            failover_target = None
+            for target in self._replication_targets:
+                if target['backend_id'] == secondary_backend_id:
+                    failover_target = target
+                    break
+            if not failover_target:
+                msg = _("A valid secondary target MUST be specified in order "
+                        "to failover.")
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+            target_id = failover_target['backend_id']
+            # For each volume, if it is replicated, we want to fail it over.
+            volume_update_list = []
+            for volume in volumes:
+                if self._volume_of_replicated_type(volume):
+                    try:
+                        # Try and stop remote-copy on main array. We eat the
+                        # exception here because when an array goes down, the
+                        # groups will stop automatically.
+                        rcg_name = self._get_3par_rcg_name(volume['id'])
+                        self.client.stopRemoteCopy(rcg_name)
+                    except Exception:
+                        pass
+
+                    try:
+                        # Failover to secondary array.
+                        remote_rcg_name = self._get_3par_remote_rcg_name(
+                            volume['id'], volume['provider_location'])
+                        cl = self._create_replication_client(failover_target)
+                        cl.recoverRemoteCopyGroupFromDisaster(
+                            remote_rcg_name, self.RC_ACTION_CHANGE_TO_PRIMARY)
+                        volume_update_list.append(
+                            {'volume_id': volume['id'],
+                             'updates': {'replication_status': 'failed-over'}})
+                    except Exception as ex:
+                        msg = (_LE("There was a problem with the failover "
+                                   "(%(error)s) and it was unsuccessful. "
+                                   "Volume '%(volume)s will not be available "
+                                   "on the failed over target."),
+                               {'error': six.text_type(ex),
+                                'volume': volume['id']})
+                        LOG.error(msg)
+                        volume_update_list.append(
+                            {'volume_id': volume['id'],
+                             'updates': {'replication_status': 'error'}})
+                    finally:
+                        self._destroy_replication_client(cl)
+                else:
+                    # If the volume is not of replicated type, we need to
+                    # force the status into error state so a user knows they
+                    # do not have access to the volume.
+                    volume_update_list.append(
+                        {'volume_id': volume['id'],
+                         'updates': {'status': 'error'}})
+
+        return target_id, volume_update_list
+
+    def _replication_failback(self, volumes):
+        # Make sure the proper steps on the backend have been completed before
+        # we allow a fail-over.
+        if not self._is_host_ready_for_failback(volumes):
+            msg = _("The host is not ready to be failed back. Please "
+                    "resynchronize the volumes and resume replication on the "
+                    "3PAR backends.")
             LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+            raise exception.VolumeDriverException(data=msg)
 
-        try:
-            # Try and stop remote-copy on main array.
-            rcg_name = self._get_3par_rcg_name(volume['id'])
-            self.client.stopRemoteCopy(rcg_name)
-        except Exception:
-            pass
+        # Update the volumes status to available.
+        volume_update_list = []
+        for volume in volumes:
+            if self._volume_of_replicated_type(volume):
+                volume_update_list.append(
+                    {'volume_id': volume['id'],
+                     'updates': {'replication_status': 'available'}})
+            else:
+                # Upon failing back, we can move the non-replicated volumes
+                # back into available state.
+                volume_update_list.append(
+                    {'volume_id': volume['id'],
+                     'updates': {'status': 'available'}})
 
-        try:
-            # Failover to secondary array.
-            remote_rcg_name = self._get_3par_remote_rcg_name(
-                volume['id'], volume['provider_location'])
-            cl = self._create_replication_client(failover_target)
-            cl.recoverRemoteCopyGroupFromDisaster(
-                remote_rcg_name, self.RC_ACTION_CHANGE_TO_PRIMARY)
-            new_location = volume['provider_location'] + ":" + (
-                failover_target['id'])
+        return volume_update_list
 
-            model_update = {"provider_location": new_location,
-                            "replication_status": "inactive"}
-            if failover_target['managed_backend_name']:
-                # We want to update the volumes host if our target is managed.
-                model_update['host'] = failover_target['managed_backend_name']
+    def _is_host_ready_for_failback(self, volumes):
+        """Checks to make sure the volume has been synchronized
 
-        except Exception as ex:
-            msg = _("There was a problem with the failover (%s) and it was "
-                    "unsuccessful.") % six.text_type(ex)
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-        finally:
-            self._destroy_replication_client(cl)
-
-        return model_update
-
-    def list_replication_targets(self, context, volume):
-        """Provides a means to obtain replication targets for a volume.
-
-        This will query all enabled targets on a 3PAR backend and cross
-        reference them with all entries in cinder.conf. It will return
-        only those that appear on both, aka enabled replication targets.
+        This ensures that all the remote copy targets have been restored
+        to their natural direction, and all of the volumes have been
+        fully synchronized.
         """
-        if not self._volume_of_replicated_type(volume):
-            return []
-
-        allowed_names = []
-        # If the primary target is offline we can not ask it what targets are
-        # available. Our only option is to list all cinder.conf entries.
         try:
-            rcg_name = self._get_3par_rcg_name(volume['id'])
-            rcg = self.client.getRemoteCopyGroup(rcg_name)
-            rcg_targets = rcg['targets']
-            for target in rcg_targets:
-                allowed_names.append(target['targetName'])
+            for volume in volumes:
+                if self._volume_of_replicated_type(volume):
+                    location = volume.get('provider_location')
+                    remote_rcg_name = self._get_3par_remote_rcg_name(
+                        volume['id'],
+                        location)
+                    rcg = self.client.getRemoteCopyGroup(remote_rcg_name)
+
+                    # Make sure all targets are in their natural direction.
+                    targets = rcg['targets']
+                    for target in targets:
+                        if target['roleReversed'] or (
+                           target['state'] != self.RC_GROUP_STARTED):
+                            return False
+
+                    # Make sure all volumes are fully synced.
+                    volumes = rcg['volumes']
+                    for volume in volumes:
+                        remote_volumes = volume['remoteVolumes']
+                        for remote_volume in remote_volumes:
+                            if remote_volume['syncStatus'] != (
+                               self.SYNC_STATUS_COMPLETED):
+                                return False
         except Exception:
-            LOG.warning(_LW("The primary array is currently unreachable. All "
-                            "targets returned from list_replication_targets "
-                            "are pulled directly from cinder.conf and are not "
-                            "guarenteed to be available because they could "
-                            "not be verified with the primary array."))
+            # If there was a problem, we will return false so we can
+            # log an error in the parent function.
+            return False
 
-        replication_targets = []
-        volume_type = self._get_volume_type(volume["volume_type_id"])
-        extra_specs = volume_type.get("extra_specs")
-        replication_mode = extra_specs.get(self.EXTRA_SPEC_REP_MODE)
-        replication_mode_num = self._get_remote_copy_mode_num(
-            replication_mode)
-
-        for target in self._replication_targets:
-            if not allowed_names and replication_mode_num == (
-                target['replication_mode']) or (
-                    target['target_device_id'] in allowed_names):
-                list_vals = {'target_device_id': target['target_device_id']}
-                replication_targets.append(list_vals)
-
-        return {'volume_id': volume['id'],
-                'targets': replication_targets}
+        return True
 
     def _do_replication_setup(self):
         replication_targets = []
@@ -3042,7 +3021,7 @@ class HPE3PARCommon(object):
                 # Format hpe3par_iscsi_chap_enabled as a bool
                 remote_array['hpe3par_iscsi_chap_enabled'] = (
                     dev.get('hpe3par_iscsi_chap_enabled') == 'True')
-                array_name = remote_array['target_device_id']
+                array_name = remote_array['backend_id']
 
                 # Make sure we can log into the array, that it has been
                 # correctly configured, and its API version meets the
@@ -3066,7 +3045,7 @@ class HPE3PARCommon(object):
                         LOG.warning(msg)
                     elif not self._is_valid_replication_array(remote_array):
                         msg = (_LW("'%s' is not a valid replication array. "
-                                   "In order to be valid, target_device_id, "
+                                   "In order to be valid, backend_id, "
                                    "replication_mode, "
                                    "hpe3par_api_url, hpe3par_username, "
                                    "hpe3par_password, cpg_map, san_ip, "
@@ -3091,7 +3070,7 @@ class HPE3PARCommon(object):
     def _is_valid_replication_array(self, target):
         required_flags = ['hpe3par_api_url', 'hpe3par_username',
                           'hpe3par_password', 'san_ip', 'san_login',
-                          'san_password', 'target_device_id',
+                          'san_password', 'backend_id',
                           'replication_mode', 'cpg_map']
         try:
             self.check_replication_flags(target, required_flags)
@@ -3156,19 +3135,14 @@ class HPE3PARCommon(object):
             ret_mode = self.PERIODIC
         return ret_mode
 
-    def _get_3par_config(self, volume):
+    def _get_3par_config(self):
         self._do_replication_setup()
         conf = None
-        if self._replication_enabled and volume:
-            provider_location = volume.get('provider_location')
-            if provider_location:
-                if volume.get('replication_status') == 'failed-over':
-                    _, provider_location = provider_location.split(':')
-
-                for target in self._replication_targets:
-                    if target['id'] == provider_location:
-                        conf = target
-                        break
+        if self._replication_enabled:
+            for target in self._replication_targets:
+                if target['backend_id'] == self._active_backend_id:
+                    conf = target
+                    break
         self._build_3par_config(conf)
 
     def _build_3par_config(self, conf=None):
@@ -3182,6 +3156,8 @@ class HPE3PARCommon(object):
         with unmanaged replication.
         """
         if conf:
+            self._client_conf['hpe3par_cpg'] = self._generate_hpe3par_cpgs(
+                conf.get('cpg_map'))
             self._client_conf['hpe3par_username'] = (
                 conf.get('hpe3par_username'))
             self._client_conf['hpe3par_password'] = (
@@ -3202,6 +3178,8 @@ class HPE3PARCommon(object):
                 conf.get('iscsi_ip_address'))
             self._client_conf['iscsi_port'] = conf.get('iscsi_port')
         else:
+            self._client_conf['hpe3par_cpg'] = (
+                self.config.hpe3par_cpg)
             self._client_conf['hpe3par_username'] = (
                 self.config.hpe3par_username)
             self._client_conf['hpe3par_password'] = (
@@ -3234,6 +3212,22 @@ class HPE3PARCommon(object):
 
         return ret_target_cpg
 
+    def _generate_hpe3par_cpgs(self, cpg_map):
+        hpe3par_cpgs = []
+        cpg_pairs = cpg_map.split(' ')
+        for cpg_pair in cpg_pairs:
+            cpgs = cpg_pair.split(':')
+            hpe3par_cpgs.append(cpgs[1])
+
+        return hpe3par_cpgs
+
+    def _get_replication_targets(self):
+        replication_targets = []
+        for target in self._replication_targets:
+            replication_targets.append(target['backend_id'])
+
+        return replication_targets
+
     def _do_volume_replication_setup(self, volume):
         """This function will do or ensure the following:
 
@@ -3262,11 +3256,12 @@ class HPE3PARCommon(object):
             # are set correctly.
             volume_type = self._get_volume_type(volume["volume_type_id"])
             extra_specs = volume_type.get("extra_specs")
-            replication_mode = extra_specs.get(self.EXTRA_SPEC_REP_MODE)
+            replication_mode = extra_specs.get(
+                self.EXTRA_SPEC_REP_MODE, self.DEFAULT_REP_MODE)
             replication_mode_num = self._get_remote_copy_mode_num(
                 replication_mode)
             replication_sync_period = extra_specs.get(
-                self.EXTRA_SPEC_REP_SYNC_PERIOD)
+                self.EXTRA_SPEC_REP_SYNC_PERIOD, self.DEFAULT_SYNC_PERIOD)
             if replication_sync_period:
                 replication_sync_period = int(replication_sync_period)
             if not self._is_replication_mode_correct(replication_mode,
@@ -3290,12 +3285,12 @@ class HPE3PARCommon(object):
                 if target['replication_mode'] == replication_mode_num:
                     cpg = self._get_cpg_from_cpg_map(target['cpg_map'],
                                                      local_cpg)
-                    rcg_target = {'targetName': target['target_device_id'],
+                    rcg_target = {'targetName': target['backend_id'],
                                   'mode': replication_mode_num,
                                   'snapCPG': cpg,
                                   'userCPG': cpg}
                     rcg_targets.append(rcg_target)
-                    sync_target = {'targetName': target['target_device_id'],
+                    sync_target = {'targetName': target['backend_id'],
                                    'syncPeriod': replication_sync_period}
                     sync_targets.append(sync_target)
 
@@ -3320,7 +3315,7 @@ class HPE3PARCommon(object):
             for target in self._replication_targets:
                 # Only add targets that match the volumes replication mode.
                 if target['replication_mode'] == replication_mode_num:
-                    rcg_target = {'targetName': target['target_device_id'],
+                    rcg_target = {'targetName': target['backend_id'],
                                   'secVolumeName': vol_name}
                     rcg_targets.append(rcg_target)
             optional = {'volumeAutoCreation': True}
@@ -3409,8 +3404,8 @@ class HPE3PARCommon(object):
             pass
 
     def _delete_replicated_failed_over_volume(self, volume):
-        old_location, new_location = volume['provider_location'].split(':')
-        rcg_name = self._get_3par_remote_rcg_name(volume['id'], old_location)
+        location = volume.get('provider_location')
+        rcg_name = self._get_3par_remote_rcg_name(volume['id'], location)
         targets = self.client.getRemoteCopyGroup(rcg_name)['targets']
         # When failed over, we want to temporarily disable config mirroring
         # in order to be allowed to delete the volume and remote copy group

@@ -96,27 +96,29 @@ class HPE3PARFCDriver(driver.TransferVD,
         3.0.3 - Adds v2 unmanaged replication support
         3.0.4 - Adding manage/unmanage snapshot support
         3.0.5 - Optimize array ID retrieval
+        3.0.6 - Update replication to version 2.1
 
     """
 
-    VERSION = "3.0.5"
+    VERSION = "3.0.6"
 
     def __init__(self, *args, **kwargs):
         super(HPE3PARFCDriver, self).__init__(*args, **kwargs)
+        self._active_backend_id = kwargs.get('active_backend_id', None)
         self.configuration.append_config_values(hpecommon.hpe3par_opts)
         self.configuration.append_config_values(san.san_opts)
         self.lookup_service = fczm_utils.create_lookup_service()
 
     def _init_common(self):
-        return hpecommon.HPE3PARCommon(self.configuration)
+        return hpecommon.HPE3PARCommon(self.configuration,
+                                       self._active_backend_id)
 
-    def _login(self, volume=None, timeout=None):
+    def _login(self, timeout=None):
         common = self._init_common()
         # If replication is enabled and we cannot login, we do not want to
         # raise an exception so a failover can still be executed.
         try:
-            common.do_setup(None, volume=volume, timeout=timeout,
-                            stats=self._stats)
+            common.do_setup(None, timeout=timeout, stats=self._stats)
             common.client_login()
         except Exception:
             if common._replication_enabled:
@@ -170,21 +172,21 @@ class HPE3PARFCDriver(driver.TransferVD,
         pass
 
     def create_volume(self, volume):
-        common = self._login(volume)
+        common = self._login()
         try:
             return common.create_volume(volume)
         finally:
             self._logout(common)
 
     def create_cloned_volume(self, volume, src_vref):
-        common = self._login(volume)
+        common = self._login()
         try:
             return common.create_cloned_volume(volume, src_vref)
         finally:
             self._logout(common)
 
     def delete_volume(self, volume):
-        common = self._login(volume)
+        common = self._login()
         try:
             common.delete_volume(volume)
         finally:
@@ -195,21 +197,21 @@ class HPE3PARFCDriver(driver.TransferVD,
 
         TODO: support using the size from the user.
         """
-        common = self._login(volume)
+        common = self._login()
         try:
             return common.create_volume_from_snapshot(volume, snapshot)
         finally:
             self._logout(common)
 
     def create_snapshot(self, snapshot):
-        common = self._login(snapshot['volume'])
+        common = self._login()
         try:
             common.create_snapshot(snapshot)
         finally:
             self._logout(common)
 
     def delete_snapshot(self, snapshot):
-        common = self._login(snapshot['volume'])
+        common = self._login()
         try:
             common.delete_snapshot(snapshot)
         finally:
@@ -255,7 +257,7 @@ class HPE3PARFCDriver(driver.TransferVD,
           * Create a VLUN for that HOST with the volume we want to export.
 
         """
-        common = self._login(volume)
+        common = self._login()
         try:
             # we have to make sure we have a host
             host = self._create_host(common, volume, connector)
@@ -298,7 +300,7 @@ class HPE3PARFCDriver(driver.TransferVD,
     @fczm_utils.RemoveFCZone
     def terminate_connection(self, volume, connector, **kwargs):
         """Driver entry point to unattach a volume from an instance."""
-        common = self._login(volume)
+        common = self._login()
         try:
             hostname = common._safe_hostname(connector['host'])
             common.terminate_connection(volume, hostname,
@@ -454,7 +456,7 @@ class HPE3PARFCDriver(driver.TransferVD,
         pass
 
     def extend_volume(self, volume, new_size):
-        common = self._login(volume)
+        common = self._login()
         try:
             common.extend_volume(volume, new_size)
         finally:
@@ -509,7 +511,7 @@ class HPE3PARFCDriver(driver.TransferVD,
             self._logout(common)
 
     def manage_existing(self, volume, existing_ref):
-        common = self._login(volume)
+        common = self._login()
         try:
             return common.manage_existing(volume, existing_ref)
         finally:
@@ -523,7 +525,7 @@ class HPE3PARFCDriver(driver.TransferVD,
             self._logout(common)
 
     def manage_existing_get_size(self, volume, existing_ref):
-        common = self._login(volume)
+        common = self._login()
         try:
             return common.manage_existing_get_size(volume, existing_ref)
         finally:
@@ -538,7 +540,7 @@ class HPE3PARFCDriver(driver.TransferVD,
             self._logout(common)
 
     def unmanage(self, volume):
-        common = self._login(volume)
+        common = self._login()
         try:
             common.unmanage(volume)
         finally:
@@ -553,14 +555,14 @@ class HPE3PARFCDriver(driver.TransferVD,
 
     def attach_volume(self, context, volume, instance_uuid, host_name,
                       mountpoint):
-        common = self._login(volume)
+        common = self._login()
         try:
             common.attach_volume(volume, instance_uuid)
         finally:
             self._logout(common)
 
     def detach_volume(self, context, volume, attachment=None):
-        common = self._login(volume)
+        common = self._login()
         try:
             common.detach_volume(volume, attachment)
         finally:
@@ -568,7 +570,7 @@ class HPE3PARFCDriver(driver.TransferVD,
 
     def retype(self, context, volume, new_type, diff, host):
         """Convert the volume to be of the new type."""
-        common = self._login(volume)
+        common = self._login()
         try:
             return common.retype(volume, new_type, diff, host)
         finally:
@@ -582,7 +584,7 @@ class HPE3PARFCDriver(driver.TransferVD,
                           "to a host with storage_protocol=%s.", protocol)
                 return False, None
 
-        common = self._login(volume)
+        common = self._login()
         try:
             return common.migrate_volume(volume, host)
         finally:
@@ -591,7 +593,7 @@ class HPE3PARFCDriver(driver.TransferVD,
     def update_migrated_volume(self, context, volume, new_volume,
                                original_volume_status):
         """Update the name of the migrated volume to it's new ID."""
-        common = self._login(volume)
+        common = self._login()
         try:
             return common.update_migrated_volume(context, volume, new_volume,
                                                  original_volume_status)
@@ -599,7 +601,7 @@ class HPE3PARFCDriver(driver.TransferVD,
             self._logout(common)
 
     def get_pool(self, volume):
-        common = self._login(volume)
+        common = self._login()
         try:
             return common.get_cpg(volume)
         except hpeexceptions.HTTPNotFound:
@@ -609,34 +611,14 @@ class HPE3PARFCDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
-    def replication_enable(self, context, volume):
-        """Enable replication on a replication capable volume."""
-        common = self._login(volume)
-        try:
-            return common.replication_enable(context, volume)
-        finally:
-            self._logout(common)
-
-    def replication_disable(self, context, volume):
-        """Disable replication on the specified volume."""
-        common = self._login(volume)
-        try:
-            return common.replication_disable(context, volume)
-        finally:
-            self._logout(common)
-
-    def replication_failover(self, context, volume, secondary):
+    def failover_host(self, context, volumes, secondary_backend_id):
         """Force failover to a secondary replication target."""
-        common = self._login(volume, timeout=30)
+        common = self._login(timeout=30)
         try:
-            return common.replication_failover(context, volume, secondary)
-        finally:
-            self._logout(common)
-
-    def list_replication_targets(self, context, volume):
-        """Provides a means to obtain replication targets for a volume."""
-        common = self._login(volume, timeout=30)
-        try:
-            return common.list_replication_targets(context, volume)
+            # Update the active_backend_id in the driver and return it.
+            active_backend_id, volume_updates = common.failover_host(
+                context, volumes, secondary_backend_id)
+            self._active_backend_id = active_backend_id
+            return active_backend_id, volume_updates
         finally:
             self._logout(common)
