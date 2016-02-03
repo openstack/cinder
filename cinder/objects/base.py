@@ -99,6 +99,7 @@ OBJ_VERSIONS.add('1.0', {'Backup': '1.3', 'BackupImport': '1.3',
                          'Volume': '1.3', 'VolumeTypeList': '1.1'})
 OBJ_VERSIONS.add('1.1', {'Service': '1.2', 'ServiceList': '1.1'})
 OBJ_VERSIONS.add('1.2', {'Backup': '1.4', 'BackupImport': '1.4'})
+OBJ_VERSIONS.add('1.3', {'Service': '1.3'})
 
 
 class CinderObjectRegistry(base.VersionedObjectRegistry):

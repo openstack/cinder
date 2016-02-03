@@ -1405,6 +1405,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         data["driver_version"] = self.VERSION
         data["storage_protocol"] = 'iSCSI'
         data['consistencygroup_support'] = True
+        data['replication_enabled'] = True
 
         data['total_capacity_gb'] = (
             float(results['maxProvisionedSpace'] / units.Gi))

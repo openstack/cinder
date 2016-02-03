@@ -283,9 +283,9 @@ def last_completed_audit_period(unit=None):
 
 
 def list_of_dicts_to_dict(seq, key):
-    """Convert list of dicts to an indexted dict.
+    """Convert list of dicts to an indexed dict.
 
-    Takes a list of dicts, and converts it a nested dict
+    Takes a list of dicts, and converts it to a nested dict
     indexed by <key>
 
     :param seq: list of dicts

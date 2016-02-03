@@ -15,6 +15,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+
 """
 SQLAlchemy models for cinder data.
 """
@@ -76,6 +77,12 @@ class Service(BASE, CinderBase):
     rpc_available_version = Column(String(36))
     object_current_version = Column(String(36))
     object_available_version = Column(String(36))
+
+    # replication_status can be: enabled, disabled, not-capable, error,
+    # failed-over or not-configured
+    replication_status = Column(String(255), default="not-capable")
+    active_backend_id = Column(String(255))
+    frozen = Column(Boolean, nullable=False, default=False)
 
 
 class ConsistencyGroup(BASE, CinderBase):

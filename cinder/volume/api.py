@@ -40,6 +40,7 @@ from cinder.image import glance
 from cinder import keymgr
 from cinder import objects
 from cinder.objects import base as objects_base
+from cinder.objects import fields
 import cinder.policy
 from cinder import quota
 from cinder import quota_utils
@@ -115,29 +116,6 @@ def check_policy(context, action, target_obj=None):
 
     _action = 'volume:%s' % action
     cinder.policy.enforce(context, _action, target)
-
-
-def valid_replication_volume(func):
-    """Check that the volume is capable of replication.
-
-    This decorator requires the first 3 args of the wrapped function
-    to be (self, context, volume)
-    """
-    @functools.wraps(func)
-    def wrapped(self, context, volume, *args, **kwargs):
-        rep_capable = False
-        if volume.get('volume_type_id', None):
-            extra_specs = volume_types.get_volume_type_extra_specs(
-                volume.get('volume_type_id'))
-            rep_capable = extra_specs.get('replication_enabled',
-                                          False) == "<is> True"
-        if not rep_capable:
-            msg = _("Volume is not a replication enabled volume, "
-                    "replication operations can only be performed "
-                    "on volumes that are of type replication_enabled.")
-            raise exception.InvalidVolume(reason=msg)
-        return func(self, context, volume, *args, **kwargs)
-    return wrapped
 
 
 class API(base.Base):
@@ -1579,123 +1557,72 @@ class API(base.Base):
                                                     ref, host)
         return snapshot_object
 
-    #  Replication V2 methods ##
+    # FIXME(jdg): Move these Cheesecake methods (freeze, thaw and failover)
+    # to a services API because that's what they are
+    def failover_host(self,
+                      ctxt,
+                      host,
+                      secondary_id=None):
 
-    # NOTE(jdg): It might be kinda silly to propagate the named
-    # args with defaults all the way down through rpc into manager
-    # but for now the consistency is useful, and there may be
-    # some usefulness in the future (direct calls in manager?)
+        ctxt = context.get_admin_context()
+        svc_host = volume_utils.extract_host(host, 'backend')
 
-    # NOTE(jdg): Relying solely on the volume-type quota mechanism
-    # need to consider looking at how we handle configured backends
-    # WRT quotas, do they count against normal quotas or not?  For
-    # now they're a special resource, so no.
+        service = objects.Service.get_by_host_and_topic(
+            ctxt, svc_host, CONF.volume_topic)
+        expected = {'replication_status': fields.ReplicationStatus.ENABLED}
+        result = service.conditional_update(
+            {'replication_status': fields.ReplicationStatus.FAILING_OVER},
+            expected)
+        if not result:
+            expected_status = utils.build_or_str(
+                expected['replication_status'])
+            msg = (_('Host replication_status must be %s to failover.')
+                   % expected_status)
+            LOG.error(msg)
+            raise exception.InvalidInput(reason=msg)
+        active_backend_id = self.volume_rpcapi.failover_host(
+            ctxt, host,
+            secondary_id)
+        return active_backend_id
 
-    @wrap_check_policy
-    @valid_replication_volume
-    def enable_replication(self, ctxt, volume):
-        # NOTE(jdg): details like sync vs async
-        # and replica count are to be set via the
-        # volume-type and config files.
+    def freeze_host(self, ctxt, host):
 
-        # Get a fresh ref from db and check status
-        volume = self.db.volume_get(ctxt, volume['id'])
+        ctxt = context.get_admin_context()
+        svc_host = volume_utils.extract_host(host, 'backend')
 
-        # NOTE(jdg): Set a valid status as a var to minimize errors via typos
-        # also, use a list, we may want to add to it some day
+        # NOTE(jdg): get_by_host_and_topic filters out disabled
+        service = objects.Service.get_by_args(
+            ctxt, svc_host, CONF.volume_topic)
+        expected = {'frozen': False}
+        result = service.conditional_update(
+            {'frozen': True}, expected)
+        if not result:
+            msg = _LE('Host is already Frozen.')
+            LOG.error(msg)
+            raise exception.InvalidInput(reason=msg)
 
-        # TODO(jdg): Move these up to a global list for each call and ban the
-        # free form typing of states and state checks going forward
+        # Should we set service status to disabled to keep
+        # scheduler calls from being sent? Just use existing
+        # `cinder service-disable reason=freeze`
+        self.volume_rpcapi.freeze_host(ctxt, host)
 
-        # NOTE(jdg): There may be a need for some backends to allow this
-        # call to driver regardless of replication_status, most likely
-        # this indicates an issue with the driver, but might be useful
-        # cases to  consider modifying this for in the future.
-        valid_rep_status = ['disabled', 'failed-over', 'error']
-        rep_status = volume.get('replication_status', valid_rep_status[0])
+    def thaw_host(self, ctxt, host):
 
-        if rep_status not in valid_rep_status:
-            msg = (_("Invalid status to enable replication. "
-                     "valid states are: %(valid_states)s, "
-                     "current replication-state is: %(curr_state)s.") %
-                   {'valid_states': valid_rep_status,
-                    'curr_state': rep_status})
+        ctxt = context.get_admin_context()
+        svc_host = volume_utils.extract_host(host, 'backend')
 
-            raise exception.InvalidVolume(reason=msg)
-
-        vref = self.db.volume_update(ctxt,
-                                     volume['id'],
-                                     {'replication_status': 'enabling'})
-        self.volume_rpcapi.enable_replication(ctxt, vref)
-
-    @wrap_check_policy
-    @valid_replication_volume
-    def disable_replication(self, ctxt, volume):
-
-        valid_disable_status = ['disabled', 'enabled']
-
-        # NOTE(jdg): Just use disabled here (item 1 in the list) this
-        # way if someone says disable_rep on a volume that's not being
-        # replicated we just say "ok, done"
-        rep_status = volume.get('replication_status', valid_disable_status[0])
-
-        if rep_status not in valid_disable_status:
-            msg = (_("Invalid status to disable replication. "
-                     "valid states are: %(valid_states)s, "
-                     "current replication-state is: %(curr_state)s.") %
-                   {'valid_states': valid_disable_status,
-                    'curr_state': rep_status})
-
-            raise exception.InvalidVolume(reason=msg)
-
-        vref = self.db.volume_update(ctxt,
-                                     volume['id'],
-                                     {'replication_status': 'disabling'})
-
-        self.volume_rpcapi.disable_replication(ctxt, vref)
-
-    @wrap_check_policy
-    @valid_replication_volume
-    def failover_replication(self,
-                             ctxt,
-                             volume,
-                             secondary=None):
-
-        # FIXME(jdg):  What is the secondary argument?
-        # for managed secondaries that's easy; it's a host
-        # for others, it's tricky; will propose a format for
-        # secondaries that includes an ID/Name that can be
-        # used as a handle
-        valid_failover_status = ['enabled']
-        rep_status = volume.get('replication_status', 'na')
-
-        if rep_status not in valid_failover_status:
-            msg = (_("Invalid status to failover replication. "
-                     "valid states are: %(valid_states)s, "
-                     "current replication-state is: %(curr_state)s.") %
-                   {'valid_states': valid_failover_status,
-                    'curr_state': rep_status})
-
-            raise exception.InvalidVolume(reason=msg)
-
-        vref = self.db.volume_update(
-            ctxt,
-            volume['id'],
-            {'replication_status': 'enabling_secondary'})
-
-        self.volume_rpcapi.failover_replication(ctxt,
-                                                vref,
-                                                secondary)
-
-    @wrap_check_policy
-    @valid_replication_volume
-    def list_replication_targets(self, ctxt, volume):
-
-        # NOTE(jdg): This collects info for the specified volume
-        # it is NOT an error if the volume is not being replicated
-        # also, would be worth having something at a backend/host
-        # level to show an admin how a backend is configured.
-        return self.volume_rpcapi.list_replication_targets(ctxt, volume)
+        # NOTE(jdg): get_by_host_and_topic filters out disabled
+        service = objects.Service.get_by_args(
+            ctxt, svc_host, CONF.volume_topic)
+        expected = {'frozen': True}
+        result = service.conditional_update(
+            {'frozen': False}, expected)
+        if not result:
+            msg = _LE('Host is NOT Frozen.')
+            LOG.error(msg)
+            raise exception.InvalidInput(reason=msg)
+        if not self.volume_rpcapi.thaw_host(ctxt, host):
+            return "Backend reported error during thaw_host operation."
 
     def check_volume_filters(self, filters):
         '''Sets the user filter value to accepted format'''

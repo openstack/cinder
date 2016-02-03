@@ -21,6 +21,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import objects
 from cinder.objects import base
+from cinder.objects import fields as c_fields
 from cinder import utils
 
 LOG = logging.getLogger(__name__)
@@ -33,7 +34,8 @@ class Service(base.CinderPersistentObject, base.CinderObject,
     # Version 1.0: Initial version
     # Version 1.1: Add rpc_current_version and object_current_version fields
     # Version 1.2: Add get_minimum_rpc_version() and get_minimum_obj_version()
-    VERSION = '1.2'
+    # Version 1.3: Add replication fields
+    VERSION = '1.3'
 
     fields = {
         'id': fields.IntegerField(),
@@ -49,6 +51,11 @@ class Service(base.CinderPersistentObject, base.CinderObject,
         'modified_at': fields.DateTimeField(nullable=True),
         'rpc_current_version': fields.StringField(nullable=True),
         'object_current_version': fields.StringField(nullable=True),
+
+        # Replication properties
+        'replication_status': c_fields.ReplicationStatusField(nullable=True),
+        'frozen': fields.BooleanField(default=False),
+        'active_backend_id': fields.StringField(nullable=True),
     }
 
     def obj_make_compatible(self, primitive, target_version):

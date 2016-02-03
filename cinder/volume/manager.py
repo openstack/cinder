@@ -204,7 +204,7 @@ def locked_snapshot_operation(f):
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '1.38'
+    RPC_API_VERSION = '1.39'
 
     target = messaging.Target(version=RPC_API_VERSION)
 
@@ -240,12 +240,29 @@ class VolumeManager(manager.SchedulerDependentManager):
             context.get_admin_context())
         LOG.debug("Cinder Volume DB check: vol_db_empty=%s", vol_db_empty)
 
+        # We pass the current setting for service.active_backend_id to
+        # the driver on init, incase there was a restart or something
+        curr_active_backend_id = None
+        svc_host = vol_utils.extract_host(self.host, 'backend')
+        try:
+            service = objects.Service.get_by_host_and_topic(
+                context.get_admin_context(), svc_host,
+                CONF.volume_topic)
+        except exception.ServiceNotFound:
+            # NOTE(jdg): This is to solve problems with unit tests
+            LOG.warning(_LW("Service not found for updating "
+                            "active_backend_id, assuming default"
+                            "for driver init."))
+        else:
+            curr_active_backend_id = service.active_backend_id
+
         self.driver = importutils.import_object(
             volume_driver,
             configuration=self.configuration,
             db=self.db,
             host=self.host,
-            is_vol_db_empty=vol_db_empty)
+            is_vol_db_empty=vol_db_empty,
+            active_backend_id=curr_active_backend_id)
 
         if CONF.profiler.profiler_enabled and profiler is not None:
             self.driver = profiler.trace_cls("driver")(self.driver)
@@ -380,7 +397,6 @@ class VolumeManager(manager.SchedulerDependentManager):
 
     def init_host(self):
         """Perform any required initialization."""
-
         ctxt = context.get_admin_context()
 
         LOG.info(_LI("Starting volume driver %(driver_name)s (%(version)s)"),
@@ -474,11 +490,6 @@ class VolumeManager(manager.SchedulerDependentManager):
         # collect and publish service capabilities
         self.publish_service_capabilities(ctxt)
 
-        # conditionally run replication status task
-
-        # FIXME(jdg): This should go away or be handled differently
-        #  if/when we're ready for V2 replication
-
         stats = self.driver.get_volume_stats(refresh=True)
         if stats and stats.get('replication', False):
 
@@ -487,6 +498,27 @@ class VolumeManager(manager.SchedulerDependentManager):
                 self._update_replication_relationship_status(ctxt)
 
             self.add_periodic_task(run_replication_task)
+
+        svc_host = vol_utils.extract_host(self.host, 'backend')
+        try:
+            # NOTE(jdg): may be some things to think about here in failover
+            # scenarios
+            service = objects.Service.get_by_host_and_topic(
+                context.get_admin_context(), svc_host,
+                CONF.volume_topic)
+        except exception.ServiceNotFound:
+            # FIXME(jdg): no idea what we'd do if we hit this case
+            LOG.warning(_LW("Service not found for updating "
+                            "replication_status."))
+        else:
+            if service.replication_status == (
+                    fields.ReplicationStatus.FAILED_OVER):
+                pass
+            elif stats and stats.get('replication_enabled', False):
+                service.replication_status = fields.ReplicationStatus.ENABLED
+            else:
+                service.replication_status = fields.ReplicationStatus.DISABLED
+            service.save()
 
         LOG.info(_LI("Driver initialization completed successfully."),
                  resource={'type': 'driver',
@@ -504,7 +536,6 @@ class VolumeManager(manager.SchedulerDependentManager):
     def create_volume(self, context, volume_id, request_spec=None,
                       filter_properties=None, allow_reschedule=True,
                       volume=None):
-
         """Creates the volume."""
         # FIXME(thangp): Remove this in v2.0 of RPC API.
         if volume is None:
@@ -3174,277 +3205,158 @@ class VolumeManager(manager.SchedulerDependentManager):
                 volume.update(model_update_default)
                 volume.save()
 
-    # Replication V2 methods
-    def enable_replication(self, context, volume):
-        """Enable replication on a replication capable volume.
+    # Replication V2.1 methods
+    def failover_host(self, context,
+                      secondary_backend_id=None):
+        """Failover a backend to a secondary replication target.
 
-        If the volume was created on a replication_enabled host this method
-        is used to enable replication for the volume. Primarily used for
-        testing and maintenance.
-
-        :param context: security context
-        :param volume: volume object returned by DB
-        """
-        try:
-            # If the driver isn't initialized, we can't talk to the backend
-            # so the driver can't enable replication
-            utils.require_driver_initialized(self.driver)
-        except exception.DriverNotInitialized:
-            with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Can't enable replication because the "
-                              "driver isn't initialized"))
-
-        # NOTE(jdg): We're going to do fresh get from the DB and verify that
-        # we are in an expected state ('enabling')
-        volume = self.db.volume_get(context, volume['id'])
-        if volume['replication_status'] != 'enabling':
-            msg = (_("Unable to enable replication due to invalid "
-                     "replication status: %(status)s.") %
-                   {'status': volume['replication_status']})
-            LOG.error(msg, resource=volume)
-            raise exception.InvalidVolume(reason=msg)
-
-        try:
-            rep_driver_data = self.driver.replication_enable(context,
-                                                             volume)
-        except exception.CinderException:
-            err_msg = (_("Enable replication for volume failed."))
-            LOG.exception(err_msg, resource=volume)
-            self.db.volume_update(context,
-                                  volume['id'],
-                                  {'replication_status': 'error'})
-            raise exception.VolumeBackendAPIException(data=err_msg)
-
-        except Exception:
-            msg = _('enable_replication caused exception in driver.')
-            LOG.exception(msg, resource=volume)
-            self.db.volume_update(context,
-                                  volume['id'],
-                                  {'replication_status': 'error'})
-            raise exception.VolumeBackendAPIException(data=msg)
-
-        try:
-            if rep_driver_data:
-                volume = self.db.volume_update(context,
-                                               volume['id'],
-                                               rep_driver_data)
-        except exception.CinderException as ex:
-            LOG.exception(_LE("Driver replication data update failed."),
-                          resource=volume)
-            raise exception.VolumeBackendAPIException(reason=ex)
-        self.db.volume_update(context, volume['id'],
-                              {'replication_status': 'enabled'})
-
-    def disable_replication(self, context, volume):
-        """Disable replication on the specified volume.
-
-        If the specified volume is currently replication enabled,
-        this method can be used to disable the replication process
-        on the backend.  This method assumes that we checked
-        replication status in the API layer to ensure we should
-        send this call to the driver.
+        Instructs a replication capable/configured backend to failover
+        to one of it's secondary replication targets. host=None is
+        an acceptable input, and leaves it to the driver to failover
+        to the only configured target, or to choose a target on it's
+        own. All of the hosts volumes will be passed on to the driver
+        in order for it to determine the replicated volumes on the host,
+        if needed.
 
         :param context: security context
-        :param volume: volume object returned by DB
+        :param secondary_backend_id: Specifies backend_id to fail over to
+        :returns : ID of the backend that was failed-over to
         """
+        svc_host = vol_utils.extract_host(self.host, 'backend')
+
+        # NOTE(jdg): get_by_host_and_topic filters out disabled
+        service = objects.Service.get_by_args(
+            context, svc_host,
+            CONF.volume_topic)
+        volumes = objects.VolumeList.get_all_by_host(context, self.host)
+
+        exception_encountered = False
         try:
-            # If the driver isn't initialized, we can't talk to the backend
-            # so the driver can't enable replication
-            utils.require_driver_initialized(self.driver)
-        except exception.DriverNotInitialized:
-            with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Can't disable replication because the "
-                              "driver isn't initialized"))
-
-        volume = self.db.volume_get(context, volume['id'])
-        if volume['replication_status'] != 'disabling':
-            msg = (_("Unable to disable replication due to invalid "
-                     "replication status: %(status)s.") %
-                   {'status': volume['replication_status']})
-            LOG.error(msg, resource=volume)
-            raise exception.InvalidVolume(reason=msg)
-
-        try:
-            rep_driver_data = self.driver.replication_disable(context,
-                                                              volume)
-        except exception.CinderException:
-            err_msg = (_("Disable replication for volume failed."))
-            LOG.exception(err_msg, resource=volume)
-            self.db.volume_update(context,
-                                  volume['id'],
-                                  {'replication_status': 'error'})
-            raise exception.VolumeBackendAPIException(data=err_msg)
-
-        except Exception:
-            msg = _('disable_replication caused exception in driver.')
-            LOG.exception(msg, resource=volume)
-            self.db.volume_update(context,
-                                  volume['id'],
-                                  {'replication_status': 'error'})
-            raise exception.VolumeBackendAPIException(msg)
-
-        try:
-            if rep_driver_data:
-                volume = self.db.volume_update(context,
-                                               volume['id'],
-                                               rep_driver_data)
-        except exception.CinderException as ex:
-            LOG.exception(_LE("Driver replication data update failed."),
-                          resource=volume)
-            self.db.volume_update(context,
-                                  volume['id'],
-                                  {'replication_status': 'error'})
-            raise exception.VolumeBackendAPIException(reason=ex)
-        self.db.volume_update(context,
-                              volume['id'],
-                              {'replication_status': 'disabled'})
-
-    def failover_replication(self, context, volume, secondary=None):
-        """Force failover to a secondary replication target.
-
-        Forces the failover action of a replicated volume to one of its
-        secondary/target devices.  By default the choice of target devices
-        is left up to the driver.  In particular we expect one way
-        replication here, but are providing a mechanism for 'n' way
-        if supported/configrued.
-
-        Currently we leave it up to the driver to figure out how/what
-        to do here.  Rather than doing things like ID swaps, we instead
-        just let the driver figure out how/where to route things.
-
-        In cases where we might want to drop a volume-service node and
-        the replication target is a configured cinder backend, we'll
-        just update the host column for the volume.
-
-        :param context: security context
-        :param volume: volume object returned by DB
-        :param secondary: Specifies rep target to fail over to
-        """
-        # NOTE(hemna) We intentionally don't enforce the driver being
-        # initialized here.  because the primary might actually be down,
-        # but we still want to give the driver a chance of doing some work
-        # against the target.  It's entirely up to the driver to deal with
-        # not being able to talk to the primary array that it's configured
-        # to manage.
-
-        if volume['replication_status'] != 'enabling_secondary':
-            msg = (_("Unable to failover replication due to invalid "
-                     "replication status: %(status)s.") %
-                   {'status': volume['replication_status']})
-            LOG.error(msg, resource=volume)
-            raise exception.InvalidVolume(reason=msg)
-
-        try:
-            volume = self.db.volume_get(context, volume['id'])
-            model_update = self.driver.replication_failover(context,
-                                                            volume,
-                                                            secondary)
-
-            # model_updates is a dict containing a report of relevant
-            # items based on the backend and how it operates or what it needs.
-            # For example:
-            # {'host': 'secondary-configured-cinder-backend',
-            #  'provider_location: 'foo',
-            #  'replication_driver_data': 'driver-specific-stuff-for-db'}
-            # Where 'host' is a valid cinder host string like
-            #  'foo@bar#baz'
-
-        except exception.CinderException:
-
-            # FIXME(jdg): We need to create a few different exceptions here
-            # and handle each differently:
-            # 1. I couldn't failover, but the original setup is ok so proceed
-            #    as if this were never called
-            # 2. I ran into a problem and I have no idea what state things
-            #    are in, so set volume to error
-            # 3. I ran into a problem and a human needs to come fix me up
-
-            err_msg = (_("Replication failover for volume failed."))
-            LOG.exception(err_msg, resource=volume)
-            self.db.volume_update(context,
-                                  volume['id'],
-                                  {'replication_status': 'error'})
-            raise exception.VolumeBackendAPIException(data=err_msg)
-
-        except Exception:
-            msg = _('replication_failover caused exception in driver.')
-            LOG.exception(msg, resource=volume)
-            self.db.volume_update(context,
-                                  volume['id'],
-                                  {'replication_status': 'error'})
-            raise exception.VolumeBackendAPIException(msg)
-
-        if model_update:
-            try:
-                volume = self.db.volume_update(
+            # expected form of volume_update_list:
+            # [{volume_id: <cinder-volid>, updates: {'provider_id': xxxx....}},
+            #  {volume_id: <cinder-volid>, updates: {'provider_id': xxxx....}}]
+            (active_backend_id, volume_update_list) = (
+                self.driver.failover_host(
                     context,
-                    volume['id'],
-                    model_update)
+                    volumes,
+                    secondary_backend_id))
+        except exception.UnableToFailOver:
+            LOG.exception(_LE("Failed to perform replication failover"))
+            service.replication_status = (
+                fields.ReplicationStatus.FAILOVER_ERROR)
+            exception_encountered = True
+        except exception.InvalidReplicationTarget:
+            LOG.exception(_LE("Invalid replication target specified "
+                              "for failover"))
+            service.replication_status = fields.ReplicationStatus.ENABLED
+            exception_encountered = True
+        except exception.VolumeDriverException:
+            # NOTE(jdg): Drivers need to be aware if they fail during
+            # a failover sequence, we're expecting them to cleanup
+            # and make sure the driver state is such that the original
+            # backend is still set as primary as per driver memory
+            LOG.error(_LE("Driver reported error during "
+                          "replication failover."))
+            service.status = 'error'
+            service.save()
+            exception_encountered = True
+        if exception_encountered:
+            LOG.error(
+                _LE("Error encountered during failover on host: "
+                    "%(host)s invalid target ID %(backend_id)"),
+                {'host': self.host, 'backend_id':
+                 secondary_backend_id})
+            return None
 
-            except exception.CinderException as ex:
-                LOG.exception(_LE("Driver replication data update failed."),
-                              resource=volume)
-                self.db.volume_update(context,
-                                      volume['id'],
-                                      {'replication_status': 'error'})
-                raise exception.VolumeBackendAPIException(reason=ex)
+        service.replication_status = fields.ReplicationStatus.FAILED_OVER
+        service.active_backend_id = active_backend_id
+        service.disabled = True
+        service.disabled_reason = "failed-over"
+        service.save()
 
-        # NOTE(jdg): We're setting replication status to failed-over
-        # which indicates the volume is ok, things went as expected but
-        # we're likely not replicating any longer because... well we
-        # did a fail-over.  In the case of admin bringing primary
-        # back online he/she can use enable_replication to get this
-        # state set back to enabled.
+        for update in volume_update_list:
+            # Response must include an id key: {volume_id: <cinder-uuid>}
+            if not update.get('volume_id'):
+                raise exception.UnableToFailOver(
+                    reason=_("Update list, doesn't include volume_id"))
+            # Key things to consider (attaching failed-over volumes):
+            #  provider_location
+            #  provider_auth
+            #  provider_id
+            #  replication_status
+            vobj = objects.Volume.get_by_id(context, update['volume_id'])
+            vobj.update(update.get('updates', {}))
+            vobj.save()
 
-        # Also, in the case of multiple targets, the driver can update
-        # status in the rep-status checks if it still has valid replication
-        # targets that the volume is being replicated to.
+        LOG.info(_LI("Failed over to replication target successfully."))
+        return active_backend_id
 
-        self.db.volume_update(context,
-                              volume['id'],
-                              {'replication_status': 'failed-over'})
+    def freeze_host(self, context):
+        """Freeze management plane on this backend.
 
-    def list_replication_targets(self, context, volume):
-        """Provide a means to obtain replication targets for a volume.
+        Basically puts the control/management plane into a
+        Read Only state.  We should handle this in the scheduler,
+        however this is provided to let the driver know in case it
+        needs/wants to do something specific on the backend.
 
-        This method is used to query a backend to get the current
-        replication config info for the specified volume.
-        In the case of a volume that isn't being replicated,
-        the driver should return an empty list.
-
-        There is one required field for configuration of
-        replication, (target_device_id).  As such we
-        use that for the response in list_replication_targets.
-
-        Internal methods can be added to extract additional
-        details if needed, but the only detail that should be
-        exposed to an end user is the identifier.  In the case
-        of an Admin, (s)he can always cross check the cinder.conf
-        file that they have configured for additional info.
-
-        Example response:
-            {'volume_id': volume['id'],
-             'targets':[<target-device-id>,...]'
-
+        :param context: security context
         """
-        # NOTE(hemna) We intentionally don't enforce the driver being
-        # initialized here.  because the primary might actually be down,
-        # but we still want to give the driver a chance of doing some work
-        # against the target.  It's entirely up to the driver to deal with
-        # not being able to talk to the primary array that it's configured
-        # to manage.
-
+        # TODO(jdg): Return from driver? or catch?
+        # Update status column in service entry
         try:
-            volume = self.db.volume_get(context, volume['id'])
-            replication_targets = self.driver.list_replication_targets(context,
-                                                                       volume)
+            self.driver.freeze_backend(context)
+        except exception.VolumeDriverException:
+            # NOTE(jdg): In the case of freeze, we don't really
+            # need the backend's consent or anything, we'll just
+            # disable the service, so we can just log this and
+            # go about our business
+            LOG.warning(_LW('Error encountered on Cinder backend during '
+                            'freeze operation, service is frozen, however '
+                            'notification to driver has failed.'))
+        svc_host = vol_utils.extract_host(self.host, 'backend')
 
-        except exception.CinderException:
-            err_msg = (_("Get replication targets failed."))
-            LOG.exception(err_msg)
-            raise exception.VolumeBackendAPIException(data=err_msg)
+        # NOTE(jdg): get_by_host_and_topic filters out disabled
+        service = objects.Service.get_by_args(
+            context, svc_host,
+            CONF.volume_topic)
+        service.disabled = True
+        service.disabled_reason = "frozen"
+        service.save()
+        LOG.info(_LI("Set backend status to frozen successfully."))
+        return True
 
-        return replication_targets
+    def thaw_host(self, context):
+        """UnFreeze management plane on this backend.
+
+        Basically puts the control/management plane back into
+        a normal state.  We should handle this in the scheduler,
+        however this is provided to let the driver know in case it
+        needs/wants to do something specific on the backend.
+
+        :param context: security context
+        """
+
+        # TODO(jdg): Return from driver? or catch?
+        # Update status column in service entry
+        try:
+            self.driver.thaw_backend(context)
+        except exception.VolumeDriverException:
+            # NOTE(jdg): Thaw actually matters, if this call
+            # to the backend fails, we're stuck and can't re-enable
+            LOG.error(_LE('Error encountered on Cinder backend during '
+                          'thaw operation, service will remain frozen.'))
+            return False
+        svc_host = vol_utils.extract_host(self.host, 'backend')
+
+        # NOTE(jdg): get_by_host_and_topic filters out disabled
+        service = objects.Service.get_by_args(
+            context, svc_host,
+            CONF.volume_topic)
+        service.disabled = False
+        service.disabled_reason = ""
+        service.save()
+        LOG.info(_LI("Thawed backend successfully."))
+        return True
 
     def manage_existing_snapshot(self, ctxt, snapshot, ref=None):
         LOG.debug('manage_existing_snapshot: managing %s.', ref)

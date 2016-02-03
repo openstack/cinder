@@ -701,6 +701,15 @@ class ManageExistingAlreadyManaged(CinderException):
                 "Volume %(volume_ref)s already managed.")
 
 
+class InvalidReplicationTarget(Invalid):
+    message = _("Invalid Replication Target: %(reason)s")
+
+
+class UnableToFailOver(CinderException):
+    message = _("Unable to failover to replication target:"
+                "%(reason)s).")
+
+
 class ReplicationError(CinderException):
     message = _("Volume %(volume_id)s replication "
                 "error: %(reason)s")

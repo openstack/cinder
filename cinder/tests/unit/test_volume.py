@@ -356,24 +356,6 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.volume.delete_volume(self.context, vol3['id'])
         self.volume.delete_volume(self.context, vol4['id'])
 
-    @mock.patch.object(vol_manager.VolumeManager, 'add_periodic_task')
-    def test_init_host_repl_enabled_periodic_task(self, mock_add_p_task):
-        manager = vol_manager.VolumeManager()
-        with mock.patch.object(manager.driver,
-                               'get_volume_stats') as m_get_stats:
-            m_get_stats.return_value = {'replication': True}
-            manager.init_host()
-        mock_add_p_task.assert_called_once_with(mock.ANY)
-
-    @mock.patch.object(vol_manager.VolumeManager, 'add_periodic_task')
-    def test_init_host_repl_disabled_periodic_task(self, mock_add_p_task):
-        manager = vol_manager.VolumeManager()
-        with mock.patch.object(manager.driver,
-                               'get_volume_stats') as m_get_stats:
-            m_get_stats.return_value = {'replication': False}
-            manager.init_host()
-        self.assertEqual(0, mock_add_p_task.call_count)
-
     @mock.patch('cinder.rpc.LAST_RPC_VERSIONS', {'cinder-scheduler': '1.3'})
     @mock.patch('cinder.rpc.LAST_OBJ_VERSIONS', {'cinder-scheduler': '1.5'})
     def test_reset(self):
@@ -1026,49 +1008,6 @@ class VolumeTestCase(BaseVolumeTestCase):
             mock_loads.side_effect = exception.CinderException('test')
             self.assertRaises(exception.CinderException,
                               vol_manager.VolumeManager)
-
-    @mock.patch.object(db, 'volume_get_all_by_host')
-    def test_update_replication_rel_status(self, m_get_by_host):
-        m_get_by_host.return_value = [mock.sentinel.vol]
-        ctxt = context.get_admin_context()
-        manager = vol_manager.VolumeManager()
-        with mock.patch.object(manager.driver,
-                               'get_replication_status') as m_get_rep_status:
-            m_get_rep_status.return_value = None
-            manager._update_replication_relationship_status(ctxt)
-            m_get_rep_status.assert_called_once_with(ctxt, mock.sentinel.vol)
-        exp_filters = {
-            'replication_status':
-            ['active', 'copying', 'error', 'active-stopped', 'inactive']}
-        m_get_by_host.assert_called_once_with(ctxt, manager.host,
-                                              filters=exp_filters)
-
-    @mock.patch.object(db, 'volume_get_all_by_host',
-                       mock.Mock(return_value=[{'id': 'foo'}]))
-    @mock.patch.object(db, 'volume_update')
-    def test_update_replication_rel_status_update_vol(self, mock_update):
-        """Volume is updated with replication update data."""
-        ctxt = context.get_admin_context()
-        manager = vol_manager.VolumeManager()
-        with mock.patch.object(manager.driver,
-                               'get_replication_status') as m_get_rep_status:
-            m_get_rep_status.return_value = mock.sentinel.model_update
-            manager._update_replication_relationship_status(ctxt)
-        mock_update.assert_called_once_with(ctxt, 'foo',
-                                            mock.sentinel.model_update)
-
-    @mock.patch.object(db, 'volume_get_all_by_host',
-                       mock.Mock(return_value=[{'id': 'foo'}]))
-    def test_update_replication_rel_status_with_repl_support_exc(self):
-        """Exception handled when raised getting replication status."""
-        ctxt = context.get_admin_context()
-        manager = vol_manager.VolumeManager()
-        manager.driver._initialized = True
-        manager.driver._stats['replication'] = True
-        with mock.patch.object(manager.driver,
-                               'get_replication_status') as m_get_rep_status:
-            m_get_rep_status.side_effect = Exception()
-            manager._update_replication_relationship_status(ctxt)
 
     def test_delete_busy_volume(self):
         """Test volume survives deletion if driver reports it as busy."""
@@ -6533,118 +6472,6 @@ class GenericVolumeDriverTestCase(DriverTestCase):
             self.assertFalse(is_snapshot)
             backup_obj = objects.Backup.get_by_id(self.context, backup.id)
             self.assertEqual(temp_vol.id, backup_obj.temp_volume_id)
-
-    def test_enable_replication_invalid_state(self):
-        volume_api = cinder.volume.api.API()
-        ctxt = context.get_admin_context()
-        volume = tests_utils.create_volume(ctxt,
-                                           size=1,
-                                           host=CONF.host,
-                                           replication_status='enabled')
-
-        self.assertRaises(exception.InvalidVolume,
-                          volume_api.enable_replication,
-                          ctxt, volume)
-
-    def test_enable_replication_invalid_type(self):
-        volume_api = cinder.volume.api.API()
-        ctxt = context.get_admin_context()
-
-        volume = tests_utils.create_volume(self.context,
-                                           size=1,
-                                           host=CONF.host,
-                                           replication_status='disabled')
-        volume['volume_type_id'] = 'dab02f01-b50f-4ed6-8d42-2b5b9680996e'
-        fake_specs = {}
-        with mock.patch.object(volume_types,
-                               'get_volume_type_extra_specs',
-                               return_value = fake_specs):
-            self.assertRaises(exception.InvalidVolume,
-                              volume_api.enable_replication,
-                              ctxt,
-                              volume)
-
-    def test_enable_replication(self):
-        volume_api = cinder.volume.api.API()
-        ctxt = context.get_admin_context()
-
-        volume = tests_utils.create_volume(self.context,
-                                           size=1,
-                                           host=CONF.host,
-                                           replication_status='disabled')
-        volume['volume_type_id'] = 'dab02f01-b50f-4ed6-8d42-2b5b9680996e'
-        fake_specs = {'replication_enabled': '<is> True'}
-        with mock.patch.object(volume_rpcapi.VolumeAPI,
-                               'enable_replication') as mock_enable_rep,\
-            mock.patch.object(volume_types,
-                              'get_volume_type_extra_specs',
-                              return_value = fake_specs):
-
-            volume_api.enable_replication(ctxt, volume)
-            self.assertTrue(mock_enable_rep.called)
-
-    def test_enable_replication_driver_initialized(self):
-        volume = tests_utils.create_volume(self.context,
-                                           size=1,
-                                           host=CONF.host,
-                                           replication_status='enabling')
-        # set initialized to False
-        self.volume.driver._initialized = False
-
-        # start test
-        self.assertRaises(exception.DriverNotInitialized,
-                          self.volume.enable_replication,
-                          self.context,
-                          volume)
-
-    def test_disable_replication_invalid_state(self):
-        volume_api = cinder.volume.api.API()
-        ctxt = context.get_admin_context()
-        volume = tests_utils.create_volume(ctxt,
-                                           size=1,
-                                           host=CONF.host,
-                                           replication_status='invalid-state')
-
-        self.assertRaises(exception.InvalidVolume,
-                          volume_api.disable_replication,
-                          ctxt, volume)
-
-    def test_disable_replication(self):
-        volume_api = cinder.volume.api.API()
-        ctxt = context.get_admin_context()
-
-        volume = tests_utils.create_volume(self.context,
-                                           size=1,
-                                           host=CONF.host,
-                                           replication_status='disabled')
-
-        volume['volume_type_id'] = 'dab02f01-b50f-4ed6-8d42-2b5b9680996e'
-        fake_specs = {'replication_enabled': '<is> True'}
-        with mock.patch.object(volume_rpcapi.VolumeAPI,
-                               'disable_replication') as mock_disable_rep,\
-                mock.patch.object(volume_types,
-                                  'get_volume_type_extra_specs',
-                                  return_value = fake_specs):
-            volume_api.disable_replication(ctxt, volume)
-            self.assertTrue(mock_disable_rep.called)
-
-            volume['replication_status'] = 'enabled'
-            volume_api.disable_replication(ctxt, volume)
-            self.assertTrue(mock_disable_rep.called)
-
-    def test_disable_replication_driver_initialized(self):
-        volume = tests_utils.create_volume(self.context,
-                                           size=1,
-                                           host=CONF.host,
-                                           replication_status='disabling')
-        # set initialized to False
-        self.volume.driver._initialized = False
-
-        # start test
-        self.assertRaises(exception.DriverNotInitialized,
-                          self.volume.disable_replication,
-                          self.context,
-                          volume)
 
     @mock.patch.object(utils, 'brick_get_connector_properties')
     @mock.patch.object(cinder.volume.driver.VolumeDriver, '_attach_volume')

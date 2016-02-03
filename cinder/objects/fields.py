@@ -63,3 +63,24 @@ class ConsistencyGroupStatus(Enum):
 
 class ConsistencyGroupStatusField(BaseEnumField):
     AUTO_TYPE = ConsistencyGroupStatus()
+
+
+class ReplicationStatus(Enum):
+    ERROR = 'error'
+    ENABLED = 'enabled'
+    DISABLED = 'disabled'
+    NOT_CAPABLE = 'not-capable'
+    FAILING_OVER = 'failing-over'
+    FAILOVER_ERROR = 'failover-error'
+    FAILED_OVER = 'failed-over'
+
+    ALL = (ERROR, ENABLED, DISABLED, NOT_CAPABLE, FAILOVER_ERROR, FAILING_OVER,
+           FAILED_OVER)
+
+    def __init__(self):
+        super(ReplicationStatus, self).__init__(
+            valid_values=ReplicationStatus.ALL)
+
+
+class ReplicationStatusField(BaseEnumField):
+    AUTO_TYPE = ReplicationStatus()
