@@ -256,8 +256,6 @@ class HDSNFSDriverTest(test.TestCase):
         self.configuration.nas_ip = None
         self.configuration.nas_share_path = None
         self.configuration.nas_mount_options = None
-        self.configuration.nfs_used_ratio = .95
-        self.configuration.nfs_oversub_ratio = 1.0
 
         self.driver = nfs.HDSNFSDriver(configuration=self.configuration)
         self.driver.do_setup("")

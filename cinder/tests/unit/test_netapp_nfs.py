@@ -89,8 +89,6 @@ def create_configuration():
     configuration.nfs_mount_point_base = '/mnt/test'
     configuration.nfs_mount_options = None
     configuration.nas_mount_options = None
-    configuration.nfs_used_ratio = .95
-    configuration.nfs_oversub_ratio = 1.0
     configuration.netapp_server_hostname = CONNECTION_INFO['hostname']
     configuration.netapp_transport_type = CONNECTION_INFO['transport_type']
     configuration.netapp_server_port = CONNECTION_INFO['port']

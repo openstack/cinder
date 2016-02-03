@@ -709,7 +709,7 @@ class NetAppNfsDriver(driver.ManageableVD,
         reserved = int(round(total_size * reserved_ratio))
         available = max(0, total_available - reserved)
         if thin:
-            available = available * self.over_subscription_ratio
+            available = available * self.max_over_subscription_ratio
 
         return available >= requested_size
 
@@ -761,7 +761,8 @@ class NetAppNfsDriver(driver.ManageableVD,
 
         capacity = dict()
         capacity['reserved_percentage'] = self.reserved_percentage
-        capacity['max_over_subscription_ratio'] = self.over_subscription_ratio
+        capacity['max_over_subscription_ratio'] = (
+            self.max_over_subscription_ratio)
         total_size, total_available = self._get_capacity_info(nfs_share)
         capacity['total_capacity_gb'] = na_utils.round_down(
             total_size / units.Gi, '0.01')
