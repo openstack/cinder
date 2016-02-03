@@ -713,6 +713,15 @@ class API(base.Base):
 
     def _create_cgsnapshot(self, context,
                            group, name, description):
+        volumes = self.db.volume_get_all_by_group(
+            context.elevated(),
+            group.id)
+
+        if not volumes:
+            msg = _("Consistency group is empty. No cgsnapshot "
+                    "will be created.")
+            raise exception.InvalidConsistencyGroup(reason=msg)
+
         options = {'consistencygroup_id': group.id,
                    'user_id': context.user_id,
                    'project_id': context.project_id,
@@ -720,19 +729,12 @@ class API(base.Base):
                    'name': name,
                    'description': description}
 
+        cgsnapshot = None
+        cgsnapshot_id = None
         try:
             cgsnapshot = objects.CGSnapshot(context, **options)
             cgsnapshot.create()
             cgsnapshot_id = cgsnapshot.id
-
-            volumes = self.db.volume_get_all_by_group(
-                context.elevated(),
-                cgsnapshot.consistencygroup_id)
-
-            if not volumes:
-                msg = _("Consistency group is empty. No cgsnapshot "
-                        "will be created.")
-                raise exception.InvalidConsistencyGroup(reason=msg)
 
             snap_name = cgsnapshot.name
             snap_desc = cgsnapshot.description
@@ -742,7 +744,8 @@ class API(base.Base):
         except Exception:
             with excutils.save_and_reraise_exception():
                 try:
-                    cgsnapshot.destroy()
+                    if cgsnapshot:
+                        cgsnapshot.destroy()
                 finally:
                     LOG.error(_LE("Error occurred when creating cgsnapshot"
                                   " %s."), cgsnapshot_id)

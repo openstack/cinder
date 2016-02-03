@@ -396,6 +396,35 @@ class CgsnapshotsAPITestCase(test.TestCase):
                          res_dict['itemNotFound']['message'])
         consistencygroup.destroy()
 
+    @mock.patch.object(objects.CGSnapshot, 'create')
+    def test_create_cgsnapshot_from_empty_consistencygroup(
+            self,
+            mock_cgsnapshot_create):
+        consistencygroup = utils.create_consistencygroup(self.context)
+
+        body = {"cgsnapshot": {"name": "cg1",
+                               "description":
+                               "CG Snapshot 1",
+                               "consistencygroup_id": consistencygroup.id}}
+
+        req = webob.Request.blank('/v2/fake/cgsnapshots')
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = jsonutils.dump_as_bytes(body)
+        res = req.get_response(fakes.wsgi_app())
+        res_dict = jsonutils.loads(res.body)
+
+        self.assertEqual(400, res.status_int)
+        self.assertEqual(400, res_dict['badRequest']['code'])
+        self.assertEqual('Invalid ConsistencyGroup: Consistency group is '
+                         'empty. No cgsnapshot will be created.',
+                         res_dict['badRequest']['message'])
+
+        # If failed to create cgsnapshot, its DB object should not be created
+        self.assertFalse(mock_cgsnapshot_create.called)
+
+        consistencygroup.destroy()
+
     def test_delete_cgsnapshot_available(self):
         consistencygroup = utils.create_consistencygroup(self.context)
         volume_id = utils.create_volume(
