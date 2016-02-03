@@ -53,6 +53,7 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
               https://blueprints.launchpad.net/cinder/+spec/vmax3-extend-volume
               - Incorrect SG selected on an attach (#1515176)
               - Cleanup Zoning (bug #1501938)  NOTE: FC only
+              - Last volume in SG fix
     """
 
     VERSION = "2.3.0"

@@ -5603,6 +5603,85 @@ class EMCV3DriverTestCase(test.TestCase):
                 'isV3': True,
                 'portgroupname': 'OS-portgroup-PG'}
 
+    def default_vol(self):
+        vol = EMC_StorageVolume()
+        vol['name'] = self.data.test_volume['name']
+        vol['CreationClassName'] = 'Symm_StorageVolume'
+        vol['ElementName'] = self.data.test_volume['id']
+        vol['DeviceID'] = self.data.test_volume['device_id']
+        vol['Id'] = self.data.test_volume['id']
+        vol['SystemName'] = self.data.storage_system
+        vol['NumberOfBlocks'] = self.data.test_volume['NumberOfBlocks']
+        vol['BlockSize'] = self.data.test_volume['BlockSize']
+        # Added vol to vol.path
+        vol['SystemCreationClassName'] = 'Symm_StorageSystem'
+        vol.path = vol
+        vol.path.classname = vol['CreationClassName']
+        return vol
+
+    def default_storage_group(self):
+        storagegroup = {}
+        storagegroup['CreationClassName'] = (
+            self.data.storagegroup_creationclass)
+        storagegroup['ElementName'] = 'no_masking_view'
+        return storagegroup
+
+    def test_last_vol_in_SG_with_MV(self):
+        conn = self.fake_ecom_connection()
+        controllerConfigService = (
+            self.driver.common.utils.find_controller_configuration_service(
+                conn, self.data.storage_system))
+
+        extraSpecs = self.default_extraspec()
+
+        storageGroupName = self.data.storagegroupname
+        storageGroupInstanceName = (
+            self.driver.common.utils.find_storage_masking_group(
+                conn, controllerConfigService, storageGroupName))
+
+        vol = self.default_vol()
+        self.driver.common.masking._delete_mv_and_sg = mock.Mock()
+        self.assertTrue(self.driver.common.masking._last_vol_in_SG(
+            conn, controllerConfigService, storageGroupInstanceName,
+            storageGroupName, vol, vol['name'], extraSpecs))
+
+    def test_last_vol_in_SG_no_MV(self):
+        conn = self.fake_ecom_connection()
+        controllerConfigService = (
+            self.driver.common.utils.find_controller_configuration_service(
+                conn, self.data.storage_system))
+
+        extraSpecs = self.default_extraspec()
+        self.driver.common.masking.get_masking_view_from_storage_group = (
+            mock.Mock(return_value=None))
+        self.driver.common.masking.utils.get_existing_instance = (
+            mock.Mock(return_value=None))
+        storagegroup = self.default_storage_group()
+
+        vol = self.default_vol()
+        self.assertTrue(self.driver.common.masking._last_vol_in_SG(
+            conn, controllerConfigService, storagegroup,
+            storagegroup['ElementName'], vol, vol['name'], extraSpecs))
+
+    def test_last_vol_in_SG_no_MV_fail(self):
+        self.driver.common.masking.utils.get_existing_instance = (
+            mock.Mock(return_value='value'))
+        conn = self.fake_ecom_connection()
+        controllerConfigService = (
+            self.driver.common.utils.find_controller_configuration_service(
+                conn, self.data.storage_system))
+
+        extraSpecs = self.default_extraspec()
+        vol = self.default_vol()
+        storagegroup = self.default_storage_group()
+        storagegroup['ElementName'] = 'no_masking_view'
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.common.masking._last_vol_in_SG,
+                          conn, controllerConfigService,
+                          storagegroup, storagegroup['ElementName'], vol,
+                          vol['name'], extraSpecs)
+
     @mock.patch.object(
         emc_vmax_utils.EMCVMAXUtils,
         'find_storageSystem',
