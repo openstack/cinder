@@ -351,7 +351,7 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
     def check_replication_flags(self, options, required_flags):
         for flag in required_flags:
             if not options.get(flag, None):
-                msg = _('%s is not set and is required for the replicaiton '
+                msg = _('%s is not set and is required for the replication '
                         'device to be valid.') % flag
                 LOG.error(msg)
                 raise exception.InvalidInput(reason=msg)
