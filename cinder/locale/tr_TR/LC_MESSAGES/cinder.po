@@ -7,9 +7,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev281\n"
+"Project-Id-Version: cinder 8.0.0.0b3.dev67\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-01-17 23:35+0000\n"
+"POT-Creation-Date: 2016-02-03 06:29+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -160,10 +160,6 @@ msgstr ""
 #, python-format
 msgid "%s"
 msgstr "%s"
-
-#, python-format
-msgid "%s \"data\" was not in result."
-msgstr "%s \"data\" sonuçta değildi."
 
 #, python-format
 msgid ""
@@ -634,10 +630,6 @@ msgid "Can not translate %s to integer."
 msgstr "%s, tam sayı değere çevrilemez."
 
 #, python-format
-msgid "Can't find lun info on the array, lun name is: %(name)s."
-msgstr "Dizide lun bilgisi bulunamadı, lun ismi: %(name)s."
-
-#, python-format
 msgid "Can't open config file: %s"
 msgstr "Yapılandırma dosyası açılamıyor: %s"
 
@@ -872,14 +864,6 @@ msgstr ""
 "%(group_id)s tutarlılık grubundan %(volume_id)s mantıksal sürücüsü "
 "kaldırılamaz çünkü grup içinde değil."
 
-#, python-format
-msgid ""
-"Cannot resize image %(vhd_path)s to a smaller size. Image size: "
-"%(old_size)s, Requested size: %(new_size)s"
-msgstr ""
-"%(vhd_path)s imajı küçük bir boyuta yeniden boyutlandırılamıyor. İmaj "
-"boyutu: %(old_size)s, İstenen boyut: %(new_size)s"
-
 msgid "Cannot retype from one 3PAR array to another."
 msgstr "Bir 3PAR dizisinden diğerine retype yapılamaz."
 
@@ -1099,26 +1083,6 @@ msgstr ""
 #, python-format
 msgid "Copying metadata from %(src_type)s %(src_id)s to %(vol_id)s."
 msgstr "Metadata %(src_type)s %(src_id)s den %(vol_id)s e kopyalanıyor."
-
-#, python-format
-msgid ""
-"Could not copy virtual disk %(src_path)s to %(dest_path)s. Could not find "
-"source path."
-msgstr ""
-"%(src_path)s sanal diski %(dest_path)s e kopyalanamıyor. Kaynak yol "
-"bulunamadı."
-
-#, python-format
-msgid ""
-"Could not copy virtual disk %(src_path)s to %(dest_path)s. Error code: "
-"%(error_code)s"
-msgstr ""
-"%(src_path)s anal diski %(dest_path)s e kopyalanamadı. Hata kodu: "
-"%(error_code)s"
-
-#, python-format
-msgid "Could not create symbolic link. Link: %(link)s Target %(target)s"
-msgstr "Sembolik bağlantı oluşturulamıyor. Bağlantı: %(link)s Hedef %(target)s"
 
 #, python-format
 msgid "Could not find GPFS cluster id: %s."
@@ -1371,10 +1335,6 @@ msgstr "%(vol_name)s adında birden fazla mantıksal sürücü tespit edildi"
 #, python-format
 msgid "Did not find expected column in %(fun)s: %(hdr)s."
 msgstr "Beklenen sütun %(fun)s de bulunamadı: %(hdr)s."
-
-#, python-format
-msgid "Did not find success message nor error for %(fun)s: %(out)s."
-msgstr "%(fun)s için başarı ya da hata iletisi bulunamadı: %(out)s."
 
 #, python-format
 msgid "Did not find the expected key %(key)s in %(fun)s: %(raw)s."
@@ -1750,11 +1710,6 @@ msgstr ""
 "Çoğaltma bağını kırmada hata: Eşzamanlama İsmi: %(syncName)s Dönüş kodu: "
 "%(rc)lu.  Hata: %(error)s."
 
-#, python-format
-msgid "Error changing disk status: %(vol_name)s . WMI exception: %(wmi_exc)s"
-msgstr ""
-"Disk durumunu değiştirmede hata: %(vol_name)s . WMI istisnası: %(wmi_exc)s"
-
 msgid "Error connecting to ceph cluster."
 msgstr "Ceph kümesine bağlanırken hata."
 
@@ -1983,14 +1938,6 @@ msgstr "_select_ds_for_volume'de istisna: %s."
 #, python-format
 msgid "Exception: %s"
 msgstr "İstisna: %s"
-
-#, python-format
-msgid ""
-"Executing Win32 API function %(func_name)s failed. Error code: "
-"%(error_code)s. Error message: %(error_message)s"
-msgstr ""
-"%(func_name)s Win32 API fonksiyonunu çağırma başarısız. Hata kodu: "
-"%(error_code)s. Hata iletisi: %(error_message)s"
 
 #, python-format
 msgid "Expected a uuid but received %(uuid)s."
@@ -2242,10 +2189,6 @@ msgstr "qos_specs oluşturulamadı: %(qos_specs)s özellikleri ile %(name)s."
 
 msgid "Failed to create replica."
 msgstr "Kopya oluşturulamadı."
-
-#, python-format
-msgid "Failed to create sb connector for %s"
-msgstr "%s için sb bağlayıcı oluşturma başarısız"
 
 msgid "Failed to create scheduler manager volume flow"
 msgstr "Zamanlayıcı yönetici mantıksal sürücü akışı oluşturma başarısız"
@@ -2565,10 +2508,6 @@ msgid "Failed to identify volume backend."
 msgstr "Mantıksal sürücü art alanda çalışan uygulama tanımlanamadı."
 
 #, python-format
-msgid "Failed to import disk: %(vhd_path)s. WMI exception: %(exc)s"
-msgstr "Diski içe aktarma başarısız: %(vhd_path)s. WMI istisnası: %(exc)s"
-
-#, python-format
 msgid "Failed to link fileset for the share %(cgname)s. Error: %(excmsg)s."
 msgstr ""
 "%(cgname)s paylaşımı için dosya kümesi bağlantısı başarısız. Hata: "
@@ -2840,10 +2779,6 @@ msgstr "Fiber Kanal SAN Arama başarısız: %(reason)s"
 #, python-format
 msgid "Fibre Channel Zone operation failed: %(reason)s"
 msgstr "Fiber Kanal Bölge işlemi başarısız oldu: %(reason)s"
-
-#, python-format
-msgid "Fibre Channel Zoning CLI error: %(reason)s"
-msgstr "Fiber Kanal Bölgeleme CLI hatası: %(reason)s"
 
 #, python-format
 msgid "Fibre Channel connection control failure: %(reason)s"
@@ -3637,10 +3572,6 @@ msgid "Linked clone of source volume not supported in state: %s."
 msgstr ""
 "Kaynak mantıksal sürücüsünün bağlantılı klonu bu durumda desteklenmiyor: %s."
 
-#, python-format
-msgid "Login error, reason is: %s."
-msgstr "Giriş hatası, sebep: %s."
-
 msgid ""
 "Lookup service not configured. Config option for fc_san_lookup_service needs "
 "to specify a concrete implementation of the lookup service."
@@ -3922,14 +3853,6 @@ msgid ""
 msgstr ""
 "NAS yapılandırması '%(name)s=%(value)s' geçersiz. 'auto', 'true' ya da "
 "'false' olmalıdır."
-
-#, python-format
-msgid "NFS config 'nfs_oversub_ratio' invalid. Must be > 0: %s"
-msgstr "NFS yapılandırması 'nfs_oversub_ratio' geçersiz. > 0 olmalı: %s"
-
-#, python-format
-msgid "NFS config 'nfs_used_ratio' invalid. Must be > 0 and <= 1.0: %s"
-msgstr "NFS yapılandırması 'nfs_used_ratio' geçersiz. > 0 ve <= 1.0 olmalı: %s"
 
 #, python-format
 msgid "NFS config file at %(config)s doesn't exist"
@@ -4341,14 +4264,6 @@ msgstr "Havuz %s mevcut değil"
 
 msgid "Pools name is not set."
 msgstr "Havuz ismi ayarlanmamış."
-
-#, python-format
-msgid ""
-"PrefetchType config is wrong. PrefetchType must be in 0,1,2,3. PrefetchType "
-"is: %(fetchtype)s."
-msgstr ""
-"PrefetchType yapılandırması yanlış. PrefetchType 0,1,2,3 den biri olmalı. "
-"PrefetchType: %(fetchtype)s."
 
 #, python-format
 msgid "Primary copy status: %(status)s and synchronized: %(sync)s."
@@ -5070,10 +4985,6 @@ msgid "The extraspec: %(extraspec)s is not valid."
 msgstr "extraspec: %(extraspec)s geçersizdir."
 
 #, python-format
-msgid "The file copy from %(src)s to %(dest)s failed."
-msgstr "%(src)s den %(dest)s e dosya kopyalama başarısız."
-
-#, python-format
 msgid "The following elements are required: %s"
 msgstr "Aşağıdaki ögeler gereklidir: %s"
 
@@ -5561,14 +5472,6 @@ msgstr "Mantıksal sürücü eşleştirilemedi"
 msgid "Unable to map volume."
 msgstr "Mantıksal sürücü eşleştirilemedi."
 
-#, python-format
-msgid ""
-"Unable to mount SMBFS share: %(smbfs_share)s WMI exception: "
-"%(wmi_exc)sOptions: %(options)s"
-msgstr ""
-"SMBFS paylaşımı bağlanamıyor: %(smbfs_share)s WMI istisnası: %(wmi_exc)s "
-"Seçenekler: %(options)s"
-
 msgid "Unable to parse XML request. Please provide XML in correct format."
 msgstr "XML isteği ayrıştırılamadı. Lütfen doğru biçimde XML sağlayın."
 
@@ -5760,10 +5663,6 @@ msgid ""
 msgstr ""
 "%s anahtarında desteklenmeyen üretici yazılımı. Anahtarın v6.4 ya da daha "
 "yüksek üretici yazılımı kullandığından emin olun"
-
-#, python-format
-msgid "Unsupported virtual disk extension: %s"
-msgstr "Desteklenmeyen sanal disk uzantısı: %s"
 
 #, python-format
 msgid "Unsupported volume format: %s "
@@ -6356,19 +6255,8 @@ msgstr ""
 "_get_vdisk_map_properties: %(vol)s mantıksal sürücüsü için %(gid)s I/O "
 "grubunda düğüm bulunamadı."
 
-msgid "_instantiate_driver: configuration not found."
-msgstr "_instantiate_driver: yapılandırma bulunamadı."
-
 msgid "_update_volume_stats: Could not get storage pool data."
 msgstr "_update_volume_stats: Depolama havuzu verisi alınamadı."
-
-#, python-format
-msgid ""
-"add_disk_to_target: error adding disk associated to volume : %(vol_name)s to "
-"the target name: %(tar_name)s . WMI exception: %(wmi_exc)s"
-msgstr ""
-"add_disk_to_target: %(vol_name)s mantıksal sürücüsü ile ilişkili diskin "
-"%(tar_name)s hedef ismine eklenmesinde hata. WMI istisnası: %(wmi_exc)s"
 
 #, python-format
 msgid ""
@@ -6383,15 +6271,6 @@ msgstr "add_vdisk_copy beklenen havuzda bir vdisk kopyası olmadan başlatıldı
 
 msgid "already created"
 msgstr "zaten oluşturuldu"
-
-#, python-format
-msgid ""
-"associate_initiator_with_iscsi_target: an association between initiator: "
-"%(init)s and target name: %(target)s could not be established. WMI "
-"exception: %(wmi_exc)s"
-msgstr ""
-"associate_initiator_with_iscsi_target: başlatıcı: %(init)s ve hedef isim: "
-"%(target)s arasındaki ilişki sağlanamadı. WMI istisnası: %(wmi_exc)s"
 
 #, python-format
 msgid "attribute %s not lazy-loadable"
@@ -6491,16 +6370,6 @@ msgid "check_for_setup_error: Unable to determine system name."
 msgstr "check_for_setup_error: Sistem ismi belirlenemiyor."
 
 #, python-format
-msgid ""
-"check_for_setup_error: the state of the WT Portal could not be verified. WMI "
-"exception: %s"
-msgstr ""
-"check_for_setup_error: WT Portalının durumu doğrulanamadı. WMI istisnası: %s"
-
-msgid "check_for_setup_error: there is no ISCSI traffic listening."
-msgstr "check_for_setup_error: dinleyen iSCSI trafiği yok."
-
-#, python-format
 msgid "clone depth exceeds limit of %s"
 msgstr "çoğaltma derinliği %s sınırını aşıyor"
 
@@ -6533,38 +6402,14 @@ msgstr "create_host: Başlatıcılar veya wwpn'ler sağlanmadı."
 
 #, python-format
 msgid ""
-"create_iscsi_target: error when creating iscsi target: %(tar_name)s . WMI "
-"exception: %(wmi_exc)s"
-msgstr ""
-"create_iscsi_target: iscsi hedefi oluşturulurken hata: %(tar_name)s . WMI "
-"istisnası: %(wmi_exc)s"
-
-#, python-format
-msgid ""
 "create_snapshot: Volume status must be \"available\" or \"in-use\" for "
 "snapshot. The invalid status is %s."
 msgstr ""
 "create_snapshot: Anlık görüntü için mantıksal sürücü durumu \"kullanılabilir"
 "\" veya \"kullanımda\" olmalı. Geçersiz durum %s."
 
-#, python-format
-msgid ""
-"create_snapshot: error when creating the snapshot name: %(vol_name)s . WMI "
-"exception: %(wmi_exc)s"
-msgstr ""
-"create_snapshot: anlık görüntü ismi oluştururken hata: %(vol_name)s . WMI "
-"istisnası: %(wmi_exc)s"
-
 msgid "create_snapshot: get source volume failed."
 msgstr "create_snapshot: kaynak mantıksal sürücüyü alma başarısız."
-
-#, python-format
-msgid ""
-"create_volume: error when creating the volume name: %(vol_name)s . WMI "
-"exception: %(wmi_exc)s"
-msgstr ""
-"create_volume: %(vol_name)s mantıksal sürücü ismi oluşturulurken hata . WMI "
-"istisnası: %(wmi_exc)s"
 
 #, python-format
 msgid "create_volume_from_snapshot: Snapshot %(name)s does not exist."
@@ -6588,15 +6433,6 @@ msgstr ""
 "create_volume_from_snapshot: Mantıksal sürücü boyutu anlık görüntü tabanlı "
 "mantıksal sürücüden farklı."
 
-#, python-format
-msgid ""
-"create_volume_from_snapshot: error when creating the volume name: "
-"%(vol_name)s from snapshot name: %(snap_name)s. WMI exception: %(wmi_exc)s"
-msgstr ""
-"create_volume_from_snapshot: %(snap_name)s anlık görüntü isminden "
-"%(vol_name)s mantıksal sürücü ismi oluşturmada hata. WMI istisnası: "
-"%(wmi_exc)s"
-
 msgid "deduplicated and auto tiering can't be both enabled."
 msgstr "kopyasız sıkıştırma ve otomatik aşamalama aynı anda etkin olamaz."
 
@@ -6617,30 +6453,6 @@ msgid ""
 msgstr ""
 "delete: %(vol_id)s dsmc komutunu çalıştıramadı stdout çıktısı ile: %(out)s\n"
 " stderr: %(err)s"
-
-#, python-format
-msgid ""
-"delete_iscsi_target: error when deleting the iscsi target associated with "
-"target name: %(target)s . WMI exception: %(wmi_exc)s"
-msgstr ""
-"delete_iscsi_target: %(target)s hedef ismi ile ilişkili iscsi hedefini "
-"silerken hata. WMI istisnası: %(wmi_exc)s"
-
-#, python-format
-msgid ""
-"delete_snapshot: error when deleting the snapshot name: %(snap_name)s . WMI "
-"exception: %(wmi_exc)s"
-msgstr ""
-"delete_snapshot: anlık görüntü ismi silinirken hata: %(snap_name)s . WMI "
-"istisnası: %(wmi_exc)s"
-
-#, python-format
-msgid ""
-"delete_volume: error when deleting the volume name: %(vol_name)s . WMI "
-"exception: %(wmi_exc)s"
-msgstr ""
-"delete_volume: mantıksal sürücü ismi silmede hata: %(vol_name)s . WMI "
-"istisnası: %(wmi_exc)s"
 
 #, python-format
 msgid "deleting snapshot %(snapshot_name)s that has dependent volumes"
@@ -6670,14 +6482,6 @@ msgid ""
 msgstr ""
 "swift'e nesne yazarken hata, swift içindeki nesnenin MD5 değeri %(etag)s "
 "swift'e gönderilen nesnenin MD5 %(md5)s değeri ile aynı değildir"
-
-#, python-format
-msgid ""
-"extend: error when extending the volume: %(vol_name)s .WMI exception: "
-"%(wmi_exc)s"
-msgstr ""
-"büyüt: mantıksal sürücü büyütülürken hata: %(vol_name)s. WMI istisnası: "
-"%(wmi_exc)s"
 
 msgid "extend_volume: Extending a volume with snapshots is not supported."
 msgstr ""
@@ -6716,19 +6520,6 @@ msgstr "fmt=%(fmt)s şununla desteklenir: %(backing_file)s"
 #, python-format
 msgid "fmt=%(fmt)s backed by:%(backing_file)s"
 msgstr "fmt=%(fmt)s şununla desteklenir:%(backing_file)s"
-
-#, python-format
-msgid ""
-"get_host_information: the ISCSI target information could not be retrieved. "
-"WMI exception: %s"
-msgstr "get_host_information: ISCSI hedef bilgisi alınamadı. WMI istisnası: %s"
-
-#, python-format
-msgid ""
-"get_host_information: the state of the WT Portal could not be verified. WMI "
-"exception: %s"
-msgstr ""
-"get_host_information: WT Portalının durumu doğrulanamadı. WMI istisnası: %s"
 
 #, python-format
 msgid ""
@@ -6947,14 +6738,6 @@ msgid "read_deleted can only be one of 'no', 'yes' or 'only', not %r"
 msgstr ""
 "read_deleted sadece 'no', 'yes' ya da 'only', %r hariç seçeneklerinden biri "
 "olabilir"
-
-#, python-format
-msgid ""
-"remove_iscsi_target: error when deleting iscsi target: %(tar_name)s . WMI "
-"exception: %(wmi_exc)s"
-msgstr ""
-"remove_iscsi_target: iscsi hedefi silinirken hata: %(tar_name)s . WMI "
-"istisnası: %(wmi_exc)s"
 
 #, python-format
 msgid ""

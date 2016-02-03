@@ -10,9 +10,9 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev281\n"
+"Project-Id-Version: cinder 8.0.0.0b3.dev67\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-01-17 23:35+0000\n"
+"POT-Creation-Date: 2016-02-03 06:29+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -169,10 +169,6 @@ msgstr ""
 #, python-format
 msgid "%s"
 msgstr "%s"
-
-#, python-format
-msgid "%s \"data\" was not in result."
-msgstr "%s \"data\" nebyla ve výsledku."
 
 #, python-format
 msgid ""
@@ -490,9 +486,6 @@ msgstr "Chyba při přidružování hostitele k zobrazení mapování."
 msgid "Associate initiator to host error."
 msgstr "Chyba při přidružování zavaděče k hostiteli."
 
-msgid "Associate lun to Qos error."
-msgstr "Chyba při přidružování lun k QoS."
-
 msgid "Associate lun to lungroup error."
 msgstr "Chyba při přidružování lun ke skupině lun."
 
@@ -795,10 +788,6 @@ msgstr "Nelze rozšifrovat záznam zálohy."
 #, python-format
 msgid "Can't find cache name on the array, cache name is: %(name)s."
 msgstr "Nelze v poli najít název mezipaměti, její název je: %(name)s."
-
-#, python-format
-msgid "Can't find lun info on the array, lun name is: %(name)s."
-msgstr "Nelze najít informaci o lun v poli, název lun je: %(name)s."
 
 #, python-format
 msgid "Can't find partition name on the array, partition name is: %(name)s."
@@ -1112,14 +1101,6 @@ msgstr ""
 "%(valid)s."
 
 #, python-format
-msgid ""
-"Cannot resize image %(vhd_path)s to a smaller size. Image size: "
-"%(old_size)s, Requested size: %(new_size)s"
-msgstr ""
-"Nelze zmenšit velikost obrazu %(vhd_path)s. Velikost obrazu: %(old_size)s, "
-"požadovaná velikost: %(new_size)s"
-
-#, python-format
 msgid "Cannot retype from HPE3PARDriver to %s."
 msgstr "Nelze přetypovat z HPE3PARDriver na %s."
 
@@ -1295,10 +1276,6 @@ msgstr ""
 "dodatečných specifikací typu svazku."
 
 #, python-format
-msgid "Connect volume fc: connect volume error. %s."
-msgstr "Připojení FC svazku: chyba připojení. %s."
-
-#, python-format
 msgid "Connection to glance failed: %(reason)s"
 msgstr "Připojení ke glance selhalo: %(reason)s"
 
@@ -1402,26 +1379,6 @@ msgstr ""
 #, python-format
 msgid "Copying metadata from %(src_type)s %(src_id)s to %(vol_id)s."
 msgstr "Kopírování popisných dat z %(src_type)s %(src_id)s do %(vol_id)s."
-
-#, python-format
-msgid ""
-"Could not copy virtual disk %(src_path)s to %(dest_path)s. Could not find "
-"source path."
-msgstr ""
-"Nelze zkopírovat virtuální disk %(src_path)s do %(dest_path)s. Nelze najít "
-"zdrojovou cestu."
-
-#, python-format
-msgid ""
-"Could not copy virtual disk %(src_path)s to %(dest_path)s. Error code: "
-"%(error_code)s"
-msgstr ""
-"Nelze zkopírovat virtuální disk %(src_path)s do %(dest_path)s. Kód chyby: "
-"%(error_code)s"
-
-#, python-format
-msgid "Could not create symbolic link. Link: %(link)s Target %(target)s"
-msgstr "Symbolický odkaz nelze vytvořit. Odkaz: %(link)s, cíl %(target)s"
 
 msgid ""
 "Could not determine which Keystone endpoint to use. This can either be set "
@@ -1550,15 +1507,8 @@ msgstr "Chyba při vytváření skupiny lun."
 msgid "Create manager volume flow failed."
 msgstr "Vytvoření postupu správce svazku selhalo."
 
-#, python-format
-msgid "Create remote LUN error. %s."
-msgstr "Chyba při vytváření vzdáleného LUN. %s"
-
 msgid "Create snapshot error."
 msgstr "Chyba při vytváření snímku."
-
-msgid "Create volume error."
-msgstr "Chyba při vytváření svazku."
 
 #, python-format
 msgid "Create volume error. Because %s."
@@ -1717,10 +1667,6 @@ msgstr "Chyba při mazání zobrazení mapování."
 msgid "Delete portgroup from mapping view error."
 msgstr "Chyba při mazání skupiny portu ze zobrazení mapování."
 
-#, python-format
-msgid "Delete remote lun err. %s."
-msgstr "Chyba při mazání vzdáleného LUN. %s"
-
 msgid "Delete snapshot error."
 msgstr "Chyba při mazání snímku."
 
@@ -1780,10 +1726,6 @@ msgstr "Zjištěn více než jeden svazek s názvem %(vol_name)s"
 #, python-format
 msgid "Did not find expected column in %(fun)s: %(hdr)s."
 msgstr "Nenalezen očekávaný sloupec v %(fun)s: %(hdr)s."
-
-#, python-format
-msgid "Did not find success message nor error for %(fun)s: %(out)s."
-msgstr "Z %(fun)s nebyla předána zpráva o úspěchu nebo chybě: %(out)s."
 
 #, python-format
 msgid "Did not find the expected key %(key)s in %(fun)s: %(raw)s."
@@ -2302,10 +2244,6 @@ msgstr ""
 "Chyba při rušení vztahu klona. Synchronizovaný název: %(syncName)s. "
 "Návratový kód: %(rc)lu. Chyba: %(error)s."
 
-#, python-format
-msgid "Error changing disk status: %(vol_name)s . WMI exception: %(wmi_exc)s"
-msgstr "Chyba při změně stavu disku: %(vol_name)s. Výjimka WMI: %(wmi_exc)s"
-
 msgid "Error connecting to ceph cluster."
 msgstr "Chyba při připojování ke clusteru ceph."
 
@@ -2627,14 +2565,6 @@ msgid "Exception: %s"
 msgstr "Výjimka: %s"
 
 #, python-format
-msgid ""
-"Executing Win32 API function %(func_name)s failed. Error code: "
-"%(error_code)s. Error message: %(error_message)s"
-msgstr ""
-"Provedení funkce %(func_name)s API Win32 selhalo. Kód chyby: %(error_code)s. "
-"Chybová zpráva: %(error_message)s"
-
-#, python-format
 msgid "Expected a uuid but received %(uuid)s."
 msgstr "Očekáváno uuid ale obdrženo %(uuid)s."
 
@@ -2939,10 +2869,6 @@ msgstr ""
 
 msgid "Failed to create replica."
 msgstr "Nelze vytvořit repliku."
-
-#, python-format
-msgid "Failed to create sb connector for %s"
-msgstr "Nelze vytvořit sb konektor pro %s"
 
 msgid "Failed to create scheduler manager volume flow"
 msgstr "Nelze vytvořit postup správce plánovače svazku"
@@ -3265,10 +3191,6 @@ msgid "Failed to identify volume backend."
 msgstr "Nelze zjistit podpůrnou vrstvu svazku."
 
 #, python-format
-msgid "Failed to import disk: %(vhd_path)s. WMI exception: %(exc)s"
-msgstr "Nelze importovat disk: %(vhd_path)s. Výjimka WMI: %(exc)s"
-
-#, python-format
 msgid "Failed to link fileset for the share %(cgname)s. Error: %(excmsg)s."
 msgstr "Nelze propojit sadu souborů se sdílením %(cgname)s. Chyba: %(excmsg)s."
 
@@ -3457,14 +3379,6 @@ msgid "Failed to retrieve active zoning configuration %s"
 msgstr "Nelze získat aktivní nastavení zónování %s"
 
 #, python-format
-msgid ""
-"Failed to set CHAP credentials on target %(target_name)s. WMI exception: "
-"%(wmi_exc)s"
-msgstr ""
-"Nelze nastavit ověřovací údaje CHAP v cíli %(target_name)s. Výjimka WMI: "
-"%(wmi_exc)s"
-
-#, python-format
 msgid "Failed to set QoS for existing volume %(name)s, Error msg: %(msg)s."
 msgstr ""
 "Nelze nastavit Qos pro existující svazek %(name)s, chybová zpráva: %(msg)s."
@@ -3607,10 +3521,6 @@ msgstr "Selhání vyhledávání SAN Fibre Channel: %(reason)s"
 #, python-format
 msgid "Fibre Channel Zone operation failed: %(reason)s"
 msgstr "Selhání zóny operací Fibre Channel: %(reason)s"
-
-#, python-format
-msgid "Fibre Channel Zoning CLI error: %(reason)s"
-msgstr "Chyba vyhrazování CLI Fibre Channel: %(reason)s"
 
 #, python-format
 msgid "Fibre Channel connection control failure: %(reason)s"
@@ -3892,9 +3802,6 @@ msgstr "Chyba při získávání oddílu podle názvu."
 msgid "Get partition by partition id error."
 msgstr "Chyba při získávání oddílu pomocí id oddílu."
 
-msgid "Get protocol from huawei conf file error."
-msgstr "Chyba získávání protokolu ze souboru s nastavením huawei."
-
 #, python-format
 msgid "Get remote device info error. %s."
 msgstr "Při získávání informací o vzdáleném zařízení nastala chyba. %s"
@@ -4045,10 +3952,6 @@ msgid ""
 msgstr ""
 "V protokolu připojení k flashsystem byla nalezena neplatná hodnota "
 "'%(prot)s': platné hodnoty jsou %(enabled)s."
-
-msgid "Illegal value specified for IOTYPE: set to either 0, 1, or 2."
-msgstr ""
-"Neplatná hodnota zadaná pro typ vstupu/výstupu: nastavte buď na 0, 1, nebo 2."
 
 msgid "Illegal value specified for smarttier: set to either 0, 1, 2, or 3."
 msgstr ""
@@ -4394,9 +4297,6 @@ msgstr ""
 msgid "Invalid reservation expiration %(expire)s."
 msgstr "Neplatné vypršení rezervace %(expire)s."
 
-msgid "Invalid resource pool name. Please check the config file."
-msgstr "Neplatný název zásoby zdroje. Prosím zkontrolujte soubor s nastavením."
-
 msgid "Invalid response header from RPC server"
 msgstr "Neplatná hlavička odpovědi od serveru RPC"
 
@@ -4646,14 +4546,6 @@ msgstr ""
 "virtuálním serveru %(vs)s přítomen svazek LUN mající funkce ssc."
 
 #, python-format
-msgid ""
-"LUNType config is wrong. LUNType must be 'Thin' or 'Thick'. LUNType: "
-"%(fetchtype)s."
-msgstr ""
-"Nastavení typu LUN je špatné. Typ musí být 'Thin' nebo 'Thick'. Zadaný typ: "
-"%(fetchtype)s."
-
-#, python-format
 msgid "Last %s cinder syslog entries:-"
 msgstr "Posledních %s položek cinder v záznamu systému:-"
 
@@ -4673,13 +4565,6 @@ msgstr "Propojený klon zdrojového svazku není podporován ve stavu: %s."
 
 msgid "Lock acquisition failed."
 msgstr "Získání zámku selhalo."
-
-#, python-format
-msgid "Login error, reason is: %s."
-msgstr "Chyba přihlášení, důvod: %s."
-
-msgid "Login error: Can not connect to server."
-msgstr "Chyba přihlášení: Nelze se připojit na server."
 
 msgid "Logout session error."
 msgstr "Chyba odhlášení sezení."
@@ -5014,22 +4899,6 @@ msgid ""
 msgstr ""
 "Nastavení NAS '%(name)s=%(value)s' je neplatné. Musí být buď 'auto', 'true', "
 "nebo 'false'"
-
-#, python-format
-msgid "NFS config 'nfs_oversub_ratio' invalid.  Must be > 0: %s."
-msgstr "Nastavení NFS 'nfs_oversub_ratio' je neplatné. Musí být > 0: %s"
-
-#, python-format
-msgid "NFS config 'nfs_oversub_ratio' invalid. Must be > 0: %s"
-msgstr "Nastavení NFS 'nfs_oversub_ratio' je neplatné. Musí být > 0: %s"
-
-#, python-format
-msgid "NFS config 'nfs_used_ratio' invalid.  Must be > 0 and <= 1.0: %s."
-msgstr "Nastavení NFS 'nfs_used_ratio' je neplatné. Musí být > 0 a <= 1.0: %s"
-
-#, python-format
-msgid "NFS config 'nfs_used_ratio' invalid. Must be > 0 and <= 1.0: %s"
-msgstr "Nastavení NFS 'nfs_used_ratio' je neplatné. Musí být > 0 a <= 1.0: %s"
 
 #, python-format
 msgid "NFS config file at %(config)s doesn't exist"
@@ -5536,14 +5405,6 @@ msgid "Pools name is not set."
 msgstr "Název zásoby není nastaven."
 
 #, python-format
-msgid ""
-"PrefetchType config is wrong. PrefetchType must be in 0,1,2,3. PrefetchType "
-"is: %(fetchtype)s."
-msgstr ""
-"Nastavení typu předběžného načtení je špatné. Typ musí být 0, 1, 2, 3. "
-"zadaný typ: %(fetchtype)s."
-
-#, python-format
 msgid "Primary copy status: %(status)s and synchronized: %(sync)s."
 msgstr "Stav hlavní kopie: %(status)s a synchronizováný: %(sync)s."
 
@@ -5597,10 +5458,6 @@ msgstr ""
 msgid "QoS specs are not supported on this storage family and ONTAP version."
 msgstr ""
 "Specifikace QoS nejsou podporovány u tohoto druhu úložišť a verze ONTAP."
-
-#, python-format
-msgid "Qos config is wrong. %(key)s must be set greater than 0."
-msgstr "Nastavení QoS je špatné. %(key)s musí být větší než 0."
 
 msgid "Qos specs still in use."
 msgstr "Specifikace QoS se stále používá."
@@ -5723,10 +5580,6 @@ msgstr ""
 "Přesun svazku s ID: %(id)s zamítnut. Prosím zkontrolujte své nastavené "
 "protože zdroj a cíl jsou ve stejné skupině svazku: %(name)s."
 
-#, python-format
-msgid "Remote detatch volume error. %s."
-msgstr "Chyba vzdáleného odpojení svazku. %s."
-
 msgid "Remove CHAP error."
 msgstr "Chyba při odstraňování CHAP."
 
@@ -5741,9 +5594,6 @@ msgstr "Chyba při odstraňování hostitele ze skupiny hostitele."
 
 msgid "Remove iscsi from host error."
 msgstr "Chyba při odstraňování iscsi z hostitele."
-
-msgid "Remove lun from Qos error."
-msgstr "Chyba při odstraňování lun z QoS."
 
 msgid "Remove lun from cache error."
 msgstr "Chyba při odstraňování lun z mezipaměti."
@@ -6428,10 +6278,6 @@ msgstr "Záložní svazek nelze smazat: %s."
 
 msgid "The failover array cannot be the primary array."
 msgstr "Záložní pole nemůže být hlavní."
-
-#, python-format
-msgid "The file copy from %(src)s to %(dest)s failed."
-msgstr "Kopírování souboru z %(src)s do %(dest)s selhalo."
 
 #, python-format
 msgid "The following elements are required: %s"
@@ -7143,14 +6989,6 @@ msgstr "Nelze mapovat svazek"
 msgid "Unable to map volume."
 msgstr "Nelze mapovat svazek."
 
-#, python-format
-msgid ""
-"Unable to mount SMBFS share: %(smbfs_share)s WMI exception: "
-"%(wmi_exc)sOptions: %(options)s"
-msgstr ""
-"Nelze připojit sdílení SMBFS: %(smbfs_share)s, výjimka WMI: %(wmi_exc)s, "
-"volby: %(options)s"
-
 msgid "Unable to parse XML request. Please provide XML in correct format."
 msgstr "Nelze zpracovat žádost XML. Zadejte prosím XML ve správném formátu."
 
@@ -7299,13 +7137,6 @@ msgstr "Neznámý směr řazení, musí být buď 'desc' nebo 'asc'."
 msgid "Unmanage volume not implemented."
 msgstr "Zrušení správy svazku není zavedeno."
 
-msgid ""
-"Unmanaged replication is not supported at this time. Please configure cinder."
-"conf for managed replication."
-msgstr ""
-"Nespravovaná replikace není v současnosti podporována. Prosím nastavte "
-"spravovanou replikaci v cinder.conf."
-
 #, python-format
 msgid "Unrecognized QOS keyword: \"%s\""
 msgstr "Nerozpoznané klíčové slovo QoS: \"%s\""
@@ -7350,10 +7181,6 @@ msgid ""
 msgstr ""
 "Nepodporovaný frimware na rozbočovači %s. Ujistěte se, že na rozbočovači je "
 "nainstalována verze 6.4 nebo vyšší."
-
-#, python-format
-msgid "Unsupported virtual disk extension: %s"
-msgstr "Nepodporovaná přípona virtuálního disku: %s"
 
 #, python-format
 msgid "Unsupported volume format: %s "
@@ -8076,19 +7903,8 @@ msgstr ""
 "Získání vlastností mapy virtuálního disku: Ve skupině vstupu/výstupu %(gid)s "
 "nebyl nalezen žádný uzel pro svazek %(vol)s."
 
-msgid "_instantiate_driver: configuration not found."
-msgstr "Zavedení ovladače: nastavení nenalezeno."
-
 msgid "_update_volume_stats: Could not get storage pool data."
 msgstr "Aktualizace statistik svazku: Nelze získat data zásoby úložiště."
-
-#, python-format
-msgid ""
-"add_disk_to_target: error adding disk associated to volume : %(vol_name)s to "
-"the target name: %(tar_name)s . WMI exception: %(wmi_exc)s"
-msgstr ""
-"Přidání disku do cíle: Chyba při přidávání disku přidruženého ke svazku: "
-"%(vol_name)s do cíle s názvem: %(tar_name)s . Výjimka WMI: %(wmi_exc)s"
 
 #, python-format
 msgid ""
@@ -8111,15 +7927,6 @@ msgstr "již vytvořeno"
 
 msgid "already_created"
 msgstr "již vytvořeno"
-
-#, python-format
-msgid ""
-"associate_initiator_with_iscsi_target: an association between initiator: "
-"%(init)s and target name: %(target)s could not be established. WMI "
-"exception: %(wmi_exc)s"
-msgstr ""
-"Přidružení zavaděče k cíli iscsi: Přidružení mezi zavaděčem: %(init)s a "
-"cílem s názvem: %(target)s nemohlo být vytvořeno. Výjimka WMI: %(wmi_exc)s"
 
 msgid "attach snapshot from remote node"
 msgstr "připojit snímek ke vzdálenému uzlu"
@@ -8247,18 +8054,6 @@ msgid "cgsnapshots changed"
 msgstr "snímky skupiny jednotnosti změněny"
 
 msgid ""
-"check_conf_file: Config file invalid. RestURL, UserName and UserPassword "
-"must be set."
-msgstr ""
-"Kontrola souboru nastavení: Soubor s nastavením je neplatný. RestURL, "
-"UserName a UserPassword musí být zadány."
-
-msgid "check_conf_file: Config file invalid. StoragePool must be set."
-msgstr ""
-"Kontrola souboru nastavení: Soubor s nastavením je neplatný. StoragePool "
-"musí být zadáno."
-
-msgid ""
 "check_for_setup_error: Password or SSH private key is required for "
 "authentication: set either san_password or san_private_key option."
 msgstr ""
@@ -8270,16 +8065,6 @@ msgstr "Kontrola chyby v nastavení: Nelze zjistit id systému."
 
 msgid "check_for_setup_error: Unable to determine system name."
 msgstr "Kontrola chyby v nastavení: Nelze zjistit název systému."
-
-#, python-format
-msgid ""
-"check_for_setup_error: the state of the WT Portal could not be verified. WMI "
-"exception: %s"
-msgstr ""
-"Kontrola chyb v nastavení: Stav portálu WT nemohl být ověřen. Výjimka WMI: %s"
-
-msgid "check_for_setup_error: there is no ISCSI traffic listening."
-msgstr "Kontrola chyb v nastavení: Přenos ISCSI není odposloucháván."
 
 msgid "check_hypermetro_exist error."
 msgstr "Chyba při kontrole existence hypermetra."
@@ -8334,38 +8119,14 @@ msgstr "Chyba při vytváření páru hypermetro."
 
 #, python-format
 msgid ""
-"create_iscsi_target: error when creating iscsi target: %(tar_name)s . WMI "
-"exception: %(wmi_exc)s"
-msgstr ""
-"Vytvoření cíle iscsi: Chyba při vytváření cíle iscsi s názvem: %(tar_name)s. "
-"Výjimka WMI: %(wmi_exc)s"
-
-#, python-format
-msgid ""
 "create_snapshot: Volume status must be \"available\" or \"in-use\" for "
 "snapshot. The invalid status is %s."
 msgstr ""
 "Vytvoření snímku: Stav svazku musí být pro vytvoření snímku \"available\" "
 "nebo \"in-use\". Neplatný stav je %s."
 
-#, python-format
-msgid ""
-"create_snapshot: error when creating the snapshot name: %(vol_name)s . WMI "
-"exception: %(wmi_exc)s"
-msgstr ""
-"Vytvoření snímku: Chyba při vytváření snímku s názvem: %(vol_name)s. Výjimka "
-"WMI: %(wmi_exc)s"
-
 msgid "create_snapshot: get source volume failed."
 msgstr "Vytvoření snímku: Získání zdrojového svazku selhalo."
-
-#, python-format
-msgid ""
-"create_volume: error when creating the volume name: %(vol_name)s . WMI "
-"exception: %(wmi_exc)s"
-msgstr ""
-"Vytvoření svazku: Chyba při vytváření svazku s názvem: %(vol_name)s. Výjimka "
-"WMI: %(wmi_exc)s"
 
 #, python-format
 msgid "create_volume_from_snapshot: Snapshot %(name)s does not exist."
@@ -8387,14 +8148,6 @@ msgid ""
 "volume."
 msgstr ""
 "Vytvoření svazku ze snímku: Velikost svazku se liší od svazku ze snímku."
-
-#, python-format
-msgid ""
-"create_volume_from_snapshot: error when creating the volume name: "
-"%(vol_name)s from snapshot name: %(snap_name)s. WMI exception: %(wmi_exc)s"
-msgstr ""
-"Vytvoření svazku ze snímku: Chyba při vytváření svazku s názvem: "
-"%(vol_name)s ze snímku s názvem %(snap_name)s. Výjimka WMI: %(wmi_exc)s"
 
 msgid "deduplicated and auto tiering can't be both enabled."
 msgstr "Automatické a deduplikující vrstvení nemůže být povoleno současně."
@@ -8426,30 +8179,6 @@ msgid "delete_initiator: %s ACL not found. Continuing."
 msgstr "Mazání iniciátora: %s ACL nenalezeno. Pokračování."
 
 #, python-format
-msgid ""
-"delete_iscsi_target: error when deleting the iscsi target associated with "
-"target name: %(target)s . WMI exception: %(wmi_exc)s"
-msgstr ""
-"Mazání cíle iscsi: Chyba při mazání cíle iscsi s názvem: %(target)s. Výjimka "
-"WMI: %(wmi_exc)s"
-
-#, python-format
-msgid ""
-"delete_snapshot: error when deleting the snapshot name: %(snap_name)s . WMI "
-"exception: %(wmi_exc)s"
-msgstr ""
-"Mazání snímku: Chyba při mazání snímku s názvem: %(snap_name)s. Výjimka WMI: "
-"%(wmi_exc)s"
-
-#, python-format
-msgid ""
-"delete_volume: error when deleting the volume name: %(vol_name)s . WMI "
-"exception: %(wmi_exc)s"
-msgstr ""
-"Mazání svazku: Chyba při mazání svazku s názvem: %(vol_name)s. Výjimka WMI: "
-"%(wmi_exc)s"
-
-#, python-format
 msgid "deleting snapshot %(snapshot_name)s that has dependent volumes"
 msgstr "mazání snímku %(snapshot_name)s který má nezávislé svazky"
 
@@ -8476,14 +8205,6 @@ msgid ""
 msgstr ""
 "chyba při zápisu objektu do swift, MD5 objektu ve swift %(etag)s se liší od "
 "MD5 objektu odeslaného do swift %(md5)s"
-
-#, python-format
-msgid ""
-"extend: error when extending the volume: %(vol_name)s .WMI exception: "
-"%(wmi_exc)s"
-msgstr ""
-"Rozšíření: Chyba při rozšiřování svazku: %(vol_name)s . Výjimka WMI: "
-"%(wmi_exc)s"
 
 msgid "extend_volume: Extending a volume with snapshots is not supported."
 msgstr "Rozšíření svazku: Rozšíření svazku mající snímky není podporováno."
@@ -8526,22 +8247,6 @@ msgstr "fmt=%(fmt)s zálohováno:%(backing_file)s"
 
 msgid "force delete"
 msgstr "vynutit smazání"
-
-#, python-format
-msgid ""
-"get_host_information: the ISCSI target information could not be retrieved. "
-"WMI exception: %s"
-msgstr ""
-"Získávání informací o hostiteli: Informace o cíli ISCSI nemohly být získány. "
-"Výjimka WMI: %s"
-
-#, python-format
-msgid ""
-"get_host_information: the state of the WT Portal could not be verified. WMI "
-"exception: %s"
-msgstr ""
-"Získávání informací o hostiteli: Stav portálu WT nemohl být ověřen. Výjimka "
-"WMI: %s"
 
 msgid "get_hyper_domain_id error."
 msgstr "chyb při získávání id domény hypermetra."
@@ -8776,14 +8481,6 @@ msgstr "Python knihovny rados a rbd nebyly nalezeny"
 #, python-format
 msgid "read_deleted can only be one of 'no', 'yes' or 'only', not %r"
 msgstr "read_deleted může být buď 'no', 'yes' nebo 'only', ne %r"
-
-#, python-format
-msgid ""
-"remove_iscsi_target: error when deleting iscsi target: %(tar_name)s . WMI "
-"exception: %(wmi_exc)s"
-msgstr ""
-"Odstranění cíle iscsi: Chyba při odstraňování cíle iscsi s názvem: "
-"%(tar_name)s. Výjimka WMI: %(wmi_exc)s"
 
 #, python-format
 msgid ""

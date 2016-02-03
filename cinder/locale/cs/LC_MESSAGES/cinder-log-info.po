@@ -7,9 +7,9 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b2.dev281\n"
+"Project-Id-Version: cinder 8.0.0.0b3.dev67\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-01-17 23:35+0000\n"
+"POT-Creation-Date: 2016-02-03 06:29+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -119,9 +119,6 @@ msgstr "Přijímání přenosu %s"
 
 msgid "Activate Flexvisor cinder volume driver."
 msgstr "Aktivovat ovladač Flexvisor pro svazek cinder."
-
-msgid "Add Connection: Finished iterating over all target list"
-msgstr "Přidání připojení: Dokončena iterace seznamem cílů"
 
 #, python-format
 msgid "Add volume response: %s"
@@ -233,14 +230,6 @@ msgstr "Zahájení odpojení svazku úspěšně dokončeno."
 #, python-format
 msgid "Body: %s"
 msgstr "Tělo: %s"
-
-#, python-format
-msgid "BrcdFCZoneDriver - Add connection for I-T map: %s"
-msgstr "BrcdFCZoneDriver - Přidáno připojení pro mapu I-T: %s"
-
-#, python-format
-msgid "BrcdFCZoneDriver - Delete connection for I-T map: %s"
-msgstr "BrcdFCZoneDriver - Smazáno připojení pro mapu I-T: %s"
 
 msgid "CHAP authentication disabled."
 msgstr "Ověření pomocí CHAP zakázáno."
@@ -575,10 +564,6 @@ msgstr ""
 "poskytování: %(provisioning)s, vrstvení: %(tiering)s "
 
 #, python-format
-msgid "Create a new lun %s for migration."
-msgstr "Vytváření nového lun %s pro přesun."
-
-#, python-format
 msgid ""
 "Create a replica from Volume: Clone Volume: %(cloneName)s Source Volume: "
 "%(sourceName)s."
@@ -638,14 +623,6 @@ msgstr "Vytvořit cílovou skupinu jednotnosti %(targetCg)s."
 #, python-format
 msgid "Create volume of %s GB"
 msgstr "Vytvořit svazek o %s GB"
-
-#, python-format
-msgid "Create volume option: %s."
-msgstr "Volba vytvoření svazku: %s."
-
-#, python-format
-msgid "Create volume: %(volume)s, size: %(size)s."
-msgstr "Vytvoření svazku: %(volume)s, velikost: %(size)s."
 
 #, python-format
 msgid ""
@@ -859,10 +836,6 @@ msgstr "Mazání snímku %(snap_name)s skupiny jednotnosti: %(group_name)s"
 msgid "Delete cgsnapshot with id: %s"
 msgstr "Smazání snímku skupiny jednotnosti s id: %s"
 
-#, python-format
-msgid "Delete connection Target List: %s"
-msgstr "Seznam cílů připojení %s smazán"
-
 msgid "Delete consistency group completed successfully."
 msgstr "Smazání skupiny jednotnosti úspěšně dokončeno."
 
@@ -905,10 +878,6 @@ msgstr "Žádost o smazání svazku úspěšně vytvořena."
 #, python-format
 msgid "Delete volume with id: %s"
 msgstr "Smazat svazek s id: %s"
-
-#, python-format
-msgid "Delete volume: %(name)s, array lun id: %(lun_id)s."
-msgstr "Smazání svazku: %(name)s, ID pole lun: %(lun_id)s."
 
 #, python-format
 msgid "Deleted %(row)d rows from table=%(table)s"
@@ -1133,13 +1102,6 @@ msgid "Extend volume request issued successfully."
 msgstr "Žádost o rozšíření svazku úspěšně vytvořena."
 
 #, python-format
-msgid ""
-"Extend volume: %(volumename)s, oldsize: %(oldsize)s  newsize: %(newsize)s."
-msgstr ""
-"Rozšíření svazku: %(volumename)s, stará velikost: %(oldsize)s, nová "
-"velikost: %(newsize)s."
-
-#, python-format
 msgid "Extending volume %s."
 msgstr "Rozšiřování svazku %s."
 
@@ -1187,14 +1149,6 @@ msgstr "Filtr %(cls_name)s vrátil %(obj_len)d hostitelů"
 #, python-format
 msgid "Filtered targets for SAN is: %s"
 msgstr "Filtrované cíle pro SAN jsou: %s"
-
-#, python-format
-msgid "Final filtered map for delete connection: %s"
-msgstr "Konečná filtrovaná mapa pro smazání připojení: %s"
-
-#, python-format
-msgid "Final filtered map for fabric: %s"
-msgstr "Konečná filtrovaná mapa pro fabric: %s"
 
 #, python-format
 msgid "Fixing previous mount %s which was not unmounted correctly."
@@ -1528,10 +1482,6 @@ msgstr ""
 "Modul PyWBEM není nainstalován. Nainstalujte ho pomocí balíčku python-pywbem."
 
 #, python-format
-msgid "Mounting share: %s"
-msgstr "Připojování sdílení %s"
-
-#, python-format
 msgid "Mounting volume: %s ..."
 msgstr "Připojování svazku: %s ..."
 
@@ -1618,10 +1568,6 @@ msgstr "Nenalezeny žádné informace balíčku %(pkg)s pomocí rpm."
 #, python-format
 msgid "No snapshot found for %(cgsnapshot)s."
 msgstr "Pro %(cgsnapshot)s nebyl nalezen žádný snímek."
-
-#, python-format
-msgid "No targets to add or remove connection for I: %s"
-msgstr "Žádné cíle pro přidání nebo odstranění připojení pro zavaděč %s"
 
 #, python-format
 msgid "No volume found for CG: %(cg)s."
@@ -2430,10 +2376,6 @@ msgid "The QoS sepcs is: %s."
 msgstr "Specifikace QoS jsou %s."
 
 #, python-format
-msgid "The iSCSI target %(target_name)s already exists."
-msgstr "Cíl iSCSI %(target_name)s již existuje."
-
-#, python-format
 msgid ""
 "The image was successfully converted, but image size is unavailable. src "
 "%(src)s, dest %(dest)s. %(error)s"
@@ -2508,14 +2450,6 @@ msgid ""
 msgstr ""
 "Pro snímek svazku %(snap)s neexistuje žádný bod snímku. Záloha pro svazek "
 "%(vol)s nebude vytvořena."
-
-#, python-format
-msgid ""
-"Timeout is not configured in huawei conf file. Use default: "
-"%(default_timeout)d."
-msgstr ""
-"Časový limit není v souboru huawei.conf nastaven. Použit výchozí: "
-"%(default_timeout)d."
 
 #, python-format
 msgid "Toggle storage_vnx_ip_address from %(old)s to %(new)s."
@@ -2686,20 +2620,12 @@ msgstr "Použít ALUA při přidávání zavaděče k hostiteli."
 msgid "Use CHAP when adding initiator to host."
 msgstr "Použít CHAP při přidávání zavaděče k hostiteli."
 
-msgid "Use default PrefetchType. PrefetchType: Intelligent."
-msgstr ""
-"Použít výchozí typ předběžného načtení. Typ předběžného načtení: Intelligent."
-
 #, python-format
 msgid ""
 "Using FC Zone Manager %(zm_version)s, Driver %(drv_name)s %(drv_version)s."
 msgstr ""
 "Používán správce zóny FC %(zm_version)s, ovladač %(drv_name)s "
 "%(drv_version)s."
-
-#, python-format
-msgid "Using FC lookup service %s"
-msgstr "Použita služba vyhledávání FC %s"
 
 #, python-format
 msgid "Using compute cluster(s): %s."
@@ -2913,14 +2839,6 @@ msgstr "WWPN na uzlu %(node)s: %(wwpn)s."
 
 #, python-format
 msgid ""
-"Wait interval for %(event_type)s is not configured in huawei conf file. Use "
-"default: %(default_wait_interval)d."
-msgstr ""
-"Interval čekání pro %(event_type)s není v souboru huawei.conf nastaven. "
-"Použit výchozí: %(default_wait_interval)d."
-
-#, python-format
-msgid ""
 "Waiting for volume expansion of %(vol)s to complete, current remaining "
 "actions are %(action)s. ETA: %(eta)s mins."
 msgstr ""
@@ -2936,10 +2854,6 @@ msgstr "Čeká se na ověření nastaveného hesla internetovou službou."
 #, python-format
 msgid "Will clone a volume from the image volume %(id)s."
 msgstr "Svazek bude klonován ze svazku obrazu %(id)s."
-
-#, python-format
-msgid "XML exception reading parameter: %s"
-msgstr "Při čtení parametru se vyskytla výjimka XML: %s"
 
 #, python-format
 msgid "XtremIO SW version %s"
@@ -3036,11 +2950,6 @@ msgid ""
 msgstr ""
 "Vytvořit skupinu hostitele s kontrolou, název skupiny hostitele: %(name)s, "
 "id skupiny hostitele: %(id)s"
-
-#, python-format
-msgid "create_snapshot:snapshot name: %(snapshot)s, volume name: %(volume)s."
-msgstr ""
-"Vytvoření snímku: Název snímku: %(snapshot)s, název svazku: %(volume)s."
 
 #, python-format
 msgid "create_volume: create_lu returns %s"
