@@ -961,7 +961,6 @@ class HPE3PARBaseDriver(object):
                 self.standard_logout)
             self.assertIsNone(return_model)
 
-    @mock.patch('hpe3parclient.version', "4.0.2")
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_create_volume_replicated_managed_periodic(self,
                                                        _mock_volume_types):
@@ -1048,7 +1047,6 @@ class HPE3PARBaseDriver(object):
                               'provider_location': self.CLIENT_ID},
                              return_model)
 
-    @mock.patch('hpe3parclient.version', "4.0.2")
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_create_volume_replicated_managed_sync(self,
                                                    _mock_volume_types):
@@ -1130,7 +1128,6 @@ class HPE3PARBaseDriver(object):
                               'provider_location': self.CLIENT_ID},
                              return_model)
 
-    @mock.patch('hpe3parclient.version', "4.0.2")
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_create_volume_replicated_unmanaged_periodic(self,
                                                          _mock_volume_types):
@@ -1219,7 +1216,6 @@ class HPE3PARBaseDriver(object):
                               'provider_location': self.CLIENT_ID},
                              return_model)
 
-    @mock.patch('hpe3parclient.version', "4.0.2")
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_create_volume_replicated_unmanaged_sync(self,
                                                      _mock_volume_types):
@@ -1842,6 +1838,7 @@ class HPE3PARBaseDriver(object):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
+        mock_client.getVolume.return_value = {'name': mock.ANY}
         mock_client.copyVolume.return_value = {'taskid': 1}
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
@@ -1854,13 +1851,22 @@ class HPE3PARBaseDriver(object):
                       'host': volume_utils.append_host(self.FAKE_HOST,
                                                        HPE3PAR_CPG2),
                       'source_volid': HPE3PARBaseDriver.VOLUME_ID}
-            src_vref = {'id': HPE3PARBaseDriver.VOLUME_ID}
+            src_vref = {'id': HPE3PARBaseDriver.VOLUME_ID,
+                        'name': HPE3PARBaseDriver.VOLUME_NAME}
             model_update = self.driver.create_cloned_volume(volume, src_vref)
             self.assertIsNone(model_update)
 
+            common = hpecommon.HPE3PARCommon(None)
+            vol_name = common._get_3par_vol_name(src_vref['id'])
+            # snapshot name is random
+            snap_name = mock.ANY
+            optional = mock.ANY
+
             expected = [
+                mock.call.createSnapshot(snap_name, vol_name, optional),
+                mock.call.getVolume(snap_name),
                 mock.call.copyVolume(
-                    self.VOLUME_3PAR_NAME,
+                    snap_name,
                     'osv-0DM4qZEVSKON-AAAAAAAAA',
                     HPE3PAR_CPG2,
                     {'snapCPG': 'OpenStackCPGSnap', 'tpvv': True,
@@ -1875,12 +1881,14 @@ class HPE3PARBaseDriver(object):
     def test_create_cloned_qos_volume(self, _mock_volume_types):
         _mock_volume_types.return_value = self.RETYPE_VOLUME_TYPE_2
         mock_client = self.setup_driver()
+        mock_client.getVolume.return_value = {'name': mock.ANY}
         mock_client.copyVolume.return_value = {'taskid': 1}
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
             mock_create_client.return_value = mock_client
 
-            src_vref = {'id': HPE3PARBaseDriver.CLONE_ID}
+            src_vref = {'id': HPE3PARBaseDriver.CLONE_ID,
+                        'name': HPE3PARBaseDriver.VOLUME_NAME}
             volume = self.volume_qos.copy()
             host = "TEST_HOST"
             pool = "TEST_POOL"
@@ -1892,10 +1900,18 @@ class HPE3PARBaseDriver(object):
             model_update = self.driver.create_cloned_volume(volume, src_vref)
             self.assertIsNone(model_update)
 
+            # creation of the temp snapshot
+            common = hpecommon.HPE3PARCommon(None)
+            snap_name = mock.ANY
+            vol_name = common._get_3par_vol_name(src_vref['id'])
+            optional = mock.ANY
+
             expected = [
+                mock.call.createSnapshot(snap_name, vol_name, optional),
+                mock.call.getVolume(snap_name),
                 mock.call.getCPG(expected_cpg),
                 mock.call.copyVolume(
-                    'osv-0DM4qZEVSKON-AAAAAAAAA',
+                    snap_name,
                     self.VOLUME_3PAR_NAME,
                     expected_cpg,
                     {'snapCPG': 'OpenStackCPGSnap', 'tpvv': True,
@@ -2789,7 +2805,6 @@ class HPE3PARBaseDriver(object):
                               self.volume,
                               str(new_size))
 
-    @mock.patch('hpe3parclient.version', "4.0.2")
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_extend_volume_replicated(self, _mock_volume_types):
         # Managed vs. unmanaged and periodic vs. sync are not relevant when
@@ -4252,7 +4267,6 @@ class HPE3PARBaseDriver(object):
                 expected +
                 self.standard_logout)
 
-    @mock.patch('hpe3parclient.version', "4.0.2")
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_replication_enable_not_in_rcopy(self, _mock_volume_types):
         # Managed vs. unmanaged and periodic vs. sync are not relevant when
@@ -4328,7 +4342,6 @@ class HPE3PARBaseDriver(object):
                               'provider_location': self.CLIENT_ID},
                              return_model)
 
-    @mock.patch('hpe3parclient.version', "4.0.2")
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_replication_enable_in_rcopy(self, _mock_volume_types):
         # Managed vs. unmanaged and periodic vs. sync are not relevant when
@@ -4378,7 +4391,6 @@ class HPE3PARBaseDriver(object):
                               'provider_location': self.CLIENT_ID},
                              return_model)
 
-    @mock.patch('hpe3parclient.version', "4.0.2")
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_replication_enable_non_replicated_type(self, _mock_volume_types):
         # Managed vs. unmanaged and periodic vs. sync are not relevant when
@@ -4405,7 +4417,6 @@ class HPE3PARBaseDriver(object):
                 context.get_admin_context(),
                 self.volume_replicated)
 
-    @mock.patch('hpe3parclient.version', "4.0.2")
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_replication_disable(self, _mock_volume_types):
         # Managed vs. unmanaged and periodic vs. sync are not relevant when
@@ -4453,7 +4464,6 @@ class HPE3PARBaseDriver(object):
             self.assertEqual({'replication_status': 'disabled'},
                              return_model)
 
-    @mock.patch('hpe3parclient.version', "4.0.2")
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_replication_disable_fail(self, _mock_volume_types):
         # Managed vs. unmanaged and periodic vs. sync are not relevant when
@@ -4503,7 +4513,6 @@ class HPE3PARBaseDriver(object):
             self.assertEqual({'replication_status': 'disable_failed'},
                              return_model)
 
-    @mock.patch('hpe3parclient.version', "4.0.2")
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_replication_disable_non_replicated_type(self, _mock_volume_types):
         # Managed vs. unmanaged and periodic vs. sync are not relevant when
@@ -4530,7 +4539,6 @@ class HPE3PARBaseDriver(object):
                 context.get_admin_context(),
                 self.volume_replicated)
 
-    @mock.patch('hpe3parclient.version', "4.0.2")
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_list_replication_targets(self, _mock_volume_types):
         # Managed vs. unmanaged and periodic vs. sync are not relevant when
@@ -4585,7 +4593,6 @@ class HPE3PARBaseDriver(object):
                               'targets': targets},
                              return_model)
 
-    @mock.patch('hpe3parclient.version', "4.0.2")
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_list_replication_targets_non_replicated_type(self,
                                                           _mock_volume_types):
@@ -4621,7 +4628,6 @@ class HPE3PARBaseDriver(object):
 
             self.assertEqual([], return_model)
 
-    @mock.patch('hpe3parclient.version', "4.0.2")
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_replication_failover_managed(self, _mock_volume_types):
         # periodic vs. sync is not relevant when conducting a failover. We
@@ -4705,7 +4711,6 @@ class HPE3PARBaseDriver(object):
                 self.volume_replicated,
                 valid_target_device_id)
 
-    @mock.patch('hpe3parclient.version', "4.0.2")
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_replication_failover_unmanaged(self, _mock_volume_types):
         # periodic vs. sync is not relevant when conducting a failover. We
