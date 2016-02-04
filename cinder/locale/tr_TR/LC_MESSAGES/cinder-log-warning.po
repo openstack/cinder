@@ -7,9 +7,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b3.dev67\n"
+"Project-Id-Version: cinder 8.0.0.0b3.dev72\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-02-03 06:29+0000\n"
+"POT-Creation-Date: 2016-02-03 23:18+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -836,14 +836,6 @@ msgid "Not deleting key %s"
 msgstr "%s anahtarı silinmiyor"
 
 #, python-format
-msgid ""
-"Only one volume remains in storage group %(sgname)s. Driver will attempt "
-"cleanup."
-msgstr ""
-"%(sgname)s depolama grubunda yalnızca bir mantıksal sürücü kalıyor. Sürücü "
-"temizleme girişiminde bulunacak."
-
-#, python-format
 msgid "Persistence file already exists for volume, found file at: %s"
 msgstr ""
 "Kalıcılık dosyası mantıksal sürücü için zaten mevcut, dosya şurada bulundu: "
@@ -1171,10 +1163,6 @@ msgstr "Maskeleme görünümü bulunamadı: %(view)s."
 #, python-format
 msgid "Unable to find snapshot %s"
 msgstr "%s anlık görüntüsü bulunamadı"
-
-#, python-format
-msgid "Unable to get masking view %(maskingView)s from storage group."
-msgstr "Depolama grubundan maskeleme görünümü %(maskingView)s alınamadı."
 
 msgid "Unable to get rados pool stats."
 msgstr "Rados havuz istatistikleri alınamıyor."

@@ -10,9 +10,9 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b3.dev67\n"
+"Project-Id-Version: cinder 8.0.0.0b3.dev72\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-02-03 06:29+0000\n"
+"POT-Creation-Date: 2016-02-03 23:17+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -214,10 +214,6 @@ msgstr "%s není nainstalováno."
 #, python-format
 msgid "%s is not set"
 msgstr "%s není nastaveno"
-
-#, python-format
-msgid "%s is not set and is required for the replicaiton device to be valid."
-msgstr "%s není nastaveno a pro platnost zařízení replikace je povinné."
 
 #, python-format
 msgid "%s is not set."
