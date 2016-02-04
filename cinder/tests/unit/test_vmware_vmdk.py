@@ -878,9 +878,13 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         # Test with available volume.
         vol['status'] = 'available'
         vol['volume_attachment'] = None
-        self.assertFalse(self._driver._in_use(vol))
+        self.assertIsNone(self._driver._in_use(vol))
+
         vol['volume_attachment'] = []
-        self.assertFalse(self._driver._in_use(vol))
+        ret = self._driver._in_use(vol)
+        # _in_use returns [] here
+        self.assertFalse(ret)
+        self.assertEqual(0, len(ret))
 
     def _test_retype(self, ds_sel, vops, get_volume_type_extra_specs,
                      get_volume_group_folder, genereate_uuid,

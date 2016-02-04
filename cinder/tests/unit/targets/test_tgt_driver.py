@@ -121,11 +121,11 @@ class TestTgtAdmDriver(tf.TargetDriverFixture):
 
         # Test the failure case
         mock_execute.side_effect = putils.ProcessExecutionError
-        self.assertFalse(self.target._recreate_backing_lun(
-            self.test_vol,
-            '1',
-            self.testvol['name'],
-            self.testvol_path))
+        self.assertIsNone(
+            self.target._recreate_backing_lun(self.test_vol,
+                                              '1',
+                                              self.testvol['name'],
+                                              self.testvol_path))
 
     def test_get_iscsi_target(self):
         ctxt = context.get_admin_context()
