@@ -105,7 +105,7 @@ class HackingTestCase(test.TestCase):
             "msg = _('My message')",
             "cinder.tests.unit/other_files.py"))))
         self.assertEqual(0, len(list(checks.check_explicit_underscore_import(
-            "from cinder.i18n import _, _LW",
+            "from cinder.i18n import _LE, _, _LW",
             "cinder.tests.unit/other_files2.py"))))
         self.assertEqual(0, len(list(checks.check_explicit_underscore_import(
             "msg = _('My message')",
@@ -120,6 +120,12 @@ class HackingTestCase(test.TestCase):
         self.assertEqual(0, len(list(checks.check_explicit_underscore_import(
             "LOG.info('My info message')",
             "cinder.tests.unit/other_files4.py"))))
+        self.assertEqual(0, len(list(checks.check_explicit_underscore_import(
+            "from cinder.i18n import _LW",
+            "cinder.tests.unit/other_files5.py"))))
+        self.assertEqual(1, len(list(checks.check_explicit_underscore_import(
+            "msg = _('My message')",
+            "cinder.tests.unit/other_files5.py"))))
 
     # We are patching pep8 so that only the check under test is actually
     # installed.
