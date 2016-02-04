@@ -216,13 +216,14 @@ class VZStorageTestCase(test.TestCase):
         drv._check_extend_volume_support = mock.Mock(return_value=True)
         drv._is_file_size_equal = mock.Mock(return_value=True)
 
-        snap_info = """{"volume_format": "raw",
-                        "active": "%s"}""" % self.vol.id
-        with mock.patch.object(drv, 'local_path',
-                               return_value=self._FAKE_VOLUME_PATH):
-            with mock.patch.object(drv, '_read_file',
-                                   return_value=snap_info):
-                drv.extend_volume(self.vol, 10)
+        snap_info = '{"active": "%s"}' % self.vol.id
+        with mock.patch.object(drv, 'get_volume_format',
+                               return_value="raw"):
+            with mock.patch.object(drv, 'local_path',
+                                   return_value=self._FAKE_VOLUME_PATH):
+                with mock.patch.object(drv, '_read_file',
+                                       return_value=snap_info):
+                    drv.extend_volume(self.vol, 10)
 
         mock_resize_image.assert_called_once_with(self._FAKE_VOLUME_PATH, 10)
 
@@ -263,7 +264,10 @@ class VZStorageTestCase(test.TestCase):
     def test_copy_volume_from_snapshot(self, mock_convert_image):
         drv = self._vz_driver
 
-        fake_volume_info = {self._FAKE_SNAPSHOT_ID: 'fake_snapshot_file_name'}
+        fake_volume_info = {self._FAKE_SNAPSHOT_ID: 'fake_snapshot_file_name',
+                            'backing-files':
+                            {self._FAKE_SNAPSHOT_ID:
+                             self._FAKE_VOLUME_NAME}}
         fake_img_info = mock.MagicMock()
         fake_img_info.backing_file = self._FAKE_VOLUME_NAME
 

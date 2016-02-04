@@ -747,6 +747,24 @@ class RemoteFSSnapDriverBase(RemoteFSDriver, driver.SnapshotVD):
 
         return json.loads(self._read_file(info_path))
 
+    def _get_higher_image_path(self, snapshot):
+        volume = snapshot.volume
+        info_path = self._local_path_volume_info(volume)
+        snap_info = self._read_info_file(info_path)
+
+        snapshot_file = snap_info[snapshot.id]
+        active_file = self.get_active_image_from_info(volume)
+        active_file_path = os.path.join(self._local_volume_dir(volume),
+                                        active_file)
+        backing_chain = self._get_backing_chain_for_path(
+            volume, active_file_path)
+        higher_file = next((os.path.basename(f['filename'])
+                            for f in backing_chain
+                            if f.get('backing-filename', '') ==
+                            snapshot_file),
+                           None)
+        return higher_file
+
     def _get_backing_chain_for_path(self, volume, path):
         """Returns list of dicts containing backing-chain information.
 
@@ -1018,7 +1036,6 @@ class RemoteFSSnapDriverBase(RemoteFSDriver, driver.SnapshotVD):
 
         # Find what file has this as its backing file
         active_file = self.get_active_image_from_info(snapshot.volume)
-        active_file_path = os.path.join(vol_path, active_file)
 
         if volume_status == 'in-use':
             # Online delete
@@ -1065,15 +1082,9 @@ class RemoteFSSnapDriverBase(RemoteFSDriver, driver.SnapshotVD):
             #   exist, not   | committed down) |  exist, needs  |
             #   used here)   |                 |   ptr update)  |
 
-            backing_chain = self._get_backing_chain_for_path(
-                snapshot.volume, active_file_path)
             # This file is guaranteed to exist since we aren't operating on
             # the active file.
-            higher_file = next((os.path.basename(f['filename'])
-                                for f in backing_chain
-                                if f.get('backing-filename', '') ==
-                                snapshot_file),
-                               None)
+            higher_file = self._get_higher_image_path(snapshot)
             if higher_file is None:
                 msg = _('No file found with %s as backing file.') %\
                     snapshot_file
@@ -1132,18 +1143,19 @@ class RemoteFSSnapDriverBase(RemoteFSDriver, driver.SnapshotVD):
             new qcow2 file
         :param new_snap_path: filename of new qcow2 file
         """
-
         backing_path_full_path = os.path.join(
             self._local_volume_dir(snapshot.volume),
             backing_filename)
-
-        command = ['qemu-img', 'create', '-f', 'qcow2', '-o',
-                   'backing_file=%s' % backing_path_full_path, new_snap_path]
-        self._execute(*command, run_as_root=self._execute_as_root)
-
         info = self._qemu_img_info(backing_path_full_path,
                                    snapshot.volume.name)
         backing_fmt = info.file_format
+
+        command = ['qemu-img', 'create', '-f', 'qcow2', '-o',
+                   'backing_file=%s,backing_fmt=%s' %
+                   (backing_path_full_path, backing_fmt),
+                   new_snap_path,
+                   "%dG" % snapshot.volume.size]
+        self._execute(*command, run_as_root=self._execute_as_root)
 
         command = ['qemu-img', 'rebase', '-u',
                    '-b', backing_filename,

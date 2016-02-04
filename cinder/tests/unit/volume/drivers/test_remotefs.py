@@ -208,8 +208,11 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
                                          self._fake_volume.name,
                                          self._fake_snapshot_path)
         command1 = ['qemu-img', 'create', '-f', 'qcow2', '-o',
-                    'backing_file=%s' % fake_backing_path,
-                    self._fake_snapshot_path]
+                    'backing_file=%s,backing_fmt=%s' %
+                    (fake_backing_path,
+                     mock.sentinel.backing_fmt),
+                    self._fake_snapshot_path,
+                    "%dG" % self._fake_volume.size]
         command2 = ['qemu-img', 'rebase', '-u',
                     '-b', self._fake_volume.name,
                     '-F', mock.sentinel.backing_fmt,
