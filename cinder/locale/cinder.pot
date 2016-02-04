@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b3.dev67\n"
+"Project-Id-Version: cinder 8.0.0.0b3.dev72\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-02-03 07:03+0000\n"
+"POT-Creation-Date: 2016-02-04 06:37+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -5651,21 +5651,21 @@ msgstr ""
 msgid "Socket error: %(arg)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_iscsi.py:203
+#: cinder/volume/drivers/emc/emc_vmax_iscsi.py:204
 #, python-format
 msgid "Unsuccessful iscsiadm. Exception is %(ex)s. "
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_iscsi.py:207
+#: cinder/volume/drivers/emc/emc_vmax_iscsi.py:208
 msgid "iscsiadm execution failed. "
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_iscsi.py:239
+#: cinder/volume/drivers/emc/emc_vmax_iscsi.py:240
 #, python-format
 msgid "Could not find iSCSI export  for volume %(volumeName)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_iscsi.py:250
+#: cinder/volume/drivers/emc/emc_vmax_iscsi.py:251
 #, python-format
 msgid "Cannot find device number for volume %(volumeName)s."
 msgstr ""
@@ -5794,22 +5794,22 @@ msgid ""
 "Error: %(error)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_masking.py:1989
+#: cinder/volume/drivers/emc/emc_vmax_masking.py:2056
 #, python-format
 msgid "Masking view %(maskingViewName)s was not deleted successfully"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_masking.py:2070
+#: cinder/volume/drivers/emc/emc_vmax_masking.py:2137
 #, python-format
 msgid "Storage group %(sgGroupName)s does not exist."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_masking.py:2304
+#: cinder/volume/drivers/emc/emc_vmax_masking.py:2371
 #, python-format
 msgid "Storage group %(storageGroupName)s was not deleted successfully"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_masking.py:2338
+#: cinder/volume/drivers/emc/emc_vmax_masking.py:2405
 #, python-format
 msgid ""
 "Error Deleting Group: %(storageGroupName)s. Return code: %(rc)lu.  Error:"
@@ -7192,7 +7192,7 @@ msgstr ""
 #: cinder/volume/drivers/hpe/hpe_3par_common.py:300
 #: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:354
 #, python-format
-msgid "%s is not set and is required for the replicaiton device to be valid."
+msgid "%s is not set and is required for the replication device to be valid."
 msgstr ""
 
 #: cinder/volume/drivers/hpe/hpe_3par_common.py:316

@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b3.dev67\n"
+"Project-Id-Version: cinder 8.0.0.0b3.dev72\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-02-03 07:03+0000\n"
+"POT-Creation-Date: 2016-02-04 06:38+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -890,7 +890,7 @@ msgstr ""
 msgid "Unable to get storage tiers from tier policy rule."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_fc.py:250
+#: cinder/volume/drivers/emc/emc_vmax_fc.py:251
 #, python-format
 msgid "Volume %(volume)s is not in any masking view."
 msgstr ""
@@ -923,25 +923,13 @@ msgid ""
 " the FAST Policy."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_masking.py:1801
-#, python-format
-msgid ""
-"Only one volume remains in storage group %(sgname)s. Driver will attempt "
-"cleanup."
-msgstr ""
-
-#: cinder/volume/drivers/emc/emc_vmax_masking.py:1807
-#, python-format
-msgid "Unable to get masking view %(maskingView)s from storage group."
-msgstr ""
-
-#: cinder/volume/drivers/emc/emc_vmax_masking.py:2122
+#: cinder/volume/drivers/emc/emc_vmax_masking.py:2189
 #, python-format
 msgid "No target ports found in masking view %(maskingView)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vmax_masking.py:2189
-#: cinder/volume/drivers/emc/emc_vmax_masking.py:2208
+#: cinder/volume/drivers/emc/emc_vmax_masking.py:2256
+#: cinder/volume/drivers/emc/emc_vmax_masking.py:2275
 #, python-format
 msgid "No port group found in masking view %(mv)s."
 msgstr ""
