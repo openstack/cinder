@@ -284,7 +284,7 @@ class VZStorageTestCase(test.TestCase):
             self.snap, self.vol,
             self.vol['size'])
         drv._extend_volume.assert_called_once_with(
-            self.vol, self.vol['size'])
+            self.vol, self.vol['size'], 'raw')
         mock_convert_image.assert_called_once_with(
             self._FAKE_VOLUME_PATH, self._FAKE_VOLUME_PATH[:-1], 'raw')
 

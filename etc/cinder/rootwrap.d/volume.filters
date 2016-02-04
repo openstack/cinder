@@ -202,6 +202,7 @@ vgc-cluster: CommandFilter, vgc-cluster, root
 # cinder/volume/drivers/vzstorage.py
 pstorage-mount: CommandFilter, pstorage-mount, root
 pstorage: CommandFilter, pstorage, root
+ploop: CommandFilter, ploop, root
 
 # initiator/connector.py:
 drv_cfg: CommandFilter, /opt/emc/scaleio/sdc/bin/drv_cfg, root, /opt/emc/scaleio/sdc/bin/drv_cfg, --query_guid
