@@ -68,8 +68,12 @@ class HnasBackend(object):
                     LOG.debug("SSC connection error!")
                     msg = _("Failed to establish SSC connection.")
                     raise exception.HNASConnError(msg)
+                elif 'Connection reset' in e.stderr:
+                    LOG.debug("HNAS connection reset!")
+                    msg = _("HNAS has disconnected SSC")
+                    raise exception.HNASConnError(msg)
                 else:
-                    raise putils.ProcessExecutionError
+                    raise
 
         else:
             if self.drv_configs['cluster_admin_ip0'] is None:

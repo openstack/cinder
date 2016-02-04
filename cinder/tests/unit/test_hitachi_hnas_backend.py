@@ -240,6 +240,8 @@ File System : fs1                     \n\
 File System Mounted : YES             \n\
 Logical Unit Mounted: No"
 
+HNAS_RESULT27 = "Connection reset"
+
 
 HNAS_CMDS = {
     ('ssh', '0.0.0.0', 'supervisor', 'supervisor', 'evsfs', 'list'):
@@ -370,6 +372,14 @@ class HDSHNASBendTest(test.TestCase):
         # Test exception throwing when not using SSH
         m_utl.side_effect = putils.ProcessExecutionError(stdout='',
                                                          stderr=HNAS_RESULT22,
+                                                         exit_code=255)
+        self.hnas_bend.drv_configs['ssh_enabled'] = 'False'
+        self.assertRaises(exception.HNASConnError, self.hnas_bend.run_cmd,
+                          'ssh', '0.0.0.0', 'supervisor', 'supervisor',
+                          'df', '-a')
+
+        m_utl.side_effect = putils.ProcessExecutionError(stdout='',
+                                                         stderr=HNAS_RESULT27,
                                                          exit_code=255)
         self.hnas_bend.drv_configs['ssh_enabled'] = 'False'
         self.assertRaises(exception.HNASConnError, self.hnas_bend.run_cmd,
