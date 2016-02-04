@@ -15,6 +15,8 @@
 #
 
 """Unit tests for brcd fc zone client http(s)."""
+import time
+
 from mock import patch
 
 from cinder import exception
@@ -483,8 +485,9 @@ class TestBrcdHttpFCZoneClient(client.BrcdHTTPFCZoneClient, test.TestCase):
         self.assertRaises(exception.BrocadeZoningHttpException,
                           self.delete_zones, delete_zones_info, False)
 
+    @patch.object(time, 'sleep')
     @patch.object(client.BrcdHTTPFCZoneClient, 'connect')
-    def test_post_zone_data(self, connect_mock):
+    def test_post_zone_data(self, connect_mock, sleep_mock):
         connect_mock.return_value = zone_post_page
         self.assertEqual(
             ("-1", "Name too long"), self.post_zone_data(zone_string_to_post))
