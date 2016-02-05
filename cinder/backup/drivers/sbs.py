@@ -831,7 +831,7 @@ class SBSBackupDriver(driver.BackupDriver):
                 backup_rbd.remove_snap(backup_name)
             except self.rbd.ImageNotFound:
                 LOG.info(_LI("volume %s no longer exists in backend") % volume_name)
-                raise
+                pass
             finally:
                 if backup_rbd != None:
                     backup_rbd.close()
