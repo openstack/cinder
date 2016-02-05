@@ -74,7 +74,6 @@ class HnasBackend(object):
                     raise exception.HNASConnError(msg)
                 else:
                     raise
-
         else:
             if self.drv_configs['cluster_admin_ip0'] is None:
                 # Connect to SMU through SSH and run ssc locally
@@ -126,20 +125,13 @@ class HnasBackend(object):
        :param ip0: string IP address of controller
        :param user: string user authentication for array
        :param pw: string password authentication for array
-       :return: formated string with version information
+       :returns: formatted string with version information
        """
-        if (self.drv_configs['ssh_enabled'] == 'True' and
-                self.drv_configs['cluster_admin_ip0'] is not None):
-                util = 'SMU ' + cmd
-        else:
-            out, err = utils.execute(cmd,
-                                     "-version",
-                                     check_exit_code=True)
-            util = out.split()[1]
 
         out, err = self.run_cmd(cmd, ip0, user, pw, "cluster-getmac",
                                 check_exit_code=True)
         hardware = out.split()[2]
+
         out, err = self.run_cmd(cmd, ip0, user, pw, "ver",
                                 check_exit_code=True)
         lines = out.split('\n')
@@ -151,8 +143,19 @@ class HnasBackend(object):
             if 'Software:' in line:
                 ver = line.split()[1]
 
-        out = "Array_ID: %s (%s) version: %s LU: 256 RG: 0 RG_LU: 0 \
-               Utility_version: %s" % (hardware, model, ver, util)
+        # If not using SSH, the local utility version can be different from the
+        # one used in HNAS
+        if self.drv_configs['ssh_enabled'] != 'True':
+            out, err = utils.execute(cmd, "-version", check_exit_code=True)
+            util = out.split()[1]
+
+            out = ("Array_ID: %(arr)s (%(mod)s) version: %(ver)s LU: 256 "
+                   "RG: 0 RG_LU: 0 Utility_version: %(util)s" %
+                   {'arr': hardware, 'mod': model, 'ver': ver, 'util': util})
+        else:
+            out = ("Array_ID: %(arr)s (%(mod)s) version: %(ver)s LU: 256 "
+                   "RG: 0 RG_LU: 0" %
+                   {'arr': hardware, 'mod': model, 'ver': ver})
 
         LOG.debug('get_version: %(out)s -- %(err)s', {'out': out, 'err': err})
         return out
