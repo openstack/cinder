@@ -362,6 +362,15 @@ class TestVolume(test_objects.BaseObjectsTestCase):
                             if k not in ignore_keys}
         self.assertEqual(src_vol_filtered, dest_vol_filtered)
 
+    def test_volume_with_metadata_serialize_deserialize_no_changes(self):
+        updates = {'volume_glance_metadata': [{'key': 'foo', 'value': 'bar'}],
+                   'expected_attrs': ['glance_metadata']}
+        volume = fake_volume.fake_volume_obj(self.context, **updates)
+        serializer = objects.base.CinderObjectSerializer()
+        serialized_volume = serializer.serialize_entity(self.context, volume)
+        volume = serializer.deserialize_entity(self.context, serialized_volume)
+        self.assertDictEqual({}, volume.obj_get_changes())
+
 
 class TestVolumeList(test_objects.BaseObjectsTestCase):
     @mock.patch('cinder.db.volume_get_all')

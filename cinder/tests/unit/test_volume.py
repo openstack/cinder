@@ -168,6 +168,68 @@ class BaseVolumeTestCase(test.TestCase):
                  'lv_count': '2',
                  'uuid': 'vR1JU3-FAKE-C4A9-PQFh-Mctm-9FwA-Xwzc1m'}]
 
+    @mock.patch('cinder.image.image_utils.TemporaryImages.fetch')
+    @mock.patch('cinder.volume.flows.manager.create_volume.'
+                'CreateVolumeFromSpecTask._clone_image_volume')
+    def _create_volume_from_image(self, mock_clone_image_volume,
+                                  mock_fetch_img,
+                                  fakeout_copy_image_to_volume=False,
+                                  fakeout_clone_image=False,
+                                  clone_image_volume=False):
+        """Test function of create_volume_from_image.
+
+        Test cases call this function to create a volume from image, caller
+        can choose whether to fake out copy_image_to_volume and clone_image,
+        after calling this, test cases should check status of the volume.
+        """
+        def fake_local_path(volume):
+            return dst_path
+
+        def fake_copy_image_to_volume(context, volume,
+                                      image_service, image_id):
+            pass
+
+        def fake_fetch_to_raw(ctx, image_service, image_id, path, blocksize,
+                              size=None, throttle=None):
+            pass
+
+        def fake_clone_image(ctx, volume_ref,
+                             image_location, image_meta,
+                             image_service):
+            return {'provider_location': None}, True
+
+        dst_fd, dst_path = tempfile.mkstemp()
+        os.close(dst_fd)
+        self.stubs.Set(self.volume.driver, 'local_path', fake_local_path)
+        if fakeout_clone_image:
+            self.stubs.Set(self.volume.driver, 'clone_image', fake_clone_image)
+        self.stubs.Set(image_utils, 'fetch_to_raw', fake_fetch_to_raw)
+        if fakeout_copy_image_to_volume:
+            self.stubs.Set(self.volume.driver, 'copy_image_to_volume',
+                           fake_copy_image_to_volume)
+        mock_clone_image_volume.return_value = ({}, clone_image_volume)
+        mock_fetch_img.return_value = mock.MagicMock(
+            spec=tests_utils.get_file_spec())
+
+        image_id = 'c905cedb-7281-47e4-8a62-f26bc5fc4c77'
+        volume = tests_utils.create_volume(self.context, **self.volume_params)
+        # creating volume testdata
+        try:
+            request_spec = {
+                'volume_properties': self.volume_params,
+                'image_id': image_id,
+            }
+            self.volume.create_volume(self.context,
+                                      volume.id,
+                                      request_spec,
+                                      volume=volume)
+        finally:
+            # cleanup
+            os.unlink(dst_path)
+            volume = objects.Volume.get_by_id(self.context, volume.id)
+
+        return volume
+
 
 class AvailabilityZoneTestCase(BaseVolumeTestCase):
     def test_list_availability_zones_cached(self):
@@ -3462,68 +3524,6 @@ class VolumeTestCase(BaseVolumeTestCase):
                                              gigabytes=vol.size)
         mock_rollback.assert_called_once_with(self.context, ["RESERVATION"])
 
-    @mock.patch('cinder.image.image_utils.TemporaryImages.fetch')
-    @mock.patch('cinder.volume.flows.manager.create_volume.'
-                'CreateVolumeFromSpecTask._clone_image_volume')
-    def _create_volume_from_image(self, mock_clone_image_volume,
-                                  mock_fetch_img,
-                                  fakeout_copy_image_to_volume=False,
-                                  fakeout_clone_image=False,
-                                  clone_image_volume=False):
-        """Test function of create_volume_from_image.
-
-        Test cases call this function to create a volume from image, caller
-        can choose whether to fake out copy_image_to_volume and clone_image,
-        after calling this, test cases should check status of the volume.
-        """
-        def fake_local_path(volume):
-            return dst_path
-
-        def fake_copy_image_to_volume(context, volume,
-                                      image_service, image_id):
-            pass
-
-        def fake_fetch_to_raw(ctx, image_service, image_id, path, blocksize,
-                              size=None, throttle=None):
-            pass
-
-        def fake_clone_image(ctx, volume_ref,
-                             image_location, image_meta,
-                             image_service):
-            return {'provider_location': None}, True
-
-        dst_fd, dst_path = tempfile.mkstemp()
-        os.close(dst_fd)
-        self.stubs.Set(self.volume.driver, 'local_path', fake_local_path)
-        if fakeout_clone_image:
-            self.stubs.Set(self.volume.driver, 'clone_image', fake_clone_image)
-        self.stubs.Set(image_utils, 'fetch_to_raw', fake_fetch_to_raw)
-        if fakeout_copy_image_to_volume:
-            self.stubs.Set(self.volume.driver, 'copy_image_to_volume',
-                           fake_copy_image_to_volume)
-        mock_clone_image_volume.return_value = ({}, clone_image_volume)
-        mock_fetch_img.return_value = mock.MagicMock(
-            spec=tests_utils.get_file_spec())
-
-        image_id = 'c905cedb-7281-47e4-8a62-f26bc5fc4c77'
-        volume = tests_utils.create_volume(self.context, **self.volume_params)
-        # creating volume testdata
-        try:
-            request_spec = {
-                'volume_properties': self.volume_params,
-                'image_id': image_id,
-            }
-            self.volume.create_volume(self.context,
-                                      volume.id,
-                                      request_spec,
-                                      volume=volume)
-        finally:
-            # cleanup
-            os.unlink(dst_path)
-            volume = objects.Volume.get_by_id(self.context, volume.id)
-
-        return volume
-
     def test_create_volume_from_image_cloned_status_available(self):
         """Test create volume from image via cloning.
 
@@ -4518,6 +4518,27 @@ class VolumeMigrationTestCase(BaseVolumeTestCase):
                                               volume.id)
             self.assertEqual('error', volume.migration_status)
             self.assertEqual('available', volume.status)
+
+    def test_migrate_volume_with_glance_metadata(self):
+        volume = self._create_volume_from_image(clone_image_volume=True)
+        glance_metadata = volume.glance_metadata
+
+        # We imitate the behavior of rpcapi, by serializing and then
+        # deserializing the volume object we created earlier.
+        serializer = objects.base.CinderObjectSerializer()
+        serialized_volume = serializer.serialize_entity(self.context, volume)
+        volume = serializer.deserialize_entity(self.context, serialized_volume)
+
+        host_obj = {'host': 'newhost', 'capabilities': {}}
+        with mock.patch.object(self.volume.driver,
+                               'migrate_volume') as mock_migrate_volume:
+            mock_migrate_volume.side_effect = (
+                lambda x, y, z, new_type_id=None: (True, {'user_id': 'foo'}))
+            self.volume.migrate_volume(self.context, volume.id, host_obj,
+                                       False, volume=volume)
+        self.assertEqual('newhost', volume.host)
+        self.assertEqual('success', volume.migration_status)
+        self.assertEqual(glance_metadata, volume.glance_metadata)
 
     @mock.patch('cinder.db.volume_update')
     def test_update_migrated_volume(self, volume_update):
