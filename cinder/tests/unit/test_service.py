@@ -83,6 +83,18 @@ class ServiceManagerTestCase(test.TestCase):
         serv.start()
         self.assertEqual('service', serv.test_method())
 
+    @mock.patch('cinder.rpc.LAST_OBJ_VERSIONS', {'test': '1.5'})
+    @mock.patch('cinder.rpc.LAST_RPC_VERSIONS', {'test': '1.3'})
+    def test_reset(self):
+        serv = service.Service('test',
+                               'test',
+                               'test',
+                               'cinder.tests.unit.test_service.FakeManager')
+        serv.start()
+        serv.reset()
+        self.assertEqual({}, rpc.LAST_OBJ_VERSIONS)
+        self.assertEqual({}, rpc.LAST_RPC_VERSIONS)
+
 
 class ServiceFlagsTestCase(test.TestCase):
     def test_service_enabled_on_create_based_on_flag(self):

@@ -359,6 +359,10 @@ class Service(service.Service):
                 self.model_disconnected = True
                 LOG.exception(_LE('Exception encountered: '))
 
+    def reset(self):
+        self.manager.reset()
+        super(Service, self).reset()
+
 
 class WSGIService(service.ServiceBase):
     """Provides ability to launch API from a 'paste' configuration."""

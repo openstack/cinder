@@ -290,6 +290,30 @@ class BackupTestCase(BaseBackupTest):
         mock_add_threadpool.assert_has_calls(calls, any_order=True)
         self.assertEqual(2, mock_add_threadpool.call_count)
 
+    @mock.patch('cinder.rpc.LAST_RPC_VERSIONS', {'cinder-backup': '1.3',
+                                                 'cinder-volume': '1.7'})
+    @mock.patch('cinder.rpc.LAST_OBJ_VERSIONS', {'cinder-backup': '1.5',
+                                                 'cinder-volume': '1.4'})
+    def test_reset(self):
+        backup_mgr = manager.BackupManager()
+
+        backup_rpcapi = backup_mgr.backup_rpcapi
+        volume_rpcapi = backup_mgr.volume_rpcapi
+        self.assertEqual('1.3', backup_rpcapi.client.version_cap)
+        self.assertEqual('1.5',
+                         backup_rpcapi.client.serializer._base.version_cap)
+        self.assertEqual('1.7', volume_rpcapi.client.version_cap)
+        self.assertEqual('1.4',
+                         volume_rpcapi.client.serializer._base.version_cap)
+        backup_mgr.reset()
+
+        backup_rpcapi = backup_mgr.backup_rpcapi
+        volume_rpcapi = backup_mgr.volume_rpcapi
+        self.assertIsNone(backup_rpcapi.client.version_cap)
+        self.assertIsNone(backup_rpcapi.client.serializer._base.version_cap)
+        self.assertIsNone(volume_rpcapi.client.version_cap)
+        self.assertIsNone(volume_rpcapi.client.serializer._base.version_cap)
+
     def test_is_working(self):
         self.assertTrue(self.backup_mgr.is_working())
 

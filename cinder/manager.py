@@ -58,6 +58,8 @@ import oslo_messaging as messaging
 from oslo_service import periodic_task
 
 from cinder.db import base
+from cinder.i18n import _LI
+from cinder import rpc
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import version
 
@@ -127,6 +129,16 @@ class Manager(base.Base, PeriodicTasks):
         """
         return True
 
+    def reset(self):
+        """Method executed when SIGHUP is caught by the process.
+
+        We're utilizing it to reset RPC API version pins to avoid restart of
+        the service when rolling upgrade is completed.
+        """
+        LOG.info(_LI('Resetting cached RPC version pins.'))
+        rpc.LAST_OBJ_VERSIONS = {}
+        rpc.LAST_RPC_VERSIONS = {}
+
 
 class SchedulerDependentManager(Manager):
     """Periodically send capability updates to the Scheduler services.
@@ -162,3 +174,7 @@ class SchedulerDependentManager(Manager):
 
     def _add_to_threadpool(self, func, *args, **kwargs):
         self._tp.spawn_n(func, *args, **kwargs)
+
+    def reset(self):
+        super(SchedulerDependentManager, self).reset()
+        self.scheduler_rpcapi = scheduler_rpcapi.SchedulerAPI()

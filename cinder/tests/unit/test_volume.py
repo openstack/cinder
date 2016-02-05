@@ -374,6 +374,21 @@ class VolumeTestCase(BaseVolumeTestCase):
             manager.init_host()
         self.assertEqual(0, mock_add_p_task.call_count)
 
+    @mock.patch('cinder.rpc.LAST_RPC_VERSIONS', {'cinder-scheduler': '1.3'})
+    @mock.patch('cinder.rpc.LAST_OBJ_VERSIONS', {'cinder-scheduler': '1.5'})
+    def test_reset(self):
+        vol_mgr = vol_manager.VolumeManager()
+
+        scheduler_rpcapi = vol_mgr.scheduler_rpcapi
+        self.assertEqual('1.3', scheduler_rpcapi.client.version_cap)
+        self.assertEqual('1.5',
+                         scheduler_rpcapi.client.serializer._base.version_cap)
+        vol_mgr.reset()
+
+        scheduler_rpcapi = vol_mgr.scheduler_rpcapi
+        self.assertIsNone(scheduler_rpcapi.client.version_cap)
+        self.assertIsNone(scheduler_rpcapi.client.serializer._base.version_cap)
+
     @mock.patch.object(vol_manager.VolumeManager,
                        'update_service_capabilities')
     def test_report_filter_goodness_function(self, mock_update):

@@ -74,6 +74,10 @@ class Scheduler(object):
             CONF.scheduler_host_manager)
         self.volume_rpcapi = volume_rpcapi.VolumeAPI()
 
+    def reset(self):
+        """Reset volume RPC API object to load new version pins."""
+        self.volume_rpcapi = volume_rpcapi.VolumeAPI()
+
     def is_ready(self):
         """Returns True if Scheduler is ready to accept requests.
 
