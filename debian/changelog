@@ -1,3 +1,13 @@
+cinder (1:2015.1.1-0v1.0.2) RELEASED; urgency=medium
+  *9673152 (HEAD, tag: v1.0.2, origin/kilo_sbs, kilo_sbs) Merge pull request #21 from shishirng/kilo_sbs
+        - 507665e Snapshot: Base image should be unique and not volume_id
+        - 1b8fdee add name and description if no name is specified
+        - a24a19e name and description added in restore
+        - 4aaba0e Merge pull request #20 from aggarwalchirag/kilo_sbs
+        - 9a1d074 JBS-82: Updated the backup and restore apisbacking-up-in-use and backing-up-available
+
+ -- Shishir Gowda <shishir.gowda@ril.com>  Tue, 05 Feb 2016 12:30:16 -0400
+
 cinder (1:2015.1.1-0v1.0.1) RELEASED; urgency=medium
   *4522e92 (HEAD, origin/kilo_sbs, kilo_sbs) Merge pull request #19 from shishirng/driver_versioning
         - 260945c Support versioning of backup drivers
