@@ -38,9 +38,9 @@ import subprocess
 import time
 import boto
 import boto.s3.connection
-import pdb
 import eventlet
 import math
+import uuid
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import encodeutils
@@ -79,6 +79,8 @@ service_opts = [
 		help='ceph conf'),
     cfg.StrOpt('sbs_dss_host', default='',
         help='endpoint of object store gateway'),
+    cfg.IntOpt('sbs_upload_chunk_size', default=52428800,
+               help='chunk size in bytes for files to be uploaded in parts'),
 ]
 
 CONF = cfg.CONF
@@ -108,6 +110,7 @@ class SBSBackupDriver(driver.BackupDriver):
         self._ceph_backup_pool = encodeutils.safe_encode(CONF.backup_ceph_pool)
         self._ceph_backup_conf = encodeutils.safe_encode(CONF.backup_ceph_conf)
         self._dss_host = encodeutils.safe_encode(CONF.sbs_dss_host)
+        self._chunk_size = CONF.sbs_upload_chunk_size
 
     #Routine used to connect to ceph cluster called by rbd_driver.RADOSClient
     def _connect_to_rados(self, pool=None):
@@ -133,21 +136,18 @@ class SBSBackupDriver(driver.BackupDriver):
         ioctx.close()
         client.shutdown()
 
-    #Returns base image name as: volume-<volume_id>.backup.base
-    def _get_backup_base_name(self, volume_id, backup_id=None,
-                              diff_format=False):
+    #Returns base image name as: volume-<id>.backup.base
+    def _get_backup_base_name(self, id):
         # Ensure no unicode
-        rbd_image_name = encodeutils.safe_encode("volume-%s.backup.base" % volume_id)
+        rbd_image_name = encodeutils.safe_encode("volume-%s.backup.base" % id)
         LOG.debug("rbd base image name: %s", rbd_image_name)
         return rbd_image_name
-
     #Returns rbd images name as: backup.<backup_id>.snap.time_stamp
     def _get_rbd_image_name(self, backup):
-	#if base image, then volume id == backup id
-	if backup['id'] == backup['volume_id']:
-	    rbd_image_name = encodeutils.safe_encode("volume-%s.backup.base"
-							 % backup['id'])
-	else:
+	    #if base image, then volume id == backup id
+        if backup['parent_id'] == None:
+	        rbd_image_name = encodeutils.safe_encode("volume-%s.backup.base" % backup['id'])
+        else:
             rbd_image_name =  encodeutils.safe_encode("backup.%s.snap.%s" %
                                                  (backup['id'], backup['time_stamp']))
         LOG.debug("rbd image name: %s", rbd_image_name)
@@ -250,7 +250,32 @@ class SBSBackupDriver(driver.BackupDriver):
             backup_snaps.sort(key=lambda x: x['timestamp'], reverse=True)
 
         return backup_snaps
-    
+
+    def _get_backup_base_from_src(self, rbd_image, volume_id):
+        snaps = rbd_image.list_snaps()
+        #first search for base snaps: multiple if restored volume
+        backup_snaps = []
+        for snap in snaps:
+            base_name_pattern = self.backup_base_name_pattern()
+            result = re.search(base_name_pattern, snap['name'])
+            if result:
+                backup_snaps.append({'name':result.group(0),
+                         'backup_id':result.group(1),
+                         'timestamp': '0'})
+
+
+        if not backup_snaps:
+            return None
+        num_snaps = len(backup_snaps)
+        for i in range(num_snaps):
+            try:
+                backup = self.db.backup_get(self.context,backup_snaps[i]['backup_id'])
+                if (backup != None) and (backup['volume_id'] == volume_id):
+                    return backup
+            except exception.NotFound:
+                pass
+        return
+
     #return most_recent backup taken for same volume
     #If restored volume, latest might defer
     def _get_most_recent_snap(self, rbd_image, volume_id):
@@ -267,11 +292,14 @@ class SBSBackupDriver(driver.BackupDriver):
         #get backup info from db. If does not exist, do not use it as from_snap
         # if exists, but volume is different, then it is part of restored op
         # Do not use the above too. 
-	tmp_list = []
+        tmp_list = []
         for i in range(num_snaps):
-            backup = self.db.backup_get(self.context,backup_snaps[i]['backup_id'])
-            if (backup != None) and (backup['volume_id'] == volume_id):
-		tmp_list.append(backup_snaps[i])
+            try:
+                backup = self.db.backup_get(self.context,backup_snaps[i]['backup_id'])
+                if (backup != None) and (backup['volume_id'] == volume_id):
+                    tmp_list.append(backup_snaps[i])
+            except exception.NotFound:
+                pass
 
         #if all of the snaps are either deleted or not part of same volume, return none
         if len(tmp_list) == 0:
@@ -378,7 +406,7 @@ class SBSBackupDriver(driver.BackupDriver):
     def _multi_part_upload(self, bucket, key, loc):
         size = os.stat(loc).st_size
         mp = bucket.initiate_multipart_upload(key)
-        chunk_size = 52428800
+        chunk_size = self._chunk_size
         chunk_count = int(math.ceil(size/float(chunk_size)))
 
         for i in range(chunk_count):
@@ -429,6 +457,16 @@ class SBSBackupDriver(driver.BackupDriver):
         os.remove(loc)
         return
 
+    @staticmethod
+    def _get_snap_id_from_name(snap_name):
+        #extract out the id from the snap name
+        search_key = SBSBackupDriver.backup_snapshot_name_pattern()
+        result = re.search(search_key, snap_name)
+        if result:
+            return result.group(1)
+        return None
+
+
     """
     1. If 1st snapshot or missing base or missing incr snap
         create new snapshot (without incr) and treat it as base
@@ -438,19 +476,21 @@ class SBSBackupDriver(driver.BackupDriver):
         create incr snapshot w.r.t latest snap
         upload/store snapshot
     """
-
     def _check_create_base(self, volume_id, volume_file, volume_name, 
-			   base_name, ceph_args, backup_host, backup_service, from_snap=None):
+			   base, ceph_args, backup_host, backup_service, from_snap=None):
 
         #Create an incremental backup from an RBD image.
         rbd_user = volume_file.rbd_user
         rbd_pool = volume_file.rbd_pool
         rbd_conf = volume_file.rbd_conf
         source_rbd_image = volume_file.rbd_image
+        base_id = None
         # Check if base image exists in dest
-        found_base_image = self._lookup_base(source_rbd_image, volume_id)
+        # we got base_name for src, so no need to check
         #If base image not found, create base image, might be 1st snap
-        if not found_base_image:
+        if not base:
+            base_id = uuid.uuid4()
+            base_name = self._get_backup_base_name(base_id)
             # since base image is missing, default to full snap.Cleanup too
             if from_snap:
                 LOG.debug("Source snapshot '%(snapshot)s' of volume "
@@ -471,20 +511,27 @@ class SBSBackupDriver(driver.BackupDriver):
                        'display_name': base_name,
                        'display_description': desc,
                        'volume_id': volume_id,
-                       'id': volume_id,
+                       'id': base_id,
                        'status': 'available',
                        'container': self._container,
                        'host': backup_host,
                        'service': 'cinder.backup.drivers.sbs',
                        'size': "2",
-		       'version':self.DRIVER_VERSION,
+                       'version':self.DRIVER_VERSION,
                       }
             backup = self.db.backup_create(self.context, options)
             self._upload_to_DSS(base_name, volume_name, ceph_args)
             from_snap = base_name
         else:
             #check if base and from snap are of same version of backup
-            base_backup = self.db.backup_get(self.context, volume_id)
+            base_backup = self.db.backup_get(self.context, base['id'])
+            if base_backup['status'] != 'available':
+                msg = (_("Base backup '%(snap)s' should be in available state,"
+                            "Found in '%(state)s' state") % { 'snap': base_backup['id'],
+                              'state': base_backup['status']})
+                LOG.error(msg)
+                raise exception.BackupOperationError(msg)
+            base_name = base['display_name']
             if base_backup['version'] != self.DRIVER_VERSION:
                 errmsg = (_("Incremental snapshot are of older version %s" % base_backup['version']))
                 LOG.debug(errmsg)
@@ -492,6 +539,20 @@ class SBSBackupDriver(driver.BackupDriver):
 
             # If a from_snap is defined but does not exist in the back base
             # then we cannot proceed (see above)
+            if (base_name != from_snap):
+                snap_id = self._get_snap_id_from_name(from_snap)
+                if snap_id:
+                    snap = self.db.backup_get(self.context, snap_id)
+                    if snap['status'] != 'available':
+                        msg = (_("Snapshot='%(snap)s' status should be available, "
+                                    "but found in %s '%(state)s' - aborting incremental "
+                                    "backup") %
+                                  {'snap': snap['id'], 'state': snap['status']})
+                        LOG.error(msg)
+                        # Raise this exception so that caller can try another
+                        # approach
+                        raise exception.BackupOperationError(msg)
+
             if not self._snap_exists(base_name, from_snap):
                 errmsg = (_("Snapshot='%(snap)s' does not exist in base "
                             "image='%(base)s' - aborting incremental "
@@ -503,7 +564,7 @@ class SBSBackupDriver(driver.BackupDriver):
                 raise exception.BackupRBDOperationFailed(errmsg)
 
 
-        return (base_name, from_snap)
+        return (base_id, from_snap)
 
     def _backup_rbd(self, backup, volume_file, volume):
         #Create an incremental backup from an RBD image.
@@ -516,18 +577,21 @@ class SBSBackupDriver(driver.BackupDriver):
         backup_service = backup['service']
         volume_id = volume['id']
         volume_name = volume['name']
-
+        base_name = None
         # Identify our --from-snap point (if one exists)
         from_snap = self._get_most_recent_snap(source_rbd_image, volume_id)
-        base_name = self._get_backup_base_name(volume_id, diff_format=True)
+        base = self._get_backup_base_from_src(source_rbd_image, volume_id)
         ceph_args = self._ceph_args(rbd_user, rbd_conf, pool=rbd_pool)
 
+        if base != None:
+            base_name = self._get_backup_base_name(base['id'])
         #check base snap and from_snap and create base if missing
-        base_name, from_snap = self._check_create_base(volume_id, volume_file,
-                                                       volume_name, base_name,
+        base_id, from_snap = self._check_create_base(volume_id, volume_file,
+                                                       volume_name, base,
                                                        ceph_args, backup_host,
                                                        backup_service, from_snap)
-
+        if base_name == None:
+            base_name = self._get_backup_base_name(base_id)
         # Snapshot source volume so that we have a new point-in-time
         time_stamp, new_snap = self._get_new_snap_name(backup_id)
         LOG.debug("Creating backup %s", new_snap)
@@ -542,18 +606,17 @@ class SBSBackupDriver(driver.BackupDriver):
 
         #if from_snap is same as base, then parent is base
         if from_snap == base_name:
-            par_id = volume_id
+            par_id = base_id
         else:
             #extract out the id from the snap name
-            search_key = SBSBackupDriver.backup_snapshot_name_pattern()
-            result = re.search(search_key, from_snap)
-            if result:
-                par_id = result.group(1)
+            id = self._get_snap_id_from_name(from_snap)
+            if id:
+                par_id = id
             else:
                 msg = (_("backup id of parent not found for snap '%(snap)s'")
                           % backup['id'])
                 LOG.err(msg)
-                raise exception.BackupOperationError(mesg)
+                raise exception.BackupOperationError(msg)
 
         #make sure snap is newer than base
         now = timeutils.utcnow()
@@ -582,16 +645,17 @@ class SBSBackupDriver(driver.BackupDriver):
 
         LOG.debug("Starting backup of volume='%s'.", volume_id)
 
+        self.db.backup_update(self.context, backup_id,
+                              {'container': self._container})
+        self.db.backup_update(self.context, backup_id,
+                              {'version':self.DRIVER_VERSION})
+
         # Ensure we are at the beginning of the volume
         volume_file.seek(0)
         length = self._get_volume_size_gb(volume)
 
         self._backup_rbd(backup, volume_file, volume)
 
-        self.db.backup_update(self.context, backup_id,
-                              {'container': self._container})
-        self.db.backup_update(self.context, backup_id,
-                              {'version':self.DRIVER_VERSION})
         return
 
     #return sorted list with base as [0], and backup as last[n-1]
@@ -611,7 +675,7 @@ class SBSBackupDriver(driver.BackupDriver):
         backup_tree.reverse()
         return backup_tree
 
-    def _download_from_DSS(self, snap_name, volume_name, ceph_args):
+    def _download_from_DSS(self, snap_name, volume_name, ceph_args, container):
         tmp_cmd = ['mkdir', '-p', '/tmp/downloads']
         self._execute(*tmp_cmd, run_as_root=False)
         loc = encodeutils.safe_encode("/tmp/downloads/%s" % (snap_name))
@@ -620,7 +684,7 @@ class SBSBackupDriver(driver.BackupDriver):
         conn = self._connect_to_DSS()
         bucket = None
         if conn != None:
-            bucket = self._get_bucket(conn, self._container)
+            bucket = self._get_bucket(conn, container)
 
         if bucket == None:
             return
@@ -664,7 +728,8 @@ class SBSBackupDriver(driver.BackupDriver):
             LOG.debug("Destination volume is same as backup source volume")
             return False
 
-        self._download_from_DSS(backup_name, volume_name, ceph_args) 
+        self._download_from_DSS(backup_name, volume_name, ceph_args,
+                                backup['container']) 
         return
 
     """
@@ -785,7 +850,7 @@ class SBSBackupDriver(driver.BackupDriver):
             last_backup = backup
             i = i+1
         LOG.debug("Last backup deleted %s" % last_backup['id'])
-        return last_backup
+        return last_backup['parent_id']
 
     def _mark_backup_for_deletion(self, backup):
         self.db.backup_update(self.context, backup['id'],
@@ -793,14 +858,9 @@ class SBSBackupDriver(driver.BackupDriver):
         return
 
     def _incr_backups_to_delete(self, curr, backup_id, backup_list):
-        can_delete = True
         while curr['parent_id']:
             #if any snap till given snap is not marked for deletion, fail
             if curr['status'] != "deleting":
-                can_delete = False
-                break
-	         #if parent is given backup to be deleted, do not add it
-            if curr['parent_id'] == backup_id:
                 break
 
             backup_list.append(curr)
@@ -811,7 +871,7 @@ class SBSBackupDriver(driver.BackupDriver):
                                                curr['parent_id'])
             curr = parent_backup
 
-        return (can_delete, backup_list)
+        return backup_list
 
     """
     Mark snaps as deleted, but keep them if they are parent of another existing
@@ -832,31 +892,34 @@ class SBSBackupDriver(driver.BackupDriver):
             latest_backup = max(backups, key=lambda x: x['created_at'])
             curr = latest_backup
 
-        can_delete = True
         backup_list = []
-
-        # if latest backup is not same, then check for dependencies,
+        parent_backup_id = None
+        # if latest backup is same, then delete it first,
         # identify and delete backups till given backup if possible
-        if backup['id'] != latest_backup['id']:
-           can_delete, backup_list  = self._incr_backups_to_delete(curr, backup['id'], backup_list) 
-        else:
+        if backup['id'] == latest_backup['id']:
             backup_list.append(backup)
-
-        last_backup = None
-        if can_delete == True:
-            last_backup = self._delete_backups(backup_list)
+            parent_backup_id = self._delete_backups(backup_list)
         else:
             self._mark_backup_for_deletion(backup)
 
         #see if we can clean up more incr backups due to deletion of these snaps
+        #if parent_backup_id != None, implies we deleted latest backup, so find parents
+        # that can be deleted
         tmp_list = []
-        if (last_backup and last_backup['parent_id']):
-            parent_backup = self.db.backup_get(self.context,
-                                               last_backup['parent_id']) 
-            can_delete, tmp_list = self._incr_backups_to_delete(parent_backup, None, tmp_list)
-	    #currently list has the latest backup too, remove it later
-        if tmp_list:
-            tmp = self._delete_backups(tmp_list)
+        if parent_backup_id:
+            parent_backup = self.db.backup_get(self.context, parent_backup_id)
+            tmp_list = self._incr_backups_to_delete(parent_backup, None, tmp_list)
+
+            if tmp_list:
+                parent_backup_id = self._delete_backups(tmp_list)
+
+        base = []
+        #check last deleted was the 1st snap, and delete base
+        if parent_backup_id:
+            parent_backup = self.db.backup_get(self.context, parent_backup_id)
+            if parent_backup['parent_id'] == None:
+                base.append(parent_backup)
+                tmp = self._delete_backups(base)
 
         LOG.debug("Delete of backup '%(backup)s' for volume "
                   "'%(volume)s' finished.",
