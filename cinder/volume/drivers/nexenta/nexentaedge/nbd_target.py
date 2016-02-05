@@ -3,6 +3,7 @@ import socket
 
 from oslo_log import log as logging
 from oslo_utils import excutils
+from oslo_utils import importutils
 from oslo_utils import units
 
 from cinder import exception
@@ -17,13 +18,13 @@ from cinder.volume.drivers.nexenta.nexentaedge import jsonrpc
 LOG = logging.getLogger(__name__)
 
 
-class NexentaEdgeNBDDriver(driver.VolumeDriver):
+class NexentaEdgeNBDTargetDriver(driver.VolumeDriver):
     """Executes commands relating to NBD Volumes."""
 
     VERSION = '1.0.0'
 
     def __init__(self, vg_obj=None, *args, **kwargs):
-        super(NexentaEdgeNBDDriver, self).__init__(*args, **kwargs)
+        super(NexentaEdgeNBDTargetDriver, self).__init__(*args, **kwargs)
 
         if self.configuration:
             self.configuration.append_config_values(
@@ -44,6 +45,23 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
         self.bucket_url = ('clusters/' + self.cluster + '/tenants/' +
                            self.tenant + '/buckets/' + self.bucket)
         self.hostname = socket.gethostname()
+
+        # Target Driver is what handles data-transport
+        # Transport specific code should NOT be in
+        # the driver (control path), this way
+        # different target drivers can be added (iscsi, FC etc)
+        target_driver = \
+            self.target_mapping[self.configuration.safe_get('iscsi_helper')]
+
+        LOG.debug('Attempting to initialize NBD driver with the '
+                  'following target_driver: %s',
+                  target_driver)
+
+        self.target_driver = importutils.import_object(
+            target_driver,
+            configuration=self.configuration,
+            db=self.db,
+            executor=self._execute)
 
     @property
     def backend_name(self):
@@ -238,27 +256,25 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
                                   image_meta,
                                   self.local_path(volume))
 
+    # #######  Interface methods for DataPath (Target Driver) ########
+
     def ensure_export(self, context, volume):
-        pass
+        volume_path = self.local_path(volume)
+        model_update = \
+            self.target_driver.ensure_export(context, volume, volume_path)
+        return model_update
 
     def create_export(self, context, volume, connector, vg=None):
-        pass
+        volume_path = self.local_path(volume)
+        export_info = self.target_driver.create_export(
+            context,
+            volume,
+            volume_path)
+        return {'provider_location': export_info['location'],
+                'provider_auth': export_info['auth'], }
 
     def remove_export(self, context, volume):
-        pass
-
-    def validate_connector(self, connector):
-        try:
-            res = self.restapi.get('system/stats')
-            servers = res['stats']['servers']
-            for sid in servers:
-                if (connector['host'] == sid or
-                        connector['host'] == servers[sid]['hostname']):
-                    return
-        except exception.VolumeBackendAPIException:
-            with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Error retrieving cluster stats'))
-        raise Exception  # FIXME
+        self.target_driver.remove_export(context, volume)
 
     def initialize_connection(self, volume, connector):
         if connector['host'] != volutils.extract_host(volume['host'], 'host'):
@@ -268,3 +284,10 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
                 'driver_volume_type': 'local',
                 'data': {'device_path': self.local_path(volume)},
             }
+
+    def validate_connector(self, connector):
+        return self.target_driver.validate_connector(connector)
+
+    def terminate_connection(self, volume, connector, **kwargs):
+        return self.target_driver.terminate_connection(volume, connector,
+                                                       **kwargs)
