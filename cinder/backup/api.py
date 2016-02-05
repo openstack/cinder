@@ -260,10 +260,10 @@ class API(base.Base):
                     raise exception.InvalidVolume(reason=msg)
                 else :
                     vol_size = volume_size
-            
-            if name is None   
+
+            if name is None:
                  name = 'restore_snapshot_%s' % backup_id
-            if description is None   
+            if description is None:
                  description = 'auto-created_from_restore_from_snapshot'
 
             LOG.info(_LI("Creating volume of %(size)s GB for restore of "
