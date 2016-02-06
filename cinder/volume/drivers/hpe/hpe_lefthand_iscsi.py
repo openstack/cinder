@@ -148,9 +148,10 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         2.0.1 - Remove db access for consistency groups
         2.0.2 - Adds v2 managed replication support
         2.0.3 - Adds v2 unmanaged replication support
+        2.0.4 - Add manage/unmanage snapshot support
     """
 
-    VERSION = "2.0.3"
+    VERSION = "2.0.4"
 
     device_stats = {}
 
@@ -1159,6 +1160,95 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         # any model updates from retype.
         return updates
 
+    def manage_existing_snapshot(self, snapshot, existing_ref):
+        """Manage an existing LeftHand snapshot.
+
+        existing_ref is a dictionary of the form:
+        {'source-name': <name of the snapshot>}
+        """
+        # Check API Version
+        self._check_api_version()
+
+        # Potential parent volume for the snapshot
+        volume = snapshot['volume']
+
+        if volume.get('replication_status') == 'failed-over':
+            err = (_("Managing of snapshots to failed-over volumes is "
+                     "not allowed."))
+            raise exception.InvalidInput(reason=err)
+
+        target_snap_name = self._get_existing_volume_ref_name(existing_ref)
+
+        # Check for the existence of the virtual volume.
+        client = self._login()
+        try:
+            updates = self._manage_snapshot(client,
+                                            volume,
+                                            snapshot,
+                                            target_snap_name,
+                                            existing_ref)
+        finally:
+            self._logout(client)
+
+        # Return display name to update the name displayed in the GUI and
+        # any model updates from retype.
+        return updates
+
+    def _manage_snapshot(self, client, volume, snapshot, target_snap_name,
+                         existing_ref):
+        # Check for the existence of the virtual volume.
+        try:
+            snapshot_info = client.getSnapshotByName(target_snap_name)
+        except hpeexceptions.HTTPNotFound:
+            err = (_("Snapshot '%s' doesn't exist on array.") %
+                   target_snap_name)
+            LOG.error(err)
+            raise exception.InvalidInput(reason=err)
+
+        # Make sure the snapshot is being associated with the correct volume.
+        try:
+            parent_vol = client.getSnapshotParentVolume(target_snap_name)
+        except hpeexceptions.HTTPNotFound:
+            err = (_("Could not find the parent volume for Snapshot '%s' on "
+                     "array.") % target_snap_name)
+            LOG.error(err)
+            raise exception.InvalidInput(reason=err)
+
+        parent_vol_name = 'volume-' + snapshot['volume_id']
+        if parent_vol_name != parent_vol['name']:
+            err = (_("The provided snapshot '%s' is not a snapshot of "
+                     "the provided volume.") % target_snap_name)
+            LOG.error(err)
+            raise exception.InvalidInput(reason=err)
+
+        # Generate the new snapshot information based on the new ID.
+        new_snap_name = 'snapshot-' + snapshot['id']
+
+        new_vals = {"name": new_snap_name}
+
+        try:
+            # Update the existing snapshot with the new name.
+            client.modifySnapshot(snapshot_info['id'], new_vals)
+        except hpeexceptions.HTTPServerError:
+            err = (_("An error occured while attempting to modify"
+                     "Snapshot '%s'.") % snapshot_info['id'])
+            LOG.error(err)
+
+        LOG.info(_LI("Snapshot '%(ref)s' renamed to '%(new)s'."),
+                 {'ref': existing_ref['source-name'], 'new': new_snap_name})
+
+        display_name = None
+        if snapshot['display_name']:
+            display_name = snapshot['display_name']
+
+        updates = {'display_name': display_name}
+
+        LOG.info(_LI("Snapshot %(disp)s '%(new)s' is "
+                     "now being managed."),
+                 {'disp': display_name, 'new': new_snap_name})
+
+        return updates
+
     def manage_existing_get_size(self, volume, existing_ref):
         """Return size of volume to be managed by manage_existing.
 
@@ -1192,6 +1282,39 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
 
         return int(math.ceil(float(volume_info['size']) / units.Gi))
 
+    def manage_existing_snapshot_get_size(self, snapshot, existing_ref):
+        """Return size of volume to be managed by manage_existing.
+
+        existing_ref is a dictionary of the form:
+        {'source-name': <name of the virtual volume>}
+        """
+        # Check API version.
+        self._check_api_version()
+
+        target_snap_name = self._get_existing_volume_ref_name(existing_ref)
+
+        # Make sure the reference is not in use.
+        if re.match('volume-*|snapshot-*|unm-*', target_snap_name):
+            reason = _("Reference must be the name of an unmanaged "
+                       "snapshot.")
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=target_snap_name,
+                reason=reason)
+
+        # Check for the existence of the virtual volume.
+        client = self._login()
+        try:
+            snapshot_info = client.getSnapshotByName(target_snap_name)
+        except hpeexceptions.HTTPNotFound:
+            err = (_("Snapshot '%s' doesn't exist on array.") %
+                   target_snap_name)
+            LOG.error(err)
+            raise exception.InvalidInput(reason=err)
+        finally:
+            self._logout(client)
+
+        return int(math.ceil(float(snapshot_info['size']) / units.Gi))
+
     def unmanage(self, volume):
         """Removes the specified volume from Cinder management."""
         # Check API version.
@@ -1213,6 +1336,38 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
                  {'disp': volume['display_name'],
                   'vol': volume['name'],
                   'new': new_vol_name})
+
+    def unmanage_snapshot(self, snapshot):
+        """Removes the specified snapshot from Cinder management."""
+        # Check API version.
+        self._check_api_version()
+
+        # Potential parent volume for the snapshot
+        volume = snapshot['volume']
+
+        if volume.get('replication_status') == 'failed-over':
+            err = (_("Unmanaging of snapshots from 'failed-over' volumes is "
+                     "not allowed."))
+            LOG.error(err)
+            # TODO(leeantho) Change this exception to Invalid when the volume
+            # manager supports handling that.
+            raise exception.SnapshotIsBusy(snapshot_name=snapshot['id'])
+
+        # Rename the snapshots's name to ums-* format so that it can be
+        # easily found later.
+        client = self._login()
+        try:
+            snapshot_info = client.getSnapshotByName(snapshot['name'])
+            new_snap_name = 'ums-' + six.text_type(snapshot['id'])
+            options = {'name': new_snap_name}
+            client.modifySnapshot(snapshot_info['id'], options)
+            LOG.info(_LI("Snapshot %(disp)s '%(vol)s' is no longer managed. "
+                         "Snapshot renamed to '%(new)s'."),
+                     {'disp': snapshot['display_name'],
+                      'vol': snapshot['name'],
+                      'new': new_snap_name})
+        finally:
+            self._logout(client)
 
     def _get_existing_volume_ref_name(self, existing_ref):
         """Returns the volume name of an existing reference.
