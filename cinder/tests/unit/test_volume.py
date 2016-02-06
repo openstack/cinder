@@ -4158,6 +4158,39 @@ class VolumeTestCase(BaseVolumeTestCase):
                                fake_new_volume.id)
         self.assertIsNone(volume.migration_status)
 
+    def test_check_volume_filters_true(self):
+        """Test bootable as filter for true"""
+        volume_api = cinder.volume.api.API()
+        filters = {'bootable': 'TRUE'}
+
+        # To convert filter value to True or False
+        volume_api.check_volume_filters(filters)
+
+        # Confirming converted filter value against True
+        self.assertTrue(filters['bootable'])
+
+    def test_check_volume_filters_false(self):
+        """Test bootable as filter for false"""
+        volume_api = cinder.volume.api.API()
+        filters = {'bootable': 'false'}
+
+        # To convert filter value to True or False
+        volume_api.check_volume_filters(filters)
+
+        # Confirming converted filter value against False
+        self.assertEqual(False, filters['bootable'])
+
+    def test_check_volume_filters_invalid(self):
+        """Test bootable as filter"""
+        volume_api = cinder.volume.api.API()
+        filters = {'bootable': 'invalid'}
+
+        # To convert filter value to True or False
+        volume_api.check_volume_filters(filters)
+
+        # Confirming converted filter value against invalid value
+        self.assertTrue(filters['bootable'])
+
     def test_update_volume_readonly_flag(self):
         """Test volume readonly flag can be updated at API level."""
         # create a volume and assign to host

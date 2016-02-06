@@ -1698,11 +1698,22 @@ class API(base.Base):
         return self.volume_rpcapi.list_replication_targets(ctxt, volume)
 
     def check_volume_filters(self, filters):
+        '''Sets the user filter value to accepted format'''
         booleans = self.db.get_booleans_for_table('volume')
+
+        # To translate any true/false equivalent to True/False
+        # which is only acceptable format in database queries.
+        accepted_true = ['True', 'true', 'TRUE']
+        accepted_false = ['False', 'false', 'FALSE']
         for k, v in filters.items():
             try:
                 if k in booleans:
-                    filters[k] = bool(v)
+                    if v in accepted_false:
+                        filters[k] = False
+                    elif v in accepted_true:
+                        filters[k] = True
+                    else:
+                        filters[k] = bool(v)
                 else:
                     filters[k] = ast.literal_eval(v)
             except (ValueError, SyntaxError):
