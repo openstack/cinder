@@ -39,7 +39,8 @@ translated_log = re.compile(
     "\(\s*_\(\s*('|\")")
 string_translation = re.compile(r"(.)*_\(\s*('|\")")
 vi_header_re = re.compile(r"^#\s+vim?:.+")
-underscore_import_check = re.compile(r"(.)*i18n\s+import\s+_(.)*")
+underscore_import_check = re.compile(r"(.)*i18n\s+import(.)* _$")
+underscore_import_check_multi = re.compile(r"(.)*i18n\s+import(.)* _, (.)*")
 # We need this for cases where they have created their own _ function.
 custom_underscore_check = re.compile(r"(.)*_\s*=\s*(.)*")
 no_audit_log = re.compile(r"(.)*LOG\.audit(.)*")
@@ -165,6 +166,7 @@ def check_explicit_underscore_import(logical_line, filename):
         if file in filename:
             return
     if (underscore_import_check.match(logical_line) or
+            underscore_import_check_multi.match(logical_line) or
             custom_underscore_check.match(logical_line)):
         UNDERSCORE_IMPORT_FILES.append(filename)
     elif(translated_log.match(logical_line) or
