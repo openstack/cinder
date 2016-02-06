@@ -15,6 +15,7 @@
 """
 VNX CLI
 """
+import copy
 import math
 import os
 import random
@@ -244,6 +245,8 @@ class VNXError(_Enum):
     SNAP_ALREADY_MOUNTED = 0x716d8055
     SNAP_NOT_ATTACHED = ('The specified Snapshot mount point '
                          'is not currently attached.')
+    MIRROR_NOT_FOUND = 'Mirror not found'
+    MIRROR_IN_USE = 'Mirror name already in use'
 
     @staticmethod
     def _match(output, error_code):
@@ -2112,6 +2115,10 @@ class EMCVnxCliBase(object):
              'deduplication_support': 'False',
              'thin_provisioning_support': False,
              'thick_provisioning_support': True}
+    REPLICATION_KEYS = ['san_ip', 'san_login', 'san_password',
+                        'san_secondary_ip',
+                        'storage_vnx_authentication_type',
+                        'storage_vnx_security_file_dir']
     enablers = []
     tmp_snap_prefix = 'tmp-snap-'
     tmp_smp_for_backup_prefix = 'tmp-smp-'
@@ -2145,6 +2152,17 @@ class EMCVnxCliBase(object):
                          "Please register initiator manually."))
         self.hlu_set = set(range(1, self.max_luns_per_sg + 1))
         self._client = CommandLineHelper(self.configuration)
+        # Create connection to the secondary storage device
+        self._mirror = self._build_mirror_view()
+        self.update_enabler_in_volume_stats()
+        # Fail the driver if configuration is not correct
+        if self._mirror:
+            if '-MirrorView/S' not in self.enablers:
+                no_enabler_err = _('MirrorView/S enabler is not installed.')
+                raise exception.VolumeBackendAPIException(data=no_enabler_err)
+        else:
+            self._mirror = None
+
         conf_pools = self.configuration.safe_get("storage_vnx_pool_names")
         self.storage_pools = self._get_managed_storage_pools(conf_pools)
         self.array_serial = None
@@ -2297,6 +2315,9 @@ class EMCVnxCliBase(object):
     def _construct_tmp_smp_name(self, snapshot):
         return self.tmp_smp_for_backup_prefix + snapshot.id
 
+    def _construct_mirror_name(self, volume):
+        return 'mirror_' + volume.id
+
     def create_volume(self, volume):
         """Creates a EMC volume."""
         volume_size = volume['size']
@@ -2331,9 +2352,14 @@ class EMCVnxCliBase(object):
             poll=False)
         pl = self._build_provider_location(lun_id=data['lun_id'],
                                            base_lun_name=volume['name'])
+        # Setup LUN Replication/MirrorView between devices,
+        # secondary LUN will inherit properties from primary LUN.
+        rep_update, metadata_update = self.setup_lun_replication(
+            volume, data['lun_id'], provisioning, tiering)
+        volume_metadata.update(metadata_update)
         model_update = {'provider_location': pl,
                         'metadata': volume_metadata}
-
+        model_update.update(rep_update)
         return model_update
 
     def _volume_creation_check(self, volume):
@@ -2435,6 +2461,8 @@ class EMCVnxCliBase(object):
 
     def delete_volume(self, volume, force_delete=False):
         """Deletes an EMC volume."""
+        if self._is_replication_enabled(volume):
+            self.cleanup_lun_replication(volume)
         try:
             self._client.delete_lun(volume['name'])
         except exception.EMCVnxCLICmdError as ex:
@@ -2788,7 +2816,13 @@ class EMCVnxCliBase(object):
             self.stats['consistencygroup_support'])
         pool_stats['max_over_subscription_ratio'] = (
             self.max_over_subscription_ratio)
-
+        # Add replication V2 support
+        if self._mirror:
+            pool_stats['replication_enabled'] = True
+            pool_stats['replication_count'] = 1
+            pool_stats['replication_type'] = ['sync']
+        else:
+            pool_stats['replication_enabled'] = False
         return pool_stats
 
     def update_enabler_in_volume_stats(self):
@@ -2810,6 +2844,7 @@ class EMCVnxCliBase(object):
 
         self.stats['consistencygroup_support'] = (
             'True' if '-VNXSnapshots' in self.enablers else 'False')
+
         return self.stats
 
     def create_snapshot(self, snapshot):
@@ -2871,7 +2906,12 @@ class EMCVnxCliBase(object):
         store_spec = self._construct_store_spec(volume, snapshot)
         store_spec.update({'base_lun_name': base_lun_name})
         volume_metadata = self._get_volume_metadata(volume)
+        rep_update = {}
         if self._is_snapcopy_enabled(volume):
+            if self._is_replication_enabled(volume):
+                err_msg = _("Unable to enable replication "
+                            "and snapcopy at the same time.")
+                raise exception.VolumeBackendAPIException(data=err_msg)
             work_flow.add(CopySnapshotTask(),
                           AllowReadWriteOnSnapshotTask(),
                           CreateSMPTask(),
@@ -2895,8 +2935,16 @@ class EMCVnxCliBase(object):
             pl = self._build_provider_location(
                 new_lun_id, 'lun', volume['name'])
             volume_metadata['snapcopy'] = 'False'
+            # Setup LUN Replication/MirrorView between devices,
+            # secondary LUN will inherit properties from primary LUN.
+            rep_update, metadata_update = self.setup_lun_replication(
+                volume, new_lun_id,
+                store_spec['provisioning'],
+                store_spec['tiering'])
+            volume_metadata.update(metadata_update)
         model_update = {'provider_location': pl,
                         'metadata': volume_metadata}
+        model_update.update(rep_update)
         volume_host = volume['host']
         host = vol_utils.extract_host(volume_host, 'backend')
         host_and_pool = vol_utils.append_host(host, store_spec['pool_name'])
@@ -2934,8 +2982,13 @@ class EMCVnxCliBase(object):
         store_spec.update({'source_lun_id': source_lun_id})
         store_spec.update({'base_lun_name': base_lun_name})
         volume_metadata = self._get_volume_metadata(volume)
+        rep_update = {}
         if self._is_snapcopy_enabled(volume):
             # snapcopy feature enabled
+            if self._is_replication_enabled(volume):
+                err_msg = _("Unable to enable replication "
+                            "and snapcopy at the same time.")
+                raise exception.VolumeBackendAPIException(data=err_msg)
             work_flow.add(CreateSnapshotTask(),
                           CreateSMPTask(),
                           AttachSnapTask())
@@ -2966,8 +3019,17 @@ class EMCVnxCliBase(object):
                 new_lun_id, 'lun', volume['name'])
             volume_metadata['snapcopy'] = 'False'
 
+            # Setup LUN Replication/MirrorView between devices,
+            # secondary LUN will inherit properties from primary LUN.
+            rep_update, metadata_update = self.setup_lun_replication(
+                volume, new_lun_id,
+                store_spec['provisioning'],
+                store_spec['tiering'])
+            volume_metadata.update(metadata_update)
+
         model_update = {'provider_location': pl,
                         'metadata': volume_metadata}
+        model_update.update(rep_update)
         volume_host = volume['host']
         host = vol_utils.extract_host(volume_host, 'backend')
         host_and_pool = vol_utils.append_host(host, store_spec['pool_name'])
@@ -3007,7 +3069,7 @@ class EMCVnxCliBase(object):
 
         :param lun_id: LUN ID in VNX
         :param type: 'lun' or 'smp'
-        "param base_lun_name: primary LUN name,
+        :param base_lun_name: primary LUN name,
                               it will be used when creating snap lun
         """
         pl_dict = {'system': self.get_array_serial(),
@@ -3015,6 +3077,13 @@ class EMCVnxCliBase(object):
                    'id': six.text_type(lun_id),
                    'base_lun_name': six.text_type(base_lun_name),
                    'version': self.VERSION}
+        return self.dumps_provider_location(pl_dict)
+
+    def _update_provider_location(self, provider_location,
+                                  key=None, value=None):
+        pl_dict = {tp.split('^')[0]: tp.split('^')[1]
+                   for tp in provider_location.split('|')}
+        pl_dict[key] = value
         return self.dumps_provider_location(pl_dict)
 
     def _extract_provider_location(self, provider_location, key='id'):
@@ -3878,6 +3947,204 @@ class EMCVnxCliBase(object):
 
         return specs
 
+    def replication_enable(self, context, volume):
+        """Enables replication for the volume."""
+        mirror_name = self._construct_mirror_name(volume)
+        mirror_view = self._get_mirror_view(volume)
+        mirror_view.sync_image(mirror_name)
+
+    def replication_disable(self, context, volume):
+        """Disables replication for the volume."""
+        mirror_name = self._construct_mirror_name(volume)
+        mirror_view = self._get_mirror_view(volume)
+        mirror_view.fracture_image(mirror_name)
+
+    def replication_failover(self, context, volume, secondary):
+        """Fails over the volume back and forth.
+
+        Driver needs to update following info for this volume:
+        1. host: to point to the new host
+        2. provider_location: update serial number and lun id
+        """
+        rep_data = json.loads(volume['replication_driver_data'])
+        is_primary = rep_data['is_primary']
+        if is_primary:
+            remote_device_id = (
+                self.configuration.replication_device[0]['target_device_id'])
+        else:
+            remote_device_id = self._get_volume_metadata(volume)['system']
+        if secondary != remote_device_id:
+            msg = (_('Invalid secondary specified, choose from %s.')
+                   % [remote_device_id])
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        mirror_name = self._construct_mirror_name(volume)
+        mirror_view = self._get_mirror_view(volume)
+        remote_client = mirror_view._secondary_client
+        if is_primary:
+            new_host = (
+                self.configuration.replication_device[0][
+                    'managed_backend_name'])
+        else:
+            new_host = self._get_volume_metadata(volume)['host']
+
+        rep_data.update({'is_primary': not is_primary})
+        # Transfer ownership to secondary and
+        # update provider_location field
+        provider_location = volume['provider_location']
+        provider_location = self._update_provider_location(
+            provider_location,
+            'system', remote_client.get_array_serial()['array_serial'])
+        self.get_array_serial()
+        provider_location = self._update_provider_location(
+            provider_location,
+            'id',
+            six.text_type(remote_client.get_lun_by_name(volume.name)['lun_id'])
+        )
+
+        mirror_view.promote_image(mirror_name)
+        model_update = {'host': new_host,
+                        'replication_driver_data': json.dumps(rep_data),
+                        'provider_location': provider_location}
+        return model_update
+
+    def get_replication_updates(self, context):
+        """Return nothing since Cinder doesn't do anything."""
+        return []
+
+    def list_replication_targets(self, context, volume):
+        """Provides replication target(s) for a volume."""
+        targets = {'volume_id': volume.id, 'targets': []}
+        rep_data = json.loads(volume['replication_driver_data'])
+        is_primary = rep_data['is_primary']
+        if is_primary:
+            remote_device_id = (
+                self.configuration.replication_device[0]['target_device_id'])
+        else:
+            remote_device_id = self._get_volume_metadata(volume)['system']
+
+        targets['targets'] = [{'type': 'managed',
+                               'target_device_id': remote_device_id}]
+        return targets
+
+    def _is_replication_enabled(self, volume):
+        """Return True if replication extra specs is specified.
+
+        If replication_enabled exists and value is '<is> True', return True.
+        If replication exists and value is 'True', return True.
+        Otherwise, return False.
+        """
+        specs = self.get_volumetype_extraspecs(volume)
+        return specs and specs.get('replication_enabled') == '<is> True'
+
+    def setup_lun_replication(self, volume, primary_lun_id,
+                              provisioning, tiering):
+        """Setup replication for LUN, this only happens in primary system."""
+        rep_update = {'replication_driver_data': None,
+                      'replication_status': 'disabled'}
+        metadata_update = {}
+        if self._is_replication_enabled(volume):
+            LOG.debug('Starting setup replication '
+                      'for volume: %s.', volume.id)
+            lun_size = volume['size']
+            mirror_name = self._construct_mirror_name(volume)
+            self._mirror.create_mirror_workflow(
+                mirror_name, primary_lun_id, volume.name, lun_size,
+                provisioning, tiering)
+
+            LOG.info(_LI('Successfully setup replication for %s.'), volume.id)
+            rep_update.update({'replication_driver_data':
+                              self.__class__._build_replication_driver_data(
+                                  self.configuration),
+                               'replication_status': 'enabled'})
+            metadata_update = {
+                'host': volume.host,
+                'system': self.get_array_serial()}
+        return rep_update, metadata_update
+
+    def cleanup_lun_replication(self, volume):
+        if self._is_replication_enabled(volume):
+            LOG.debug('Starting cleanup replication form volume: '
+                      '%s.', volume.id)
+            mirror_name = self._construct_mirror_name(volume)
+            mirror_view = self._get_mirror_view(volume)
+            mv = mirror_view.get_image(mirror_name)
+            if mv:
+                mirror_view.destroy_mirror_view(mirror_name, volume.name, mv)
+
+    def _get_mirror_view(self, volume):
+        """Determines where to build a Mirror View operator."""
+        if volume['replication_driver_data']:
+            rep_data = json.loads(volume['replication_driver_data'])
+            is_primary = rep_data['is_primary']
+        else:
+            is_primary = True
+        if is_primary:
+            # if on primary, promote to configured array in conf
+            mirror_view = self._mirror
+        else:
+            # else promote to array according to volume data
+            mirror_view = self._build_mirror_view(volume)
+        return mirror_view
+
+    @staticmethod
+    def _build_replication_driver_data(configuration):
+        """Builds driver specific data for replication.
+
+        This data will be used by secondary backend to connect
+        primary device.
+        """
+        driver_data = dict()
+        driver_data['san_ip'] = configuration.san_ip
+        driver_data['san_login'] = configuration.san_login
+        driver_data['san_password'] = configuration.san_password
+        driver_data['san_secondary_ip'] = configuration.san_secondary_ip
+        driver_data['storage_vnx_authentication_type'] = (
+            configuration.storage_vnx_authentication_type)
+        driver_data['storage_vnx_security_file_dir'] = (
+            configuration.storage_vnx_security_file_dir)
+        driver_data['is_primary'] = True
+        return json.dumps(driver_data)
+
+    def _build_mirror_view(self, volume=None):
+        """Builds a client for remote storage device.
+
+        Currently, only support one remote, managed device.
+        :param volume: if volume is not None, then build a remote client
+                       from volume's replication_driver_data.
+        """
+        configuration = self.configuration
+        remote_info = None
+        if volume:
+            if volume['replication_driver_data']:
+                remote_info = json.loads(volume['replication_driver_data'])
+            else:
+                LOG.warning(
+                    _LW('No replication info from this volume: %s.'),
+                    volume.id)
+                return None
+        else:
+            if not configuration.replication_device:
+                LOG.info(_LI('Replication is not configured on backend: %s.'),
+                         configuration.config_group)
+                return None
+            remote_info = configuration.replication_device[0]
+
+        pool_name = None
+        managed_backend_name = remote_info.get('managed_backend_name')
+        if managed_backend_name:
+            pool_name = vol_utils.extract_host(managed_backend_name, 'pool')
+        # Copy info to replica configuration for remote client
+        replica_conf = copy.copy(configuration)
+        for key in self.REPLICATION_KEYS:
+            if key in remote_info:
+                config.Configuration.__setattr__(replica_conf,
+                                                 key, remote_info[key])
+        _remote_client = CommandLineHelper(replica_conf)
+        _mirror = MirrorView(self._client, _remote_client, pool_name)
+        return _mirror
+
     def get_pool(self, volume):
         """Returns the pool name of a volume."""
 
@@ -3998,10 +4265,10 @@ class EMCVnxCliBase(object):
                 AttachSnapTask(name="AttachSnapTask%s" % i,
                                inject=sub_store_spec),
                 CreateDestLunTask(name="CreateDestLunTask%s" % i,
-                                  providers=lun_data_key_template % i,
+                                  provides=lun_data_key_template % i,
                                   inject=sub_store_spec),
                 MigrateLunTask(name="MigrateLunTask%s" % i,
-                               providers=lun_id_key_template % i,
+                               provides=lun_id_key_template % i,
                                inject=sub_store_spec,
                                rebind={'lun_data': lun_data_key_template % i},
                                wait_for_completion=False))
@@ -4159,9 +4426,9 @@ class CreateDestLunTask(task.Task):
 
     Reversion strategy: Delete the temp destination lun.
     """
-    def __init__(self, name=None, providers='lun_data', inject=None):
+    def __init__(self, name=None, provides='lun_data', inject=None):
         super(CreateDestLunTask, self).__init__(name=name,
-                                                provides=providers,
+                                                provides=provides,
                                                 inject=inject)
 
     def execute(self, client, pool_name, dest_vol_name, volume_size,
@@ -4189,10 +4456,10 @@ class MigrateLunTask(task.Task):
 
     Reversion strategy: None
     """
-    def __init__(self, name=None, providers='new_lun_id', inject=None,
+    def __init__(self, name=None, provides='new_lun_id', inject=None,
                  rebind=None, wait_for_completion=True):
         super(MigrateLunTask, self).__init__(name=name,
-                                             provides=providers,
+                                             provides=provides,
                                              inject=inject,
                                              rebind=rebind)
         self.wait_for_completion = wait_for_completion
@@ -4320,3 +4587,356 @@ class WaitMigrationsCompleteTask(task.Task):
             if not migrated:
                 msg = _("Migrate volume %(src)s failed.") % {'src': lun_id}
                 raise exception.VolumeBackendAPIException(data=msg)
+
+
+class MirrorView(object):
+    """MirrorView synchronous/asynchronous operations.
+
+    This class is to support operations for volume replication.
+    Each operation should ensure commands are sent to correct targeting device.
+
+    NOTE: currently, only synchronous is supported.
+    """
+    SYNCHRONIZE_MODE = ['sync']
+
+    SYNCHRONIZED_STATE = 'Synchronized'
+    CONSISTENT_STATE = 'Consistent'
+
+    def __init__(self, client, secondary_client, pool_name, mode='sync'):
+        """Caller needs to initialize MirrorView via this method.
+
+        :param client: client connecting to primary system
+        :param secondary_client: client connecting to secondary system
+        :param mode: only 'sync' is allowed
+        """
+        self._client = client
+        self._secondary_client = secondary_client
+        self.pool_name = pool_name
+        if mode not in self.SYNCHRONIZE_MODE:
+            msg = _('Invalid synchronize mode specified, allowed '
+                    'mode is %s.') % self.SYNCHRONIZE_MODE
+            raise exception.VolumeBackendAPIException(
+                data=msg)
+        self.mode = '-sync'
+
+    def create_mirror_workflow(self, mirror_name, lun_id,
+                               lun_name, lun_size, provisioning, tiering):
+        """Creates mirror view for LUN."""
+        store_spec = {'mirror': self}
+        work_flow = self._get_create_mirror_flow(
+            mirror_name, lun_id, lun_name, lun_size, provisioning, tiering)
+        flow_engine = taskflow.engines.load(work_flow, store=store_spec)
+        flow_engine.run()
+
+    def destroy_mirror_view(self, mirror_name, lun_name, mv=None):
+        self.fracture_image(mirror_name, mv)
+        self.remove_image(mirror_name, mv)
+        self.destroy_mirror(mirror_name)
+        self.delete_secondary_lun(lun_name)
+
+    def _get_create_mirror_flow(self, mirror_name, lun_id,
+                                lun_name, lun_size, provisioning, tiering):
+        """Gets mirror create flow."""
+        flow_name = 'create_mirror_view'
+        work_flow = linear_flow.Flow(flow_name)
+        work_flow.add(MirrorCreateTask(mirror_name, lun_id),
+                      MirrorSecLunCreateTask(lun_name, lun_size,
+                                             provisioning, tiering),
+                      MirrorAddImageTask(mirror_name))
+        return work_flow
+
+    def create_mirror(self, name, primary_lun_id, poll=False):
+        command_create = ('mirror', '-sync', '-create',
+                          '-name', name, '-lun', primary_lun_id,
+                          '-usewriteintentlog', '-o')
+        out, rc = self._client.command_execute(*command_create, poll=poll)
+        if rc != 0 or out.strip():
+            if VNXError.has_error(out, VNXError.MIRROR_IN_USE):
+                LOG.warning(_LW('MirrorView already created, mirror name '
+                                '%(name)s. Message: %(msg)s'),
+                            {'name': name, 'msg': out})
+            else:
+                self._client._raise_cli_error(cmd=command_create,
+                                              rc=rc,
+                                              out=out)
+        return rc
+
+    def create_secondary_lun(self, lun_name, lun_size, provisioning,
+                             tiering, poll=False):
+        """Creates secondary LUN in remote device."""
+        data = self._secondary_client.create_lun_with_advance_feature(
+            pool=self.pool_name,
+            name=lun_name,
+            size=lun_size,
+            provisioning=provisioning,
+            tiering=tiering,
+            consistencygroup_id=None,
+            ignore_thresholds=False,
+            poll=poll)
+        return data['lun_id']
+
+    def delete_secondary_lun(self, lun_name):
+        """Deletes secondary LUN in remote device."""
+        self._secondary_client.delete_lun(lun_name)
+
+    def destroy_mirror(self, name, poll=False):
+        command_destroy = ('mirror', '-sync', '-destroy',
+                           '-name', name, '-force', '-o')
+        out, rc = self._client.command_execute(*command_destroy, poll=poll)
+        if rc != 0 or out.strip():
+            if VNXError.has_error(out, VNXError.MIRROR_NOT_FOUND):
+                LOG.warning(_LW('MirrorView %(name)s was already deleted. '
+                                'Message: %(msg)s'),
+                            {'name': name, 'msg': out})
+            else:
+                self._client._raise_cli_error(cmd=command_destroy,
+                                              rc=rc,
+                                              out=out)
+        return out, rc
+
+    def add_image(self, name, secondary_lun_id, poll=False):
+        """Adds secondary image to mirror."""
+        secondary_array_ip = self._secondary_client.active_storage_ip
+        command_add = ('mirror', '-sync', '-addimage',
+                       '-name', name, '-arrayhost', secondary_array_ip,
+                       '-lun', secondary_lun_id, '-recoverypolicy', 'auto',
+                       '-syncrate', 'high')
+        out, rc = self._client.command_execute(*command_add, poll=poll)
+        if rc != 0:
+            self._client._raise_cli_error(cmd=command_add,
+                                          rc=rc,
+                                          out=out)
+        return out, rc
+
+    def remove_image(self, name, mirror_view=None, poll=False):
+        """Removes secondary image(s) from mirror."""
+        if not mirror_view:
+            mirror_view = self.get_image(name, poll=True)
+        image_uid = self._extract_image_uid(mirror_view, 'secondary')
+        command_remove = ('mirror', '-sync', '-removeimage',
+                          '-name', name, '-imageuid', image_uid,
+                          '-o')
+        out, rc = self._client.command_execute(*command_remove, poll=poll)
+        if rc != 0:
+            self._client._raise_cli_error(cmd=command_remove,
+                                          rc=rc,
+                                          out=out)
+        return out, rc
+
+    def get_image(self, name, use_secondary=False, poll=False):
+        """Returns mirror view properties.
+
+        :param name: mirror view name
+        :param use_secondary: get image info from secodnary or not
+        :return: dict of mirror view properties as below:
+            {
+                'MirrorView Name': 'mirror name',
+                'MirrorView Description': 'some desciption here',
+                ...,
+                'images': [
+                    {
+                        'Image UID': '50:06:01:60:88:60:08:0F',
+                        'Is Image Primary': 'YES',
+                        ...
+                        'Preferred SP': 'A'
+                    },
+                    {
+                        'Image UID': '50:06:01:60:88:60:03:BA',
+                        'Is Image Primary': 'NO',
+                        ...,
+                        'Synchronizing Progress(%)': 100
+                    }
+                ]
+            }
+        """
+        if use_secondary:
+            client = self._secondary_client
+        else:
+            client = self._client
+        command_get = ('mirror', '-sync', '-list', '-name', name)
+        out, rc = client.command_execute(
+            *command_get, poll=poll)
+        if rc != 0:
+            if VNXError.has_error(out, VNXError.MIRROR_NOT_FOUND):
+                LOG.warning(_LW('Getting MirrorView %(name)s failed.'
+                                ' Message: %(msg)s.'),
+                            {'name': name, 'msg': out})
+                return None
+            else:
+                client._raise_cli_error(cmd=command_get,
+                                        rc=rc,
+                                        out=out)
+        mvs = {}
+        mvs_info, images_info = re.split('Images:\s*', out)
+        for line in mvs_info.strip('\n').split('\n'):
+            k, v = re.split(':\s*', line, 1)
+            mvs[k] = v if not v or re.search('\D', v) else int(v)
+        mvs['images'] = []
+        for image_raw in re.split('\n\n+', images_info.strip('\n')):
+            image = {}
+            for line in image_raw.split('\n'):
+                k, v = re.split(':\s*', line, 1)
+                image[k] = v if not v or re.search('\D', v) else int(v)
+            mvs['images'].append(image)
+        return mvs
+
+    def fracture_image(self, name, mirror_view=None, poll=False):
+        """Stops the synchronization between LUNs."""
+        if not mirror_view:
+            mirror_view = self.get_image(name, poll=True)
+        image_uid = self._extract_image_uid(mirror_view, 'secondary')
+        command_fracture = ('mirror', '-sync', '-fractureimage', '-name', name,
+                            '-imageuid', image_uid, '-o')
+        out, rc = self._client.command_execute(*command_fracture, poll=poll)
+        if rc != 0:
+            self._client._raise_cli_error(cmd=command_fracture,
+                                          rc=rc,
+                                          out=out)
+        return out, rc
+
+    def sync_image(self, name, mirror_view=None, poll=False):
+        """Synchronizes the secondary image and wait for completion."""
+        if not mirror_view:
+            mirror_view = self.get_image(name, poll=True)
+        image_state = mirror_view['images'][1]['Image State']
+        if image_state == self.SYNCHRONIZED_STATE:
+            LOG.debug('replication %(name)s is already in %(state)s.',
+                      {'name': name, 'state': image_state})
+            return "", 0
+        image_uid = self._extract_image_uid(mirror_view, 'secondary')
+        command_sync = ('mirror', '-sync', '-syncimage', '-name', name,
+                        '-imageuid', image_uid, '-o')
+        out, rc = self._client.command_execute(*command_sync, poll=poll)
+        if rc != 0:
+            self._client._raise_cli_error(cmd=command_sync,
+                                          rc=rc,
+                                          out=out)
+
+        def inner():
+            tmp_mirror = self.get_image(name)
+            for image in tmp_mirror['images']:
+                if 'Image State' in image:
+                    # Only secondary image contains this field
+                    return (image['Image State'] == self.SYNCHRONIZED_STATE and
+                            image['Synchronizing Progress(%)'] == 100)
+        self._client._wait_for_a_condition(inner)
+        return out, rc
+
+    def promote_image(self, name, mirror_view=None, poll=False):
+        """Promotes the secondary image on secondary system.
+
+        NOTE: Only when "Image State" in 'Consistent' or 'Synchnonized'
+              can be promoted.
+        """
+        if not mirror_view:
+            mirror_view = self.get_image(name, use_secondary=True, poll=True)
+        image_uid = self._extract_image_uid(mirror_view, 'secondary')
+
+        command_promote = ('mirror', '-sync', '-promoteimage', '-name', name,
+                           '-imageuid', image_uid, '-o')
+        out, rc = self._secondary_client.command_execute(
+            *command_promote, poll=poll)
+        if rc != 0:
+            raise self._client._raise_cli_error(command_promote, rc, out)
+        return out, rc
+
+    def _extract_image_uid(self, mirror_view, image_type='primary'):
+        """Returns primary or secondary image uid from mirror objects.
+
+        :param mirror_view: parsed mirror view.
+        :param image_type: 'primary' or 'secondary'.
+        """
+        images = mirror_view['images']
+        for image in images:
+            is_primary = image['Is Image Primary']
+            if image_type == 'primary' and is_primary == 'YES':
+                image_uid = image['Image UID']
+                break
+            if image_type == 'secondary' and is_primary == 'NO':
+                image_uid = image['Image UID']
+                break
+        return image_uid
+
+
+class MirrorCreateTask(task.Task):
+    """Creates a MirrorView with primary lun for replication.
+
+    Reversion strategy: Destroy the created MirrorView.
+    """
+    def __init__(self, mirror_name, primary_lun_id, **kwargs):
+        super(MirrorCreateTask, self).__init__()
+        self.mirror_name = mirror_name
+        self.primary_lun_id = primary_lun_id
+
+    def execute(self, mirror, *args, **kwargs):
+        LOG.debug('%s.execute', self.__class__.__name__)
+        mirror.create_mirror(self.mirror_name, self.primary_lun_id, poll=True)
+
+    def revert(self, result, mirror, *args, **kwargs):
+        method_name = '%s.revert' % self.__class__.__name__
+        LOG.debug(method_name)
+        if isinstance(result, failure.Failure):
+            return
+        else:
+            LOG.warning(_LW('%(method)s: destroying mirror '
+                            'view %(name)s.'),
+                        {'method': method_name,
+                         'name': self.mirror_name})
+            mirror.destroy_mirror(self.mirror_name, poll=True)
+
+
+class MirrorSecLunCreateTask(task.Task):
+    """Creates a secondary LUN on secondary system.
+
+    Reversion strategy: Delete secondary LUN.
+    """
+    def __init__(self, lun_name, lun_size, provisioning, tiering):
+        super(MirrorSecLunCreateTask, self).__init__(provides='sec_lun_id')
+        self.lun_name = lun_name
+        self.lun_size = lun_size
+        self.provisioning = provisioning
+        self.tiering = tiering
+
+    def execute(self, mirror, *args, **kwargs):
+        LOG.debug('%s.execute', self.__class__.__name__)
+        sec_lun_id = mirror.create_secondary_lun(
+            self.lun_name, self.lun_size, self.provisioning, self.tiering)
+        return sec_lun_id
+
+    def revert(self, result, mirror, *args, **kwargs):
+        method_name = '%s.revert' % self.__class__.__name__
+        LOG.debug(method_name)
+        if isinstance(result, failure.Failure):
+            return
+        else:
+            LOG.warning(_LW('%(method)s: destroying secondary LUN '
+                            '%(name)s.'),
+                        {'method': method_name,
+                         'name': self.lun_name})
+            mirror.delete_secondary_lun(self.lun_name)
+
+
+class MirrorAddImageTask(task.Task):
+    """Add the secondary image to MirrorView.
+
+    Reversion strategy: Remove the secondary image.
+    """
+    def __init__(self, mirror_name):
+        super(MirrorAddImageTask, self).__init__()
+        self.mirror_name = mirror_name
+
+    def execute(self, mirror, sec_lun_id, *args, **kwargs):
+        LOG.debug('%s.execute', self.__class__.__name__)
+        mirror.add_image(self.mirror_name, sec_lun_id, poll=True)
+
+    def revert(self, result, mirror, *args, **kwargs):
+        method_name = '%s.revert' % self.__class__.__name__
+        LOG.debug(method_name)
+        if isinstance(result, failure.Failure):
+            return
+        else:
+            LOG.warning(_LW('%(method)s: removing secondary image '
+                            'from %(name)s.'),
+                        {'method': method_name,
+                         'name': self.mirror_name})
+            mirror.remove_image(self.mirror_name, poll=True)
