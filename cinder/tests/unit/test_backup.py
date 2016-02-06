@@ -20,6 +20,7 @@ import uuid
 
 import mock
 from oslo_config import cfg
+from oslo_db import exception as db_exc
 from oslo_utils import importutils
 from oslo_utils import timeutils
 
@@ -32,6 +33,7 @@ from cinder import objects
 from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.backup import fake_service_with_verify as fake_service
+from cinder.tests.unit import utils
 from cinder.volume.drivers import lvm
 
 
@@ -1224,3 +1226,50 @@ class BackupAPITestCase(BaseBackupTest):
         mock_backuplist.get_all_by_project.assert_called_once_with(
             ctxt, ctxt.project_id, {'key': 'value'}, None, None, None, None,
             None)
+
+    @mock.patch.object(api.API, '_is_backup_service_enabled',
+                       return_value=True)
+    @mock.patch.object(db, 'backup_create',
+                       side_effect=db_exc.DBError())
+    def test_create_when_failed_to_create_backup_object(
+            self, mock_create,
+            mock_service_enabled):
+        volume_id = utils.create_volume(self.ctxt)['id']
+        self.ctxt.user_id = 'user_id'
+        self.ctxt.project_id = 'project_id'
+
+        # The opposite side of this test case is a "NotImplementedError:
+        # Cannot load 'id' in the base class" being raised.
+        # More detailed, in the try clause, if backup.create() failed
+        # with DB exception, backup.id won't be assigned. However,
+        # in the except clause, backup.destroy() is invoked to do cleanup,
+        # which internally tries to access backup.id.
+        self.assertRaises(db_exc.DBError, self.api.create,
+                          context=self.ctxt,
+                          name="test_backup",
+                          description="test backup description",
+                          volume_id=volume_id,
+                          container='volumebackups')
+
+    @mock.patch.object(api.API, '_is_backup_service_enabled',
+                       return_value=True)
+    @mock.patch.object(objects.Backup, '__init__',
+                       side_effect=exception.InvalidInput(
+                           reason='Failed to new'))
+    def test_create_when_failed_to_new_backup_object(self, mock_new,
+                                                     mock_service_enabled):
+        volume_id = utils.create_volume(self.ctxt)['id']
+        self.ctxt.user_id = 'user_id'
+        self.ctxt.project_id = 'project_id'
+
+        # The opposite side of this test case is that a "UnboundLocalError:
+        # local variable 'backup' referenced before assignment" is raised.
+        # More detailed, in the try clause, backup = objects.Backup(...)
+        # raises exception, so 'backup' is not assigned. But in the except
+        # clause, 'backup' is referenced to invoke cleanup methods.
+        self.assertRaises(exception.InvalidInput, self.api.create,
+                          context=self.ctxt,
+                          name="test_backup",
+                          description="test backup description",
+                          volume_id=volume_id,
+                          container='volumebackups')

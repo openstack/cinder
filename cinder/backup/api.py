@@ -271,6 +271,8 @@ class API(base.Base):
         self.db.volume_update(context, volume_id,
                               {'status': 'backing-up',
                                'previous_status': previous_status})
+
+        backup = None
         try:
             kwargs = {
                 'user_id': context.user_id,
@@ -295,7 +297,8 @@ class API(base.Base):
         except Exception:
             with excutils.save_and_reraise_exception():
                 try:
-                    backup.destroy()
+                    if backup and 'id' in backup:
+                        backup.destroy()
                 finally:
                     QUOTAS.rollback(context, reservations)
 
