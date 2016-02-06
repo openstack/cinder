@@ -176,6 +176,9 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
             if code == dm_exc.DM_SUCCESS:
                 seen_success = True
                 continue
+            if hasattr(dm_exc, 'DM_INFO'):
+                if code == dm_exc.DM_INFO:
+                    continue
             seen_error = _("Received error string: %s") % (fmt % arg)
 
         if seen_error:
