@@ -61,6 +61,7 @@ from cinder import manager
 from cinder.openstack.common import periodic_task
 from cinder import quota
 from cinder import utils
+from cinder import readerwriterlockutils
 from cinder.volume import configuration as config
 from cinder.volume.flows.manager import create_volume
 from cinder.volume.flows.manager import manage_existing
@@ -132,7 +133,7 @@ def locked_volume_operation(f):
     volume e.g. delete VolA while create volume VolB from VolA is in progress.
     """
     def lvo_inner1(inst, context, volume_id, **kwargs):
-        @utils.synchronized("%s-%s" % (volume_id, f.__name__), external=True)
+        @readerwriterlockutils.write_lock("%s-%s" % (volume_id, f.__name__))
         def lvo_inner2(*_args, **_kwargs):
             return f(*_args, **_kwargs)
         return lvo_inner2(inst, context, volume_id, **kwargs)
@@ -173,7 +174,7 @@ def locked_snapshot_operation(f):
     progress.
     """
     def lso_inner1(inst, context, snapshot, **kwargs):
-        @utils.synchronized("%s-%s" % (snapshot.id, f.__name__), external=True)
+        @readerwriterlockutils.write_lock("%s-%s" % (snapshot.id, f.__name__))
         def lso_inner2(*_args, **_kwargs):
             return f(*_args, **_kwargs)
         return lso_inner2(inst, context, snapshot, **kwargs)
@@ -455,7 +456,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             with flow_utils.DynamicLogListener(flow_engine, logger=LOG):
                 flow_engine.run()
 
-        @utils.synchronized(locked_action, external=True)
+        @readerwriterlockutils.read_lock(locked_action)
         def _run_flow_locked():
             _run_flow()
 
