@@ -285,6 +285,27 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertEqual("error", volume['status'])
         self.volume.delete_volume(self.context, volume_id)
 
+    def test_init_host_clears_uploads_available_volume(self):
+        """init_host will clean an available volume stuck in uploading."""
+        volume = tests_utils.create_volume(self.context, status='uploading',
+                                           size=0, host=CONF.host)
+        self.volume.init_host()
+        volume = objects.Volume.get_by_id(context.get_admin_context(),
+                                          volume.id)
+        self.assertEqual("available", volume.status)
+
+    def test_init_host_clears_uploads_in_use_volume(self):
+        """init_host will clean an in-use volume stuck in uploading."""
+        volume = tests_utils.create_volume(self.context, status='uploading',
+                                           size=0, host=CONF.host)
+        fake_uuid = fakes.get_fake_uuid()
+        tests_utils.attach_volume(self.context, volume.id, fake_uuid,
+                                  'fake_host', '/dev/vda')
+        self.volume.init_host()
+        volume = objects.Volume.get_by_id(context.get_admin_context(),
+                                          volume.id)
+        self.assertEqual("in-use", volume.status)
+
     def test_init_host_resumes_deletes(self):
         """init_host will resume deleting volume in deleting status."""
         volume = tests_utils.create_volume(self.context, status='deleting',
