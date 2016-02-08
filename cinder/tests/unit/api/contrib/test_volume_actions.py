@@ -52,7 +52,8 @@ class VolumeActionsTest(test.TestCase):
         self.controller = volume_actions.VolumeActionsController()
         self.api_patchers = {}
         for _meth in self._methods:
-            self.api_patchers[_meth] = mock.patch('cinder.volume.API.' + _meth)
+            self.api_patchers[_meth] = mock.patch('cinder.volume.api.API.' +
+                                                  _meth)
             self.api_patchers[_meth].start()
             self.addCleanup(self.api_patchers[_meth].stop)
             self.api_patchers[_meth].return_value = True
@@ -61,11 +62,11 @@ class VolumeActionsTest(test.TestCase):
                   'size': 1, 'migration_status': None,
                   'volume_type_id': 'fake', 'project_id': 'project_id'}
         vol = fake_volume.fake_volume_obj(self.context, **db_vol)
-        self.get_patcher = mock.patch('cinder.volume.API.get')
+        self.get_patcher = mock.patch('cinder.volume.api.API.get')
         self.mock_volume_get = self.get_patcher.start()
         self.addCleanup(self.get_patcher.stop)
         self.mock_volume_get.return_value = vol
-        self.update_patcher = mock.patch('cinder.volume.API.update')
+        self.update_patcher = mock.patch('cinder.volume.api.API.update')
         self.mock_volume_update = self.update_patcher.start()
         self.addCleanup(self.update_patcher.stop)
         self.mock_volume_update.return_value = vol
@@ -310,7 +311,7 @@ class VolumeActionsTest(test.TestCase):
     def test_begin_detaching(self):
         def fake_begin_detaching(*args, **kwargs):
             return {}
-        self.stubs.Set(volume.API, 'begin_detaching',
+        self.stubs.Set(volume.api.API, 'begin_detaching',
                        fake_begin_detaching)
 
         body = {'os-begin_detaching': {'fake': 'fake'}}
@@ -325,7 +326,7 @@ class VolumeActionsTest(test.TestCase):
     def test_roll_detaching(self):
         def fake_roll_detaching(*args, **kwargs):
             return {}
-        self.stubs.Set(volume.API, 'roll_detaching',
+        self.stubs.Set(volume.api.API, 'roll_detaching',
                        fake_roll_detaching)
 
         body = {'os-roll_detaching': {'fake': 'fake'}}
@@ -340,7 +341,7 @@ class VolumeActionsTest(test.TestCase):
     def test_extend_volume(self):
         def fake_extend_volume(*args, **kwargs):
             return {}
-        self.stubs.Set(volume.API, 'extend',
+        self.stubs.Set(volume.api.API, 'extend',
                        fake_extend_volume)
 
         body = {'os-extend': {'new_size': 5}}
@@ -356,7 +357,7 @@ class VolumeActionsTest(test.TestCase):
         def fake_extend_volume(*args, **kwargs):
             msg = "Volume status must be available"
             raise exception.InvalidVolume(reason=msg)
-        self.stubs.Set(volume.API, 'extend',
+        self.stubs.Set(volume.api.API, 'extend',
                        fake_extend_volume)
 
         body = {'os-extend': {'new_size': 5}}
@@ -371,7 +372,7 @@ class VolumeActionsTest(test.TestCase):
     def test_update_readonly_flag(self):
         def fake_update_readonly_flag(*args, **kwargs):
             return {}
-        self.stubs.Set(volume.API, 'update_readonly_flag',
+        self.stubs.Set(volume.api.API, 'update_readonly_flag',
                        fake_update_readonly_flag)
 
         def make_update_readonly_flag_test(self, readonly, return_code):

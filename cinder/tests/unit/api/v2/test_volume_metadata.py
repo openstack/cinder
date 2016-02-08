@@ -127,7 +127,7 @@ class volumeMetaDataTest(test.TestCase):
     def setUp(self):
         super(volumeMetaDataTest, self).setUp()
         self.volume_api = volume_api.API()
-        self.stubs.Set(volume.API, 'get', get_volume)
+        self.stubs.Set(volume.api.API, 'get', get_volume)
         self.stubs.Set(db, 'volume_metadata_get',
                        return_volume_metadata)
         self.stubs.Set(db, 'service_get_all_by_topic',
@@ -378,7 +378,7 @@ class volumeMetaDataTest(test.TestCase):
                           req, self.req_id, body)
 
     def test_create_nonexistent_volume(self):
-        self.stubs.Set(volume.API, 'get', return_volume_nonexistent)
+        self.stubs.Set(volume.api.API, 'get', return_volume_nonexistent)
         self.stubs.Set(db, 'volume_metadata_get',
                        return_volume_metadata)
         self.stubs.Set(db, 'volume_metadata_update',
