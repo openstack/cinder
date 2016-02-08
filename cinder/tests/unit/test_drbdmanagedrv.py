@@ -382,7 +382,7 @@ class DrbdManageIscsiTestCase(test.TestCase):
         self.assertEqual("res", dmd.odm.calls[1][1])
         self.assertEqual(2, dmd.odm.calls[1][2])
         self.assertEqual(-1, dmd.odm.calls[1][3])
-        self.assertEqual(5242880, dmd.odm.calls[1][4]['size'])
+        self.assertEqual(5242880, dmd.odm.calls[1][4])
 
     def test_create_cloned_volume(self):
         srcvol = {'project_id': 'testprjid',
