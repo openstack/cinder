@@ -1,0 +1,9 @@
+---
+features:
+  - New config option for Pure Storage volume drivers pure_eradicate_on_delete.
+    When enabled will permanantly eradicate data instead of placing into
+    pending eradication state.
+fixes:
+  - Allow for eradicating Pure Storage volumes, snapshots, and pgroups when
+    deleting their Cinder counterpart.
+
