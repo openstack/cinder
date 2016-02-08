@@ -89,11 +89,11 @@ class VolumeImageMetadataTest(test.TestCase):
 
     def setUp(self):
         super(VolumeImageMetadataTest, self).setUp()
-        self.stubs.Set(volume.API, 'get', fake_volume_get)
-        self.stubs.Set(volume.API, 'get_all', fake_volume_get_all)
-        self.stubs.Set(volume.API, 'get_volume_image_metadata',
+        self.stubs.Set(volume.api.API, 'get', fake_volume_get)
+        self.stubs.Set(volume.api.API, 'get_all', fake_volume_get_all)
+        self.stubs.Set(volume.api.API, 'get_volume_image_metadata',
                        fake_get_volume_image_metadata)
-        self.stubs.Set(volume.API, 'get_volumes_image_metadata',
+        self.stubs.Set(volume.api.API, 'get_volumes_image_metadata',
                        fake_get_volumes_image_metadata)
         self.stubs.Set(db, 'volume_get', fake_volume_get)
         self.UUID = uuid.uuid4()
@@ -128,7 +128,7 @@ class VolumeImageMetadataTest(test.TestCase):
                          self._get_image_metadata_list(res.body)[0])
 
     def test_create_image_metadata(self):
-        self.stubs.Set(volume.API, 'get_volume_image_metadata',
+        self.stubs.Set(volume.api.API, 'get_volume_image_metadata',
                        return_empty_image_metadata)
         self.stubs.Set(db, 'volume_metadata_update',
                        fake_create_volume_metadata)
@@ -147,7 +147,7 @@ class VolumeImageMetadataTest(test.TestCase):
     def test_create_with_keys_case_insensitive(self):
         # If the keys in uppercase_and_lowercase, should return the one
         # which server added
-        self.stubs.Set(volume.API, 'get_volume_image_metadata',
+        self.stubs.Set(volume.api.API, 'get_volume_image_metadata',
                        return_empty_image_metadata)
         self.stubs.Set(db, 'volume_metadata_update',
                        fake_create_volume_metadata)
@@ -182,7 +182,7 @@ class VolumeImageMetadataTest(test.TestCase):
                           self.controller.create, req, 1, None)
 
     def test_create_nonexistent_volume(self):
-        self.stubs.Set(volume.API, 'get', return_volume_nonexistent)
+        self.stubs.Set(volume.api.API, 'get', return_volume_nonexistent)
 
         req = fakes.HTTPRequest.blank('/v2/fake/volumes/1/action')
         req.method = 'POST'

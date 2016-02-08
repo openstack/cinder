@@ -1131,7 +1131,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual("Missing required element 'restore' in request body.",
                          res_dict['badRequest']['message'])
 
-    @mock.patch('cinder.volume.API.create')
+    @mock.patch('cinder.volume.api.API.create')
     def test_restore_backup_volume_id_unspecified(self,
                                                   _mock_volume_api_create):
 
@@ -1157,7 +1157,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(202, res.status_int)
         self.assertEqual(backup_id, res_dict['restore']['backup_id'])
 
-    @mock.patch('cinder.volume.API.create')
+    @mock.patch('cinder.volume.api.API.create')
     def test_restore_backup_name_specified(self,
                                            _mock_volume_api_create):
 
