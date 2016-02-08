@@ -68,7 +68,9 @@ Build-Depends-Indep:
  python-testresources,
  python-testtools (>= 0.9.36),
  python-webob (>= 1.2.3),
- testrepository (>= 0.0.18)
+ testrepository (>= 0.0.18),
+ python-boto (>=2.38.0),
+ python-filechunkio (>=1.6),
 Standards-Version: 3.9.6
 Homepage: http://launchpad.net/cinder
 Vcs-Browser: http://bazaar.launchpad.net/~ubuntu-server-dev/cinder/kilo/files
@@ -125,6 +127,8 @@ Depends:
  python-swiftclient (>= 1:2.2.0),
  python-taskflow (>= 0.7.1),
  python-webob (>= 1.2.3),
+ python-boto (>=2.38.0),
+ python-filechunkio (>=1.6),
  ${misc:Depends},
  ${python:Depends}
 Suggests: python-ceph, python-hp3parclient, python-rtslib-fb
