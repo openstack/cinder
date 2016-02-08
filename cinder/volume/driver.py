@@ -2634,8 +2634,8 @@ class FakeISCSIDriver(ISCSIDriver):
         fake_pool = {}
         fake_pool.update(dict(
             pool_name=data["volume_backend_name"],
-            total_capacity_gb=0,
-            free_capacity_gb=0,
+            total_capacity_gb='infinite',
+            free_capacity_gb='infinite',
             provisioned_capacity_gb=0,
             reserved_percentage=100,
             QoS_support=False,
