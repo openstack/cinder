@@ -15,6 +15,7 @@
 from oslo_utils import timeutils
 
 from cinder import context
+from cinder import exception
 from cinder.objects import base as obj_base
 from cinder import test
 
@@ -36,7 +37,12 @@ class BaseObjectsTestCase(test.TestCase):
     @staticmethod
     def _compare(test, db, obj):
         for field, value in db.items():
-            if not hasattr(obj, field):
+            try:
+                getattr(obj, field)
+            except (AttributeError, exception.CinderException,
+                    NotImplementedError):
+                # NotImplementedError: ignore "Cannot load 'projects' in the
+                # base class" error
                 continue
 
             if field in ('modified_at', 'created_at',

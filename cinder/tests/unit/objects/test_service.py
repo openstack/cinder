@@ -13,6 +13,7 @@
 #    under the License.
 
 import mock
+import six
 
 from cinder import objects
 from cinder.tests.unit import fake_service
@@ -93,8 +94,12 @@ class TestService(test_objects.BaseObjectsTestCase):
         # new value for that field
         service.refresh()
         self._compare(self, db_service2, service)
+        if six.PY3:
+            call_bool = mock.call.__bool__()
+        else:
+            call_bool = mock.call.__nonzero__()
         service_get.assert_has_calls([mock.call(self.context, 123),
-                                      mock.call.__nonzero__(),
+                                      call_bool,
                                       mock.call(self.context, 123)])
 
     @mock.patch('cinder.db.service_get_all_by_binary')

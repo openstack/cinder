@@ -13,6 +13,7 @@
 #    under the License.
 
 import mock
+import six
 
 from cinder import exception
 from cinder import objects
@@ -123,8 +124,12 @@ class TestCGSnapshot(test_objects.BaseObjectsTestCase):
         # value for that field
         cgsnapshot.refresh()
         self._compare(self, db_cgsnapshot2, cgsnapshot)
+        if six.PY3:
+            call_bool = mock.call.__bool__()
+        else:
+            call_bool = mock.call.__nonzero__()
         cgsnapshot_get.assert_has_calls([mock.call(self.context, '1'),
-                                         mock.call.__nonzero__(),
+                                         call_bool,
                                          mock.call(self.context, '1')])
 
 
