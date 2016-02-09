@@ -18,7 +18,6 @@ import time
 from oslo_log import log as logging
 import testtools
 
-from cinder import service
 from cinder.tests.unit import fake_driver
 from cinder.tests.unit.integrated.api import client
 from cinder.tests.unit.integrated import integrated_helpers
@@ -31,12 +30,6 @@ class VolumesTest(integrated_helpers._IntegratedTestBase):
     def setUp(self):
         super(VolumesTest, self).setUp()
         fake_driver.LoggingVolumeDriver.clear_logs()
-
-    def _start_api_service(self):
-        self.osapi = service.WSGIService("osapi_volume")
-        self.osapi.start()
-        self.auth_url = 'http://%s:%s/v2' % (self.osapi.host, self.osapi.port)
-        LOG.warning(self.auth_url)
 
     def _get_flags(self):
         f = super(VolumesTest, self)._get_flags()

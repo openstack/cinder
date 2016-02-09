@@ -29,6 +29,7 @@ from oslo_log import log as logging
 import oslo_messaging as messaging
 from oslo_service import loopingcall
 from oslo_service import service
+from oslo_service import wsgi
 from oslo_utils import importutils
 import osprofiler.notifier
 from osprofiler import profiler
@@ -41,8 +42,7 @@ from cinder import objects
 from cinder.objects import base as objects_base
 from cinder import rpc
 from cinder import version
-from cinder.wsgi import common as wsgi_common
-from cinder.wsgi import eventlet_server as wsgi
+
 
 LOG = logging.getLogger(__name__)
 
@@ -366,7 +366,7 @@ class WSGIService(service.ServiceBase):
         """
         self.name = name
         self.manager = self._get_manager()
-        self.loader = loader or wsgi_common.Loader()
+        self.loader = loader or wsgi.Loader(CONF)
         self.app = self.loader.load_app(name)
         self.host = getattr(CONF, '%s_listen' % name, "0.0.0.0")
         self.port = getattr(CONF, '%s_listen_port' % name, 0)
