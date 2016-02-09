@@ -47,6 +47,7 @@ class BrcdFCZoneFactory(object):
             fabric_user = fabric.safe_get('fc_fabric_user')
             fabric_pwd = fabric.safe_get('fc_fabric_password')
             fabric_port = fabric.safe_get('fc_fabric_port')
+            fc_vfid = fabric.safe_get('fc_virtual_fabric_id')
             fabric_ssh_cert_path = fabric.safe_get('fc_fabric_ssh_cert_path')
 
             LOG.debug("Client not found. Creating connection client for"
@@ -55,7 +56,8 @@ class BrcdFCZoneFactory(object):
                       {'ip': fabric_ip,
                        'connector': sb_connector,
                        'user': fabric_user,
-                       'port': fabric_port})
+                       'port': fabric_port,
+                       'vf_id': fc_vfid})
 
             if sb_connector.lower() in (fc_zone_constants.HTTP,
                                         fc_zone_constants.HTTPS):
@@ -66,6 +68,7 @@ class BrcdFCZoneFactory(object):
                     username=fabric_user,
                     password=fabric_pwd,
                     port=fabric_port,
+                    vfid=fc_vfid,
                     protocol=sb_connector
                 )
             else:
