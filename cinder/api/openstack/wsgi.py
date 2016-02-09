@@ -409,7 +409,7 @@ class JSONDictSerializer(DictSerializer):
     """Default JSON request body serialization."""
 
     def default(self, data):
-        return jsonutils.dumps(data)
+        return jsonutils.dump_as_bytes(data)
 
 
 class XMLDictSerializer(DictSerializer):

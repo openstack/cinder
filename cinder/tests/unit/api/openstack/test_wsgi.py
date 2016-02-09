@@ -216,10 +216,10 @@ class XMLDictSerializerTest(test.TestCase):
 class JSONDictSerializerTest(test.TestCase):
     def test_json(self):
         input_dict = dict(servers=dict(a=(2, 3)))
-        expected_json = '{"servers":{"a":[2,3]}}'
+        expected_json = b'{"servers":{"a":[2,3]}}'
         serializer = wsgi.JSONDictSerializer()
         result = serializer.serialize(input_dict)
-        result = result.replace('\n', '').replace(' ', '')
+        result = result.replace(b'\n', b'').replace(b' ', b'')
         self.assertEqual(expected_json, result)
 
 

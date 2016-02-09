@@ -181,7 +181,7 @@ class VolumeTypesSerializerTest(test.TestCase):
 
         # Just getting some input data
         vtypes = return_volume_types_get_all_types(None)
-        text = serializer.serialize({'volume_types': vtypes.values()})
+        text = serializer.serialize({'volume_types': list(vtypes.values())})
 
         tree = etree.fromstring(text)
 

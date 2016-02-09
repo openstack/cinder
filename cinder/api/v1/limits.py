@@ -436,7 +436,7 @@ class WsgiLimiterProxy(object):
         self.limiter_address = limiter_address
 
     def check_for_delay(self, verb, path, username=None):
-        body = jsonutils.dumps({"verb": verb, "path": path})
+        body = jsonutils.dump_as_bytes({"verb": verb, "path": path})
         headers = {"Content-Type": "application/json"}
 
         conn = http_client.HTTPConnection(self.limiter_address)
