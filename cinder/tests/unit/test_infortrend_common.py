@@ -1997,6 +1997,10 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         rc, model_update = self.driver.retype(
             None, test_volume, test_new_type, test_diff, test_host)
 
+        min_size = int(test_volume['size'] * 1024 * 0.2)
+        create_params = {'init': 'disable', 'min': '%sMB' % min_size}
+        create_params = ' '.join('%s=%s' % (key, value)
+                                 for key, value in create_params.items())
         expect_cli_cmd = [
             mock.call('ShowSnapshot', 'part=%s' % test_src_part_id),
             mock.call(
@@ -2004,8 +2008,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
                 fake_pool['pool_id'],
                 test_volume['id'].replace('-', ''),
                 'size=%s' % (test_volume['size'] * 1024),
-                'init=disable min=%sMB' % (
-                    int(test_volume['size'] * 1024 * 0.2))
+                create_params,
             ),
             mock.call('ShowPartition'),
             mock.call(
