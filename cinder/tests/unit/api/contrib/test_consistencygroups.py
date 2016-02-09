@@ -17,11 +17,11 @@
 Tests for consistency group code.
 """
 
-import ddt
-import json
 from xml.dom import minidom
 
+import ddt
 import mock
+from oslo_serialization import jsonutils
 import webob
 
 import cinder.consistencygroup
@@ -78,7 +78,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(200, res.status_int)
         self.assertEqual('az1',
@@ -114,7 +114,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(404, res.status_int)
         self.assertEqual(404, res_dict['itemNotFound']['code'])
@@ -128,7 +128,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(200, res.status_int)
         self.assertEqual('az1',
@@ -152,7 +152,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(200, res.status_int)
         self.assertEqual(consistencygroup3.id,
@@ -210,7 +210,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(200, res.status_int)
         self.assertEqual(1, len(res_dict['consistencygroups']))
@@ -236,7 +236,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(200, res.status_int)
         self.assertEqual(2, len(res_dict['consistencygroups']))
@@ -260,7 +260,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(200, res.status_int)
         self.assertEqual(2, len(res_dict['consistencygroups']))
@@ -288,7 +288,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app(fake_auth_context=self.ctxt))
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(200, res.status_int)
         self.assertEqual(1, len(res_dict['consistencygroups']))
@@ -310,7 +310,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
         expect_result = [consistencygroup1.id, consistencygroup2.id,
                          consistencygroup3.id]
         expect_result.sort()
@@ -338,7 +338,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req.headers['Content-Type'] = 'application/json'
         req.headers['Accept'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(200, res.status_int)
         self.assertEqual('az1',
@@ -468,9 +468,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/consistencygroups')
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(202, res.status_int)
         self.assertIn('id', res_dict['consistencygroup'])
@@ -484,12 +484,12 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
     def test_create_consistencygroup_with_no_body(self):
         # omit body from the request
         req = webob.Request.blank('/v2/fake/consistencygroups')
-        req.body = json.dumps(None)
+        req.body = jsonutils.dump_as_bytes(None)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.headers['Accept'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
@@ -505,7 +505,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         body = {"consistencygroup": {"force": True}}
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
 
         consistencygroup = objects.ConsistencyGroup.get_by_id(
@@ -520,9 +520,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/consistencygroups/9999/delete')
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(None)
+        req.body = jsonutils.dump_as_bytes(None)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(404, res.status_int)
         self.assertEqual(404, res_dict['itemNotFound']['code'])
@@ -537,9 +537,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         body = {"consistencygroup": {"force": False}}
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
@@ -558,7 +558,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         body = {"consistencygroup": {"force": True}}
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
         self.assertEqual(202, res.status_int)
 
@@ -604,7 +604,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         body = {"invalid_request_element": {"force": False}}
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
 
         self.assertEqual(400, res.status_int)
@@ -617,7 +617,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         body = {"consistencygroup": {"force": "abcd"}}
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
 
         self.assertEqual(400, res.status_int)
@@ -630,7 +630,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         body = {"consistencygroup": {"force": ""}}
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
 
         self.assertEqual(400, res.status_int)
@@ -643,9 +643,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/consistencygroups')
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
@@ -697,7 +697,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                                      "description": description,
                                      "add_volumes": add_volumes,
                                      "remove_volumes": remove_volumes, }}
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
 
         consistencygroup = objects.ConsistencyGroup.get_by_id(
@@ -721,9 +721,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                                      "description": None,
                                      "add_volumes": "fake-volume-uuid",
                                      "remove_volumes": None, }}
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
@@ -747,9 +747,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                                      "description": "new description",
                                      "add_volumes": None,
                                      "remove_volumes": "fake-volume-uuid", }}
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
@@ -773,9 +773,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                                      "description": "",
                                      "add_volumes": None,
                                      "remove_volumes": None, }}
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
@@ -800,9 +800,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                                      "description": "",
                                      "add_volumes": add_volumes,
                                      "remove_volumes": None, }}
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
@@ -834,9 +834,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                                      "description": "",
                                      "add_volumes": add_volumes,
                                      "remove_volumes": None, }}
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
@@ -866,9 +866,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                                      "description": "",
                                      "add_volumes": add_volumes,
                                      "remove_volumes": None, }}
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
@@ -888,9 +888,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                                      "description": None,
                                      "add_volumes": None,
                                      "remove_volumes": None, }}
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
@@ -926,9 +926,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/consistencygroups/create_from_src')
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(202, res.status_int)
         self.assertIn('id', res_dict['consistencygroup'])
@@ -960,9 +960,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/consistencygroups/create_from_src')
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(202, res.status_int)
         self.assertIn('id', res_dict['consistencygroup'])
@@ -1000,9 +1000,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/consistencygroups/create_from_src')
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
@@ -1021,9 +1021,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/consistencygroups/create_from_src')
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
@@ -1038,9 +1038,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/consistencygroups/create_from_src')
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
@@ -1067,9 +1067,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/consistencygroups/create_from_src')
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
@@ -1099,9 +1099,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/consistencygroups/create_from_src')
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
@@ -1122,9 +1122,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/consistencygroups/create_from_src')
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
@@ -1146,9 +1146,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/consistencygroups/create_from_src')
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(404, res.status_int)
         self.assertEqual(404, res_dict['itemNotFound']['code'])
@@ -1166,9 +1166,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/consistencygroups/create_from_src')
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(404, res.status_int)
         self.assertEqual(404, res_dict['itemNotFound']['code'])
@@ -1199,9 +1199,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/consistencygroups/create_from_src')
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
@@ -1231,9 +1231,9 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/consistencygroups/create_from_src')
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])

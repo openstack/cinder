@@ -16,10 +16,9 @@
 Tests for volume replication API code.
 """
 
-import json
-
 import mock
 from oslo_config import cfg
+from oslo_serialization import jsonutils
 import webob
 
 from cinder import context
@@ -60,7 +59,7 @@ class VolumeReplicationAPITestCase(test.TestCase):
         else:
             body = {'os-%s-replica' % operation: ''}
             req.headers['Content-Type'] = 'application/json'
-            req.body = json.dumps(body)
+            req.body = jsonutils.dump_as_bytes(body)
         req.environ['cinder.context'] = context.RequestContext('admin',
                                                                'fake',
                                                                True)
