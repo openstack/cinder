@@ -110,7 +110,7 @@ class QuotaClassSetsControllerTest(test.TestCase):
         self.assertDictMatch(body, result)
 
     @mock.patch('cinder.api.openstack.wsgi.Controller.validate_string_length')
-    @mock.patch('cinder.api.openstack.wsgi.Controller.validate_integer')
+    @mock.patch('cinder.utils.validate_integer')
     def test_update_limit(self, mock_validate_integer, mock_validate):
         mock_validate_integer.return_value = 5
         volume_types.create(self.ctxt, 'fake_type')

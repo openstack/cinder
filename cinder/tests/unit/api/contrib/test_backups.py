@@ -250,6 +250,14 @@ class BackupsAPITestCase(test.TestCase):
         db.backup_destroy(context.get_admin_context(), backup_id2)
         db.backup_destroy(context.get_admin_context(), backup_id1)
 
+    def test_list_backups_with_offset_out_of_range(self):
+        url = '/v2/fake/backups?offset=252452434242342434'
+        req = webob.Request.blank(url)
+        req.method = 'GET'
+        req.headers['Content-Type'] = 'application/json'
+        res = req.get_response(fakes.wsgi_app())
+        self.assertEqual(400, res.status_int)
+
     def test_list_backups_with_marker(self):
         backup_id1 = self._create_backup()
         backup_id2 = self._create_backup()
@@ -552,6 +560,14 @@ class BackupsAPITestCase(test.TestCase):
         db.backup_destroy(context.get_admin_context(), backup_id3)
         db.backup_destroy(context.get_admin_context(), backup_id2)
         db.backup_destroy(context.get_admin_context(), backup_id1)
+
+    def test_list_backups_detail_with_offset_out_of_range(self):
+        url = '/v2/fake/backups/detail?offset=234534543657634523'
+        req = webob.Request.blank(url)
+        req.method = 'GET'
+        req.headers['Content-Type'] = 'application/json'
+        res = req.get_response(fakes.wsgi_app())
+        self.assertEqual(400, res.status_int)
 
     @mock.patch('cinder.db.service_get_all_by_topic')
     @mock.patch(

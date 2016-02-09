@@ -224,7 +224,7 @@ class QuotaSetsControllerTest(QuotaSetsControllerTestBase):
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_string_length')
     @mock.patch(
-        'cinder.api.openstack.wsgi.Controller.validate_integer')
+        'cinder.utils.validate_integer')
     def test_update_limit(self, mock_validate_integer, mock_validate):
         mock_validate_integer.return_value = 10
 

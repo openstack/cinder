@@ -22,6 +22,7 @@ from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder import quota
+from cinder import utils
 
 
 QUOTAS = quota.QUOTAS
@@ -80,8 +81,8 @@ class QuotaClassSetsController(wsgi.Controller):
         for key, value in body['quota_class_set'].items():
             if key in QUOTAS:
                 try:
-                    value = self.validate_integer(value, key, min_value=-1,
-                                                  max_value=db.MAX_INT)
+                    value = utils.validate_integer(value, key, min_value=-1,
+                                                   max_value=db.MAX_INT)
                     db.quota_class_update(context, quota_class, key, value)
                 except exception.QuotaClassNotFound:
                     db.quota_class_create(context, quota_class, key, value)

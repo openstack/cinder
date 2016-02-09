@@ -269,7 +269,7 @@ class QuotaSetsController(wsgi.Controller):
             if key in NON_QUOTA_KEYS:
                 continue
 
-            value = self.validate_integer(
+            value = utils.validate_integer(
                 body['quota_set'][key], key, min_value=-1,
                 max_value=db.MAX_INT)
 

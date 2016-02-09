@@ -18,11 +18,11 @@ import mock
 from oslo_serialization import jsonutils
 import webob
 
-from cinder.api.openstack import wsgi
 from cinder import context
 from cinder import db
 from cinder import test
 from cinder.tests.unit.api import fakes
+from cinder import utils
 
 
 def return_volume_type_encryption(context, volume_type_id):
@@ -199,7 +199,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
         db.volume_type_destroy(context.get_admin_context(), volume_type['id'])
 
     def test_create_json(self):
-        with mock.patch.object(wsgi.Controller,
+        with mock.patch.object(utils,
                                'validate_integer') as mock_validate_integer:
             mock_validate_integer.return_value = 128
             self._create('fake_cipher', 'front-end', 128, 'fake_encryptor')
@@ -500,7 +500,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
         self.assertEqual(expected, jsonutils.loads(res.body))
         db.volume_type_destroy(context.get_admin_context(), volume_type['id'])
 
-    @mock.patch('cinder.api.openstack.wsgi.Controller.validate_integer')
+    @mock.patch('cinder.utils.validate_integer')
     def test_update_item(self, mock_validate_integer):
         mock_validate_integer.return_value = 512
         volume_type = self._default_volume_type

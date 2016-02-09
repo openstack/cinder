@@ -153,6 +153,12 @@ class VolumeTypesApiTest(test.TestCase):
 
         self.assertEqual(2, len(res['volume_types']))
 
+    def test_volume_types_index_with_offset_out_of_range(self):
+        url = '/v2/fake/types?offset=424366766556787'
+        req = fakes.HTTPRequest.blank(url)
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.index, req)
+
     def test_volume_types_index_with_limit_and_offset(self):
         req = fakes.HTTPRequest.blank('/v2/fake/types?limit=2&offset=1')
         req.environ['cinder.context'] = self.ctxt

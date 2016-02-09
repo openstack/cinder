@@ -249,6 +249,17 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         consistencygroup3.destroy()
 
     @ddt.data(False, True)
+    def test_list_consistencygroups_with_offset_out_of_range(self, is_detail):
+        url = '/v2/fake/consistencygroups?offset=234523423455454'
+        if is_detail:
+            url = '/v2/fake/consistencygroups/detail?offset=234523423455454'
+        req = webob.Request.blank(url)
+        req.method = 'GET'
+        req.headers['Content-Type'] = 'application/json'
+        res = req.get_response(fakes.wsgi_app())
+        self.assertEqual(400, res.status_int)
+
+    @ddt.data(False, True)
     def test_list_consistencygroups_with_limit_and_offset(self, is_detail):
         consistencygroup1 = self._create_consistencygroup()
         consistencygroup2 = self._create_consistencygroup()
