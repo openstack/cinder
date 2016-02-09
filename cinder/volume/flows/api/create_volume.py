@@ -223,6 +223,49 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             msg = msg % {'volume_size': size, 'min_disk': min_disk}
             raise exception.InvalidInput(reason=msg)
 
+    def _get_image_volume_type(self, context, image_id):
+        """Get cinder_img_volume_type property from the image metadata."""
+
+        # Check image existence
+        if image_id is None:
+            return None
+
+        image_meta = self.image_service.show(context, image_id)
+
+        # check whether image is active
+        if image_meta['status'] != 'active':
+            msg = (_('Image %(image_id)s is not active.') %
+                   {'image_id': image_id})
+            raise exception.InvalidInput(reason=msg)
+
+        # Retrieve 'cinder_img_volume_type' property from glance image
+        # metadata.
+        image_volume_type = "cinder_img_volume_type"
+        properties = image_meta.get('properties')
+        if properties:
+            try:
+                img_vol_type = properties.get(image_volume_type)
+                if img_vol_type is None:
+                    return None
+                volume_type = volume_types.get_volume_type_by_name(
+                    context,
+                    img_vol_type)
+            except exception.VolumeTypeNotFoundByName:
+                LOG.warning(_LW("Failed to retrieve volume_type from image "
+                                "metadata. '%(img_vol_type)s' doesn't match "
+                                "any volume types."),
+                            {'img_vol_type': img_vol_type})
+                return None
+
+            LOG.debug("Retrieved volume_type from glance image metadata. "
+                      "image_id: %(image_id)s, "
+                      "image property: %(image_volume_type)s, "
+                      "volume_type: %(volume_type)s." %
+                      {'image_id': image_id,
+                       'image_volume_type': image_volume_type,
+                       'volume_type': volume_type})
+            return volume_type
+
     @staticmethod
     def _check_metadata_properties(metadata=None):
         """Checks that the volume metadata properties are valid."""
@@ -384,7 +427,9 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         # This strategy avoids any dependency upon the encrypted volume type.
         def_vol_type = volume_types.get_default_volume_type()
         if not volume_type and not source_volume and not snapshot:
-            volume_type = def_vol_type
+            image_volume_type = self._get_image_volume_type(context, image_id)
+            volume_type = (image_volume_type if image_volume_type else
+                           def_vol_type)
 
         # When creating a clone of a replica (replication test), we can't
         # use the volume type of the replica, therefore, we use the default.
