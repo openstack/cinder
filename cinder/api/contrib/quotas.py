@@ -57,12 +57,37 @@ class QuotaTemplate(xmlutil.TemplateBuilder):
 
 class QuotaSetsController(wsgi.Controller):
 
+    class GenericProjectInfo(object):
+
+        """Abstraction layer for Keystone V2 and V3 project objects"""
+
+        def __init__(self, project_id, project_keystone_api_version,
+                     project_parent_id=None, project_subtree=None):
+            self.id = project_id
+            self.keystone_api_version = project_keystone_api_version
+            self.parent_id = project_parent_id
+            self.subtree = project_subtree
+
     def _format_quota_set(self, project_id, quota_set):
         """Convert the quota object to a result dict."""
 
         quota_set['id'] = str(project_id)
 
         return dict(quota_set=quota_set)
+
+    def _keystone_client(self, context):
+        """Creates and returns an instance of a generic keystone client.
+
+        :param context: The request context
+        :return: keystoneclient.client.Client object
+        """
+        auth_plugin = token.Token(
+            auth_url=CONF.keystone_authtoken.auth_uri,
+            token=context.auth_token,
+            project_id=context.project_id)
+        client_session = session.Session(auth=auth_plugin)
+        return client.Client(auth_url=CONF.keystone_authtoken.auth_uri,
+                             session=client_session)
 
     def _validate_existing_resource(self, key, value, quota_values):
         if key == 'per_volume_gigabytes':
@@ -177,23 +202,23 @@ class QuotaSetsController(wsgi.Controller):
     def _get_project(self, context, id, subtree_as_ids=False):
         """A Helper method to get the project hierarchy.
 
-        Along with Hierachical Multitenancy, projects can be hierarchically
-        organized. Therefore, we need to know the project hierarchy, if any, in
-        order to do quota operations properly.
+        Along with Hierachical Multitenancy in keystone API v3, projects can be
+        hierarchically organized. Therefore, we need to know the project
+        hierarchy, if any, in order to do quota operations properly.
         """
         try:
-            auth_plugin = token.Token(
-                auth_url=CONF.keystone_authtoken.auth_uri,
-                token=context.auth_token,
-                project_id=context.project_id)
-            client_session = session.Session(auth=auth_plugin)
-            keystone = client.Client(auth_url=CONF.keystone_authtoken.auth_uri,
-                                     session=client_session)
-            project = keystone.projects.get(id, subtree_as_ids=subtree_as_ids)
+            keystone = self._keystone_client(context)
+            generic_project = self.GenericProjectInfo(id, keystone.version)
+            if keystone.version == 'v3':
+                project = keystone.projects.get(id,
+                                                subtree_as_ids=subtree_as_ids)
+                generic_project.parent_id = project.parent_id
+                generic_project.subtree = (
+                    project.subtree if subtree_as_ids else None)
         except exceptions.NotFound:
             msg = (_("Tenant ID: %s does not exist.") % id)
             raise webob.exc.HTTPNotFound(explanation=msg)
-        return project
+        return generic_project
 
     @wsgi.serializers(xml=QuotaTemplate)
     def show(self, req, id):
