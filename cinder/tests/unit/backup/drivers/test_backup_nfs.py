@@ -27,6 +27,7 @@ import zlib
 import mock
 from os_brick.remotefs import remotefs as remotefs_brick
 from oslo_config import cfg
+import six
 
 from cinder.backup.drivers import nfs
 from cinder import context
@@ -620,11 +621,17 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
         self.assertEqual(compressor, bz2)
         self.assertRaises(ValueError, service._get_compressor, 'fake')
 
+    def create_buffer(self, size):
+        # Set up buffer of zeroed bytes
+        fake_data = bytearray(size)
+        if six.PY2:
+            # On Python 2, zlib.compressor() accepts buffer, but not bytearray
+            fake_data = buffer(fake_data)
+        return fake_data
+
     def test_prepare_output_data_effective_compression(self):
         service = nfs.NFSBackupDriver(self.ctxt)
-        # Set up buffer of 128 zeroed bytes
-        fake_data = buffer(bytearray(128))
-
+        fake_data = self.create_buffer(128)
         result = service._prepare_output_data(fake_data)
 
         self.assertEqual('zlib', result[0])
@@ -633,8 +640,7 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
     def test_prepare_output_data_no_compresssion(self):
         self.flags(backup_compression_algorithm='none')
         service = nfs.NFSBackupDriver(self.ctxt)
-        # Set up buffer of 128 zeroed bytes
-        fake_data = buffer(bytearray(128))
+        fake_data = self.create_buffer(128)
 
         result = service._prepare_output_data(fake_data)
 
@@ -643,8 +649,8 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
 
     def test_prepare_output_data_ineffective_compression(self):
         service = nfs.NFSBackupDriver(self.ctxt)
-        # Set up buffer of 128 zeroed bytes
-        fake_data = buffer(bytearray(128))
+        fake_data = self.create_buffer(128)
+
         # Pre-compress so that compression in the driver will be ineffective.
         already_compressed_data = service.compressor.compress(fake_data)
 
