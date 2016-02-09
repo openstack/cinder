@@ -192,6 +192,31 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             'fakeLUN', 'fakeLUN', 'newFakeLUN', 'false', block_count=0,
             dest_block=0, src_block=0, qos_policy_group_name=None)
 
+    def test_clone_lun_blocks(self):
+        """Test for when clone lun is passed block information."""
+        block_count = 10
+        src_block = 10
+        dest_block = 30
+
+        self.library._get_lun_attr = mock.Mock(return_value={'Volume':
+                                                             'fakeLUN'})
+        self.library.zapi_client = mock.Mock()
+        self.library.zapi_client.get_lun_by_args.return_value = [
+            mock.Mock(spec=netapp_api.NaElement)]
+        lun = fake.FAKE_LUN
+        self.library._get_lun_by_args = mock.Mock(return_value=[lun])
+        self.library._add_lun_to_table = mock.Mock()
+        self.library._update_stale_vols = mock.Mock()
+
+        self.library._clone_lun('fakeLUN', 'newFakeLUN', 'false',
+                                block_count=block_count, src_block=src_block,
+                                dest_block=dest_block)
+
+        self.library.zapi_client.clone_lun.assert_called_once_with(
+            'fakeLUN', 'fakeLUN', 'newFakeLUN', 'false',
+            block_count=block_count, dest_block=dest_block,
+            src_block=src_block, qos_policy_group_name=None)
+
     def test_clone_lun_no_space_reservation(self):
         """Test for when space_reservation is not passed."""
 

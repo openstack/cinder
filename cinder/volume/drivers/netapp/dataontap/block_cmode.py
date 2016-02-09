@@ -133,8 +133,8 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary):
         volume = metadata['Volume']
         self.zapi_client.clone_lun(volume, name, new_name, space_reserved,
                                    qos_policy_group_name=qos_policy_group_name,
-                                   src_block=0, dest_block=0,
-                                   block_count=0)
+                                   src_block=src_block, dest_block=dest_block,
+                                   block_count=block_count)
         LOG.debug("Cloned LUN with new name %s", new_name)
         lun = self.zapi_client.get_lun_by_args(vserver=self.vserver,
                                                path='/vol/%s/%s'
