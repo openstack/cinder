@@ -537,7 +537,7 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
 
         res = self.call_or_reconnect(self.odm.resize_volume,
                                      d_res_name, d_vol_nr, -1,
-                                     {"size": self._vol_size_to_dm(new_size)},
+                                     self._vol_size_to_dm(new_size),
                                      0)
         self._check_result(res)
         return 0
