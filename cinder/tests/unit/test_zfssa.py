@@ -456,7 +456,7 @@ class TestZFSSAISCSIDriver(test.TestCase):
         self.assertEqual(lcfg.zfssa_target_portal,
                          props['data']['target_portal'])
         self.assertEqual(test_target_iqn, props['data']['target_iqn'])
-        self.assertEqual('0', props['data']['target_lun'])
+        self.assertEqual(0, props['data']['target_lun'])
         self.assertFalse(props['data']['target_discovered'])
 
         self.drv.terminate_connection(self.test_vol, '')
