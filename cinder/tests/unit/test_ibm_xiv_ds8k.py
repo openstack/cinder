@@ -63,6 +63,12 @@ REPLICATED_VOLUME = {'size': 64,
                      'name': REPLICA_FAKE,
                      'id': 2}
 
+REPLICATION_TARGETS = [{'target_device_id': 'fakedevice'}]
+SECONDARY = 'fakedevice'
+FAKE_FAILOVER_HOST = 'fakehost@fakebackend#fakepool'
+FAKE_PROVIDER_LOCATION = 'fake_provider_location'
+FAKE_DRIVER_DATA = 'fake_driver_data'
+
 CONTEXT = {}
 
 FAKESNAPSHOT = 'fakesnapshot'
@@ -280,6 +286,47 @@ class XIVDS8KFakeProxyDriver(object):
                                  == cgsnapshot.get('cgsnapshot_id', None))}
 
         return {'status': 'deleted'}, updated_snapshots
+
+    def get_replication_updates(self, context):
+
+        return []
+
+    def replication_disable(self, context, volume):
+        if volume['replication_status'] == 'invalid_status_val':
+            raise exception.CinderException()
+
+        volume_model_update = {}
+        volume_model_update['replication_driver_data'] = FAKE_DRIVER_DATA
+
+        return volume_model_update
+
+    def replication_enable(self, context, volume):
+        if volume['replication_status'] == 'invalid_status_val':
+            raise exception.CinderException()
+
+        volume_model_update = {}
+        volume_model_update['replication_driver_data'] = FAKE_DRIVER_DATA
+
+        return volume_model_update
+
+    def list_replication_targets(self, context, volume):
+        targets = []
+
+        for target in REPLICATION_TARGETS:
+            targets.append({'type': 'managed',
+                            'target_device_id': target['target_device_id']})
+
+        return {'volume_id': volume['id'], 'targets': targets}
+
+    def replication_failover(self, context, volume, secondary):
+        if volume['replication_status'] == 'invalid_status_val':
+            raise exception.CinderException()
+
+        model_update = {'host': FAKE_FAILOVER_HOST,
+                        'provider_location': FAKE_PROVIDER_LOCATION,
+                        'replication_driver_data': FAKE_DRIVER_DATA}
+
+        return model_update
 
 
 class XIVDS8KVolumeDriverTest(test.TestCase):
@@ -944,3 +991,122 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
             self.assertEqual('available',
                              volumes_model_update['status'],
                              "volumes list status failed")
+
+    def test_get_replication_updates(self):
+        """Get replication updates."""
+
+        self.driver.do_setup(None)
+
+        ret = self.driver.get_replication_updates(CONTEXT)
+        self.assertEqual([], ret)
+
+    def test_replication_disable(self):
+        """Disable replication on the specified volume."""
+
+        self.driver.do_setup(None)
+
+        ctxt = context.get_admin_context()
+
+        replicated_volume = copy.deepcopy(REPLICATED_VOLUME)
+        replicated_volume['replication_status'] = 'enabled'
+
+        volume_model_update = (
+            self.driver.replication_disable(ctxt, replicated_volume))
+
+        self.assertTrue('replication_driver_data' in volume_model_update)
+
+    def test_replication_disable_fail_on_cinder_exception(self):
+        """Test that replication_disable fails on driver raising exception."""
+
+        self.driver.do_setup(None)
+
+        replicated_volume = copy.deepcopy(REPLICATED_VOLUME)
+        # on purpose - set invalid value to replication_status
+        # expect an exception.
+        replicated_volume['replication_status'] = 'invalid_status_val'
+        self.assertRaises(
+            exception.CinderException,
+            self.driver.replication_disable,
+            CONTEXT,
+            replicated_volume
+        )
+
+    def test_replication_enable(self):
+        """Enable replication on the specified volume."""
+
+        self.driver.do_setup(None)
+
+        ctxt = context.get_admin_context()
+
+        replicated_volume = copy.deepcopy(REPLICATED_VOLUME)
+        replicated_volume['replication_status'] = 'disabled'
+
+        volume_model_update = (
+            self.driver.replication_enable(ctxt, replicated_volume))
+
+        self.assertTrue('replication_driver_data' in volume_model_update)
+
+    def test_replication_enable_fail_on_cinder_exception(self):
+        """Test that replication_enable fails on driver raising exception."""
+
+        self.driver.do_setup(None)
+
+        replicated_volume = copy.deepcopy(REPLICATED_VOLUME)
+        # on purpose - set invalid value to replication_status
+        # expect an exception.
+        replicated_volume['replication_status'] = 'invalid_status_val'
+        self.assertRaises(
+            exception.CinderException,
+            self.driver.replication_enable,
+            CONTEXT,
+            replicated_volume
+        )
+
+    def test_list_replication_targets(self):
+        """Return the list of replication targets for a volume."""
+
+        self.driver.do_setup(None)
+
+        expected_resp = {'targets': [{'target_device_id': 'fakedevice',
+                                      'type': 'managed'}],
+                         'volume_id': VOLUME['id']}
+        targets = self.driver.list_replication_targets(CONTEXT, VOLUME)
+        self.assertEqual(expected_resp, targets)
+
+    def test_replication_failover(self):
+        """Test that replication_failover returns successfully. """
+
+        self.driver.do_setup(None)
+
+        replicated_volume = copy.deepcopy(REPLICATED_VOLUME)
+        # assume the replication_status should be active
+        replicated_volume['replication_status'] = 'active'
+
+        expected_resp = {'host': FAKE_FAILOVER_HOST,
+                         'provider_location': FAKE_PROVIDER_LOCATION,
+                         'replication_driver_data': FAKE_DRIVER_DATA}
+
+        model_update = self.driver.replication_failover(
+            CONTEXT,
+            replicated_volume,
+            SECONDARY
+        )
+
+        self.assertEqual(expected_resp, model_update)
+
+    def test_replication_failover_fail_on_cinder_exception(self):
+        """Test that replication_failover fails on CinderException. """
+
+        self.driver.do_setup(None)
+
+        replicated_volume = copy.deepcopy(REPLICATED_VOLUME)
+        # on purpose - set invalid value to replication_status
+        # expect an exception.
+        replicated_volume['replication_status'] = 'invalid_status_val'
+        self.assertRaises(
+            exception.CinderException,
+            self.driver.replication_failover,
+            CONTEXT,
+            replicated_volume,
+            SECONDARY
+        )

@@ -280,3 +280,29 @@ class XIVDS8KDriver(san.SanDriver,
         return self.xiv_ds8k_proxy.create_consistencygroup_from_src(
             context, group, volumes, cgsnapshot, snapshots,
             source_cg, source_vols)
+
+    def get_replication_updates(self, context):
+        """Get replication updates."""
+
+        return self.xiv_ds8k_proxy.get_replication_updates(context)
+
+    def replication_disable(self, context, volume):
+        """Disable replication on the specified volume."""
+
+        return self.xiv_ds8k_proxy.replication_disable(context, volume)
+
+    def replication_enable(self, context, volume):
+        """Enable replication on a replication capable volume."""
+
+        return self.xiv_ds8k_proxy.replication_enable(context, volume)
+
+    def list_replication_targets(self, context, volume):
+        """Provide a means to obtain replication targets for a volume."""
+
+        return self.xiv_ds8k_proxy.list_replication_targets(context, volume)
+
+    def replication_failover(self, context, volume, secondary):
+        """Force failover to a secondary replication target. """
+
+        return self.xiv_ds8k_proxy.replication_failover(
+            context, volume, secondary)
