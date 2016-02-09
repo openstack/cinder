@@ -17,10 +17,11 @@
 Tests for volume transfer code.
 """
 
+import mock
 from xml.dom import minidom
 
-import mock
 from oslo_serialization import jsonutils
+import six
 import webob
 
 from cinder.api.contrib import volume_transfer
@@ -285,9 +286,12 @@ class VolumeTransferAPITestCase(test.TestCase):
         volume_size = 2
         volume_id = self._create_volume(status='available', size=volume_size)
 
+        body = '<transfer name="transfer-001" volume_id="%s"/>' % volume_id
+        if isinstance(body, six.text_type):
+            body = body.encode('utf-8')
+
         req = webob.Request.blank('/v2/fake/os-volume-transfer')
-        req.body = ('<transfer name="transfer-001" '
-                    'volume_id="%s"/>' % volume_id)
+        req.body = body
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/xml'
         req.headers['Accept'] = 'application/xml'
@@ -434,9 +438,13 @@ class VolumeTransferAPITestCase(test.TestCase):
         transfer = self._create_transfer(volume_id)
         svc = self.start_service('volume', host='fake_host')
 
+        body = '<accept auth_key="%s"/>' % transfer['auth_key']
+        if isinstance(body, six.text_type):
+            body = body.encode('utf-8')
+
         req = webob.Request.blank('/v2/fake/os-volume-transfer/%s/accept' %
                                   transfer['id'])
-        req.body = '<accept auth_key="%s"/>' % transfer['auth_key']
+        req.body = body
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/xml'
         req.headers['Accept'] = 'application/xml'

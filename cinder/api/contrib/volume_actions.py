@@ -15,6 +15,7 @@
 
 from oslo_log import log as logging
 import oslo_messaging as messaging
+from oslo_utils import encodeutils
 from oslo_utils import strutils
 import six
 import webob
@@ -261,7 +262,8 @@ class VolumeActionsController(wsgi.Controller):
         try:
             force = strutils.bool_from_string(force, strict=True)
         except ValueError as error:
-            msg = _("Invalid value for 'force': '%s'") % error.message
+            err_msg = encodeutils.exception_to_unicode(error)
+            msg = _("Invalid value for 'force': '%s'") % err_msg
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         try:
@@ -333,7 +335,8 @@ class VolumeActionsController(wsgi.Controller):
             readonly_flag = strutils.bool_from_string(readonly_flag,
                                                       strict=True)
         except ValueError as error:
-            msg = _("Invalid value for 'readonly': '%s'") % error.message
+            err_msg = encodeutils.exception_to_unicode(error)
+            msg = _("Invalid value for 'readonly': '%s'") % err_msg
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         self.volume_api.update_readonly_flag(context, volume, readonly_flag)
@@ -373,7 +376,8 @@ class VolumeActionsController(wsgi.Controller):
             bootable = strutils.bool_from_string(bootable,
                                                  strict=True)
         except ValueError as error:
-            msg = _("Invalid value for 'bootable': '%s'") % error.message
+            err_msg = encodeutils.exception_to_unicode(error)
+            msg = _("Invalid value for 'bootable': '%s'") % err_msg
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         update_dict = {'bootable': bootable}

@@ -46,7 +46,7 @@ class VolumeTypeEncryptionController(wsgi.Controller):
         encryption_specs = {}
         if not encryption_ref:
             return encryption_specs
-        for key, value in encryption_ref.iteritems():
+        for key, value in encryption_ref.items():
             encryption_specs[key] = value
         return encryption_specs
 

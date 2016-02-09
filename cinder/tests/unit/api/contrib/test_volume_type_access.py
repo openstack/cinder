@@ -72,7 +72,7 @@ def fake_volume_type_get_all(context, inactive=False, filters=None,
                              sort_dirs=None, offset=None, list_result=False):
     if filters is None or filters['is_public'] is None:
         if list_result:
-            return VOLUME_TYPES.values()
+            return list(VOLUME_TYPES.values())
         return VOLUME_TYPES
     res = {}
     for k, v in VOLUME_TYPES.items():
@@ -82,7 +82,7 @@ def fake_volume_type_get_all(context, inactive=False, filters=None,
         if v['is_public'] == filters['is_public']:
             res.update({k: v})
     if list_result:
-        return res.values()
+        return list(res.values())
     return res
 
 
