@@ -400,13 +400,16 @@ def check_datetime_now(logical_line, noqa):
         yield(0, msg)
 
 
+_UNICODE_USAGE_REGEX = re.compile(r'\bunicode *\(')
+
+
 def check_unicode_usage(logical_line, noqa):
     if noqa:
         return
 
     msg = "C302: Found unicode() call. Please use six.text_type()."
 
-    if 'unicode(' in logical_line:
+    if _UNICODE_USAGE_REGEX.search(logical_line):
         yield(0, msg)
 
 
