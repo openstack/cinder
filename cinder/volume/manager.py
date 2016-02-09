@@ -264,7 +264,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             is_vol_db_empty=vol_db_empty,
             active_backend_id=curr_active_backend_id)
 
-        if CONF.profiler.profiler_enabled and profiler is not None:
+        if CONF.profiler.enabled and profiler is not None:
             self.driver = profiler.trace_cls("driver")(self.driver)
         try:
             self.extra_capabilities = jsonutils.loads(

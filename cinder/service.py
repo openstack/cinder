@@ -34,6 +34,7 @@ from oslo_utils import importutils
 osprofiler_notifier = importutils.try_import('osprofiler.notifier')
 profiler = importutils.try_import('osprofiler.profiler')
 osprofiler_web = importutils.try_import('osprofiler.web')
+profiler_opts = importutils.try_import('osprofiler.opts')
 
 from cinder import context
 from cinder import exception
@@ -69,28 +70,22 @@ service_opts = [
                help='Number of workers for OpenStack Volume API service. '
                     'The default is equal to the number of CPUs available.'), ]
 
-profiler_opts = [
-    cfg.BoolOpt("profiler_enabled", default=False,
-                help=_('If False fully disable profiling feature.')),
-    cfg.BoolOpt("trace_sqlalchemy", default=False,
-                help=_("If False doesn't trace SQL requests.")),
-    cfg.StrOpt("hmac_keys", default="SECRET_KEY",
-               help=_("Secret key to use to sign tracing messages."))
-]
 
 CONF = cfg.CONF
 CONF.register_opts(service_opts)
-CONF.register_opts(profiler_opts, group="profiler")
+if profiler_opts:
+    profiler_opts.set_defaults(CONF)
 
 
 def setup_profiler(binary, host):
     if (osprofiler_notifier is None or
             profiler is None or
-            osprofiler_web is None):
+            osprofiler_web is None or
+            profiler_opts is None):
         LOG.debug('osprofiler is not present')
         return
 
-    if CONF.profiler.profiler_enabled:
+    if CONF.profiler.enabled:
         _notifier = osprofiler_notifier.create(
             "Messaging", messaging, context.get_admin_context().to_dict(),
             rpc.TRANSPORT, "cinder", binary, host)
@@ -105,7 +100,7 @@ def setup_profiler(binary, host):
                 "trigger profiler, only admin user can retrieve trace "
                 "information.\n"
                 "To disable OSprofiler set in cinder.conf:\n"
-                "[profiler]\nprofiler_enabled=false"))
+                "[profiler]\nenabled=false"))
     else:
         osprofiler_web.disable()
 
@@ -131,7 +126,7 @@ class Service(service.Service):
         self.topic = topic
         self.manager_class_name = manager
         manager_class = importutils.import_class(self.manager_class_name)
-        if CONF.profiler.profiler_enabled:
+        if CONF.profiler.enabled:
             manager_class = profiler.trace_cls("rpc")(manager_class)
 
         self.manager = manager_class(host=self.host,

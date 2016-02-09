@@ -333,10 +333,6 @@ def list_opts():
                 cinder_volume_drivers_vzstorage.vzstorage_opts,
                 cinder_volume_drivers_nfs.nfs_opts,
             )),
-        ('PROFILER',
-            itertools.chain(
-                cinder_service.profiler_opts,
-            )),
         ('BRCD_FABRIC_EXAMPLE',
             itertools.chain(
                 cinder_zonemanager_drivers_brocade_brcdfabricopts.
