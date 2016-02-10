@@ -24,6 +24,7 @@ import datetime
 import functools
 import inspect
 import logging as py_logging
+import math
 import os
 import pyclbr
 import random
@@ -995,3 +996,38 @@ def build_or_str(elements, str_format=None):
     if str_format:
         return str_format % elements
     return elements
+
+
+def calculate_virtual_free_capacity(total_capacity,
+                                    free_capacity,
+                                    provisioned_capacity,
+                                    thin_provisioning_support,
+                                    max_over_subscription_ratio,
+                                    reserved_percentage):
+    """Calculate the virtual free capacity based on thin provisioning support.
+
+    :param total_capacity:  total_capacity_gb of a host_state or pool.
+    :param free_capacity:   free_capacity_gb of a host_state or pool.
+    :param provisioned_capacity:    provisioned_capacity_gb of a host_state
+                                    or pool.
+    :param thin_provisioning_support:   thin_provisioning_support of
+                                        a host_state or a pool.
+    :param max_over_subscription_ratio: max_over_subscription_ratio of
+                                        a host_state or a pool
+    :param reserved_percentage: reserved_percentage of a host_state or
+                                a pool.
+    :returns: the calculated virtual free capacity.
+    """
+
+    total = float(total_capacity)
+    reserved = float(reserved_percentage) / 100
+
+    if thin_provisioning_support:
+        free = (total * max_over_subscription_ratio
+                - provisioned_capacity
+                - math.floor(total * reserved))
+    else:
+        # Calculate how much free space is left after taking into
+        # account the reserved space.
+        free = free_capacity - math.floor(total * reserved)
+    return free
