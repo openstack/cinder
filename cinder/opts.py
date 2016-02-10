@@ -168,10 +168,6 @@ from cinder.zonemanager.drivers.brocade import brcd_fabric_opts as \
     cinder_zonemanager_drivers_brocade_brcdfabricopts
 from cinder.zonemanager.drivers.brocade import brcd_fc_zone_driver as \
     cinder_zonemanager_drivers_brocade_brcdfczonedriver
-from cinder.zonemanager.drivers.cisco import cisco_fabric_opts as \
-    cinder_zonemanager_drivers_cisco_ciscofabricopts
-from cinder.zonemanager.drivers.cisco import cisco_fc_zone_driver as \
-    cinder_zonemanager_drivers_cisco_ciscofczonedriver
 from cinder.zonemanager import fc_zone_manager as \
     cinder_zonemanager_fczonemanager
 
@@ -182,7 +178,6 @@ def list_opts():
             itertools.chain(
                 cinder_zonemanager_fczonemanager.zone_manager_opts,
                 cinder_zonemanager_drivers_brocade_brcdfczonedriver.brcd_opts,
-                cinder_zonemanager_drivers_cisco_ciscofczonedriver.cisco_opts,
             )),
         ('KEYMGR',
             itertools.chain(
@@ -341,11 +336,6 @@ def list_opts():
         ('PROFILER',
             itertools.chain(
                 cinder_service.profiler_opts,
-            )),
-        ('CISCO_FABRIC_EXAMPLE',
-            itertools.chain(
-                cinder_zonemanager_drivers_cisco_ciscofabricopts.
-                cisco_zone_opts,
             )),
         ('BRCD_FABRIC_EXAMPLE',
             itertools.chain(
