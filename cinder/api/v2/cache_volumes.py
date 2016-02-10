@@ -136,7 +136,6 @@ class VolumeCache:
         context_cache.user_name=CONF.cinder_user_name
         context_cache.user_id=CONF.cinder_user_id
         self.context=context_cache
-        LOG.debug("\n++ context is %s"%(context_cache))
 
     def update_cache_names(self,image_name):
         self.image_name = image_name
@@ -160,28 +159,25 @@ class VolumeCache:
         self.update_context(context)
         self.update_req_and_body(req,body)
         snap=None
-        if 'imageRef' in volume and volume['imageRef'] is not None and  \
-                  volume['imageRef']+"_cache_volume"!=volume['display_name'] :
-	    image_name=volume['imageRef']
-            self.update_cache_names(image_name)
-            try:
-                locked_action="%s-%s"%(self.cache_snap_name,"create")
-                snap=self.get_snap_cache()
+	image_name=volume['imageRef']
+        self.update_cache_names(image_name)
+        try:
+            locked_action="%s-%s"%(self.cache_snap_name,"create")
+            snap=self.get_snap_cache()
  
-            except exception.NotFound:
-                LOG.debug("\n going to create snapshot %s"%(self.cache_snap_name))
-                @utils.synchronized(locked_action,external=True)
-                def run_create_cache():
-                    try:
-                        snap=self.get_snap_cache()           
-                    except exception.NotFound:
-                        snap = self.create_cache_snapshot()
-                    return snap
+        except exception.NotFound:
+            LOG.debug("\n going to create snapshot %s"%(self.cache_snap_name))
+            @utils.synchronized(locked_action,external=True)
+            def run_create_cache():
+                try:
+                    snap=self.get_snap_cache()           
+                except exception.NotFound:
+                    snap = self.create_cache_snapshot()
+                return snap
 
-                snap = run_create_cache()
+            snap = run_create_cache()
 
         self.revert_req_and_body(context,original_vol_name)
-        LOG.debug("while returning body is %s"%(self.body))
         if snap == None:
             return None
         else:

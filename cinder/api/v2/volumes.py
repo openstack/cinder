@@ -331,7 +331,9 @@ class VolumeController(wsgi.Controller):
         if volume.get('name'):
             volume['display_name'] = volume.get('name')
             del volume['name']
-        original_vol_name=volume['display_name']
+        original_vol_name=None
+        if 'display_name' in volume:
+            original_vol_name=volume['display_name']
 
         # NOTE(thingee): v2 API allows description instead of
         #                display_description
@@ -346,6 +348,8 @@ class VolumeController(wsgi.Controller):
             volume['imageRef'] = volume.get('image_id')
             original_imageRef=volume['imageRef']
             del volume['image_id']
+        if original_vol_name is None:
+	    volume['display_name']="temporary"
         #get the cache image
         if 'imageRef' in volume and volume['imageRef'] is not None and  \
                   volume['imageRef']+"_cache_volume"!=volume['display_name'] :
@@ -459,6 +463,8 @@ class VolumeController(wsgi.Controller):
                 temp = self.get_min_size_of_image(kwargs['image_id'],context)
                 if temp != 0:
                     size=temp
+        if original_vol_name==None:
+            del volume['display_name']
 
         kwargs['availability_zone'] = volume.get('availability_zone', None)
         kwargs['scheduler_hints'] = volume.get('scheduler_hints', None)
