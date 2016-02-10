@@ -248,9 +248,14 @@ class NotFound(CinderException):
     code = 404
     safe = True
 
+class TimeoutWaiting(CinderException):
+    message = _("timeout while waiting")
 
 class VolumeNotFound(NotFound):
     message = _("Volume %(volume_id)s could not be found.")
+
+class VolumeNotFoundByName(NotFound):
+    message = _("Volume %(volume_name)s could not be found.")
 
 
 class VolumeAttachmentNotFound(NotFound):
@@ -308,6 +313,8 @@ class VolumeTypeInUse(CinderException):
 class SnapshotNotFound(NotFound):
     message = _("Snapshot %(snapshot_id)s could not be found.")
 
+class SnapshotNotFoundByName(NotFound):
+    message = _("Snapshot %(snapshot_name)s could not be found.")
 
 class ServerNotFound(NotFound):
     message = _("Instance %(uuid)s could not be found.")

@@ -200,6 +200,10 @@ def volume_get(context, volume_id):
     """Get a volume or raise if it does not exist."""
     return IMPL.volume_get(context, volume_id)
 
+def volume_get_by_name(context,volume_name):
+    """Get a volume or raise if it does not exist."""
+    return IMPL.volume_get_by_name(context,volume_name)
+
 
 def volume_get_all(context, marker, limit, sort_keys=None, sort_dirs=None,
                    filters=None):
@@ -278,6 +282,10 @@ def snapshot_destroy(context, snapshot_id):
 def snapshot_get(context, snapshot_id):
     """Get a snapshot or raise if it does not exist."""
     return IMPL.snapshot_get(context, snapshot_id)
+
+def snapshot_get_by_name(context,snapshot_name):
+    """Get a snapshot from name or raise if it does not exist."""
+    return IMPL.snapshot_get_by_name(context,snapshot_name)
 
 
 def snapshot_get_all(context):

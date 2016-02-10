@@ -1265,6 +1265,17 @@ def _volume_get(context, volume_id, session=None):
 
     return result
 
+@require_context
+def _volume_get_by_name(context, volume_name, session=None):
+    result = _volume_get_query(context, session=session ,project_only=True).\
+        filter_by(display_name=volume_name).\
+        first()
+
+    if not result:
+        raise exception.VolumeNotFoundByName(volume_name=volume_name)
+    
+    return result
+
 
 @require_context
 def volume_attachment_get(context, attachment_id, session=None):
@@ -1317,6 +1328,10 @@ def volume_attachment_get_by_instance_uuid(context, volume_id, instance_uuid):
 @require_context
 def volume_get(context, volume_id):
     return _volume_get(context, volume_id)
+
+@require_context
+def volume_get_by_name(context,volume_name):
+    return _volume_get_by_name(context, volume_name)
 
 
 @require_admin_context
@@ -1925,11 +1940,27 @@ def _snapshot_get(context, snapshot_id, session=None):
 
     return result
 
+@require_context
+def _snapshot_get_by_name(context, snapshot_name, session=None):
+    result = model_query(context, models.Snapshot, session=session,
+                         project_only=True).\
+        options(joinedload('volume')).\
+        options(joinedload('snapshot_metadata')).\
+        filter_by(display_name=snapshot_name).\
+        first()
+
+    if not result:
+        raise exception.SnapshotNotFoundByName(snapshot_name=snapshot_name)
+
+    return result
 
 @require_context
 def snapshot_get(context, snapshot_id):
     return _snapshot_get(context, snapshot_id)
 
+@require_context
+def snapshot_get_by_name(context,snapshot_name):
+    return _snapshot_get_by_name(context,snapshot_name)
 
 @require_admin_context
 def snapshot_get_all(context):

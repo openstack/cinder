@@ -1,4 +1,3 @@
-# Copyright 2011 Justin Santa Barbara
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -35,6 +34,7 @@ from cinder import utils
 from cinder import volume as cinder_volume
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
+from cinder.api.v2 import cache_volumes as volume_cache
 
 
 LOG = logging.getLogger(__name__)
@@ -165,6 +165,7 @@ class VolumeController(wsgi.Controller):
         self.volume_api = cinder_volume.API()
         self.consistencygroup_api = consistencygroupAPI.API()
         self.ext_mgr = ext_mgr
+        self.volume_cache= volume_cache.VolumeCache()
         super(VolumeController, self).__init__()
 
     @wsgi.serializers(xml=VolumeTemplate)
@@ -319,17 +320,55 @@ class VolumeController(wsgi.Controller):
         if volume.get('name'):
             volume['display_name'] = volume.get('name')
             del volume['name']
+        original_vol_name=volume['display_name']
 
         # NOTE(thingee): v2 API allows description instead of
         #                display_description
         if volume.get('description'):
             volume['display_description'] = volume.get('description')
             del volume['description']
-
+        
+        snap_from_cache=False
+        original_imageRef=None
+        snapshot_id=None
         if 'image_id' in volume:
             volume['imageRef'] = volume.get('image_id')
+            original_imageRef=volume['imageRef']
             del volume['image_id']
+        #get the cache image
+        if 'imageRef' in volume and volume['imageRef'] is not None and  \
+                  volume['imageRef']+"_cache_volume"!=volume['display_name'] :
+            snapshot_id=self.volume_cache.get_cache_snapshot(req,body,self)
+            LOG.info("Volume (%s) with creation from image %s has cache snapshot id %s"%(original_vol_name,
+                                                 original_imageRef,
+                                                 snapshot_id))
 
+            volume['display_name']=original_vol_name
+
+        if snapshot_id is not None:
+           try:
+               snap_from_cache=True
+               admin_context=context.elevated()
+               kwargs['snapshot'] = self.volume_api.get_snapshot(admin_context,snapshot_id)
+           except exception.NotFound:
+               volume['imageRef']=original_imageRef
+               snap_from_cache=False
+        
+        if snapshot_id is None:
+            snapshot_id = volume.get('snapshot_id')
+
+
+        if snap_from_cache==False:
+            if snapshot_id is not None:
+                try:
+                    kwargs['snapshot'] = self.volume_api.get_snapshot(context,
+                                                                  snapshot_id)
+                except exception.NotFound:
+                    explanation = _('snapshot id:%s not found') % snapshot_id
+                    raise exc.HTTPNotFound(explanation=explanation)
+            else:
+                kwargs['snapshot'] = None
+  
         req_volume_type = volume.get('volume_type', None)
         if req_volume_type:
             try:
@@ -346,16 +385,6 @@ class VolumeController(wsgi.Controller):
 
         kwargs['metadata'] = volume.get('metadata', None)
 
-        snapshot_id = volume.get('snapshot_id')
-        if snapshot_id is not None:
-            try:
-                kwargs['snapshot'] = self.volume_api.get_snapshot(context,
-                                                                  snapshot_id)
-            except exception.NotFound:
-                explanation = _('snapshot id:%s not found') % snapshot_id
-                raise exc.HTTPNotFound(explanation=explanation)
-        else:
-            kwargs['snapshot'] = None
 
         source_volid = volume.get('source_volid')
         if source_volid is not None:
@@ -419,7 +448,6 @@ class VolumeController(wsgi.Controller):
         kwargs['scheduler_hints'] = volume.get('scheduler_hints', None)
         multiattach = volume.get('multiattach', False)
         kwargs['multiattach'] = multiattach
-
         new_volume = self.volume_api.create(context,
                                             size,
                                             volume.get('display_name'),

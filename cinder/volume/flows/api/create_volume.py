@@ -729,8 +729,9 @@ class VolumeCastTask(flow_utils.CinderTask):
             # If snapshot_id is set, make the call create volume directly to
             # the volume host where the snapshot resides instead of passing it
             # through the scheduler. So snapshot can be copy to new volume.
-            snapshot_ref = self.db.snapshot_get(context, snapshot_id)
-            source_volume_ref = self.db.volume_get(context,
+            admin_context=context.elevated()
+            snapshot_ref = self.db.snapshot_get(admin_context, snapshot_id)
+            source_volume_ref = self.db.volume_get(admin_context,
                                                    snapshot_ref['volume_id'])
             host = source_volume_ref['host']
         elif source_volid:

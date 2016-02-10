@@ -441,6 +441,13 @@ class API(base.Base):
 
     def get_snapshot(self, context, snapshot_id):
         return objects.Snapshot.get_by_id(context, snapshot_id)
+    
+    def get_snapshot_by_name(self,context,snapshot_name):
+        return objects.Snapshot.get_by_name(context,snapshot_name)
+
+    def get_volume_by_name(self,context,volume_name):
+        rv=self.db.volume_get_by_name(context,volume_name)
+        return dict(rv.iteritems())
 
     def get_volume(self, context, volume_id):
         check_policy(context, 'get_volume')
