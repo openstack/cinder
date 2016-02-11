@@ -1,0 +1,3 @@
+---
+features:
+  - Adds managed v2 replication global and metro mirror modes support to the IBM Storwize driver.

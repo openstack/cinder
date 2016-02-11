@@ -21,6 +21,7 @@ Tests for the IBM Storwize family and SVC volume driver.
 import random
 import re
 import time
+import uuid
 
 import mock
 from oslo_concurrency import processutils
@@ -36,6 +37,8 @@ from cinder import test
 from cinder.tests.unit import utils as testutils
 from cinder import utils
 from cinder.volume import configuration as conf
+from cinder.volume.drivers.ibm.storwize_svc import (
+    replication as storwize_rep)
 from cinder.volume.drivers.ibm.storwize_svc import storwize_svc_common
 from cinder.volume.drivers.ibm.storwize_svc import storwize_svc_fc
 from cinder.volume.drivers.ibm.storwize_svc import storwize_svc_iscsi
@@ -3173,6 +3176,57 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.driver.delete_snapshot(snap)
         self.driver.delete_volume(volume)
 
+    @mock.patch.object(storwize_rep.StorwizeSVCReplicationGlobalMirror,
+                       'create_relationship')
+    @mock.patch.object(storwize_rep.StorwizeSVCReplicationGlobalMirror,
+                       'extend_target_volume')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'delete_relationship')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_relationship_info')
+    def test_storwize_svc_extend_volume_replication(self,
+                                                    get_relationship,
+                                                    delete_relationship,
+                                                    extend_target_volume,
+                                                    create_relationship):
+        fake_target = mock.Mock()
+        rep_type = 'global'
+        self.driver.replications[rep_type] = (
+            self.driver.replication_factory(rep_type, fake_target))
+        volume = self._create_volume()
+        volume['replication_status'] = 'enabled'
+        fake_target_vol = 'vol-target-id'
+        get_relationship.return_value = {'aux_vdisk_name': fake_target_vol}
+        with mock.patch.object(
+                self.driver,
+                '_get_volume_replicated_type_mirror') as mirror_type:
+            mirror_type.return_value = 'global'
+            self.driver.extend_volume(volume, '13')
+            attrs = self.driver._helpers.get_vdisk_attributes(volume['name'])
+            vol_size = int(attrs['capacity']) / units.Gi
+            self.assertAlmostEqual(vol_size, 13)
+            delete_relationship.assert_called_once_with(volume)
+            extend_target_volume.assert_called_once_with(fake_target_vol,
+                                                         12)
+            create_relationship.assert_called_once_with(volume,
+                                                        fake_target_vol)
+
+        self.driver.delete_volume(volume)
+
+    def test_storwize_svc_extend_volume_replication_failover(self):
+        volume = self._create_volume()
+        volume['replication_status'] = 'failed-over'
+        with mock.patch.object(
+                self.driver,
+                '_get_volume_replicated_type_mirror') as mirror_type:
+            mirror_type.return_value = 'global'
+            self.driver.extend_volume(volume, '13')
+            attrs = self.driver._helpers.get_vdisk_attributes(volume['name'])
+            vol_size = int(attrs['capacity']) / units.Gi
+            self.assertAlmostEqual(vol_size, 13)
+
+        self.driver.delete_volume(volume)
+
     def _check_loc_info(self, capabilities, expected):
         host = {'host': 'foo', 'capabilities': capabilities}
         vol = {'name': 'test', 'id': 1, 'size': 1}
@@ -4315,3 +4369,277 @@ class StorwizeSSHTestCase(test.TestCase):
             self.assertRaises(exception.VolumeBackendAPIException,
                               self.storwize_ssh.mkvdiskhostmap,
                               'HOST3', 9999, 511, True)
+
+
+class StorwizeSVCReplicationMirrorTestCase(test.TestCase):
+
+    rep_type = 'global'
+    mirror_class = storwize_rep.StorwizeSVCReplicationGlobalMirror
+
+    def setUp(self):
+        super(StorwizeSVCReplicationMirrorTestCase, self).setUp()
+        self.svc_driver = storwize_svc_iscsi.StorwizeSVCISCSIDriver(
+            configuration=conf.Configuration(None))
+        extra_spec_rep_type = '<in> ' + self.rep_type
+        fake_target = {"managed_backend_name": "second_host@sv2#sv2",
+                       "replication_mode": self.rep_type,
+                       "target_device_id": "svc_id_target",
+                       "san_ip": "192.168.10.23",
+                       "san_login": "admin",
+                       "san_password": "admin",
+                       "pool_name": "cinder_target"}
+        self.fake_targets = [fake_target]
+        self.driver = self.mirror_class(self.svc_driver, fake_target,
+                                        storwize_svc_common.StorwizeHelpers)
+        self.svc_driver.configuration.set_override('replication_device',
+                                                   self.fake_targets)
+        self.svc_driver._replication_targets = self.fake_targets
+        self.svc_driver._replication_enabled = True
+        self.svc_driver.replications[self.rep_type] = (
+            self.svc_driver.replication_factory(self.rep_type, fake_target))
+        self.ctxt = context.get_admin_context()
+        rand_id = six.text_type(uuid.uuid4())
+        self.volume = {'name': 'volume-%s' % rand_id,
+                       'size': 10, 'id': '%s' % rand_id,
+                       'volume_type_id': None,
+                       'mdisk_grp_name': 'openstack',
+                       'replication_status': 'disabled',
+                       'replication_extended_status': None,
+                       'volume_metadata': None}
+        spec = {'replication_enabled': '<is> True',
+                'replication_type': extra_spec_rep_type}
+        type_ref = volume_types.create(self.ctxt, "replication", spec)
+        self.replication_type = volume_types.get_volume_type(self.ctxt,
+                                                             type_ref['id'])
+        self.volume['volume_type_id'] = self.replication_type['id']
+        self.volume['volume_type'] = self.replication_type
+
+    def test_storwize_do_replication_setup(self):
+        self.svc_driver.configuration.set_override('san_ip', "192.168.10.23")
+        self.svc_driver.configuration.set_override('replication_device',
+                                                   self.fake_targets)
+        self.svc_driver._do_replication_setup()
+
+    def test_storwize_do_replication_setup_unmanaged(self):
+        fake_target = {"replication_mode": self.rep_type,
+                       "target_device_id": "svc_id_target",
+                       "san_ip": "192.168.10.23",
+                       "san_login": "admin",
+                       "san_password": "admin",
+                       "pool_name": "cinder_target"}
+        fake_targets = [fake_target]
+        self.svc_driver.configuration.set_override('san_ip', "192.168.10.23")
+        self.svc_driver.configuration.set_override('replication_device',
+                                                   fake_targets)
+        self.assertRaises(exception.InvalidConfigurationValue,
+                          self.svc_driver._do_replication_setup)
+
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers, 'create_vdisk')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers, 'get_vdisk_params')
+    @mock.patch.object(context, 'get_admin_context')
+    @mock.patch.object(mirror_class, 'volume_replication_setup')
+    def test_storwize_create_volume_with_mirror_replication(self,
+                                                            rep_setup,
+                                                            ctx,
+                                                            get_vdisk_params,
+                                                            create_vdisk):
+        ctx.return_value = self.ctxt
+        get_vdisk_params.return_value = {'replication': None,
+                                         'qos': None}
+        self.svc_driver.create_volume(self.volume)
+        rep_setup.assert_called_once_with(self.ctxt, self.volume)
+
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers, 'create_copy')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers, 'get_vdisk_params')
+    @mock.patch.object(context, 'get_admin_context')
+    @mock.patch.object(mirror_class, 'volume_replication_setup')
+    def test_storwize_create_volume_from_snap_with_mirror_replication(
+            self, rep_setup, ctx, get_vdisk_params, create_copy):
+        ctx.return_value = self.ctxt
+        get_vdisk_params.return_value = {'replication': None,
+                                         'qos': None}
+        snapshot = {'id': 'snapshot-id',
+                    'name': 'snapshot-name',
+                    'volume_size': 10}
+        model_update = self.svc_driver.create_volume_from_snapshot(
+            self.volume, snapshot)
+        rep_setup.assert_called_once_with(self.ctxt, self.volume)
+        self.assertEqual({'replication_status': 'enabled'}, model_update)
+
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers, 'create_copy')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers, 'get_vdisk_params')
+    @mock.patch.object(context, 'get_admin_context')
+    @mock.patch.object(mirror_class, 'volume_replication_setup')
+    def test_storwize_clone_volume_with_mirror_replication(
+            self, rep_setup, ctx, get_vdisk_params, create_copy):
+        ctx.return_value = self.ctxt
+        get_vdisk_params.return_value = {'replication': None,
+                                         'qos': None}
+        rand_id = six.text_type(random.randint(10000, 99999))
+        target_volume = {'name': 'test_volume%s' % rand_id,
+                         'size': 10, 'id': '%s' % rand_id,
+                         'volume_type_id': None,
+                         'mdisk_grp_name': 'openstack',
+                         'replication_status': 'disabled',
+                         'replication_extended_status': None,
+                         'volume_metadata': None}
+        target_volume['volume_type_id'] = self.replication_type['id']
+        target_volume['volume_type'] = self.replication_type
+        model_update = self.svc_driver.create_cloned_volume(
+            target_volume, self.volume)
+        rep_setup.assert_called_once_with(self.ctxt, target_volume)
+        self.assertEqual({'replication_status': 'enabled'}, model_update)
+
+    @mock.patch.object(mirror_class, 'replication_enable')
+    @mock.patch.object(mirror_class, 'volume_replication_setup')
+    def test_storwize_replication_enable(self, rep_setup,
+                                         replication_enable):
+        self.svc_driver.replication_enable(self.ctxt, self.volume)
+        replication_enable.assert_called_once_with(self.ctxt, self.volume)
+
+    @mock.patch.object(mirror_class,
+                       'replication_disable')
+    @mock.patch.object(mirror_class,
+                       'volume_replication_setup')
+    def test_storwize_replication_disable(self, rep_setup,
+                                          replication_disable):
+        self.svc_driver.replication_disable(self.ctxt, self.volume)
+        replication_disable.assert_called_once_with(self.ctxt, self.volume)
+
+    @mock.patch.object(mirror_class,
+                       'replication_failover')
+    @mock.patch.object(mirror_class,
+                       'volume_replication_setup')
+    def test_storwize_replication_failover(self, rep_setup,
+                                           replication_failover):
+        fake_secondary = 'svc_id_target'
+        self.svc_driver.replication_failover(self.ctxt, self.volume,
+                                             fake_secondary)
+        replication_failover.assert_called_once_with(self.ctxt, self.volume,
+                                                     fake_secondary)
+
+    @mock.patch.object(mirror_class,
+                       'list_replication_targets')
+    def test_storwize_list_replication_targets(self, list_targets):
+        fake_targets = [{"managed_backend_name": "second_host@sv2#sv2",
+                         "type": "managed",
+                         "target_device_id": "svc_id_target",
+                         "pool_name": "cinder_target"}]
+        list_targets.return_value = fake_targets
+        expected_resp = {'targets': fake_targets,
+                         'volume_id': self.volume['id']}
+        targets = self.svc_driver.list_replication_targets(self.ctxt,
+                                                           self.volume)
+        list_targets.assert_called_once_with(self.ctxt, self.volume)
+        self.assertEqual(expected_resp, targets)
+
+    @mock.patch.object(mirror_class,
+                       '_partnership_validate_create')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_system_info')
+    def test_establish_target_partnership(self, get_system_info,
+                                          partnership_validate_create):
+        source_system_name = 'source_vol'
+        target_system_name = 'target_vol'
+        self.svc_driver.configuration.set_override('san_ip',
+                                                   "192.168.10.21")
+
+        get_system_info.side_effect = [{'system_name': source_system_name},
+                                       {'system_name': target_system_name}]
+        self.driver.establish_target_partnership()
+        expected_calls = [mock.call(self.svc_driver._helpers,
+                                    'target_vol', '192.168.10.23'),
+                          mock.call(self.driver.target_helpers,
+                                    'source_vol', '192.168.10.21')]
+        partnership_validate_create.assert_has_calls(expected_calls)
+
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'create_relationship')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_system_info')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'create_vdisk')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_vdisk_params')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_vdisk_attributes')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_relationship_info')
+    def test_replication_enable(self, get_relationship_info,
+                                get_vdisk_attributes,
+                                get_vdisk_params,
+                                create_vdisk,
+                                get_system_info,
+                                create_relationship):
+        fake_system = 'fake_system'
+        fake_params = mock.Mock()
+        get_relationship_info.return_value = None
+        get_vdisk_attributes.return_value = None
+        get_vdisk_params.return_value = fake_params
+        get_system_info.return_value = {'system_name': fake_system}
+        model_update = self.driver.replication_enable(self.ctxt,
+                                                      self.volume)
+        get_relationship_info.assert_called_once_with(self.volume)
+        get_vdisk_attributes.assert_called_once_with(self.volume['name'])
+        create_vdisk.assert_called_once_with(self.volume['name'],
+                                             '10', 'gb', 'cinder_target',
+                                             fake_params)
+        create_relationship.assert_called_once_with(self.volume['name'],
+                                                    self.volume['name'],
+                                                    fake_system,
+                                                    self.driver.asyncmirror)
+        self.assertEqual({'replication_status': 'enabled'}, model_update)
+
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'delete_vdisk')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'delete_relationship')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_relationship_info')
+    def test_replication_disable(self, get_relationship_info,
+                                 delete_relationship,
+                                 delete_vdisk):
+        fake_target_vol_name = 'fake_target_vol_name'
+        get_relationship_info.return_value = {'aux_vdisk_name':
+                                              fake_target_vol_name}
+        model_update = self.driver.replication_disable(self.ctxt,
+                                                       self.volume)
+        delete_relationship.assert_called_once_with(self.volume['name'])
+        delete_vdisk.assert_called_once_with(fake_target_vol_name,
+                                             False)
+        self.assertEqual({'replication_status': 'disabled'}, model_update)
+
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'delete_relationship')
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_relationship_info')
+    def test_replication_failover(self, get_relationship_info,
+                                  delete_relationship):
+        secondary = 'svc_id_target'
+        fake_id = '546582b2-bafb-43cc-b765-bd738ab148c8'
+        expected_model_update = {'host': 'second_host@sv2#sv2',
+                                 '_name_id': fake_id}
+        fake_name = 'volume-' + fake_id
+        get_relationship_info.return_value = {'aux_vdisk_name':
+                                              fake_name}
+        model_update = self.driver.replication_failover(self.ctxt,
+                                                        self.volume,
+                                                        secondary)
+        delete_relationship.assert_called_once_with(self.volume['name'])
+        self.assertEqual(expected_model_update, model_update)
+
+    def test_list_replication_targets(self):
+        fake_targets = [{'target_device_id': 'svc_id_target'}]
+        targets = self.driver.list_replication_targets(self.ctxt,
+                                                       self.volume)
+        self.assertEqual(fake_targets, targets)
+
+
+class StorwizeSVCReplicationMetroMirrorTestCase(
+        StorwizeSVCReplicationMirrorTestCase):
+
+    rep_type = 'metro'
+    mirror_class = storwize_rep.StorwizeSVCReplicationMetroMirror
+
+    def setUp(self):
+        super(StorwizeSVCReplicationMetroMirrorTestCase, self).setUp()
