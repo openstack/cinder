@@ -225,10 +225,11 @@ class HPE3PARCommon(object):
         3.0.10 - Added additional volumes checks to the manage snapshot API
         3.0.11 - Fix the image cache capability bug #1491088
         3.0.12 - Remove client version checks for replication
+        3.0.13 - Support creating a cg from a source cg
 
     """
 
-    VERSION = "3.0.12"
+    VERSION = "3.0.13"
 
     stats = {}
 
@@ -512,22 +513,35 @@ class HPE3PARCommon(object):
                                          cgsnapshot=None, snapshots=None,
                                          source_cg=None, source_vols=None):
 
+        self.create_consistencygroup(context, group)
+        vvs_name = self._get_3par_vvs_name(group.id)
         if cgsnapshot and snapshots:
-            self.create_consistencygroup(context, group)
-            vvs_name = self._get_3par_vvs_name(group.id)
             cgsnap_name = self._get_3par_snap_name(cgsnapshot.id)
-            for i, (volume, snapshot) in enumerate(zip(volumes, snapshots)):
-                snap_name = cgsnap_name + "-" + six.text_type(i)
-                volume_name = self._get_3par_vol_name(volume['id'])
-                type_info = self.get_volume_settings_from_type(volume)
-                cpg = type_info['cpg']
-                optional = {'online': True, 'snapCPG': cpg}
-                self.client.copyVolume(snap_name, volume_name, cpg, optional)
-                self.client.addVolumeToVolumeSet(vvs_name, volume_name)
-        else:
-            msg = _("create_consistencygroup_from_src only supports a"
-                    " cgsnapshot source, other sources cannot be used.")
-            raise exception.InvalidInput(reason=msg)
+            snap_base = cgsnap_name
+        elif source_cg and source_vols:
+            cg_id = source_cg.id
+            # Create a brand new uuid for the temp snap.
+            snap_uuid = uuid.uuid4().hex
+
+            # Create a temporary snapshot of the volume set in order to
+            # perform an online copy. These temp snapshots will be deleted
+            # when the source consistency group is deleted.
+            temp_snap = self._get_3par_snap_name(snap_uuid, temp_snap=True)
+            snap_shot_name = temp_snap + "-@count@"
+            copy_of_name = self._get_3par_vvs_name(cg_id)
+            optional = {'expirationHours': 1}
+            self.client.createSnapshotOfVolumeSet(snap_shot_name, copy_of_name,
+                                                  optional=optional)
+            snap_base = temp_snap
+
+        for i, volume in enumerate(volumes):
+            snap_name = snap_base + "-" + six.text_type(i)
+            volume_name = self._get_3par_vol_name(volume['id'])
+            type_info = self.get_volume_settings_from_type(volume)
+            cpg = type_info['cpg']
+            optional = {'online': True, 'snapCPG': cpg}
+            self.client.copyVolume(snap_name, volume_name, cpg, optional)
+            self.client.addVolumeToVolumeSet(vvs_name, volume_name)
 
         return None, None
 

@@ -91,11 +91,13 @@ class Comment(object):
 class HPE3PARBaseDriver(object):
 
     VOLUME_ID = 'd03338a9-9115-48a3-8dfc-35cdfcdc15a7'
+    SRC_CG_VOLUME_ID = 'bd21d11b-c765-4c68-896c-6b07f63cfcb6'
     CLONE_ID = 'd03338a9-9115-48a3-8dfc-000000000000'
     VOLUME_TYPE_ID_REPLICATED = 'be9181f1-4040-46f2-8298-e7532f2bf9db'
     VOLUME_TYPE_ID_DEDUP = 'd03338a9-9115-48a3-8dfc-11111111111'
     VOLUME_TYPE_ID_FLASH_CACHE = 'd03338a9-9115-48a3-8dfc-22222222222'
     VOLUME_NAME = 'volume-' + VOLUME_ID
+    SRC_CG_VOLUME_NAME = 'volume-' + SRC_CG_VOLUME_ID
     VOLUME_NAME_3PAR = 'osv-0DM4qZEVSKON-DXN-NwVpw'
     SNAPSHOT_ID = '2f823bdc-e36e-4dc8-bd15-de1c7a28ff31'
     SNAPSHOT_NAME = 'snapshot-2f823bdc-e36e-4dc8-bd15-de1c7a28ff31'
@@ -104,6 +106,8 @@ class HPE3PARBaseDriver(object):
     RCG_3PAR_NAME = 'rcg-0DM4qZEVSKON-DXN-N'
     CONSIS_GROUP_ID = '6044fedf-c889-4752-900f-2039d247a5df'
     CONSIS_GROUP_NAME = 'vvs-YET.38iJR1KQDyA50kel3w'
+    SRC_CONSIS_GROUP_ID = '7d7dfa02-ac6e-48cb-96af-8a0cd3008d47'
+    SRC_CONSIS_GROUP_NAME = 'vvs-fX36AqxuSMuWr4oM0wCNRw'
     CGSNAPSHOT_ID = 'e91c5ed5-daee-4e84-8724-1c9e31e7a1f2'
     CGSNAPSHOT_BASE_NAME = 'oss-6Rxe1druToSHJByeMeeh8g'
     CLIENT_ID = "12345"
@@ -147,6 +151,14 @@ class HPE3PARBaseDriver(object):
               'host': FAKE_CINDER_HOST,
               'volume_type': None,
               'volume_type_id': None}
+
+    volume_src_cg = {'name': SRC_CG_VOLUME_NAME,
+                     'id': SRC_CG_VOLUME_ID,
+                     'display_name': 'Foo Volume',
+                     'size': 2,
+                     'host': FAKE_CINDER_HOST,
+                     'volume_type': None,
+                     'volume_type_id': None}
 
     volume_replicated = {'name': VOLUME_NAME,
                          'id': VOLUME_ID,
@@ -585,18 +597,20 @@ class HPE3PARBaseDriver(object):
         mock.call.logout()]
 
     class fake_consistencygroup_object(object):
-        volume_type_id = '49fa96b5-828e-4653-b622-873a1b7e6f1c'
-        name = 'cg_name'
-        cgsnapshot_id = None
-        host = 'fakehost@foo#OpenStackCPG'
-        id = '6044fedf-c889-4752-900f-2039d247a5df'
-        description = 'consistency group'
+        def __init__(self, cg_id='6044fedf-c889-4752-900f-2039d247a5df'):
+            self.id = cg_id
+            self.volume_type_id = '49fa96b5-828e-4653-b622-873a1b7e6f1c'
+            self.name = 'cg_name'
+            self.cgsnapshot_id = None
+            self.host = 'fakehost@foo#OpenStackCPG'
+            self.description = 'consistency group'
 
     class fake_cgsnapshot_object(object):
-        consistencygroup_id = '6044fedf-c889-4752-900f-2039d247a5df'
-        description = 'cgsnapshot'
-        id = 'e91c5ed5-daee-4e84-8724-1c9e31e7a1f2'
-        readOnly = False
+        def __init__(self, cgsnap_id='e91c5ed5-daee-4e84-8724-1c9e31e7a1f2'):
+            self.id = cgsnap_id
+            self.consistencygroup_id = '6044fedf-c889-4752-900f-2039d247a5df'
+            self.description = 'cgsnapshot'
+            self.readOnly = False
 
     def setup_configuration(self):
         configuration = mock.MagicMock()
@@ -3918,6 +3932,60 @@ class HPE3PARBaseDriver(object):
                 context.get_admin_context(), group,
                 [volume], cgsnapshot=cgsnapshot,
                 snapshots=[self.snapshot])
+
+            mock_client.assert_has_calls(
+                self.get_id_login +
+                self.standard_logout +
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
+    def test_create_consistency_group_from_src_cg(self):
+        mock_client = self.setup_driver()
+        mock_client.getStorageSystemInfo.return_value = {'id': self.CLIENT_ID}
+        volume = self.volume
+        source_volume = self.volume_src_cg
+
+        cgsnap_optional = (
+            {'expirationHours': 1})
+
+        cg_comment = Comment({
+            'display_name': 'cg_name',
+            'consistency_group_id': self.CONSIS_GROUP_ID,
+            'description': 'consistency group'})
+
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            mock_client.getCPG.return_value = {'domain': None}
+            group = self.fake_consistencygroup_object()
+            source_group = self.fake_consistencygroup_object(
+                cg_id=self.SRC_CONSIS_GROUP_ID)
+
+            expected = [
+                mock.call.getCPG(HPE3PAR_CPG),
+                mock.call.createVolumeSet(
+                    self.CONSIS_GROUP_NAME,
+                    domain=None,
+                    comment=cg_comment),
+                mock.call.createSnapshotOfVolumeSet(
+                    mock.ANY,
+                    self.SRC_CONSIS_GROUP_NAME,
+                    optional=cgsnap_optional),
+                mock.call.copyVolume(
+                    mock.ANY,
+                    self.VOLUME_NAME_3PAR,
+                    HPE3PAR_CPG,
+                    {'snapCPG': HPE3PAR_CPG, 'online': True}),
+                mock.call.addVolumeToVolumeSet(
+                    self.CONSIS_GROUP_NAME,
+                    self.VOLUME_NAME_3PAR)]
+
+            # Create a consistency group from a source consistency group.
+            self.driver.create_consistencygroup_from_src(
+                context.get_admin_context(), group,
+                [volume], source_cg=source_group,
+                source_vols=[source_volume])
 
             mock_client.assert_has_calls(
                 self.get_id_login +
