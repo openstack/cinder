@@ -5584,7 +5584,7 @@ class DellSCSanAPITestCase(test.TestCase):
                           self.scapi.manage_existing,
                           newname,
                           existing)
-        mock_get_volume_list.asert_called_once_with(
+        mock_get_volume_list.assert_called_once_with(
             existing.get('source-name'),
             existing.get('source-id'),
             False)
@@ -5610,7 +5610,7 @@ class DellSCSanAPITestCase(test.TestCase):
                           self.scapi.manage_existing,
                           newname,
                           existing)
-        mock_get_volume_list.asert_called_once_with(
+        mock_get_volume_list.assert_called_once_with(
             existing.get('source-name'),
             existing.get('source-id'),
             False)
@@ -5640,7 +5640,7 @@ class DellSCSanAPITestCase(test.TestCase):
                           self.scapi.manage_existing,
                           newname,
                           existing)
-        mock_get_volume_list.asert_called_once_with(
+        mock_get_volume_list.assert_called_once_with(
             existing.get('source-name'),
             existing.get('source-id'),
             False)
@@ -5675,7 +5675,7 @@ class DellSCSanAPITestCase(test.TestCase):
                           self.scapi.manage_existing,
                           newname,
                           existing)
-        mock_get_volume_list.asert_called_once_with(
+        mock_get_volume_list.assert_called_once_with(
             existing.get('source-name'),
             existing.get('source-id'),
             False)
@@ -5697,7 +5697,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                        mock_init):
         existing = {'source-name': 'scvolname'}
         res = self.scapi.get_unmanaged_volume_size(existing)
-        mock_get_volume_list.asert_called_once_with(
+        mock_get_volume_list.assert_called_once_with(
             existing.get('source-name'),
             existing.get('source-id'),
             False)
@@ -5716,7 +5716,7 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.scapi.get_unmanaged_volume_size,
                           existing)
-        mock_get_volume_list.asert_called_once_with(
+        mock_get_volume_list.assert_called_once_with(
             existing.get('source-name'),
             existing.get('source-id'),
             False)
@@ -5733,7 +5733,7 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.scapi.get_unmanaged_volume_size,
                           existing)
-        mock_get_volume_list.asert_called_once_with(
+        mock_get_volume_list.assert_called_once_with(
             existing.get('source-name'),
             existing.get('source-id'),
             False)
@@ -5756,7 +5756,7 @@ class DellSCSanAPITestCase(test.TestCase):
                           self.scapi.get_unmanaged_volume_size,
                           existing)
         self.assertTrue(mock_size_to_gb.called)
-        mock_get_volume_list.asert_called_once_with(
+        mock_get_volume_list.assert_called_once_with(
             existing.get('source-name'),
             existing.get('source-id'),
             False)
