@@ -44,8 +44,7 @@ class VolumeCache:
 
 
     def get_snap_cache(self):
-        snap_found=False
-        while not snap_found:
+        while True:
             snap=self.volume_api.get_snapshot_by_name(self.context,self.cache_snap_name)
             if 'status' in snap and snap['status']=="available":
                 break

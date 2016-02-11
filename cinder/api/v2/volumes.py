@@ -346,8 +346,11 @@ class VolumeController(wsgi.Controller):
         snapshot_id=None
         if 'image_id' in volume:
             volume['imageRef'] = volume.get('image_id')
-            original_imageRef=volume['imageRef']
             del volume['image_id']
+        
+        if 'imageRef' in volume:
+            original_imageRef=volume['imageRef']
+
         if original_vol_name is None:
 	    volume['display_name']="temporary"
         #get the cache image
@@ -368,6 +371,7 @@ class VolumeController(wsgi.Controller):
            except exception.NotFound:
                volume['imageRef']=original_imageRef
                snap_from_cache=False
+               snapshot_id=None
         
         if snapshot_id is None:
             snapshot_id = volume.get('snapshot_id')
@@ -470,6 +474,9 @@ class VolumeController(wsgi.Controller):
         kwargs['scheduler_hints'] = volume.get('scheduler_hints', None)
         multiattach = volume.get('multiattach', False)
         kwargs['multiattach'] = multiattach
+        if snap_from_cache==True:
+            kwargs['volume_from_cache']=True
+
         new_volume = self.volume_api.create(context,
                                             size,
                                             volume.get('display_name'),
