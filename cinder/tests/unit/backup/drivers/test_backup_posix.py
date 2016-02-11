@@ -124,7 +124,7 @@ class PosixBackupDriverTestCase(test.TestCase):
         self.assertRaises(OSError, self.driver.put_container,
                           FAKE_CONTAINER)
         os.path.exists.assert_called_once_with(path)
-        os.makedirs.called_once_with(path)
+        os.makedirs.assert_called_once_with(path)
         self.assertEqual(0, os.chmod.call_count)
 
     def test_get_container_entries(self):
