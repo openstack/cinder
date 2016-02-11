@@ -1542,13 +1542,15 @@ class VMwareVolumeOps(object):
         :param names: list of cluster names
         :return: Dictionary of cluster names to references
         """
+        clusters_ref = {}
         clusters = self._get_all_clusters()
         for name in names:
             if name not in clusters:
                 LOG.error(_LE("Compute cluster: %s not found."), name)
                 raise vmdk_exceptions.ClusterNotFoundException(cluster=name)
+            clusters_ref[name] = clusters[name]
 
-        return {name: clusters[name] for name in names}
+        return clusters_ref
 
     def get_cluster_hosts(self, cluster):
         """Get hosts in the given cluster.
