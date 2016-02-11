@@ -847,8 +847,6 @@ class XtremIOISCSIDriver(XtremIOVolumeDriver, driver.ISCSIDriver):
             the authentication details. Right now, either auth_method is not
             present meaning no authentication, or auth_method == `CHAP`
             meaning use CHAP with the specified credentials.
-        :access_mode:    the volume access mode allow client used
-                         ('rw' or 'ro' currently supported)
         multiple connection return
         :target_iqns, :target_portals, :target_luns, which contain lists of
         multiple values. The main portal information is also returned in

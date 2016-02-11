@@ -1346,7 +1346,6 @@ class InfortrendCommon(object):
                 'target_discovered': True,
                 'target_lun': int(lun_id),
                 'target_wwn': target_wwpns,
-                'access_mode': 'rw',
                 'initiator_target_map': initiator_target_map,
             },
         }

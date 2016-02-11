@@ -3297,8 +3297,7 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertTrue(mock_find_domains.called)
         self.assertTrue(mock_find_ctrl_port.called)
         self.assertTrue(mock_find_active_controller.called)
-        expected = {'access_mode': 'rw',
-                    'target_discovered': False,
+        expected = {'target_discovered': False,
                     'target_iqn':
                         u'iqn.2002-03.com.compellent:5000d31000fcbe43',
                     'target_iqns':
@@ -3341,8 +3340,7 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertTrue(mock_find_domains.called)
         self.assertTrue(mock_find_ctrl_port.called)
         self.assertTrue(mock_find_active_controller.called)
-        expected = {'access_mode': 'rw',
-                    'target_discovered': False,
+        expected = {'target_discovered': False,
                     'target_iqn':
                         u'iqn.2002-03.com.compellent:5000d31000fcbe43',
                     'target_iqns':
@@ -3386,8 +3384,7 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertTrue(mock_find_domains.called)
         self.assertTrue(mock_find_ctrl_port.called)
         self.assertTrue(mock_find_active_ctrl.called)
-        expected = {'access_mode': 'rw',
-                    'target_discovered': False,
+        expected = {'target_discovered': False,
                     'target_iqn':
                         u'iqn.2002-03.com.compellent:5000d31000fcbe43',
                     'target_iqns':
@@ -3506,8 +3503,7 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertTrue(mock_find_domains.called)
         self.assertTrue(mock_find_ctrl_port.called)
         self.assertTrue(mock_find_active_controller.called)
-        expected = {'access_mode': 'ro',
-                    'target_discovered': False,
+        expected = {'target_discovered': False,
                     'target_iqn':
                         u'iqn.2002-03.com.compellent:5000d31000fcbe43',
                     'target_iqns':
@@ -3549,8 +3545,7 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertTrue(mock_find_ctrl_port.called)
         self.assertTrue(mock_find_active_controller.called)
         self.assertTrue(mock_is_virtualport_mode.called)
-        expected = {'access_mode': 'rw',
-                    'target_discovered': False,
+        expected = {'target_discovered': False,
                     'target_iqn':
                         u'iqn.2002-03.com.compellent:5000d31000fcbe43',
                     'target_iqns':
@@ -3598,8 +3593,7 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertTrue(mock_find_ctrl_port.called)
         self.assertTrue(mock_find_controller_port_iscsi_config.called)
         self.assertTrue(mock_find_active_controller.called)
-        expected = {'access_mode': 'rw',
-                    'target_discovered': False,
+        expected = {'target_discovered': False,
                     'target_iqn':
                         u'iqn.2002-03.com.compellent:5000d31000fcbe43',
                     'target_iqns':
@@ -3677,8 +3671,7 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertTrue(mock_find_ctrl_port.called)
         self.assertTrue(mock_find_active_controller.called)
         self.assertTrue(mock_find_controller_port_iscsi_config.called)
-        expected = {'access_mode': 'rw',
-                    'target_discovered': False,
+        expected = {'target_discovered': False,
                     'target_iqn':
                         u'iqn.2002-03.com.compellent:5000d31000fcbe43',
                     'target_iqns':
@@ -3722,8 +3715,7 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertTrue(mock_find_ctrl_port.called)
         self.assertTrue(mock_find_active_ctrl.called)
         self.assertTrue(mock_find_controller_port_iscsi_config.called)
-        expected = {'access_mode': 'rw',
-                    'target_discovered': False,
+        expected = {'target_discovered': False,
                     'target_iqn':
                         u'iqn.2002-03.com.compellent:5000d31000fcbe43',
                     'target_iqns':
@@ -3765,8 +3757,7 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertTrue(mock_find_ctrl_port.called)
         self.assertTrue(mock_find_active_controller.called)
         self.assertTrue(mock_find_iscsi_config.called)
-        expected = {'access_mode': 'ro',
-                    'target_discovered': False,
+        expected = {'target_discovered': False,
                     'target_iqn':
                         u'iqn.2002-03.com.compellent:5000d31000fcbe43',
                     'target_iqns':
@@ -3811,8 +3802,7 @@ class DellSCSanAPITestCase(test.TestCase):
         self.assertTrue(mock_find_controller_port_iscsi_config.called)
         # Since we're feeding the same info back multiple times the information
         # will be duped.
-        expected = {'access_mode': 'rw',
-                    'target_discovered': False,
+        expected = {'target_discovered': False,
                     'target_iqn':
                         u'iqn.2002-03.com.compellent:5000d31000fcbe43',
                     'target_iqns':

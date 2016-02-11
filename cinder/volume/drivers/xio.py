@@ -1345,7 +1345,6 @@ class XIOISEDriver(object):
         data = {}
         data['target_lun'] = target_lun
         data['volume_id'] = volume['id']
-        data['access_mode'] = 'rw'
         return data
 
     def ise_unpresent(self, volume, endpoints):

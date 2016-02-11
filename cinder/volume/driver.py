@@ -2431,9 +2431,6 @@ class ISCSIDriver(VolumeDriver):
             present meaning no authentication, or auth_method == `CHAP`
             meaning use CHAP with the specified credentials.
 
-        :access_mode:    the volume access mode allow client used
-                         ('rw' or 'ro' currently supported)
-
         :discard:    boolean indicating if discard is supported
 
         In some of drivers that support multiple connections (for multipath
@@ -2550,7 +2547,6 @@ class ISCSIDriver(VolumeDriver):
                     'target_iqn': 'iqn.2010-10.org.openstack:volume-00000001',
                     'target_portal': '127.0.0.0.1:3260',
                     'volume_id': 1,
-                    'access_mode': 'rw',
                     'discard': False,
                 }
             }
@@ -2571,7 +2567,6 @@ class ISCSIDriver(VolumeDriver):
                     'target_lun': 1,
                     'target_luns': [1, 1],
                     'volume_id': 1,
-                    'access_mode': 'rw',
                     'discard': False,
                 }
             }
@@ -2655,14 +2650,12 @@ class FakeISCSIDriver(ISCSIDriver):
     def initialize_connection(self, volume, connector):
         return {
             'driver_volume_type': 'iscsi',
-            'data': {'access_mode': 'rw'},
             'discard': False,
         }
 
     def initialize_connection_snapshot(self, snapshot, connector):
         return {
             'driver_volume_type': 'iscsi',
-            'data': {'access_mode': 'rw'}
         }
 
     def terminate_connection(self, volume, connector, **kwargs):
@@ -2833,7 +2826,6 @@ class FibreChannelDriver(VolumeDriver):
                     'target_discovered': True,
                     'target_lun': 1,
                     'target_wwn': '1234567890123',
-                    'access_mode': 'rw',
                     'discard': False,
                 }
             }
@@ -2846,7 +2838,6 @@ class FibreChannelDriver(VolumeDriver):
                     'target_discovered': True,
                     'target_lun': 1,
                     'target_wwn': ['1234567890123', '0987654321321'],
-                    'access_mode': 'rw',
                     'discard': False,
                 }
             }

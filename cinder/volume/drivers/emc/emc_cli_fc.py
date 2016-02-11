@@ -145,7 +145,6 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
                     'target_discovered': True,
                     'target_lun': 1,
                     'target_wwn': '1234567890123',
-                    'access_mode': 'rw'
                     'initiator_target_map': {
                         '1122334455667788': ['1234567890123']
                     }
@@ -160,7 +159,6 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
                     'target_discovered': True,
                     'target_lun': 1,
                     'target_wwn': ['1234567890123', '0987654321321'],
-                    'access_mode': 'rw'
                     'initiator_target_map': {
                         '1122334455667788': ['1234567890123',
                                              '0987654321321']

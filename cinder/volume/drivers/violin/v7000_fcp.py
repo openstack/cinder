@@ -152,7 +152,6 @@ class V7000FCPDriver(driver.FibreChannelDriver):
         properties['target_discovered'] = True
         properties['target_wwn'] = target_wwns
         properties['target_lun'] = lun_id
-        properties['access_mode'] = 'rw'
         properties['initiator_target_map'] = init_targ_map
 
         LOG.debug("Return FC data for zone addition: %(properties)s.",

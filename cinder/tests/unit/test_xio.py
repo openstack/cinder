@@ -1040,7 +1040,6 @@ class XIOISEDriverTestCase(object):
             exp_result = {"driver_volume_type": "iscsi",
                           "data": {"target_lun": '1',
                                    "volume_id": '1',
-                                   "access_mode": 'rw',
                                    "target_discovered": False,
                                    "target_iqn": ISE_IQN,
                                    "target_portal": ISE_ISCSI_IP1 + ":3260"}}
@@ -1048,7 +1047,6 @@ class XIOISEDriverTestCase(object):
             exp_result = {"driver_volume_type": "fibre_channel",
                           "data": {"target_lun": '1',
                                    "volume_id": '1',
-                                   "access_mode": 'rw',
                                    "target_discovered": True,
                                    "initiator_target_map": ISE_INIT_TARGET_MAP,
                                    "target_wwn": ISE_TARGETS}}
@@ -1071,7 +1069,6 @@ class XIOISEDriverTestCase(object):
             exp_result = {"driver_volume_type": "iscsi",
                           "data": {"target_lun": '1',
                                    "volume_id": '1',
-                                   "access_mode": 'rw',
                                    "target_discovered": False,
                                    "target_iqn": ISE_IQN,
                                    "target_portal": ISE_ISCSI_IP1 + ":3260"}}
@@ -1079,7 +1076,6 @@ class XIOISEDriverTestCase(object):
             exp_result = {"driver_volume_type": "fibre_channel",
                           "data": {"target_lun": '1',
                                    "volume_id": '1',
-                                   "access_mode": 'rw',
                                    "target_discovered": True,
                                    "initiator_target_map": ISE_INIT_TARGET_MAP,
                                    "target_wwn": ISE_TARGETS}}
@@ -1102,7 +1098,6 @@ class XIOISEDriverTestCase(object):
             exp_result = {"driver_volume_type": "iscsi",
                           "data": {"target_lun": '1',
                                    "volume_id": '2',
-                                   "access_mode": 'rw',
                                    "target_discovered": False,
                                    "target_iqn": ISE_IQN,
                                    "target_portal": ISE_ISCSI_IP1 + ":3260",
@@ -1113,7 +1108,6 @@ class XIOISEDriverTestCase(object):
             exp_result = {"driver_volume_type": "fibre_channel",
                           "data": {"target_lun": '1',
                                    "volume_id": '2',
-                                   "access_mode": 'rw',
                                    "target_discovered": True,
                                    "initiator_target_map": ISE_INIT_TARGET_MAP,
                                    "target_wwn": ISE_TARGETS}}

@@ -191,7 +191,6 @@ ISCSI_CONNECTION_INFO = {
     "driver_volume_type": "iscsi",
     "data": {
         "target_discovered": False,
-        "access_mode": "rw",
         "discard": True,
         "target_luns": [1, 1, 1, 1],
         "target_iqns": [TARGET_IQN, TARGET_IQN, TARGET_IQN, TARGET_IQN],
@@ -207,7 +206,6 @@ FC_CONNECTION_INFO = {
         "target_wwn": FC_WWNS,
         "target_lun": 1,
         "target_discovered": True,
-        "access_mode": "rw",
         "initiator_target_map": INITIATOR_TARGET_MAP,
         "discard": True,
     },

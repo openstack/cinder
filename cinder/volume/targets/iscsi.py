@@ -67,9 +67,6 @@ class ISCSITarget(driver.Target):
             present meaning no authentication, or auth_method == `CHAP`
             meaning use CHAP with the specified credentials.
 
-        :access_mode:    the volume access mode allow client used
-                         ('rw' or 'ro' currently supported)
-
         :discard:    boolean indicating if discard is supported
 
         In some of drivers that support multiple connections (for multipath
@@ -282,7 +279,6 @@ class ISCSITarget(driver.Target):
                     'target_iqn': 'iqn.2010-10.org.openstack:volume-00000001',
                     'target_portal': '127.0.0.0.1:3260',
                     'volume_id': '9a0d35d0-175a-11e4-8c21-0800200c9a66',
-                    'access_mode': 'rw',
                     'discard': False,
                 }
             }

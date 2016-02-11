@@ -66,7 +66,6 @@ class DellStorageCenterISCSIDriver(dell_storagecenter_common.DellCommonDriver,
         #           'target_portals': all portals,
         #           'target_lun': preferred lun,
         #           'target_luns': all luns,
-        #           'access_mode': access_mode
         #         }
 
         # We use id to name the volume name as it is a

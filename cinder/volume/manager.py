@@ -1412,14 +1412,13 @@ class VolumeManager(manager.SchedulerDependentManager):
         # Add access_mode to connection info
         volume_metadata = self.db.volume_admin_metadata_get(context.elevated(),
                                                             volume_id)
-        if conn_info['data'].get('access_mode') is None:
-            access_mode = volume_metadata.get('attached_mode')
-            if access_mode is None:
-                # NOTE(zhiyan): client didn't call 'os-attach' before
-                access_mode = ('ro'
-                               if volume_metadata.get('readonly') == 'True'
-                               else 'rw')
-            conn_info['data']['access_mode'] = access_mode
+        access_mode = volume_metadata.get('attached_mode')
+        if access_mode is None:
+            # NOTE(zhiyan): client didn't call 'os-attach' before
+            access_mode = ('ro'
+                           if volume_metadata.get('readonly') == 'True'
+                           else 'rw')
+        conn_info['data']['access_mode'] = access_mode
 
         # Add encrypted flag to connection_info if not set in the driver.
         if conn_info['data'].get('encrypted') is None:
