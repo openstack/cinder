@@ -127,6 +127,10 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
         db_snapshot = db.snapshot_get(context, id)
         return cls._from_db_object(context, cls(context), db_snapshot,
                                    expected_attrs=['metadata'])
+    @base.remotable_classmethod
+    def get_by_name(cls,context, snapshot_name):
+        db_snapshot = db.snapshot_get_by_name(context,snapshot_name)
+        return cls._from_db_object(context,cls(context),db_snapshot,expected_attrs=['metadata'])
 
     @base.remotable
     def create(self, context):

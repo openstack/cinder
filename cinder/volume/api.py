@@ -162,7 +162,7 @@ class API(base.Base):
                availability_zone=None, source_volume=None,
                scheduler_hints=None,
                source_replica=None, consistencygroup=None,
-               cgsnapshot=None, multiattach=False):
+               cgsnapshot=None, multiattach=False,volume_from_cache=False):
 
         # NOTE(jdg): we can have a create without size if we're
         # doing a create from snap or volume.  Currently
@@ -238,6 +238,7 @@ class API(base.Base):
             'consistencygroup': consistencygroup,
             'cgsnapshot': cgsnapshot,
             'multiattach': multiattach,
+            'volume_from_cache':volume_from_cache,
         }
         try:
             if cgsnapshot:
@@ -441,6 +442,13 @@ class API(base.Base):
 
     def get_snapshot(self, context, snapshot_id):
         return objects.Snapshot.get_by_id(context, snapshot_id)
+    
+    def get_snapshot_by_name(self,context,snapshot_name):
+        return objects.Snapshot.get_by_name(context,snapshot_name)
+
+    def get_volume_by_name(self,context,volume_name):
+        rv=self.db.volume_get_by_name(context,volume_name)
+        return dict(rv.iteritems())
 
     def get_volume(self, context, volume_id):
         check_policy(context, 'get_volume')
