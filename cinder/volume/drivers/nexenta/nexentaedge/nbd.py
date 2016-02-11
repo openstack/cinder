@@ -99,7 +99,8 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
         except exception.VolumeBackendAPIException:
             with excutils.save_and_reraise_exception():
                 LOG.exception(_LE('Error creating volume'))
-        raise Exception  # FIXME
+        raise exception.VolumeBackendAPIException(
+            'No %s hostname in NEdge cluster' % host)
 
     def _get_remote_url(self, host):
         return '?remote=' + str(self._get_host_info(host)['ipv6addr'])
@@ -107,7 +108,8 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
     def local_path(self, volume):
         number = self._get_nbd_number(volume)
         if number == -1:
-            raise Exception  # FIXME
+            raise exception.VolumeBackendAPIException(
+                'No NBD device for volume %s' % volume['name'])
         return '/dev/nbd' + str(number)
 
     def create_volume(self, volume):
@@ -258,7 +260,8 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
         except exception.VolumeBackendAPIException:
             with excutils.save_and_reraise_exception():
                 LOG.exception(_LE('Error retrieving cluster stats'))
-        raise Exception  # FIXME
+        raise exception.VolumeBackendAPIException(
+            'No %s hostname in NEdge cluster' % connector['host'])
 
     def initialize_connection(self, volume, connector):
         if connector['host'] != volutils.extract_host(volume['host'], 'host'):
