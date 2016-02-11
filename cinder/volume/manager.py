@@ -208,6 +208,15 @@ class VolumeManager(manager.SchedulerDependentManager):
 
     target = messaging.Target(version=RPC_API_VERSION)
 
+    # On cloning a volume, we shouldn't copy volume_type, consistencygroup
+    # and volume_attachment, because the db sets that according to [field]_id,
+    # which we do copy. We also skip some other values that are set during
+    # creation of Volume object.
+    _VOLUME_CLONE_SKIP_PROPERTIES = {
+        'id', '_name_id', 'name_id', 'name', 'status',
+        'attach_status', 'migration_status', 'volume_type',
+        'consistencygroup', 'volume_attachment'}
+
     def __init__(self, volume_driver=None, service_name=None,
                  *args, **kwargs):
         """Load the driver from the one specified in args, or from flags."""
@@ -1090,13 +1099,8 @@ class VolumeManager(manager.SchedulerDependentManager):
         QUOTAS.add_volume_type_opts(ctx, reserve_opts, volume_type_id)
         reservations = QUOTAS.reserve(ctx, **reserve_opts)
         try:
-            new_vol_values = dict(volume.items())
-            new_vol_values.pop('id', None)
-            new_vol_values.pop('_name_id', None)
-            new_vol_values.pop('name_id', None)
-            new_vol_values.pop('volume_type', None)
-            new_vol_values.pop('name', None)
-
+            new_vol_values = {k: volume[k] for k in set(volume.keys()) -
+                              self._VOLUME_CLONE_SKIP_PROPERTIES}
             new_vol_values['volume_type_id'] = volume_type_id
             new_vol_values['attach_status'] = 'detached'
             new_vol_values['status'] = 'creating'
@@ -1632,14 +1636,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         rpcapi = volume_rpcapi.VolumeAPI()
 
         # Create new volume on remote host
-
-        skip = {'id', '_name_id', 'name_id', 'name', 'host', 'status',
-                'attach_status', 'migration_status', 'volume_type',
-                'consistencygroup', 'volume_attachment'}
-        # We don't copy volume_type, consistencygroup and volume_attachment,
-        # because the db sets that according to [field]_id, which we do copy.
-        # We also skip some other values that are either set manually later or
-        # during creation of Volume object.
+        skip = self._VOLUME_CLONE_SKIP_PROPERTIES | {'host'}
         new_vol_values = {k: volume[k] for k in set(volume.keys()) - skip}
         if new_type_id:
             new_vol_values['volume_type_id'] = new_type_id

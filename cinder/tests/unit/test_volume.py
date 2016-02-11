@@ -3473,6 +3473,40 @@ class VolumeTestCase(BaseVolumeTestCase):
                           self.context,
                           volume_id)
 
+    @mock.patch('cinder.volume.drivers.lvm.LVMVolumeDriver.'
+                'create_cloned_volume')
+    @mock.patch('cinder.quota.QUOTAS.rollback')
+    @mock.patch('cinder.quota.QUOTAS.commit')
+    @mock.patch('cinder.quota.QUOTAS.reserve', return_value=["RESERVATION"])
+    def test_clone_image_volume(self, mock_reserve, mock_commit,
+                                mock_rollback, mock_cloned_volume):
+        vol = tests_utils.create_volume(self.context,
+                                        **self.volume_params)
+        # unnecessary attributes should be removed from image volume
+        vol.consistencygroup = None
+        result = self.volume._clone_image_volume(self.context, vol,
+                                                 {'id': 'fake'})
+
+        self.assertNotEqual(False, result)
+        mock_reserve.assert_called_once_with(self.context, volumes=1,
+                                             gigabytes=vol.size)
+        mock_commit.assert_called_once_with(self.context, ["RESERVATION"],
+                                            project_id=vol.project_id)
+
+    @mock.patch('cinder.quota.QUOTAS.rollback')
+    @mock.patch('cinder.quota.QUOTAS.commit')
+    @mock.patch('cinder.quota.QUOTAS.reserve', return_value=["RESERVATION"])
+    def test_clone_image_volume_creation_failure(self, mock_reserve,
+                                                 mock_commit, mock_rollback):
+        vol = tests_utils.create_volume(self.context, **self.volume_params)
+        with mock.patch.object(objects, 'Volume', side_effect=ValueError):
+            self.assertFalse(self.volume._clone_image_volume(self.context, vol,
+                                                             {'id': 'fake'}))
+
+        mock_reserve.assert_called_once_with(self.context, volumes=1,
+                                             gigabytes=vol.size)
+        mock_rollback.assert_called_once_with(self.context, ["RESERVATION"])
+
     @mock.patch('cinder.image.image_utils.TemporaryImages.fetch')
     @mock.patch('cinder.volume.flows.manager.create_volume.'
                 'CreateVolumeFromSpecTask._clone_image_volume')
