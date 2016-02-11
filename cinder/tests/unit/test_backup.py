@@ -1097,8 +1097,10 @@ class BackupTestCaseWithVerify(BaseBackupTest):
         backup = db.backup_get(self.ctxt, imported_record.id)
         self.assertEqual(fields.BackupStatus.ERROR, backup['status'])
 
+    @mock.patch.object(manager.BackupManager,
+                       '_cleanup_temp_volumes_snapshots_for_one_backup')
     def test_backup_reset_status_from_nonrestoring_to_available(
-            self):
+            self, mock_clean_temp):
         vol_id = self._create_volume_db_entry(status='available',
                                               size=1)
         backup = self._create_backup_db_entry(status=fields.BackupStatus.ERROR,
@@ -1111,6 +1113,7 @@ class BackupTestCaseWithVerify(BaseBackupTest):
             self.backup_mgr.reset_status(self.ctxt,
                                          backup,
                                          fields.BackupStatus.AVAILABLE)
+            mock_clean_temp.assert_called_once_with(self.ctxt, backup)
         backup = db.backup_get(self.ctxt, backup.id)
         self.assertEqual(fields.BackupStatus.AVAILABLE, backup['status'])
 
@@ -1140,7 +1143,10 @@ class BackupTestCaseWithVerify(BaseBackupTest):
             backup = db.backup_get(self.ctxt, backup.id)
             self.assertEqual(fields.BackupStatus.ERROR, backup['status'])
 
-    def test_backup_reset_status_from_restoring_to_available(self):
+    @mock.patch.object(manager.BackupManager,
+                       '_cleanup_temp_volumes_snapshots_for_one_backup')
+    def test_backup_reset_status_from_restoring_to_available(
+            self, mock_clean_temp):
         volume = db.volume_create(self.ctxt,
                                   {'status': 'available',
                                    'host': 'test',
@@ -1152,10 +1158,13 @@ class BackupTestCaseWithVerify(BaseBackupTest):
 
         self.backup_mgr.reset_status(self.ctxt, backup,
                                      fields.BackupStatus.AVAILABLE)
+        mock_clean_temp.assert_called_once_with(self.ctxt, backup)
         backup = db.backup_get(self.ctxt, backup.id)
         self.assertEqual(fields.BackupStatus.AVAILABLE, backup['status'])
 
-    def test_backup_reset_status_to_error(self):
+    @mock.patch.object(manager.BackupManager,
+                       '_cleanup_temp_volumes_snapshots_for_one_backup')
+    def test_backup_reset_status_to_error(self, mock_clean_temp):
         volume = db.volume_create(self.ctxt,
                                   {'status': 'available',
                                    'host': 'test',
@@ -1166,6 +1175,7 @@ class BackupTestCaseWithVerify(BaseBackupTest):
             volume_id=volume['id'])
         self.backup_mgr.reset_status(self.ctxt, backup,
                                      fields.BackupStatus.ERROR)
+        mock_clean_temp.assert_called_once_with(self.ctxt, backup)
         backup = db.backup_get(self.ctxt, backup['id'])
         self.assertEqual(fields.BackupStatus.ERROR, backup['status'])
 
