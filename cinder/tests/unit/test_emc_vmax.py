@@ -1998,6 +1998,42 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.common.utils._get_random_portgroup, dom)
 
+    def test_cleanup_last_vol(self):
+        conn = FakeEcomConnection()
+        masking = self.driver.common.masking
+        extraSpecs = {'volume_backend_name': 'GOLD_BE',
+                      'isV3': True}
+        controllerConfigService = (
+            self.driver.utils.find_controller_configuration_service(
+                conn, self.data.storage_system))
+        storageGroupName = self.data.storagegroupname
+        storageGroupInstanceName = (
+            self.driver.utils.find_storage_masking_group(
+                conn, controllerConfigService, storageGroupName))
+        volumeInstance = EMC_StorageVolume()
+        volumeInstance.path = (
+            conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
+
+        volumeName = self.data.test_volume['name']
+        masking._last_volume_delete_masking_view = mock.Mock()
+        storageSystemInstanceName = (
+            conn.EnumerateInstanceNames("EMC_StorageSystem")[0])
+        # Failure case, an exception is thrown in
+        # _remove_last_vol_and_delete_sg so the returning the vol to
+        # the default SG cannot continue
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            masking._cleanup_last_vol, conn, controllerConfigService,
+            storageGroupInstanceName, storageGroupName, volumeInstance,
+            volumeName, storageSystemInstanceName, False, extraSpecs)
+
+        # Success case, the last vol is removed and the SG is deleted
+        masking._remove_last_vol_and_delete_sg = mock.Mock(return_value=True)
+        masking._cleanup_last_vol(
+            conn, controllerConfigService, storageGroupInstanceName,
+            storageGroupName, volumeInstance, volumeName,
+            storageSystemInstanceName, False, extraSpecs)
+
     def test_generate_unique_trunc_pool(self):
         pool_under_16_chars = 'pool_under_16'
         pool1 = self.driver.utils.generate_unique_trunc_pool(
