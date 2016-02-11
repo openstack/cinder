@@ -60,6 +60,7 @@ import os
 import sys
 
 from oslo_config import cfg
+from oslo_db import exception as db_exc
 from oslo_db.sqlalchemy import migration
 from oslo_log import log as logging
 import oslo_messaging as messaging
@@ -229,7 +230,13 @@ class DbCommands(object):
             print(_("Must supply a positive, non-zero value for age"))
             sys.exit(1)
         ctxt = context.get_admin_context()
-        db.purge_deleted_rows(ctxt, age_in_days)
+
+        try:
+            db.purge_deleted_rows(ctxt, age_in_days)
+        except db_exc.DBReferenceError:
+            print(_("Purge command failed, check cinder-manage "
+                    "logs for more details."))
+            sys.exit(1)
 
 
 class VersionCommands(object):
