@@ -2458,9 +2458,8 @@ def volume_type_update(context, volume_type_id, values):
 
         volume_type_ref.update(values)
         volume_type_ref.save(session=session)
-        volume_type = volume_type_get(context, volume_type_id)
 
-        return volume_type
+        return volume_type_ref
 
 
 @require_context
