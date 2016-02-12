@@ -22,6 +22,7 @@
 Volume driver library for NetApp 7/C-mode block storage systems.
 """
 
+import copy
 import math
 import sys
 import uuid
@@ -228,14 +229,18 @@ class NetAppBlockStorageLibrary(object):
 
     def delete_volume(self, volume):
         """Driver entry point for destroying existing volumes."""
-        name = volume['name']
-        metadata = self._get_lun_attr(name, 'metadata')
-        if not metadata:
+        self._delete_lun(volume['name'])
+
+    def _delete_lun(self, lun_name):
+        """Helper method to delete LUN backing a volume or snapshot."""
+
+        metadata = self._get_lun_attr(lun_name, 'metadata')
+        if metadata:
+            self.zapi_client.destroy_lun(metadata['Path'])
+            self.lun_table.pop(lun_name)
+        else:
             LOG.warning(_LW("No entry in LUN table for volume/snapshot"
-                            " %(name)s."), {'name': name})
-            return
-        self.zapi_client.destroy_lun(metadata['Path'])
-        self.lun_table.pop(name)
+                            " %(name)s."), {'name': lun_name})
 
     def ensure_export(self, context, volume):
         """Driver entry point to get the export info for an existing volume."""
@@ -270,7 +275,7 @@ class NetAppBlockStorageLibrary(object):
 
     def delete_snapshot(self, snapshot):
         """Driver entry point for deleting a snapshot."""
-        self.delete_volume(snapshot)
+        self._delete_lun(snapshot['name'])
         LOG.debug("Snapshot %s deletion successful", snapshot['name'])
 
     def create_volume_from_snapshot(self, volume, snapshot):
@@ -305,9 +310,9 @@ class NetAppBlockStorageLibrary(object):
             if destination_size != source_size:
 
                 try:
-                    self.extend_volume(
-                        destination_volume, destination_size,
-                        qos_policy_group_name=qos_policy_group_name)
+                    self._extend_volume(destination_volume,
+                                        destination_size,
+                                        qos_policy_group_name)
                 except Exception:
                     with excutils.save_and_reraise_exception():
                         LOG.error(
@@ -479,7 +484,29 @@ class NetAppBlockStorageLibrary(object):
     def _update_volume_stats(self):
         raise NotImplementedError()
 
-    def extend_volume(self, volume, new_size, qos_policy_group_name=None):
+    def extend_volume(self, volume, new_size):
+        """Driver entry point to increase the size of a volume."""
+
+        extra_specs = na_utils.get_volume_extra_specs(volume)
+
+        # Create volume copy with new size for size-dependent QOS specs
+        volume_copy = copy.copy(volume)
+        volume_copy['size'] = new_size
+
+        qos_policy_group_info = self._setup_qos_for_volume(volume_copy,
+                                                           extra_specs)
+        qos_policy_group_name = (
+            na_utils.get_qos_policy_group_name_from_info(
+                qos_policy_group_info))
+
+        try:
+            self._extend_volume(volume, new_size, qos_policy_group_name)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                # If anything went wrong, revert QoS settings
+                self._setup_qos_for_volume(volume, extra_specs)
+
+    def _extend_volume(self, volume, new_size, qos_policy_group_name):
         """Extend an existing volume to the new size."""
         name = volume['name']
         lun = self._get_lun_from_table(name)

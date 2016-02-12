@@ -21,6 +21,7 @@
 Volume driver for NetApp NFS storage.
 """
 
+import copy
 import math
 import os
 import re
@@ -691,9 +692,33 @@ class NetAppNfsDriver(driver.ManageableVD,
 
     def extend_volume(self, volume, new_size):
         """Extend an existing volume to the new size."""
+
         LOG.info(_LI('Extending volume %s.'), volume['name'])
-        path = self.local_path(volume)
-        self._resize_image_file(path, new_size)
+
+        try:
+            path = self.local_path(volume)
+            self._resize_image_file(path, new_size)
+        except Exception as err:
+            exception_msg = (_("Failed to extend volume "
+                               "%(name)s, Error msg: %(msg)s.") %
+                             {'name': volume['name'],
+                              'msg': six.text_type(err)})
+            raise exception.VolumeBackendAPIException(data=exception_msg)
+
+        try:
+            extra_specs = na_utils.get_volume_extra_specs(volume)
+
+            # Create volume copy with new size for size-dependent QOS specs
+            volume_copy = copy.copy(volume)
+            volume_copy['size'] = new_size
+
+            self._do_qos_for_volume(volume_copy, extra_specs, cleanup=False)
+        except Exception as err:
+            exception_msg = (_("Failed to set QoS for existing volume "
+                               "%(name)s, Error msg: %(msg)s.") %
+                             {'name': volume['name'],
+                              'msg': six.text_type(err)})
+            raise exception.VolumeBackendAPIException(data=exception_msg)
 
     def _is_share_clone_compatible(self, volume, share):
         """Checks if share is compatible with volume to host its clone."""

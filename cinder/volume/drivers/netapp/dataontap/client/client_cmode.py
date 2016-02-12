@@ -61,6 +61,10 @@ class Client(client_base.Client):
         result = server.invoke_successfully(na_element, True)
         return result
 
+    def _has_records(self, api_result_element):
+        num_records = api_result_element.get_child_content('num-records')
+        return bool(num_records and '0' != num_records)
+
     def set_vserver(self, vserver):
         self.connection.set_vserver(vserver)
 
@@ -335,8 +339,31 @@ class Client(client_base.Client):
 
         spec = qos_policy_group_info.get('spec')
         if spec is not None:
-            self.qos_policy_group_create(spec['policy_name'],
-                                         spec['max_throughput'])
+            if not self.qos_policy_group_exists(spec['policy_name']):
+                self.qos_policy_group_create(spec['policy_name'],
+                                             spec['max_throughput'])
+            else:
+                self.qos_policy_group_modify(spec['policy_name'],
+                                             spec['max_throughput'])
+
+    def qos_policy_group_exists(self, qos_policy_group_name):
+        """Checks if a QOS policy group exists."""
+        api_args = {
+            'query': {
+                'qos-policy-group-info': {
+                    'policy-group': qos_policy_group_name,
+                },
+            },
+            'desired-attributes': {
+                'qos-policy-group-info': {
+                    'policy-group': None,
+                },
+            },
+        }
+        result = self.send_request('qos-policy-group-get-iter',
+                                   api_args,
+                                   False)
+        return self._has_records(result)
 
     def qos_policy_group_create(self, qos_policy_group_name, max_throughput):
         """Creates a QOS policy group."""
@@ -347,11 +374,17 @@ class Client(client_base.Client):
         }
         return self.send_request('qos-policy-group-create', api_args, False)
 
-    def qos_policy_group_delete(self, qos_policy_group_name):
-        """Attempts to delete a QOS policy group."""
+    def qos_policy_group_modify(self, qos_policy_group_name, max_throughput):
+        """Modifies a QOS policy group."""
         api_args = {
             'policy-group': qos_policy_group_name,
+            'max-throughput': max_throughput,
         }
+        return self.send_request('qos-policy-group-modify', api_args, False)
+
+    def qos_policy_group_delete(self, qos_policy_group_name):
+        """Attempts to delete a QOS policy group."""
+        api_args = {'policy-group': qos_policy_group_name}
         return self.send_request('qos-policy-group-delete', api_args, False)
 
     def qos_policy_group_rename(self, qos_policy_group_name, new_name):

@@ -56,6 +56,16 @@ VOLUME = {
     'volume_type_id': VOLUME_TYPE_ID,
 }
 
+SNAPSHOT_NAME = 'fake_snapshot_name'
+SNAPSHOT_ID = 'fake_snapshot_id'
+
+SNAPSHOT = {
+    'name': SNAPSHOT_NAME,
+    'id': SNAPSHOT_ID,
+    'volume_id': VOLUME_ID,
+    'volume_name': VOLUME_NAME,
+    'volume_size': 42,
+}
 
 QOS_SPECS = {}
 

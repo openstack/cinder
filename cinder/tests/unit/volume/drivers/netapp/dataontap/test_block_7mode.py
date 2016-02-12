@@ -612,3 +612,23 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
         pools = self.library._get_pool_stats()
 
         self.assertListEqual([], pools)
+
+    def test_delete_volume(self):
+        self.library.vol_refresh_voluntary = False
+        mock_super_delete_volume = self.mock_object(
+            block_base.NetAppBlockStorageLibrary, 'delete_volume')
+
+        self.library.delete_volume(fake.VOLUME)
+
+        mock_super_delete_volume.assert_called_once_with(fake.VOLUME)
+        self.assertTrue(self.library.vol_refresh_voluntary)
+
+    def test_delete_snapshot(self):
+        self.library.vol_refresh_voluntary = False
+        mock_super_delete_snapshot = self.mock_object(
+            block_base.NetAppBlockStorageLibrary, 'delete_snapshot')
+
+        self.library.delete_snapshot(fake.SNAPSHOT)
+
+        mock_super_delete_snapshot.assert_called_once_with(fake.SNAPSHOT)
+        self.assertTrue(self.library.vol_refresh_voluntary)

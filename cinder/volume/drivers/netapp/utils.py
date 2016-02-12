@@ -50,7 +50,7 @@ DEPRECATED_SSC_SPECS = {'netapp_unmirrored': 'netapp_mirrored',
                         'netapp_nodedup': 'netapp_dedup',
                         'netapp_nocompression': 'netapp_compression',
                         'netapp_thick_provisioned': 'netapp_thin_provisioned'}
-QOS_KEYS = frozenset(['maxIOPS', 'maxBPS'])
+QOS_KEYS = frozenset(['maxIOPS', 'maxIOPSperGiB', 'maxBPS', 'maxBPSperGiB'])
 BACKEND_QOS_CONSUMERS = frozenset(['back-end', 'both'])
 
 
@@ -199,14 +199,23 @@ def map_qos_spec(qos_spec, volume):
     """Map Cinder QOS spec to limit/throughput-value as used in client API."""
     if qos_spec is None:
         return None
+
     qos_spec = map_dict_to_lower(qos_spec)
     spec = dict(policy_name=get_qos_policy_group_name(volume),
                 max_throughput=None)
-    # IOPS and BPS specifications are exclusive of one another.
+
+    # QoS specs are exclusive of one another.
     if 'maxiops' in qos_spec:
         spec['max_throughput'] = '%siops' % qos_spec['maxiops']
+    elif 'maxiopspergib' in qos_spec:
+        spec['max_throughput'] = '%siops' % six.text_type(
+            int(qos_spec['maxiopspergib']) * int(volume['size']))
     elif 'maxbps' in qos_spec:
         spec['max_throughput'] = '%sB/s' % qos_spec['maxbps']
+    elif 'maxbpspergib' in qos_spec:
+        spec['max_throughput'] = '%sB/s' % six.text_type(
+            int(qos_spec['maxbpspergib']) * int(volume['size']))
+
     return spec
 
 

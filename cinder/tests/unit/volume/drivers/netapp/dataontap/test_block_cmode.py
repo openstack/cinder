@@ -50,8 +50,13 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.library.ssc_vols = None
         self.fake_lun = block_base.NetAppLun(fake.LUN_HANDLE, fake.LUN_NAME,
                                              fake.SIZE, None)
+        self.fake_snapshot_lun = block_base.NetAppLun(
+            fake.SNAPSHOT_LUN_HANDLE, fake.SNAPSHOT_NAME, fake.SIZE, None)
         self.mock_object(self.library, 'lun_table')
-        self.library.lun_table = {fake.LUN_NAME: self.fake_lun}
+        self.library.lun_table = {
+            fake.LUN_NAME: self.fake_lun,
+            fake.SNAPSHOT_NAME: self.fake_snapshot_lun,
+        }
         self.mock_object(block_base.NetAppBlockStorageLibrary, 'delete_volume')
 
     def tearDown(self):
@@ -438,6 +443,30 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.library._mark_qos_policy_group_for_deletion\
             .assert_called_once_with(None)
         self.assertEqual(1, self.library._update_stale_vols.call_count)
+
+    def test_delete_snapshot(self):
+        self.mock_object(block_base.NetAppLun, 'get_metadata_property',
+                         mock.Mock(return_value=fake.NETAPP_VOLUME))
+        mock_super_delete_snapshot = self.mock_object(
+            block_base.NetAppBlockStorageLibrary, 'delete_snapshot')
+        mock_update_stale_vols = self.mock_object(self.library,
+                                                  '_update_stale_vols')
+        self.library.delete_snapshot(fake.SNAPSHOT)
+
+        mock_super_delete_snapshot.assert_called_once_with(fake.SNAPSHOT)
+        self.assertTrue(mock_update_stale_vols.called)
+
+    def test_delete_snapshot_no_netapp_vol(self):
+        self.mock_object(block_base.NetAppLun, 'get_metadata_property',
+                         mock.Mock(return_value=None))
+        mock_super_delete_snapshot = self.mock_object(
+            block_base.NetAppBlockStorageLibrary, 'delete_snapshot')
+        mock_update_stale_vols = self.mock_object(self.library,
+                                                  '_update_stale_vols')
+        self.library.delete_snapshot(fake.SNAPSHOT)
+
+        mock_super_delete_snapshot.assert_called_once_with(fake.SNAPSHOT)
+        self.assertFalse(mock_update_stale_vols.called)
 
     def test_setup_qos_for_volume(self):
         self.mock_object(na_utils, 'get_valid_qos_policy_group_info',

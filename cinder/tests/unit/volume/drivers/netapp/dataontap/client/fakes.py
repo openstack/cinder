@@ -92,6 +92,12 @@ FAKE_RESULT_SUCCESS.add_attr('status', 'passed')
 
 FAKE_HTTP_OPENER = urllib.request.build_opener()
 
+NO_RECORDS_RESPONSE = etree.XML("""
+  <results status="passed">
+    <num-records>0</num-records>
+  </results>
+""")
+
 GET_OPERATIONAL_NETWORK_INTERFACE_ADDRESSES_RESPONSE = etree.XML("""
     <results status="passed">
         <num-records>2</num-records>
@@ -105,6 +111,23 @@ GET_OPERATIONAL_NETWORK_INTERFACE_ADDRESSES_RESPONSE = etree.XML("""
         </attributes-list>
     </results>
 """ % {"address1": "1.2.3.4", "address2": "99.98.97.96"})
+
+QOS_POLICY_GROUP_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <qos-policy-group-info>
+        <max-throughput>30KB/S</max-throughput>
+        <num-workloads>1</num-workloads>
+        <pgid>53</pgid>
+        <policy-group>fake_qos_policy_group_name</policy-group>
+        <policy-group-class>user_defined</policy-group-class>
+        <uuid>12496028-b641-11e5-abbd-123478563412</uuid>
+        <vserver>cinder-iscsi</vserver>
+      </qos-policy-group-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""")
 
 VOLUME_LIST_INFO_RESPONSE = etree.XML("""
   <results status="passed">

@@ -311,6 +311,17 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary):
         msg = 'Deleted LUN with name %(name)s and QoS info %(qos)s'
         LOG.debug(msg, {'name': volume['name'], 'qos': qos_policy_group_info})
 
+    def delete_snapshot(self, snapshot):
+        """Driver entry point for deleting a snapshot."""
+        lun = self.lun_table.get(snapshot['name'])
+        netapp_vol = lun.get_metadata_property('Volume') if lun else None
+
+        super(NetAppBlockStorageCmodeLibrary, self).delete_snapshot(snapshot)
+
+        if netapp_vol:
+            self._update_stale_vols(
+                volume=ssc_cmode.NetAppVolume(netapp_vol, self.vserver))
+
     def _check_volume_type_for_lun(self, volume, lun, existing_ref,
                                    extra_specs):
         """Check if LUN satisfies volume type."""
