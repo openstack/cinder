@@ -2171,7 +2171,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
             None, {'id': 'volid'}, None,
             {'extra_specs': {'storagetype:storageprofile': ['A', 'B']}},
             None)
-        mock_update_storage_profile.ssert_called_once_with(
+        mock_update_storage_profile.assert_called_once_with(
             self.VOLUME, 'B')
         self.assertTrue(res)
 
