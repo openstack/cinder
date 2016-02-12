@@ -546,7 +546,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             if unmanage_only:
                 self.driver.unmanage(volume_ref)
             else:
-                self.driver.delete_volume(volume_ref)
+                self.driver.delete_volume(volume_ref, context)
         except exception.VolumeIsBusy:
             LOG.error(_LE("Cannot delete volume %s: volume is busy"),
                       volume_ref['id'])

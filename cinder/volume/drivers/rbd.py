@@ -20,7 +20,6 @@ import math
 import os
 import tempfile
 import urllib
-
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import encodeutils
@@ -559,9 +558,17 @@ class RBDDriver(driver.VolumeDriver):
         if int(volume['size']):
             self._resize(volume)
 
-    def _delete_backup_snaps(self, rbd_image):
+    def _delete_backup_snaps(self, rbd_image, volume_name, context):
         backup_snaps = self._get_backup_snaps(rbd_image)
         if backup_snaps:
+            ctxt = context.elevated()
+            for snap in backup_snaps:
+                backup = self.db.backup_get(ctxt, snap['backup_id'])
+                if backup and backup['status'] == 'creating':
+                    LOG.info("Volume %s has backup %s in creating state" %
+                             (volume_name, backup['id']))
+                    raise exception.VolumeIsBusy(volume_name=volume_name)
+
             for snap in backup_snaps:
                 rbd_image.remove_snap(snap['name'])
         else:
@@ -622,7 +629,7 @@ class RBDDriver(driver.VolumeDriver):
             if g_parent:
                 self._delete_clone_parent_refs(client, g_parent, g_parent_snap)
 
-    def delete_volume(self, volume):
+    def delete_volume(self, volume, context):
         """Deletes a logical volume."""
         # NOTE(dosaboy): this was broken by commit cbe1d5f. Ensure names are
         #                utf-8 otherwise librbd will barf.
@@ -639,7 +646,7 @@ class RBDDriver(driver.VolumeDriver):
             parent = None
 
             # Ensure any backup snapshots are deleted
-            self._delete_backup_snaps(rbd_image)
+            self._delete_backup_snaps(rbd_image, volume_name, context)
 
             # If the volume has non-clone snapshots this delete is expected to
             # raise VolumeIsBusy so do so straight away.
