@@ -484,6 +484,10 @@ class EMCVMAXCommonData(object):
     test_host_v3 = {'capabilities': location_info_v3,
                     'host': fake_host_2_v3}
     initiatorNames = ["123456789012345", "123456789054321"]
+    storagegroups = [{'CreationClassName': storagegroup_creationclass,
+                      'ElementName': storagegroupname},
+                     {'CreationClassName': storagegroup_creationclass,
+                      'ElementName': 'OS-SRP_1-Bronze-DSS-SG'}]
     test_ctxt = {}
     new_type = {}
     diff = {}
@@ -2019,42 +2023,6 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         dom = minidom.parseString(data)
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.common.utils._get_random_portgroup, dom)
-
-    def test_cleanup_last_vol(self):
-        conn = FakeEcomConnection()
-        masking = self.driver.common.masking
-        extraSpecs = {'volume_backend_name': 'GOLD_BE',
-                      'isV3': True}
-        controllerConfigService = (
-            self.driver.utils.find_controller_configuration_service(
-                conn, self.data.storage_system))
-        storageGroupName = self.data.storagegroupname
-        storageGroupInstanceName = (
-            self.driver.utils.find_storage_masking_group(
-                conn, controllerConfigService, storageGroupName))
-        volumeInstance = EMC_StorageVolume()
-        volumeInstance.path = (
-            conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
-
-        volumeName = self.data.test_volume['name']
-        masking._last_volume_delete_masking_view = mock.Mock()
-        storageSystemInstanceName = (
-            conn.EnumerateInstanceNames("EMC_StorageSystem")[0])
-        # Failure case, an exception is thrown in
-        # _remove_last_vol_and_delete_sg so the returning the vol to
-        # the default SG cannot continue
-        self.assertRaises(
-            exception.VolumeBackendAPIException,
-            masking._cleanup_last_vol, conn, controllerConfigService,
-            storageGroupInstanceName, storageGroupName, volumeInstance,
-            volumeName, storageSystemInstanceName, False, extraSpecs)
-
-        # Success case, the last vol is removed and the SG is deleted
-        masking._remove_last_vol_and_delete_sg = mock.Mock(return_value=True)
-        masking._cleanup_last_vol(
-            conn, controllerConfigService, storageGroupInstanceName,
-            storageGroupName, volumeInstance, volumeName,
-            storageSystemInstanceName, False, extraSpecs)
 
     def test_is_sync_complete(self):
         conn = self.fake_ecom_connection()
@@ -6289,6 +6257,8 @@ class EMCV3DriverTestCase(test.TestCase):
         common = self.driver.common
         common.get_target_wwns = mock.Mock(
             return_value=EMCVMAXCommonData.target_wwns)
+        common.masking.utils.find_storage_masking_group = mock.Mock(
+            return_value=self.data.storagegroups[0])
         self.driver.common._initial_setup = mock.Mock(
             return_value=self.default_extraspec())
         data = self.driver.terminate_connection(self.data.test_volume_v3,
@@ -6343,15 +6313,11 @@ class EMCV3DriverTestCase(test.TestCase):
         extraSpecs = common._initial_setup(self.data.test_volume_v3)
         targetInstance = (
             conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
-        storageGroupName = common.utils.get_v3_storage_group_name('SRP_1',
-                                                                  'Bronze',
-                                                                  'DSS')
         deviceID = targetInstance['DeviceID']
         common._delete_from_pool_v3.assert_called_with(storageConfigService,
                                                        targetInstance,
                                                        targetInstance['Name'],
                                                        deviceID,
-                                                       storageGroupName,
                                                        extraSpecs)
 
     def test_get_remaining_slo_capacity_wlp(self):
@@ -7495,6 +7461,99 @@ class EMCVMAXMaskingTest(test.TestCase):
                 maskingviewdict,
                 controllerConfigService, maskingviewdict['volumeName']))
         self.assertIsNone(result)
+
+    def test_return_volume_to_default_storage_group_v3(self):
+        masking = self.driver.common.masking
+        conn = self.fake_ecom_connection()
+        volumeInstanceName = (
+            conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
+        volumeInstance = conn.GetInstance(volumeInstanceName)
+        volumeName = "V3-Vol"
+        extraSpecs = {'volume_backend_name': 'V3_BE',
+                      'isV3': True,
+                      'storagetype:pool': 'SRP_1',
+                      'storagetype:workload': 'DSS',
+                      'storagetype:slo': 'Bronze'}
+        controllerConfigService = (
+            self.driver.utils.find_controller_configuration_service(
+                conn, self.data.storage_system))
+        masking.provisionv3.create_storage_group_v3 = mock.Mock(
+            return_value={'Value'})
+        masking._is_volume_in_storage_group = mock.Mock(
+            return_value=True)
+        masking.return_volume_to_default_storage_group_v3 = mock.Mock()
+        masking._return_back_to_default_sg(
+            conn, controllerConfigService, volumeInstance, volumeName,
+            extraSpecs)
+        masking.return_volume_to_default_storage_group_v3.assert_called_with(
+            conn, controllerConfigService,
+            volumeInstance, volumeName, extraSpecs)
+
+    def test_return_volume_to_default_storage_group_v3_exception(self):
+        masking = self.driver.common.masking
+        conn = self.fake_ecom_connection()
+        volumeInstanceName = (
+            conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
+        volumeInstance = conn.GetInstance(volumeInstanceName)
+        volumeName = "V3-Vol"
+        extraSpecs = {'volume_backend_name': 'V3_BE',
+                      'isV3': True,
+                      'storagetype:pool': 'SRP_1',
+                      'storagetype:workload': 'DSS',
+                      'storagetype:slo': 'Bronze'}
+        controllerConfigService = (
+            self.driver.utils.find_controller_configuration_service(
+                conn, self.data.storage_system))
+
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            masking.return_volume_to_default_storage_group_v3,
+            conn, controllerConfigService,
+            volumeInstance, volumeName, extraSpecs)
+
+    def test_add_volume_to_sg_and_verify(self):
+        masking = self.driver.common.masking
+        conn = self.fake_ecom_connection()
+        volumeInstanceName = (
+            conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
+        volumeInstance = conn.GetInstance(volumeInstanceName)
+        volumeName = "V3-Vol"
+        storageGroupInstanceName = self.data.storagegroups[0]
+        sgGroupName = self.data.storagegroupname
+        extraSpecs = {'volume_backend_name': 'V3_BE',
+                      'isV3': True,
+                      'storagetype:pool': 'SRP_1',
+                      'storagetype:workload': 'DSS',
+                      'storagetype:slo': 'Bronze'}
+        controllerConfigService = (
+            self.driver.utils.find_controller_configuration_service(
+                conn, self.data.storage_system))
+        msg = masking._add_volume_to_sg_and_verify(
+            conn, controllerConfigService, storageGroupInstanceName,
+            volumeInstance, volumeName, sgGroupName, extraSpecs)
+        self.assertIsNone(msg)
+
+    def test_remove_volume_from_sg(self):
+        masking = self.driver.common.masking
+        conn = self.fake_ecom_connection()
+        volumeInstanceName = (
+            conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
+        volumeInstance = conn.GetInstance(volumeInstanceName)
+        storageGroupInstanceName = self.data.storagegroups[1]
+        extraSpecs = {'volume_backend_name': 'V3_BE',
+                      'isV3': True,
+                      'storagetype:pool': 'SRP_1',
+                      'storagetype:workload': 'DSS',
+                      'storagetype:slo': 'Bronze'}
+        controllerConfigService = (
+            self.driver.utils.find_controller_configuration_service(
+                conn, self.data.storage_system))
+        masking._remove_volume_from_sg = mock.Mock()
+        masking._cleanup_deletion_v3(
+            conn, controllerConfigService, volumeInstance, extraSpecs)
+        masking._remove_volume_from_sg.assert_called_with(
+            conn, controllerConfigService, storageGroupInstanceName,
+            volumeInstance, extraSpecs)
 
 
 class EMCVMAXFCTest(test.TestCase):

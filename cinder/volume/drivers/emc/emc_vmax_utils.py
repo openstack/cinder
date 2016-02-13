@@ -62,6 +62,9 @@ class EMCVMAXUtils(object):
     This Utility class is for EMC volume drivers based on SMI-S.
     It supports VMAX arrays.
     """
+    SLO = 'storagetype:slo'
+    WORKLOAD = 'storagetype:workload'
+    POOL = 'storagetype:pool'
 
     def __init__(self, prtcl):
         if not pywbemAvailable:
@@ -1525,16 +1528,6 @@ class EMCVMAXUtils(object):
                                'slo': slo,
                                'workload': workload})
         return storageGroupName
-
-    def strip_short_host_name(self, storageGroupName):
-        tempList = storageGroupName.split("-")
-        if len(tempList) == 6:
-            shorthostName = tempList.pop(1)
-            updatedStorageGroup = "-".join(tempList)
-            return updatedStorageGroup, shorthostName
-        else:
-            shorthostName = None
-            return storageGroupName, shorthostName
 
     def _get_fast_settings_from_storage_group(self, storageGroupInstance):
         """Get the emc FAST setting from the storage group.

@@ -414,7 +414,7 @@ class EMCVMAXCommon(object):
             return deviceInfoDict
 
     def _attach_volume(self, volume, connector, extraSpecs,
-                       maskingViewDict, isLiveMigration=None):
+                       maskingViewDict, isLiveMigration=False):
         """Attach a volume to a host.
 
         If live migration is being undertaken then the volume
@@ -2199,12 +2199,9 @@ class EMCVMAXCommon(object):
         deviceId = volumeInstance['DeviceID']
 
         if extraSpecs[ISV3]:
-            storageGroupName = self.utils.get_v3_storage_group_name(
-                extraSpecs[POOL], extraSpecs[SLO],
-                extraSpecs[WORKLOAD])
             rc = self._delete_from_pool_v3(
                 storageConfigService, volumeInstance, volumeName,
-                deviceId, storageGroupName, extraSpecs)
+                deviceId, extraSpecs)
         else:
             rc = self._delete_from_pool(storageConfigService, volumeInstance,
                                         volumeName, deviceId,
@@ -3433,15 +3430,13 @@ class EMCVMAXCommon(object):
         return rc
 
     def _delete_from_pool_v3(self, storageConfigService, volumeInstance,
-                             volumeName, deviceId, storageGroupName,
-                             extraSpecs):
+                             volumeName, deviceId, extraSpecs):
         """Delete from pool (v3).
 
         :param storageConfigService: the storage config service
         :param volumeInstance: the volume instance
         :param volumeName: the volume Name
         :param deviceId: the device ID of the volume
-        :param storageGroupName: the name of the default SG
         :param extraSpecs: extra specifications
         :returns: int -- return code
         :raises: VolumeBackendAPIException
@@ -3453,9 +3448,9 @@ class EMCVMAXCommon(object):
 
         # Check if it is part of a storage group and delete it
         # extra logic for case when volume is the last member.
-        sgFromVolInstanceName = self.masking.remove_and_reset_members(
+        self.masking.remove_and_reset_members(
             self.conn, controllerConfigurationService, volumeInstance,
-            volumeName, extraSpecs, None, 'noReset')
+            volumeName, extraSpecs, None, False)
 
         LOG.debug("Delete Volume: %(name)s  Method: EMCReturnToStoragePool "
                   "ConfigServic: %(service)s  TheElement: %(vol_instance)s "
@@ -3473,23 +3468,9 @@ class EMCVMAXCommon(object):
             # If we cannot successfully delete the volume, then we want to
             # return the volume to the default storage group,
             # which should be the SG it previously belonged to.
-            storageGroupInstanceName = self.utils.find_storage_masking_group(
-                self.conn, controllerConfigurationService, storageGroupName)
-
-            if sgFromVolInstanceName is not storageGroupInstanceName:
-                LOG.debug(
-                    "Volume: %(volumeName)s was not previously part of "
-                    " %(storageGroupInstanceName)s. "
-                    "Returning to %(storageGroupName)s.",
-                    {'volumeName': volumeName,
-                     'storageGroupInstanceName': storageGroupInstanceName,
-                     'storageGroupName': storageGroupName})
-
-            if storageGroupInstanceName is not None:
-                self.masking.add_volume_to_storage_group(
-                    self.conn, controllerConfigurationService,
-                    storageGroupInstanceName, volumeInstance, volumeName,
-                    storageGroupName, extraSpecs)
+            self.masking.return_volume_to_default_storage_group_v3(
+                self.conn, controllerConfigurationService,
+                volumeInstance, volumeName, extraSpecs)
 
             errorMessage = (_("Failed to delete volume %(volumeName)s.") %
                             {'volumeName': volumeName})
@@ -3855,12 +3836,9 @@ class EMCVMAXCommon(object):
                     self.conn, storageSystem))
             deviceId = targetInstance['DeviceID']
             volumeName = targetInstance['Name']
-            storageGroupName = self.utils.get_v3_storage_group_name(
-                extraSpecs[POOL], extraSpecs[SLO],
-                extraSpecs[WORKLOAD])
             rc = self._delete_from_pool_v3(
                 storageConfigService, targetInstance, volumeName,
-                deviceId, storageGroupName, extraSpecs)
+                deviceId, extraSpecs)
             # Re-throw the exception.
             raise
 
