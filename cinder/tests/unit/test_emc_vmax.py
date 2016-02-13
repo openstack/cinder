@@ -533,7 +533,7 @@ class FakeEcomConnection(object):
                      EMCCollections=None, InitiatorMaskingGroup=None,
                      DeviceMaskingGroup=None, TargetMaskingGroup=None,
                      ProtocolController=None, StorageID=None, IDType=None,
-                     WaitForCopyState=None):
+                     WaitForCopyState=None, Collections=None):
 
         rc = 0
         myjob = SE_ConcreteJob()
@@ -2331,7 +2331,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         self.driver.utils._is_sync_complete = mock.Mock(
             return_value=True)
         rc = self.driver.utils.wait_for_sync(conn, mysync)
-        self.assertIsNone(rc)
+        self.assertIsNotNone(rc)
         self.driver.utils._is_sync_complete.assert_called_once_with(
             conn, mysync)
         self.assertTrue(self.driver.utils._is_sync_complete.return_value)
@@ -2341,7 +2341,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         loopingcall_orig = loopingcall.FixedIntervalLoopingCall
         loopingcall.FixedIntervalLoopingCall = mock.Mock()
         rc = self.driver.utils.wait_for_sync(conn, mysync)
-        self.assertIsNone(rc)
+        self.assertIsNotNone(rc)
         loopingcall.FixedIntervalLoopingCall.assert_called_once_with(
             mock.ANY)
         loopingcall.FixedIntervalLoopingCall.reset_mock()
@@ -2363,7 +2363,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         self.driver.utils._is_sync_complete = mock.Mock(
             return_value=True)
         rc = self.driver.utils.wait_for_sync(conn, mysync, extraSpecs)
-        self.assertIsNone(rc)
+        self.assertIsNotNone(rc)
         self.driver.utils._is_sync_complete.assert_called_once_with(
             conn, mysync)
         self.assertTrue(self.driver.utils._is_sync_complete.return_value)
@@ -2377,7 +2377,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         loopingcall_orig = loopingcall.FixedIntervalLoopingCall
         loopingcall.FixedIntervalLoopingCall = mock.Mock()
         rc = self.driver.utils.wait_for_sync(conn, mysync)
-        self.assertIsNone(rc)
+        self.assertIsNotNone(rc)
         loopingcall.FixedIntervalLoopingCall.assert_called_once_with(
             mock.ANY)
         loopingcall.FixedIntervalLoopingCall.reset_mock()
@@ -7690,8 +7690,8 @@ class EMCVMAXFCTest(test.TestCase):
 
 class EMCVMAXUtilsTest(test.TestCase):
     def setUp(self):
-
         self.data = EMCVMAXCommonData()
+
         super(EMCVMAXUtilsTest, self).setUp()
 
         configuration = mock.Mock()
@@ -7726,3 +7726,86 @@ class EMCVMAXUtilsTest(test.TestCase):
             exception.VolumeBackendAPIException,
             self.driver.utils.get_protocol_controller,
             conn, hardwareid)
+
+    def test_set_target_element_supplier_in_rsd(self):
+        conn = FakeEcomConnection()
+        extraSpecs = self.data.extra_specs
+        repServiceInstanceName = (
+            self.driver.utils.find_replication_service(
+                conn, self.data.storage_system))
+        rsdInstance = self.driver.utils.set_target_element_supplier_in_rsd(
+            conn, repServiceInstanceName,
+            emc_vmax_common.SNAPVX_REPLICATION_TYPE,
+            emc_vmax_common.CREATE_NEW_TARGET, extraSpecs)
+        self.assertIsNotNone(rsdInstance)
+
+    def test_set_copy_methodology_in_rsd(self):
+        conn = FakeEcomConnection()
+        extraSpecs = self.data.extra_specs
+        repServiceInstanceName = (
+            self.driver.utils.find_replication_service(
+                conn, self.data.storage_system))
+        rsdInstance = self.driver.utils.set_copy_methodology_in_rsd(
+            conn, repServiceInstanceName,
+            emc_vmax_provision.SYNC_CLONE_LOCAL,
+            emc_vmax_provision.COPY_ON_WRITE, extraSpecs)
+        self.assertIsNotNone(rsdInstance)
+
+
+class EMCVMAXCommonTest(test.TestCase):
+    def setUp(self):
+        self.data = EMCVMAXCommonData()
+
+        super(EMCVMAXCommonTest, self).setUp()
+
+        configuration = mock.Mock()
+        configuration.safe_get.return_value = 'CommonTests'
+        configuration.config_group = 'CommonTests'
+        emc_vmax_common.EMCVMAXCommon._gather_info = mock.Mock()
+        driver = emc_vmax_iscsi.EMCVMAXISCSIDriver(configuration=configuration)
+        driver.db = FakeDB()
+        self.driver = driver
+        self.driver.utils = emc_vmax_utils.EMCVMAXUtils(object)
+
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_get_pool_and_storage_system',
+        return_value=(None, EMCVMAXCommonData.storage_system))
+    def test_create_duplicate_volume(self, mock_pool):
+        common = self.driver.common
+        common.conn = FakeEcomConnection()
+        volumeInstanceName = (
+            common.conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
+        sourceInstance = common.conn.GetInstance(volumeInstanceName)
+        cloneName = "SS-V3-Vol"
+        extraSpecs = {'volume_backend_name': 'V3_BE',
+                      'isV3': True,
+                      'storagetype:pool': 'SRP_1',
+                      'storagetype:workload': 'DSS',
+                      'storagetype:slo': 'Bronze'}
+        targetInstance = common.conn.GetInstance(volumeInstanceName)
+        common.utils.find_volume_instance = mock.Mock(
+            return_value=targetInstance)
+        duplicateVolumeInstance = self.driver.common._create_duplicate_volume(
+            sourceInstance, cloneName, extraSpecs)
+        self.assertIsNotNone(duplicateVolumeInstance)
+
+    def test_cleanup_target(self):
+        common = self.driver.common
+        common.conn = FakeEcomConnection()
+        volumeInstanceName = (
+            common.conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
+        extraSpecs = {'volume_backend_name': 'V3_BE',
+                      'isV3': True,
+                      'storagetype:pool': 'SRP_1',
+                      'storagetype:workload': 'DSS',
+                      'storagetype:slo': 'Bronze'}
+        targetInstance = common.conn.GetInstance(volumeInstanceName)
+        repServiceInstanceName = (
+            self.driver.utils.find_replication_service(
+                common.conn, self.data.storage_system))
+        common.utils.find_sync_sv_by_target = mock.Mock(
+            return_value=(None, None))
+
+        self.driver.common._cleanup_target(
+            repServiceInstanceName, targetInstance, extraSpecs)
