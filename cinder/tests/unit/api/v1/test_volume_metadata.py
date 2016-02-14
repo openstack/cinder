@@ -134,7 +134,7 @@ class volumeMetaDataTest(test.TestCase):
     def setUp(self):
         super(volumeMetaDataTest, self).setUp()
         self.volume_api = cinder.volume.api.API()
-        self.stubs.Set(volume.API, 'get', get_volume)
+        self.stubs.Set(volume.api.API, 'get', get_volume)
         self.stubs.Set(cinder.db, 'volume_metadata_get',
                        return_volume_metadata)
         self.stubs.Set(cinder.db, 'service_get_all_by_topic',
@@ -343,7 +343,7 @@ class volumeMetaDataTest(test.TestCase):
                           req, self.req_id, body)
 
     def test_create_nonexistent_volume(self):
-        self.stubs.Set(volume.API, 'get', return_volume_nonexistent)
+        self.stubs.Set(volume.api.API, 'get', return_volume_nonexistent)
         self.stubs.Set(cinder.db, 'volume_metadata_get',
                        return_volume_metadata)
         self.stubs.Set(cinder.db, 'volume_metadata_update',

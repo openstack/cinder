@@ -54,8 +54,8 @@ class VolumeTenantAttributeTest(test.TestCase):
 
     def setUp(self):
         super(VolumeTenantAttributeTest, self).setUp()
-        self.stubs.Set(volume.API, 'get', fake_volume_get)
-        self.stubs.Set(volume.API, 'get_all', fake_volume_get_all)
+        self.stubs.Set(volume.api.API, 'get', fake_volume_get)
+        self.stubs.Set(volume.api.API, 'get_all', fake_volume_get_all)
         self.UUID = uuid.uuid4()
 
     def test_get_volume_allowed(self):
