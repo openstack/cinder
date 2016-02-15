@@ -341,12 +341,12 @@ class SBSBackupDriver(driver.BackupDriver):
         return key
 
     #Check if base and/or snapshot exists in DSS
-    def _snap_exists(self, base_name, snap_name):
+    def _snap_exists(self, base_name, snap_name, container):
         if base_name == None:
             return False
         conn = self._connect_to_DSS()
         if conn != None:
-            bucket = self._get_bucket(conn, self._container)
+            bucket = self._get_bucket(conn, container)
         else:
             return False
 
@@ -539,6 +539,7 @@ class SBSBackupDriver(driver.BackupDriver):
 
             # If a from_snap is defined but does not exist in the back base
             # then we cannot proceed (see above)
+            snap = None
             if (base_name != from_snap):
                 snap_id = self._get_snap_id_from_name(from_snap)
                 if snap_id:
@@ -552,8 +553,13 @@ class SBSBackupDriver(driver.BackupDriver):
                         # Raise this exception so that caller can try another
                         # approach
                         raise exception.BackupOperationError(msg)
+            if snap == None:
+                errmsg = (_("From snapshot='%(snap)s' does not exist" %
+                          {'snap': from_snap}))
+                LOG.error(errmsg)
+                raise exception.BackupRBDOperationFailed(errmsg)
 
-            if not self._snap_exists(base_name, from_snap):
+            if not self._snap_exists(base_name, from_snap, snap['container']):
                 errmsg = (_("Snapshot='%(snap)s' does not exist in base "
                             "image='%(base)s' - aborting incremental "
                             "backup") %
@@ -597,7 +603,7 @@ class SBSBackupDriver(driver.BackupDriver):
         LOG.debug("Creating backup %s", new_snap)
         source_rbd_image.create_snap(new_snap)
         LOG.debug("Using --from-snap '%(snap)s' for incremental backup of "
-                  "volume %(volume)s, with base image '%s(base)s'.",
+                  "volume '%(volume)s', with base image '%(base)s'.",
                     {'snap': from_snap, 'volume': volume_id,
                      'base': base_name})
 
@@ -799,16 +805,20 @@ class SBSBackupDriver(driver.BackupDriver):
 
     def _remove_from_DSS(self, backup):
         snap_name = self._get_rbd_image_name(backup)
-        LOG.info("Deleting backups %s from container %s" % (snap_name, self._container))
+        LOG.info("Deleting backups %s from container %s" % (snap_name, backup['container']))
+        try:
+            conn = self._connect_to_DSS()
+        except Exception as e:
+            pass
 
-        conn = self._connect_to_DSS()
         if conn != None:
-            bucket = self._get_bucket(conn, self._container)
+            try:
+                bucket = self._get_bucket(conn, backup['container')
+            except Exception as e:
+                pass
         else:
-            errmsg = _("Failed to connect to object store")
-            LOG.error(errmsg)
-            raise exception.InvalidBackup(reason=errmsg)
-            return
+            LOG.error("Failed to connect to DSS")
+            return False
 
         if bucket != None:
             try:
@@ -816,9 +826,12 @@ class SBSBackupDriver(driver.BackupDriver):
             except Exception as e:
                 errmsg = (_("Failed to delete backup %s from object store") % (snap_name))
                 LOG.error(errmsg)
-                raise exception.InvalidBackup(reason=errmsg)
+                pass
+        else:
+            LOG.error("Failed to get bucket %s from DSS" % backup['container'])
+            return False
 
-        return
+        return True
 
     def _delete_snap_from_src(self, backup):
         volume_name = encodeutils.safe_encode("volume-%s" % (backup['volume_id']))
@@ -828,9 +841,16 @@ class SBSBackupDriver(driver.BackupDriver):
 	    backup_rbd = None
             try:
                 backup_rbd = self.rbd.Image(client.ioctx, volume_name, read_only=False)
-                backup_rbd.remove_snap(backup_name)
             except self.rbd.ImageNotFound:
                 LOG.info(_LI("volume %s no longer exists in backend") % volume_name)
+                pass
+                return
+            try:
+                backup_rbd.remove_snap(backup_name)
+            except self.rbd.ImageNotFound:
+                #Donot fail if snapshot is not found, volume delete removes it too
+                LOG.info(_LI("Snap Not found. Failed to remove snapshot %s of volume %s") %
+                        (backup_name, volume_name))
                 pass
             finally:
                 if backup_rbd != None:
@@ -844,7 +864,9 @@ class SBSBackupDriver(driver.BackupDriver):
         while i < length:
 	    backup = backup_list[i]
             LOG.debug("Deleting backup %s" % backup['id'])
-            self._remove_from_DSS(backup)
+            ret = self._remove_from_DSS(backup)
+            if ret == False:
+                LOG.error("Deleting backup %s from DSS failed" % backup['id'])
             self._delete_snap_from_src(backup)
             self.db.backup_destroy(self.context, backup['id'])
             last_backup = backup
