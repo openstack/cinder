@@ -90,6 +90,7 @@ cinder.tests.unit.test_dellscapi
 cinder.tests.unit.test_dothill
 cinder.tests.unit.test_drbdmanagedrv
 cinder.tests.unit.test_emc_vmax
+cinder.tests.unit.test_emc_vnx
 cinder.tests.unit.test_emc_vnxdirect
 cinder.tests.unit.test_emc_xtremio
 cinder.tests.unit.test_eqlx
