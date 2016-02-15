@@ -125,7 +125,8 @@ class Service(service.Service):
         self.topic = topic
         self.manager_class_name = manager
         manager_class = importutils.import_class(self.manager_class_name)
-        manager_class = profiler.trace_cls("rpc")(manager_class)
+        if CONF.profiler.profiler_enabled:
+            manager_class = profiler.trace_cls("rpc")(manager_class)
 
         self.manager = manager_class(host=self.host,
                                      service_name=service_name,
