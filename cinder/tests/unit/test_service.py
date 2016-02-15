@@ -277,6 +277,8 @@ class TestWSGIService(test.TestCase):
 
     @mock.patch('oslo_service.wsgi.Loader')
     def test_workers_set_default(self, mock_loader):
+        self.override_config('osapi_volume_listen_port',
+                             CONF.test_service_listen_port)
         test_service = service.WSGIService("osapi_volume")
         self.assertEqual(processutils.get_worker_count(),
                          test_service.workers)
@@ -284,6 +286,8 @@ class TestWSGIService(test.TestCase):
 
     @mock.patch('oslo_service.wsgi.Loader')
     def test_workers_set_good_user_setting(self, mock_loader):
+        self.override_config('osapi_volume_listen_port',
+                             CONF.test_service_listen_port)
         self.override_config('osapi_volume_workers', 8)
         test_service = service.WSGIService("osapi_volume")
         self.assertEqual(8, test_service.workers)
@@ -291,6 +295,8 @@ class TestWSGIService(test.TestCase):
 
     @mock.patch('oslo_service.wsgi.Loader')
     def test_workers_set_zero_user_setting(self, mock_loader):
+        self.override_config('osapi_volume_listen_port',
+                             CONF.test_service_listen_port)
         self.override_config('osapi_volume_workers', 0)
         test_service = service.WSGIService("osapi_volume")
         # If a value less than 1 is used, defaults to number of procs
