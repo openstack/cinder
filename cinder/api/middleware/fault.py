@@ -44,9 +44,9 @@ class FaultWrapper(base_wsgi.Middleware):
 
     def _error(self, inner, req):
         if not isinstance(inner, exception.QuotaError):
-            LOG.error(_LE("Caught error: %(type)s %(error)s"),
-                      {'type': type(inner),
-                       'error': inner})
+            LOG.exception(_LE("Caught error: %(type)s %(error)s"),
+                          {'type': type(inner),
+                           'error': inner})
         safe = getattr(inner, 'safe', False)
         headers = getattr(inner, 'headers', None)
         status = getattr(inner, 'code', 500)
