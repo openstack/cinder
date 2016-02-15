@@ -47,12 +47,20 @@ def decode_base32_to_hex(base32_string):
 def convert_uuid_to_es_fmt(uuid_str):
     """Converts uuid to e-series compatible name format."""
     uuid_base32 = encode_hex_to_base32(uuid.UUID(six.text_type(uuid_str)).hex)
-    return str(uuid_base32.strip(b'='))
+    es_label = uuid_base32.strip(b'=')
+    if six.PY3:
+        es_label = es_label.decode('ascii')
+    return es_label
 
 
 def convert_es_fmt_to_uuid(es_label):
     """Converts e-series name format to uuid."""
-    if es_label.startswith('tmp-'):
+    if isinstance(es_label, six.text_type):
+        es_label = es_label.encode('utf-8')
+    if es_label.startswith(b'tmp-'):
         es_label = es_label[4:]
-    es_label_b32 = es_label.ljust(32, '=')
-    return uuid.UUID(binascii.hexlify(base64.b32decode(es_label_b32)))
+    es_label = es_label.ljust(32, b'=')
+    es_label = binascii.hexlify(base64.b32decode(es_label))
+    if six.PY3:
+        es_label = es_label.decode('ascii')
+    return uuid.UUID(es_label)

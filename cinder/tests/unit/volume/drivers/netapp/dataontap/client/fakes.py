@@ -20,7 +20,7 @@ from six.moves import urllib
 import cinder.volume.drivers.netapp.dataontap.client.api as netapp_api
 
 
-FAKE_VOL_XML = """<volume-info xmlns='http://www.netapp.com/filer/admin'>
+FAKE_VOL_XML = b"""<volume-info xmlns='http://www.netapp.com/filer/admin'>
     <name>open123</name>
     <state>online</state>
     <size-total>0</size-total>
@@ -30,12 +30,12 @@ FAKE_VOL_XML = """<volume-info xmlns='http://www.netapp.com/filer/admin'>
     <is-invalid>false</is-invalid>
     </volume-info>"""
 
-FAKE_XML1 = """<options>\
+FAKE_XML1 = b"""<options>\
 <test1>abc</test1>\
 <test2>abc</test2>\
 </options>"""
 
-FAKE_XML2 = """<root><options>somecontent</options></root>"""
+FAKE_XML2 = b"""<root><options>somecontent</options></root>"""
 
 FAKE_NA_ELEMENT = netapp_api.NaElement(etree.XML(FAKE_VOL_XML))
 

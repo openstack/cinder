@@ -468,7 +468,7 @@ class NetAppApiInvokeTests(test.TestCase):
         api_name = zapi_fakes.FAKE_API_NAME
         invoke_generator = netapp_api.invoke_api(na_server, api_name)
 
-        self.assertRaises(exception.InvalidInput, invoke_generator.next)
+        self.assertRaises(exception.InvalidInput, next, invoke_generator)
 
     @ddt.data({'params': {'na_server': zapi_fakes.FAKE_NA_SERVER,
                           'api_name': zapi_fakes.FAKE_API_NAME}},

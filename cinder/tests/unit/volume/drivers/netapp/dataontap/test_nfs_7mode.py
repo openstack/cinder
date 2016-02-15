@@ -64,9 +64,9 @@ class NetApp7modeNfsDriverTestCase(test.TestCase):
         thick = not nfs_sparsed_volumes
 
         total_capacity_gb = na_utils.round_down(
-            fake.TOTAL_BYTES / units.Gi, '0.01')
+            fake.TOTAL_BYTES // units.Gi, '0.01')
         free_capacity_gb = na_utils.round_down(
-            fake.AVAILABLE_BYTES / units.Gi, '0.01')
+            fake.AVAILABLE_BYTES // units.Gi, '0.01')
         provisioned_capacity_gb = total_capacity_gb - free_capacity_gb
         capacity = {
             'reserved_percentage': fake.RESERVED_PERCENTAGE,

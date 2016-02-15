@@ -390,7 +390,7 @@ class NaElement(object):
     def get_attr_names(self):
         """Returns the list of attribute names."""
         attributes = self._element.attrib or {}
-        return attributes.keys()
+        return list(attributes.keys())
 
     def add_new_child(self, name, content, convert=False):
         """Add child with tag name and context.
@@ -466,7 +466,7 @@ class NaElement(object):
                     child = NaElement(key)
                     child.add_child_elem(value)
                     self.add_child_elem(child)
-                elif isinstance(value, (str, int, float, long)):
+                elif isinstance(value, six.integer_types + (str, float)):
                     self.add_new_child(key, six.text_type(value))
                 elif isinstance(value, (list, tuple, dict)):
                     child = NaElement(key)
