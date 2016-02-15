@@ -151,7 +151,6 @@ class HuaweiConf(object):
             else:
                 msg = (_("Invalid lun type %s is configured.") % lun_type)
                 LOG.exception(msg)
-
                 raise exception.InvalidInput(reason=msg)
 
         setattr(self.conf, 'lun_type', lun_type)
