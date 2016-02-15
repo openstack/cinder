@@ -335,6 +335,12 @@ def safe_minidom_parse_string(xml_string):
 
     """
     try:
+        if six.PY3 and isinstance(xml_string, bytes):
+            # On Python 3, minidom.parseString() requires Unicode when
+            # the parser parameter is used.
+            #
+            # Bet that XML used in Cinder is always encoded to UTF-8.
+            xml_string = xml_string.decode('utf-8')
         return minidom.parseString(xml_string, parser=ProtectedExpatParser())
     except sax.SAXParseException:
         raise expat.ExpatError()
