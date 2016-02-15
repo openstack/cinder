@@ -1248,8 +1248,8 @@ class SheepdogDriverTestCase(test.TestCase):
 
     def test_clone_image_success(self):
         context = {}
-        image_location = ('sheepdog:192.168.1.111:7000:Alice', None)
         image_id = "caa4ffd0-fake-fake-fake-f8631a807f5a"
+        image_location = ('sheepdog://192.168.1.111:7000:%s' % image_id, None)
         image_meta = {'id': image_id, 'size': 1, 'disk_format': 'raw'}
         image_service = ''
 
@@ -1283,7 +1283,7 @@ class SheepdogDriverTestCase(test.TestCase):
 
     def test_is_cloneable(self):
         uuid = '87f1b01c-f46c-4537-bd5d-23962f5f4316'
-        location = 'sheepdog:ip:port:%s' % uuid
+        location = 'sheepdog://ip:port:%s' % uuid
         image_meta = {'id': uuid, 'size': 1, 'disk_format': 'raw'}
         invalid_image_meta = {'id': uuid, 'size': 1, 'disk_format': 'iso'}
 

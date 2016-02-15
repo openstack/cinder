@@ -427,7 +427,8 @@ class SheepdogDriver(driver.VolumeDriver):
         if image_location is None:
             return False
 
-        if not image_location.startswith("sheepdog:"):
+        prefix = 'sheepdog://'
+        if not image_location.startswith(prefix):
             LOG.debug("Image is not stored in sheepdog.")
             return False
 
@@ -443,8 +444,8 @@ class SheepdogDriver(driver.VolumeDriver):
         # check whether volume is stored in sheepdog
         try:
             # The image location would be like
-            # "sheepdog:192.168.10.2:7000:Alice"
-            (label, ip, port, name) = image_location.split(":", 3)
+            # "sheepdog://192.168.10.2:7000:Alice"
+            (ip, port, name) = image_location[len(prefix):].split(":", 2)
 
             self._try_execute('collie', 'vdi', 'list', '--address', ip,
                               '--port', port, name)
@@ -463,10 +464,7 @@ class SheepdogDriver(driver.VolumeDriver):
         if not self._is_cloneable(image_location, image_meta):
             return {}, False
 
-        # The image location would be like
-        # "sheepdog:192.168.10.2:7000:Alice"
-        (label, ip, port, name) = image_location.split(":", 3)
-        volume_ref = {'name': name, 'size': image_meta['size']}
+        volume_ref = {'name': image_meta['id'], 'size': image_meta['size']}
         self.create_cloned_volume(volume, volume_ref)
         self.client.resize(volume.name, volume.size)
 
