@@ -54,6 +54,11 @@ class ViewBuilder(common.ViewBuilder):
 
     def detail(self, request, volume):
         """Detailed view of a single volume."""
+     
+        snapshot_id=volume.get('snapshot_id')
+        LOG.debug("\n++++ misc is %s"%(volume))
+
+
         return {
             'volume': {
                 'id': volume.get('id'),
@@ -65,7 +70,7 @@ class ViewBuilder(common.ViewBuilder):
                 'name': volume.get('display_name'),
                 'description': volume.get('display_description'),
                 'volume_type': self._get_volume_type(volume),
-                'snapshot_id': volume.get('snapshot_id'),
+                'snapshot_id': snapshot_id,
                 'source_volid': volume.get('source_volid'),
                 'metadata': self._get_volume_metadata(volume),
                 'links': self._get_links(request, volume['id']),

@@ -22,7 +22,7 @@ SQLAlchemy models for cinder data.
 from oslo_config import cfg
 from oslo_db.sqlalchemy import models
 from oslo_utils import timeutils
-from sqlalchemy import Column, Integer, String, Text, schema
+from sqlalchemy import Column, Integer, String, Text, schema,PickleType
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import ForeignKey, DateTime, Boolean
 from sqlalchemy.orm import relationship, backref, validates
@@ -153,6 +153,7 @@ class Volume(BASE, CinderBase):
     volume_type_id = Column(String(36))
     source_volid = Column(String(36))
     encryption_key_id = Column(String(36))
+    miscellaneous = Column(String(256))
 
     consistencygroup_id = Column(String(36))
 
