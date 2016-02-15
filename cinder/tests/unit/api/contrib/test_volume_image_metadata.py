@@ -12,7 +12,6 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
-import json
 import uuid
 from xml.dom import minidom
 
@@ -117,12 +116,12 @@ class VolumeImageMetadataTest(test.TestCase):
         return res
 
     def _get_image_metadata(self, body):
-        return json.loads(body)['volume']['volume_image_metadata']
+        return jsonutils.loads(body)['volume']['volume_image_metadata']
 
     def _get_image_metadata_list(self, body):
         return [
             volume['volume_image_metadata']
-            for volume in json.loads(body)['volumes']
+            for volume in jsonutils.loads(body)['volumes']
         ]
 
     def _create_volume_and_glance_metadata(self):
@@ -172,13 +171,13 @@ class VolumeImageMetadataTest(test.TestCase):
         body = {"os-set_image_metadata": {"metadata": fake_image_metadata}}
         req = webob.Request.blank('/v2/fake/volumes/1/action')
         req.method = "POST"
-        req.body = jsonutils.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
 
         res = req.get_response(fakes.wsgi_app())
         self.assertEqual(200, res.status_int)
         self.assertEqual(fake_image_metadata,
-                         json.loads(res.body)["metadata"])
+                         jsonutils.loads(res.body)["metadata"])
 
     def test_create_with_keys_case_insensitive(self):
         # If the keys in uppercase_and_lowercase, should return the one
@@ -201,13 +200,13 @@ class VolumeImageMetadataTest(test.TestCase):
 
         req = webob.Request.blank('/v2/fake/volumes/1/action')
         req.method = 'POST'
-        req.body = jsonutils.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
 
         res = req.get_response(fakes.wsgi_app())
         self.assertEqual(200, res.status_int)
         self.assertEqual(fake_image_metadata,
-                         json.loads(res.body)["metadata"])
+                         jsonutils.loads(res.body)["metadata"])
 
     def test_create_empty_body(self):
         req = fakes.HTTPRequest.blank('/v2/fake/volumes/1/action')
@@ -226,7 +225,7 @@ class VolumeImageMetadataTest(test.TestCase):
         body = {"os-set_image_metadata": {
             "metadata": {"image_name": "fake"}}
         }
-        req.body = jsonutils.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.create, req, 1, body)
 
@@ -242,7 +241,7 @@ class VolumeImageMetadataTest(test.TestCase):
         }
 
         # Test for long key
-        req.body = jsonutils.dumps(data)
+        req.body = jsonutils.dump_as_bytes(data)
         self.assertRaises(webob.exc.HTTPRequestEntityTooLarge,
                           self.controller.create, req, 1, data)
 
@@ -250,7 +249,7 @@ class VolumeImageMetadataTest(test.TestCase):
         data = {"os-set_image_metadata": {
             "metadata": {"key": "v" * 260}}
         }
-        req.body = jsonutils.dumps(data)
+        req.body = jsonutils.dump_as_bytes(data)
         self.assertRaises(webob.exc.HTTPRequestEntityTooLarge,
                           self.controller.create, req, 1, data)
 
@@ -258,7 +257,7 @@ class VolumeImageMetadataTest(test.TestCase):
         data = {"os-set_image_metadata": {
             "metadata": {"": "value1"}}
         }
-        req.body = jsonutils.dumps(data)
+        req.body = jsonutils.dump_as_bytes(data)
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create, req, 1, data)
 
@@ -271,7 +270,7 @@ class VolumeImageMetadataTest(test.TestCase):
         }
         req = webob.Request.blank('/v2/fake/volumes/1/action')
         req.method = 'POST'
-        req.body = jsonutils.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
 
         res = req.get_response(fakes.wsgi_app())
@@ -283,7 +282,7 @@ class VolumeImageMetadataTest(test.TestCase):
         }
         req = fakes.HTTPRequest.blank('/v2/fake/volumes/1/action')
         req.method = 'POST'
-        req.body = jsonutils.dumps(data)
+        req.body = jsonutils.dump_as_bytes(data)
         req.headers["content-type"] = "application/json"
 
         self.assertRaises(webob.exc.HTTPNotFound,
@@ -298,7 +297,7 @@ class VolumeImageMetadataTest(test.TestCase):
         }
         req = fakes.HTTPRequest.blank('/v2/fake/volumes/1/action')
         req.method = 'POST'
-        req.body = jsonutils.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
 
         self.assertRaises(webob.exc.HTTPNotFound,
@@ -308,13 +307,13 @@ class VolumeImageMetadataTest(test.TestCase):
         body = {"os-show_image_metadata": None}
         req = webob.Request.blank('/v2/fake/volumes/1/action')
         req.method = 'POST'
-        req.body = jsonutils.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
 
         res = req.get_response(fakes.wsgi_app())
         self.assertEqual(200, res.status_int)
         self.assertEqual(fake_image_metadata,
-                         json.loads(res.body)["metadata"])
+                         jsonutils.loads(res.body)["metadata"])
 
 
 class ImageMetadataXMLDeserializer(common.MetadataXMLDeserializer):

@@ -17,11 +17,11 @@
 Tests for Backup code.
 """
 
-import json
 from xml.dom import minidom
 
 import ddt
 import mock
+from oslo_serialization import jsonutils
 from oslo_utils import timeutils
 import six
 import webob
@@ -115,7 +115,7 @@ class BackupsAPITestCase(test.TestCase):
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(200, res.status_int)
         self.assertEqual('az1', res_dict['backup']['availability_zone'])
@@ -163,7 +163,7 @@ class BackupsAPITestCase(test.TestCase):
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(404, res.status_int)
         self.assertEqual(404, res_dict['itemNotFound']['code'])
@@ -179,7 +179,7 @@ class BackupsAPITestCase(test.TestCase):
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(200, res.status_int)
         self.assertEqual(3, len(res_dict['backups'][0]))
@@ -234,7 +234,7 @@ class BackupsAPITestCase(test.TestCase):
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(200, res.status_int)
         self.assertEqual(2, len(res_dict['backups']))
@@ -258,7 +258,7 @@ class BackupsAPITestCase(test.TestCase):
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(200, res.status_int)
         self.assertEqual(2, len(res_dict['backups']))
@@ -283,7 +283,7 @@ class BackupsAPITestCase(test.TestCase):
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(200, res.status_int)
         self.assertEqual(1, len(res_dict['backups']))
@@ -305,7 +305,7 @@ class BackupsAPITestCase(test.TestCase):
         req.headers['Content-Type'] = 'application/json'
         req.headers['Accept'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(200, res.status_int)
         self.assertEqual(NUM_ELEMENTS_IN_BACKUP, len(res_dict['backups'][0]))
@@ -369,7 +369,7 @@ class BackupsAPITestCase(test.TestCase):
         req.headers['Content-Type'] = 'application/json'
         req.headers['Accept'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(1, len(res_dict['backups']))
         self.assertEqual(200, res.status_int)
@@ -380,7 +380,7 @@ class BackupsAPITestCase(test.TestCase):
         req.headers['Content-Type'] = 'application/json'
         req.headers['Accept'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(1, len(res_dict['backups']))
         self.assertEqual(200, res.status_int)
@@ -391,7 +391,7 @@ class BackupsAPITestCase(test.TestCase):
         req.headers['Content-Type'] = 'application/json'
         req.headers['Accept'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(1, len(res_dict['backups']))
         self.assertEqual(200, res.status_int)
@@ -495,7 +495,7 @@ class BackupsAPITestCase(test.TestCase):
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(200, res.status_int)
         self.assertEqual(2, len(res_dict['backups']))
@@ -518,7 +518,7 @@ class BackupsAPITestCase(test.TestCase):
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(200, res.status_int)
         self.assertEqual(2, len(res_dict['backups']))
@@ -541,7 +541,7 @@ class BackupsAPITestCase(test.TestCase):
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(200, res.status_int)
         self.assertEqual(1, len(res_dict['backups']))
@@ -573,10 +573,10 @@ class BackupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/backups')
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
 
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(202, res.status_int)
         self.assertIn('id', res_dict['backup'])
@@ -605,10 +605,10 @@ class BackupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/backups')
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
 
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
@@ -637,10 +637,10 @@ class BackupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/backups')
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
 
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(202, res.status_int)
         self.assertIn('id', res_dict['backup'])
@@ -671,10 +671,10 @@ class BackupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/backups')
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
 
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
         self.assertEqual(202, res.status_int)
         self.assertIn('id', res_dict['backup'])
         self.assertTrue(_mock_service_get_all_by_topic.called)
@@ -744,9 +744,9 @@ class BackupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/backups')
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(202, res.status_int)
         self.assertIn('id', res_dict['backup'])
@@ -779,9 +779,9 @@ class BackupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/backups')
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res_dict['badRequest']['code'])
         self.assertEqual('Invalid backup: The parent backup must be '
@@ -794,12 +794,12 @@ class BackupsAPITestCase(test.TestCase):
     def test_create_backup_with_no_body(self):
         # omit body from the request
         req = webob.Request.blank('/v2/fake/backups')
-        req.body = json.dumps(None)
+        req.body = jsonutils.dump_as_bytes(None)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.headers['Accept'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
@@ -817,9 +817,9 @@ class BackupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/backups')
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
@@ -837,9 +837,9 @@ class BackupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/backups')
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(404, res.status_int)
         self.assertEqual(404, res_dict['itemNotFound']['code'])
@@ -860,9 +860,9 @@ class BackupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/backups')
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
@@ -886,10 +886,10 @@ class BackupsAPITestCase(test.TestCase):
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.headers['Accept'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
 
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
         self.assertEqual(500, res.status_int)
         self.assertEqual(500, res_dict['computeFault']['code'])
         self.assertEqual('Service cinder-backup could not be found.',
@@ -919,9 +919,9 @@ class BackupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/backups')
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res_dict['badRequest']['code'])
         self.assertEqual('Invalid backup: No backups available to do '
@@ -1067,7 +1067,7 @@ class BackupsAPITestCase(test.TestCase):
         req.method = 'DELETE'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(404, res.status_int)
         self.assertEqual(404, res_dict['itemNotFound']['code'])
@@ -1081,7 +1081,7 @@ class BackupsAPITestCase(test.TestCase):
         req.method = 'DELETE'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
@@ -1109,7 +1109,7 @@ class BackupsAPITestCase(test.TestCase):
         req.method = 'DELETE'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
         self.assertEqual('Invalid backup: Incremental backups '
@@ -1149,9 +1149,9 @@ class BackupsAPITestCase(test.TestCase):
                                   backup_id)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(202, res.status_int)
         self.assertEqual(backup_id, res_dict['restore']['backup_id'])
@@ -1188,12 +1188,12 @@ class BackupsAPITestCase(test.TestCase):
 
         req = webob.Request.blank('/v2/fake/backups/%s/restore' %
                                   backup_id)
-        req.body = json.dumps(None)
+        req.body = jsonutils.dump_as_bytes(None)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.headers['Accept'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
@@ -1211,10 +1211,10 @@ class BackupsAPITestCase(test.TestCase):
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.headers['Accept'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
 
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
@@ -1241,9 +1241,9 @@ class BackupsAPITestCase(test.TestCase):
                                   backup_id)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(202, res.status_int)
         self.assertEqual(backup_id, res_dict['restore']['backup_id'])
@@ -1269,9 +1269,9 @@ class BackupsAPITestCase(test.TestCase):
                                   backup_id)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         description = 'auto-created_from_restore_from_backup'
         # Assert that we have indeed passed on the name parameter
@@ -1296,9 +1296,9 @@ class BackupsAPITestCase(test.TestCase):
                                   backup_id)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(202, res.status_int)
         self.assertEqual(backup_id, res_dict['restore']['backup_id'])
@@ -1325,9 +1325,9 @@ class BackupsAPITestCase(test.TestCase):
 
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
@@ -1345,9 +1345,9 @@ class BackupsAPITestCase(test.TestCase):
                                   backup_id)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
@@ -1368,9 +1368,9 @@ class BackupsAPITestCase(test.TestCase):
                                   backup_id)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
@@ -1388,9 +1388,9 @@ class BackupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/backups/9999/restore')
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(404, res.status_int)
         self.assertEqual(404, res_dict['itemNotFound']['code'])
@@ -1407,9 +1407,9 @@ class BackupsAPITestCase(test.TestCase):
                                   backup_id)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(404, res.status_int)
         self.assertEqual(404, res_dict['itemNotFound']['code'])
@@ -1438,9 +1438,9 @@ class BackupsAPITestCase(test.TestCase):
 
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(413, res.status_int)
         self.assertEqual(413, res_dict['overLimit']['code'])
@@ -1466,9 +1466,9 @@ class BackupsAPITestCase(test.TestCase):
 
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(413, res.status_int)
         self.assertEqual(413, res_dict['overLimit']['code'])
@@ -1488,9 +1488,9 @@ class BackupsAPITestCase(test.TestCase):
                                   backup_id)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
@@ -1516,9 +1516,9 @@ class BackupsAPITestCase(test.TestCase):
                                   backup_id)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(202, res.status_int)
         self.assertEqual(backup_id, res_dict['restore']['backup_id'])
@@ -1542,9 +1542,9 @@ class BackupsAPITestCase(test.TestCase):
                                   backup_id)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(202, res.status_int)
         self.assertEqual(backup_id, res_dict['restore']['backup_id'])
@@ -1587,7 +1587,7 @@ class BackupsAPITestCase(test.TestCase):
         req.headers['content-type'] = 'application/json'
 
         res = req.get_response(fakes.wsgi_app(fake_auth_context=ctx))
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
         # verify that request is successful
         self.assertEqual(200, res.status_int)
         self.assertEqual(backup_service,
@@ -1633,7 +1633,7 @@ class BackupsAPITestCase(test.TestCase):
         req.headers['content-type'] = 'application/json'
 
         res = req.get_response(fakes.wsgi_app(fake_auth_context=ctx))
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
         self.assertEqual(404, res.status_int)
         self.assertEqual(404, res_dict['itemNotFound']['code'])
         self.assertEqual('Backup %s could not be found.' % backup_id,
@@ -1649,7 +1649,7 @@ class BackupsAPITestCase(test.TestCase):
         req.headers['content-type'] = 'application/json'
 
         res = req.get_response(fakes.wsgi_app(fake_auth_context=ctx))
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
         self.assertEqual('Invalid backup: Backup status must be available '
@@ -1671,7 +1671,7 @@ class BackupsAPITestCase(test.TestCase):
         req.headers['content-type'] = 'application/json'
 
         res = req.get_response(fakes.wsgi_app(fake_auth_context=ctx))
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
@@ -1685,7 +1685,7 @@ class BackupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/backups/import_record')
         body = {'backup-record': {'backup_service': backup_service,
                                   'backup_url': backup_url}}
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
 
@@ -1712,12 +1712,12 @@ class BackupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/backups/import_record')
         body = {'backup-record': {'backup_service': backup_service,
                                   'backup_url': backup_url}}
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
 
         res = req.get_response(fakes.wsgi_app(fake_auth_context=ctx))
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         # verify that request is successful
         self.assertEqual(201, res.status_int)
@@ -1755,12 +1755,12 @@ class BackupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/backups/import_record')
         body = {'backup-record': {'backup_service': backup_service,
                                   'backup_url': backup_url}}
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
 
         res = req.get_response(fakes.wsgi_app(fake_auth_context=ctx))
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         # verify that request is successful
         self.assertEqual(201, res.status_int)
@@ -1831,12 +1831,12 @@ class BackupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/backups/import_record')
         body = {'backup-record': {'backup_service': backup_service,
                                   'backup_url': backup_url}}
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
 
         res = req.get_response(fakes.wsgi_app(fake_auth_context=ctx))
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
         self.assertEqual(500, res.status_int)
         self.assertEqual(500, res_dict['computeFault']['code'])
         self.assertEqual('Service %s could not be found.'
@@ -1852,12 +1852,12 @@ class BackupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/backups/import_record')
         body = {'backup-record': {'backup_service': backup_service,
                                   'backup_url': backup_url}}
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
 
         res = req.get_response(fakes.wsgi_app(fake_auth_context=ctx))
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
         self.assertEqual("Invalid input received: Can't parse backup record.",
@@ -1875,12 +1875,12 @@ class BackupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/backups/import_record')
         body = {'backup-record': {'backup_service': backup_service,
                                   'backup_url': backup_url}}
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
 
         res = req.get_response(fakes.wsgi_app(fake_auth_context=ctx))
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
         self.assertEqual('Invalid backup: Backup already exists in database.',
@@ -1905,12 +1905,12 @@ class BackupsAPITestCase(test.TestCase):
         req = webob.Request.blank('/v2/fake/backups/import_record')
         body = {'backup-record': {'backup_service': backup_service,
                                   'backup_url': backup_url}}
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
 
         res = req.get_response(fakes.wsgi_app(fake_auth_context=ctx))
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
         self.assertEqual(500, res.status_int)
         self.assertEqual(500, res_dict['computeFault']['code'])
         self.assertEqual('Service %s could not be found.' % backup_service,
@@ -1926,11 +1926,11 @@ class BackupsAPITestCase(test.TestCase):
         # test with no backup_service
         req = webob.Request.blank('/v2/fake/backups/import_record')
         body = {'backup-record': {'backup_url': backup_url}}
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app(fake_auth_context=ctx))
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
         self.assertEqual('Incorrect request body format.',
@@ -1939,12 +1939,12 @@ class BackupsAPITestCase(test.TestCase):
         # test with no backup_url
         req = webob.Request.blank('/v2/fake/backups/import_record')
         body = {'backup-record': {'backup_service': backup_service}}
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
 
         res = req.get_response(fakes.wsgi_app(fake_auth_context=ctx))
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
         self.assertEqual('Incorrect request body format.',
@@ -1953,12 +1953,12 @@ class BackupsAPITestCase(test.TestCase):
         # test with no backup_url and backup_url
         req = webob.Request.blank('/v2/fake/backups/import_record')
         body = {'backup-record': {}}
-        req.body = json.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
 
         res = req.get_response(fakes.wsgi_app(fake_auth_context=ctx))
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
         self.assertEqual('Incorrect request body format.',
@@ -1968,12 +1968,12 @@ class BackupsAPITestCase(test.TestCase):
         ctx = context.RequestContext('admin', 'fake', is_admin=True)
 
         req = webob.Request.blank('/v2/fake/backups/import_record')
-        req.body = json.dumps(None)
+        req.body = jsonutils.dump_as_bytes(None)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
 
         res = req.get_response(fakes.wsgi_app(fake_auth_context=ctx))
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
         # verify that request is successful
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
@@ -2016,7 +2016,7 @@ class BackupsAPITestCase(test.TestCase):
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(200, res.status_int)
         self.assertTrue(res_dict['backup']['is_incremental'])
@@ -2028,7 +2028,7 @@ class BackupsAPITestCase(test.TestCase):
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(200, res.status_int)
         self.assertFalse(res_dict['backup']['is_incremental'])
@@ -2040,7 +2040,7 @@ class BackupsAPITestCase(test.TestCase):
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app())
-        res_dict = json.loads(res.body)
+        res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(200, res.status_int)
         self.assertTrue(res_dict['backup']['is_incremental'])
