@@ -199,6 +199,13 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                             'replication_driver_data': replication_driver_data}
         return model_update
 
+    @staticmethod
+    def _cleanup_failed_create_volume(api, volumename):
+        try:
+            api.delete_volume(volumename)
+        except exception.VolumeBackendAPIException as ex:
+            LOG.info(_LI('Non fatal cleanup error: %s.'), ex.msg)
+
     def create_volume(self, volume):
         """Create a volume."""
         model_update = {}
@@ -224,6 +231,10 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                                                  volume_size,
                                                  storage_profile,
                                                  replay_profile_string)
+                    if scvolume is None:
+                        raise exception.VolumeBackendAPIException(
+                            message=_('Unable to create volume %s') %
+                            volume_name)
 
                 # Update Consistency Group
                 self._add_volume_to_consistency_group(api, scvolume, volume)
@@ -234,14 +245,13 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
             except Exception:
                 # if we actually created a volume but failed elsewhere
                 # clean up the volume now.
-                if scvolume:
-                    api.delete_volume(volume_name)
+                self._cleanup_failed_create_volume(api, volume_name)
                 with excutils.save_and_reraise_exception():
                     LOG.error(_LE('Failed to create volume %s'),
                               volume_name)
         if scvolume is None:
             raise exception.VolumeBackendAPIException(
-                data=_('Unable to create volume'))
+                data=_('Unable to create volume. Backend down.'))
 
         return model_update
 
@@ -366,6 +376,12 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                                 'storagetype:replayprofiles')
                             scvolume = api.create_view_volume(
                                 volume_name, replay, replay_profile_string)
+                            if scvolume is None:
+                                raise exception.VolumeBackendAPIException(
+                                    message=_('Unable to create volume '
+                                              '%(name)s from %(snap)s.') %
+                                    {'name': volume_name,
+                                     'snap': snapshot_id})
 
                             # Update Consistency Group
                             self._add_volume_to_consistency_group(api,
@@ -378,8 +394,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
 
             except Exception:
                 # Clean up after ourselves.
-                if scvolume:
-                    api.delete_volume(volume_name)
+                self._cleanup_failed_create_volume(api, volume_name)
                 with excutils.save_and_reraise_exception():
                     LOG.error(_LE('Failed to create volume %s'),
                               volume_name)
@@ -414,6 +429,12 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                         # Create our volume
                         scvolume = api.create_cloned_volume(
                             volume_name, srcvol, replay_profile_string)
+                        if scvolume is None:
+                            raise exception.VolumeBackendAPIException(
+                                message=_('Unable to create volume '
+                                          '%(name)s from %(vol)s.') %
+                                {'name': volume_name,
+                                 'vol': src_volume_name})
 
                         # Update Consistency Group
                         self._add_volume_to_consistency_group(api,
@@ -425,8 +446,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                                                                  scvolume)
             except Exception:
                 # Clean up after ourselves.
-                if scvolume:
-                    api.delete_volume(volume_name)
+                self._cleanup_failed_create_volume(api, volume_name)
                 with excutils.save_and_reraise_exception():
                     LOG.error(_LE('Failed to create volume %s'),
                               volume_name)
