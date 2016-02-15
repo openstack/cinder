@@ -5533,7 +5533,8 @@ class DellSCSanAPITestCase(test.TestCase):
         newname = 'guid'
         existing = {'source-name': 'scvolname'}
         self.scapi.manage_existing(newname, existing)
-        mock_get_volume_list.asert_called_once_with(existing, False)
+        mock_get_volume_list.assert_called_once_with(
+            existing.get('source-name'), None, False)
         self.assertTrue(mock_find_mappings.called)
         self.assertTrue(mock_size_to_gb.called)
 
@@ -5553,7 +5554,7 @@ class DellSCSanAPITestCase(test.TestCase):
                           self.scapi.manage_existing,
                           newname,
                           existing)
-        mock_get_volume_list.asert_called_once_with(
+        mock_get_volume_list.assert_called_once_with(
             existing.get('source-name'),
             existing.get('source-id'),
             False)
