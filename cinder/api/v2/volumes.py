@@ -11,11 +11,14 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+from metrics.ThreadLocalMetrics import ThreadLocalMetrics
+from metrics.Metrics import Metrics
 
 """The volumes api."""
 
 
 import ast
+from time import time
 
 from oslo_log import log as logging
 from oslo_utils import uuidutils
@@ -34,7 +37,11 @@ from cinder import utils
 from cinder import volume as cinder_volume
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
+<<<<<<< 59e528fc36b2ed3804ec1bc5fba7c136867153fb
 from cinder.api.v2 import cache_volumes as volume_cache
+=======
+from metrics.Metrics import Metrics, Unit
+>>>>>>> Working method
 
 
 LOG = logging.getLogger(__name__)
@@ -237,13 +244,17 @@ class VolumeController(wsgi.Controller):
                 filters[k] = ast.literal_eval(v)
             except (ValueError, SyntaxError):
                 LOG.debug('Could not evaluate value %s, assuming string', v)
-
+        
+        start_time = time()
         volumes = self.volume_api.get_all(context, marker, limit,
                                           sort_keys=sort_keys,
                                           sort_dirs=sort_dirs,
                                           filters=filters,
                                           viewable_admin_meta=True)
-
+        end_time = time()
+        time_in_millis = int((end_time - start_time)*1000)
+        metrics = ThreadLocalMetrics.get()
+        metrics.add_time("mysql-get-all-volumes", time_in_millis, Unit.MILLIS)
         volumes = [dict(vol.iteritems()) for vol in volumes]
 
         for volume in volumes:
