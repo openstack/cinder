@@ -520,7 +520,7 @@ class SBSBackupDriver(driver.BackupDriver):
                        'version':self.DRIVER_VERSION,
                       }
             backup = self.db.backup_create(self.context, options)
-            self._upload_to_DSS(base_name, volume_name, ceph_args)
+            #self._upload_to_DSS(base_name, volume_name, ceph_args)
             from_snap = base_name
         else:
             #check if base and from snap are of same version of backup
@@ -588,9 +588,12 @@ class SBSBackupDriver(driver.BackupDriver):
         from_snap = self._get_most_recent_snap(source_rbd_image, volume_id)
         base = self._get_backup_base_from_src(source_rbd_image, volume_id)
         ceph_args = self._ceph_args(rbd_user, rbd_conf, pool=rbd_pool)
-
+        upload_base = False
         if base != None:
             base_name = self._get_backup_base_name(base['id'])
+        else:
+            upload_base = True
+
         #check base snap and from_snap and create base if missing
         base_id, from_snap = self._check_create_base(volume_id, volume_file,
                                                        volume_name, base,
@@ -602,11 +605,17 @@ class SBSBackupDriver(driver.BackupDriver):
         time_stamp, new_snap = self._get_new_snap_name(backup_id)
         LOG.debug("Creating backup %s", new_snap)
         source_rbd_image.create_snap(new_snap)
+        tmp, orig_status = (volume['status']).split("backing-up-")
+        LOG.info("Created source snaphot %s, resetting volume status to %s" %
+                 (new_snap, orig_status))
+        self.db.volume_update(self.context, volume_id, {'status':orig_status})
         LOG.debug("Using --from-snap '%(snap)s' for incremental backup of "
                   "volume '%(volume)s', with base image '%(base)s'.",
                     {'snap': from_snap, 'volume': volume_id,
                      'base': base_name})
 
+        if upload_base == True:
+                self._upload_to_DSS(base_name, volume_name, ceph_args)
         # export diff now
         self._upload_to_DSS(new_snap, volume_name, ceph_args, from_snap)
 
