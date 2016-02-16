@@ -29,6 +29,7 @@ import webob.exc
 from cinder.api.contrib import quotas
 from cinder import context
 from cinder import db
+from cinder import exception
 from cinder import quota
 from cinder import test
 from cinder.tests.unit import test_db_api
@@ -43,7 +44,7 @@ CONF = cfg.CONF
 
 def make_body(root=True, gigabytes=1000, snapshots=10,
               volumes=10, backups=10, backup_gigabytes=1000,
-              tenant_id='foo', per_volume_gigabytes=-1, is_child=False):
+              tenant_id='foo', per_volume_gigabytes=-1):
     resources = {'gigabytes': gigabytes,
                  'snapshots': snapshots,
                  'volumes': volumes,
@@ -53,17 +54,10 @@ def make_body(root=True, gigabytes=1000, snapshots=10,
     # need to consider preexisting volume types as well
     volume_types = db.volume_type_get_all(context.get_admin_context())
 
-    if not is_child:
-        for volume_type in volume_types:
-            resources['gigabytes_' + volume_type] = -1
-            resources['snapshots_' + volume_type] = -1
-            resources['volumes_' + volume_type] = -1
-    elif per_volume_gigabytes < 0:
-        # In the case that we're dealing with a child project, we aren't
-        # allowing -1 limits for the time being, so hack this to some large
-        # enough value for the tests that it's essentially unlimited
-        # TODO(mc_nair): remove when -1 limits for child projects are allowed
-        resources['per_volume_gigabytes'] = 10000
+    for volume_type in volume_types:
+        resources['gigabytes_' + volume_type] = -1
+        resources['snapshots_' + volume_type] = -1
+        resources['volumes_' + volume_type] = -1
 
     if tenant_id:
         resources['id'] = tenant_id
@@ -91,6 +85,7 @@ class QuotaSetsControllerTestBase(test.TestCase):
             self.id = id
             self.parent_id = parent_id
             self.subtree = None
+            self.parents = None
 
     def setUp(self):
         super(QuotaSetsControllerTestBase, self).setUp()
@@ -103,6 +98,7 @@ class QuotaSetsControllerTestBase(test.TestCase):
         self.req.params = {}
 
         self._create_project_hierarchy()
+        self.req.environ['cinder.context'].project_id = self.A.id
 
         get_patcher = mock.patch('cinder.quota_utils.get_project_hierarchy',
                                  self._get_project)
@@ -143,21 +139,31 @@ class QuotaSetsControllerTestBase(test.TestCase):
         self.B.subtree = {self.D.id: self.D.subtree}
         self.A.subtree = {self.B.id: self.B.subtree, self.C.id: self.C.subtree}
 
+        self.A.parents = None
+        self.B.parents = {self.A.id: None}
+        self.C.parents = {self.A.id: None}
+        self.D.parents = {self.B.id: self.B.parents}
+
         # project_by_id attribute is used to recover a project based on its id.
         self.project_by_id = {self.A.id: self.A, self.B.id: self.B,
                               self.C.id: self.C, self.D.id: self.D}
 
-    def _get_project(self, context, id, subtree_as_ids=False):
+    def _get_project(self, context, id, subtree_as_ids=False,
+                     parents_as_ids=False):
         return self.project_by_id.get(id, self.FakeProject())
+
+    def _create_fake_quota_usages(self, usage_map):
+        self._fake_quota_usages = {}
+        for key, val in usage_map.items():
+            self._fake_quota_usages[key] = {'in_use': val}
+
+    def _fake_quota_usage_get_all_by_project(self, context, project_id):
+        return {'volumes': self._fake_quota_usages[project_id]}
 
 
 class QuotaSetsControllerTest(QuotaSetsControllerTestBase):
     def setUp(self):
         super(QuotaSetsControllerTest, self).setUp()
-        fixture = self.useFixture(config_fixture.Config(quota.CONF))
-        fixture.config(quota_driver="cinder.quota.DbQuotaDriver")
-        quotas.QUOTAS = quota.VolumeTypeQuotaEngine()
-        self.controller = quotas.QuotaSetsController()
 
     def test_defaults(self):
         result = self.controller.defaults(self.req, 'foo')
@@ -297,7 +303,8 @@ class QuotaSetsControllerTest(QuotaSetsControllerTestBase):
                 'skip_validation': 'false'}
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
                           self.req, 'foo', body)
-        body = {'quota_set': {'gigabytes': 1},
+        # Ensure that validation works even if some resources are valid
+        body = {'quota_set': {'gigabytes': 1, 'volumes': 10},
                 'skip_validation': 'false'}
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
                           self.req, 'foo', body)
@@ -451,20 +458,11 @@ class QuotaSetControllerValidateNestedQuotaSetup(QuotaSetsControllerTestBase):
         self.req.params['fix_allocated_quotas'] = True
         self.controller.validate_setup_for_nested_quota_use(self.req)
 
-    def _fake_quota_usage_get_all_by_project(self, context, project_id):
-        proj_vals = {
-            self.A.id: {'in_use': 1},
-            self.B.id: {'in_use': 1},
-            self.D.id: {'in_use': 0},
-            self.C.id: {'in_use': 3},
-            self.E.id: {'in_use': 0},
-            self.F.id: {'in_use': 0},
-            self.G.id: {'in_use': 0},
-        }
-        return {'volumes': proj_vals[project_id]}
-
     @mock.patch('cinder.db.quota_usage_get_all_by_project')
     def test_validate_nested_quotas_in_use_vols(self, mock_usage):
+        self._create_fake_quota_usages(
+            {self.A.id: 1, self.B.id: 1, self.D.id: 0, self.C.id: 3,
+             self.E.id: 0, self.F.id: 0, self.G.id: 0})
         mock_usage.side_effect = self._fake_quota_usage_get_all_by_project
 
         # Update the project A quota.
@@ -493,6 +491,9 @@ class QuotaSetControllerValidateNestedQuotaSetup(QuotaSetsControllerTestBase):
 
     @mock.patch('cinder.db.quota_usage_get_all_by_project')
     def test_validate_nested_quotas_quota_borked(self, mock_usage):
+        self._create_fake_quota_usages(
+            {self.A.id: 1, self.B.id: 1, self.D.id: 0, self.C.id: 3,
+             self.E.id: 0, self.F.id: 0, self.G.id: 0})
         mock_usage.side_effect = self._fake_quota_usage_get_all_by_project
 
         # Update the project A quota.
@@ -508,38 +509,74 @@ class QuotaSetControllerValidateNestedQuotaSetup(QuotaSetsControllerTestBase):
             self.controller.validate_setup_for_nested_quota_use,
             self.req)
 
-    def test_validate_nested_quota_negative_limits(self):
-        # When we're validating, update the allocated values since we've
-        # been updating child limits
-        self.req.params['fix_allocated_quotas'] = True
-        self.controller.validate_setup_for_nested_quota_use(self.req)
-        # Update the project A quota.
+    @mock.patch('cinder.db.quota_usage_get_all_by_project')
+    def test_validate_nested_quota_negative_limits(self, mock_usage):
+        # TODO(mc_nair): this test case can be moved to Tempest once nested
+        # quota coverage added
+        self._create_fake_quota_usages(
+            {self.A.id: 1, self.B.id: 3, self.C.id: 0, self.D.id: 2,
+             self.E.id: 2, self.F.id: 0, self.G.id: 0})
+        mock_usage.side_effect = self._fake_quota_usage_get_all_by_project
+
+        # Setting E-F as children of D for this test case to flex the muscles
+        # of more complex nesting
+        self.D.subtree = {self.E.id: self.E.subtree}
+        self.E.parent_id = self.D.id
+        # Get B's subtree up to date with this change
+        self.B.subtree[self.D.id] = self.D.subtree
+
+        # Quota heirarchy now is
+        #   / B - D - E - F
+        # A
+        #   \ C
+        #
+        # G
+
         self.req.environ['cinder.context'].project_id = self.A.id
-        quota_limit = {'volumes': -1}
+        quota_limit = {'volumes': 10}
         body = {'quota_set': quota_limit}
         self.controller.update(self.req, self.A.id, body)
 
-        quota_limit['volumes'] = 4
-        self.controller.update(self.req, self.B.id, body)
-
-        self.controller.validate_setup_for_nested_quota_use(self.req)
+        quota_limit['volumes'] = 1
+        self.controller.update(self.req, self.C.id, body)
 
         quota_limit['volumes'] = -1
+        self.controller.update(self.req, self.B.id, body)
+        self.controller.update(self.req, self.D.id, body)
         self.controller.update(self.req, self.F.id, body)
-        # Should not work because can't have a child with negative limits
-        self.assertRaises(
-            webob.exc.HTTPBadRequest,
-            self.controller.validate_setup_for_nested_quota_use,
-            self.req)
+        quota_limit['volumes'] = 5
+        self.controller.update(self.req, self.E.id, body)
+
+        # Should fail because too much is allocated to children for A
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.validate_setup_for_nested_quota_use,
+                          self.req)
+
+        # When root has -1 limit, children can allocate as much as they want
+        quota_limit['volumes'] = -1
+        self.controller.update(self.req, self.A.id, body)
+        self.req.params['fix_allocated_quotas'] = True
+        self.controller.validate_setup_for_nested_quota_use(self.req)
+
+        # Not unlimited, but make children's allocated within bounds
+        quota_limit['volumes'] = 10
+        self.controller.update(self.req, self.A.id, body)
+        quota_limit['volumes'] = 3
+        self.controller.update(self.req, self.E.id, body)
+        self.req.params['fix_allocated_quotas'] = True
+        self.controller.validate_setup_for_nested_quota_use(self.req)
+        self.req.params['fix_allocated_quotas'] = False
+        self.controller.validate_setup_for_nested_quota_use(self.req)
 
 
 class QuotaSetsControllerNestedQuotasTest(QuotaSetsControllerTestBase):
     def setUp(self):
         super(QuotaSetsControllerNestedQuotasTest, self).setUp()
-        fixture = self.useFixture(config_fixture.Config(quota.CONF))
-        fixture.config(quota_driver="cinder.quota.NestedDbQuotaDriver")
-        quotas.QUOTAS = quota.VolumeTypeQuotaEngine()
-        self.controller = quotas.QuotaSetsController()
+        driver = quota.NestedDbQuotaDriver()
+        patcher = mock.patch('cinder.quota.VolumeTypeQuotaEngine._driver',
+                             driver)
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
     def test_subproject_defaults(self):
         context = self.req.environ['cinder.context']
@@ -584,7 +621,6 @@ class QuotaSetsControllerNestedQuotasTest(QuotaSetsControllerTestBase):
                           self.req, self.A.id)
 
     def test_update_subproject_not_in_hierarchy(self):
-
         # Create another project hierarchy
         E = self.FakeProject(id=uuid.uuid4().hex, parent_id=None)
         F = self.FakeProject(id=uuid.uuid4().hex, parent_id=E.id)
@@ -616,36 +652,28 @@ class QuotaSetsControllerNestedQuotasTest(QuotaSetsControllerTestBase):
         # Update the quota of B to be equal to its parent quota
         self.req.environ['cinder.context'].project_id = self.A.id
         body = make_body(gigabytes=2000, snapshots=15,
-                         volumes=5, backups=5, tenant_id=None, is_child=True)
+                         volumes=5, backups=5, tenant_id=None)
         result = self.controller.update(self.req, self.B.id, body)
         self.assertDictMatch(body, result)
         # Try to update the quota of C, it will not be allowed, since the
         # project A doesn't have free quota available.
         self.req.environ['cinder.context'].project_id = self.A.id
         body = make_body(gigabytes=2000, snapshots=15,
-                         volumes=5, backups=5, tenant_id=None, is_child=True)
+                         volumes=5, backups=5, tenant_id=None)
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
                           self.req, self.C.id, body)
         # Successfully update the quota of D.
         self.req.environ['cinder.context'].project_id = self.A.id
         body = make_body(gigabytes=1000, snapshots=7,
-                         volumes=3, backups=3, tenant_id=None, is_child=True)
+                         volumes=3, backups=3, tenant_id=None)
         result = self.controller.update(self.req, self.D.id, body)
         self.assertDictMatch(body, result)
         # An admin of B can also update the quota of D, since D is its
         # immediate child.
         self.req.environ['cinder.context'].project_id = self.B.id
         body = make_body(gigabytes=1500, snapshots=10,
-                         volumes=4, backups=4, tenant_id=None, is_child=True)
+                         volumes=4, backups=4, tenant_id=None)
         self.controller.update(self.req, self.D.id, body)
-
-    def test_update_subproject_negative_limit(self):
-        # Should not be able to set a negative limit for a child project (will
-        # require further fixes to allow for this)
-        self.req.environ['cinder.context'].project_id = self.A.id
-        body = make_body(volumes=-1, is_child=True)
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.update, self.req, self.B.id, body)
 
     def test_update_subproject_repetitive(self):
         # Update the project A volumes quota.
@@ -660,8 +688,7 @@ class QuotaSetsControllerNestedQuotasTest(QuotaSetsControllerTestBase):
         for i in range(0, 3):
             self.req.environ['cinder.context'].project_id = self.A.id
             body = make_body(gigabytes=2000, snapshots=15,
-                             volumes=10, backups=5, tenant_id=None,
-                             is_child=True)
+                             volumes=10, backups=5, tenant_id=None)
             result = self.controller.update(self.req, self.B.id, body)
             self.assertDictMatch(body, result)
 
@@ -686,17 +713,50 @@ class QuotaSetsControllerNestedQuotasTest(QuotaSetsControllerTestBase):
         self.req.environ['cinder.context'].project_id = self.A.id
         # Update the project B quota.
         expected = make_body(gigabytes=1000, snapshots=10,
-                             volumes=5, backups=5, tenant_id=None,
-                             is_child=True)
+                             volumes=5, backups=5, tenant_id=None)
         result = self.controller.update(self.req, self.B.id, expected)
         self.assertDictMatch(expected, result)
+
+    def _assert_quota_show(self, proj_id, resource, in_use=0, reserved=0,
+                           allocated=0, limit=0):
+        self.req.params = {'usage': 'True'}
+        show_res = self.controller.show(self.req, proj_id)
+        expected = {'in_use': in_use, 'reserved': reserved,
+                    'allocated': allocated, 'limit': limit}
+        self.assertEqual(expected, show_res['quota_set'][resource])
+
+    def test_project_allocated_considered_on_reserve(self):
+        def _reserve(project_id):
+            quotas.QUOTAS._driver.reserve(
+                self.req.environ['cinder.context'], quotas.QUOTAS.resources,
+                {'volumes': 1}, project_id=project_id)
+
+        # A's quota will default to 10 for volumes
+        quota = {'volumes': 5}
+        body = {'quota_set': quota}
+        self.controller.update(self.req, self.B.id, body)
+        self._assert_quota_show(self.A.id, 'volumes', allocated=5, limit=10)
+        quota['volumes'] = 3
+        self.controller.update(self.req, self.C.id, body)
+        self._assert_quota_show(self.A.id, 'volumes', allocated=8, limit=10)
+        _reserve(self.A.id)
+        _reserve(self.A.id)
+        self.assertRaises(exception.OverQuota, _reserve, self.A.id)
+
+    def test_update_parent_project_lower_than_child(self):
+        # A's quota will be default of 10
+        quota = {'volumes': 10}
+        body = {'quota_set': quota}
+        self.controller.update(self.req, self.B.id, body)
+        quota['volumes'] = 9
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.update, self.req, self.A.id, body)
 
     def test_subproject_delete(self):
         self.req.environ['cinder.context'].project_id = self.A.id
 
-        body = make_body(gigabytes=2000, snapshots=15,
-                         volumes=5, backups=5,
-                         backup_gigabytes=1000, tenant_id=None, is_child=True)
+        body = make_body(gigabytes=2000, snapshots=15, volumes=5, backups=5,
+                         backup_gigabytes=1000, tenant_id=None)
         result_update = self.controller.update(self.req, self.A.id, body)
         self.assertDictMatch(body, result_update)
 
@@ -745,13 +805,224 @@ class QuotaSetsControllerNestedQuotasTest(QuotaSetsControllerTestBase):
         self.controller.update(self.req, self.A.id, body)
 
         # Allocate some of that quota to a child project
-        body = make_body(volumes=3, is_child=True)
+        body = make_body(volumes=3)
         self.controller.update(self.req, self.B.id, body)
 
         # Deleting 'A' should be disallowed since 'B' is using some of that
         # quota
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.delete,
                           self.req, self.A.id)
+
+    def test_subproject_delete_with_child_updates_parent_allocated(self):
+        def _assert_delete_updates_allocated():
+            res = 'volumes'
+            self._assert_quota_show(self.A.id, res, allocated=2, limit=5)
+            self._assert_quota_show(self.B.id, res, allocated=2, limit=-1)
+            self.controller.delete(self.req, self.D.id)
+            self._assert_quota_show(self.A.id, res, allocated=0, limit=5)
+            self._assert_quota_show(self.B.id, res, allocated=0, limit=-1)
+
+        quota = {'volumes': 5}
+        body = {'quota_set': quota}
+        self.controller.update(self.req, self.A.id, body)
+
+        # Allocate some of that quota to a child project using hard limit
+        quota['volumes'] = -1
+        self.controller.update(self.req, self.B.id, body)
+        quota['volumes'] = 2
+        self.controller.update(self.req, self.D.id, body)
+
+        _assert_delete_updates_allocated()
+
+        # Allocate some of that quota to a child project by using volumes
+        quota['volumes'] = -1
+        self.controller.update(self.req, self.D.id, body)
+        for x in range(2):
+            quotas.QUOTAS._driver.reserve(
+                self.req.environ['cinder.context'], quotas.QUOTAS.resources,
+                {'volumes': 1}, project_id=self.D.id)
+
+        _assert_delete_updates_allocated()
+
+    def test_negative_child_limit_not_affecting_parents_free_quota(self):
+        quota = {'volumes': -1}
+        body = {'quota_set': quota}
+        self.controller.update(self.req, self.C.id, body)
+        self.controller.update(self.req, self.B.id, body)
+
+        # Shouldn't be able to set greater than parent
+        quota['volumes'] = 11
+        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
+                          self.req, self.B.id, body)
+
+    def test_child_neg_limit_set_grandkid_zero_limit(self):
+        cur_quota_a = self.controller.show(self.req, self.A.id)
+        self.assertEqual(10, cur_quota_a['quota_set']['volumes'])
+
+        quota = {'volumes': -1}
+        body = {'quota_set': quota}
+        self.controller.update(self.req, self.B.id, body)
+
+        cur_quota_d = self.controller.show(self.req, self.D.id)
+        # Default child value is 0
+        self.assertEqual(0, cur_quota_d['quota_set']['volumes'])
+        # Should be able to set D explicitly to 0 since that's already the val
+        quota['volumes'] = 0
+        self.controller.update(self.req, self.D.id, body)
+
+    def test_grandkid_negative_one_limit_enforced(self):
+        quota = {'volumes': 2, 'gigabytes': 2}
+        body = {'quota_set': quota}
+        self.controller.update(self.req, self.A.id, body)
+
+        quota['volumes'] = -1
+        quota['gigabytes'] = -1
+        self.controller.update(self.req, self.B.id, body)
+        self.controller.update(self.req, self.C.id, body)
+        self.controller.update(self.req, self.D.id, body)
+
+        def _reserve(project_id):
+            quotas.QUOTAS._driver.reserve(
+                self.req.environ['cinder.context'], quotas.QUOTAS.resources,
+                {'volumes': 1, 'gigabytes': 1}, project_id=project_id)
+
+        _reserve(self.C.id)
+        _reserve(self.D.id)
+        self.assertRaises(exception.OverQuota, _reserve, self.B.id)
+        self.assertRaises(exception.OverQuota, _reserve, self.C.id)
+        self.assertRaises(exception.OverQuota, _reserve, self.D.id)
+
+        # Make sure the rollbacks went successfully for allocated for all res
+        for res in quota.keys():
+            self._assert_quota_show(self.A.id, res, allocated=2, limit=2)
+            self._assert_quota_show(self.B.id, res, allocated=1, limit=-1)
+            self._assert_quota_show(self.C.id, res, reserved=1, limit=-1)
+            self._assert_quota_show(self.D.id, res, reserved=1, limit=-1)
+
+    def test_child_update_affects_allocated_and_rolls_back(self):
+        quota = {'gigabytes': -1, 'volumes': 3}
+        body = {'quota_set': quota}
+        self.controller.update(self.req, self.A.id, body)
+        quota['volumes'] = -1
+        self.controller.update(self.req, self.B.id, body)
+        quota['volumes'] = 1
+        self.controller.update(self.req, self.C.id, body)
+
+        # Shouldn't be able to update to greater than the grandparent
+        quota['volumes'] = 3
+        quota['gigabytes'] = 1
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.update, self.req, self.D.id, body)
+        # Validate we haven't updated either parents' allocated value for
+        # any of the keys (even if some keys were valid)
+        self._assert_quota_show(self.A.id, 'volumes', allocated=1, limit=3)
+        self._assert_quota_show(self.A.id, 'gigabytes', limit=-1)
+        self._assert_quota_show(self.B.id, 'volumes', limit=-1)
+        self._assert_quota_show(self.B.id, 'gigabytes', limit=-1)
+
+        quota['volumes'] = 2
+        self.controller.update(self.req, self.D.id, body)
+        # Validate we have now updated the parent and grandparents'
+        self.req.params = {'usage': 'True'}
+        self._assert_quota_show(self.A.id, 'volumes', allocated=3, limit=3)
+        self._assert_quota_show(self.A.id, 'gigabytes', allocated=1, limit=-1)
+        self._assert_quota_show(self.B.id, 'volumes', allocated=2, limit=-1)
+        self._assert_quota_show(self.B.id, 'gigabytes', allocated=1, limit=-1)
+
+    def test_negative_child_limit_reserve_and_rollback(self):
+        quota = {'volumes': 2, 'gigabytes': 2}
+        body = {'quota_set': quota}
+        self.controller.update(self.req, self.A.id, body)
+
+        quota['volumes'] = -1
+        quota['gigabytes'] = -1
+        self.controller.update(self.req, self.B.id, body)
+        self.controller.update(self.req, self.C.id, body)
+        self.controller.update(self.req, self.D.id, body)
+
+        res = quotas.QUOTAS._driver.reserve(
+            self.req.environ['cinder.context'], quotas.QUOTAS.resources,
+            {'volumes': 2, 'gigabytes': 2}, project_id=self.D.id)
+
+        self.req.params = {'usage': 'True'}
+        quota_b = self.controller.show(self.req, self.B.id)
+        self.assertEqual(2, quota_b['quota_set']['volumes']['allocated'])
+        # A will be the next hard limit to set
+        quota_a = self.controller.show(self.req, self.A.id)
+        self.assertEqual(2, quota_a['quota_set']['volumes']['allocated'])
+        quota_d = self.controller.show(self.req, self.D.id)
+        self.assertEqual(2, quota_d['quota_set']['volumes']['reserved'])
+
+        quotas.QUOTAS.rollback(self.req.environ['cinder.context'], res,
+                               self.D.id)
+        # After the rollback, A's limit should be properly set again
+        quota_a = self.controller.show(self.req, self.A.id)
+        self.assertEqual(0, quota_a['quota_set']['volumes']['allocated'])
+        quota_d = self.controller.show(self.req, self.D.id)
+        self.assertEqual(0, quota_d['quota_set']['volumes']['in_use'])
+
+    @mock.patch('cinder.db.sqlalchemy.api._get_quota_usages')
+    @mock.patch('cinder.db.quota_usage_get_all_by_project')
+    def test_nested_quota_set_negative_limit(self, mock_usage, mock_get_usage):
+        # TODO(mc_nair): this test should be moved to Tempest once nested quota
+        # coverage is added
+        fake_usages = {self.A.id: 1, self.B.id: 1, self.D.id: 2, self.C.id: 0}
+        self._create_fake_quota_usages(fake_usages)
+        mock_usage.side_effect = self._fake_quota_usage_get_all_by_project
+
+        class FakeUsage(object):
+                def __init__(self, in_use, reserved):
+                    self.in_use = in_use
+                    self.reserved = reserved
+                    self.until_refresh = None
+                    self.total = self.reserved + self.in_use
+
+        def _fake__get_quota_usages(context, session, project_id):
+            if not project_id:
+                return {}
+            return {'volumes': FakeUsage(fake_usages[project_id], 0)}
+        mock_get_usage.side_effect = _fake__get_quota_usages
+
+        # Update the project A quota.
+        quota_limit = {'volumes': 7}
+        body = {'quota_set': quota_limit}
+        self.controller.update(self.req, self.A.id, body)
+
+        quota_limit['volumes'] = 4
+        self.controller.update(self.req, self.B.id, body)
+        quota_limit['volumes'] = -1
+        self.controller.update(self.req, self.D.id, body)
+
+        quota_limit['volumes'] = 1
+        self.controller.update(self.req, self.C.id, body)
+
+        self.req.params['fix_allocated_quotas'] = True
+        self.controller.validate_setup_for_nested_quota_use(self.req)
+
+        # Validate that the allocated values look right for each project
+        self.req.params = {'usage': 'True'}
+
+        res = 'volumes'
+        # A has given 4 vols to B and 1 vol to C (from limits)
+        self._assert_quota_show(self.A.id, res, allocated=5, in_use=1, limit=7)
+        self._assert_quota_show(self.B.id, res, allocated=2, in_use=1, limit=4)
+        self._assert_quota_show(self.D.id, res, in_use=2, limit=-1)
+        self._assert_quota_show(self.C.id, res, limit=1)
+
+        # Update B to -1 limit, and make sure that A's allocated gets updated
+        # with B + D's in_use values (one less than current limit
+        quota_limit['volumes'] = -1
+        self.controller.update(self.req, self.B.id, body)
+        self._assert_quota_show(self.A.id, res, allocated=4, in_use=1, limit=7)
+
+        quota_limit['volumes'] = 6
+        self.assertRaises(
+            webob.exc.HTTPBadRequest,
+            self.controller.update, self.req, self.B.id, body)
+
+        quota_limit['volumes'] = 5
+        self.controller.update(self.req, self.B.id, body)
+        self._assert_quota_show(self.A.id, res, allocated=6, in_use=1, limit=7)
 
 
 class QuotaSerializerTest(test.TestCase):

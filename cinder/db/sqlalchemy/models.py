@@ -430,7 +430,8 @@ class Reservation(BASE, CinderBase):
     id = Column(Integer, primary_key=True)
     uuid = Column(String(36), nullable=False)
 
-    usage_id = Column(Integer, ForeignKey('quota_usages.id'), nullable=False)
+    usage_id = Column(Integer, ForeignKey('quota_usages.id'), nullable=True)
+    allocated_id = Column(Integer, ForeignKey('quotas.id'), nullable=True)
 
     project_id = Column(String(255), index=True)
     resource = Column(String(255))
@@ -443,6 +444,10 @@ class Reservation(BASE, CinderBase):
         foreign_keys=usage_id,
         primaryjoin='and_(Reservation.usage_id == QuotaUsage.id,'
                     'QuotaUsage.deleted == 0)')
+    quota = relationship(
+        "Quota",
+        foreign_keys=allocated_id,
+        primaryjoin='and_(Reservation.allocated_id == Quota.id)')
 
 
 class Snapshot(BASE, CinderBase):

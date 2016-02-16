@@ -605,7 +605,9 @@ class QuotaReserveTask(flow_utils.CinderTask):
             usages = e.kwargs['usages']
 
             def _consumed(name):
-                return usages[name]['reserved'] + usages[name]['in_use']
+                usage = usages[name]
+                return usage['reserved'] + usage['in_use'] + usage.get(
+                    'allocated', 0)
 
             def _get_over(name):
                 for over in overs:
@@ -616,6 +618,7 @@ class QuotaReserveTask(flow_utils.CinderTask):
             over_name = _get_over('gigabytes')
             exceeded_vol_limit_name = _get_over('volumes')
             if over_name:
+                # TODO(mc_nair): improve error message for child -1 limit
                 msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
                           "%(s_size)sG volume (%(d_consumed)dG "
                           "of %(d_quota)dG already consumed)")
@@ -637,6 +640,7 @@ class QuotaReserveTask(flow_utils.CinderTask):
                              's_pid': context.project_id,
                              'd_consumed':
                              _consumed(exceeded_vol_limit_name)})
+                # TODO(mc_nair): improve error message for child -1 limit
                 raise exception.VolumeLimitExceeded(
                     allowed=quotas[exceeded_vol_limit_name],
                     name=exceeded_vol_limit_name)

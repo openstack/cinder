@@ -783,14 +783,16 @@ def _quota_usage_create(context, project_id, resource, in_use, reserved,
 
 
 def _reservation_create(context, uuid, usage, project_id, resource, delta,
-                        expire, session=None):
+                        expire, session=None, allocated_id=None):
+    usage_id = usage['id'] if usage else None
     reservation_ref = models.Reservation()
     reservation_ref.uuid = uuid
-    reservation_ref.usage_id = usage['id']
+    reservation_ref.usage_id = usage_id
     reservation_ref.project_id = project_id
     reservation_ref.resource = resource
     reservation_ref.delta = delta
     reservation_ref.expire = expire
+    reservation_ref.allocated_id = allocated_id
     reservation_ref.save(session=session)
     return reservation_ref
 
@@ -838,7 +840,8 @@ def quota_usage_update_resource(context, old_res, new_res):
 @require_context
 @_retry_on_deadlock
 def quota_reserve(context, resources, quotas, deltas, expire,
-                  until_refresh, max_age, project_id=None):
+                  until_refresh, max_age, project_id=None,
+                  is_allocated_reserve=False):
     elevated = context.elevated()
     session = get_session()
     with session.begin():
@@ -919,8 +922,14 @@ def quota_reserve(context, resources, quotas, deltas, expire,
                     #            a best-effort mechanism.
 
         # Check for deltas that would go negative
-        unders = [r for r, delta in deltas.items()
-                  if delta < 0 and delta + usages[r].in_use < 0]
+        if is_allocated_reserve:
+            unders = [r for r, delta in deltas.items()
+                      if delta < 0 and delta + allocated.get(r, 0) < 0]
+        else:
+            unders = [r for r, delta in deltas.items()
+                      if delta < 0 and delta + usages[r].in_use < 0]
+
+        # TODO(mc_nair): Should ignore/zero alloc if using non-nested driver
 
         # Now, let's check the quotas
         # NOTE(Vek): We're only concerned about positive increments.
@@ -942,12 +951,26 @@ def quota_reserve(context, resources, quotas, deltas, expire,
         if not overs:
             reservations = []
             for resource, delta in deltas.items():
-                reservation = _reservation_create(elevated,
-                                                  str(uuid.uuid4()),
-                                                  usages[resource],
-                                                  project_id,
-                                                  resource, delta, expire,
-                                                  session=session)
+                usage = usages[resource]
+                allocated_id = None
+                if is_allocated_reserve:
+                    try:
+                        quota = _quota_get(context, project_id, resource,
+                                           session=session)
+                    except exception.ProjectQuotaNotFound:
+                        # If we were using the default quota, create DB entry
+                        quota = quota_create(context, project_id, resource,
+                                             quotas[resource], 0)
+                    # Since there's no reserved/total for allocated, update
+                    # allocated immediately and subtract on rollback if needed
+                    quota_allocated_update(context, project_id, resource,
+                                           quota.allocated + delta)
+                    allocated_id = quota.id
+                    usage = None
+                reservation = _reservation_create(
+                    elevated, str(uuid.uuid4()), usage, project_id, resource,
+                    delta, expire, session=session, allocated_id=allocated_id)
+
                 reservations.append(reservation.uuid)
 
                 # Also update the reserved quantity
@@ -962,14 +985,15 @@ def quota_reserve(context, resources, quotas, deltas, expire,
                 #
                 #            To prevent this, we only update the
                 #            reserved value if the delta is positive.
-                if delta > 0:
+                if delta > 0 and not is_allocated_reserve:
                     usages[resource].reserved += delta
 
     if unders:
         LOG.warning(_LW("Change will make usage less than 0 for the following "
                         "resources: %s"), unders)
     if overs:
-        usages = {k: dict(in_use=v['in_use'], reserved=v['reserved'])
+        usages = {k: dict(in_use=v.in_use, reserved=v.reserved,
+                          allocated=allocated.get(k, 0))
                   for k, v in usages.items()}
         raise exception.OverQuota(overs=sorted(overs), quotas=quotas,
                                   usages=usages)
@@ -1002,10 +1026,12 @@ def reservation_commit(context, reservations, project_id=None):
         usages = _dict_with_usage_id(usages)
 
         for reservation in _quota_reservations(session, context, reservations):
-            usage = usages[reservation.usage_id]
-            if reservation.delta >= 0:
-                usage.reserved -= reservation.delta
-            usage.in_use += reservation.delta
+            # Allocated reservations will have already been bumped
+            if not reservation.allocated_id:
+                usage = usages[reservation.usage_id]
+                if reservation.delta >= 0:
+                    usage.reserved -= reservation.delta
+                usage.in_use += reservation.delta
 
             reservation.delete(session=session)
 
@@ -1018,9 +1044,12 @@ def reservation_rollback(context, reservations, project_id=None):
         usages = _get_quota_usages(context, session, project_id)
         usages = _dict_with_usage_id(usages)
         for reservation in _quota_reservations(session, context, reservations):
-            usage = usages[reservation.usage_id]
-            if reservation.delta >= 0:
-                usage.reserved -= reservation.delta
+            if reservation.allocated_id:
+                reservation.quota.allocated -= reservation.delta
+            else:
+                usage = usages[reservation.usage_id]
+                if reservation.delta >= 0:
+                    usage.reserved -= reservation.delta
 
             reservation.delete(session=session)
 
@@ -1089,8 +1118,12 @@ def reservation_expire(context):
         if results:
             for reservation in results:
                 if reservation.delta >= 0:
-                    reservation.usage.reserved -= reservation.delta
-                    reservation.usage.save(session=session)
+                    if reservation.allocated_id:
+                        reservation.quota.allocated -= reservation.delta
+                        reservation.quota.save(session=session)
+                    else:
+                        reservation.usage.reserved -= reservation.delta
+                        reservation.usage.save(session=session)
 
                 reservation.delete(session=session)
 
