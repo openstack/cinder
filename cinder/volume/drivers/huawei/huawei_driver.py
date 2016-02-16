@@ -707,8 +707,8 @@ class HuaweiBaseDriver(driver.VolumeDriver):
     def create_snapshot(self, snapshot):
         volume = snapshot.get('volume')
         if not volume:
-            msg = (_("Can't find volume id from db, volume: %(id)s") %
-                   {"id": volume['id']})
+            msg = (_("Can't get volume id from snapshot, snapshot: %(id)s")
+                   % {"id": snapshot['id']})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
