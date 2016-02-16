@@ -277,7 +277,7 @@ class Service(service.Service):
                 x.stop()
             except Exception:
                 self.timers_skip.append(x)
-        super(Service, self).stop()
+        super(Service, self).stop(graceful=True)
 
     def wait(self):
         skip = getattr(self, 'timers_skip', [])
@@ -289,6 +289,7 @@ class Service(service.Service):
                     pass
         if self.rpcserver:
             self.rpcserver.wait()
+        super(Service, self).wait()
 
     def periodic_tasks(self, raise_on_error=False):
         """Tasks to be run at a periodic interval."""
