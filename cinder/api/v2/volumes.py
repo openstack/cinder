@@ -37,11 +37,8 @@ from cinder import utils
 from cinder import volume as cinder_volume
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
-<<<<<<< 59e528fc36b2ed3804ec1bc5fba7c136867153fb
 from cinder.api.v2 import cache_volumes as volume_cache
-=======
 from metrics.Metrics import Metrics, Unit
->>>>>>> Working method
 
 
 LOG = logging.getLogger(__name__)
