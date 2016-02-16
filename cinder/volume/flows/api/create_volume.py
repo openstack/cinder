@@ -503,6 +503,10 @@ class EntryCreateTask(flow_utils.CinderTask):
         requirements should be previously satisfied and validated by a
         pre-cursor task.
         """
+        cache_image_id=kwargs.pop('volume_from_cache',None)
+        misc=None
+        if cache_image_id is not None:
+            misc="volume_from_cache: %s,"%(cache_image_id)
 
         volume_properties = {
             'size': kwargs.pop('size'),
@@ -516,7 +520,7 @@ class EntryCreateTask(flow_utils.CinderTask):
             'display_name': kwargs.pop('name'),
             'replication_status': 'disabled',
             'multiattach': kwargs.pop('multiattach'),
-            'miscellaneous': "volume_from_cache : "+kwargs.pop('volume_from_cache')
+            'miscellaneous': misc
         }
 
         # Merge in the other required arguments which should provide the rest

@@ -56,7 +56,11 @@ class ViewBuilder(common.ViewBuilder):
         """Detailed view of a single volume."""
      
         snapshot_id=volume.get('snapshot_id')
-        LOG.debug("\n++++ misc is %s"%(volume))
+        misc=volume.get("miscellaneous",None)
+        if misc is not None:
+            spl_list=misc.split()
+            if "volume_from_cache:" in spl_list:
+                snapshot_id=None
 
 
         return {
