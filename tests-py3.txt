@@ -4,7 +4,8 @@ cinder.tests.unit.api.test_common
 cinder.tests.unit.api.test_extensions
 cinder.tests.unit.api.test_versions
 cinder.tests.unit.api.test_xmlutil
-cinder.tests.unit.api.v2.test_volumes
+cinder.tests.unit.api.v1
+cinder.tests.unit.api.v2
 cinder.tests.unit.backup.drivers.test_backup_glusterfs
 cinder.tests.unit.backup.drivers.test_backup_nfs
 cinder.tests.unit.backup.drivers.test_backup_posix

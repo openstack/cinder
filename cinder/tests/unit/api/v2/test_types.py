@@ -54,7 +54,7 @@ def return_volume_types_get_all_types(context, filters=None, marker=None,
                   vol_type_3=stub_volume_type(3)
                   )
     if list_result:
-        return result.values()
+        return list(result.values())
     return result
 
 
@@ -416,7 +416,7 @@ class VolumeTypesSerializerTest(test.TestCase):
 
         # Just getting some input data
         vtypes = return_volume_types_get_all_types(None)
-        text = serializer.serialize({'volume_types': vtypes.values()})
+        text = serializer.serialize({'volume_types': list(vtypes.values())})
 
         tree = etree.fromstring(text)
 

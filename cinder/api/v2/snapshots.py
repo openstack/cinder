@@ -16,6 +16,7 @@
 """The volumes snapshots api."""
 
 from oslo_log import log as logging
+from oslo_utils import encodeutils
 from oslo_utils import strutils
 import webob
 from webob import exc
@@ -177,7 +178,8 @@ class SnapshotsController(wsgi.Controller):
         try:
             force = strutils.bool_from_string(force, strict=True)
         except ValueError as error:
-            msg = _("Invalid value for 'force': '%s'") % error.message
+            err_msg = encodeutils.exception_to_unicode(error)
+            msg = _("Invalid value for 'force': '%s'") % err_msg
             raise exception.InvalidParameterValue(err=msg)
 
         if force:

@@ -277,7 +277,7 @@ class volumeMetaDataTest(test.TestCase):
         body = {"metadata": {"key1": "value1",
                              "key2": "value2",
                              "key3": "value3", }}
-        req.body = jsonutils.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         req.environ['cinder.context'] = fake_context
 
         with mock.patch.object(self.controller.volume_api,
@@ -299,7 +299,7 @@ class volumeMetaDataTest(test.TestCase):
         body = {"metadata": {"key1": "value1",
                              "key2": "value2",
                              "key3": "value3", }}
-        req.body = jsonutils.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         req.environ['cinder.context'] = fake_context
 
         with mock.patch.object(self.controller.volume_api,
@@ -333,7 +333,7 @@ class volumeMetaDataTest(test.TestCase):
                                  "key2": "value2",
                                  "key3": "value3",
                                  "KEY4": "value4"}}
-        req.body = jsonutils.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         req.environ['cinder.context'] = fake_context
 
         with mock.patch.object(self.controller.volume_api,
@@ -358,7 +358,7 @@ class volumeMetaDataTest(test.TestCase):
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'PUT'
         body = {"meta": {"": "value1"}}
-        req.body = jsonutils.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
 
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -370,7 +370,7 @@ class volumeMetaDataTest(test.TestCase):
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'PUT'
         body = {"meta": {("a" * 260): "value1"}}
-        req.body = jsonutils.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
 
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -388,7 +388,7 @@ class volumeMetaDataTest(test.TestCase):
         req.method = 'POST'
         req.content_type = "application/json"
         body = {"metadata": {"key9": "value9"}}
-        req.body = jsonutils.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.create, req, self.req_id, body)
 
@@ -407,7 +407,7 @@ class volumeMetaDataTest(test.TestCase):
                 'KEY20': 'value20',
             },
         }
-        req.body = jsonutils.dumps(expected)
+        req.body = jsonutils.dump_as_bytes(expected)
         req.environ['cinder.context'] = fake_context
 
         with mock.patch.object(self.controller.volume_api,
@@ -432,7 +432,7 @@ class volumeMetaDataTest(test.TestCase):
                 'KEY20': 'value20',
             },
         }
-        req.body = jsonutils.dumps(expected)
+        req.body = jsonutils.dump_as_bytes(expected)
         req.environ['cinder.context'] = fake_context
 
         with mock.patch.object(self.controller.volume_api,
@@ -471,7 +471,7 @@ class volumeMetaDataTest(test.TestCase):
                 'KEY20': 'value20',
             },
         }
-        req.body = jsonutils.dumps(expected)
+        req.body = jsonutils.dump_as_bytes(expected)
         req.environ['cinder.context'] = fake_context
 
         with mock.patch.object(self.controller.volume_api,
@@ -490,7 +490,7 @@ class volumeMetaDataTest(test.TestCase):
         req.method = 'PUT'
         req.content_type = "application/json"
         expected = {'metadata': {}}
-        req.body = jsonutils.dumps(expected)
+        req.body = jsonutils.dump_as_bytes(expected)
         req.environ['cinder.context'] = fake_context
 
         with mock.patch.object(self.controller.volume_api,
@@ -507,7 +507,7 @@ class volumeMetaDataTest(test.TestCase):
         req.method = 'PUT'
         req.content_type = "application/json"
         expected = {'meta': {}}
-        req.body = jsonutils.dumps(expected)
+        req.body = jsonutils.dump_as_bytes(expected)
 
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.update_all, req, self.req_id,
@@ -520,7 +520,7 @@ class volumeMetaDataTest(test.TestCase):
         req.method = 'PUT'
         req.content_type = "application/json"
         expected = {'metadata': ['asdf']}
-        req.body = jsonutils.dumps(expected)
+        req.body = jsonutils.dump_as_bytes(expected)
 
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.update_all, req, self.req_id,
@@ -532,7 +532,7 @@ class volumeMetaDataTest(test.TestCase):
         req.method = 'PUT'
         req.content_type = "application/json"
         body = {'metadata': {'key10': 'value10'}}
-        req.body = jsonutils.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
 
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.update_all, req, '100', body)
@@ -545,7 +545,7 @@ class volumeMetaDataTest(test.TestCase):
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'PUT'
         body = {"meta": {"key1": "value1"}}
-        req.body = jsonutils.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
         req.environ['cinder.context'] = fake_context
 
@@ -565,7 +565,7 @@ class volumeMetaDataTest(test.TestCase):
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'PUT'
         body = {"meta": {"key1": "value1"}}
-        req.body = jsonutils.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
         req.environ['cinder.context'] = fake_context
 
@@ -584,7 +584,7 @@ class volumeMetaDataTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/fake/volumes/asdf/metadata/key1')
         req.method = 'PUT'
         body = {"meta": {"key1": "value1"}}
-        req.body = jsonutils.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
 
         self.assertRaises(webob.exc.HTTPNotFound,
@@ -610,7 +610,7 @@ class volumeMetaDataTest(test.TestCase):
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'PUT'
         body = {"meta": {"": "value1"}}
-        req.body = jsonutils.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
         req.environ['cinder.context'] = fake_context
 
@@ -631,7 +631,7 @@ class volumeMetaDataTest(test.TestCase):
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'PUT'
         body = {"meta": {("a" * 260): "value1"}}
-        req.body = jsonutils.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
         req.environ['cinder.context'] = fake_context
 
@@ -652,7 +652,7 @@ class volumeMetaDataTest(test.TestCase):
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'PUT'
         body = {"meta": {"key1": ("a" * 260)}}
-        req.body = jsonutils.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
         req.environ['cinder.context'] = fake_context
 
@@ -671,7 +671,7 @@ class volumeMetaDataTest(test.TestCase):
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'PUT'
         body = {"meta": {"key1": "value1", "key2": "value2"}}
-        req.body = jsonutils.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
 
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -684,7 +684,7 @@ class volumeMetaDataTest(test.TestCase):
         req = fakes.HTTPRequest.blank(self.url + '/bad')
         req.method = 'PUT'
         body = {"meta": {"key1": "value1"}}
-        req.body = jsonutils.dumps(body)
+        req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
 
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -702,7 +702,7 @@ class volumeMetaDataTest(test.TestCase):
 
         # test for long key
         data = {"metadata": {"a" * 260: "value1"}}
-        req.body = jsonutils.dumps(data)
+        req.body = jsonutils.dump_as_bytes(data)
         req.environ['cinder.context'] = fake_context
 
         with mock.patch.object(self.controller.volume_api,
@@ -713,7 +713,7 @@ class volumeMetaDataTest(test.TestCase):
 
         # test for long value
         data = {"metadata": {"key": "v" * 260}}
-        req.body = jsonutils.dumps(data)
+        req.body = jsonutils.dump_as_bytes(data)
         req.environ['cinder.context'] = fake_context
 
         with mock.patch.object(self.controller.volume_api,
@@ -724,7 +724,7 @@ class volumeMetaDataTest(test.TestCase):
 
         # test for empty key.
         data = {"metadata": {"": "value1"}}
-        req.body = jsonutils.dumps(data)
+        req.body = jsonutils.dump_as_bytes(data)
         req.environ['cinder.context'] = fake_context
 
         with mock.patch.object(self.controller.volume_api,
