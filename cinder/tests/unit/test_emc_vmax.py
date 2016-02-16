@@ -702,7 +702,7 @@ class FakeEcomConnection(object):
 
     def Associators(self, objectpath, ResultClass='EMC_StorageHardwareID'):
         result = None
-        if ResultClass == 'EMC_StorageHardwareID':
+        if '_StorageHardwareID' in ResultClass:
             result = self._assoc_hdwid()
         elif ResultClass == 'EMC_iSCSIProtocolEndpoint':
             result = self._assoc_endpoint()
@@ -1554,6 +1554,7 @@ class FakeEcomConnection(object):
         hdwid = SE_StorageHardwareID()
         hdwid['CreationClassName'] = self.data.hardwareid_creationclass
         hdwid['StorageID'] = self.data.connector['wwpns'][0]
+        hdwid['InstanceID'] = "W-+-" + self.data.connector['wwpns'][0]
 
         hdwid.path = hdwid
         storhdwids.append(hdwid)
@@ -2477,6 +2478,95 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         self.driver.common.masking._remove_last_vol_and_delete_sg(
             conn, controllerConfigService, storageGroupInstanceName,
             storageGroupName, volumeInstanceName, volumeName, extraSpecs)
+
+    # Bug 1504192 - if the last volume is being unmapped and the masking view
+    # goes away, cleanup the initiators and associated initiator group.
+    def test_delete_initiators_from_initiator_group(self):
+        conn = self.fake_ecom_connection()
+        controllerConfigService = (
+            self.driver.utils.find_controller_configuration_service(
+                conn, self.data.storage_system))
+        initiatorGroupName = self.data.initiatorgroup_name
+        initiatorGroupInstanceName = (
+            self.driver.common.masking._get_initiator_group_from_masking_view(
+                conn, self.data.lunmaskctrl_name, self.data.storage_system))
+        conn.InvokeMethod = mock.Mock(return_value=1)
+        # Deletion of initiators failed.
+        self.driver.common.masking._delete_initiators_from_initiator_group(
+            conn, controllerConfigService, initiatorGroupInstanceName,
+            initiatorGroupName)
+        conn.InvokeMethod = mock.Mock(return_value=0)
+        # Deletion of initiators successful.
+        self.driver.common.masking._delete_initiators_from_initiator_group(
+            conn, controllerConfigService, initiatorGroupInstanceName,
+            initiatorGroupName)
+
+    # Bug 1504192 - if the last volume is being unmapped and the masking view
+    # goes away, cleanup the initiators and associated initiator group.
+    def test_last_volume_delete_initiator_group_exception(self):
+        extraSpecs = {'volume_backend_name': 'ISCSINoFAST'}
+        conn = self.fake_ecom_connection()
+        controllerConfigService = (
+            self.driver.utils.find_controller_configuration_service(
+                conn, self.data.storage_system))
+        initiatorGroupInstanceName = (
+            self.driver.common.masking._get_initiator_group_from_masking_view(
+                conn, self.data.lunmaskctrl_name, self.data.storage_system))
+        job = {
+            'Job': {'InstanceID': '9999', 'status': 'success', 'type': None}}
+        conn.InvokeMethod = mock.Mock(return_value=(4096, job))
+        self.driver.common.masking.get_masking_views_by_initiator_group = (
+            mock.Mock(return_value=[]))
+        self.driver.common.masking._delete_initiators_from_initiator_group = (
+            mock.Mock(return_value=True))
+        self.driver.common.masking.utils.wait_for_job_complete = (
+            mock.Mock(return_value=(2, 'failure')))
+        # Exception occurrs while deleting the initiator group.
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.driver.common.masking._last_volume_delete_initiator_group,
+            conn, controllerConfigService, initiatorGroupInstanceName,
+            extraSpecs)
+
+    # Bug 1504192 - if the last volume is being unmapped and the masking view
+    # goes away, cleanup the initiators and associated initiator group.
+    def test_last_volume_delete_initiator_group(self):
+        extraSpecs = {'volume_backend_name': 'ISCSINoFAST'}
+        conn = self.fake_ecom_connection()
+        controllerConfigService = (
+            self.driver.utils.find_controller_configuration_service(
+                conn, self.data.storage_system))
+        initiatorGroupName = self.data.initiatorgroup_name
+        initiatorGroupInstanceName = (
+            self.driver.common.masking._get_initiator_group_from_masking_view(
+                conn, self.data.lunmaskctrl_name, self.data.storage_system))
+        self.assertEqual(initiatorGroupName,
+                         conn.GetInstance(
+                             initiatorGroupInstanceName)['ElementName'])
+        # masking view is associated with the initiator group and initiator
+        # group will not be deleted.
+        self.driver.common.masking._last_volume_delete_initiator_group(
+            conn, controllerConfigService, initiatorGroupInstanceName,
+            extraSpecs)
+        self.driver.common.masking.get_masking_views_by_initiator_group = (
+            mock.Mock(return_value=[]))
+        self.driver.common.masking._delete_initiators_from_initiator_group = (
+            mock.Mock(return_value=True))
+        # No Masking view and initiators associated with the Initiator group
+        # and initiator group will be deleted.
+        self.driver.common.masking._last_volume_delete_initiator_group(
+            conn, controllerConfigService, initiatorGroupInstanceName,
+            extraSpecs)
+        job = {
+            'Job': {'InstanceID': '9999', 'status': 'success', 'type': None}}
+        conn.InvokeMethod = mock.Mock(return_value=(4096, job))
+        self.driver.common.masking.utils.wait_for_job_complete = (
+            mock.Mock(return_value=(0, 'success')))
+        # Deletion of initiator group is successful after waiting for job
+        # to complete.
+        self.driver.common.masking._last_volume_delete_initiator_group(
+            conn, controllerConfigService, initiatorGroupInstanceName,
+            extraSpecs)
 
     # Tests removal of last volume in a storage group V2
     def test_remove_and_reset_members(self):
@@ -5678,7 +5768,7 @@ class EMCV3DriverTestCase(test.TestCase):
                 conn, controllerConfigService, storageGroupName))
 
         vol = self.default_vol()
-        self.driver.common.masking._delete_mv_and_sg = mock.Mock()
+        self.driver.common.masking._delete_mv_ig_and_sg = mock.Mock()
         self.assertTrue(self.driver.common.masking._last_vol_in_SG(
             conn, controllerConfigService, storageGroupInstanceName,
             storageGroupName, vol, vol['name'], extraSpecs))
