@@ -15,6 +15,7 @@
 
 import ast
 import json
+import re
 import six
 import socket
 import time
@@ -1244,11 +1245,14 @@ class RestClient(object):
         if result['error']['code'] != 0:
             LOG.warning(_LW("Can't find target iqn from rest."))
             return target_iqn
-
+        ip_pattern = re.compile(r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}')
         if 'data' in result:
             for item in result['data']:
-                if target_ip in item['ID']:
-                    target_iqn = item['ID']
+                ips = re.findall(ip_pattern, item['ID'])
+                for ip in ips:
+                    if target_ip == ip:
+                        target_iqn = item['ID']
+                        break
 
         if not target_iqn:
             LOG.warning(_LW("Can't find target iqn from rest."))
