@@ -166,7 +166,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
         self.assertEqual(200, res.status_code)
         # Confirm that volume type has no encryption information
         # before create.
-        self.assertEqual('{}', res.body)
+        self.assertEqual(b'{}', res.body)
 
         # Create encryption specs for the volume type
         # with the defined body.
@@ -214,8 +214,8 @@ class VolumeTypeEncryptionTest(test.TestCase):
         req = webob.Request.blank('/v2/fake/types/%s/encryption'
                                   % volume_type['id'])
         req.method = 'POST'
-        req.body = ('<encryption provider="test_provider" '
-                    'cipher="cipher" control_location="front-end" />')
+        req.body = (b'<encryption provider="test_provider" '
+                    b'cipher="cipher" control_location="front-end" />')
         req.headers['Content-Type'] = 'application/xml'
         req.headers['Accept'] = 'application/xml'
         res = req.get_response(fakes.wsgi_app(fake_auth_context=ctxt))

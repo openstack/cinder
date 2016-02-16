@@ -693,10 +693,14 @@ class BackupsAPITestCase(test.TestCase):
 
         volume_id = utils.create_volume(self.context, size=2)['id']
 
+        body = ('<backup display_name="backup-001" '
+                'display_description="Nightly Backup" '
+                'volume_id="%s" container="Container001"/>' % volume_id)
+        if isinstance(body, six.text_type):
+            body = body.encode('utf-8')
+
         req = webob.Request.blank('/v2/fake/backups')
-        req.body = ('<backup display_name="backup-001" '
-                    'display_description="Nightly Backup" '
-                    'volume_id="%s" container="Container001"/>' % volume_id)
+        req.body = body
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/xml'
         req.headers['Accept'] = 'application/xml'
@@ -1165,8 +1169,12 @@ class BackupsAPITestCase(test.TestCase):
                                         size=2,
                                         display_name=volume_name)['id']
 
+        body = '<restore volume_id="%s"/>' % volume_id
+        if isinstance(body, six.text_type):
+            body = body.encode('utf-8')
+
         req = webob.Request.blank('/v2/fake/backups/%s/restore' % backup_id)
-        req.body = '<restore volume_id="%s"/>' % volume_id
+        req.body = body
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/xml'
         req.headers['Accept'] = 'application/xml'
@@ -1792,14 +1800,17 @@ class BackupsAPITestCase(test.TestCase):
         _mock_import_record_rpc.return_value = None
         _mock_list_services.return_value = [backup_service]
 
-        req = webob.Request.blank('/v2/fake/backups/import_record')
         if six.PY2:
             backup_url = backup_url.encode('utf-8')
-        req.body = ('<backup-record backup_service="%(backup_service)s" '
-                    'backup_url="%(backup_url)s"/>') \
-            % {'backup_url': backup_url,
-               'backup_service': backup_service}
+        body = ('<backup-record backup_service="%(backup_service)s" '
+                'backup_url="%(backup_url)s"/>'
+                % {'backup_url': backup_url,
+                   'backup_service': backup_service})
+        if isinstance(body, six.text_type):
+            body = body.encode('utf-8')
 
+        req = webob.Request.blank('/v2/fake/backups/import_record')
+        req.body = body
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/xml'
         req.headers['Accept'] = 'application/xml'

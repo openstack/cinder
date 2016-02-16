@@ -341,5 +341,7 @@ class VolumeImageMetadataXMLTest(VolumeImageMetadataTest):
                 volume, 'volume_image_metadata'
             )
             for volume in volume_list]
-        return map(wsgi.MetadataXMLDeserializer().extract_metadata,
-                   image_metadata_list)
+
+        metadata_deserializer = wsgi.MetadataXMLDeserializer()
+        return [metadata_deserializer.extract_metadata(image_metadata)
+                for image_metadata in image_metadata_list]
