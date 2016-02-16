@@ -42,10 +42,6 @@ from cinder.volume.drivers.netapp.dataontap import nfs_base
 from cinder.volume.drivers.netapp.dataontap import ssc_cmode
 from cinder.volume.drivers.netapp import utils
 
-from oslo_config import cfg
-
-
-CONF = cfg.CONF
 
 CONNECTION_INFO = {
     'hostname': 'fake_host',

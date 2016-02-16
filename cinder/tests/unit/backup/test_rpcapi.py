@@ -19,16 +19,12 @@ Unit Tests for cinder.backup.rpcapi
 import copy
 
 import mock
-from oslo_config import cfg
 
 from cinder.backup import rpcapi as backup_rpcapi
 from cinder import context
 from cinder import objects
 from cinder import test
 from cinder.tests.unit import fake_backup
-
-
-CONF = cfg.CONF
 
 
 class BackupRpcAPITestCase(test.TestCase):

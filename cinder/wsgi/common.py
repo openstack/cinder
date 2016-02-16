@@ -14,14 +14,12 @@
 
 """Utility methods for working with WSGI servers."""
 
-from oslo_config import cfg
 from oslo_log import log as logging
 import webob.dec
 import webob.exc
 
 from cinder.i18n import _
 
-CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 

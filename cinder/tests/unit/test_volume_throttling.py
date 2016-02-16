@@ -16,14 +16,10 @@
 """Tests for volume copy throttling helpers."""
 
 import mock
-from oslo_config import cfg
 
 from cinder import test
 from cinder import utils
 from cinder.volume import throttling
-
-
-CONF = cfg.CONF
 
 
 class ThrottleTestCase(test.TestCase):

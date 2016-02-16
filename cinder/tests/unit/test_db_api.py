@@ -18,7 +18,6 @@ import datetime
 
 import enum
 import mock
-from oslo_config import cfg
 from oslo_utils import uuidutils
 import six
 
@@ -29,8 +28,6 @@ from cinder.db.sqlalchemy import api as sqlalchemy_api
 from cinder import exception
 from cinder import quota
 from cinder import test
-
-CONF = cfg.CONF
 
 THREE = 3
 THREE_HUNDREDS = 300
