@@ -822,7 +822,7 @@ class SBSBackupDriver(driver.BackupDriver):
 
         if conn != None:
             try:
-                bucket = self._get_bucket(conn, backup['container')
+                bucket = self._get_bucket(conn, backup['container'])
             except Exception as e:
                 pass
         else:
