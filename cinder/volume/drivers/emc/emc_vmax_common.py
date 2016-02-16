@@ -14,7 +14,6 @@
 #    under the License.
 
 import ast
-import inspect
 import os.path
 
 from oslo_config import cfg
@@ -1279,36 +1278,25 @@ class EMCVMAXCommon(object):
         :returns: pywbem.WBEMConnection -- conn, the ecom connection
         :raises: VolumeBackendAPIException
         """
-
+        ecomx509 = None
         if self.ecomUseSSL:
-            argspec = inspect.getargspec(pywbem.WBEMConnection.__init__)
-            if any("ca_certs" in s for s in argspec.args):
-                updatedPywbem = True
-            else:
-                updatedPywbem = False
+            if (self.configuration.safe_get('driver_client_cert_key') and
+                    self.configuration.safe_get('driver_client_cert')):
+                ecomx509 = {"key_file":
+                            self.configuration.safe_get(
+                                'driver_client_cert_key'),
+                            "cert_file":
+                                self.configuration.safe_get(
+                                    'driver_client_cert')}
             pywbem.cim_http.wbem_request = emc_vmax_https.wbem_request
-            if updatedPywbem:
-                conn = pywbem.WBEMConnection(
-                    self.url,
-                    (self.user, self.passwd),
-                    default_namespace='root/emc',
-                    x509={"key_file":
-                          self.configuration.safe_get(
-                              'driver_client_cert_key'),
-                          "cert_file":
-                          self.configuration.safe_get('driver_client_cert')},
-                    ca_certs=self.ecomCACert,
-                    no_verification=self.ecomNoVerification)
-            else:
-                conn = pywbem.WBEMConnection(
-                    self.url,
-                    (self.user, self.passwd),
-                    default_namespace='root/emc',
-                    x509={"key_file":
-                          self.configuration.safe_get(
-                              'driver_client_cert_key'),
-                          "cert_file":
-                          self.configuration.safe_get('driver_client_cert')})
+            conn = pywbem.WBEMConnection(
+                self.url,
+                (self.user, self.passwd),
+                default_namespace='root/emc',
+                x509=ecomx509,
+                ca_certs=self.configuration.safe_get('driver_ssl_cert_path'),
+                no_verification=not self.configuration.safe_get(
+                    'driver_ssl_cert_verify'))
 
         else:
             conn = pywbem.WBEMConnection(
@@ -1316,7 +1304,6 @@ class EMCVMAXCommon(object):
                 (self.user, self.passwd),
                 default_namespace='root/emc')
 
-        conn.debug = True
         if conn is None:
             exception_message = (_("Cannot connect to ECOM server."))
             raise exception.VolumeBackendAPIException(data=exception_message)
@@ -1691,9 +1678,7 @@ class EMCVMAXCommon(object):
         port = arrayInfo['EcomServerPort']
         self.user = arrayInfo['EcomUserName']
         self.passwd = arrayInfo['EcomPassword']
-        self.ecomUseSSL = arrayInfo['EcomUseSSL']
-        self.ecomCACert = arrayInfo['EcomCACert']
-        self.ecomNoVerification = arrayInfo['EcomNoVerification']
+        self.ecomUseSSL = self.configuration.safe_get('driver_use_ssl')
         ip_port = ("%(ip)s:%(port)s"
                    % {'ip': ip,
                       'port': port})
