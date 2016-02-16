@@ -12,16 +12,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_log import log as logging
 from oslo_serialization import jsonutils
 from oslo_utils import netutils
 import requests
 from six.moves import urllib
 
-from cinder.i18n import _, _LI
-
-
-LOG = logging.getLogger(__name__)
+from cinder.i18n import _
 
 
 class OpenStackApiException(Exception):
@@ -94,10 +90,6 @@ class TestOpenStackClient(object):
         relative_url = parsed_url.path
         if parsed_url.query:
             relative_url = relative_url + "?" + parsed_url.query
-        LOG.info(_LI("Doing %(method)s on %(relative_url)s"),
-                 {'method': method, 'relative_url': relative_url})
-        if body:
-            LOG.info(_LI("Body: %s") % body)
 
         if port:
             _url = "%s://%s:%d%s" % (scheme, hostname, int(port), relative_url)
@@ -121,8 +113,6 @@ class TestOpenStackClient(object):
                                 headers=headers)
 
         http_status = response.status_code
-        LOG.debug("%(auth_uri)s => code %(http_status)s",
-                  {'auth_uri': auth_uri, 'http_status': http_status})
 
         if http_status == 401:
             raise OpenStackApiAuthenticationException(response=response)
@@ -144,8 +134,6 @@ class TestOpenStackClient(object):
         response = self.request(full_uri, **kwargs)
 
         http_status = response.status_code
-        LOG.debug("%(relative_uri)s => code %(http_status)s",
-                  {'relative_uri': relative_uri, 'http_status': http_status})
 
         if check_response_status:
             if http_status not in check_response_status:
@@ -162,7 +150,6 @@ class TestOpenStackClient(object):
 
     def _decode_json(self, response):
         body = response.text
-        LOG.debug("Decoding JSON: %s" % (body))
         if body:
             return jsonutils.loads(body)
         else:

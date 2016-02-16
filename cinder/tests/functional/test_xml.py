@@ -14,16 +14,12 @@
 #    under the License.
 
 from lxml import etree
-from oslo_log import log as logging
 
 from cinder.api import common
-from cinder.tests.unit.integrated import integrated_helpers
+from cinder.tests.functional import functional_helpers
 
 
-LOG = logging.getLogger(__name__)
-
-
-class XmlTests(integrated_helpers._IntegratedTestBase):
+class XmlTests(functional_helpers._FunctionalTestBase):
     """Some basic XML sanity checks."""
 
     # FIXME(ja): does cinder need limits?
@@ -44,6 +40,5 @@ class XmlTests(integrated_helpers._IntegratedTestBase):
         response = self.api.api_request('/volumes', headers=headers,
                                         stream=True)
         data = response.raw
-        LOG.warning("data: %s", data)
         root = etree.parse(data).getroot()
         self.assertEqual(common.XML_NS_V2, root.nsmap.get(None))

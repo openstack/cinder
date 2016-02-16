@@ -1,5 +1,4 @@
-# Copyright (c) 2011 X.commerce, a business unit of eBay Inc.
-# Copyright 2011 OpenStack Foundation
+# Copyright 2011 Justin Santa Barbara
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -14,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+
 import iso8601
 from lxml import etree
 from oslo_config import cfg
@@ -23,23 +23,28 @@ import webob
 from cinder.api import extensions
 from cinder.api.v1 import router
 from cinder.api import xmlutil
-from cinder import test
+from cinder.tests.functional import functional_helpers
 
 
 NS = "{http://docs.openstack.org/common/api/v1.0}"
-
-
 CONF = cfg.CONF
 
 
-class ExtensionTestCase(test.TestCase):
-    def setUp(self):
-        super(ExtensionTestCase, self).setUp()
-        ext_list = CONF.osapi_volume_extension[:]
-        fox = ('cinder.tests.unit.api.extensions.foxinsocks.Foxinsocks')
-        if fox not in ext_list:
-            ext_list.append(fox)
-            self.flags(osapi_volume_extension=ext_list)
+class ExtensionTestCase(functional_helpers._FunctionalTestBase):
+    def _get_flags(self):
+        f = super(ExtensionTestCase, self)._get_flags()
+        f['osapi_volume_extension'] = CONF.osapi_volume_extension[:]
+        f['osapi_volume_extension'].append(
+            'cinder.tests.functional.api.foxinsocks.Foxinsocks')
+        return f
+
+
+class ExtensionsTest(ExtensionTestCase):
+    def test_get_foxnsocks(self):
+        """Simple check that fox-n-socks works."""
+        response = self.api.api_request('/foxnsocks')
+        foxnsocks = response.text
+        self.assertEqual('Try to say this Mr. Knox, sir...', foxnsocks)
 
 
 class ExtensionControllerTest(ExtensionTestCase):
@@ -183,7 +188,7 @@ class StubExtensionManager(object):
         return controller_extensions
 
 
-class ExtensionControllerIdFormatTest(test.TestCase):
+class ExtensionControllerIdFormatTest(ExtensionTestCase):
 
     def _bounce_id(self, test_id):
 
