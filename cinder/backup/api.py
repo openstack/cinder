@@ -105,7 +105,6 @@ class API(base.Base):
                                                     disabled=False)
         for srv in services:
             if (srv['availability_zone'] == volume['availability_zone'] and
-                    srv['host'] == volume_host and
                     utils.service_is_up(srv)):
                 return True
         return False

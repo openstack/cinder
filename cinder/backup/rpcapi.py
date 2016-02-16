@@ -46,21 +46,24 @@ class BackupAPI(object):
                                   version=self.BASE_RPC_API_VERSION)
         self.client = rpc.get_client(target, '1.0')
 
+    def _get_cctxt(self):
+        return self.client.prepare()
+
     def create_backup(self, ctxt, host, backup_id, volume_id, orig_status):
         LOG.debug("create_backup in rpcapi backup_id %s", backup_id)
-        cctxt = self.client.prepare(server=host)
+        cctxt = self._get_cctxt()
         cctxt.cast(ctxt, 'create_backup', backup_id=backup_id,
                    orig_status=orig_status)
 
     def restore_backup(self, ctxt, host, backup_id, volume_id):
         LOG.debug("restore_backup in rpcapi backup_id %s", backup_id)
-        cctxt = self.client.prepare(server=host)
+        cctxt = self._get_cctxt()
         cctxt.cast(ctxt, 'restore_backup', backup_id=backup_id,
                    volume_id=volume_id)
 
     def delete_backup(self, ctxt, host, backup_id):
         LOG.debug("delete_backup  rpcapi backup_id %s", backup_id)
-        cctxt = self.client.prepare(server=host)
+        cctxt = self._get_cctxt()
         cctxt.cast(ctxt, 'delete_backup', backup_id=backup_id)
 
     def export_record(self, ctxt, host, backup_id):
@@ -68,7 +71,7 @@ class BackupAPI(object):
                   "on host %(host)s.",
                   {'id': backup_id,
                    'host': host})
-        cctxt = self.client.prepare(server=host)
+        cctxt = self._get_cctxt()
         return cctxt.call(ctxt, 'export_record', backup_id=backup_id)
 
     def import_record(self,
@@ -83,7 +86,7 @@ class BackupAPI(object):
                   {'id': backup_id,
                    'host': host,
                    'url': backup_url})
-        cctxt = self.client.prepare(server=host)
+        cctxt = self._get_cctxt()
         cctxt.cast(ctxt, 'import_record',
                    backup_id=backup_id,
                    backup_service=backup_service,
@@ -95,6 +98,6 @@ class BackupAPI(object):
                   "on host %(host)s.",
                   {'id': backup_id,
                    'host': host})
-        cctxt = self.client.prepare(server=host)
+        cctxt = self._get_cctxt()
         return cctxt.cast(ctxt, 'reset_status', backup_id=backup_id,
                           status=status)
