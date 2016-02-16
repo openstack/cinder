@@ -475,7 +475,7 @@ class VolumeController(wsgi.Controller):
         multiattach = volume.get('multiattach', False)
         kwargs['multiattach'] = multiattach
         if snap_from_cache==True:
-            kwargs['volume_from_cache']=True
+            kwargs['volume_from_cache']=original_imageRef
 
         new_volume = self.volume_api.create(context,
                                             size,
