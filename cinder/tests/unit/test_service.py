@@ -245,6 +245,47 @@ class ServiceTestCase(test.TestCase):
         serv.rpcserver.stop.assert_called_once_with()
         serv.rpcserver.wait.assert_called_once_with()
 
+    @mock.patch('cinder.service.Service.report_state')
+    @mock.patch('cinder.service.Service.periodic_tasks')
+    @mock.patch.object(service.loopingcall, 'FixedIntervalLoopingCall')
+    @mock.patch.object(rpc, 'get_server')
+    @mock.patch('cinder.db')
+    def test_service_stop_waits_for_timers(self, mock_db, mock_rpc,
+                                           mock_loopcall, mock_periodic,
+                                           mock_report):
+        """Test that we wait for loopcalls only if stop succeeds."""
+        serv = service.Service(
+            self.host,
+            self.binary,
+            self.topic,
+            'cinder.tests.unit.test_service.FakeManager',
+            report_interval=5,
+            periodic_interval=10,
+        )
+
+        # One of the loopcalls will raise an exception on stop
+        mock_loopcall.side_effect = (
+            mock.Mock(**{'stop.side_effect': Exception}),
+            mock.Mock())
+
+        serv.start()
+        serv.stop()
+        serv.wait()
+        serv.rpcserver.start.assert_called_once_with()
+        serv.rpcserver.stop.assert_called_once_with()
+        serv.rpcserver.wait.assert_called_once_with()
+
+        # The first loopcall will have failed on the stop call, so we will not
+        # have waited for it to stop
+        self.assertEqual(1, serv.timers[0].start.call_count)
+        self.assertEqual(1, serv.timers[0].stop.call_count)
+        self.assertFalse(serv.timers[0].wait.called)
+
+        # We will wait for the second loopcall
+        self.assertEqual(1, serv.timers[1].start.call_count)
+        self.assertEqual(1, serv.timers[1].stop.call_count)
+        self.assertEqual(1, serv.timers[1].wait.call_count)
+
 
 class TestWSGIService(test.TestCase):
 
