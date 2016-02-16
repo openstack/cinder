@@ -263,16 +263,6 @@ class Service(service.Service):
 
         return service_obj
 
-    def kill(self):
-        """Destroy the service object in the datastore."""
-        self.stop()
-        try:
-            service_ref = objects.Service.get_by_id(
-                context.get_admin_context(), self.service_id)
-            service_ref.destroy()
-        except exception.NotFound:
-            LOG.warning(_LW('Service killed that has no database entry'))
-
     def stop(self):
         # Try to shut the connection down, but if we get any sort of
         # errors, go ahead and ignore them.. as we're shutting down anyway
