@@ -537,7 +537,10 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_sc',
                        return_value=12345)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'delete_volume')
     def test_create_volume_failure(self,
+                                   mock_delete_volume,
                                    mock_find_sc,
                                    mock_create_volume,
                                    mock_close_connection,
@@ -546,6 +549,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         volume = {'id': self.volume_name, 'size': 1}
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_volume, volume)
+        self.assertTrue(mock_delete_volume.called)
 
     @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
                        '_delete_replications')
@@ -1076,7 +1080,10 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'create_view_volume',
                        return_value=None)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'delete_volume')
     def test_create_volume_from_snapshot_failed(self,
+                                                mock_delete_volume,
                                                 mock_create_view_volume,
                                                 mock_find_replay_profile,
                                                 mock_find_replay,
@@ -1093,6 +1100,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertTrue(mock_find_replay.called)
         self.assertTrue(mock_find_volume.called)
         self.assertFalse(mock_find_replay_profile.called)
+        self.assertTrue(mock_delete_volume.called)
 
     @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
                        '_create_replications')
@@ -1188,6 +1196,36 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
             None)
         self.assertTrue(mock_find_volume.called)
         self.assertEqual({}, ret)
+
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_create_replications',
+                       return_value={})
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_sc',
+                       return_value=12345)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_volume',
+                       return_value=VOLUME)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'create_cloned_volume',
+                       return_value=None)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'delete_volume')
+    def test_create_cloned_volume_failed(self,
+                                         mock_delete_volume,
+                                         mock_create_cloned_volume,
+                                         mock_find_volume,
+                                         mock_find_sc,
+                                         mock_create_replications,
+                                         mock_close_connection,
+                                         mock_open_connection,
+                                         mock_init):
+        volume = {'id': self.volume_name + '_clone'}
+        src_vref = {'id': self.volume_name}
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_cloned_volume,
+                          volume, src_vref)
+        self.assertTrue(mock_delete_volume.called)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'delete_volume')
