@@ -40,6 +40,7 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
     _FAKE_SNAPSHOT = {'context': _FAKE_CONTEXT,
                       'id': _FAKE_SNAPSHOT_ID,
                       'volume': _FAKE_VOLUME,
+                      'volume_id': _FAKE_VOLUME_ID,
                       'status': 'available',
                       'volume_size': 1}
     _FAKE_SNAPSHOT_PATH = (_FAKE_VOLUME_PATH + '.' + _FAKE_SNAPSHOT_ID)
@@ -270,6 +271,38 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
         self.assertRaises(exception.InvalidVolume,
                           self._driver._create_snapshot,
                           fake_snapshot)
+
+    @mock.patch('cinder.db.snapshot_get')
+    @mock.patch('time.sleep')
+    def test_create_snapshot_online_with_concurrent_delete(
+            self, mock_sleep, mock_snapshot_get):
+        self._driver._nova = mock.Mock()
+
+        # Test what happens when progress is so slow that someone
+        # decides to delete the snapshot while the last known status is
+        # "creating".
+        mock_snapshot_get.side_effect = [
+            {'status': 'creating', 'progress': '42%'},
+            {'status': 'creating', 'progress': '45%'},
+            {'status': 'deleting'},
+        ]
+
+        with mock.patch.object(self._driver, '_do_create_snapshot') as \
+                mock_do_create_snapshot:
+            self.assertRaises(exception.RemoteFSConcurrentRequest,
+                              self._driver._create_snapshot_online,
+                              self._FAKE_SNAPSHOT,
+                              self._FAKE_VOLUME_NAME,
+                              self._FAKE_SNAPSHOT_PATH)
+
+        mock_do_create_snapshot.assert_called_once_with(
+            self._FAKE_SNAPSHOT, self._FAKE_VOLUME_NAME,
+            self._FAKE_SNAPSHOT_PATH)
+        self.assertEqual([mock.call(1), mock.call(1)],
+                         mock_sleep.call_args_list)
+        self.assertEqual(3, mock_snapshot_get.call_count)
+        mock_snapshot_get.assert_called_with(self._FAKE_SNAPSHOT['context'],
+                                             self._FAKE_SNAPSHOT['id'])
 
     @mock.patch.object(utils, 'synchronized')
     def _locked_volume_operation_test_helper(self, mock_synchronized, func,
