@@ -226,10 +226,11 @@ class HPE3PARCommon(object):
         3.0.11 - Fix the image cache capability bug #1491088
         3.0.12 - Remove client version checks for replication
         3.0.13 - Support creating a cg from a source cg
+        3.0.14 - Comparison of WWNs now handles case difference. bug #1546453
 
     """
 
-    VERSION = "3.0.13"
+    VERSION = "3.0.14"
 
     stats = {}
 
@@ -2487,7 +2488,7 @@ class HPE3PARCommon(object):
                 fc_paths = host['FCPaths']
                 for fc in fc_paths:
                     for wwn in wwns:
-                        if wwn == fc['wwn']:
+                        if wwn.upper() == fc['wwn'].upper():
                             return host['name']
 
     def terminate_connection(self, volume, hostname, wwn=None, iqn=None):
