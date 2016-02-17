@@ -30,7 +30,8 @@ from oslo_config import cfg
 from oslo_log import log as logging
 import oslo_messaging as messaging
 from oslo_serialization import jsonutils
-from osprofiler import profiler
+from oslo_utils import importutils
+profiler = importutils.try_import('osprofiler.profiler')
 
 import cinder.context
 import cinder.exception
@@ -123,20 +124,22 @@ class RequestContextSerializer(messaging.Serializer):
 
     def serialize_context(self, context):
         _context = context.to_dict()
-        prof = profiler.get()
-        if prof:
-            trace_info = {
-                "hmac_key": prof.hmac_key,
-                "base_id": prof.get_base_id(),
-                "parent_id": prof.get_id()
-            }
-            _context.update({"trace_info": trace_info})
+        if profiler is not None:
+            prof = profiler.get()
+            if prof:
+                trace_info = {
+                    "hmac_key": prof.hmac_key,
+                    "base_id": prof.get_base_id(),
+                    "parent_id": prof.get_id()
+                }
+                _context.update({"trace_info": trace_info})
         return _context
 
     def deserialize_context(self, context):
         trace_info = context.pop("trace_info", None)
         if trace_info:
-            profiler.init(**trace_info)
+            if profiler is not None:
+                profiler.init(**trace_info)
 
         return cinder.context.RequestContext.from_dict(context)
 

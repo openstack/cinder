@@ -33,9 +33,10 @@ from oslo_db import exception as db_exc
 from oslo_db import options
 from oslo_db.sqlalchemy import session as db_session
 from oslo_log import log as logging
+from oslo_utils import importutils
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
-import osprofiler.sqlalchemy
+osprofiler_sqlalchemy = importutils.try_import('osprofiler.sqlalchemy')
 import six
 import sqlalchemy
 from sqlalchemy import MetaData
@@ -85,7 +86,7 @@ def _create_facade_lazily():
             CONF.import_group("profiler", "cinder.service")
             if CONF.profiler.profiler_enabled:
                 if CONF.profiler.trace_sqlalchemy:
-                    osprofiler.sqlalchemy.add_tracing(sqlalchemy,
+                    osprofiler_sqlalchemy.add_tracing(sqlalchemy,
                                                       _FACADE.get_engine(),
                                                       "db")
 
