@@ -794,7 +794,8 @@ FAKE_GET_SPEC_MAPPING_VIEW_RESPONSE = """
         "ENABLEINBANDCOMMAND":"true",
         "ID":"1",
         "INBANDLUNWWN":"",
-        "TYPE":245
+        "TYPE":245,
+        "AVAILABLEHOSTLUNIDLIST": "[1]"
     }
 }
 """
@@ -1351,6 +1352,9 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/mappingview?range=[0-8191]/GET'] = (
     FAKE_GET_MAPPING_VIEW_INFO_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/mappingview'] = (
+    FAKE_GET_MAPPING_VIEW_RESPONSE)
+
+MAP_COMMAND_TO_FAKE_RESPONSE['/mappingview/PUT'] = (
     FAKE_GET_MAPPING_VIEW_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/MAPPINGVIEW/1/GET'] = (
@@ -1916,17 +1920,6 @@ class FakeClient(rest_client.RestClient):
         return json.loads(data)
 
 
-class FakeDB(object):
-
-    def volume_update(self, context, volume_id, model_update):
-        pass
-
-    def volume_get_all_by_group(self, context, group_id):
-        volumes = []
-        volumes.append(test_volume)
-        return volumes
-
-
 class FakeReplicaPairManager(replication.ReplicaPairManager):
     def _init_rmt_client(self):
         self.rmt_client = FakeClient(self.conf)
@@ -1937,7 +1930,6 @@ class FakeISCSIStorage(huawei_driver.HuaweiISCSIDriver):
 
     def __init__(self, configuration):
         self.configuration = configuration
-        self.db = FakeDB()
         self.huawei_conf = FakeHuaweiConf(self.configuration, 'iSCSI')
 
     def do_setup(self):
@@ -1947,8 +1939,7 @@ class FakeISCSIStorage(huawei_driver.HuaweiISCSIDriver):
         self.rmt_client = FakeClient(configuration=self.configuration)
         self.metro = hypermetro.HuaweiHyperMetro(self.client,
                                                  self.rmt_client,
-                                                 self.configuration,
-                                                 self.db)
+                                                 self.configuration)
         self.replica = FakeReplicaPairManager(self.client, self.configuration)
 
 
@@ -1958,7 +1949,6 @@ class FakeFCStorage(huawei_driver.HuaweiFCDriver):
     def __init__(self, configuration):
         self.configuration = configuration
         self.fcsan = None
-        self.db = FakeDB()
         self.huawei_conf = FakeHuaweiConf(self.configuration, 'iSCSI')
 
     def do_setup(self):
@@ -1968,8 +1958,7 @@ class FakeFCStorage(huawei_driver.HuaweiFCDriver):
         self.rmt_client = FakeClient(configuration=self.configuration)
         self.metro = hypermetro.HuaweiHyperMetro(self.client,
                                                  self.rmt_client,
-                                                 self.configuration,
-                                                 self.db)
+                                                 self.configuration)
         self.replica = FakeReplicaPairManager(self.client, self.configuration)
 
 
@@ -3098,10 +3087,20 @@ class HuaweiFCDriverTestCase(test.TestCase):
                                                              FakeConnector)
         self.assertEqual(1, iscsi_properties['data']['target_lun'])
 
+    def test_hypermetro_connection_success(self):
+        self.mock_object(rest_client.RestClient, 'find_array_version',
+                         mock.Mock(return_value='V300R003C00'))
+        fc_properties = self.driver.initialize_connection(hyper_volume,
+                                                          FakeConnector)
+        self.assertEqual(1, fc_properties['data']['target_lun'])
+
     def test_terminate_connection_success(self):
         self.driver.client.terminateFlag = True
         self.driver.terminate_connection(test_volume, FakeConnector)
         self.assertTrue(self.driver.client.terminateFlag)
+
+    def test_terminate_connection_hypermetro_in_metadata(self):
+        self.driver.terminate_connection(hyper_volume, FakeConnector)
 
     def test_get_volume_status(self):
         remote_device_info = {"ARRAYTYPE": "1",

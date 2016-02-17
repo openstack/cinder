@@ -26,8 +26,7 @@ LOG = logging.getLogger(__name__)
 
 class HuaweiHyperMetro(object):
 
-    def __init__(self, client, rmt_client, configuration, db):
-        self.db = db
+    def __init__(self, client, rmt_client, configuration):
         self.client = client
         self.rmt_client = rmt_client
         self.configuration = configuration
