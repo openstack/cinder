@@ -184,25 +184,28 @@ class API(base.Base):
             def _consumed(name):
                 return (usages[name]['reserved'] + usages[name]['in_use'])
 
-            if 'gigabytes' in overs:
-                msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
-                          "%(s_size)sG volume (%(d_consumed)dG of "
-                          "%(d_quota)dG already consumed)")
-                LOG.warning(msg, {'s_pid': context.project_id,
-                                  's_size': vol_ref['size'],
-                                  'd_consumed': _consumed('gigabytes'),
-                                  'd_quota': quotas['gigabytes']})
-                raise exception.VolumeSizeExceedsAvailableQuota(
-                    requested=vol_ref['size'],
-                    consumed=_consumed('gigabytes'),
-                    quota=quotas['gigabytes'])
-            elif 'volumes' in overs:
-                msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
-                          "volume (%(d_consumed)d volumes "
-                          "already consumed)")
-                LOG.warning(msg, {'s_pid': context.project_id,
-                                  'd_consumed': _consumed('volumes')})
-                raise exception.VolumeLimitExceeded(allowed=quotas['volumes'])
+            for over in overs:
+                if 'gigabytes' in over:
+                    msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
+                              "%(s_size)sG volume (%(d_consumed)dG of "
+                              "%(d_quota)dG already consumed)")
+                    LOG.warning(msg, {'s_pid': context.project_id,
+                                      's_size': vol_ref['size'],
+                                      'd_consumed': _consumed(over),
+                                      'd_quota': quotas[over]})
+                    raise exception.VolumeSizeExceedsAvailableQuota(
+                        requested=vol_ref['size'],
+                        consumed=_consumed(over),
+                        quota=quotas[over])
+                elif 'volumes' in over:
+                    msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
+                              "volume (%(d_consumed)d volumes "
+                              "already consumed)")
+                    LOG.warning(msg, {'s_pid': context.project_id,
+                                      'd_consumed': _consumed(over)})
+                    raise exception.VolumeLimitExceeded(allowed=quotas[over],
+                                                        name=over)
+
         try:
             donor_id = vol_ref['project_id']
             reserve_opts = {'volumes': -1, 'gigabytes': -vol_ref.size}
