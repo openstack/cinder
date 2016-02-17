@@ -592,6 +592,15 @@ class StorwizeHelpers(object):
                 raise exception.VolumeBackendAPIException(data=msg)
         return iogrps
 
+    def get_volume_io_group(self, vol_name):
+        vdisk = self.ssh.lsvdisk(vol_name)
+        if vdisk:
+            resp = self.ssh.lsiogrp()
+            for iogrp in resp:
+                if iogrp['name'] == vdisk['IO_group_name']:
+                    return int(iogrp['id'])
+        return None
+
     def get_node_info(self):
         """Return dictionary containing information on system's nodes."""
         nodes = {}
@@ -2619,19 +2628,74 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         if we got here then we have a vdisk that isn't in use (or we don't
         care if it is in use.
         """
-        vdisk = self._helpers.vdisk_by_uid(ref['source-id'])
-        if vdisk is None:
-            reason = (_('No vdisk with the UID specified by source-id %s.')
-                      % ref['source-id'])
-            raise exception.ManageExistingInvalidReference(existing_ref=ref,
-                                                           reason=reason)
+        # Check that the reference is valid
+        vdisk = self._manage_input_check(ref)
+        vdisk_io_grp = self._helpers.get_volume_io_group(vdisk['name'])
+        if vdisk_io_grp not in self._state['available_iogrps']:
+            msg = (_("Failed to manage existing volume due to "
+                     "the volume to be managed is not in a valid "
+                     "I/O group."))
+            raise exception.ManageExistingVolumeTypeMismatch(reason=msg)
+        if volume['volume_type_id']:
+            opts = self._get_vdisk_params(volume['volume_type_id'],
+                                          volume_metadata=
+                                          volume.get('volume_metadata'))
+            vdisk_copy = self._helpers.get_vdisk_copy_attrs(vdisk['name'], '0')
+
+            if vdisk_copy['autoexpand'] == 'on' and opts['rsize'] == -1:
+                msg = (_("Failed to manage existing volume due to "
+                         "the volume to be managed is thin, but "
+                         "the volume type chosen is thick."))
+                raise exception.ManageExistingVolumeTypeMismatch(reason=msg)
+
+            if not vdisk_copy['autoexpand'] and opts['rsize'] != -1:
+                msg = (_("Failed to manage existing volume due to "
+                         "the volume to be managed is thick, but "
+                         "the volume type chosen is thin."))
+                raise exception.ManageExistingVolumeTypeMismatch(reason=msg)
+
+            if (vdisk_copy['compressed_copy'] == 'no' and
+                    opts['compression']):
+                msg = (_("Failed to manage existing volume due to the "
+                         "volume to be managed is not compress, but "
+                         "the volume type chosen is compress."))
+                raise exception.ManageExistingVolumeTypeMismatch(reason=msg)
+
+            if (vdisk_copy['compressed_copy'] == 'yes' and
+                    not opts['compression']):
+                msg = (_("Failed to manage existing volume due to the "
+                         "volume to be managed is compress, but "
+                         "the volume type chosen is not compress."))
+                raise exception.ManageExistingVolumeTypeMismatch(reason=msg)
+
+            if vdisk_io_grp != opts['iogrp']:
+                msg = (_("Failed to manage existing volume due to "
+                         "I/O group mismatch. The I/O group of the "
+                         "volume to be managed is %(vdisk_iogrp)s. I/O group"
+                         "of the chosen type is %(opt_iogrp)s.") %
+                       {'vdisk_iogrp': vdisk['IO_group_name'],
+                        'opt_iogrp': opts['iogrp']})
+                raise exception.ManageExistingVolumeTypeMismatch(reason=msg)
+
+        if (vdisk['mdisk_grp_name'] !=
+                self.configuration.storwize_svc_volpool_name):
+            msg = (_("Failed to manage existing volume due to the "
+                     "pool of the volume to be managed does not "
+                     "match the backend pool. Pool of the "
+                     "volume to be managed is %(vdisk_pool)s. Pool "
+                     "of the backend is %(backend_pool)s.") %
+                   {'vdisk_pool': vdisk['mdisk_grp_name'],
+                    'backend_pool':
+                        self.configuration.storwize_svc_volpool_name})
+            raise exception.ManageExistingVolumeTypeMismatch(reason=msg)
         self._helpers.rename_vdisk(vdisk['name'], volume['name'])
 
     def manage_existing_get_size(self, volume, ref):
         """Return size of an existing Vdisk for manage_existing.
 
         existing_ref is a dictionary of the form:
-        {'source-id': <uid of disk>}
+        {'source-id': <uid of disk>} or
+        {'source-name': <name of the disk>}
 
         Optional elements are:
           'manage_if_in_use':  True/False (default is False)
@@ -2640,18 +2704,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         """
 
         # Check that the reference is valid
-        if 'source-id' not in ref:
-            reason = _('Reference must contain source-id element.')
-            raise exception.ManageExistingInvalidReference(existing_ref=ref,
-                                                           reason=reason)
-
-        # Check for existence of the vdisk
-        vdisk = self._helpers.vdisk_by_uid(ref['source-id'])
-        if vdisk is None:
-            reason = (_('No vdisk with the UID specified by source-id %s.')
-                      % (ref['source-id']))
-            raise exception.ManageExistingInvalidReference(existing_ref=ref,
-                                                           reason=reason)
+        vdisk = self._manage_input_check(ref)
 
         # Check if the disk is in use, if we need to.
         manage_if_in_use = ref.get('manage_if_in_use', False)
@@ -2844,3 +2897,25 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             data.update(self.replication.get_replication_info())
 
         self._stats = data
+
+    def _manage_input_check(self, ref):
+        """Verify the input of manage function."""
+        # Check that the reference is valid
+        if 'source-name' in ref:
+            manage_source = ref['source-name']
+            vdisk = self._helpers.get_vdisk_attributes(manage_source)
+        elif 'source-id' in ref:
+            manage_source = ref['source-id']
+            vdisk = self._helpers.vdisk_by_uid(manage_source)
+        else:
+            reason = _('Reference must contain source-id or '
+                       'source-name element.')
+            raise exception.ManageExistingInvalidReference(existing_ref=ref,
+                                                           reason=reason)
+
+        if vdisk is None:
+            reason = (_('No vdisk with the UID specified by ref %s.')
+                      % manage_source)
+            raise exception.ManageExistingInvalidReference(existing_ref=ref,
+                                                           reason=reason)
+        return vdisk

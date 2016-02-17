@@ -4136,7 +4136,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
         return (volume, self._get_vdisk_uid(volume['name']))
 
-    def test_manage_existing_bad_ref(self):
+    def test_manage_existing_get_size_bad_ref(self):
         """Error on manage with bad reference.
 
         This test case attempts to manage an existing volume but passes in
@@ -4148,13 +4148,126 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver.manage_existing_get_size, volume, ref)
 
-    def test_manage_existing_bad_uid(self):
+    def test_manage_existing_get_size_bad_uid(self):
         """Error when the specified UUID does not exist."""
         volume = self._generate_vol_info(None, None)
         ref = {'source-id': 'bad_uid'}
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver.manage_existing_get_size, volume, ref)
         pass
+
+    def test_manage_existing_get_size_bad_name(self):
+        """Error when the specified name does not exist."""
+        volume = self._generate_vol_info(None, None)
+        ref = {'source-name': 'bad_name'}
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size, volume, ref)
+
+    def test_manage_existing_bad_ref(self):
+        """Error on manage with bad reference.
+
+        This test case attempts to manage an existing volume but passes in
+        a bad reference that the Storwize driver doesn't understand.  We
+        expect an exception to be raised.
+        """
+
+        # Error when neither UUID nor name are specified.
+        volume = self._generate_vol_info(None, None)
+        ref = {}
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing, volume, ref)
+
+        # Error when the specified UUID does not exist.
+        volume = self._generate_vol_info(None, None)
+        ref = {'source-id': 'bad_uid'}
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing, volume, ref)
+
+        # Error when the specified name does not exist.
+        volume = self._generate_vol_info(None, None)
+        ref = {'source-name': 'bad_name'}
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing, volume, ref)
+
+    @mock.patch.object(storwize_svc_common.StorwizeHelpers,
+                       'get_vdisk_copy_attrs')
+    def test_manage_existing_mismatch(self,
+                                      get_vdisk_copy_attrs):
+        ctxt = testutils.get_test_admin_context()
+        _volume, uid = self._create_volume_and_return_uid('manage_test')
+
+        opts = {'rsize': -1}
+        type_thick_ref = volume_types.create(ctxt, 'testtype1', opts)
+
+        opts = {'rsize': 2}
+        type_thin_ref = volume_types.create(ctxt, 'testtype2', opts)
+
+        opts = {'rsize': 2, 'compression': True}
+        type_comp_ref = volume_types.create(ctxt, 'testtype3', opts)
+
+        opts = {'rsize': -1, 'iogrp': 1}
+        type_iogrp_ref = volume_types.create(ctxt, 'testtype4', opts)
+
+        new_volume = self._generate_vol_info(None, None)
+        ref = {'source-name': _volume['name']}
+
+        fake_copy_thin = self._get_default_opts()
+        fake_copy_thin['autoexpand'] = 'on'
+
+        fake_copy_comp = self._get_default_opts()
+        fake_copy_comp['autoexpand'] = 'on'
+        fake_copy_comp['compressed_copy'] = 'yes'
+
+        fake_copy_thick = self._get_default_opts()
+        fake_copy_thick['autoexpand'] = ''
+        fake_copy_thick['compressed_copy'] = 'no'
+
+        fake_copy_no_comp = self._get_default_opts()
+        fake_copy_no_comp['compressed_copy'] = 'no'
+
+        valid_iogrp = self.driver._state['available_iogrps']
+        self.driver._state['available_iogrps'] = [9999]
+        self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
+                          self.driver.manage_existing, new_volume, ref)
+        self.driver._state['available_iogrps'] = valid_iogrp
+
+        get_vdisk_copy_attrs.side_effect = [fake_copy_thin,
+                                            fake_copy_thick,
+                                            fake_copy_no_comp,
+                                            fake_copy_comp,
+                                            fake_copy_thick,
+                                            fake_copy_thick
+                                            ]
+        new_volume['volume_type_id'] = type_thick_ref['id']
+        self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
+                          self.driver.manage_existing, new_volume, ref)
+
+        new_volume['volume_type_id'] = type_thin_ref['id']
+        self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
+                          self.driver.manage_existing, new_volume, ref)
+
+        new_volume['volume_type_id'] = type_comp_ref['id']
+        self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
+                          self.driver.manage_existing, new_volume, ref)
+
+        new_volume['volume_type_id'] = type_thin_ref['id']
+        self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
+                          self.driver.manage_existing, new_volume, ref)
+
+        new_volume['volume_type_id'] = type_iogrp_ref['id']
+        self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
+                          self.driver.manage_existing, new_volume, ref)
+
+        new_volume['volume_type_id'] = type_thick_ref['id']
+        no_exist_pool = 'i-dont-exist-%s' % random.randint(10000, 99999)
+        self._set_flag('storwize_svc_volpool_name', no_exist_pool)
+        self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
+                          self.driver.manage_existing, new_volume, ref)
+
+        self._reset_flags()
+        volume_types.destroy(ctxt, type_thick_ref['id'])
+        volume_types.destroy(ctxt, type_comp_ref['id'])
+        volume_types.destroy(ctxt, type_iogrp_ref['id'])
 
     def test_manage_existing_good_uid_not_mapped(self):
         """Tests managing a volume with no mappings.
@@ -4184,7 +4297,35 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         uid_of_new_volume = self._get_vdisk_uid(new_volume['name'])
         self.assertEqual(uid, uid_of_new_volume)
 
-    def test_manage_existing_good_uid_mapped(self):
+    def test_manage_existing_good_name_not_mapped(self):
+        """Tests managing a volume with no mappings.
+
+        This test case attempts to manage an existing volume by name, and
+        we expect it to succeed.  We verify that the backend volume was
+        renamed to have the name of the Cinder volume that we asked for it to
+        be associated with.
+        """
+
+        # Create a volume as a way of getting a vdisk created, and find out the
+        # UID of that vdisk.
+        _volume, uid = self._create_volume_and_return_uid('manage_test')
+
+        # Descriptor of the Cinder volume that we want to own the vdisk
+        # referenced by uid.
+        new_volume = self._generate_vol_info(None, None)
+
+        # Submit the request to manage it.
+        ref = {'source-name': _volume['name']}
+        size = self.driver.manage_existing_get_size(new_volume, ref)
+        self.assertEqual(10, size)
+        self.driver.manage_existing(new_volume, ref)
+
+        # Assert that there is a disk named after the new volume that has the
+        # ID that we passed in, indicating that the disk has been renamed.
+        uid_of_new_volume = self._get_vdisk_uid(new_volume['name'])
+        self.assertEqual(uid, uid_of_new_volume)
+
+    def test_manage_existing_mapped(self):
         """Tests managing a mapped volume with no override.
 
         This test case attempts to manage an existing volume by UID, but
@@ -4208,6 +4349,10 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
         # Attempt to manage this disk, and except an exception beause the
         # volume is already mapped.
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size, volume, ref)
+
+        ref = {'source-name': volume['name']}
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver.manage_existing_get_size, volume, ref)
 
@@ -4236,6 +4381,40 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         # Submit the request to manage it, specifying that it is OK to
         # manage a volume that is already attached.
         ref = {'source-id': uid, 'manage_if_in_use': True}
+        size = self.driver.manage_existing_get_size(new_volume, ref)
+        self.assertEqual(10, size)
+        self.driver.manage_existing(new_volume, ref)
+
+        # Assert that there is a disk named after the new volume that has the
+        # ID that we passed in, indicating that the disk has been renamed.
+        uid_of_new_volume = self._get_vdisk_uid(new_volume['name'])
+        self.assertEqual(uid, uid_of_new_volume)
+
+    def test_manage_existing_good_name_mapped_with_override(self):
+        """Tests managing a mapped volume with override.
+
+        This test case attempts to manage an existing volume by name, when it
+        already mapped to a host, but the ref specifies that this is OK.
+        We verify that the backend volume was renamed to have the name of the
+        Cinder volume that we asked for it to be associated with.
+        """
+        # Create a volume as a way of getting a vdisk created, and find out the
+        # UUID of that vdisk.
+        volume, uid = self._create_volume_and_return_uid('manage_test')
+
+        # Map a host to the disk
+        conn = {'initiator': u'unicode:initiator3',
+                'ip': '10.10.10.12',
+                'host': u'unicode.foo}.bar}.baz'}
+        self.driver.initialize_connection(volume, conn)
+
+        # Descriptor of the Cinder volume that we want to own the vdisk
+        # referenced by uid.
+        new_volume = self._generate_vol_info(None, None)
+
+        # Submit the request to manage it, specifying that it is OK to
+        # manage a volume that is already attached.
+        ref = {'source-name': volume['name'], 'manage_if_in_use': True}
         size = self.driver.manage_existing_get_size(new_volume, ref)
         self.assertEqual(10, size)
         self.driver.manage_existing(new_volume, ref)
