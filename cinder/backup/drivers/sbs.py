@@ -398,7 +398,9 @@ class SBSBackupDriver(driver.BackupDriver):
             try:
                 backup_bucket = conn.get_bucket(bucket_name)
             except Exception as e:
-                LOG.warn("Exception getting bucket %s" % bucket_name)
+                errmsg = (_("Exception getting bucket %s" % bucket_name))
+                LOG.error(errmsg)
+                raise exception.InvalidBackup(reason=errmsg)
                 return None
         return backup_bucket
 
