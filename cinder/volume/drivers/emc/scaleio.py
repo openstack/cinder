@@ -88,7 +88,7 @@ BANDWIDTH_LIMIT = 'sio:bandwidth_limit'
 
 BLOCK_SIZE = 8
 OK_STATUS_CODE = 200
-VOLUME_NOT_FOUND_ERROR = 78
+VOLUME_NOT_FOUND_ERROR = 79
 VOLUME_NOT_MAPPED_ERROR = 84
 VOLUME_ALREADY_MAPPED_ERROR = 81
 
@@ -636,7 +636,7 @@ class ScaleIODriver(driver.VolumeDriver):
         if r.status_code != OK_STATUS_CODE:
             response = r.json()
             error_code = response['errorCode']
-            if error_code == 78:
+            if error_code == VOLUME_NOT_FOUND_ERROR:
                 force_delete = self.configuration.sio_force_delete
                 if force_delete:
                     LOG.warning(_LW(
