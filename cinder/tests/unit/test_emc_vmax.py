@@ -471,7 +471,8 @@ class EMCVMAXCommonData(object):
                         'id': '12345abcde',
                         'consistencygroup_id': '123456789',
                         'status': 'available',
-                        'snapshots': []
+                        'snapshots': [],
+                        'consistencygroup': test_CG
                         }
     location_info = {'location_info': '000195900551#silver#None',
                      'storage_protocol': 'ISCSI'}
@@ -3627,7 +3628,8 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         utils = self.driver.common.utils
         status = 'status-string'
         volumes = utils.get_volume_model_updates(
-            None, self.driver.db, self.data.test_CG['id'],
+            None, self.driver.db.volume_get_all_by_group("", 5),
+            self.data.test_CG['id'],
             status)
         self.assertEqual(status, volumes[0]['status'])
 

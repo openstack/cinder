@@ -1272,28 +1272,6 @@ class EMCVMAXUtils(object):
 
         return foundSyncInstanceName
 
-    def populate_cgsnapshot_status(
-            self, context, db, cgsnapshot_id, status='available'):
-        """Update cgsnapshot status in the cinder database.
-
-        :param context: the context
-        :param db: cinder database
-        :param cgsnapshot_id: cgsnapshot id
-        :param status: string value reflects the status of the member snapshot
-        :returns: snapshots - updated snapshots
-        """
-        snapshots = db.snapshot_get_all_for_cgsnapshot(context, cgsnapshot_id)
-        LOG.info(_LI(
-            "Populating status for cgsnapshot: %(id)s."),
-            {'id': cgsnapshot_id})
-        if snapshots:
-            for snapshot in snapshots:
-                snapshot['status'] = status
-        else:
-            LOG.info(_LI("No snapshot found for %(cgsnapshot)s."),
-                     {'cgsnapshot': cgsnapshot_id})
-        return snapshots
-
     def get_firmware_version(self, conn, arrayName):
         """Get the firmware version of array.
 
@@ -2291,17 +2269,16 @@ class EMCVMAXUtils(object):
         return foundSyncInstanceName
 
     def get_volume_model_updates(
-            self, context, db, cgId, status='available'):
+            self, context, volumes, cgId, status='available'):
         """Update the volume model's status and return it.
 
         :param context: the context
-        :param db: cinder database
+        :param volumes: volumes object api
         :param cgId: cg id
         :param status: string value reflects the status of the member volume
         :returns: volume_model_updates - updated volumes
         """
         volume_model_updates = []
-        volumes = db.volume_get_all_by_group(context, cgId)
         LOG.info(_LI(
             "Updating status for CG: %(id)s."),
             {'id': cgId})
