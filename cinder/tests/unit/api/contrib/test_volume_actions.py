@@ -17,7 +17,6 @@ import iso8601
 import uuid
 
 import mock
-from oslo_config import cfg
 import oslo_messaging as messaging
 from oslo_serialization import jsonutils
 import webob
@@ -34,8 +33,6 @@ from cinder.tests.unit import fake_volume
 from cinder import volume
 from cinder.volume import api as volume_api
 from cinder.volume import rpcapi as volume_rpcapi
-
-CONF = cfg.CONF
 
 
 class VolumeActionsTest(test.TestCase):

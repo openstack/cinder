@@ -22,7 +22,6 @@
 import copy
 
 from mox3 import mox
-from oslo_config import cfg
 
 from cinder import context
 from cinder import exception
@@ -81,8 +80,6 @@ CG_SNAPSHOT = {'id': CG_SNAPSHOT_ID,
                'consistencygroup_id': CONSISTGROUP_ID}
 
 CONNECTOR = {'initiator': "iqn.2012-07.org.fake:01:948f189c4695", }
-
-CONF = cfg.CONF
 
 
 class XIVDS8KFakeProxyDriver(object):

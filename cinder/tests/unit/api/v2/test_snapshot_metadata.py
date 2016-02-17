@@ -16,7 +16,6 @@
 import uuid
 
 import mock
-from oslo_config import cfg
 from oslo_serialization import jsonutils
 import webob
 
@@ -31,9 +30,6 @@ from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder import volume
-
-
-CONF = cfg.CONF
 
 
 def return_create_snapshot_metadata(context, snapshot_id, metadata, delete):

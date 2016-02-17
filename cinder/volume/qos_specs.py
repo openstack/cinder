@@ -16,7 +16,6 @@
 """The QoS Specs Implementation"""
 
 
-from oslo_config import cfg
 from oslo_db import exception as db_exc
 from oslo_log import log as logging
 
@@ -27,7 +26,6 @@ from cinder.i18n import _, _LE, _LW
 from cinder.volume import volume_types
 
 
-CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 CONTROL_LOCATION = ['front-end', 'back-end', 'both']

@@ -14,14 +14,10 @@
 
 """Tests for volume type."""
 
-from oslo_config import cfg
-
 from cinder import context
 from cinder import db
 from cinder import test
 from cinder.volume import volume_types
-
-CONF = cfg.CONF
 
 
 class VolumeTypeTestCase(test.TestCase):

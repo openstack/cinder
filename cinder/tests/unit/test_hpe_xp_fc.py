@@ -25,9 +25,7 @@ from cinder.volume import driver
 from cinder.volume.drivers.hpe import hpe_xp_fc
 from cinder.volume.drivers.hpe import hpe_xp_opts
 
-from oslo_config import cfg
 from oslo_utils import importutils
-CONF = cfg.CONF
 
 NORMAL_LDEV_TYPE = 'Normal'
 POOL_INFO = {'30': {'total_gb': 'infinite', 'free_gb': 'infinite'}}

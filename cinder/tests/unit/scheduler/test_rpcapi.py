@@ -20,14 +20,10 @@ Unit Tests for cinder.scheduler.rpcapi
 import copy
 
 import mock
-from oslo_config import cfg
 
 from cinder import context
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import test
-
-
-CONF = cfg.CONF
 
 
 class SchedulerRpcAPITestCase(test.TestCase):

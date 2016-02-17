@@ -17,8 +17,6 @@
 import ddt
 import mock
 
-from oslo_config import cfg
-
 from cinder import context
 from cinder import exception
 from cinder.openstack.common import imageutils
@@ -32,8 +30,6 @@ from cinder.tests.unit import utils
 from cinder.tests.unit.volume.flows import fake_volume_api
 from cinder.volume.flows.api import create_volume
 from cinder.volume.flows.manager import create_volume as create_volume_manager
-
-CONF = cfg.CONF
 
 
 @ddt.ddt
