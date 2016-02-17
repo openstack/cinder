@@ -1291,7 +1291,7 @@ class NfsDriverDoSetupTestCase(test.TestCase):
         mock_execute.assert_has_calls(
             [mock.call('mount.nfs',
                        check_exit_code=False,
-                       run_as_root=False)])
+                       run_as_root=True)])
 
     def test_setup_should_throw_exception_if_mount_nfs_command_fails(self):
         """do_setup should throw error if mount.nfs fails with OSError
@@ -1315,7 +1315,7 @@ class NfsDriverDoSetupTestCase(test.TestCase):
         mock_execute.assert_has_calls(
             [mock.call('mount.nfs',
                        check_exit_code=False,
-                       run_as_root=False)])
+                       run_as_root=True)])
 
     def test_update_migrated_volume_is_there(self):
         """Ensure that driver.update_migrated_volume() is there."""
