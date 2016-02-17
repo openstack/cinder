@@ -2413,6 +2413,28 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
                                    test_volume, external_ref)
             self.assertIsNotNone(re.search('HyperMetroPair', ex.msg))
 
+    @mock.patch.object(rest_client.RestClient, 'get_hypermetro_pairs')
+    @mock.patch.object(rest_client.RestClient, 'rename_lun')
+    @mock.patch.object(rest_client.RestClient, 'get_lun_info',
+                       return_value={'CAPACITY': 2097152,
+                                     'ID': 'ID1',
+                                     'PARENTNAME': 'StoragePool001',
+                                     'HEALTHSTATUS': constants.STATUS_HEALTH})
+    @mock.patch.object(rest_client.RestClient, 'get_lun_id_by_name',
+                       return_value='ID1')
+    def test_manage_existing_with_lower_version(self, mock_get_by_name,
+                                                mock_get_info, mock_rename,
+                                                mock_get_hyper_pairs):
+        test_volume = {'host': 'ubuntu-204@v3r3#StoragePool001',
+                       'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
+                       'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf'}
+        mock_get_hyper_pairs.side_effect = (
+            exception.VolumeBackendAPIException(data='err'))
+        external_ref = {'source-name': 'LUN1'}
+        model_update = self.driver.manage_existing(test_volume,
+                                                   external_ref)
+        self.assertEqual({'provider_location': 'ID1'}, model_update)
+
     @ddt.data([[{'PRILUNID': 'ID1'}], []],
               [[{'PRILUNID': 'ID2'}], ['ID1', 'ID2']])
     @mock.patch.object(rest_client.RestClient, 'get_lun_info',

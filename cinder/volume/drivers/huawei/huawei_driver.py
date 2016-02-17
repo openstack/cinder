@@ -1081,9 +1081,8 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         try:
             hypermetro_pairs = self.client.get_hypermetro_pairs()
         except exception.VolumeBackendAPIException:
-            msg = _("Failed to get HyperMetroPair.")
-            raise exception.ManageExistingInvalidReference(
-                existing_ref=external_ref, reason=msg)
+            hypermetro_pairs = []
+            LOG.debug("Can't get hypermetro info, pass the check.")
 
         for pair in hypermetro_pairs:
             if pair.get('LOCALOBJID') == lun_id:
