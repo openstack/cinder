@@ -864,7 +864,7 @@ class RBDDriver(driver.VolumeDriver):
                                      self.configuration.volume_dd_blocksize,
                                      size=volume['size'])
 
-            self.delete_volume(volume)
+            self.delete_volume(volume, context)
 
             chunk_size = CONF.rbd_store_chunk_size * units.Mi
             order = int(math.log(chunk_size, 2))
