@@ -215,13 +215,13 @@ def save_to_file(destination_file):
 
     except OSError as exc:
         raise RtstoolError(_('targetcli not installed and could not create '
-                             'default directory (%(default_path)s): %(exc)s'),
+                             'default directory (%(default_path)s): %(exc)s') %
                            {'default_path': path_to_file, 'exc': exc})
     try:
         rtsroot.save_to_file(destination_file)
     except (OSError, IOError) as exc:
         raise RtstoolError(_('Could not save configuration to %(file_path)s: '
-                             '%(exc)s'),
+                             '%(exc)s') %
                            {'file_path': destination_file, 'exc': exc})
 
 

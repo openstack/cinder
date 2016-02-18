@@ -1197,6 +1197,27 @@ class TestCinderRtstoolCmd(test.TestCase):
         mock_os.path.exists.assert_called_once_with(mock.sentinel.dirname)
         mock_os.makedirs.assert_called_once_with(mock.sentinel.dirname, 0o755)
 
+    @mock.patch.object(cinder_rtstool, 'os', autospec=True)
+    @mock.patch.object(cinder_rtstool, 'rtslib_fb', autospec=True)
+    def test_save_error_creating_dir(self, mock_rtslib, mock_os):
+        mock_os.path.dirname.return_value = 'dirname'
+        mock_os.path.exists.return_value = False
+        mock_os.makedirs.side_effect = OSError('error')
+
+        regexp = (u'targetcli not installed and could not create default '
+                  'directory \(dirname\): error$')
+        self.assertRaisesRegexp(cinder_rtstool.RtstoolError, regexp,
+                                cinder_rtstool.save_to_file, None)
+
+    @mock.patch.object(cinder_rtstool, 'os', autospec=True)
+    @mock.patch.object(cinder_rtstool, 'rtslib_fb', autospec=True)
+    def test_save_error_saving(self, mock_rtslib, mock_os):
+        save = mock_rtslib.root.RTSRoot.return_value.save_to_file
+        save.side_effect = OSError('error')
+        regexp = u'Could not save configuration to myfile: error'
+        self.assertRaisesRegexp(cinder_rtstool.RtstoolError, regexp,
+                                cinder_rtstool.save_to_file, 'myfile')
+
     def test_usage(self):
         with mock.patch('sys.stdout', new=six.StringIO()):
             exit = self.assertRaises(SystemExit, cinder_rtstool.usage)
