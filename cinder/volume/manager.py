@@ -204,7 +204,7 @@ def locked_snapshot_operation(f):
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '1.37'
+    RPC_API_VERSION = '1.38'
 
     target = messaging.Target(version=RPC_API_VERSION)
 
@@ -3494,3 +3494,16 @@ class VolumeManager(manager.SchedulerDependentManager):
         capabilities = self.driver.capabilities
         LOG.debug("Obtained capabilities list: %s.", capabilities)
         return capabilities
+
+    def get_backup_device(self, ctxt, backup):
+        (backup_device, is_snapshot) = (
+            self.driver.get_backup_device(ctxt, backup))
+        secure_enabled = self.driver.secure_file_operations_enabled()
+        backup_device_dict = {'backup_device': backup_device,
+                              'secure_enabled': secure_enabled,
+                              'is_snapshot': is_snapshot, }
+        return backup_device_dict
+
+    def secure_file_operations_enabled(self, ctxt, volume):
+        secure_enabled = self.driver.secure_file_operations_enabled()
+        return secure_enabled

@@ -85,9 +85,11 @@ class VolumeAPI(rpc.RPCAPI):
                migrate_volume_completion(), and update_migrated_volume().
         1.37 - Adds old_reservations parameter to retype to support quota
                checks in the API.
+        1.38 - Scaling backup service, add get_backup_device() and
+               secure_file_operations_enabled()
     """
 
-    RPC_API_VERSION = '1.37'
+    RPC_API_VERSION = '1.38'
     TOPIC = CONF.volume_topic
     BINARY = 'cinder-volume'
 
@@ -326,3 +328,15 @@ class VolumeAPI(rpc.RPCAPI):
     def get_capabilities(self, ctxt, host, discover):
         cctxt = self._get_cctxt(host, '1.29')
         return cctxt.call(ctxt, 'get_capabilities', discover=discover)
+
+    def get_backup_device(self, ctxt, backup, volume):
+        new_host = utils.extract_host(volume.host)
+        cctxt = self.client.prepare(server=new_host, version='1.38')
+        return cctxt.call(ctxt, 'get_backup_device',
+                          backup=backup)
+
+    def secure_file_operations_enabled(self, ctxt, volume):
+        new_host = utils.extract_host(volume.host)
+        cctxt = self.client.prepare(server=new_host, version='1.38')
+        return cctxt.call(ctxt, 'secure_file_operations_enabled',
+                          volume=volume)

@@ -19,6 +19,7 @@ from cinder.api.middleware import auth as cinder_api_middleware_auth
 from cinder.api.middleware import sizelimit as cinder_api_middleware_sizelimit
 from cinder.api.v2 import volumes as cinder_api_v2_volumes
 from cinder.api.views import versions as cinder_api_views_versions
+from cinder.backup import api as cinder_backup_api
 from cinder.backup import chunkeddriver as cinder_backup_chunkeddriver
 from cinder.backup import driver as cinder_backup_driver
 from cinder.backup.drivers import ceph as cinder_backup_drivers_ceph
@@ -289,6 +290,7 @@ def list_opts():
                 cinder_volume_drivers_hitachi_hnasiscsi.iSCSI_OPTS,
                 cinder_volume_drivers_rbd.rbd_opts,
                 cinder_volume_drivers_tintri.tintri_opts,
+                cinder_backup_api.backup_api_opts,
                 cinder_volume_drivers_hitachi_hbsdhorcm.volume_opts,
                 cinder_backup_manager.backup_manager_opts,
                 cinder_volume_drivers_ibm_storwize_svc_storwizesvccommon.

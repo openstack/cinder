@@ -106,8 +106,11 @@ class AdminActionsTest(BaseAdminTest):
         req.headers['content-type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes({'os-reset_status': updated_status})
         req.environ['cinder.context'] = ctx
-        resp = req.get_response(app())
-        return resp
+        with mock.patch('cinder.backup.api.API._is_backup_service_enabled') \
+                as mock_is_service_available:
+            mock_is_service_available.return_value = True
+            resp = req.get_response(app())
+            return resp
 
     def test_valid_updates(self):
         vac = admin_actions.VolumeAdminController()
@@ -206,7 +209,8 @@ class AdminActionsTest(BaseAdminTest):
                                    'size': 1,
                                    'volume_id': volume['id'],
                                    'user_id': 'user',
-                                   'project_id': 'project'})
+                                   'project_id': 'project',
+                                   'host': 'test'})
 
         resp = self._issue_backup_reset(self.ctx,
                                         backup,
@@ -218,7 +222,8 @@ class AdminActionsTest(BaseAdminTest):
         ctx = context.RequestContext('fake', 'fake')
         backup = db.backup_create(ctx, {'status': 'available',
                                         'size': 1,
-                                        'volume_id': "fakeid"})
+                                        'volume_id': "fakeid",
+                                        'host': 'test'})
         resp = self._issue_backup_reset(ctx,
                                         backup,
                                         {'status': fields.BackupStatus.ERROR})
@@ -233,7 +238,8 @@ class AdminActionsTest(BaseAdminTest):
                                   {'status': fields.BackupStatus.AVAILABLE,
                                    'volume_id': volume['id'],
                                    'user_id': 'user',
-                                   'project_id': 'project'})
+                                   'project_id': 'project',
+                                   'host': 'test'})
 
         resp = self._issue_backup_reset(self.ctx,
                                         backup,

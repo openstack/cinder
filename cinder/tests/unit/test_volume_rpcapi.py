@@ -26,6 +26,7 @@ from cinder import context
 from cinder import db
 from cinder import objects
 from cinder import test
+from cinder.tests.unit import fake_backup
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import utils as tests_utils
@@ -94,6 +95,7 @@ class VolumeRpcAPITestCase(test.TestCase):
         self.fake_cg2 = group2
         self.fake_src_cg = jsonutils.to_primitive(source_group)
         self.fake_cgsnap = cgsnapshot
+        self.fake_backup_obj = fake_backup.fake_backup_obj(self.context)
 
     def test_serialized_volume_has_id(self):
         self.assertIn('id', self.fake_volume)
@@ -137,6 +139,12 @@ class VolumeRpcAPITestCase(test.TestCase):
             if cgsnapshot:
                 cgsnapshot.consistencygroup
                 kwargs['cgsnapshot'].consistencygroup
+        if 'backup' in expected_msg:
+            backup = expected_msg['backup']
+            del expected_msg['backup']
+            expected_msg['backup_id'] = backup.id
+            expected_msg['backup'] = backup
+
         if 'host' in expected_msg:
             del expected_msg['host']
         if 'dest_host' in expected_msg:
@@ -205,6 +213,10 @@ class VolumeRpcAPITestCase(test.TestCase):
                 expected_volume = expected_msg[kwarg].obj_to_primitive()
                 volume = value.obj_to_primitive()
                 self.assertEqual(expected_volume, volume)
+            elif isinstance(value, objects.Backup):
+                expected_backup = expected_msg[kwarg].obj_to_primitive()
+                backup = value.obj_to_primitive()
+                self.assertEqual(expected_backup, backup)
             else:
                 self.assertEqual(expected_msg[kwarg], value)
 
@@ -580,3 +592,16 @@ class VolumeRpcAPITestCase(test.TestCase):
                               rpc_method='cast',
                               volume=self.fake_volume,
                               version='1.30')
+
+    def test_get_backup_device(self):
+        self._test_volume_api('get_backup_device',
+                              rpc_method='call',
+                              backup=self.fake_backup_obj,
+                              volume=self.fake_volume_obj,
+                              version='1.38')
+
+    def test_secure_file_operations_enabled(self):
+        self._test_volume_api('secure_file_operations_enabled',
+                              rpc_method='call',
+                              volume=self.fake_volume_obj,
+                              version='1.38')
