@@ -1900,7 +1900,8 @@ class DBAPIBackupTestCase(BaseTest):
             'temp_volume_id': 'temp_volume_id',
             'temp_snapshot_id': 'temp_snapshot_id',
             'num_dependent_backups': 0,
-            'snapshot_id': 'snapshot_id', }
+            'snapshot_id': 'snapshot_id',
+            'restore_volume_id': 'restore_volume_id'}
         if one:
             return base_values
 

@@ -1283,3 +1283,15 @@ class BackupAPITestCase(BaseBackupTest):
                           description="test backup description",
                           volume_id=volume_id,
                           container='volumebackups')
+
+    @mock.patch('cinder.backup.rpcapi.BackupAPI.restore_backup')
+    def test_restore_volume(self,
+                            mock_rpcapi_restore):
+        ctxt = context.RequestContext('fake', 'fake')
+        volume_id = self._create_volume_db_entry(status='available',
+                                                 size=1)
+        backup = self._create_backup_db_entry(size=1,
+                                              status='available')
+        self.api.restore(ctxt, backup.id, volume_id)
+        backup = objects.Backup.get_by_id(ctxt, backup.id)
+        self.assertEqual(volume_id, backup.restore_volume_id)
