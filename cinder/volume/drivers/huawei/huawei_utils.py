@@ -14,7 +14,6 @@
 #    under the License.
 
 import base64
-import json
 import six
 import time
 import uuid
@@ -79,24 +78,6 @@ def get_volume_size(volume):
         volume_size = int(volume['size']) * units.Gi / 512
 
     return volume_size
-
-
-def get_remote_device_info(valid_hypermetro_devices):
-    remote_device_info = {}
-    try:
-        if valid_hypermetro_devices:
-            remote_device_info = json.loads(valid_hypermetro_devices)
-        else:
-            return
-
-    except ValueError as err:
-        msg = _("Get remote device info error. %s.") % err
-        LOG.error(msg)
-        raise exception.VolumeBackendAPIException(data=msg)
-
-    if len(remote_device_info) == 1:
-        for device_key, device_value in remote_device_info.items():
-            return remote_device_info.get(device_key)
 
 
 def get_volume_metadata(volume):
