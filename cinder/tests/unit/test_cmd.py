@@ -19,6 +19,7 @@ import ddt
 import fixtures
 import mock
 from oslo_config import cfg
+from oslo_db import exception as oslo_exception
 from oslo_utils import timeutils
 import six
 from six.moves import StringIO
@@ -194,7 +195,7 @@ class TestCinderManageCmd(test.TestCase):
 
     @mock.patch('cinder.db.migration.db_sync')
     def test_db_commands_sync(self, db_sync):
-        version = mock.MagicMock()
+        version = 11
         db_cmds = cinder_manage.DbCommands()
         db_cmds.sync(version=version)
         db_sync.assert_called_once_with(version)
@@ -205,6 +206,19 @@ class TestCinderManageCmd(test.TestCase):
         with mock.patch('sys.stdout', new=six.StringIO()):
             db_cmds.version()
             self.assertEqual(1, db_version.call_count)
+
+    def test_db_commands_upgrade_out_of_range(self):
+        version = 2147483647
+        db_cmds = cinder_manage.DbCommands()
+        exit = self.assertRaises(SystemExit, db_cmds.sync, version + 1)
+        self.assertEqual(1, exit.code)
+
+    @mock.patch("oslo_db.sqlalchemy.migration.db_sync")
+    def test_db_commands_script_not_present(self, db_sync):
+        db_sync.side_effect = oslo_exception.DbMigrationError
+        db_cmds = cinder_manage.DbCommands()
+        exit = self.assertRaises(SystemExit, db_cmds.sync, 101)
+        self.assertEqual(1, exit.code)
 
     @mock.patch('cinder.cmd.manage.DbCommands.online_migrations',
                 (mock.Mock(side_effect=((2, 2), (0, 0)), __name__='foo'),))

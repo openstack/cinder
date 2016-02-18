@@ -210,11 +210,19 @@ class DbCommands(object):
     def __init__(self):
         pass
 
-    @args('version', nargs='?', default=None,
+    @args('version', nargs='?', default=None, type=int,
           help='Database version')
     def sync(self, version=None):
         """Sync the database up to the most recent version."""
-        return db_migration.db_sync(version)
+        if version is not None and version > db.MAX_INT:
+            print(_('Version should be less than or equal to '
+                    '%(max_version)d.') % {'max_version': db.MAX_INT})
+            sys.exit(1)
+        try:
+            return db_migration.db_sync(version)
+        except db_exc.DbMigrationError as ex:
+            print("Error during database migration: %s" % ex)
+            sys.exit(1)
 
     def version(self):
         """Print the current database version."""
