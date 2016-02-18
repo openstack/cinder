@@ -206,7 +206,7 @@ class SBSBackupDriver(driver.BackupDriver):
         # Make sure user arg is valid since rbd command may not fail if
         # invalid/no user provided, resulting in unexpected behaviour.
         if not self._validate_string_args(user):
-            raise exception.BackupInvalidCephArgs(_("invalid user '%s'") %
+            raise exception.BackupInvalidCephArgs(_('invalid user %s') %
                                                   user)
 
         args = ['--id', user]
@@ -335,7 +335,7 @@ class SBSBackupDriver(driver.BackupDriver):
         try:
             key = bucket.get_key(key_name)
         except Exception as e:
-            errmsg = (_("Failed to get handle for snap %s") % key_name)
+            errmsg = (_('Failed to get handle for snap %s') % key_name)
             LOG.error(errmsg)
             raise exception.InvalidBackup(reason=errmsg)
         return key
@@ -385,7 +385,7 @@ class SBSBackupDriver(driver.BackupDriver):
                                    aws_secret_access_key=self._secret_key, is_secure=True,
                                    calling_format = boto.s3.connection.OrdinaryCallingFormat(),)
         except Exception as e:
-            errmsg = (_("Exception getting connection to object store %s") % e)
+            errmsg = (_('Exception getting connection to object store %s') % e)
             LOG.error(errmsg)
             raise exception.BackupRBDOperationFailed(errmsg)
             return None
@@ -398,7 +398,7 @@ class SBSBackupDriver(driver.BackupDriver):
             try:
                 backup_bucket = conn.get_bucket(bucket_name)
             except Exception as e:
-                errmsg = (_("Exception getting bucket %s" % bucket_name))
+                errmsg = (_('Exception getting bucket %s' % bucket_name))
                 LOG.error(errmsg)
                 raise exception.InvalidBackup(reason=errmsg)
                 return None
@@ -443,7 +443,7 @@ class SBSBackupDriver(driver.BackupDriver):
         key = bucket.new_key(snap_name)
         if key == None:
             os.remove(loc)
-            msg = (_("Failed to create backup entry %s in object store") % (snap_name))
+            msg = (_('Failed to create backup entry %s in object store') % (snap_name))
             LOG.error(msg)
             raise exception.BackupOperationError(msg)
             return
@@ -452,7 +452,7 @@ class SBSBackupDriver(driver.BackupDriver):
             #key.set_contents_from_filename(loc)
         except exception as e:
             os.remove(loc)
-            msg = (_("Failed to upload backup % to object store") % (snap_name))
+            msg = (_('Failed to upload backup %s to object store') % (snap_name))
             LOG.error(msg)
             raise exception.BackupOperationError(msg)
 
@@ -528,14 +528,14 @@ class SBSBackupDriver(driver.BackupDriver):
             #check if base and from snap are of same version of backup
             base_backup = self.db.backup_get(self.context, base['id'])
             if base_backup['status'] != 'available':
-                msg = (_("Base backup '%(snap)s' should be in available state,"
-                            "Found in '%(state)s' state") % { 'snap': base_backup['id'],
+                msg = (_('Base backup %(snap)s should be in available state,'
+                            'Found in %(state)s state') % { 'snap': base_backup['id'],
                               'state': base_backup['status']})
                 LOG.error(msg)
                 raise exception.BackupOperationError(msg)
             base_name = base['display_name']
             if base_backup['version'] != self.DRIVER_VERSION:
-                errmsg = (_("Incremental snapshot are of older version %s" % base_backup['version']))
+                errmsg = (_('Incremental snapshot are of older version %s' % base_backup['version']))
                 LOG.debug(errmsg)
                 raise exception.BackupRBDOperationFailed(errmsg)
 
@@ -547,24 +547,24 @@ class SBSBackupDriver(driver.BackupDriver):
                 if snap_id:
                     snap = self.db.backup_get(self.context, snap_id)
                     if snap['status'] != 'available':
-                        msg = (_("Snapshot='%(snap)s' status should be available, "
-                                    "but found in %s '%(state)s' - aborting incremental "
-                                    "backup") %
+                        msg = (_('Snapshot= %(snap)s status should be available, '
+                                    'but found in %(state)s state - aborting incremental '
+                                    'backup') %
                                   {'snap': snap['id'], 'state': snap['status']})
                         LOG.error(msg)
                         # Raise this exception so that caller can try another
                         # approach
                         raise exception.BackupOperationError(msg)
             if snap == None:
-                errmsg = (_("From snapshot='%(snap)s' does not exist" %
+                errmsg = (_('From snapshot=%(snap)s does not exist' %
                           {'snap': from_snap}))
                 LOG.error(errmsg)
                 raise exception.BackupRBDOperationFailed(errmsg)
 
             if not self._snap_exists(base_name, from_snap, snap['container']):
-                errmsg = (_("Snapshot='%(snap)s' does not exist in base "
-                            "image='%(base)s' - aborting incremental "
-                            "backup") %
+                errmsg = (_('Snapshot=%(snap)s does not exist in base '
+                            'image=%(base)s - aborting incremental '
+                            'backup') %
                           {'snap': from_snap, 'base': base_name})
                 LOG.error(errmsg)
                 # Raise this exception so that caller can try another
@@ -630,7 +630,7 @@ class SBSBackupDriver(driver.BackupDriver):
             if id:
                 par_id = id
             else:
-                msg = (_("backup id of parent not found for snap '%(snap)s'")
+                msg = (_('backup id of parent not found for snap %(snap)s')
                           % backup['id'])
                 LOG.err(msg)
                 raise exception.BackupOperationError(msg)
@@ -713,7 +713,7 @@ class SBSBackupDriver(driver.BackupDriver):
         try:
             key.get_contents_to_filename(loc)
         except Exception as e:
-            errmsg = (_("Failed to get contents of backup %s from object store") % (snap_name))
+            errmsg = (_('Failed to get contents of backup %s from object store') % (snap_name))
             LOG.error(errmsg)
             raise exception.InvalidBackup(reason=errmsg)
             return
@@ -835,7 +835,7 @@ class SBSBackupDriver(driver.BackupDriver):
             try:
                 bucket.delete_key(snap_name)
             except Exception as e:
-                errmsg = (_("Failed to delete backup %s from object store") % (snap_name))
+                errmsg = (_('Failed to delete backup %s from object store') % (snap_name))
                 LOG.error(errmsg)
                 pass
         else:
