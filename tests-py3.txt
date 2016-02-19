@@ -1,4 +1,5 @@
 cinder.tests.unit.api.contrib
+cinder.tests.unit.api.middleware.test_faults
 cinder.tests.unit.api.openstack.test_wsgi
 cinder.tests.unit.api.test_common
 cinder.tests.unit.api.test_extensions

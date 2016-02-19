@@ -18,6 +18,7 @@ from xml.dom import minidom
 import mock
 from oslo_i18n import fixture as i18n_fixture
 from oslo_serialization import jsonutils
+import six
 import webob.dec
 
 from cinder.api import common
@@ -26,19 +27,23 @@ from cinder.i18n import _
 from cinder import test
 
 
-class TestFaults(test.TestCase):
+class TestCase(test.TestCase):
+    def _prepare_xml(self, xml_string):
+        """Remove characters from string which hinder XML equality testing."""
+        if six.PY3 and isinstance(xml_string, bytes):
+            xml_string = xml_string.decode('utf-8')
+        xml_string = xml_string.replace("  ", "")
+        xml_string = xml_string.replace("\n", "")
+        xml_string = xml_string.replace("\t", "")
+        return xml_string
+
+
+class TestFaults(TestCase):
     """Tests covering `cinder.api.openstack.faults:Fault` class."""
 
     def setUp(self):
         super(TestFaults, self).setUp()
         self.useFixture(i18n_fixture.ToggleLazy(True))
-
-    def _prepare_xml(self, xml_string):
-        """Remove characters from string which hinder XML equality testing."""
-        xml_string = xml_string.replace("  ", "")
-        xml_string = xml_string.replace("\n", "")
-        xml_string = xml_string.replace("\t", "")
-        return xml_string
 
     def test_400_fault_json(self):
         """Test fault serialized to JSON via file-extension and/or header."""
@@ -97,7 +102,7 @@ class TestFaults(test.TestCase):
         resp = req.get_response(raiser)
         self.assertEqual("application/xml", resp.content_type)
         self.assertEqual(404, resp.status_int)
-        self.assertIn('whut?', resp.body)
+        self.assertIn(b'whut?', resp.body)
 
     def test_raise_403(self):
         """Ensure the ability to raise :class:`Fault` in WSGI-ified methods."""
@@ -110,7 +115,7 @@ class TestFaults(test.TestCase):
         self.assertEqual("application/xml", resp.content_type)
         self.assertEqual(403, resp.status_int)
         self.assertNotIn('resizeNotAllowed', resp.body)
-        self.assertIn('forbidden', resp.body)
+        self.assertIn(b'forbidden', resp.body)
 
     @mock.patch('cinder.api.openstack.wsgi.i18n.translate')
     def test_raise_http_with_localized_explanation(self, mock_translate):
@@ -130,7 +135,7 @@ class TestFaults(test.TestCase):
         resp = req.get_response(raiser)
         self.assertEqual("application/xml", resp.content_type)
         self.assertEqual(404, resp.status_int)
-        self.assertIn(("Mensaje traducido"), resp.body)
+        self.assertIn(b"Mensaje traducido", resp.body)
         self.stubs.UnsetAll()
 
     def test_fault_has_status_int(self):
@@ -146,19 +151,13 @@ class TestFaults(test.TestCase):
         fault = wsgi.Fault(webob.exc.HTTPBadRequest(explanation='scram'))
         response = request.get_response(fault)
 
-        self.assertIn(common.XML_NS_V2, response.body)
+        self.assertIn(common.XML_NS_V2, response.body.decode())
         self.assertEqual("application/xml", response.content_type)
         self.assertEqual(400, response.status_int)
 
 
-class FaultsXMLSerializationTestV11(test.TestCase):
+class FaultsXMLSerializationTestV11(TestCase):
     """Tests covering `cinder.api.openstack.faults:Fault` class."""
-
-    def _prepare_xml(self, xml_string):
-        xml_string = xml_string.replace("  ", "")
-        xml_string = xml_string.replace("\n", "")
-        xml_string = xml_string.replace("\t", "")
-        return xml_string
 
     def test_400_fault(self):
         metadata = {'attributes': {"badRequest": 'code'}}
@@ -197,6 +196,8 @@ class FaultsXMLSerializationTestV11(test.TestCase):
         }
 
         output = serializer.serialize(fixture)
+        if six.PY3:
+            output = output.decode('utf-8')
         actual = minidom.parseString(self._prepare_xml(output))
 
         expected = minidom.parseString(self._prepare_xml("""
@@ -221,6 +222,8 @@ class FaultsXMLSerializationTestV11(test.TestCase):
         }
 
         output = serializer.serialize(fixture)
+        if six.PY3:
+            output = output.decode('utf-8')
         actual = minidom.parseString(self._prepare_xml(output))
 
         expected = minidom.parseString(self._prepare_xml("""
@@ -232,14 +235,8 @@ class FaultsXMLSerializationTestV11(test.TestCase):
         self.assertEqual(expected.toxml(), actual.toxml())
 
 
-class FaultsXMLSerializationTestV2(test.TestCase):
+class FaultsXMLSerializationTestV2(TestCase):
     """Tests covering `cinder.api.openstack.faults:Fault` class."""
-
-    def _prepare_xml(self, xml_string):
-        xml_string = xml_string.replace("  ", "")
-        xml_string = xml_string.replace("\n", "")
-        xml_string = xml_string.replace("\t", "")
-        return xml_string
 
     def test_400_fault(self):
         metadata = {'attributes': {"badRequest": 'code'}}

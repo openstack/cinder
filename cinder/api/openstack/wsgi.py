@@ -481,7 +481,7 @@ class XMLDictSerializer(DictSerializer):
             collections = metadata.get('dict_collections', {})
             if nodename in collections:
                 metadata = collections[nodename]
-                for k, v in data.items():
+                for k, v in sorted(data.items()):
                     node = doc.createElement(metadata['item_name'])
                     node.setAttribute(metadata['item_key'], str(k))
                     text = doc.createTextNode(str(v))
@@ -489,7 +489,7 @@ class XMLDictSerializer(DictSerializer):
                     result.appendChild(node)
                 return result
             attrs = metadata.get('attributes', {}).get(nodename, {})
-            for k, v in data.items():
+            for k, v in sorted(data.items()):
                 if k in attrs:
                     result.setAttribute(k, str(v))
                 else:
