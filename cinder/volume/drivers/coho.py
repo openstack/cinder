@@ -290,7 +290,6 @@ class CohoDriver(nfs.NfsDriver):
     def __init__(self, *args, **kwargs):
         super(CohoDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(coho_opts)
-        self._execute_as_root = True
         self._rpcclients = dict()
         self._backend_name = (self.configuration.volume_backend_name or
                               self.__class__.__name__)
@@ -308,6 +307,7 @@ class CohoDriver(nfs.NfsDriver):
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
         super(CohoDriver, self).do_setup(context)
+        self._execute_as_root = True
         self._context = context
 
         config = self.configuration.coho_rpc_port
@@ -393,5 +393,8 @@ class CohoDriver(nfs.NfsDriver):
         _stats["driver_version"] = VERSION
         _stats["storage_protocol"] = 'NFS'
         _stats["volume_backend_name"] = self._backend_name
+        _stats["total_capacity_gb"] = 'unknown'
+        _stats["free_capacity_gb"] = 'unknown'
+        _stats["export_paths"] = self._mounted_shares
 
         return _stats
