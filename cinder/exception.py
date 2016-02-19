@@ -376,6 +376,11 @@ class InvalidQuotaValue(Invalid):
                 "resources: %(unders)s")
 
 
+class InvalidNestedQuotaSetup(CinderException):
+    message = _("Project quotas are not properly setup for nested quotas: "
+                "%(reason)s.")
+
+
 class QuotaNotFound(NotFound):
     message = _("Quota could not be found")
 
