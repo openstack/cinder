@@ -2292,12 +2292,30 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
         # Check that the initiator_target_map is as expected
         term_data = {'driver_volume_type': 'fibre_channel',
                      'data': {'initiator_target_map':
-                              {'ff00000000000000': ['AABBCCDDEEFF0011'],
-                               'ff00000000000001': ['AABBCCDDEEFF0011']}
+                              {'ff00000000000000': ['5005076802432ADE',
+                                                    '5005076802332ADE',
+                                                    '5005076802532ADE',
+                                                    '5005076802232ADE',
+                                                    '5005076802132ADE',
+                                                    '5005086802132ADE',
+                                                    '5005086802332ADE',
+                                                    '5005086802532ADE',
+                                                    '5005086802232ADE',
+                                                    '5005086802432ADE'],
+                               'ff00000000000001': ['5005076802432ADE',
+                                                    '5005076802332ADE',
+                                                    '5005076802532ADE',
+                                                    '5005076802232ADE',
+                                                    '5005076802132ADE',
+                                                    '5005086802132ADE',
+                                                    '5005086802332ADE',
+                                                    '5005086802532ADE',
+                                                    '5005086802232ADE',
+                                                    '5005086802432ADE']}
                               }
                      }
 
-        self.assertEqual(term_data, term_ret)
+        self.assertItemsEqual(term_data, term_ret)
 
     def test_storwize_svc_fc_host_maps(self):
         # Create two volumes to be used in mappings
