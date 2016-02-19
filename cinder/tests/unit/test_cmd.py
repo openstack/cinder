@@ -39,6 +39,7 @@ from cinder import context
 from cinder import exception
 from cinder.objects import fields
 from cinder import test
+from cinder.tests.unit import fake_constants
 from cinder.tests.unit import fake_volume
 from cinder import version
 
@@ -664,6 +665,34 @@ class TestCinderManageCmd(test.TestCase):
             backup_get_all.assert_called_once_with(ctxt, None, None, None,
                                                    None, None, None)
             self.assertEqual(expected_out, fake_out.getvalue())
+
+    @mock.patch('cinder.db.backup_update')
+    @mock.patch('cinder.db.backup_get_all_by_host')
+    @mock.patch('cinder.context.get_admin_context')
+    def test_update_backup_host(self, get_admin_context,
+                                backup_get_by_host,
+                                backup_update):
+        ctxt = context.RequestContext('fake-user', 'fake-project')
+        get_admin_context.return_value = ctxt
+        backup = {'id': fake_constants.backup_id,
+                  'user_id': 'fake-user-id',
+                  'project_id': 'fake-project-id',
+                  'host': 'fake-host',
+                  'display_name': 'fake-display-name',
+                  'container': 'fake-container',
+                  'status': fields.BackupStatus.AVAILABLE,
+                  'size': 123,
+                  'object_count': 1,
+                  'volume_id': 'fake-volume-id',
+                  }
+        backup_get_by_host.return_value = [backup]
+        backup_cmds = cinder_manage.BackupCommands()
+        backup_cmds.update_backup_host('fake_host', 'fake_host2')
+
+        get_admin_context.assert_called_once_with()
+        backup_get_by_host.assert_called_once_with(ctxt, 'fake_host')
+        backup_update.assert_called_once_with(ctxt, fake_constants.backup_id,
+                                              {'host': 'fake_host2'})
 
     @mock.patch('cinder.utils.service_is_up')
     @mock.patch('cinder.db.service_get_all')
