@@ -888,6 +888,12 @@ class VolumeTypeQuotaEngineTestCase(test.TestCase):
         db.volume_type_destroy(ctx, vtype['id'])
         db.volume_type_destroy(ctx, vtype2['id'])
 
+    def test_update_quota_resource(self):
+        ctx = context.RequestContext('admin', 'admin', is_admin=True)
+
+        engine = quota.VolumeTypeQuotaEngine()
+        engine.update_quota_resource(ctx, 'type1', 'type2')
+
 
 class DbQuotaDriverTestCase(test.TestCase):
     def setUp(self):

@@ -18,6 +18,7 @@ import six
 import webob
 
 from cinder.api.contrib import types_manage
+from cinder import context
 from cinder import exception
 from cinder import test
 from cinder.tests.unit.api import fakes
@@ -365,19 +366,26 @@ class VolumeTypesManageApiTest(test.TestCase):
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller._update, req, '1', body)
 
-    @mock.patch('cinder.volume.volume_types.update')
     @mock.patch('cinder.volume.volume_types.get_volume_type')
-    def test_update_only_name(self, mock_get, mock_update):
+    @mock.patch('cinder.db.volume_type_update')
+    @mock.patch('cinder.quota.VolumeTypeQuotaEngine.'
+                'update_quota_resource')
+    def test_update_only_name(self, mock_update_quota,
+                              mock_update, mock_get):
         mock_get.return_value = return_volume_types_get_volume_type_updated(
             '999')
 
-        body = {"volume_type": {"name": "vol_type_999_999"}}
+        ctxt = context.RequestContext('admin', 'fake', True)
+        body = {"volume_type": {"name": "vol_type_999"}}
         req = fakes.HTTPRequest.blank('/v2/fake/types/999')
         req.method = 'PUT'
+        req.environ['cinder.context'] = ctxt
 
         self.assertEqual(0, len(self.notifier.notifications))
         res_dict = self.controller._update(req, '999', body)
         self.assertEqual(1, len(self.notifier.notifications))
+        mock_update_quota.assert_called_once_with(ctxt, 'vol_type_999_999',
+                                                  'vol_type_999')
         self._check_test_results(res_dict,
                                  {'expected_name': 'vol_type_999_999',
                                   'expected_desc': 'vol_type_desc_999'})

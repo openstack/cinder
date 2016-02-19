@@ -766,6 +766,11 @@ def quota_update(context, project_id, resource, limit):
     return IMPL.quota_update(context, project_id, resource, limit)
 
 
+def quota_update_resource(context, old_res, new_res):
+    """Update resource of quotas."""
+    return IMPL.quota_update_resource(context, old_res, new_res)
+
+
 def quota_destroy(context, project_id, resource):
     """Destroy the quota or raise if it does not exist."""
     return IMPL.quota_destroy(context, project_id, resource)
@@ -797,6 +802,11 @@ def quota_class_get_all_by_name(context, class_name):
 def quota_class_update(context, class_name, resource, limit):
     """Update a quota class or raise if it does not exist."""
     return IMPL.quota_class_update(context, class_name, resource, limit)
+
+
+def quota_class_update_resource(context, resource, new_resource):
+    """Update resource name in quota_class."""
+    return IMPL.quota_class_update_resource(context, resource, new_resource)
 
 
 def quota_class_destroy(context, class_name, resource):
@@ -852,6 +862,11 @@ def quota_destroy_by_project(context, project_id):
 def reservation_expire(context):
     """Roll back any expired reservations."""
     return IMPL.reservation_expire(context)
+
+
+def quota_usage_update_resource(context, old_res, new_res):
+    """Update resource field in quota_usages."""
+    return IMPL.quota_usage_update_resource(context, old_res, new_res)
 
 
 ###################

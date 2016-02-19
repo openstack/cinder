@@ -547,6 +547,15 @@ def quota_allocated_get_all_by_project(context, project_id):
     return result
 
 
+@require_context
+def _quota_get_by_resource(context, resource, session=None):
+    rows = model_query(context, models.Quota,
+                       session=session,
+                       read_deleted='no').filter_by(
+        resource=resource).all()
+    return rows
+
+
 @require_admin_context
 def quota_create(context, project_id, resource, limit, allocated):
     quota_ref = models.Quota()
@@ -569,6 +578,15 @@ def quota_update(context, project_id, resource, limit):
         quota_ref = _quota_get(context, project_id, resource, session=session)
         quota_ref.hard_limit = limit
         return quota_ref
+
+
+@require_context
+def quota_update_resource(context, old_res, new_res):
+    session = get_session()
+    with session.begin():
+        quotas = _quota_get_by_resource(context, old_res, session=session)
+        for quota in quotas:
+            quota.resource = new_res
 
 
 @require_admin_context
@@ -637,6 +655,17 @@ def quota_class_get_all_by_name(context, class_name):
     return result
 
 
+@require_context
+def _quota_class_get_all_by_resource(context, resource, session):
+    result = model_query(context, models.QuotaClass,
+                         session=session,
+                         read_deleted="no").\
+        filter_by(resource=resource).\
+        all()
+
+    return result
+
+
 @require_admin_context
 def quota_class_create(context, class_name, resource, limit):
     quota_class_ref = models.QuotaClass()
@@ -658,6 +687,16 @@ def quota_class_update(context, class_name, resource, limit):
                                            session=session)
         quota_class_ref.hard_limit = limit
         return quota_class_ref
+
+
+@require_context
+def quota_class_update_resource(context, old_res, new_res):
+    session = get_session()
+    with session.begin():
+        quota_class_list = _quota_class_get_all_by_resource(
+            context, old_res, session)
+        for quota_class in quota_class_list:
+            quota_class.resource = new_res
 
 
 @require_admin_context
@@ -761,6 +800,27 @@ def _get_quota_usages(context, session, project_id):
         with_lockmode('update').\
         all()
     return {row.resource: row for row in rows}
+
+
+def _get_quota_usages_by_resource(context, session, resource):
+    rows = model_query(context, models.QuotaUsage,
+                       deleted="no",
+                       session=session).\
+        filter_by(resource=resource).\
+        with_lockmode('update').\
+        all()
+    return rows
+
+
+@require_context
+@_retry_on_deadlock
+def quota_usage_update_resource(context, old_res, new_res):
+    session = get_session()
+    with session.begin():
+        usages = _get_quota_usages_by_resource(context, session, old_res)
+        for usage in usages:
+            usage.resource = new_res
+            usage.until_refresh = 1
 
 
 @require_context
@@ -915,15 +975,20 @@ def _quota_reservations(session, context, reservations):
         all()
 
 
+def _dict_with_usage_id(usages):
+    return {row.id: row for row in usages.values()}
+
+
 @require_context
 @_retry_on_deadlock
 def reservation_commit(context, reservations, project_id=None):
     session = get_session()
     with session.begin():
         usages = _get_quota_usages(context, session, project_id)
+        usages = _dict_with_usage_id(usages)
 
         for reservation in _quota_reservations(session, context, reservations):
-            usage = usages[reservation.resource]
+            usage = usages[reservation.usage_id]
             if reservation.delta >= 0:
                 usage.reserved -= reservation.delta
             usage.in_use += reservation.delta
@@ -937,9 +1002,9 @@ def reservation_rollback(context, reservations, project_id=None):
     session = get_session()
     with session.begin():
         usages = _get_quota_usages(context, session, project_id)
-
+        usages = _dict_with_usage_id(usages)
         for reservation in _quota_reservations(session, context, reservations):
-            usage = usages[reservation.resource]
+            usage = usages[reservation.usage_id]
             if reservation.delta >= 0:
                 usage.reserved -= reservation.delta
 
