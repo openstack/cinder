@@ -562,8 +562,13 @@ class RBDDriver(driver.VolumeDriver):
         backup_snaps = self._get_backup_snaps(rbd_image)
         if backup_snaps:
             ctxt = context.elevated()
+            backup = None
             for snap in backup_snaps:
-                backup = self.db.backup_get(ctxt, snap['backup_id'])
+                try:
+                    backup = self.db.backup_get(ctxt, snap['backup_id'])
+                except exception.NotFound:
+                    backup = None
+                    pass
                 if backup and backup['status'] == 'creating':
                     LOG.info("Volume %s has backup %s in creating state" %
                              (volume_name, backup['id']))
