@@ -24,6 +24,7 @@ from oslo_serialization import jsonutils
 
 from cinder import context
 from cinder import db
+from cinder import exception
 from cinder import objects
 from cinder import test
 from cinder.tests.unit import fake_backup
@@ -599,15 +600,28 @@ class VolumeRpcAPITestCase(test.TestCase):
                               volume=self.fake_volume,
                               version='1.30')
 
-    def test_get_backup_device(self):
+    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
+    def test_get_backup_device(self, mock_can_send_version):
         self._test_volume_api('get_backup_device',
                               rpc_method='call',
                               backup=self.fake_backup_obj,
                               volume=self.fake_volume_obj,
                               version='1.38')
 
-    def test_secure_file_operations_enabled(self):
+        mock_can_send_version.return_value = False
+        self.assertRaises(exception.ServiceTooOld, self._test_volume_api,
+                          'get_backup_device', rpc_method='call',
+                          backup=self.fake_backup_obj,
+                          volume=self.fake_volume_obj, version='1.38')
+
+    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
+    def test_secure_file_operations_enabled(self, mock_can_send_version):
         self._test_volume_api('secure_file_operations_enabled',
                               rpc_method='call',
                               volume=self.fake_volume_obj,
                               version='1.38')
+
+        mock_can_send_version.return_value = False
+        self.assertRaises(exception.ServiceTooOld, self._test_volume_api,
+                          'secure_file_operations_enabled', rpc_method='call',
+                          volume=self.fake_volume_obj, version='1.38')

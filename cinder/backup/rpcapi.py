@@ -35,9 +35,12 @@ class BackupAPI(rpc.RPCAPI):
 
         1.0 - Initial version.
         1.1 - Changed methods to accept backup objects instead of IDs.
+        1.2 - A version that got in by mistake (without breaking anything).
+        1.3 - Dummy version bump to mark start of having cinder-backup service
+              decoupled from cinder-volume.
     """
 
-    RPC_API_VERSION = '1.1'
+    RPC_API_VERSION = '1.3'
     TOPIC = CONF.backup_topic
     BINARY = 'cinder-backup'
 
