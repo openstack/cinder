@@ -1928,25 +1928,6 @@ class VolumeManager(manager.SchedulerDependentManager):
                 # queue it to be sent to the Schedulers.
                 self.update_service_capabilities(volume_stats)
 
-                if volume_stats.get('replication_enabled', False):
-                    # replciation_status provides a concise update of
-                    # replicating volumes and any error conditions
-                    # detected by the driver.  The intent is we don't
-                    # expect/worry about updates so long as nothing
-                    # changes, but if something goes wrong this is a
-                    # handy mechanism to update the manager and the db
-                    # possibly let the admin/user be notified
-
-                    # TODO(jdg): Refactor the check/update pieces to a
-                    # helper method we can share
-                    # We want to leverage some of the same update model
-                    # that we have in the targets update call
-
-                    replication_updates = (
-                        self.driver.get_replication_updates(context))
-                    for update in replication_updates:
-                        pass
-
     def _append_volume_stats(self, vol_stats):
         pools = vol_stats.get('pools', None)
         if pools and isinstance(pools, list):

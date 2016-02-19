@@ -1401,11 +1401,6 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         """Obtain volume repliction targets."""
         return self.replica.list_replica_targets(vref)
 
-    def get_replication_updates(self, context):
-        # NOTE(jlc): The manager does not do aynthing with these updates.
-        # When that is changed, here must be modified as well.
-        return []
-
 
 class HuaweiISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
     """ISCSI driver for Huawei storage arrays.

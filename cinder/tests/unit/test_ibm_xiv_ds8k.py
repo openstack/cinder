@@ -284,10 +284,6 @@ class XIVDS8KFakeProxyDriver(object):
 
         return {'status': 'deleted'}, updated_snapshots
 
-    def get_replication_updates(self, context):
-
-        return []
-
     def replication_disable(self, context, volume):
         if volume['replication_status'] == 'invalid_status_val':
             raise exception.CinderException()
@@ -988,14 +984,6 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
             self.assertEqual('available',
                              volumes_model_update['status'],
                              "volumes list status failed")
-
-    def test_get_replication_updates(self):
-        """Get replication updates."""
-
-        self.driver.do_setup(None)
-
-        ret = self.driver.get_replication_updates(CONTEXT)
-        self.assertEqual([], ret)
 
     def test_replication_disable(self):
         """Disable replication on the specified volume."""

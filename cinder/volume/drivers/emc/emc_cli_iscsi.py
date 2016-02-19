@@ -292,10 +292,6 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
         """Failovers volume from primary device to secondary."""
         return self.cli.replication_failover(context, volume, secondary)
 
-    def get_replication_updates(self, context):
-        """Returns updated replication status from volumes."""
-        return self.cli.get_replication_updates(context)
-
     def list_replication_targets(self, context, volume):
         """Returns volume replication info."""
         return self.cli.list_replication_targets(context, volume)

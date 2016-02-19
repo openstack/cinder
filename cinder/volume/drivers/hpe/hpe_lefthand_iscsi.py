@@ -1399,12 +1399,6 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         return volume_types.get_volume_type(ctxt, type_id)
 
     # v2 replication methods
-    def get_replication_updates(self, context):
-        # TODO(aorourke): the manager does not do anything with these updates.
-        # When that is changed, I will modify this as well.
-        errors = []
-        return errors
-
     def replication_enable(self, context, volume):
         """Enable replication on a replication capable volume."""
         model_update = {}

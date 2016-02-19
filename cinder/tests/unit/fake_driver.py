@@ -340,6 +340,3 @@ class FakeGateDriver(lvm.LVMVolumeDriver):
         targets.append(remote_target)
         return {'volume_id': volume['id'],
                 'targets': targets}
-
-    def get_replication_updates(self, context):
-        return []
