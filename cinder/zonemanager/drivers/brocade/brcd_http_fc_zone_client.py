@@ -19,6 +19,7 @@ HTTP or HTTPS protocol.
 """
 
 from oslo_log import log as logging
+from oslo_serialization import base64
 import requests
 import six
 import time
@@ -158,8 +159,7 @@ class BrcdHTTPFCZoneClient(object):
             # Form the authentication string
             auth_string = (self.switch_user + ":" + self.switch_pwd +
                            ":" + self.random_no)
-            auth_token = auth_string.encode(
-                "base64", "strict").strip()  # encode in base64 format
+            auth_token = base64.encode_as_text(auth_string).strip()
             auth_header = (zone_constant.AUTH_STRING +
                            auth_token)  # Build the proper header
         except Exception as e:
@@ -193,7 +193,7 @@ class BrcdHTTPFCZoneClient(object):
                 # Replace password in the authentication string with xxx
                 auth_string = (self.switch_user +
                                ":" + "xxx" + ":" + self.random_no)
-                auth_token = auth_string.encode("base64", "strict").strip()
+                auth_token = base64.encode_as_text(auth_string).strip()
                 auth_header = zone_constant.AUTH_STRING + auth_token
                 return True, auth_header
             else:
