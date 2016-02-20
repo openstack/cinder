@@ -525,9 +525,6 @@ class VolumeManager(manager.SchedulerDependentManager):
         if volume_ref['attach_status'] == "attached":
             # Volume is still attached, need to detach first
             raise exception.VolumeAttached(volume_id=volume_id)
-        if (vol_utils.extract_host(volume_ref['host']) != self.host):
-            raise exception.InvalidVolume(
-                reason=_("volume is not local to this node"))
 
         is_migrating = volume_ref['migration_status'] is not None
         is_migrating_dest = (is_migrating and
