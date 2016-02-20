@@ -2280,6 +2280,35 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
                           self.driver.metro.create_hypermetro,
                           '2', param)
 
+    @mock.patch.object(rest_client.RestClient, 'get_all_pools',
+                       return_value=FAKE_STORAGE_POOL_RESPONSE)
+    @mock.patch.object(rest_client.RestClient, 'get_pool_info',
+                       return_value=FAKE_FIND_POOL_RESPONSE)
+    @mock.patch.object(rest_client.RestClient, 'create_lun',
+                       return_value={'CAPACITY': '2097152',
+                                     'DESCRIPTION': '2f0635',
+                                     'HEALTHSTATUS': '1',
+                                     'ALLOCTYPE': '1',
+                                     'WWN': '6643e8c1004c5f6723e9f454003',
+                                     'ID': '1',
+                                     'RUNNINGSTATUS': '27',
+                                     'NAME': '5mFHcBv4RkCcD'})
+    @mock.patch.object(rest_client.RestClient, 'get_hyper_domain_id',
+                       return_value='11')
+    @mock.patch.object(hypermetro.HuaweiHyperMetro, '_wait_volume_ready',
+                       return_value=True)
+    def test_create_hypermetro_remote_pool_parentid(self,
+                                                    mock_volume_ready,
+                                                    mock_hyper_domain,
+                                                    mock_create_lun,
+                                                    mock_pool_info,
+                                                    mock_all_pool_info):
+        param = {'TYPE': '11',
+                 'PARENTID': ''}
+        self.driver.metro.create_hypermetro('2', param)
+        lun_PARENTID = mock_create_lun.call_args[0][0]['PARENTID']
+        self.assertEqual(FAKE_FIND_POOL_RESPONSE['ID'], lun_PARENTID)
+
     @mock.patch.object(rest_client.RestClient, 'check_lun_exist',
                        return_value=True)
     @mock.patch.object(rest_client.RestClient, 'check_hypermetro_exist',

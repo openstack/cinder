@@ -45,7 +45,7 @@ class HuaweiHyperMetro(object):
                 raise exception.VolumeBackendAPIException(data=err_msg)
 
             # Create remote lun.
-            lun_params['pool_id'] = pool['ID']
+            lun_params['PARENTID'] = pool['ID']
             remotelun_info = self.rmt_client.create_lun(lun_params)
             remote_lun_id = remotelun_info['ID']
 
