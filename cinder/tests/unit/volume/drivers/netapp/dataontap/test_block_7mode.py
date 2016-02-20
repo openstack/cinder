@@ -33,6 +33,7 @@ from cinder.volume.drivers.netapp.dataontap import block_7mode
 from cinder.volume.drivers.netapp.dataontap import block_base
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_base
+from cinder.volume.drivers.netapp.dataontap.performance import perf_7mode
 from cinder.volume.drivers.netapp import utils as na_utils
 
 
@@ -49,6 +50,7 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
 
         self.library.zapi_client = mock.Mock()
         self.zapi_client = self.library.zapi_client
+        self.library.perf_library = mock.Mock()
         self.library.vfiler = mock.Mock()
         # Deprecated option
         self.library.configuration.netapp_volume_list = None
@@ -66,6 +68,7 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
         config.netapp_server_port = '80'
         return config
 
+    @mock.patch.object(perf_7mode, 'Performance7modeLibrary', mock.Mock())
     @mock.patch.object(client_base.Client, 'get_ontapi_version',
                        mock.MagicMock(return_value=(1, 20)))
     @mock.patch.object(block_7mode.NetAppBlockStorage7modeLibrary,
@@ -510,10 +513,13 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
         self.library.vols = netapp_api.NaElement(
             client_fakes.VOLUME_LIST_INFO_RESPONSE).get_child_by_name(
             'volumes').get_children()
+        self.library.perf_library.get_node_utilization = (
+            mock.Mock(return_value=30.0))
 
         thick = netapp_lun_space_reservation == 'enabled'
 
-        result = self.library._get_pool_stats()
+        result = self.library._get_pool_stats(filter_function='filter',
+                                              goodness_function='goodness')
 
         expected = [{
             'pool_name': 'vol1',
@@ -524,7 +530,10 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
             'free_capacity_gb': 1339.27,
             'total_capacity_gb': 1342.21,
             'reserved_percentage': 5,
-            'max_over_subscription_ratio': 10.0
+            'max_over_subscription_ratio': 10.0,
+            'utilization': 30.0,
+            'filter_function': 'filter',
+            'goodness_function': 'goodness',
         }]
 
         self.assertEqual(expected, result)
@@ -598,8 +607,11 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
             fake.FAKE_7MODE_VOL1[0].get_child_content('name')
         ]
         self.library.root_volume_name = ''
+        self.library.perf_library.get_node_utilization = (
+            mock.Mock(return_value=30.0))
 
-        pools = self.library._get_pool_stats()
+        pools = self.library._get_pool_stats(filter_function='filter',
+                                             goodness_function='goodness')
 
         self.assertListEqual(fake.FAKE_7MODE_POOLS, pools)
 

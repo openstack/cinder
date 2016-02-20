@@ -62,6 +62,8 @@ class NetAppNfsDriver(driver.ManageableVD,
     VERSION = "1.0.0"
     REQUIRED_FLAGS = ['netapp_login', 'netapp_password',
                       'netapp_server_hostname']
+    DEFAULT_FILTER_FUNCTION = 'capabilities.utilization < 70'
+    DEFAULT_GOODNESS_FUNCTION = '100 - capabilities.utilization'
 
     def __init__(self, *args, **kwargs):
         na_utils.validate_instantiation(**kwargs)
@@ -294,6 +296,14 @@ class NetAppNfsDriver(driver.ManageableVD,
     def _update_volume_stats(self):
         """Retrieve stats info from volume group."""
         raise NotImplementedError()
+
+    def get_default_filter_function(self):
+        """Get the default filter_function string."""
+        return self.DEFAULT_FILTER_FUNCTION
+
+    def get_default_goodness_function(self):
+        """Get the default goodness_function string."""
+        return self.DEFAULT_GOODNESS_FUNCTION
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Fetch the image from image_service and write it to the volume."""

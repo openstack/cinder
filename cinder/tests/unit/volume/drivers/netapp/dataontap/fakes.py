@@ -238,6 +238,9 @@ FAKE_CMODE_POOLS = [
         'thick_provisioning_support': False,
         'provisioned_capacity_gb': 0.93,
         'max_over_subscription_ratio': 20.0,
+        'utilization': 30.0,
+        'filter_function': 'filter',
+        'goodness_function': 'goodness',
     }
 ]
 
@@ -340,6 +343,9 @@ FAKE_7MODE_POOLS = [
         'thin_provisioning_support': False,
         'thick_provisioning_support': True,
         'provisioned_capacity_gb': 0.0,
+        'utilization': 30.0,
+        'filter_function': 'filter',
+        'goodness_function': 'goodness',
     }
 ]
 

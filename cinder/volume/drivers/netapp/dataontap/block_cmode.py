@@ -35,6 +35,7 @@ from cinder.i18n import _
 from cinder import utils
 from cinder.volume.drivers.netapp.dataontap import block_base
 from cinder.volume.drivers.netapp.dataontap.client import client_cmode
+from cinder.volume.drivers.netapp.dataontap.performance import perf_cmode
 from cinder.volume.drivers.netapp.dataontap import ssc_cmode
 from cinder.volume.drivers.netapp import options as na_opts
 from cinder.volume.drivers.netapp import utils as na_utils
@@ -73,6 +74,8 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary):
 
         self.ssc_vols = {}
         self.stale_vols = set()
+        self.perf_library = perf_cmode.PerformanceCmodeLibrary(
+            self.zapi_client)
 
     def check_for_setup_error(self):
         """Check that the driver is working and can communicate."""
@@ -176,7 +179,8 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary):
         else:
             self.zapi_client.set_vserver(None)
 
-    def _update_volume_stats(self):
+    def _update_volume_stats(self, filter_function=None,
+                             goodness_function=None):
         """Retrieve stats info from vserver."""
 
         sync = True if self.ssc_vols is None else False
@@ -190,13 +194,15 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary):
         data['vendor_name'] = 'NetApp'
         data['driver_version'] = self.VERSION
         data['storage_protocol'] = self.driver_protocol
-        data['pools'] = self._get_pool_stats()
+        data['pools'] = self._get_pool_stats(
+            filter_function=filter_function,
+            goodness_function=goodness_function)
         data['sparse_copy_volume'] = True
 
         self.zapi_client.provide_ems(self, self.driver_name, self.app_version)
         self._stats = data
 
-    def _get_pool_stats(self):
+    def _get_pool_stats(self, filter_function=None, goodness_function=None):
         """Retrieve pool (Data ONTAP volume) stats info from SSC volumes."""
 
         pools = []
@@ -204,9 +210,14 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary):
         if not self.ssc_vols:
             return pools
 
-        for vol in self._get_filtered_pools():
+        filtered_pools = self._get_filtered_pools()
+        self.perf_library.update_performance_cache(filtered_pools)
+
+        for vol in filtered_pools:
+            pool_name = vol.id['name']
+
             pool = dict()
-            pool['pool_name'] = vol.id['name']
+            pool['pool_name'] = pool_name
             pool['QoS_support'] = True
             pool['reserved_percentage'] = (
                 self.reserved_percentage)
@@ -249,6 +260,12 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary):
                      == 'enabled')
             pool['thick_provisioning_support'] = thick
             pool['thin_provisioning_support'] = not thick
+
+            utilization = self.perf_library.get_node_utilization_for_pool(
+                pool_name)
+            pool['utilization'] = na_utils.round_down(utilization, '0.01')
+            pool['filter_function'] = filter_function
+            pool['goodness_function'] = goodness_function
 
             pools.append(pool)
 

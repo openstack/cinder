@@ -31,6 +31,7 @@ from cinder.i18n import _
 from cinder import utils
 from cinder.volume.drivers.netapp.dataontap.client import client_7mode
 from cinder.volume.drivers.netapp.dataontap import nfs_base
+from cinder.volume.drivers.netapp.dataontap.performance import perf_7mode
 from cinder.volume.drivers.netapp import options as na_opts
 from cinder.volume.drivers.netapp import utils as na_utils
 
@@ -59,6 +60,8 @@ class NetApp7modeNfsDriver(nfs_base.NetAppNfsDriver):
             vfiler=self.configuration.netapp_vfiler)
 
         self.ssc_enabled = False
+        self.perf_library = perf_7mode.Performance7modeLibrary(
+            self.zapi_client)
 
     def check_for_setup_error(self):
         """Checks if setup occurred properly."""
@@ -97,7 +100,9 @@ class NetApp7modeNfsDriver(nfs_base.NetAppNfsDriver):
         data['vendor_name'] = 'NetApp'
         data['driver_version'] = self.VERSION
         data['storage_protocol'] = 'nfs'
-        data['pools'] = self._get_pool_stats()
+        data['pools'] = self._get_pool_stats(
+            filter_function=self.get_filter_function(),
+            goodness_function=self.get_goodness_function())
         data['sparse_copy_volume'] = True
 
         self._spawn_clean_cache_job()
@@ -105,10 +110,11 @@ class NetApp7modeNfsDriver(nfs_base.NetAppNfsDriver):
                                      server_type="7mode")
         self._stats = data
 
-    def _get_pool_stats(self):
+    def _get_pool_stats(self, filter_function=None, goodness_function=None):
         """Retrieve pool (i.e. NFS share) stats info from SSC volumes."""
 
         pools = []
+        self.perf_library.update_performance_cache()
 
         for nfs_share in self._mounted_shares:
 
@@ -122,6 +128,11 @@ class NetApp7modeNfsDriver(nfs_base.NetAppNfsDriver):
             thick = not self.configuration.nfs_sparsed_volumes
             pool['thick_provisioning_support'] = thick
             pool['thin_provisioning_support'] = not thick
+
+            utilization = self.perf_library.get_node_utilization()
+            pool['utilization'] = na_utils.round_down(utilization, '0.01')
+            pool['filter_function'] = filter_function
+            pool['goodness_function'] = goodness_function
 
             pools.append(pool)
 

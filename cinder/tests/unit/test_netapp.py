@@ -31,6 +31,8 @@ from cinder.volume.drivers.netapp.dataontap import block_cmode
 from cinder.volume.drivers.netapp.dataontap.client import client_7mode
 from cinder.volume.drivers.netapp.dataontap.client import client_base
 from cinder.volume.drivers.netapp.dataontap.client import client_cmode
+from cinder.volume.drivers.netapp.dataontap.performance import perf_7mode
+from cinder.volume.drivers.netapp.dataontap.performance import perf_cmode
 from cinder.volume.drivers.netapp.dataontap import ssc_cmode
 from cinder.volume.drivers.netapp import options
 from cinder.volume.drivers.netapp import utils
@@ -568,6 +570,7 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
             ssc_cmode, 'refresh_cluster_ssc',
             lambda a, b, c, synchronous: None)
         self.mock_object(utils, 'OpenStackInfo')
+        self.mock_object(perf_7mode, 'Performance7modeLibrary')
 
         configuration = self._set_config(create_configuration())
         driver = common.NetAppDriver(configuration=configuration)
@@ -601,6 +604,7 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
         configuration = self._set_config(create_configuration())
         driver = common.NetAppDriver(configuration=configuration)
         mock_client = self.mock_object(client_cmode, 'Client')
+        self.mock_object(perf_cmode, 'PerformanceCmodeLibrary')
         driver.do_setup(context='')
         mock_client.assert_called_with(**FAKE_CONNECTION_HTTP)
 
@@ -612,6 +616,7 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
         configuration.netapp_transport_type = 'http'
         driver = common.NetAppDriver(configuration=configuration)
         mock_client = self.mock_object(client_cmode, 'Client')
+        self.mock_object(perf_cmode, 'PerformanceCmodeLibrary')
         driver.do_setup(context='')
         mock_client.assert_called_with(**FAKE_CONNECTION_HTTP)
 
@@ -624,6 +629,7 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
         driver = common.NetAppDriver(configuration=configuration)
         driver.library._get_root_volume_name = mock.Mock()
         mock_client = self.mock_object(client_cmode, 'Client')
+        self.mock_object(perf_cmode, 'PerformanceCmodeLibrary')
         driver.do_setup(context='')
         FAKE_CONNECTION_HTTPS = dict(FAKE_CONNECTION_HTTP,
                                      transport_type='https')
@@ -637,6 +643,7 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
         configuration.netapp_server_port = 81
         driver = common.NetAppDriver(configuration=configuration)
         mock_client = self.mock_object(client_cmode, 'Client')
+        self.mock_object(perf_cmode, 'PerformanceCmodeLibrary')
         driver.do_setup(context='')
         FAKE_CONNECTION_HTTP_PORT = dict(FAKE_CONNECTION_HTTP, port=81)
         mock_client.assert_called_with(**FAKE_CONNECTION_HTTP_PORT)
@@ -651,6 +658,7 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
         driver = common.NetAppDriver(configuration=configuration)
         driver.library._get_root_volume_name = mock.Mock()
         mock_client = self.mock_object(client_cmode, 'Client')
+        self.mock_object(perf_cmode, 'PerformanceCmodeLibrary')
         driver.do_setup(context='')
         FAKE_CONNECTION_HTTPS_PORT = dict(FAKE_CONNECTION_HTTP, port=446,
                                           transport_type='https')
@@ -1265,6 +1273,7 @@ class NetAppDirect7modeISCSIDriverTestCase_NV(test.TestCase):
                        FakeDirect7modeHTTPConnection)
         self.mock_object(driver.library, '_get_root_volume_name', mock.Mock(
             return_value='root'))
+        self.mock_object(perf_7mode, 'Performance7modeLibrary')
         driver.do_setup(context='')
         driver.root_volume_name = 'root'
         self.driver = driver
@@ -1325,6 +1334,7 @@ class NetAppDirect7modeISCSIDriverTestCase_WV(
                        FakeDirect7modeHTTPConnection)
         self.mock_object(driver.library, '_get_root_volume_name',
                          mock.Mock(return_value='root'))
+        self.mock_object(perf_7mode, 'Performance7modeLibrary')
         driver.do_setup(context='')
         self.driver = driver
         self.driver.root_volume_name = 'root'

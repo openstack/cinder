@@ -19,7 +19,10 @@ from lxml import etree
 import mock
 import six
 
+from cinder import exception
 from cinder import test
+from cinder.tests.unit.volume.drivers.netapp.dataontap.client import (
+    fakes as fake_client)
 import cinder.tests.unit.volume.drivers.netapp.dataontap.fakes as fake
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_base
@@ -45,6 +48,7 @@ class NetAppBaseClientTestCase(test.TestCase):
         self.fake_lun = six.text_type(uuid.uuid4())
         self.fake_size = '1024'
         self.fake_metadata = {'OsType': 'linux', 'SpaceReserved': 'true'}
+        self.mock_send_request = self.mock_object(self.client, 'send_request')
 
     def tearDown(self):
         super(NetAppBaseClientTestCase, self).tearDown()
@@ -471,3 +475,33 @@ class NetAppBaseClientTestCase(test.TestCase):
         initiators = fake.FC_FORMATTED_INITIATORS
         mock_has_luns_mapped_to_initiator.return_value = False
         self.assertFalse(self.client.has_luns_mapped_to_initiators(initiators))
+
+    def test_get_performance_counter_info(self):
+
+        self.mock_send_request.return_value = netapp_api.NaElement(
+            fake_client.PERF_OBJECT_COUNTER_LIST_INFO_WAFL_RESPONSE)
+
+        result = self.client.get_performance_counter_info('wafl',
+                                                          'cp_phase_times')
+
+        expected = {
+            'name': 'cp_phase_times',
+            'base-counter': 'total_cp_msecs',
+            'labels': fake_client.PERF_OBJECT_COUNTER_TOTAL_CP_MSECS_LABELS,
+        }
+        self.assertEqual(expected, result)
+
+        perf_object_counter_list_info_args = {'objectname': 'wafl'}
+        self.mock_send_request.assert_called_once_with(
+            'perf-object-counter-list-info',
+            perf_object_counter_list_info_args, enable_tunneling=False)
+
+    def test_get_performance_counter_info_not_found(self):
+
+        self.mock_send_request.return_value = netapp_api.NaElement(
+            fake_client.PERF_OBJECT_COUNTER_LIST_INFO_WAFL_RESPONSE)
+
+        self.assertRaises(exception.NotFound,
+                          self.client.get_performance_counter_info,
+                          'wafl',
+                          'invalid')

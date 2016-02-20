@@ -35,6 +35,7 @@ from cinder import utils
 from cinder.volume import configuration
 from cinder.volume.drivers.netapp.dataontap import block_base
 from cinder.volume.drivers.netapp.dataontap.client import client_7mode
+from cinder.volume.drivers.netapp.dataontap.performance import perf_7mode
 from cinder.volume.drivers.netapp import options as na_opts
 from cinder.volume.drivers.netapp import utils as na_utils
 
@@ -76,6 +77,8 @@ class NetAppBlockStorage7modeLibrary(block_base.NetAppBlockStorageLibrary):
         self.vol_refresh_running = False
         self.vol_refresh_voluntary = False
         self.root_volume_name = self._get_root_volume_name()
+        self.perf_library = perf_7mode.Performance7modeLibrary(
+            self.zapi_client)
 
     def _do_partner_setup(self):
         partner_backend = self.configuration.netapp_partner_backend_name
@@ -238,7 +241,8 @@ class NetAppBlockStorage7modeLibrary(block_base.NetAppBlockStorageLibrary):
             wwpns.extend(self.partner_zapi_client.get_fc_target_wwpns())
         return wwpns
 
-    def _update_volume_stats(self):
+    def _update_volume_stats(self, filter_function=None,
+                             goodness_function=None):
         """Retrieve stats info from filer."""
 
         # ensure we get current data
@@ -252,17 +256,20 @@ class NetAppBlockStorage7modeLibrary(block_base.NetAppBlockStorageLibrary):
         data['vendor_name'] = 'NetApp'
         data['driver_version'] = self.VERSION
         data['storage_protocol'] = self.driver_protocol
-        data['pools'] = self._get_pool_stats()
+        data['pools'] = self._get_pool_stats(
+            filter_function=filter_function,
+            goodness_function=goodness_function)
         data['sparse_copy_volume'] = True
 
         self.zapi_client.provide_ems(self, self.driver_name, self.app_version,
                                      server_type=self.driver_mode)
         self._stats = data
 
-    def _get_pool_stats(self):
+    def _get_pool_stats(self, filter_function=None, goodness_function=None):
         """Retrieve pool (i.e. Data ONTAP volume) stats info from volumes."""
 
         pools = []
+        self.perf_library.update_performance_cache()
 
         for vol in self.vols:
 
@@ -309,6 +316,11 @@ class NetAppBlockStorage7modeLibrary(block_base.NetAppBlockStorageLibrary):
                 self.configuration.netapp_lun_space_reservation == 'enabled')
             pool['thick_provisioning_support'] = thick
             pool['thin_provisioning_support'] = not thick
+
+            utilization = self.perf_library.get_node_utilization()
+            pool['utilization'] = na_utils.round_down(utilization, '0.01')
+            pool['filter_function'] = filter_function
+            pool['goodness_function'] = goodness_function
 
             pools.append(pool)
 

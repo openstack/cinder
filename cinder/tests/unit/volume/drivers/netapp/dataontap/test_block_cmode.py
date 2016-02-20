@@ -29,6 +29,7 @@ from cinder.volume.drivers.netapp.dataontap import block_base
 from cinder.volume.drivers.netapp.dataontap import block_cmode
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_base
+from cinder.volume.drivers.netapp.dataontap.performance import perf_cmode
 from cinder.volume.drivers.netapp.dataontap import ssc_cmode
 from cinder.volume.drivers.netapp import utils as na_utils
 
@@ -46,6 +47,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
 
         self.library.zapi_client = mock.Mock()
         self.zapi_client = self.library.zapi_client
+        self.library.perf_library = mock.Mock()
         self.library.vserver = mock.Mock()
         self.library.ssc_vols = None
         self.fake_lun = block_base.NetAppLun(fake.LUN_HANDLE, fake.LUN_NAME,
@@ -73,6 +75,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         config.netapp_vserver = 'openstack'
         return config
 
+    @mock.patch.object(perf_cmode, 'PerformanceCmodeLibrary', mock.Mock())
     @mock.patch.object(client_base.Client, 'get_ontapi_version',
                        mock.MagicMock(return_value=(1, 20)))
     @mock.patch.object(na_utils, 'check_flags')
@@ -356,13 +359,16 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.library.max_over_subscription_ratio = 10
         self.library.configuration.netapp_lun_space_reservation = (
             netapp_lun_space_reservation)
+        self.library.perf_library.get_node_utilization_for_pool = (
+            mock.Mock(return_value=30.0))
 
         netapp_thin = 'true' if thin else 'false'
         netapp_thick = 'false' if thin else 'true'
 
         thick = not thin and (netapp_lun_space_reservation == 'enabled')
 
-        result = self.library._get_pool_stats()
+        result = self.library._get_pool_stats(filter_function='filter',
+                                              goodness_function='goodness')
 
         expected = [{'pool_name': 'vola',
                      'netapp_unmirrored': 'true',
@@ -382,7 +388,10 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
                      'max_over_subscription_ratio': 10.0,
                      'netapp_raid_type': 'raiddp',
                      'netapp_disk_type': 'SSD',
-                     'netapp_nodedup': 'true'}]
+                     'netapp_nodedup': 'true',
+                     'utilization': 30.0,
+                     'filter_function': 'filter',
+                     'goodness_function': 'goodness'}]
 
         self.assertEqual(expected, result)
 
@@ -660,8 +669,11 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.library.ssc_vols = fake.ssc_map
         self.mock_object(self.library, '_get_filtered_pools',
                          mock.Mock(return_value=[fake.FAKE_CMODE_VOL1]))
+        self.library.perf_library.get_node_utilization_for_pool = (
+            mock.Mock(return_value=30.0))
 
-        pools = self.library._get_pool_stats()
+        pools = self.library._get_pool_stats(filter_function='filter',
+                                             goodness_function='goodness')
 
         self.assertListEqual(fake.FAKE_CMODE_POOLS, pools)
 

@@ -24,7 +24,8 @@ from oslo_utils import timeutils
 
 import six
 
-from cinder.i18n import _LE, _LW, _LI
+from cinder import exception
+from cinder.i18n import _, _LE, _LW, _LI
 from cinder import utils
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp import utils as na_utils
@@ -257,6 +258,36 @@ class Client(object):
     def get_lun_by_args(self, **args):
         """Retrieves LUNs with specified args."""
         raise NotImplementedError()
+
+    def get_performance_counter_info(self, object_name, counter_name):
+        """Gets info about one or more Data ONTAP performance counters."""
+
+        api_args = {'objectname': object_name}
+        result = self.send_request('perf-object-counter-list-info',
+                                   api_args,
+                                   enable_tunneling=False)
+
+        counters = result.get_child_by_name(
+            'counters') or netapp_api.NaElement('None')
+
+        for counter in counters.get_children():
+
+            if counter.get_child_content('name') == counter_name:
+
+                labels = []
+                label_list = counter.get_child_by_name(
+                    'labels') or netapp_api.NaElement('None')
+                for label in label_list.get_children():
+                    labels.extend(label.get_content().split(','))
+                base_counter = counter.get_child_content('base-counter')
+
+                return {
+                    'name': counter_name,
+                    'labels': labels,
+                    'base-counter': base_counter,
+                }
+        else:
+            raise exception.NotFound(_('Counter %s not found') % counter_name)
 
     def provide_ems(self, requester, netapp_backend, app_version,
                     server_type="cluster"):
