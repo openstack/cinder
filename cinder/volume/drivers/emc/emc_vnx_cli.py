@@ -4009,10 +4009,6 @@ class EMCVnxCliBase(object):
                         'provider_location': provider_location}
         return model_update
 
-    def get_replication_updates(self, context):
-        """Return nothing since Cinder doesn't do anything."""
-        return []
-
     def list_replication_targets(self, context, volume):
         """Provides replication target(s) for a volume."""
         targets = {'volume_id': volume.id, 'targets': []}

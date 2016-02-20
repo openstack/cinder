@@ -2434,11 +2434,6 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             return storwize_rep.StorwizeSVCReplicationMetroMirror(
                 self, rep_target, StorwizeHelpers)
 
-    def get_replication_updates(self, context):
-        # TODO(vhou): the manager does not need to do anything so far.
-        replication_updates = []
-        return replication_updates
-
     def migrate_volume(self, ctxt, volume, host):
         """Migrate directly if source and dest are managed by same storage.
 

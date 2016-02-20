@@ -281,11 +281,6 @@ class XIVDS8KDriver(san.SanDriver,
             context, group, volumes, cgsnapshot, snapshots,
             source_cg, source_vols)
 
-    def get_replication_updates(self, context):
-        """Get replication updates."""
-
-        return self.xiv_ds8k_proxy.get_replication_updates(context)
-
     def replication_disable(self, context, volume):
         """Disable replication on the specified volume."""
 

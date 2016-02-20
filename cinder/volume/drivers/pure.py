@@ -1203,11 +1203,6 @@ class PureBaseVolumeDriver(san.SanDriver):
         data["targets"] = remote_targets
         return data
 
-    def get_replication_updates(self, context):
-        # currently, the manager does not use these updates.
-        # TODO(mudassir): update this when implemented in manager
-        return []
-
     def _get_current_array(self, volume):
         current_array, _ = self._get_arrays(volume)
         return current_array

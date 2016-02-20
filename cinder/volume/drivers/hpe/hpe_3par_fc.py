@@ -609,13 +609,6 @@ class HPE3PARFCDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
-    def get_replication_updates(self, context):
-        common = self._login()
-        try:
-            return common.get_replication_updates(context)
-        finally:
-            self._logout(common)
-
     def replication_enable(self, context, volume):
         """Enable replication on a replication capable volume."""
         common = self._login(volume)

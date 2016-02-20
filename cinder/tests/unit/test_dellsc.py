@@ -2529,10 +2529,3 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertEqual(expected, ret)
 
         self.driver.backends = backends
-
-    def test_get_replication_updates(self,
-                                     mock_close_connection,
-                                     mock_open_connection,
-                                     mock_init):
-        ret = self.driver.get_replication_updates({})
-        self.assertEqual([], ret)

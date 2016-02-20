@@ -1975,22 +1975,6 @@ class ReplicaV2VD(object):
 
         raise NotImplementedError()
 
-    @abc.abstractmethod
-    def get_replication_updates(self, context):
-        """Provide a means to obtain status updates from backend.
-
-        Provides a concise update for backends to report any errors
-        or problems with replicating volumes.  The intent is we only
-        return something here if there's an error or a problem, and to
-        notify where the backend thinks the volume is.
-
-        param: context: context of caller (probably don't need)
-        returns: [{volid: n, status: ok|error,...}]
-        """
-        # NOTE(jdg): flush this out with implementations so we all
-        # have something usable here
-        raise NotImplementedError()
-
 
 @six.add_metaclass(abc.ABCMeta)
 class ManageableSnapshotsVD(object):

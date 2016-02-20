@@ -1208,7 +1208,3 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         replication_targets = {'volume_id': vref.get('id'), 'targets': targets}
         LOG.info(_LI('list_replication_targets: %s'), replication_targets)
         return replication_targets
-
-    def get_replication_updates(self, context):
-        # No idea what to do with this.
-        return []
