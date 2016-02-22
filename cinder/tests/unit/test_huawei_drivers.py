@@ -3473,6 +3473,16 @@ class HuaweiFCDriverTestCase(test.TestCase):
         lun_info = self.driver.create_volume(hyper_volume)
         self.assertEqual(metadata, lun_info['metadata'])
 
+    @mock.patch.object(rest_client.RestClient, 'call',
+                       return_value={"data": [{"RUNNINGSTATUS": "27",
+                                               "ID": '1'},
+                                              {"RUNNINGSTATUS": "26",
+                                               "ID": '2'}],
+                                     "error": {"code": 0}})
+    def test_get_online_free_wwns(self, mock_call):
+        wwns = self.driver.client.get_online_free_wwns()
+        self.assertEqual(['1'], wwns)
+
 
 class HuaweiConfTestCase(test.TestCase):
     def setUp(self):
