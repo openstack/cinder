@@ -240,6 +240,7 @@ class HostManagerTestCase(test.TestCase):
         _mock_service_is_up.return_value = True
         _mock_warning = mock.Mock()
         host_manager.LOG.warn = _mock_warning
+        host_manager.LOG.debug = _mock_warning
 
         # Get all states
         self.host_manager.get_all_host_states(context)
