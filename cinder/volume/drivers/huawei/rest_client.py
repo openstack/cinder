@@ -451,7 +451,7 @@ class RestClient(object):
         return map_info
 
     def check_iscsi_initiators_exist_in_host(self, host_id):
-        url = "/iscsi_initiator?range=[0-100]&PARENTID=%s" % host_id
+        url = "/iscsi_initiator?range=[0-256]&PARENTID=%s" % host_id
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, 'Get host initiators info failed.')
         if "data" in result:
@@ -1429,7 +1429,7 @@ class RestClient(object):
         self._assert_data_in_result(result, msg)
 
     def get_lun_migration_task(self):
-        url = '/LUN_MIGRATION?range=[0-100]'
+        url = '/LUN_MIGRATION?range=[0-256]'
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Get lun migration task error.'))
         return result
@@ -1673,7 +1673,7 @@ class RestClient(object):
         self._assert_rest_result(result, _('Remove fc from host error.'))
 
     def check_fc_initiators_exist_in_host(self, host_id):
-        url = "/fc_initiator?range=[0-100]&PARENTID=%s" % host_id
+        url = "/fc_initiator?range=[0-256]&PARENTID=%s" % host_id
         result = self.call(url, None, "GET")
         self._assert_rest_result(result, _('Get host initiators info failed.'))
         if 'data' in result:
@@ -1726,7 +1726,7 @@ class RestClient(object):
         return port_list_from_contr
 
     def get_hyper_domain_id(self, domain_name):
-        url = "/HyperMetroDomain?range=[0-100]"
+        url = "/HyperMetroDomain?range=[0-32]"
         result = self.call(url, None, "GET")
         domain_id = None
         if "data" in result:
@@ -1833,7 +1833,7 @@ class RestClient(object):
             return result["data"]["AVAILABLEHOSTLUNIDLIST"]
 
     def get_hypermetro_pairs(self):
-        url = "/HyperMetroPair?range=[0-100]"
+        url = "/HyperMetroPair?range=[0-65535]"
         result = self.call(url, None, "GET")
         msg = _('Get HyperMetroPair error.')
         self._assert_rest_result(result, msg)
@@ -1841,7 +1841,7 @@ class RestClient(object):
         return result.get('data', [])
 
     def get_split_mirrors(self):
-        url = "/splitmirror?range=[0-100]"
+        url = "/splitmirror?range=[0-512]"
         result = self.call(url, None, "GET")
         if result['error']['code'] == constants.NO_SPLITMIRROR_LICENSE:
             msg = _('License is unavailable.')
@@ -1864,7 +1864,7 @@ class RestClient(object):
         return target_luns
 
     def get_migration_task(self):
-        url = "/LUN_MIGRATION?range=[0-100]"
+        url = "/LUN_MIGRATION?range=[0-256]"
         result = self.call(url, None, "GET")
         if result['error']['code'] == constants.NO_MIGRATION_LICENSE:
             msg = _('License is unavailable.')
