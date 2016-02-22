@@ -2094,3 +2094,11 @@ class RestClient(object):
 
         msg = _('Set pair secondary access error.')
         self._assert_rest_result(result, msg)
+
+    def is_host_associated_to_hostgroup(self, host_id):
+        url = "/host/" + host_id
+        result = self.call(url, None, "GET")
+        data = result.get('data')
+        if data is not None:
+            return data.get('ISADD2HOSTGROUP') == 'true'
+        return False
