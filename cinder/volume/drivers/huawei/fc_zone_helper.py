@@ -75,13 +75,15 @@ class FCZoneHelper(object):
             if total_bandwidth:
                 weight += float(lun_num) / float(total_bandwidth)
 
-        return weight
+        bandwidth = float(ports_info[port]['bandwidth'])
+        return (weight, 10000 / bandwidth)
 
     def _get_weighted_ports_per_contr(self, ports, ports_info):
         port_weight_map = {}
         for port in ports:
             port_weight_map[port] = self._count_port_weight(port, ports_info)
 
+        LOG.debug("port_weight_map: %s", port_weight_map)
         sorted_ports = sorted(port_weight_map.items(), key=lambda d: d[1])
         weighted_ports = []
         count = 0
@@ -132,6 +134,7 @@ class FCZoneHelper(object):
         lun_info = self.client.get_lun_info(lun_id)
         lun_contr_id = lun_info['OWNINGCONTROLLER']
         engines = self.client.get_all_engines()
+        LOG.debug("Get array engines: %s", engines)
 
         for engine in engines:
             contrs = json.loads(engine['NODELIST'])
