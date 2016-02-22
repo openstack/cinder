@@ -123,6 +123,11 @@ class BackupManager(manager.SchedulerDependentManager):
             LOG.exception(_LE("Problem cleaning incomplete backup "
                               "operations."))
 
+    def reset(self):
+        super(BackupManager, self).reset()
+        self.backup_rpcapi = backup_rpcapi.BackupAPI()
+        self.volume_rpcapi = volume_rpcapi.VolumeAPI()
+
     def _cleanup_incomplete_backup_operations(self, ctxt):
         LOG.info(_LI("Cleaning up incomplete backup operations."))
 

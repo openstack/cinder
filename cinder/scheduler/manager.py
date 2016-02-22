@@ -75,6 +75,10 @@ class SchedulerManager(manager.Manager):
         eventlet.sleep(CONF.periodic_interval)
         self._startup_delay = False
 
+    def reset(self):
+        super(SchedulerManager, self).reset()
+        self.driver.reset()
+
     def update_service_capabilities(self, context, service_name=None,
                                     host=None, capabilities=None, **kwargs):
         """Process a capability update from a service node."""

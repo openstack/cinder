@@ -1,0 +1,16 @@
+---
+features:
+  - Added RPC backward compatibility layer similar to the
+    one implemented in Nova. This means that Cinder
+    services can be upgraded one-by-one without breakage.
+    After all the services are upgraded SIGHUP signals
+    should be issued to all the services to signal them
+    to reload cached minimum RPC versions. Alternative
+    is of course restart of them. Please note that
+    cinder-api service doesn't support SIGHUP yet.
+    Please also take into account that all the rolling
+    upgrades capabilities are considered tech preview,
+    as we don't have a CI testing it yet.
+upgrade:
+  - Starting from Mitaka release Cinder is having a tech
+    preview of rolling upgrades support.
