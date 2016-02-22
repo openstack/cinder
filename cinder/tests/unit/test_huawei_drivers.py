@@ -885,46 +885,6 @@ FAKE_PORT_GROUP_RESPONSE = """
 }
 """
 
-FAKE_ISCSI_INITIATOR_RESPONSE = """
-{
-    "error":{
-        "code": 0
-    },
-    "data":[{
-        "CHAPNAME": "mm-user",
-        "HEALTHSTATUS": "1",
-        "ID": "iqn.1993-08.org.debian:01:9073aba6c6f",
-        "ISFREE": "true",
-        "MULTIPATHTYPE": "1",
-        "NAME": "",
-        "OPERATIONSYSTEM": "255",
-        "RUNNINGSTATUS": "28",
-        "TYPE": 222,
-        "USECHAP": "true"
-    }]
-}
-"""
-
-FAKE_ISCSI_INITIATOR_RESPONSE = """
-{
-    "error":{
-        "code":0
-    },
-    "data":[{
-        "CHAPNAME":"mm-user",
-        "HEALTHSTATUS":"1",
-        "ID":"iqn.1993-08.org.debian:01:9073aba6c6f",
-        "ISFREE":"true",
-        "MULTIPATHTYPE":"1",
-        "NAME":"",
-        "OPERATIONSYSTEM":"255",
-        "RUNNINGSTATUS":"28",
-        "TYPE":222,
-        "USECHAP":"true"
-    }]
-}
-"""
-
 FAKE_ERROR_INFO_RESPONSE = """
 {
     "error":{
@@ -969,19 +929,6 @@ FAKE_GET_FC_INI_RESPONSE = """
 }
 """
 
-FAKE_GET_FC_PORT_RESPONSE = """
-{
-    "error":{
-        "code":0
-    },
-    "data":[{
-        "RUNNINGSTATUS":"10",
-        "WWN":"2000643e8c4c5f66",
-        "PARENTID":"0A.1"
-    }]
-}
-"""
-
 FAKE_SYSTEM_VERSION_RESPONSE = """
 {
     "error":{
@@ -1011,18 +958,6 @@ FAKE_GET_LUN_MIGRATION_RESPONSE = """
              }],
     "error":{"code":0,
              "description":"0"}
-}
-"""
-
-FAKE_GET_FC_INI_RESPONSE = """
-{
-    "error":{
-        "code":0
-    },
-    "data":[{
-        "ID":"10000090fa0d6754",
-        "ISFREE":"true"
-    }]
 }
 """
 
@@ -1469,7 +1404,7 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/HyperMetroPair?range=[0-65535]/GET'] = (
 MAP_COMMAND_TO_FAKE_RESPONSE['/splitmirror?range=[0-512]/GET'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
-FACK_GET_PORTG_BY_VIEW = """
+FAKE_GET_PORTG_BY_VIEW = """
 {
     "data": [{
         "DESCRIPTION": "Please do NOT modify this. Engine ID: 0",
@@ -1485,9 +1420,9 @@ FACK_GET_PORTG_BY_VIEW = """
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/portgroup/associate/mappingview?TYPE=257&AS'
                              'SOCIATEOBJTYPE=245&ASSOCIATEOBJID=1/GET'] = (
-    FACK_GET_PORTG_BY_VIEW)
+    FAKE_GET_PORTG_BY_VIEW)
 
-FACK_GET_PORT_BY_PORTG = """
+FAKE_GET_PORT_BY_PORTG = """
 {
     "data":[{
         "CONFSPEED":"0","FCCONFMODE":"3",
@@ -1504,9 +1439,9 @@ FACK_GET_PORT_BY_PORTG = """
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/fc_port/associate/portgroup?TYPE=212&ASSOCI'
                              'ATEOBJTYPE=257&ASSOCIATEOBJID=0/GET'] = (
-    FACK_GET_PORT_BY_PORTG)
+    FAKE_GET_PORT_BY_PORTG)
 
-FACK_GET_PORTG = """
+FAKE_GET_PORTG = """
 {
     "data": {
         "TYPE": 257,
@@ -1521,12 +1456,12 @@ FACK_GET_PORTG = """
 }
 """
 
-MAP_COMMAND_TO_FAKE_RESPONSE['/portgroup/0/GET'] = FACK_GET_PORTG
+MAP_COMMAND_TO_FAKE_RESPONSE['/portgroup/0/GET'] = FAKE_GET_PORTG
 
-MAP_COMMAND_TO_FAKE_RESPONSE['/portgroup/0/PUT'] = FACK_GET_PORTG
+MAP_COMMAND_TO_FAKE_RESPONSE['/portgroup/0/PUT'] = FAKE_GET_PORTG
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/port/associate/portgroup/POST'] = (
-    FACK_GET_PORT_BY_PORTG)
+    FAKE_GET_PORT_BY_PORTG)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/port/associate/portgroup?ID=0&TYPE=257&ASSOCIA'
                              'TEOBJTYPE=212&ASSOCIATEOBJID=2000643e8c4c5f66/DE'
@@ -1570,7 +1505,7 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/portgroup/associate/fc_port?TYPE=257&ASSOCIA'
                              'TEOBJTYPE=212&ASSOCIATEOBJID=1114368/GET'] = (
     FAKE_GET_PORTG_FROM_PORT)
 
-FACK_GET_VIEW_BY_PORTG = """
+FAKE_GET_VIEW_BY_PORTG = """
 {
     "data": [{
         "ASSOCIATEOBJID": "0",
@@ -1595,9 +1530,9 @@ FACK_GET_VIEW_BY_PORTG = """
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/mappingview/associate/portgroup?TYPE=245&ASS'
                              'OCIATEOBJTYPE=257&ASSOCIATEOBJID=0/GET'] = (
-    FACK_GET_VIEW_BY_PORTG)
+    FAKE_GET_VIEW_BY_PORTG)
 
-FACK_GET_LUNG_BY_VIEW = """
+FAKE_GET_LUNG_BY_VIEW = """
 {
     "data": [{
         "TYPE": 256,
@@ -1614,7 +1549,7 @@ FACK_GET_LUNG_BY_VIEW = """
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/lungroup/associate/mappingview?TYPE=256&ASSO'
                              'CIATEOBJTYPE=245&ASSOCIATEOBJID=2/GET'] = (
-    FACK_GET_LUNG_BY_VIEW)
+    FAKE_GET_LUNG_BY_VIEW)
 
 FAKE_LUN_COUNT_RESPONSE_1 = """
 {
@@ -1998,7 +1933,6 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         self.assertEqual('210235G7J20000000000', device_id)
 
     def test_create_volume_success(self):
-
         # Have pool info in the volume.
         test_volume = {'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0635',
                        'size': 2,
@@ -2081,7 +2015,6 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         self.assertEqual('2.0.5', data['driver_version'])
 
     def test_extend_volume(self):
-
         self.driver.extend_volume(test_volume, 3)
 
     def test_login_fail(self):
@@ -2090,29 +2023,24 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
                           self.driver.client.login)
 
     def test_create_snapshot_fail(self):
-
         self.driver.client.test_fail = True
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_snapshot, test_snap)
 
     def test_create_volume_fail(self):
-
         self.driver.client.test_fail = True
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_volume, test_volume)
 
     def test_delete_volume_fail(self):
-
         self.driver.client.test_fail = True
         self.driver.delete_volume(test_volume)
 
     def test_delete_snapshot_fail(self):
-
         self.driver.client.test_fail = True
         self.driver.delete_volume(test_snap)
 
     def test_initialize_connection_fail(self):
-
         self.driver.client.test_fail = True
 
         self.assertRaises(exception.VolumeBackendAPIException,
@@ -2120,29 +2048,24 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
                           test_volume, FakeConnector)
 
     def test_lun_is_associated_to_lungroup(self):
-
         self.driver.client.associate_lun_to_lungroup('11', '11')
         result = self.driver.client._is_lun_associated_to_lungroup('11',
                                                                    '11')
         self.assertTrue(result)
 
     def test_lun_is_not_associated_to_lun_group(self):
-
         self.driver.client.associate_lun_to_lungroup('12', '12')
         self.driver.client.remove_lun_from_lungroup('12', '12')
         result = self.driver.client._is_lun_associated_to_lungroup('12', '12')
         self.assertFalse(result)
 
     def test_get_tgtip(self):
-
         portg_id = self.driver.client.get_tgt_port_group(self.portgroup)
         target_ip = self.driver.client._get_tgt_ip_from_portgroup(portg_id)
         self.assertEqual(self.target_ips, target_ip)
 
     def test_find_chap_info(self):
-
         tmp_dict = {}
-        iscsi_info = {}
         tmp_dict['Name'] = 'iqn.1993-08.debian:01:ec2bff7ac3a3'
         tmp_dict['CHAPinfo'] = 'mm-user;mm-user@storage'
         iscsi_info = [tmp_dict]
@@ -2154,9 +2077,7 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         self.assertEqual('mm-user@storage', chap_password)
 
     def test_find_alua_info(self):
-
         tmp_dict = {}
-        iscsi_info = {}
         tmp_dict['Name'] = 'iqn.1993-08.debian:01:ec2bff7ac3a3'
         tmp_dict['ALUA'] = '1'
         iscsi_info = [tmp_dict]
@@ -2166,7 +2087,6 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         self.assertEqual('1', type)
 
     def test_get_pool_info(self):
-
         pools = [{"NAME": "test001",
                   "ID": "0",
                   "USERFREECAPACITY": "36",
@@ -2226,8 +2146,7 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
                                      'policy': '2',
                                      'cachename': 'cache-test',
                                      'partitionname': 'partition-test'})
-    def test_creat_smartx(self, mock_volume_types, mock_add_lun_to_partition):
-
+    def test_create_smartx(self, mock_volume_types, mock_add_lun_to_partition):
         lun_info = self.driver.create_volume(test_volume)
         self.assertEqual('1', lun_info['provider_location'])
 
@@ -3180,10 +3099,7 @@ class HuaweiFCDriverTestCase(test.TestCase):
     @mock.patch.object(rest_client.RestClient, 'add_lun_to_partition')
     def test_migrate_volume_success(self, mock_add_lun_to_partition):
         # Migrate volume without new type.
-        model_update = None
-        moved = False
         empty_dict = {}
-        # Migrate volume without new type.
         moved, model_update = self.driver.migrate_volume(None,
                                                          test_volume,
                                                          test_host,
@@ -3192,7 +3108,6 @@ class HuaweiFCDriverTestCase(test.TestCase):
         self.assertEqual(empty_dict, model_update)
 
         # Migrate volume with new type.
-        moved = False
         empty_dict = {}
         new_type = {'extra_specs':
                     {'smarttier': '<is> true',
