@@ -32,6 +32,7 @@ import osprofiler.notifier
 from osprofiler import profiler
 import osprofiler.web
 
+from cinder.constants import CINDER_VOLUME
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -154,6 +155,8 @@ class Service(service.Service):
         LOG.debug("Creating RPC server for service %s", self.topic)
 
         target = messaging.Target(topic=self.topic, server=self.host)
+        if self.binary == CINDER_VOLUME and CONF.rpc_zmq_vol_vip:
+            CONF.rpc_zmq_host = CONF.rpc_zmq_vol_vip
         endpoints = [self.manager]
         endpoints.extend(self.manager.additional_endpoints)
         serializer = objects_base.CinderObjectSerializer()

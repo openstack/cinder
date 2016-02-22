@@ -55,6 +55,13 @@ host_opt = cfg.StrOpt('backend_host', help='Backend override of host value.',
 cfg.CONF.register_cli_opt(host_opt)
 CONF = cfg.CONF
 
+zmq_opts = [
+    cfg.StrOpt('rpc_zmq_vol_vip', default=None,
+               sample_default='localhost',
+               help='vip of this node. Must be a valid hostname'),
+]
+CONF.register_opts(zmq_opts)
+
 
 def main():
     objects.register_all()
