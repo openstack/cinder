@@ -51,12 +51,12 @@ from cinder import utils
 capacity_weight_opts = [
     cfg.FloatOpt('capacity_weight_multiplier',
                  default=1.0,
-                 help='Multiplier used for weighing volume capacity. '
+                 help='Multiplier used for weighing free capacity. '
                       'Negative numbers mean to stack vs spread.'),
     cfg.FloatOpt('allocated_capacity_weight_multiplier',
                  default=-1.0,
-                 help='Multiplier used for weighing volume capacity. '
-                      'Negative numbers mean to stack vs spread.'),
+                 help='Multiplier used for weighing allocated capacity. '
+                      'Positive numbers mean to stack vs spread.'),
 ]
 
 CONF = cfg.CONF
