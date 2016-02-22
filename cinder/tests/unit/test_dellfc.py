@@ -23,7 +23,7 @@ from cinder.volume.drivers.dell import dell_storagecenter_fc
 
 # We patch these here as they are used by every test to keep
 # from trying to contact a Dell Storage Center.
-@mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+@mock.patch.object(dell_storagecenter_api.HttpClient,
                    '__init__',
                    return_value=None)
 @mock.patch.object(dell_storagecenter_api.StorageCenterApi,

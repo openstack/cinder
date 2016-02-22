@@ -75,7 +75,7 @@ class HttpClient(object):
     Helper for making the REST calls.
     """
 
-    def __init__(self, host, port, user, password, verify):
+    def __init__(self, host, port, user, password, verify, apiversion):
         """HttpClient handles the REST requests.
 
         :param host: IP address of the Dell Data Collector.
@@ -84,6 +84,7 @@ class HttpClient(object):
         :param password: Password.
         :param verify: Boolean indicating whether certificate verification
                        should be turned on or not.
+        :param apiversion: Dell API version.
         """
         self.baseUrl = 'https://%s:%s/api/rest/' % (host, port)
 
@@ -93,7 +94,7 @@ class HttpClient(object):
         self.header = {}
         self.header['Content-Type'] = 'application/json; charset=utf-8'
         self.header['Accept'] = 'application/json'
-        self.header['x-dell-api-version'] = '2.0'
+        self.header['x-dell-api-version'] = apiversion
         self.verify = verify
 
         # Verify is a configurable option.  So if this is false do not
@@ -164,6 +165,7 @@ class StorageCenterApiHelper(object):
         # Use that if set.  Mark the backend as failed over.
         self.active_backend_id = active_backend_id
         self.ssn = self.config.dell_sc_ssn
+        self.apiversion = '2.0'
 
     def open_connection(self):
         """Creates the StorageCenterApi object.
@@ -181,7 +183,8 @@ class StorageCenterApiHelper(object):
                                           self.config.dell_sc_api_port,
                                           self.config.san_login,
                                           self.config.san_password,
-                                          self.config.dell_sc_verify_cert)
+                                          self.config.dell_sc_verify_cert,
+                                          self.apiversion)
             # This instance is for a single backend.  That backend has a
             # few items of information we should save rather than passing them
             # about.
@@ -197,6 +200,12 @@ class StorageCenterApiHelper(object):
                 connection.failed_over = False
             # Open connection.
             connection.open_connection()
+            # Save our api version for next time.
+            if self.apiversion != connection.apiversion:
+                LOG.info(_LI('open_connection: Updating API version to %s'),
+                         connection.apiversion)
+                self.apiversion = connection.apiversion
+
         else:
             raise exception.VolumeBackendAPIException(
                 data=_('Configuration error: dell_sc_ssn not set.'))
@@ -222,9 +231,10 @@ class StorageCenterApi(object):
         2.4.1 - Updated Replication support to V2.1.
         2.5.0 - ManageableSnapshotsVD implemented.
     """
-    APIVERSION = '2.5.0'
 
-    def __init__(self, host, port, user, password, verify):
+    APIDRIVERVERSION = '2.5.0'
+
+    def __init__(self, host, port, user, password, verify, apiversion):
         """This creates a connection to Dell SC or EM.
 
         :param host: IP address of the REST interface..
@@ -233,6 +243,7 @@ class StorageCenterApi(object):
         :param password: Password.
         :param verify: Boolean indicating whether certificate verification
                        should be turned on or not.
+        :param apiversion: Version used on login.
         """
         self.notes = 'Created by Dell Cinder Driver'
         self.repl_prefix = 'Cinder repl of '
@@ -242,14 +253,12 @@ class StorageCenterApi(object):
         self.sfname = 'openstack'
         self.legacypayloadfilters = False
         self.consisgroups = True
+        self.apiversion = apiversion
         # Nothing other than Replication should care if we are direct connect
         # or not.
         self.is_direct_connect = False
-        self.client = HttpClient(host,
-                                 port,
-                                 user,
-                                 password,
-                                 verify)
+        self.client = HttpClient(host, port, user, password,
+                                 verify, apiversion)
 
     def __enter__(self):
         return self
@@ -262,7 +271,6 @@ class StorageCenterApi(object):
         """Checks and logs API responses.
 
         :param rest_response: The result from a REST API call.
-        :param expected_response: The expected result.
         :returns: ``True`` if success, ``False`` otherwise.
         """
         if 200 <= rest_response.status_code < 300:
@@ -402,21 +410,48 @@ class StorageCenterApi(object):
             return LegacyPayloadFilter(filterType)
         return PayloadFilter(filterType)
 
+    def _check_version_fail(self, payload, response):
+        try:
+            # Is it even our error?
+            if response.text.startswith('Invalid API version specified, '
+                                        'the version must be in the range ['):
+                # We're looking for something very specific. The except
+                # will catch any errors.
+                # Update our version and update our header.
+                self.apiversion = response.text.split('[')[1].split(',')[0]
+                self.client.header['x-dell-api-version'] = self.apiversion
+                LOG.debug('API version updated to %s', self.apiversion)
+                # Give login another go.
+                r = self.client.post('ApiConnection/Login', payload)
+                return r
+        except Exception:
+            # We don't care what failed. The clues are already in the logs.
+            # Just log a parsing error and move on.
+            LOG.error(_LE('_check_version_fail: Parsing error.'))
+        # Just eat this if it isn't a version error.
+        return response
+
     def open_connection(self):
         """Authenticate with Dell REST interface.
 
         :raises: VolumeBackendAPIException.
         """
 
+        # Login
         payload = {}
         payload['Application'] = 'Cinder REST Driver'
-        payload['ApplicationVersion'] = self.APIVERSION
-        r = self.client.post('ApiConnection/Login',
-                             payload)
-
+        payload['ApplicationVersion'] = self.APIDRIVERVERSION
+        LOG.debug('open_connection %s',
+                  self.client.header['x-dell-api-version'])
+        r = self.client.post('ApiConnection/Login', payload)
         if not self._check_result(r):
-            raise exception.VolumeBackendAPIException(
-                data=_('Failed to connect to Dell REST API'))
+            # SC requires a specific version. See if we can get it.
+            r = self._check_version_fail(payload, r)
+            # Either we tried to login and have a new result or we are
+            # just checking the same result. Either way raise on fail.
+            if not self._check_result(r):
+                raise exception.VolumeBackendAPIException(
+                    data=_('Failed to connect to Dell REST API'))
 
         # We should be logged in.  Try to grab the api version out of the
         # response.
@@ -787,7 +822,8 @@ class StorageCenterApi(object):
                      This is the cinder volume ID.
         :param size: The size of the volume to be created in GB.
         :param storage_profile: Optional storage profile to set for the volume.
-        :param replay_profile: Optional replay profile to set for the volume.
+        :param replay_profile_string: Optional replay profile to set for
+                                      the volume.
         :returns: Dell Volume object or None.
         """
         LOG.debug('Create Volume %(name)s %(ssn)s %(folder)s %(profile)s',
